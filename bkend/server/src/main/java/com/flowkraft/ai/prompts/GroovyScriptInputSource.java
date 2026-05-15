@@ -41,7 +41,36 @@ You MUST use only the tables and columns present in the provided schema. Do not 
 The SQL queries embedded in the Groovy script must use syntax and functions idiomatic to the specified database vendor (e.g., backticks for MySQL, double quotes for PostgreSQL, square brackets for SQL Server, vendor-specific date/string functions). If no vendor is specified, use standard ANSI SQL.
 
 This script will be used as the "Input Source" for a report. It runs within a Java application and has access to a context object named `ctx`.
-A pre-configured `groovy.sql.Sql` instance is available as `ctx.dbSql` for database queries.
+
+A pre-configured `groovy.sql.Sql` instance is available as `ctx.dbSql` for the report's
+default database connection (configured via the report's `conncode` setting; may be null
+if no default was configured — guard with `if (ctx.dbSql) { ... }` when the report does
+not pin a default connection).
+
+**For dashboards or reports that need to merge data from MULTIPLE databases,** additional
+connections can be opened on demand by code:
+
+```groovy
+def metaDb = ctx.getConnection('customer-meta-h2')   // returns groovy.sql.Sql
+```
+
+`ctx.getConnection(code)` returns a `groovy.sql.Sql` instance — the same API as `ctx.dbSql`.
+The framework caches each opened connection in `ctx.namedDbSql` and closes ALL connections
+(default + secondaries) automatically when the script finishes. **NEVER call `.close()` yourself.**
+
+A Jdbi-flavored alternative is also available for handle-style code:
+
+```groovy
+def jdbi = ctx.dbManager.getJdbi('warehouse-mysql')
+jdbi.withHandle { h -> h.createQuery("SELECT ...").mapToMap().list() }
+```
+
+Connection codes are the same codes shown in the **Code** column of the Connections list
+(each row has a copy-to-clipboard button). There is **no SQL federation engine** across
+databases — to merge across DBs, pull from each one, index one side by the join key, then
+merge in Groovy (see Example 5). DuckDB-as-federation is a valid alternative when one of
+the databases is DuckDB with the `postgres_scanner` / `mysql_scanner` / `sqlite_scanner`
+extensions enabled.
 
 **CRITICAL INSTRUCTIONS: You must follow these "Golden Rules" precisely.**
 
@@ -338,6 +367,61 @@ if (!supplierDataList.isEmpty()) {
 }
 log.info("Successfully processed {} suppliers.", suppliers.size())
 ```
+
+**Example 5: Cross-Database Customer Scorecard**
+*Goal: Merge data from TWO different databases — the report's default DB (orders/revenue)
+and a secondary DB (customer-segmentation metadata) — into one unified scorecard.
+Demonstrates `ctx.getConnection(code)` for the secondary connection.*
+
+```groovy
+// Filename: scriptedReport_crossDbCustomerScorecard.groovy
+import java.math.BigDecimal
+
+def dbSql  = ctx.dbSql                                 // primary — orders/revenue
+def metaDb = ctx.getConnection('customer-meta-h2')     // secondary — segmentation
+
+def revenueRows = dbSql.rows(\"""
+    SELECT
+        cu."CustomerID"     AS customer_id,
+        cu."CompanyName"    AS company,
+        COUNT(DISTINCT o."OrderID") AS order_count,
+        ROUND(SUM(od."UnitPrice" * od."Quantity" * (1 - od."Discount")), 2) AS total_revenue
+    FROM "Customers" cu
+    JOIN "Orders" o            ON cu."CustomerID" = o."CustomerID"
+    JOIN "Order Details" od    ON o."OrderID" = od."OrderID"
+    GROUP BY cu."CustomerID", cu."CompanyName"
+\""")
+
+def segmentRows = metaDb.rows("SELECT customer_id, segment, churn_risk FROM customer_segments")
+def segmentByCustomer = segmentRows.collectEntries { [(it.customer_id): it] }
+
+// INNER-join semantics: only customers present in BOTH databases.
+def scorecard = revenueRows.findResults { rev ->
+    def meta = segmentByCustomer[rev.customer_id]
+    if (meta == null) return null
+    def row = new LinkedHashMap<String, Object>()
+    row.put('CustomerID',   rev.customer_id)
+    row.put('Company',      rev.company)
+    row.put('OrderCount',   rev.order_count)
+    row.put('TotalRevenue', rev.total_revenue)
+    row.put('Segment',      meta.segment)
+    row.put('ChurnRisk',    meta.churn_risk ?: BigDecimal.ZERO)
+    row
+}
+
+ctx.reportData = scorecard
+if (!scorecard.isEmpty()) {
+    ctx.reportColumnNames = new ArrayList<>(scorecard[0].keySet())
+}
+```
+
+Key things to remember when writing multi-DB scripts:
+- `ctx.getConnection(code)` returns a `groovy.sql.Sql` — same API as `ctx.dbSql`.
+- The framework manages lifecycle; the script must **not** close anything.
+- For pure cross-DB joins: pull from each DB → index one side by the join key → merge in Groovy.
+- Do NOT try to write cross-DB SQL — there is no federation engine across databases.
+- DO NOT invent `Sql.newInstance(...)` with hard-coded credentials. Use `ctx.getConnection(code)` so
+  the framework pulls credentials from the configured Connections list and manages cleanup.
 
 ---
 

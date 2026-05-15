@@ -3,6 +3,7 @@ package com.sourcekraft.documentburster.unit.documentation.userguide.reporting;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -994,6 +995,94 @@ public class ScriptedReporterTest {
 			new File(ctx.outputFolder + "/enriched_1.html").exists());
 		assertTrue("Output file for employee 2 should exist",
 			new File(ctx.outputFolder + "/enriched_2.html").exists());
+
+		log.info("========== Test completed: {} ==========", TEST_NAME);
+	}
+
+	@Test
+	public void testMultiDatabaseCustomerScorecard() throws Exception {
+		final String TEST_NAME = "ScriptedReporterTest-MultiDatabaseCustomerScorecard";
+		log.info("========== Starting test: {} ==========", TEST_NAME);
+
+		// Set up the SECONDARY in-memory H2 (customer_segments table) — distinct
+		// from the primary Northwind H2 owned by NorthwindTestUtils.
+		com.sourcekraft.documentburster._helpers.MultiDbTestUtils.setupSecondaryCustomerMetaDb();
+
+		// Minimal HTML template referencing the actual scorecard schema (not the
+		// supplier-scorecard template, which references SupplierID/CompanyName/etc.).
+		NorthwindTestUtils.ensureTemplateDirectoryExists(NorthwindTestUtils.TEMPLATES_DIR);
+		final String crossDbScorecardTemplateHtml = NorthwindTestUtils.TEMPLATES_DIR
+				+ "scriptedReport_crossDbScorecard_template.html";
+		File crossDbTpl = new File(crossDbScorecardTemplateHtml);
+		if (!crossDbTpl.exists()) {
+			String html = "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\">"
+					+ "<title>Customer Scorecard - ${CustomerID}</title></head><body>"
+					+ "<h1>${Company} (${CustomerID})</h1>"
+					+ "<p>Orders: ${OrderCount} — Revenue: ${TotalRevenue}</p>"
+					+ "<p>Segment: <strong>${Segment}</strong> — Churn risk: ${ChurnRisk}</p>"
+					+ "</body></html>";
+			java.nio.file.Files.write(crossDbTpl.toPath(), html.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+		}
+
+		TestBursterFactory.ScriptedReporter reporter = new TestBursterFactory.ScriptedReporter(StringUtils.EMPTY,
+				TEST_NAME, NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+			@Override
+			protected void executeController() throws Exception {
+				super.executeController();
+				// Primary connection = Northwind (resolved via TestBursterFactory.ScriptedReporter's
+				// getServerDatabaseSettings() override — no file load needed).
+				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().scriptoptions.scriptname = "scriptedReport_crossDbCustomerScorecard.groovy";
+				ctx.settings.getReportDataSource().scriptoptions.idcolumn = "CustomerID";
+
+				// Pre-populate ctx.namedDbSql so the script's ctx.getConnection(SECONDARY_CONN_CODE)
+				// returns the secondary H2 instance directly — bypasses the dbManager
+				// file-loading path that would require a real connection XML on disk.
+				ctx.namedDbSql = new java.util.LinkedHashMap<>();
+				ctx.namedDbSql.put(
+						com.sourcekraft.documentburster._helpers.MultiDbTestUtils.SECONDARY_CONN_CODE,
+						com.sourcekraft.documentburster._helpers.MultiDbTestUtils.openSecondarySqlForTest());
+
+				ctx.settings.getReportTemplate().outputtype = CsvUtils.OUTPUT_TYPE_HTML;
+				ctx.settings.getReportTemplate().documentpath = crossDbScorecardTemplateHtml;
+			}
+		};
+
+		reporter.burst();
+
+		BurstingContext ctx = reporter.getCtx();
+		assertNotNull("ctx should not be null", ctx);
+		assertNotNull("reportData should not be null", ctx.reportData);
+		assertFalse("reportData should not be empty (Northwind ∩ customer_segments should yield rows)",
+				ctx.reportData.isEmpty());
+
+		// Every row must carry merged columns from BOTH databases.
+		boolean foundAlfki = false;
+		for (Map<String, Object> row : ctx.reportData) {
+			assertNotNull("row.CustomerID should not be null",   row.get("CustomerID"));
+			assertNotNull("row.Company should not be null",      row.get("Company"));
+			assertNotNull("row.OrderCount should not be null",   row.get("OrderCount"));
+			assertNotNull("row.TotalRevenue should not be null", row.get("TotalRevenue"));
+			assertNotNull("row.Segment should not be null (from secondary DB)",  row.get("Segment"));
+			assertNotNull("row.ChurnRisk should not be null (from secondary DB)", row.get("ChurnRisk"));
+
+			if ("ALFKI".equals(row.get("CustomerID"))) {
+				foundAlfki = true;
+				assertEquals("ALFKI should be tagged 'midmarket' from the secondary DB",
+						"midmarket", row.get("Segment"));
+				Object churn = row.get("ChurnRisk");
+				BigDecimal churnVal = churn instanceof BigDecimal ? (BigDecimal) churn
+						: new BigDecimal(churn.toString());
+				assertTrue("ALFKI churn_risk should be > 0 and < 1, was: " + churnVal,
+						churnVal.compareTo(BigDecimal.ZERO) > 0
+								&& churnVal.compareTo(BigDecimal.ONE) < 0);
+			}
+		}
+		assertTrue("ALFKI row from Northwind should appear merged with secondary-DB segment data", foundAlfki);
+
+		// Framework lifecycle proof: the finally block in ScriptedReporter.fetchData()
+		// closes every entry in ctx.namedDbSql and sets the map to null.
+		assertNull("ctx.namedDbSql should be cleaned up after fetchData finishes", ctx.namedDbSql);
 
 		log.info("========== Test completed: {} ==========", TEST_NAME);
 	}
