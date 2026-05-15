@@ -1,5 +1,12 @@
 /* ── Tailwind v4: theme tokens + utilities only; preflight intentionally
    skipped so Bootstrap 3 base styles are not overridden. ─────────────────── */
+
+/* Explicit sources: Tailwind v4 auto-detection does not scan Angular
+   component template literals or templateUrl HTML files in this webpack
+   build context, so we must declare them explicitly.
+   Path is relative to postcss.config.js, NOT to this CSS file. */
+@source "./src/app";
+
 @import "tailwindcss/theme" layer(base);
 @import "tailwindcss/utilities";
 

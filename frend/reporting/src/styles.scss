@@ -562,3 +562,30 @@ body.skin-purple-light {
 .app-sidebar .d-menu details > summary::-webkit-details-marker {
   display: none;
 }
+
+// B2 layout utilities — Tailwind v4 @source scanning does not work in this
+// Angular + webpack build context, so we declare the B2-used utilities here.
+.fixed          { position: fixed; }
+.relative       { position: relative; }
+.top-0          { top: 0; }
+.left-0         { left: 0; }
+.right-0        { right: 0; }
+.flex           { display: flex; }
+.items-stretch  { align-items: stretch; }
+.items-center   { align-items: center; }
+.justify-center { justify-content: center; }
+.shrink-0       { flex-shrink: 0; }
+.flex-1         { flex: 1 1 0%; min-width: 0; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.m-0            { margin: 0; }
+.p-0            { padding: 0; }
+.list-none      { list-style: none; }
+.ml-auto        { margin-left: auto; }
+.px-4           { padding-left: 1rem; padding-right: 1rem; }
+.px-3           { padding-left: 0.75rem; padding-right: 0.75rem; }
+.w-full         { width: 100%; }
+.py-2           { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+// Arbitrary z-index helpers used in B2 templates (escaped brackets = valid CSS)
+.z-\[810\]      { z-index: 810; }
+.z-\[1030\]     { z-index: 1030; }
