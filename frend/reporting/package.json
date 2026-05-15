@@ -94,6 +94,7 @@
     "_custom:electron:windows": "npm run build:prod && electron-builder build --windows --ia32"
   },
   "dependencies": {
+    "@angular/animations": "16.2.12",
     "@angular/common": "16.2.12",
     "@angular/compiler": "16.2.12",
     "@angular/core": "16.2.12",
