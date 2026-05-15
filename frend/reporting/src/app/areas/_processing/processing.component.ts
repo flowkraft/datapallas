@@ -62,10 +62,11 @@ import { AiManagerComponent, AiManagerLaunchConfig } from '../../components/ai-m
 @Component({
   selector: 'dburst-processing',
   template: `
-    <aside class="main-sidebar">
-      <section class="sidebar">${leftMenuTemplate}</section>
+    <aside class="app-sidebar fixed overflow-y-auto z-[810]"
+           style="top:50px; left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
+      ${leftMenuTemplate}
     </aside>
-    <div class="content-wrapper">
+    <div class="relative" style="margin-left:230px; padding-top:50px; min-height:calc(100vh - 80px);">
       <section class="content"><div>${tabsTemplate}</div></section>
     </div>
     ${tabBurstTemplate} ${tabReportGenerationMailMergeTemplate}
