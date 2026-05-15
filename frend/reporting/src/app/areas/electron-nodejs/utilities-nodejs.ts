@@ -64,7 +64,7 @@ export default class UtilitiesNodeJs {
 
   static async streamWithProgress(
     length: number,
-    reader: ReadableStreamReader<Uint8Array>,
+    reader: ReadableStreamDefaultReader<Uint8Array>,
     writer: NodeJS.WriteStream,
     progressCallback?: (bytesDone: number, percent: number) => void,
   ) {

@@ -185,7 +185,7 @@
     "@types/jasmine": "4.3.0",
     "@types/lockfile": "1.0.2",
     "@types/lodash": "4.14.186",
-    "@types/node": "18.0.6",
+    "@types/node": "18.19.3",
     "@types/pako": "2.0.3",
     "@types/prismjs": "1.26.5",
     "@types/proper-lockfile": "4.1.2",
@@ -234,12 +234,12 @@
     "tree-kill": "1.2.2",
     "ts-node": "10.9.2",
     "tsconfig-paths": "4.2.0",
-    "typescript": "4.8.4",
+    "typescript": "~4.9.5",
     "wait-on": "6.0.1",
     "webpack-bundle-analyzer": "4.10.1"
   },
   "engines": {
-    "node": ">= 14.15.0"
+    "node": ">= 18.10.0"
   },
   "browserslist": [
     "chrome 100"
