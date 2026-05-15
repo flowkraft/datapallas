@@ -1,4 +1,5 @@
-import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
+import type { Meta, StoryObj} from '@storybook/angular';
+import { moduleMetadata } from '@storybook/angular';
 import { baseMeta } from './_utils/setup';
 
 import { StateStoreService } from '../app/providers/state-store.service';

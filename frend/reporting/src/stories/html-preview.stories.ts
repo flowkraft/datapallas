@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from '@storybook/angular';
+import type { Meta, StoryObj } from '@storybook/angular';
 import { baseMeta } from './_utils/setup';
 import { ButtonHtmlPreviewComponent } from '../app/components/button-html-preview/button-html-preview.component';
 

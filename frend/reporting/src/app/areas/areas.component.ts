@@ -1,11 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 
 @Component({
   selector: 'dburst-areas',
   templateUrl: './areas.template.html',
 })
-export class AreasComponent implements OnInit {
-  constructor() {}
-
-  ngOnInit() {}
-}
+export class AreasComponent {}
