@@ -1,0 +1,58 @@
+/* ── Tailwind v4: theme tokens + utilities only; preflight intentionally
+   skipped so Bootstrap 3 base styles are not overridden. ─────────────────── */
+@import "tailwindcss/theme" layer(base);
+@import "tailwindcss/utilities";
+
+/* ── daisyUI v5: all component classes namespaced with "d-" prefix so they
+   cannot collide with Bootstrap 3 classes (btn, badge, modal, etc.).
+   Single light theme as baseline; the 12-skin CSS vars added in B2.1
+   control the shell palette independently. ─────────────────────────────── */
+@plugin "daisyui" {
+  prefix: d-;
+  themes: light --default;
+}
+
+/* ── B1.2 App-level theme tokens ─────────────────────────────────────────
+   Controlled by .dark class on <html> or <body>.
+   @custom-variant dark is intentionally NOT used: in Tailwind v4 it maps
+   to prefers-color-scheme (media query), not the .dark class toggle.     ─── */
+:root {
+  --background:         oklch(100%  0    0);
+  --foreground:         oklch(9.0%  0    0);
+  --card:               oklch(97.8% 0    0);
+  --card-foreground:    oklch(9.0%  0    0);
+  --muted:              oklch(94.4% 0    0);
+  --muted-foreground:   oklch(46.9% 0    0);
+  --border:             oklch(87.1% 0    0);
+  --input:              oklch(87.1% 0    0);
+  --primary:            oklch(20.5% 0    0);
+  --primary-foreground: oklch(98.5% 0    0);
+}
+
+.dark {
+  --background:         oklch(9.0%  0    0);
+  --foreground:         oklch(98.5% 0    0);
+  --card:               oklch(14.5% 0    0);
+  --card-foreground:    oklch(98.5% 0    0);
+  --muted:              oklch(18.4% 0    0);
+  --muted-foreground:   oklch(63.9% 0    0);
+  --border:             oklch(27.4% 0    0);
+  --input:              oklch(27.4% 0    0);
+  --primary:            oklch(98.5% 0    0);
+  --primary-foreground: oklch(20.5% 0    0);
+}
+
+/* Map CSS vars to Tailwind utility names (inline = reads var at render time,
+   so .dark class switches colours without a rebuild). ─────────────────────── */
+@theme inline {
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-border:             var(--border);
+  --color-input:              var(--input);
+  --color-primary:            var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+}
