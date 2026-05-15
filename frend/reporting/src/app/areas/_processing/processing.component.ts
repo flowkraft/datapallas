@@ -2,13 +2,16 @@ import {
   Component,
   OnInit,
   ChangeDetectorRef,
+  DestroyRef,
   ViewChild,
   TemplateRef,
   ElementRef,
+  inject,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { interval, Subscription, Subject } from 'rxjs';
+import { interval, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import * as _ from 'lodash';
@@ -88,8 +91,7 @@ export class ProcessingComponent implements OnInit {
     documentation: '',
   };
 
-  subscriptionCheckIfTestEmailServerIsStarted: Subscription;
-  private showSamplesSub?: Subscription;
+  private destroyRef = inject(DestroyRef);
 
   @ViewChild('tabBurstTemplate', { static: true })
   tabBurstTemplate: TemplateRef<any>;
@@ -290,35 +292,28 @@ export class ProcessingComponent implements OnInit {
     }
   }
 
-  constructor(
-    protected processingService: ProcessingService,
-    protected apiService: ApiService,
-    protected jobsService: JobsService,
-    protected systemService: SystemService,
-    protected settingsService: SettingsService,
-    protected appsManagerService: AppsManagerService,
-    protected confirmService: ConfirmService,
-    protected infoService: InfoService,
-    protected messagesService: ToastrMessagesService,
-    protected route: ActivatedRoute,
-    protected router: Router,
-    protected changeDetectorRef: ChangeDetectorRef,
-    protected storeService: StateStoreService,
-    protected reportingService: ReportingService,
-    protected executionStatsService: ExecutionStatsService,
-    protected samplesService: SamplesService,
-    protected sanitizer: DomSanitizer,
-    protected reportsService: ReportsService,
-  ) { }
+  protected processingService     = inject(ProcessingService);
+  protected apiService            = inject(ApiService);
+  protected jobsService           = inject(JobsService);
+  protected systemService         = inject(SystemService);
+  protected settingsService       = inject(SettingsService);
+  protected appsManagerService    = inject(AppsManagerService);
+  protected confirmService        = inject(ConfirmService);
+  protected infoService           = inject(InfoService);
+  protected messagesService       = inject(ToastrMessagesService);
+  protected route                 = inject(ActivatedRoute);
+  protected router                = inject(Router);
+  protected changeDetectorRef     = inject(ChangeDetectorRef);
+  protected storeService          = inject(StateStoreService);
+  protected reportingService      = inject(ReportingService);
+  protected executionStatsService = inject(ExecutionStatsService);
+  protected samplesService        = inject(SamplesService);
+  protected sanitizer             = inject(DomSanitizer);
+  protected reportsService        = inject(ReportsService);
 
   ngOnDestroy() {
     this.reportDataResult = null;
     this.isReportDataLoading = false;
-
-    if (this.subscriptionCheckIfTestEmailServerIsStarted) {
-      this.subscriptionCheckIfTestEmailServerIsStarted.unsubscribe();
-    }
-    this.showSamplesSub?.unsubscribe();
   }
 
   // ========== SHARED HELPERS ==========
@@ -357,10 +352,6 @@ export class ProcessingComponent implements OnInit {
   async ngOnInit() {
     this.cmsPortalApp = [await this.appsManagerService.getAppById('cms-webportal')];
 
-    if (this.subscriptionCheckIfTestEmailServerIsStarted) {
-      this.subscriptionCheckIfTestEmailServerIsStarted.unsubscribe();
-    }
-
     this.settingsService.currentConfigurationTemplateName = '';
     this.settingsService.currentConfigurationTemplatePath = '';
     delete this.processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport;
@@ -370,7 +361,7 @@ export class ProcessingComponent implements OnInit {
       await this.settingsService.loadAllReports({ forceReload: true });
     // Dashboard search debounce
     this.dashboardSearchSubject
-      .pipe(debounceTime(300), distinctUntilChanged())
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
         this.dashboardSearchTerm = term;
         this.dashboardPage = 0;
@@ -384,18 +375,20 @@ export class ProcessingComponent implements OnInit {
     // BehaviorSubject fires the current value synchronously on subscribe — skip
     // that first emission since we already loaded above.
     let firstEmission = true;
-    this.showSamplesSub = this.settingsService.showSamples$.subscribe(() => {
-      if (firstEmission) {
-        firstEmission = false;
-        return;
-      }
-      this.applyDashboardFilter();
-      this.changeDetectorRef.detectChanges();
-    });
+    this.settingsService.showSamples$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (firstEmission) {
+          firstEmission = false;
+          return;
+        }
+        this.applyDashboardFilter();
+        this.changeDetectorRef.detectChanges();
+      });
 
-    this.route.params.subscribe(async (params) => {
-      await this.handleRouteParams(params);
-    });
+    this.route.params
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(async (params) => { await this.handleRouteParams(params); });
 
     this.xmlSettings = await this.reportsService.loadReportSettings('burst');
     if (this.xmlSettings?.documentburster)
@@ -455,10 +448,9 @@ export class ProcessingComponent implements OnInit {
     if (params.whichAction)
       this.processingService.procQualityAssuranceInfo.whichAction = params.whichAction;
 
-    const repeat = interval(1000);
-    this.subscriptionCheckIfTestEmailServerIsStarted = repeat.subscribe(() => {
-      this.checkIfTestEmailServerIsStarted();
-    });
+    interval(1000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => { this.checkIfTestEmailServerIsStarted(); });
   }
 
   private initProcessingFromParams(params: any, processingMode: string) {
