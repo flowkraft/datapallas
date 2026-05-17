@@ -27,7 +27,7 @@ import java.util.Map;
  * and the UI renders them inline (keeps errors.log clean).
  */
 @RestController
-@RequestMapping("/api/explore-data")
+@RequestMapping("/api/explorations")
 @CrossOrigin
 public class ExploreDataController {
 
@@ -98,27 +98,10 @@ public class ExploreDataController {
         return ResponseEntity.ok(exportService.export(id));
     }
 
-    // ── Dashboard template serving ────────────────────────────────────────────
-
-    /**
-     * GET /api/explore-data/template/{reportId}
-     *
-     * Returns the saved HTML template fragment for a published dashboard so that
-     * the Next.js /dashboard/[reportId] page can render it via dangerouslySetInnerHTML.
-     * The web component scripts are already loaded by the Next.js layout, so
-     * the fragment renders immediately with no additional script tags needed.
-     */
-    @GetMapping("/template/{reportId}")
-    public ResponseEntity<String> getDashboardTemplate(@PathVariable String reportId) throws Exception {
-        String html = exportService.getTemplateHtml(reportId);
-        if (html == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
-    }
-
     // ── Ad-hoc execution (explore-data canvas only) ───────────────────────────
 
-    /** POST /api/explore-data/queries/execute — execute an ad-hoc SQL query. */
-    @PostMapping("/queries/execute")
+    /** POST /api/explorations/queries/run-sql — execute an ad-hoc SQL query. */
+    @PostMapping("/queries/run-sql")
     public Mono<Map<String, Object>> executeQuery(@RequestBody Map<String, Object> request) {
         String connectionId = (String) request.get("connectionId");
         String sql = (String) request.get("sql");
@@ -145,8 +128,8 @@ public class ExploreDataController {
         return Mono.just(queriesService.getSchema(connectionId));
     }
 
-    /** POST /api/explore-data/scripts/execute — execute an inline Groovy script. */
-    @PostMapping("/scripts/execute")
+    /** POST /api/explorations/queries/run-script — execute an inline Groovy script. */
+    @PostMapping("/queries/run-script")
     public Mono<Map<String, Object>> executeScript(@RequestBody Map<String, Object> request) {
         String connectionId = (String) request.get("connectionId");
         String script = (String) request.get("script");

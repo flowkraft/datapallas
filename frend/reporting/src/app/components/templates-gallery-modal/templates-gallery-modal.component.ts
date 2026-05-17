@@ -4,7 +4,7 @@ import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 import { TranslateService } from '@ngx-translate/core';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ReportsService } from '../../providers/reports.service';
 import { ApiService } from '../../providers/api.service';
 
@@ -19,7 +19,7 @@ export class TemplatesGalleryModalComponent {
   @Output() useTemplate = new EventEmitter<HtmlDocTemplateDisplay>();
 
   constructor(
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected reportsService: ReportsService,
     protected messagesService: ToastrMessagesService,
     protected translateService: TranslateService,

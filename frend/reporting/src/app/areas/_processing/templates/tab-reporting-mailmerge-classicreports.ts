@@ -12,7 +12,7 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
         <ng-select
           id="selectMailMergeClassicReport"
           [(ngModel)]="processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport"
-          [groupBy]="groupByMailMergeHelper"
+          [groupBy]="groupReportsByType"
           (change)="onReportSelectionChange($event)"
           appendTo="body"
         >

@@ -24,7 +24,7 @@ export const tabWebUploadSharePointTemplate = `<ng-template #tabWebUploadSharePo
       <div class="col-xs-7">
         <input id="sharePointCommand"
           [(ngModel)]="xmlSettings?.documentburster.settings.webuploadsettings.mssharepointcommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">

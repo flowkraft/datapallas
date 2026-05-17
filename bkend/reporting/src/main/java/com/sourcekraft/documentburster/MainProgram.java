@@ -38,8 +38,9 @@ import picocli.CommandLine.ParentCommand;
 import picocli.CommandLine.Spec;
 
 @Command(name = "DataPallas", mixinStandardHelpOptions = true, versionProvider = MainProgram.VersionFromSettings.class, description = "Report bursting and report generation software", subcommands = {
-		MainProgram.BurstCommand.class, MainProgram.GenerateCommand.class, MainProgram.ResumeCommand.class,
-		MainProgram.DocumentCommand.class, MainProgram.SystemCommand.class, MainProgram.ServiceCommand.class,
+		MainProgram.JobCommand.class,
+		MainProgram.ConnectionCommand.class,
+		MainProgram.SystemCommand.class, MainProgram.ServiceCommand.class,
 		MainProgram.JasperCommand.class })
 public class MainProgram implements Callable<Integer> {
 
@@ -152,130 +153,14 @@ public class MainProgram implements Callable<Integer> {
 		protected abstract MainProgram getMainProgram();
 	}
 
-	@Command(name = "burst", description = "Burst a document into multiple documents")
-	public static class BurstCommand extends BaseCommand implements Callable<Integer> {
-		@ParentCommand
-		protected MainProgram parent;
-
-		@Parameters(index = "0", description = "Input file to process", arity = "1")
-		protected File inputFile;
-
-		@Mixin
-		protected ConfigOptions config;
-
-		@Mixin
-		protected QaOptions qa;
-
-		@Override
-		protected MainProgram getMainProgram() {
-			return parent;
-		}
-
-		@Override
-		public Integer call() throws Exception {
-			if (!inputFile.exists()) {
-				throw new FileNotFoundException("Input file does not exist: " + inputFile.getAbsolutePath());
-			}
-
-			// Validate random tests parameter if it's provided (not -1)
-			int randomTestsCount = qa.getRandomTestsCount();
-			if (randomTestsCount != -1 && randomTestsCount <= 0) {
-				throw new CommandLine.ParameterException(parent.spec.commandLine(),
-						"Number of randomly selected entries to test must be positive");
-			}
-
-			CliJob job = getJob(config.configFile);
-			job.doBurst(inputFile.getAbsolutePath(), qa.isTestAll(), qa.getTestList(), qa.getRandomTestsCount());
-			return 0;
-		}
-	}
-
-	@Command(name = "generate", description = "Generate reports from input data")
-	public static class GenerateCommand extends BaseCommand implements Callable<Integer> {
-		@ParentCommand
-		MainProgram parent;
-
-		@Parameters(index = "0", description = "Input to process", arity = "1")
-		private String input;
-
-		@Mixin
-		private ConfigOptions config;
-
-		@Mixin
-		private QaOptions qa;
-
-		@Option(names = { "-p",
-				"--param" }, description = "Report parameters in key=value format (can be repeated)", paramLabel = "KEY=VALUE")
-		private Map<String, String> parameters = new HashMap<>();
-
-		@Override
-		protected MainProgram getMainProgram() {
-			return parent;
-		}
-
-		@Override
-		public Integer call() throws Exception {
-			// Check config required for all types
-			if (config.configFile == null) {
-				throw new CommandLine.ParameterException(parent.spec.commandLine(),
-						"Configuration file (-c/--config) is required");
-			}
-
-			// Validate random tests parameter if provided (must be positive)
-			int randomTestsCount = qa.getRandomTestsCount();
-			if (randomTestsCount > 0 && randomTestsCount <= 0) {
-				throw new CommandLine.ParameterException(parent.spec.commandLine(),
-						"Number of random tests must be positive");
-			}
-
-			Settings settings = new Settings(config.configFile);
-			settings.loadSettings();
-
-			boolean isReportGenerationJob = settings.getCapabilities().reportgenerationmailmerge;
-
-			// Validate and process parameters
-			CliJob job = getJob(config.configFile);
-			job.setJobType(isReportGenerationJob ? settings.getReportDataSource().type : "burst");
-
-			// // System.out.println("[DEBUG] Parsed parameters: " + parameters);
-
-			job.setParameters(parameters);
-
-			job.doBurst(input, qa.isTestAll(), qa.getTestList(), qa.getRandomTestsCount());
-
-			return 0;
-		}
-	}
-
-	@Command(name = "resume", description = "Resume a previously paused job")
-	public static class ResumeCommand extends BaseCommand implements Callable<Integer> {
-		@ParentCommand
-		MainProgram parent;
-
-		@Parameters(index = "0", description = "Job progress file to resume", arity = "1")
-		private File jobProgressFile;
-
-		@Override
-		protected MainProgram getMainProgram() {
-			return parent;
-		}
-
-		@Override
-		public Integer call() throws Exception {
-			if (!jobProgressFile.exists()) {
-				throw new FileNotFoundException(
-						"Job progress file does not exist: " + jobProgressFile.getAbsolutePath());
-			}
-
-			CliJob job = getJob(null);
-			job.doResume(jobProgressFile.getAbsolutePath());
-			return 0;
-		}
-	}
-
-	@Command(name = "document", description = "Document operations", subcommands = {
-			MainProgram.DocumentCommand.MergeCommand.class })
-	public static class DocumentCommand implements Callable<Integer> {
+	@Command(name = "job", description = "Job execution operations", subcommands = {
+			MainProgram.BurstCommand.class,
+			MainProgram.GenerateCommand.class,
+			MainProgram.ResumeCommand.class,
+			MainProgram.JobCommand.MergeCommand.class,
+			MainProgram.JobCommand.StatsCommand.class,
+			MainProgram.JobCommand.GenerateJasperCommand.class })
+	public static class JobCommand implements Callable<Integer> {
 		@ParentCommand
 		MainProgram parent;
 
@@ -291,7 +176,7 @@ public class MainProgram implements Callable<Integer> {
 		@Command(name = "merge", description = "Merge multiple documents into one")
 		public static class MergeCommand extends BaseCommand implements Callable<Integer> {
 			@ParentCommand
-			DocumentCommand documentCommand;
+			JobCommand jobCommand;
 
 			@Parameters(index = "0", description = "File containing list of documents to merge", arity = "1")
 			private File listFile;
@@ -307,7 +192,7 @@ public class MainProgram implements Callable<Integer> {
 
 			@Override
 			protected MainProgram getMainProgram() {
-				return documentCommand.parent;
+				return jobCommand.parent;
 			}
 
 			@Override
@@ -335,6 +220,418 @@ public class MainProgram implements Callable<Integer> {
 				FileUtils.deleteQuietly(listFile);
 				return 0;
 			}
+		}
+
+		@Command(name = "stats", description = "Show active job statistics")
+		public static class StatsCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			JobCommand jobCommand;
+
+			@Override
+			protected MainProgram getMainProgram() {
+				return jobCommand.parent;
+			}
+
+			@Override
+			public Integer call() throws Exception {
+				System.out.println("Active jobs: use the DataPallas web UI or GET /api/jobs/stats for programmatic access.");
+				return 0;
+			}
+		}
+
+		@Command(name = "generate-jasper", description = "Compile and export a JasperReports template (stub — use top-level 'jasper' command for full options)")
+		public static class GenerateJasperCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			JobCommand jobCommand;
+
+			@Override
+			protected MainProgram getMainProgram() {
+				return jobCommand.parent;
+			}
+
+			@Override
+			public Integer call() throws Exception {
+				System.out.println("Use: DataPallas jasper --report-dir <dir> --jrxml <file> --format <pdf|xlsx|csv|html> --out <output>");
+				return 0;
+			}
+		}
+	}
+
+	@Command(name = "connection", description = "Connection management operations", subcommands = {
+			MainProgram.ConnectionCommand.TestEmailCommand.class,
+			MainProgram.ConnectionCommand.TestSmsCommand.class,
+			MainProgram.ConnectionCommand.TestDatabaseCommand.class,
+			MainProgram.ConnectionCommand.FetchSchemaCommand.class,
+			MainProgram.ConnectionCommand.TestQueryCommand.class,
+			MainProgram.ConnectionCommand.RunSeedCommand.class,
+			MainProgram.ConnectionCommand.OAuthSignInCommand.class })
+	public static class ConnectionCommand implements Callable<Integer> {
+		@ParentCommand
+		MainProgram parent;
+
+		@Spec
+		CommandSpec spec;
+
+		@Override
+		public Integer call() {
+			spec.commandLine().usage(System.out);
+			return 0;
+		}
+
+		@Command(name = "test-email", description = "Test an email connection")
+		static class TestEmailCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--id" }, required = true, description = "Email connection ID (e.g. eml-my-email)")
+			private String connectionId;
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				System.out.println("Use the DataPallas web UI or POST /api/connections/" + connectionId + "/test-email");
+				return 0;
+			}
+		}
+
+		@Command(name = "test-sms", description = "Test SMS connection via Twilio")
+		static class TestSmsCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--id" }, required = true, description = "Connection ID")
+			private String connectionId;
+
+			@Option(names = { "--from", "--from-number" }, required = true, description = "From phone number")
+			private String fromNumber;
+
+			@Option(names = { "--to", "--to-number" }, required = true, description = "To phone number")
+			private String toNumber;
+
+			@Mixin
+			private ConfigOptions config;
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				CliJob job = getJob(config.configFile);
+				job.doCheckTwilio(fromNumber, toNumber);
+				return 0;
+			}
+		}
+
+		@Command(name = "test-database", description = "Test a database connection")
+		static class TestDatabaseCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--database-connection-file" }, required = true,
+					description = "Path to the database connection XML file")
+			private File databaseConnectionFile;
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				if (!databaseConnectionFile.exists())
+					throw new FileNotFoundException("Database connection file does not exist: " + databaseConnectionFile.getAbsolutePath());
+				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
+				job.doTestAndFetchDatabaseSchema(databaseConnectionFile.getAbsolutePath());
+				return 0;
+			}
+		}
+
+		@Command(name = "fetch-schema", description = "Fetch and cache the database schema for a connection")
+		static class FetchSchemaCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--database-connection-file" }, required = true,
+					description = "Path to the database connection XML file")
+			private File databaseConnectionFile;
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				if (!databaseConnectionFile.exists())
+					throw new FileNotFoundException("Database connection file does not exist: " + databaseConnectionFile.getAbsolutePath());
+				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
+				job.doTestAndFetchDatabaseSchema(databaseConnectionFile.getAbsolutePath());
+				return 0;
+			}
+		}
+
+		@Command(name = "test-query", description = "Test a SQL query against a database connection")
+		static class TestQueryCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--sql-query" }, required = true, description = "SQL query to test")
+			private String sqlQuery;
+
+			@Mixin
+			private ConfigOptions config;
+
+			@Option(names = { "-p", "--param" }, description = "Query parameters as key=value (repeatable)", paramLabel = "KEY=VALUE")
+			private Map<String, String> parameters = new HashMap<>();
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				CliJob job = getJob(config.configFile);
+				job.doFetchData(parameters, false);
+				return 0;
+			}
+		}
+
+		@Command(name = "run-seed", description = "Execute a Groovy seed script against a database connection")
+		static class RunSeedCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--database-connection-file" }, required = true,
+					description = "Path to the database connection XML file")
+			private File databaseConnectionFile;
+
+			@Option(names = { "--script-file" }, required = true,
+					description = "Path to the Groovy script file")
+			private File scriptFile;
+
+			@Option(names = { "-p", "--param" }, description = "Script parameters as key=value (repeatable)", paramLabel = "KEY=VALUE")
+			private Map<String, String> params = new HashMap<>();
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				if (!databaseConnectionFile.exists())
+					throw new FileNotFoundException("Database connection file not found: " + databaseConnectionFile.getAbsolutePath());
+				if (!scriptFile.exists())
+					throw new FileNotFoundException("Script file not found: " + scriptFile.getAbsolutePath());
+				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
+				job.doRunSeedScript(databaseConnectionFile.getAbsolutePath(), scriptFile.getAbsolutePath(), params);
+				return 0;
+			}
+		}
+
+		@Command(name = "oauth-sign-in",
+				description = "Run the interactive OAuth2 PKCE flow for an email connection")
+		public static class OAuthSignInCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = "--provider", required = true,
+					description = "Provider: MICROSOFT | GOOGLE | GENERIC")
+			private String provider;
+
+			@Option(names = "--client-id", required = true,
+					description = "OAuth2 client ID")
+			private String clientId;
+
+			@Option(names = "--tenant-id",
+					description = "Azure AD tenant ID (MICROSOFT only)")
+			private String tenantId;
+
+			@Option(names = "--authorize-url",
+					description = "Authorization endpoint (GENERIC only)")
+			private String authorizeUrl;
+
+			@Option(names = "--token-url",
+					description = "Token endpoint (GENERIC only)")
+			private String tokenUrl;
+
+			@Option(names = "--scope",
+					description = "OAuth2 scope (GENERIC only)")
+			private String scope;
+
+			@Option(names = "--email-connection-file",
+					description = "Optional: path to email connection XML to persist the refresh token")
+			private File emailConnectionFile;
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				System.out.println("Starting OAuth2 sign-in flow for provider: " + provider);
+				System.out.println("Your default browser will open in a moment to complete sign-in.");
+
+				OAuthFlowHelper.TokenResult result = OAuthFlowHelper.runAuthCodeFlow(
+						provider, tenantId, clientId, authorizeUrl, tokenUrl, scope);
+
+				if (emailConnectionFile == null) {
+					System.out.println();
+					System.out.println("=== OAuth2 sign-in successful ===");
+					System.out.println("userEmail:    " + result.userEmail);
+					System.out.println("refreshToken: " + result.refreshToken);
+					return 0;
+				}
+
+				if (!emailConnectionFile.exists())
+					throw new FileNotFoundException("Email connection file does not exist: " + emailConnectionFile.getAbsolutePath());
+
+				Settings settings = new Settings(null);
+				DocumentBursterConnectionEmailSettings connSettings =
+						settings.loadSettingsConnectionEmail(emailConnectionFile.getAbsolutePath());
+
+				connSettings.connection.emailserver.oauth2provider = provider.toUpperCase();
+				connSettings.connection.emailserver.oauth2clientid = clientId;
+				if (StringUtils.isNotBlank(tenantId))
+					connSettings.connection.emailserver.oauth2tenantid = tenantId;
+				if (StringUtils.isNotBlank(authorizeUrl))
+					connSettings.connection.emailserver.oauth2authorizeurl = authorizeUrl;
+				if (StringUtils.isNotBlank(tokenUrl))
+					connSettings.connection.emailserver.oauth2tokenurl = tokenUrl;
+				if (StringUtils.isNotBlank(scope))
+					connSettings.connection.emailserver.oauth2scope = scope;
+				connSettings.connection.emailserver.oauth2useremail = result.userEmail;
+
+				SecretsCipher cipher = SecretsCipher.getInstance(Settings.PORTABLE_EXECUTABLE_DIR_PATH);
+				connSettings.connection.emailserver.oauth2refreshtoken = cipher.encrypt(result.refreshToken);
+
+				JAXBContext jc = JAXBContext.newInstance(DocumentBursterConnectionEmailSettings.class);
+				Marshaller marshaller = jc.createMarshaller();
+				marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+				try (OutputStream os = new FileOutputStream(emailConnectionFile)) {
+					marshaller.marshal(connSettings, os);
+				}
+
+				System.out.println("=== OAuth2 sign-in successful ===");
+				System.out.println("Signed in as : " + result.userEmail);
+				System.out.println("Saved to     : " + emailConnectionFile.getAbsolutePath());
+				return 0;
+			}
+		}
+	}
+
+	@Command(name = "burst", description = "Burst a document into multiple documents")
+	public static class BurstCommand extends BaseCommand implements Callable<Integer> {
+		@ParentCommand
+		protected JobCommand parent;
+
+		@Parameters(index = "0", description = "Input file to process", arity = "1")
+		protected File inputFile;
+
+		@Mixin
+		protected ConfigOptions config;
+
+		@Mixin
+		protected QaOptions qa;
+
+		@Override
+		protected MainProgram getMainProgram() {
+			return parent.parent;
+		}
+
+		@Override
+		public Integer call() throws Exception {
+			if (!inputFile.exists()) {
+				throw new FileNotFoundException("Input file does not exist: " + inputFile.getAbsolutePath());
+			}
+
+			// Validate random tests parameter if it's provided (not -1)
+			int randomTestsCount = qa.getRandomTestsCount();
+			if (randomTestsCount != -1 && randomTestsCount <= 0) {
+				throw new CommandLine.ParameterException(parent.parent.spec.commandLine(),
+						"Number of randomly selected entries to test must be positive");
+			}
+
+			CliJob job = getJob(config.configFile);
+			job.doBurst(inputFile.getAbsolutePath(), qa.isTestAll(), qa.getTestList(), qa.getRandomTestsCount());
+			return 0;
+		}
+	}
+
+	@Command(name = "generate", description = "Generate reports from input data")
+	public static class GenerateCommand extends BaseCommand implements Callable<Integer> {
+		@ParentCommand
+		JobCommand parent;
+
+		@Parameters(index = "0", description = "Input to process", arity = "1")
+		private String input;
+
+		@Mixin
+		private ConfigOptions config;
+
+		@Mixin
+		private QaOptions qa;
+
+		@Option(names = { "-p",
+				"--param" }, description = "Report parameters in key=value format (can be repeated)", paramLabel = "KEY=VALUE")
+		private Map<String, String> parameters = new HashMap<>();
+
+		@Override
+		protected MainProgram getMainProgram() {
+			return parent.parent;
+		}
+
+		@Override
+		public Integer call() throws Exception {
+			// Check config required for all types
+			if (config.configFile == null) {
+				throw new CommandLine.ParameterException(parent.parent.spec.commandLine(),
+						"Configuration file (-c/--config) is required");
+			}
+
+			// Validate random tests parameter if provided (must be positive)
+			int randomTestsCount = qa.getRandomTestsCount();
+			if (randomTestsCount > 0 && randomTestsCount <= 0) {
+				throw new CommandLine.ParameterException(parent.parent.spec.commandLine(),
+						"Number of random tests must be positive");
+			}
+
+			Settings settings = new Settings(config.configFile);
+			settings.loadSettings();
+
+			boolean isReportGenerationJob = settings.getCapabilities().reportgenerationmailmerge;
+
+			// Validate and process parameters
+			CliJob job = getJob(config.configFile);
+			job.setJobType(isReportGenerationJob ? settings.getReportDataSource().type : "burst");
+
+			// // System.out.println("[DEBUG] Parsed parameters: " + parameters);
+
+			job.setParameters(parameters);
+
+			job.doBurst(input, qa.isTestAll(), qa.getTestList(), qa.getRandomTestsCount());
+
+			return 0;
+		}
+	}
+
+	@Command(name = "resume", description = "Resume a previously paused job")
+	public static class ResumeCommand extends BaseCommand implements Callable<Integer> {
+		@ParentCommand
+		JobCommand parent;
+
+		@Parameters(index = "0", description = "Job progress file to resume", arity = "1")
+		private File jobProgressFile;
+
+		@Override
+		protected MainProgram getMainProgram() {
+			return parent.parent;
+		}
+
+		@Override
+		public Integer call() throws Exception {
+			if (!jobProgressFile.exists()) {
+				throw new FileNotFoundException(
+						"Job progress file does not exist: " + jobProgressFile.getAbsolutePath());
+			}
+
+			CliJob job = getJob(null);
+			job.doResume(jobProgressFile.getAbsolutePath());
+			return 0;
 		}
 	}
 

@@ -74,7 +74,7 @@ export class CubesService {
     selectedMeasures: string[],
     selectedSegments: string[] = [],
   ): Promise<{ sql: string; dialect: string }> {
-    return this.apiService.post('/cubes/get-sql', {
+    return this.apiService.post('/cubes/generate-sql', {
       dslCode,
       connectionId,
       selectedDimensions,

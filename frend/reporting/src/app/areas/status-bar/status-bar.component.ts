@@ -11,7 +11,7 @@ import { ConfirmService } from '../../components/dialog-confirm/confirm.service'
 import { JobsService } from '../../providers/jobs.service';
 import { StateStoreService } from '../../providers/state-store.service';
 import { WebSocketService } from '../../providers/websocket.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 
 @Component({
   selector: 'dburst-status-bar',
@@ -26,7 +26,7 @@ export class StatusBarComponent implements OnInit, OnDestroy {
     protected executionStatsService: ExecutionStatsService,
     protected webSocketService: WebSocketService,
     protected storeService: StateStoreService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
   ) {}
 
   async ngOnInit() {

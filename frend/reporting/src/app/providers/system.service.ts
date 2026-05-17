@@ -21,16 +21,16 @@ export class SystemService {
   }
 
   async checkUrl(url: string): Promise<any> {
-    return this.apiService.get('/system/check-url', { url });
+    return this.apiService.get('/system/test-url', { url });
   }
 
   async getBlogPosts(): Promise<any> {
-    return this.apiService.get('/system/blog-posts');
+    return this.apiService.get('/system/info/news');
   }
 
   async getChangelog(itemName: string): Promise<any> {
     return this.apiService.get(
-      `/system/changelog?itemName=${encodeURIComponent(itemName)}`,
+      `/system/info/changelog?itemName=${encodeURIComponent(itemName)}`,
     );
   }
 }

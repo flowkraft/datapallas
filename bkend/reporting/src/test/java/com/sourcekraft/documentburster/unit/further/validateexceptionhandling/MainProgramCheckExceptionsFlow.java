@@ -34,7 +34,7 @@ public class MainProgramCheckExceptionsFlow {
 	        MainProgram.BurstCommand command = new MainProgram.BurstCommand() {
 	            {
 	                // Set parent explicitly to avoid NPEs
-	                this.parent = new MainProgram();
+	                this.parent = new MainProgram.JobCommand();
 	                // Set required input file
 	                this.inputFile = new File(PAYSLIPS_REPORT_PATH);
 	                

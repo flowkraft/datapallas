@@ -8,4 +8,8 @@ export class BrandComponent {
   get isSidebarCollapsed(): boolean {
     return document.body.classList.contains('sidebar-collapse');
   }
+
+  toggleSidebar(): void {
+    document.body.classList.toggle('sidebar-collapse');
+  }
 }

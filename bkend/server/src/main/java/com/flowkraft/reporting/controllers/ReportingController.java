@@ -39,7 +39,11 @@ import com.flowkraft.reporting.dsl.filterpane.FilterPaneOptionsParser;
 
 import reactor.core.publisher.Mono;
 
-@RestController
+// V4: All endpoints moved to ReportsController under /api/reports/*
+//     /api/reporting/reports/{id}/config|data  → /api/reports/{id}/config|data
+//     /api/reporting/parse-*                   → /api/reports/{id}/parse/{kind}
+//     /api/reporting/fetch-data (no consumer)  → deleted
+@Deprecated
 @RequestMapping(value = "/api/reporting",
 		produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
 public class ReportingController {

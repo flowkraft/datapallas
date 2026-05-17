@@ -29,6 +29,7 @@ export class AppComponent implements AfterViewInit, OnInit {
         shadow: true,
         icon: null,
       });
+      document.documentElement.classList.add('in-electron');
 
       try {
         const ipcRenderer = (window as any).require?.('electron')?.ipcRenderer;

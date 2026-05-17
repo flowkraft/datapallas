@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { StateStoreService } from './state-store.service';
 import { RbElectronService } from '../areas/electron-nodejs/electron.service';
 import { ApiService } from './api.service';
-import { SettingsService } from './settings.service';
+import { ConfigurationRepository } from './configuration-repository.service';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable({
@@ -14,7 +14,7 @@ export class InitService {
     private stateStore: StateStoreService,
     private electronService: RbElectronService,
     private apiService: ApiService,
-    private settingsService: SettingsService,
+    private settingsService: ConfigurationRepository,
     private http: HttpClient,
   ) { }
 

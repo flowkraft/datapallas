@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { SettingsService } from './settings.service';
+import { ConfigurationRepository } from './configuration-repository.service';
 import { ApiService } from './api.service';
 import { ReportsService } from './reports.service';
 import Utilities from '../helpers/utilities';
@@ -71,7 +71,7 @@ export interface HtmlDocTemplateDisplay extends HtmlDocTemplateInfo {
 export class SamplesService {
   constructor(
     protected translateService: TranslateService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected reportsService: ReportsService,
     protected apiService: ApiService,
   ) { }

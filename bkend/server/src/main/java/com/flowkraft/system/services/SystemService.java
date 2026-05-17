@@ -9,9 +9,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.system.dtos.FindCriteriaDto;
 import com.flowkraft.system.models.SystemInfo;
@@ -22,6 +27,7 @@ import com.sourcekraft.documentburster.utils.Utils;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
+import reactor.core.publisher.Mono;
 
 @Service
 public class SystemService {
@@ -92,6 +98,52 @@ public class SystemService {
 			m.marshal(settings, os);
 		}
 		Settings.invalidateShowSamplesCache();
+	}
+
+	public Mono<Boolean> checkUrl(String decodedUrl) {
+		WebClient webClient = WebClient.create();
+		return webClient.get().uri(decodedUrl).exchangeToMono(response -> {
+			if (response.statusCode().equals(HttpStatus.OK)) {
+				return Mono.just(true);
+			} else {
+				return Mono.just(false);
+			}
+		}).onErrorResume(e -> Mono.just(false));
+	}
+
+	public Mono<String> getChangelog(String itemNameDecoded) {
+		String url = "https://www.pdfburst.com/store?edd_action=get_version&item_name=" + itemNameDecoded;
+		WebClient webClient = WebClient.create();
+		return webClient.get().uri(url).exchangeToMono(response -> {
+			if (response.statusCode().is3xxRedirection()) {
+				String redirectUrl = response.headers().asHttpHeaders().getLocation().toString();
+				return webClient.get().uri(redirectUrl).retrieve().bodyToMono(String.class);
+			} else {
+				return response.bodyToMono(String.class);
+			}
+		});
+	}
+
+	public Mono<String> getBlogPosts() {
+		String url = "https://www.pdfburst.com/blog/feed/";
+		WebClient webClient = WebClient.create();
+		return webClient.get().uri(url).retrieve().bodyToMono(String.class).flatMap(body -> {
+			XmlMapper xmlMapper = new XmlMapper();
+			ObjectMapper jsonMapper = new ObjectMapper();
+			return Mono.fromCallable(() -> xmlMapper.readTree(body))
+					.flatMap(xmlNode -> Mono.fromCallable(() -> jsonMapper.writeValueAsString(xmlNode)));
+		}).onErrorMap(e -> new RuntimeException("Error converting XML to JSON", e));
+	}
+
+	public Mono<String> getCopilotUrl() {
+		return Mono.fromCallable(() -> {
+			DocumentBursterSettingsInternal internal = loadInternalSettings();
+			if (internal != null && internal.settings != null
+					&& !StringUtils.isBlank(internal.settings.copiloturl)) {
+				return internal.settings.copiloturl;
+			}
+			return "https://chatgpt.com/";
+		});
 	}
 
 }

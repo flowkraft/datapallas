@@ -81,7 +81,7 @@ export class DockerLifecycleService {
    * Both apps and starter packs go through /starter-packs/execute on the backend.
    */
   executeCommand(command: string): Promise<any> {
-    return this.apiService.post('/starter-packs/execute', { command });
+    return this.apiService.post('/system/services/execute', { command });
   }
 
   // --- Status guard ---

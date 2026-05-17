@@ -7,7 +7,7 @@ export const tabUploadHTTPTemplate = `<ng-template #tabUploadHTTPTemplate>
         'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.COMMAND' | translate }}</div>
       <div class="col-xs-7">
         <input id="httpCommand" [(ngModel)]="xmlSettings?.documentburster.settings.uploadsettings.httpcommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">

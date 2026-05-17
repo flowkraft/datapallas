@@ -6,7 +6,6 @@ import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgxCodeJarComponent } from 'ngx-codejar';
 
-import { ShellService } from '../providers/shell.service';
 import { ToastrMessagesService } from '../providers/toastr-messages.service';
 import { TabsModule } from 'ngx-bootstrap/tabs';
 import { ConfirmService } from '../components/dialog-confirm/confirm.service';
@@ -24,7 +23,7 @@ import { ButtonHtmlPreviewComponent } from '../components/button-html-preview/bu
 import { LogFilesViewerAllTogetherModule } from '../components/log-files-viewer-all-together/log-files-viewer-all-together.module';
 import { LogFilesViewerSeparateTabsModule } from '../components/log-files-viewer-separate-tabs/log-files-viewer-separate-tabs.module';
 import { LogFileViewerModule } from '../components/log-file-viewer/log-file-viewer.module';
-import { SettingsService } from '../providers/settings.service';
+import { ConfigurationRepository } from '../providers/configuration-repository.service';
 import { WebSocketService } from '../providers/websocket.service';
 import { FsService } from '../providers/fs.service';
 import { ApiService } from '../providers/api.service';
@@ -97,11 +96,10 @@ import { DockerComponent } from '../components/docker/docker.component';
   ],
   providers: [
     StateStoreService,
-    SettingsService,
-    SettingsService,
+    ConfigurationRepository,
+    ConfigurationRepository,
     FsService,
     WebSocketService,
-    ShellService,
     ToastrMessagesService,
     ConfirmService,
     ConfirmationService,

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { ReportParameter, SettingsService } from './settings.service';
+import { ReportParameter, ConfigurationRepository } from './configuration-repository.service';
 
 export interface ReportDataResult {
   data: Array<Record<string, any>>;
@@ -57,11 +57,13 @@ export interface PivotTableOptionsDto {
 export class ReportingService {
   constructor(
     protected apiService: ApiService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
   ) {}
 
+  // V4: base URL for web components (rb-tabulator, rb-chart, rb-pivot-table).
+  // Component appends /reports/{id}/data to this — so /api is the right base now.
   get reportingApiBaseUrl(): string {
-    return this.apiService.BACKEND_URL + '/reporting';
+    return this.apiService.BACKEND_URL;
   }
 
   async fetchData(
@@ -87,67 +89,50 @@ export class ReportingService {
     });
 
     const result = await this.apiService.get(
-      `/reporting/reports/${reportId}/data`,
+      `/reports/${reportId}/data`,
       paramsObj,
     );
     return result;
   }
 
+  private _parseReportId(): string {
+    return this.settingsService.currentConfigurationTemplate?.folderName || '_default';
+  }
+
   async processGroovyParametersDsl(
     groovyDslCode: string,
     connectionCode?: string,
+    reportId?: string,
   ): Promise<ReportParameter[]> {
-    try {
-      let url = '/reporting/parse-parameters';
-      if (connectionCode) {
-        url += `?connectionCode=${encodeURIComponent(connectionCode)}`;
-      }
-      const result = await this.apiService.post(url, groovyDslCode);
-      return result;
-    } catch (error) {
-      throw error;
+    const id = reportId || this._parseReportId();
+    let url = `/reports/${encodeURIComponent(id)}/parse/parameters`;
+    if (connectionCode) {
+      url += `?connectionCode=${encodeURIComponent(connectionCode)}`;
     }
+    return this.apiService.post(url, groovyDslCode);
   }
 
   async processGroovyTabulatorDsl(
     groovyDslCode: string,
+    reportId?: string,
   ): Promise<TabulatorOptionsDto> {
-    try {
-      const result = await this.apiService.post(
-        '/reporting/parse-tabulator',
-        groovyDslCode,
-      );
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const id = reportId || this._parseReportId();
+    return this.apiService.post(`/reports/${encodeURIComponent(id)}/parse/tabulator`, groovyDslCode);
   }
 
   async processGroovyChartDsl(
     groovyDslCode: string,
+    reportId?: string,
   ): Promise<ChartOptionsDto> {
-    try {
-      const result = await this.apiService.post(
-        '/reporting/parse-chart',
-        groovyDslCode,
-      );
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const id = reportId || this._parseReportId();
+    return this.apiService.post(`/reports/${encodeURIComponent(id)}/parse/chart`, groovyDslCode);
   }
 
   async processGroovyPivotTableDsl(
     groovyDslCode: string,
+    reportId?: string,
   ): Promise<PivotTableOptionsDto> {
-    try {
-      const result = await this.apiService.post(
-        '/reporting/parse-pivot',
-        groovyDslCode,
-      );
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const id = reportId || this._parseReportId();
+    return this.apiService.post(`/reports/${encodeURIComponent(id)}/parse/pivot`, groovyDslCode);
   }
 }

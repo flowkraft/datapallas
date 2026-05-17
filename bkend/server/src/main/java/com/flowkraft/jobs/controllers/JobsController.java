@@ -47,34 +47,35 @@ public class JobsController {
 	@Autowired
 	JobExecutionService jobExecutionService;
 
-	@GetMapping("")
-	public Flux<FileInfo> jobs() throws Exception {
+	@GetMapping("/stats")
+	public Flux<FileInfo> getStats() throws Exception {
 
 		return Flux.fromStream(jobsService.fetchStats());
 
 	}
 
-	@PostMapping("")
-	public Mono<ResponseEntity<Void>> doBurst(
+	@PostMapping("/pause")
+	public Mono<ResponseEntity<Void>> pauseJob(
 			@RequestBody @NotNull ClientServerCommunicationInfo clientServerCommunicationInfo) throws Exception {
 
-		//System.out.println("JobManController: doBurst");
-
-		jobsService.doBurst(clientServerCommunicationInfo);
-
+		String pauseFilePath = AppPaths.JOBS_DIR_PATH + "/"
+				+ FilenameUtils.getBaseName(clientServerCommunicationInfo.info) + ".pause";
+		FileUtils.touch(new File(pauseFilePath));
 		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-
 	}
 
-	@PostMapping("/pause/cancel")
-	public Mono<ResponseEntity<Void>> doPauseCancelJob(
+	@PostMapping("/cancel")
+	public Mono<ResponseEntity<Void>> cancelJob(
 			@RequestBody @NotNull ClientServerCommunicationInfo clientServerCommunicationInfo) throws Exception {
 
-		String pauseCancelFilePath = AppPaths.JOBS_DIR_PATH + "/"
-				+ FilenameUtils.getBaseName(clientServerCommunicationInfo.info) + '.'
-				+ clientServerCommunicationInfo.id;
-		FileUtils.touch(new File(pauseCancelFilePath));
-
+		String cancelFilePath = AppPaths.JOBS_DIR_PATH + "/"
+				+ FilenameUtils.getBaseName(clientServerCommunicationInfo.info) + ".cancel";
+		FileUtils.touch(new File(cancelFilePath));
+		// Also handle the cancel-resume cleanup (folded from DELETE /cancel/resume)
+		if (clientServerCommunicationInfo.id != null)
+			FileUtils.deleteQuietly(new File(clientServerCommunicationInfo.id));
+		if (clientServerCommunicationInfo.info != null)
+			FileUtils.deleteQuietly(new File(clientServerCommunicationInfo.info));
 		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
 	}
 
@@ -90,20 +91,7 @@ public class JobsController {
 		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
 	}
 
-	@DeleteMapping("/cancel/resume")
-	public Mono<ResponseEntity<Void>> doCancelResumeJob(
-			@RequestBody @NotNull ClientServerCommunicationInfo clientServerCommunicationInfo) throws Exception {
-
-		//System.out.println(clientServerCommunicationInfo.id);
-		//System.out.println(clientServerCommunicationInfo.info);
-
-		FileUtils.deleteQuietly(new File(clientServerCommunicationInfo.id));
-		FileUtils.deleteQuietly(new File(clientServerCommunicationInfo.info));
-
-		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-	}
-
-	@DeleteMapping(value = "/files/quarantine", consumes = MediaType.ALL_VALUE)
+	@DeleteMapping(value = "/quarantine", consumes = MediaType.ALL_VALUE)
 	public Mono<ResponseEntity<Void>> clearQuarantinedFiles() throws Exception {
 
 		// System.out.println("Controller clearQuarantinedFiles");
@@ -147,6 +135,7 @@ public class JobsController {
 		}
 
 		List<String> args = new ArrayList<>();
+		args.add("job");
 		args.add("burst");
 		args.add(resolveFilePath(inputFile));
 
@@ -194,6 +183,7 @@ public class JobsController {
 		String configPath = resolveSettingsPath(reportId);
 
 		List<String> args = new ArrayList<>();
+		args.add("job");
 		args.add("generate");
 		args.add("-c");
 		args.add(configPath);
@@ -246,7 +236,7 @@ public class JobsController {
 	 * Replaces the old shellService.generateMergeFileInTempFolder().
 	 */
 	@SuppressWarnings("unchecked")
-	@PostMapping(value = "/merge/prepare-list", consumes = MediaType.APPLICATION_JSON_VALUE)
+	@PostMapping(value = "/merge-prepare-list", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<Map<String, String>>> prepareMergeList(@RequestBody Map<String, Object> request) throws Exception {
 		List<String> filePaths = (List<String>) request.get("filePaths");
 		if (filePaths == null || filePaths.isEmpty()) {
@@ -284,7 +274,7 @@ public class JobsController {
 		}
 
 		List<String> args = new ArrayList<>();
-		args.add("document");
+		args.add("job");
 		args.add("merge");
 		args.add(resolveFilePath(listFile));
 
@@ -305,6 +295,49 @@ public class JobsController {
 		log.info("Submitting merge job: {}", args);
 		jobExecutionService.executeAsync(args.toArray(new String[0]));
 		return Mono.just(ResponseEntity.ok(Map.of("status", "submitted")));
+	}
+
+	// ── V5.3: Jasper report generation ──
+
+	/**
+	 * POST /api/jobs/generate-jasper — compile and export a JasperReports template.
+	 * Stub: full implementation in a later sprint; delegates to {@code job generate-jasper} CLI once implemented.
+	 */
+	@PostMapping(value = "/generate-jasper", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Map<String, String>>> submitGenerateJasper(@RequestBody Map<String, Object> request) {
+		return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+				.body(Map.of("error", "generate-jasper not yet implemented — use the jasper CLI command directly")));
+	}
+
+	// ========== ATOMIC BURST PIPELINE OPERATIONS (V2.5 — exposed phases) ==========
+
+	@PostMapping(value = "/split", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Map<String, String>>> submitSplit(@RequestBody Map<String, Object> request) {
+		// TODO V2.5: expose the split-only phase of the burst pipeline (no delivery)
+		return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+				.body(Map.of("error", "split endpoint not yet implemented — use /burst for the full pipeline")));
+	}
+
+	@PostMapping(value = "/deliver", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Map<String, String>>> submitDeliver(@RequestBody Map<String, Object> request) {
+		// TODO V2.5: deliver pre-split outputs (retry delivery without re-splitting)
+		return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+				.body(Map.of("error", "deliver endpoint not yet implemented")));
+	}
+
+	@PostMapping(value = "/preview-recipient", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Map<String, String>>> submitPreviewRecipient(@RequestBody Map<String, Object> request) {
+		// TODO V2.5: personalization preview for one recipient
+		return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+				.body(Map.of("error", "preview-recipient endpoint not yet implemented")));
+	}
+
+	@PostMapping(value = "/qa", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Map<String, String>>> submitQa(@RequestBody Map<String, Object> request) {
+		// TODO V2.5: run QA checks on an already-bursted output dir
+		// -ta/-tl/-tr flags reuse same names as /burst endpoint
+		return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+				.body(Map.of("error", "qa endpoint not yet implemented — use /burst with -ta/-tl/-tr flags for QA")));
 	}
 
 	// ── Path resolution (same logic as ReportsController.resolveSettingsPath) ──

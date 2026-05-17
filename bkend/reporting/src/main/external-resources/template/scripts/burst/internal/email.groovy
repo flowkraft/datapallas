@@ -8,6 +8,8 @@ import groovy.json.JsonSlurper
 
 import org.apache.commons.lang3.StringUtils
 
+import com.sourcekraft.documentburster.common.security.SecretsCipher
+
 import org.apache.commons.mail.MultiPartEmail
 import org.apache.commons.mail.ImageHtmlEmail
 import org.apache.commons.mail.EmailAttachment
@@ -82,10 +84,10 @@ def oauth2AccessToken = null
 if (message.oauth2provider != null && message.oauth2provider != "NONE") {
 	oauth2AccessToken = mintAccessToken(
 		message.oauth2provider, message.oauth2tenantid, message.oauth2clientid,
-		message.oauth2tokenurl, message.oauth2scope, message.oauth2refreshtoken)
+		message.oauth2tokenurl, message.oauth2scope, SecretsCipher.decryptGraceful(message.oauth2refreshtoken))
 	commonsEmail.setAuthentication(message.oauth2useremail, oauth2AccessToken)
 } else if (message.isAuthentication) {
-	commonsEmail.setAuthentication(message.authuser, message.authpwd)
+	commonsEmail.setAuthentication(message.authuser, SecretsCipher.decryptGraceful(message.authpwd))
 }
 
 commonsEmail.setHostName(message.hostName)
@@ -193,7 +195,7 @@ else if (message.sjm.active) {	//SimpleJavaMail starts here
 	if (StringUtils.isNotBlank(message.sjm.proxy.username))
 		sjmMailerBuilder.withProxyUsername(message.sjm.proxy.username)
 	if (StringUtils.isNotBlank(message.sjm.proxy.password))
-		sjmMailerBuilder.withProxyPassword(message.sjm.proxy.password)
+		sjmMailerBuilder.withProxyPassword(SecretsCipher.decryptGraceful(message.sjm.proxy.password))
 	if (message.sjm.proxy.socks5bridgeport > 0)
 		sjmMailerBuilder.withProxyBridgePort(message.sjm.proxy.socks5bridgeport)
 	

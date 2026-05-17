@@ -23,7 +23,7 @@ export const tabWebUploadJoomlaTemplate = `<ng-template #tabWebUploadJoomlaTempl
       </div>
       <div class="col-xs-7">
         <input id="joomlaCommand" [(ngModel)]="xmlSettings?.documentburster.settings.webuploadsettings.joomlacommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">

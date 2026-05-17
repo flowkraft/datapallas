@@ -3,10 +3,6 @@
 @import "~font-awesome/css/font-awesome.min.css";
 @import "~office-ui-fabric-core/dist/css/fabric.min.css";
 
-// Admin LTE css
-@import "~admin-lte/dist/css/AdminLTE.min.css";
-@import "~admin-lte/dist/css/skins/_all-skins.min.css";
-
 // Prime NG css
 @import "~primeicons/primeicons.css";
 @import "~primeng/resources/primeng.min.css";
@@ -354,6 +350,13 @@ body .p-terminal {
   --app-sidebar-accent:     #3c8dbc;
   --app-sidebar-sub-bg:     #2c3b41;
   --app-sidebar-border:     transparent;
+  // custom-electron-titlebar (CET) injects a 30px titlebar at top:0 in Electron.
+  // Fixed-position elements use this offset so they start below the CET bar.
+  // app.component.ts sets html.in-electron when running inside Electron.
+  --cet-offset:             0px;
+}
+html.in-electron {
+  --cet-offset: 30px;
 }
 
 body.skin-blue {
@@ -589,3 +592,53 @@ body.skin-purple-light {
 // Arbitrary z-index helpers used in B2 templates (escaped brackets = valid CSS)
 .z-\[810\]      { z-index: 810; }
 .z-\[1030\]     { z-index: 1030; }
+
+// B2: Control sidebar — replaces AdminLTE's off-canvas panel.
+// Hidden off-screen by default; body.control-sidebar-open slides it in.
+.control-sidebar {
+  position: fixed;
+  top: calc(50px + var(--cet-offset));
+  right: -260px;
+  width: 260px;
+  bottom: 30px;
+  z-index: 820;
+  overflow-y: auto;
+  background-color: #222d32;
+  color: #b8c7ce;
+  transition: right 0.3s ease;
+  padding: 10px;
+}
+body.control-sidebar-open .control-sidebar {
+  right: 0;
+}
+
+// B2: Sidebar collapse — replaces AdminLTE push-menu JS.
+// body.sidebar-collapse slides the sidebar off-screen; content fills the gap.
+.app-sidebar {
+  transition: left 0.3s ease;
+}
+.app-sidebar + div {
+  transition: margin-left 0.3s ease;
+}
+body.sidebar-collapse .app-sidebar {
+  left: -230px !important;
+}
+body.sidebar-collapse .app-sidebar + div {
+  margin-left: 0 !important;
+}
+// Auto-collapse at the same 768px breakpoint AdminLTE used
+@media (max-width: 767px) {
+  .app-sidebar                { left: -230px !important; }
+  .app-sidebar + div          { margin-left: 0 !important; }
+}
+
+// B2: Bootstrap dropdown-menus inside the fixed app header.
+// top:100% on a flex-stretched <li> can resolve to 0 in some Chromium/Electron
+// versions. Override with an explicit pixel offset equal to the header height so
+// the menu always drops below the header bar regardless of --cet-offset.
+.app-header .dropdown-menu {
+  top: 50px !important;
+  margin-top: 0;
+  border-top: 2px solid var(--app-header-bg);
+  box-shadow: 0 4px 10px rgba(0,0,0,.18);
+}

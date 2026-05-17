@@ -1,10 +1,14 @@
 package com.flowkraft.connections;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,193 +21,290 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.reports.ReportsService;
+import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper;
+import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper.TokenResult;
 import com.sourcekraft.documentburster.common.security.SecretsCipher;
+import com.sourcekraft.documentburster.common.settings.model.ConnectionFileInfo;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionDatabaseSettings;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionEmailSettings;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettings;
-
-import com.sourcekraft.documentburster.common.settings.model.ConnectionFileInfo;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
  * REST API for managing database and email connections.
- * Replaces the old pattern of spawning CLI commands via child-process/spawn.
  */
 @RestController
 @RequestMapping(value = "/api/connections", produces = MediaType.APPLICATION_JSON_VALUE)
 public class ConnectionsController {
 
 	private static final Logger log = LoggerFactory.getLogger(ConnectionsController.class);
+	private static final String PASSWORD_MASK = "******";
+	private static final long EMITTER_TIMEOUT_MS = 6L * 60L * 1000L;
 
 	private final ConnectionsService connectionsService;
 	private final ReportsService reportsService;
+
+	@Autowired
+	private ObjectMapper objectMapper;
+
+	/** In-flight OAuth flows: flowId → SSE emitter bound to the waiting Angular client. */
+	private final ConcurrentHashMap<String, SseEmitter> flows = new ConcurrentHashMap<>();
 
 	public ConnectionsController(ConnectionsService connectionsService, ReportsService reportsService) {
 		this.connectionsService = connectionsService;
 		this.reportsService = reportsService;
 	}
 
-	private static final String PASSWORD_MASK = "******";
+	// ── OAuth DTOs ──────────────────────────────────────────────────────────────
 
-	/**
-	 * Returns true if the given connectionId is one of the synthesized in-memory
-	 * sample connections (Northwind SQLite/DuckDB/ClickHouse). Sample connections
-	 * have no on-disk XML and are read-only.
-	 */
-	private static boolean isSampleConnectionCode(String connectionId) {
-		if (connectionId == null) return false;
-		String lower = connectionId.trim().toLowerCase();
-		return lower.contains("rbt-sample-northwind-sqlite-4f2")
-				|| lower.contains("rbt-sample-northwind-duckdb-4f2")
-				|| lower.contains("rbt-sample-northwind-clickhouse-4f2");
+	public record OAuthStartRequest(
+			String provider,
+			String tenantId,
+			String clientId,
+			String authorizeUrl,
+			String tokenUrl,
+			String scope) {}
+
+	public record OAuthStartResponse(String flowId) {}
+
+	public record OAuthEvent(
+			String status,
+			String userEmail,
+			String refreshToken,
+			String error) {
+
+		static OAuthEvent pending() { return new OAuthEvent("pending", null, null, null); }
+		static OAuthEvent success(String email, String rt) { return new OAuthEvent("success", email, rt, null); }
+		static OAuthEvent error(String msg) { return new OAuthEvent("error", null, null, msg); }
 	}
 
-	// ========== LIST ALL CONNECTIONS ==========
+	// ========== LIST ALL CONNECTIONS (V3.1) ==========
 
-	@GetMapping(value = "/email", consumes = MediaType.ALL_VALUE)
-	public Flux<ConnectionFileInfo> listEmailConnections() throws Exception {
+	@GetMapping(consumes = MediaType.ALL_VALUE)
+	public Flux<ConnectionFileInfo> listConnections(
+			@RequestParam(required = false, defaultValue = "email") String type) throws Exception {
+		if ("database".equals(type)) {
+			return Flux.fromStream(reportsService.loadSettingsConnectionDatabaseAll()
+					.peek(this::maskConnectionFileInfoPasswords));
+		}
 		return Flux.fromStream(reportsService.loadSettingsConnectionEmailAll()
 				.peek(this::maskConnectionFileInfoPasswords));
 	}
 
-	@GetMapping(value = "/database", consumes = MediaType.ALL_VALUE)
-	public Flux<ConnectionFileInfo> listDatabaseConnections() throws Exception {
-		return Flux.fromStream(reportsService.loadSettingsConnectionDatabaseAll()
-				.peek(this::maskConnectionFileInfoPasswords));
-	}
+	// ========== LOAD SINGLE CONNECTION (V3.2) ==========
 
-	// ========== LOAD SINGLE CONNECTION ==========
-
-	@GetMapping(value = "/{connectionId}/email/settings", consumes = MediaType.ALL_VALUE)
-	public Mono<DocumentBursterConnectionEmailSettings> loadEmailConnection(
-			@PathVariable String connectionId) throws Exception {
-		String fullPath = connectionsService.resolveEmailConnectionPath(connectionId);
-		DocumentBursterConnectionEmailSettings result = reportsService.loadSettingsConnectionEmail(fullPath);
-		if (result != null && result.connection != null && result.connection.emailserver != null) {
-			result.connection.emailserver.userpassword = maskIfSecret(result.connection.emailserver.userpassword);
-			// Same defensive masking for the OAuth2 refresh token — never leak the encrypted
-			// ENC(...) wrapper to the browser. The on-disk value stays encrypted; the browser
-			// only sees PASSWORD_MASK and the save path preserves the existing ENC(...) when
-			// the form posts the mask back unchanged.
-			result.connection.emailserver.oauth2refreshtoken = maskIfSecret(result.connection.emailserver.oauth2refreshtoken);
-		}
-		return Mono.just(result);
-	}
-
-	@GetMapping(value = "/{connectionId}/database/settings", consumes = MediaType.ALL_VALUE)
-	public Mono<DocumentBursterConnectionDatabaseSettings> loadDatabaseConnection(
-			@PathVariable String connectionId) throws Exception {
-		String fullPath = connectionsService.resolveDbConnectionPath(connectionId);
-		DocumentBursterConnectionDatabaseSettings result = reportsService.loadSettingsConnectionDatabase(fullPath);
-		if (result != null && result.connection != null && result.connection.databaseserver != null) {
-			result.connection.databaseserver.userpassword = maskIfSecret(result.connection.databaseserver.userpassword);
-		}
-		return Mono.just(result);
-	}
-
-	// ========== SAVE CONNECTION ==========
-
-	/**
-	 * Test a connection (email or database).
-	 * For database connections, also fetches and saves the schema.
-	 */
-	@PostMapping(value = "/{connectionId}/test", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Map<String, Object>>> testConnection(
-			@PathVariable String connectionId,
-			@RequestBody Map<String, String> request) throws Throwable {
-
-		String connectionType = request.getOrDefault("type", "database");
-		log.info("Testing {} connection: {}", connectionType, connectionId);
-
-		if ("email".equals(connectionType)) {
-			connectionsService.testEmailConnection(connectionId);
-			return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
-					"status", "success",
-					"message", "Email connection test passed")));
-		} else if ("email-inline".equals(connectionType)) {
-			connectionsService.testInlineEmailConnection(connectionId);
-			return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
-					"status", "success",
-					"message", "Inline email connection test passed")));
+	@GetMapping(value = "/{connectionId}", consumes = MediaType.ALL_VALUE)
+	public Mono<Object> loadConnection(@PathVariable String connectionId) throws Exception {
+		if (connectionId.startsWith("db-")) {
+			String fullPath = connectionsService.resolveDbConnectionPath(connectionId);
+			DocumentBursterConnectionDatabaseSettings result = reportsService.loadSettingsConnectionDatabase(fullPath);
+			if (result != null && result.connection != null && result.connection.databaseserver != null) {
+				result.connection.databaseserver.userpassword = maskIfSecret(result.connection.databaseserver.userpassword);
+			}
+			return Mono.just(result);
 		} else {
-			connectionsService.testDatabaseConnection(connectionId);
-			return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
-					"status", "success",
-					"message", "Database connection test passed")));
+			String fullPath = connectionsService.resolveEmailConnectionPath(connectionId);
+			DocumentBursterConnectionEmailSettings result = reportsService.loadSettingsConnectionEmail(fullPath);
+			if (result != null && result.connection != null && result.connection.emailserver != null) {
+				result.connection.emailserver.userpassword = maskIfSecret(result.connection.emailserver.userpassword);
+				result.connection.emailserver.oauth2refreshtoken = maskIfSecret(result.connection.emailserver.oauth2refreshtoken);
+			}
+			return Mono.just(result);
 		}
 	}
 
-	/**
-	 * Save (create or update) a database connection.
-	 * Backend resolves the file path from connectionId.
-	 */
-	@PutMapping(value = "/{connectionId}/database", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Void>> saveDatabaseConnection(
+	// ========== SAVE CONNECTION (V3.2) ==========
+
+	@PutMapping(value = "/{connectionId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Void>> saveConnection(
 			@PathVariable String connectionId,
-			@RequestBody DocumentBursterConnectionDatabaseSettings settings) throws Exception {
-		log.info("Saving database connection: {}", connectionId);
+			@RequestBody Map<String, Object> body) throws Exception {
 		if (isSampleConnectionCode(connectionId)) {
 			log.warn("Refused to save sample connection (read-only): {}", connectionId);
 			return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).<Void>build());
 		}
-		String fullPath = connectionsService.resolveDbConnectionPath(connectionId);
-		// If password is masked, preserve the existing encrypted value from disk
-		if (settings.connection != null && settings.connection.databaseserver != null
-				&& PASSWORD_MASK.equals(settings.connection.databaseserver.userpassword)
-				&& new File(fullPath).exists()) {
-			DocumentBursterConnectionDatabaseSettings existing = reportsService.loadSettingsConnectionDatabase(fullPath);
-			if (existing != null && existing.connection != null && existing.connection.databaseserver != null) {
-				settings.connection.databaseserver.userpassword = existing.connection.databaseserver.userpassword;
+		if (connectionId.startsWith("db-")) {
+			log.info("Saving database connection: {}", connectionId);
+			DocumentBursterConnectionDatabaseSettings settings =
+					objectMapper.convertValue(body, DocumentBursterConnectionDatabaseSettings.class);
+			String fullPath = connectionsService.resolveDbConnectionPath(connectionId);
+			if (settings.connection != null && settings.connection.databaseserver != null
+					&& PASSWORD_MASK.equals(settings.connection.databaseserver.userpassword)
+					&& new File(fullPath).exists()) {
+				DocumentBursterConnectionDatabaseSettings existing = reportsService.loadSettingsConnectionDatabase(fullPath);
+				if (existing != null && existing.connection != null && existing.connection.databaseserver != null) {
+					settings.connection.databaseserver.userpassword = existing.connection.databaseserver.userpassword;
+				}
 			}
-		}
-		reportsService.saveSettingsConnectionDatabase(settings, fullPath);
-		return Mono.just(ResponseEntity.ok().<Void>build());
-	}
-
-	/**
-	 * Save (create or update) an email connection.
-	 * Backend resolves the file path from connectionId.
-	 */
-	@PutMapping(value = "/{connectionId}/email", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Void>> saveEmailConnection(
-			@PathVariable String connectionId,
-			@RequestBody DocumentBursterConnectionEmailSettings settings) throws Exception {
-		log.info("Saving email connection: {}", connectionId);
-		String filePath = connectionsService.resolveEmailConnectionPath(connectionId);
-		// If userpassword or oauth2refreshtoken come back masked, preserve the existing
-		// encrypted ENC(...) value from disk. This makes the save idempotent: any sequence
-		// of save→reload→save→… leaves the on-disk secret untouched until the user explicitly
-		// changes it. Auto-save (right after OAuth sign-in) sends the freshly-issued token in
-		// plaintext on the *first* save, after which the form is reloaded with PASSWORD_MASK,
-		// and any subsequent user-triggered Save preserves what's already on disk.
-		if (settings.connection != null && settings.connection.emailserver != null
-				&& new File(filePath).exists()) {
-			boolean userPwdMasked = PASSWORD_MASK.equals(settings.connection.emailserver.userpassword);
-			boolean refreshTokenMasked = PASSWORD_MASK.equals(settings.connection.emailserver.oauth2refreshtoken);
-			if (userPwdMasked || refreshTokenMasked) {
-				DocumentBursterConnectionEmailSettings existing = reportsService.loadSettingsConnectionEmail(filePath);
-				if (existing != null && existing.connection != null && existing.connection.emailserver != null) {
-					if (userPwdMasked) {
-						settings.connection.emailserver.userpassword = existing.connection.emailserver.userpassword;
-					}
-					if (refreshTokenMasked) {
-						settings.connection.emailserver.oauth2refreshtoken = existing.connection.emailserver.oauth2refreshtoken;
+			reportsService.saveSettingsConnectionDatabase(settings, fullPath);
+		} else {
+			log.info("Saving email connection: {}", connectionId);
+			DocumentBursterConnectionEmailSettings settings =
+					objectMapper.convertValue(body, DocumentBursterConnectionEmailSettings.class);
+			String filePath = connectionsService.resolveEmailConnectionPath(connectionId);
+			if (settings.connection != null && settings.connection.emailserver != null
+					&& new File(filePath).exists()) {
+				boolean userPwdMasked = PASSWORD_MASK.equals(settings.connection.emailserver.userpassword);
+				boolean refreshTokenMasked = PASSWORD_MASK.equals(settings.connection.emailserver.oauth2refreshtoken);
+				if (userPwdMasked || refreshTokenMasked) {
+					DocumentBursterConnectionEmailSettings existing = reportsService.loadSettingsConnectionEmail(filePath);
+					if (existing != null && existing.connection != null && existing.connection.emailserver != null) {
+						if (userPwdMasked)
+							settings.connection.emailserver.userpassword = existing.connection.emailserver.userpassword;
+						if (refreshTokenMasked)
+							settings.connection.emailserver.oauth2refreshtoken = existing.connection.emailserver.oauth2refreshtoken;
 					}
 				}
 			}
+			reportsService.saveSettingsConnectionEmail(settings, filePath);
 		}
-		reportsService.saveSettingsConnectionEmail(settings, filePath);
 		return Mono.just(ResponseEntity.ok().<Void>build());
 	}
 
-	/**
-	 * Delete a connection.
-	 */
+	// ========== TEST CONNECTIONS (V3.3) ==========
+
+	@PostMapping(value = "/{connectionId}/test-email",
+	             consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.ALL_VALUE })
+	public Mono<ResponseEntity<Map<String, Object>>> testEmailConnection(
+			@PathVariable String connectionId,
+			@RequestBody(required = false) Map<String, String> request) throws Throwable {
+		boolean inline = request != null && "true".equals(request.get("inline"));
+		log.info("Testing {} email connection: {}", inline ? "inline" : "standard", connectionId);
+		if (inline) {
+			connectionsService.testInlineEmailConnection(connectionId);
+		} else {
+			connectionsService.testEmailConnection(connectionId);
+		}
+		return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
+				"status", "success",
+				"message", "Email connection test passed")));
+	}
+
+	@PostMapping(value = "/{connectionId}/test-database",
+	             consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.ALL_VALUE })
+	public Mono<ResponseEntity<Map<String, Object>>> testDatabaseConnection(
+			@PathVariable String connectionId,
+			@RequestBody(required = false) Map<String, String> request) throws Throwable {
+		log.info("Testing database connection: {}", connectionId);
+		connectionsService.testDatabaseConnection(connectionId);
+		return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
+				"status", "success",
+				"message", "Database connection test passed")));
+	}
+
+	// ========== TEST SMS (V3.4 — {id} added) ==========
+
+	@PostMapping(value = "/{connectionId}/test-sms", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Map<String, Object>>> testSms(
+			@PathVariable String connectionId,
+			@RequestBody Map<String, String> request) throws Exception {
+		String fromNumber = request.get("fromNumber");
+		String toNumber = request.get("toNumber");
+		String configPath = request.get("configPath");
+		log.info("Testing SMS for connection {}: from={}, to={}", connectionId, fromNumber, toNumber);
+		connectionsService.testSms(fromNumber, toNumber, configPath);
+		return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
+				"status", "success",
+				"message", "SMS test sent successfully")));
+	}
+
+	// ========== TEST QUERY STUB (V3.7) ==========
+
+	@PostMapping(value = "/{connectionId}/test-query", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<ResponseEntity<Map<String, Object>>> testQuery(
+			@PathVariable String connectionId,
+			@RequestBody Map<String, String> request) {
+		return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+				.body(Map.<String, Object>of(
+						"status", "not_implemented",
+						"message", "POST /api/connections/{id}/test-query — reserved, not yet implemented")));
+	}
+
+	// ========== OAUTH FLOW (V3.6 — moved from /api/oauth/email/*) ==========
+
+	@PostMapping(value = "/{connectionId}/oauth-sign-in",
+	             consumes = MediaType.APPLICATION_JSON_VALUE,
+	             produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<OAuthStartResponse> startOAuth(
+			@PathVariable String connectionId,
+			@RequestBody OAuthStartRequest req) {
+		String flowId = UUID.randomUUID().toString();
+
+		SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
+		flows.put(flowId, emitter);
+		emitter.onCompletion(() -> flows.remove(flowId));
+		emitter.onTimeout(() -> { flows.remove(flowId); emitter.complete(); });
+		emitter.onError(e -> flows.remove(flowId));
+
+		Thread worker = new Thread(() -> {
+			try {
+				emitter.send(SseEmitter.event().name("pending").data(OAuthEvent.pending()));
+				log.info("Starting OAuth2 flow [{}] for connection={}, provider={}", flowId, connectionId, req.provider());
+				TokenResult result = OAuthFlowHelper.runAuthCodeFlow(
+						req.provider(), req.tenantId(), req.clientId(),
+						req.authorizeUrl(), req.tokenUrl(), req.scope());
+				emitter.send(SseEmitter.event()
+						.name("success")
+						.data(OAuthEvent.success(result.userEmail, result.refreshToken)));
+				emitter.complete();
+			} catch (Exception ex) {
+				log.error("OAuth2 flow [{}] failed: {}", flowId, ex.getMessage());
+				try {
+					emitter.send(SseEmitter.event()
+							.name("error")
+							.data(OAuthEvent.error(ex.getMessage())));
+				} catch (IOException ignored) {}
+				emitter.complete();
+			} finally {
+				flows.remove(flowId);
+			}
+		}, "oauth-flow-" + flowId);
+		worker.setDaemon(true);
+		worker.start();
+
+		return ResponseEntity.ok(new OAuthStartResponse(flowId));
+	}
+
+	@GetMapping(value = "/{connectionId}/oauth-flow/{flowId}/events",
+	            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public SseEmitter oauthEvents(@PathVariable String connectionId, @PathVariable String flowId) {
+		SseEmitter emitter = flows.get(flowId);
+		if (emitter != null) {
+			return emitter;
+		}
+		SseEmitter dead = new SseEmitter(0L);
+		try {
+			dead.send(SseEmitter.event()
+					.name("error")
+					.data(OAuthEvent.error("Unknown flowId: " + flowId)));
+		} catch (IOException ignored) {}
+		dead.complete();
+		return dead;
+	}
+
+	@PostMapping("/{connectionId}/oauth-flow/{flowId}/cancel")
+	public ResponseEntity<Void> cancelOAuth(@PathVariable String connectionId, @PathVariable String flowId) {
+		SseEmitter emitter = flows.remove(flowId);
+		if (emitter != null) {
+			try {
+				emitter.send(SseEmitter.event()
+						.name("error")
+						.data(OAuthEvent.error("cancelled by user")));
+			} catch (IOException ignored) {}
+			emitter.complete();
+		}
+		return ResponseEntity.noContent().build();
+	}
+
+	// ========== DELETE / METADATA / REVEAL-PASSWORD (unchanged) ==========
+
 	@DeleteMapping("/{connectionId}")
 	public Mono<ResponseEntity<Void>> deleteConnection(@PathVariable String connectionId) throws Exception {
 		log.info("Deleting connection: {}", connectionId);
@@ -215,14 +316,10 @@ public class ConnectionsController {
 		return Mono.just(ResponseEntity.ok().<Void>build());
 	}
 
-	/**
-	 * Read connection metadata (domain-grouped-schema, er-diagram, ubiquitous-language, information-schema).
-	 */
 	@GetMapping(value = "/{connectionId}/metadata/{type}", consumes = MediaType.ALL_VALUE)
 	public Mono<ResponseEntity<Map<String, String>>> getMetadata(
 			@PathVariable String connectionId,
 			@PathVariable String type) throws Exception {
-
 		String content = connectionsService.getMetadata(connectionId, type);
 		if (content == null) {
 			return Mono.just(ResponseEntity.ok(Map.of("exists", "false", "content", "")));
@@ -230,54 +327,22 @@ public class ConnectionsController {
 		return Mono.just(ResponseEntity.ok(Map.of("exists", "true", "content", content)));
 	}
 
-	/**
-	 * Save connection metadata.
-	 */
 	@PutMapping(value = "/{connectionId}/metadata/{type}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<Void>> saveMetadata(
 			@PathVariable String connectionId,
 			@PathVariable String type,
 			@RequestBody Map<String, String> request) throws Exception {
-
 		String content = request.get("content");
 		connectionsService.saveMetadata(connectionId, type, content);
 		return Mono.just(ResponseEntity.ok().<Void>build());
 	}
 
-	/**
-	 * Test SMS connection via Twilio.
-	 */
-	@PostMapping(value = "/test-sms", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Map<String, Object>>> testSms(@RequestBody Map<String, String> request) throws Exception {
-		String fromNumber = request.get("fromNumber");
-		String toNumber = request.get("toNumber");
-		String configPath = request.get("configPath");
-
-		log.info("Testing SMS: from={}, to={}", fromNumber, toNumber);
-
-		connectionsService.testSms(fromNumber, toNumber, configPath);
-		return Mono.just(ResponseEntity.ok(Map.<String, Object>of(
-				"status", "success",
-				"message", "SMS test sent successfully")));
-	}
-
-	/**
-	 * Reveal (decrypt) a password field for a connection or report settings.
-	 *
-	 * Query parameters:
-	 *   - "field": the field name to reveal ("userpassword", "authtoken", "accountsid", "proxypassword")
-	 *   - "reportId" (optional): for inline SMTP/Twilio/proxy passwords within a report config
-	 *
-	 * For database/email connections, connectionId is the connection code (e.g., "db-northwind-postgres", "eml-contact").
-	 * For report-level passwords (Twilio, proxy, inline SMTP), use connectionId="settings" and provide reportId.
-	 */
 	@GetMapping(value = "/{connectionId}/reveal-password", consumes = MediaType.ALL_VALUE)
 	public Mono<ResponseEntity<Map<String, String>>> revealPassword(
 			@PathVariable String connectionId,
 			@RequestParam String field,
 			@RequestParam(required = false) String reportId) throws Exception {
 
-		// Resolve reportId to configPath
 		final String configPath;
 		if (reportId != null && !reportId.isEmpty()) {
 			String reportsPath = "config/reports/" + reportId + "/settings.xml";
@@ -300,9 +365,7 @@ public class ConnectionsController {
 		SecretsCipher cipher = SecretsCipher.getInstance(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH);
 		String encryptedValue = null;
 
-		// Determine where to load the encrypted value from
 		if ("authtoken".equals(field) || "accountsid".equals(field) || "proxypassword".equals(field)) {
-			// These live in main settings.xml, not in a connection file
 			if (configPath == null || configPath.isEmpty()) {
 				return Mono.just(ResponseEntity.badRequest()
 						.body(Map.of("error", "configPath is required for field: " + field)));
@@ -325,31 +388,25 @@ public class ConnectionsController {
 				encryptedValue = dbSettings.settings.simplejavamail.proxy.password;
 			}
 		} else {
-			// "userpassword" — try database connection first, then email connection
 			String dbConnPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH
 					+ "/config/connections/" + connectionId + "/" + connectionId + ".xml";
-
 			if (new File(dbConnPath).exists()) {
 				DocumentBursterConnectionDatabaseSettings dbConn = reportsService
 						.loadSettingsConnectionDatabase(dbConnPath);
 				encryptedValue = dbConn.connection.databaseserver.userpassword;
 			} else {
-				// Try as email connection file
 				String emlConnPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH
 						+ "/config/connections/" + connectionId + ".xml";
 				if (new File(emlConnPath).exists()) {
 					DocumentBursterConnectionEmailSettings emlConn = reportsService
 							.loadSettingsConnectionEmail(emlConnPath);
 					encryptedValue = emlConn.connection.emailserver.userpassword;
-				} else {
-					// Try configPath for main settings email password
-					if (configPath != null && !configPath.isEmpty()) {
-						String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-								+ configPath.replaceFirst("^/", "");
-						DocumentBursterSettings dbSettings = reportsService.loadSettings(fullPath);
-						if (dbSettings.settings.emailserver != null) {
-							encryptedValue = dbSettings.settings.emailserver.userpassword;
-						}
+				} else if (configPath != null && !configPath.isEmpty()) {
+					String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
+							+ configPath.replaceFirst("^/", "");
+					DocumentBursterSettings dbSettings = reportsService.loadSettings(fullPath);
+					if (dbSettings.settings.emailserver != null) {
+						encryptedValue = dbSettings.settings.emailserver.userpassword;
 					}
 				}
 			}
@@ -365,11 +422,19 @@ public class ConnectionsController {
 
 	// ========== PRIVATE HELPERS ==========
 
+	private static boolean isSampleConnectionCode(String connectionId) {
+		if (connectionId == null) return false;
+		String lower = connectionId.trim().toLowerCase();
+		return lower.contains("rbt-sample-northwind-sqlite-4f2")
+				|| lower.contains("rbt-sample-northwind-duckdb-4f2")
+				|| lower.contains("rbt-sample-northwind-clickhouse-4f2");
+	}
+
 	private String maskIfSecret(String value) {
 		if (value == null || value.isEmpty()) return value;
 		if (value.startsWith("ENC(")) return PASSWORD_MASK;
-		if (value.contains("${")) return value; // Variable references
-		if (value.contains(" ") && value.length() > 10) return value; // Placeholder text
+		if (value.contains("${")) return value;
+		if (value.contains(" ") && value.length() > 10) return value;
 		return PASSWORD_MASK;
 	}
 

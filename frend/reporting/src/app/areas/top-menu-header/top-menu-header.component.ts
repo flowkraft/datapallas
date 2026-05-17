@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { LicenseService } from '../../providers/license.service';
 import { AskForFeatureService } from '../../components/ask-for-feature/ask-for-feature.service';
 import { SamplesService } from '../../providers/samples.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import Utilities from '../../helpers/utilities';
 import { StateStoreService } from '../../providers/state-store.service';
 
@@ -12,7 +12,7 @@ import { StateStoreService } from '../../providers/state-store.service';
 })
 export class TopMenuHeaderComponent implements OnInit {
   constructor(
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected licenseService: LicenseService,
     protected askForFeatureService: AskForFeatureService,
     protected samplesService: SamplesService,
@@ -49,6 +49,10 @@ export class TopMenuHeaderComponent implements OnInit {
 
   isRunningInsideElectron(): boolean {
     return Utilities.isRunningInsideElectron();
+  }
+
+  toggleControlSidebar() {
+    document.body.classList.toggle('control-sidebar-open');
   }
 
 }

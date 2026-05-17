@@ -25,7 +25,7 @@ export const tabWebUploadWordPressTemplate = `<ng-template #tabWebUploadWordPres
       <div class="col-xs-7">
         <input id="wordPressCommand"
           [(ngModel)]="xmlSettings?.documentburster.settings.webuploadsettings.wordpresscommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">

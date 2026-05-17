@@ -327,7 +327,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="btnShowMoreSqlOptions"
             style="visibility: hidden;"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.showmoreoptions"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -359,7 +359,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
               class="form-control"
               min="0"
               [(ngModel)]="xmlReporting.documentburster.report.datasource.sqloptions.idcolumn"
-              (ngModelChange)="settingsChangedEventHandler($event)"
+              (ngModelChange)="markSettingsDirty($event)"
               placeholder="Enter column index (0-based)"
             />
           </div>
@@ -384,7 +384,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="btnShowMoreScriptOptions"
             style="visibility: hidden;"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.showmoreoptions"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -416,7 +416,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
               class="form-control"
               min="0"
               [(ngModel)]="xmlReporting.documentburster.report.datasource.scriptoptions.idcolumn"
-              (ngModelChange)="settingsChangedEventHandler($event)"
+              (ngModelChange)="markSettingsDirty($event)"
               placeholder="Enter column index (0-based)"
             />
           </div>
@@ -444,7 +444,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
               class="form-control"
               min="0"
               [(ngModel)]="xmlReporting.documentburster.report.datasource.scriptoptions.selectfileexplorer"
-              (ngModelChange)="settingsChangedEventHandler($event)"
+              (ngModelChange)="markSettingsDirty($event)"
               placeholder="Enter allowed file types (eg. *.xml, *.csv, *.txt)"
             />
           </div>
@@ -466,7 +466,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="xmlRepeatingNodeXPath"
             class="form-control"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.xmloptions.repeatingnodexpath"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             required
             placeholder="e.g. /root/records/record"
           />
@@ -488,7 +488,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="btnShowMoreXmlOptions"
             style="visibility: hidden;"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.showmoreoptions"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -517,7 +517,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
                 id="xmlIdColumnCustom"
                 class="form-control"
                 [(ngModel)]="xmlReporting.documentburster.report.datasource.xmloptions.idcolumn"
-                (ngModelChange)="settingsChangedEventHandler($event)"
+                (ngModelChange)="markSettingsDirty($event)"
                 placeholder=""
               />
               <small class="text-muted">Example (using attribute): <code>@id</code></small><br>
@@ -539,7 +539,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             class="form-control"
             rows="3"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.xmloptions.namespacemappings"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             placeholder="e.g. ns=http://example.com/ns"
           ></textarea>
           <small class="text-muted">Format: prefix=uri (one per line for multiple)</small>
@@ -557,7 +557,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             type="checkbox"
             id="xmlIgnoreLeadingWhitespace"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.xmloptions.ignoreleadingwhitespace"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -575,7 +575,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="separatorChar"
             class="form-control"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.separatorchar"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             [readonly]="xmlReporting?.documentburster.report.datasource.type === 'ds.tsvfile'"
           />
         </div>
@@ -592,7 +592,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             class="form-control"
             (change)="onSelectCsvHeader()"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.header"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           >
             <option id="optionNoHeader" value="noheader">
               {{ 'AREAS.CONFIGURATION.TAB-REPORT-DATASOURCE-DATATABLES.HEADER-NO-HEADER' | translate }}
@@ -617,7 +617,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             type="number"
             class="form-control"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.skiplines"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             [disabled]="xmlReporting?.documentburster.report.datasource.csvoptions.header != 'multiline'"
           />
         </div>
@@ -638,7 +638,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="btnShowMoreCsvOptions"
             style="visibility: hidden;"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.showmoreoptions"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -669,7 +669,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             class="form-control"
             min="0"
             [(ngModel)]="xmlReporting.documentburster.report.datasource.csvoptions.idcolumn"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             placeholder="Enter column index (0-based)"
           />
         </div>
@@ -686,7 +686,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="quotationChar"
             class="form-control"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.quotationchar"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -702,7 +702,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             id="escapeChar"
             class="form-control"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.escapechar"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -717,7 +717,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             type="checkbox"
             id="btnStrictQuotations"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.strictquotations"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -732,7 +732,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             type="checkbox"
             id="btnIgnoreQuotations"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.ignorequotations"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -747,7 +747,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             type="checkbox"
             id="btnIgnoreLeadingWhitespace"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.csvoptions.ignoreleadingwhitespace"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -768,7 +768,7 @@ export const tabReportingDataSourceDataTablesTemplate = `<ng-template
             class="form-control"
             rows="5"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.fixedwidthoptions.columns"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             placeholder="Column 1, 10
 Column 2, 20
 Column 3, 15"
@@ -789,7 +789,7 @@ Column 3, 15"
             class="form-control"
             (change)="onSelectFixedWidthHeader()"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.fixedwidthoptions.header"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           >
             <option value="noheader">{{ 'AREAS.CONFIGURATION.TAB-REPORT-DATASOURCE-DATATABLES.HEADER-NO-HEADER' | translate }}</option>
             <option value="firstline">{{ 'AREAS.CONFIGURATION.TAB-REPORT-DATASOURCE-DATATABLES.HEADER-FIRST-LINE' | translate }}</option>
@@ -810,7 +810,7 @@ Column 3, 15"
             type="number"
             class="form-control"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.fixedwidthoptions.skiplines"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             [disabled]="true"
           />
         </div>
@@ -832,7 +832,7 @@ Column 3, 15"
             id="btnShowMoreFixedWidthOptions"
             style="visibility: hidden;"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.showmoreoptions"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -864,7 +864,7 @@ Column 3, 15"
             class="form-control"
             min="0"
             [(ngModel)]="xmlReporting.documentburster.report.datasource.fixedwidthoptions.idcolumn"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             placeholder="Enter column index (0-based)"
           />
         </div>
@@ -882,7 +882,7 @@ Column 3, 15"
               type="checkbox"
               id="btnFixedWidthIgnoreLeadingWhitespace"
               [(ngModel)]="xmlReporting?.documentburster.report.datasource.fixedwidthoptions.ignoreleadingwhitespace"
-              (ngModelChange)="settingsChangedEventHandler($event)"
+              (ngModelChange)="markSettingsDirty($event)"
             />
           </div>
         </div>
@@ -902,7 +902,7 @@ Column 3, 15"
             class="form-control"
             (change)="onSelectExcelHeader()"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.exceloptions.header"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           >
             <option value="noheader">
               {{ 'AREAS.CONFIGURATION.TAB-REPORT-DATASOURCE-DATATABLES.HEADER-NO-HEADER' | translate }}
@@ -928,7 +928,7 @@ Column 3, 15"
             class="form-control"
             type="number"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.exceloptions.skiplines"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             [disabled]="xmlReporting?.documentburster.report.datasource.exceloptions.header != 'multiline'"
           />
         </div>
@@ -945,7 +945,7 @@ Column 3, 15"
             class="form-control"
             type="number"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.exceloptions.sheetindex"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -965,7 +965,7 @@ Column 3, 15"
             id="btnShowMoreExcelOptions"
             style="visibility: hidden;"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.showmoreoptions"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -997,7 +997,7 @@ Column 3, 15"
               class="form-control"
               min="0"
               [(ngModel)]="xmlReporting.documentburster.report.datasource.exceloptions.idcolumn"
-              (ngModelChange)="settingsChangedEventHandler($event)"
+              (ngModelChange)="markSettingsDirty($event)"
               placeholder="Enter column index (0-based)"
             />
           </div>
@@ -1013,7 +1013,7 @@ Column 3, 15"
               type="checkbox"
               id="btnExcelIgnoreLeadingWhitespace"
               [(ngModel)]="xmlReporting?.documentburster.report.datasource.exceloptions.ignoreleadingwhitespace"
-              (ngModelChange)="settingsChangedEventHandler($event)"
+              (ngModelChange)="markSettingsDirty($event)"
             />
           </div>
         </div>
@@ -1028,7 +1028,7 @@ Column 3, 15"
               type="checkbox"
               id="btnExcelUseFormulaResults"
               [(ngModel)]="xmlReporting?.documentburster.report.datasource.exceloptions.useformularesults"
-              (ngModelChange)="settingsChangedEventHandler($event)"
+              (ngModelChange)="markSettingsDirty($event)"
             />
           </div>
         </div>
@@ -1060,7 +1060,7 @@ Column 3, 15"
             id="btnShowAdditionalTransformation"
             style="visibility: hidden;"
             [(ngModel)]="xmlReporting?.documentburster.report.datasource.showadditionaltransformation"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
           />
         </div>
       </div>
@@ -1108,7 +1108,7 @@ Column 3, 15"
           <button
             type="button"
             class="btn btn-primary btn-block"
-            (click)="onAskForFeatureModalShow(xmlReporting?.documentburster.report.datasource.type)"
+            (click)="triggerFeatureRequestDialog(xmlReporting?.documentburster.report.datasource.type)"
           >
             Request <span class="badge">New</span> Feature
           </button>

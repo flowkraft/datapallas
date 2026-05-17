@@ -22,7 +22,7 @@ export const tabWebUploadDrupalTemplate = `<ng-template #tabWebUploadDrupalTempl
       <div class="col-xs-2">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-DRUPAL.COMMAND' | translate }}</div>
       <div class="col-xs-7">
         <input id="drupalCommand" [(ngModel)]="xmlSettings?.documentburster.settings.webuploadsettings.drupalcommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">

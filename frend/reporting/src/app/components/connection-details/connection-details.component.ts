@@ -1,4 +1,4 @@
-import {
+﻿import {
   ChangeDetectorRef,
   Component,
   Input,
@@ -17,8 +17,9 @@ import {
   ExtConnection,
   newDatabaseServer,
   newEmailServer,
-  SettingsService,
-} from '../../providers/settings.service';
+  ConfigurationRepository,
+} from '../../providers/configuration-repository.service';
+import { AppPathsService } from '../../providers/app-paths.service';
 import { ConnectionsService } from '../../providers/connections.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
@@ -158,7 +159,8 @@ export class ConnectionDetailsComponent implements OnInit {
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
     protected connectionsService: ConnectionsService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
+    protected appPathsService: AppPathsService,
     protected infoService: InfoService,
     protected executionStatsService: ExecutionStatsService,
     protected appsManagerService: AppsManagerService,
@@ -348,7 +350,7 @@ export class ConnectionDetailsComponent implements OnInit {
       if (isDbConnection) {
         // For database connections: create a folder structure
         // Path format: /config/connections/db-my-connection-postgresql/db-my-connection-postgresql.xml
-        const folderPath = `${this.settingsService.CONFIGURATION_CONNECTIONS_FOLDER_PATH}/${connectionCode}`;
+        const folderPath = `${this.appPathsService.CONFIGURATION_CONNECTIONS_FOLDER_PATH}/${connectionCode}`;
         this.modalConnectionInfo.filePath = `${folderPath}/${connectionFileName}`;
 
         // Check if a connection with this code already exists in the loaded list
@@ -359,7 +361,7 @@ export class ConnectionDetailsComponent implements OnInit {
       } else {
         // For email connections: maintain current approach with a single file
         // Path format: /config/connections/eml-my-connection.xml
-        this.modalConnectionInfo.filePath = `${this.settingsService.CONFIGURATION_CONNECTIONS_FOLDER_PATH}/${connectionFileName}`;
+        this.modalConnectionInfo.filePath = `${this.appPathsService.CONFIGURATION_CONNECTIONS_FOLDER_PATH}/${connectionFileName}`;
 
         // Check if a connection with this code already exists in the loaded list
         const existingConnection = this.settingsService.connectionFiles.find(
@@ -565,10 +567,11 @@ export class ConnectionDetailsComponent implements OnInit {
     this.cdRef.detectChanges();
 
     try {
-      const { flowId } = await this.connectionsService.startEmailOAuth(payload);
+      const connectionId = this.resolveConnectionCode() || 'new';
+      const { flowId } = await this.connectionsService.startEmailOAuth(connectionId, payload);
       this.activeOAuthFlowId = flowId;
 
-      const sseUrl = `${this.connectionsService.apiService.BACKEND_URL}/oauth/email/${flowId}/events`;
+      const sseUrl = `${this.connectionsService.apiService.BACKEND_URL}/api/connections/${encodeURIComponent(connectionId)}/oauth-flow/${flowId}/events`;
       this.activeOAuthEventSource = new EventSource(sseUrl);
 
       this.activeOAuthEventSource.addEventListener('success', async (event: MessageEvent) => {
@@ -635,7 +638,8 @@ export class ConnectionDetailsComponent implements OnInit {
     emailserver.oauth2useremail = '';
     emailserver.oauth2refreshtoken = '';
     if (this.activeOAuthFlowId) {
-      this.connectionsService.cancelEmailOAuth(this.activeOAuthFlowId).catch(() => {});
+      const cId = this.resolveConnectionCode() || 'new';
+      this.connectionsService.cancelEmailOAuth(cId, this.activeOAuthFlowId).catch(() => {});
       this.activeOAuthFlowId = null;
     }
     this.activeOAuthEventSource?.close();
@@ -1611,9 +1615,6 @@ export class ConnectionDetailsComponent implements OnInit {
         // Add the new connection to the list
         this.settingsService.connectionFiles.push(newConnection);
 
-        // Reset cached email/db connection arrays to force refresh
-        this.settingsService._emailConnectionsFiles = null;
-        this.settingsService._databaseConnectionsFiles = null;
 
         // Update modal state to reflect we're now in "update" mode
         this.modalConnectionInfo.crudMode = 'update';
@@ -2732,7 +2733,8 @@ export class ConnectionDetailsComponent implements OnInit {
         this.activeOAuthEventSource = null;
       }
       if (this.activeOAuthFlowId) {
-        this.connectionsService.cancelEmailOAuth(this.activeOAuthFlowId).catch(() => {});
+        const cId = this.resolveConnectionCode() || 'new';
+        this.connectionsService.cancelEmailOAuth(cId, this.activeOAuthFlowId).catch(() => {});
         this.activeOAuthFlowId = null;
       }
 

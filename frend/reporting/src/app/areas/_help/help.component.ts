@@ -31,7 +31,7 @@ import { tabUpdateTemplate } from './templates/tab-update';
 import { tabComparisonTemplate } from './templates/tab-comparison';
 import { tabLogsTemplate } from './templates/tab-logs';
 import { tabLicenseTemplate } from './templates/tab-license';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import Utilities from '../../helpers/utilities';
 import { StateStoreService } from '../../providers/state-store.service';
 //import { ElectronService } from '../../core/services/electron/electron.service';
@@ -40,10 +40,10 @@ import { StateStoreService } from '../../providers/state-store.service';
   selector: 'dburst-help',
   template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
-           style="top:50px; left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
+           style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
     </aside>
-    <div class="relative" style="margin-left:230px; padding-top:50px; min-height:calc(100vh - 80px);">
+    <div class="relative" style="margin-left:230px; padding-top:calc(50px + var(--cet-offset)); min-height:calc(100vh - 80px - var(--cet-offset));">
       <section class="content"><div>${tabsTemplate}</div></section>
     </div>
     ${tabSupportTemplate} ${tabDocumentationTemplate} ${tabServicesTemplate}
@@ -263,7 +263,7 @@ export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   constructor(
     protected route: ActivatedRoute,
     protected changeDetectorRef: ChangeDetectorRef,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected storeService: StateStoreService,
     //protected electronService: ElectronService,
   ) {}

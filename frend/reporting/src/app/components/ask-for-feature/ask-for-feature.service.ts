@@ -1,10 +1,9 @@
 import { Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 import { AskForFeatureDialogComponent } from './ask-for-feature-dialog.component';
-import { ShellService } from '../../providers/shell.service';
 @Injectable()
 export class AskForFeatureService {
   alreadyImplementedFeatures = [
@@ -65,8 +64,7 @@ Sincerely,
     protected modalService: BsModalService,
     protected translateService: TranslateService,
     protected messagesService: ToastrMessagesService,
-    protected settingsService: SettingsService,
-    protected shellService: ShellService,
+    protected settingsService: ConfigurationRepository,
   ) {}
 
   showAskForFeature(options: any): Promise<any> {

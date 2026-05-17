@@ -26,7 +26,7 @@ import reactor.core.publisher.Flux;
 		MediaType.MULTIPART_FORM_DATA_VALUE })
 public class UploadController {
 
-	@PostMapping("/upload/process-multiple")
+	@PostMapping("/upload-and-burst-many")
 	public Flux<FileInfo> handleUploadProcessMultipleFiles(@RequestPart("files") MultipartFile[] files)
 			throws Exception {
 
@@ -60,7 +60,7 @@ public class UploadController {
 
 	}
 
-	@PostMapping("/upload/process-single")
+	@PostMapping("/upload-and-burst")
 	public Flux<FileInfo> handleUploadProcessSingleFile(@RequestPart("file") MultipartFile multipPartFile)
 			throws Exception {
 
@@ -87,7 +87,7 @@ public class UploadController {
 		return Flux.fromStream(uploadedFiles.stream());
 	}
 
-	@PostMapping("/upload/process-qa")
+	@PostMapping("/upload-and-qa")
 	public Flux<FileInfo> handleUploadQa(@RequestPart("file") MultipartFile multipPartFile) throws Exception {
 
 		// System.out.println("UploadController - handleUploadQa");

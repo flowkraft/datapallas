@@ -5,7 +5,7 @@ export const tabGeneralSettingsTemplate = `<ng-template #tabGeneralSettingsTempl
         'AREAS.CONFIGURATION.TAB-GENERAL-SETTINGS.BURST-FILE-NAME' | translate }}</div>
       <div class="col-xs-6">
         <input id="burstFileName" class="form-control" [(ngModel)]="xmlSettings?.documentburster?.settings.burstfilename"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
       </div>
       <div class="col-xs-2">
         <dburst-button-variables id="btnBurstFileNameVariables"
@@ -19,7 +19,7 @@ export const tabGeneralSettingsTemplate = `<ng-template #tabGeneralSettingsTempl
         'AREAS.CONFIGURATION.TAB-GENERAL-SETTINGS.OUTPUT-FOLDER' | translate }}</div>
       <div class="col-xs-6">
         <input id="outputFolder" class="form-control" [(ngModel)]="xmlSettings?.documentburster?.settings.outputfolder"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
       </div>
 
       <div class="col-xs-2">
@@ -42,7 +42,7 @@ export const tabGeneralSettingsTemplate = `<ng-template #tabGeneralSettingsTempl
       <div class="col-xs-6">
         <input id="quarantineFolder" class="form-control"
           [(ngModel)]="xmlSettings?.documentburster?.settings.quarantinefolder"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
       </div>
 
       <div class="col-xs-2">

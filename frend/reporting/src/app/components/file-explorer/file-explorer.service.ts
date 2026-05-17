@@ -5,7 +5,7 @@ import { ApiService } from '../../providers/api.service';
   providedIn: 'root',
 })
 export class FileExplorerService {
-  private endpoint = '/fs';
+  private endpoint = '/system/fs/explorer';
 
   constructor(private apiService: ApiService) {}
 

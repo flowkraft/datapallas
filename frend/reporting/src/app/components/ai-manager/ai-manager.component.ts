@@ -13,7 +13,7 @@ import { AiManagerService, PromptInfo } from './ai-manager.service';
 import { InfoService } from '../../components/dialog-info/info.service';
 import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal'; // Add ngx-bootstrap modal service
 import { AppsManagerService, ManagedApp } from '../apps-manager/apps-manager.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 
 // Define constants for tab indices for clarity
@@ -99,7 +99,7 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
     private infoService: InfoService,
     private modalService: BsModalService, // Add ngx-bootstrap modal service
     protected appsManagerService: AppsManagerService,
-    private settingsService: SettingsService,
+    private settingsService: ConfigurationRepository,
     private confirmService: ConfirmService,
   ) {
   }

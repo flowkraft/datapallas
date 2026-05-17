@@ -6,7 +6,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           type="checkbox"
           id="btnSendDocumentsEmail"
           [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.email"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnSendDocumentsEmail" class="checkboxlabel"
           >&nbsp;{{
@@ -42,7 +42,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           type="checkbox"
           id="btnSendDocumentsUpload"
           [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.upload"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnSendDocumentsUpload" class="checkboxlabel"
           >&nbsp;{{
@@ -80,7 +80,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           type="checkbox"
           id="btnSendDocumentsWeb"
           [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.web"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnSendDocumentsWeb" class="checkboxlabel"
           >&nbsp;<span
@@ -119,7 +119,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           type="checkbox"
           id="btnSendDocumentsSMS"
           [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.sms"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnSendDocumentsSMS" class="checkboxlabel"
           >&nbsp;{{
@@ -157,7 +157,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           type="checkbox"
           id="btnDeleteDocuments"
           [(ngModel)]="xmlSettings?.documentburster.settings.deletefiles"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnDeleteDocuments" class="checkboxlabel"
           >&nbsp;{{
@@ -175,7 +175,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           type="checkbox"
           id="btnQuarantineDocuments"
           [(ngModel)]="xmlSettings?.documentburster.settings.quarantinefiles"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnQuarantineDocuments" class="checkboxlabel"
           >&nbsp;{{

@@ -108,7 +108,6 @@
     "@types/decompress": "4.2.4",
     "@types/xml2js": "0.4.14",
     "adm-zip": "0.5.10",
-    "admin-lte": "2.4.18",
     "angular-split": "16.2.1",
     "bootstrap": "3.4.1",
     "browserify-fs": "1.0.0",

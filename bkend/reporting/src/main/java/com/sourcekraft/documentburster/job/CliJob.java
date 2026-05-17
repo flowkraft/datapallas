@@ -46,6 +46,7 @@ import com.sourcekraft.documentburster.engine.BursterFactory;
 import com.sourcekraft.documentburster.engine.pdf.Merger;
 import com.sourcekraft.documentburster.job.model.JobDetails;
 import com.sourcekraft.documentburster.job.model.JobProgressDetails;
+import com.sourcekraft.documentburster.common.security.SecretsCipher;
 import com.sourcekraft.documentburster.scripting.Scripting;
 import com.sourcekraft.documentburster.sender.factory.EmailMessageFactory;
 import com.sourcekraft.documentburster.sender.factory.SmsMessageFactory;
@@ -180,11 +181,9 @@ public class CliJob {
 					(new Scripting()).executeSenderScript(Scripts.EMAIL, message);
 
 				} finally {
-
 					rnfXmlFile.delete();
-
 					_deleteJobFileWithRetry(jobFile);
-			}
+				}
 
 			} else
 				throw new Exception("'Request New Feature' XML file does not exist: " + newFeatureRequestFilePath);

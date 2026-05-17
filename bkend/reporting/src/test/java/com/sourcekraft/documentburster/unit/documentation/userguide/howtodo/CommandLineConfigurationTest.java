@@ -123,8 +123,8 @@ public class CommandLineConfigurationTest {
 						}
 					};
 					return cls.cast(cmd);
-				} else if (cls == MainProgram.DocumentCommand.MergeCommand.class) {
-					MainProgram.DocumentCommand.MergeCommand cmd = new MainProgram.DocumentCommand.MergeCommand() {
+				} else if (cls == MainProgram.JobCommand.MergeCommand.class) {
+					MainProgram.JobCommand.MergeCommand cmd = new MainProgram.JobCommand.MergeCommand() {
 						@Override
 						protected CliJob getJob(String configFilePath) throws Exception {
 							testJob.configurationFilePath = configFilePath != null ? configFilePath
@@ -154,7 +154,7 @@ public class CommandLineConfigurationTest {
 		String mergeFilePath = testJob.getTempFolder() + FilenameUtils.getName(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH);
 		FileUtils.copyFile(new File(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH), new File(mergeFilePath));
 
-		String[] args = { "document", "merge", mergeFilePath, "--config",
+		String[] args = { "job", "merge", mergeFilePath, "--config",
 				"src/test/resources/config/settings-custom.xml" };
 
 		executeCommand(args);
@@ -174,7 +174,7 @@ public class CommandLineConfigurationTest {
 		String mergeFilePath = testJob.getTempFolder() + FilenameUtils.getName(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH);
 		FileUtils.copyFile(new File(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH), new File(mergeFilePath));
 
-		String[] args = { "document", "merge", mergeFilePath, "--output", "merged.pdf", "--config",
+		String[] args = { "job", "merge", mergeFilePath, "--output", "merged.pdf", "--config",
 				"src/test/resources/config/settings-custom.xml" };
 
 		executeCommand(args);
@@ -191,7 +191,7 @@ public class CommandLineConfigurationTest {
 	// Test case 3: Burst with default settings
 	@Test
 	public void burstWithDefaultSettings() throws Throwable {
-		String[] args = { "burst", USER_VARIABLES_PATH };
+		String[] args = { "job", "burst", USER_VARIABLES_PATH };
 
 		executeCommand(args);
 
@@ -201,7 +201,7 @@ public class CommandLineConfigurationTest {
 	// Test case 4: Burst with custom configuration
 	@Test
 	public void burstWithCustomConfiguration() throws Throwable {
-		String[] args = { "burst", USER_VARIABLES_PATH, "--config", "src/test/resources/config/settings-custom.xml" };
+		String[] args = { "job", "burst", USER_VARIABLES_PATH, "--config", "src/test/resources/config/settings-custom.xml" };
 
 		executeCommand(args);
 
@@ -226,7 +226,7 @@ public class CommandLineConfigurationTest {
 	// Test case 5: PDF with built-in settings that take precedence
 	@Test
 	public void pdfWithBuiltInSettingsThatOverrideConfig() throws Throwable {
-		String[] args = { "burst", PDF_CUSTOM_SETTINGS_LONG, "--config",
+		String[] args = { "job", "burst", PDF_CUSTOM_SETTINGS_LONG, "--config",
 				"src/main/external-resources/template/config/burst/settings.xml" };
 
 		executeCommand(args);
@@ -248,7 +248,7 @@ public class CommandLineConfigurationTest {
 	// Test case 6: Excel bursting with built-in settings
 	@Test
 	public void excelBurstWithBuiltInSettings() throws Throwable {
-		String[] args = { "burst", EXCEL_BURST_BY_DISTINCT_COLUMN_VALUES_COMPLEX, "--config",
+		String[] args = { "job", "burst", EXCEL_BURST_BY_DISTINCT_COLUMN_VALUES_COMPLEX, "--config",
 				"src/main/external-resources/template/config/burst/settings.xml" };
 
 		executeCommand(args);
@@ -293,7 +293,7 @@ public class CommandLineConfigurationTest {
 	// Test case 7: Burst with testing all tokens option
 	@Test
 	public void burstWithTestAllOption() throws Throwable {
-		String[] args = { "burst", USER_VARIABLES_PATH, "--testall" };
+		String[] args = { "job", "burst", USER_VARIABLES_PATH, "--testall" };
 
 		executeCommand(args);
 
@@ -304,7 +304,7 @@ public class CommandLineConfigurationTest {
 	// Test case 8: Burst with specific tokens to test
 	@Test
 	public void burstWithTestListOption() throws Throwable {
-		String[] args = { "burst", USER_VARIABLES_PATH, "--testlist=page1,page3" };
+		String[] args = { "job", "burst", USER_VARIABLES_PATH, "--testlist=page1,page3" };
 
 		executeCommand(args);
 
@@ -323,7 +323,7 @@ public class CommandLineConfigurationTest {
 		String mergeFilePath = testJob.getTempFolder() + FilenameUtils.getName(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH);
 		FileUtils.copyFile(new File(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH), new File(mergeFilePath));
 
-		String[] args = { "document", "merge", mergeFilePath, "--output", "merged_for_burst.pdf", "--burst" };
+		String[] args = { "job", "merge", mergeFilePath, "--output", "merged_for_burst.pdf", "--burst" };
 
 		executeCommand(args);
 

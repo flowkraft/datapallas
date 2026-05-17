@@ -8,7 +8,7 @@ export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
         <input
           id="fromTelephoneNumber"
           [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.fromtelephonenumber"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
         />
       </div>
@@ -32,7 +32,7 @@ export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
         <input
           id="toTelephoneNumber"
           [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.totelephonenumber"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
         />
       </div>
@@ -54,7 +54,7 @@ export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
       <div class="col-xs-7">
         <textarea
           [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.text"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           rows="5"
           id="smsText"

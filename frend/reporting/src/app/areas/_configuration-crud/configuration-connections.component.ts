@@ -16,8 +16,8 @@ import {
   ExtConnection,
   newDatabaseServer,
   newEmailServer,
-  SettingsService,
-} from '../../providers/settings.service';
+  ConfigurationRepository,
+} from '../../providers/configuration-repository.service';
 import { FsService } from '../../providers/fs.service';
 import { ConnectionsService } from '../../providers/connections.service';
 import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
@@ -47,7 +47,7 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
     protected fsService: FsService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected connectionsService: ConnectionsService,
     protected infoService: InfoService,
     protected executionStatsService: ExecutionStatsService,
@@ -379,7 +379,7 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
             ...(selectedConnection.dbserver || newDatabaseServer),
           };
           payloadForSelectedToSave = tempConnectionInfo.database;
-          // Ensure SettingsService has defaultDatabaseConnectionFile property and logic
+          // Ensure ConfigurationRepository has defaultDatabaseConnectionFile property and logic
           (this.settingsService as any).defaultDatabaseConnectionFile =
             selectedConnection;
         } else {

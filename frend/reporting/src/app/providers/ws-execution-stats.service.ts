@@ -2,7 +2,7 @@
 //import * as path from 'path';
 
 import { Injectable } from '@angular/core';
-import { SettingsService } from './settings.service';
+import { ConfigurationRepository } from './configuration-repository.service';
 import { TopicOptions, WebSocketEndpoint } from '../helpers/websocket-endpoint';
 import { Constants } from '../helpers/constants';
 import { ApiService } from './api.service';
@@ -24,7 +24,7 @@ export class WebSocketExecutionStatsService extends WebSocketEndpoint {
 
   constructor(
     public apiService: ApiService,
-    public settingsService: SettingsService,
+    public settingsService: ConfigurationRepository,
     protected executionStatsService: ExecutionStatsService,
     protected toastMessagesService: ToastrMessagesService,
     protected stateStore: StateStoreService,

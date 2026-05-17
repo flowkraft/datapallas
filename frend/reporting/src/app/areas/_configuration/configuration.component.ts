@@ -1,4 +1,4 @@
-import {
+﻿import {
   Component,
   OnInit,
   OnDestroy,
@@ -25,7 +25,7 @@ import { tabsTemplate } from './templates/_tabs';
 import {
   ExtConnection,
   ReportParameter,
-} from '../../providers/settings.service';
+} from '../../providers/configuration-repository.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 
 import { tabGeneralSettingsTemplate } from './templates/tab-general-settings';
@@ -74,8 +74,9 @@ import { Quill, RangeStatic } from 'quill';
 import { InfoService } from '../../components/dialog-info/info.service';
 import { AskForFeatureService } from '../../components/ask-for-feature/ask-for-feature.service';
 import { ConnectionsService } from '../../providers/connections.service';
-import { SettingsService } from '../../providers/settings.service';
-import { ShellService } from '../../providers/shell.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
+import { AppPathsService } from '../../providers/app-paths.service';
+import { FsService } from '../../providers/fs.service';
 import { StateStoreService } from '../../providers/state-store.service';
 import { CodeJarContainer } from 'ngx-codejar';
 import Prism from 'prismjs';
@@ -110,10 +111,10 @@ import { modalTemplatesGalleryTemplate } from './templates/modal-gallery';
   selector: 'dburst-configuration',
   template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
-           style="top:50px; left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
+           style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
     </aside>
-    <div class="relative" style="margin-left:230px; padding-top:50px; min-height:calc(100vh - 80px);">
+    <div class="relative" style="margin-left:230px; padding-top:calc(50px + var(--cet-offset)); min-height:calc(100vh - 80px - var(--cet-offset));">
       <section class="content">
         <div>${tabsTemplate}</div>
       </section>
@@ -547,11 +548,6 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   settingsChanged: Subject<any> = new Subject<any>();
   private destroy$ = new Subject<void>();
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
   selectedEmailConnectionFile: ExtConnection;
   selectedReportTemplateFile = {
     fileName: '',
@@ -563,6 +559,15 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   selectedJasperReport: any = null;
   inlineJrxmlOption = { templateName: 'Write .jrxml code inline', filePath: '__inline__' };
+
+  // ==========================================================================
+  //  Lifecycle
+  // ==========================================================================
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   // ========== CUBES REUSE MODAL ==========
   // Lets the user pick a cube already configured for the current DB connection,
@@ -588,13 +593,16 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     return this.apiService.BACKEND_URL || '/api';
   }
 
-  // ========== CONSTRUCTOR & INITIALIZATION ==========
+  // ==========================================================================
+  //  Top-level navigation
+  // ==========================================================================
 
   constructor(
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
+    protected appPathsService: AppPathsService,
+    protected fsService: FsService,
     protected connectionsService: ConnectionsService,
     protected executionStatsService: ExecutionStatsService,
-    protected shellService: ShellService,
     protected reportingService: ReportingService,
     protected stateStore: StateStoreService,
     protected apiService: ApiService,
@@ -616,12 +624,24 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   currentLeftMenu: string;
 
-  settingsChangedEventHandler(newValue: any) {
+  get openSidebarSection(): string {
+    if (this.currentLeftMenu === 'emailSettingsMenuSelected' || this.currentLeftMenu === 'cloudEmailProvidersMenuSelected') return 'email';
+    if (this.currentLeftMenu === 'smsSettingsMenuSelected') return 'sms';
+    if (this.currentLeftMenu === 'qualitySettingsMenuSelected') return 'quality';
+    if (this.currentLeftMenu === 'advancedSettingsMenuSelected' || this.currentLeftMenu === 'errorHandlingSettingsMenuSelected') return 'advanced';
+    return '';
+  }
+
+  // ==========================================================================
+  //  Form state tracking
+  // ==========================================================================
+
+  markSettingsDirty(newValue: any) {
     this.settingsChanged.next(newValue);
   }
 
-  settingsChangedQuillEventHandler(newValue: any) {
-    //console.log(`settingsChangedQuillEventHandler: newValue: ${newValue}`);
+  markSettingsDirtyFromQuill(newValue: any) {
+    //console.log(`markSettingsDirtyFromQuill: newValue: ${newValue}`);
     this.xmlSettings.documentburster.settings.emailsettings.html = newValue;
     this.settingsChanged.next(this.xmlSettings.documentburster.settings);
   }
@@ -641,8 +661,6 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }) {
     if (qlEvent.range) this.editorCaretPosition = qlEvent.range.index;
   }
-
-  // ========== ID COLUMN SELECTION ==========
 
   xmlIdColumnSelection: string = 'notused';
   csvIdColumnSelection: string = 'notused';
@@ -696,7 +714,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     } else {
       optionsObj[fieldName] = '';
     }
-    this.settingsChangedEventHandler(newValue);
+    this.markSettingsDirty(newValue);
   }
 
   // Template-bound handlers — thin wrappers around the generic handler
@@ -747,12 +765,12 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
         opts.selectfileexplorer = '*.xml';
       }
     }
-    this.settingsChangedEventHandler(newValue);
+    this.markSettingsDirty(newValue);
   }
 
-  // ========== END ID COLUMN SELECTION ==========
-
-  // ========== TEMPLATE & OUTPUT TYPE MANAGEMENT ==========
+  // ==========================================================================
+  //  Template & output type
+  // ==========================================================================
 
   groupByJasperHelper() {
     return 'Available JasperReports';
@@ -766,7 +784,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
       const configName =
         this.settingsService.currentConfigurationTemplate?.folderName ||
         'template';
-      const newPath = `${this.settingsService.CONFIGURATION_TEMPLATES_FOLDER_PATH}/reports/${configName}/${configName}-jasper.jrxml`;
+      const newPath = `${this.appPathsService.CONFIGURATION_TEMPLATES_FOLDER_PATH}/reports/${configName}/${configName}-jasper.jrxml`;
 
       try {
         const content =
@@ -817,7 +835,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
       } catch (error) {
         this.activeReportTemplateContent = '';
       }
-      this.settingsChangedEventHandler(jrxmlPath);
+      this.markSettingsDirty(jrxmlPath);
     }
   }
 
@@ -855,7 +873,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
         this.refreshHtmlPreview();
       }
       this.changeDetectorRef.detectChanges();
-      this.onAskForFeatureModalShow(outputType);
+      this.triggerFeatureRequestDialog(outputType);
     } finally {
       this.autosaveEnabled = true;
     }
@@ -967,96 +985,89 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ========== END TEMPLATE & OUTPUT TYPE MANAGEMENT ==========
-
-  // ========== INITIALIZATION (ngOnInit) ==========
-
+  // ngOnInit wires the route-param subscription; all per-navigation work lives in _initFromRouteParams.
   async ngOnInit() {
-    this.route.params.subscribe(async (params) => {
-      if (params.leftMenu) {
-        this.currentLeftMenu = params.leftMenu;
-      } else {
-        this.currentLeftMenu = 'generalSettingsMenuSelected';
-      }
+    this.route.params.subscribe(async (params) => this._initFromRouteParams(params));
+  }
 
-      //make sure that the XML file is loaded only once
-      if (
-        this.currentLeftMenu === 'generalSettingsMenuSelected' ||
-        params.reloadConfiguration
-      ) {
-        this.settingsService.currentConfigurationTemplatePath = Utilities.slash(
-          params.configurationFilePath,
-        );
+  private async _initFromRouteParams(params: any): Promise<void> {
+    this.currentLeftMenu = params.leftMenu || 'generalSettingsMenuSelected';
 
-        this.settingsService.currentConfigurationTemplateName =
-          params.configurationFileName;
-
-        this.xmlSettings = await this.reportsService.loadSettingsByPath(
-          params.configurationFilePath,
-        );
-
-        this.stateStore.configSys.currentConfigFile.configuration.settings = {
-          ...this.xmlSettings.documentburster.settings,
-        };
-
-        // Search all configs (configurationFiles includes both user configs and samples).
-        // Normalize leading slash: backend returns "/config/..." while frontend uses "config/..."
-        const stripLeadingSlash = (p: string) => p?.replace(/^\//, '') || '';
-        const targetPath = stripLeadingSlash(this.settingsService.currentConfigurationTemplatePath);
-        this.settingsService.currentConfigurationTemplate = this.settingsService
-          .configurationFiles?.find(
-            (confTemplate) =>
-              stripLeadingSlash(confTemplate.filePath) === targetPath,
-          );
-
-        // Lazy load DSL details for this specific configuration
-        if (this.settingsService.currentConfigurationTemplate) {
-          await this.settingsService.loadReportDetails(
-            this.settingsService.currentConfigurationTemplate
-          );
-          //console.log('[DEBUG] After loadReportDetails - tabulatorOptions:',
-          //  this.settingsService.currentConfigurationTemplate.tabulatorOptions);
-        }
-      }
-
-      if (this.currentLeftMenu === 'emailSettingsMenuSelected') {
-        await this.initEmailSettings();
-      } else if (this.currentLeftMenu === 'reportingSettingsMenuSelected') {
-        await this.initReportingSettings();
-      }
-
-      this.settingsService.numberOfUserVariables =
-        this.xmlSettings.documentburster.settings.numberofuservariables;
-
-      this.refreshTabs();
-
-      this.messagesService.showInfo(
-        'Showing configuration ' +
-        this.settingsService.currentConfigurationTemplateName,
+    //make sure that the XML file is loaded only once
+    if (
+      this.currentLeftMenu === 'generalSettingsMenuSelected' ||
+      params.reloadConfiguration
+    ) {
+      this.settingsService.currentConfigurationTemplatePath = Utilities.slash(
+        params.configurationFilePath,
       );
 
-      // wait 30ms after the last event before emitting last event
-      this.settingsChanged
-        .pipe(debounceTime(30))
-        .subscribe(async (newValue) => {
-          await this.reportsService.saveReportSettings(
+      this.settingsService.currentConfigurationTemplateName =
+        params.configurationFileName;
+
+      this.xmlSettings = await this.reportsService.loadSettingsByPath(
+        params.configurationFilePath,
+      );
+
+      this.stateStore.configSys.currentConfigFile.configuration.settings = {
+        ...this.xmlSettings.documentburster.settings,
+      };
+
+      // Search all configs (configurationFiles includes both user configs and samples).
+      // Normalize leading slash: backend returns "/config/..." while frontend uses "config/..."
+      const stripLeadingSlash = (p: string) => p?.replace(/^\//, '') || '';
+      const targetPath = stripLeadingSlash(this.settingsService.currentConfigurationTemplatePath);
+      this.settingsService.currentConfigurationTemplate = this.settingsService
+        .configurationFiles?.find(
+          (confTemplate) =>
+            stripLeadingSlash(confTemplate.filePath) === targetPath,
+        );
+
+      // Lazy load DSL details for this specific configuration
+      if (this.settingsService.currentConfigurationTemplate) {
+        await this.settingsService.loadReportDetails(
+          this.settingsService.currentConfigurationTemplate
+        );
+      }
+    }
+
+    if (this.currentLeftMenu === 'emailSettingsMenuSelected') {
+      await this.initEmailSettings();
+    } else if (this.currentLeftMenu === 'reportingSettingsMenuSelected') {
+      await this.initReportingSettings();
+    }
+
+    this.settingsService.numberOfUserVariables =
+      this.xmlSettings.documentburster.settings.numberofuservariables;
+
+    this.refreshTabs();
+
+    this.messagesService.showInfo(
+      'Showing configuration ' +
+      this.settingsService.currentConfigurationTemplateName,
+    );
+
+    // wire auto-save debounce — re-subscribed on each navigation to pick up fresh xmlSettings
+    this.settingsChanged
+      .pipe(debounceTime(30))
+      .subscribe(async (_newValue) => {
+        await this.reportsService.saveReportSettings(
+          this.currentReportId,
+          this.xmlSettings,
+        );
+
+        if (
+          this.xmlSettings.documentburster.settings.capabilities
+            .reportgenerationmailmerge &&
+          this.xmlReporting.documentburster
+        )
+          await this.reportsService.saveReportDataSource(
             this.currentReportId,
-            this.xmlSettings,
+            this.xmlReporting,
           );
 
-          if (
-            this.xmlSettings.documentburster.settings.capabilities
-              .reportgenerationmailmerge &&
-            this.xmlReporting.documentburster
-          )
-            await this.reportsService.saveReportDataSource(
-              this.currentReportId,
-              this.xmlReporting,
-            );
-
-          this.messagesService.showInfo('Saved');
-        });
-    });
+        this.messagesService.showInfo('Saved');
+      });
   }
 
   private async initEmailSettings() {
@@ -1181,7 +1192,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this.modalAttachmentInfo.attachmentFilePath = Utilities.slash(filePath);
   }
 
-  // ========== EMAIL SETTINGS ==========
+  // ==========================================================================
+  //  Email configuration
+  // ==========================================================================
 
   onUseExistingEmailConnectionClick(event: Event) {
     if (event instanceof Event) {
@@ -1269,7 +1282,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   onEmailHtmlContentChanged(newContent: string) {
     if (this.xmlSettings) {
       this.xmlSettings.documentburster.settings.emailsettings.html = newContent;
-      this.settingsChangedEventHandler(newContent);
+      this.markSettingsDirty(newContent);
       this.updateEmailPreview();
     }
   }
@@ -1305,7 +1318,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
       .getElementById('htmlCodeEmailMessage')
       .dispatchEvent(new Event('input', { bubbles: true }));
   }
-  // ========== ATTACHMENTS ==========
+  // ==========================================================================
+  //  Attachment management
+  // ==========================================================================
 
   onAttachmentSelected(attachment: { selected: boolean }) {
     //console.log('=== DEBUG attachment selection ===');
@@ -1496,8 +1511,6 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this.modalAttachmentInfo.attachmentFilePath = '';
   }
 
-  // end attachments
-
   updateFormControlWithSelectedVariable(
     id: string,
     selectedVariableValue: string,
@@ -1549,7 +1562,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this.messagesService.showInfo('Saved');
   }
 
-  // ========== TEST ACTIONS (Script, SMTP, SMS) ==========
+  // ==========================================================================
+  //  Test workflows
+  // ==========================================================================
 
   async doRunTestScript() {
     if (this.executionStatsService.logStats.foundDirtyLogFiles) {
@@ -1676,7 +1691,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   async onSendTestSMS() {
     try {
-      await this.apiService.post('/connections/test-sms', {
+      await this.apiService.post('/connections/settings/test-sms', {
         fromNumber: this.modalSMSInfo.fromNumber,
         toNumber: this.modalSMSInfo.toNumber,
         configPath: this.settingsService.currentConfigurationTemplatePath,
@@ -1688,7 +1703,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     }
   }
 
-  //reporting
+  // ==========================================================================
+  //  Tabulator / Chart / Pivot config
+  // ==========================================================================
 
   activeReportTemplateContent: string = '';
   reportPreviewVisible = true;
@@ -1767,7 +1784,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   };
 
 
-  onAskForFeatureModalShow(event: Event | string) {
+  triggerFeatureRequestDialog(event: Event | string) {
     let requestedFeature: string;
 
     if (event instanceof Event)
@@ -1788,7 +1805,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ========== DATASOURCE CONFIGURATION ==========
+  // ==========================================================================
+  //  Datasource editor
+  // ==========================================================================
 
   async onDataSourceTypeChange(newValue: any) {
     this.applySeparatorForDsType(newValue);
@@ -1813,8 +1832,8 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     // Load scripts for the NEW datasource type
     await this.loadScriptsForDsType(newValue);
 
-    this.settingsChangedEventHandler(this.xmlReporting.documentburster.report);
-    this.onAskForFeatureModalShow(newValue);
+    this.markSettingsDirty(this.xmlReporting.documentburster.report);
+    this.triggerFeatureRequestDialog(newValue);
     this.changeDetectorRef.detectChanges();
   }
 
@@ -1878,19 +1897,19 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   onSqlQueryChanged(event: string) {
     this.xmlReporting.documentburster.report.datasource.sqloptions.query =
       event;
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
   }
 
   async onScriptContentChanged(event: string) {
     this.activeDatasourceScriptGroovy = event;
     await this.saveExternalReportingScript('datasourceScript');
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
   }
 
   async onTransformationCodeChanged(event: string) {
     this.activeTransformScriptGroovy = event;
     await this.saveExternalReportingScript('transformScript');
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
   }
 
   highlightGroovyCode = (editor: CodeJarContainer) => {
@@ -1962,7 +1981,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   onDatabaseConnectionChanged(connectionCode: string) {
     // Logic when SQL database connection changes
-    this.settingsChangedEventHandler(connectionCode);
+    this.markSettingsDirty(connectionCode);
     // Refresh cubes available for the newly selected connection so the
     // "Cubes" reuse button shows/hides correctly.
     this.refreshCubesForCurrentConnection();
@@ -1985,7 +2004,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ---- Cubes Reuse modal helpers ----
+  // ==========================================================================
+  //  Cubes Reuse Modal
+  // ==========================================================================
 
   async refreshCubesForCurrentConnection() {
     const dsType = this.xmlReporting?.documentburster?.report?.datasource?.type;
@@ -2086,10 +2107,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }
 
   copyCubesReuseSqlToClipboard() {
-    navigator.clipboard.writeText(this.cubesReuseGeneratedSql).then(
-      () => this.messagesService.showSuccess('SQL copied to clipboard'),
-      () => this.messagesService.showError('Failed to copy to clipboard'),
-    );
+    this._copyToClipboard(this.cubesReuseGeneratedSql, 'SQL');
   }
 
   closeCubesReuseSqlModal() {
@@ -2101,57 +2119,21 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this.isCubesReuseModalVisible = false;
   }
 
+  /** Compute skiplines from header value and write back to the options object. */
+  private handleHeaderSkipLines(opts: any): void {
+    opts.skiplines = opts.header === 'multiline' ? 2 : opts.header === 'firstline' ? 1 : 0;
+  }
+
   onSelectCsvHeader() {
-    this.xmlReporting.documentburster.report.datasource.csvoptions.skiplines = 0;
-
-    if (
-      this.xmlReporting.documentburster.report.datasource.csvoptions.header ==
-      'firstline'
-    )
-      this.xmlReporting.documentburster.report.datasource.csvoptions.skiplines = 1;
-    else if (
-      this.xmlReporting.documentburster.report.datasource.csvoptions.header ==
-      'multiline'
-    )
-      this.xmlReporting.documentburster.report.datasource.csvoptions.skiplines = 2;
+    this.handleHeaderSkipLines((this.xmlReporting as any).documentburster.report.datasource.csvoptions);
   }
 
-  // Fixed Width Header Selection Handler
   onSelectFixedWidthHeader() {
-    this.xmlReporting.documentburster.report.datasource.fixedwidthoptions.skiplines = 0;
-
-    if (
-      this.xmlReporting.documentburster.report.datasource.fixedwidthoptions
-        .header == 'firstline'
-    ) {
-      this.xmlReporting.documentburster.report.datasource.fixedwidthoptions.skiplines = 1;
-    }
-
-    this.settingsChangedEventHandler(
-      this.xmlReporting.documentburster.report.datasource.fixedwidthoptions
-        .header,
-    );
+    this.handleHeaderSkipLines((this.xmlReporting as any).documentburster.report.datasource.fixedwidthoptions);
   }
 
-  // Excel Header Selection Handler
   onSelectExcelHeader() {
-    this.xmlReporting.documentburster.report.datasource.exceloptions.skiplines = 0;
-
-    if (
-      this.xmlReporting.documentburster.report.datasource.exceloptions.header ==
-      'firstline'
-    ) {
-      this.xmlReporting.documentburster.report.datasource.exceloptions.skiplines = 1;
-    } else if (
-      this.xmlReporting.documentburster.report.datasource.exceloptions.header ==
-      'multiline'
-    ) {
-      this.xmlReporting.documentburster.report.datasource.exceloptions.skiplines = 2;
-    }
-
-    this.settingsChangedEventHandler(
-      this.xmlReporting.documentburster.report.datasource.exceloptions.header,
-    );
+    this.handleHeaderSkipLines((this.xmlReporting as any).documentburster.report.datasource.exceloptions);
   }
 
   toggleShowMoreCsvOptions() {
@@ -2166,7 +2148,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
         event.filePath;
     else this.xmlReporting.documentburster.report.template.documentpath = '';
 
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
   }
 
   // Add these methods
@@ -2206,9 +2188,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }
 
 
-  // ========== TEMPLATE CONTENT AUTOSAVE ==========
-
-  async onTemplateContentChanged(event: any) {
+  async saveTemplateAndRefreshPreview(event: any) {
 
     if (!this.autosaveEnabled) return;
 
@@ -2282,7 +2262,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
     // Case 1: Direct path provided (from editor "View in Browser" button)
     if (templatePath) {
-      const url = `${this.apiService.BACKEND_URL}/reports/view-template?path=${encodeURIComponent(templatePath)}`;
+      const url = `${this.apiService.BACKEND_URL}/reports/preview-template?path=${encodeURIComponent(templatePath)}`;
       window.open(url, '_blank');
       return;
     }
@@ -2302,12 +2282,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Use the new view-template endpoint specifically designed for browser viewing
-    const url = `${this.apiService.BACKEND_URL}/reports/view-template?path=${encodeURIComponent(templateObjectPath)}`;
+    const url = `${this.apiService.BACKEND_URL}/reports/preview-template?path=${encodeURIComponent(templateObjectPath)}`;
     window.open(url, '_blank');
   }
-
-  // ========== AI INTEGRATION ==========
 
   @ViewChild(AiManagerComponent) private aiManagerInstance!: AiManagerComponent;
 
@@ -2406,7 +2383,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }
 
   private enrichWithDashboardContext(config: AiManagerLaunchConfig) {
-    const componentsInfo = this._buildDashboardComponentsReference();
+    const componentsInfo = this._generateDashboardComponentsMarkup();
     if (componentsInfo) {
       config.promptVariables = {
         '[AVAILABLE_COMPONENTS]': componentsInfo,
@@ -2466,7 +2443,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this._populateScriptVariable(launchConfig);
   }
 
-  private _buildDashboardComponentsReference(): string {
+  private _generateDashboardComponentsMarkup(): string {
     const reportId = this.getCurrentReportCode();
     const apiBaseUrl = this.getApiBaseUrl();
     const apiKey = this.getApiKeyForUsage();
@@ -2543,7 +2520,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     }
 
     this.absoluteTemplateFolderPath =
-      await this.settingsService.resolveAbsolutePath(relativePath);
+      await this.fsService.resolveAbsolutePath(relativePath);
 
     this.absoluteTemplateFolderPath = Utilities.slash(
       this.absoluteTemplateFolderPath,
@@ -2555,12 +2532,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }
 
   async copyTemplatePathToClipboard(): Promise<void> {
-    // Copy to clipboard
-    await navigator.clipboard.writeText(this.absoluteTemplateFolderPath);
-    this.messagesService.showInfo(
-      'Folder path was copied to clipboard!',
-      'Success',
-    );
+    await this._copyToClipboard(this.absoluteTemplateFolderPath, 'Folder path');
   }
 
 
@@ -3057,89 +3029,42 @@ pivotTable {
 }
 `;
 
-  private getTransformScriptPath(): string {
+  /** Build the file path for any DSL script file given its filename suffix. */
+  private getDslScriptPath(suffix: string): string {
     const basePath = this.getCurrentConfigReportsPath();
     const configName = this.getCurrentConfigName();
-    return basePath ? `${basePath}/${configName}-additional-transformation.groovy` : '';
+    return basePath ? `${basePath}/${configName}-${suffix}.groovy` : '';
   }
 
-  private getTabulatorScriptPath(): string {
-    const basePath = this.getCurrentConfigReportsPath();
-    const configName = this.getCurrentConfigName();
-    return basePath ? `${basePath}/${configName}-tabulator-config.groovy` : '';
+  private async _copyToClipboard(snippet: string, label: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      this.messagesService.showInfo(`${label} copied to clipboard!`, 'Success');
+    } catch (err) {
+      console.error(`Failed to copy ${label}:`, err);
+      this.messagesService.showInfo(`Failed to copy ${label}.`, 'Error');
+    }
   }
-
-  private getChartScriptPath(): string {
-    const basePath = this.getCurrentConfigReportsPath();
-    const configName = this.getCurrentConfigName();
-    return basePath ? `${basePath}/${configName}-chart-config.groovy` : '';
-  }
-
-  private getPivotTableScriptPath(): string {
-    const basePath = this.getCurrentConfigReportsPath();
-    const configName = this.getCurrentConfigName();
-    return basePath ? `${basePath}/${configName}-pivot-config.groovy` : '';
-  }
-
-  generateParametersSpecUsingAI() { }
 
   copyToClipboardParametersSpecExample() {
-    if (this.exampleParamsSpecScript) {
-      navigator.clipboard
-        .writeText(this.exampleParamsSpecScript)
-        .then(() => {
-          this.messagesService.showInfo('Example parameters script copied to clipboard!', 'Success');
-        })
-        .catch((err) => {
-          console.error('Failed to copy example parameters script: ', err);
-          this.messagesService.showInfo('Failed to copy example parameters script.', 'Error');
-        });
-    }
+    if (this.exampleParamsSpecScript) this._copyToClipboard(this.exampleParamsSpecScript, 'Example parameters script');
   }
 
   copyToClipboardTabulatorConfigExample() {
-    if (this.exampleTabulatorConfigScript) {
-      navigator.clipboard
-        .writeText(this.exampleTabulatorConfigScript)
-        .then(() => {
-          this.messagesService.showInfo('Example Tabulator config script copied to clipboard!', 'Success');
-        })
-        .catch((err) => {
-          console.error('Failed to copy example Tabulator config script: ', err);
-          this.messagesService.showInfo('Failed to copy example Tabulator config script.', 'Error');
-        });
-    }
+    if (this.exampleTabulatorConfigScript) this._copyToClipboard(this.exampleTabulatorConfigScript, 'Example Tabulator config script');
   }
 
   copyToClipboardChartConfigExample() {
-    if (this.exampleChartConfigScript) {
-      navigator.clipboard
-        .writeText(this.exampleChartConfigScript)
-        .then(() => {
-          this.messagesService.showInfo('Example Chart config script copied to clipboard!', 'Success');
-        })
-        .catch((err) => {
-          console.error('Failed to copy example Chart config script: ', err);
-          this.messagesService.showInfo('Failed to copy example Chart config script.', 'Error');
-        });
-    }
+    if (this.exampleChartConfigScript) this._copyToClipboard(this.exampleChartConfigScript, 'Example Chart config script');
   }
 
   copyToClipboardPivotTableConfigExample() {
-    if (this.examplePivotTableConfigScript) {
-      navigator.clipboard
-        .writeText(this.examplePivotTableConfigScript)
-        .then(() => {
-          this.messagesService.showInfo('Example Pivot Table config script copied to clipboard!', 'Success');
-        })
-        .catch((err) => {
-          console.error('Failed to copy example Pivot Table config script: ', err);
-          this.messagesService.showInfo('Failed to copy example Pivot Table config script.', 'Error');
-        });
-    }
+    if (this.examplePivotTableConfigScript) this._copyToClipboard(this.examplePivotTableConfigScript, 'Example Pivot Table config script');
   }
 
-  // ========== Usage Tab Helper Methods ==========
+  // ==========================================================================
+  //  Usage examples
+  // ==========================================================================
 
   isDashboardOutputType(): boolean {
     return this.xmlReporting?.documentburster?.report?.template?.outputtype === 'output.dashboard';
@@ -3380,41 +3305,18 @@ pivotTable {
 
   copyUsageScriptTag() {
     const scriptTag = `<script src="${this.getWebComponentsBaseUrl()}/rb-webcomponents.umd.js"><\/script>`;
-    navigator.clipboard.writeText(scriptTag).then(() => {
-      this.messagesService.showInfo('Script tag copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy script tag: ', err);
-      this.messagesService.showInfo('Failed to copy script tag.', 'Error');
-    });
+    this._copyToClipboard(scriptTag, 'Script tag');
   }
 
   copyUsageRbReport() {
     const entityCodeAttr = this.getEntityCodeAttribute();
-    const html = `<rb-report
-  report-id="${this.getCurrentReportCode()}"${entityCodeAttr}
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-report>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo('rb-report snippet copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-report snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-report snippet.', 'Error');
-    });
+    const html = `<rb-report\n  report-id="${this.getCurrentReportCode()}"${entityCodeAttr}\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-report>`;
+    this._copyToClipboard(html, 'rb-report snippet');
   }
 
   copyUsageRbDashboard() {
-    const html = `<rb-dashboard
-  report-id="${this.getCurrentReportCode()}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-dashboard>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo('rb-dashboard snippet copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-dashboard snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-dashboard snippet.', 'Error');
-    });
+    const html = `<rb-dashboard\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-dashboard>`;
+    this._copyToClipboard(html, 'rb-dashboard snippet');
   }
 
   getDashboardUrl(): string {
@@ -3426,132 +3328,56 @@ pivotTable {
   }
 
   copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      this.messagesService.showInfo('Copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy to clipboard: ', err);
-      this.messagesService.showInfo('Failed to copy to clipboard.', 'Error');
-    });
+    this._copyToClipboard(text, 'Copied');
   }
 
   copyUsageRbTabulator() {
-    const html = `<rb-tabulator
-  report-id="${this.getCurrentReportCode()}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-tabulator>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo('rb-tabulator snippet copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-tabulator snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-tabulator snippet.', 'Error');
-    });
+    const html = `<rb-tabulator\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-tabulator>`;
+    this._copyToClipboard(html, 'rb-tabulator snippet');
   }
 
   copyUsageRbParameters() {
-    const html = `<rb-parameters
-  report-id="${this.getCurrentReportCode()}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-parameters>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo('rb-parameters snippet copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-parameters snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-parameters snippet.', 'Error');
-    });
+    const html = `<rb-parameters\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-parameters>`;
+    this._copyToClipboard(html, 'rb-parameters snippet');
   }
 
   copyUsageRbChart() {
-    const html = `<rb-chart
-  report-id="${this.getCurrentReportCode()}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-chart>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo('rb-chart snippet copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-chart snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-chart snippet.', 'Error');
-    });
+    const html = `<rb-chart\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-chart>`;
+    this._copyToClipboard(html, 'rb-chart snippet');
   }
 
   copyUsageRbPivotTable() {
-    const html = `<rb-pivottable
-  report-id="${this.getCurrentReportCode()}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-pivottable>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo('rb-pivottable snippet copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-pivottable snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-pivottable snippet.', 'Error');
-    });
+    const html = `<rb-pivottable\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-pivottable>`;
+    this._copyToClipboard(html, 'rb-pivottable snippet');
   }
 
   copyUsageRbTabulatorNamed(componentId: string) {
-    const html = `<rb-tabulator
-  report-id="${this.getCurrentReportCode()}"
-  component-id="${componentId}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-tabulator>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo(`rb-tabulator (${componentId}) copied to clipboard!`, 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-tabulator snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-tabulator snippet.', 'Error');
-    });
+    const html = `<rb-tabulator\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-tabulator>`;
+    this._copyToClipboard(html, `rb-tabulator (${componentId})`);
   }
 
   copyUsageRbChartNamed(componentId: string) {
-    const html = `<rb-chart
-  report-id="${this.getCurrentReportCode()}"
-  component-id="${componentId}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-chart>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo(`rb-chart (${componentId}) copied to clipboard!`, 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-chart snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-chart snippet.', 'Error');
-    });
+    const html = `<rb-chart\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-chart>`;
+    this._copyToClipboard(html, `rb-chart (${componentId})`);
   }
 
   copyUsageRbPivotTableNamed(componentId: string) {
-    const html = `<rb-pivottable
-  report-id="${this.getCurrentReportCode()}"
-  component-id="${componentId}"
-  api-base-url="${this.getApiBaseUrl()}"
-  api-key="${this.getApiKeyForUsage()}">
-</rb-pivottable>`;
-    navigator.clipboard.writeText(html).then(() => {
-      this.messagesService.showInfo(`rb-pivottable (${componentId}) copied to clipboard!`, 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy rb-pivottable snippet: ', err);
-      this.messagesService.showInfo('Failed to copy rb-pivottable snippet.', 'Error');
-    });
+    const html = `<rb-pivottable\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-pivottable>`;
+    this._copyToClipboard(html, `rb-pivottable (${componentId})`);
   }
 
   copyUsageCompleteExample() {
-    navigator.clipboard.writeText(this.getCompleteUsageExample()).then(() => {
-      this.messagesService.showInfo('Complete example copied to clipboard!', 'Success');
-    }).catch((err) => {
-      console.error('Failed to copy complete example: ', err);
-      this.messagesService.showInfo('Failed to copy complete example.', 'Error');
-    });
+    this._copyToClipboard(this.getCompleteUsageExample(), 'Complete example');
   }
 
-  // ========== End Usage Tab Helper Methods ==========
-
-  // ========== DSL SCRIPT HANDLERS (Parameters, Tabulator, Chart, Pivot) ==========
+  // ==========================================================================
+  //  DSL script handlers
+  // ==========================================================================
 
   async onParametersSpecChanged(event: string) {
     this.activeParamsSpecScriptGroovy = event;
     await this.saveExternalReportingScript('paramsSpecScript');
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
   }
   async onTabulatorConfigChanged(event: string) {
     // Try to read the raw textContent from the underlying CodeJar contenteditable element
@@ -3571,7 +3397,7 @@ pivotTable {
     this.activeTabulatorConfigScriptGroovy = content;
     // console.debug('Tabulator content saved length:', content.length, 'lines:', (content || '').split(/\r?\n/).length);
     await this.saveExternalReportingScript('tabulatorConfigScript');
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {
@@ -3611,7 +3437,7 @@ pivotTable {
     this.activeChartConfigScriptGroovy = content;
     // console.debug('Chart content saved length:', content.length, 'lines:', (content || '').split(/\r?\n/).length);
     await this.saveExternalReportingScript('chartConfigScript');
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {
@@ -3658,7 +3484,7 @@ pivotTable {
     this.activePivotTableConfigScriptGroovy = content;
     // console.debug('Pivot Table content saved length:', content.length, 'lines:', (content || '').split(/\r?\n/).length);
     await this.saveExternalReportingScript('pivotTableConfigScript');
-    this.settingsChangedEventHandler(event);
+    this.markSettingsDirty(event);
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {
@@ -3702,7 +3528,9 @@ pivotTable {
       console.warn('Error executing dataLoaded handler', e);
     }
   }
-  //REPORT PARAMETERS END
+  // ==========================================================================
+  //  Report parameters
+  // ==========================================================================
 
   private getCurrentConfigName(): string {
     // Prefer explicit metadata, otherwise try to derive from the configured path
@@ -3729,8 +3557,8 @@ pivotTable {
         .includes('/samples/');
 
     const basePath = samplePathIndicator
-      ? this.settingsService.CONFIGURATION_SAMPLES_FOLDER_PATH
-      : this.settingsService.CONFIGURATION_REPORTS_FOLDER_PATH;
+      ? this.appPathsService.CONFIGURATION_SAMPLES_FOLDER_PATH
+      : this.appPathsService.CONFIGURATION_REPORTS_FOLDER_PATH;
 
     // pick folder name preferring explicit metadata then derived folder
     const finalFolder = folderName && folderName !== 'unknown_config' ? folderName : folderFromPath;
@@ -3755,139 +3583,38 @@ pivotTable {
     return parts[parts.length - 2] || '';
   }
 
-  private getDatasourceScriptPath(): string {
-    const basePath = this.getCurrentConfigReportsPath();
-    const configName = this.getCurrentConfigName();
-    // Expected name: e.g., payslips-datasource-script.groovy or [configName]-script.groovy
-    // Based on your screenshot, it seems to be [configName]-script.groovy
-    return basePath ? `${basePath}/${configName}-script.groovy` : '';
-  }
-
-  private getParamsSpecScriptPath(): string {
-    const basePath = this.getCurrentConfigReportsPath();
-    const configName = this.getCurrentConfigName();
-    return basePath
-      ? `${basePath}/${configName}-report-parameters-spec.groovy`
-      : '';
-  }
-
-  // (single getTransformScriptPath is declared earlier)
+  private static readonly DSL_SCRIPT_CONFIG: Record<string, {
+    getPath: (c: ConfigurationComponent) => string;
+    property: string;
+    defaultContent: string;
+  }> = {
+    datasourceScript:      { getPath: (c) => c.getDslScriptPath('script'),                    property: 'activeDatasourceScriptGroovy',        defaultContent: '// Groovy Datasource Script' },
+    paramsSpecScript:      { getPath: (c) => c.getDslScriptPath('report-parameters-spec'),    property: 'activeParamsSpecScriptGroovy',         defaultContent: '' },
+    transformScript:       { getPath: (c) => c.getDslScriptPath('additional-transformation'), property: 'activeTransformScriptGroovy',          defaultContent: '' },
+    tabulatorConfigScript: { getPath: (c) => c.getDslScriptPath('tabulator-config'),          property: 'activeTabulatorConfigScriptGroovy',    defaultContent: '' },
+    chartConfigScript:     { getPath: (c) => c.getDslScriptPath('chart-config'),              property: 'activeChartConfigScriptGroovy',        defaultContent: '' },
+    pivotTableConfigScript:{ getPath: (c) => c.getDslScriptPath('pivot-config'),              property: 'activePivotTableConfigScriptGroovy',   defaultContent: '' },
+  };
 
   private async loadExternalReportingScript(
     scriptType: 'datasourceScript' | 'paramsSpecScript' | 'transformScript' | 'tabulatorConfigScript' | 'chartConfigScript' | 'pivotTableConfigScript'
   ): Promise<void> {
-    const configName = this.getCurrentConfigName();
-
-    let path: string;
-    let cacheKeySuffix: string;
-    let targetProperty: keyof ConfigurationComponent;
-    let defaultFileContent = '';
-
-    switch (scriptType) {
-      case 'datasourceScript':
-        path = this.getDatasourceScriptPath();
-        cacheKeySuffix = 'datasourceScript';
-        targetProperty = 'activeDatasourceScriptGroovy';
-        defaultFileContent =
-            '// Groovy Datasource Script';
-        break;
-      case 'paramsSpecScript':
-        path = this.getParamsSpecScriptPath();
-        cacheKeySuffix = 'paramsSpecScript';
-        targetProperty = 'activeParamsSpecScriptGroovy';
-        // Intentionally do not substitute the example script as a default.
-        // If the user did not save a params spec, the editor should remain empty.
-        break;
-      case 'transformScript':
-        path = this.getTransformScriptPath();
-        cacheKeySuffix = 'transformScript';
-        targetProperty = 'activeTransformScriptGroovy';
-        defaultFileContent = '';
-        break;
-      case 'tabulatorConfigScript':
-        path = this.getTabulatorScriptPath();
-        cacheKeySuffix = 'tabulatorConfigScript';
-        targetProperty = 'activeTabulatorConfigScriptGroovy';
-        // Intentionally do not substitute the example script as a default.
-        // If the user did not save a Tabulator config, the editor should remain empty.
-        break;
-      case 'chartConfigScript':
-        path = this.getChartScriptPath();
-        cacheKeySuffix = 'chartConfigScript';
-        targetProperty = 'activeChartConfigScriptGroovy';
-        // Intentionally do not substitute an example here; the editor should be empty if the user hasn't configured a chart.
-        break;
-      case 'pivotTableConfigScript':
-        path = this.getPivotTableScriptPath();
-        cacheKeySuffix = 'pivotTableConfigScript';
-        targetProperty = 'activePivotTableConfigScriptGroovy';
-        // Intentionally do not substitute an example here; the editor should be empty if the user hasn't configured a pivot table.
-        break;
-      default:
-        console.error('Unknown script type for loading:', scriptType);
-        return;
-    }
+    const cfg = ConfigurationComponent.DSL_SCRIPT_CONFIG[scriptType];
+    if (!cfg) { console.error('Unknown script type for loading:', scriptType); return; }
 
     let content = await this.reportsService.loadReportScript(this.currentReportId, scriptType);
-    // If there is no content on disk, prefer the default example provided
-    if (!content || content.trim().length === 0) {
-      content = defaultFileContent || '';
-    }
-    (this as any)[targetProperty] = content;
-    try {
-      // console.debug(`Loaded ${scriptType} from ${path}, length:`, content.length, 'lines:', (content || '').split(/\r?\n/).length);
-    } catch (e) {}
-
+    if (!content || content.trim().length === 0) content = cfg.defaultContent;
+    (this as any)[cfg.property] = content;
     this.changeDetectorRef.detectChanges();
   }
 
   private async saveExternalReportingScript(
     scriptType: 'datasourceScript' | 'paramsSpecScript' | 'transformScript' | 'tabulatorConfigScript' | 'chartConfigScript' | 'pivotTableConfigScript',
   ): Promise<void> {
-    const configName = this.getCurrentConfigName();
+    const cfg = ConfigurationComponent.DSL_SCRIPT_CONFIG[scriptType];
+    if (!cfg) { console.error('Unknown script type for saving:', scriptType); return; }
 
-    let path: string;
-    let cacheKeySuffix: string;
-    let sourceProperty: keyof ConfigurationComponent;
-    let contentToSave: string;
-
-    switch (scriptType) {
-      case 'datasourceScript':
-        path = this.getDatasourceScriptPath();
-        cacheKeySuffix = 'datasourceScript';
-        sourceProperty = 'activeDatasourceScriptGroovy';
-        break;
-      case 'paramsSpecScript':
-        path = this.getParamsSpecScriptPath();
-        cacheKeySuffix = 'paramsSpecScript';
-        sourceProperty = 'activeParamsSpecScriptGroovy';
-        break;
-      case 'transformScript':
-        path = this.getTransformScriptPath();
-        cacheKeySuffix = 'transformScript';
-        sourceProperty = 'activeTransformScriptGroovy';
-        break;
-      case 'tabulatorConfigScript':
-        path = this.getTabulatorScriptPath();
-        cacheKeySuffix = 'tabulatorConfigScript';
-        sourceProperty = 'activeTabulatorConfigScriptGroovy';
-        break;
-      case 'chartConfigScript':
-        path = this.getChartScriptPath();
-        cacheKeySuffix = 'chartConfigScript';
-        sourceProperty = 'activeChartConfigScriptGroovy';
-        break;
-      case 'pivotTableConfigScript':
-        path = this.getPivotTableScriptPath();
-        cacheKeySuffix = 'pivotTableConfigScript';
-        sourceProperty = 'activePivotTableConfigScriptGroovy';
-        break;
-      default:
-        console.error('Unknown script type for saving:', scriptType);
-        return;
-    }
-
-    contentToSave = (this as any)[sourceProperty];
+    const contentToSave = (this as any)[cfg.property] as string;
 
     let isEmptyContent = !contentToSave || contentToSave.trim() === '';
 
@@ -3925,7 +3652,9 @@ pivotTable {
   isReportDataLoading = false;
   reportDataResultIsError = false;
 
-  // ========== PASSWORD SECURITY & REVEAL TOGGLES ==========
+  // ==========================================================================
+  //  Password reveal
+  // ==========================================================================
 
   showSmtpPassword = false;
   showQaPassword = false;
@@ -3933,6 +3662,8 @@ pivotTable {
   private smtpPasswordRevealTimer: any;
   private qaPasswordRevealTimer: any;
   private twilioTokenRevealTimer: any;
+
+  // Each toggle: hide → mask + clear timer; show → fetch real value, auto-hide after 10 s.
 
   async toggleRevealSmtpPassword() {
     if (this.showSmtpPassword) {
@@ -3992,8 +3723,6 @@ pivotTable {
       } catch (e) { console.error('Failed to reveal Twilio auth token', e); }
     }
   }
-
-  // ========== QUERY EXECUTION & DATA PREVIEW ==========
 
   showTabulatorPreview = false;
   showChartPreview = false;
@@ -4259,8 +3988,6 @@ pivotTable {
 
   @ViewChild('templatesGalleryModal') templatesGalleryModal: any;
 
-  // ========== GALLERY INTEGRATION ==========
-
   templatesGalleryTags: string[] | null = null;
   istemplatesGalleryModalVisible = false;
 
@@ -4309,7 +4036,7 @@ pivotTable {
 
     if (outputType === 'output.xlsx' || outputType === 'output.pdf' || outputType === 'output.html' || outputType === 'output.dashboard') {
       this.activeReportTemplateContent = template.htmlContent[template.currentVariantIndex || 0];
-      this.settingsChangedEventHandler(this.activeReportTemplateContent);
+      this.markSettingsDirty(this.activeReportTemplateContent);
       // Explicitly save the gallery template to disk using per-output-type path
       const galleryOutputType = outputType.replace('output.', '');
       this.reportsService.saveReportTemplateByType(
@@ -4330,7 +4057,7 @@ pivotTable {
       );
     } else if (outputType === 'email.message') {
       this.xmlSettings.documentburster.settings.emailsettings.html = template.htmlContent[template.currentVariantIndex || 0];
-      this.settingsChangedEventHandler(this.xmlSettings.documentburster.settings.emailsettings.html);
+      this.markSettingsDirty(this.xmlSettings.documentburster.settings.emailsettings.html);
     }
     this.istemplatesGalleryModalVisible = false;
   }

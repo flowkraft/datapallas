@@ -56,7 +56,6 @@
             "scripts": [
               "./node_modules/jquery/dist/jquery.min.js",
               "./node_modules/bootstrap/dist/js/bootstrap.min.js",
-              "./node_modules/admin-lte/dist/js/adminlte.min.js",
               "./node_modules/marked/marked.min.js",
               "./node_modules/smartmenus/dist/jquery.smartmenus.min.js"
             ],

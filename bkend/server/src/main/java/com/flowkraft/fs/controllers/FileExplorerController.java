@@ -37,7 +37,7 @@ import com.flowkraft.system.services.FileSystemService;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping(value = "/api/fs")
+@RequestMapping(value = "/api/system/fs/explorer")
 public class FileExplorerController {
 
 	@Autowired

@@ -3,7 +3,7 @@ import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { WebSocketService } from '../../providers/websocket.service';
 import { JobsService } from '../../providers/jobs.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 
 @Component({
   selector: 'dburst-log-files-viewer-all-together',
@@ -15,7 +15,7 @@ export class LogFilesViewerAllTogetherComponent {
     protected executionStatsService: ExecutionStatsService,
     protected jobsService: JobsService,
     protected logsService: WebSocketService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
   ) {}
 
   clearQuarantinedAndLogFiles(shouldClearLogFiles: boolean) {

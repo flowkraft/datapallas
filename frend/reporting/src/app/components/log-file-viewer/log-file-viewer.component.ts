@@ -12,7 +12,6 @@ export class LogFileViewerComponent implements OnInit, OnDestroy {
   @Input() logFileName: string;
 
   constructor(
-    //protected settingsService: SettingsServiceJava,
     protected executionStatsService: ExecutionStatsService,
     protected logsService: WebSocketService,
   ) {}

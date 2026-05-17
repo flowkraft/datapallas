@@ -73,7 +73,7 @@ export const tabSMSTwilioTemplate = `<ng-template #tabSMSTwilioTemplate>
         'AREAS.CONFIGURATION.TAB-SMS-TWILIO.ACCOUNT-SID' | translate }}</div>
       <div class="col-xs-7">
         <input id="accountSid" [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.twilio.accountsid"
-            (ngModelChange)='settingsChangedEventHandler($event)' type="text" class="form-control" />
+            (ngModelChange)='markSettingsDirty($event)' type="text" class="form-control" />
       </div>
 
       <div class="col-xs-3">
@@ -93,7 +93,7 @@ export const tabSMSTwilioTemplate = `<ng-template #tabSMSTwilioTemplate>
       <div class="col-xs-7">
         <div class="input-group">
           <input id="authToken" [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.twilio.authtoken"
-            (ngModelChange)='settingsChangedEventHandler($event)' [type]="showTwilioAuthToken ? 'text' : 'password'" class="form-control" />
+            (ngModelChange)='markSettingsDirty($event)' [type]="showTwilioAuthToken ? 'text' : 'password'" class="form-control" />
           <span id="btnToggleTwilioAuthToken" class="input-group-addon" style="cursor:pointer" (click)="toggleRevealTwilioToken()">
             <i [class]="showTwilioAuthToken ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
           </span>

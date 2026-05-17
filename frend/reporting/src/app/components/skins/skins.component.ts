@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { StateStoreService } from '../../providers/state-store.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 
@@ -33,7 +33,7 @@ export class SkinsComponent implements OnInit {
   protected onInternalSettingsChanged = new Subject<string>();
   
   constructor(
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected storeService: StateStoreService,
     protected messagesService: ToastrMessagesService,
     protected router: Router,

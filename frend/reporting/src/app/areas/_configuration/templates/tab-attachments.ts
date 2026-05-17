@@ -96,7 +96,7 @@ export const tabAttachmentsTemplate = `<ng-template #tabAttachmentsTemplate>
           <div class="col-xs-7">
             <input type="checkbox" id="btnArchiveAttachmentsTogether"
               [(ngModel)]="xmlSettings?.documentburster.settings.attachments.archive.archiveattachments"
-              (ngModelChange)='settingsChangedEventHandler($event)' />
+              (ngModelChange)='markSettingsDirty($event)' />
             <label for="btnArchiveAttachmentsTogether" class="checkboxlabel">&nbsp;{{
               'AREAS.CONFIGURATION.TAB-ATTACHMENT.ARCHIVE-ALL-ATTACHMENTS' | translate }}</label>
           </div>
@@ -116,7 +116,7 @@ export const tabAttachmentsTemplate = `<ng-template #tabAttachmentsTemplate>
           <div class="col-xs-7">
             <input id="archiveFileName"
               [(ngModel)]="xmlSettings?.documentburster.settings.attachments.archive.archivefilename"
-              (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+              (ngModelChange)='markSettingsDirty($event)' class="form-control" />
           </div>
 
           <div class="col-xs-3">

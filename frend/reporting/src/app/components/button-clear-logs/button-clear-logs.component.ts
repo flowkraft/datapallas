@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { WebSocketService } from '../../providers/websocket.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 

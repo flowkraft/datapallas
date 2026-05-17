@@ -4,7 +4,7 @@ import { tabsTemplate } from './templates/reports/_tabs';
 import { tabConfigurationTemplatesTemplate } from './templates/reports/tab-conf-templates';
 import { tabLicenseTemplate } from './templates/reports/tab-license';
 
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 
 @Component({
   selector: 'dburst-configuration-reports',
@@ -15,7 +15,7 @@ import { SettingsService } from '../../providers/settings.service';
   `,
 })
 export class ConfigurationReportsComponent implements OnInit {
-  constructor(protected settingsService: SettingsService) {}
+  constructor(protected settingsService: ConfigurationRepository) {}
 
   async ngOnInit() {
     this.settingsService.currentConfigurationTemplateName = '';

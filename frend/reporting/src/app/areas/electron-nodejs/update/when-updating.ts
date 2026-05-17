@@ -1,5 +1,5 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { SettingsService } from '../../../providers/settings.service';
+import { ConfigurationRepository } from '../../../providers/configuration-repository.service';
 import { UpdateInfo } from '../updater';
 
 import { whenUpdatingTemplate } from './when-updating.template';

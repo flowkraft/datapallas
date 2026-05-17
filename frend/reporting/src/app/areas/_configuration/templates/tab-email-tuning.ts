@@ -6,7 +6,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           type="checkbox"
           id="btnSJMActive"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.active"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnSJMActive" class="checkboxlabel">
           {{ 'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-TUNING.SJM-ACTIVE' |
@@ -26,7 +26,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="replyToAddress"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.replytoaddress"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -39,7 +39,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="replyToName"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.replytoname"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -55,7 +55,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="bounceToAddress"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.bouncetoaddress"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -68,7 +68,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="bounceToName"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.bouncetoname"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -86,7 +86,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="receiptToAddress"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.receipttoaddress"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -99,7 +99,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="receiptToName"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.receipttoname"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -116,7 +116,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="dispositionNotificationToAddress"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.dispositionnotificationtoaddress"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -129,7 +129,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
         <input
           id="dispositionNotificationToName"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.dispositionnotificationtoname"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
@@ -153,7 +153,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="textCustomEmailHeaders"
           placeholder="header1, value1&#x0a;header2, value2"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.customemailheaders"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         ></textarea>
       </div>
@@ -176,7 +176,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="textCustomSessionProperties"
           placeholder="property1, value1&#x0a;property2, value2"
           [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.customsessionproperties"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         ></textarea>
       </div>
@@ -189,7 +189,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
             type="checkbox"
             id="btnJavaxMailDebug"
             [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.javaxmaildebug"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
           <label for="btnJavaxMailDebug" class="checkboxlabel">
@@ -205,7 +205,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
             type="checkbox"
             id="btnTransportModeLoggingOnly"
             [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.transportmodeloggingonly"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
           <label for="btnTransportModeLoggingOnly" class="checkboxlabel"
@@ -229,7 +229,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           <input
             id="proxyHost"
             [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.proxy.host"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             class="form-control"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
@@ -242,7 +242,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           <input
             id="proxyPort"
             [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.proxy.port"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             class="form-control"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
@@ -257,7 +257,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           <input
             id="proxyUserName"
             [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.proxy.username"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             class="form-control"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
@@ -270,7 +270,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           <input
             id="proxyPassword"
             [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.proxy.password"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             class="form-control"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
@@ -285,7 +285,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           <input
             id="proxySocks5BridgePort"
             [(ngModel)]="xmlSettings?.documentburster.settings.simplejavamail.proxy.socks5bridgeport"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             class="form-control"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />

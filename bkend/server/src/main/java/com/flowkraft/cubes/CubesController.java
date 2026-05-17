@@ -116,8 +116,8 @@ public class CubesController {
 
 	/** Generate SQL directly from DSL code (no saved cube needed — for live preview) */
 	@SuppressWarnings("unchecked")
-	@PostMapping(value = "/get-sql", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<Map<String, Object>> getSql(@RequestBody Map<String, Object> request) throws Exception {
+	@PostMapping(value = "/generate-sql", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> generateSqlFromDsl(@RequestBody Map<String, Object> request) throws Exception {
 		String dslCode = (String) request.get("dslCode");
 		CubeOptions cube = cubesService.parseDsl(dslCode);
 		return generateSqlInternal(cube, request);

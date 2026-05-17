@@ -153,12 +153,17 @@ public class ReportsService {
 					templateRelativeFilePath = "./config/samples/" + folderName + "/settings.xml";
 				}
 
+				String strDbConnectionCode = StringUtils.EMPTY;
 				if (boolReportGenerationMailMerge) {
 					String reportingXmlFilePath = Paths.get(fullFilePath).getParent().toString() + "/reporting.xml";
 					String reportingXmlFileContent = fileSystemService.unixCliCat(reportingXmlFilePath);
 
 					dsInputType = extractXmlTagValue(reportingXmlFileContent, "type", StringUtils.EMPTY);
 					scriptOptionsSelectFileExplorer = extractXmlTagValue(reportingXmlFileContent, "selectfileexplorer", "globpattern");
+
+					if (dsInputType.equals("ds.sqlquery") || dsInputType.equals("ds.scriptfile") || dsInputType.equals("ds.dashboard")) {
+						strDbConnectionCode = extractXmlTagValue(reportingXmlFileContent, "conncode", StringUtils.EMPTY);
+					}
 				}
 
 				ConfigurationFileInfo configFile = new ConfigurationFileInfo();
@@ -177,6 +182,8 @@ public class ReportsService {
 				configFile.activeClicked = false;
 				configFile.useEmlConn = boolUseEmailConnection;
 				configFile.emlConnCode = strEmailConnectionCode;
+				configFile.useDbConn = !strDbConnectionCode.isEmpty();
+				configFile.dbConnCode = strDbConnectionCode;
 
 				// NOTE: DSL options are NOT loaded here for performance
 				// They will be loaded on-demand via loadConfigDetails()

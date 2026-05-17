@@ -197,9 +197,7 @@ export class ReportsService {
       },
     };
 
-    xmlSettings.documentburster = await this.apiService.get('/reports/load', {
-      path: this.getDefaultsConfigurationValuesFilePath(),
-    });
+    xmlSettings.documentburster = await this.apiService.get('/reports/_defaults/settings');
 
     this.version = xmlSettings.documentburster.settings.version;
 
@@ -227,16 +225,10 @@ export class ReportsService {
       settings: any;
     };
   }> {
-    let xmlSettings = {
-      documentburster: { settings: {} },
-    };
-
-    xmlSettings.documentburster = await this.apiService.get(
-      '/reports/load',
-      { path: configFilePath },
-    );
-
-    return xmlSettings;
+    // Extract reportId from paths like "config/reports/my-report/settings.xml"
+    const parts = configFilePath.replace(/\\/g, '/').split('/');
+    const reportId = parts.length >= 2 ? parts[parts.length - 2] : '_defaults';
+    return this.loadReportSettings(reportId);
   }
 
   async saveReportSettings(
@@ -245,8 +237,8 @@ export class ReportsService {
       documentburster: any;
     },
   ) {
-    xmlSettings.documentburster.settings.attachments.items.attachmentItems.forEach(
-      (item: { selected: boolean }) => {
+    xmlSettings.documentburster.settings?.attachments?.items?.attachmentItems?.forEach(
+      (item: { selected?: boolean }) => {
         delete item.selected;
       },
     );
@@ -270,33 +262,6 @@ export class ReportsService {
     return this.apiService.put(
       `/reports/${encodeURIComponent(reportId)}/datasource`,
       xmlReporting.documentburster,
-    );
-  }
-
-  /**
-   * Load a template file by its path. Used when the path is known
-   * (e.g., per-output-type templates: payslips-html.html, payslips-pdf.html).
-   */
-  async loadTemplateByPath(templatePath: string): Promise<string> {
-    const textHeaders = new Headers({ Accept: 'text/plain' });
-    return this.apiService.get(
-      `/reports/load-template`,
-      { path: templatePath },
-      textHeaders,
-      'text',
-    );
-  }
-
-  /**
-   * Save a template file by its path. Used when the path is known
-   * (e.g., per-output-type templates).
-   */
-  async saveTemplateByPath(templatePath: string, content: string): Promise<void> {
-    const textHeaders = new Headers({ 'Content-Type': 'text/plain' });
-    return this.apiService.post(
-      `/reports/save-template?path=${encodeURIComponent(templatePath)}`,
-      content,
-      textHeaders,
     );
   }
 
@@ -406,7 +371,7 @@ export class ReportsService {
     }
 
     // Use minimal endpoint for fast startup, full endpoint only when explicitly needed
-    const endpoint = fullLoad ? '/reports/load-all' : '/reports/load-all-minimal';
+    const endpoint = fullLoad ? '/reports?withDetails=true' : '/reports';
     this.configurationFiles = await this.apiService.get(endpoint);
 
     return this.configurationFiles;
@@ -439,9 +404,7 @@ export class ReportsService {
     }
 
     try {
-      const details = await this.apiService.get('/reports/load-config-details', {
-        path: configFile.filePath,
-      });
+      const details = await this.apiService.get(`/reports/${encodeURIComponent(configFile.folderName)}`);
 
       if (details) {
         // Merge loaded details into the config
@@ -487,7 +450,7 @@ export class ReportsService {
     templateId: string,
     variant: number = 0,
   ): Promise<{ content: string; assetBaseDir: string }> {
-    return this.apiService.get(`/gallery/templates/${encodeURIComponent(templateId)}/content`, { variant });
+    return this.apiService.get(`/system/gallery/templates/${encodeURIComponent(templateId)}/content`, { variant });
   }
 
   /**
@@ -496,7 +459,7 @@ export class ReportsService {
   async loadGalleryTemplateReadme(templateId: string, variant: number = 0): Promise<string> {
     const textHeaders = new Headers({ Accept: 'text/plain' });
     return this.apiService.get(
-      `/gallery/templates/${encodeURIComponent(templateId)}/readme`,
+      `/system/gallery/templates/${encodeURIComponent(templateId)}/readme`,
       { variant },
       textHeaders,
       'text',
@@ -513,7 +476,7 @@ export class ReportsService {
   ): Promise<string> {
     const textHeaders = new Headers({ Accept: 'text/plain' });
     return this.apiService.get(
-      `/gallery/templates/${encodeURIComponent(templateId)}/ai-prompt`,
+      `/system/gallery/templates/${encodeURIComponent(templateId)}/ai-prompt`,
       { type, variant },
       textHeaders,
       'text',
@@ -524,19 +487,12 @@ export class ReportsService {
    * Get the URL to view a gallery template in the browser.
    */
   getGalleryTemplateViewUrl(templateId: string, variant: number = 0): string {
-    return `/api/gallery/templates/${encodeURIComponent(templateId)}/view?variant=${variant}`;
+    return `/api/system/gallery/templates/${encodeURIComponent(templateId)}/view?variant=${variant}`;
   }
 
   async loadAllReportTemplates() {
-    this.templateFiles = await this.apiService.get(
-      '/reports/load-templates-all',
-    );
-
+    this.templateFiles = await this.apiService.get('/reports?type=templates');
     return this.templateFiles;
-  }
-
-  async loadSqlOptionsAsync(sql: string) {
-    return this.apiService.get('/reports/load-sql-options', { sql });
   }
 
   getConfigurations() {
@@ -673,6 +629,49 @@ export class ReportsService {
     return this.apiService.post(
       `/reports/configurations/${reportId}/restore-defaults`,
     );
+  }
+
+  requiresInputFile(report: CfgTmplFileInfo): boolean {
+    if (!report) return true;
+    if (report.dsInputType === 'ds.jasper') return false;
+    if (report.dsInputType === 'ds.sqlquery') return false;
+    if (report.dsInputType === 'ds.scriptfile') {
+      const sel = (report.scriptOptionsSelectFileExplorer ?? 'notused');
+      return sel !== 'notused';
+    }
+    return true;
+  }
+
+  requiresParameters(report: CfgTmplFileInfo): boolean {
+    if (!report) return true;
+    return !!(report.reportParameters && report.reportParameters.length > 0);
+  }
+
+  allowedInputFileTypes(report: CfgTmplFileInfo): string {
+    if (!report) return 'notused';
+    const dsInputType = report.dsInputType;
+    const scriptOptionsSelectFileExplorer = report.scriptOptionsSelectFileExplorer;
+    if (!dsInputType) return 'notused';
+    if (['ds.csvfile', 'ds.tsvfile', 'ds.fixedwidthfile'].includes(dsInputType))
+      return '.csv, .tsv, .tab, .txt, .prn, .dat';
+    if (dsInputType === 'ds.xmlfile') return '.xml';
+    if (dsInputType === 'ds.excelfile') return '.xlsx, .xls';
+    if (dsInputType === 'ds.script') return scriptOptionsSelectFileExplorer;
+    return 'notused';
+  }
+
+  convertParamValue(type: string, value: any): any {
+    switch (type) {
+      case 'LocalDate':
+      case 'LocalDateTime':
+        return value;
+      case 'Integer':
+        return parseInt(value, 10);
+      case 'Boolean':
+        return Boolean(value);
+      default:
+        return value;
+    }
   }
 
 }

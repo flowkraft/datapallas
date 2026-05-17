@@ -24,7 +24,7 @@ export const tabWebUploadOtherWebPlatformsTemplate = `<ng-template #tabWebUpload
       <div class="col-xs-7">
         <input id="otherWebPlatformsCommand"
           [(ngModel)]="xmlSettings?.documentburster.settings.webuploadsettings.otherwebcommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">

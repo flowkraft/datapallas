@@ -57,7 +57,7 @@ export class PivotApiClient {
   public baseUrl: string;
   private abortControllers: Map<string, AbortController>;
 
-  constructor(baseUrl: string = '/api/analytics') {
+  constructor(baseUrl: string = '/api/explorations/analytics') {
     this.baseUrl = baseUrl;
     this.abortControllers = new Map();
   }

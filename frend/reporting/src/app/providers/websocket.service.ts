@@ -1,6 +1,6 @@
 import { Subject, Subscription, interval } from 'rxjs';
 import { TopicOptions, WebSocketEndpoint } from '../helpers/websocket-endpoint';
-import { SettingsService } from './settings.service';
+import { ConfigurationRepository } from './configuration-repository.service';
 import { Constants } from '../helpers/constants';
 import { ApiService } from './api.service';
 import { Injectable } from '@angular/core';
@@ -15,7 +15,7 @@ import { StateStoreService } from './state-store.service';
 export class WebSocketService extends WebSocketEndpoint {
   constructor(
     protected apiService: ApiService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected executionStatsService: ExecutionStatsService,
     protected toastMessagesService: ToastrMessagesService,
     protected stateStore: StateStoreService,

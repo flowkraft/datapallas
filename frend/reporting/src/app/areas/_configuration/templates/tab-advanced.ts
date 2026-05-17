@@ -10,7 +10,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input id="delayEachDistributionBy" [(ngModel)]="
             xmlSettings?.documentburster?.settings.delayeachdistributionby
           "
-          (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" />
+          (ngModelChange)="markSettingsDirty($event)" class="form-control" />
       </div>
     </div>
 
@@ -31,7 +31,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input id="numberOfUserVariables" [(ngModel)]="
             xmlSettings?.documentburster?.settings.numberofuservariables
           "
-          (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" />
+          (ngModelChange)="markSettingsDirty($event)" class="form-control" />
       </div>
     </div>
 
@@ -44,7 +44,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input id="burstTokenDelimitersStart" [(ngModel)]="
             xmlSettings?.documentburster?.settings.bursttokendelimiters.start
           "
-          (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" />
+          (ngModelChange)="markSettingsDirty($event)" class="form-control" />
       </div>
     </div>
     <div class="row">
@@ -54,7 +54,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input id="burstTokenDelimitersEnd" [(ngModel)]="
             xmlSettings?.documentburster?.settings.bursttokendelimiters.end
           "
-          (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" />
+          (ngModelChange)="markSettingsDirty($event)" class="form-control" />
       </div>
     </div>
 
@@ -65,7 +65,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input type="checkbox" id="btnReuseToken" [(ngModel)]="
             xmlSettings?.documentburster?.settings.reusetokenswhennotfound
           "
-          (ngModelChange)="settingsChangedEventHandler($event)" />
+          (ngModelChange)="markSettingsDirty($event)" />
         <label for="btnReuseToken" class="checkboxlabel">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED.REUSE-LAST-TOKEN' | translate }}</label>
       </div>
@@ -74,7 +74,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
     <div class="row" *ngIf="xmlSettings?.documentburster?.settings?.capabilities?.reportdistribution">
       <div class="col-xs-4">
         <input type="checkbox" id="btnHTMLEmailEditCode" [(ngModel)]="xmlSettings?.documentburster?.settings.htmlemaileditcode"
-          (ngModelChange)="settingsChangedEventHandler($event)" />
+          (ngModelChange)="markSettingsDirty($event)" />
         <label for="btnHTMLEmailEditCode" class="checkboxlabel">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED.EDIT-EMAIL-MESSAGE' | translate }}</label>
       </div>
@@ -85,7 +85,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         'AREAS.CONFIGURATION.TAB-ADVANCED.DATASOURCE-RESOLVER' | translate }}</div>
       <div class="col-xs-8" >
         <input id="dataSourceResolver" [(ngModel)]="xmlSettings?.documentburster.settings.emailsettings.dsresolver"
-          (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" />
+          (ngModelChange)="markSettingsDirty($event)" class="form-control" />
       </div>
     </div>
 
@@ -94,7 +94,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
       <div class="col-xs-12">
         <input type="checkbox" id="btnSplit2ndTime"
         [(ngModel)]="xmlSettings?.documentburster?.settings.split2ndtime"
-        (ngModelChange)='settingsChangedEventHandler($event)' />
+        (ngModelChange)='markSettingsDirty($event)' />
       <label for="btnSplit2ndTime" class="checkboxlabel">
         <strong> {{
           'AREAS.CONFIGURATION.TAB-ADVANCED.SPLIT-2ND-TIME' | translate }}</strong>
@@ -109,7 +109,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input id="burstTokenDelimitersStart2nd" [(ngModel)]="
             xmlSettings?.documentburster?.settings.bursttokendelimiters.start2nd
           "
-          (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" 
+          (ngModelChange)="markSettingsDirty($event)" class="form-control" 
           [disabled]="!xmlSettings?.documentburster?.settings?.split2ndtime"/>
       </div>
     </div>
@@ -120,7 +120,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input id="burstTokenDelimitersEnd2nd" [(ngModel)]="
             xmlSettings?.documentburster?.settings.bursttokendelimiters.end2nd
           "
-          (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" 
+          (ngModelChange)="markSettingsDirty($event)" class="form-control" 
           [disabled]="!xmlSettings?.documentburster?.settings?.split2ndtime"/>
       </div>
     </div>
@@ -132,7 +132,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <input type="checkbox" id="btnEnableIncubatingFeatures" [(ngModel)]="
             xmlSettings?.documentburster?.settings.enableincubatingfeatures
           "
-          (ngModelChange)="settingsChangedEventHandler($event); refreshTabs()" />
+          (ngModelChange)="markSettingsDirty($event); refreshTabs()" />
         <label for="btnEnableIncubatingFeatures" class="checkboxlabel">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED.ENABLE-INCUBATING-FEATURES' | translate }}</label>
       </div>

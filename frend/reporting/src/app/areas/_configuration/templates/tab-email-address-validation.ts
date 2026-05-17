@@ -13,7 +13,7 @@ export const tabEmailAddressValidationTemplate = `<ng-template #tabEmailAddressV
       <div class="col-xs-12">
         <input type="checkbox" id="btnAllowQuotedIdentifiers"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailrfc2822validator.allowquotedidentifiers"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
         <label for="btnAllowQuotedIdentifiers" class="checkboxlabel" style="text-decoration: underline;">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.ALLOW_QUOTED_IDENTIFIERS' | translate }}</label> - <span [innerHTML]="'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.INNER-HTML.ALLOW_QUOTED_IDENTIFIERS' | translate"></span>
       </div>
@@ -23,7 +23,7 @@ export const tabEmailAddressValidationTemplate = `<ng-template #tabEmailAddressV
       <div class="col-xs-12">
         <input type="checkbox" id="btnAllowParensInLocalPart"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailrfc2822validator.allowparensinlocalpart"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
         <label for="btnAllowParensInLocalPart" class="checkboxlabel" style="text-decoration: underline;">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.ALLOW_PARENS_IN_LOCALPART' | translate }}</label> - <span [innerHTML]="'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.INNER-HTML.ALLOW_PARENS_IN_LOCALPART' | translate"></span>
       </div>
@@ -33,7 +33,7 @@ export const tabEmailAddressValidationTemplate = `<ng-template #tabEmailAddressV
       <div class="col-xs-12">
         <input type="checkbox" id="btnAllowDomainLiterals"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailrfc2822validator.allowdomainliterals"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
         <label for="btnAllowDomainLiterals" class="checkboxlabel" style="text-decoration: underline;">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.ALLOW_DOMAIN_LITERALS' | translate }}</label> - <span [innerHTML]="'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.INNER-HTML.ALLOW_DOMAIN_LITERALS' | translate"></span>
       </div>
@@ -43,7 +43,7 @@ export const tabEmailAddressValidationTemplate = `<ng-template #tabEmailAddressV
       <div class="col-xs-12">
         <input type="checkbox" id="btnAllowDotInaText"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailrfc2822validator.allowdotinatext"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
         <label for="btnAllowDotInaText" class="checkboxlabel" style="text-decoration: underline;">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.ALLOW_DOT_IN_A_TEXT' | translate }}</label> - <span [innerHTML]="'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.INNER-HTML.ALLOW_DOT_IN_A_TEXT' | translate"></span>
        </div>
@@ -53,7 +53,7 @@ export const tabEmailAddressValidationTemplate = `<ng-template #tabEmailAddressV
       <div class="col-xs-12">
         <input type="checkbox" id="btnAllowSquareBracketsInaText"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailrfc2822validator.allowsquarebracketsinatext"
-          (ngModelChange)='settingsChangedEventHandler($event)' />
+          (ngModelChange)='markSettingsDirty($event)' />
         <label for="btnAllowSquareBracketsInaText" class="checkboxlabel" style="text-decoration: underline;">{{
           'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.ALLOW_SQUARE_BRACKETS_IN_A_TEXT' | translate }}</label> - <span [innerHTML]="'AREAS.CONFIGURATION.TAB-ADVANCED-EMAIL-VALIDATION.INNER-HTML.ALLOW_SQUARE_BRACKETS_IN_A_TEXT' | translate"></span>
       </div>
@@ -70,7 +70,7 @@ export const tabEmailAddressValidationTemplate = `<ng-template #tabEmailAddressV
       <div class="col-xs-12">
         <textarea class="form-control" rows="14" id="txtSkipValidationFor"
         [(ngModel)]="xmlSettings?.documentburster.settings.emailrfc2822validator.skipvalidationfor"
-        (ngModelChange)='settingsChangedEventHandler($event)'></textarea>
+        (ngModelChange)='markSettingsDirty($event)'></textarea>
       </div>
     </div>
   </div>

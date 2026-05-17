@@ -1,5 +1,5 @@
-<header class="fixed top-0 left-0 right-0 flex items-stretch z-[1030]"
-        style="height:50px; background-color:var(--app-header-bg);">
+<header class="app-header fixed left-0 right-0 flex items-stretch z-[1030]"
+        style="top:var(--cet-offset); height:50px; background-color:var(--app-header-bg);">
   <!-- Logo / Brand -->
   <a href="#" class="flex items-center justify-center shrink-0"
      style="width:230px; background-color:var(--app-logo-bg); color:var(--app-header-text); text-decoration:none;">
@@ -7,7 +7,7 @@
   </a>
 
   <!-- Nav -->
-  <nav class="flex flex-1 items-stretch overflow-hidden" role="navigation">
+  <nav class="flex flex-1 items-stretch" role="navigation">
     <!-- Left nav links -->
     <ul id="topMenu" class="flex items-stretch m-0 p-0 list-none">
 
@@ -20,7 +20,7 @@
         </a>
       </li>
 
-      <li class="dropdown flex items-stretch" routerLinkActive="active">
+      <li class="dropdown flex items-stretch relative" routerLinkActive="active">
         <a id="topMenuConfiguration" href="#" class="flex items-center px-4 dropdown-toggle"
            style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
            data-toggle="dropdown">
@@ -73,7 +73,7 @@
         </ul>
       </li>
 
-      <li class="dropdown flex items-stretch" routerLinkActive="active">
+      <li class="dropdown flex items-stretch relative" routerLinkActive="active">
         <a id="topMenuHelp" href="#" class="flex items-center px-4 dropdown-toggle"
            style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
            data-toggle="dropdown">
@@ -167,16 +167,11 @@
              [routerLink]="['/help', 'supportMenuSelected']"
              skipLocationChange="true">support@datapallas.com</a>
         </li>
-        <!-- B1.3 daisyUI coexistence smoke: d-badge renders alongside BS3 navbar -->
-        <li style="display:flex;align-items:center;padding:0 6px;">
-          <span class="d-badge d-badge-success">Online</span>
-        </li>
-        <li style="display:flex;align-items:center;padding:0 4px;opacity:0.3;">|</li>
         <!-- Control Sidebar Toggle Button -->
         <li *ngIf="!settingsService.RUNNING_IN_E2E"
-            class="flex items-center"
-            data-toggle="control-sidebar">
-          <a id="btnChangeSkin" class="px-4" style="cursor:pointer; color:var(--app-header-text); text-decoration:none;">
+            class="flex items-center">
+          <a id="btnChangeSkin" class="px-4" style="cursor:pointer; color:var(--app-header-text); text-decoration:none;"
+             (click)="toggleControlSidebar()">
             <i class="fa fa-gears"></i>
           </a>
         </li>

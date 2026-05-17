@@ -35,7 +35,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
     <div class="radio">
       <label>
         <input id="testTokensRandom" type="radio" name="optradio" [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="tr"
-          (focus)="onDifferentQualityAssuranceModeFocus('tr')" />{{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST' | translate }}
+          (focus)="selectQualityAssuranceMode('tr')" />{{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST' | translate }}
         {{ processingService.procQualityAssuranceInfo.numberOfRandomTokens }}
         {{
           'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.RANDOM-BURST-TOKENS'
@@ -43,7 +43,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
         }}</label>
       <input id="numberOfRandomTokens" class="form-control" placeholder="2"
         [(ngModel)]="processingService.procQualityAssuranceInfo.numberOfRandomTokens"
-        (focus)="onDifferentQualityAssuranceModeFocus('numberOfRandomTokens')" />
+        (focus)="selectQualityAssuranceMode('numberOfRandomTokens')" />
     </div>
 
     <p></p>
@@ -51,13 +51,13 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
     <div class="radio">
       <label>
         <input id="testTokensList" type="radio" name="optradio" [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="tl"
-          (focus)="onDifferentQualityAssuranceModeFocus('tl')" />{{
+          (focus)="selectQualityAssuranceMode('tl')" />{{
           'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST-FOLLOWING' | translate
         }}</label>
       <input id="listOfTokens" class="form-control"
         placeholder="clyde.grew@northridgehealth.org,alfreda.waldback@northridgehealth.org"
         [(ngModel)]="processingService.procQualityAssuranceInfo.listOfTokens"
-        (focus)="onDifferentQualityAssuranceModeFocus('listOfTokens')" />
+        (focus)="selectQualityAssuranceMode('listOfTokens')" />
     </div>
 
     <p></p>

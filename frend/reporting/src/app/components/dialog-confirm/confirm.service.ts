@@ -29,7 +29,6 @@ export class ConfirmService {
       this.modalRef.content.confirmationText = options.confirmationText || null;
 
       this.modalRef.content.onClose.subscribe((result: boolean) => {
-        this.modalService.hide();
         resolve(result);
       });
     });

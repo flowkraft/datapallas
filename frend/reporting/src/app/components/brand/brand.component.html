@@ -3,8 +3,8 @@
   <i
     class="fa"
     [ngClass]="isSidebarCollapsed ? 'fa-angle-right' : 'fa-angle-left'"
-    data-toggle="push-menu"
-    style="font-size: 20px; margin-right: 4px;"
+    (click)="toggleSidebar()"
+    style="font-size: 20px; margin-right: 4px; cursor: pointer;"
   ></i>
   <strong>Data</strong><em>Pallas</em>&nbsp;
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="28" height="28"

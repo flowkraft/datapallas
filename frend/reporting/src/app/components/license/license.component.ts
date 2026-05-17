@@ -4,7 +4,7 @@ import { LicenseService } from '../../providers/license.service';
 
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { StateStoreService } from '../../providers/state-store.service';
 
 @Component({
@@ -17,7 +17,7 @@ export class LicenseComponent {
   constructor(
     protected licenseService: LicenseService,
     protected confirmService: ConfirmService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected executionStatsService: ExecutionStatsService,
     protected storeService: StateStoreService,
   ) {}

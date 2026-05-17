@@ -13,7 +13,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
           id="btnUseExistingEmailConnection"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.useconn"
           (change)="onUseExistingEmailConnectionClick($event)"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
         />
         <label for="btnUseExistingEmailConnection" class="checkboxlabel"
           >&nbsp;{{
@@ -92,7 +92,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
         <input
           id="fromName"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.name"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
@@ -117,7 +117,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
         <input
           id="fromEmailAddress"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.fromaddress"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
@@ -142,7 +142,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
         <input
           id="emailServerHost"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.host"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
@@ -167,7 +167,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
         <input
           id="userName"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.userid"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
@@ -193,7 +193,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
           <input
             id="smtpPassword"
             [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.userpassword"
-            (ngModelChange)="settingsChangedEventHandler($event)"
+            (ngModelChange)="markSettingsDirty($event)"
             [type]="showSmtpPassword ? 'text' : 'password'"
             class="form-control"
             [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
@@ -223,7 +223,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
         <input
           id="smtpPort"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.port"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
@@ -246,7 +246,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
           type="checkbox"
           id="btnSSL"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.usessl"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
         <label for="btnSSL" class="checkboxlabel"
@@ -261,7 +261,7 @@ export const tabEmailConnectionSettingsTemplate = `<ng-template
           type="checkbox"
           id="btnTLS"
           [(ngModel)]="xmlSettings?.documentburster.settings.emailserver.usetls"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
         <label for="btnTLS" class="checkboxlabel"

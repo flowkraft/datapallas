@@ -7,7 +7,7 @@ export const tabUploadFTPTemplate = `<ng-template #tabUploadFTPTemplate>
       <div class="col-xs-7">
         <input id="ftpCommand" [(ngModel)]="
             xmlSettings?.documentburster.settings.uploadsettings.ftpcommand
-          " (ngModelChange)="settingsChangedEventHandler($event)" class="form-control" />
+          " (ngModelChange)="markSettingsDirty($event)" class="form-control" />
       </div>
 
       <div class="col-xs-3">

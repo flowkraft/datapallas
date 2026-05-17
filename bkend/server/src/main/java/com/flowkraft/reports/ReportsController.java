@@ -5,10 +5,17 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -34,8 +41,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.common.Utils;
+import com.flowkraft.reporting.dtos.ReportFullConfigDto;
+import com.flowkraft.reporting.dsl.chart.ChartOptionsParser;
+import com.flowkraft.reporting.dsl.filterpane.FilterPaneOptionsParser;
+import com.flowkraft.reporting.dsl.pivottable.PivotTableOptionsParser;
+import com.flowkraft.reporting.dsl.tabulator.TabulatorOptionsParser;
+import com.flowkraft.reporting.services.ReportingService;
+import com.flowkraft.exploredata.export.CanvasExportService;
 import com.flowkraft.system.services.IOUtilsService;
 import com.flowkraft.system.services.FileSystemService;
+import com.sourcekraft.documentburster.common.db.ReportDataResult;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParametersHelper;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.common.settings.model.ConfigurationFileInfo;
 import com.sourcekraft.documentburster.common.settings.model.ConnectionFileInfo;
@@ -59,10 +76,18 @@ public class ReportsController {
 	ReportsService rbSettingsService;
 
 	@Autowired
+	ReportingService reportingService;
+
+	@Autowired
 	FileSystemService fileSystemService;
 
 	@Autowired
 	IOUtilsService ioUtilsService;
+
+	@Autowired
+	CanvasExportService canvasExportService;
+
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	// ── Password masking helpers ──
 
@@ -182,121 +207,107 @@ public class ReportsController {
 
 	// Connection password masking moved to ConnectionsController
 
-	@GetMapping(value = "/load-all")
-	public Flux<ConfigurationFileInfo> loadRbSettingsAll() throws Exception {
-		return Flux.fromStream(rbSettingsService.loadSettingsAll());
-	}
+	// ── V4: Collection list (replaces /load-all, /load-all-minimal, /load-templates-all) ──
 
-	/**
-	 * MINIMAL LOADING - Fast startup endpoint.
-	 * Returns only basic metadata needed for UI menus (no DSL parsing).
-	 * Use loadConfigDetails() to get full DSL options for a specific config.
-	 */
-	@GetMapping(value = "/load-all-minimal")
-	public Flux<ConfigurationFileInfo> loadRbSettingsAllMinimal() throws Exception {
+	@GetMapping(consumes = MediaType.ALL_VALUE)
+	public Flux<ConfigurationFileInfo> listReports(
+			@RequestParam(required = false) Boolean withDetails,
+			@RequestParam(required = false) String type) throws Exception {
+		if ("templates".equals(type)) {
+			return Flux.fromStream(rbSettingsService.loadRbTemplatesAll());
+		}
+		if (Boolean.TRUE.equals(withDetails)) {
+			return Flux.fromStream(rbSettingsService.loadSettingsAll());
+		}
 		return Flux.fromStream(rbSettingsService.loadSettingsAllMinimal());
 	}
 
-	/**
-	 * FULL DETAILS LOADING - On-demand endpoint for a specific configuration.
-	 * Parses and returns DSL options (reportParameters, tabulatorOptions, etc.)
-	 * 
-	 * @param path The relative path to settings.xml (e.g., "/config/samples/_frend/sales-region-prod-qtr/settings.xml")
-	 */
-	@GetMapping(value = "/load-config-details")
-	public Mono<ConfigurationFileInfo> loadConfigDetails(@RequestParam String path) throws Exception {
-		String decodedPath = URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-		ConfigurationFileInfo details = rbSettingsService.loadConfigDetails(decodedPath);
+	// ── V4: Single report detail by ID (replaces /load-config-details?path=...) ──
+
+	@GetMapping(value = "/{id}", consumes = MediaType.ALL_VALUE)
+	public Mono<ConfigurationFileInfo> getReportDetails(@PathVariable String id) throws Exception {
+		String path = resolveSettingsPath(id);
+		ConfigurationFileInfo details = rbSettingsService.loadConfigDetails(path);
 		return details != null ? Mono.just(details) : Mono.empty();
 	}
 
-	@GetMapping(value = "/load")
-	public Mono<DocumentBursterSettings> loadRbSettings(@RequestParam String path) throws Exception {
+	// ── V4.1: Report config for web component (moved from ReportingController) ──
 
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-
-		DocumentBursterSettings dbSettings = rbSettingsService.loadSettings(fullPath);
-		maskPasswords(dbSettings);
-
-		return Mono.just(dbSettings);
-
+	@GetMapping(value = "/{reportId}/config", consumes = MediaType.ALL_VALUE)
+	public Mono<ReportFullConfigDto> getReportConfig(@PathVariable String reportId) throws Exception {
+		return Mono.just(reportingService.loadReportConfig(reportId));
 	}
 
-	@PostMapping(value = "/save")
-	public void saveRbSettings(@RequestParam String path, @RequestBody DocumentBursterSettings dbSettings)
-			throws Exception {
+	// ── V4.1: Report data (moved from ReportingController) ──
 
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-
-		preserveExistingPasswords(dbSettings, fullPath);
-		rbSettingsService.saveSettings(dbSettings, fullPath);
-
+	@GetMapping(value = "/{reportId}/data", consumes = MediaType.ALL_VALUE)
+	public Mono<ReportDataResult> fetchReportData(
+			@PathVariable String reportId,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size,
+			@RequestParam(required = false, defaultValue = "false") Boolean testMode,
+			@RequestParam(required = false) String componentId,
+			@RequestParam Map<String, String> parameters) throws Exception {
+		parameters.remove("page");
+		parameters.remove("size");
+		parameters.remove("testMode");
+		String sort = extractBracketParams(parameters, "sort");
+		String filter = extractBracketParams(parameters, "filter");
+		ReportDataResult result = reportingService.fetchReportData(reportId, parameters, testMode);
+		result = reportingService.applyServerSideOperations(result, page, size, sort, filter);
+		return Mono.just(result);
 	}
 
-	@GetMapping(value = "/load-reporting")
-	public Mono<ReportingSettings> loadRbSettingsReporting(@RequestParam String path) throws Exception {
+	// ── V4.3: Unified DSL parse (replaces 5 /parse-* endpoints in ReportingController) ──
 
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-
-		return Mono.just(rbSettingsService.loadSettingsReporting(fullPath));
-
+	@PostMapping(value = "/{reportId}/parse/{kind}")
+	public Mono<?> parseDsl(
+			@PathVariable String reportId,
+			@PathVariable String kind,
+			@RequestBody String dslCode,
+			@RequestParam(required = false) String connectionCode) throws Exception {
+		String cleaned = dslCode.replaceAll("^\"|\"$", "")
+				.replace("\\n", "\n")
+				.replace("\\t", "\t")
+				.replace("\\\"", "\"");
+		switch (kind) {
+			case "parameters": {
+				List<ReportParameter> params = ReportParametersHelper.parseGroovyParametersDslCode(cleaned);
+				if (connectionCode != null && !connectionCode.isEmpty()) {
+					reportingService.resolveParameterSqlOptions(params, connectionCode);
+				}
+				return Mono.just(params);
+			}
+			case "tabulator":
+				return Mono.just(TabulatorOptionsParser.parseGroovyTabulatorDslCode(cleaned));
+			case "chart":
+				return Mono.just(ChartOptionsParser.parseGroovyChartDslCode(cleaned));
+			case "pivot":
+				return Mono.just(PivotTableOptionsParser.parseGroovyPivotTableDslCode(cleaned));
+			case "filterpane":
+				return Mono.just(FilterPaneOptionsParser.parseGroovyFilterPaneDslCode(cleaned));
+			default:
+				return Mono.error(new IllegalArgumentException("Unknown DSL kind: " + kind));
+		}
 	}
 
-	@PostMapping(value = "/save-reporting")
-	public void saveRbReportSettingsReporting(@RequestParam String path, @RequestBody ReportingSettings dbSettings)
-			throws Exception {
-
-		// System.out.println("saveRbReportSettingsReporting dbSettings = " +
-		// dbSettings);
-
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-
-		rbSettingsService.saveSettingsReporting(dbSettings, fullPath);
-
-	}
-
-	@GetMapping(value = "/load-templates-all")
-	public Flux<ConfigurationFileInfo> loadRbTemplatesAll() throws Exception {
-		return Flux.fromStream(rbSettingsService.loadRbTemplatesAll());
-	}
-
-	@PostMapping(value = "/save-template", consumes = "text/plain")
-	Mono<Void> saveTemplate(@RequestParam String path, @RequestBody Optional<String> content) throws Exception {
-
-		// System.out.println("/fs/write-string-to-file content = " + content);
-
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-
-		// System.out.println("/fs/write-string-to-file fullPath = " + fullPath);
-
-		return Mono.fromCallable(() -> {
-			fileSystemService.fsWriteStringToFile(fullPath, content);
-			return null;
-		});
-	}
-
-	@GetMapping(value = "/load-template", produces = MediaType.TEXT_PLAIN_VALUE)
-	Mono<String> readFileToString(@RequestParam String path) throws Exception {
-		String decodedPath = URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-		// Strip leading slash so path is always treated as relative (on Linux,
-		// "/samples/..." is absolute and would bypass the base directory prepend)
-		String relPath = decodedPath.startsWith("/") ? decodedPath.substring(1) : decodedPath;
-		String fullPath = Paths.get(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, relPath).toString();
-
-		
-		//System.out.println("/load-template Full path: " + fullPath);
-
-		// Ensure fileSystemService.unixCliCat can handle the corrected fullPath
-		String fileContent = fileSystemService.unixCliCat(fullPath);
-		// Return empty string if content is null to avoid potential NPEs downstream
-		// and align with previous behavior causing JSON parse error on failure.
-		return Mono.just(fileContent != null ? fileContent : "");
-
+	private String extractBracketParams(Map<String, String> params, String prefix) throws Exception {
+		TreeMap<Integer, Map<String, String>> indexed = new TreeMap<>();
+		String pat = prefix + "[";
+		Iterator<Map.Entry<String, String>> it = params.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<String, String> e = it.next();
+			if (e.getKey().startsWith(pat)) {
+				String rest = e.getKey().substring(pat.length());
+				int cb = rest.indexOf(']');
+				int idx = Integer.parseInt(rest.substring(0, cb));
+				String key = rest.substring(cb + 2, rest.length() - 1);
+				indexed.computeIfAbsent(idx, k -> new LinkedHashMap<>()).put(key, e.getValue());
+				it.remove();
+			}
+		}
+		if (indexed.isEmpty()) return null;
+		return objectMapper.writeValueAsString(new ArrayList<>(indexed.values()));
 	}
 
 	@GetMapping(value = "/serve-asset", produces = MediaType.ALL_VALUE)
@@ -339,7 +350,7 @@ public class ReportsController {
 		}
 	}
 
-	@GetMapping(value = "/view-template", produces = MediaType.TEXT_HTML_VALUE)
+	@GetMapping(value = "/preview-template", produces = MediaType.TEXT_HTML_VALUE)
 	public Mono<ResponseEntity<String>> viewTemplate(@RequestParam String path) throws Exception {
 		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
 				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
@@ -579,6 +590,17 @@ public class ReportsController {
 
 	// ── Simplified template endpoints (backend resolves path from config) ──
 
+	/**
+	 * GET /api/reports/{id}/preview — return the saved HTML dashboard template fragment
+	 * (moved from ExploreDataController GET /api/explorations/template/{reportId}).
+	 */
+	@GetMapping(value = "/{id}/preview", produces = MediaType.TEXT_HTML_VALUE, consumes = MediaType.ALL_VALUE)
+	public ResponseEntity<String> getDashboardPreview(@PathVariable String id) throws Exception {
+		String html = canvasExportService.getTemplateHtml(id);
+		if (html == null) return ResponseEntity.notFound().build();
+		return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
+	}
+
 	@GetMapping(value = "/{reportId}/template", produces = MediaType.TEXT_PLAIN_VALUE, consumes = MediaType.ALL_VALUE)
 	public Mono<String> loadReportTemplateAuto(@PathVariable String reportId) throws Exception {
 		String templatePath = resolveTemplatePathFromConfig(reportId);
@@ -705,6 +727,10 @@ public class ReportsController {
 		String burstPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml";
 		if ("burst".equals(reportId) && new File(burstPath).exists())
 			return burstPath;
+
+		String defaultsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/_defaults/settings.xml";
+		if ("_defaults".equals(reportId) && new File(defaultsPath).exists())
+			return defaultsPath;
 
 		// Default to reports path even if doesn't exist yet (for create)
 		return reportsPath;

@@ -13,7 +13,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
           <label>
             <input type="radio" id="stopImmediatelyOnError" name="failJob"
               [(ngModel)]="xmlSettings?.documentburster.settings.failjobifanydistributionfails"
-              (ngModelChange)='settingsChangedEventHandler($event)' [value]="true" />{{
+              (ngModelChange)='markSettingsDirty($event)' [value]="true" />{{
             'AREAS.CONFIGURATION.TAB-ADVANCED-ERROR-HANDLING.STOP-ALL-DOCUMENT' | translate }}</label>
         </div>
 
@@ -21,7 +21,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
           <label>
             <input type="radio" id="continueOnError" name="failJob"
               [(ngModel)]="xmlSettings?.documentburster.settings.failjobifanydistributionfails"
-              (ngModelChange)='settingsChangedEventHandler($event)' [value]="false" />{{
+              (ngModelChange)='markSettingsDirty($event)' [value]="false" />{{
             'AREAS.CONFIGURATION.TAB-ADVANCED-ERROR-HANDLING.CONTINUE-DOCUMENT-DELIVERY' | translate }}</label>
         </div>
 
@@ -33,7 +33,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
 
     <input type="checkbox" id="btnEnableRetryPolicy"
       [(ngModel)]="xmlSettings?.documentburster.settings.enableretrypolicy"
-      (ngModelChange)='settingsChangedEventHandler($event)' />
+      (ngModelChange)='markSettingsDirty($event)' />
     <label for="btnEnableRetryPolicy" class="checkboxlabel">
 
       <strong style="text-decoration: underline;"> {{
@@ -51,7 +51,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
       </div>
       <div class="col-xs-8">
         <input id="retryPolicyDelay" [(ngModel)]="xmlSettings?.documentburster.settings.retrypolicy.delay"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control"
+          (ngModelChange)='markSettingsDirty($event)' class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.enableretrypolicy" />
       </div>
 
@@ -79,7 +79,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
       </div>
       <div class="col-xs-8">
         <input id="retryPolicyMaxDelay" [(ngModel)]="xmlSettings?.documentburster.settings.retrypolicy.maxdelay"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control"
+          (ngModelChange)='markSettingsDirty($event)' class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.enableretrypolicy" />
       </div>
 
@@ -110,7 +110,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
       </div>
       <div class="col-xs-8">
         <input id="retryPolicyMaxRetries" [(ngModel)]="xmlSettings?.documentburster.settings.retrypolicy.maxretries"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control"
+          (ngModelChange)='markSettingsDirty($event)' class="form-control"
           [disabled]="!xmlSettings?.documentburster.settings.enableretrypolicy" />
       </div>
 

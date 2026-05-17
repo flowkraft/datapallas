@@ -9,7 +9,7 @@ import dayjs from 'dayjs';
 import { Changelog, Release, parser } from 'keep-a-changelog';
 import { LicenseService } from '../../../providers/license.service';
 import Utilities from '../../../helpers/utilities';
-import { SettingsService } from '../../../providers/settings.service';
+import { ConfigurationRepository } from '../../../providers/configuration-repository.service';
 import { FsService } from '../../../providers/fs.service';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -46,7 +46,7 @@ export class WhatsNewComponent {
 
   constructor(
     private apiService: ApiService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected licenseService: LicenseService,
     protected fsService: FsService,
     protected stateStore: StateStoreService,
@@ -89,7 +89,7 @@ export class WhatsNewComponent {
   }
 
   async getBlogPosts(): Promise<BlogPost[]> {
-    const data = await this.apiService.get('/system/blog-posts');
+    const data = await this.apiService.get('/system/info/news');
     //console.log(`data = ${JSON.stringify(data)}`);
     //const result = await Utilities.parseStringPromise(data);
     return data.channel.item;

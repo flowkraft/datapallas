@@ -38,12 +38,12 @@ export class AiManagerService {
 
   /** Fetch all prompts — metadata only (no promptText). */
   getAllPrompts(): Observable<PromptInfo[]> {
-    return from(this.apiService.get('/ai/prompts'));
+    return from(this.apiService.get('/system/ai-prompts'));
   }
 
   /** Fetch a single prompt by id — includes full promptText. */
   getPromptById(id: string): Observable<PromptInfo> {
-    return from(this.apiService.get(`/ai/prompts/${encodeURIComponent(id)}`));
+    return from(this.apiService.get(`/system/ai-prompts/${encodeURIComponent(id)}`));
   }
 
   /** Fetch all prompts then filter client-side by category. */

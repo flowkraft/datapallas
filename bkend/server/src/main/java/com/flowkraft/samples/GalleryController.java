@@ -15,7 +15,7 @@ import java.util.*;
  * Gallery template endpoints — the frontend uses template IDs, never file paths.
  */
 @RestController
-@RequestMapping(value = "/api/gallery")
+@RequestMapping(value = "/api/system/gallery")
 public class GalleryController {
 
     private static final Logger log = LoggerFactory.getLogger(GalleryController.class);

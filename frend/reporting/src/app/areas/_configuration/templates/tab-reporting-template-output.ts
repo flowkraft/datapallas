@@ -1,4 +1,4 @@
-export const tabReportingTemplateOutputTemplate = `<ng-template
+﻿export const tabReportingTemplateOutputTemplate = `<ng-template
   #tabReportingTemplateOutputTemplate
 >
   <div class="well">
@@ -11,7 +11,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
           id="reportOutputType"
           class="form-control"
           [(ngModel)]="xmlReporting?.documentburster.report.template.outputtype"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           (change)="onReportOutputTypeChanged()"
           [disabled]="isOutputTypeLocked"
         >
@@ -105,7 +105,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
         <ngx-codejar
           id="codeJarJrxmlTemplateEditor"
           [(code)]="activeReportTemplateContent"
-          (update)="onTemplateContentChanged($event)"
+          (update)="saveTemplateAndRefreshPreview($event)"
           [highlightMethod]="highlightXmlCode"
           [highlighter]="'prism'"
           [showLineNumbers]="true"
@@ -158,7 +158,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
                   {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.NO-TEMPLATES-FOUND' | translate }}<br>
                   <code id="noDocxTemplatesFoundCode" style="background-color: #f8f8f8; padding: 4px; display: block; word-break: break-all;">
                     {{absoluteTemplateFolderPath ? absoluteTemplateFolderPath : 
-                      (settingsService.CONFIGURATION_TEMPLATES_FOLDER_PATH + '/reports/' + 
+                      (appPathsService.CONFIGURATION_TEMPLATES_FOLDER_PATH + '/reports/' + 
                       settingsService.currentConfigurationTemplate?.folderName)}}
                   </code>
                 </div>
@@ -215,7 +215,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
                 <ngx-codejar
                   id="codeJarHtmlTemplateEditor"  
                   [(code)]="activeReportTemplateContent"
-                  (update)="onTemplateContentChanged($event)"
+                  (update)="saveTemplateAndRefreshPreview($event)"
                   [highlightMethod]="highlightHtmlCode"
                   [highlighter]="'prism'"
                   [showLineNumbers]="true"
@@ -241,7 +241,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
                     <ngx-codejar
                       id="codeJarHtmlTemplateEditor"
                       [(code)]="activeReportTemplateContent"
-                      (update)="onTemplateContentChanged($event)"
+                      (update)="saveTemplateAndRefreshPreview($event)"
                       [highlightMethod]="highlightHtmlCode"
                       [highlighter]="'prism'"
                       [showLineNumbers]="true"
@@ -285,7 +285,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
                       id="codeJarHtmlTemplateEditor"
                       *ngIf="xmlReporting?.documentburster.report.template.outputtype === 'output.fop2pdf'"
                       [(code)]="activeReportTemplateContent"
-                      (update)="onTemplateContentChanged($event)"
+                      (update)="saveTemplateAndRefreshPreview($event)"
                       [highlightMethod]="highlightXmlCode"
                       [highlighter]="'prism'"
                       [showLineNumbers]="true"
@@ -296,7 +296,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
                       id="codeJarHtmlTemplateEditor"
                       *ngIf="xmlReporting?.documentburster.report.template.outputtype === 'output.any'"
                       [(code)]="activeReportTemplateContent"
-                      (update)="onTemplateContentChanged($event)"
+                      (update)="saveTemplateAndRefreshPreview($event)"
                       [highlightMethod]="highlightFreeMarkerCode"
                       [highlighter]="'prism'"
                       [showLineNumbers]="true"
@@ -316,7 +316,7 @@ export const tabReportingTemplateOutputTemplate = `<ng-template
           <button
             type="button"
             class="btn btn-primary btn-block"
-            (click)="onAskForFeatureModalShow(xmlReporting?.documentburster.report.template.outputtype)"
+            (click)="triggerFeatureRequestDialog(xmlReporting?.documentburster.report.template.outputtype)"
           >
             <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.REQUEST-FEATURE' | translate"></span>
           </button>

@@ -8,7 +8,7 @@ export const tabUploadCloudTemplate = `<ng-template #tabUploadCloudTemplate>
         <input
           id="cloudUploadCommand"
           [(ngModel)]="xmlSettings?.documentburster.settings.uploadsettings.cloudcommand"
-          (ngModelChange)="settingsChangedEventHandler($event)"
+          (ngModelChange)="markSettingsDirty($event)"
           class="form-control"
         />
       </div>

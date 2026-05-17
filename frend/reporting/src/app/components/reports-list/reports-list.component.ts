@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Input } from '@angular/core';
+﻿import { Component, OnInit, OnDestroy, Input } from '@angular/core';
 import { Router } from '@angular/router';
 
 import _ from 'lodash';
@@ -6,7 +6,8 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
-import { CfgTmplFileInfo, SettingsService } from '../../providers/settings.service';
+import { CfgTmplFileInfo, ConfigurationRepository } from '../../providers/configuration-repository.service';
+import { AppPathsService } from '../../providers/app-paths.service';
 import { ReportsService } from '../../providers/reports.service';
 import { SamplesService } from '../../providers/samples.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
@@ -242,7 +243,8 @@ export class ReportsListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(
-    public settingsService: SettingsService,
+    public settingsService: ConfigurationRepository,
+    protected appPathsService: AppPathsService,
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
     protected reportsService: ReportsService,
@@ -542,7 +544,7 @@ export class ReportsListComponent implements OnInit, OnDestroy {
         ? _.kebabCase(this.modalConfigurationTemplateInfo.fileInfo.templateName)
         : '${folder-name}';
 
-      this.modalConfigurationTemplateInfo.fileInfo.filePath = `${this.settingsService.CONFIGURATION_REPORTS_FOLDER_PATH}/${folderName}/settings.xml`;
+      this.modalConfigurationTemplateInfo.fileInfo.filePath = `${this.appPathsService.CONFIGURATION_REPORTS_FOLDER_PATH}/${folderName}/settings.xml`;
       this.modalConfigurationTemplateInfo.fileInfo.relativeFilePath = `./config/reports/${folderName}/settings.xml`;
       this.modalConfigurationTemplateInfo.fileInfo.folderName = folderName;
 

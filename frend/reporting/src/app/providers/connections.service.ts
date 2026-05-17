@@ -96,12 +96,9 @@ export class ConnectionsService {
       documentburster: { connection: {} },
     };
 
-    const isDbConnection = connectionId.startsWith('db-');
-    const settingsEndpoint = isDbConnection
-      ? `/connections/${encodeURIComponent(connectionId)}/database/settings`
-      : `/connections/${encodeURIComponent(connectionId)}/email/settings`;
-
-    xmlConnectionSettings.documentburster = await this.apiService.get(settingsEndpoint);
+    xmlConnectionSettings.documentburster = await this.apiService.get(
+      `/connections/${encodeURIComponent(connectionId)}`,
+    );
 
     return xmlConnectionSettings;
   }
@@ -112,16 +109,8 @@ export class ConnectionsService {
       documentburster: {};
     },
   ) {
-    // Determine connection type from ID convention
-    const isDbConnection = connectionId.startsWith('db-');
-
-    // Use ID-based endpoints — backend resolves the file path
-    const endpoint = isDbConnection
-      ? `/connections/${encodeURIComponent(connectionId)}/database`
-      : `/connections/${encodeURIComponent(connectionId)}/email`;
-
     return this.apiService.put(
-      endpoint,
+      `/connections/${encodeURIComponent(connectionId)}`,
       xmlConnectionSettings.documentburster,
     );
   }
@@ -141,10 +130,10 @@ export class ConnectionsService {
     this.connectionsLoading = 1;
 
     const emailConnFiles = await this.apiService.get(
-      '/connections/email',
+      '/connections?type=email',
     );
     const dbConnFiles = await this.apiService.get(
-      '/connections/database',
+      '/connections?type=database',
     );
 
     // Combine all connection files
@@ -246,7 +235,13 @@ export class ConnectionsService {
   }
 
   async testConnection(connectionId: string, type: 'email' | 'email-inline' | 'database'): Promise<any> {
-    return this.apiService.post(`/connections/${connectionId}/test`, { type });
+    if (type === 'database') {
+      return this.apiService.post(`/connections/${connectionId}/test-database`, {});
+    } else {
+      return this.apiService.post(`/connections/${connectionId}/test-email`, {
+        inline: type === 'email-inline' ? 'true' : undefined,
+      });
+    }
   }
 
   async deleteConnection(connectionId: string): Promise<void> {
@@ -275,7 +270,7 @@ export class ConnectionsService {
   }
 
   async runCustomSeed(connectionCode: string, script: string, params?: Record<string, any>): Promise<any> {
-    return this.apiService.post(`/connections/${encodeURIComponent(connectionCode)}/run-custom-seed`, { script, params });
+    return this.apiService.post(`/connections/${encodeURIComponent(connectionCode)}/run-seed`, { script, params });
   }
 
   async getSeedStatus(connectionCode: string): Promise<{ hasSeedData: boolean; tables: Array<{ name: string; count: number }> }> {
@@ -283,22 +278,28 @@ export class ConnectionsService {
   }
 
   async getSeedTemplates(): Promise<Array<{ id: string; displayName: string; description: string; source: string }>> {
-    return this.apiService.get('/seed-templates');
+    return this.apiService.get('/connections/seed-templates');
   }
 
-  async startEmailOAuth(payload: {
-    provider: string;
-    tenantId?: string;
-    clientId: string;
-    authorizeUrl?: string;
-    tokenUrl?: string;
-    scope?: string;
-  }): Promise<{ flowId: string }> {
-    return this.apiService.post('/oauth/email/start', payload);
+  async startEmailOAuth(
+    connectionId: string,
+    payload: {
+      provider: string;
+      tenantId?: string;
+      clientId: string;
+      authorizeUrl?: string;
+      tokenUrl?: string;
+      scope?: string;
+    },
+  ): Promise<{ flowId: string }> {
+    return this.apiService.post(`/connections/${encodeURIComponent(connectionId)}/oauth-sign-in`, payload);
   }
 
-  async cancelEmailOAuth(flowId: string): Promise<void> {
-    return this.apiService.post(`/oauth/email/${flowId}/cancel`, {});
+  async cancelEmailOAuth(connectionId: string, flowId: string): Promise<void> {
+    return this.apiService.post(
+      `/connections/${encodeURIComponent(connectionId)}/oauth-flow/${flowId}/cancel`,
+      {},
+    );
   }
 
   refreshConnectionsUsedByInformation(

@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 
 import { systemDiagnosticsTemplate } from './system-diagnostics.template';
 import { ConfirmService } from '../../../components/dialog-confirm/confirm.service';
-import { SettingsService } from '../../../providers/settings.service';
+import { ConfigurationRepository } from '../../../providers/configuration-repository.service';
 import { RbElectronService } from '../electron.service';
 import { StateStoreService } from '../../../providers/state-store.service';
 
@@ -14,7 +14,7 @@ export class SystemDiagnosticsComponent {
   constructor(
     //protected electronService: ElectronService,
     protected stateStore: StateStoreService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected confirmService: ConfirmService,
   ) {}
 

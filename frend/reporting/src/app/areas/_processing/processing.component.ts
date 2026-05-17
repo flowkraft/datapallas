@@ -42,8 +42,8 @@ import { SampleInfo, SamplesService } from '../../providers/samples.service';
 import {
   CfgTmplFileInfo,
   ReportParameter,
-  SettingsService,
-} from '../../providers/settings.service';
+  ConfigurationRepository,
+} from '../../providers/configuration-repository.service';
 import { ApiService } from '../../providers/api.service';
 import { JobsService } from '../../providers/jobs.service';
 import { SystemService } from '../../providers/system.service';
@@ -63,10 +63,10 @@ import { AiManagerComponent, AiManagerLaunchConfig } from '../../components/ai-m
   selector: 'dburst-processing',
   template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
-           style="top:50px; left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
+           style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
     </aside>
-    <div class="relative" style="margin-left:230px; padding-top:50px; min-height:calc(100vh - 80px);">
+    <div class="relative" style="margin-left:230px; padding-top:calc(50px + var(--cet-offset)); min-height:calc(100vh - 80px - var(--cet-offset));">
       <section class="content"><div>${tabsTemplate}</div></section>
     </div>
     ${tabBurstTemplate} ${tabReportGenerationMailMergeTemplate}
@@ -297,7 +297,7 @@ export class ProcessingComponent implements OnInit {
   protected apiService            = inject(ApiService);
   protected jobsService           = inject(JobsService);
   protected systemService         = inject(SystemService);
-  protected settingsService       = inject(SettingsService);
+  protected settingsService       = inject(ConfigurationRepository);
   protected appsManagerService    = inject(AppsManagerService);
   protected confirmService        = inject(ConfirmService);
   protected infoService           = inject(InfoService);
@@ -317,7 +317,9 @@ export class ProcessingComponent implements OnInit {
     this.isReportDataLoading = false;
   }
 
-  // ========== SHARED HELPERS ==========
+  // ==========================================================================
+  //  Lifecycle & route initialization
+  // ==========================================================================
 
   /**
    * Normalize a config file path for CLI execution.
@@ -347,8 +349,6 @@ export class ProcessingComponent implements OnInit {
     if (!uploadedFilesInfo || !uploadedFilesInfo.length) return null;
     return uploadedFilesInfo[0].filePath;
   }
-
-  // ========== INITIALIZATION ==========
 
   async ngOnInit() {
     this.cmsPortalApp = [await this.appsManagerService.getAppById('cms-webportal')];
@@ -500,6 +500,10 @@ export class ProcessingComponent implements OnInit {
     }
   }
 
+  // ==========================================================================
+  //  Tab & dashboard view state
+  // ==========================================================================
+
   refreshTabs() {
     this.visibleTabs = [];
     this.changeDetectorRef.detectChanges();
@@ -508,20 +512,13 @@ export class ProcessingComponent implements OnInit {
       return item.selectedMenu === this.currentLeftMenu;
     }).visibleTabs;
 
-    //if (this.currentLeftMenu == 'burstMenuSelected') {
     const mailMergeConfigurations =
       this.settingsService.getMailMergeConfigurations({
         samples: this.processingService.procReportingMailMergeInfo.isSample,
       });
 
-    //console.log(
-    //  `refreshTabs mailMergeConfigurations = ${JSON.stringify(mailMergeConfigurations)}`,
-    //);
-
     this.numberOfGenerateReportsConfigured =
       mailMergeConfigurations?.length || 0;
-
-    //}
 
     this.visibleTabs = this.ALL_TABS.filter((item) =>
       visibleTabsIds.includes(item.id),
@@ -531,20 +528,11 @@ export class ProcessingComponent implements OnInit {
     }));
   }
 
-  // ========== BURST ==========
+  // ==========================================================================
+  //  Input file handling (upload + selection)
+  // ==========================================================================
 
   onBurstFileSelected(event: Event) {
-    /*
-    console.log(
-      'onBurstFileSelected Before selection procBurstInfo:',
-      this.processingService.procBurstInfo,
-    );
-
-    console.log(
-      'onBurstFileSelected Before selection procQualityAssuranceInfo:',
-      this.processingService.procQualityAssuranceInfo,
-    );
-    */
     const target = event.target as HTMLInputElement;
 
     // Set burst info
@@ -560,21 +548,6 @@ export class ProcessingComponent implements OnInit {
       this.processingService.procBurstInfo.inputFileName;
     this.processingService.procQualityAssuranceInfo.prefilledInputFilePath = '';
     this.processingService.procQualityAssuranceInfo.whichAction = 'burst';
-    /*
-    console.log(
-      `processingService.procQualityAssuranceInfo.inputFileName ( onBurstFileSelected) = ${this.processingService.procQualityAssuranceInfo.inputFileName}`,
-    );
-
-    console.log(
-      'onBurstFileSelected After selection procBurstInfo:',
-      JSON.stringify(this.processingService.procBurstInfo),
-    );
-
-    console.log(
-      'onBurstFileSelected After selection procQualityAssuranceInfo:',
-      JSON.stringify(this.processingService.procQualityAssuranceInfo),
-    );
-    */
   }
 
   resetProcInfo() {
@@ -611,25 +584,15 @@ export class ProcessingComponent implements OnInit {
       '';
     this.processingService.procReportingMailMergeInfo.prefilledConfigurationFilePath =
       '';
-    //this.processingService.procReportingMailMergeInfo.isSample = false;
 
-    if (this.burstFileUploadInput?.nativeElement) {
-      (this.burstFileUploadInput.nativeElement as HTMLInputElement).value = '';
-    }
+    this.clearAllFileInputs();
+  }
 
-    if (this.reportingFileUploadInput?.nativeElement) {
-      (this.reportingFileUploadInput.nativeElement as HTMLInputElement).value =
-        '';
-    }
-
-    if (this.qaFileUploadInput?.nativeElement) {
-      (this.qaFileUploadInput.nativeElement as HTMLInputElement).value = '';
-    }
-    if (this.mergeFilesUploadInput?.nativeElement) {
-      (this.mergeFilesUploadInput.nativeElement as HTMLInputElement).value = '';
-    }
-
-    //console.log('resetProcInfo:');
+  private clearAllFileInputs(): void {
+    if (this.burstFileUploadInput?.nativeElement) this.burstFileUploadInput.nativeElement.value = '';
+    if (this.reportingFileUploadInput?.nativeElement) this.reportingFileUploadInput.nativeElement.value = '';
+    if (this.qaFileUploadInput?.nativeElement) this.qaFileUploadInput.nativeElement.value = '';
+    if (this.mergeFilesUploadInput?.nativeElement) this.mergeFilesUploadInput.nativeElement.value = '';
   }
 
   async onMailMergeClassicReportFileSelected(event: Event) {
@@ -658,245 +621,224 @@ export class ProcessingComponent implements OnInit {
       'csv-generate-reports';
   }
 
-  disableRunTest() { }
+  // ==========================================================================
+  //  Job submission — Burst / Generate / Merge / QA
+  // ==========================================================================
 
-  noActiveJobs() { }
+  private blockedByDirtyLogs(): boolean {
+    if (!this.executionStatsService.logStats.foundDirtyLogFiles) return false;
+    this.infoService.showInformation({
+      message: 'Log files are not empty. You need to press the Clear Logs button first.',
+    });
+    return true;
+  }
+
+  private async confirmAndStartJob(
+    question: string,
+    workingOnLabel: string,
+    jobAction: () => void | Promise<void>,
+  ): Promise<void> {
+    this.confirmService.askConfirmation({
+      message: question,
+      confirmAction: async () => {
+        this.messagesService.showInfo(
+          `Working on ${workingOnLabel}. Please wait.`, '', { messageClass: 'java-started' },
+        );
+        await jobAction();
+        this.resetProcInfo();
+      },
+    });
+  }
 
   doBurst() {
-    if (this.executionStatsService.logStats.foundDirtyLogFiles) {
-      const dialogMessage =
-        'Log files are not empty. You need to press the Clear Logs button first.';
+    if (this.blockedByDirtyLogs()) return;
 
-      this.infoService.showInformation({
-        message: dialogMessage,
-      });
-    } else {
-      //console.log(
-      //  `this.processingService.procBurstInfo.isSample = ${this.processingService.procBurstInfo.isSample}`,
-      //);
+    if (this.processingService.procBurstInfo.isSample) {
+      this.processingService.procBurstInfo.inputFileName = Utilities.basename(
+        this.processingService.procBurstInfo.prefilledInputFilePath,
+      );
+    }
+    const dialogQuestion = `Burst file ${this.processingService.procBurstInfo.inputFileName}?`;
 
-      if (this.processingService.procBurstInfo.isSample) {
-        this.processingService.procBurstInfo.inputFileName = Utilities.basename(
-          this.processingService.procBurstInfo.prefilledInputFilePath,
+    this.confirmService.askConfirmation({
+      message: dialogQuestion,
+      confirmAction: async () => {
+        let inputFilePath =
+          this.processingService.procBurstInfo.prefilledInputFilePath;
+        let configFilePath =
+          this.processingService.procBurstInfo.prefilledConfigurationFilePath;
+
+        if (!this.processingService.procBurstInfo.isSample) {
+          const uploaded = await this.uploadInputFile(
+            this.processingService.procBurstInfo.inputFile,
+            this.processingService.procBurstInfo.inputFileName,
+          );
+          if (!uploaded) return;
+          inputFilePath = uploaded;
+        }
+
+        this.messagesService.showInfo(
+          'Working on ' + this.processingService.procBurstInfo.inputFileName + '. Please wait.',
+          '', { messageClass: 'java-started' },
         );
-      }
-      const dialogQuestion = `Burst file ${this.processingService.procBurstInfo.inputFileName}?`;
 
-      this.confirmService.askConfirmation({
-        message: dialogQuestion,
-        confirmAction: async () => {
-          let inputFilePath =
-            this.processingService.procBurstInfo.prefilledInputFilePath;
-          let configFilePath =
-            this.processingService.procBurstInfo.prefilledConfigurationFilePath;
+        const burstReportId = configFilePath
+          ? Utilities.basename(Utilities.dirname(configFilePath))
+          : undefined;
 
-          if (!this.processingService.procBurstInfo.isSample) {
+        this.jobsService.burst({
+          inputFile: inputFilePath,
+          reportId: burstReportId,
+        });
+
+        this.resetProcInfo();
+      },
+    });
+  }
+
+  doGenerateReports() {
+    if (this.blockedByDirtyLogs()) return;
+
+    const selectedReport =
+      this.processingService.procReportingMailMergeInfo
+        .selectedMailMergeClassicReport;
+    const doesSelectedReportRequiresAnInputFile =
+      this.requiresInputFile();
+
+    const doesSelectedReportRequiresParameters =
+      this.requiresParameters();
+
+    if (this.processingService.procReportingMailMergeInfo.isSample) {
+      if (doesSelectedReportRequiresAnInputFile)
+        this.processingService.procReportingMailMergeInfo.inputFileName =
+          Utilities.basename(
+            this.processingService.procReportingMailMergeInfo
+              .prefilledInputFilePath,
+          );
+    }
+    let dialogQuestion = `Burst file ${this.processingService.procReportingMailMergeInfo.inputFileName}?`;
+
+    if (!this.requiresInputFile())
+      dialogQuestion = `Burst report ${selectedReport.templateName}?`;
+
+    this.confirmService.askConfirmation({
+      message: dialogQuestion,
+      confirmAction: async () => {
+
+        let inputFilePath = '';
+
+        if (doesSelectedReportRequiresAnInputFile) {
+          inputFilePath =
+            this.processingService.procReportingMailMergeInfo
+              .prefilledInputFilePath;
+          if (!this.processingService.procReportingMailMergeInfo.isSample) {
             const uploaded = await this.uploadInputFile(
-              this.processingService.procBurstInfo.inputFile,
-              this.processingService.procBurstInfo.inputFileName,
+              this.processingService.procReportingMailMergeInfo.inputFile,
+              this.processingService.procReportingMailMergeInfo.inputFileName,
             );
             if (!uploaded) return;
             inputFilePath = uploaded;
           }
+        }
 
-          this.messagesService.showInfo(
-            'Working on ' + this.processingService.procBurstInfo.inputFileName + '. Please wait.',
-            '', { messageClass: 'java-started' },
-          );
+        this.messagesService.showInfo(
+          'Working on ' + this.processingService.procReportingMailMergeInfo.inputFileName + '. Please wait.',
+          '', { messageClass: 'java-started' },
+        );
 
-          const burstReportId = configFilePath
-            ? Utilities.basename(Utilities.dirname(configFilePath))
-            : undefined;
+        // Determine the input: either a file path (CSV/Excel) or the template name (SQL/Script/Jasper)
+        let input = inputFilePath || undefined;
+        if (!input && (selectedReport.dsInputType === 'ds.sqlquery' || selectedReport.dsInputType === 'ds.scriptfile' || selectedReport.dsInputType === 'ds.jasper')) {
+          input = selectedReport.templateName;
+        }
 
-          this.jobsService.burst({
-            inputFile: inputFilePath,
-            reportId: burstReportId,
-          });
+        // Build params map from reportParamsValues
+        let paramsMap: Record<string, string> | undefined;
+        if (doesSelectedReportRequiresParameters && this.reportParamsValues && Object.keys(this.reportParamsValues).length > 0) {
+          paramsMap = {};
+          for (const [key, value] of Object.entries(this.reportParamsValues)) {
+            paramsMap[key] = String(value);
+          }
+        }
 
-          this.resetProcInfo();
-        },
-      });
-    }
+        this.jobsService.generate({
+          reportId: selectedReport.folderName,
+          input,
+          params: paramsMap,
+        });
+
+        this.resetProcInfo();
+      },
+    });
   }
 
-  doGenerateReports() {
-    if (this.executionStatsService.logStats.foundDirtyLogFiles) {
-      const dialogMessage =
-        'Log files are not empty. You need to press the Clear Logs button first.';
+  // ==========================================================================
+  //  Merge file list management
+  // ==========================================================================
 
-      this.infoService.showInformation({
-        message: dialogMessage,
-      });
-    } else {
-      const selectedReport =
-        this.processingService.procReportingMailMergeInfo
-          .selectedMailMergeClassicReport;
-      const doesSelectedReportRequiresAnInputFile =
-        this.doesSelectedReportRequiresAnInputFile();
-
-      const doesSelectedReportRequiresParameters =
-        this.doesSelectedReportRequiresParameters();
-
-      if (this.processingService.procReportingMailMergeInfo.isSample) {
-        if (doesSelectedReportRequiresAnInputFile)
-          this.processingService.procReportingMailMergeInfo.inputFileName =
-            Utilities.basename(
-              this.processingService.procReportingMailMergeInfo
-                .prefilledInputFilePath,
-            );
-      }
-      let dialogQuestion = `Burst file ${this.processingService.procReportingMailMergeInfo.inputFileName}?`;
-
-      if (!this.doesSelectedReportRequiresAnInputFile())
-        dialogQuestion = `Burst report ${selectedReport.templateName}?`;
-
-      this.confirmService.askConfirmation({
-        message: dialogQuestion,
-        confirmAction: async () => {
-
-          let inputFilePath = '';
-
-          if (doesSelectedReportRequiresAnInputFile) {
-            inputFilePath =
-              this.processingService.procReportingMailMergeInfo
-                .prefilledInputFilePath;
-            if (!this.processingService.procReportingMailMergeInfo.isSample) {
-              const uploaded = await this.uploadInputFile(
-                this.processingService.procReportingMailMergeInfo.inputFile,
-                this.processingService.procReportingMailMergeInfo.inputFileName,
-              );
-              if (!uploaded) return;
-              inputFilePath = uploaded;
-            }
-          }
-
-          this.messagesService.showInfo(
-            'Working on ' + this.processingService.procReportingMailMergeInfo.inputFileName + '. Please wait.',
-            '', { messageClass: 'java-started' },
-          );
-
-          // Determine the input: either a file path (CSV/Excel) or the template name (SQL/Script/Jasper)
-          let input = inputFilePath || undefined;
-          if (!input && (selectedReport.dsInputType === 'ds.sqlquery' || selectedReport.dsInputType === 'ds.scriptfile' || selectedReport.dsInputType === 'ds.jasper')) {
-            input = selectedReport.templateName;
-          }
-
-          // Build params map from reportParamsValues
-          let paramsMap: Record<string, string> | undefined;
-          if (doesSelectedReportRequiresParameters && this.reportParamsValues && Object.keys(this.reportParamsValues).length > 0) {
-            paramsMap = {};
-            for (const [key, value] of Object.entries(this.reportParamsValues)) {
-              paramsMap[key] = String(value);
-            }
-          }
-
-          this.jobsService.generate({
-            reportId: selectedReport.folderName,
-            input,
-            params: paramsMap,
-          });
-
-          //console.log(`doGenerateReports configFilePath = ${configFilePath}`);
-
-          this.resetProcInfo();
-        },
-      });
-    }
-  }
-
-  // ========== END BURST ==========
-
-  // ========== MERGE → BURST ==========
   doMergeBurst() {
-    if (this.executionStatsService.logStats.foundDirtyLogFiles) {
-      const dialogMessage =
-        'Log files are not empty. You need to press the Clear Logs button first.';
+    if (this.blockedByDirtyLogs()) return;
 
-      this.infoService.showInformation({
-        message: dialogMessage,
-      });
-    } else {
-      const dialogQuestion = 'Post a new job?';
+    const dialogQuestion = 'Post a new job?';
 
-      this.confirmService.askConfirmation({
-        message: dialogQuestion,
-        confirmAction: async () => {
-          let mergeFilePath = '';
+    this.confirmService.askConfirmation({
+      message: dialogQuestion,
+      confirmAction: async () => {
+        let mergeFilePath = '';
 
-          if (!this.processingService.procBurstInfo.isSample) {
-            const formData = new FormData();
-            this.processingService.procMergeBurstInfo.inputFiles.forEach(
-              (inputFile, index) => {
-                formData.append('files', inputFile.file, inputFile.name);
-              },
-            );
-
-            const uploadedFilesInfo = await this.jobsService.uploadMultiple(formData);
-            if (!uploadedFilesInfo || !uploadedFilesInfo.length) {
-              return;
-            }
-
-            const uploadResult = await this.jobsService.prepareMergeList(
-                uploadedFilesInfo.map((fileInfo: { filePath: string }) => fileInfo.filePath),
-              );
-            mergeFilePath = uploadResult.listFile;
-          } else if (this.processingService.procBurstInfo.isSample) {
-            const sampleResult = await this.jobsService.prepareMergeList(
-                this.processingService.procMergeBurstInfo.inputFiles.map(
-                  (fileInfo: { path: string }) => fileInfo.path,
-                ),
-              );
-            mergeFilePath = sampleResult.listFile;
-          }
-
-          this.messagesService.showInfo(
-            'Working on ' + this.processingService.procMergeBurstInfo.mergedFileName + '. Please wait.',
-            '', { messageClass: 'java-started' },
+        if (!this.processingService.procBurstInfo.isSample) {
+          const formData = new FormData();
+          this.processingService.procMergeBurstInfo.inputFiles.forEach(
+            (inputFile, index) => {
+              formData.append('files', inputFile.file, inputFile.name);
+            },
           );
 
-          this.jobsService.merge({
-            listFile: mergeFilePath,
-            outputName: this.processingService.procMergeBurstInfo.mergedFileName,
-            burst: this.processingService.procMergeBurstInfo.shouldBurstResultedMergedFile,
-          });
+          const uploadedFilesInfo = await this.jobsService.uploadMultiple(formData);
+          if (!uploadedFilesInfo || !uploadedFilesInfo.length) {
+            return;
+          }
 
-          this.resetProcInfo();
-        },
-      });
-    }
+          const uploadResult = await this.jobsService.prepareMergeList(
+              uploadedFilesInfo.map((fileInfo: { filePath: string }) => fileInfo.filePath),
+            );
+          mergeFilePath = uploadResult.listFile;
+        } else if (this.processingService.procBurstInfo.isSample) {
+          const sampleResult = await this.jobsService.prepareMergeList(
+              this.processingService.procMergeBurstInfo.inputFiles.map(
+                (fileInfo: { path: string }) => fileInfo.path,
+              ),
+            );
+          mergeFilePath = sampleResult.listFile;
+        }
+
+        this.messagesService.showInfo(
+          'Working on ' + this.processingService.procMergeBurstInfo.mergedFileName + '. Please wait.',
+          '', { messageClass: 'java-started' },
+        );
+
+        this.jobsService.merge({
+          listFile: mergeFilePath,
+          outputName: this.processingService.procMergeBurstInfo.mergedFileName,
+          burst: this.processingService.procMergeBurstInfo.shouldBurstResultedMergedFile,
+        });
+
+        this.resetProcInfo();
+      },
+    });
   }
 
   onFilesAdded(event: Event) {
     const target = event.target as HTMLInputElement;
     const files = Array.from(target.files);
 
-    //alert('test');
-
-    //console.log(`onFilesAdded files = ${JSON.stringify(files)}`);
-
     files.forEach((file) => {
       this.processingService.procMergeBurstInfo.inputFiles.push({
         id: this.processingService.procMergeBurstInfo.inputFiles.length,
         name: file.name,
-        //path: file.path,
         file: file,
       });
     });
-
-    /*
-    console.log(
-      `onFilesAdded - inputFiles: ${JSON.stringify(
-        this.processingService.procMergeBurstInfo.inputFiles.map(
-          (inputFile) => ({
-            name: inputFile.name,
-            path: inputFile.path,
-            fileName: inputFile.file.name,
-            fileSize: inputFile.file.size,
-          }),
-        ),
-      )}`,
-    );
-    */
 
     target.value = '';
   }
@@ -904,7 +846,6 @@ export class ProcessingComponent implements OnInit {
   onFileSelected(file: { id: string }) {
     this.processingService.procMergeBurstInfo.inputFiles.forEach((each) => {
       if (each.id === file.id) {
-        //console.log(`selected id = ${file.id}`);
         each.selected = true;
         this.processingService.procMergeBurstInfo.selectedFile = file;
       } else {
@@ -944,14 +885,6 @@ export class ProcessingComponent implements OnInit {
         this.processingService.procMergeBurstInfo.selectedFile,
       );
     }
-
-    //console.log(
-    //  JSON.stringify(
-    //    this.processingService.procMergeBurstInfo.inputFiles.map(
-    //      (inputFile) => inputFile.name,
-    //    ),
-    //  ),
-    //);
   }
 
   onSelectedFileDown() {
@@ -973,13 +906,6 @@ export class ProcessingComponent implements OnInit {
         this.processingService.procMergeBurstInfo.selectedFile,
       );
     }
-    //console.log(
-    //  JSON.stringify(
-    //    this.processingService.procMergeBurstInfo.inputFiles.map(
-    //      (inputFile) => inputFile.name,
-    //    ),
-    //  ),
-    //);
   }
 
   onClearFiles() {
@@ -991,13 +917,6 @@ export class ProcessingComponent implements OnInit {
         this.processingService.procMergeBurstInfo.inputFiles = [];
       },
     });
-    //console.log(
-    //   JSON.stringify(
-    //     this.processingService.procMergeBurstInfo.inputFiles.map(
-    //       (inputFile) => inputFile.name,
-    //     ),
-    //   ),
-    //);
   }
 
   async saveMergedFileSetting() {
@@ -1013,9 +932,6 @@ export class ProcessingComponent implements OnInit {
     array.splice(to, 0, array.splice(from, 1)[0]);
   }
 
-  // ========== END MERGE → BURST ==========
-
-  // ========== QUALITY ASSURANCE ==========
   onQAFileSelected(event: Event) {
     const target = event.target as HTMLInputElement;
     this.processingService.procQualityAssuranceInfo.inputFile = target.files[0];
@@ -1024,84 +940,77 @@ export class ProcessingComponent implements OnInit {
   }
 
   doRunTest() {
-    if (this.executionStatsService.logStats.foundDirtyLogFiles) {
-      const dialogMessage =
-        'Log files are not empty. You need to press the Clear Logs button first.';
+    if (this.blockedByDirtyLogs()) return;
 
-      this.infoService.showInformation({
-        message: dialogMessage,
-      });
-    } else {
-      if (this.processingService.procBurstInfo.isSample) {
-        this.processingService.procQualityAssuranceInfo.inputFileName =
-          Utilities.basename(
-            this.processingService.procQualityAssuranceInfo
-              .prefilledInputFilePath,
-          );
-      }
-
-      const dialogQuestion = `Test file ${this.processingService.procQualityAssuranceInfo.inputFileName}?`;
-
-      this.confirmService.askConfirmation({
-        message: dialogQuestion,
-        confirmAction: async () => {
-          let inputFilePath =
-            this.processingService.procQualityAssuranceInfo
-              .prefilledInputFilePath;
-          const configFilePath =
-            this.processingService.procQualityAssuranceInfo
-              .prefilledConfigurationFilePath;
-
-          // Handle file upload if needed
-          if (!this.processingService.procBurstInfo.isSample) {
-            const uploaded = await this.uploadInputFile(
-              this.processingService.procQualityAssuranceInfo.inputFile,
-              this.processingService.procQualityAssuranceInfo.inputFileName,
-              true, // useQaEndpoint
-            );
-            if (uploaded) {
-              inputFilePath = uploaded;
-            }
-          }
-
-          // Build QA testing params
-          const qaMode = this.processingService.procQualityAssuranceInfo.mode;
-          const qaParams: any = { inputFile: inputFilePath };
-
-          if (qaMode === 'ta') {
-            qaParams.testAll = true;
-          } else if (qaMode === 'tl') {
-            qaParams.testList = this.processingService.procQualityAssuranceInfo.listOfTokens
-              .toString()
-              .replace(/, +/g, ',');
-          } else if (qaMode === 'tr') {
-            qaParams.testRandom = Number(this.processingService.procQualityAssuranceInfo.numberOfRandomTokens);
-          }
-
-          // Resolve reportId for generate QA
-          if (this.processingService.procQualityAssuranceInfo.whichAction === 'csv-generate-reports' && configFilePath) {
-            qaParams.reportId = Utilities.basename(Utilities.dirname(configFilePath));
-          }
-
-          this.messagesService.showInfo(
-            'Working on ' + Utilities.basename(inputFilePath) + '. Please wait.',
-            '', { messageClass: 'java-started' },
-          );
-
-          // Execute via REST — burst or generate with QA params
-          if (this.processingService.procQualityAssuranceInfo.whichAction === 'burst') {
-            this.jobsService.burst(qaParams);
-          } else {
-            this.jobsService.generate({ ...qaParams, input: inputFilePath });
-          }
-
-          this.resetProcInfo();
-        },
-      });
+    if (this.processingService.procBurstInfo.isSample) {
+      this.processingService.procQualityAssuranceInfo.inputFileName =
+        Utilities.basename(
+          this.processingService.procQualityAssuranceInfo
+            .prefilledInputFilePath,
+        );
     }
+
+    const dialogQuestion = `Test file ${this.processingService.procQualityAssuranceInfo.inputFileName}?`;
+
+    this.confirmService.askConfirmation({
+      message: dialogQuestion,
+      confirmAction: async () => {
+        let inputFilePath =
+          this.processingService.procQualityAssuranceInfo
+            .prefilledInputFilePath;
+        const configFilePath =
+          this.processingService.procQualityAssuranceInfo
+            .prefilledConfigurationFilePath;
+
+        // Handle file upload if needed
+        if (!this.processingService.procBurstInfo.isSample) {
+          const uploaded = await this.uploadInputFile(
+            this.processingService.procQualityAssuranceInfo.inputFile,
+            this.processingService.procQualityAssuranceInfo.inputFileName,
+            true, // useQaEndpoint
+          );
+          if (uploaded) {
+            inputFilePath = uploaded;
+          }
+        }
+
+        // Build QA testing params
+        const qaMode = this.processingService.procQualityAssuranceInfo.mode;
+        const qaParams: any = { inputFile: inputFilePath };
+
+        if (qaMode === 'ta') {
+          qaParams.testAll = true;
+        } else if (qaMode === 'tl') {
+          qaParams.testList = this.processingService.procQualityAssuranceInfo.listOfTokens
+            .toString()
+            .replace(/, +/g, ',');
+        } else if (qaMode === 'tr') {
+          qaParams.testRandom = Number(this.processingService.procQualityAssuranceInfo.numberOfRandomTokens);
+        }
+
+        // Resolve reportId for generate QA
+        if (this.processingService.procQualityAssuranceInfo.whichAction === 'csv-generate-reports' && configFilePath) {
+          qaParams.reportId = Utilities.basename(Utilities.dirname(configFilePath));
+        }
+
+        this.messagesService.showInfo(
+          'Working on ' + Utilities.basename(inputFilePath) + '. Please wait.',
+          '', { messageClass: 'java-started' },
+        );
+
+        // Execute via REST — burst or generate with QA params
+        if (this.processingService.procQualityAssuranceInfo.whichAction === 'burst') {
+          this.jobsService.burst(qaParams);
+        } else {
+          this.jobsService.generate({ ...qaParams, input: inputFilePath });
+        }
+
+        this.resetProcInfo();
+      },
+    });
   }
 
-  onDifferentQualityAssuranceModeFocus(mode) {
+  selectQualityAssuranceMode(mode) {
     switch (mode) {
       case 'tl':
         document.getElementById('listOfTokens').focus();
@@ -1160,11 +1069,11 @@ export class ProcessingComponent implements OnInit {
     return disableRunTest;
   }
 
-  async checkIfTestEmailServerIsStarted() {
-    //console.log(
-    //  `this.xmlSettings.documentburster.settings.qualityassurance.emailserver.weburl = ${this.xmlSettings.documentburster.settings.qualityassurance.emailserver.weburl}`,
-    //);
+  // ==========================================================================
+  //  Test Email Server (MailHog start/stop)
+  // ==========================================================================
 
+  async checkIfTestEmailServerIsStarted() {
     let testEmailServerStatus = 'stopped';
     const qaEmailServerStarted = await this.systemService.checkUrl(
       encodeURIComponent(
@@ -1172,8 +1081,6 @@ export class ProcessingComponent implements OnInit {
           .weburl,
       ),
     );
-
-    //console.log(`qaEmailServerStarted = ${qaEmailServerStarted}`);
 
     if (qaEmailServerStarted) testEmailServerStatus = 'started';
 
@@ -1183,10 +1090,6 @@ export class ProcessingComponent implements OnInit {
     )
       this.processingService.procQualityAssuranceInfo.testEmailServerStatus =
         testEmailServerStatus;
-
-    //console.log(
-    //  `this.processingService.procQualityAssuranceInfo.testEmailServerStatus = ${this.processingService.procQualityAssuranceInfo.testEmailServerStatus}`,
-    //);
   }
 
   doStartStopTestEmailServer(command: string) {
@@ -1211,7 +1114,8 @@ export class ProcessingComponent implements OnInit {
 
         // Fire and forget — startTestEmailServer.bat runs MailHog in the foreground
         // so the HTTP response never returns while MailHog is running.
-        this.apiService.post('/system/test-email-server', { action }).catch(() => {});
+        const endpoint = command === 'shut' ? '/system/test-email-server/stop' : '/system/test-email-server/start';
+        this.apiService.post(endpoint).catch(() => {});
 
         // Poll until the email server reaches the expected state
         const expectedStatus = command === 'shut' ? 'stopped' : 'started';
@@ -1225,39 +1129,33 @@ export class ProcessingComponent implements OnInit {
     });
   }
 
-  // ========== END QUALITY ASSURANCE ==========
+  // ==========================================================================
+  //  Job control — resume / cancel
+  // ==========================================================================
 
-  // ========== STOP / CANCEL / RESUME ==========
   doResumeJob(jobFilePath: string) {
-    if (this.executionStatsService.logStats.foundDirtyLogFiles) {
-      const dialogMessage =
-        'Log files are not empty. You need to press the Clear Logs button first.';
+    if (this.blockedByDirtyLogs()) return;
 
-      this.infoService.showInformation({
-        message: dialogMessage,
-      });
-    } else {
-      const dialogQuestion = 'Resume processing this job?';
+    const dialogQuestion = 'Resume processing this job?';
 
-      this.confirmService.askConfirmation({
-        message: dialogQuestion,
-        confirmAction: () => {
-          this.executionStatsService.jobStats.jobsToResume = [];
+    this.confirmService.askConfirmation({
+      message: dialogQuestion,
+      confirmAction: () => {
+        this.executionStatsService.jobStats.jobsToResume = [];
 
-          this.messagesService.showInfo(
-            'Working on ' + Utilities.basename(jobFilePath) + '. Please wait.',
-            '', { messageClass: 'java-started' },
-          );
+        this.messagesService.showInfo(
+          'Working on ' + Utilities.basename(jobFilePath) + '. Please wait.',
+          '', { messageClass: 'java-started' },
+        );
 
-          this.apiService.post('/jobs/resume', {
-            id: jobFilePath,
-            info: jobFilePath,
-          });
+        this.apiService.post('/jobs/resume', {
+          id: jobFilePath,
+          info: jobFilePath,
+        });
 
-          this.executionStatsService.jobStats.jobsToResume = [];
-        },
-      });
-    }
+        this.executionStatsService.jobStats.jobsToResume = [];
+      },
+    });
   }
 
   clearResumeJob(jobFilePath: string) {
@@ -1266,19 +1164,17 @@ export class ProcessingComponent implements OnInit {
     this.confirmService.askConfirmation({
       message: dialogQuestion,
       confirmAction: async () => {
-        await this.apiService.delete('/jobs/cancel/resume', {
-          id: jobFilePath,
-          info: jobFilePath,
-        });
+        await this.jobsService.cancel(jobFilePath);
         this.messagesService.showInfo('Job was cleared.');
         this.executionStatsService.jobStats.jobsToResume = [];
       },
     });
   }
 
-  // end stop / cancel / resume
+  // ==========================================================================
+  //  Report parameter form handling
+  // ==========================================================================
 
-  // ========== REPORT GENERATION / MAIL MERGE ==========
   reportParamsValid = false;
   reportParamsValues: { [key: string]: any } = {};
 
@@ -1296,18 +1192,15 @@ export class ProcessingComponent implements OnInit {
     const isValid = (event as CustomEvent<boolean>).detail;
     this.reportParamsValid = isValid;
     this.changeDetectorRef.detectChanges();
-    //console.log('Report parameters form validity:', isValid);
   }
 
-  // Add handler for the form's value
   onReportParamsValuesChange(event: Event) {
     // Web component emits CustomEvent with data in .detail
     const values = (event as CustomEvent<{ [key: string]: any }>).detail;
-    //console.log('Form parameter values:', values);
     this.reportParamsValues = values;
   }
 
-  groupByMailMergeHelper(report: any) {
+  groupReportsByType(report: any) {
     if (report.type === 'config-jasper-reports') return 'JasperReports';
     if (report.type === 'config-reports') return 'Reports';
     return 'Samples';
@@ -1324,7 +1217,6 @@ export class ProcessingComponent implements OnInit {
   }
 
   onTabError(msg: string) {
-    //console.error('❌ Tabulator error:', msg);
   }
 
   onViewDataFiltered(event: any) {
@@ -1366,9 +1258,10 @@ export class ProcessingComponent implements OnInit {
       .filter(Boolean); // Remove any null values
   }
 
-  // ========== END REPORT GENERATION / MAIL MERGE ==========
+  // ==========================================================================
+  //  Sample mode (Try It / Learn More / visibility toggle)
+  // ==========================================================================
 
-  // ========== SAMPLES ==========
   async doShowSamplesLearnMoreModal(clickedSample: SampleInfo) {
     this.modalSampleInfo.id = clickedSample.id;
 
@@ -1393,8 +1286,6 @@ export class ProcessingComponent implements OnInit {
       true,
     );
 
-    //console.log('inputDetailsHTML:', inputDetailsHTML);
-
     this.modalSampleInfo.inputDetails =
       this.sanitizer.bypassSecurityTrustHtml(inputDetailsHTML);
 
@@ -1406,8 +1297,6 @@ export class ProcessingComponent implements OnInit {
     this.modalSampleInfo.documentation = clickedSample.documentation;
 
     this.isModalSamplesLearnMoreVisible = true;
-
-    //console.log('Modal input details:', this.modalSampleInfo.inputDetails);
   }
 
   async doCloseSamplesLearnMoreModal() {
@@ -1472,114 +1361,79 @@ export class ProcessingComponent implements OnInit {
   }
 
   doSampleTryIt(clickedSample: SampleInfo) {
-    //console.log(`clickedSample = ${JSON.stringify(clickedSample)}`);
-
     if (clickedSample.jobType === 'dashboard') {
       window.open(`http://localhost:9090/dashboard/${clickedSample.configurationFileName}`, '_blank');
       return;
     }
 
-    const dialogQuestion = clickedSample.notes;
     this.confirmService.askConfirmation({
-      message: dialogQuestion,
+      message: clickedSample.notes,
       confirmLabel: "OK and I'll click 'Burst' in the following screen",
       declineLabel: "No, I'll do it later",
       confirmAction: () => {
         this.processingService.procBurstInfo.isSample = false;
         this.processingService.procReportingMailMergeInfo.isSample = false;
-
-        if (['burst', 'merge-burst'].includes(clickedSample.jobType)) {
-          this.processingService.procBurstInfo.isSample = true;
-
-          if (clickedSample.jobType == 'burst') {
-            const inputDocumentShortPath = clickedSample.input.data[0].replace(
-              'file:',
-              '',
-            );
-
-            //console.log(`navigate /processingSampleBurst 'burstMenuSelected'`);
-
-            this.router.navigate(
-              [
-                '/processingSampleBurst',
-                'burstMenuSelected',
-                Utilities.slash(
-                  //`${this.settingsService.PORTABLE_EXECUTABLE_DIR}/${inputDocumentShortPath}`,
-                  `${inputDocumentShortPath}`,
-                ),
-                Utilities.slash(clickedSample.configurationFilePath),
-              ],
-              { skipLocationChange: true },
-            );
-          }
-
-          if (clickedSample.jobType == 'merge-burst') {
-            let diezSeparatedListOfFilePathsToMerge = '';
-            const filesToMerge = clickedSample.input.data;
-            filesToMerge.forEach((fileToMerge: string) => {
-              //const filePath = Utilities.slash(
-              //  `${
-              //    this.settingsService.PORTABLE_EXECUTABLE_DIR
-              //  }/${fileToMerge.replace('file:', '')}`,
-              //);
-              const filePath = Utilities.slash(
-                `${fileToMerge.replace('file:', '')}`,
-              );
-              if (diezSeparatedListOfFilePathsToMerge.length == 0) {
-                diezSeparatedListOfFilePathsToMerge = filePath;
-              } else {
-                diezSeparatedListOfFilePathsToMerge = `${diezSeparatedListOfFilePathsToMerge}#${filePath}`;
-              }
-            });
-
-            diezSeparatedListOfFilePathsToMerge = `${diezSeparatedListOfFilePathsToMerge}#burst-merged-file`;
-            //console.log(
-            //  `diezSeparatedListOfFilePathsToMerge = ${diezSeparatedListOfFilePathsToMerge}`,
-            //);
-            this.router.navigate(
-              [
-                '/processingSampleBurst',
-                'mergeBurstMenuSelected',
-                diezSeparatedListOfFilePathsToMerge,
-                Utilities.slash(clickedSample.configurationFilePath),
-              ],
-              { skipLocationChange: true },
-            );
-          }
-        }
-
-        if (clickedSample.jobType == 'generate') {
-          this.processingService.procReportingMailMergeInfo.isSample = true;
-
-          const inputDocumentShortPath = clickedSample.input.data[0].replace(
-            'file:',
-            '',
-          );
-
-          this.processingService.procReportingMailMergeInfo.inputFileName =
-            Utilities.basename(inputDocumentShortPath);
-
-          this.router.navigate(
-            [
-              '/processingSampleGenerate',
-              'burstMenuSelected',
-              Utilities.slash(
-                //`${this.settingsService.PORTABLE_EXECUTABLE_DIR}/${inputDocumentShortPath}`,
-                `${clickedSample.configurationFilePath}`,
-              ),
-              Utilities.slash(inputDocumentShortPath),
-            ],
-            { skipLocationChange: true },
-          );
-        }
+        if (clickedSample.jobType === 'burst') this.navigateToBurstSample(clickedSample);
+        if (clickedSample.jobType === 'merge-burst') this.navigateToMergeBurstSample(clickedSample);
+        if (clickedSample.jobType === 'generate') this.navigateToGenerateSample(clickedSample);
       },
     });
   }
 
-  // ========== END SAMPLES ==========
+  private navigateToBurstSample(sample: SampleInfo): void {
+    this.processingService.procBurstInfo.isSample = true;
+    const inputDocumentShortPath = sample.input.data[0].replace('file:', '');
+    this.router.navigate(
+      [
+        '/processingSampleBurst',
+        'burstMenuSelected',
+        Utilities.slash(inputDocumentShortPath),
+        Utilities.slash(sample.configurationFilePath),
+      ],
+      { skipLocationChange: true },
+    );
+  }
+
+  private navigateToMergeBurstSample(sample: SampleInfo): void {
+    this.processingService.procBurstInfo.isSample = true;
+    let filePaths = '';
+    sample.input.data.forEach((fileToMerge: string) => {
+      const filePath = Utilities.slash(fileToMerge.replace('file:', ''));
+      filePaths = filePaths.length === 0 ? filePath : `${filePaths}#${filePath}`;
+    });
+    filePaths = `${filePaths}#burst-merged-file`;
+    this.router.navigate(
+      [
+        '/processingSampleBurst',
+        'mergeBurstMenuSelected',
+        filePaths,
+        Utilities.slash(sample.configurationFilePath),
+      ],
+      { skipLocationChange: true },
+    );
+  }
+
+  private navigateToGenerateSample(sample: SampleInfo): void {
+    this.processingService.procReportingMailMergeInfo.isSample = true;
+    const inputDocumentShortPath = sample.input.data[0].replace('file:', '');
+    this.processingService.procReportingMailMergeInfo.inputFileName =
+      Utilities.basename(inputDocumentShortPath);
+    this.router.navigate(
+      [
+        '/processingSampleGenerate',
+        'burstMenuSelected',
+        Utilities.slash(sample.configurationFilePath),
+        Utilities.slash(inputDocumentShortPath),
+      ],
+      { skipLocationChange: true },
+    );
+  }
+
+  // ==========================================================================
+  //  Report selection & validation
+  // ==========================================================================
 
   async onReportSelectionChange($event: any) {
-    //console.log(`onReportSelectionChange: ${JSON.stringify($event)}`);
     // Reset View Data state when report selection changes
     this.isViewDataLoading = false;
     this.showViewDataTabulator = false;
@@ -1596,120 +1450,25 @@ export class ProcessingComponent implements OnInit {
   }
 
   allowedInputFileTypes(): string {
-    let allowedFileTypes = 'notused';
-
-    if (
-      !this.processingService.procReportingMailMergeInfo
-        ?.selectedMailMergeClassicReport
-    ) {
-      allowedFileTypes = 'notused';
-    } else {
-      // Get the selected report which already contains the data source type
-      const selectedReport =
-        this.processingService.procReportingMailMergeInfo
-          .selectedMailMergeClassicReport;
-      const dsInputType = selectedReport.dsInputType;
-      const scriptOptionsSelectFileExplorer =
-        selectedReport.scriptOptionsSelectFileExplorer;
-
-      //console.log(`dsInputType = ${dsInputType}`);
-
-      // If no datasource type is available, return none
-      if (!dsInputType) {
-        allowedFileTypes = 'notused';
-      }
-
-      // Check for text-based file formats
-      if (
-        [
-          'ds.csvfile',
-          'ds.tsvfile',
-          'ds.fixedwidthfile',
-        ].includes(dsInputType)
-      ) {
-        allowedFileTypes = '.csv, .tsv, .tab, .txt, .prn, .dat';
-      }
-
-      if (dsInputType === 'ds.xmlfile') {
-        allowedFileTypes = '.xml';
-      }
-
-      // Check for Excel formats
-      if (dsInputType === 'ds.excelfile') {
-        allowedFileTypes = '.xlsx, .xls';
-      }
-
-      // Check for script files
-      if (dsInputType === 'ds.script') {
-        allowedFileTypes = scriptOptionsSelectFileExplorer; // Return the pattern specified in the configuration
-      }
-    }
-
-    //console.log(`allowedFileTypes = ${allowedFileTypes}`);
-
-    return allowedFileTypes;
-  }
-
-  // ========== CMS WEB PORTAL ==========
-  launchPortal(event: Event) {
-    event.preventDefault();
-    // Opens the portal URL in a browser
-    //this.electronService.openExternalUrl('http://localhost:3000');
-  }
-
-  togglePortal(event: Event) {
-    event.preventDefault();
-
-    if (this.storeService.configSys.sysInfo.setup.portal.isProvisioned) {
-      // Portal is running, so stop it
-      this.confirmService.askConfirmation({
-        message: 'Are you sure you want to stop the DataPallas Portal?',
-        confirmAction: () => {
-          //this.stopPortal(event);
-        },
-      });
-    } else {
-      // Portal is not running, so start it
-      this.confirmService.askConfirmation({
-        message: 'Are you sure you want to start the DataPallas Portal?',
-        confirmAction: () => {
-          //this.startPortal(event);
-        },
-      });
-    }
-  }
-  // ========== END CMS WEB PORTAL ==========
-
-  doesSelectedReportRequiresParameters(): boolean {
-    const selectedReport =
-      this.processingService.procReportingMailMergeInfo
-        .selectedMailMergeClassicReport;
-
-    if (!selectedReport) return true;
-
-    return (
-      selectedReport.reportParameters &&
-      selectedReport.reportParameters.length > 0
+    return this.reportsService.allowedInputFileTypes(
+      this.processingService.procReportingMailMergeInfo?.selectedMailMergeClassicReport,
     );
   }
 
-  doesSelectedReportRequiresAnInputFile(): boolean {
-    const selectedReport =
-      this.processingService.procReportingMailMergeInfo
-        .selectedMailMergeClassicReport;
+  // ==========================================================================
+  //  Button-disabled guards
+  // ==========================================================================
 
-    if (!selectedReport) return true;
+  requiresInputFile(): boolean {
+    return this.reportsService.requiresInputFile(
+      this.processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport,
+    );
+  }
 
-    if (selectedReport.dsInputType == 'ds.jasper') return false;
-    if (selectedReport.dsInputType == 'ds.sqlquery') return false;
-
-    if (selectedReport.dsInputType == 'ds.scriptfile') {
-      // defensive: treat undefined/null as 'notused'
-      const sel = (selectedReport.scriptOptionsSelectFileExplorer ?? 'notused');
-      return (sel !== 'notused');
-    }
-
-    return true;
+  requiresParameters(): boolean {
+    return this.reportsService.requiresParameters(
+      this.processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport,
+    );
   }
 
   shouldBeDisabledGenerateReportsButton(): boolean {
@@ -1719,7 +1478,7 @@ export class ProcessingComponent implements OnInit {
 
     if (!selectedReport) return true;
 
-    const requiresInput = this.doesSelectedReportRequiresAnInputFile();
+    const requiresInput = this.requiresInputFile();
 
     let shouldBeDisabled = true;
 
@@ -1756,7 +1515,7 @@ export class ProcessingComponent implements OnInit {
     if (!selectedReport) return true;
 
     // if the selected report requires parameters, disable when params are invalid
-    if (this.doesSelectedReportRequiresParameters()) {
+    if (this.requiresParameters()) {
       return !this.reportParamsValid;
     }
 
@@ -1764,27 +1523,16 @@ export class ProcessingComponent implements OnInit {
     return false;
   }
 
+  // ==========================================================================
+  //  View Data preview
+  // ==========================================================================
+
   private convertParamValue(type: string, value: any): any {
-    switch (type) {
-      case 'LocalDate':
-      case 'LocalDateTime':
-        return value; // Return the raw ISO string
-      case 'Integer':
-        return parseInt(value, 10);
-      case 'Boolean':
-        return Boolean(value);
-      default:
-        return value;
-    }
+    return this.reportsService.convertParamValue(type, value);
   }
 
   async doViewData() {
-    if (this.executionStatsService.logStats.foundDirtyLogFiles) {
-      const dialogMessage =
-        'Log files are not empty. You need to press the Clear Logs button first.';
-      this.infoService.showInformation({ message: dialogMessage });
-      return;
-    }
+    if (this.blockedByDirtyLogs()) return;
 
     const dialogQuestion = `Execute the SQL query associated with this report?`;
 
@@ -1840,6 +1588,10 @@ export class ProcessingComponent implements OnInit {
     const detail = event.detail || event;
     this.messagesService.showError(`Error executing query: ${detail.message || 'Unknown error'}`);
   }
+
+  // ==========================================================================
+  //  State reset
+  // ==========================================================================
 
   @ViewChild(AiManagerComponent) private aiManagerInstance!: AiManagerComponent;
 

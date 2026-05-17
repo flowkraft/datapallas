@@ -14,7 +14,7 @@ import { ConnectionsService } from '../../providers/connections.service';
 import { ApiService } from '../../providers/api.service';
 import { ConfirmService } from '../../components/dialog-confirm/confirm.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 
 import Prism from 'prismjs';
@@ -130,7 +130,7 @@ cube {
     protected apiService: ApiService,
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected executionStatsService: ExecutionStatsService,
     protected cdRef: ChangeDetectorRef,
     protected route: ActivatedRoute,

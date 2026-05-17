@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 
 import { unserialize } from 'php-serialize';
 
@@ -9,7 +9,8 @@ import { Changelog, parser } from 'keep-a-changelog';
 import * as semver from 'semver';
 
 import Utilities from '../helpers/utilities';
-import { SettingsService } from './settings.service';
+import { ConfigurationRepository } from './configuration-repository.service';
+import { AppPathsService } from './app-paths.service';
 import { FsService } from './fs.service';
 import { ApiService } from './api.service';
 import { ReportsService } from './reports.service';
@@ -29,13 +30,14 @@ export class LicenseService {
   isNewerVersionAvailable: boolean = false;
 
   constructor(
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
+    protected appPathsService: AppPathsService,
     protected reportsService: ReportsService,
     protected fsService: FsService,
     protected apiService: ApiService,
   ) {
     this.licenseFilePath = Utilities.slash(
-      `${this.settingsService.CONFIGURATION_FOLDER_PATH}/_internal/license.xml`,
+      `${this.appPathsService.CONFIGURATION_FOLDER_PATH}/_internal/license.xml`,
     );
   }
 
@@ -136,18 +138,22 @@ export class LicenseService {
 
   getChangeLogForTheDemoInstallationToo(): Promise<any> {
     return this.apiService.get(
-      `/system/changelog?itemName=${encodeURIComponent(this.settingsService.product)}`,
+      `/system/info/changelog?itemName=${encodeURIComponent(this.settingsService.product)}`,
     );
   }
 
   verifyLicense(action, exitCallback?): Promise<void> {
-    return this.apiService.put(`/license/${action}`, {}).then(() => {
+    const call =
+      action === 'check'
+        ? this.apiService.get('/system/license/status')
+        : this.apiService.post(`/system/license/${action}`, {});
+    return call.then(() => {
       if (exitCallback) exitCallback();
     });
   }
 
   deActivateLicense(exitCallback?) {
-    return this.apiService.put('/license/deactivate', {}).then(() => {
+    return this.apiService.post('/system/license/deactivate', {}).then(() => {
       if (exitCallback) exitCallback();
     });
   }

@@ -55,8 +55,9 @@ export const leftMenuTemplate = `<!-- Sidebar Menu -->
       ]" skipLocationChange="true">
       <i class="fa fa-envelope-o"></i>
       <span>{{ 'AREAS.CONFIGURATION.LEFT-MENU.EMAIL' | translate }}</span>
+      <i class="fa fa-angle-left pull-right" [style.transform]="openSidebarSection==='email' ? 'rotate(-90deg)' : 'none'" style="margin-top:3px;transition:transform 0.2s;"></i>
     </a>
-    <ul>
+    <ul *ngIf="openSidebarSection === 'email'">
       <li routerLinkActive="d-active">
         <a href="#" [routerLink]="[
             '/configuration',
@@ -103,8 +104,9 @@ export const leftMenuTemplate = `<!-- Sidebar Menu -->
       ]" skipLocationChange="true">
       <i class="fa fa-commenting-o"></i>
       <span>{{ 'AREAS.CONFIGURATION.LEFT-MENU.SMS' | translate }}</span>
+      <i class="fa fa-angle-left pull-right" [style.transform]="openSidebarSection==='sms' ? 'rotate(-90deg)' : 'none'" style="margin-top:3px;transition:transform 0.2s;"></i>
     </a>
-    <ul>
+    <ul *ngIf="openSidebarSection === 'sms'">
       <li routerLinkActive="d-active">
         <a id="leftMenuTwilioSettings" href="#" [routerLink]="[
             '/configuration',
@@ -127,8 +129,9 @@ export const leftMenuTemplate = `<!-- Sidebar Menu -->
       ]" skipLocationChange="true">
       <i class="fa fa-flag-checkered"></i>
       <span>{{ 'AREAS.CONFIGURATION.LEFT-MENU.QUALITY-ASSURANCE' | translate }}</span>
+      <i class="fa fa-angle-left pull-right" [style.transform]="openSidebarSection==='quality' ? 'rotate(-90deg)' : 'none'" style="margin-top:3px;transition:transform 0.2s;"></i>
     </a>
-    <ul>
+    <ul *ngIf="openSidebarSection === 'quality'">
       <li routerLinkActive="d-active">
         <a id="leftMenuTestEmailServerSettings" [routerLink]="[
             '/configuration',
@@ -151,8 +154,10 @@ export const leftMenuTemplate = `<!-- Sidebar Menu -->
       ]" skipLocationChange="true">
       <i class="fa fa-sliders"></i>
       <span>{{ 'AREAS.CONFIGURATION.LEFT-MENU.ADVANCED' | translate }}</span>
+      <i *ngIf="xmlSettings?.documentburster?.settings?.capabilities?.reportdistribution"
+         class="fa fa-angle-left pull-right" [style.transform]="openSidebarSection==='advanced' ? 'rotate(-90deg)' : 'none'" style="margin-top:3px;transition:transform 0.2s;"></i>
     </a>
-    <ul *ngIf="xmlSettings?.documentburster?.settings?.capabilities?.reportdistribution">
+    <ul *ngIf="xmlSettings?.documentburster?.settings?.capabilities?.reportdistribution && openSidebarSection === 'advanced'">
       <li routerLinkActive="d-active">
         <a id="leftMenuErrorHandlingSettings" href="#" [routerLink]="[
             '/configuration',

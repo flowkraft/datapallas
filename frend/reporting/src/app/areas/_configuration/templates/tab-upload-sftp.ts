@@ -7,7 +7,7 @@ export const tabUploadSFTPTemplate = `<ng-template #tabUploadSFTPTemplate>
         'AREAS.CONFIGURATION.TAB-UPLOAD-SFTP.COMMAND' | translate }}</div>
       <div class="col-xs-7">
         <input id="sftpCommand" [(ngModel)]="xmlSettings?.documentburster.settings.uploadsettings.sftpcommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">

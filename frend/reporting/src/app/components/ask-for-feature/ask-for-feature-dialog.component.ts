@@ -1,13 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { BsModalRef } from 'ngx-bootstrap/modal';
 import { Subject } from 'rxjs';
 import { askForFeatureDialogTemplate } from './ask-for-feature-dialog.template';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import Utilities from '../../helpers/utilities';
-import { ShellService } from '../../providers/shell.service';
-import { SettingsService } from '../../providers/settings.service';
-import { ReportsService } from '../../providers/reports.service';
+import { ApiService } from '../../providers/api.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
+import { AppPathsService } from '../../providers/app-paths.service';
 
 @Component({
   selector: 'dburst-ask-for-feature-dialog',
@@ -25,10 +25,10 @@ export class AskForFeatureDialogComponent implements OnInit {
 
   constructor(
     protected bsModalRef: BsModalRef,
-    protected settingsService: SettingsService,
-    protected reportsService: ReportsService,
+    protected settingsService: ConfigurationRepository,
+    protected appPathsService: AppPathsService,
     protected confirmService: ConfirmService,
-    protected shellService: ShellService,
+    protected apiService: ApiService,
     private router: Router,
   ) {}
 
@@ -38,30 +38,38 @@ export class AskForFeatureDialogComponent implements OnInit {
 
   async confirm(action?: string) {
     if (action == 'send-message') {
-      let xmlAskForFeatureFilePath = `${
-        this.settingsService.JOBS_FOLDER_PATH
-      }/${Utilities.getRandomFileName('xml')}`;
+      this.confirmService.askConfirmation({
+        message: `Send email inquiry to ${this.msgTo}?`,
+        confirmAction: async () => {
+          let xmlAskForFeatureFilePath = `${
+            this.appPathsService.JOBS_FOLDER_PATH
+          }/${Utilities.getRandomFileName('xml')}`;
 
-      xmlAskForFeatureFilePath = Utilities.slash(xmlAskForFeatureFilePath);
+          xmlAskForFeatureFilePath = Utilities.slash(xmlAskForFeatureFilePath);
 
-      await this.reportsService.saveReportSettings(
-        Utilities.basename(Utilities.dirname(xmlAskForFeatureFilePath)),
-        {
-          documentburster: {
-            featurerequest: {
-              subject: this.msgSubject,
-              message: this.msgMessage,
-            },
-          },
+          const xmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<documentburster>
+    <featurerequest>
+        <subject>${this.msgSubject}</subject>
+        <message>${this.msgMessage}</message>
+    </featurerequest>
+</documentburster>`;
+
+          await this.apiService.put(
+            `/system/fs/content?path=${encodeURIComponent(xmlAskForFeatureFilePath)}`,
+            xmlContent,
+            new Headers({ 'Content-Type': 'text/plain' }),
+          );
+
+          this.apiService.post('/system/feedback/feature-request', {
+            jobFilePath: xmlAskForFeatureFilePath,
+          });
+
+          this.onClose?.next(true);
+          this.bsModalRef.hide();
         },
-      );
-
-      this.shellService.runBatFile([
-        'system',
-        'feature-request',
-        '-f',
-        `"${xmlAskForFeatureFilePath}"`,
-      ]);
+      });
+      return;
     } else if (action == 'configure-email-properly') {
       this.router.navigate(['/configuration-connections'], {
         skipLocationChange: true,

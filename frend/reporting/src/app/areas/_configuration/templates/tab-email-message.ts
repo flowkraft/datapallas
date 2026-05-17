@@ -7,7 +7,7 @@ export const tabEmailMessageTemplate = `<ng-template #tabEmailMessageTemplate>
         'AREAS.CONFIGURATION.TAB-EMAIL-MESSAGE.TO' | translate }}</div>
       <div class="col-xs-8">
         <input id="emailToAddress" [(ngModel)]="xmlSettings?.documentburster.settings.emailsettings.to"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
       </div>
 
       <div class="col-xs-3">
@@ -25,7 +25,7 @@ export const tabEmailMessageTemplate = `<ng-template #tabEmailMessageTemplate>
           'AREAS.CONFIGURATION.TAB-EMAIL-MESSAGE.CC' | translate }}</div>
         <div class="col-xs-8">
           <input id="emailCcAddress" [(ngModel)]="xmlSettings?.documentburster.settings.emailsettings.cc"
-            (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+            (ngModelChange)='markSettingsDirty($event)' class="form-control" />
         </div>
 
         <div class="col-xs-3">
@@ -43,7 +43,7 @@ export const tabEmailMessageTemplate = `<ng-template #tabEmailMessageTemplate>
             'AREAS.CONFIGURATION.TAB-EMAIL-MESSAGE.BCC' | translate }}</div>
           <div class="col-xs-8">
             <input id="emailBccAddress" [(ngModel)]="xmlSettings?.documentburster.settings.emailsettings.bcc"
-              (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+              (ngModelChange)='markSettingsDirty($event)' class="form-control" />
           </div>
 
           <div class="col-xs-3">
@@ -61,7 +61,7 @@ export const tabEmailMessageTemplate = `<ng-template #tabEmailMessageTemplate>
               'AREAS.CONFIGURATION.TAB-EMAIL-MESSAGE.SUBJECT' | translate }}</div>
             <div class="col-xs-8">
               <input id="emailSubject" [(ngModel)]="xmlSettings?.documentburster.settings.emailsettings.subject"
-                (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+                (ngModelChange)='markSettingsDirty($event)' class="form-control" />
             </div>
 
             <div class="col-xs-3">
@@ -127,7 +127,7 @@ export const tabEmailMessageTemplate = `<ng-template #tabEmailMessageTemplate>
                 *ngIf="xmlSettings?.documentburster.settings.htmlemail && 
                 !xmlSettings?.documentburster.settings.htmlemaileditcode"
                 [(ngModel)]="xmlSettings?.documentburster.settings.emailsettings.html"
-                (onTextChange)="settingsChangedQuillEventHandler($event)"
+                (onTextChange)="markSettingsDirtyFromQuill($event)"
                 (onSelectionChange)="onEditorSelectionChanged($event)"
                 (onInit)="onEditorCreated($event)">
                 <ng-template pTemplate="header">
@@ -215,7 +215,7 @@ export const tabEmailMessageTemplate = `<ng-template #tabEmailMessageTemplate>
               <textarea class="form-control" rows="14" id="textEmailMessage"
                 *ngIf="!xmlSettings?.documentburster.settings.htmlemail"
                 [(ngModel)]="xmlSettings?.documentburster.settings.emailsettings.text"
-                (ngModelChange)='settingsChangedEventHandler($event)'></textarea>
+                (ngModelChange)='markSettingsDirty($event)'></textarea>
             </div>
           </div>
 

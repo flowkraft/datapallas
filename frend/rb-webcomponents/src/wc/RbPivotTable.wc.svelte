@@ -263,12 +263,11 @@
         colOrder,
       }, engineToUse);
 
-      // Derive analytics API URL from apiBaseUrl (e.g. http://host:port/api/reporting -> http://host:port/api/analytics).
-      // Use URL.origin so we don't depend on the exact /api/... path structure of apiBaseUrl.
+      // Derive analytics API URL from apiBaseUrl; use origin so we don't depend on its exact path.
       if (apiBaseUrl) {
         try {
           const origin = new URL(apiBaseUrl, window.location.href).origin;
-          pivotApi.baseUrl = `${origin}/api/analytics`;
+          pivotApi.baseUrl = `${origin}/api/explorations/analytics`;
         } catch (e) {
           console.warn('[rb-pivot-table] Could not derive analytics URL from apiBaseUrl:', apiBaseUrl, e);
         }
