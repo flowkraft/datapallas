@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { from, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiService } from '../../providers/api.service';
@@ -34,7 +34,7 @@ export interface PromptInfo {
 export class AiManagerService {
   // ApiService.BACKEND_URL already includes '/api' (resolves to http://localhost:9090/api
   // in Electron mode), so paths here are relative to that — no '/api' prefix needed.
-  constructor(private apiService: ApiService) {}
+  private apiService = inject(ApiService);
 
   /** Fetch all prompts — metadata only (no promptText). */
   getAllPrompts(): Observable<PromptInfo[]> {

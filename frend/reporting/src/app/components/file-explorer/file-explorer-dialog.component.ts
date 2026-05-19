@@ -1,45 +1,46 @@
 import {
   Component,
-  Input,
-  Output,
-  EventEmitter,
-  ViewChild,
+  input,
+  model,
+  output,
+  viewChild,
   OnInit,
   NgZone,
-  ChangeDetectorRef, // Import ChangeDetectorRef
+  ChangeDetectorRef,
 } from '@angular/core';
 import { FileExplorerComponent } from './file-explorer.component';
 
 @Component({
   selector: 'dburst-file-explorer-dialog',
   template: `
-    <p-dialog
+    <dp-dialog
       [(visible)]="visible"
-      [modal]="true"
-      [header]="title"
-      [draggable]="false"
+      [header]="title()"
       (onShow)="onDialogShow()"
       (onHide)="onDialogClosed()"
-    >
+      >
       <div
         [style]="{ width: '450px', 'min-width': '425px' }"
         class="file-explorer-container"
-      >
-        <dburst-file-explorer
-          #fileExplorer
-          *ngIf="visible"
-          [showPermissionsColumn]="showPermissionsColumn"
-          [showActionsColumn]="showActionsColumn"
-        ></dburst-file-explorer>
+        >
+        @if (visible()) {
+          <dburst-file-explorer
+            #fileExplorer
+            [showPermissionsColumn]="showPermissionsColumn()"
+            [showActionsColumn]="showActionsColumn()"
+          ></dburst-file-explorer>
+        }
       </div>
 
-      <p-footer>
+      <div ngProjectAs="[footer]">
         <div class="flex-row">
           <div class="flex-col">
-            <small class="text-muted" *ngIf="fileFilterExtensions?.length">
-              Showing files with extensions:
-              {{ fileFilterExtensions.join(', ') }}
-            </small>
+            @if (fileFilterExtensions()?.length) {
+              <small class="text-base-content/60">
+                Showing files with extensions:
+                {{ fileFilterExtensions().join(', ') }}
+              </small>
+            }
           </div>
           <div class="flex-col text-right">
             <button
@@ -48,23 +49,23 @@ import { FileExplorerComponent } from './file-explorer.component';
               type="button"
               [disabled]="!selectedFile"
               (click)="confirmSelection()"
-            >
+              >
               Select
             </button>
             <button
               id="btnCancelFileExplorer"
-              class="btn btn-flat btn-default"
+              class="btn btn-ghost"
               type="button"
               (click)="cancelSelection()"
               style="margin-left: 5px;"
-            >
+              >
               Cancel
             </button>
           </div>
         </div>
-      </p-footer>
-    </p-dialog>
-  `,
+      </div>
+    </dp-dialog>
+`,
   styles: [
     `
       .flex-row {
@@ -88,7 +89,7 @@ import { FileExplorerComponent } from './file-explorer.component';
       }
 
       :host ::ng-deep {
-        .p-dialog {
+        .dp-dialog-box {
           max-width: 90vw;
           width: auto !important;
           min-width: 450px;
@@ -138,18 +139,17 @@ import { FileExplorerComponent } from './file-explorer.component';
   ],
 })
 export class FileExplorerDialogComponent implements OnInit {
-  @Input() visible: boolean = false;
-  @Input() title: string = 'Select File';
-  @Input() initialPath: string = '/db';
-  @Input() fileFilterExtensions: string[] = ['.db', '.sqlite', '.sqlite3'];
-  @Input() showPermissionsColumn: boolean = false;
-  @Input() showActionsColumn: boolean = false;
+  visible = model<boolean>(false);
+  title = input<string>('Select File');
+  initialPath = input<string>('/db');
+  fileFilterExtensions = input<string[]>(['.db', '.sqlite', '.sqlite3']);
+  showPermissionsColumn = input<boolean>(false);
+  showActionsColumn = input<boolean>(false);
 
-  @Output() visibleChange = new EventEmitter<boolean>();
-  @Output() fileSelected = new EventEmitter<string>();
-  @Output() canceled = new EventEmitter<void>();
+  fileSelected = output<string>();
+  canceled = output<void>();
 
-  @ViewChild('fileExplorer') fileExplorer: FileExplorerComponent;
+  fileExplorer = viewChild<FileExplorerComponent>('fileExplorer');
 
   selectedFile: string = null;
 
@@ -167,8 +167,8 @@ export class FileExplorerDialogComponent implements OnInit {
   /**
    * When the dialog visibility changes externally
    */
-  ngOnChanges(changes) {
-    if (changes.visible && changes.visible.currentValue === true) {
+  ngOnChanges(changes: any) {
+    if (changes['visible'] && changes['visible'].currentValue === true) {
       // Reset selection when dialog opens
       this.selectedFile = null;
     }
@@ -183,11 +183,11 @@ export class FileExplorerDialogComponent implements OnInit {
     this.cdRef.detectChanges();
 
     // Ensure fileExplorer is available
-    if (this.fileExplorer) {
-      this.fileExplorer.loadFileTree(this.initialPath);
+    if (this.fileExplorer()) {
+      this.fileExplorer()?.loadFileTree(this.initialPath());
 
       // Single click callback
-      this.fileExplorer.onFileClicked = (file) => {
+      this.fileExplorer().onFileClicked = (file) => {
         this.ngZone.run(() => {
           if (this.isFileAllowed(file.name)) {
             this.selectedFile = file.fullName;
@@ -197,7 +197,7 @@ export class FileExplorerDialogComponent implements OnInit {
       };
 
       // Double click callback
-      this.fileExplorer.onFileDoubleClicked = (file) => {
+      this.fileExplorer().onFileDoubleClicked = (file) => {
         this.ngZone.run(() => {
           if (this.isFileAllowed(file.name)) {
             this.selectedFile = file.fullName;
@@ -213,11 +213,11 @@ export class FileExplorerDialogComponent implements OnInit {
    * Check if the file extension is allowed
    */
   isFileAllowed(filename: string): boolean {
-    if (!this.fileFilterExtensions || this.fileFilterExtensions.length === 0) {
+    if (!this.fileFilterExtensions() || this.fileFilterExtensions().length === 0) {
       return true; // No filter means all files are allowed
     }
 
-    return this.fileFilterExtensions.some((ext) =>
+    return this.fileFilterExtensions().some((ext) =>
       filename.toLowerCase().endsWith(ext.toLowerCase()),
     );
   }
@@ -228,8 +228,7 @@ export class FileExplorerDialogComponent implements OnInit {
     if (this.selectedFile) {
       //console.log('Emitting selected file:', this.selectedFile);
       this.fileSelected.emit(this.selectedFile);
-      this.visible = false;
-      this.visibleChange.emit(false);
+      this.visible.set(false);
     } else {
       //console.warn('Confirm selection called but no file is selected.');
     }
@@ -240,14 +239,13 @@ export class FileExplorerDialogComponent implements OnInit {
    */
   cancelSelection() {
     this.canceled.emit();
-    this.visible = false;
-    this.visibleChange.emit(false);
+    this.visible.set(false);
   }
 
   /**
    * Handle dialog close
    */
   onDialogClosed() {
-    this.visibleChange.emit(this.visible);
+    // model() handles the visibleChange emission automatically
   }
 }

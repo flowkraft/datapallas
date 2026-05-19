@@ -1,7 +1,5 @@
 import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 
-import { TabsModule } from 'ngx-bootstrap/tabs';
-import { EditorModule } from 'primeng/editor';
 import { AngularSplitModule } from 'angular-split';
 
 import { AppRoutingModule } from '../../app-routing.module';
@@ -26,12 +24,10 @@ import { CubeListComponent } from './configuration-cubes.component';
   exports: [ConfigurationCrudComponent],
   imports: [
     // Shared deps
-    TabsModule.forRoot(),
     AppRoutingModule,
     SharedModule,
     LicenseModule,
     // Reports-specific
-    EditorModule,
     ReportsListModule,
     // Connections & Cubes
     ConnectionDetailsModule,

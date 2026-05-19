@@ -1,22 +1,5 @@
 /* You can add global styles to this file, and also import other style files */
-@import "~bootstrap/dist/css/bootstrap.min.css";
-@import "~font-awesome/css/font-awesome.min.css";
-@import "~office-ui-fabric-core/dist/css/fabric.min.css";
-
-// Prime NG css
-@import "~primeicons/primeicons.css";
-@import "~primeng/resources/primeng.min.css";
-@import "~primeng/resources/themes/bootstrap4-light-blue/theme.css";
-
-@import "ngx-toastr/toastr";
 @import "~@ng-select/ng-select/themes/default.theme.css";
-
-.p-dialog-mask {
-  z-index: 9999999 !important;
-}
-.p-dialog {
-  z-index: 10000000 !important;
-}
 
 /* ngx-bootstrap modals - add these */
 .modal-backdrop {
@@ -27,16 +10,6 @@
   z-index: 10000002 !important; /* Higher than backdrop */
 }
 
-/* When the connection-details modal is opened from inside the cube definition
-   modal (Bootstrap, z-index 10000002), it must stack ABOVE the cube modal.
-   These classes are toggled by [styleClass]/[maskStyleClass] bindings on
-   <p-dialog id="modalDbConnection"> when context === 'cubeDsl'. */
-.p-dialog-mask.cube-dsl-stacked-mask {
-  z-index: 10000010 !important;
-}
-.p-dialog.cube-dsl-stacked-dialog {
-  z-index: 10000011 !important;
-}
 
 /* CRUD-mode picklist (Connections admin area only) — hide the right "target"
    list and the transfer arrow buttons, let the left "source" list grow to
@@ -67,40 +40,6 @@ ngx-codejar .codejar pre {
 ngx-codejar .codejar {
   overflow-x: auto !important;
 }
-
-/* AI Copilot Modal - Maximum Size While Visible */
-body > #aiCopilotModal.p-dialog {
-  position: fixed !important;
-  top: 10px !important;
-  left: 10px !important;
-  right: 10px !important;
-  bottom: 30px !important; /* Decreased bottom margin to allow more vertical space */
-  width: calc(100vw - 20px) !important;
-  height: calc(
-    100vh - 95px
-  ) !important; /* Increased height by 30px from previous value */
-  max-width: none !important;
-  max-height: none !important;
-  background: #fff !important;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5) !important;
-  margin: 0 !important;
-  transform: none !important;
-  z-index: 1051 !important;
-  overflow: hidden !important; /* Prevent all overflow - both horizontal and vertical */
-}
-
-/* Content area */
-body > #aiCopilotModal.p-dialog .p-dialog-content {
-  height: calc(
-    100vh - 175px
-  ) !important; /* Adjusted to account for the larger modal height */
-  max-height: none !important;
-  overflow: visible !important; /* Changed from auto to visible to remove unnecessary scrollbars */
-  overflow-x: hidden !important; /* Prevent horizontal scrollbar */
-}
-
-/* Remove all previous AI Copilot modal styles */
-// ...rest of existing styles that don't relate to #aiCopilotModal...
 
 /* AI Copilot ngx-bootstrap Modal Styles */
 .ai-copilot-modal-large {
@@ -151,15 +90,6 @@ body > #aiCopilotModal.p-dialog .p-dialog-content {
   left: 0;
   right: 0;
   box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-}
-
-/* Database Connection Modal — taller dialog + overflow visible for Launch dropdown */
-#modalDbConnection.p-dialog {
-  min-height: 65vh;
-}
-#modalDbConnection .p-dialog-content {
-  overflow: visible !important;
-  min-height: 45vh;
 }
 
 //angular-split start
@@ -289,31 +219,12 @@ label {
   background-color: inherit; /* Maintain your current background color */
 }
 
-body .p-terminal {
-  height: 8rem;
-}
-
 .modal-dialog-center {
   margin-top: 25%;
 }
 
 .modal {
   top: 30px;
-}
-
-/* Custom styles for the confirmation dialog */
-.p-confirm-dialog .p-dialog-footer {
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-start;
-}
-
-.p-confirm-dialog .p-dialog-footer button {
-  margin-right: 0.5rem;
-}
-
-.p-confirm-dialog .p-dialog-footer button:first-child {
-  margin-right: 0;
 }
 
 .fade-transition {
@@ -504,16 +415,16 @@ body.skin-purple-light {
   --app-sidebar-border:     #d2d6de;
 }
 
-// B2.3: Sidebar menu — daisyUI d-menu themed via CSS variables.
+// B2.3: Sidebar menu — daisyUI menu themed via CSS variables.
 // .app-sidebar wraps every <aside> in each area component.
-.app-sidebar .d-menu {
+.app-sidebar .menu {
   width: 100%;
   padding: 8px 0;
   background: transparent;
   border-radius: 0;
 }
-.app-sidebar .d-menu li > a,
-.app-sidebar .d-menu li > details > summary {
+.app-sidebar .menu li > a,
+.app-sidebar .menu li > details > summary {
   color: var(--app-sidebar-text) !important;
   background: transparent !important;
   border-radius: 0 !important;
@@ -525,31 +436,31 @@ body.skin-purple-light {
   border-left: 3px solid transparent !important;
   font-size: 14px;
 }
-.app-sidebar .d-menu li > a:hover,
-.app-sidebar .d-menu li > details > summary:hover,
-.app-sidebar .d-menu li.d-active > a,
-.app-sidebar .d-menu li.active > a {
+.app-sidebar .menu li > a:hover,
+.app-sidebar .menu li > details > summary:hover,
+.app-sidebar .menu li.active > a,
+.app-sidebar .menu li.active > a {
   color: var(--app-sidebar-hover-text) !important;
   background: var(--app-sidebar-active-bg) !important;
   border-left-color: var(--app-sidebar-accent) !important;
 }
-.app-sidebar .d-menu li > ul {
+.app-sidebar .menu li > ul {
   background-color: var(--app-sidebar-sub-bg);
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.app-sidebar .d-menu li > ul li > a {
+.app-sidebar .menu li > ul li > a {
   color: var(--app-sidebar-text) !important;
   padding: 6px 16px 6px 32px !important;
   font-size: 13px;
 }
-.app-sidebar .d-menu li > ul li > a:hover,
-.app-sidebar .d-menu li > ul li.d-active > a {
+.app-sidebar .menu li > ul li > a:hover,
+.app-sidebar .menu li > ul li.active > a {
   color: var(--app-sidebar-hover-text) !important;
   background: var(--app-sidebar-active-bg) !important;
 }
-.app-sidebar .d-menu .d-menu-title {
+.app-sidebar .menu .menu-title {
   color: var(--app-sidebar-text);
   opacity: 0.5;
   text-transform: uppercase;
@@ -558,11 +469,11 @@ body.skin-purple-light {
   padding: 10px 16px 5px;
   font-weight: normal;
 }
-.app-sidebar .d-menu details > summary {
+.app-sidebar .menu details > summary {
   list-style: none;
   cursor: pointer;
 }
-.app-sidebar .d-menu details > summary::-webkit-details-marker {
+.app-sidebar .menu details > summary::-webkit-details-marker {
   display: none;
 }
 
@@ -632,13 +543,52 @@ body.sidebar-collapse .app-sidebar + div {
   .app-sidebar + div          { margin-left: 0 !important; }
 }
 
-// B2: Bootstrap dropdown-menus inside the fixed app header.
+// daisyUI v5 + Tailwind v4: the `menu` class (display:flex) and `dropdown-content`
+// (display:none + position:absolute) share identical single-class specificity. In the
+// compiled output `menu` is declared after `dropdown-content`, so menu wins and all
+// dropdown-content elements become permanently visible AND drop out of absolute
+// positioning. Two-class selectors (specificity 0,2,0 vs menu's 0,1,0) restore the
+// correct hide/show + absolute-positioning behaviour.
+.dropdown .dropdown-content {
+  display: none;
+  position: absolute;
+}
+.dropdown:focus-within > .dropdown-content,
+details.dropdown[open] > .dropdown-content {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+}
+
+// AdminLTE `main-footer` styling — the class survives in status-bar.template.html
+// because it is the docked footer-bar anchor; AdminLTE CSS that previously coloured
+// it is gone, so re-apply the equivalent dark-strip styling here.
+.main-footer {
+  background-color: #222d32;
+  color: #b8c7ce;
+  padding: 6px 12px;
+  border-top: 1px solid #1a2226;
+}
+.main-footer a { color: inherit; }
+.main-footer .btn-ghost { color: inherit; }
+
 // top:100% on a flex-stretched <li> can resolve to 0 in some Chromium/Electron
 // versions. Override with an explicit pixel offset equal to the header height so
 // the menu always drops below the header bar regardless of --cet-offset.
-.app-header .dropdown-menu {
+.app-header .dropdown-content {
   top: 50px !important;
   margin-top: 0;
   border-top: 2px solid var(--app-header-bg);
   box-shadow: 0 4px 10px rgba(0,0,0,.18);
+}
+
+// B5: SVG icon sizing — Heroicons/simple-icons inline SVGs fill their container
+// unless constrained. :where() has zero specificity so Tailwind w-*/h-* classes
+// on the element still take priority.
+:where(svg[viewBox="0 0 24 24"]) {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
 }

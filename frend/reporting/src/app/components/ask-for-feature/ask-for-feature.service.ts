@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
+import { ApplicationRef, createComponent, EnvironmentInjector, Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 import { AskForFeatureDialogComponent } from './ask-for-feature-dialog.component';
+
 @Injectable()
 export class AskForFeatureService {
   alreadyImplementedFeatures = [
@@ -30,24 +30,24 @@ export class AskForFeatureService {
     to: 'support@datapallas.com',
     subject: "New Feature Request - '{{nameYourFeatureHere}}'",
     message: `Hello,
-    
+
 My name is {{YourNameHere}} and I work for {{YourCompanyNameHere}} where I am {{YourTitleHere}}.
-    
+
 We would be interested to get the new feature '{{nameYourFeatureHere}}' implemented faster in DocumentBurster.
 
-Functional Requirements 
+Functional Requirements
 
 {{describeYourFunctionalRequirementsAsClearyAsPossibleHere}}
 
-Non-Functional and Performance Related Requirements 
+Non-Functional and Performance Related Requirements
 
 {{describeYourExpectedVolumeHere}}
 
 {{describeYourOtherNonFunctionalRequirementsHere}}
-    
+
 Timeline
 
-Ideally, we would need this new feature to be delivered no later than 
+Ideally, we would need this new feature to be delivered no later than
 
 {{YourTimelineHere}}
 
@@ -59,94 +59,68 @@ Sincerely,
 `,
   };
 
-  modalRef?: BsModalRef;
   constructor(
-    protected modalService: BsModalService,
+    private appRef: ApplicationRef,
+    private envInjector: EnvironmentInjector,
     protected translateService: TranslateService,
     protected messagesService: ToastrMessagesService,
     protected settingsService: ConfigurationRepository,
   ) {}
 
-  showAskForFeature(options: any): Promise<any> {
+  showAskForFeature(options: any): Promise<boolean> {
     const titleLabel = this.translateService.instant(
       'COMPONENTS.ASK-FOR-FEATURE-DIALOG.TITLE',
     );
-
     const confirmLabel = this.translateService.instant(
       'COMPONENTS.ASK-FOR-FEATURE-DIALOG.CONFIRM',
     );
 
-    return new Promise((resolve, reject) => {
-      this.modalRef = this.modalService.show(AskForFeatureDialogComponent, {
-        class: 'modal-lg',
+    return new Promise((resolve) => {
+      const ref = createComponent(AskForFeatureDialogComponent, {
+        environmentInjector: this.envInjector,
       });
+      this.appRef.attachView(ref.hostView);
+      document.body.appendChild(ref.location.nativeElement);
 
-      this.modalRef.content.msgTo = this.messageTemplate.to;
+      const inst = ref.instance;
+      inst.msgTo = this.messageTemplate.to;
 
       let requestedFeatureFriendly = '';
-
       const requestedFeature = options.requestedFeature;
       switch (requestedFeature) {
-        case 'ds.tsvfile':
-          requestedFeatureFriendly = 'TSV File (DataSource)';
-          break;
-        case 'ds.fixedwidthfile':
-          requestedFeatureFriendly = 'Fixed-Width File (DataSource)';
-          break;
-        case 'ds.excelfile':
-          requestedFeatureFriendly = 'Excel File (DataSource)';
-          break;
-        case 'ds.gsheet':
-          requestedFeatureFriendly =
-            'Google Sheets (cloud/saas service) (DataSource)';
-          break;
-        case 'ds.o365sheet':
-          requestedFeatureFriendly =
-            'Microsoft Office365 Excel (cloud/saas service) (DataSource)';
-          break;
-        case 'ds.sqlquery':
-          requestedFeatureFriendly = 'SQL query (DataSource)';
-          break;
-        case 'ds.dashboard':
-          requestedFeatureFriendly = 'Dashboard Scripts (DataSource)';
-          break;
-        case 'output.pdf':
-          requestedFeatureFriendly = 'PDF Files (Output Type)';
-          break;
-        case 'output.xlsx':
-          requestedFeatureFriendly = 'Excel (xlsx) Files (Output Type)';
-          break;
-        case 'output.html':
-          requestedFeatureFriendly = 'HTML Files (Output Type)';
-          break;
-        case 'output.dashboard':
-          requestedFeatureFriendly = 'Dashboard (Output Type)';
-          break;
-        default:
-          requestedFeatureFriendly = '';
+        case 'ds.tsvfile': requestedFeatureFriendly = 'TSV File (DataSource)'; break;
+        case 'ds.fixedwidthfile': requestedFeatureFriendly = 'Fixed-Width File (DataSource)'; break;
+        case 'ds.excelfile': requestedFeatureFriendly = 'Excel File (DataSource)'; break;
+        case 'ds.gsheet': requestedFeatureFriendly = 'Google Sheets (cloud/saas service) (DataSource)'; break;
+        case 'ds.o365sheet': requestedFeatureFriendly = 'Microsoft Office365 Excel (cloud/saas service) (DataSource)'; break;
+        case 'ds.sqlquery': requestedFeatureFriendly = 'SQL query (DataSource)'; break;
+        case 'ds.dashboard': requestedFeatureFriendly = 'Dashboard Scripts (DataSource)'; break;
+        case 'output.pdf': requestedFeatureFriendly = 'PDF Files (Output Type)'; break;
+        case 'output.xlsx': requestedFeatureFriendly = 'Excel (xlsx) Files (Output Type)'; break;
+        case 'output.html': requestedFeatureFriendly = 'HTML Files (Output Type)'; break;
+        case 'output.dashboard': requestedFeatureFriendly = 'Dashboard (Output Type)'; break;
+        default: requestedFeatureFriendly = '';
       }
 
       if (requestedFeatureFriendly) {
-        this.modalRef.content.msgSubject = this.messageTemplate.subject.replace(
-          '{{nameYourFeatureHere}}',
-          requestedFeatureFriendly,
-        );
-        this.modalRef.content.msgMessage = this.messageTemplate.message.replace(
-          '{{nameYourFeatureHere}}',
-          requestedFeatureFriendly,
-        );
+        inst.msgSubject = this.messageTemplate.subject.replace('{{nameYourFeatureHere}}', requestedFeatureFriendly);
+        inst.msgMessage = this.messageTemplate.message.replace('{{nameYourFeatureHere}}', requestedFeatureFriendly);
       } else {
-        this.modalRef.content.msgSubject = this.messageTemplate.subject;
-        this.modalRef.content.msgMessage = this.messageTemplate.message;
+        inst.msgSubject = this.messageTemplate.subject;
+        inst.msgMessage = this.messageTemplate.message;
       }
 
-      this.modalRef.content.title = options.title ? options.title : titleLabel;
-      this.modalRef.content.confirmLabel = options.confirmLabel
-        ? options.confirmLabel
-        : confirmLabel;
+      inst.title = options.title ? options.title : titleLabel;
+      inst.confirmLabel = options.confirmLabel ? options.confirmLabel : confirmLabel;
 
-      this.modalRef.content.onClose.subscribe((result: boolean) => {
-        resolve(result);
+      inst.onClose.subscribe({
+        next: (result: boolean) => resolve(result),
+        complete: () => {
+          setTimeout(() => {
+            this.appRef.detachView(ref.hostView);
+            ref.destroy();
+          }, 300);
+        },
       });
     });
   }

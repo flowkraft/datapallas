@@ -164,7 +164,7 @@ export class WebSocketService extends WebSocketEndpoint {
       logFileName,
       subscriptionLogFileContent,
     );
-    await this.apiService.put('/jobs/logs/tailer', {
+    await this.apiService.post('/jobs/logs/tailer', {
       fileName: logFileName,
       command: 'start',
     });
@@ -209,7 +209,7 @@ export class WebSocketService extends WebSocketEndpoint {
       this.logsSubjects.get(logFileName).complete();
       this.subscriptionsLogFileContent.get(logFileName).unsubscribe();
       this.logsSubjects.delete(logFileName);
-      await this.apiService.put('/jobs/logs/tailer', {
+      await this.apiService.post('/jobs/logs/tailer', {
         fileName: logFileName,
         command: 'stop',
       });
@@ -317,6 +317,8 @@ export class WebSocketService extends WebSocketEndpoint {
     exitValue: number,
     exceptionMessage = '',
   ) => {
+    this.executionStatsService.jobStats.currentJobId = null;
+
     if (this.callBacksProcessing.onProcessingComplete) {
       this.callBacksProcessing.onProcessingComplete();
       this.callBacksProcessing.onProcessingComplete = null;

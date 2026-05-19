@@ -1,21 +1,21 @@
 export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableDeliveryTemplate>
   <div class="well">
-    <div class="row">
-      <div class="col-xs-12">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 12">
         <input
           type="checkbox"
           id="btnSendDocumentsEmail"
-          [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.email"
-          (ngModelChange)="markSettingsDirty($event)"
+          [ngModel]="xmlSettings?.documentburster?.settings?.sendfiles?.email"
+          (ngModelChange)="setXmlPath('documentburster.settings.sendfiles.email', $event)"
         />
         <label for="btnSendDocumentsEmail" class="checkboxlabel"
           >&nbsp;{{
           'AREAS.CONFIGURATION.TAB-ENABLE-DISABLE-DELIVERY.SEND-BY-EMAIL' |
           translate }}</label
         >
+        @if (xmlSettings?.documentburster.settings.sendfiles.email) {
         <span
           id="btnEmailConfiguration"
-          *ngIf="xmlSettings?.documentburster.settings.sendfiles.email"
         >
           <a
             href="#"
@@ -33,16 +33,17 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
             </button>
           </a>
         </span>
+        }
       </div>
     </div>
     <p></p>
-    <div class="row">
-      <div class="col-xs-12">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 12">
         <input
           type="checkbox"
           id="btnSendDocumentsUpload"
-          [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.upload"
-          (ngModelChange)="markSettingsDirty($event)"
+          [ngModel]="xmlSettings?.documentburster?.settings?.sendfiles?.upload"
+          (ngModelChange)="setXmlPath('documentburster.settings.sendfiles.upload', $event)"
         />
         <label for="btnSendDocumentsUpload" class="checkboxlabel"
           >&nbsp;{{
@@ -50,9 +51,9 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           translate }}</label
         >
 
+        @if (xmlSettings?.documentburster.settings.sendfiles.upload) {
         <span
           id="btnUploadConfiguration"
-          *ngIf="xmlSettings?.documentburster.settings.sendfiles.upload"
         >
           <a
             href="#"
@@ -70,17 +71,18 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
             </button>
           </a>
         </span>
+        }
       </div>
     </div>
 
     <p></p>
-    <div class="row">
-      <div class="col-xs-12">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 12">
         <input
           type="checkbox"
           id="btnSendDocumentsWeb"
-          [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.web"
-          (ngModelChange)="markSettingsDirty($event)"
+          [ngModel]="xmlSettings?.documentburster?.settings?.sendfiles?.web"
+          (ngModelChange)="setXmlPath('documentburster.settings.sendfiles.web', $event)"
         />
         <label for="btnSendDocumentsWeb" class="checkboxlabel"
           >&nbsp;<span
@@ -88,9 +90,9 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           ></span
         ></label>
 
+        @if (xmlSettings?.documentburster.settings.sendfiles.web) {
         <span
           id="btnWebConfiguration"
-          *ngIf="xmlSettings?.documentburster.settings.sendfiles.web"
         >
           <a
             href="#"
@@ -108,27 +110,28 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
             </button>
           </a>
         </span>
+        }
       </div>
     </div>
 
     <p></p>
 
-    <div class="row">
-      <div class="col-xs-12">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 12">
         <input
           type="checkbox"
           id="btnSendDocumentsSMS"
-          [(ngModel)]="xmlSettings?.documentburster.settings.sendfiles.sms"
-          (ngModelChange)="markSettingsDirty($event)"
+          [ngModel]="xmlSettings?.documentburster?.settings?.sendfiles?.sms"
+          (ngModelChange)="setXmlPath('documentburster.settings.sendfiles.sms', $event)"
         />
         <label for="btnSendDocumentsSMS" class="checkboxlabel"
           >&nbsp;{{
           'AREAS.CONFIGURATION.TAB-ENABLE-DISABLE-DELIVERY.SEND-SMS-MESSAGES' |
           translate }}</label
         >
+        @if (xmlSettings?.documentburster.settings.sendfiles.sms) {
         <span
           id="btnSMSConfiguration"
-          *ngIf="xmlSettings?.documentburster.settings.sendfiles.sms"
         >
           <a
             href="#"
@@ -146,18 +149,19 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
             </button>
           </a>
         </span>
+        }
       </div>
     </div>
 
     <hr />
 
-    <div class="row">
-      <div class="col-xs-12">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 12">
         <input
           type="checkbox"
           id="btnDeleteDocuments"
-          [(ngModel)]="xmlSettings?.documentburster.settings.deletefiles"
-          (ngModelChange)="markSettingsDirty($event)"
+          [ngModel]="xmlSettings?.documentburster?.settings?.deletefiles"
+          (ngModelChange)="setXmlPath('documentburster.settings.deletefiles', $event)"
         />
         <label for="btnDeleteDocuments" class="checkboxlabel"
           >&nbsp;{{
@@ -169,13 +173,13 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
 
     <p></p>
 
-    <div class="row">
-      <div class="col-xs-12">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 12">
         <input
           type="checkbox"
           id="btnQuarantineDocuments"
-          [(ngModel)]="xmlSettings?.documentburster.settings.quarantinefiles"
-          (ngModelChange)="markSettingsDirty($event)"
+          [ngModel]="xmlSettings?.documentburster?.settings?.quarantinefiles"
+          (ngModelChange)="setXmlPath('documentburster.settings.quarantinefiles', $event)"
         />
         <label for="btnQuarantineDocuments" class="checkboxlabel"
           >&nbsp;{{

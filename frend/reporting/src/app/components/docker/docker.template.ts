@@ -1,8 +1,9 @@
 export const dockerTemplate = `
   <!-- Docker Desktop not found -->
-  <div class="row" *ngIf="!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && !stateStore?.configSys?.sysInfo?.setup?.docker?.version">
+  @if (!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && !stateStore?.configSys?.sysInfo?.setup?.docker?.version) {
+  <div>
     <br />
-    <span class="label label-warning">
+    <span class="badge badge-warning">
       <strong>
         <em>Docker Desktop</em>
         {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.DOCKER.NOT-FOUND' | translate}}
@@ -34,11 +35,13 @@ export const dockerTemplate = `
     </a>
     <br/><br/>
   </div>
+  }
 
   <!-- Docker Desktop too old -->
-  <div class="row" *ngIf="!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && stateStore?.configSys?.sysInfo?.setup?.docker?.version">
+  @if (!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && stateStore?.configSys?.sysInfo?.setup?.docker?.version) {
+  <div>
     <br /><br />
-    <span id="dockerInstallationOld" class="label label-warning">
+    <span id="dockerInstallationOld" class="badge badge-warning">
       <strong>
         <em>Docker Desktop</em>
         {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.DOCKER.TOO-OLD' | translate}}
@@ -69,4 +72,5 @@ export const dockerTemplate = `
     </a>
     <br/><br/>
   </div>
+  }
 `;

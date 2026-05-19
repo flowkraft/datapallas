@@ -686,10 +686,11 @@ export class ProcessingComponent implements OnInit {
           ? Utilities.basename(Utilities.dirname(configFilePath))
           : undefined;
 
-        this.jobsService.burst({
+        const { jobId: burstJobId } = await this.jobsService.submitJob('burst', {
           inputFile: inputFilePath,
           reportId: burstReportId,
         });
+        this.executionStatsService.jobStats.currentJobId = burstJobId;
 
         this.resetProcInfo();
       },
@@ -761,11 +762,12 @@ export class ProcessingComponent implements OnInit {
           }
         }
 
-        this.jobsService.generate({
+        const { jobId: generateJobId } = await this.jobsService.submitJob('generate', {
           reportId: selectedReport.folderName,
           input,
           params: paramsMap,
         });
+        this.executionStatsService.jobStats.currentJobId = generateJobId;
 
         this.resetProcInfo();
       },
@@ -817,11 +819,12 @@ export class ProcessingComponent implements OnInit {
           '', { messageClass: 'java-started' },
         );
 
-        this.jobsService.merge({
+        const { jobId: mergeJobId } = await this.jobsService.submitJob('merge', {
           listFile: mergeFilePath,
           outputName: this.processingService.procMergeBurstInfo.mergedFileName,
           burst: this.processingService.procMergeBurstInfo.shouldBurstResultedMergedFile,
         });
+        this.executionStatsService.jobStats.currentJobId = mergeJobId;
 
         this.resetProcInfo();
       },
@@ -999,11 +1002,13 @@ export class ProcessingComponent implements OnInit {
         );
 
         // Execute via REST — burst or generate with QA params
+        let qaJobId: string;
         if (this.processingService.procQualityAssuranceInfo.whichAction === 'burst') {
-          this.jobsService.burst(qaParams);
+          ({ jobId: qaJobId } = await this.jobsService.submitJob('burst', qaParams));
         } else {
-          this.jobsService.generate({ ...qaParams, input: inputFilePath });
+          ({ jobId: qaJobId } = await this.jobsService.submitJob('generate', { ...qaParams, input: inputFilePath }));
         }
+        this.executionStatsService.jobStats.currentJobId = qaJobId;
 
         this.resetProcInfo();
       },
@@ -1164,7 +1169,7 @@ export class ProcessingComponent implements OnInit {
     this.confirmService.askConfirmation({
       message: dialogQuestion,
       confirmAction: async () => {
-        await this.jobsService.cancel(jobFilePath);
+        await this.jobsService.clearResumeJobFile(jobFilePath);
         this.messagesService.showInfo('Job was cleared.');
         this.executionStatsService.jobStats.jobsToResume = [];
       },

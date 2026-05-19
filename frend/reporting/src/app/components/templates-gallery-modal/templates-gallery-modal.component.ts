@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild } from '@angular/core';
+import { Component, input, output, viewChild } from '@angular/core';
 import { HtmlDocTemplateDisplay, HtmlDocTemplateInfo, SamplesService } from '../../providers/samples.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -15,8 +15,8 @@ import { ApiService } from '../../providers/api.service';
 })
 export class TemplatesGalleryModalComponent {
 
-  @Input() galleryTags: string[] | null = null;
-  @Output() useTemplate = new EventEmitter<HtmlDocTemplateDisplay>();
+  galleryTags = input<string[] | null>(null);
+  useTemplate = output<HtmlDocTemplateDisplay>();
 
   constructor(
     protected settingsService: ConfigurationRepository,
@@ -55,7 +55,7 @@ export class TemplatesGalleryModalComponent {
 
   galleryAiInstructions: string = '';
 
-  @ViewChild('templateCarousel') templateCarousel: any;
+  templateCarousel = viewChild<any>('templateCarousel');
 
 
   // Component method to add
@@ -104,8 +104,8 @@ export class TemplatesGalleryModalComponent {
     this.galleryTemplates = [];
     await this.loadGalleryTemplates();
 
-    if (this.templateCarousel) {
-      this.templateCarousel.page = 0;
+    if (this.templateCarousel()) {
+      this.templateCarousel().page.set(0);
     }
   }
 
@@ -291,8 +291,8 @@ export class TemplatesGalleryModalComponent {
       this.previousStateBeforeReadme.templateIndex;
 
     // Update the carousel position if needed
-    if (this.templateCarousel) {
-      this.templateCarousel.page = this.selectedGalleryTemplateIndex;
+    if (this.templateCarousel()) {
+      this.templateCarousel().page.set(this.selectedGalleryTemplateIndex);
     }
 
     // Update the dialog header to reflect the template name
@@ -312,8 +312,8 @@ export class TemplatesGalleryModalComponent {
       this.previousStateBeforeAiPrompt.templateIndex;
 
     // Update the carousel position if needed
-    if (this.templateCarousel) {
-      this.templateCarousel.page = this.selectedGalleryTemplateIndex;
+    if (this.templateCarousel()) {
+      this.templateCarousel().page.set(this.selectedGalleryTemplateIndex);
     }
 
     // Update the dialog header to reflect the template name
@@ -432,12 +432,12 @@ export class TemplatesGalleryModalComponent {
 
     //console.log(`Filtered templates count: ${filteredTemplates.length}`);
     const filteredTemplates = this.allAvailableTemplates.filter((template) => {
-      if (this.galleryTags === null) {
+      if (this.galleryTags() === null) {
         // Show all except 'excel'
         return !template.tags?.includes('excel');
       }
       // Otherwise: match any of the tags
-      return template.tags.some(tag => this.galleryTags.includes(tag));
+      return template.tags.some(tag => this.galleryTags().includes(tag));
     });
 
     // Process filtered templates

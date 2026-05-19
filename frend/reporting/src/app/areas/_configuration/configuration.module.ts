@@ -5,7 +5,6 @@ import { LicenseModule } from '../../components/license/license.module';
 import { AppRoutingModule } from '../../app-routing.module';
 
 import { SharedModule } from '../../shared/shared.module';
-import { EditorModule } from 'primeng/editor';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ConfigurationComponent } from './configuration.component';
 import { AngularSplitModule } from 'angular-split';
@@ -20,7 +19,6 @@ import { ReportsListModule } from '../../components/reports-list/reports-list.mo
   imports: [
     SharedModule,
     TemplatesGalleryModalModule,
-    EditorModule,
     NgSelectModule,
     AppRoutingModule,
     LicenseModule,

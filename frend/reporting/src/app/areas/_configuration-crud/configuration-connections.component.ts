@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy, viewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
 import _ from 'lodash';
 
@@ -34,8 +34,7 @@ import { ConnectionDetailsComponent } from '../../components/connection-details/
   `,
 })
 export class ConnectionListComponent implements OnInit, OnDestroy {
-  @ViewChild('connectionDetailsModal')
-  connectionDetailsModalInstance!: ConnectionDetailsComponent;
+  connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');
 
   goBackLocation = '';
   configurationFilePath = '';
@@ -203,14 +202,14 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
       return;
     }
     // Show the modal in update mode for the selected connection
-    await this.connectionDetailsModalInstance.showCrudModal(
+    await this.connectionDetailsModalInstance().showCrudModal(
       'update',
       'email-connection',
       false,
       selectedConnection
     );
     // Call the test method on the modal instance
-    await this.connectionDetailsModalInstance.doTestSMTPConnection();
+    await this.connectionDetailsModalInstance().doTestSMTPConnection();
   }
 
   async doTestDatabaseConnection() {
@@ -221,14 +220,14 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
       return;
     }
     // Show the modal in update mode for the selected connection
-    await this.connectionDetailsModalInstance.showCrudModal(
+    await this.connectionDetailsModalInstance().showCrudModal(
       'update',
       'database-connection',
       false,
       selectedConnection
     );
     // Call the test method on the modal instance
-    await this.connectionDetailsModalInstance.doTestDatabaseConnection();
+    await this.connectionDetailsModalInstance().doTestDatabaseConnection();
   }
 
   async showCrudModal(
@@ -237,7 +236,7 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
     duplicate?: boolean,
   ) {
     //console.log('ConfigurationConnectionsComponet: showCrudModal()');
-    this.connectionDetailsModalInstance.showCrudModal(
+    this.connectionDetailsModalInstance().showCrudModal(
       crudMode,
       connectionType,
       duplicate,

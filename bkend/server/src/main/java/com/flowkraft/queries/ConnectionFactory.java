@@ -2,6 +2,7 @@ package com.flowkraft.queries;
 
 import com.flowkraft.common.AppPaths;
 import com.sourcekraft.documentburster.common.db.DatabaseConnectionManager;
+import com.sourcekraft.documentburster.utils.Utils;
 import com.sourcekraft.documentburster.common.db.SqlExecutor;
 import com.sourcekraft.documentburster.common.settings.Settings;
 
@@ -32,7 +33,7 @@ public final class ConnectionFactory {
 
 	public static DatabaseConnectionManager newConnectionManager() throws Exception {
 		syncPath();
-		String settingsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml";
+		String settingsPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
 		Settings settings = new Settings(settingsPath);
 		// The Settings constructor re-derives PORTABLE_EXECUTABLE_DIR_PATH from the
 		// configFilePath (which may fall back to CWD if the file doesn't exist).

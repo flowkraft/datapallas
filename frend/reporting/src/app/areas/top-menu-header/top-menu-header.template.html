@@ -1,8 +1,8 @@
 <header class="app-header fixed left-0 right-0 flex items-stretch z-[1030]"
-        style="top:var(--cet-offset); height:50px; background-color:var(--app-header-bg);">
+  style="top:var(--cet-offset); height:50px; background-color:var(--app-header-bg);">
   <!-- Logo / Brand -->
   <a href="#" class="flex items-center justify-center shrink-0"
-     style="width:230px; background-color:var(--app-logo-bg); color:var(--app-header-text); text-decoration:none;">
+    style="width:230px; background-color:var(--app-logo-bg); color:var(--app-header-text); text-decoration:none;">
     <rb-brand></rb-brand>
   </a>
 
@@ -13,140 +13,126 @@
 
       <li class="flex items-stretch" routerLinkActive="active">
         <a id="topMenuBurst" href="#" class="flex items-center px-4"
-           style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
-           [routerLink]="['/processing', 'burstMenuSelected']"
-           skipLocationChange="true">
+          style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
+          [routerLink]="['/processing', 'burstMenuSelected']"
+          skipLocationChange="true">
           {{ 'AREAS.TOP-MENU-HEADER.BURST' | translate }}
         </a>
       </li>
 
       <li class="dropdown flex items-stretch relative" routerLinkActive="active">
-        <a id="topMenuConfiguration" href="#" class="flex items-center px-4 dropdown-toggle"
-           style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
-           data-toggle="dropdown">
+        <a id="topMenuConfiguration" class="flex items-center px-4 cursor-pointer"
+          style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
+          tabindex="0" role="button">
           {{ 'AREAS.TOP-MENU-HEADER.CONFIGURATION' | translate }}
-          <span *ngIf="settingsService.currentConfigurationTemplateName" class="ml-1">
-            ({{ settingsService.currentConfigurationTemplateName }})</span>&nbsp;
-          <span class="caret"></span>
+          @if (settingsService.currentConfigurationTemplateName) {
+            <span class="ml-1">
+            ({{ settingsService.currentConfigurationTemplateName }})</span>
+            }&nbsp;▾
         </a>
-        <ul id="topMenuConfigurationList" class="dropdown-menu" role="menu">
-          <ng-container
-            *ngFor="let configurationFile of this.settingsService.getConfigurations()">
-            <li *ngIf="configurationFile.isFallback">
-              <a id="topMenuConfigurationLoad_{{ configurationFile.folderName }}_{{ configurationFile.fileName }}"
-                 href="#"
-                 [routerLink]="[
-                   '/configuration',
-                   'generalSettingsMenuSelected',
-                   configurationFile.filePath,
-                   configurationFile.templateName
-                 ]"
-                 skipLocationChange="true">{{ configurationFile.templateName }}
-              </a>
-            </li>
-          </ng-container>
-          <li class="divider"></li>
-          <li>
-            <a id="topConfigurationCrud" href="#"
-               [routerLink]="['/configuration-crud', 'reports']"
-               skipLocationChange="true">Reports, Connections &amp; Cubes</a>
-          </li>
-          <li *ngIf="false" class="divider"></li>
-          <li *ngIf="false">
-            <a href="#">Samples&nbsp;<i style="margin-top:5px" class="fa fa-caret-right pull-right">&nbsp;</i></a>
-            <ul class="dropdown-menu">
-              <li *ngIf="this.settingsService.getSampleConfigurations().length == 0">No Samples</li>
-              <li *ngFor="let configurationFile of this.settingsService.getSampleConfigurations()">
+        <ul id="topMenuConfigurationList" tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2">
+          @for (configurationFile of this.settingsService.getConfigurations(); track configurationFile) {
+            @if (configurationFile.isFallback) {
+              <li>
                 <a id="topMenuConfigurationLoad_{{ configurationFile.folderName }}_{{ configurationFile.fileName }}"
-                   href="#"
-                   [routerLink]="[
-                     '/configuration',
-                     'generalSettingsMenuSelected',
-                     configurationFile.filePath,
-                     configurationFile.templateName
-                   ]"
-                   skipLocationChange="true">{{ configurationFile.templateName }}
+                  href="#"
+               [routerLink]="[
+                 '/configuration',
+                 'generalSettingsMenuSelected',
+                 configurationFile.filePath,
+                 configurationFile.templateName
+               ]"
+                  skipLocationChange="true">{{ configurationFile.templateName }}
                 </a>
               </li>
-            </ul>
+            }
+          }
+          <li><hr class="my-1 border-base-300"/></li>
+          <li>
+            <a id="topConfigurationCrud" href="#"
+              [routerLink]="['/configuration-crud', 'reports']"
+            skipLocationChange="true">Reports, Connections &amp; Cubes</a>
           </li>
         </ul>
       </li>
 
       <li class="dropdown flex items-stretch relative" routerLinkActive="active">
-        <a id="topMenuHelp" href="#" class="flex items-center px-4 dropdown-toggle"
-           style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
-           data-toggle="dropdown">
-          {{ 'AREAS.TOP-MENU-HEADER.HELP-AND-SUPPORT' | translate }}&nbsp;
-          <span class="caret"></span>
+        <a id="topMenuHelp" class="flex items-center px-4 cursor-pointer"
+          style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
+          tabindex="0" role="button">
+          {{ 'AREAS.TOP-MENU-HEADER.HELP-AND-SUPPORT' | translate }}&nbsp;▾
         </a>
-        <ul class="dropdown-menu" role="menu">
-          <li>
-            <a id="topMenuHelpSupport" href="#"
-               [routerLink]="['/help', 'supportMenuSelected']"
-               skipLocationChange="true">
+        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2">
+            <li>
+              <a id="topMenuHelpSupport" href="#"
+                [routerLink]="['/help', 'supportMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.TOP-MENU-HEADER.GET-SOFTWARE-SUPPORT' | translate }}</a>
-          </li>
-          <li>
-            <a id="topMenuHelpServices" href="#"
-               [routerLink]="['/help', 'servicesMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li>
+              <a id="topMenuHelpServices" href="#"
+                [routerLink]="['/help', 'servicesMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-SERVICES' | translate }}</a>
-          </li>
-          <li class="divider"></li>
-          <li>
-            <a id="topMenuStarterPacks" href="#"
-               [routerLink]="['/help','appsMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li>
+              <a id="topMenuStarterPacks" href="#"
+                [routerLink]="['/help','appsMenuSelected']"
+                skipLocationChange="true">
               Apps / Starter Packs / Extra Utils</a>
-          </li>
-          <li class="divider"></li>
-          <li>
-            <a id="topMenuHelpDocumentation" href="#"
-               [routerLink]="['/help', 'docsMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li>
+              <a id="topMenuHelpDocumentation" href="#"
+                [routerLink]="['/help', 'docsMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.TOP-MENU-HEADER.DOCUMENTATION' | translate }}</a>
-          </li>
-          <li>
-            <a id="topMenuHelpExamples" href="#"
-               [routerLink]="['/help', 'useCasesMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li>
+              <a id="topMenuHelpExamples" href="#"
+                [routerLink]="['/help', 'useCasesMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.TOP-MENU-HEADER.EXAMPLES' | translate }}</a>
-          </li>
-          <li class="divider"></li>
-          <li>
-            <a id="topMenuHelpCustomerReviews" href="#"
-               [routerLink]="['/help', 'reviewsMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li>
+              <a id="topMenuHelpCustomerReviews" href="#"
+                [routerLink]="['/help', 'reviewsMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.TOP-MENU-HEADER.CUSTOMER-REVIEWS' | translate }}</a>
-          </li>
-          <li>
-            <a id="topMenuHelpBlog" href="#"
-               [routerLink]="['/help', 'blogMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li>
+              <a id="topMenuHelpBlog" href="#"
+                [routerLink]="['/help', 'blogMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-BLOG' | translate }}</a>
-          </li>
-          <li class="divider"></li>
-          <li *ngIf="isRunningInsideElectron()">
-            <a id="topMenuHelpJava" href="#"
-               [routerLink]="['/help', 'installSetupMenuSelected']"
-               skipLocationChange="true">
-              {{ 'AREAS.TOP-MENU-HEADER.INSTALL-SETUP' | translate }}</a>
-          </li>
-          <li class="divider" *ngIf="isRunningInsideElectron()"></li>
-          <li>
-            <a id="topMenuHelpLicense" href="#"
-               [routerLink]="['/help','licenseMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li><hr class="my-1 border-base-300"/></li>
+            @if (isRunningInsideElectron()) {
+              <li>
+                <a id="topMenuHelpJava" href="#"
+                  [routerLink]="['/help', 'installSetupMenuSelected']"
+                  skipLocationChange="true">
+                {{ 'AREAS.TOP-MENU-HEADER.INSTALL-SETUP' | translate }}</a>
+              </li>
+            }
+            @if (isRunningInsideElectron()) {
+              <li><hr class="my-1 border-base-300"/></li>
+            }
+            <li>
+              <a id="topMenuHelpLicense" href="#"
+                [routerLink]="['/help','licenseMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.HELP.LEFT-MENU.LICENSE' | translate }}</a>
-          </li>
-          <li>
-            <a id="topMenuHelpAbout" href="#"
-               [routerLink]="['/help', 'aboutMenuSelected']"
-               skipLocationChange="true">
+            </li>
+            <li>
+              <a id="topMenuHelpAbout" href="#"
+                [routerLink]="['/help', 'aboutMenuSelected']"
+                skipLocationChange="true">
               {{ 'AREAS.TOP-MENU-HEADER.ABOUT' | translate }}</a>
-          </li>
-        </ul>
+            </li>
+          </ul>
       </li>
 
     </ul>
@@ -156,28 +142,32 @@
       <ul class="flex items-stretch m-0 p-0 list-none">
         <li class="flex items-center">
           <a id="askForFeature" href="#" class="px-4"
-             style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
-             (click)="onAskForFeatureModalShow(); false">
+            style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
+            (click)="onAskForFeatureModalShow(); false">
             Request <span class="badge">New</span> Feature
           </a>
         </li>
         <li class="flex items-center">
           <a id="supportEmail" href="#" class="px-3"
-             style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
-             [routerLink]="['/help', 'supportMenuSelected']"
-             skipLocationChange="true">support@datapallas.com</a>
+            style="color:var(--app-header-text); text-decoration:none; white-space:nowrap;"
+            [routerLink]="['/help', 'supportMenuSelected']"
+          skipLocationChange="true">support&#64;datapallas.com</a>
         </li>
         <!-- Control Sidebar Toggle Button -->
-        <li *ngIf="!settingsService.RUNNING_IN_E2E"
+        @if (!settingsService.RUNNING_IN_E2E) {
+          <li
             class="flex items-center">
-          <a id="btnChangeSkin" class="px-4" style="cursor:pointer; color:var(--app-header-text); text-decoration:none;"
-             (click)="toggleControlSidebar()">
-            <i class="fa fa-gears"></i>
-          </a>
-        </li>
+            <a id="btnChangeSkin" class="px-4" style="cursor:pointer; color:var(--app-header-text); text-decoration:none;"
+              (click)="toggleControlSidebar()">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </a>
+          </li>
+        }
       </ul>
     </div>
   </nav>
 </header>
 <!--<dburst-skins></dburst-skins> -->
-<dburst-skins *ngIf="!settingsService.RUNNING_IN_E2E"></dburst-skins>
+@if (!settingsService.RUNNING_IN_E2E) {
+  <dburst-skins></dburst-skins>
+}

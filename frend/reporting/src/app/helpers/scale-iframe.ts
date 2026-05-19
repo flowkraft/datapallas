@@ -3,7 +3,7 @@ import {
   ElementRef,
   AfterViewInit,
   OnDestroy,
-  Input,
+  input,
   NgZone,
 } from '@angular/core';
 
@@ -33,7 +33,7 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
   private boundTouchEnd: any;
   private boundDblClick: any;
 
-  @Input() zoomFactor: number = 2.5;
+  zoomFactor = input<number>(2.5);
 
   constructor(
     private el: ElementRef<HTMLIFrameElement>,
@@ -377,8 +377,8 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
 
     // Zoom in button
     const zoomIn = document.createElement('button');
-    zoomIn.innerHTML = '<i class="fa fa-search-plus"></i>';
-    zoomIn.className = 'btn btn-sm btn-default';
+    zoomIn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803zM10.5 7.5v6m3-3h-6"/></svg>';
+    zoomIn.className = 'btn btn-sm btn-ghost';
     zoomIn.id = `btn-zoom-in-${uniqueId}`; // Add unique ID
     zoomIn.dataset.testid = 'btn-zoom-in'; // Add data-testid for testing
     zoomIn.title = 'Zoom In';
@@ -386,8 +386,8 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
 
     // Zoom out button
     const zoomOut = document.createElement('button');
-    zoomOut.innerHTML = '<i class="fa fa-search-minus"></i>';
-    zoomOut.className = 'btn btn-sm btn-default';
+    zoomOut.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803zM13.5 10.5h-6"/></svg>';
+    zoomOut.className = 'btn btn-sm btn-ghost';
     zoomOut.id = `btn-zoom-out-${uniqueId}`; // Add unique ID
     zoomOut.dataset.testid = 'btn-zoom-out'; // Add data-testid for testing
     zoomOut.title = 'Zoom Out';
@@ -395,8 +395,8 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
 
     // Reset zoom button
     const zoomReset = document.createElement('button');
-    zoomReset.innerHTML = '<i class="fa fa-refresh"></i>';
-    zoomReset.className = 'btn btn-sm btn-default';
+    zoomReset.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>';
+    zoomReset.className = 'btn btn-sm btn-ghost';
     zoomReset.id = `btn-zoom-reset-${uniqueId}`; // Add unique ID
     zoomReset.dataset.testid = 'btn-zoom-reset'; // Add data-testid for testing
     zoomReset.title = 'Reset Zoom';
@@ -479,7 +479,7 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
 
     // Reset panning when toggling zoom
     if (this.isZoomed) {
-      this.lastScale = this.originalScale * this.zoomFactor;
+      this.lastScale = this.originalScale * this.zoomFactor();
 
       // Show overlay when zoomed
       const overlay = this.getOverlay();

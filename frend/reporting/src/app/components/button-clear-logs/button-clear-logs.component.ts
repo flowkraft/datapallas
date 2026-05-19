@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
@@ -12,10 +12,10 @@ import { ToastrMessagesService } from '../../providers/toastr-messages.service';
   styles: [':host {display: inline-block; width: 100%}'],
 })
 export class ButtonClearLogsComponent {
-  @Input() btnId: string;
-  @Input() value: string;
-  @Input() title: string;
-  @Input() question: string;
+  btnId = input<string>();
+  value = input<string>();
+  title = input<string>();
+  question = input<string>();
 
   constructor(
     protected logsService: WebSocketService,
@@ -25,7 +25,7 @@ export class ButtonClearLogsComponent {
   ) {}
 
   onClick() {
-    const dialogQuestion = this.question ? this.question : 'Clear log files?';
+    const dialogQuestion = this.question() ? this.question() : 'Clear log files?';
 
     this.confirmService.askConfirmation({
       message: dialogQuestion,

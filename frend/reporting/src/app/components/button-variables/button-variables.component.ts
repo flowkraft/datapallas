@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, Input } from '@angular/core';
+import { Component, output, input } from '@angular/core';
 
 import { modalVariablesTemplate } from './modal-variables.template';
 import { StateStoreService } from '../../providers/state-store.service';
@@ -14,7 +14,7 @@ import { TranslateService } from '@ngx-translate/core';
       style="width: 100%;padding-left:6px"
       [disabled]="shouldBeDisabled"
     >
-      <i class="fa fa-list-ol"></i>&nbsp;Variables&nbsp;
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>&nbsp;Variables&nbsp;
     </button>
     ${modalVariablesTemplate}
   `,
@@ -25,8 +25,8 @@ export class ButtonVariablesComponent {
 
   variables: Array<{ name: string; type: string; active: boolean }>;
 
-  @Input() shouldBeDisabled: boolean = false;
-  @Output() sendSelectedVariable: EventEmitter<string> = new EventEmitter();
+  shouldBeDisabled = input<boolean>(false);
+  sendSelectedVariable = output<string>();
 
   constructor(
     protected stateStore: StateStoreService,

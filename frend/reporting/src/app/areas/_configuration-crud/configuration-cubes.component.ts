@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, viewChild, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import * as _ from 'lodash';
 
 import { tabsTemplate } from './templates/cubes/_tabs';
@@ -32,9 +33,9 @@ import 'prismjs/components/prism-groovy';
   `,
 })
 export class CubeListComponent implements OnInit, OnDestroy {
-  @ViewChild('connectionDetailsModal') private connectionDetailsModalInstance!: ConnectionDetailsComponent;
+  private connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');
   private showSamplesSub?: Subscription;
-  private destroy$ = new Subject<void>();
+  private destroyRef = inject(DestroyRef);
   private cubeSearchSubject = new Subject<string>();
 
   // Search + pagination
@@ -139,7 +140,7 @@ cube {
 
   async ngOnInit() {
     this.cubeSearchSubject
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
         this.cubeSearchTerm = term;
         this.cubePageIndex = 0;
@@ -170,8 +171,6 @@ cube {
   }
 
   ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
     this.showSamplesSub?.unsubscribe();
   }
 
@@ -314,7 +313,7 @@ cube {
   }
 
   showDbConnectionModalForCubeDsl() {
-    if (!this.connectionDetailsModalInstance) return;
+    if (!this.connectionDetailsModalInstance()) return;
     if (!this.editingCube?.connectionId) {
       this.messagesService.showInfo('Pick a database connection for this cube first.');
       return;
@@ -326,8 +325,8 @@ cube {
       this.messagesService.showError('Cannot find the database connection for this cube.');
       return;
     }
-    this.connectionDetailsModalInstance.context = 'cubeDsl';
-    this.connectionDetailsModalInstance.showCrudModal(
+    this.connectionDetailsModalInstance().context.set('cubeDsl');
+    this.connectionDetailsModalInstance().showCrudModal(
       'update',
       'database-connection',
       false,

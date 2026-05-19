@@ -1,7 +1,10 @@
-﻿import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { BsModalRef } from 'ngx-bootstrap/modal';
 import { Subject } from 'rxjs';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 import { askForFeatureDialogTemplate } from './ask-for-feature-dialog.template';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import Utilities from '../../helpers/utilities';
@@ -11,20 +14,20 @@ import { AppPathsService } from '../../providers/app-paths.service';
 
 @Component({
   selector: 'dburst-ask-for-feature-dialog',
+  standalone: true,
+  imports: [DpDialogComponent, CommonModule, FormsModule, TranslateModule],
   template: `${askForFeatureDialogTemplate}`,
 })
 export class AskForFeatureDialogComponent implements OnInit {
-  onClose: Subject<boolean>;
-  title: string;
-
-  msgTo: string;
-  msgSubject: string;
-  msgMessage: string;
-
-  confirmLabel: string;
+  isVisible = true;
+  onClose = new Subject<boolean>();
+  title = '';
+  msgTo = '';
+  msgSubject = '';
+  msgMessage = '';
+  confirmLabel = '';
 
   constructor(
-    protected bsModalRef: BsModalRef,
     protected settingsService: ConfigurationRepository,
     protected appPathsService: AppPathsService,
     protected confirmService: ConfirmService,
@@ -32,9 +35,7 @@ export class AskForFeatureDialogComponent implements OnInit {
     private router: Router,
   ) {}
 
-  ngOnInit(): void {
-    this.onClose = new Subject();
-  }
+  ngOnInit(): void {}
 
   async confirm(action?: string) {
     if (action == 'send-message') {
@@ -65,8 +66,7 @@ export class AskForFeatureDialogComponent implements OnInit {
             jobFilePath: xmlAskForFeatureFilePath,
           });
 
-          this.onClose?.next(true);
-          this.bsModalRef.hide();
+          this._close(true);
         },
       });
       return;
@@ -75,8 +75,17 @@ export class AskForFeatureDialogComponent implements OnInit {
         skipLocationChange: true,
       });
     }
+    this._close(true);
+  }
 
-    this.onClose?.next(true);
-    this.bsModalRef.hide();
+  onVisibleChange(visible: boolean) {
+    if (!visible) this._close(false);
+  }
+
+  private _close(result: boolean) {
+    if (this.onClose.isStopped) return;
+    this.isVisible = false;
+    this.onClose.next(result);
+    this.onClose.complete();
   }
 }

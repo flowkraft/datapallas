@@ -22,7 +22,9 @@ import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper.TokenResult;
 import com.sourcekraft.documentburster.common.security.SecretsCipher;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionEmailSettings;
+import com.sourcekraft.documentburster.common.ServicesManager;
 import com.sourcekraft.documentburster.job.CliJob;
+import com.sourcekraft.documentburster.utils.Utils;
 
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
@@ -40,7 +42,7 @@ import picocli.CommandLine.Spec;
 @Command(name = "DataPallas", mixinStandardHelpOptions = true, versionProvider = MainProgram.VersionFromSettings.class, description = "Report bursting and report generation software", subcommands = {
 		MainProgram.JobCommand.class,
 		MainProgram.ConnectionCommand.class,
-		MainProgram.SystemCommand.class, MainProgram.ServiceCommand.class,
+		MainProgram.SystemCommand.class,
 		MainProgram.JasperCommand.class })
 public class MainProgram implements Callable<Integer> {
 
@@ -156,10 +158,10 @@ public class MainProgram implements Callable<Integer> {
 	@Command(name = "job", description = "Job execution operations", subcommands = {
 			MainProgram.BurstCommand.class,
 			MainProgram.GenerateCommand.class,
-			MainProgram.ResumeCommand.class,
 			MainProgram.JobCommand.MergeCommand.class,
-			MainProgram.JobCommand.StatsCommand.class,
-			MainProgram.JobCommand.GenerateJasperCommand.class })
+			MainProgram.JobCommand.StatusCommand.class,
+			MainProgram.JobCommand.CancelCommand.class,
+			MainProgram.JasperCommand.class })
 	public static class JobCommand implements Callable<Integer> {
 		@ParentCommand
 		MainProgram parent;
@@ -222,48 +224,79 @@ public class MainProgram implements Callable<Integer> {
 			}
 		}
 
-		@Command(name = "stats", description = "Show active job statistics")
-		public static class StatsCommand extends BaseCommand implements Callable<Integer> {
+		@Command(name = "status", description = "Poll the status of an async job submitted via POST /api/jobs")
+		public static class StatusCommand extends BaseCommand implements Callable<Integer> {
 			@ParentCommand
 			JobCommand jobCommand;
 
+			@Option(names = { "--job-id" }, required = true, description = "Job ID (UUID from POST /api/jobs response)")
+			private String jobId;
+
 			@Override
-			protected MainProgram getMainProgram() {
-				return jobCommand.parent;
-			}
+			protected MainProgram getMainProgram() { return jobCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				System.out.println("Active jobs: use the DataPallas web UI or GET /api/jobs/stats for programmatic access.");
-				return 0;
+				java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+				java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+						.uri(java.net.URI.create("http://localhost:9090/api/jobs/" + jobId))
+						.header("Accept", "application/json")
+						.GET().build();
+				java.net.http.HttpResponse<String> resp = client.send(req,
+						java.net.http.HttpResponse.BodyHandlers.ofString());
+				if (resp.statusCode() == 404) {
+					System.err.println("Job not found: " + jobId);
+					return 1;
+				}
+				System.out.println(resp.body());
+				return resp.statusCode() == 200 ? 0 : 1;
 			}
 		}
 
-		@Command(name = "generate-jasper", description = "Compile and export a JasperReports template (stub — use top-level 'jasper' command for full options)")
-		public static class GenerateJasperCommand extends BaseCommand implements Callable<Integer> {
+		@Command(name = "cancel", description = "Cancel a running job by ID")
+		public static class CancelCommand extends BaseCommand implements Callable<Integer> {
 			@ParentCommand
 			JobCommand jobCommand;
 
+			@Option(names = { "--job-id" }, required = true, description = "Job ID (UUID from POST /api/jobs response)")
+			private String jobId;
+
 			@Override
-			protected MainProgram getMainProgram() {
-				return jobCommand.parent;
-			}
+			protected MainProgram getMainProgram() { return jobCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				System.out.println("Use: DataPallas jasper --report-dir <dir> --jrxml <file> --format <pdf|xlsx|csv|html> --out <output>");
-				return 0;
+				java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+				java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+						.uri(java.net.URI.create("http://localhost:9090/api/jobs/" + jobId))
+						.header("Accept", "application/json")
+						.DELETE().build();
+				java.net.http.HttpResponse<String> resp = client.send(req,
+						java.net.http.HttpResponse.BodyHandlers.ofString());
+				if (resp.statusCode() == 404) {
+					System.err.println("Job not found: " + jobId);
+					return 1;
+				}
+				if (resp.statusCode() == 204) {
+					System.out.println("Job " + jobId + " cancelled.");
+					return 0;
+				}
+				System.err.println("Unexpected response: " + resp.statusCode());
+				return 1;
 			}
 		}
+
 	}
 
 	@Command(name = "connection", description = "Connection management operations", subcommands = {
+			MainProgram.ConnectionCommand.ListCommand.class,
 			MainProgram.ConnectionCommand.TestEmailCommand.class,
 			MainProgram.ConnectionCommand.TestSmsCommand.class,
 			MainProgram.ConnectionCommand.TestDatabaseCommand.class,
 			MainProgram.ConnectionCommand.FetchSchemaCommand.class,
 			MainProgram.ConnectionCommand.TestQueryCommand.class,
 			MainProgram.ConnectionCommand.RunSeedCommand.class,
+			MainProgram.ConnectionCommand.RunSqlCommand.class,
 			MainProgram.ConnectionCommand.OAuthSignInCommand.class })
 	public static class ConnectionCommand implements Callable<Integer> {
 		@ParentCommand
@@ -276,6 +309,143 @@ public class MainProgram implements Callable<Integer> {
 		public Integer call() {
 			spec.commandLine().usage(System.out);
 			return 0;
+		}
+
+		@Command(name = "list", description = "List configured connections")
+		static class ListCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--type" }, description = "Filter by type: email or database (default: all)")
+			private String type;
+
+			@Option(names = { "--format" }, description = "Output format: table or json (default: table)")
+			private String format = "table";
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				File connectionsDir = new File(Utils.resolvePathAgainstPortableDir("config/connections"));
+				if (!connectionsDir.isDirectory()) {
+					System.out.println("No connections directory found.");
+					return 0;
+				}
+				File[] dirs = connectionsDir.listFiles(File::isDirectory);
+				if (dirs == null || dirs.length == 0) {
+					System.out.println("No connections configured.");
+					return 0;
+				}
+				List<String> ids = new java.util.ArrayList<>();
+				for (File d : dirs) {
+					String id = d.getName();
+					if ("email".equals(type) && !id.startsWith("eml-")) continue;
+					if ("database".equals(type) && !id.startsWith("db-")) continue;
+					ids.add(id);
+				}
+				java.util.Collections.sort(ids);
+				if ("json".equals(format)) {
+					System.out.println("[");
+					for (int i = 0; i < ids.size(); i++) {
+						String id = ids.get(i);
+						String t = id.startsWith("eml-") ? "email" : id.startsWith("db-") ? "database" : "other";
+						System.out.printf("  {\"id\":\"%s\",\"type\":\"%s\"}%s%n", id, t, i < ids.size() - 1 ? "," : "");
+					}
+					System.out.println("]");
+				} else {
+					System.out.printf("%-40s %-10s%n", "ID", "TYPE");
+					System.out.println("-".repeat(52));
+					for (String id : ids) {
+						String t = id.startsWith("eml-") ? "email" : id.startsWith("db-") ? "database" : "other";
+						System.out.printf("%-40s %-10s%n", id, t);
+					}
+				}
+				return 0;
+			}
+		}
+
+		@Command(name = "run-sql", description = "Execute a SQL query against a database connection")
+		static class RunSqlCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ConnectionCommand connectionCommand;
+
+			@Option(names = { "--id" }, required = true, description = "Database connection ID (e.g. db-northwind)")
+			private String connectionId;
+
+			@Option(names = { "-q", "--query" }, required = true, description = "SQL query to execute")
+			private String sql;
+
+			@Option(names = { "--out" }, description = "Output file (default: stdout)")
+			private File outFile;
+
+			@Option(names = { "--format" }, description = "Output format: table, csv, or json (default: table)")
+			private String format = "table";
+
+			@Override
+			protected MainProgram getMainProgram() { return connectionCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				String filePath = Utils.resolvePathAgainstPortableDir(
+						"config/connections/" + connectionId + "/" + connectionId + ".xml");
+				CliJob job = getJob(filePath);
+				List<Map<String, Object>> rows = job.doRunSql(filePath, sql);
+				String output = formatRows(rows, format);
+				if (outFile != null) {
+					Files.writeString(outFile.toPath(), output);
+					System.out.println("Written " + rows.size() + " rows to " + outFile.getAbsolutePath());
+				} else {
+					System.out.print(output);
+				}
+				return 0;
+			}
+
+			private String formatRows(List<Map<String, Object>> rows, String fmt) throws Exception {
+				if (rows.isEmpty()) return "(no rows)\n";
+				List<String> cols = new java.util.ArrayList<>(rows.get(0).keySet());
+				if ("json".equals(fmt)) {
+					return new com.fasterxml.jackson.databind.ObjectMapper()
+							.writerWithDefaultPrettyPrinter().writeValueAsString(rows) + "\n";
+				}
+				if ("csv".equals(fmt)) {
+					StringBuilder sb = new StringBuilder();
+					sb.append(String.join(",", cols)).append("\n");
+					for (Map<String, Object> row : rows) {
+						List<String> vals = new java.util.ArrayList<>();
+						for (String c : cols) {
+							Object v = row.get(c);
+							String s = v == null ? "" : v.toString();
+							vals.add(s.contains(",") ? "\"" + s.replace("\"", "\"\"") + "\"" : s);
+						}
+						sb.append(String.join(",", vals)).append("\n");
+					}
+					return sb.toString();
+				}
+				// table format
+				int[] widths = new int[cols.size()];
+				for (int i = 0; i < cols.size(); i++) widths[i] = cols.get(i).length();
+				for (Map<String, Object> row : rows) {
+					for (int i = 0; i < cols.size(); i++) {
+						Object v = row.get(cols.get(i));
+						int len = v == null ? 4 : v.toString().length();
+						if (len > widths[i]) widths[i] = len;
+					}
+				}
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < cols.size(); i++) sb.append(String.format("%-" + widths[i] + "s  ", cols.get(i)));
+				sb.append("\n");
+				for (int i = 0; i < cols.size(); i++) sb.append("-".repeat(widths[i])).append("  ");
+				sb.append("\n");
+				for (Map<String, Object> row : rows) {
+					for (int i = 0; i < cols.size(); i++) {
+						Object v = row.get(cols.get(i));
+						sb.append(String.format("%-" + widths[i] + "s  ", v == null ? "NULL" : v.toString()));
+					}
+					sb.append("\n");
+				}
+				return sb.toString();
+			}
 		}
 
 		@Command(name = "test-email", description = "Test an email connection")
@@ -329,19 +499,19 @@ public class MainProgram implements Callable<Integer> {
 			@ParentCommand
 			ConnectionCommand connectionCommand;
 
-			@Option(names = { "--database-connection-file" }, required = true,
-					description = "Path to the database connection XML file")
-			private File databaseConnectionFile;
+			@Option(names = { "--id" }, required = true,
+					description = "Database connection ID (e.g. db-northwind)")
+			private String connectionId;
 
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				if (!databaseConnectionFile.exists())
-					throw new FileNotFoundException("Database connection file does not exist: " + databaseConnectionFile.getAbsolutePath());
-				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
-				job.doTestAndFetchDatabaseSchema(databaseConnectionFile.getAbsolutePath());
+				String filePath = Utils.resolvePathAgainstPortableDir(
+						"config/connections/" + connectionId + "/" + connectionId + ".xml");
+				CliJob job = getJob(filePath);
+				job.doTestAndFetchDatabaseSchema(filePath);
 				return 0;
 			}
 		}
@@ -351,19 +521,19 @@ public class MainProgram implements Callable<Integer> {
 			@ParentCommand
 			ConnectionCommand connectionCommand;
 
-			@Option(names = { "--database-connection-file" }, required = true,
-					description = "Path to the database connection XML file")
-			private File databaseConnectionFile;
+			@Option(names = { "--id" }, required = true,
+					description = "Database connection ID (e.g. db-northwind)")
+			private String connectionId;
 
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				if (!databaseConnectionFile.exists())
-					throw new FileNotFoundException("Database connection file does not exist: " + databaseConnectionFile.getAbsolutePath());
-				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
-				job.doTestAndFetchDatabaseSchema(databaseConnectionFile.getAbsolutePath());
+				String filePath = Utils.resolvePathAgainstPortableDir(
+						"config/connections/" + connectionId + "/" + connectionId + ".xml");
+				CliJob job = getJob(filePath);
+				job.doTestAndFetchDatabaseSchema(filePath);
 				return 0;
 			}
 		}
@@ -398,9 +568,9 @@ public class MainProgram implements Callable<Integer> {
 			@ParentCommand
 			ConnectionCommand connectionCommand;
 
-			@Option(names = { "--database-connection-file" }, required = true,
-					description = "Path to the database connection XML file")
-			private File databaseConnectionFile;
+			@Option(names = { "--id" }, required = true,
+					description = "Database connection ID (e.g. db-northwind)")
+			private String connectionId;
 
 			@Option(names = { "--script-file" }, required = true,
 					description = "Path to the Groovy script file")
@@ -414,12 +584,12 @@ public class MainProgram implements Callable<Integer> {
 
 			@Override
 			public Integer call() throws Exception {
-				if (!databaseConnectionFile.exists())
-					throw new FileNotFoundException("Database connection file not found: " + databaseConnectionFile.getAbsolutePath());
+				String filePath = Utils.resolvePathAgainstPortableDir(
+						"config/connections/" + connectionId + "/" + connectionId + ".xml");
 				if (!scriptFile.exists())
 					throw new FileNotFoundException("Script file not found: " + scriptFile.getAbsolutePath());
-				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
-				job.doRunSeedScript(databaseConnectionFile.getAbsolutePath(), scriptFile.getAbsolutePath(), params);
+				CliJob job = getJob(filePath);
+				job.doRunSeedScript(filePath, scriptFile.getAbsolutePath(), params);
 				return 0;
 			}
 		}
@@ -609,38 +779,11 @@ public class MainProgram implements Callable<Integer> {
 		}
 	}
 
-	@Command(name = "resume", description = "Resume a previously paused job")
-	public static class ResumeCommand extends BaseCommand implements Callable<Integer> {
-		@ParentCommand
-		JobCommand parent;
-
-		@Parameters(index = "0", description = "Job progress file to resume", arity = "1")
-		private File jobProgressFile;
-
-		@Override
-		protected MainProgram getMainProgram() {
-			return parent.parent;
-		}
-
-		@Override
-		public Integer call() throws Exception {
-			if (!jobProgressFile.exists()) {
-				throw new FileNotFoundException(
-						"Job progress file does not exist: " + jobProgressFile.getAbsolutePath());
-			}
-
-			CliJob job = getJob(null);
-			job.doResume(jobProgressFile.getAbsolutePath());
-			return 0;
-		}
-	}
-
 	@Command(name = "system", description = "System operations", subcommands = {
-			MainProgram.SystemCommand.TestEmailCommand.class, MainProgram.SystemCommand.TestSmsCommand.class,
-			MainProgram.SystemCommand.LicenseCommand.class, MainProgram.SystemCommand.FeatureRequestCommand.class,
-			MainProgram.SystemCommand.TestAndFetchDatabaseSchemaCommand.class,
-			MainProgram.SystemCommand.RunSeedScriptCommand.class,
-			MainProgram.SystemCommand.OAuth2Command.class })
+			MainProgram.SystemCommand.TestSmsCommand.class,
+			MainProgram.SystemCommand.LicenseCommand.class,
+			MainProgram.SystemCommand.FeatureRequestCommand.class,
+			MainProgram.ServiceCommand.class })
 	public static class SystemCommand implements Callable<Integer> {
 		@ParentCommand
 		MainProgram parent;
@@ -652,48 +795,6 @@ public class MainProgram implements Callable<Integer> {
 		public Integer call() {
 			spec.commandLine().usage(System.out);
 			return 0;
-		}
-
-		@Command(name = "test-email", description = "Test email connection")
-		static class TestEmailCommand extends BaseCommand implements Callable<Integer> {
-			@ParentCommand
-			SystemCommand systemCommand;
-
-			// --- START: Modification ---
-			// Remove Mixin for ConfigOptions
-			// @Mixin
-			// private ConfigOptions config;
-
-			// Add specific option for email connection file
-			@Option(names = {
-					"--email-connection-file" }, required = true, description = "Path to the email connection XML file (e.g., config/connections/eml-my-email.xml)")
-			private File emailConnectionFile;
-			// --- END: Modification ---
-
-			@Override
-			protected MainProgram getMainProgram() {
-				return systemCommand.parent;
-			}
-
-			@Override
-			public Integer call() throws Exception {
-				// --- START: Modification ---
-				// Validate the new option
-				if (!emailConnectionFile.exists()) {
-					throw new FileNotFoundException(
-							"Email connection file does not exist: " + emailConnectionFile.getAbsolutePath());
-				}
-				if (!emailConnectionFile.isFile()) {
-					throw new IllegalArgumentException("Email connection file path does not point to a file: "
-							+ emailConnectionFile.getAbsolutePath());
-				}
-
-				// Use the specific file path in getJob
-				CliJob job = getJob(emailConnectionFile.getAbsolutePath());
-				// --- END: Modification ---
-				job.doCheckEmail();
-				return 0;
-			}
 		}
 
 		@Command(name = "test-sms", description = "Test SMS through Twilio")
@@ -719,110 +820,6 @@ public class MainProgram implements Callable<Integer> {
 			public Integer call() throws Exception {
 				CliJob job = getJob(config.configFile);
 				job.doCheckTwilio(fromNumber, toNumber);
-				return 0;
-			}
-		}
-
-		@Command(name = "test-and-fetch-database-schema", description = "Test database connection and fetch schema information")
-		static class TestAndFetchDatabaseSchemaCommand extends BaseCommand implements Callable<Integer> {
-
-			@ParentCommand
-			SystemCommand systemCommand;
-
-			// --- START: Modification ---
-			// Rename option and update description for clarity
-			@Option(names = {
-					"--database-connection-file" }, required = true, description = "Path to the database connection XML file (e.g., config/connections/db-my-db/db-my-db.xml)")
-			private File databaseConnectionFile; // Renamed from connectionFile
-			// --- END: Modification ---
-
-			@Override
-			protected MainProgram getMainProgram() {
-				return systemCommand.parent;
-			}
-
-			@Override
-			public Integer call() throws Exception {
-				log.info("Initiating test-and-fetch-database-schema via CliJob...");
-
-				// Validate file existence
-				if (!databaseConnectionFile.exists()) {
-					throw new FileNotFoundException(
-							"Database connection file does not exist: " + databaseConnectionFile.getAbsolutePath());
-				}
-				if (!databaseConnectionFile.isFile()) {
-					throw new IllegalArgumentException("Database connection file path does not point to a file: "
-							+ databaseConnectionFile.getAbsolutePath());
-				}
-
-				// instantiate job and execute
-				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
-				job.doTestAndFetchDatabaseSchema(databaseConnectionFile.getAbsolutePath());
-
-				log.info("CliJob execution for test-and-fetch-database-schema requested.");
-				return 0;
-			}
-		}
-
-		@Command(name = "run-seed-script", description = "Execute a Groovy seed script against a database connection")
-		static class RunSeedScriptCommand extends BaseCommand implements Callable<Integer> {
-			@ParentCommand
-			SystemCommand systemCommand;
-
-			@Option(names = { "--database-connection-file" }, required = true,
-					description = "Path to the database connection XML file")
-			private File databaseConnectionFile;
-
-			@Option(names = { "--script-file" }, required = true,
-					description = "Path to the Groovy script file to execute")
-			private File scriptFile;
-
-			@Option(names = { "-p", "--param" }, description = "Script parameters as key=value (can be repeated)", paramLabel = "KEY=VALUE")
-			private Map<String, String> params = new HashMap<>();
-
-			@Override
-			protected MainProgram getMainProgram() {
-				return systemCommand.parent;
-			}
-
-			@Override
-			public Integer call() throws Exception {
-				if (!databaseConnectionFile.exists())
-					throw new FileNotFoundException("Database connection file not found: " + databaseConnectionFile.getAbsolutePath());
-				if (!scriptFile.exists())
-					throw new FileNotFoundException("Script file not found: " + scriptFile.getAbsolutePath());
-
-				CliJob job = getJob(databaseConnectionFile.getAbsolutePath());
-				job.doRunSeedScript(databaseConnectionFile.getAbsolutePath(), scriptFile.getAbsolutePath(), params);
-				return 0;
-			}
-		}
-
-		@Command(name = "test-sql-query", description = "Test SQL query execution")
-		static class TestSqlQueryCommand extends BaseCommand implements Callable<Integer> {
-
-			@ParentCommand
-			SystemCommand systemCommand;
-
-			@Option(names = { "--sql-query" }, required = true, description = "SQL query to execute")
-			private String sqlQuery;
-
-			@Mixin
-			protected ConfigOptions config;
-
-			@Option(names = { "-p",
-					"--param" }, description = "Query parameters in key=value format (can be repeated)", paramLabel = "KEY=VALUE")
-			private Map<String, String> parameters = new HashMap<>();
-
-			@Override
-			protected MainProgram getMainProgram() {
-				return systemCommand.parent;
-			}
-
-			@Override
-			public Integer call() throws Exception {
-				CliJob job = getJob(config.configFile);
-				job.doFetchData(parameters, false);
 				return 0;
 			}
 		}
@@ -910,138 +907,12 @@ public class MainProgram implements Callable<Integer> {
 			}
 		}
 
-		@Command(name = "oauth2", description = "OAuth2 sign-in for email connections", subcommands = {
-				SystemCommand.OAuth2Command.SignInCommand.class })
-		public static class OAuth2Command implements Callable<Integer> {
-			@ParentCommand
-			SystemCommand systemCommand;
-
-			@Spec
-			CommandSpec spec;
-
-			@Override
-			public Integer call() {
-				spec.commandLine().usage(System.out);
-				return 0;
-			}
-
-			@Command(name = "sign-in",
-					description = "Run the interactive OAuth2 PKCE flow against a provider (Microsoft / Google / Generic) "
-							+ "and either persist the resulting refresh token onto a defined email connection file "
-							+ "(--email-connection-file) or print it to stdout for manual paste.")
-			public static class SignInCommand extends BaseCommand implements Callable<Integer> {
-				@ParentCommand
-				OAuth2Command oauth2Command;
-
-				@Option(names = "--provider", required = true,
-						description = "Provider: MICROSOFT | GOOGLE | GENERIC")
-				private String provider;
-
-				@Option(names = "--client-id", required = true,
-						description = "OAuth2 client ID (Application (client) ID for Microsoft)")
-				private String clientId;
-
-				@Option(names = "--tenant-id",
-						description = "Azure AD tenant ID (MICROSOFT only; defaults to 'common')")
-				private String tenantId;
-
-				@Option(names = "--authorize-url",
-						description = "Authorization endpoint (GENERIC only)")
-				private String authorizeUrl;
-
-				@Option(names = "--token-url",
-						description = "Token endpoint (GENERIC only)")
-				private String tokenUrl;
-
-				@Option(names = "--scope",
-						description = "OAuth2 scope (GENERIC only; e.g. 'https://outlook.office.com/SMTP.Send offline_access openid email')")
-				private String scope;
-
-				@Option(names = "--email-connection-file",
-						description = "Optional: path to an email connection XML file (e.g. config/connections/eml-office365.xml). "
-								+ "When provided, the refresh token + signed-in mailbox are persisted into that file (refresh token encrypted). "
-								+ "When omitted, both values are printed to stdout for manual paste.")
-				private File emailConnectionFile;
-
-				@Override
-				protected MainProgram getMainProgram() {
-					return oauth2Command.systemCommand.parent;
-				}
-
-				@Override
-				public Integer call() throws Exception {
-					System.out.println("Starting OAuth2 sign-in flow for provider: " + provider);
-					System.out.println("Your default browser will open in a moment to complete sign-in.");
-
-					TokenResult result = OAuthFlowHelper.runAuthCodeFlow(
-							provider, tenantId, clientId, authorizeUrl, tokenUrl, scope);
-
-					if (emailConnectionFile == null) {
-						System.out.println();
-						System.out.println("=== OAuth2 sign-in successful ===");
-						System.out.println("userEmail:    " + result.userEmail);
-						System.out.println("refreshToken: " + result.refreshToken);
-						System.out.println();
-						System.out.println("Paste these into the <oauth2useremail> and <oauth2refreshtoken> elements "
-								+ "of your email connection XML. The refresh token will be encrypted on first save "
-								+ "by the running DataPallas instance.");
-						return 0;
-					}
-
-					if (!emailConnectionFile.exists()) {
-						throw new FileNotFoundException(
-								"Email connection file does not exist: " + emailConnectionFile.getAbsolutePath());
-					}
-
-					Settings settings = new Settings(null);
-					DocumentBursterConnectionEmailSettings connSettings = settings
-							.loadSettingsConnectionEmail(emailConnectionFile.getAbsolutePath());
-					if (connSettings == null || connSettings.connection == null
-							|| connSettings.connection.emailserver == null) {
-						throw new IllegalStateException(
-								"Email connection file is malformed (missing <connection><emailserver>): "
-										+ emailConnectionFile.getAbsolutePath());
-					}
-
-					connSettings.connection.emailserver.oauth2provider = provider.toUpperCase();
-					connSettings.connection.emailserver.oauth2clientid = clientId;
-					if (StringUtils.isNotBlank(tenantId))
-						connSettings.connection.emailserver.oauth2tenantid = tenantId;
-					if (StringUtils.isNotBlank(authorizeUrl))
-						connSettings.connection.emailserver.oauth2authorizeurl = authorizeUrl;
-					if (StringUtils.isNotBlank(tokenUrl))
-						connSettings.connection.emailserver.oauth2tokenurl = tokenUrl;
-					if (StringUtils.isNotBlank(scope))
-						connSettings.connection.emailserver.oauth2scope = scope;
-					connSettings.connection.emailserver.oauth2useremail = result.userEmail;
-
-					// Encrypt the refresh token at rest using the same SecretsCipher path the server uses.
-					// SecretsCipher.encrypt() already returns the full "ENC(...)" wrapper.
-					SecretsCipher cipher = SecretsCipher.getInstance(Settings.PORTABLE_EXECUTABLE_DIR_PATH);
-					connSettings.connection.emailserver.oauth2refreshtoken = cipher.encrypt(result.refreshToken);
-
-					JAXBContext jc = JAXBContext.newInstance(DocumentBursterConnectionEmailSettings.class);
-					Marshaller marshaller = jc.createMarshaller();
-					marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-					try (OutputStream os = new FileOutputStream(emailConnectionFile)) {
-						marshaller.marshal(connSettings, os);
-					}
-
-					System.out.println();
-					System.out.println("=== OAuth2 sign-in successful ===");
-					System.out.println("Signed in as : " + result.userEmail);
-					System.out.println("Saved to     : " + emailConnectionFile.getAbsolutePath());
-					System.out.println("Refresh token has been written encrypted (ENC(...)).");
-					return 0;
-				}
-			}
-		}
 	}
 
 	@Command(name = "jasper", description = "Compile, fill, and export JasperReports (.jrxml) reports")
 	public static class JasperCommand extends BaseCommand implements Callable<Integer> {
-		@ParentCommand
-		MainProgram parent;
+		@Spec
+		CommandSpec spec;
 
 		@Option(names = { "--report-dir" }, required = true, description = "Folder containing the .jrxml and its resources")
 		private File reportDir;
@@ -1069,7 +940,9 @@ public class MainProgram implements Callable<Integer> {
 
 		@Override
 		protected MainProgram getMainProgram() {
-			return parent;
+			CommandLine cl = spec.commandLine();
+			while (cl.getParent() != null) cl = cl.getParent();
+			return (MainProgram) cl.getCommand();
 		}
 
 		@Override
@@ -1080,31 +953,32 @@ public class MainProgram implements Callable<Integer> {
 		}
 	}
 
-	@Command(name = "service", description = "Manage services (e.g., databases, queues) via Docker.", mixinStandardHelpOptions = false, customSynopsis = "service <category> <command> [service-name] [args...]")
+	@Command(name = "service", description = "Manage services (e.g., databases, queues) via Docker.", mixinStandardHelpOptions = false, customSynopsis = "service <category> <command> [service-name] [args...]", subcommands = {
+			MainProgram.ServiceCommand.StatusCommand.class })
 	public static class ServiceCommand extends BaseCommand implements Callable<Integer> {
 
 		@ParentCommand
-		MainProgram parent;
+		SystemCommand systemCommand;
 
 		@Override
 		protected MainProgram getMainProgram() {
-			return parent;
+			return systemCommand.parent;
 		}
 
 		// Use arity = "1..*" to capture all remaining args
 		@Parameters(description = "The full service command string (e.g., 'database start northwind postgresql').", arity = "1..*")
 		private List<String> commandAndArgs;
-		
+
 		// Capture unmatched options like --no-cache, --build, --liquibase
 		@CommandLine.Unmatched
 		private List<String> unmatchedArgs;
 
 		@Override
 		public Integer call() throws Exception {
-			
+
 			// Enable TestContainers reuse mode for persistent database containers
 	        System.setProperty("testcontainers.reuse.enable", "true");
-	        
+
 			if (commandAndArgs == null || commandAndArgs.isEmpty()) {
 				System.err.println("Error: No service command provided.");
 				return 1;
@@ -1123,6 +997,28 @@ public class MainProgram implements Callable<Integer> {
 			job.doService(serviceName, commandLine);
 
 			return 0;
+		}
+
+		@Command(name = "status", description = "Show health status of managed services")
+		public static class StatusCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			ServiceCommand serviceCommand;
+
+			@Parameters(index = "0", arity = "0..1", description = "Optional service name to filter (e.g. clickhouse, northwind)")
+			private String serviceName;
+
+			@Override
+			protected MainProgram getMainProgram() { return serviceCommand.systemCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				String cmd = (serviceName != null && !serviceName.isBlank())
+						? "database info northwind " + serviceName
+						: "database list";
+				ServicesManager.Result result = ServicesManager.execute(cmd);
+				System.out.println(result.output);
+				return "error".equals(result.status) ? 1 : 0;
+			}
 		}
 	}
 

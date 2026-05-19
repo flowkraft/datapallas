@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { leftMenuTemplate } from './templates/_left-menu';
@@ -12,9 +12,17 @@ import { leftMenuTemplate } from './templates/_left-menu';
     </aside>
     <div class="relative" style="margin-left:230px; padding-top:calc(50px + var(--cet-offset)); min-height:calc(100vh - 80px - var(--cet-offset));">
       <section class="content">
-        <dburst-configuration-reports *ngIf="activeSection === 'reports'"></dburst-configuration-reports>
-        <dburst-connection-list *ngIf="activeSection === 'connections'"></dburst-connection-list>
-        <dburst-cube-list *ngIf="activeSection === 'cubes'"></dburst-cube-list>
+        @switch (activeSection) {
+          @case ('reports') {
+            <dburst-configuration-reports></dburst-configuration-reports>
+          }
+          @case ('connections') {
+            <dburst-connection-list></dburst-connection-list>
+          }
+          @case ('cubes') {
+            <dburst-cube-list></dburst-cube-list>
+          }
+        }
       </section>
     </div>
   `,
@@ -22,7 +30,7 @@ import { leftMenuTemplate } from './templates/_left-menu';
 export class ConfigurationCrudComponent implements OnInit {
   activeSection = 'reports';
 
-  constructor(private route: ActivatedRoute) {}
+  private route = inject(ActivatedRoute);
 
   ngOnInit() {
     this.route.params.subscribe((params) => {

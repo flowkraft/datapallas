@@ -1,10 +1,10 @@
-export const modalVariablesTemplate = `<p-dialog id="modalSelectVariable" header="{{
-  'COMPONENTS.BUTTON-VARIABLES.SELECT-VARIABLE' | translate }}" [(visible)]="isModalVariablesVisible" class="modal-dialog-center"
-  [baseZIndex]="1000" [modal]="true">
+export const modalVariablesTemplate = `<dp-dialog id="modalSelectVariable" header="{{
+  'COMPONENTS.BUTTON-VARIABLES.SELECT-VARIABLE' | translate }}" [(visible)]="isModalVariablesVisible"
+>
 
   <div style="max-height: 549px; overflow: auto; cursor: pointer">
 
-    <table class="table table-condensed table-hover table-bordered">
+    <table class="table table-xs">
       <thead>
         <tr>
           <th>{{
@@ -14,11 +14,13 @@ export const modalVariablesTemplate = `<p-dialog id="modalSelectVariable" header
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let variable of variables" (dblclick)="onModalOK()" (click)="onVariableClick(variable)"
-          [ngClass]="{ 'info': variable.active }">
-          <td id='{{variable.name}}'>{{variable.name}}</td>
-          <td>{{variable.type}}</td>
-        </tr>
+        @for (variable of variables; track $index) {
+          <tr (dblclick)="onModalOK()" (click)="onVariableClick(variable)"
+            [ngClass]="{ 'info': variable.active }">
+            <td id='{{variable.name}}'>{{variable.name}}</td>
+            <td>{{variable.type}}</td>
+          </tr>
+        }
       </tbody>
     </table>
   </div>
@@ -30,15 +32,14 @@ export const modalVariablesTemplate = `<p-dialog id="modalSelectVariable" header
     </label>
   </div>
 
-  <p-footer>
+  <div ngProjectAs="[footer]">
     <button id="btnOKConfirmation" class="btn btn-primary dburst-button-question-confirm" type="button" (click)="onModalOK()"
       [disabled]="!getSelectedVariable()">{{
       'BUTTONS.OK' | translate }}</button>
 
     <button id="btnClose" class="btn" type="button" (click)="onModalClose()">{{
       'BUTTONS.CANCEL' | translate }}</button>
+  </div>
 
-  </p-footer>
-
-</p-dialog>
+</dp-dialog>
 `;

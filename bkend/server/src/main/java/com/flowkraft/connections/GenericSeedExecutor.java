@@ -61,8 +61,8 @@ public class GenericSeedExecutor {
         connectionsService.prepareConnectionFilePath(connectionCode);
 
         // Connection file path is deterministic after prepareConnectionFilePath()
-        String connectionFilePath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH
-                + "/config/connections/" + connectionCode + "/" + connectionCode + ".xml";
+        String connectionFilePath = Utils.resolvePathAgainstPortableDir(
+                "config/connections/" + connectionCode + "/" + connectionCode + ".xml");
 
         // Write script to a temp file — CliJob.doRunSeedScript() reads it by path
         new File(AppPaths.JOBS_DIR_PATH).mkdirs();
@@ -170,7 +170,7 @@ public class GenericSeedExecutor {
     private String resolveVendorType(String connectionCode) throws Exception {
         ConnectionFactory.syncPath();
         Settings settings = new Settings(
-                AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml");
+                Utils.resolvePathAgainstPortableDir("config/burst/settings.xml"));
         ConnectionFactory.syncPath(); // re-sync after Settings constructor (mirrors ConnectionFactory.newConnectionManager)
         settings.loadSettings();
         DocumentBursterConnectionDatabaseSettings dbSettings =

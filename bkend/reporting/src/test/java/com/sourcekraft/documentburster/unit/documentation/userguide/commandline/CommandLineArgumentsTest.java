@@ -134,14 +134,6 @@ public class CommandLineArgumentsTest {
 						}
 					};
 					return cls.cast(cmd);
-				} else if (cls == MainProgram.ResumeCommand.class) {
-					MainProgram.ResumeCommand cmd = new MainProgram.ResumeCommand() {
-						@Override
-						protected CliJob getJob(String configFilePath) throws Exception {
-							return testJob;
-						}
-					};
-					return cls.cast(cmd);
 				} else if (cls == MainProgram.JobCommand.MergeCommand.class) {
 					MainProgram.JobCommand.MergeCommand cmd = new MainProgram.JobCommand.MergeCommand() {
 						@Override
@@ -443,34 +435,23 @@ public class CommandLineArgumentsTest {
 	}
 
 	/*
-	 * RESUME COMMAND TESTS
+	 * JOB STATUS / CANCEL COMMAND TESTS
 	 */
 
 	@Test(expected = MissingParameterException.class)
-	public void missingJobFileResumeCommand() throws Throwable {
-		String[] args = new String[] { "job", "resume" };
+	public void missingJobIdStatusCommand() throws Throwable {
+		String[] args = new String[] { "job", "status" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
-
 		cmd.parseArgs(args);
-
-		MainProgram.ResumeCommand resumeCommand = cmd.getSubcommands().get("job").getSubcommands().get("resume").getCommand();
-
-		// Call the command directly - this will throw MissingParameterException
-		resumeCommand.call();
+		fail("Expected MissingParameterException for missing --job-id");
 	}
 
-	@Test(expected = FileNotFoundException.class)
-	public void resumeCommandWithNonExistingFile() throws Throwable {
-		String[] args = new String[] { "job", "resume",
-				"src/test/resources/input/unit/other/non-existing-job-progress-file.jpr" };
-
+	@Test(expected = MissingParameterException.class)
+	public void missingJobIdCancelCommand() throws Throwable {
+		String[] args = new String[] { "job", "cancel" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 		cmd.parseArgs(args);
-
-		MainProgram.ResumeCommand resumeCommand = cmd.getSubcommands().get("job").getSubcommands().get("resume").getCommand();
-
-		// Call the command directly - this will throw FileNotFoundException
-		resumeCommand.call();
+		fail("Expected MissingParameterException for missing --job-id");
 	}
 
 	/*

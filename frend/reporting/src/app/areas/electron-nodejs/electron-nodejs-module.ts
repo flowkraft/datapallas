@@ -4,10 +4,8 @@ import { FormsModule } from '@angular/forms';
 
 import { TranslateModule } from '@ngx-translate/core';
 
-import { TerminalModule, TerminalService } from 'primeng/terminal';
-
-import { SidebarModule } from 'primeng/sidebar';
-import { PanelModule } from 'primeng/panel';
+import { DpDrawerComponent } from '../../components/dp/drawer/dp-drawer.component';
+import { DpTerminalComponent } from '../../components/dp/terminal/dp-terminal.component';
 
 import { JavaComponent } from './java/java.component';
 import { SystemDiagnosticsComponent } from './system-diagnostics/system-diagnostics.component';
@@ -36,9 +34,8 @@ import { WhenUpdatingComponent } from './update/when-updating';
   imports: [
     CommonModule,
     FormsModule,
-    TerminalModule,
-    PanelModule,
-    SidebarModule,
+    DpDrawerComponent,
+    DpTerminalComponent,
     TranslateModule,
   ],
   exports: [
@@ -48,6 +45,6 @@ import { WhenUpdatingComponent } from './update/when-updating';
     TerminalComponent,
     SystemDiagnosticsComponent,
   ],
-  providers: [DesktopAdminService, TerminalService, RbElectronService],
+  providers: [DesktopAdminService, RbElectronService],
 })
 export class ElectronNodeJsModule {}

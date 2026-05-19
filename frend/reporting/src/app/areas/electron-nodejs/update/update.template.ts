@@ -1,234 +1,189 @@
-export const updateTemplate = `<div *ngIf="succint">
-    <!--
-  <div id="updateNowSuccint" *ngIf="licenseService?.isNewerVersionAvailable">
-    <u
-      ><em>{{ settingsService?.product }}</em
-      >&nbsp;{{ licenseService?.latestVersion }}</u
-    >
-    {{
-      "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.IS-AVAILABLE"
-        | translate
-    }}!&nbsp;
-    <button
-      type="button"
-      class="btn btn-primary btn-xs"
-      (click)="handleUpdateNow()"
-      [disabled]="executionStatsService?.jobStats.numberOfActiveJobs > 0"
-    >
-      {{
-        "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.UPDATE-NOW"
-          | translate
-      }}</button
-    >&nbsp;<span
-      *ngIf="executionStatsService?.logStats.updateErrMessage"
-      class="label label-danger"
-      >{{ "AREAS.STATUS-BAR.UPDATE-DOWNLOAD-ERROR" | translate }}</span
-    >
-  </div>-->
-  </div>
-  <div *ngIf="!succint">
-    <div *ngIf="!licenseService?.isNewerVersionAvailable">
-      <h4>
-        <span class="label label-default"
-          >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.NOTHING-UPDATE"
-          | translate }}</span
-        >
-        ({{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.LATEST-VERSION" |
-        translate }})
-      </h4>
-    </div>
-    <!--
-    <div *ngIf="licenseService?.isNewerVersionAvailable">
-      <br />
-      <strong
-        >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.UPDATED-VERSION"
-        | translate }}
-        <em>{{ settingsService?.product }}</em>
-        {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.IS-AVAILABLE" |
-        translate }}.</strong
-      >
-      <br />
-      <br />
-      {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.YOU-CAN" | translate
-      }}
-      <u
-        ><em>{{ settingsService?.product }}</em>&nbsp;{{
-        licenseService?.latestVersion }}</u
-      >
-      {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.AUTOMATICALLY" |
-      translate }}.
-      <br />
-      <br />
-      <button
-        type="button"
-        class="btn btn-primary"
-        (click)="handleUpdateNow()"
-        [disabled]="executionStatsService?.jobStats.numberOfActiveJobs > 0"
-      >
-        {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.UPDATE-NOW" |
-        translate }}</button
-      >&nbsp;<span
-        *ngIf="executionStatsService?.logStats.updateErrMessage"
-        class="label label-danger"
-        >{{ "AREAS.STATUS-BAR.UPDATE-DOWNLOAD-ERROR" | translate }}</span
-      >
-      <br />
-      <br />
-      {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.WAIT1" | translate
-      }}
-      <em>{{ settingsService?.product }}</em>
-      {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.WAIT2" | translate
-      }},
-      <em>{{ settingsService?.product }}</em>
-      {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.WAIT3" | translate
-      }}.
-      <br /><br />
-      <dburst-when-updating></dburst-when-updating>
-    </div> -->
-    <div class="row" *ngIf="!licenseService?.isNewerVersionAvailable">
-      <hr />
-      <div class="col-xs-12">
-        <input
-          type="checkbox"
-          id="btnLetMeUpdateManually"
-          [(ngModel)]="letMeUpdateManually"
-          [disabled]="!this.storeService.configSys.sysInfo.setup.java.isJavaOk"
-        />
-        <label for="btnLetMeUpdateManually" class="checkboxlabel"
-          >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.LET-ME1" |
-          translate }}
-          <em>{{ settingsService?.product }}</em>
-          {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.LET-ME2" |
-          translate }}
-        </label>
+export const updateTemplate = `
+@if (!succint()) {
+  <div>
+    @if (!licenseService?.isNewerVersionAvailable) {
+      <div>
+        <h4>
+          <span class="badge badge-ghost"
+            >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.NOTHING-UPDATE"
+            | translate }}</span
+          >
+          ({{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.LATEST-VERSION" |
+          translate }})
+        </h4>
       </div>
-    </div>
-    <br />
-    <div *ngIf="letMeUpdateManually">
-      <div class="row">
-        <div class="col-xs-9">
+    }
+    @if (!licenseService?.isNewerVersionAvailable) {
+      <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+        <hr />
+        <div style="grid-column:span 12">
           <input
-            id="oldDbInstallationFolder"
-            [(ngModel)]="letMeUpdateSourceDirectoryPath"
-            class="form-control"
-            autofocus
-            required
-          /><em
-            >(*) {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.SELECT" |
-            translate }} DocumentBurster.exe/DataPallas.exe</em
-          >
-        </div>
-
-        <div class="col-xs-3">
-          <dburst-button-native-system-dialog
-            btnId="btnSelectExistingInstallation"
-            value="Select Existing Installation"
-            dialogType='folder'
-            screen='letmeupdate'
-            (pathsSelected)="onExistingInstallationFolderSelected($event)"
-          ></dburst-button-native-system-dialog>
-        </div>
-      </div>
-      <br />
-      <div class="row" *ngIf="letMeUpdateSourceDirectoryPath">
-        <div
-          class="col-xs-12"
-          *ngIf="updateInfo?.errorMsg"
-          style="overflow-x: scroll"
-        >
-          <span id="errorMsg" class="label label-warning" style="word-wrap: break-word"
-            >{{ updateInfo?.errorMsg }}</span
-          >
-        </div>
-        <div
-          class="col-xs-9"
-          *ngIf="!updateInfo?.errorMsg"
-          style="height: 350px; overflow-y: scroll; overflow-x: auto"
-        >
-          <dburst-when-updating [updateInfo]="updateInfo"></dburst-when-updating
-          ><br />
-          <strong
-            >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING1" |
-            translate }} {{ updateInfo?.updateSourceDirectoryPath }}
-            <span *ngIf="updateInfo?.updateSourceVersion"
-              >(v{{ updateInfo?.updateSourceVersion }})</span
-            >
-            {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING2" |
-            translate }} {{ homeDirectoryPath }} (v{{ settingsService?.version
-            }})</strong
-          >
-          <br /><br />
-          <strong
-            >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING3" |
-            translate }}</strong
-          ><br /><br />
-          <ol>
-            <li *ngFor="let configFile of updateInfo?.migrateConfigFiles">
-              {{ configFile[0] }} - {{ configFile[1] }}
-            </li>
-          </ol>
-          <br />
-          <strong *ngIf="updateInfo?.migrateScriptFiles.length == 0"
-            ><u
-              >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING4"
-              | translate }}</u
-            ></strong
-          >
-          <div *ngIf="updateInfo?.migrateScriptFiles.length > 0">
-            <strong
-              >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING5"
-              | translate }}</strong
-            ><br /><br />
-            <ol>
-              <li *ngFor="let scriptFile of updateInfo?.migrateScriptFiles">
-                {{ scriptFile[0] }} - {{ scriptFile[1] }}
-              </li>
-            </ol>
-          </div>
-          <br />
-          <strong *ngIf="updateInfo?.templatesFolders.length == 0"
-            ><u
-              >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING6"
-              | translate }}</u
-            ></strong
-          >
-          <div *ngIf="updateInfo?.templatesFolders.length > 0">
-            <strong
-              >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING7"
-              | translate }}</strong
-            ><br /><br />
-            <ol>
-              <li *ngFor="let templatesFolder of updateInfo?.templatesFolders">
-                {{ templatesFolder[0] }} - {{ templatesFolder[1] }}
-              </li>
-            </ol>
-          </div>
-        </div>
-        <div class="col-xs-9" *ngIf="!updateInfo?.errorMsg && !letMeUpdateSourceDirectoryPath.includes('playwright/')">
-          <br />
-          <button
-            id="btnMigrate"
-            type="button"
-            class="btn btn-primary"
-            (click)="handleMigrateCopyAboveFiles()"
-            [disabled]="executionStatsService?.jobStats.numberOfActiveJobs > 0"
-          >
-            <i class="fa fa-arrow-up"></i>&nbsp;{{
-            "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING13" |
+            type="checkbox"
+            id="btnLetMeUpdateManually"
+            [(ngModel)]="letMeUpdateManually"
+            [disabled]="!this.storeService.configSys.sysInfo.setup.java.isJavaOk"
+          />
+          <label for="btnLetMeUpdateManually" class="checkboxlabel"
+            >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.LET-ME1" |
             translate }}
-          </button>
+            <em>{{ settingsService?.product }}</em>
+            {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.LET-ME2" |
+            translate }}
+          </label>
         </div>
-        <div class="col-xs-9" *ngIf="letMeUpdateSourceDirectoryPath.includes('playwright/')">
+      </div>
+    }
+    <br />
+    @if (letMeUpdateManually) {
+      <div>
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+          <div style="grid-column:span 9">
+            <input
+              id="oldDbInstallationFolder"
+              [(ngModel)]="letMeUpdateSourceDirectoryPath"
+              class="input input-bordered"
+              autofocus
+              required
+            /><em
+              >(*) {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.SELECT" |
+              translate }} DocumentBurster.exe/DataPallas.exe</em
+            >
+          </div>
+
+          <div style="grid-column:span 3">
+            <dburst-button-native-system-dialog
+              btnId="btnSelectExistingInstallation"
+              value="Select Existing Installation"
+              dialogType='folder'
+              screen='letmeupdate'
+              (pathsSelected)="onExistingInstallationFolderSelected($event)"
+            ></dburst-button-native-system-dialog>
+          </div>
+        </div>
         <br />
-        <button
-          id="btnE2EFillInfo"
-          type="button"
-          class="btn btn-primary"
-          (click)="onExistingInstallationFolderSelected('playwright/')"
-        >
-          <i class="fa fa-arrow-up"></i>&nbsp;Fill Info
-        </button>
+        @if (letMeUpdateSourceDirectoryPath) {
+          <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+            @if (updateInfo?.errorMsg) {
+              <div
+                style="grid-column:span 12;overflow-x: scroll"
+              >
+                <span id="errorMsg" class="badge badge-warning" style="word-wrap: break-word"
+                  >{{ updateInfo?.errorMsg }}</span
+                >
+              </div>
+            }
+            @if (!updateInfo?.errorMsg) {
+              <div
+                style="grid-column:span 9;height: 350px; overflow-y: scroll; overflow-x: auto"
+              >
+                <dburst-when-updating [updateInfo]="updateInfo"></dburst-when-updating
+                ><br />
+                <strong
+                  >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING1" |
+                  translate }} {{ updateInfo?.updateSourceDirectoryPath }}
+                  @if (updateInfo?.updateSourceVersion) {
+                    <span
+                      >(v{{ updateInfo?.updateSourceVersion }})</span
+                    >
+                  }
+                  {{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING2" |
+                  translate }} {{ homeDirectoryPath }} (v{{ settingsService?.version
+                  }})</strong
+                >
+                <br /><br />
+                <strong
+                  >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING3" |
+                  translate }}</strong
+                ><br /><br />
+                <ol>
+                  @for (configFile of updateInfo?.migrateConfigFiles; track $index) {
+                    <li>
+                      {{ configFile[0] }} - {{ configFile[1] }}
+                    </li>
+                  }
+                </ol>
+                <br />
+                @if (updateInfo?.migrateScriptFiles.length == 0) {
+                  <strong
+                    ><u
+                      >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING4"
+                      | translate }}</u
+                    ></strong
+                  >
+                }
+                @if (updateInfo?.migrateScriptFiles.length > 0) {
+                  <div>
+                    <strong
+                      >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING5"
+                      | translate }}</strong
+                    ><br /><br />
+                    <ol>
+                      @for (scriptFile of updateInfo?.migrateScriptFiles; track $index) {
+                        <li>
+                          {{ scriptFile[0] }} - {{ scriptFile[1] }}
+                        </li>
+                      }
+                    </ol>
+                  </div>
+                }
+                <br />
+                @if (updateInfo?.templatesFolders.length == 0) {
+                  <strong
+                    ><u
+                      >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING6"
+                      | translate }}</u
+                    ></strong
+                  >
+                }
+                @if (updateInfo?.templatesFolders.length > 0) {
+                  <div>
+                    <strong
+                      >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING7"
+                      | translate }}</strong
+                    ><br /><br />
+                    <ol>
+                      @for (templatesFolder of updateInfo?.templatesFolders; track $index) {
+                        <li>
+                          {{ templatesFolder[0] }} - {{ templatesFolder[1] }}
+                        </li>
+                      }
+                    </ol>
+                  </div>
+                }
+              </div>
+            }
+            @if (!updateInfo?.errorMsg && !letMeUpdateSourceDirectoryPath.includes('playwright/')) {
+              <div style="grid-column:span 9">
+                <br />
+                <button
+                  id="btnMigrate"
+                  type="button"
+                  class="btn btn-primary"
+                  (click)="handleMigrateCopyAboveFiles()"
+                  [disabled]="executionStatsService?.jobStats.numberOfActiveJobs > 0"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"/></svg>&nbsp;{{
+                  "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING13" |
+                  translate }}
+                </button>
+              </div>
+            }
+            @if (letMeUpdateSourceDirectoryPath.includes('playwright/')) {
+              <div style="grid-column:span 9">
+                <br />
+                <button
+                  id="btnE2EFillInfo"
+                  type="button"
+                  class="btn btn-primary"
+                  (click)="onExistingInstallationFolderSelected('playwright/')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"/></svg>&nbsp;Fill Info
+                </button>
+              </div>
+            }
+          </div>
+        }
       </div>
-      </div>
-    </div>
-  </div> `;
+    }
+  </div>
+} `;

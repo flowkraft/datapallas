@@ -94,7 +94,7 @@ public class SystemController {
 		return Mono.fromCallable(() -> systemService.loadInternalSettings());
 	}
 
-	@PostMapping(value = "/preferences")
+	@PutMapping(value = "/preferences")
 	public Mono<Void> savePreferences(@RequestBody DocumentBursterSettingsInternal settings) {
 		return Mono.fromRunnable(() -> {
 			try {

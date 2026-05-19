@@ -1,16 +1,16 @@
-<div id="{{ picklistId }}" class="p-picklist p-component">
+<div id="{{ picklistId() }}" class="p-picklist p-component">
   <!-- Source Tree -->
   <div class="p-picklist-list-container p-picklist-source-list-container">
     <div class="p-picklist-header">
-      {{ sourceHeader }} ({{ sourceItems?.length }})
+      {{ sourceHeader() }} ({{ sourceItems()?.length }})
     </div>
     <dburst-tree
-      [treeId]="'sourceTree' + picklistId"
-      [value]="sourceItems"
+      [treeId]="'sourceTree' + picklistId()"
+      [value]="sourceItems()"
       selectionMode="checkbox"
       [(selection)]="selectedSourceNodes"
       [filter]="true"
-      [filterPlaceholder]="sourceFilterPlaceholder"
+      [filterPlaceholder]="sourceFilterPlaceholder()"
       [propagateSelectionUp]="false"
       [propagateSelectionDown]="false"
       [showTooltips]="false"
@@ -20,76 +20,78 @@
   <!-- Transfer Buttons -->
   <div class="p-picklist-controls p-picklist-transfer-controls">
     <button
-      id="btnMoveToTarget{{ picklistId }}"
+      id="btnMoveToTarget{{ picklistId() }}"
       type="button"
       class="p-button p-button-icon-only"
       aria-label="Move to Target"
       (click)="moveToTarget()"
       [disabled]="!selectedSourceNodes?.length"
-    >
-      <span class="pi pi-angle-right"></span>
+      >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1em;height:1em"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
     </button>
     <button
-      id="btnMoveAllToTarget{{ picklistId }}"
+      id="btnMoveAllToTarget{{ picklistId() }}"
       type="button"
       class="p-button p-button-icon-only"
       aria-label="Move All to Target"
       (click)="moveAllToTarget()"
-      [disabled]="!sourceItems?.length"
-    >
-      <span class="pi pi-angle-double-right"></span>
+      [disabled]="!sourceItems()?.length"
+      >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1em;height:1em"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>
     </button>
     <button
-      id="btnMoveAllToSource{{ picklistId }}"
+      id="btnMoveAllToSource{{ picklistId() }}"
       type="button"
       class="p-button p-button-icon-only"
       aria-label="Move All to Source"
       (click)="moveAllToSource()"
-      [disabled]="!targetItems?.length"
-    >
-      <span class="pi pi-angle-double-left"></span>
+      [disabled]="!targetItems()?.length"
+      >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1em;height:1em"><path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg>
     </button>
     <button
-      id="btnMoveToSource{{ picklistId }}"
+      id="btnMoveToSource{{ picklistId() }}"
       type="button"
       class="p-button p-button-icon-only"
       aria-label="Move to Source"
       (click)="moveToSource()"
       [disabled]="!activeTargetSelection?.length"
-    >
-      <span class="pi pi-angle-left"></span>
+      >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1em;height:1em"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
     </button>
   </div>
   <!-- Target Tree -->
   <div class="p-picklist-list-container p-picklist-target-list-container">
     <div class="p-picklist-header">
-      {{ targetHeader }} ({{ targetItems?.length }})
+      {{ targetHeader() }} ({{ targetItems()?.length }})
     </div>
     <!-- Field Selection Toolbar -->
-    <div *ngIf="enableFieldSelection && targetItems?.length > 0"
-         class="p-picklist-field-toolbar">
-      <button id="btnAllDetails{{ picklistId }}" type="button" class="p-button p-button-toolbar"
-              [ngClass]="{ 'p-button-toolbar-active': fieldSelectionMode === 'allDetails' }"
-              (click)="selectAllFields()"
-              title="Send full table details (every column) to AI for all selected tables. Larger prompt, more accurate results.">
-        <span class="pi pi-check-square"></span>&nbsp;All Details
-      </button>
-      <button id="btnNamesOnly{{ picklistId }}" type="button" class="p-button p-button-toolbar"
-              [ngClass]="{ 'p-button-toolbar-active': fieldSelectionMode === 'namesOnly' }"
-              (click)="selectNamesOnly()"
-              title="Send only table names to AI (no columns) for all selected tables. Much smaller prompt, useful when the AI just needs to know which tables exist.">
-        <span class="pi pi-stop"></span>&nbsp;Table Names Only
-      </button>
-    </div>
+    @if (enableFieldSelection() && targetItems()?.length > 0) {
+      <div
+        class="p-picklist-field-toolbar">
+        <button id="btnAllDetails{{ picklistId() }}" type="button" class="p-button p-button-toolbar"
+          [ngClass]="{ 'p-button-toolbar-active': fieldSelectionMode === 'allDetails' }"
+          (click)="selectAllFields()"
+          title="Send full table details (every column) to AI for all selected tables. Larger prompt, more accurate results.">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:1em;height:1em;display:inline-block;vertical-align:-0.125em"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>&nbsp;All Details
+        </button>
+        <button id="btnNamesOnly{{ picklistId() }}" type="button" class="p-button p-button-toolbar"
+          [ngClass]="{ 'p-button-toolbar-active': fieldSelectionMode === 'namesOnly' }"
+          (click)="selectNamesOnly()"
+          title="Send only table names to AI (no columns) for all selected tables. Much smaller prompt, useful when the AI just needs to know which tables exist.">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:1em;height:1em;display:inline-block;vertical-align:-0.125em"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z" /></svg>&nbsp;Table Names Only
+        </button>
+      </div>
+    }
     <dburst-tree
-      [treeId]="'targetTree' + picklistId"
-      [value]="targetItems"
+      [treeId]="'targetTree' + picklistId()"
+      [value]="targetItems()"
       selectionMode="checkbox"
       [(selection)]="activeTargetSelection"
       [filter]="true"
-      [filterPlaceholder]="targetFilterPlaceholder"
-      [propagateSelectionUp]="enableFieldSelection"
-      [propagateSelectionDown]="enableFieldSelection"
+      [filterPlaceholder]="targetFilterPlaceholder()"
+      [propagateSelectionUp]="enableFieldSelection()"
+      [propagateSelectionDown]="enableFieldSelection()"
       (nodeWeakClick)="onTargetWeakClick($event)"
       style="height: 304px; display: block"
     ></dburst-tree>

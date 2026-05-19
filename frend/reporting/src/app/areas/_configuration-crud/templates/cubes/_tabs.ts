@@ -1,11 +1,11 @@
-export const tabsTemplate = `<tabset>
-  <tab heading="Cubes">
-    <ng-container *ngTemplateOutlet="tabCubeDefinitionsTemplate">
+export const tabsTemplate = `<dp-tabs>
+  <dp-tab heading="Cubes">
+    <ng-container [ngTemplateOutlet]="tabCubeDefinitionsTemplate">
     </ng-container>
-  </tab>
+  </dp-tab>
 
-  <tab heading="{{ 'SHARED-TABS.LICENSE' | translate }}">
-    <ng-container *ngTemplateOutlet="tabLicenseTemplate">
+  <dp-tab heading="{{ 'SHARED-TABS.LICENSE' | translate }}">
+    <ng-container [ngTemplateOutlet]="tabLicenseTemplate">
     </ng-container>
-  </tab>
-</tabset>`;
+  </dp-tab>
+</dp-tabs>`;

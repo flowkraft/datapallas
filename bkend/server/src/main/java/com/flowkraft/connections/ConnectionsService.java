@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.jobs.services.JobExecutionService;
+import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.reports.ReportsService;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.job.CliJob;
@@ -40,7 +41,7 @@ public class ConnectionsService {
 	private ReportsService reportsService;
 
 	private String getConnectionsDir() {
-		return AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/connections";
+		return Utils.resolvePathAgainstPortableDir("config/connections");
 	}
 
 	/**
@@ -155,9 +156,9 @@ public class ConnectionsService {
 	public void testInlineEmailConnection(String reportId) throws Throwable {
 		String settingsPath;
 		if ("burst".equals(reportId)) {
-			settingsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml";
+			settingsPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
 		} else {
-			settingsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports/" + reportId + "/settings.xml";
+			settingsPath = Utils.resolvePathAgainstPortableDir("config/reports/" + reportId + "/settings.xml");
 		}
 		log.info("Testing inline email connection from report config: {}", settingsPath);
 		jobExecutionService.executeSync(new String[] {
@@ -188,8 +189,7 @@ public class ConnectionsService {
 	public void testSms(String fromNumber, String toNumber, String configFilePath) throws Exception {
 		log.info("Testing SMS: from={}, to={}", fromNumber, toNumber);
 
-		String fullConfigPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ configFilePath.replaceFirst("^/", "");
+		String fullConfigPath = Utils.resolvePathAgainstPortableDir(configFilePath.replaceFirst("^/", ""));
 
 		CliJob job = new CliJob(fullConfigPath);
 		job.doCheckTwilio(fromNumber, toNumber);

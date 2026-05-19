@@ -4,6 +4,11 @@ import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 import { AppModule } from './app/app.module';
 import { APP_CONFIG } from './environments/environment';
 
+document.documentElement.setAttribute(
+  'data-theme',
+  localStorage.getItem('dp-theme') || 'light',
+);
+
 if (APP_CONFIG.production) {
   enableProdMode();
 }

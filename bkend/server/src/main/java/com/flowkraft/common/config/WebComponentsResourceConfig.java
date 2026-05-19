@@ -5,6 +5,7 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.flowkraft.common.AppPaths;
+import com.sourcekraft.documentburster.utils.Utils;
 
 /**
  * Static resource configuration for serving web components.
@@ -29,7 +30,7 @@ public class WebComponentsResourceConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Serve web components from tools/rb-webcomponents folder
         // URL: /rb-webcomponents/** -> file:{PORTABLE_EXECUTABLE_DIR}/tools/rb-webcomponents/
-        String webComponentsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/tools/rb-webcomponents/";
+        String webComponentsPath = Utils.resolvePathAgainstPortableDir("tools/rb-webcomponents/");
 
         registry.addResourceHandler("/rb-webcomponents/**")
                 .addResourceLocations("file:" + webComponentsPath)
@@ -39,8 +40,8 @@ public class WebComponentsResourceConfig implements WebMvcConfigurer {
         // The files live in the AI Hub Next.js app's public folder so they can
         // be served identically on port 8440 (canvas editor) and port 9090
         // (published /dashboard/{reportId} pages).
-        String geojsonPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH
-                + "/_apps/flowkraft/_ai-hub/ui-startpage/public/geojson/";
+        String geojsonPath = Utils.resolvePathAgainstPortableDir(
+                "_apps/flowkraft/_ai-hub/ui-startpage/public/geojson/");
 
         registry.addResourceHandler("/geojson/**")
                 .addResourceLocations("file:" + geojsonPath)

@@ -184,69 +184,6 @@ public class FileExplorerController {
 	}
 
 	/**
-	 * Get file content as text
-	 */
-	@GetMapping(value = "/file-content", produces = MediaType.TEXT_PLAIN_VALUE)
-	public Mono<ResponseEntity<String>> getFileContent(@RequestParam String file) throws Exception {
-		String decodedPath = URLDecoder.decode(file, StandardCharsets.UTF_8.toString());
-		String fullPath = resolveFullPath(decodedPath);
-
-		File fileObj = new File(fullPath);
-		if (!fileObj.exists() || !fileObj.isFile() || !fileObj.canRead()) {
-			return Mono.just(ResponseEntity.notFound().build());
-		}
-
-		String fileContent = fileSystemService.unixCliCat(fullPath);
-		return Mono.just(ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(fileContent));
-	}
-
-	/**
-	 * Create a new directory
-	 */
-	@PostMapping("/create-directory")
-	public Mono<Boolean> createDirectory(@RequestBody Map<String, String> request) throws Exception {
-		String path = request.get("path");
-		String name = request.get("name");
-
-		if (path == null || name == null || name.trim().isEmpty()) {
-			return Mono.just(false);
-		}
-
-		String decodedPath = URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-		String fullPath = resolveFullPath(decodedPath);
-
-		File parentDir = new File(fullPath);
-		if (!parentDir.exists() || !parentDir.isDirectory() || !parentDir.canWrite()) {
-			return Mono.just(false);
-		}
-
-		File newDir = new File(parentDir, name);
-		return Mono.just(newDir.mkdir());
-	}
-
-	/**
-	 * Delete a file or directory
-	 */
-	@DeleteMapping("/delete")
-	public Mono<Boolean> delete(@RequestParam String path) throws Exception {
-		String decodedPath = URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
-		String fullPath = resolveFullPath(decodedPath);
-
-		File file = new File(fullPath);
-		if (!file.exists()) {
-			return Mono.just(false);
-		}
-
-		if (file.isDirectory()) {
-			FileUtils.deleteDirectory(file);
-		} else {
-			file.delete();
-		}
-
-		return Mono.just(true);
-	}
-
-	/**
 	 * Upload a file
 	 */
 	@PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

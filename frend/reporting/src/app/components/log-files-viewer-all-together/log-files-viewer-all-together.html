@@ -1,8 +1,8 @@
 <div class="well">
-  <div class="row">
-    <div class="col-xs-12">
-      <div class="panel panel-default">
-        <div class="panel-heading">
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+    <div style="grid-column:span 12">
+      <div class="card card-bordered">
+        <div class="card-title">
           <h6>
             {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.INFO-LOG-PREVIEW' |
             translate }}
@@ -10,7 +10,7 @@
         </div>
         <div
           id="infoLog"
-          class="panel-body"
+          class="card-body"
           style="
             color: blue;
             background-color: #f5f5f5;
@@ -19,7 +19,7 @@
             -webkit-user-select: all;
             user-select: all;
           "
-        >
+          >
           <dburst-log-file-viewer
             logFileName="info.log"
           ></dburst-log-file-viewer>
@@ -27,10 +27,10 @@
       </div>
     </div>
   </div>
-  <div class="row">
-    <div class="col-xs-6">
-      <div class="panel panel-default">
-        <div class="panel-heading">
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+    <div style="grid-column:span 6">
+      <div class="card card-bordered">
+        <div class="card-title">
           <h6>
             {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.WARNINGS-LOG-PREVIEW' |
             translate }}
@@ -38,7 +38,7 @@
         </div>
         <div
           id="warningsLog"
-          class="panel-body"
+          class="card-body"
           style="
             color: orange;
             background-color: #f5f5f5;
@@ -47,16 +47,16 @@
             -webkit-user-select: all;
             user-select: all;
           "
-        >
+          >
           <dburst-log-file-viewer
             logFileName="warnings.log"
           ></dburst-log-file-viewer>
         </div>
       </div>
     </div>
-    <div class="col-xs-6">
-      <div class="panel panel-default">
-        <div class="panel-heading">
+    <div style="grid-column:span 6">
+      <div class="card card-bordered">
+        <div class="card-title">
           <h6>
             {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.ERRORS-LOG-PREVIEW' |
             translate }}
@@ -64,7 +64,7 @@
         </div>
         <div
           id="errorsLog"
-          class="panel-body"
+          class="card-body"
           style="
             color: red;
             background-color: #f5f5f5;
@@ -73,7 +73,7 @@
             -webkit-user-select: all;
             user-select: all;
           "
-        >
+          >
           <dburst-log-file-viewer
             logFileName="errors.log"
           ></dburst-log-file-viewer>
@@ -82,117 +82,115 @@
     </div>
   </div>
 
-  <div class="row">
-    <div class="col-xs-4">
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+    <div style="grid-column:span 4">
       <!--
       <dburst-button-native-system-dialog
         value="{{'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.VIEW-LOG-FILES' | translate}}"
         dialogType="file"
-      >
+        >
       </dburst-button-native-system-dialog>-->
     </div>
 
-    <div class="col-xs-4">
-      <div class="btn-group dropup">
-        <button type="button" class="btn">
-          {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR-LOG-FILES' |
-          translate }}
-        </button>
-
+    <div style="grid-column:span 4">
+      <div class="dropdown dropdown-top dropdown-end">
         <button
           id="btnClearLogFiles"
           type="button"
-          class="btn dropdown-toggle"
-          data-toggle="dropdown"
-        >
-          <span class="caret"></span>
-          <span class="sr-only"
-            >{{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.TOGGLE-DROPDOWN' |
-            translate }}</span
+          tabindex="0"
+          role="button"
+          class="btn"
           >
-        </button>
+          {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR-LOG-FILES' |
+          translate }} &#9650;
+          </button>
 
-        <ul class="dropdown-menu" style="cursor: pointer">
-          <li>
-            <a id="btnClearInfoLog" (click)="clearLogs('info.log')"
-              >1. {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR' |
-              translate }}
-              <em>info.log</em>
-              <span *ngIf="executionStatsService.logStats.infoLogFileIsLocked">
-                ( <i class="fa fa-lock"></i>&nbsp;{{
-                'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
-                }})</span
-              >
-            </a>
-          </li>
-          <li>
-            <a id="btnClearWarningsLog" (click)="clearLogs('warnings.log')"
-              >2. {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR' |
-              translate }}
-              <em>warnings.log</em>
-              <span
-                *ngIf="executionStatsService.logStats.warningsLogFileIsLocked"
-              >
-                ( <i class="fa fa-lock"></i>&nbsp;{{
-                'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
-                }})</span
-              >
-            </a>
-          </li>
-          <li>
-            <a id="btnClearErrorsLog" (click)="clearLogs('errors.log')"
-              >3. {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR' |
-              translate }}
-              <em>errors.log</em>
-              <span
-                *ngIf="executionStatsService.logStats.errorsLogFileIsLocked"
-              >
-                ( <i class="fa fa-lock"></i>&nbsp;{{
-                'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
-                }})</span
-              >
-            </a>
-          </li>
-          <li>
-            <a
-              id="btnClearQuarantinedFiles"
-              (click)="clearQuarantinedAndLogFiles(false)"
-              >4. {{
-              'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR-QUARANTINED-FILES'
-              | translate }}</a
-            >
-          </li>
-          <li role="separator" class="divider"></li>
-          <li>
-            <a
-              id="btnClearAllLogQuarantinedFiles"
-              (click)="clearQuarantinedAndLogFiles(true)"
-            >
-              <span class="label label-default"
-                >5. {{
-                'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR-ALL-LOG-FILES' |
+          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2" style="cursor: pointer">
+            <li>
+              <a id="btnClearInfoLog" (click)="clearLogs('info.log')"
+                >1. {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR' |
                 translate }}
-                <span
-                  *ngIf="executionStatsService.logStats.errorsLogFileIsLocked || executionStatsService.logStats.infoLogFileIsLocked || executionStatsService.logStats.warningsLogFileIsLocked"
-                >
-                  (
-                  <i class="fa fa-lock"></i>&nbsp;{{
-                  'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
-                  }})</span
-                >
-              </span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <div class="col-xs-4">
-      <!--
-      <dburst-button-native-system-dialog
-        value="{{'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.VIEW-QUARANTINED-FILES' | translate}}"
-        dialogType="file"
-      >
-      </dburst-button-native-system-dialog>-->
-    </div>
-  </div>
-</div>
+                <em>info.log</em>
+                @if (executionStatsService.logStats.infoLogFileIsLocked) {
+                  <span>
+                    ( <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>&nbsp;{{
+                    'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
+                    }})</span
+                    >
+                  }
+                </a>
+              </li>
+              <li>
+                <a id="btnClearWarningsLog" (click)="clearLogs('warnings.log')"
+                  >2. {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR' |
+                  translate }}
+                  <em>warnings.log</em>
+                  @if (executionStatsService.logStats.warningsLogFileIsLocked) {
+                    <span
+                      >
+                      ( <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>&nbsp;{{
+                      'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
+                      }})</span
+                      >
+                    }
+                  </a>
+                </li>
+                <li>
+                  <a id="btnClearErrorsLog" (click)="clearLogs('errors.log')"
+                    >3. {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR' |
+                    translate }}
+                    <em>errors.log</em>
+                    @if (executionStatsService.logStats.errorsLogFileIsLocked) {
+                      <span
+                        >
+                        ( <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>&nbsp;{{
+                        'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
+                        }})</span
+                        >
+                      }
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      id="btnClearQuarantinedFiles"
+                      (click)="clearQuarantinedAndLogFiles(false)"
+                      >4. {{
+                      'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR-QUARANTINED-FILES'
+                      | translate }}</a
+                      >
+                    </li>
+                    <li><hr class="my-1 border-base-300"/></li>
+                    <li>
+                      <a
+                        id="btnClearAllLogQuarantinedFiles"
+                        (click)="clearQuarantinedAndLogFiles(true)"
+                        >
+                        <span class="badge badge-ghost"
+                          >5. {{
+                          'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.CLEAR-ALL-LOG-FILES' |
+                          translate }}
+                          @if (executionStatsService.logStats.errorsLogFileIsLocked || executionStatsService.logStats.infoLogFileIsLocked || executionStatsService.logStats.warningsLogFileIsLocked) {
+                            <span
+                              >
+                              (
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>&nbsp;{{
+                              'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.LOCKED' | translate
+                              }})</span
+                              >
+                            }
+                          </span>
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div style="grid-column:span 4">
+                  <!--
+                  <dburst-button-native-system-dialog
+                    value="{{'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.VIEW-QUARANTINED-FILES' | translate}}"
+                    dialogType="file"
+                    >
+                  </dburst-button-native-system-dialog>-->
+                </div>
+              </div>
+            </div>

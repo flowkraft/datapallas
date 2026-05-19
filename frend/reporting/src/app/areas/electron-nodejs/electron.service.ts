@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import type {
   SaveDialogOptions,
@@ -8,10 +8,10 @@ import type {
   IpcRenderer,
 } from 'electron';
 
-import * as CustomElectronTitlebar from 'custom-electron-titlebar/dist';
+import type * as CustomElectronTitlebar from 'custom-electron-titlebar/dist';
 
 //import * as process from 'process';
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
 
 import * as semver from 'semver';
 import { SemVer } from 'semver';
@@ -88,7 +88,9 @@ export class RbElectronService {
     'custom-electron-titlebar',
   );
 
-  constructor(protected apiService: ApiService) {
+  protected apiService = inject(ApiService);
+
+  constructor() {
     //this.process = window.require('process');
 
     //if (this.isElectron) {

@@ -95,44 +95,34 @@ export class ReportingService {
     return result;
   }
 
-  private _parseReportId(): string {
-    return this.settingsService.currentConfigurationTemplate?.folderName || '_default';
-  }
-
   async processGroovyParametersDsl(
     groovyDslCode: string,
     connectionCode?: string,
-    reportId?: string,
   ): Promise<ReportParameter[]> {
-    const id = reportId || this._parseReportId();
-    let url = `/reports/${encodeURIComponent(id)}/parse/parameters`;
-    if (connectionCode) {
-      url += `?connectionCode=${encodeURIComponent(connectionCode)}`;
-    }
-    return this.apiService.post(url, groovyDslCode);
+    const body: any = { dslCode: groovyDslCode };
+    if (connectionCode) body.connectionCode = connectionCode;
+    const resp = await this.apiService.post(`/dsl/reportparameters/parse`, body);
+    return resp?.parameters ?? resp;
   }
 
   async processGroovyTabulatorDsl(
     groovyDslCode: string,
-    reportId?: string,
   ): Promise<TabulatorOptionsDto> {
-    const id = reportId || this._parseReportId();
-    return this.apiService.post(`/reports/${encodeURIComponent(id)}/parse/tabulator`, groovyDslCode);
+    const resp = await this.apiService.post(`/dsl/tabulator/parse`, { dslCode: groovyDslCode });
+    return resp?.options ?? resp;
   }
 
   async processGroovyChartDsl(
     groovyDslCode: string,
-    reportId?: string,
   ): Promise<ChartOptionsDto> {
-    const id = reportId || this._parseReportId();
-    return this.apiService.post(`/reports/${encodeURIComponent(id)}/parse/chart`, groovyDslCode);
+    const resp = await this.apiService.post(`/dsl/chart/parse`, { dslCode: groovyDslCode });
+    return resp?.options ?? resp;
   }
 
   async processGroovyPivotTableDsl(
     groovyDslCode: string,
-    reportId?: string,
   ): Promise<PivotTableOptionsDto> {
-    const id = reportId || this._parseReportId();
-    return this.apiService.post(`/reports/${encodeURIComponent(id)}/parse/pivot`, groovyDslCode);
+    const resp = await this.apiService.post(`/dsl/pivot/parse`, { dslCode: groovyDslCode });
+    return resp?.options ?? resp;
   }
 }

@@ -7,6 +7,7 @@ import java.util.Map;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.flowkraft.reporting.services.ReportingService;
 
 import com.flowkraft.reporting.dsl.chart.ChartOptionsScript;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsScript;
@@ -69,11 +72,15 @@ public class DslController {
 
     private static final Logger log = LoggerFactory.getLogger(DslController.class);
 
+    @Autowired
+    private ReportingService reportingService;
+
     @PostMapping(value = "/{type}/parse", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> parse(
             @PathVariable String type,
             @RequestBody Map<String, Object> body) {
         String dslCode = (String) body.getOrDefault("dslCode", "");
+        String connectionCode = (String) body.getOrDefault("connectionCode", null);
         try {
             // reportparameters uses a dedicated parser and returns { parameters: [...] }
             // (flat list) rather than the { options: {...} } envelope used by DSL widgets.
@@ -81,6 +88,9 @@ public class DslController {
                 List<ReportParameter> params = dslCode.isBlank()
                         ? List.of()
                         : ReportParametersHelper.parseGroovyParametersDslCode(dslCode);
+                if (connectionCode != null && !connectionCode.isEmpty()) {
+                    reportingService.resolveParameterSqlOptions(params, connectionCode);
+                }
                 List<Map<String, Object>> paramMaps = params.stream()
                         .map(DslController::reportParameterToMap)
                         .toList();

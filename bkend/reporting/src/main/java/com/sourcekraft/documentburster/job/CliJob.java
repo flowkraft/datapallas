@@ -754,6 +754,50 @@ public class CliJob {
 		}
 	}
 
+	public List<Map<String, Object>> doRunSql(String connectionFilePath, String sql) throws Exception {
+		File jobFile = null;
+		try {
+			jobFile = _createJobFile(connectionFilePath, "run-sql");
+
+			com.sourcekraft.documentburster.common.settings.Settings connSettings =
+					new com.sourcekraft.documentburster.common.settings.Settings(StringUtils.EMPTY);
+			com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionDatabaseSettings dbSettings =
+					connSettings.loadSettingsConnectionDatabaseByPath(connectionFilePath);
+			dbSettings.connection.databaseserver.ensureDriverAndUrl();
+			Class.forName(dbSettings.connection.databaseserver.driver);
+
+			String decryptedPassword = dbSettings.connection.databaseserver.userpassword;
+			try {
+				decryptedPassword = com.sourcekraft.documentburster.common.security.SecretsCipher
+						.getInstance(com.sourcekraft.documentburster.common.settings.Settings.PORTABLE_EXECUTABLE_DIR_PATH)
+						.decrypt(dbSettings.connection.databaseserver.userpassword);
+			} catch (Exception e) {
+				log.warn("Failed to decrypt database password: {}", e.getMessage());
+			}
+
+			List<Map<String, Object>> rows = new java.util.ArrayList<>();
+			try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
+					dbSettings.connection.databaseserver.url,
+					dbSettings.connection.databaseserver.userid,
+					decryptedPassword);
+					java.sql.Statement stmt = conn.createStatement();
+					java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+				java.sql.ResultSetMetaData meta = rs.getMetaData();
+				int colCount = meta.getColumnCount();
+				List<String> colNames = new java.util.ArrayList<>();
+				for (int c = 1; c <= colCount; c++) colNames.add(meta.getColumnLabel(c));
+				while (rs.next()) {
+					Map<String, Object> row = new LinkedHashMap<>();
+					for (int c = 1; c <= colCount; c++) row.put(colNames.get(c - 1), rs.getObject(c));
+					rows.add(row);
+				}
+			}
+			return rows;
+		} finally {
+			_deleteJobFileWithRetry(jobFile);
+		}
+	}
+
 	private String normalizeDbVendorType(String type) {
 		if (type == null) return "UNKNOWN";
 		switch (type.toLowerCase()) {

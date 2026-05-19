@@ -884,7 +884,7 @@ electronBeforeAfterAllTest(
       const tabIds    = componentIds['tabulator'] ?? [];
 
       const fetchData = (cid: string) => page.evaluate(async ({ rc, c }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${c}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${c}`);
         return r.json();
       }, { rc: reportId, c: cid });
 

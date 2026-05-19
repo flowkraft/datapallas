@@ -7,31 +7,28 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
 import { StateStoreService } from '../../providers/state-store.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 
+const DP_THEME_KEY = 'dp-theme';
+const DEFAULT_THEME = 'light';
+
 @Component({
   selector: 'dburst-skins',
   templateUrl: './skins.template.html',
 })
 export class SkinsComponent implements OnInit {
-  ALL_SKINS = [
-    'skin-blue',
-    'skin-blue-light',
-    'skin-yellow',
-    'skin-yellow-light',
-    'skin-green',
-    'skin-green-light',
-    'skin-purple',
-    'skin-purple-light',
-    'skin-red',
-    'skin-red-light',
-    'skin-black',
-    'skin-black-light',
+  ALL_THEMES = [
+    'light', 'dark', 'cupcake', 'bumblebee', 'emerald', 'corporate',
+    'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden',
+    'forest', 'aqua', 'lofi', 'pastel', 'fantasy', 'wireframe', 'black',
+    'luxury', 'dracula', 'cmyk', 'autumn', 'business', 'acid', 'lemonade',
+    'night', 'coffee', 'winter', 'dim', 'nord', 'sunset', 'caramellatte',
+    'abyss', 'silk',
   ];
 
-  bodyElement = document.getElementsByTagName('body')[0];
+  activeTheme = DEFAULT_THEME;
 
   private internalSettingsChangedSub?: Subscription;
   protected onInternalSettingsChanged = new Subject<string>();
-  
+
   constructor(
     protected settingsService: ConfigurationRepository,
     protected storeService: StateStoreService,
@@ -40,77 +37,34 @@ export class SkinsComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    // Internal preferences are loaded at app bootstrap by InitService so that
-    // settingsService.showSamples is correct everywhere, including when this
-    // skins component is hidden (RUNNING_IN_E2E=true). The post-save reload
-    // calls in saveTheme() / onShowSamplesChanged() below stay as they are —
-    // they re-sync the local model after writing.
-
-   // Debounced save for Copilot URL
+    // Debounced save for Copilot URL
     this.internalSettingsChangedSub = this.onInternalSettingsChanged.pipe(debounceTime(400)).subscribe(async (newUrl) => {
       this.settingsService.xmlInternalSettings.documentburster.settings.copiloturl = newUrl;
       await this.settingsService.savePreferences(
         this.settingsService.xmlInternalSettings,
       );
       this.messagesService.showInfo('Copilot/LLM URL saved');
-    });   
+    });
 
-    //console.log(
-    //  `this.settingsService.xmlInternalSettings = ${JSON.stringify(
-    //    this.settingsService.xmlInternalSettings
-    //  )}`
-    //);
-    if (!this.settingsService.xmlInternalSettings.documentburster) return;
-
-    let skin =
-      this.settingsService.xmlInternalSettings.documentburster.settings.skin;
-
-    if (!skin) skin = 'skin-black';
-
-    this.applySkin(skin);
+    // Restore theme from localStorage (set at bootstrap by main.ts; repeated
+    // here so that the active-button highlight tracks the current selection).
+    const saved = localStorage.getItem(DP_THEME_KEY) || DEFAULT_THEME;
+    this.activeTheme = saved;
+    this.applyTheme(saved);
   }
 
   ngOnDestroy() {
     this.internalSettingsChangedSub?.unsubscribe();
   }
 
-  async changeSkin(skin: string) {
-    this.applySkin(skin);
-
-    await this.saveSkin(skin);
+  setTheme(name: string) {
+    this.activeTheme = name;
+    this.applyTheme(name);
+    localStorage.setItem(DP_THEME_KEY, name);
   }
 
-  applySkin(skin: string) {
-    if (skin) {
-      for (let eachSkin of this.ALL_SKINS) {
-        setTimeout(() => {
-          this.bodyElement.classList.remove(eachSkin);
-        });
-      }
-
-      setTimeout(() => {
-        this.bodyElement.classList.add(skin);
-      });
-    }
-  }
-
-  async saveSkin(newSkin: string) {
-    if (!this.storeService.configSys.sysInfo.setup.java.isJavaOk) {
-      alert(
-        'To use DataPallas, Java 17 (or newer) must be installed on your computer.',
-      );
-      return;
-    }
-
-    this.settingsService.xmlInternalSettings.documentburster =
-      await this.settingsService.loadPreferences();
-
-    this.settingsService.xmlInternalSettings.documentburster.settings.skin =
-      newSkin;
-
-    await this.settingsService.savePreferences(
-      this.settingsService.xmlInternalSettings,
-    );
+  private applyTheme(name: string) {
+    document.documentElement.setAttribute('data-theme', name);
   }
 
   async onShowSamplesChanged(checked: boolean) {
@@ -121,8 +75,8 @@ export class SkinsComponent implements OnInit {
       return;
     }
 
-    // Reload then mutate then save (same pattern as saveSkin) to avoid clobbering
-    // any other in-flight preference changes.
+    // Reload then mutate then save to avoid clobbering any other in-flight
+    // preference changes.
     this.settingsService.xmlInternalSettings.documentburster =
       await this.settingsService.loadPreferences();
 

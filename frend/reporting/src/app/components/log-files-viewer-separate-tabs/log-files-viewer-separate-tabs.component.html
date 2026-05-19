@@ -1,14 +1,15 @@
-<div *ngIf="executionStatsService.logStats.foundDirtyLogFiles" [id]="viewerId">
-  <tabset>
-    <tab
+@if (executionStatsService.logStats.foundDirtyLogFiles) {
+  <div [id]="viewerId">
+    <dp-tabs>
+      @if (executionStatsService.logStats.infoLogFileSize > 0) {
+        <dp-tab
       heading="{{
         'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.INFO-LOG-PREVIEW' | translate
       }}"
-      *ngIf="executionStatsService.logStats.infoLogFileSize > 0"
-    >
-      <div
-        id="infoLog"
-        class="panel-body"
+          >
+          <div
+            id="infoLog"
+            class="card-body"
         style="
           color: blue;
           height: 421px;
@@ -17,21 +18,21 @@
           -webkit-user-select: all;
           user-select: all;
         "
-      >
-        <dburst-log-file-viewer logFileName="info.log"></dburst-log-file-viewer>
-      </div>
-    </tab>
-
-    <tab
+            >
+            <dburst-log-file-viewer logFileName="info.log"></dburst-log-file-viewer>
+          </div>
+        </dp-tab>
+      }
+      @if (executionStatsService.logStats.warningsLogFileSize > 0) {
+        <dp-tab
       heading="{{
         'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.WARNINGS-LOG-PREVIEW'
           | translate
       }}"
-      *ngIf="executionStatsService.logStats.warningsLogFileSize > 0"
-    >
-      <div
-        id="warningsLog"
-        class="panel-body"
+          >
+          <div
+            id="warningsLog"
+            class="card-body"
         style="
           color: orange;
           height: 421px;
@@ -40,23 +41,23 @@
           -webkit-user-select: all;
           user-select: all;
         "
-      >
-        <dburst-log-file-viewer
-          logFileName="warnings.log"
-        ></dburst-log-file-viewer>
-      </div>
-    </tab>
-
-    <tab
+            >
+            <dburst-log-file-viewer
+              logFileName="warnings.log"
+            ></dburst-log-file-viewer>
+          </div>
+        </dp-tab>
+      }
+      @if (executionStatsService.logStats.errorsLogFileSize > 0) {
+        <dp-tab
       heading="{{
         'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.ERRORS-LOG-PREVIEW'
           | translate
       }}"
-      *ngIf="executionStatsService.logStats.errorsLogFileSize > 0"
-    >
-      <div
-        id="errorsLog"
-        class="panel-body"
+          >
+          <div
+            id="errorsLog"
+            class="card-body"
         style="
           color: red;
           height: 421px;
@@ -65,11 +66,13 @@
           -webkit-user-select: all;
           user-select: all;
         "
-      >
-        <dburst-log-file-viewer
-          logFileName="errors.log"
-        ></dburst-log-file-viewer>
-      </div>
-    </tab>
-  </tabset>
-</div>
+            >
+            <dburst-log-file-viewer
+              logFileName="errors.log"
+            ></dburst-log-file-viewer>
+          </div>
+        </dp-tab>
+      }
+    </dp-tabs>
+  </div>
+}

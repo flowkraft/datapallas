@@ -1,4 +1,4 @@
-﻿import { Component, Input, OnInit } from '@angular/core';
+﻿import { Component, OnInit, input } from '@angular/core';
 
 //import * as jetpack from 'fs-jetpack';
 //import * as slash from 'slash';
@@ -45,7 +45,7 @@ export class UpdateComponent implements OnInit {
   updateInfo = new UpdateInfo();
   updater: Updater;
 
-  @Input() succint: boolean = false;
+  succint = input<boolean>(false);
 
   constructor(
     protected settingsService: ConfigurationRepository,

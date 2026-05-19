@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, OnInit, input } from '@angular/core';
 import { ConfigurationRepository } from '../../../providers/configuration-repository.service';
 import { UpdateInfo } from '../updater';
 
@@ -10,9 +10,9 @@ import { whenUpdatingTemplate } from './when-updating.template';
 })
 export class WhenUpdatingComponent {
   //@Input() ctx: string = 'updatenow';
-  @Input() ctx: string = 'migratecopy';
+  ctx = input<string>('migratecopy');
 
-  @Input() updateInfo: UpdateInfo;
+  updateInfo = input.required<UpdateInfo>();
 
   constructor() {
     //console.log(`updateInfo = ${this.updateInfo}`);

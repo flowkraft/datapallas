@@ -395,7 +395,7 @@ public class AnalyticsController {
         return ResponseEntity.ok(stats);
     }
 
-    @PostMapping("/cache/clear")
+    @DeleteMapping("/cache")
     public ResponseEntity<Map<String, Object>> clearCache(
             @RequestParam(defaultValue = "duckdb") String engine) {
         Map<String, Object> response = new HashMap<>();

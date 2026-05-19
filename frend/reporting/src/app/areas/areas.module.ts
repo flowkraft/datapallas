@@ -1,7 +1,5 @@
 import { NgModule } from '@angular/core';
 
-import { ProgressbarModule } from 'ngx-bootstrap/progressbar';
-
 import { AreasComponent } from './areas.component';
 
 import { SharedModule } from '../shared/shared.module';

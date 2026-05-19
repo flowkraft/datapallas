@@ -1,9 +1,10 @@
 ﻿import {
   ChangeDetectorRef,
   Component,
-  Input,
+  input,
+  model,
   OnInit,
-  ViewChild,
+  viewChild,
 } from '@angular/core';
 
 import Prism from 'prismjs';
@@ -37,6 +38,7 @@ import {
 import { AppsManagerService, ManagedApp } from '../apps-manager/apps-manager.service';
 import { PicklistComponent } from '../prime/picklist.component';
 import { CubesService, CubeDefinition } from '../../providers/cubes.service';
+import { iconSvg } from '../../shared/icon-svgs';
 
 const PACK_DEFAULTS: Record<string, { host: string; port: string; database: string; userid: string; userpassword: string; usessl?: boolean }> = {
   postgresql: { host: 'localhost', port: '5432', database: 'Northwind', userid: 'postgres', userpassword: 'postgres', usessl: false },
@@ -58,10 +60,12 @@ const PACK_DEFAULTS: Record<string, { host: string; port: string; database: stri
   templateUrl: './connection-details.template.html',
 })
 export class ConnectionDetailsComponent implements OnInit {
-  @Input() mode: 'crud' | 'viewMode' = 'crud';
-  @Input() context: 'crud' | 'sqlQuery' | 'scriptQuery' | 'dashboardScript' | 'cubeDsl' = 'crud';
-  @Input() reportId: string = '';
-  @Input() apiBaseUrl: string = '';
+  readonly iconSvg = iconSvg;
+
+  mode = input<'crud' | 'viewMode'>('crud');
+  context = model<'crud' | 'sqlQuery' | 'scriptQuery' | 'dashboardScript' | 'cubeDsl'>('crud');
+  reportId = model<string>('');
+  apiBaseUrl = model<string>('');
 
 
   // Test connection result state
@@ -148,6 +152,28 @@ export class ConnectionDetailsComponent implements OnInit {
   // Covers the gap when scripts complete faster than the 250ms .job-file poll cycle.
   isCustomSeedRunning = false;
 
+  // dp-tabs active-index bindings (drive [activeIndex] inputs)
+  emailActiveTabIndex = 0;
+  dbActiveTabIndex = 0;
+
+  onEmailTabChange(e: { index: number; id: string }) {
+    this.emailActiveTabIndex = e.index;
+    this.isSMTPTabActive = e.id === 'smtpTab';
+    this.isOAuth2TabActive = e.id === 'oauth2Tab';
+  }
+
+  onDbTabChange(e: { index: number; id: string }) {
+    this.dbActiveTabIndex = e.index;
+    this.isConnectionDetailsTabActive = e.id === 'connectionDetailsTab';
+    this.isDatabaseSchemaTabActive = e.id === 'databaseSchemaTab';
+    this.isDomainGroupedSchemaTabActive = e.id === 'domainGroupedDatabaseSchemaTab';
+    this.isErDiagramTabActive = e.id === 'databaseDiagramTab';
+    this.isUbiquitousLanguageTabActive = e.id === 'databaseUbiquitousLanguageTab';
+    this.isToolsTabActive = e.id === 'toolsTab';
+    this.isSeedDataTabActive = e.id === 'seedDataTab';
+    if (e.id === 'seedDataTab') { this.onSeedDataTabSelected(); }
+  }
+
   // Email connection tab states
   isSMTPTabActive = true;
   isOAuth2TabActive = false;
@@ -204,10 +230,10 @@ export class ConnectionDetailsComponent implements OnInit {
     this.initializePlantUmlDiagram();
   }
 
-  @ViewChild(AiManagerComponent) private aiManagerInstance!: AiManagerComponent;
-  @ViewChild('databaseSchemaPicklistRef') databaseSchemaPicklistRef: PicklistComponent;
-  @ViewChild('domainGroupedSchemaPicklistRef') domainGroupedSchemaPicklistRef: PicklistComponent;
-  @ViewChild('cubesPicklistRef') cubesPicklistRef: PicklistComponent;
+  private aiManagerInstance = viewChild<AiManagerComponent>(AiManagerComponent);
+  databaseSchemaPicklistRef = viewChild<PicklistComponent>('databaseSchemaPicklistRef');
+  domainGroupedSchemaPicklistRef = viewChild<PicklistComponent>('domainGroupedSchemaPicklistRef');
+  cubesPicklistRef = viewChild<PicklistComponent>('cubesPicklistRef');
 
   // Cube-based SQL generation (sqlQuery context only). Auto-hidden when
   // the current connection has zero cubes. The toggle replaces the
@@ -920,8 +946,8 @@ export class ConnectionDetailsComponent implements OnInit {
       },
     };
 
-    if (this.aiManagerInstance) {
-      this.aiManagerInstance.launchWithConfiguration(launchConfig);
+    if (this.aiManagerInstance()) {
+      this.aiManagerInstance().launchWithConfiguration(launchConfig);
     } else {
       this.messagesService.showError('AI Copilot component is not available.');
       console.error(
@@ -937,7 +963,7 @@ export class ConnectionDetailsComponent implements OnInit {
     // The launcher itself picks the right prompt id (SQL vs Groovy script)
     // based on the current context, mirroring the existing dispatch below.
     const isCubeAiHelperContext =
-      this.context === 'sqlQuery' || this.context === 'scriptQuery' || this.context === 'dashboardScript';
+      this.context() === 'sqlQuery' || this.context() === 'scriptQuery' || this.context() === 'dashboardScript';
     if (isCubeAiHelperContext && this.useCubesInsteadOfTables) {
       this.launchAiCopilotForCubeBasedQuery();
       return;
@@ -961,7 +987,7 @@ export class ConnectionDetailsComponent implements OnInit {
 
     // The this.context check might still be relevant depending on your overall design
     // For example, this feature might only be available when context is 'sqlQuery'
-    if ((this.context === 'sqlQuery' || this.context === 'scriptQuery' || this.context === 'dashboardScript' || this.context === 'cubeDsl') && selectedTableObjects.length === 0) {
+    if ((this.context() === 'sqlQuery' || this.context() === 'scriptQuery' || this.context() === 'dashboardScript' || this.context() === 'cubeDsl') && selectedTableObjects.length === 0) {
       this.messagesService.showInfo(
         `Please select at least one table from the ${sourceSchemaName}.`, // Dynamic message
       );
@@ -1015,8 +1041,8 @@ export class ConnectionDetailsComponent implements OnInit {
 
     // Determine which picklist is active and whether field selection is enabled
     const activePicklist = this.isDatabaseSchemaTabActive
-      ? this.databaseSchemaPicklistRef
-      : this.domainGroupedSchemaPicklistRef;
+      ? this.databaseSchemaPicklistRef()
+      : this.domainGroupedSchemaPicklistRef();
 
     let schemaString: string;
 
@@ -1114,9 +1140,9 @@ export class ConnectionDetailsComponent implements OnInit {
       schemaString = '```json\n' + JSON.stringify(relevantTableData, null, 2) + '\n```';
     }
 
-    const isDashboard = this.context === 'dashboardScript';
-    const isScript = this.context === 'scriptQuery';
-    const isCube = this.context === 'cubeDsl';
+    const isDashboard = this.context() === 'dashboardScript';
+    const isScript = this.context() === 'scriptQuery';
+    const isCube = this.context() === 'cubeDsl';
     const targetPromptId =
       isDashboard ? 'DASHBOARD_BUILD_STEP_BY_STEP_INSTRUCTIONS'
       : isScript ? 'GROOVY_SCRIPT_INPUT_SOURCE'
@@ -1137,9 +1163,9 @@ export class ConnectionDetailsComponent implements OnInit {
       '[DATABASE_VENDOR]': dbVendor,
     };
 
-    if (isDashboard && this.reportId) {
-      promptVars['[REPORT_CODE]'] = this.reportId;
-      promptVars['[API_BASE_URL]'] = this.apiBaseUrl;
+    if (isDashboard && this.reportId()) {
+      promptVars['[REPORT_CODE]'] = this.reportId();
+      promptVars['[API_BASE_URL]'] = this.apiBaseUrl();
     }
 
     const launchConfig: AiManagerLaunchConfig = {
@@ -1149,7 +1175,7 @@ export class ConnectionDetailsComponent implements OnInit {
       promptVariables: promptVars,
     };
 
-    if (this.aiManagerInstance) {
+    if (this.aiManagerInstance()) {
       // Cube context: the connection-details modal is nested inside the cube
       // definition modal and uses an ultra-high z-index to stack above it.
       // The AI Copilot (ngx-bootstrap modal) sits at the lower Bootstrap
@@ -1159,7 +1185,7 @@ export class ConnectionDetailsComponent implements OnInit {
       if (isCube) {
         this.isModalDbConnectionVisible = false;
       }
-      this.aiManagerInstance.launchWithConfiguration(launchConfig);
+      this.aiManagerInstance().launchWithConfiguration(launchConfig);
     } else {
       this.messagesService.showError('AI Copilot component is not available.');
       console.error(
@@ -1255,8 +1281,8 @@ export class ConnectionDetailsComponent implements OnInit {
 
     // Dispatch on context — same pattern as launchAiCopilotForSchemaQuery
     // uses for table-based prompts.
-    const isDashboard = this.context === 'dashboardScript';
-    const isScript = this.context === 'scriptQuery';
+    const isDashboard = this.context() === 'dashboardScript';
+    const isScript = this.context() === 'scriptQuery';
     const targetPromptId = isDashboard
       ? 'DASHBOARD_FROM_CUBE_DSL'
       : isScript
@@ -1278,8 +1304,8 @@ export class ConnectionDetailsComponent implements OnInit {
       },
     };
 
-    if (this.aiManagerInstance) {
-      this.aiManagerInstance.launchWithConfiguration(launchConfig);
+    if (this.aiManagerInstance()) {
+      this.aiManagerInstance().launchWithConfiguration(launchConfig);
     } else {
       this.messagesService.showError('AI Copilot component is not available.');
       console.error(
@@ -1418,8 +1444,8 @@ export class ConnectionDetailsComponent implements OnInit {
       },
     };
 
-    if (this.aiManagerInstance) {
-      this.aiManagerInstance.launchWithConfiguration(launchConfig);
+    if (this.aiManagerInstance()) {
+      this.aiManagerInstance().launchWithConfiguration(launchConfig);
     } else {
       this.messagesService.showError('AI Copilot component is not available.');
       console.error('AI Copilot instance is not found.');
@@ -1885,7 +1911,7 @@ export class ConnectionDetailsComponent implements OnInit {
         const nodes = (parsed.tables || []).map((tbl: any) => ({
           key: tbl.tableName,
           label: tbl.tableName,
-          icon: 'fa fa-table',
+          icon: 'table',
           title: 'Type: ' + (tbl.tableType || 'TABLE'),
           data: tbl, // Store original table data in the UI node if needed by PickList or other UI features
           children: (tbl.columns || []).map((col: any) => ({
@@ -1894,12 +1920,12 @@ export class ConnectionDetailsComponent implements OnInit {
             icon:
               tbl.primaryKeyColumns &&
                 tbl.primaryKeyColumns.includes(col.columnName)
-                ? 'fa fa-key'
+                ? 'key'
                 : (tbl.foreignKeys || []).some(
                   (fk: any) => fk.fkColumnName === col.columnName,
                 )
-                  ? 'fa fa-link'
-                  : 'fa fa-columns',
+                  ? 'link'
+                  : 'columns',
             title: `${col.typeName || ''}${col.columnSize ? '[' + col.columnSize + ']' : ''} ${col.isNullable === false ? 'NOT NULL' : 'NULL'}`,
             data: col, // Store original column data
           })),
@@ -1955,7 +1981,7 @@ export class ConnectionDetailsComponent implements OnInit {
    */
   private async loadCubesForCurrentConnection(): Promise<void> {
     const isCubeAiHelperContext =
-      this.context === 'sqlQuery' || this.context === 'scriptQuery' || this.context === 'dashboardScript';
+      this.context() === 'sqlQuery' || this.context() === 'scriptQuery' || this.context() === 'dashboardScript';
     if (!isCubeAiHelperContext) {
       this.cubesForCurrentConnection = [];
       this.cubeSourceItems = [];
@@ -1974,7 +2000,7 @@ export class ConnectionDetailsComponent implements OnInit {
       this.cubeSourceItems = this.cubesForCurrentConnection.map((c) => ({
         key: `cube_${c.id}`,
         label: c.name,
-        icon: 'fa fa-cube',
+        icon: 'cube',
         title: c.description || '',
         data: c,
         leaf: true,
@@ -2283,7 +2309,7 @@ export class ConnectionDetailsComponent implements OnInit {
   // Both functions are pure: they never touch plantUmlCode, the disk file,
   // or anything that gets persisted.
 
-  // trackBy for the *ngFor on the business-domain dropdown — Angular reuses
+  // trackBy for @for on the business-domain dropdown — Angular reuses
   // the same <option> DOM node when the label is unchanged across array
   // rebuilds, so the <select>'s value binding never loses sync.
   trackBusinessDomainByLabel(_index: number, item: { label: string }): string {
@@ -2644,7 +2670,7 @@ export class ConnectionDetailsComponent implements OnInit {
         const domainNode = {
           key: `domain_${(domain.label || domain.name || 'unknown').replace(/\s+/g, '_')}`,
           label: domain.label || domain.name || 'Unknown Domain',
-          icon: 'fa fa-layer-group',
+          icon: 'layer-group',
           children: [],
         };
 
@@ -2660,7 +2686,7 @@ export class ConnectionDetailsComponent implements OnInit {
               const tableNode: any = {
                 key: table.tableName,
                 label: table.tableName,
-                icon: 'fa fa-table',
+                icon: 'table',
                 children: [],
                 originalParentKey: domainNode.key,
                 originalParentLabel: domainNode.label,
@@ -2673,10 +2699,10 @@ export class ConnectionDetailsComponent implements OnInit {
                   key: `${tableNode.label}_${column.name || column.columnName}`,
                   label: column.name || column.columnName,
                   icon: column.isPrimaryKey
-                    ? 'fa fa-key'
+                    ? 'key'
                     : column.isForeignKey
-                      ? 'fa fa-link'
-                      : 'fa fa-columns',
+                      ? 'link'
+                      : 'columns',
                 }));
               }
 
@@ -2713,7 +2739,7 @@ export class ConnectionDetailsComponent implements OnInit {
     // Only relevant in CRUD mode; in AI helper contexts (sqlQuery/scriptQuery/
     // dashboardScript) the modal is used for SQL/script generation, not editing.
     // Duplicate produces a user-owned editable copy, so clear the flag in that case.
-    this.isEditingSample = this.context === 'crud' && !!(connectionDetails?.isSample) && !duplicate;
+    this.isEditingSample = this.context() === 'crud' && !!(connectionDetails?.isSample) && !duplicate;
 
     // Reset all tab active states for the database modal
     this.isDatabaseSchemaTabActive = false;
@@ -2727,6 +2753,7 @@ export class ConnectionDetailsComponent implements OnInit {
       // Reset email tab state and any in-flight OAuth flow
       this.isSMTPTabActive = true;
       this.isOAuth2TabActive = false;
+      this.emailActiveTabIndex = 0;
       this.isSigningInOAuth = false;
       if (this.activeOAuthEventSource) {
         this.activeOAuthEventSource.close();
@@ -2843,13 +2870,13 @@ export class ConnectionDetailsComponent implements OnInit {
           this.modalConnectionInfo.filePath = selectedConnection.filePath;
 
           this.modalConnectionInfo.modalTitle = 'Update Database Connection';
-          if (this.context === 'sqlQuery')
+          if (this.context() === 'sqlQuery')
             this.modalConnectionInfo.modalTitle =
               'Choose Table(s) & Generate SQL';
-          if (this.context === 'scriptQuery')
+          if (this.context() === 'scriptQuery')
             this.modalConnectionInfo.modalTitle =
               'Choose Table(s) & Generate Script';
-          if (this.context === 'dashboardScript')
+          if (this.context() === 'dashboardScript')
             this.modalConnectionInfo.modalTitle =
               'Choose Table(s) & Build Dashboard';
 
@@ -2881,20 +2908,24 @@ export class ConnectionDetailsComponent implements OnInit {
           await this.loadErDiagram(effectivePath);
           await this.loadUbiquitousLanguage(effectivePath);
 
-          if (this.context === 'sqlQuery' || this.context === 'scriptQuery' || this.context === 'dashboardScript' || this.context === 'cubeDsl') {
+          if (this.context() === 'sqlQuery' || this.context() === 'scriptQuery' || this.context() === 'dashboardScript' || this.context() === 'cubeDsl') {
             if (this.domainGroupedSchemaExists) {
               this.isConnectionDetailsTabActive = false;
               this.isDomainGroupedSchemaTabActive = true;
+              this.dbActiveTabIndex = 2;
             } else {
               this.isConnectionDetailsTabActive = false;
               this.isDatabaseSchemaTabActive = true;
+              this.dbActiveTabIndex = 1;
             }
           } else {
             this.isConnectionDetailsTabActive = true; // Default for non-sqlQuery context
+            this.dbActiveTabIndex = 0;
           }
         } else {
           // duplicate mode
           this.isConnectionDetailsTabActive = true; // Default for duplicate mode
+          this.dbActiveTabIndex = 0;
         }
       } else {
         // Create mode — affirmative initialization only. All derived
@@ -2904,6 +2935,7 @@ export class ConnectionDetailsComponent implements OnInit {
           ...newDatabaseServer,
         };
         this.isConnectionDetailsTabActive = true;
+        this.dbActiveTabIndex = 0;
       }
 
 
@@ -3137,7 +3169,7 @@ export class ConnectionDetailsComponent implements OnInit {
   }
 
   askAiForSeedHelp(): void {
-    if (!this.aiManagerInstance) return;
+    if (!this.aiManagerInstance()) return;
     const vendor = (this.modalConnectionInfo?.database?.documentburster?.connection?.databaseserver?.type || 'postgres').toUpperCase();
     const launchConfig: AiManagerLaunchConfig = {
       initialActiveTabKey: 'PROMPTS',
@@ -3148,7 +3180,7 @@ export class ConnectionDetailsComponent implements OnInit {
         '[VENDOR_EXAMPLE_SCRIPT]': this.getExampleCustomSeedScript(),
       },
     };
-    this.aiManagerInstance.launchWithConfiguration(launchConfig);
+    this.aiManagerInstance().launchWithConfiguration(launchConfig);
   }
 
   highlightGroovyCode = (editor: any) => {

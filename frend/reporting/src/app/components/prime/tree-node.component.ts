@@ -1,8 +1,7 @@
 import {
   Component,
-  Input,
-  Output,
-  EventEmitter,
+  input,
+  output,
   TemplateRef,
   HostBinding,
   ChangeDetectionStrategy,
@@ -10,6 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 
 import { TreeNode } from './tree.component';
+import { iconSvg } from '../../shared/icon-svgs';
 
 @Component({
   selector: 'dburst-tree-node',
@@ -17,120 +17,128 @@ import { TreeNode } from './tree.component';
   imports: [CommonModule], // Import itself for recursion if needed, but handled by parent loop here
   template: `
     <div
-      class="p-treenode-content {{ node.styleClass || '' }}"
-      [style.padding-left]="level * indentation + 'rem'"
+      class="p-treenode-content {{ node().styleClass || '' }}"
+      [style.padding-left]="level() * indentation() + 'rem'"
       [ngClass]="{
-        'p-treenode-selectable': selectable && node.selectable !== false,
-        'p-treenode-selected': isSelected && checkboxMode,
-        'p-highlight': isSelected && !checkboxMode,
+        'p-treenode-selectable': selectable() && node().selectable !== false,
+        'p-treenode-selected': isSelected() && checkboxMode(),
+        'p-highlight': isSelected() && !checkboxMode(),
       }"
       (click)="onNodeClick($event)"
-    >
+      >
       <!-- Toggler -->
-      <button
-        type="button"
-        *ngIf="!isNodeLeaf()"
-        class="p-tree-node-toggle-button p-link"
-        (click)="toggle($event)"
-      >
-        <span
-          class="p-tree-node-toggle-icon pi"
-          [ngClass]="node.expanded ? 'pi-chevron-down' : 'pi-chevron-right'"
-        >
-        </span>
-      </button>
+      @if (!isNodeLeaf()) {
+        <button
+          type="button"
+          class="p-tree-node-toggle-button p-link"
+          (click)="toggle($event)"
+          >
+          <span
+            class="p-tree-node-toggle-icon pi"
+            [ngClass]="node().expanded ? 'pi-chevron-down' : 'pi-chevron-right'"
+            >
+          </span>
+        </button>
+      }
       <!-- Placeholder for leaf nodes to maintain alignment -->
-      <span
-        *ngIf="isNodeLeaf()"
-        class="p-tree-node-toggle-button p-link"
-        style="visibility: hidden;"
-      >
-        <span class="p-tree-node-toggle-icon pi"></span>
-      </span>
+      @if (isNodeLeaf()) {
+        <span
+          class="p-tree-node-toggle-button p-link"
+          style="visibility: hidden;"
+          >
+          <span class="p-tree-node-toggle-icon pi"></span>
+        </span>
+      }
 
       <!-- Checkbox -->
-      <div
-        *ngIf="checkboxMode"
-        class="p-checkbox p-component"
-        (click)="onCheckboxClick($event)"
-      >
-        <!-- Stop propagation on checkbox click -->
+      @if (checkboxMode()) {
         <div
-          class="p-checkbox-box"
-          [title]="getCheckboxTooltip()"
-          [ngClass]="{
-            'p-highlight': isSelected,
-            'p-indeterminate': node.partialSelected,
-            'p-weak-highlight': !isSelected && !node.partialSelected && node.styleClass?.includes('p-weak-selected'),
-          }"
-        >
-          <span
-            class="p-checkbox-icon pi"
-            [ngClass]="{
-              'pi-check': isSelected || (!node.partialSelected && node.styleClass?.includes('p-weak-selected')),
-              'pi-minus': node.partialSelected,
-            }"
+          class="p-checkbox p-component"
+          (click)="onCheckboxClick($event)"
           >
-          </span>
+          <!-- Stop propagation on checkbox click -->
+          <div
+            class="p-checkbox-box"
+            [title]="getCheckboxTooltip()"
+          [ngClass]="{
+            'p-highlight': isSelected(),
+            'p-indeterminate': node().partialSelected,
+            'p-weak-highlight': !isSelected() && !node().partialSelected && node().styleClass?.includes('p-weak-selected'),
+          }"
+            >
+            <span
+              class="p-checkbox-icon pi"
+            [ngClass]="{
+              'pi-check': isSelected() || (!node().partialSelected && node().styleClass?.includes('p-weak-selected')),
+              'pi-minus': node().partialSelected,
+            }"
+              >
+            </span>
+          </div>
         </div>
-      </div>
+      }
 
       <!-- Icon -->
-      <span
-        [class]="getIcon()"
-        *ngIf="node.icon || node.expandedIcon || node.collapsedIcon"
-      ></span>
+      @if (node().icon || node().expandedIcon || node().collapsedIcon || !isNodeLeaf()) {
+        <span
+          class="p-treenode-icon"
+          [innerHTML]="getIconSvg()"
+        ></span>
+      }
 
       <!-- Label -->
       <span class="p-treenode-label">
-        <span *ngIf="!nodeTemplate">{{ node.label }}</span>
-        <ng-container
-          *ngIf="nodeTemplate"
-          [ngTemplateOutlet]="nodeTemplate"
-          [ngTemplateOutletContext]="{ $implicit: node }"
-        >
-        </ng-container>
+        @if (!nodeTemplate()) {
+          <span>{{ node().label }}</span>
+        }
+        @if (nodeTemplate()) {
+          <ng-container
+            [ngTemplateOutlet]="nodeTemplate()"
+            [ngTemplateOutletContext]="{ $implicit: node() }"
+            >
+          </ng-container>
+        }
       </span>
     </div>
 
     <!-- Children -->
-    <ul
-      class="p-treenode-children"
-      *ngIf="node.expanded && node.children && node.children.length"
-      role="group"
-    >
-      <!-- Use ng-container to avoid adding extra elements -->
-      <ng-container
-        *ngFor="let childNode of node.children; trackBy: trackByChild"
-      >
-        <li
-          class="p-treenode"
-          [ngClass]="{ 'p-treenode-leaf': isChildNodeLeaf(childNode) }"
-          role="treeitem"
-          *ngIf="childNode.visible !== false"
+    @if (node().expanded && node().children && node().children.length) {
+      <ul
+        class="p-treenode-children"
+        role="group"
         >
-          <!-- Render child only if visible (for filtering) -->
-          <dburst-tree-node
-            [node]="childNode"
-            [level]="level + 1"
-            [indentation]="indentation"
-            [selectable]="selectable"
-            [checkboxMode]="checkboxMode"
-            [isSelected]="isNodeSelected(childNode)"
-            [selection]="selection"
-            [nodeTemplate]="nodeTemplate"
-            [treeId]="treeId"
-            [showTooltips]="showTooltips"
-            (nodeSelect)="onChildNodeSelect($event)"
-            (nodeUnselect)="onChildNodeUnselect($event)"
-            (nodeToggle)="onChildNodeToggle($event)"
-            (nodeWeakClick)="onChildNodeWeakClick($event)"
-          >
-          </dburst-tree-node>
-        </li>
-      </ng-container>
-    </ul>
-  `,
+        <!-- Use ng-container to avoid adding extra elements -->
+        @for (childNode of node().children; track trackByChild($index, childNode)) {
+          @if (childNode.visible !== false) {
+            <li
+              class="p-treenode"
+              [ngClass]="{ 'p-treenode-leaf': isChildNodeLeaf(childNode) }"
+              role="treeitem"
+              >
+              <!-- Render child only if visible (for filtering) -->
+              <dburst-tree-node
+                [node]="childNode"
+                [level]="level() + 1"
+                [indentation]="indentation()"
+                [selectable]="selectable()"
+                [checkboxMode]="checkboxMode()"
+                [isSelected]="isNodeSelected(childNode)"
+                [selection]="selection()"
+                [nodeTemplate]="nodeTemplate()"
+                [treeId]="treeId()"
+                [showTooltips]="showTooltips()"
+                (nodeSelect)="onChildNodeSelect($event)"
+                (nodeUnselect)="onChildNodeUnselect($event)"
+                (nodeToggle)="onChildNodeToggle($event)"
+                (nodeWeakClick)="onChildNodeWeakClick($event)"
+                >
+              </dburst-tree-node>
+            </li>
+          }
+        }
+      </ul>
+    }
+    `,
   styles: [
     `
       :host {
@@ -300,28 +308,28 @@ import { TreeNode } from './tree.component';
   changeDetection: ChangeDetectionStrategy.OnPush, // Use OnPush for performance with immutable data
 })
 export class TreeNodeComponent {
-  @Input() node: TreeNode;
-  @Input() level: number = 0;
-  @Input() indentation: number = 1.5;
-  @Input() selectable: boolean = false;
-  @Input() checkboxMode: boolean = false;
-  @Input() isSelected: boolean = false;
-  @Input() nodeTemplate: TemplateRef<any> | undefined;
-  @Input() treeId: string = '';
+  node = input.required<TreeNode>();
+  level = input<number>(0);
+  indentation = input<number>(1.5);
+  selectable = input<boolean>(false);
+  checkboxMode = input<boolean>(false);
+  isSelected = input<boolean>(false);
+  nodeTemplate = input<TemplateRef<any> | undefined>(undefined);
+  treeId = input<string>('');
   // When false, suppresses ALL checkbox tooltips. Used by the picklist to
   // disable tooltips on the source tree (only the target tree shows the
   // name-only hint).
-  @Input() showTooltips: boolean = true;
+  showTooltips = input<boolean>(true);
 
-  @Output() nodeSelect = new EventEmitter<{
+  nodeSelect = output<{
     originalEvent: Event;
     node: TreeNode;
   }>();
-  @Output() nodeUnselect = new EventEmitter<{
+  nodeUnselect = output<{
     originalEvent: Event;
     node: TreeNode;
   }>(); // Keep for consistency, handled by parent
-  @Output() nodeToggle = new EventEmitter<{
+  nodeToggle = output<{
     originalEvent: Event;
     node: TreeNode;
     expanded: boolean;
@@ -333,13 +341,13 @@ export class TreeNodeComponent {
   // emit nodeSelect for this click, so the regular toggle path (which would
   // flip the table back to green) is bypassed entirely. The result is a clean
   // 3-state cycle: green → light blue → empty → green.
-  @Output() nodeWeakClick = new EventEmitter<{
+  nodeWeakClick = output<{
     originalEvent: Event;
     node: TreeNode;
   }>();
 
   @HostBinding('attr.id') get nodeId() {
-    return this.node?.key ? `treeNode${this.node.key.toLowerCase()}${this.treeId}` : null;
+    return this.node()?.key ? `treeNode${this.node().key.toLowerCase()}${this.treeId()}` : null;
   }
 
   // Bind leaf class to host for potential external styling
@@ -361,15 +369,15 @@ export class TreeNodeComponent {
     }
 
     // Emit select/unselect event to the parent tree component
-    if (this.selectable && this.node.selectable !== false) {
+    if (this.selectable() && this.node().selectable !== false) {
       // Parent component handles the actual selection logic based on mode
-      this.nodeSelect.emit({ originalEvent: event, node: this.node });
+      this.nodeSelect.emit({ originalEvent: event, node: this.node() });
     }
   }
 
   onCheckboxClick(event: MouseEvent) {
     event.stopPropagation(); // Prevent node click when clicking checkbox
-    if (!(this.selectable && this.node.selectable !== false)) return;
+    if (!(this.selectable() && this.node().selectable !== false)) return;
 
     // Special case: clicking a checkbox that is currently in the
     // "weak-highlight" (name-only) state. Bypass the regular nodeSelect
@@ -377,25 +385,25 @@ export class TreeNodeComponent {
     // dedicated nodeWeakClick event which the picklist handles by fully
     // removing the table from target (= empty).
     const isCurrentlyWeak =
-      !this.isSelected &&
-      !this.node.partialSelected &&
-      !!this.node.styleClass?.includes('p-weak-selected');
+      !this.isSelected() &&
+      !this.node().partialSelected &&
+      !!this.node().styleClass?.includes('p-weak-selected');
     if (isCurrentlyWeak) {
-      this.nodeWeakClick.emit({ originalEvent: event, node: this.node });
+      this.nodeWeakClick.emit({ originalEvent: event, node: this.node() });
       return;
     }
 
     // Default path — emit the regular nodeSelect event.
-    this.nodeSelect.emit({ originalEvent: event, node: this.node });
+    this.nodeSelect.emit({ originalEvent: event, node: this.node() });
   }
 
   toggle(event: Event) {
     event.stopPropagation(); // Prevent node click event
-    this.node.expanded = !this.node.expanded;
+    this.node().expanded = !this.node().expanded;
     this.nodeToggle.emit({
       originalEvent: event,
-      node: this.node,
-      expanded: this.node.expanded,
+      node: this.node(),
+      expanded: this.node().expanded,
     });
   }
 
@@ -406,18 +414,18 @@ export class TreeNodeComponent {
   // existence of the name-only feature without cluttering every checkbox
   // with explanatory text.
   getCheckboxTooltip(): string {
-    if (!this.showTooltips) return '';
+    if (!this.showTooltips()) return '';
     const isWeak =
-      !this.isSelected &&
-      !this.node?.partialSelected &&
-      !!this.node?.styleClass?.includes('p-weak-selected');
+      !this.isSelected() &&
+      !this.node()?.partialSelected &&
+      !!this.node()?.styleClass?.includes('p-weak-selected');
     return isWeak ? 'Send to AI only the table name' : '';
   }
 
   isNodeLeaf(): boolean {
-    return this.node.leaf === false
+    return this.node().leaf === false
       ? false
-      : !(this.node.children && this.node.children.length > 0);
+      : !(this.node().children && this.node().children.length > 0);
   }
 
   isChildNodeLeaf(node: TreeNode): boolean {
@@ -426,27 +434,19 @@ export class TreeNodeComponent {
       : !(node.children && node.children.length > 0);
   }
 
-  getIcon(): string {
-    let icon: string | undefined;
-
-    if (this.node.icon) {
-      icon = this.node.icon;
-    } else {
-      // Default folder icons
-      icon =
-        this.node.expanded && !this.isNodeLeaf()
-          ? this.node.expandedIcon || 'pi pi-fw pi-folder-open'
-          : this.node.collapsedIcon || 'pi pi-fw pi-folder';
+  getIconSvg(): string {
+    if (this.node().icon) return iconSvg(this.node().icon!);
+    if (this.node().expanded && !this.isNodeLeaf()) {
+      return this.node().expandedIcon ? iconSvg(this.node().expandedIcon!) : iconSvg('folder-open');
     }
-
-    return 'p-treenode-icon ' + icon;
+    return this.node().collapsedIcon ? iconSvg(this.node().collapsedIcon!) : iconSvg('folder');
   }
 
-  @Input() selection: TreeNode[] = [];
+  selection = input<TreeNode[]>([]);
 
   isNodeSelected(node: TreeNode): boolean {
-    if (!this.selection || this.selection.length === 0) return false;
-    return this.selection.some((n) => n.key === node.key);
+    if (!this.selection() || this.selection().length === 0) return false;
+    return this.selection().some((n) => n.key === node.key);
   }
 
   // --- Event Bubbling ---

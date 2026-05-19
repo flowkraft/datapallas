@@ -62,7 +62,7 @@ export async function assertDashboardRendersCorrectly(
   if (ids.atomicValues) {
     // Shipped g-dashboard sample: single multi-column component
     const atomicData = await page.evaluate(async ({ rc, cp, cid }) => {
-      const resp = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}${cp}`);
+      const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
       return resp.json();
     }, { rc: reportCode, cp: countryParam, cid: ids.atomicValues });
     expect(atomicData.data).toBeDefined();
@@ -85,7 +85,7 @@ export async function assertDashboardRendersCorrectly(
   } else if (ids.revenue) {
     // D21 reconstruction: four separate single-field KPI widgets
     const fetchKpi = async (cid: string) => page.evaluate(async ({ rc, cp, id }) => {
-      const resp = await fetch(`/api/reporting/reports/${rc}/data?componentId=${id}${cp}`);
+      const resp = await fetch(`/api/reports/${rc}/data?componentId=${id}${cp}`);
       return resp.json();
     }, { rc: reportCode, cp: countryParam, id: cid });
 
@@ -119,7 +119,7 @@ export async function assertDashboardRendersCorrectly(
 
   // ── 3. Revenue trend chart (monthly) ──
   const revenueTrendData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}${cp}`);
+    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
     return resp.json();
   }, { rc: reportCode, cp: countryParam, cid: ids.revenueTrend });
   expect(revenueTrendData.data).toBeDefined();
@@ -134,7 +134,7 @@ export async function assertDashboardRendersCorrectly(
 
   // ── 4. Revenue by category chart ──
   const categoryData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}${cp}`);
+    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
     return resp.json();
   }, { rc: reportCode, cp: countryParam, cid: ids.revenueByCategory });
   expect(categoryData.data).toBeDefined();
@@ -150,7 +150,7 @@ export async function assertDashboardRendersCorrectly(
 
   // ── 5. Top customers tabulator ──
   const topCustomersData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}${cp}`);
+    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
     return resp.json();
   }, { rc: reportCode, cp: countryParam, cid: ids.topCustomers });
   expect(topCustomersData.data).toBeDefined();
@@ -187,7 +187,7 @@ export async function assertDashboardRendersCorrectly(
 
   // ── 6. Order explorer pivot ──
   const pivotData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}${cp}`);
+    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
     return resp.json();
   }, { rc: reportCode, cp: countryParam, cid: ids.orderExplorer });
   expect(pivotData.data).toBeDefined();

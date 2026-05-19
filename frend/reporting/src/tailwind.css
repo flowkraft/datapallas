@@ -10,12 +10,10 @@
 @import "tailwindcss/theme" layer(base);
 @import "tailwindcss/utilities";
 
-/* ── daisyUI v5: all component classes namespaced with "d-" prefix so they
-   cannot collide with Bootstrap 3 classes (btn, badge, modal, etc.).
-   Single light theme as baseline; the 12-skin CSS vars added in B2.1
-   control the shell palette independently. ─────────────────────────────── */
+/* ── daisyUI v5: Bootstrap 3 is fully removed (B6 complete), so no prefix
+   needed. Standard daisyUI class names (btn, menu, toast, alert, badge …)
+   are safe to use without collision. Single light theme as baseline.     ─── */
 @plugin "daisyui" {
-  prefix: d-;
   themes: light --default;
 }
 

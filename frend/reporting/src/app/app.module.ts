@@ -14,7 +14,6 @@ import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 
 import { AppComponent } from './app.component';
-import { ToastrModule } from 'ngx-toastr';
 import { AreasModule } from './areas/areas.module';
 import { InitService } from './providers/init.service';
 import { CommonModule } from '@angular/common';
@@ -37,11 +36,6 @@ const httpLoaderFactory = (http: HttpClient): TranslateHttpLoader =>
     BrowserModule,
     FormsModule,
     HttpClientModule,
-    ToastrModule.forRoot({
-      timeOut: 5000,
-      positionClass: 'toast-bottom-right',
-      preventDuplicates: true,
-    }),
     BrowserAnimationsModule,
   ],
   providers: [

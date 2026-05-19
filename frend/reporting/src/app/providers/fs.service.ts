@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import Utilities from '../helpers/utilities';
 
@@ -39,7 +39,7 @@ export interface InspectResult {
   providedIn: 'root',
 })
 export class FsService {
-  constructor(protected apiService: ApiService) {}
+  protected apiService = inject(ApiService);
 
   async removeAsync(path: string) {
     //console.log('removeAsync', path);

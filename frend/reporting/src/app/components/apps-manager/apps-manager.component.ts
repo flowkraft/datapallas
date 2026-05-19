@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ChangeDetectorRef, OnDestroy, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, input, OnInit, ChangeDetectorRef, OnDestroy, OnChanges, SimpleChanges, viewChild } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -9,6 +9,7 @@ import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 import { Router } from '@angular/router';
 import { AiManagerComponent, AiManagerLaunchConfig } from '../ai-manager/ai-manager.component';
 import { PollingHelper } from '../../providers/polling.helper';
+import { iconSvg } from '../../shared/icon-svgs';
 
 // This interface should be defined in a shared models file
 
@@ -17,6 +18,8 @@ import { PollingHelper } from '../../providers/polling.helper';
   templateUrl: './apps-manager.template.html',
 })
 export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
+  readonly iconSvg = iconSvg;
+
   // Search and Tag Filter State
   searchTerm: string = '';
   selectedTag: string | null = null;
@@ -34,19 +37,19 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
   public searchSubject = new Subject<string>();
   private searchSubscription: Subscription | null = null;
 
-  @Input() inputAppsToShow: ManagedApp[] | string[] | undefined;
+  inputAppsToShow = input<ManagedApp[] | string[] | undefined>();
   // Actual list displayed by the UI (either all apps after filtering, or provided input app(s))
   public visibleApps: ManagedApp[] = [];
-  @Input() dropdownDirection: 'up' | 'down' | 'expandedList' = 'down';
+  dropdownDirection = input<'up' | 'down' | 'expandedList'>('down');
 
   /** Optional: When provided, renders an "Ask AI" button next to Start/Stop in expandedList mode */
-  @Input() askAiForHelpOutputTypeCode: string = '';
+  askAiForHelpOutputTypeCode = input<string>('');
 
   /** Optional: When false, hides dev-oriented controls (command input, build flags). Default: true */
-  @Input() showDevButtons: boolean = true;
+  showDevButtons = input<boolean>(true);
 
   /** Reference to the embedded AI manager component */
-  @ViewChild('aiManagerInstance') aiManagerInstance: AiManagerComponent | undefined;
+  aiManagerInstance = viewChild<AiManagerComponent>('aiManagerInstance');
 
   // Keep an unfiltered master list for applying filters
   private masterApps: ManagedApp[] = [];
@@ -136,7 +139,6 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
     return app.state === 'error';
   }
 
-  /** trackBy function for *ngFor — prevents DOM destruction/recreation when array items are replaced with new objects */
   trackByAppId(index: number, app: ManagedApp): string {
     return app.id;
   }
@@ -171,7 +173,7 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
 
     // When showing a fixed set of apps (embedded mode), periodically sync state
     // so changes from other component instances are reflected
-    if (this.inputAppsToShow != null) {
+    if (this.inputAppsToShow() != null) {
       this.syncInterval = setInterval(async () => {
         // Skip sync while polling is active — polling already refreshes state
         if (this.pollingSubscription && !this.pollingSubscription.closed) return;
@@ -201,7 +203,7 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes.inputAppsToShow && !changes.inputAppsToShow.firstChange) {
+    if (changes['inputAppsToShow'] && !changes['inputAppsToShow'].firstChange) {
       // Re-load initial apps when parent changes the input (e.g., via async pipe)
       void this.loadInitialApps();
     }
@@ -221,18 +223,19 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
     this.isLoading = true;
     this.isRefreshing = false;
     // If parent provided an `apps` input, respect its form (string id, string[] ids, ManagedApp, ManagedApp[])
-    if (this.inputAppsToShow != null) {
+    if (this.inputAppsToShow() != null) {
+      const inputApps = this.inputAppsToShow();
       // array of ids
-      if (Array.isArray(this.inputAppsToShow) && this.inputAppsToShow.length && typeof (this.inputAppsToShow as any)[0] === 'string') {
-        const ids = this.inputAppsToShow as string[];
+      if (Array.isArray(inputApps) && inputApps.length && typeof (inputApps as any)[0] === 'string') {
+        const ids = inputApps as string[];
         const all = await this.appsManagerService.getAllApps();
         this.masterApps = all.filter(a => ids.includes(a.id)).map(a => ({ ...a }));
       }
       // ManagedApp or ManagedApp[] provided directly
-      else if (Array.isArray(this.inputAppsToShow)) {
-        this.masterApps = (this.inputAppsToShow as ManagedApp[]).map(a => ({ ...a }));
+      else if (Array.isArray(inputApps)) {
+        this.masterApps = (inputApps as ManagedApp[]).map(a => ({ ...a }));
       } else {
-        this.masterApps = [{ ...(this.inputAppsToShow as ManagedApp) }];
+        this.masterApps = [{ ...(inputApps as unknown as ManagedApp) }];
       }
       this.visibleApps = [...this.masterApps];
     } else {
@@ -250,7 +253,7 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
     // Ensure change detection after async updates (e.g., called by setter after async pipe resolves)
     try { this.cdRef.detectChanges(); } catch (e) { /* ignore if not necessary */ }
     // Setup tags and filters only if not showing a fixed set from the parent
-    if (this.inputAppsToShow == null) {
+    if (this.inputAppsToShow() == null) {
       this.extractAllTags();
       this.applyFilters();
     } else {
@@ -279,7 +282,7 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
 
   applyFilters(): void {
     // Do not apply filters when parent provided a fixed set of apps to show
-    if (this.inputAppsToShow != null) return;
+    if (this.inputAppsToShow() != null) return;
     let list = [...this.masterApps];
     if (this.selectedTag) {
       list = list.filter(a => (a.tags || []).includes(this.selectedTag!));
@@ -549,7 +552,7 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
    * Get the AI button label based on the output type code.
    */
   getAiButtonLabel(): string {
-    if (this.askAiForHelpOutputTypeCode === 'cms.webportal') {
+    if (this.askAiForHelpOutputTypeCode() === 'cms.webportal') {
       return 'Hey AI, Help Me ...';
     }
     return 'Hey AI, Help Me ...';
@@ -559,16 +562,16 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
    * Launch the AI manager with the appropriate configuration.
    */
   askAiForHelp(): void {
-    if (!this.askAiForHelpOutputTypeCode || !this.aiManagerInstance) {
+    if (!this.askAiForHelpOutputTypeCode() || !this.aiManagerInstance()) {
       return;
     }
 
-    if (this.askAiForHelpOutputTypeCode === 'cms.webportal') {
+    if (this.askAiForHelpOutputTypeCode() === 'cms.webportal') {
       const launchConfig: AiManagerLaunchConfig = {
         initialActiveTabKey: 'PROMPTS',
         initialSelectedCategory: 'Web Portal / CMS',
       };
-      this.aiManagerInstance.launchWithConfiguration(launchConfig);
+      this.aiManagerInstance()!.launchWithConfiguration(launchConfig);
     }
     // Add more output type handlers as needed
   }

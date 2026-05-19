@@ -50,8 +50,6 @@ import 'zone.js'; // Included with Angular CLI.
 /***************************************************************************************************
  * APPLICATION IMPORTS
  */
-//required by Bootstrap3
-(window as any).$ = (window as any).jQuery = require('jquery');
 window.global = window;
 
 // Define process.env.NODE_ENV for the browser environment

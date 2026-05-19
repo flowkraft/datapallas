@@ -6,7 +6,6 @@ import { AppRoutingModule } from '../../app-routing.module';
 
 import { LicenseModule } from '../../components/license/license.module';
 import { SharedModule } from '../../shared/shared.module';
-import { TabsModule } from 'ngx-bootstrap/tabs';
 import { LogFilesViewerSeparateTabsModule } from '../../components/log-files-viewer-separate-tabs/log-files-viewer-separate-tabs.module';
 
 @NgModule({
@@ -15,7 +14,6 @@ import { LogFilesViewerSeparateTabsModule } from '../../components/log-files-vie
   exports: [ProcessingComponent],
   imports: [
     NgSelectModule,
-    TabsModule.forRoot(),
     AppRoutingModule,
     SharedModule,
     LogFilesViewerSeparateTabsModule,

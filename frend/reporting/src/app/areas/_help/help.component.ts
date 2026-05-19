@@ -260,6 +260,12 @@ export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   currentLeftMenu: string;
   activeTabId: string = '';
 
+  get activeTabIndex(): number {
+    if (!this.activeTabId) return 0;
+    const idx = this.visibleTabs.findIndex(t => t.id === this.activeTabId);
+    return idx >= 0 ? idx : 0;
+  }
+
   constructor(
     protected route: ActivatedRoute,
     protected changeDetectorRef: ChangeDetectorRef,
@@ -293,15 +299,7 @@ export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    if (this.activeTabId) {
-      setTimeout(() => {
-        this.changeDetectorRef.detectChanges();
-        const tabHeader = document.querySelector(`.nav-link[href="#${this.activeTabId}"]`) as HTMLElement;
-        if (tabHeader) {
-          tabHeader.click();
-        }
-      }, 100);
-    }
+    // activeTabIndex getter drives dp-tabs [activeIndex] binding — no DOM click needed
   }
 
   ngAfterViewChecked() {

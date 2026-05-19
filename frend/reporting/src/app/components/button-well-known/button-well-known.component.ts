@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, Input } from '@angular/core';
+import { Component, inject, output } from '@angular/core';
 
 import * as allWellKnownEmailProviders from 'nodemailer-wellknown/services.json';
 
@@ -18,7 +18,7 @@ export type EmailProviderSettings = {
     <button
       id="btnWellKnownEmailProviders"
       type="button"
-      class="btn btn-block"
+      class="btn w-full"
       (click)="onModalShow()"
     >
       <span class="glyphicon glyphicon-cloud-upload"></span>&nbsp;&nbsp;Load
@@ -41,10 +41,9 @@ export class ButtonWellKnownEmailProvidersComponent {
     active: boolean;
   }>;
 
-  @Output() sendSelectedProvider: EventEmitter<EmailProviderSettings> =
-    new EventEmitter();
+  sendSelectedProvider = output<EmailProviderSettings>();
 
-  constructor(private translate: TranslateService) {}
+  private translate = inject(TranslateService);
 
   getShortListWellKnownEmailProviders() {
     return this.getAllWellKnownEmailProviders().filter((provider) => {

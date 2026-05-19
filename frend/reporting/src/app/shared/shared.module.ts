@@ -7,16 +7,13 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { NgxCodeJarComponent } from 'ngx-codejar';
 
 import { ToastrMessagesService } from '../providers/toastr-messages.service';
-import { TabsModule } from 'ngx-bootstrap/tabs';
 import { ConfirmService } from '../components/dialog-confirm/confirm.service';
-import { ModalModule } from 'ngx-bootstrap/modal';
-import { DialogModule } from 'primeng/dialog';
+import { DpTabsComponent } from '../components/dp/tabs/dp-tabs.component';
+import { DpTabComponent } from '../components/dp/tabs/dp-tab.component';
+import { DpTabHeadingDirective } from '../components/dp/tabs/dp-tab-heading.directive';
 import { BrowserModule } from '@angular/platform-browser';
-import { ConfirmDialogComponent } from '../components/dialog-confirm/confirm-dialog.component';
 import { InfoService } from '../components/dialog-info/info.service';
-import { InfoDialogComponent } from '../components/dialog-info/info-dialog.component';
 import { AskForFeatureService } from '../components/ask-for-feature/ask-for-feature.service';
-import { AskForFeatureDialogComponent } from '../components/ask-for-feature/ask-for-feature-dialog.component';
 import { ButtonWellKnownEmailProvidersComponent } from '../components/button-well-known/button-well-known.component';
 import { ButtonClearLogsModule } from '../components/button-clear-logs/button-clear-logs.module';
 import { ButtonHtmlPreviewComponent } from '../components/button-html-preview/button-html-preview.component';
@@ -28,8 +25,6 @@ import { WebSocketService } from '../providers/websocket.service';
 import { FsService } from '../providers/fs.service';
 import { ApiService } from '../providers/api.service';
 import { StateStoreService } from '../providers/state-store.service';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
 import { LiveChatComponent } from '../components/live-chat/live-chat.component';
 import { SafePipe } from './safe.pipe';
 import { AppRoutingModule } from '../app-routing.module';
@@ -40,17 +35,23 @@ import { AiManagerComponent } from '../components/ai-manager/ai-manager.componen
 import { AppsManagerComponent } from '../components/apps-manager/apps-manager.component';
 import { MarkdownModule } from 'ngx-markdown';
 import { DockerComponent } from '../components/docker/docker.component';
+import { DpDialogComponent } from '../components/dp/dialog/dp-dialog.component';
+import { DpCarouselComponent } from '../components/dp/carousel/dp-carousel.component';
+import { DpEditorComponent } from '../components/dp/editor/dp-editor.component';
 
 @NgModule({
   imports: [
     TranslateModule,
-    ModalModule.forRoot(),
     MarkdownModule.forRoot(),
     RouterModule,
-    DialogModule,
+    DpDialogComponent,
+    DpCarouselComponent,
+    DpEditorComponent,
+    DpTabsComponent,
+    DpTabComponent,
+    DpTabHeadingDirective,
     CommonModule,
     FormsModule,
-    TabsModule,
     NgxCodeJarComponent,
     ReactiveFormsModule,
     AppRoutingModule,
@@ -58,9 +59,6 @@ import { DockerComponent } from '../components/docker/docker.component';
   declarations: [
     DockerComponent,
     LiveChatComponent,
-    ConfirmDialogComponent,
-    InfoDialogComponent,
-    AskForFeatureDialogComponent,
     ButtonVariablesComponent,
     AppsManagerComponent,
     AiManagerComponent,
@@ -75,9 +73,12 @@ import { DockerComponent } from '../components/docker/docker.component';
     RouterModule,
     TranslateModule,
     FormsModule,
-    ConfirmDialogModule,
-    TabsModule,
-    DialogModule,
+    DpDialogComponent,
+    DpCarouselComponent,
+    DpEditorComponent,
+    DpTabsComponent,
+    DpTabComponent,
+    DpTabHeadingDirective,
     MarkdownModule,
     NgxCodeJarComponent,
     DockerComponent,
@@ -102,7 +103,6 @@ import { DockerComponent } from '../components/docker/docker.component';
     WebSocketService,
     ToastrMessagesService,
     ConfirmService,
-    ConfirmationService,
     InfoService,
     AskForFeatureService,
     ApiService,

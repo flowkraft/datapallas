@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 
 import { tabsTemplate } from './templates/reports/_tabs';
 import { tabConfigurationTemplatesTemplate } from './templates/reports/tab-conf-templates';
@@ -15,7 +15,7 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
   `,
 })
 export class ConfigurationReportsComponent implements OnInit {
-  constructor(protected settingsService: ConfigurationRepository) {}
+  protected settingsService = inject(ConfigurationRepository);
 
   async ngOnInit() {
     this.settingsService.currentConfigurationTemplateName = '';

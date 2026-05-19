@@ -74,24 +74,22 @@ export class StatusBarComponent implements OnInit, OnDestroy {
   }
 
   // jobs
-  doPauseCancelJob(fileName: string, jobFilePath: string, command: string) {
-    let message = 'Cancel ' + fileName + ' job processing?';
-
-    if (command === 'pause') {
-      message = 'Pause ' + fileName + ' job processing?';
-    }
+  doPauseCancelJob(fileName: string, command: string) {
+    const message = command === 'pause'
+      ? 'Pause ' + fileName + ' job processing?'
+      : 'Cancel ' + fileName + ' job processing?';
 
     this.confirmService.askConfirmation({
-      message: message,
+      message,
       confirmAction: () => {
+        const jobId = this.executionStatsService.jobStats.currentJobId;
         if (command === 'pause') {
           this.executionStatsService.jobStats.pauseJobFileExists = 1;
+          if (jobId) this.jobsService.pauseJob(jobId);
         } else {
           this.executionStatsService.jobStats.cancelJobFileExists = 1;
+          if (jobId) this.jobsService.cancelJob(jobId);
         }
-
-        // Backend creates the pause/cancel marker file
-        this.jobsService.pauseOrCancel(command, jobFilePath);
       },
     });
   }

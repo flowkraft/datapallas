@@ -7,10 +7,9 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import { FsService } from '../../app/providers/fs.service';
 import { ToastrMessagesService } from '../../app/providers/toastr-messages.service';
 import { ToastrModule, ToastrService } from 'ngx-toastr';
-import { DialogModule } from 'primeng/dialog';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { FormsModule } from '@angular/forms';
-import { PanelModule } from 'primeng/panel';
+import { DpDialogComponent } from '../../app/components/dp/dialog/dp-dialog.component';
 
 // Base configuration with placeholders
 export const baseMeta = {
@@ -21,8 +20,7 @@ export const baseMeta = {
       imports: [
         FormsModule,
         BrowserAnimationsModule,
-        DialogModule,
-        PanelModule,
+        DpDialogComponent,
         HttpClientModule,
         ToastrModule.forRoot(),
         TranslateModule.forRoot({

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ApiService } from './api.service';
 
@@ -9,7 +9,7 @@ export class PreferencesService {
   xmlInternalSettings = {
     documentburster: {
       settings: {
-        skin: 'skin-black',
+        theme: 'light',
         backendurl: 'http://localhost:9090',
         copiloturl: 'https://chatgpt.com/',
         showsamples: false,
@@ -30,7 +30,7 @@ export class PreferencesService {
     return v === true || v === 'true';
   }
 
-  constructor(public apiService: ApiService) {}
+  public apiService = inject(ApiService);
 
   async loadPreferences(): Promise<any> {
     const loaded = await this.apiService.get('/system/preferences');
@@ -47,7 +47,7 @@ export class PreferencesService {
   async savePreferences(
     xmlSettings: { documentburster: {} },
   ): Promise<any> {
-    const result = await this.apiService.post(
+    const result = await this.apiService.put(
       '/system/preferences',
       xmlSettings.documentburster,
     );

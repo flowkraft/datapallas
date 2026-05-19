@@ -1,11 +1,11 @@
 export const tabAboutTemplate = `<ng-template #tabAboutTemplate>
-  <div class="well">
+  <div class="bg-base-200 rounded-box p-4">
 
     <strong>{{
       'AREAS.HELP.TAB-ABOUT.VERSION' | translate }}</strong>
     <br>
     <br>
-    <span class="label label-default">
+    <span class="badge badge-ghost">
       <em>{{settingsService.product}}</em>&nbsp;{{settingsService.version}}
     </span>
 

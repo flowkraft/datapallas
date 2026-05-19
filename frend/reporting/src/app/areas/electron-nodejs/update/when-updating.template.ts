@@ -1,5 +1,5 @@
-export const whenUpdatingTemplate = `<div class="row">
-  <div class="col-xs-9">
+﻿export const whenUpdatingTemplate = `<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+  <div style="grid-column:span 9">
     <h5>
       <strong
         >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.WHEN-UPDATING" |
@@ -10,23 +10,24 @@ export const whenUpdatingTemplate = `<div class="row">
     <input
       type="checkbox"
       id="btnCopyLicensingInformation"
-      [(ngModel)]="updateInfo.updateOptions.copylicensinginformation"
+      [(ngModel)]="updateInfo().updateOptions.copylicensinginformation"
     />
     <label for="btnCopyLicensingInformation" class="checkboxlabel"
       >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING8" |
-      translate }}<span
-        *ngIf="ctx != 'updatenow' && updateInfo.updateOptions.copylicensinginformation"
-        >&nbsp;(<strong
-          >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.SURE" |
-          translate }}</strong
-        >)</span
-      >
+      translate }}@if (ctx() != 'updatenow' && updateInfo().updateOptions.copylicensinginformation) {
+        <span
+          >&nbsp;(<strong
+            >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.SURE" |
+            translate }}</strong
+          >)</span
+        >
+      }
     </label>
     <br />
     <input
       type="checkbox"
       id="btnCopyOutputFiles"
-      [(ngModel)]="updateInfo.updateOptions.copyoutputfiles"
+      [(ngModel)]="updateInfo().updateOptions.copyoutputfiles"
     />
     <label for="btnCopyOutputFiles" class="checkboxlabel"
       >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING9" |
@@ -36,7 +37,7 @@ export const whenUpdatingTemplate = `<div class="row">
     <input
       type="checkbox"
       id="btnCopyLogFiles"
-      [(ngModel)]="updateInfo.updateOptions.copylogfiles"
+      [(ngModel)]="updateInfo().updateOptions.copylogfiles"
     />
     <label for="btnCopyLogFiles" class="checkboxlabel"
       >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING10" |
@@ -46,7 +47,7 @@ export const whenUpdatingTemplate = `<div class="row">
     <input
       type="checkbox"
       id="btnCopyQuarantineFiles"
-      [(ngModel)]="updateInfo.updateOptions.copyquarantinefiles"
+      [(ngModel)]="updateInfo().updateOptions.copyquarantinefiles"
     />
     <label for="btnCopyQuarantineFiles" class="checkboxlabel"
       >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING11" |
@@ -56,7 +57,7 @@ export const whenUpdatingTemplate = `<div class="row">
     <input
       type="checkbox"
       id="btnCopyBackupFiles"
-      [(ngModel)]="updateInfo.updateOptions.copybackupfiles"
+      [(ngModel)]="updateInfo().updateOptions.copybackupfiles"
     />
     <label for="btnCopyBackupFiles" class="checkboxlabel"
       >{{ "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.UPDATE-NOW.FOLLOWING12" |

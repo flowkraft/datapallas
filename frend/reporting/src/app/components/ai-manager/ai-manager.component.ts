@@ -1,17 +1,15 @@
 import {
   Component,
-  Input,
+  input,
+  model,
   OnInit,
   AfterViewChecked,
   ChangeDetectorRef,
-  TemplateRef,
-  ViewChild,
   OnDestroy,
 } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { AiManagerService, PromptInfo } from './ai-manager.service';
 import { InfoService } from '../../components/dialog-info/info.service';
-import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal'; // Add ngx-bootstrap modal service
 import { AppsManagerService, ManagedApp } from '../apps-manager/apps-manager.service';
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
@@ -39,28 +37,19 @@ interface CategoryWithCount {
   templateUrl: './ai-manager.template.html',
 })
 export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
-  @Input() mode: 'standalone' | 'embedded' | 'launchCopilot' = 'standalone';
-  @Input() dropdownDirection: 'down' | 'up' = 'down';
+  mode = input<'standalone' | 'embedded' | 'launchCopilot'>('standalone');
+  dropdownDirection = input<'down' | 'up'>('down');
 
-  @Input() showChat2db: boolean = false;
+  showChat2db = input<boolean>(false);
 
   chat2dbApp: ManagedApp;
 
   // Internal state
   isModalVisible: boolean = false;
   intendedTabIndex: number = PROMPTS_TAB_INDEX;
-  modalRef?: BsModalRef; // NgxBootstrap modal reference
+  aiActiveTabIndex: number = 0;
 
-  // Modal config
-  modalConfig = {
-    class: 'ai-copilot-modal-large',
-    backdrop: true,
-    ignoreBackdropClick: false,
-    animated: false, // Disable animations for smoother opening
-    keyboard: true, // Allow ESC key to close
-  };
-
-  // Flags to control active state for ngx-bootstrap tabs
+  // Flags to keep track of which tab is logically active
   isChat2dbTabActive: boolean = false;
   isPromptsTabActive: boolean = false;
   isHeyAiTabActive: boolean = false;
@@ -78,14 +67,12 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   expandedPrompt: PromptInfo | null = null;
   // --- End AI Prompts Tab State ---
 
-  // initialState properties from modal
-  @Input() initialActiveTabKey?: 'PROMPTS' | 'CHAT2DB' | 'HEY_AI';
-  @Input() initialSelectedCategory?: string;
-  @Input() initialExpandedPromptId?: string;
-  @Input() promptVariables?: { [key: string]: string };
+  // initialState properties from modal (model() to allow internal writes from launchWithConfiguration)
+  initialActiveTabKey = model<'PROMPTS' | 'CHAT2DB' | 'HEY_AI' | undefined>(undefined);
+  initialSelectedCategory = model<string | undefined>(undefined);
+  initialExpandedPromptId = model<string | undefined>(undefined);
+  promptVariables = model<{ [key: string]: string } | undefined>(undefined);
 
-  @ViewChild('aiManagerModalTemplate')
-  aiManagerModalTemplate!: TemplateRef<any>;
 
   // guard to run init logic once per open
   private pendingInit = false;
@@ -97,7 +84,6 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
     private aiManagerService: AiManagerService,
     private cdRef: ChangeDetectorRef,
     private infoService: InfoService,
-    private modalService: BsModalService, // Add ngx-bootstrap modal service
     protected appsManagerService: AppsManagerService,
     private settingsService: ConfigurationRepository,
     private confirmService: ConfirmService,
@@ -111,7 +97,7 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
 
       // Periodically refresh chat2dbApp state to stay in sync with other components
       // (e.g., when the app is started from Apps/Starter Packs page or Chat2DB tab)
-      if (this.showChat2db) {
+      if (this.showChat2db()) {
         this.chat2dbRefreshInterval = setInterval(async () => {
           try {
             // If app is in a transitional state, trigger a real Docker status refresh
@@ -193,23 +179,23 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
    */
   private determineInitialActiveTab(): number {
     // Default tab based on Chat2DB visibility
-    let tabIndexToActivate = this.showChat2db
+    let tabIndexToActivate = this.showChat2db()
       ? CHAT2DB_TAB_INDEX
       : PROMPTS_TAB_INDEX;
 
     // Override with explicit configuration if provided
-    if (this.initialActiveTabKey) {
-      switch (this.initialActiveTabKey) {
+    if (this.initialActiveTabKey()) {
+      switch (this.initialActiveTabKey()) {
         case 'PROMPTS':
-          tabIndexToActivate = this.showChat2db
+          tabIndexToActivate = this.showChat2db()
             ? PROMPTS_TAB_INDEX
             : CHAT2DB_TAB_INDEX;
           break;
         case 'CHAT2DB':
-          if (this.showChat2db) tabIndexToActivate = CHAT2DB_TAB_INDEX;
+          if (this.showChat2db()) tabIndexToActivate = CHAT2DB_TAB_INDEX;
           break;
         case 'HEY_AI':
-          tabIndexToActivate = this.showChat2db
+          tabIndexToActivate = this.showChat2db()
             ? HEY_AI_TAB_INDEX
             : PROMPTS_TAB_INDEX;
           break;
@@ -225,7 +211,7 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   private applyInitialFiltersIfNeeded(): void {
     // Only apply filters if the prompts tab is active
     if (this.isPromptsTabActive) {
-      this.selectedCategory = this.initialSelectedCategory || 'All Prompts';
+      this.selectedCategory = this.initialSelectedCategory() || 'All Prompts';
       this.applyFilters();
     }
   }
@@ -235,9 +221,9 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
    */
   private processExpandedPromptIfNeeded(): void {
     // Only process if the prompts tab is active and an expanded prompt ID was specified
-    if (this.isPromptsTabActive && this.initialExpandedPromptId) {
+    if (this.isPromptsTabActive && this.initialExpandedPromptId()) {
       const promptDef = this.allPrompts.find(
-        (p) => p.id === this.initialExpandedPromptId,
+        (p) => p.id === this.initialExpandedPromptId(),
       );
 
       if (promptDef) {
@@ -267,8 +253,8 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   private _applyVariablesAndExpand(promptDef: PromptInfo): void {
     let text = promptDef.promptText || '';
 
-    if (this.promptVariables) {
-      Object.entries(this.promptVariables).forEach(([key, val]) => {
+    if (this.promptVariables()) {
+      Object.entries(this.promptVariables()).forEach(([key, val]) => {
         // Remove brackets and collapse whitespace for the regex
         const inner = key.replace(/^\[|\]$/g, '').replace(/\s+/g, '\\s+');
         // Match [ ... ] with any whitespace inside
@@ -427,19 +413,24 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   }
   // --- End Copy to Clipboard ---
 
-  // Helper to set the active tab flags for ngx-bootstrap
+  onAiTabChange(e: { index: number; id: string }): void {
+    this.onTabSelect(e.index);
+  }
+
+  // Helper to set the active tab flags
   setActiveTab(index: number): void {
     this.intendedTabIndex = index;
-    this.isChat2dbTabActive = this.showChat2db && index === CHAT2DB_TAB_INDEX;
+    this.aiActiveTabIndex = index;
+    this.isChat2dbTabActive = this.showChat2db() && index === CHAT2DB_TAB_INDEX;
     // Adjust index checks based on Chat2DB visibility
-    const promptsIndex = this.showChat2db ? PROMPTS_TAB_INDEX : CHAT2DB_TAB_INDEX;
-    const heyAiIndex = this.showChat2db ? HEY_AI_TAB_INDEX : PROMPTS_TAB_INDEX;
+    const promptsIndex = this.showChat2db() ? PROMPTS_TAB_INDEX : CHAT2DB_TAB_INDEX;
+    const heyAiIndex = this.showChat2db() ? HEY_AI_TAB_INDEX : PROMPTS_TAB_INDEX;
 
     this.isPromptsTabActive = index === promptsIndex;
     this.isHeyAiTabActive = index === heyAiIndex;
 
     // Ensure only one tab is active if Chat2DB is hidden and indices shift
-    if (!this.showChat2db) {
+    if (!this.showChat2db()) {
       if (this.isPromptsTabActive && this.isHeyAiTabActive) {
         // Default to prompts if somehow both became active due to index shift
         this.isHeyAiTabActive = false;
@@ -465,44 +456,27 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
     window.open(url, '_blank');
   }
 
-  openChat2dbModal(template: TemplateRef<any>): void {
-    if (this.mode === 'standalone' && this.showChat2db) {
+  openChat2dbModal(): void {
+    if (this.mode() === 'standalone' && this.showChat2db()) {
       this.setActiveTab(CHAT2DB_TAB_INDEX);
       this.pendingInit = true;
-      this.openModal(template);
+      this.isModalVisible = true;
     }
   }
 
-  openAiPromptsModal(template: TemplateRef<any>): void {
-    if (this.mode === 'standalone') {
-      const targetIndex = this.showChat2db ? PROMPTS_TAB_INDEX : CHAT2DB_TAB_INDEX;
+  openAiPromptsModal(): void {
+    if (this.mode() === 'standalone') {
+      const targetIndex = this.showChat2db() ? PROMPTS_TAB_INDEX : CHAT2DB_TAB_INDEX;
       this.setActiveTab(targetIndex);
       this.pendingInit = true;
-      this.openModal(template);
-      console.log('Placeholder: Opening modal to AI Prompts tab');
+      this.isModalVisible = true;
     }
-  }
-
-  // --- Modal Control ---
-  // Open modal using ngx-bootstrap
-  openModal(template: TemplateRef<any>, initialState?: object): void {
-    this.isModalVisible = true;
-    const config = { ...this.modalConfig, initialState: initialState || {} };
-    this.modalRef = this.modalService.show(template, config);
-
-    this.modalRef.onHide?.subscribe(() => {
-      this.closeModal();
-    });
   }
 
   closeModal(): void {
     this.isModalVisible = false;
-    if (this.modalRef) {
-      this.modalRef.hide();
-    }
   }
 
-  // --- ngx-bootstrap Tab Selection Handling ---
   // Method called when a tab is selected to update internal state if needed
   onTabSelect(tabIndex: number): void {
     console.log(`Tab selected: ${tabIndex}`);
@@ -513,14 +487,14 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   // Public method to launch with configuration
   public launchWithConfiguration(config?: AiManagerLaunchConfig): void {
     if (config?.initialActiveTabKey)
-      this.initialActiveTabKey = config?.initialActiveTabKey;
+      this.initialActiveTabKey.set(config.initialActiveTabKey);
     if (config?.initialSelectedCategory)
-      this.initialSelectedCategory = config.initialSelectedCategory;
+      this.initialSelectedCategory.set(config.initialSelectedCategory);
     if (config?.initialExpandedPromptId)
-      this.initialExpandedPromptId = config.initialExpandedPromptId;
-    if (config?.promptVariables) this.promptVariables = config.promptVariables;
+      this.initialExpandedPromptId.set(config.initialExpandedPromptId);
+    if (config?.promptVariables) this.promptVariables.set(config.promptVariables);
     this.pendingInit = true;
-    this.openModal(this.aiManagerModalTemplate);
+    this.isModalVisible = true;
   }
 
   /**
@@ -536,18 +510,18 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
       const idx = this.determineInitialActiveTab();
       this.setActiveTab(idx);
       if (this.isPromptsTabActive) {
-        if (this.initialSelectedCategory) {
-          this.selectedCategory = this.initialSelectedCategory;
+        if (this.initialSelectedCategory()) {
+          this.selectedCategory = this.initialSelectedCategory();
           this.applyFilters();
         }
-        if (this.initialExpandedPromptId) {
+        if (this.initialExpandedPromptId()) {
           const p = this.allPrompts.find(
-            (x) => x.id === this.initialExpandedPromptId,
+            (x) => x.id === this.initialExpandedPromptId(),
           );
           if (p) {
             if (
-              this.promptVariables &&
-              Object.keys(this.promptVariables).length > 0
+              this.promptVariables() &&
+              Object.keys(this.promptVariables()).length > 0
             ) {
               this.expandPromptWithVariables(p);
             } else {

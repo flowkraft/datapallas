@@ -3,467 +3,90 @@
   <h4 class="control-sidebar-heading">
     {{ "COMPONENTS.SKINS.SKINS" | translate }}
   </h4>
-  <ul class="list-unstyled skins-grid clearfix">
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-blue" (click)="changeSkin('skin-blue')" data-skin="skin-blue" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 7px;
-              background: #367fa9;
-            "></span><span style="display: block; width: 80%; float: left; height: 7px; background: #3c8dbc;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #222d32;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin">
-        {{ "COMPONENTS.SKINS.BLUE" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-black" (click)="changeSkin('skin-black')" data-skin="skin-black" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div style="box-shadow: 0 0 2px rgba(0, 0, 0, 0.1)" class="clearfix">
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 7px;
-              background: #fefefe;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 7px;
-              background: #fefefe;
-            "></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #222;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin">
-        {{ "COMPONENTS.SKINS.BLACK" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-purple" (click)="changeSkin('skin-purple')" data-skin="skin-purple" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #8e44ad;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #9b59b6;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #222d32;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin">
-        {{ "COMPONENTS.SKINS.PURPLE" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-green" (click)="changeSkin('skin-green')" data-skin="skin-green" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #008d4c;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #00a65a;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #222d32;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin">
-        {{ "COMPONENTS.SKINS.GREEN" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-red" (click)="changeSkin('skin-red')" data-skin="skin-red" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #d33724;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #dd4b39;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #222d32;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin">
-        {{ "COMPONENTS.SKINS.RED" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-yellow" (click)="changeSkin('skin-yellow')" data-skin="skin-yellow" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #db8b0b;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #f39c12;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #222d32;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin">
-        {{ "COMPONENTS.SKINS.YELLOW" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-blue-light" (click)="changeSkin('skin-blue-light')" data-skin="skin-blue-light" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 7px;
-              background: #367fa9;
-            "></span><span style="display: block; width: 80%; float: left; height: 7px; background: #3c8dbc;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #f9fafc;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin" style="font-size: 12px">
-        {{ "COMPONENTS.SKINS.BLUE-LIGHT" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-black-light" (click)="changeSkin('skin-black-light')" data-skin="skin-black-light" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div style="box-shadow: 0 0 2px rgba(0, 0, 0, 0.1)" class="clearfix">
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 7px;
-              background: #fefefe;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 7px;
-              background: #fefefe;
-            "></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #f9fafc;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin" style="font-size: 12px">
-        {{ "COMPONENTS.SKINS.BLACK-LIGHT" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-purple-light" (click)="changeSkin('skin-purple-light')" data-skin="skin-purple-light" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #8e44ad;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #9b59b6;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #f9fafc;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin" style="font-size: 12px">
-        {{ "COMPONENTS.SKINS.PURPLE-LIGHT" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-green-light" (click)="changeSkin('skin-green-light')" data-skin="skin-green-light" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #008d4c;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #00a65a;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #f9fafc;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin" style="font-size: 12px">
-        {{ "COMPONENTS.SKINS.GREEN-LIGHT" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-red-light" (click)="changeSkin('skin-red-light')" data-skin="skin-red-light" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #d33724;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #dd4b39;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #f9fafc;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin" style="font-size: 12px">
-        {{ "COMPONENTS.SKINS.RED-LIGHT" | translate }}
-      </p>
-    </li>
-    <li style="float: left; width: 33.33333%; padding: 5px">
-      <a id="skin-yellow-light" (click)="changeSkin('skin-yellow-light')" data-skin="skin-yellow-light" style="
-          cursor: pointer;
-          display: block;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-        " class="clearfix full-opacity-hover">
-        <div>
-          <span style="display: block; width: 20%; float: left; height: 7px; background: #db8b0b;"></span><span
-            style="display: block; width: 80%; float: left; height: 7px; background: #f39c12;"></span>
-        </div>
-        <div>
-          <span style="
-              display: block;
-              width: 20%;
-              float: left;
-              height: 20px;
-              background: #f9fafc;
-            "></span><span style="
-              display: block;
-              width: 80%;
-              float: left;
-              height: 20px;
-              background: #f4f5f7;
-            "></span>
-        </div>
-      </a>
-      <p class="text-center no-margin" style="font-size: 12px">
-        {{ "COMPONENTS.SKINS.YELLOW-LIGHT" | translate }}
-      </p>
-    </li>
-  </ul>
- <br/><br/>
-  <div *ngIf="settingsService.xmlInternalSettings?.documentburster?.settings"
-  style="margin: 10px 0 25px 0; clear: both; padding-left: 8px;">
-  <label for="copilotUrl"><strong>AI Assistant URL</strong></label>
-  <input id="copilotUrl" type="text" class="form-control"
-    style="margin-top: 6px; width: calc(100% - 34px); display: inline-block;"
-    [(ngModel)]="settingsService.xmlInternalSettings.documentburster.settings.copiloturl"
-    (ngModelChange)="onInternalSettingsChanged.next($event)" placeholder="https://copilot.microsoft.com" />
-</div>
+  <div style="padding: 8px 8px 0 8px;">
+    @for (theme of ALL_THEMES; track theme) {
+      <button
+        [id]="'theme-' + theme"
+        type="button"
+        (click)="setTheme(theme)"
+        [attr.data-theme-active]="activeTheme === theme ? true : null"
+        style="display: block; width: 100%; margin-bottom: 6px; padding: 6px 10px; text-align: left; cursor: pointer; border-radius: 4px; border: 2px solid transparent; text-transform: capitalize;"
+        [style.border-color]="activeTheme === theme ? '#3c8dbc' : 'transparent'">
+        {{ theme }}
+      </button>
+    }
+  </div>
+<br/><br/>
+@if (settingsService.xmlInternalSettings?.documentburster?.settings) {
+  <div
+    style="margin: 10px 0 25px 0; clear: both; padding-left: 8px;">
+    <label for="copilotUrl"><strong>AI Assistant URL</strong></label>
+    <input id="copilotUrl" type="text" class="input input-bordered"
+      style="margin-top: 6px; width: calc(100% - 34px); display: inline-block;"
+      [(ngModel)]="settingsService.xmlInternalSettings.documentburster.settings.copiloturl"
+      (ngModelChange)="onInternalSettingsChanged.next($event)" placeholder="https://copilot.microsoft.com" />
+    </div>
+  }
 
-<!-- Suggested LLM URLs (easy copy) -->
-<div style="margin: 18px 0 8px 0; padding-left: 8px;">
-  <label style="font-weight: 600;">Good AI Chat Options</label>
-  <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
-    <!--
-    <div style="display: flex; align-items: center;">
-      <span style="font-family: monospace; font-size: 14px;">Google AI</span>
-      <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
-        (click)="copyToClipboard('https://google.com/ai')">
-        <i class="fa fa-clipboard" aria-hidden="true"></i>
-      </button>
-    </div> -->
-    <div style="display: flex; align-items: center;">
-      <span style="font-family: monospace; font-size: 14px;">ChatGPT</span>
-      <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
-        (click)="copyToClipboard('https://chatgpt.com/')">
-        <i class="fa fa-clipboard" aria-hidden="true"></i>
-      </button>
-    </div>
-    <div style="display: flex; align-items: center;">
-      <span style="font-family: monospace; font-size: 14px;">Microsoft Copilot</span>
-      <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
-        (click)="copyToClipboard('https://copilot.microsoft.com/')">
-        <i class="fa fa-clipboard" aria-hidden="true"></i>
-      </button>
-    </div>
-    <!--
-    <div style="display: flex; align-items: center;">
-      <span style="font-family: monospace; font-size: 14px;">Kimi AI (K2)</span>
-      <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
-        (click)="copyToClipboard('https://www.kimi.com/')">
-        <i class="fa fa-clipboard" aria-hidden="true"></i>
-      </button>
-    </div>
-    -->
-    <div style="display: flex; align-items: center;">
-      <span style="font-family: monospace; font-size: 14px;">Z.ai (GLM model)</span>
-      <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
-        (click)="copyToClipboard('https://chat.z.ai/')">
-        <i class="fa fa-clipboard" aria-hidden="true"></i>
-      </button>
+  <!-- Suggested LLM URLs (easy copy) -->
+  <div style="margin: 18px 0 8px 0; padding-left: 8px;">
+    <label style="font-weight: 600;">Good AI Chat Options</label>
+    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+      <!--
+      <div style="display: flex; align-items: center;">
+        <span style="font-family: monospace; font-size: 14px;">Google AI</span>
+        <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
+          (click)="copyToClipboard('https://google.com/ai')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>
+        </button>
+      </div> -->
+      <div style="display: flex; align-items: center;">
+        <span style="font-family: monospace; font-size: 14px;">ChatGPT</span>
+        <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
+          (click)="copyToClipboard('https://chatgpt.com/')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>
+        </button>
+      </div>
+      <div style="display: flex; align-items: center;">
+        <span style="font-family: monospace; font-size: 14px;">Microsoft Copilot</span>
+        <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
+          (click)="copyToClipboard('https://copilot.microsoft.com/')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>
+        </button>
+      </div>
+      <!--
+      <div style="display: flex; align-items: center;">
+        <span style="font-family: monospace; font-size: 14px;">Kimi AI (K2)</span>
+        <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
+          (click)="copyToClipboard('https://www.kimi.com/')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>
+        </button>
+      </div>
+      -->
+      <div style="display: flex; align-items: center;">
+        <span style="font-family: monospace; font-size: 14px;">Z.ai (GLM model)</span>
+        <button class="btn btn-xs btn-link" style="margin-left: 8px; padding: 0 4px;" title="Copy to clipboard"
+          (click)="copyToClipboard('https://chat.z.ai/')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<div *ngIf="settingsService.xmlInternalSettings?.documentburster?.settings"
-  style="margin: 18px 0 8px 0; padding-left: 8px;">
-  <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
-    <input id="chkShowSamples" type="checkbox"
-      [checked]="settingsService.showSamples"
-      (change)="onShowSamplesChanged($any($event.target).checked)" />
-    Show sample connections &amp; cubes
-  </label>
-</div>
+  @if (settingsService.xmlInternalSettings?.documentburster?.settings) {
+    <div
+      style="margin: 18px 0 8px 0; padding-left: 8px;">
+      <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+        <input id="chkShowSamples" type="checkbox"
+          [checked]="settingsService.showSamples"
+          (change)="onShowSamplesChanged($any($event.target).checked)" />
+          Show sample connections &amp; cubes
+        </label>
+      </div>
+    }
 
-</aside>
-<!-- /.control-sidebar -->
-<!-- Add the sidebar's background. This div must be placed
-         immediately after the control sidebar -->
-<div class="control-sidebar-bg" style="margin-top: 25px"></div>
+  </aside>
+  <!-- /.control-sidebar -->
+  <!-- Add the sidebar's background. This div must be placed
+  immediately after the control sidebar -->
+  <div class="control-sidebar-bg" style="margin-top: 25px"></div>

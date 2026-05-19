@@ -9,6 +9,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
 import com.flowkraft.common.AppPaths;
+import com.sourcekraft.documentburster.utils.Utils;
 
 @Component
 public class FileExplorerConfiguration {
@@ -27,7 +28,7 @@ public class FileExplorerConfiguration {
 		this.description = DEFAULT_DESCRIPTION;
 
 		// Normalize base directory path
-		this.baseDirPath = new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/db").getPath();
+		this.baseDirPath = Utils.resolvePathAgainstPortableDir("db");
 
 		this.restrictToBaseDir = true;
 

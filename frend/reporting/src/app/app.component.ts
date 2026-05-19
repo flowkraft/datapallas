@@ -1,24 +1,20 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { setTheme } from 'ngx-bootstrap/utils';
 import { RbElectronService } from './areas/electron-nodejs/electron.service';
 import { Router } from '@angular/router';
 
-declare var $: any;
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
-export class AppComponent implements AfterViewInit, OnInit {
+export class AppComponent implements OnInit {
   constructor(
     protected electronService: RbElectronService,
     protected translate: TranslateService,
     protected router: Router,
   ) {
-    setTheme('bs3'); // or 'bs4'
-
     this.translate.setDefaultLang('en');
 
     if (this.electronService.isElectron) {
@@ -111,7 +107,4 @@ export class AppComponent implements AfterViewInit, OnInit {
     this.router.initialNavigation(); // manually start the initial navigation
   }
 
-  ngAfterViewInit() {
-    $('#topMenu').smartmenus();
-  }
 }

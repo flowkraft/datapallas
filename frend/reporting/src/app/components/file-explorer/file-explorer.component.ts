@@ -1,4 +1,4 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, inject, OnInit, input } from '@angular/core';
 import { FileExplorerService } from './file-explorer.service';
 
 @Component({
@@ -243,8 +243,8 @@ import { FileExplorerService } from './file-explorer.service';
   ],
 })
 export class FileExplorerComponent implements OnInit {
-  @Input() showPermissionsColumn: boolean = false;
-  @Input() showActionsColumn: boolean = false;
+  showPermissionsColumn = input<boolean>(false);
+  showActionsColumn = input<boolean>(false);
 
   metaInfo: any = {
     title: 'File Explorer',
@@ -266,7 +266,7 @@ export class FileExplorerComponent implements OnInit {
   // Base directory path - will be initialized from meta info
   baseDirPath: string = '/'; // Initialize to prevent errors on early clicks
 
-  constructor(private fileExplorerService: FileExplorerService) {}
+  private fileExplorerService = inject(FileExplorerService);
 
   ngOnInit() {
     this.loadMetaInfo();

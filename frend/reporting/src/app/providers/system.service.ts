@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 
 /**
@@ -10,7 +10,7 @@ import { ApiService } from './api.service';
   providedIn: 'root',
 })
 export class SystemService {
-  constructor(protected apiService: ApiService) {}
+  protected apiService = inject(ApiService);
 
   async getServicesStatus(skipProbe?: boolean): Promise<any> {
     return this.apiService.get('/system/services/status', { skipProbe });

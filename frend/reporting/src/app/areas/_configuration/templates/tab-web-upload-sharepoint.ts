@@ -1,14 +1,14 @@
 export const tabWebUploadSharePointTemplate = `<ng-template #tabWebUploadSharePointTemplate>
   <div class="well">
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-1">
+      <div style="grid-column:span 1">
         <a href="http://www.sharepoint.com" target="_blank">
-          <i class="fa fa-windows fa-2x"></i>
+          <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="inline-block w-8 h-8 fill-current"><title>Microsoft</title><path d="M0 0h11.377v11.372H0zm12.623 0H24v11.372H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z"/></svg>
         </a>
       </div>
-      <div class="col-xs-11" style="left:-20px;top:-2px">
+      <div style="grid-column:span 11;left:-20px;top:-2px">
         <h5
           [innerHTML]="'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-SHAREPOINT.INNER-HTML.USE-DOCUMENTBURSTER-SHAREPOINT' | translate">
         </h5>
@@ -18,16 +18,16 @@ export const tabWebUploadSharePointTemplate = `<ng-template #tabWebUploadSharePo
 
     <br>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2"> {{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-SHAREPOINT.COMMAND' | translate }}</div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 2"> {{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-SHAREPOINT.COMMAND' | translate }}</div>
+      <div style="grid-column:span 7">
         <input id="sharePointCommand"
-          [(ngModel)]="xmlSettings?.documentburster.settings.webuploadsettings.mssharepointcommand"
-          (ngModelChange)='markSettingsDirty($event)' class="form-control" />
+          [ngModel]="xmlSettings?.documentburster?.settings?.webuploadsettings?.mssharepointcommand"
+          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.mssharepointcommand', $event)" class="input input-bordered" />
       </div>
 
-      <div class="col-xs-3">
+      <div style="grid-column:span 3">
         <dburst-button-variables id="btnSharePointVariables"
           (sendSelectedVariable)="updateFormControlWithSelectedVariable('sharePointCommand',$event)">
         </dburst-button-variables>
@@ -37,10 +37,10 @@ export const tabWebUploadSharePointTemplate = `<ng-template #tabWebUploadSharePo
 
     <br>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-SHAREPOINT.EXAMPLE' | translate }}</div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 2">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-SHAREPOINT.EXAMPLE' | translate }}</div>
+      <div style="grid-column:span 7">
         <em [innerHTML]="'--ntlm -T \\$\\{extracted_file_path\\} -u user:password https://sharepointserver.com/reports/'"></em>
       </div>
 
@@ -48,10 +48,10 @@ export const tabWebUploadSharePointTemplate = `<ng-template #tabWebUploadSharePo
 
     <br>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-SHAREPOINT.EXAMPLES' | translate }}</div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 2">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-SHAREPOINT.EXAMPLES' | translate }}</div>
+      <div style="grid-column:span 7">
         <a href="https://datapallas.com/docs/document-portal/payments" target="_blank">https://datapallas.com/docs/document-portal/payments </a>
         <p></p>
         <p></p>

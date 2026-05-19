@@ -488,7 +488,7 @@ public class Settings extends DumpToString {
 			}
 
 			// 3. Default: first db-* connection folder with <default>true</default>
-			String connectionsDir = PORTABLE_EXECUTABLE_DIR_PATH + "/config/connections";
+			String connectionsDir = Paths.get(PORTABLE_EXECUTABLE_DIR_PATH, "config", "connections").toString();
 			File connDir = new File(connectionsDir);
 			if (connDir.exists() && connDir.isDirectory()) {
 				File[] dbFolders = connDir.listFiles(

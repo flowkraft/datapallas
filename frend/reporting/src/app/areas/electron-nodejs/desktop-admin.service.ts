@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { TerminalService } from 'primeng/terminal';
 
 import { ApiService } from '../../providers/api.service';
 import Utilities from '../../helpers/utilities';
@@ -18,7 +17,6 @@ export class DesktopAdminService {
     protected apiService: ApiService,
     protected fsService: FsService,
     protected electronService: RbElectronService,
-    public terminalService: TerminalService,
   ) {}
 
   typeCommandOnTerminalAndThenPressEnter(command: string) {

@@ -1,32 +1,31 @@
 export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
   <div class="well">
-    <div class="panel panel-default">
-      <div class="panel-body">
-        <div class="row">
+    <div class="card card-bordered">
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
           <div
-            class="col-xs-10"
-            style="cursor: pointer; height: 200px; overflow: auto"
+            style="grid-column:span 10;cursor: pointer; height: 200px; overflow: auto"
           >
             <table
               id="filesTable"
-              class="table table-responsive table-hover table-bordered"
+              class="table"
               cellspacing="0"
             >
               <thead>
                 <tr>
-                  <th class="col-xs-3">
+                  <th style="grid-column:span 3">
                     {{ 'AREAS.PROCESSING.TAB-MERGE-BURST.NAME' | translate }}
                   </th>
                   <!--
-                  <th class="col-xs-9">
+                  <th style="grid-column:span 9">
                     {{ 'AREAS.PROCESSING.TAB-MERGE-BURST.PATH' | translate }}
                   </th>
                   -->
                 </tr>
               </thead>
               <tbody>
+                @for (file of processingService.procMergeBurstInfo.inputFiles; track $index) {
                 <tr
-                  *ngFor="let file of processingService.procMergeBurstInfo.inputFiles"
                   [ngClass]="{ 'info': file.selected
                   } "
                   (click)="onFileSelected(file)"
@@ -34,14 +33,15 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
                   <td>{{file.name}}</td>
                   <!--<td>{{file.path}}</td>-->
                 </tr>
+                }
               </tbody>
             </table>
           </div>
 
-          <div class="col-xs-2">
-          <label for="mergeFilesUploadInput" class="btn btn-default btn-block"><i class="fa fa-folder-open-o' }}"></i>&nbsp;Add</label>
-          <input id="mergeFilesUploadInput" type="file" multiple (change)="onFilesAdded($event)" #mergeFilesUploadInput style="display: none;" />           
-          <!--  
+          <div style="grid-column:span 2">
+          <label for="mergeFilesUploadInput" class="btn btn-ghost w-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg>&nbsp;Add</label>
+          <input id="mergeFilesUploadInput" type="file" multiple (change)="onFilesAdded($event)" #mergeFilesUploadInput style="display: none;" />
+          <!--
           <dburst-button-native-system-dialog
               btnId="mergeFilesUploadInput"
               value="&nbsp;&nbsp;&nbsp;&nbsp;{{
@@ -50,11 +50,11 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
               (pathsSelected)="onFilesAdded($event)"
             ></dburst-button-native-system-dialog>
             -->
-            
+
             <button
               id="btnDeletePdfFile"
               type="button"
-              class="btn btn-default btn-block"
+              class="btn btn-ghost w-full"
               (click)="onSelectedFileDelete()"
               [disabled]="!processingService.procMergeBurstInfo.selectedFile"
               style="margin-top: 5px"
@@ -66,7 +66,7 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
             <button
               id="btnUpPdfFile"
               type="button"
-              class="btn btn-default btn-block"
+              class="btn btn-ghost w-full"
               (click)="onSelectedFileUp()"
               [disabled]="!processingService.procMergeBurstInfo.selectedFile"
             >
@@ -77,7 +77,7 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
             <button
               id="btnDownPdfFile"
               type="button"
-              class="btn btn-default btn-block"
+              class="btn btn-ghost w-full"
               (click)="onSelectedFileDown()"
               [disabled]="!processingService.procMergeBurstInfo.selectedFile"
             >
@@ -88,11 +88,11 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
             <button
               id="btnClearPdfFiles"
               type="button"
-              class="btn btn-default btn-block"
+              class="btn btn-ghost w-full"
               (click)="onClearFiles()"
               [disabled]="processingService.procMergeBurstInfo.inputFiles.length === 0"
             >
-              <i class="fa fa-eraser"></i>&nbsp;&nbsp;{{
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75L14.25 12m0 0l2.25 2.25M14.25 12l2.25-2.25M14.25 12L12 14.25m-2.58 4.92l-6.374-6.375a1.125 1.125 0 010-1.59L9.54 4.72a1.125 1.125 0 011.59 0l7.124 7.126a1.125 1.125 0 010 1.59l-3.873 3.873a1.125 1.125 0 01-1.59 0z"/></svg>&nbsp;&nbsp;{{
               'AREAS.PROCESSING.TAB-MERGE-BURST.CLEAR' | translate }}
             </button>
           </div>
@@ -100,46 +100,48 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
       </div>
     </div>
 
-    <div class="panel panel-default">
-      <div class="panel-body">
-        <div class="row">
-          <div class="col-xs-2">
+    <div class="card card-bordered">
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+          <div style="grid-column:span 2">
             {{ 'AREAS.PROCESSING.TAB-MERGE-BURST.MERGED-FILE-NAME' | translate
             }}
           </div>
-          <div class="col-xs-9">
+          <div style="grid-column:span 9">
             <input
               id="mergedFileName"
               [(ngModel)]="processingService.procMergeBurstInfo.mergedFileName"
               (change)="saveMergedFileSetting();"
-              class="form-control"
+              class="input input-bordered"
             />
           </div>
         </div>
-        <div class="row">
-          <div class="col-xs-2"></div>
-          <div class="col-xs-9">
-            <span
-              id="mergedFileNameRequired"
-              class="label label-default"
-              *ngIf="!processingService.procMergeBurstInfo.mergedFileName"
-              >{{ 'AREAS.PROCESSING.TAB-MERGE-BURST.MERGED-FILE-NAME-REQUIRED' |
-              translate }}</span
-            >
-            <span
-              id="mergedFileNamePdfExtensionRequired"
-              class="label label-default"
-              *ngIf="processingService.procMergeBurstInfo.mergedFileName && !processingService.procMergeBurstInfo.mergedFileName.endsWith('.pdf')"
-              >{{
-              'AREAS.PROCESSING.TAB-MERGE-BURST.MERGED-FILE-NAME-PDF-EXTENSION'
-              | translate }}</span
-            >
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+          <div style="grid-column:span 2"></div>
+          <div style="grid-column:span 9">
+            @if (!processingService.procMergeBurstInfo.mergedFileName) {
+              <span
+                id="mergedFileNameRequired"
+                class="badge badge-ghost"
+                >{{ 'AREAS.PROCESSING.TAB-MERGE-BURST.MERGED-FILE-NAME-REQUIRED' |
+                translate }}</span
+              >
+            }
+            @if (processingService.procMergeBurstInfo.mergedFileName && !processingService.procMergeBurstInfo.mergedFileName.endsWith('.pdf')) {
+              <span
+                id="mergedFileNamePdfExtensionRequired"
+                class="badge badge-ghost"
+                >{{
+                'AREAS.PROCESSING.TAB-MERGE-BURST.MERGED-FILE-NAME-PDF-EXTENSION'
+                | translate }}</span
+              >
+            }
           </div>
         </div>
 
-        <div class="row">
-          <div class="col-xs-2"></div>
-          <div class="col-xs-3">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+          <div style="grid-column:span 2"></div>
+          <div style="grid-column:span 3">
             <div class="checkbox">
               <label id="btnBurstMergedFile">
                 <input
@@ -152,9 +154,9 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
             </div>
           </div>
         </div>
-        <div class="row">
-          <div class="col-xs-2"></div>
-          <div class="col-xs-1" style="margin-right: 20px">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+          <div style="grid-column:span 2"></div>
+          <div style="grid-column:span 1;margin-right: 20px">
             <button
               id="btnRun"
               type="button"
@@ -162,16 +164,16 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
               (click)="doMergeBurst()"
               [disabled]="!processingService.procMergeBurstInfo.mergedFileName || !processingService.procMergeBurstInfo.mergedFileName.endsWith('.pdf') || processingService.procMergeBurstInfo.inputFiles.length<=1 || executionStatsService.jobStats.numberOfActiveJobs > 0"
             >
-              <i class="fa fa-play"></i>&nbsp;{{
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>&nbsp;{{
               'AREAS.PROCESSING.TAB-MERGE-BURST.RUN' | translate }}
             </button>
           </div>
 
-          <div class="col-xs-3">
+          <div style="grid-column:span 3">
             <dburst-button-clear-logs></dburst-button-clear-logs>
           </div>
 
-          <div class="col-xs-3" style="margin-left: -20px">
+          <div style="grid-column:span 3;margin-left: -20px">
           <!--
             <dburst-button-native-system-dialog style="display: none;"
               value="{{
@@ -184,16 +186,17 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
           </div>
         </div>
 
-        <div class="row">
-          <div class="col-xs-2"></div>
-          <div class="col-xs-9">
-            <span
-              id="twoOrMoreRequired"
-              class="label label-default"
-              *ngIf="processingService.procMergeBurstInfo.inputFiles.length<=1"
-              >{{ 'AREAS.PROCESSING.TAB-MERGE-BURST.SELECT-2-OR-MORE' |
-              translate }}</span
-            >
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+          <div style="grid-column:span 2"></div>
+          <div style="grid-column:span 9">
+            @if (processingService.procMergeBurstInfo.inputFiles.length<=1) {
+              <span
+                id="twoOrMoreRequired"
+                class="badge badge-ghost"
+                >{{ 'AREAS.PROCESSING.TAB-MERGE-BURST.SELECT-2-OR-MORE' |
+                translate }}</span
+              >
+            }
           </div>
         </div>
       </div>

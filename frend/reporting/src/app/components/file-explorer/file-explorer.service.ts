@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from '../../providers/api.service';
 
 @Injectable({
@@ -7,7 +7,7 @@ import { ApiService } from '../../providers/api.service';
 export class FileExplorerService {
   private endpoint = '/system/fs/explorer';
 
-  constructor(private apiService: ApiService) {}
+  private apiService = inject(ApiService);
 
   /**
    * Get meta information about the file explorer (title, description, quick links)
@@ -74,10 +74,9 @@ export class FileExplorerService {
    */
   async createDirectory(path: string, dirName: string): Promise<boolean> {
     try {
-      return await this.apiService.post(`${this.endpoint}/create-directory`, {
-        path,
-        name: dirName,
-      });
+      const fullPath = path.replace(/\/$/, '') + '/' + dirName;
+      await this.apiService.post(`/system/fs/dir?path=${encodeURIComponent(fullPath)}`);
+      return true;
     } catch (error) {
       console.error('Error creating directory:', error);
       return false;
@@ -90,7 +89,7 @@ export class FileExplorerService {
    */
   async delete(path: string): Promise<boolean> {
     try {
-      return await this.apiService.delete(`${this.endpoint}/delete`, { path });
+      return await this.apiService.delete(`/system/fs?path=${encodeURIComponent(path)}`);
     } catch (error) {
       console.error('Error deleting file/directory:', error);
       return false;
@@ -129,11 +128,6 @@ export class FileExplorerService {
    * @param path Full path to the file
    */
   async getFileContent(path: string): Promise<string> {
-    return this.apiService.get(
-      `${this.endpoint}/file-content`,
-      { file: encodeURIComponent(path) },
-      undefined,
-      'text',
-    );
+    return this.apiService.get(`/system/fs/content`, { path }, undefined, 'text');
   }
 }

@@ -25,6 +25,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.common.Utils;
+import static com.sourcekraft.documentburster.utils.Utils.resolvePathAgainstPortableDir;
 import com.flowkraft.reporting.dtos.ReportFullConfigDto;
 import com.flowkraft.reporting.dsl.chart.ChartOptionsParser;
 import com.flowkraft.reporting.dsl.filterpane.FilterPaneOptionsParser;
@@ -233,6 +235,7 @@ public class ReportsController {
 
 	// ── V4.1: Report config for web component (moved from ReportingController) ──
 
+	@Operation(summary = "Full wired config (resolved paths + merged defaults) — runtime-assembled; never stored as-is on disk")
 	@GetMapping(value = "/{reportId}/config", consumes = MediaType.ALL_VALUE)
 	public Mono<ReportFullConfigDto> getReportConfig(@PathVariable String reportId) throws Exception {
 		return Mono.just(reportingService.loadReportConfig(reportId));
@@ -256,39 +259,6 @@ public class ReportsController {
 		ReportDataResult result = reportingService.fetchReportData(reportId, parameters, testMode);
 		result = reportingService.applyServerSideOperations(result, page, size, sort, filter);
 		return Mono.just(result);
-	}
-
-	// ── V4.3: Unified DSL parse (replaces 5 /parse-* endpoints in ReportingController) ──
-
-	@PostMapping(value = "/{reportId}/parse/{kind}")
-	public Mono<?> parseDsl(
-			@PathVariable String reportId,
-			@PathVariable String kind,
-			@RequestBody String dslCode,
-			@RequestParam(required = false) String connectionCode) throws Exception {
-		String cleaned = dslCode.replaceAll("^\"|\"$", "")
-				.replace("\\n", "\n")
-				.replace("\\t", "\t")
-				.replace("\\\"", "\"");
-		switch (kind) {
-			case "parameters": {
-				List<ReportParameter> params = ReportParametersHelper.parseGroovyParametersDslCode(cleaned);
-				if (connectionCode != null && !connectionCode.isEmpty()) {
-					reportingService.resolveParameterSqlOptions(params, connectionCode);
-				}
-				return Mono.just(params);
-			}
-			case "tabulator":
-				return Mono.just(TabulatorOptionsParser.parseGroovyTabulatorDslCode(cleaned));
-			case "chart":
-				return Mono.just(ChartOptionsParser.parseGroovyChartDslCode(cleaned));
-			case "pivot":
-				return Mono.just(PivotTableOptionsParser.parseGroovyPivotTableDslCode(cleaned));
-			case "filterpane":
-				return Mono.just(FilterPaneOptionsParser.parseGroovyFilterPaneDslCode(cleaned));
-			default:
-				return Mono.error(new IllegalArgumentException("Unknown DSL kind: " + kind));
-		}
 	}
 
 	private String extractBracketParams(Map<String, String> params, String prefix) throws Exception {
@@ -315,8 +285,8 @@ public class ReportsController {
 		// System.out.println("========== SERVE ASSET ENDPOINT CALLED ==========");
 		// System.out.println("Path requested: " + path);
 
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
+		String fullPath = resolvePathAgainstPortableDir(
+				URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
 
 		// System.out.println("Full path: " + fullPath);
 
@@ -352,8 +322,8 @@ public class ReportsController {
 
 	@GetMapping(value = "/preview-template", produces = MediaType.TEXT_HTML_VALUE)
 	public Mono<ResponseEntity<String>> viewTemplate(@RequestParam String path) throws Exception {
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ URLDecoder.decode(path, StandardCharsets.UTF_8.toString());
+		String fullPath = resolvePathAgainstPortableDir(
+				URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
 
 		boolean isXml = path.toLowerCase().endsWith(".xml");
 
@@ -471,7 +441,7 @@ public class ReportsController {
 
 	// ── Phase 2: High-level atomic configuration endpoints ──
 
-	@PostMapping(value = "/configurations", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<ConfigurationFileInfo>> createConfiguration(@RequestBody Map<String, Object> request)
 			throws Exception {
 
@@ -487,7 +457,7 @@ public class ReportsController {
 		return Mono.just(ResponseEntity.status(HttpStatus.CREATED).body(result));
 	}
 
-	@PostMapping(value = "/configurations/{reportId}/duplicate", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	@PostMapping(value = "/{reportId}/duplicate", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<ConfigurationFileInfo>> duplicateConfiguration(@PathVariable String reportId,
 			@RequestBody Map<String, Object> request) throws Exception {
 
@@ -502,13 +472,13 @@ public class ReportsController {
 		return Mono.just(ResponseEntity.status(HttpStatus.CREATED).body(result));
 	}
 
-	@PostMapping(value = "/configurations/{reportId}/restore-defaults", consumes = MediaType.ALL_VALUE)
+	@PostMapping(value = "/{reportId}/restore-defaults", consumes = MediaType.ALL_VALUE)
 	public Mono<ResponseEntity<Void>> restoreDefaults(@PathVariable String reportId) throws Exception {
 		rbSettingsService.restoreDefaults(reportId);
 		return Mono.just(ResponseEntity.ok().build());
 	}
 
-	@DeleteMapping(value = "/configurations/{reportId}")
+	@DeleteMapping(value = "/{reportId}")
 	public Mono<ResponseEntity<Void>> deleteConfiguration(@PathVariable String reportId) throws Exception {
 		rbSettingsService.deleteConfiguration(reportId);
 		return Mono.just(ResponseEntity.ok().build());
@@ -516,10 +486,15 @@ public class ReportsController {
 
 	// ── Phase 3: ID-based REST endpoints ──
 
-	@GetMapping(value = "/{reportId}/settings", consumes = MediaType.ALL_VALUE)
+	@Operation(summary = "Raw settings XML as stored on disk — the source of truth before path resolution or defaults are applied")
+	@GetMapping(value = "/{reportId}/settings", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<DocumentBursterSettings> loadReportSettings(@PathVariable String reportId) throws Exception {
 		String fullPath = resolveSettingsPath(reportId);
+		System.out.println("[RB-DIAG] loadReportSettings reportId=" + reportId + " fullPath=" + fullPath);
 		DocumentBursterSettings dbSettings = rbSettingsService.loadSettings(fullPath);
+		System.out.println("[RB-DIAG] loadReportSettings settings=" + (dbSettings.settings != null ? "OK version=" + dbSettings.settings.version : "NULL"));
+		preserveExistingPasswords(dbSettings, fullPath);
+		rbSettingsService.saveSettings(dbSettings, fullPath);
 		maskPasswords(dbSettings);
 		return Mono.just(dbSettings);
 	}
@@ -528,10 +503,13 @@ public class ReportsController {
 	public void saveReportSettings(@PathVariable String reportId, @RequestBody DocumentBursterSettings settings)
 			throws Exception {
 		String fullPath = resolveSettingsPath(reportId);
+		System.out.println("[RB-DIAG] saveReportSettings reportId=" + reportId + " fullPath=" + fullPath);
+		System.out.println("[RB-DIAG] saveReportSettings settings=" + (settings.settings != null ? "OK burstfilename=" + settings.settings.burstfilename : "NULL"));
 		preserveExistingPasswords(settings, fullPath);
 		rbSettingsService.saveSettings(settings, fullPath);
 	}
 
+	@Operation(summary = "Data-source section from a separate datasource XML file on disk — distinct from the main settings.xml")
 	@GetMapping(value = "/{reportId}/datasource", consumes = MediaType.ALL_VALUE)
 	public Mono<ReportingSettings> loadReportDataSource(@PathVariable String reportId) throws Exception {
 		String fullPath = resolveSettingsPath(reportId);
@@ -570,7 +548,7 @@ public class ReportsController {
 			// Uses StandardCopyOption.REPLACE_EXISTING — safe to call repeatedly (1st use
 			// or 20th use); idempotent, never fails if files are already present.
 			if (assetSourceDir != null && !assetSourceDir.isBlank()) {
-				File srcDir = new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + assetSourceDir);
+				File srcDir = new File(resolvePathAgainstPortableDir(assetSourceDir));
 				File dstDir = new File(templatePath).getParentFile();
 				if (srcDir.isDirectory()) {
 					for (File asset : srcDir.listFiles()) {
@@ -612,7 +590,7 @@ public class ReportsController {
 				|| templatePath.endsWith(".pptx") || templatePath.endsWith(".odt")) {
 			return Mono.just("");
 		}
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + templatePath;
+		String fullPath = resolvePathAgainstPortableDir(templatePath);
 		String content = fileSystemService.unixCliCat(fullPath);
 		return Mono.just(content != null ? content : "");
 	}
@@ -624,7 +602,7 @@ public class ReportsController {
 		if (templatePath == null || templatePath.isEmpty()) {
 			return Mono.just(new ResponseEntity<>(HttpStatus.NO_CONTENT));
 		}
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + templatePath;
+		String fullPath = resolvePathAgainstPortableDir(templatePath);
 		return Mono.fromCallable(() -> {
 			fileSystemService.fsWriteStringToFile(fullPath, content);
 			return new ResponseEntity<Void>(HttpStatus.OK);
@@ -708,27 +686,27 @@ public class ReportsController {
 
 	private String resolveSettingsPath(String reportId) {
 		// Check all config locations: reports, samples, _frend samples, reports-jasper, burst (legacy)
-		String reportsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports/" + reportId + "/settings.xml";
+		String reportsPath = resolvePathAgainstPortableDir("config/reports/" + reportId + "/settings.xml");
 		if (new File(reportsPath).exists())
 			return reportsPath;
 
-		String samplesPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/samples/" + reportId + "/settings.xml";
+		String samplesPath = resolvePathAgainstPortableDir("config/samples/" + reportId + "/settings.xml");
 		if (new File(samplesPath).exists())
 			return samplesPath;
 
-		String frendSamplesPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/samples/_frend/" + reportId + "/settings.xml";
+		String frendSamplesPath = resolvePathAgainstPortableDir("config/samples/_frend/" + reportId + "/settings.xml");
 		if (new File(frendSamplesPath).exists())
 			return frendSamplesPath;
 
-		String jasperPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports-jasper/" + reportId + "/settings.xml";
+		String jasperPath = resolvePathAgainstPortableDir("config/reports-jasper/" + reportId + "/settings.xml");
 		if (new File(jasperPath).exists())
 			return jasperPath;
 
-		String burstPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml";
+		String burstPath = resolvePathAgainstPortableDir("config/burst/settings.xml");
 		if ("burst".equals(reportId) && new File(burstPath).exists())
 			return burstPath;
 
-		String defaultsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/_defaults/settings.xml";
+		String defaultsPath = resolvePathAgainstPortableDir("config/_defaults/settings.xml");
 		if ("_defaults".equals(reportId) && new File(defaultsPath).exists())
 			return defaultsPath;
 
@@ -737,7 +715,7 @@ public class ReportsController {
 	}
 
 	private String resolveTemplatePath(String reportId, String type) {
-		return AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + resolveRelativeTemplatePath(reportId, type);
+		return resolvePathAgainstPortableDir(resolveRelativeTemplatePath(reportId, type));
 	}
 
 	private String resolveRelativeTemplatePath(String reportId, String type) {

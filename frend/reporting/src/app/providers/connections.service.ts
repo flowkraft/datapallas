@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import { APP_CONFIG } from '../../environments/environment';
 
@@ -81,7 +81,9 @@ export class ConnectionsService {
 
   connectionsLoading: number = 0;
 
-  constructor(public apiService: ApiService) {
+  public apiService = inject(ApiService);
+
+  constructor() {
     this.CONFIGURATION_CONNECTIONS_FOLDER_PATH = `${APP_CONFIG.folders.config}/connections`;
   }
 
@@ -265,7 +267,7 @@ export class ConnectionsService {
   async revealPassword(connectionId: string, field: string, reportId?: string): Promise<string> {
     const params: any = { field };
     if (reportId) params.reportId = reportId;
-    const result = await this.apiService.get(`/connections/${connectionId}/reveal-password`, params);
+    const result = await this.apiService.post(`/connections/${connectionId}/reveal-password`, params);
     return result.password || '';
   }
 

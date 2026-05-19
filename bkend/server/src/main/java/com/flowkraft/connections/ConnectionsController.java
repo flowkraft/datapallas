@@ -26,6 +26,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.reports.ReportsService;
+import com.sourcekraft.documentburster.utils.Utils;
 import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper;
 import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper.TokenResult;
 import com.sourcekraft.documentburster.common.security.SecretsCipher;
@@ -337,20 +338,21 @@ public class ConnectionsController {
 		return Mono.just(ResponseEntity.ok().<Void>build());
 	}
 
-	@GetMapping(value = "/{connectionId}/reveal-password", consumes = MediaType.ALL_VALUE)
+	@PostMapping(value = "/{connectionId}/reveal-password")
 	public Mono<ResponseEntity<Map<String, String>>> revealPassword(
 			@PathVariable String connectionId,
-			@RequestParam String field,
-			@RequestParam(required = false) String reportId) throws Exception {
+			@RequestBody Map<String, String> request) throws Exception {
+		String field = request.get("field");
+		String reportId = request.get("reportId");
 
 		final String configPath;
 		if (reportId != null && !reportId.isEmpty()) {
 			String reportsPath = "config/reports/" + reportId + "/settings.xml";
-			if (new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + reportsPath).exists()) {
+			if (new File(Utils.resolvePathAgainstPortableDir(reportsPath)).exists()) {
 				configPath = reportsPath;
 			} else {
 				String samplesPath = "config/samples/" + reportId + "/settings.xml";
-				if (new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + samplesPath).exists()) {
+				if (new File(Utils.resolvePathAgainstPortableDir(samplesPath)).exists()) {
 					configPath = samplesPath;
 				} else if ("burst".equals(reportId)) {
 					configPath = "config/burst/settings.xml";
@@ -370,8 +372,7 @@ public class ConnectionsController {
 				return Mono.just(ResponseEntity.badRequest()
 						.body(Map.of("error", "configPath is required for field: " + field)));
 			}
-			String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-					+ configPath.replaceFirst("^/", "");
+			String fullPath = Utils.resolvePathAgainstPortableDir(configPath.replaceFirst("^/", ""));
 			DocumentBursterSettings dbSettings = reportsService.loadSettings(fullPath);
 
 			if ("authtoken".equals(field)
@@ -388,22 +389,21 @@ public class ConnectionsController {
 				encryptedValue = dbSettings.settings.simplejavamail.proxy.password;
 			}
 		} else {
-			String dbConnPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH
-					+ "/config/connections/" + connectionId + "/" + connectionId + ".xml";
+			String dbConnPath = Utils.resolvePathAgainstPortableDir(
+					"config/connections/" + connectionId + "/" + connectionId + ".xml");
 			if (new File(dbConnPath).exists()) {
 				DocumentBursterConnectionDatabaseSettings dbConn = reportsService
 						.loadSettingsConnectionDatabase(dbConnPath);
 				encryptedValue = dbConn.connection.databaseserver.userpassword;
 			} else {
-				String emlConnPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH
-						+ "/config/connections/" + connectionId + ".xml";
+				String emlConnPath = Utils.resolvePathAgainstPortableDir(
+						"config/connections/" + connectionId + ".xml");
 				if (new File(emlConnPath).exists()) {
 					DocumentBursterConnectionEmailSettings emlConn = reportsService
 							.loadSettingsConnectionEmail(emlConnPath);
 					encryptedValue = emlConn.connection.emailserver.userpassword;
 				} else if (configPath != null && !configPath.isEmpty()) {
-					String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-							+ configPath.replaceFirst("^/", "");
+					String fullPath = Utils.resolvePathAgainstPortableDir(configPath.replaceFirst("^/", ""));
 					DocumentBursterSettings dbSettings = reportsService.loadSettings(fullPath);
 					if (dbSettings.settings.emailserver != null) {
 						encryptedValue = dbSettings.settings.emailserver.userpassword;

@@ -1,19 +1,21 @@
 ﻿import {
   Component,
   OnInit,
-  OnDestroy,
   ViewChild,
   ChangeDetectorRef,
   TemplateRef,
   ViewChildren,
   QueryList,
   ElementRef,
+  DestroyRef,
+  inject,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ActivatedRoute } from '@angular/router';
 
 import { Subject, from, firstValueFrom } from 'rxjs';
-import { debounceTime, takeUntil } from 'rxjs/operators';
+import { debounceTime } from 'rxjs/operators';
 
 import * as _ from 'lodash';
 
@@ -135,7 +137,7 @@ import { modalTemplatesGalleryTemplate } from './templates/modal-gallery';
     ${tabLogsTemplate} ${tabLicenseTemplate} ${tabReportsListTemplate} ${modalAttachmentTemplate} ${modalTemplatesGalleryTemplate}
   `,
 })
-export class ConfigurationComponent implements OnInit, OnDestroy {
+export class ConfigurationComponent implements OnInit {
 
   // ========== VIEW CHILDREN & TAB CONFIGURATION ==========
 
@@ -546,7 +548,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   autosaveEnabled = false;
 
   settingsChanged: Subject<any> = new Subject<any>();
-  private destroy$ = new Subject<void>();
+  private destroyRef = inject(DestroyRef);
+  private _loadingPath: string | null = null;
+  private _diagCallCount = 0;
 
   selectedEmailConnectionFile: ExtConnection;
   selectedReportTemplateFile = {
@@ -563,11 +567,6 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   // ==========================================================================
   //  Lifecycle
   // ==========================================================================
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
 
   // ========== CUBES REUSE MODAL ==========
   // Lets the user pick a cube already configured for the current DB connection,
@@ -636,13 +635,38 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   //  Form state tracking
   // ==========================================================================
 
+  // setXmlPath: the Angular 17 fix for [(ngModel)] write-back failures inside NgTemplateOutlet
+  // rendered by @for. Angular's compiled write-back uses ɵɵnextContext(N) which resolves to
+  // the @for iteration context (not the component) in Angular 17, causing TypeError on assignment.
+  // Explicit method calls use ɵɵrestoreView and always resolve to the component, so this method
+  // is the safe write path. Uses lodash _.set so callers pass a string path, not an expression.
+  setXmlPath(path: string, val: any) {
+    console.log('[RB-DIAG] 🔧 setXmlPath: path="' + path + '" val="' + val + '"');
+    _.set(this.xmlSettings, path, val);
+    this.settingsChanged.next(val);
+  }
+
+  setXmlReportingPath(path: string, val: any) {
+    _.set(this.xmlReporting, path, val);
+    this.settingsChanged.next(val);
+  }
+
   markSettingsDirty(newValue: any) {
+    const db = this.xmlSettings?.documentburster;
+    const s: any = db?.settings;
+    const writeBackStatus = (typeof newValue === 'string' && s != null)
+      ? (s.burstfilename === newValue ? '✅ WRITE_OK (model updated)' : '❌ WRITE_FAILED (model still="' + s.burstfilename + '", user typed="' + newValue + '")')
+      : '(non-string/settings null)';
+    console.log('[RB-DIAG] 📝 markSettingsDirty:', writeBackStatus, '| settings=', s ? 'OK' : 'NULL/UNDEF');
     this.settingsChanged.next(newValue);
   }
 
   markSettingsDirtyFromQuill(newValue: any) {
-    //console.log(`markSettingsDirtyFromQuill: newValue: ${newValue}`);
-    this.xmlSettings.documentburster.settings.emailsettings.html = newValue;
+    const html = typeof newValue === 'string' ? newValue : (newValue?.htmlValue ?? '');
+    console.log('[RB-DIAG] 🔧 markSettingsDirtyFromQuill: html length=' + (html?.length ?? 0));
+    if (this.xmlSettings?.documentburster?.settings) {
+      (this.xmlSettings.documentburster.settings as any).emailsettings.html = html;
+    }
     this.settingsChanged.next(this.xmlSettings.documentburster.settings);
   }
 
@@ -987,47 +1011,115 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   // ngOnInit wires the route-param subscription; all per-navigation work lives in _initFromRouteParams.
   async ngOnInit() {
-    this.route.params.subscribe(async (params) => this._initFromRouteParams(params));
+    // Auto-save subscription created ONCE here with takeUntilDestroyed(destroyRef).
+    // It was previously re-created inside _initFromRouteParams on every navigation,
+    // causing N subscriptions to accumulate — each competing save wrote stale data.
+    this.settingsChanged
+      .pipe(debounceTime(30), takeUntilDestroyed(this.destroyRef))
+      .subscribe(async (_newValue: any) => {
+        const bf = (this.xmlSettings?.documentburster?.settings as any)?.burstfilename;
+        console.log('[RB-DIAG] 💾 SAVE: bf_in_model="' + bf + '" (this is what gets saved to disk)');
+        await this.reportsService.saveReportSettings(
+          this.currentReportId,
+          this.xmlSettings,
+        );
+
+        if (
+          this.xmlSettings.documentburster.settings.capabilities
+            .reportgenerationmailmerge &&
+          this.xmlReporting.documentburster
+        )
+          await this.reportsService.saveReportDataSource(
+            this.currentReportId,
+            this.xmlReporting,
+          );
+
+        this.messagesService.showInfo('Saved');
+      });
+
+    this.route.params
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(async (params: any) => this._initFromRouteParams(params));
   }
 
   private async _initFromRouteParams(params: any): Promise<void> {
+    const _cn = ++this._diagCallCount;
     this.currentLeftMenu = params.leftMenu || 'generalSettingsMenuSelected';
+
+    const newPath = Utilities.slash(params.configurationFilePath || '');
+
+    console.log(`[RB-DIAG] ▶ initRoute #${_cn}: leftMenu=${this.currentLeftMenu} path=${params.configurationFilePath} _loadingPath=${this._loadingPath} settings-null=${this.xmlSettings.documentburster.settings == null}`);
+
+    // Synchronous guard BEFORE any await: route.params emits multiple times on startup.
+    // Both emissions start concurrently; without this, both see settings=null and both
+    // proceed to load, causing the second load to overwrite the user's typed value.
+    if (!params.reloadConfiguration && this._loadingPath === newPath) {
+      console.log(`[RB-DIAG] ◀ initRoute #${_cn}: SKIPPED — guard fired (same path in flight)`);
+      return;
+    }
+
+    const alreadyLoaded =
+      !params.reloadConfiguration &&
+      this.xmlSettings.documentburster.settings != null &&
+      this.settingsService.currentConfigurationTemplatePath === newPath;
+
+    console.log(`[RB-DIAG] initRoute #${_cn}: alreadyLoaded=${alreadyLoaded} settings-null=${this.xmlSettings.documentburster.settings == null}`);
 
     //make sure that the XML file is loaded only once
     if (
       this.currentLeftMenu === 'generalSettingsMenuSelected' ||
       params.reloadConfiguration
     ) {
-      this.settingsService.currentConfigurationTemplatePath = Utilities.slash(
-        params.configurationFilePath,
-      );
+      if (!alreadyLoaded) {
+        this._loadingPath = newPath;
+        try {
+          this.settingsService.currentConfigurationTemplatePath = newPath;
 
-      this.settingsService.currentConfigurationTemplateName =
-        params.configurationFileName;
+          this.settingsService.currentConfigurationTemplateName =
+            params.configurationFileName;
 
-      this.xmlSettings = await this.reportsService.loadSettingsByPath(
-        params.configurationFilePath,
-      );
+          const loaded = await this.reportsService.loadSettingsByPath(
+            params.configurationFilePath,
+          );
+          // Keep the same documentburster object alive (Object.assign in-place).
+          // ⚠️ RACE CANARY: if the user typed something between the await above and this
+          // line, Object.assign will OVERWRITE their typed value with the backend value.
+          // The log below reveals this: if bf_before differs from bf_after_load, we have a race.
+          const _bf_before_assign = (this.xmlSettings.documentburster as any)?.settings?.burstfilename;
+          Object.assign(this.xmlSettings.documentburster, loaded.documentburster);
+          const _bf_after_assign = (this.xmlSettings.documentburster as any)?.settings?.burstfilename;
+          if (_bf_before_assign !== undefined && _bf_before_assign !== _bf_after_assign) {
+            console.warn('[RB-DIAG] 🚨 RACE DETECTED: Object.assign OVERWROTE user input! before="' + _bf_before_assign + '" → after="' + _bf_after_assign + '"');
+          } else {
+            console.log('[RB-DIAG] ✅ Object.assign OK: bf="' + _bf_after_assign + '" (no user input was overwritten)');
+          }
+          this.stateStore.configSys.currentConfigFile.configuration.settings = {
+            ...(this.xmlSettings.documentburster.settings as any),
+          };
 
-      this.stateStore.configSys.currentConfigFile.configuration.settings = {
-        ...this.xmlSettings.documentburster.settings,
-      };
+          // Search all configs (configurationFiles includes both user configs and samples).
+          const stripLeadingSlash = (p: string) => p?.replace(/^\//, '') || '';
+          const targetPath = stripLeadingSlash(newPath);
+          console.log('[RB-DIAG] find template: targetPath=', targetPath,
+            'configurationFiles count=', this.settingsService.configurationFiles?.length,
+            'sample paths=', this.settingsService.configurationFiles?.slice(0, 3).map(c => c.filePath));
+          this.settingsService.currentConfigurationTemplate = this.settingsService
+            .configurationFiles?.find(
+              (confTemplate) =>
+                stripLeadingSlash(confTemplate.filePath) === targetPath,
+            );
+          console.log('[RB-DIAG] currentConfigurationTemplate=', this.settingsService.currentConfigurationTemplate?.folderName,
+            'filePath=', this.settingsService.currentConfigurationTemplate?.filePath);
 
-      // Search all configs (configurationFiles includes both user configs and samples).
-      // Normalize leading slash: backend returns "/config/..." while frontend uses "config/..."
-      const stripLeadingSlash = (p: string) => p?.replace(/^\//, '') || '';
-      const targetPath = stripLeadingSlash(this.settingsService.currentConfigurationTemplatePath);
-      this.settingsService.currentConfigurationTemplate = this.settingsService
-        .configurationFiles?.find(
-          (confTemplate) =>
-            stripLeadingSlash(confTemplate.filePath) === targetPath,
-        );
-
-      // Lazy load DSL details for this specific configuration
-      if (this.settingsService.currentConfigurationTemplate) {
-        await this.settingsService.loadReportDetails(
-          this.settingsService.currentConfigurationTemplate
-        );
+          // Lazy load DSL details for this specific configuration
+          if (this.settingsService.currentConfigurationTemplate) {
+            await this.settingsService.loadReportDetails(
+              this.settingsService.currentConfigurationTemplate
+            );
+          }
+        } finally {
+          this._loadingPath = null;
+        }
       }
     }
 
@@ -1047,27 +1139,6 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
       this.settingsService.currentConfigurationTemplateName,
     );
 
-    // wire auto-save debounce — re-subscribed on each navigation to pick up fresh xmlSettings
-    this.settingsChanged
-      .pipe(debounceTime(30))
-      .subscribe(async (_newValue) => {
-        await this.reportsService.saveReportSettings(
-          this.currentReportId,
-          this.xmlSettings,
-        );
-
-        if (
-          this.xmlSettings.documentburster.settings.capabilities
-            .reportgenerationmailmerge &&
-          this.xmlReporting.documentburster
-        )
-          await this.reportsService.saveReportDataSource(
-            this.currentReportId,
-            this.xmlReporting,
-          );
-
-        this.messagesService.showInfo('Saved');
-      });
   }
 
   private async initEmailSettings() {
@@ -1145,6 +1216,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }
 
   refreshTabs() {
+    console.log('[RB-DIAG] refreshTabs START: settings=', this.xmlSettings?.documentburster?.settings != null ? 'OK' : 'NULL/UNDEF');
     this.visibleTabs = [];
 
     this.changeDetectorRef.detectChanges();
@@ -1167,6 +1239,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
       return visibleTabsIds.includes(item.id) && shouldShow;
     });
+    console.log('[RB-DIAG] refreshTabs END: settings=', this.xmlSettings?.documentburster?.settings != null ? 'OK' : 'NULL/UNDEF');
   }
 
   async onSelectOutputFolderPath(filePath: string) {
@@ -2023,10 +2096,10 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     try {
       // loadAll() is cheap (a single GET /cubes); always re-fetch so the user
       // sees newly created cubes without restarting the configuration screen.
-      // takeUntil(destroy$) ensures the await resolves early (EmptyError) if the
+      // takeUntilDestroyed(destroyRef) ensures the await resolves early (EmptyError) if the
       // component is destroyed before the HTTP response arrives, preventing NG0901.
       this.allCubes = await firstValueFrom(
-        from(this.cubesService.loadAll()).pipe(takeUntil(this.destroy$))
+        from(this.cubesService.loadAll()).pipe(takeUntilDestroyed(this.destroyRef))
       );
     } catch {
       this.allCubes = [];
@@ -2610,10 +2683,10 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   async showDbConnectionModal(context: 'sqlQuery' | 'scriptQuery' | 'dashboardScript' = 'sqlQuery') {
     //console.log('ConfigurationConnectionsComponet: showCrudModal()');
-    this.connectionDetailsModalInstance.context = context;
+    this.connectionDetailsModalInstance.context.set(context);
     if (context === 'dashboardScript') {
-      this.connectionDetailsModalInstance.reportId = this.getCurrentReportCode();
-      this.connectionDetailsModalInstance.apiBaseUrl = this.getApiBaseUrl() + '/reporting';
+      this.connectionDetailsModalInstance.reportId.set(this.getCurrentReportCode());
+      this.connectionDetailsModalInstance.apiBaseUrl.set(this.getApiBaseUrl() + '/reporting');
     }
     this.connectionDetailsModalInstance.showCrudModal(
       'update',

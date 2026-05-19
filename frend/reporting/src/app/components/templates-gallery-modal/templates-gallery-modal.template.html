@@ -1,233 +1,218 @@
-export const modalGalleryTemplate = `<p-dialog
-    id="templateGalleryModal"
-    [header]="galleryDialogTitle"
-    [visible]="templateGalleryState !== 'closed'"
-    [modal]="true"
-    [style]="{width: '95vw', height: '95vh'}" 
-    [closable]="false"
-    [closeOnEscape]="false"
-    [contentStyle]="{padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%'}"
-    (onShow)="addDialogEscapeHandler()">
-    
-    <ng-template pTemplate="header">
-      <span id="galleryDialogTitle">{{galleryDialogTitle}}</span>
-      <button type="button" id="btnCloseTemplateGalleryX" class="close" (click)="closeTemplateGallery()" 
-              style="position: absolute; right: 15px; top: 10px; font-size: 21px; padding: 0; line-height: 1; margin: 0;">
-        <span>&times;</span>
-      </button>
-    </ng-template>
+export const modalGalleryTemplate = `<dp-dialog
+id="templateGalleryModal"
+[header]="galleryDialogTitle"
+[visible]="templateGalleryState !== 'closed'"
+[closable]="false"
+[style]="{width: '95vw', height: '95vh', 'max-height': '95vh', padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column'}"
+(onShow)="addDialogEscapeHandler()"
+>
 
-    <div style="flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; height: calc(89vh - 120px);">
-      <!-- General AI Instructions (shown when first opening in AI mode) -->
-      <div *ngIf="templateGalleryState === 'examples-gallery' || templateGalleryState === 'hey-ai'" id="aiInstructionsContainer" class="ai-instructions-container" 
-          style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
-        
-        <!-- Render the markdown instructions -->
-        <markdown id="aiInstructionsContent" [data]="galleryAiInstructions"></markdown>
-        <br/><br/><br/>
-        <!-- Button to proceed to templates -->
-        <div *ngIf="templateGalleryState === 'examples-gallery'" style="margin-top: 20px; text-align: center;">
+<div style="flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; height: calc(89vh - 120px);">
+  <!-- General AI Instructions (shown when first opening in AI mode) -->
+  @if (templateGalleryState === 'examples-gallery' || templateGalleryState === 'hey-ai') {
+    <div id="aiInstructionsContainer" class="ai-instructions-container"
+      style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
+      <!-- Render the markdown instructions -->
+      <markdown id="aiInstructionsContent" [data]="galleryAiInstructions"></markdown>
+      <br/><br/><br/>
+      <!-- Button to proceed to templates -->
+      @if (templateGalleryState === 'examples-gallery') {
+        <div style="margin-top: 20px; text-align: center;">
           <button type="button" id="btnConfirmAiGalleryInstructions" class="btn btn-primary btn-lg" (click)="closeGeneralAiInstructions()">
-            <i class="fa fa-check-circle"></i>&nbsp;{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.GALLERY-CONFIRM' | translate }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>&nbsp;{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.GALLERY-CONFIRM' | translate }}
           </button>
         </div>
-
-        <!-- Link to  -->
-        <div *ngIf="templateGalleryState === 'hey-ai'" style="margin-top: 20px; text-align: center;">
-          <a href="https://datapallas.com/docs/artificial-intelligence" target="_blank" 
-            id="btnConfirmAiHelp" 
-            class="btn btn-primary btn-lg" 
+      }
+      <!-- Link to  -->
+      @if (templateGalleryState === 'hey-ai') {
+        <div style="margin-top: 20px; text-align: center;">
+          <a href="https://datapallas.com/docs/artificial-intelligence" target="_blank"
+            id="btnConfirmAiHelp"
+            class="btn btn-primary btn-lg"
             role="button">
-            <i class="fa fa-check-circle"></i>&nbsp;{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.AI-HELP-CONFIRM' | translate }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>&nbsp;{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.AI-HELP-CONFIRM' | translate }}
           </a>
         </div>
-      </div>
-    
-      <p-carousel #templateCarousel
-          id="galleryTemplateCarousel"
-          [value]="galleryTemplates" 
-          [numVisible]="1" 
-          [numScroll]="1" 
-          [circular]="true"
-          [showIndicators]="false"
-          [showNavigators]="true"
-          [page]="selectedGalleryTemplateIndex"
-          (onPage)="onGalleryTemplateSelected($event)"
-          [responsiveOptions]="[
-            {breakpoint: '1024px', numVisible: 1},
-            {breakpoint: '768px', numVisible: 1},
-            {breakpoint: '560px', numVisible: 1}
-          ]"
-          [style]="{height: '100%', display: 'flex', flexDirection: 'column'}"
-          *ngIf="templateGalleryState === 'templates' && galleryTemplates && galleryTemplates.length > 0">
-        <ng-template let-example pTemplate="item">
-          <div 
-              id="galleryTemplatePreviewContainer"
-              class="template-example-preview" 
-              style="width: 100%; height: calc(89vh - 200px); display: flex; justify-content: center; align-items: center; overflow: hidden; padding: 10px;">
-              <iframe #templateIframe
-                [id]="'template-iframe-' + (example?.id || selectedGalleryTemplateIndex)"
-                [srcdoc]="sanitizeHtmlForIframe(example?.htmlContent?.[example?.currentVariantIndex || 0], example?.assetBaseDir)"
-                [ngClass]="{'fade-transition': true, 'fade-hidden': templatePreviewFadeState === 'hidden'}"
-                scaleIframe
-                scrolling="no"
-                style="width: 100%; height: 100%; border: none;">
-              </iframe>
-          </div>
-        </ng-template>
-      </p-carousel>
+      }
+    </div>
+  }
 
-      <!-- Show a loading indicator only when in templates mode and no data is available -->
-      <div *ngIf="templateGalleryState === 'templates' && (!galleryTemplates || galleryTemplates.length === 0)" class="text-center p-4">
-        <span>{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.LOADING' | translate }}</span>
-      </div>
+  @if (templateGalleryState === 'templates' && galleryTemplates && galleryTemplates.length > 0) {
+    <dp-carousel #templateCarousel
+      id="galleryTemplateCarousel"
+      [value]="galleryTemplates"
+      [circular]="true"
+      [page]="selectedGalleryTemplateIndex"
+      (onPage)="onGalleryTemplateSelected($event)"
+      [style]="{height: '100%', display: 'flex', flexDirection: 'column'}"
+      >
+      <ng-template #item let-example>
+        <div
+          id="galleryTemplatePreviewContainer"
+          class="template-example-preview"
+          style="width: 100%; height: calc(89vh - 200px); display: flex; justify-content: center; align-items: center; overflow: hidden; padding: 10px;">
+          <iframe #templateIframe
+            [id]="'template-iframe-' + (example?.id || selectedGalleryTemplateIndex)"
+            [srcdoc]="sanitizeHtmlForIframe(example?.htmlContent?.[example?.currentVariantIndex || 0], example?.assetBaseDir)"
+            [ngClass]="{'fade-transition': true, 'fade-hidden': templatePreviewFadeState === 'hidden'}"
+            scaleIframe
+            scrolling="no"
+            style="width: 100%; height: 100%; border: none;">
+          </iframe>
+        </div>
+      </ng-template>
+    </dp-carousel>
+  }
 
-      <!-- README viewer (show when README is visible) -->
-      <div *ngIf="templateGalleryState === 'readme'" id="readmeDialogContainer" class="readme-container" style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
-        <div style="position: sticky; top: 0; background-color: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0;">{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.README-TITLE' | translate }}</h3>
-          <button type="button" id="btnBackToTemplate" class="btn btn-sm btn-default" (click)="closeTemplateReadme()">
-            <i class="fa fa-arrow-left"></i> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.BACK-TO-TEMPLATE' | translate }}
+  <!-- Show a loading indicator only when in templates mode and no data is available -->
+  @if (templateGalleryState === 'templates' && (!galleryTemplates || galleryTemplates.length === 0)) {
+    <div class="text-center p-4">
+      <span>{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.LOADING' | translate }}</span>
+    </div>
+  }
+
+  <!-- README viewer (show when README is visible) -->
+  @if (templateGalleryState === 'readme') {
+    <div id="readmeDialogContainer" class="readme-container" style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
+      <div style="position: sticky; top: 0; background-color: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0;">{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.README-TITLE' | translate }}</h3>
+        <button type="button" id="btnBackToTemplate" class="btn btn-sm btn-ghost" (click)="closeTemplateReadme()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.BACK-TO-TEMPLATE' | translate }}
+        </button>
+      </div>
+      <!-- Use ngx-markdown to render the Markdown content -->
+      <markdown id="templateReadmeContent" [data]="selectedTemplateReadme"></markdown>
+    </div>
+  }
+
+  <!-- AI Prompt viewer (show when AI prompt is visible) -->
+  @if (templateGalleryState === 'ai-prompt') {
+    <div id="aiPromptContainer" class="ai-prompt-container" style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
+      <div style="position: sticky; top: 0; background-color: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+        <h5 id="aiPromptSteps" style="margin: 0;">
+          <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP1' | translate"></span><br/>
+          @if (!selectedTemplateAiPrompt || !selectedTemplateAiPrompt.includes('Customization Instructions')) {
+            <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP2-GENERAL' | translate"></span><br/>
+          }
+          @if (selectedTemplateAiPrompt && selectedTemplateAiPrompt.includes('Customization Instructions')) {
+            <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP2-CUSTOM' | translate"></span><br/>
+          }
+          <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP3' | translate"></span><br/>
+          <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP4' | translate"></span><br/><br/>
+          <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.COLOR-TIP' | translate"></span>
+        </h5>
+        <button type="button" id="btnBackToTemplate" class="btn btn-sm btn-ghost" (click)="closeTemplateAiPrompt()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.BACK-TO-TEMPLATE' | translate }}
+        </button>
+      </div>
+      <!-- Replace the Copilot button with Copy to Clipboard -->
+      <div style="margin-top: 20px; margin-bottom: 20px; text-align: center;">
+        <button type="button"  style="width: 250px"
+          id="btnCopyTemplatePromptToClipboardTop" class="btn btn-ghost" (click)="copyTemplatePromptToClipboard()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.COPY-CLIPBOARD-PROMPT' | translate }}
+        </button>&nbsp;&nbsp;&nbsp;
+        <button type="button"
+          id="btnAiCopilotPromptTop"
+          class="btn btn-primary"
+          style="width: 250px"
+          (click)="openBingAICopilot()">
+          {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' | translate }}
+          <img src="https://studiostaticassetsprod.azureedge.net/bundle-cmc/favicon.svg"
+            style="height: 16px; width: 16px"
+            alt="Copilot" />
           </button>
         </div>
-        
-        <!-- Use ngx-markdown to render the Markdown content -->
-        <markdown id="templateReadmeContent" [data]="selectedTemplateReadme"></markdown>
-      </div>
-
-      <!-- AI Prompt viewer (show when AI prompt is visible) -->
-      <div *ngIf="templateGalleryState === 'ai-prompt'" id="aiPromptContainer" class="ai-prompt-container" style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
-        <div style="position: sticky; top: 0; background-color: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-          <h5 id="aiPromptSteps" style="margin: 0;">
-            <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP1' | translate"></span><br/>
-            
-            <ng-container *ngIf="!selectedTemplateAiPrompt || !selectedTemplateAiPrompt.includes('Customization Instructions')">
-              <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP2-GENERAL' | translate"></span><br/>
-            </ng-container>
-            
-            <ng-container *ngIf="selectedTemplateAiPrompt && selectedTemplateAiPrompt.includes('Customization Instructions')">
-              <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP2-CUSTOM' | translate"></span><br/>
-            </ng-container>
-            
-            <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP3' | translate"></span><br/>
-            <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP4' | translate"></span><br/><br/>
-            <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.COLOR-TIP' | translate"></span>
-          </h5>
-          
-          <button type="button" id="btnBackToTemplate" class="btn btn-sm btn-default" (click)="closeTemplateAiPrompt()">
-            <i class="fa fa-arrow-left"></i> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.BACK-TO-TEMPLATE' | translate }}
-          </button>
-        </div>
-        
-        <!-- Replace the Copilot button with Copy to Clipboard -->
-        <div style="margin-top: 20px; margin-bottom: 20px; text-align: center;">
-          <button type="button"  style="width: 250px" 
-               id="btnCopyTemplatePromptToClipboardTop" class="btn btn-default" (click)="copyTemplatePromptToClipboard()">
-            <i class="fa fa-clipboard"></i> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.COPY-CLIPBOARD-PROMPT' | translate }}
-          </button>&nbsp;&nbsp;&nbsp;
-          <button type="button" 
-                id="btnAiCopilotPromptTop"
-                class="btn btn-primary"
-                style="width: 250px" 
-                (click)="openBingAICopilot()">
-              {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' | translate }}
-              <img src="https://studiostaticassetsprod.azureedge.net/bundle-cmc/favicon.svg" 
-                  style="height: 16px; width: 16px" 
-                  alt="Copilot" />
-          </button>
-        </div>
-        
         <!-- Use ngx-markdown to render the Markdown content -->
         <markdown id="aiPromptContent" [data]="selectedTemplateAiPrompt || ''" style="display: block; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background-color: #f9f9f9;"></markdown>
-        
         <!-- Replace the Copilot button with Copy to Clipboard -->
         <div style="margin-top: 20px; text-align: center;">
-          <button type="button" id="btnCopyTemplatePromptToClipboardBottom" style="width: 250px" 
-                class="btn btn-default" (click)="copyTemplatePromptToClipboard()">
-            <i class="fa fa-clipboard"></i> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.COPY-CLIPBOARD-PROMPT' | translate }}
+          <button type="button" id="btnCopyTemplatePromptToClipboardBottom" style="width: 250px"
+            class="btn btn-ghost" (click)="copyTemplatePromptToClipboard()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.COPY-CLIPBOARD-PROMPT' | translate }}
           </button>
-          <button type="button" 
-                id="btnAiCopilotPromptBottom"
-                class="btn btn-primary"
-                style="width: 250px" 
-                (click)="openBingAICopilot()">
-              {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' | translate }}
-              <img src="https://studiostaticassetsprod.azureedge.net/bundle-cmc/favicon.svg" 
-                  style="height: 16px; width: 16px" 
-                  alt="Copilot" />
-          </button>
+          <button type="button"
+            id="btnAiCopilotPromptBottom"
+            class="btn btn-primary"
+            style="width: 250px"
+            (click)="openBingAICopilot()">
+            {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' | translate }}
+            <img src="https://studiostaticassetsprod.azureedge.net/bundle-cmc/favicon.svg"
+              style="height: 16px; width: 16px"
+              alt="Copilot" />
+            </button>
+          </div>
         </div>
-      </div>
-    
+      }
+
     </div>
 
-    <div class="template-footer p-dialog-footer" style="display: flex; align-items: center; justify-content: space-between; width: 100%; border-top: 1px solid #e9e9e9; padding: 10px; margin-top: auto;">
-      <div class="template-info" style="text-align: left; flex: 3; padding-right: 10px; overflow: hidden;" *ngIf="templateGalleryState === 'templates' || templateGalleryState === 'readme' || templateGalleryState === 'ai-prompt'">
-        <div class="template-tags" *ngIf="getSelectedGalleryTemplate()?.tags">
-          <span class="badge badge-info tag-badge" 
-                *ngFor="let tag of getSelectedGalleryTemplate()?.tags"
-                style="display: inline-block; margin-right: 5px; margin-bottom: 3px; padding: 3px 6px; background-color: #f8f9fa; color: #495057; border-radius: 4px; font-size: 90%;">
-            {{tag}}
-          </span>
+    <div class="template-footer" style="display: flex; align-items: center; justify-content: space-between; width: 100%; border-top: 1px solid #e9e9e9; padding: 10px; margin-top: auto;">
+      @if (templateGalleryState === 'templates' || templateGalleryState === 'readme' || templateGalleryState === 'ai-prompt') {
+        <div class="template-info" style="text-align: left; flex: 3; padding-right: 10px; overflow: hidden;">
+          @if (getSelectedGalleryTemplate()?.tags) {
+            <div class="template-tags">
+              @for (tag of getSelectedGalleryTemplate()?.tags; track tag) {
+                <span class="badge badge-info tag-badge"
+                  style="display: inline-block; margin-right: 5px; margin-bottom: 3px; padding: 3px 6px; background-color: #f8f9fa; color: #495057; border-radius: 4px; font-size: 90%;">
+                  {{tag}}
+                </span>
+              }
+            </div>
+          }
         </div>
-      </div>
-      
+      }
+
       <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; flex-wrap: nowrap;">
-          <!-- Only show template-specific buttons when NOT on general instructions -->
-          <ng-container *ngIf="templateGalleryState !== 'examples-gallery' && templateGalleryState !== 'hey-ai'">
-
-              <!-- Conditionally show either the "Use Template" or "Get AI Prompt" button -->
-              <button type="button" 
-                  id="btnUseSelectedTemplate"
-                  class="btn btn-default" style="margin-left: 5px;"
-                  *ngIf="templateGalleryState === 'templates'" 
-                  (click)="useSelectedTemplate(getSelectedGalleryTemplate())">
-                  {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.USE-TEMPLATE' | translate }}
-              </button>
-              
-              <button type="button" id="btnViewHtmlInBrowserModal" class="btn btn-default" (click)="viewCurrentTemplateInBrowser()">
-                <i class="fa fa-external-link"></i> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.VIEW-IN-BROWSER' | translate }}
-              </button>
-              
-              <div style="margin-left: 5px; display: inline-block;" *ngIf="templateGalleryState === 'templates'">
-                <div style="display: flex; flex-direction: row;" class="dropup">
-                  <button type="button" id="btnGetAiPrompt" class="btn btn-primary" 
-                          style="border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0;"
-                          (click)="showCurrentTemplateAiPrompt('modify')">
-                    <i class="fa fa-magic"></i> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.GET-AI-PROMPT' | translate }}
-                  </button>
-                  <button type="button" id="btnAiPromptDropdownToggle" class="btn btn-primary" 
-                          style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid rgba(255,255,255,0.3); width: 30px; padding: 6px 10px;"
-                          data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="caret"></span>
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-right" style="margin-top: 0; margin-bottom: 2px;">
-                    <li><a href="javascript:void(0)" id="btnAiPromptModify" (click)="showCurrentTemplateAiPrompt('modify')">
-                      {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-MODIFY' | translate }}</a>
-                    </li>
-                    <li><a href="javascript:void(0)" id="btnAiPromptRebuild" (click)="showCurrentTemplateAiPrompt('rebuild')">
-                      {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-REBUILD' | translate }}</a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <!-- Update the Readme button to only appear when README content exists -->
-              <button type="button" 
-                      id="btnViewTemplateReadme"
-                      class="btn btn-default" style="margin-left: 5px;" 
-                      (click)="showCurrentTemplateReadme()"
-                      *ngIf="selectedTemplateReadme">
-                <i class="fa fa-book"></i> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.README' | translate }}
-              </button>
-          </ng-container>
-
-          <button type="button" 
-                  id="btnCloseTemplateGallery"
-                  class="btn btn-default" style="margin-left: 5px;" 
-                  (click)="closeTemplateGallery()">
-            {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CLOSE' | translate }}
+        <!-- Only show template-specific buttons when NOT on general instructions -->
+        @if (templateGalleryState !== 'examples-gallery' && templateGalleryState !== 'hey-ai') {
+          <!-- Conditionally show either the "Use Template" or "Get AI Prompt" button -->
+          @if (templateGalleryState === 'templates') {
+            <button type="button"
+              id="btnUseSelectedTemplate"
+              class="btn btn-ghost" style="margin-left: 5px;"
+              (click)="useSelectedTemplate(getSelectedGalleryTemplate())">
+              {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.USE-TEMPLATE' | translate }}
+            </button>
+          }
+          <button type="button" id="btnViewHtmlInBrowserModal" class="btn btn-ghost" (click)="viewCurrentTemplateInBrowser()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.VIEW-IN-BROWSER' | translate }}
           </button>
+          @if (templateGalleryState === 'templates') {
+            <div style="margin-left: 5px; display: inline-block;">
+              <div class="dropdown dropdown-top dropdown-end" style="display: flex; flex-direction: row;">
+                <button type="button" id="btnGetAiPrompt" tabindex="0" role="button" class="btn btn-primary"
+                  (click)="showCurrentTemplateAiPrompt('modify')">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.GET-AI-PROMPT' | translate }} &#9650;
+                </button>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+                  <li><a href="javascript:void(0)" id="btnAiPromptModify" (click)="showCurrentTemplateAiPrompt('modify')">
+                  {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-MODIFY' | translate }}</a>
+                </li>
+                <li><a href="javascript:void(0)" id="btnAiPromptRebuild" (click)="showCurrentTemplateAiPrompt('rebuild')">
+                {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-REBUILD' | translate }}</a>
+              </li>
+            </ul>
+          </div>
         </div>
-    </div>
-  </p-dialog>`;
+      }
+      <!-- Update the Readme button to only appear when README content exists -->
+      @if (selectedTemplateReadme) {
+        <button type="button"
+          id="btnViewTemplateReadme"
+          class="btn btn-ghost" style="margin-left: 5px;"
+          (click)="showCurrentTemplateReadme()"
+          >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.README' | translate }}
+        </button>
+      }
+    }
+
+    <button type="button"
+      id="btnCloseTemplateGallery"
+      class="btn btn-ghost" style="margin-left: 5px;"
+      (click)="closeTemplateGallery()">
+      {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CLOSE' | translate }}
+    </button>
+  </div>
+</div>
+</dp-dialog>`;

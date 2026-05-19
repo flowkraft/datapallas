@@ -1,204 +1,162 @@
 <!-- Standalone Mode: Dropdown Button -->
-<div
-  *ngIf="mode === 'standalone'"
-  class="btn-group"
-  [ngClass]="{
-    'dropup': dropdownDirection === 'up',
-    'dropdown': dropdownDirection !== 'up'
-  }"
-  style="white-space: nowrap; display: inline-flex"
->
-  <button
-    type="button"
-    id="btnAiCopilotLaunchExternal"
-    class="btn btn-sm btn-default"
-    style="border-top-right-radius: 0; border-bottom-right-radius: 0"
-    (click)="triggerOpenCopilotBrowser()"
+@if (mode() === 'standalone') {
+  <div
+    [ngClass]="{
+      'dropdown dropdown-top dropdown-end': dropdownDirection() === 'up',
+      'dropdown dropdown-end': dropdownDirection() !== 'up'
+    }"
+    style="white-space: nowrap; display: inline-flex"
+    >
+    <button
+      type="button"
+      id="btnAiCopilotLaunchExternal"
+      tabindex="0"
+      role="button"
+      class="btn btn-sm btn-ghost"
+      (click)="triggerOpenCopilotBrowser()"
     title="{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' |
     translate }} (External)"
-  >
-    {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' |
-    translate }}
-    <img
-      src="https://studiostaticassetsprod.azureedge.net/bundle-cmc/favicon.svg"
-      style="height: 16px; width: 16px; vertical-align: middle"
-      alt="Copilot"
-    />
-  </button>
-  <button
-    type="button"
-    id="btnAiDropdownToggle"
-    class="btn btn-sm btn-default dropdown-toggle"
-    data-toggle="dropdown"
-    aria-haspopup="true"
-    aria-expanded="false"
-    title="Copilot Actions"
-  >
-    <span class="caret"></span>
-  </button>
-  <ul class="dropdown-menu dropdown-menu-right">
-    <li>
-      <a
-        href="javascript:void(0)"
-        id="btnAiPromptsModal"
-        (click)="openAiPromptsModal(aiManagerModalTemplate)"
       >
-        <i class="fa fa-list"></i
-        ><strong
-          >{{
-          'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.AI-PROMPTS' |
-          translate }}</strong
-        >
-      </a>
-    </li>
-    <li *ngIf="showChat2db">
-      <!-- Running: clickable launch link with stop icon -->
-      <a
-        *ngIf="chat2dbApp?.state === 'running'"
-        href="http://localhost:8440/chat2db"
-        target="_blank"
-        id="btnLaunchChat2DB"
-        style="display: flex; align-items: center;"
-      >
-        <span
-          style="margin-right: 6px; vertical-align: middle; cursor: pointer;"
-          (click)="toggleChat2dbApp(); $event.stopPropagation(); $event.preventDefault();"
-          title="Stop">
-          <i class="fa fa-stop" style="color: #888; font-size: 16px;"></i>
-        </span>
-        <i class="fa fa-flask" style="color: #31708f;"></i><span style="color: #31708f;">{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CHAT-WITH-DB' | translate }}&nbsp;</span>
-        <span style="margin-left: auto; padding-left: 8px; color: #31708f; text-decoration: underline; font-weight: bold;">
-          <i class="fa fa-external-link" style="margin-right: 5px;"></i>Launch
-        </span>
-      </a>
-      <!-- Starting/Stopping: non-clickable, shows spinner -->
-      <a
-        *ngIf="chat2dbApp?.state === 'starting' || chat2dbApp?.state === 'stopping'"
-        href="javascript:void(0)"
-        id="btnLaunchChat2DB"
-        style="display: flex; align-items: center; cursor: default;"
-        (click)="$event.preventDefault();"
-      >
-        <i class="fa fa-flask" style="color: #337ab7;"></i>
-        <span class="text-muted" style="margin-left: 6px;">
-          {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CHAT-WITH-DB' | translate }}&nbsp;
-        </span>
-        <span style="margin-left: auto; color: #337ab7;">
-          <i class="fa fa-spinner fa-spin" style="margin-right: 4px;"></i>
-          <strong>{{ chat2dbApp?.state }}</strong>
-        </span>
-      </a>
-      <!-- Stopped: shows play button to start -->
-      <a
-        *ngIf="chat2dbApp?.state !== 'running' && chat2dbApp?.state !== 'starting' && chat2dbApp?.state !== 'stopping'"
-        href="javascript:void(0)"
-        id="btnLaunchChat2DB"
-        style="display: flex; align-items: center;"
-        (click)="toggleChat2dbApp(); $event.stopPropagation(); $event.preventDefault();"
-      >
-        <i class="fa fa-flask" style="color: #888;"></i>
-        <span class="text-muted" style="margin-left: 6px;">
-          {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CHAT-WITH-DB' | translate }}&nbsp;
-        </span>
-        <span style="margin-left: auto; color: #888;">
-          <strong>stopped</strong>
-          <i class="fa fa-play" style="margin-left: 6px; color: #555;"></i>
-        </span>
-      </a>
-    </li>
-  </ul>
-</div>
-
-<!-- ngx-bootstrap Modal Template with optimized styles -->
-<ng-template #aiManagerModalTemplate>
-  <div class="modal-header">
-    <h4 class="modal-title pull-left">AI Copilot</h4>
-    <button
-      type="button"
-      class="close pull-right"
-      aria-label="Close"
-      (click)="closeModal()"
-    >
-      <span aria-hidden="true">&times;</span>
-    </button>
-  </div>
-  <div class="modal-body" style="padding: 0; overflow: hidden">
-    <!-- Embed the shared tab content with optimized container -->
-    <div style="height: 100%; overflow: hidden; width: 100%">
-      <ng-container *ngTemplateOutlet="tabContentView"></ng-container>
-    </div>
-  </div>
-  <div
-    class="modal-footer"
-    style="
-      padding: 10px;
-      margin-top: 0;
-      border-top: 1px solid #ddd;
-      display: flex;
-      justify-content: space-between;
-    "
-  >
-    <!-- Launch Copilot button on the left -->
-    <button
-      id="btnLaunchCopilotFromModal"
-      class="btn btn-default"
-      type="button"
-      (click)="launchExternalCopilot()"
-      style="margin-right: auto"
-    >
+      {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' |
+      translate }}
       <img
         src="https://studiostaticassetsprod.azureedge.net/bundle-cmc/favicon.svg"
-        style="
-          height: 16px;
-          width: 16px;
-          vertical-align: middle;
-          margin-right: 5px;
-        "
-        alt="AI Assistant"
-      />
-      Launch ChatGPT
-    </button>
+        style="height: 16px; width: 16px; vertical-align: middle"
+        alt="Copilot"
+        />
+      &#9660;
+      </button>
+      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+        <li>
+          <a
+            href="javascript:void(0)"
+            id="btnAiPromptsModal"
+            (click)="openAiPromptsModal()"
+            >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg
+              ><strong
+              >{{
+              'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.AI-PROMPTS' |
+              translate }}</strong
+              >
+            </a>
+          </li>
+          @if (showChat2db()) {
+            <li>
+              <!-- Running: clickable launch link with stop icon -->
+              @if (chat2dbApp?.state === 'running') {
+                <a
+                  href="http://localhost:8440/chat2db"
+                  target="_blank"
+                  id="btnLaunchChat2DB"
+                  style="display: flex; align-items: center;"
+                  >
+                  <span
+                    style="margin-right: 6px; vertical-align: middle; cursor: pointer;"
+                    (click)="toggleChat2dbApp(); $event.stopPropagation(); $event.preventDefault();"
+                    title="Stop">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="color: #888;"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
+                  </span>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="color: #31708f;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg><span style="color: #31708f;">{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CHAT-WITH-DB' | translate }}&nbsp;</span>
+                  <span style="margin-left: auto; padding-left: 8px; color: #31708f; text-decoration: underline; font-weight: bold;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>Launch
+                  </span>
+                </a>
+              }
+              <!-- Starting/Stopping: non-clickable, shows spinner -->
+              @if (chat2dbApp?.state === 'starting' || chat2dbApp?.state === 'stopping') {
+                <a
+                  href="javascript:void(0)"
+                  id="btnLaunchChat2DB"
+                  style="display: flex; align-items: center; cursor: default;"
+                  (click)="$event.preventDefault();"
+                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="color: #337ab7;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
+                  <span class="text-base-content/60" style="margin-left: 6px;">
+                    {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CHAT-WITH-DB' | translate }}&nbsp;
+                  </span>
+                  <span style="margin-left: auto; color: #337ab7;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin" style="margin-right: 4px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                    <strong>{{ chat2dbApp?.state }}</strong>
+                  </span>
+                </a>
+              }
+              <!-- Stopped: shows play button to start -->
+              @if (chat2dbApp?.state !== 'running' && chat2dbApp?.state !== 'starting' && chat2dbApp?.state !== 'stopping') {
+                <a
+                  href="javascript:void(0)"
+                  id="btnLaunchChat2DB"
+                  style="display: flex; align-items: center;"
+                  (click)="toggleChat2dbApp(); $event.stopPropagation(); $event.preventDefault();"
+                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="color: #888;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
+                  <span class="text-base-content/60" style="margin-left: 6px;">
+                    {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CHAT-WITH-DB' | translate }}&nbsp;
+                  </span>
+                  <span style="margin-left: auto; color: #888;">
+                    <strong>stopped</strong>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="margin-left: 6px; color: #555;"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+                  </span>
+                </a>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
 
-    <!-- Close button on the right -->
-    <button
-      id="btnCloseAiCopilotModal"
-      class="btn btn-default"
-      type="button"
-      (click)="closeModal()"
-      style="margin-left: auto"
-    >
-      Close
-    </button>
-  </div>
-</ng-template>
+    <!-- AI Copilot modal (dp-dialog) -->
+    <dp-dialog header="AI Copilot" [(visible)]="isModalVisible"
+      [style]="{ width: '90vw', 'max-width': '1100px' }">
+      <!-- Embed the shared tab content -->
+      <ng-container *ngTemplateOutlet="tabContentView"></ng-container>
+      <div ngProjectAs="[footer]">
+        <button
+          id="btnLaunchCopilotFromModal"
+          class="btn btn-ghost"
+          type="button"
+          (click)="launchExternalCopilot()"
+          style="margin-right: auto"
+          >
+          <img
+            src="https://studiostaticassetsprod.azureedge.net/bundle-cmc/favicon.svg"
+            style="height: 16px; width: 16px; vertical-align: middle; margin-right: 5px;"
+            alt="AI Assistant"
+            />
+            Launch ChatGPT
+          </button>
+          <button
+            id="btnCloseAiCopilotModal"
+            class="btn btn-ghost"
+            type="button"
+            (click)="closeModal()"
+            >
+            Close
+          </button>
+        </div>
+    </dp-dialog>
 
-<!-- Embedded Mode: Just the Tab Content -->
-<ng-container *ngIf="mode === 'embedded'">
-  <!-- Embed the shared tab content -->
-  <ng-container *ngTemplateOutlet="tabContentView"></ng-container>
-</ng-container>
+    <!-- Embedded Mode: Just the Tab Content -->
+    @if (mode() === 'embedded') {
+      <ng-container *ngTemplateOutlet="tabContentView"></ng-container>
+    }
 
-<!-- Shared Tab Content View (Using ngx-bootstrap tabset) -->
-<ng-template #tabContentView>
-  <!-- Use ngx-bootstrap tabset with overflow hidden -->
-  <tabset
-    style="
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      width: 100%;
-    "
-  >
-    <!-- Tab 1: AI Prompts -->
-    <tab (selectTab)="onTabSelect(0)" [active]="isPromptsTabActive">
-      <ng-template tabHeading>
-        <i class="fa fa-list"></i>&nbsp; AI Prompts
-      </ng-template>
+    <!-- Shared Tab Content View -->
+    <ng-template #tabContentView>
+      <dp-tabs
+        [activeIndex]="aiActiveTabIndex"
+        (activeTabChange)="onAiTabChange($event)"
+        style="height: 100%; display: flex; flex-direction: column; overflow: hidden; width: 100%;"
+        >
+        <!-- Tab 1: AI Prompts -->
+        <dp-tab>
+          <ng-template dpTabHeading>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>&nbsp; AI Prompts
+          </ng-template>
 
-      <!-- AI Prompts UI - Fixed container with single scrollbar -->
-      <div
-        class="container-fluid pt-3"
+            <!-- AI Prompts UI - Fixed container with single scrollbar -->
+            <div
+              class="container-fluid pt-3"
         style="
           height: calc(100vh - 215px);
           overflow: hidden;
@@ -206,42 +164,35 @@
           max-width: 100%;
           padding: 0 15px;
         "
-      >
-        <div class="row" style="height: 100%; margin: 0; width: 100%">
-          <!-- Left Sidebar - Narrower to prevent content overflow -->
-          <div
-            class="col-md-3"
-            style="
-              height: 100%;
-              overflow-y: hidden;
-              border-right: 1px solid #eee;
-              padding-right: 10px;
-            "
-          >
-            <!-- Search Input -->
-            <div class="mb-3">
-              <input
-                type="text"
-                class="form-control form-control-sm"
-                placeholder="Search prompts..."
-                [(ngModel)]="searchTerm"
-                (ngModelChange)="onSearchChange()"
-              />
-            </div>
+              >
+              <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;height: 100%; margin: 0; width: 100%">
+                <!-- Left Sidebar - Narrower to prevent content overflow -->
+                <div
+                  style="grid-column:span 3;height: 100%;overflow-y: hidden;border-right: 1px solid #eee;padding-right: 10px;"
+                  >
+                  <!-- Search Input -->
+                  <div class="mb-3">
+                    <input
+                      type="text"
+                      class="input input-bordered input-sm"
+                      placeholder="Search prompts..."
+                      [(ngModel)]="searchTerm"
+                      (ngModelChange)="onSearchChange()"
+                      />
+                    </div>
 
-            <!-- Category/Tags Tabs -->
-            <tabset>
-              <!-- Category Tab -->
-              <tab heading="Categories" [active]="true">
-                <ul
-                  class="list-group list-group-flush"
-                  style="max-height: 420px; overflow-y: auto"
-                >
-                  <li
-                    *ngFor="let cat of categoriesWithCounts"
-                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                    [class.active]="selectedCategory === cat.name"
-                    (click)="filterByCategory(cat.name)"
+                    <!-- Category/Tags Tabs -->
+                    <dp-tabs>
+                      <dp-tab heading="Categories">
+                        <ul
+                          class="list-group list-group-flush"
+                          style="max-height: 420px; overflow-y: auto"
+                          >
+                          @for (cat of categoriesWithCounts; track cat) {
+                            <li
+                              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                              [class.active]="selectedCategory === cat.name"
+                              (click)="filterByCategory(cat.name)"
                     style="
                       cursor: pointer;
                       padding: 0.5rem 0.75rem;
@@ -249,30 +200,31 @@
                       overflow: hidden;
                       text-overflow: ellipsis;
                     "
-                  >
-                    {{ cat.name }}
-                    <span
-                      class="badge badge-secondary badge-pill"
-                      [style.background-color]="'transparent'"
-                      [style.color]="selectedCategory === cat.name ? 'white' : '#6c757d'"
-                      [style.border]="'1px solid ' + (selectedCategory === cat.name ? 'white' : '#6c757d')"
-                      >{{ cat.count }}</span
-                    >
-                  </li>
-                </ul>
-              </tab>
+                              >
+                              {{ cat.name }}
+                              <span
+                                class="badge badge-secondary badge-pill"
+                                [style.background-color]="'transparent'"
+                                [style.color]="selectedCategory === cat.name ? 'white' : '#6c757d'"
+                                [style.border]="'1px solid ' + (selectedCategory === cat.name ? 'white' : '#6c757d')"
+                                >{{ cat.count }}</span
+                                >
+                              </li>
+                            }
+                          </ul>
+                        </dp-tab>
 
-              <!-- Tags Tab -->
-              <tab heading="Tags">
-                <div
-                  class="tags-container"
-                  style="padding-top: 10px; max-height: 420px; overflow-y: auto"
-                >
-                  <span
-                    *ngFor="let tag of uniqueTags"
-                    (click)="filterByTag(tag)"
-                    class="tag-label"
-                    [ngClass]="{'tag-selected': selectedTag === tag}"
+                        <!-- Tags Tab -->
+                        <dp-tab heading="Tags">
+                          <div
+                            class="tags-container"
+                            style="padding-top: 10px; max-height: 420px; overflow-y: auto"
+                            >
+                            @for (tag of uniqueTags; track tag) {
+                              <span
+                                (click)="filterByTag(tag)"
+                                class="tag-label"
+                                [ngClass]="{'tag-selected': selectedTag === tag}"
                     style="
                       margin-right: 5px;
                       margin-bottom: 5px;
@@ -282,28 +234,21 @@
                       border-radius: 3px;
                       border: 1px solid #ddd;
                     "
-                  >
-                    {{ tag }}
-                  </span>
-                </div>
-              </tab>
-            </tabset>
-          </div>
+                                >
+                                {{ tag }}
+                              </span>
+                            }
+                          </div>
+                        </dp-tab>
+                      </dp-tabs>
+                    </div>
 
-          <!-- Right Content Area - Ensure no horizontal overflow -->
-          <div
-            class="col-md-9"
-            style="
-              height: 100%;
-              padding-left: 15px;
-              padding-right: 15px;
-              display: flex;
-              flex-direction: column;
-              overflow: visible;
-            "
-          >
-            <!-- Content Container - Scrolls within itself -->
-            <div
+                    <!-- Right Content Area - Ensure no horizontal overflow -->
+                    <div
+                      style="grid-column:span 9;height: 100%;padding-left: 15px;padding-right: 15px;display: flex;flex-direction: column;overflow: visible;"
+                      >
+                      <!-- Content Container - Scrolls within itself -->
+                      <div
               style="
                 flex: 1;
                 overflow: auto;
@@ -314,58 +259,55 @@
                 min-height: 0;
                 position: relative;
               "
-            >
-              <!-- Expanded Prompt View -->
-              <div *ngIf="expandedPrompt" style="max-width: 100%">
-                <!-- CHANGED: Moved Back to List button to a dedicated row above the title -->
-                <div class="mb-3">
-                  <button
-                    class="btn btn-sm btn-default"
-                    (click)="collapsePrompt()"
-                  >
-                    <i class="fa fa-arrow-left"></i> Back to List
-                  </button>
-                  <button
-                    id="btnCopyPromptText"
-                    class="btn btn-sm btn-primary"
-                    (click)="copyToClipboard(expandedPrompt.promptText)"
-                    title="Copy prompt text to clipboard"
-                    style="white-space: nowrap"
-                  >
-                    <i class="fa fa-clipboard"></i>&nbsp;Copy Prompt Text
-                  </button>
-                </div>
-
-                <div
-                  class="d-flex justify-content-between align-items-center mb-2"
-                  style="max-width: 100%"
-                >
-                  <h4 style="word-break: break-word; max-width: 100%">
-                    {{ expandedPrompt.title }}
-                  </h4>
-                </div>
-
-                <div class="card mb-3" style="max-width: 100%">
-                  <div class="card-body">
-                    <p>
-                      <strong>Description:</strong> {{
-                      expandedPrompt.description }}
-                    </p>
-
-                    <!-- Category and tags displayed as standard labels -->
-                    <div class="mb-2">
-                      <div style="margin-bottom: 8px">
-                        <strong>Category:</strong>
-                        <span class="ml-2">{{ expandedPrompt.category }}</span>
-                      </div>
-
-                      <div
-                        *ngIf="expandedPrompt.tags && expandedPrompt.tags.length"
-                      >
-                        <strong>Tags:</strong>
-                        <span
-                          *ngFor="let tag of expandedPrompt.tags"
-                          class="ml-2 mr-1"
+                        >
+                        <!-- Expanded Prompt View -->
+                        @if (expandedPrompt) {
+                          <div style="max-width: 100%">
+                            <!-- CHANGED: Moved Back to List button to a dedicated row above the title -->
+                            <div class="mb-3">
+                              <button
+                                class="btn btn-sm btn-ghost"
+                                (click)="collapsePrompt()"
+                                >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg> Back to List
+                              </button>
+                              <button
+                                id="btnCopyPromptText"
+                                class="btn btn-sm btn-primary"
+                                (click)="copyToClipboard(expandedPrompt.promptText)"
+                                title="Copy prompt text to clipboard"
+                                style="white-space: nowrap"
+                                >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>&nbsp;Copy Prompt Text
+                              </button>
+                            </div>
+                            <div
+                              class="d-flex justify-content-between align-items-center mb-2"
+                              style="max-width: 100%"
+                              >
+                              <h4 style="word-break: break-word; max-width: 100%">
+                                {{ expandedPrompt.title }}
+                              </h4>
+                            </div>
+                            <div class="card mb-3" style="max-width: 100%">
+                              <div class="card-body">
+                                <p>
+                                  <strong>Description:</strong> {{
+                                  expandedPrompt.description }}
+                                </p>
+                                <!-- Category and tags displayed as standard labels -->
+                                <div class="mb-2">
+                                  <div style="margin-bottom: 8px">
+                                    <strong>Category:</strong>
+                                    <span class="ml-2">{{ expandedPrompt.category }}</span>
+                                  </div>
+                                  @if (expandedPrompt.tags && expandedPrompt.tags.length) {
+                                    <div
+                                      >
+                                      <strong>Tags:</strong>
+                                      @for (tag of expandedPrompt.tags; track tag) {
+                                        <span
+                                          class="ml-2 mr-1"
                           style="
                             margin-right: 3px;
                             margin-bottom: 3px;
@@ -374,14 +316,15 @@
                             border-radius: 3px;
                             border: 1px solid #ddd;
                           "
-                        >
-                          {{ tag }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <!-- CHANGED: Removed scrollbar by adjusting overflow property -->
-                    <pre
+                                          >
+                                          {{ tag }}
+                                        </span>
+                                      }
+                                    </div>
+                                  }
+                                </div>
+                                <!-- CHANGED: Removed scrollbar by adjusting overflow property -->
+                                <pre
                       style="
                         white-space: pre-wrap;
                         word-wrap: break-word;
@@ -398,72 +341,71 @@
                         display: block;
                         word-break: break-word;
                       "
-                    >
-{{ expandedPrompt.promptText }}</pre
-                    >
-                  </div>
-                </div>
-              </div>
+                                  >
+                                  {{ expandedPrompt.promptText }}</pre
+                                  >
+                                </div>
+                              </div>
+                            </div>
+                          }
 
-              <!-- Prompt List View -->
-              <div
-                *ngIf="!expandedPrompt"
+                          <!-- Prompt List View -->
+                          @if (!expandedPrompt) {
+                            <div
                 style="
                   max-height: calc(100vh - 290px);
                   overflow-y: auto;
                   padding-bottom: 15px;
                 "
-              >
-                <div *ngFor="let prompt of filteredPrompts" class="card mb-3">
-                  <br />
-                  <div class="card-body">
-                    <!-- Title with category badge moved up -->
-                    <div
-                      class="d-flex justify-content-between align-items-start mb-2"
-                    >
-                      <a
-                        href="javascript:void(0)"
-                        class="card-text d-block mb-3"
-                        (click)="expandPrompt(prompt)"
+                              >
+                              @for (prompt of filteredPrompts; track prompt) {
+                                <div class="card mb-3">
+                                  <br />
+                                  <div class="card-body">
+                                    <!-- Title with category badge moved up -->
+                                    <div
+                                      class="d-flex justify-content-between align-items-start mb-2"
+                                      >
+                                      <a
+                                        href="javascript:void(0)"
+                                        class="card-text d-block mb-3"
+                                        (click)="expandPrompt(prompt)"
                         style="
                           cursor: pointer;
                           color: #0066cc;
                           text-decoration: none;
                         "
-                        ><strong>{{ prompt.title }}</strong></a
-                      >
-                    </div>
-
-                    {{ prompt.description }}
-
-                    <!-- IMPROVED: Better display with flexbox to ensure same line alignment -->
-                    <div
+                                        ><strong>{{ prompt.title }}</strong></a
+                                        >
+                                      </div>
+                                      {{ prompt.description }}
+                                      <!-- IMPROVED: Better display with flexbox to ensure same line alignment -->
+                                      <div
                       style="
                         display: flex;
                         align-items: center;
                         flex-wrap: nowrap;
                       "
-                    >
-                      <!-- Buttons section -->
-                      <div
+                                        >
+                                        <!-- Buttons section -->
+                                        <div
                         style="
                           display: inline-flex;
                           align-items: center;
                           margin-right: 15px;
                         "
-                      >
-                        <button
-                          class="btn btn-xm btn-outline-secondary"
-                          (click)="copyPromptText(prompt)"
-                          title="Copy prompt text to clipboard"
-                        >
-                          <i class="fa fa-clipboard"></i>
-                        </button>
-                      </div>
-
-                      <!-- Category and tags section - positioned right after buttons -->
-                      <div
-                        class="text-muted"
+                                          >
+                                          <button
+                                            class="btn btn-xm btn-outline-secondary"
+                                            (click)="copyPromptText(prompt)"
+                                            title="Copy prompt text to clipboard"
+                                            >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>
+                                          </button>
+                                        </div>
+                                        <!-- Category and tags section - positioned right after buttons -->
+                                        <div
+                                          class="text-base-content/60"
                         style="
                           display: inline-flex;
                           align-items: center;
@@ -471,48 +413,51 @@
                           overflow: hidden;
                           text-overflow: ellipsis;
                         "
-                      >
-                        <strong>Category:</strong>&nbsp;{{ prompt.category }}
-
-                        <span
-                          *ngIf="prompt.tags && prompt.tags.length"
-                          style="margin-left: 15px"
-                        >
-                          <strong>Tags:</strong>&nbsp;
-                          <span>
-                            <span
-                              *ngFor="let tag of prompt.tags; last as isLast"
-                            >
-                              <a
-                                href="javascript:void(0)"
-                                (click)="filterByTag(tag)"
-                                >{{ tag }}</a
-                              >{{ !isLast ? ', ' : '' }}
-                            </span>
-                          </span>
-                        </span>
+                                          >
+                                          <strong>Category:</strong>&nbsp;{{ prompt.category }}
+                                          @if (prompt.tags && prompt.tags.length) {
+                                            <span
+                                              style="margin-left: 15px"
+                                              >
+                                              <strong>Tags:</strong>&nbsp;
+                                              <span>
+                                                @for (tag of prompt.tags; track tag; let isLast = $last) {
+                                                  <span
+                                                    >
+                                                    <a
+                                                      href="javascript:void(0)"
+                                                      (click)="filterByTag(tag)"
+                                                      >{{ tag }}</a
+                                                      >{{ !isLast ? ', ' : '' }}
+                                                    </span>
+                                                  }
+                                                </span>
+                                              </span>
+                                            }
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  }
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </tab>
+                    </dp-tab>
 
-    <!-- Tab 2: Hey AI -->
-    <tab (selectTab)="onTabSelect(1)" [active]="isHeyAiTabActive">
-      <ng-template tabHeading>
-        <i class="fa fa-magic"></i>&nbsp; Hey AI, Help Me...
-      </ng-template>
-      <div
-        class="p-3"
-        style="height: calc(100vh - 215px); overflow: auto; max-width: 100%"
-      >
-        <p>"Hey AI" tab content placeholder</p>
-      </div>
-    </tab>
-  </tabset>
-</ng-template>
+                    <!-- Tab 2: Hey AI -->
+                    <dp-tab>
+                      <ng-template dpTabHeading>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>&nbsp; Hey AI, Help Me...
+                      </ng-template>
+                      <div
+                        class="p-3"
+                        style="height: calc(100vh - 215px); overflow: auto; max-width: 100%"
+                        >
+                        <p>"Hey AI" tab content placeholder</p>
+                      </div>
+                    </dp-tab>
+                  </dp-tabs>
+                </ng-template>

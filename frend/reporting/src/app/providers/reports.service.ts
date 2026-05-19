@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import { APP_CONFIG } from '../../environments/environment';
 
@@ -128,7 +128,9 @@ export class ReportsService {
     pivotTableOptions?: any;
   }> = new Map();
 
-  constructor(public apiService: ApiService) {
+  public apiService = inject(ApiService);
+
+  constructor() {
     this.CONFIGURATION_FOLDER_PATH = `${APP_CONFIG.folders.config}`;
     this.INTERNAL_SETTINGS_FILE_PATH = `${this.CONFIGURATION_FOLDER_PATH}/_internal/settings.xml`;
     this.CONFIGURATION_DEFAULTS_FOLDER_PATH = `${this.CONFIGURATION_FOLDER_PATH}/_defaults`;
@@ -225,10 +227,20 @@ export class ReportsService {
       settings: any;
     };
   }> {
+    let xmlSettings = {
+      documentburster: { settings: {} },
+    };
+
     // Extract reportId from paths like "config/reports/my-report/settings.xml"
     const parts = configFilePath.replace(/\\/g, '/').split('/');
     const reportId = parts.length >= 2 ? parts[parts.length - 2] : '_defaults';
-    return this.loadReportSettings(reportId);
+    const result = await this.apiService.get(
+      `/reports/${encodeURIComponent(reportId)}/settings`,
+    );
+    console.log('[RB-DIAG] loadSettingsByPath reportId:', reportId, 'result keys:', result ? Object.keys(result) : result);
+    xmlSettings.documentburster = result;
+
+    return xmlSettings;
   }
 
   async saveReportSettings(
@@ -594,7 +606,7 @@ export class ReportsService {
     capReportGenerationMailMerge: boolean,
     copyFromReportId?: string,
   ): Promise<CfgTmplFileInfo> {
-    return this.apiService.post('/reports/configurations', {
+    return this.apiService.post('/reports', {
       reportId,
       templateName,
       capReportDistribution,
@@ -611,7 +623,7 @@ export class ReportsService {
     capReportGenerationMailMerge: boolean,
   ): Promise<CfgTmplFileInfo> {
     return this.apiService.post(
-      `/reports/configurations/${sourceReportId}/duplicate`,
+      `/reports/${sourceReportId}/duplicate`,
       {
         targetReportId,
         templateName,
@@ -622,12 +634,12 @@ export class ReportsService {
   }
 
   async deleteReport(reportId: string): Promise<void> {
-    return this.apiService.delete(`/reports/configurations/${reportId}`);
+    return this.apiService.delete(`/reports/${reportId}`);
   }
 
   async restoreDefaults(reportId: string): Promise<void> {
     return this.apiService.post(
-      `/reports/configurations/${reportId}/restore-defaults`,
+      `/reports/${reportId}/restore-defaults`,
     );
   }
 

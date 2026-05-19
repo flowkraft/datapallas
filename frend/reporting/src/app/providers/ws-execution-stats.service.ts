@@ -53,6 +53,8 @@ export class WebSocketExecutionStatsService extends WebSocketEndpoint {
     exitValue: number,
     exceptionMessage = '',
   ) => {
+    this.executionStatsService.jobStats.currentJobId = null;
+
     if (this.callBacksProcessing.onProcessingComplete) {
       this.callBacksProcessing.onProcessingComplete();
       this.callBacksProcessing.onProcessingComplete = null;

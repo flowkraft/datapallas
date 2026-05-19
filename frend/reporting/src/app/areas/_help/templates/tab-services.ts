@@ -26,8 +26,8 @@ export const tabServicesTemplate = `<ng-template #tabServicesTemplate>
     <br>
     <strong>{{'AREAS.HELP.TAB-SERVICES.REQUEST-QUOTE' | translate }}</strong>
     <br>
-    <a href="mailto:sales@datapallas.com" target="_blank">
-      <h3 id='checkPointHelpServices'>sales@datapallas.com</h3>
+    <a href="mailto:sales&#64;datapallas.com" target="_blank">
+      <h3 id='checkPointHelpServices'>sales&#64;datapallas.com</h3>
     </a>
 
   </div>

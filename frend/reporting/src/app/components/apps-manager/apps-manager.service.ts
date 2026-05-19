@@ -53,14 +53,14 @@ export class AppsManagerService {
       {
         id: 'flowkraft-data-canvas',
         name: 'Explore Data & Build Dashboards',
-        icon: 'fa fa-bar-chart',
+        icon: 'bar-chart',
         category: 'Data & Analytics',
         type: 'docker',
         description: 'Explore your databases visually, create stunning charts and build interactive dashboards. Connect to Oracle, SQL Server, PostgreSQL, MySQL, ClickHouse and more. Use <strong>data tables</strong>, <strong>KPI cards</strong>, <strong>charts</strong>, <strong>pivot tables</strong>, and <strong>filter panes</strong> to create BI dashboards powered by your own data. AI assistance is available (when needed).',
         url: 'http://localhost:8440/explore-data',
         launchLinks: [
-          { label: 'Explore Data', url: 'http://localhost:8440/explore-data', icon: 'fa fa-th-large' },
-          { label: 'Chat2DB', url: 'http://localhost:8440/chat2db', icon: 'fa fa-flask' },
+          { label: 'Explore Data', url: 'http://localhost:8440/explore-data', icon: 'th-large' },
+          { label: 'Chat2DB', url: 'http://localhost:8440/chat2db', icon: 'flask' },
         ],
         entrypoint: 'flowkraft/_ai-hub/docker-compose.yml',
         service_name: 'ai-hub-frend',
@@ -73,14 +73,14 @@ export class AppsManagerService {
       {
         id: 'flowkraft-grails',
         name: 'DataPallas Grails App',
-        icon: 'fa fa-cube',
+        icon: 'cube',
         category: 'Full-Stack Apps',
         type: 'docker',
         description: 'Build admin panels and self-service portals using Grails — our <em>default stack</em> for consistency with DataPallas\'s scripting and backend. Create custom apps with real-time analytics dashboards (DuckDB/ClickHouse OLAP), secure document distribution (payslips, invoices with payments, student portals), and interactive data visualization.',
         url: 'http://localhost:8400',
         launchLinks: [
-          { label: 'Front-Facing Area /', url: 'http://localhost:8400', icon: 'fa fa-globe' },
-          { label: 'Admin Area /admin', url: 'http://localhost:8400/admin', icon: 'fa fa-cog' }
+          { label: 'Front-Facing Area /', url: 'http://localhost:8400', icon: 'globe' },
+          { label: 'Admin Area /admin', url: 'http://localhost:8400/admin', icon: 'cog' }
         ],
         entrypoint: 'flowkraft/grails-playground/docker-compose.yml',
         service_name: 'grails-playground',
@@ -93,7 +93,7 @@ export class AppsManagerService {
       {
         id: 'flowkraft-bkend-boot-groovy',
         name: 'DataPallas Backend App (Automation & Job Scheduling)',
-        icon: 'fa fa-cogs',
+        icon: 'cogs',
         category: 'Backend Services',
         type: 'docker',
         description: 'Schedule report generation jobs, automate document delivery (payslips, invoices, statements), build ETL/data warehouse pipelines, and manage cron-based batch processing across your business systems.',
@@ -110,14 +110,14 @@ export class AppsManagerService {
       {
         id: 'flowkraft-next',
         name: 'DataPallas Next.js App (Alternative Stack)',
-        icon: 'fa fa-cube',
+        icon: 'cube',
         category: 'Full-Stack Apps',
         type: 'docker',
         description: 'Build dashboards and portals using <strong>Next.js 15 + Tailwind 4 + shadcn</strong> — for users who prefer the modern React/TypeScript ecosystem. Same capabilities as the Grails app but with a different tech stack.',
         url: 'http://localhost:8420',
         launchLinks: [
-          { label: 'Front-Facing Area /', url: 'http://localhost:8420', icon: 'fa fa-globe' },
-          { label: 'Admin Area /admin', url: 'http://localhost:8420/admin', icon: 'fa fa-cog' }
+          { label: 'Front-Facing Area /', url: 'http://localhost:8420', icon: 'globe' },
+          { label: 'Admin Area /admin', url: 'http://localhost:8420/admin', icon: 'cog' }
         ],
         entrypoint: 'flowkraft/next-playground/docker-compose.yml',
         service_name: 'next-playground',
@@ -130,15 +130,15 @@ export class AppsManagerService {
       {
         id: 'cms-webportal',
         name: 'WebPortal / Customer Portal',
-        icon: 'fa fa-users',
+        icon: 'users',
         category: 'Web Portal',
         type: 'docker',
-        description: 'The fastest way to build your <em>You Name It</em> <strong>Web Portal</strong> - could be Employee Portal, Customer Portal, Partner Portal, Student Portal or any other Self-Service Portal <a href="https://datapallas.com/docs/document-portal" target="_blank"><i class="fa fa-book"></i>&nbsp;see how</a>',
+        description: 'The fastest way to build your <em>You Name It</em> <strong>Web Portal</strong> - could be Employee Portal, Customer Portal, Partner Portal, Student Portal or any other Self-Service Portal <a href="https://datapallas.com/docs/document-portal" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1em;height:1em;vertical-align:-0.125em"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>&nbsp;see how</a>',
         url: 'http://localhost:8080/wp-admin',
         demoInfo: `
           <div style="margin-top: 18px; padding: 14px 16px; background: #f0f7fa; border: 1px solid #d0e4ed; border-radius: 6px; font-size: 0.88em; color: #333;">
             <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #d0e4ed; color: #555;">
-              <i class="fa fa-key" style="color: #5a9bb8; margin-right: 6px;"></i>Try the demo logins
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1em;height:1em;vertical-align:-0.125em;color:#5a9bb8;margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>Try the demo logins
             </div>
             <div style="line-height: 1.85;">
               <div style="margin-bottom: 8px;">
@@ -176,7 +176,7 @@ export class AppsManagerService {
       {
         id: 'cloudbeaver',
         name: 'CloudBeaver (Database Manager)',
-        icon: 'fa fa-database',
+        icon: 'database',
         category: 'Database Management',
         type: 'docker',
         description: 'The professional data management software trusted by experts.',
@@ -192,7 +192,7 @@ export class AppsManagerService {
       {
         id: 'rundeck',
         name: 'Rundeck (Automation & Job Scheduling)',
-        icon: 'fa fa-cogs',
+        icon: 'cogs',
         category: 'Automation & Job Scheduling',
         type: 'docker',
         description: 'Runbook automation service with a web console, command line tools and a WebAPI. It lets you easily standardize tasks to improve operational quality by deploying automation across your organization.',
@@ -208,7 +208,7 @@ export class AppsManagerService {
       {
         id: 'matomo',
         name: 'Matomo (Web Analytics)',
-        icon: 'fa fa-bar-chart',
+        icon: 'bar-chart',
         category: 'Analytics & Tracking',
         type: 'docker',
         description: 'Open-source web analytics platform, a privacy-friendly alternative to Google Analytics.',
@@ -224,7 +224,7 @@ export class AppsManagerService {
       {
         id: 'docuseal',
         name: 'Docuseal (Document Signing)',
-        icon: 'fa fa-file-signature',
+        icon: 'file-signature',
         category: 'Document Management',
         type: 'docker',
         description: 'Self-hosted document signing platform with secure workflows and audit trails.',
@@ -240,7 +240,7 @@ export class AppsManagerService {
       {
         id: 'metabase',
         name: 'Metabase',
-        icon: 'fa fa-line-chart',
+        icon: 'line-chart',
         category: 'BI & Visualization',
         type: 'docker',
         description: 'Open Source business intelligence and analytics platform.',
@@ -281,7 +281,7 @@ export class AppsManagerService {
       {
         id: 'vscode',
         name: 'VS Code',
-        icon: 'fa fa-free-code-camp',
+        icon: 'free-code-camp',
         category: 'Developer Tools',
         type: 'desktop',
         description: 'Launch local installation of Visual Studio Code.',

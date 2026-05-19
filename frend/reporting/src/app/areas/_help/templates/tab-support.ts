@@ -3,8 +3,8 @@ export const tabSupportTemplate = `<ng-template #tabSupportTemplate>
 
     <strong><em>DataPallas</em> {{'AREAS.HELP.TAB-SUPPORT.DB-SUPPORT' | translate }}</strong>
     <br>
-    <a href="mailto:support@datapallas.com" target="_blank">
-      <h3>support@datapallas.com</h3>
+    <a href="mailto:support&#64;datapallas.com" target="_blank">
+      <h3>support&#64;datapallas.com</h3>
     </a>
 
     <br>
