@@ -1,14 +1,14 @@
 /* Tailwind v4 + daisyUI v5.
-   Why two @imports instead of the `@plugin "daisyui"` directive:
-     Our build still uses the @angular-builders/custom-webpack:browser builder
-     (Angular 17 + webpack). In that pipeline @tailwindcss/postcss processes
-     `@import "tailwindcss"` correctly (preflight + theme + utilities) but does
-     NOT fire the `@plugin "daisyui"` extension — daisyUI never compiles.
-     The esbuild application builder (planned in Phase 2 A3.3) fixes this; until
-     then we side-step by importing daisyUI's pre-compiled CSS directly. It
-     ships in the daisyui npm package and contains all 35 themes + every
-     component, so this is functionally equivalent to `@plugin "daisyui" { themes: all }`.
-   Once A3.3 lands, swap the second @import for `@plugin "daisyui" { themes: all }`. */
+   The canonical `@plugin "daisyui" { themes: all }` directive works fine in
+   the esbuild PRODUCTION build (@angular/build:application), but trips
+   @tailwindcss/postcss 4.3.0 inside Angular's Vite-based DEV SERVER
+   (@angular/build:dev-server). The error surfaces as:
+     [plugin:vite:css] [postcss] tailwindcss: …\index.html?html-proxy&index=0.css
+     The argument 'path' must be a string … Received '\x00/index.html?html-proxy&index=0.css'
+   Until @tailwindcss/postcss or @tailwindcss/vite gets that fix, we side-step
+   by importing daisyUI's pre-compiled CSS directly. It ships in the daisyui
+   npm package and contains all 35 themes + every component — functionally
+   equivalent to `@plugin "daisyui" { themes: all }`. */
 
 @import "tailwindcss";
 

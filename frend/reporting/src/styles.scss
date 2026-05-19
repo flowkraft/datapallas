@@ -5,7 +5,7 @@
    modal stacking, picklist tweaks, codejar overflow, Electron titlebar, and
    one daisyUI specificity fix. */
 
-@import "~@ng-select/ng-select/themes/default.theme.css";
+@import "@ng-select/ng-select/themes/default.theme.css";
 
 /* ──────────────────────────────────────────────────────────────────────────
    ngx-bootstrap modal stacking (must beat PrimeNG's z-index). */

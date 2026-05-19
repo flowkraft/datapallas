@@ -6,7 +6,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
         {{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.FILE' | translate }}
       </div>
       <div style="grid-column:span 8">
-        <input id="qaBurstFile" [(ngModel)]="processingService.procBurstInfo.isSample ? processingService.procQualityAssuranceInfo.prefilledInputFilePath : processingService.procQualityAssuranceInfo.inputFileName" class="input input-bordered" required />
+        <input id="qaBurstFile" [ngModel]="processingService.procBurstInfo.isSample ? processingService.procQualityAssuranceInfo.prefilledInputFilePath : processingService.procQualityAssuranceInfo.inputFileName" (ngModelChange)="processingService.procQualityAssuranceInfo.inputFileName = $event" class="input input-bordered" required />
       </div>
 
       <div style="grid-column:span 2">

@@ -7,7 +7,8 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
       <div style="grid-column:span 7">
         <input
           id="burstFile"
-          [(ngModel)]="processingService.procBurstInfo.isSample ? processingService.procBurstInfo.prefilledInputFilePath : processingService.procBurstInfo.inputFileName"
+          [ngModel]="processingService.procBurstInfo.isSample ? processingService.procBurstInfo.prefilledInputFilePath : processingService.procBurstInfo.inputFileName"
+          (ngModelChange)="processingService.procBurstInfo.inputFileName = $event"
           class="input input-bordered"
           [disabled]="!this.storeService.configSys.sysInfo.setup.java.isJavaOk"
           autofocus

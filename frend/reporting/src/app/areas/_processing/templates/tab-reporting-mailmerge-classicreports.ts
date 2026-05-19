@@ -84,7 +84,8 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
         <div style="grid-column:span 4">
           <input
             id="mailMergeClassicReportInputFile"
-            [(ngModel)]="processingService.procReportingMailMergeInfo.isSample ? processingService.procReportingMailMergeInfo.prefilledInputFilePath : processingService.procReportingMailMergeInfo.inputFileName"
+            [ngModel]="processingService.procReportingMailMergeInfo.isSample ? processingService.procReportingMailMergeInfo.prefilledInputFilePath : processingService.procReportingMailMergeInfo.inputFileName"
+            (ngModelChange)="processingService.procReportingMailMergeInfo.inputFileName = $event"
             class="input input-bordered"
             [disabled]="!this.storeService.configSys.sysInfo.setup.java.isJavaOk"
             autofocus

@@ -1,21 +1,17 @@
 import * as xml2js from 'xml2js';
 import Utilities from '../../helpers/utilities';
 
-let fs, AdmZip, path, os, jetpack;
-
-if (typeof window !== 'undefined' && window.require) {
-  fs = window.require('fs');
-  AdmZip = window.require('adm-zip');
-  path = window.require('path');
-  os = window.require('os');
-  jetpack = window.require('fs-jetpack');
-} else {
-  fs = require('fs');
-  AdmZip = require('adm-zip');
-  path = require('path');
-  os = require('os');
-  jetpack = require('fs-jetpack');
-}
+// Node-builtin + native-deps access via window.require so esbuild's static
+// analyzer treats this as a property access (not a module import) and never
+// tries to resolve `fs`, `path`, `os`, etc. at build time. The Electron
+// renderer always exposes window.require; this file is never reached in the
+// web build (electron.service.ts is swapped for electron.service.empty-web.ts
+// via angular.json fileReplacements, which severs all imports into here).
+const fs      = (window as any).require('fs');
+const AdmZip  = (window as any).require('adm-zip');
+const path    = (window as any).require('path');
+const os      = (window as any).require('os');
+const jetpack = (window as any).require('fs-jetpack');
 
 export default class UtilitiesNodeJs {
   static pathResolve(pathSegments: string[]): string {
