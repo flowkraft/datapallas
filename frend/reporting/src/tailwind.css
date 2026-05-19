@@ -1,17 +1,17 @@
-/* Tailwind v4 + daisyUI v5.
-   The canonical `@plugin "daisyui" { themes: all }` directive works fine in
-   the esbuild PRODUCTION build (@angular/build:application), but trips
-   @tailwindcss/postcss 4.3.0 inside Angular's Vite-based DEV SERVER
-   (@angular/build:dev-server). The error surfaces as:
-     [plugin:vite:css] [postcss] tailwindcss: …\index.html?html-proxy&index=0.css
-     The argument 'path' must be a string … Received '\x00/index.html?html-proxy&index=0.css'
-   Until @tailwindcss/postcss or @tailwindcss/vite gets that fix, we side-step
-   by importing daisyUI's pre-compiled CSS directly. It ships in the daisyui
-   npm package and contains all 35 themes + every component — functionally
-   equivalent to `@plugin "daisyui" { themes: all }`. */
+/* Tailwind v4 + daisyUI v5 — canonical minimal setup.
+   Same shape as the reference repo (manthanank/angular-tailwindcss): a single
+   `@import "tailwindcss"` is enough. Tailwind v4 auto-detects content files
+   from the project tree — no `@source` directive needed under esbuild + Vite.
+   (The old webpack-era `@source "./src/app"` triggered a null-byte path crash
+   inside @tailwindcss/postcss when Vite's html-proxy passed a virtual path
+   to it during dev-server runs; removing the directive sidesteps the bug.)
+
+   daisyUI is pulled via its pre-compiled CSS (all 35 themes + every component)
+   instead of the canonical `@plugin "daisyui" { themes: all }` — the plugin
+   directive works fine under esbuild prod, but is the same path-resolution
+   code path that crashes the Vite dev-server. Swap back to @plugin once
+   @tailwindcss/postcss publishes the Vite-virtual-path fix. */
 
 @import "tailwindcss";
 
 @import "../node_modules/daisyui/daisyui.css";
-
-@source "./src/app";
