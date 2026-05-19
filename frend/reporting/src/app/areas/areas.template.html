@@ -1,9 +1,42 @@
-<dburst-top-menu-header> </dburst-top-menu-header>
+<!-- daisyUI shell — drawer (closed by default; toggled by the hamburger label
+     inside <dburst-top-menu-header>) + navbar + main content + status bar.
+     Mirrors the daisyui.com homepage shell pattern verbatim. -->
+<div class="bg-base-100 drawer mx-auto max-w-[100rem] min-h-screen">
+  <input id="app-drawer" type="checkbox" autocomplete="off" class="drawer-toggle" />
 
-<div>
-  <router-outlet></router-outlet>
-</div>
+  <div class="drawer-content flex flex-col min-h-screen">
+    <dburst-top-menu-header></dburst-top-menu-header>
 
-<div id="statusBar">
-  <dburst-status-bar></dburst-status-bar>
+    <main class="flex-1">
+      <router-outlet></router-outlet>
+    </main>
+
+    <div id="statusBar">
+      <dburst-status-bar></dburst-status-bar>
+    </div>
+  </div>
+
+  <aside class="drawer-side z-40">
+    <label for="app-drawer" class="drawer-overlay" aria-label="Close menu"></label>
+    <nav class="bg-base-100 min-h-screen w-72 p-4 border-r border-base-300">
+      <ul class="menu menu-md w-full">
+        <li class="menu-title">Navigation</li>
+        <li>
+          <a [routerLink]="['/processing', 'burstMenuSelected']" skipLocationChange="true">
+            Bursting
+          </a>
+        </li>
+        <li>
+          <a [routerLink]="['/configuration-crud', 'reports']" skipLocationChange="true">
+            Reports, Connections &amp; Cubes
+          </a>
+        </li>
+        <li>
+          <a [routerLink]="['/help', 'supportMenuSelected']" skipLocationChange="true">
+            Help &amp; Support
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </aside>
 </div>

@@ -1,15 +1,27 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles. Bootstrap 3 / AdminLTE are fully removed (B6 complete).
+   Tailwind v4 + daisyUI v5 directives live in src/tailwind.css (a pure .css
+   file so Sass does not preprocess `@import "tailwindcss"` as a Sass import).
+   This file holds only legacy-integration bits: ng-select theme, ngx-bootstrap
+   modal stacking, picklist tweaks, codejar overflow, Electron titlebar, and
+   one daisyUI specificity fix. */
+
 @import "~@ng-select/ng-select/themes/default.theme.css";
 
-/* ngx-bootstrap modals - add these */
+/* ──────────────────────────────────────────────────────────────────────────
+   ngx-bootstrap modal stacking (must beat PrimeNG's z-index). */
 .modal-backdrop {
-  z-index: 10000001 !important; /* Higher than PrimeNG */
+  z-index: 10000001 !important;
 }
 .modal,
 .modal-dialog {
-  z-index: 10000002 !important; /* Higher than backdrop */
+  z-index: 10000002 !important;
 }
-
+.modal-dialog-center {
+  margin-top: 25%;
+}
+.modal {
+  top: 30px;
+}
 
 /* CRUD-mode picklist (Connections admin area only) — hide the right "target"
    list and the transfer arrow buttons, let the left "source" list grow to
@@ -23,62 +35,48 @@
   flex: 1 1 100% !important;
   width: 100% !important;
 }
-/* Keep the source tree short enough that the Refresh button below the
-   picklist wrapper is not covered. */
 .crud-picklist dburst-tree {
   height: 250px !important;
 }
 
-/* target the internal .codejar <pre> */
+/* codejar: internal <pre> must scroll horizontally, not wrap. */
 ngx-codejar .codejar pre {
-  white-space: pre !important; /* no wrap */
-  overflow-x: auto !important; /* horizontal scroll */
+  white-space: pre !important;
+  overflow-x: auto !important;
   overflow-y: auto !important;
 }
-
-/* make sure the container will show scrollbars */
 ngx-codejar .codejar {
   overflow-x: auto !important;
 }
 
-/* AI Copilot ngx-bootstrap Modal Styles */
+/* ──────────────────────────────────────────────────────────────────────────
+   AI Copilot ngx-bootstrap modal (oversized layout). */
 .ai-copilot-modal-large {
   max-width: none;
-  width: calc(100% - 20px) !important; /* Full width with minimal margin */
-  margin-left: 10px; /* Small margin from left edge */
+  width: calc(100% - 20px) !important;
+  margin-left: 10px;
   margin-right: 10px;
   margin-top: 10px;
-  margin-bottom: 30px; /* Decreased bottom margin to match p-dialog changes */
-  overflow: hidden !important; /* Prevent all overflow */
+  margin-bottom: 30px;
+  overflow: hidden !important;
+  z-index: 1060 !important;
 }
-
 .ai-copilot-modal-large .modal-content {
-  height: calc(100vh - 105px); /* Increased height to match p-dialog changes */
+  height: calc(100vh - 105px);
   max-height: none;
-  overflow: hidden !important; /* Prevent all overflow */
+  overflow: hidden !important;
 }
-
 .ai-copilot-modal-large .modal-body {
-  height: calc(
-    100vh - 195px
-  ); /* Adjusted to account for the increased modal height */
+  height: calc(100vh - 195px);
   max-height: none;
-  overflow: hidden; /* Changed from auto to hidden to remove unnecessary scrollbars */
+  overflow: hidden;
 }
-
 .ai-copilot-modal-large .modal-dialog {
   max-width: none;
   width: 100%;
   margin: 0;
-  overflow: hidden !important; /* Prevent all overflow */
+  overflow: hidden !important;
 }
-
-/* Make sure this modal is on top of everything else but not affecting other modals */
-.ai-copilot-modal-large {
-  z-index: 1060 !important; /* Higher than standard Bootstrap modals */
-}
-
-/* Modal Footer - ensure visibility of close button */
 .ai-copilot-modal-large .modal-footer {
   padding: 10px;
   margin-top: 0;
@@ -92,39 +90,33 @@ ngx-codejar .codejar {
   box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
 }
 
-//angular-split start
-// Angular Split styles
+/* ──────────────────────────────────────────────────────────────────────────
+   angular-split — flex orientation + gutter colours. */
 as-split {
   display: flex;
 }
-
 as-split.as-horizontal {
   flex-direction: row;
 }
-
 as-split.as-vertical {
   flex-direction: column;
 }
-
 as-split > as-split-gutter {
   background-color: #e4e4e4;
   transition: background-color 0.2s;
 }
-
 as-split > as-split-gutter:hover {
   background-color: #c8c8c8;
 }
-
 as-split.as-horizontal > as-split-gutter {
   cursor: col-resize;
 }
-
 as-split.as-vertical > as-split-gutter {
   cursor: row-resize;
 }
-//angular-split end
 
-// Fullscreen-preview start
+/* ──────────────────────────────────────────────────────────────────────────
+   Fullscreen preview overlay (used by html-preview modal). */
 .fullscreen-preview {
   position: fixed;
   top: 0;
@@ -137,7 +129,6 @@ as-split.as-vertical > as-split-gutter {
   flex-direction: column;
   padding: 15px;
 }
-
 .fullscreen-header {
   display: flex;
   justify-content: space-between;
@@ -146,12 +137,10 @@ as-split.as-vertical > as-split-gutter {
   padding-bottom: 10px;
   border-bottom: 1px solid #ddd;
 }
-
 .fullscreen-header span {
   font-size: 18px;
   font-weight: 500;
 }
-
 .fullscreen-iframe {
   flex: 1;
   width: 100%;
@@ -159,12 +148,12 @@ as-split.as-vertical > as-split-gutter {
   border: 1px solid #ddd;
   border-radius: 4px;
 }
-// Fullscreen Preview styles
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Misc legacy bits. */
 .template-tags {
   margin-top: 5px;
 }
-
 .tag-badge {
   margin-right: 4px;
   background-color: #f8f9fa;
@@ -173,69 +162,25 @@ as-split.as-vertical > as-split-gutter {
   font-weight: normal;
   font-size: 85%;
 }
-
 label {
   font-weight: 400;
 }
 
+/* Electron custom-titlebar: hide the in-titlebar icon and prevent overflow. */
 .cet-container {
   overflow: hidden !important;
 }
-
 .cet-window-icon img {
   display: none;
 }
 
-/*
-
-.wrapper {
-  overflow: hidden;
-}
-*/
-
+/* Content area height anchor (used by tab panels). */
 .content {
-  //overflow: hidden;
   overflow-y: hidden;
   height: 100%;
 }
 
-/*
-#statusBar {
-  position: absolute;
-  right: 0px;
-  bottom: 1px;
-  width: 100%;
-  //height: 30px;
-}
-
-*/
-
-#statusBar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  z-index: 1000; /* Ensures the status bar stays above other content */
-  background-color: inherit; /* Maintain your current background color */
-}
-
-.modal-dialog-center {
-  margin-top: 25%;
-}
-
-.modal {
-  top: 30px;
-}
-
-.fade-transition {
-  transition: opacity 0.1s ease-in-out;
-  opacity: 1;
-}
-
-.fade-hidden {
-  opacity: 0;
-}
-
+/* Sticky table header in samples list. */
 #samplesTable thead th {
   position: sticky;
   top: -1px;
@@ -243,312 +188,24 @@ label {
   z-index: 1;
 }
 
-// ============================================================================
-// B2.1: Skin CSS-variable theme blocks — 12 AdminLTE palettes extracted to
-//        CSS variables so Tailwind utilities can read them at runtime.
-//        body.skin-X class is set by SkinsComponent (zero JS changes needed).
-// ============================================================================
-
-// Default = skin-blue (AdminLTE default)
+/* ──────────────────────────────────────────────────────────────────────────
+   Electron custom-titlebar (CET) injects a 30px bar at the top of the window
+   in Electron mode. app.component.ts sets html.in-electron when running there;
+   fixed/sticky elements use this variable as their top offset.                */
 :root {
-  --app-header-bg:          #3c8dbc;
-  --app-logo-bg:            #367fa9;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #222d32;
-  --app-sidebar-text:       #b8c7ce;
-  --app-sidebar-hover-text: #ffffff;
-  --app-sidebar-active-bg:  #1e282c;
-  --app-sidebar-accent:     #3c8dbc;
-  --app-sidebar-sub-bg:     #2c3b41;
-  --app-sidebar-border:     transparent;
-  // custom-electron-titlebar (CET) injects a 30px titlebar at top:0 in Electron.
-  // Fixed-position elements use this offset so they start below the CET bar.
-  // app.component.ts sets html.in-electron when running inside Electron.
-  --cet-offset:             0px;
+  --cet-offset: 0px;
 }
 html.in-electron {
   --cet-offset: 30px;
 }
 
-body.skin-blue {
-  --app-header-bg:          #3c8dbc;
-  --app-logo-bg:            #367fa9;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #222d32;
-  --app-sidebar-text:       #b8c7ce;
-  --app-sidebar-hover-text: #ffffff;
-  --app-sidebar-active-bg:  #1e282c;
-  --app-sidebar-accent:     #3c8dbc;
-  --app-sidebar-sub-bg:     #2c3b41;
-  --app-sidebar-border:     transparent;
-}
-body.skin-blue-light {
-  --app-header-bg:          #3c8dbc;
-  --app-logo-bg:            #3c8dbc;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #f9fafc;
-  --app-sidebar-text:       #444444;
-  --app-sidebar-hover-text: #000000;
-  --app-sidebar-active-bg:  #f4f4f5;
-  --app-sidebar-accent:     #3c8dbc;
-  --app-sidebar-sub-bg:     #f4f4f5;
-  --app-sidebar-border:     #d2d6de;
-}
-body.skin-black {
-  --app-header-bg:          #ffffff;
-  --app-logo-bg:            #ffffff;
-  --app-header-text:        #333333;
-  --app-sidebar-bg:         #222d32;
-  --app-sidebar-text:       #b8c7ce;
-  --app-sidebar-hover-text: #ffffff;
-  --app-sidebar-active-bg:  #1e282c;
-  --app-sidebar-accent:     #ffffff;
-  --app-sidebar-sub-bg:     #2c3b41;
-  --app-sidebar-border:     transparent;
-}
-body.skin-black-light {
-  --app-header-bg:          #ffffff;
-  --app-logo-bg:            #ffffff;
-  --app-header-text:        #333333;
-  --app-sidebar-bg:         #f9fafc;
-  --app-sidebar-text:       #444444;
-  --app-sidebar-hover-text: #000000;
-  --app-sidebar-active-bg:  #f4f4f5;
-  --app-sidebar-accent:     #ffffff;
-  --app-sidebar-sub-bg:     #f4f4f5;
-  --app-sidebar-border:     #d2d6de;
-}
-body.skin-green {
-  --app-header-bg:          #00a65a;
-  --app-logo-bg:            #008d4c;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #222d32;
-  --app-sidebar-text:       #b8c7ce;
-  --app-sidebar-hover-text: #ffffff;
-  --app-sidebar-active-bg:  #1e282c;
-  --app-sidebar-accent:     #00a65a;
-  --app-sidebar-sub-bg:     #2c3b41;
-  --app-sidebar-border:     transparent;
-}
-body.skin-green-light {
-  --app-header-bg:          #00a65a;
-  --app-logo-bg:            #00a65a;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #f9fafc;
-  --app-sidebar-text:       #444444;
-  --app-sidebar-hover-text: #000000;
-  --app-sidebar-active-bg:  #f4f4f5;
-  --app-sidebar-accent:     #00a65a;
-  --app-sidebar-sub-bg:     #f4f4f5;
-  --app-sidebar-border:     #d2d6de;
-}
-body.skin-red {
-  --app-header-bg:          #dd4b39;
-  --app-logo-bg:            #d73925;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #222d32;
-  --app-sidebar-text:       #b8c7ce;
-  --app-sidebar-hover-text: #ffffff;
-  --app-sidebar-active-bg:  #1e282c;
-  --app-sidebar-accent:     #dd4b39;
-  --app-sidebar-sub-bg:     #2c3b41;
-  --app-sidebar-border:     transparent;
-}
-body.skin-red-light {
-  --app-header-bg:          #dd4b39;
-  --app-logo-bg:            #dd4b39;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #f9fafc;
-  --app-sidebar-text:       #444444;
-  --app-sidebar-hover-text: #000000;
-  --app-sidebar-active-bg:  #f4f4f5;
-  --app-sidebar-accent:     #dd4b39;
-  --app-sidebar-sub-bg:     #f4f4f5;
-  --app-sidebar-border:     #d2d6de;
-}
-body.skin-yellow {
-  --app-header-bg:          #f39c12;
-  --app-logo-bg:            #e08e0b;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #222d32;
-  --app-sidebar-text:       #b8c7ce;
-  --app-sidebar-hover-text: #ffffff;
-  --app-sidebar-active-bg:  #1e282c;
-  --app-sidebar-accent:     #f39c12;
-  --app-sidebar-sub-bg:     #2c3b41;
-  --app-sidebar-border:     transparent;
-}
-body.skin-yellow-light {
-  --app-header-bg:          #f39c12;
-  --app-logo-bg:            #f39c12;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #f9fafc;
-  --app-sidebar-text:       #444444;
-  --app-sidebar-hover-text: #000000;
-  --app-sidebar-active-bg:  #f4f4f5;
-  --app-sidebar-accent:     #f39c12;
-  --app-sidebar-sub-bg:     #f4f4f5;
-  --app-sidebar-border:     #d2d6de;
-}
-body.skin-purple {
-  --app-header-bg:          #605ca8;
-  --app-logo-bg:            #555299;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #222d32;
-  --app-sidebar-text:       #b8c7ce;
-  --app-sidebar-hover-text: #ffffff;
-  --app-sidebar-active-bg:  #1e282c;
-  --app-sidebar-accent:     #605ca8;
-  --app-sidebar-sub-bg:     #2c3b41;
-  --app-sidebar-border:     transparent;
-}
-body.skin-purple-light {
-  --app-header-bg:          #605ca8;
-  --app-logo-bg:            #605ca8;
-  --app-header-text:        #ffffff;
-  --app-sidebar-bg:         #f9fafc;
-  --app-sidebar-text:       #444444;
-  --app-sidebar-hover-text: #000000;
-  --app-sidebar-active-bg:  #f4f4f5;
-  --app-sidebar-accent:     #605ca8;
-  --app-sidebar-sub-bg:     #f4f4f5;
-  --app-sidebar-border:     #d2d6de;
-}
-
-// B2.3: Sidebar menu — daisyUI menu themed via CSS variables.
-// .app-sidebar wraps every <aside> in each area component.
-.app-sidebar .menu {
-  width: 100%;
-  padding: 8px 0;
-  background: transparent;
-  border-radius: 0;
-}
-.app-sidebar .menu li > a,
-.app-sidebar .menu li > details > summary {
-  color: var(--app-sidebar-text) !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-  padding: 8px 16px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  text-decoration: none !important;
-  border-left: 3px solid transparent !important;
-  font-size: 14px;
-}
-.app-sidebar .menu li > a:hover,
-.app-sidebar .menu li > details > summary:hover,
-.app-sidebar .menu li.active > a,
-.app-sidebar .menu li.active > a {
-  color: var(--app-sidebar-hover-text) !important;
-  background: var(--app-sidebar-active-bg) !important;
-  border-left-color: var(--app-sidebar-accent) !important;
-}
-.app-sidebar .menu li > ul {
-  background-color: var(--app-sidebar-sub-bg);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.app-sidebar .menu li > ul li > a {
-  color: var(--app-sidebar-text) !important;
-  padding: 6px 16px 6px 32px !important;
-  font-size: 13px;
-}
-.app-sidebar .menu li > ul li > a:hover,
-.app-sidebar .menu li > ul li.active > a {
-  color: var(--app-sidebar-hover-text) !important;
-  background: var(--app-sidebar-active-bg) !important;
-}
-.app-sidebar .menu .menu-title {
-  color: var(--app-sidebar-text);
-  opacity: 0.5;
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  padding: 10px 16px 5px;
-  font-weight: normal;
-}
-.app-sidebar .menu details > summary {
-  list-style: none;
-  cursor: pointer;
-}
-.app-sidebar .menu details > summary::-webkit-details-marker {
-  display: none;
-}
-
-// B2 layout utilities — Tailwind v4 @source scanning does not work in this
-// Angular + webpack build context, so we declare the B2-used utilities here.
-.fixed          { position: fixed; }
-.relative       { position: relative; }
-.top-0          { top: 0; }
-.left-0         { left: 0; }
-.right-0        { right: 0; }
-.flex           { display: flex; }
-.items-stretch  { align-items: stretch; }
-.items-center   { align-items: center; }
-.justify-center { justify-content: center; }
-.shrink-0       { flex-shrink: 0; }
-.flex-1         { flex: 1 1 0%; min-width: 0; }
-.overflow-hidden { overflow: hidden; }
-.overflow-y-auto { overflow-y: auto; }
-.m-0            { margin: 0; }
-.p-0            { padding: 0; }
-.list-none      { list-style: none; }
-.ml-auto        { margin-left: auto; }
-.px-4           { padding-left: 1rem; padding-right: 1rem; }
-.px-3           { padding-left: 0.75rem; padding-right: 0.75rem; }
-.w-full         { width: 100%; }
-.py-2           { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-// Arbitrary z-index helpers used in B2 templates (escaped brackets = valid CSS)
-.z-\[810\]      { z-index: 810; }
-.z-\[1030\]     { z-index: 1030; }
-
-// B2: Control sidebar — replaces AdminLTE's off-canvas panel.
-// Hidden off-screen by default; body.control-sidebar-open slides it in.
-.control-sidebar {
-  position: fixed;
-  top: calc(50px + var(--cet-offset));
-  right: -260px;
-  width: 260px;
-  bottom: 30px;
-  z-index: 820;
-  overflow-y: auto;
-  background-color: #222d32;
-  color: #b8c7ce;
-  transition: right 0.3s ease;
-  padding: 10px;
-}
-body.control-sidebar-open .control-sidebar {
-  right: 0;
-}
-
-// B2: Sidebar collapse — replaces AdminLTE push-menu JS.
-// body.sidebar-collapse slides the sidebar off-screen; content fills the gap.
-.app-sidebar {
-  transition: left 0.3s ease;
-}
-.app-sidebar + div {
-  transition: margin-left 0.3s ease;
-}
-body.sidebar-collapse .app-sidebar {
-  left: -230px !important;
-}
-body.sidebar-collapse .app-sidebar + div {
-  margin-left: 0 !important;
-}
-// Auto-collapse at the same 768px breakpoint AdminLTE used
-@media (max-width: 767px) {
-  .app-sidebar                { left: -230px !important; }
-  .app-sidebar + div          { margin-left: 0 !important; }
-}
-
-// daisyUI v5 + Tailwind v4: the `menu` class (display:flex) and `dropdown-content`
-// (display:none + position:absolute) share identical single-class specificity. In the
-// compiled output `menu` is declared after `dropdown-content`, so menu wins and all
-// dropdown-content elements become permanently visible AND drop out of absolute
-// positioning. Two-class selectors (specificity 0,2,0 vs menu's 0,1,0) restore the
-// correct hide/show + absolute-positioning behaviour.
+/* ──────────────────────────────────────────────────────────────────────────
+   daisyUI v5 + Tailwind v4 — specificity fix.
+   The `menu` class (display:flex) and `dropdown-content` (display:none +
+   position:absolute) both have single-class specificity (0,1,0). In the
+   compiled output `menu` is declared after `dropdown-content`, so `menu`
+   wins and dropdown menus would be permanently visible. Two-class
+   selectors (specificity 0,2,0) reassert the correct behaviour. */
 .dropdown .dropdown-content {
   display: none;
   position: absolute;
@@ -560,35 +217,23 @@ details.dropdown[open] > .dropdown-content {
   position: absolute;
 }
 
-// AdminLTE `main-footer` styling — the class survives in status-bar.template.html
-// because it is the docked footer-bar anchor; AdminLTE CSS that previously coloured
-// it is gone, so re-apply the equivalent dark-strip styling here.
-.main-footer {
-  background-color: #222d32;
-  color: #b8c7ce;
-  padding: 6px 12px;
-  border-top: 1px solid #1a2226;
-}
-.main-footer a { color: inherit; }
-.main-footer .btn-ghost { color: inherit; }
-
-// top:100% on a flex-stretched <li> can resolve to 0 in some Chromium/Electron
-// versions. Override with an explicit pixel offset equal to the header height so
-// the menu always drops below the header bar regardless of --cet-offset.
-.app-header .dropdown-content {
-  top: 50px !important;
-  margin-top: 0;
-  border-top: 2px solid var(--app-header-bg);
-  box-shadow: 0 4px 10px rgba(0,0,0,.18);
-}
-
-// B5: SVG icon sizing — Heroicons/simple-icons inline SVGs fill their container
-// unless constrained. :where() has zero specificity so Tailwind w-*/h-* classes
-// on the element still take priority.
+/* ──────────────────────────────────────────────────────────────────────────
+   SVG icon sizing — Heroicons/simple-icons inline SVGs would fill their
+   container unless constrained. :where() has zero specificity so explicit
+   Tailwind width/height utilities on the element still take priority. */
 :where(svg[viewBox="0 0 24 24"]) {
   display: inline-block;
   width: 1em;
   height: 1em;
   vertical-align: -0.125em;
   flex-shrink: 0;
+}
+
+/* Fade transitions used by ng-select dropdowns. */
+.fade-transition {
+  transition: opacity 0.1s ease-in-out;
+  opacity: 1;
+}
+.fade-hidden {
+  opacity: 0;
 }

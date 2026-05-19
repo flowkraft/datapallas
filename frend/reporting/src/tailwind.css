@@ -1,63 +1,17 @@
-/* ── Tailwind v4: theme tokens + utilities only; preflight intentionally
-   skipped so Bootstrap 3 base styles are not overridden. ─────────────────── */
+/* Tailwind v4 + daisyUI v5.
+   Why two @imports instead of the `@plugin "daisyui"` directive:
+     Our build still uses the @angular-builders/custom-webpack:browser builder
+     (Angular 17 + webpack). In that pipeline @tailwindcss/postcss processes
+     `@import "tailwindcss"` correctly (preflight + theme + utilities) but does
+     NOT fire the `@plugin "daisyui"` extension — daisyUI never compiles.
+     The esbuild application builder (planned in Phase 2 A3.3) fixes this; until
+     then we side-step by importing daisyUI's pre-compiled CSS directly. It
+     ships in the daisyui npm package and contains all 35 themes + every
+     component, so this is functionally equivalent to `@plugin "daisyui" { themes: all }`.
+   Once A3.3 lands, swap the second @import for `@plugin "daisyui" { themes: all }`. */
 
-/* Explicit sources: Tailwind v4 auto-detection does not scan Angular
-   component template literals or templateUrl HTML files in this webpack
-   build context, so we must declare them explicitly.
-   Path is relative to postcss.config.js, NOT to this CSS file. */
+@import "tailwindcss";
+
+@import "../node_modules/daisyui/daisyui.css";
+
 @source "./src/app";
-
-@import "tailwindcss/theme" layer(base);
-@import "tailwindcss/utilities";
-
-/* ── daisyUI v5: Bootstrap 3 is fully removed (B6 complete), so no prefix
-   needed. Standard daisyUI class names (btn, menu, toast, alert, badge …)
-   are safe to use without collision. Single light theme as baseline.     ─── */
-@plugin "daisyui" {
-  themes: light --default;
-}
-
-/* ── B1.2 App-level theme tokens ─────────────────────────────────────────
-   Controlled by .dark class on <html> or <body>.
-   @custom-variant dark is intentionally NOT used: in Tailwind v4 it maps
-   to prefers-color-scheme (media query), not the .dark class toggle.     ─── */
-:root {
-  --background:         oklch(100%  0    0);
-  --foreground:         oklch(9.0%  0    0);
-  --card:               oklch(97.8% 0    0);
-  --card-foreground:    oklch(9.0%  0    0);
-  --muted:              oklch(94.4% 0    0);
-  --muted-foreground:   oklch(46.9% 0    0);
-  --border:             oklch(87.1% 0    0);
-  --input:              oklch(87.1% 0    0);
-  --primary:            oklch(20.5% 0    0);
-  --primary-foreground: oklch(98.5% 0    0);
-}
-
-.dark {
-  --background:         oklch(9.0%  0    0);
-  --foreground:         oklch(98.5% 0    0);
-  --card:               oklch(14.5% 0    0);
-  --card-foreground:    oklch(98.5% 0    0);
-  --muted:              oklch(18.4% 0    0);
-  --muted-foreground:   oklch(63.9% 0    0);
-  --border:             oklch(27.4% 0    0);
-  --input:              oklch(27.4% 0    0);
-  --primary:            oklch(98.5% 0    0);
-  --primary-foreground: oklch(20.5% 0    0);
-}
-
-/* Map CSS vars to Tailwind utility names (inline = reads var at render time,
-   so .dark class switches colours without a rebuild). ─────────────────────── */
-@theme inline {
-  --color-background:         var(--background);
-  --color-foreground:         var(--foreground);
-  --color-card:               var(--card);
-  --color-card-foreground:    var(--card-foreground);
-  --color-muted:              var(--muted);
-  --color-muted-foreground:   var(--muted-foreground);
-  --color-border:             var(--border);
-  --color-input:              var(--input);
-  --color-primary:            var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-}
