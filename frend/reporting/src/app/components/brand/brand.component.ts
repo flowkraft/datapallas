@@ -5,12 +5,4 @@ import { Component } from '@angular/core';
     templateUrl: './brand.component.html',
     standalone: false
 })
-export class BrandComponent {
-  get isSidebarCollapsed(): boolean {
-    return document.body.classList.contains('sidebar-collapse');
-  }
-
-  toggleSidebar(): void {
-    document.body.classList.toggle('sidebar-collapse');
-  }
-}
+export class BrandComponent {}

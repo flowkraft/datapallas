@@ -33,6 +33,16 @@ gulp.task("utils:start-server-and-ui-electron", () => {
   _startServerAndDoX("_custom:start-ui-electron");
 });
 
+// Same shape as the -electron task above, but uses the production esbuild
+// build (`electron:local` = `build:prod && electron .`) instead of `ng serve`.
+// Use this while the Vite-backed `ng serve` lane is blocked upstream by
+// tailwindlabs/tailwindcss#16964 (Tailwind v4 @plugin directive mangled by
+// Vite's CSS pipeline). Trade-off: no HMR — every change requires a fresh
+// build:prod (~15s on esbuild). Backend / Java orchestration is identical.
+gulp.task("utils:start-server-and-ui-electron-local", () => {
+  _startServerAndDoX("_custom:start-ui-electron-local");
+});
+
 gulp.task("utils:start-server-and-e2e-electron", () => {
   _startServerAndDoX("_custom:playwright-scripts-electron");
 });

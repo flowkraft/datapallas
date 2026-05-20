@@ -1,5 +1,5 @@
 export const tabComparisonTemplate = `<ng-template #tabComparisonTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <strong>
       <a href="https://www.pdfburst.com/features.html" target="_blank">

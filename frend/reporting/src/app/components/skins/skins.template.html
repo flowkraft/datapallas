@@ -21,7 +21,7 @@
   <div
     style="margin: 10px 0 25px 0; clear: both; padding-left: 8px;">
     <label for="copilotUrl"><strong>AI Assistant URL</strong></label>
-    <input id="copilotUrl" type="text" class="input input-bordered"
+    <input id="copilotUrl" type="text" class="input"
       style="margin-top: 6px; width: calc(100% - 34px); display: inline-block;"
       [(ngModel)]="settingsService.xmlInternalSettings.documentburster.settings.copiloturl"
       (ngModelChange)="onInternalSettingsChanged.next($event)" placeholder="https://copilot.microsoft.com" />

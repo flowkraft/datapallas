@@ -1,5 +1,5 @@
 export const tabServicesTemplate = `<ng-template #tabServicesTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <span [innerHTML]="'AREAS.HELP.TAB-SERVICES.INNER-HTML.SKRF-SERVICES' | translate"></span>
     <br>
     <br>

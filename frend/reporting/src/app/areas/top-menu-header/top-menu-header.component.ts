@@ -1,4 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs/operators';
 import { LicenseService } from '../../providers/license.service';
 import { AskForFeatureService } from '../../components/ask-for-feature/ask-for-feature.service';
 import { SamplesService } from '../../providers/samples.service';
@@ -28,18 +31,38 @@ export class TopMenuHeaderComponent implements OnInit {
 
   activeTheme = DEFAULT_THEME;
 
+  // Tracks whether the user explicitly opened the sidebar while on the Processing screen
+  // during this session. False on every app start → Processing always begins hidden.
+  private processingUserChoseVisible = false;
+
+  private destroyRef = inject(DestroyRef);
+
   constructor(
     protected settingsService: ConfigurationRepository,
     protected licenseService: LicenseService,
     protected askForFeatureService: AskForFeatureService,
     protected samplesService: SamplesService,
     protected storeService: StateStoreService,
+    private router: Router,
   ) {}
 
   async ngOnInit() {
-    // Track the active theme so the picker can highlight the current selection.
-    // The attribute itself was already set by the boot script in index.html.
-    this.activeTheme = localStorage.getItem(DP_THEME_KEY) || DEFAULT_THEME;
+    // Prefer the backend XML value (loaded by InitService at boot) so the theme
+    // survives localStorage clears; fall back to localStorage for offline mode.
+    const xmlTheme =
+      this.settingsService.xmlInternalSettings.documentburster?.settings?.theme;
+    this.activeTheme = xmlTheme || localStorage.getItem(DP_THEME_KEY) || DEFAULT_THEME;
+    document.documentElement.setAttribute('data-theme', this.activeTheme);
+    localStorage.setItem(DP_THEME_KEY, this.activeTheme);
+
+    // Sidebar: Processing = OFF by default; all other screens = always ON.
+    this.applySidebarForRoute(this.router.url);
+    this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((e: NavigationEnd) => {
+      this.applySidebarForRoute(e.urlAfterRedirects);
+    });
 
     if (!this.storeService.configSys.sysInfo.setup.java.isJavaOk) {
       return;
@@ -53,10 +76,42 @@ export class TopMenuHeaderComponent implements OnInit {
     await this.samplesService.fillSamplesNotes();
   }
 
-  setTheme(name: string) {
+  private isProcessingRoute(url: string): boolean {
+    // Covers: '' → '/', '/processing/…', '/processingSampleBurst/…',
+    //         '/processingSampleGenerate/…', '/processingQa/…'
+    return url === '/' || url === '' || url.startsWith('/processing');
+  }
+
+  private applySidebarForRoute(url: string): void {
+    if (this.isProcessingRoute(url)) {
+      // Processing: hidden by default; show only if the user opened it this session.
+      if (this.processingUserChoseVisible) {
+        document.documentElement.classList.add('sidebar-visible');
+      } else {
+        document.documentElement.classList.remove('sidebar-visible');
+      }
+    } else {
+      // Every other screen: always show sidebar.
+      document.documentElement.classList.add('sidebar-visible');
+    }
+  }
+
+  async setTheme(name: string) {
     this.activeTheme = name;
     document.documentElement.setAttribute('data-theme', name);
     localStorage.setItem(DP_THEME_KEY, name);
+
+    if (!this.storeService.configSys.sysInfo.setup.java.isJavaOk) {
+      return;
+    }
+
+    // Reload → mutate → save: same pattern as old skins.component.ts saveSkin()
+    this.settingsService.xmlInternalSettings.documentburster =
+      await this.settingsService.loadPreferences();
+    this.settingsService.xmlInternalSettings.documentburster.settings.theme = name;
+    await this.settingsService.savePreferences(
+      this.settingsService.xmlInternalSettings,
+    );
   }
 
   onAskForFeatureModalShow() {
@@ -68,6 +123,24 @@ export class TopMenuHeaderComponent implements OnInit {
     }
 
     this.askForFeatureService.showAskForFeature({});
+  }
+
+  /**
+   * Close the daisyUI focus-based dropdowns after a selection by removing focus
+   * from the active element. daisyUI's `:focus-within` selector keeps the menu
+   * open as long as any descendant retains focus — including just-clicked
+   * routerLinks. Blurring breaks that condition and the panel collapses.
+   */
+  closeDropdown(): void {
+    (document.activeElement as HTMLElement | null)?.blur();
+  }
+
+  toggleSidebar(): void {
+    const visible = document.documentElement.classList.toggle('sidebar-visible');
+    // Remember the user's choice only for the Processing screen (within this session).
+    if (this.isProcessingRoute(this.router.url)) {
+      this.processingUserChoseVisible = visible;
+    }
   }
 
   isRunningInsideElectron(): boolean {

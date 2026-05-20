@@ -14,7 +14,7 @@
         {{ 'AREAS.CONFIGURATION.TAB-EMAIL-MESSAGE.TO' | translate }}
       </div>
       <div style="grid-column:span 10">
-        <input id="emailToAddress" [ngModel]="msgTo" class="input input-bordered" readonly />
+        <input id="emailToAddress" [ngModel]="msgTo" class="input" readonly />
       </div>
     </div>
     <p></p>
@@ -23,7 +23,7 @@
         {{ 'AREAS.CONFIGURATION.TAB-EMAIL-MESSAGE.SUBJECT' | translate }}
       </div>
       <div style="grid-column:span 10">
-        <input id="emailSubject" [(ngModel)]="msgSubject" class="input input-bordered" />
+        <input id="emailSubject" [(ngModel)]="msgSubject" class="input" />
       </div>
     </div>
     <p></p>

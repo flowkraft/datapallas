@@ -11,7 +11,7 @@
       <div style="grid-column:span 7">
         <input
           id="attachmentPath"
-          class="input input-bordered"
+          class="input"
           [ngModel]="modalAttachmentInfo.attachmentFilePath"
           (ngModelChange)="modalAttachmentInfo.attachmentFilePath = $event"
           size="52"

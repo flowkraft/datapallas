@@ -1,5 +1,5 @@
 export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnectionsTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div
         style="grid-column:span 10;cursor: pointer; height: 500px; overflow: auto"
@@ -36,12 +36,12 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
           <tr
           id="{{connectionFile.fileName}}"
           (click)="onItemClick(connectionFile)"
-          [ngClass]="{ 'info': connectionFile.activeClicked}"
+          [ngClass]="{'bg-primary/10': connectionFile.activeClicked}"
         >
           <td>
             {{connectionFile.connectionName}}
             @if (connectionFile.isSample) {
-              <span class="badge badge-primary" style="margin-left: 6px;">sample</span>
+              <span class="badge badge-ghost" style="margin-left: 6px;">sample</span>
             }
           </td>
           <td>
@@ -70,7 +70,7 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
           <div class="dropdown dropdown-top dropdown-end">
 
             @if (connectionFile.defaultConnection) {
-              <button type="button" id="btnDefault_{{connectionFile.fileName}}" tabindex="0" role="button" class="btn btn-xs btn-primary">&nbsp;&nbsp;Default&nbsp;&nbsp;&#9650;</button>
+              <button type="button" id="btnDefault_{{connectionFile.fileName}}" tabindex="0" role="button" class="btn btn-xs btn-outline btn-primary">&nbsp;&nbsp;Default&nbsp;&nbsp;&#9650;</button>
             }
             @if (!connectionFile.defaultConnection) {
               <button type="button" id="btnActions_{{connectionFile.fileName}}" tabindex="0" role="button" class="btn btn-xs btn-ghost">&nbsp;&nbsp;Actions&nbsp;&nbsp;&#9650;</button>
@@ -116,9 +116,9 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
       </div>
 
       <div style="grid-column:span 2">
-        <div class="dropdown dropdown-top dropdown-end" style="margin-bottom: 5px; width: 100%;">
-          <button id="btnNewDropdown" type="button" tabindex="0" role="button" class="btn btn-ghost w-full">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> {{ 'BUTTONS.NEW' | translate }} &#9650;
+        <div class="dropdown dropdown-end" style="margin-bottom: 5px; width: 100%;">
+          <button id="btnNewDropdown" type="button" tabindex="0" role="button" class="btn btn-outline w-full">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> {{ 'BUTTONS.NEW' | translate }} &#9660;
           </button>
           <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
             <li id="btnNewEmail" (click)="showCrudModal('create', 'email-connection')" style="cursor: pointer;"><a>{{ 'AREAS.CONFIGURATION-CONNECTIONS.TAB-CONFIGURATION-CONNECTIONS.NEW-EMAIL-CONNECTION' | translate }}</a></li>
@@ -129,10 +129,10 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
         <button
           id="btnEdit"
           type="button"
-          class="btn btn-ghost"
+          class="btn btn-outline w-full"
           (click)="showCrudModal('update', getSelectedConnection()?.connectionType)"
           [ngClass]="{ 'disabled': !getSelectedConnection()}"
-          style="width:100%;margin-bottom: 5px"
+          style="margin-bottom: 5px"
 
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg> {{ 'BUTTONS.EDIT' | translate }}
@@ -141,10 +141,10 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
         <button
           id="btnDuplicate"
           type="button"
-          class="btn btn-ghost"
+          class="btn btn-outline w-full"
           (click)="showCrudModal('create', getSelectedConnection()?.connectionType, true)"
           [ngClass]="{ 'disabled': !getSelectedConnection()}"
-          style="width:100%;margin-bottom: 5px"
+          style="margin-bottom: 5px"
 
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg> {{ 'BUTTONS.DUPLICATE' | translate }}
@@ -153,11 +153,11 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
         <button
           id="btnDelete"
           type="button"
-          class="btn btn-ghost"
+          class="btn btn-outline w-full"
           (click)="onDeleteSelectedConnection()"
           [ngClass]="{ 'disabled': !getSelectedConnection() || getSelectedConnection().defaultConnection || getSelectedConnection().isSample || (getSelectedConnection().usedBy && getSelectedConnection().usedBy !== '--not used--')}"
           title="{{ getSelectedConnection()?.isSample ? 'Sample connections are read-only' : '' }}"
-          style="width:100%;margin-bottom: 100px"
+          style="margin-bottom: 100px"
           >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg> {{ 'BUTTONS.DELETE' | translate }}
         </button>

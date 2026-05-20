@@ -1,7 +1,7 @@
 export const tabReportingTabulatorTemplate = `<ng-template
   #tabReportingTabulatorTemplate
 >
-  <div class="well">
+  <div class="space-y-4">
     <dp-tabs>
       <dp-tab heading="Preview">
         <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 20px;">
@@ -9,7 +9,7 @@ export const tabReportingTabulatorTemplate = `<ng-template
             <!-- Named components (aggregator report) -->
             @if (getNamedTabulatorIds().length > 0) {
               @for (cid of getNamedTabulatorIds(); track $index) {
-                <div class="card card-bordered" style="margin-bottom: 15px;">
+                <div class="card card-border" style="margin-bottom: 15px;">
                   <div class="card-title"><strong>{{cid}}</strong></div>
                   <div class="card-body">
                     @if (showTabulatorPreview) {
@@ -33,7 +33,7 @@ export const tabReportingTabulatorTemplate = `<ng-template
 
             <!-- Single unnamed component (standard report) — Mode 1: Angular fetches data once, pushes via [data] prop -->
             @if (getNamedTabulatorIds().length === 0) {
-              <div class="card card-bordered">
+              <div class="card card-border">
                 <div class="card-body">
                   <!-- Clear All Filters link — only visible when filters are active -->
                   @if (tabulatorHasActiveFilters) {
@@ -118,7 +118,7 @@ export const tabReportingTabulatorTemplate = `<ng-template
               [showLineNumbers]="true"
               style="height: 350px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; margin-top: 10px;"
             ></ngx-codejar>
-            <button id="btnAiHelpTabulatorConfig" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.tabulator')">
+            <button id="btnAiHelpTabulatorConfig" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.tabulator')">
               <strong>Hey AI, Help Me Configure This Tabulator Table ...</strong>
             </button>
           </div>
@@ -128,7 +128,7 @@ export const tabReportingTabulatorTemplate = `<ng-template
       <dp-tab heading="Example (Tabulator Options)">
         <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
           <div style="grid-column:span 12">
-            <a id="btnSeeMoreTabulatorExamples" href="https://datapallas.com/docs/bi-analytics/web-components/datatables" target="_blank" class="btn btn-ghost w-full" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
+            <a id="btnSeeMoreTabulatorExamples" href="https://datapallas.com/docs/bi-analytics/web-components/datatables" target="_blank" class="btn btn-outline w-full" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
               See More Tabulator Configuration Examples
             </a>
             <ngx-codejar
@@ -140,7 +140,7 @@ export const tabReportingTabulatorTemplate = `<ng-template
               [readonly]="true"
               style="height: 350px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8; margin-top: 10px;"
             ></ngx-codejar>
-            <button id="btnCopyToClipboardTabulatorConfigExample" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="copyToClipboardTabulatorConfigExample()">
+            <button id="btnCopyToClipboardTabulatorConfigExample" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="copyToClipboardTabulatorConfigExample()">
               Copy Example Tabulator Options To Clipboard
             </button>
           </div>

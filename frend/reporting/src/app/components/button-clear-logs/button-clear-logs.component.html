@@ -1,7 +1,7 @@
 <button
   id="{{ btnId() || 'btnClearLogs' }}"
   type="button"
-  class="btn btn-ghost w-full"
+  class="btn btn-outline w-full"
   (click)="onClick()"
   [disabled]="
     executionStatsService.jobStats.numberOfActiveJobs > 0 ||

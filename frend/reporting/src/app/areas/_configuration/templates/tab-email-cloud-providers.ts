@@ -1,5 +1,5 @@
 export const tabEmailCloudProvidersTemplate = `<ng-template #tabEmailCloudProvidersTemplate>
-  <div class="well" style="height: 600px; overflow-y: scroll;">
+  <div class="overflow-y-auto" style="height: 600px;">
 
     <h5>
       <u><em>DataPallas</em> can be used with all the major cloud email providers.</u>

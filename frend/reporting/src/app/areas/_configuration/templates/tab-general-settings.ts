@@ -1,10 +1,10 @@
 export const tabGeneralSettingsTemplate = `<ng-template #tabGeneralSettingsTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-GENERAL-SETTINGS.BURST-FILE-NAME' | translate }}</div>
-      <div style="grid-column:span 6">
-        <input id="burstFileName" class="input input-bordered"[ngModel]="xmlSettings?.documentburster?.settings?.burstfilename"
+      <div style="grid-column:span 8">
+        <input id="burstFileName" class="input"[ngModel]="xmlSettings?.documentburster?.settings?.burstfilename"
           (ngModelChange)="setXmlPath('documentburster.settings.burstfilename', $event)" />
       </div>
       <div style="grid-column:span 2">
@@ -17,16 +17,9 @@ export const tabGeneralSettingsTemplate = `<ng-template #tabGeneralSettingsTempl
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-GENERAL-SETTINGS.OUTPUT-FOLDER' | translate }}</div>
-      <div style="grid-column:span 6">
-        <input id="outputFolder" class="input input-bordered"[ngModel]="xmlSettings?.documentburster?.settings?.outputfolder"
+      <div style="grid-column:span 8">
+        <input id="outputFolder" class="input"[ngModel]="xmlSettings?.documentburster?.settings?.outputfolder"
           (ngModelChange)="setXmlPath('documentburster.settings.outputfolder', $event)" />
-      </div>
-
-      <div style="grid-column:span 2">
-        <!--
-        <dburst-button-native-system-dialog dialogType="folder" (pathsSelected)="onSelectOutputFolderPath($event)">
-        </dburst-button-native-system-dialog>
-        -->
       </div>
 
       <div style="grid-column:span 2">
@@ -39,17 +32,10 @@ export const tabGeneralSettingsTemplate = `<ng-template #tabGeneralSettingsTempl
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-GENERAL-SETTINGS.QUARANTINE-FOLDER' | translate }}</div>
-      <div style="grid-column:span 6">
-        <input id="quarantineFolder" class="input input-bordered"
+      <div style="grid-column:span 8">
+        <input id="quarantineFolder" class="input"
           [ngModel]="xmlSettings?.documentburster?.settings?.quarantinefolder"
           (ngModelChange)="setXmlPath('documentburster.settings.quarantinefolder', $event)" />
-      </div>
-
-      <div style="grid-column:span 2">
-        <!--
-        <dburst-button-native-system-dialog dialogType="folder" (pathsSelected)="onSelectQuarantineFolderPath($event)">
-        </dburst-button-native-system-dialog>
-        -->
       </div>
 
       <div style="grid-column:span 2">
@@ -83,7 +69,7 @@ export const tabGeneralSettingsTemplate = `<ng-template #tabGeneralSettingsTempl
             settingsService.currentConfigurationTemplatePath,
             settingsService.currentConfigurationTemplateName
           ]" skipLocationChange="true">
-            <button class="btn btn-primary" type="button"> {{
+            <button class="btn btn-outline btn-primary" type="button"> {{
               'AREAS.CONFIGURATION.TAB-GENERAL-SETTINGS.NEXT-ENABLE-DISABLE' | translate }}</button>
           </a>
         </div>

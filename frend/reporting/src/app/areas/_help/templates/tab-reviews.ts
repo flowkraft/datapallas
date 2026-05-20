@@ -1,5 +1,5 @@
 export const tabReviewsTemplate = `<ng-template #tabReviewsTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <em>"DocumentBurster has saved 2+ hours a day of manual report running and emailing. The task takes minutes to
       complete from

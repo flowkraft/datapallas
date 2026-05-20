@@ -1,5 +1,5 @@
 export const chocolateyTemplate = ` <!--<ng-template #chocolateyTemplate> -->
-  <div class="card card-bordered bg-base-100 shadow-sm">
+  <div class="card card-border bg-base-100 shadow-sm">
     <h4 id="checkPointChocolatey">
       @if (!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
         <div>

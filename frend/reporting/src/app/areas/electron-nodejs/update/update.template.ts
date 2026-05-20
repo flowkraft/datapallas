@@ -41,7 +41,7 @@ export const updateTemplate = `
             <input
               id="oldDbInstallationFolder"
               [(ngModel)]="letMeUpdateSourceDirectoryPath"
-              class="input input-bordered"
+              class="input"
               autofocus
               required
             /><em

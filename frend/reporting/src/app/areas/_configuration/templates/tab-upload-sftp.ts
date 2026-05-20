@@ -1,5 +1,5 @@
 export const tabUploadSFTPTemplate = `<ng-template #tabUploadSFTPTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -7,7 +7,7 @@ export const tabUploadSFTPTemplate = `<ng-template #tabUploadSFTPTemplate>
         'AREAS.CONFIGURATION.TAB-UPLOAD-SFTP.COMMAND' | translate }}</div>
       <div style="grid-column:span 7">
         <input id="sftpCommand" [ngModel]="xmlSettings?.documentburster?.settings?.uploadsettings?.sftpcommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.sftpcommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.sftpcommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

@@ -14,6 +14,7 @@ import { AppPathsService } from '../../providers/app-paths.service';
 
 @Component({
     selector: 'dburst-ask-for-feature-dialog',
+    standalone: true,
     imports: [DpDialogComponent, CommonModule, FormsModule, TranslateModule],
     template: `${askForFeatureDialogTemplate}`
 })

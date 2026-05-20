@@ -1,5 +1,5 @@
 export const tabWebUploadOtherWebPlatformsTemplate = `<ng-template #tabWebUploadOtherWebPlatformsTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -24,7 +24,7 @@ export const tabWebUploadOtherWebPlatformsTemplate = `<ng-template #tabWebUpload
       <div style="grid-column:span 7">
         <input id="otherWebPlatformsCommand"
           [ngModel]="xmlSettings?.documentburster?.settings?.webuploadsettings?.otherwebcommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.otherwebcommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.otherwebcommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

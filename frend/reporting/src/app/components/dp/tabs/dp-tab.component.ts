@@ -3,6 +3,7 @@ import { DpTabHeadingDirective } from './dp-tab-heading.directive';
 
 @Component({
     selector: 'dp-tab',
+    standalone: true,
     imports: [],
     host: { role: 'tabpanel' },
     template: `<ng-content></ng-content>`

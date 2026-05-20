@@ -176,7 +176,7 @@
                 [showLineNumbers]="true"
                 style="height: 250px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; margin-top: 10px;"
               ></ngx-codejar>
-              <button id="btnAiHelpParamsSpecSqlInTab" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.reportparams')">
+              <button id="btnAiHelpParamsSpecSqlInTab" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.reportparams')">
                 <strong>Hey AI, Help Me Configure These Report Parameters ...</strong>
               </button>
             </dp-tab>
@@ -190,7 +190,7 @@
                 [readonly]="true"
                 style="height: 250px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8; margin-top: 10px;"
               ></ngx-codejar>
-              <button id="btnCopyToClipboardParametersSpecExampleSql" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="copyToClipboardParametersSpecExample()">
+              <button id="btnCopyToClipboardParametersSpecExampleSql" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="copyToClipboardParametersSpecExample()">
                 Copy Example Params Script To Clipboard
               </button>
             </dp-tab>
@@ -225,7 +225,7 @@
 
                   @if (getDatabaseConnectionFilesForUI().length === 0 || !selectedDbConnCode) {
                   <div style="grid-column:span 6">
-                    <button id="btnHelpWithScriptAI" type="button" class="btn btn-ghost w-full" (click)="askAiForHelp(xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'script.ds.dashboard' : 'script.ds')">
+                    <button id="btnHelpWithScriptAI" type="button" class="btn btn-outline w-full" (click)="askAiForHelp(xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'script.ds.dashboard' : 'script.ds')">
                       <strong>{{ xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'Hey AI, Help Me Build This Dashboard ...' : 'Hey AI, Help Me With This Groovy Script ...' }}</strong>
                     </button>
                   </div>
@@ -294,7 +294,7 @@
                 [showLineNumbers]="true"
                 style="height: 250px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; margin-top: 10px;"
               ></ngx-codejar>
-              <button id="btnAiHelpParamsSpecScriptInTab" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.reportparams')">
+              <button id="btnAiHelpParamsSpecScriptInTab" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.reportparams')">
                 <strong>Hey AI, Help Me Configure These Report Parameters ...</strong>
               </button>
             </dp-tab>
@@ -308,7 +308,7 @@
                 [readonly]="true"
                 style="height: 250px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8; margin-top: 10px;"
               ></ngx-codejar>
-              <button id="btnCopyToClipboardParametersSpecExampleScript" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="copyToClipboardParametersSpecExample()">
+              <button id="btnCopyToClipboardParametersSpecExampleScript" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="copyToClipboardParametersSpecExample()">
                 Copy Example Params Script To Clipboard
               </button>
             </dp-tab>
@@ -372,7 +372,7 @@
             <input
               type="number"
               id="sqlCustomIdColumnIndex"
-              class="input input-bordered"
+              class="input"
               min="0"
               [ngModel]="xmlReporting.documentburster.report.datasource.sqloptions.idcolumn"
               (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.sqloptions.idcolumn', $event)"
@@ -439,7 +439,7 @@
             <input
               type="number"
               id="scriptCustomIdColumnIndex"
-              class="input input-bordered"
+              class="input"
               min="0"
               [ngModel]="xmlReporting.documentburster.report.datasource.scriptoptions.idcolumn"
               (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.scriptoptions.idcolumn', $event)"
@@ -469,7 +469,7 @@
             <input
               type="text"
               id="scriptFileExplorerAllowedFiles"
-              class="input input-bordered"
+              class="input"
               min="0"
               [ngModel]="xmlReporting.documentburster.report.datasource.scriptoptions.selectfileexplorer"
               (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.scriptoptions.selectfileexplorer', $event)"
@@ -496,7 +496,7 @@
         <div style="grid-column:span 9">
           <input
             id="xmlRepeatingNodeXPath"
-            class="input input-bordered"
+            class="input"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.xmloptions?.repeatingnodexpath"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.xmloptions.repeatingnodexpath', $event)"
             required
@@ -553,7 +553,7 @@
             <div style="grid-column:span 6">
               <input
                 id="xmlIdColumnCustom"
-                class="input input-bordered"
+                class="input"
                 [ngModel]="xmlReporting.documentburster.report.datasource.xmloptions.idcolumn"
                 (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.xmloptions.idcolumn', $event)"
                 placeholder=""
@@ -619,7 +619,7 @@
         <div style="grid-column:span 9">
           <input
             id="separatorChar"
-            class="input input-bordered"
+            class="input"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.csvoptions?.separatorchar"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.csvoptions.separatorchar', $event)"
             [readonly]="xmlReporting?.documentburster.report.datasource.type === 'ds.tsvfile'"
@@ -661,7 +661,7 @@
           <input
             id="skipLines"
             type="number"
-            class="input input-bordered"
+            class="input"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.csvoptions?.skiplines"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.csvoptions.skiplines', $event)"
             [disabled]="xmlReporting?.documentburster.report.datasource.csvoptions.header != 'multiline'"
@@ -718,7 +718,7 @@
           <input
             type="number"
             id="csvCustomIdColumnIndex"
-            class="input input-bordered"
+            class="input"
             min="0"
             [ngModel]="xmlReporting.documentburster.report.datasource.csvoptions.idcolumn"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.csvoptions.idcolumn', $event)"
@@ -739,7 +739,7 @@
         <div style="grid-column:span 9">
           <input
             id="quotationChar"
-            class="input input-bordered"
+            class="input"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.csvoptions?.quotationchar"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.csvoptions.quotationchar', $event)"
           />
@@ -757,7 +757,7 @@
         <div style="grid-column:span 9">
           <input
             id="escapeChar"
-            class="input input-bordered"
+            class="input"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.csvoptions?.escapechar"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.csvoptions.escapechar', $event)"
           />
@@ -874,7 +874,7 @@ Column 3, 15"
           <input
             id="fixedWidthSkipLines"
             type="number"
-            class="input input-bordered"
+            class="input"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.fixedwidthoptions?.skiplines"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.fixedwidthoptions.skiplines', $event)"
             [disabled]="true"
@@ -933,7 +933,7 @@ Column 3, 15"
           <input
             type="number"
             id="fixedWidthCustomIdColumnIndex"
-            class="input input-bordered"
+            class="input"
             min="0"
             [ngModel]="xmlReporting.documentburster.report.datasource.fixedwidthoptions.idcolumn"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.fixedwidthoptions.idcolumn', $event)"
@@ -1003,7 +1003,7 @@ Column 3, 15"
         <div style="grid-column:span 9">
           <input
             id="excelSkipLines"
-            class="input input-bordered"
+            class="input"
             type="number"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.exceloptions?.skiplines"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.exceloptions.skiplines', $event)"
@@ -1020,7 +1020,7 @@ Column 3, 15"
         <div style="grid-column:span 9">
           <input
             id="excelSheetIndex"
-            class="input input-bordered"
+            class="input"
             type="number"
             [ngModel]="xmlReporting?.documentburster?.report?.datasource?.exceloptions?.sheetindex"
             (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.exceloptions.sheetindex', $event)"
@@ -1078,7 +1078,7 @@ Column 3, 15"
             <input
               type="number"
               id="excelCustomIdColumnIndex"
-              class="input input-bordered"
+              class="input"
               min="0"
               [ngModel]="xmlReporting.documentburster.report.datasource.exceloptions.idcolumn"
               (ngModelChange)="setXmlReportingPath('documentburster.report.datasource.exceloptions.idcolumn', $event)"

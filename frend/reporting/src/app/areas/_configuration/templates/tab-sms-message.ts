@@ -1,5 +1,5 @@
 export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION.TAB-SMS-MESSAGE.FROM-NUMBER' | translate }}
@@ -9,7 +9,7 @@ export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
           id="fromTelephoneNumber"
           [ngModel]="xmlSettings?.documentburster?.settings?.smssettings?.fromtelephonenumber"
           (ngModelChange)="setXmlPath('documentburster.settings.smssettings.fromtelephonenumber', $event)"
-          class="input input-bordered"
+          class="input"
         />
       </div>
 
@@ -33,7 +33,7 @@ export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
           id="toTelephoneNumber"
           [ngModel]="xmlSettings?.documentburster?.settings?.smssettings?.totelephonenumber"
           (ngModelChange)="setXmlPath('documentburster.settings.smssettings.totelephonenumber', $event)"
-          class="input input-bordered"
+          class="input"
         />
       </div>
 

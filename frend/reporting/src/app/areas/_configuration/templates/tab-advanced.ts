@@ -1,5 +1,5 @@
 export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
-  <div class="well">
+  <div class="space-y-4">
     @if (xmlSettings?.documentburster?.settings?.capabilities?.reportdistribution) {
       <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
         <div style="grid-column:span 4">
@@ -10,7 +10,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <div style="grid-column:span 8">
           <input id="delayEachDistributionBy"
             [ngModel]="xmlSettings?.documentburster?.settings?.delayeachdistributionby"
-            (ngModelChange)="setXmlPath('documentburster.settings.delayeachdistributionby', $event)" class="input input-bordered" />
+            (ngModelChange)="setXmlPath('documentburster.settings.delayeachdistributionby', $event)" class="input" />
         </div>
       </div>
     }
@@ -33,7 +33,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
       <div style="grid-column:span 8">
         <input id="numberOfUserVariables"
           [ngModel]="xmlSettings?.documentburster?.settings?.numberofuservariables"
-          (ngModelChange)="setXmlPath('documentburster.settings.numberofuservariables', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.numberofuservariables', $event)" class="input" />
       </div>
     </div>
 
@@ -45,7 +45,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
       <div style="grid-column:span 8">
         <input id="burstTokenDelimitersStart"
           [ngModel]="xmlSettings?.documentburster?.settings?.bursttokendelimiters?.start"
-          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.start', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.start', $event)" class="input" />
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
@@ -54,7 +54,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
       <div style="grid-column:span 8">
         <input id="burstTokenDelimitersEnd"
           [ngModel]="xmlSettings?.documentburster?.settings?.bursttokendelimiters?.end"
-          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.end', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.end', $event)" class="input" />
       </div>
     </div>
 
@@ -89,7 +89,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
         <div style="grid-column:span 8" >
           <input id="dataSourceResolver"
             [ngModel]="xmlSettings?.documentburster?.settings?.emailsettings?.dsresolver"
-            (ngModelChange)="setXmlPath('documentburster.settings.emailsettings.dsresolver', $event)" class="input input-bordered" />
+            (ngModelChange)="setXmlPath('documentburster.settings.emailsettings.dsresolver', $event)" class="input" />
         </div>
       </div>
     }
@@ -113,7 +113,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
       <div style="grid-column:span 8">
         <input id="burstTokenDelimitersStart2nd"
           [ngModel]="xmlSettings?.documentburster?.settings?.bursttokendelimiters?.start2nd"
-          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.start2nd', $event)" class="input input-bordered"
+          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.start2nd', $event)" class="input"
           [disabled]="!xmlSettings?.documentburster?.settings?.split2ndtime"/>
       </div>
     </div>
@@ -123,7 +123,7 @@ export const tabAdvancedTemplate = `<ng-template #tabAdvancedTemplate>
       <div style="grid-column:span 8">
         <input id="burstTokenDelimitersEnd2nd"
           [ngModel]="xmlSettings?.documentburster?.settings?.bursttokendelimiters?.end2nd"
-          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.end2nd', $event)" class="input input-bordered"
+          (ngModelChange)="setXmlPath('documentburster.settings.bursttokendelimiters.end2nd', $event)" class="input"
           [disabled]="!xmlSettings?.documentburster?.settings?.split2ndtime"/>
       </div>
     </div>

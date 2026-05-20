@@ -19,7 +19,7 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
 @Component({
     selector: 'dburst-reports-list',
     template: /*html*/ `
-    <div class="well">
+    <div class="space-y-4">
       <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
         <div
           [style.grid-column]="embeddedMode() ? 'span 12' : 'span 10'"
@@ -47,7 +47,7 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
               <tr
                 id="{{configurationFile.folderName}}_{{configurationFile.fileName}}"
                 (click)="onConfTemplateClick(configurationFile, $event)"
-                [ngClass]="{ 'info': configurationFile.activeClicked }"
+                [ngClass]="{'bg-primary/10': configurationFile.activeClicked}"
               >
                 <td>
                   {{ configurationFile.templateName }}
@@ -61,6 +61,7 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
                   }
                 </td>
                 <td>
+                  <div class="flex flex-wrap gap-1">
                   @if (!configurationFile.capReportGenerationMailMerge) {
                   <span class="badge badge-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.5 2.5 0 013.81-2.19M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536-.887a2.5 2.5 0 013.81 2.19m-1.733-2.19l2.077-1.2M21 12l-2.429-7.941A2.25 2.25 0 0016.5 2.4H7.5a2.25 2.25 0 00-2.071 1.659L3 12m18 0c0 1.415-.58 2.695-1.512 3.614M21 12H3m0 0c0 1.415.58 2.695 1.512 3.614"/></svg>&nbsp;<em>Splitting</em>
@@ -70,12 +71,13 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
                   <span class="badge badge-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>&nbsp;<em>Report Generation & Dashboards</em>
                   </span>
-                  }&nbsp;
+                  }
                   @if (configurationFile.capReportDistribution) {
                   <span class="badge badge-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>&nbsp;<em>Distribution</em>
                   </span>
                   }
+                  </div>
                 </td>
                 @if (!embeddedMode()) {
                 <td>
@@ -175,9 +177,9 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
           <button
             id="btnNew"
             type="button"
-            class="btn btn-ghost"
+            class="btn btn-outline w-full"
             (click)="showCrudModal('create')"
-            style="width:100%;margin-bottom: 5px"
+            style="margin-bottom: 5px"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> {{ 'BUTTONS.NEW' | translate }}
           </button>
@@ -185,10 +187,10 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
           <button
             id="btnEdit"
             type="button"
-            class="btn btn-ghost"
+            class="btn btn-outline w-full"
             (click)="showCrudModal('update')"
             [ngClass]="{ 'disabled': !getSelectedConfiguration() }"
-            style="width:100%;margin-bottom: 5px"
+            style="margin-bottom: 5px"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg> {{ 'BUTTONS.EDIT' | translate }}
           </button>
@@ -196,20 +198,19 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
           <button
             id="btnDuplicate"
             type="button"
-            class="btn btn-ghost"
+            class="btn btn-outline w-full"
             (click)="showCrudModal('create', true)"
             [ngClass]="{ 'disabled': !getSelectedConfiguration() }"
-            style="width:100%;margin-bottom: 5px"
+            style="margin-bottom: 5px"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg> {{ 'BUTTONS.DUPLICATE' | translate }}
           </button>
           <button
             id="btnDelete"
             type="button"
-            class="btn btn-ghost"
+            class="btn btn-outline w-full"
             (click)="onDeleteSelectedTemplate()"
             [ngClass]="{ 'disabled': !getSelectedConfiguration() || getSelectedConfiguration().isFallback }"
-            style="width:100%"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg> {{ 'BUTTONS.DELETE' | translate }}
           </button>
@@ -225,7 +226,7 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
             <input
               type="text"
               id="reportsListSearch"
-              class="input input-bordered join-item"
+              class="input join-item"
               placeholder="Search by name"
               [ngModel]="searchTerm"
               (ngModelChange)="onSearchChange($event)"
@@ -264,6 +265,16 @@ export class ReportsListComponent implements OnInit {
     duplicate: boolean;
     modalTitle: string;
   };
+
+  /** JSON snapshot of fileInfo at the moment showCrudModal() opened the dialog.
+   *  Used by isModalDirty() so the Save button stays disabled until the user
+   *  actually edits something. */
+  private modalSnapshot = '';
+
+  /** True only when fileInfo differs from the snapshot taken on modal open. */
+  isModalDirty(): boolean {
+    return JSON.stringify(this.modalConfigurationTemplateInfo?.fileInfo) !== this.modalSnapshot;
+  }
 
   searchTerm = '';
   pageSize = 5;
@@ -575,6 +586,8 @@ export class ReportsListComponent implements OnInit {
     }
 
     await this.updateModelAndForm();
+    // Snapshot AFTER all open-time writes so isModalDirty() returns false on first render.
+    this.modalSnapshot = JSON.stringify(this.modalConfigurationTemplateInfo.fileInfo);
     this.isModalConfigurationTemplateVisible = true;
   }
 

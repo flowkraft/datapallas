@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+﻿import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { leftMenuTemplate } from './templates/_left-menu';
@@ -7,10 +7,10 @@ import { leftMenuTemplate } from './templates/_left-menu';
     selector: 'dburst-configuration-crud',
     template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
-           style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
+           style="top:calc(64px + var(--cet-offset)); left:0; bottom:30px; width:var(--sidebar-w); overflow-x:hidden; transition:width 0.2s ease; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
     </aside>
-    <div class="relative" style="margin-left:230px; padding-top:calc(50px + var(--cet-offset)); min-height:calc(100vh - 80px - var(--cet-offset));">
+    <div class="relative" style="margin-left:var(--sidebar-w); transition:margin-left 0.2s ease; padding-left:1rem; padding-right:1rem; min-height: calc(100vh - var(--app-header-h) - var(--app-statusbar-h) - var(--cet-offset) - var(--app-main-pt));">
       <section class="content">
         @switch (activeSection) {
           @case ('reports') {

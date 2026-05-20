@@ -1,6 +1,6 @@
 <!-- Status bar — thin daisyUI footer, sticky at bottom. Two columns:
      left = job/working-on text, right = log-state dropdown (cancel-pause + errors). -->
-<footer class="bg-base-200 text-base-content border-t border-base-300 px-4 py-1 text-xs flex items-center gap-4">
+<footer class="bg-base-200 text-base-content border-t border-base-300 px-4 py-2 text-xs font-semibold flex items-center gap-4">
 
   <div class="flex-1 flex items-center gap-2 min-w-0 truncate">
     @if (executionStatsService.jobStats.numberOfActiveJobs === 0) {
@@ -42,14 +42,16 @@
   <!-- Right-side: cancel-pause running jobs (conditional) -->
   @if (executionStatsService.jobStats.numberOfActiveJobs > 0 &&
        shouldShowPauseCancelButtons()) {
-    <details class="dropdown dropdown-top dropdown-end">
-      <summary id="btnCancelPauseRunningJobs"
-        class="btn btn-ghost btn-xs cursor-pointer"
-        style="list-style:none">
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnCancelPauseRunningJobs"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-ghost btn-xs cursor-pointer">
         <span id="cancelPause" class="badge badge-ghost badge-sm">
           {{ "AREAS.STATUS-BAR.CANCEL-PAUSE" | translate }}
         </span>&nbsp;▴
-      </summary>
+      </button>
       <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
         @for (job of executionStatsService.jobStats.workingOnJobs; track job) {
           <li>
@@ -68,17 +70,20 @@
           </li>
         }
       </ul>
-    </details>
+    </div>
   }
 
   <!-- Right-side: error/warning/no-issues dropdown — exactly one of three buttons renders. -->
   @if (executionStatsService.logStats.warningsLogFileSize <= 0 &&
        executionStatsService.logStats.errorsLogFileSize <= 0) {
-    <details class="dropdown dropdown-top dropdown-end">
-      <summary id="btnGreatNoErrorsNoWarnings"
-        class="btn btn-ghost btn-xs cursor-pointer" style="list-style:none">
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnGreatNoErrorsNoWarnings"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-ghost btn-xs cursor-pointer">
         {{ "AREAS.STATUS-BAR.NO-ERRORS-WARNINGS" | translate }}&nbsp;▴
-      </summary>
+      </button>
       <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
         <li>
           <a [routerLink]="['/processing', 'logsMenuSelected']">
@@ -94,15 +99,18 @@
           </li>
         }
       </ul>
-    </details>
+    </div>
   }
   @if (executionStatsService.logStats.warningsLogFileSize > 0 &&
        executionStatsService.logStats.errorsLogFileSize <= 0) {
-    <details class="dropdown dropdown-top dropdown-end">
-      <summary id="btnWarnings"
-        class="btn btn-warning btn-xs cursor-pointer" style="list-style:none">
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnWarnings"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-warning btn-xs cursor-pointer">
         {{ "AREAS.STATUS-BAR.UPS-VIEW-WARNINGS" | translate }}&nbsp;▴
-      </summary>
+      </button>
       <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
         <li>
           <a [routerLink]="['/processing', 'logsMenuSelected']">
@@ -110,14 +118,17 @@
           </a>
         </li>
       </ul>
-    </details>
+    </div>
   }
   @if (executionStatsService.logStats.errorsLogFileSize > 0) {
-    <details class="dropdown dropdown-top dropdown-end">
-      <summary id="btnErrors"
-        class="btn btn-error btn-xs cursor-pointer" style="list-style:none">
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnErrors"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-error btn-xs cursor-pointer">
         {{ "AREAS.STATUS-BAR.UPS-VIEW-ERRORS" | translate }}&nbsp;▴
-      </summary>
+      </button>
       <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
         <li>
           <a [routerLink]="['/processing', 'logsMenuSelected']">
@@ -125,6 +136,6 @@
           </a>
         </li>
       </ul>
-    </details>
+    </div>
   }
 </footer>

@@ -1,5 +1,5 @@
 export const tabUploadFileShareTemplate = `<ng-template #tabUploadFileShareTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -7,7 +7,7 @@ export const tabUploadFileShareTemplate = `<ng-template #tabUploadFileShareTempl
         'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.COMMAND' | translate }}</div>
       <div style="grid-column:span 7">
         <input id="fileShareCommand" [ngModel]="xmlSettings?.documentburster?.settings?.uploadsettings?.filesharecommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.filesharecommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.filesharecommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

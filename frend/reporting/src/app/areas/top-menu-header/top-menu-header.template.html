@@ -6,31 +6,34 @@
 
     <!-- Left: hamburger + logo + main nav -->
     <div class="flex flex-1 items-center gap-2">
-      <label for="app-drawer" aria-label="Open menu"
-        class="btn btn-square btn-ghost drawer-button">
+      <button type="button" aria-label="Toggle sidebar"
+        class="btn btn-square btn-ghost"
+        (click)="toggleSidebar()">
         <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none"
           viewBox="0 0 24 24" class="inline-block h-5 w-5 stroke-current md:h-6 md:w-6">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M4 6h16M4 12h16M4 18h16"></path>
         </svg>
-      </label>
+      </button>
 
-      <a href="#" class="flex items-center gap-2 shrink-0 no-underline">
+      <a [routerLink]="['/processing', 'burstMenuSelected']" skipLocationChange="true"
+         class="flex items-center gap-2 shrink-0 no-underline">
         <rb-brand></rb-brand>
       </a>
 
       <ul id="topMenu" class="menu menu-horizontal px-1 hidden md:flex">
 
-        <li routerLinkActive="active">
+        <li>
           <a id="topMenuBurst"
             [routerLink]="['/processing', 'burstMenuSelected']"
-            skipLocationChange="true">
+            skipLocationChange="true"
+            routerLinkActive="menu-active">
             {{ 'AREAS.TOP-MENU-HEADER.BURST' | translate }}
           </a>
         </li>
 
-        <li class="dropdown" routerLinkActive="active">
-          <div id="topMenuConfiguration" tabindex="0" role="button" class="flex items-center">
+        <li class="dropdown">
+          <div id="topMenuConfiguration" tabindex="0" role="button" class="flex items-center cursor-pointer">
             {{ 'AREAS.TOP-MENU-HEADER.CONFIGURATION' | translate }}
             @if (settingsService.currentConfigurationTemplateName) {
               <span class="ml-1">({{ settingsService.currentConfigurationTemplateName }})</span>
@@ -38,7 +41,8 @@
             &nbsp;▾
           </div>
           <ul id="topMenuConfigurationList" tabindex="0"
-            class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2">
+            class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2"
+            (click)="closeDropdown()">
             @for (configurationFile of this.settingsService.getConfigurations(); track configurationFile) {
               @if (configurationFile.isFallback) {
                 <li>
@@ -57,11 +61,12 @@
           </ul>
         </li>
 
-        <li class="dropdown" routerLinkActive="active">
-          <div id="topMenuHelp" tabindex="0" role="button" class="flex items-center">
+        <li class="dropdown">
+          <div id="topMenuHelp" tabindex="0" role="button" class="flex items-center cursor-pointer">
             {{ 'AREAS.TOP-MENU-HEADER.HELP-AND-SUPPORT' | translate }}&nbsp;▾
           </div>
-          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2">
+          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2"
+            (click)="closeDropdown()">
             <li><a id="topMenuHelpSupport" [routerLink]="['/help', 'supportMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.GET-SOFTWARE-SUPPORT' | translate }}</a></li>
             <li><a id="topMenuHelpServices" [routerLink]="['/help', 'servicesMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-SERVICES' | translate }}</a></li>
             <li><hr class="my-1 border-base-300"/></li>
@@ -97,17 +102,21 @@
         [routerLink]="['/help', 'supportMenuSelected']"
         skipLocationChange="true">support&#64;datapallas.com</a>
 
-      <!-- Theme picker (daisyUI canonical dropdown). Hidden in e2e mode to
-           keep deterministic visual baselines for the 300 Playwright specs. -->
+      <!-- Theme picker — daisyUI homepage pattern: single-column list, each
+           row a 4-cell preview swatch (base/primary/secondary/accent) bound to
+           the theme's data-theme so the swatch *is* the theme's actual palette.
+           Hidden in e2e mode for deterministic Playwright baselines. -->
       @if (!settingsService.RUNNING_IN_E2E) {
         <div class="dropdown dropdown-end">
           <div id="btnChangeSkin" tabindex="0" role="button"
             class="btn btn-square btn-ghost" aria-label="Theme">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-              stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z"/>
-            </svg>
+            <div [attr.data-theme]="activeTheme"
+                 style="display:inline-grid;grid-template-columns:4px 4px;grid-template-rows:4px 4px;gap:2px;padding:2px;border-radius:3px;border:1px solid rgba(128,128,128,0.2);background-color:var(--color-base-100);flex-shrink:0">
+              <div style="background-color:var(--color-base-content);border-radius:50%"></div>
+              <div style="background-color:var(--color-primary);border-radius:50%"></div>
+              <div style="background-color:var(--color-secondary);border-radius:50%"></div>
+              <div style="background-color:var(--color-accent);border-radius:50%"></div>
+            </div>
           </div>
           <ul tabindex="0"
             class="dropdown-content menu bg-base-300 rounded-box max-h-96 overflow-y-auto w-52 p-2 shadow z-[1031]">
@@ -115,13 +124,21 @@
               <li>
                 <button type="button"
                   [id]="'theme-' + theme"
-                  class="btn btn-sm btn-block btn-ghost justify-start capitalize"
-                  [class.btn-active]="activeTheme === theme"
+                  class="gap-3 px-2 cursor-pointer"
                   (click)="setTheme(theme)">
-                  <span class="inline-block w-3 h-3 rounded-full border border-base-content/20 mr-1"
-                    [attr.data-theme]="theme"
-                    style="background-color: var(--color-base-100, oklch(100% 0 0));"></span>
-                  {{ theme }}
+                  <div [attr.data-theme]="theme"
+                       style="display:inline-grid;grid-template-columns:4px 4px;grid-template-rows:4px 4px;gap:2px;padding:2px;border-radius:3px;border:1px solid rgba(128,128,128,0.2);background-color:var(--color-base-100);flex-shrink:0;vertical-align:middle">
+                    <div style="background-color:var(--color-base-content);border-radius:50%"></div>
+                    <div style="background-color:var(--color-primary);border-radius:50%"></div>
+                    <div style="background-color:var(--color-secondary);border-radius:50%"></div>
+                    <div style="background-color:var(--color-accent);border-radius:50%"></div>
+                  </div>
+                  <div class="w-32 truncate capitalize">{{ theme }}</div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+                       class="h-3 w-3 shrink-0"
+                       [class.invisible]="activeTheme !== theme">
+                    <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"></path>
+                  </svg>
                 </button>
               </li>
             }

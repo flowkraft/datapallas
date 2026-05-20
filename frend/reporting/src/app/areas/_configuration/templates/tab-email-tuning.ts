@@ -1,5 +1,5 @@
 export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
-  <div class="well" style="height: 600px; overflow-y: scroll">
+  <div class="overflow-y-auto" style="height: 600px;">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 12">
         <input
@@ -27,7 +27,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="replyToAddress"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.replytoaddress"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.replytoaddress', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -40,7 +40,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="replyToName"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.replytoname"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.replytoname', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -56,7 +56,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="bounceToAddress"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.bouncetoaddress"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.bouncetoaddress', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -69,7 +69,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="bounceToName"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.bouncetoname"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.bouncetoname', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -87,7 +87,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="receiptToAddress"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.receipttoaddress"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.receipttoaddress', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -100,7 +100,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="receiptToName"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.receipttoname"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.receipttoname', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -117,7 +117,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="dispositionNotificationToAddress"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.dispositionnotificationtoaddress"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.dispositionnotificationtoaddress', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -130,7 +130,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
           id="dispositionNotificationToName"
           [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.dispositionnotificationtoname"
           (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.dispositionnotificationtoname', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
         />
       </div>
@@ -231,7 +231,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
             id="proxyHost"
             [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.proxy?.host"
             (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.proxy.host', $event)"
-            class="input input-bordered"
+            class="input"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
         </div>
@@ -244,7 +244,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
             id="proxyPort"
             [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.proxy?.port"
             (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.proxy.port', $event)"
-            class="input input-bordered"
+            class="input"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
         </div>
@@ -259,7 +259,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
             id="proxyUserName"
             [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.proxy?.username"
             (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.proxy.username', $event)"
-            class="input input-bordered"
+            class="input"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
         </div>
@@ -272,7 +272,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
             id="proxyPassword"
             [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.proxy?.password"
             (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.proxy.password', $event)"
-            class="input input-bordered"
+            class="input"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
         </div>
@@ -287,7 +287,7 @@ export const tabEmailTuningTemplate = `<ng-template #tabEmailTuningTemplate>
             id="proxySocks5BridgePort"
             [ngModel]="xmlSettings?.documentburster?.settings?.simplejavamail?.proxy?.socks5bridgeport"
             (ngModelChange)="setXmlPath('documentburster.settings.simplejavamail.proxy.socks5bridgeport', $event)"
-            class="input input-bordered"
+            class="input"
             [disabled]="!xmlSettings?.documentburster.settings.simplejavamail.active"
           />
         </div>

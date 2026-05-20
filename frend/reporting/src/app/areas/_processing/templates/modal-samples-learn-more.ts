@@ -130,7 +130,7 @@ export const modalSamplesLearnMoreTemplate = `<dp-dialog
         </div>
 
         <div style="grid-column:span 10">
-          <input type="text" id="templateHowTo" class="input input-bordered"
+          <input type="text" id="templateHowTo" class="input"
             [ngModel]="modalSampleInfo.configurationFilePath" readonly />
 
         </div>

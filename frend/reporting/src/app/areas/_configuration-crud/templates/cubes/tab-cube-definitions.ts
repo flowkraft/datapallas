@@ -1,5 +1,5 @@
 export const tabCubeDefinitionsTemplate = `
-<div class="well">
+<div class="space-y-4">
   <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
     <div style="grid-column:span 10">
       <table id="cubeDefinitionsTable" class="table">
@@ -14,13 +14,13 @@ export const tabCubeDefinitionsTemplate = `
           @for (cube of pagedCubes; track $index) {
             <tr
                 [id]="cube.id"
-                [ngClass]="{ 'info': cube.activeClicked }"
+                [ngClass]="{'bg-primary/10': cube.activeClicked}"
                 (click)="onCubeClick(cube)"
                 style="cursor: pointer">
               <td>
                 {{ cube.name }}
                 @if (cube.isSample) {
-                  <span class="badge badge-primary" style="margin-left: 6px;">sample</span>
+                  <span class="badge badge-ghost" style="margin-left: 6px;">sample</span>
                 }
               </td>
               <td>{{ cube.description }}</td>
@@ -70,7 +70,7 @@ export const tabCubeDefinitionsTemplate = `
         <div style="grid-column:span 12">
           <div class="join">
             <span class="join-item btn btn-ghost"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></span>
-            <input type="text" id="cubesSearch" class="input input-bordered join-item" placeholder="Search by name or description"
+            <input type="text" id="cubesSearch" class="input join-item" placeholder="Search by name or description"
               [ngModel]="cubeSearchTerm" (ngModelChange)="onCubeSearchChange($event)" />
             @if (cubeSearchTerm) {
             <button type="button" class="join-item btn btn-ghost" (click)="onCubeSearchChange('')" title="Clear search">
@@ -87,8 +87,7 @@ export const tabCubeDefinitionsTemplate = `
       <button
         id="btnCreateCube"
         type="button"
-        class="btn btn-ghost"
-        style="width:100%"
+        class="btn btn-outline w-full"
         (click)="showCubeModal('create')"
         style="margin-bottom: 5px">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> {{ 'BUTTONS.NEW' | translate }}
@@ -97,8 +96,7 @@ export const tabCubeDefinitionsTemplate = `
       <button
         id="btnEditCube"
         type="button"
-        class="btn btn-ghost"
-        style="width:100%"
+        class="btn btn-outline w-full"
         (click)="showCubeModal('update')"
         [ngClass]="{ 'disabled': !getSelectedCube() }"
         style="margin-bottom: 5px">
@@ -108,8 +106,7 @@ export const tabCubeDefinitionsTemplate = `
       <button
         id="btnDuplicateCube"
         type="button"
-        class="btn btn-ghost"
-        style="width:100%"
+        class="btn btn-outline w-full"
         (click)="showCubeModal('create', true)"
         [ngClass]="{ 'disabled': !getSelectedCube() }"
         style="margin-bottom: 5px">
@@ -119,8 +116,7 @@ export const tabCubeDefinitionsTemplate = `
       <button
         id="btnDeleteCube"
         type="button"
-        class="btn btn-ghost"
-        style="width:100%"
+        class="btn btn-outline w-full"
         (click)="onDeleteCube()"
         [ngClass]="{ 'disabled': !getSelectedCube() || getSelectedCube()?.isSample }"
         title="{{ getSelectedCube()?.isSample ? 'Sample cubes are read-only' : '' }}"
@@ -131,20 +127,19 @@ export const tabCubeDefinitionsTemplate = `
   </div>
 </div>
 
-<!-- Cube Edit Modal -->
+<!-- Cube Edit Modal (daisyUI v5) -->
 @if (isCubeModalVisible) {
-<div class="modal fade in" style="display: block;" tabindex="-1">
-  <div class="modal-dialog modal-lg" style="width: 90%; margin-top: 20px;">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" (click)="closeCubeModal()">&times;</button>
-        <h4 class="modal-title">{{ cubeModalTitle }}</h4>
-      </div>
-      <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+<div class="modal modal-open" tabindex="-1">
+  <div class="modal-box" style="width: 90vw; max-width: 90vw; max-height: calc(100vh - 60px);">
+    <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+      <h3 class="font-bold text-lg" style="margin: 0;">{{ cubeModalTitle }}</h3>
+      <button type="button" class="btn btn-sm btn-circle btn-ghost" (click)="closeCubeModal()" aria-label="Close">✕</button>
+    </div>
+    <div style="max-height: calc(100vh - 220px); overflow-y: auto;">
         <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-bottom: 10px;">
           <div style="grid-column:span 4">
             <label>Name</label>
-            <input id="cubeName" type="text" class="input input-bordered" [(ngModel)]="editingCube.name"
+            <input id="cubeName" type="text" class="input" [(ngModel)]="editingCube.name"
               (ngModelChange)="onCubeNameChanged()">
             @if (cubeNameAlreadyExists) {
             <span id="cubeAlreadyExistsWarning" class="text-error">
@@ -154,7 +149,7 @@ export const tabCubeDefinitionsTemplate = `
           </div>
           <div style="grid-column:span 4">
             <label>Description</label>
-            <input id="cubeDescription" type="text" class="input input-bordered" [(ngModel)]="editingCube.description">
+            <input id="cubeDescription" type="text" class="input" [(ngModel)]="editingCube.description">
           </div>
           <div style="grid-column:span 4">
             <label>Database Connection</label>
@@ -180,7 +175,7 @@ export const tabCubeDefinitionsTemplate = `
                   [highlightMethod]="highlightGroovyCode"
                   [highlighter]="'prism'"
                   [showLineNumbers]="true"
-                  style="height: 350px; border: 1px solid #ccc; border-radius: 4px 4px 0 0; overflow-y: auto; display: block; font-family: 'Courier New', monospace;">
+                  style="height: 350px; border: 1px solid var(--color-base-300); border-radius: 4px 4px 0 0; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: var(--color-base-100); color: var(--color-base-content);">
                 </ngx-codejar>
                 <div style="display: flex;">
                   <button id="btnAiHelpCubeDslFullEditor" type="button" class="btn btn-ghost" style="flex: 1; border-radius: 0 0 0 4px;" (click)="showDbConnectionModalForCubeDsl()">
@@ -195,7 +190,7 @@ export const tabCubeDefinitionsTemplate = `
 
             <dp-tab heading="Example (Cube Options)">
               <div style="margin-top: 10px;">
-                <a id="btnSeeMoreCubeExamples" href="https://datapallas.com/docs/data-exploration" target="_blank" class="btn btn-ghost w-full" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
+                <a id="btnSeeMoreCubeExamples" href="https://datapallas.com/docs/data-exploration" target="_blank" class="btn btn-outline w-full" style="text-decoration: underline; margin-bottom: 10px;">
                   See More Cube Options Examples
                 </a>
                 <ngx-codejar
@@ -205,9 +200,9 @@ export const tabCubeDefinitionsTemplate = `
                   [highlighter]="'prism'"
                   [showLineNumbers]="true"
                   [readonly]="true"
-                  style="height: 350px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8;">
+                  style="height: 350px; border: 1px solid var(--color-base-300); border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: var(--color-base-200); color: var(--color-base-content);">
                 </ngx-codejar>
-                <button id="btnCopyToClipboardCubeDslExample" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="copyCubeExampleToClipboard()">
+                <button id="btnCopyToClipboardCubeDslExample" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="copyCubeExampleToClipboard()">
                   Copy Example Cube Options To Clipboard
                 </button>
               </div>
@@ -235,7 +230,7 @@ export const tabCubeDefinitionsTemplate = `
                       [highlightMethod]="highlightGroovyCode"
                       [highlighter]="'prism'"
                       [showLineNumbers]="true"
-                      style="height: 390px; border: 1px solid #ccc; border-radius: 4px 4px 0 0; overflow-y: auto; display: block; font-family: 'Courier New', monospace;">
+                      style="height: 390px; border: 1px solid var(--color-base-300); border-radius: 4px 4px 0 0; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: var(--color-base-100); color: var(--color-base-content);">
                     </ngx-codejar>
                     <div style="display: flex;">
                       <button id="btnAiHelpCubeDsl" type="button" class="btn btn-ghost" style="flex: 1; border-radius: 0 0 0 4px;" (click)="showDbConnectionModalForCubeDsl()">
@@ -250,7 +245,7 @@ export const tabCubeDefinitionsTemplate = `
 
                 <dp-tab heading="Example (Cube Options)">
                   <div style="margin-top: 10px;">
-                    <a id="btnSeeMoreCubeExamples" href="https://datapallas.com/docs/data-exploration" target="_blank" class="btn btn-ghost w-full" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
+                    <a id="btnSeeMoreCubeExamples" href="https://datapallas.com/docs/data-exploration" target="_blank" class="btn btn-outline w-full" style="text-decoration: underline; margin-bottom: 10px;">
                       See More Cube Options Examples
                     </a>
                     <ngx-codejar
@@ -260,9 +255,9 @@ export const tabCubeDefinitionsTemplate = `
                       [highlighter]="'prism'"
                       [showLineNumbers]="true"
                       [readonly]="true"
-                      style="height: 340px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8;">
+                      style="height: 340px; border: 1px solid var(--color-base-300); border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: var(--color-base-200); color: var(--color-base-content);">
                     </ngx-codejar>
-                    <button id="btnCopyToClipboardCubeDslExample" type="button" class="btn btn-ghost w-full" (click)="copyCubeExampleToClipboard()">
+                    <button id="btnCopyToClipboardCubeDslExample" type="button" class="btn btn-outline w-full" (click)="copyCubeExampleToClipboard()">
                       Copy Example Cube Options To Clipboard
                     </button>
                   </div>
@@ -274,7 +269,7 @@ export const tabCubeDefinitionsTemplate = `
           <!-- Preview Pane -->
           <as-split-area [size]="50" [minSize]="20">
             <div style="height: 100%; display: flex; flex-direction: column;">
-              <div style="flex: 1; border: 1px solid #ccc; border-radius: 4px 4px 0 0; padding: 10px; overflow-y: auto; background: #fafafa;">
+              <div style="flex: 1; border: 1px solid var(--color-base-300); border-radius: 4px 4px 0 0; padding: 10px; overflow-y: auto; background: var(--color-base-200); color: var(--color-base-content);">
                 <rb-cube-renderer
                   [cubeConfig]="parsedCube"
                   [connectionId]="editingCube.connectionId"
@@ -298,60 +293,51 @@ export const tabCubeDefinitionsTemplate = `
           </as-split-area>
         </as-split>
         }
-      </div>
-      <div class="modal-footer">
-        @if (editingCube.isSample) {
-        <span class="text-base-content/60" style="margin-right: 12px; font-size: 12px;">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg> Sample cubes are read-only. Use Duplicate to create an editable copy.
-        </span>
-        }
-        <button id="btnOKConfirmationCubeModal" type="button" class="btn btn-primary"
-          (click)="saveCube()"
-          [disabled]="!editingCube.name || cubeNameAlreadyExists || editingCube.isSample">
-          Save
-        </button>
-        <button id="btnCloseCubeModal" type="button" class="btn btn-ghost" (click)="closeCubeModal()">Close</button>
-      </div>
+    </div>
+    <div class="modal-action items-center">
+      @if (editingCube.isSample) {
+      <span class="text-base-content/60 mr-auto" style="font-size: 12px;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg> Sample cubes are read-only. Use Duplicate to create an editable copy.
+      </span>
+      }
+      <button id="btnOKConfirmationCubeModal" type="button" class="btn btn-primary"
+        (click)="saveCube()"
+        [disabled]="!editingCube.name || cubeNameAlreadyExists || editingCube.isSample">
+        Save
+      </button>
+      <button id="btnCloseCubeModal" type="button" class="btn btn-ghost" (click)="closeCubeModal()">Close</button>
     </div>
   </div>
 </div>
-}
-@if (isCubeModalVisible) {
-<div class="modal-backdrop fade in"></div>
 }
 
-<!-- SQL Preview Modal -->
+<!-- SQL Preview Modal (daisyUI v5) — z-index higher than cube edit modal so it stacks on top -->
 @if (showSqlModal) {
-<div class="modal fade in" style="display: block; z-index: 1060;" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" (click)="closeSqlModal()">&times;</button>
-        <h4 class="modal-title">Generated SQL</h4>
+<div class="modal modal-open" style="z-index: 1000;" tabindex="-1">
+  <div class="modal-box" style="width: 70vw; max-width: 900px;">
+    <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+      <h3 class="font-bold text-lg" style="margin: 0;">Generated SQL</h3>
+      <button type="button" class="btn btn-sm btn-circle btn-ghost" (click)="closeSqlModal()" aria-label="Close">✕</button>
+    </div>
+    <div>
+      @if (sqlLoading) {
+      <div style="text-align: center; padding: 30px;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-6 h-6 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+        <p style="margin-top: 10px;">Generating SQL...</p>
       </div>
-      <div class="modal-body">
-        @if (sqlLoading) {
-        <div style="text-align: center; padding: 30px;">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-6 h-6 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-          <p style="margin-top: 10px;">Generating SQL...</p>
-        </div>
-        }
-        @if (!sqlLoading) {
-        <pre id="cubeSqlResult" style="background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">{{ generatedSql }}</pre>
-        }
-      </div>
-      <div class="modal-footer">
-        <button id="btnCopyCubeSql" type="button" class="btn btn-primary" (click)="copySqlToClipboard()" [disabled]="sqlLoading">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg> Copy SQL to Clipboard
-        </button>
-        <button id="btnCloseCubeSqlModal" type="button" class="btn btn-ghost" (click)="closeSqlModal()">Close</button>
-      </div>
+      }
+      @if (!sqlLoading) {
+      <pre id="cubeSqlResult" style="background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">{{ generatedSql }}</pre>
+      }
+    </div>
+    <div class="modal-action">
+      <button id="btnCopyCubeSql" type="button" class="btn btn-primary" (click)="copySqlToClipboard()" [disabled]="sqlLoading">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg> Copy SQL to Clipboard
+      </button>
+      <button id="btnCloseCubeSqlModal" type="button" class="btn btn-ghost" (click)="closeSqlModal()">Close</button>
     </div>
   </div>
 </div>
-}
-@if (showSqlModal) {
-<div class="modal-backdrop fade in" style="z-index: 1055;"></div>
 }
 
 <!-- Connection Details modal — used by the cube "Hey AI" button to let the user

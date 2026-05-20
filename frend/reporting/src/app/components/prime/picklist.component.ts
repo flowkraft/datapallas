@@ -5,6 +5,7 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
 
 @Component({
     selector: 'dburst-picklist',
+    standalone: true,
     imports: [CommonModule, FormsModule, TreeComponent],
     templateUrl: './picklist.component.html',
     styles: [

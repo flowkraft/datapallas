@@ -18,6 +18,7 @@ interface TerminalEntry {
 
 @Component({
     selector: 'dp-terminal',
+    standalone: true,
     imports: [FormsModule],
     template: `
     <div class="dp-terminal bg-black text-green-400 font-mono text-sm rounded p-2"

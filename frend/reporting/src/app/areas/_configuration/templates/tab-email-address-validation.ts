@@ -1,5 +1,5 @@
 export const tabEmailAddressValidationTemplate = `<ng-template #tabEmailAddressValidationTemplate>
-  <div class="well" style="height: 600px; overflow-y: scroll;">
+  <div class="overflow-y-auto" style="height: 600px;">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 12">

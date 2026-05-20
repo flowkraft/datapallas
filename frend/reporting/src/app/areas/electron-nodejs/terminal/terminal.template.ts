@@ -75,7 +75,7 @@ export const terminalTemplate = `
   </ol>
 </dp-drawer>
 
-<div class="card card-bordered bg-base-100 shadow-sm" (keydown)="honourReadOnly()">
+<div class="card card-border bg-base-100 shadow-sm" (keydown)="honourReadOnly()">
   <div class="card-body">
     <h5 class="font-semibold mb-2">{{headerLevel}}</h5>
     <dp-terminal #dpTerminal id="p-terminal" prompt="rb> "

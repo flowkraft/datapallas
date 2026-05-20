@@ -1,5 +1,5 @@
 export const tabUploadHTTPTemplate = `<ng-template #tabUploadHTTPTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -7,7 +7,7 @@ export const tabUploadHTTPTemplate = `<ng-template #tabUploadHTTPTemplate>
         'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.COMMAND' | translate }}</div>
       <div style="grid-column:span 7">
         <input id="httpCommand" [ngModel]="xmlSettings?.documentburster?.settings?.uploadsettings?.httpcommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.httpcommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.httpcommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

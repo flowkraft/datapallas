@@ -19,7 +19,7 @@
           <input
             type="text"
             id="packSearch"
-            class="input input-bordered join-item input-sm"
+            class="input join-item input-sm"
             placeholder="Search ..."
             [ngModel]="searchTerm"
             (ngModelChange)="searchSubject.next($event)"
@@ -75,13 +75,13 @@
       <!-- Refresh Button -->
       <div class="text-right" style="grid-column:span 1">
         <button
-          class="btn btn-ghost btn-sm"
+          class="btn btn-ghost"
           type="button"
           (click)="refreshData()"
           [disabled]="isLoading || isRefreshing"
           title="Refresh List"
           >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [class]="isRefreshing ? 'inline-block w-4 h-4 animate-spin' : 'inline-block w-4 h-4'"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.25" stroke="currentColor" [class]="isRefreshing ? 'inline-block w-5 h-5 animate-spin' : 'inline-block w-5 h-5'"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
         </button>
       </div>
     </div>
@@ -114,70 +114,47 @@
     <!-- Starter Pack List -->
     @if (!isLoading && filteredStarterPacks.length > 0) {
       <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
-        <!-- Scoped styles for starter pack cards - consistent with apps-manager -->
+        <!-- Scoped styles: structural only (hover lift). Colors come from theme tokens. -->
         <style>
           .starter-pack-card {
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          transition: all 0.2s ease-in-out;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-        }
-        .starter-pack-card:hover {
-        border-color: #bbb;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
-      }
-      .starter-pack-card.border-info {
-      border-color: #bce8f1;
-    }
-    .starter-pack-card.border-info:hover {
-    border-color: #31708f;
-  }
-  .starter-pack-card.border-primary {
-  border-color: #337ab7;
-}
-.starter-pack-card.border-error {
-border-color: #ebccd1;
-}
-.starter-pack-card.border-error:hover {
-border-color: #a94442;
-}
-.starter-pack-card .card-title {
-color: #333;
-}
-.starter-pack-card.border-primary .card-title,
-.starter-pack-card.border-primary .card-title {
-color: white;
-}
-</style>
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+          }
+          .starter-pack-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+          }
+        </style>
 <!-- 2 packs per row on large screens -->
 @for (pack of filteredStarterPacks; track trackPackById($index, pack)) {
   <div
     style="grid-column:span 6"
     >
     <div
-      class="card starter-pack-card"
+      class="card card-border bg-base-100 shadow-sm starter-pack-card"
       [id]="'starterPack_' + pack.id"
         [ngClass]="{
           'border-info': pack.status === 'running',
           'border-primary': pack.status === 'starting' || pack.status === 'stopping',
-          'border-error': pack.status === 'error',
-          'card-bordered': pack.status === 'stopped' || pack.status === 'unknown'
+          'border-error': pack.status === 'error'
         }"
       >
-      <div class="card-title">
-        <h3>
-          <span [innerHTML]="getIconSvg(pack.icon)"></span>
-          <span [style.color]="pack.status === 'starting' || pack.status === 'stopping' ? 'white' : '#333'">{{ pack.displayName }}</span>
-          <strong style="margin-left: 6px;"
-            [style.color]="pack.status === 'running' ? '#31708f' : (pack.status === 'starting' || pack.status === 'stopping') ? 'white' : '#888'">
+      <header class="bg-base-200 border-b border-base-300 px-4 py-3 flex items-center gap-2">
+        <h2 class="card-title text-base-content flex items-center gap-2 flex-wrap" style="margin: 0; font-size: 1rem;">
+          <span [innerHTML]="getIconSvg(pack.icon)" style="display:inline-flex; align-items:center;"></span>
+          <span>{{ pack.displayName }}</span>
+          <strong style="font-weight: 600;"
+            [ngClass]="{
+              'text-info': pack.status === 'running',
+              'text-primary': pack.status === 'starting' || pack.status === 'stopping',
+              'text-base-content/60': pack.status === 'stopped' || pack.status === 'unknown' || pack.status === 'error'
+            }">
             @if (pack.status === 'starting' || pack.status === 'stopping') {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin" style="margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
             }
             {{ pack.status === 'running' ? 'running' : pack.status === 'starting' ? 'starting' : pack.status === 'stopping' ? 'stopping' : 'stopped' }}
           </strong>
-        </h3>
-      </div>
+        </h2>
+      </header>
       <div class="card-body">
         <!-- Display Tags -->
         @if (pack.tags && pack.tags.length > 0) {
@@ -198,7 +175,7 @@ color: white;
             <label class="sr-only" [for]="'cmd-' + pack.id">Command</label>
             <input
               type="text"
-              class="input input-bordered input-sm"
+              class="input input-sm"
               style="font-family: monospace; font-size: 0.9em"
               [id]="'cmd-' + pack.id"
               [(ngModel)]="pack.currentCommandValue"
@@ -211,10 +188,9 @@ color: white;
             <div style="display: flex; align-items: center; gap: 8px">
               <button
                 type="button"
-                class="btn btn-sm"
+                class="btn btn-sm btn-outline"
                 [disabled]="pack.status === 'starting' || pack.status === 'stopping'"
               [ngClass]="{
-                      'btn-ghost': pack.status === 'stopped' || pack.status === 'unknown' || pack.status === 'error',
                       'btn-primary': pack.status === 'running' || pack.status === 'starting' || pack.status === 'stopping'
                     }"
                 [id]="'btnStartStop_' + pack.id"

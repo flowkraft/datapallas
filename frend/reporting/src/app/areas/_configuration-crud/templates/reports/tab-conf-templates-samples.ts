@@ -1,5 +1,5 @@
 export const tabConfTemplatesSamples = `<ng-template #tabConfTemplatesSamples>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div
         style="grid-column:span 12;cursor: pointer; height: 500px; overflow: auto"
@@ -29,7 +29,7 @@ export const tabConfTemplatesSamples = `<ng-template #tabConfTemplatesSamples>
               <tr
                 id="{{configurationFile.fileName}}"
                 (click)="onConfTemplateClick(configurationFile)"
-                [ngClass]="{ 'info': configurationFile.activeClicked}"
+                [ngClass]="{'bg-primary/10': configurationFile.activeClicked}"
               >
                 <td>
                   {{configurationFile.templateName}}

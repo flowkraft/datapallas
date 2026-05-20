@@ -1,5 +1,5 @@
 export const tabDocumentationTemplate = `<ng-template #tabDocumentationTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <br />
 
     <ol>

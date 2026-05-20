@@ -1,5 +1,5 @@
 export const tabWebUploadSharePointTemplate = `<ng-template #tabWebUploadSharePointTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -24,7 +24,7 @@ export const tabWebUploadSharePointTemplate = `<ng-template #tabWebUploadSharePo
       <div style="grid-column:span 7">
         <input id="sharePointCommand"
           [ngModel]="xmlSettings?.documentburster?.settings?.webuploadsettings?.mssharepointcommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.mssharepointcommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.mssharepointcommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

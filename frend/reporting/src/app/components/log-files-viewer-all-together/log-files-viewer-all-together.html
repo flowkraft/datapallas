@@ -1,7 +1,7 @@
 <div class="well">
   <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
     <div style="grid-column:span 12">
-      <div class="card card-bordered">
+      <div class="card card-border">
         <div class="card-title">
           <h6>
             {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.INFO-LOG-PREVIEW' |
@@ -12,8 +12,8 @@
           id="infoLog"
           class="card-body"
           style="
-            color: blue;
-            background-color: #f5f5f5;
+            color: var(--color-info, #3b82f6);
+            background-color: var(--color-base-200);
             height: 185px;
             overflow: scroll;
             -webkit-user-select: all;
@@ -29,7 +29,7 @@
   </div>
   <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
     <div style="grid-column:span 6">
-      <div class="card card-bordered">
+      <div class="card card-border">
         <div class="card-title">
           <h6>
             {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.WARNINGS-LOG-PREVIEW' |
@@ -40,8 +40,8 @@
           id="warningsLog"
           class="card-body"
           style="
-            color: orange;
-            background-color: #f5f5f5;
+            color: var(--color-warning, #f59e0b);
+            background-color: var(--color-base-200);
             height: 185px;
             overflow: scroll;
             -webkit-user-select: all;
@@ -55,7 +55,7 @@
       </div>
     </div>
     <div style="grid-column:span 6">
-      <div class="card card-bordered">
+      <div class="card card-border">
         <div class="card-title">
           <h6>
             {{ 'COMPONENTS.LOG-FILES-VIEWER-ALL-TOGETHER.ERRORS-LOG-PREVIEW' |
@@ -66,8 +66,8 @@
           id="errorsLog"
           class="card-body"
           style="
-            color: red;
-            background-color: #f5f5f5;
+            color: var(--color-error, #ef4444);
+            background-color: var(--color-base-200);
             height: 185px;
             overflow: scroll;
             -webkit-user-select: all;

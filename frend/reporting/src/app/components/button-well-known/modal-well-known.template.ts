@@ -7,7 +7,7 @@ export const modalWellKnownTemplate = `<dp-dialog id="modalWellKnownEmailProvide
       <tbody>
         @for (provider of providers; track $index) {
           <tr (dblclick)="onModalOK()" (click)="onProviderClick(provider)"
-            [ngClass]="{ 'info': provider.active }">
+            [ngClass]="{'bg-primary/10': provider.active}">
             <td id='{{provider.name}}'>{{provider.name}}
               @if (provider.active) {
                 <span>

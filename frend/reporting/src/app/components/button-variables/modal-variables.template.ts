@@ -1,8 +1,9 @@
 export const modalVariablesTemplate = `<dp-dialog id="modalSelectVariable" header="{{
   'COMPONENTS.BUTTON-VARIABLES.SELECT-VARIABLE' | translate }}" [(visible)]="isModalVariablesVisible"
+  [style]="{'width': '600px', 'max-width': '600px'}"
 >
 
-  <div style="max-height: 549px; overflow: auto; cursor: pointer">
+  <div style="height: 400px; overflow-y: auto; cursor: pointer">
 
     <table class="table table-xs">
       <thead>
@@ -16,7 +17,7 @@ export const modalVariablesTemplate = `<dp-dialog id="modalSelectVariable" heade
       <tbody>
         @for (variable of variables; track $index) {
           <tr (dblclick)="onModalOK()" (click)="onVariableClick(variable)"
-            [ngClass]="{ 'info': variable.active }">
+            [ngClass]="{'bg-primary/10': variable.active}">
             <td id='{{variable.name}}'>{{variable.name}}</td>
             <td>{{variable.type}}</td>
           </tr>
@@ -24,13 +25,11 @@ export const modalVariablesTemplate = `<dp-dialog id="modalSelectVariable" heade
       </tbody>
     </table>
   </div>
-  <div class="checkbox">
-    <label id='btnShowMoreVariables'>
-      &nbsp;&nbsp;
-      <input type="checkbox" [(ngModel)]="showMoreCheckBoxValue" (ngModelChange)='onShowMore()'>Show
-      More
-    </label>
-  </div>
+  <label id="btnShowMoreVariables" class="label cursor-pointer mt-2">
+    <input type="checkbox" class="checkbox checkbox-sm"
+      [(ngModel)]="showMoreCheckBoxValue" (ngModelChange)="onShowMore()" />
+    <span>Show More</span>
+  </label>
 
   <div ngProjectAs="[footer]">
     <button id="btnOKConfirmation" class="btn btn-primary dburst-button-question-confirm" type="button" (click)="onModalOK()"

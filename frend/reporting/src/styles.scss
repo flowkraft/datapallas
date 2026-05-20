@@ -8,19 +8,15 @@
 @import "@ng-select/ng-select/themes/default.theme.css";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   ngx-bootstrap modal stacking (must beat PrimeNG's z-index). */
+   ngx-bootstrap modal stacking (must beat PrimeNG's z-index).
+   Also keeps Bootstrap-style modal HTML in the datatables / cubes templates
+   from being obscured by other overlays. */
 .modal-backdrop {
   z-index: 10000001 !important;
 }
 .modal,
 .modal-dialog {
   z-index: 10000002 !important;
-}
-.modal-dialog-center {
-  margin-top: 25%;
-}
-.modal {
-  top: 30px;
 }
 
 /* CRUD-mode picklist (Connections admin area only) — hide the right "target"
@@ -49,45 +45,34 @@ ngx-codejar .codejar {
   overflow-x: auto !important;
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   AI Copilot ngx-bootstrap modal (oversized layout). */
-.ai-copilot-modal-large {
-  max-width: none;
-  width: calc(100% - 20px) !important;
-  margin-left: 10px;
-  margin-right: 10px;
-  margin-top: 10px;
-  margin-bottom: 30px;
-  overflow: hidden !important;
-  z-index: 1060 !important;
+/* codejar: inherit the active daisyUI theme everywhere it's used.
+   The bundled prismjs/themes/prism.css ships a light theme baked into
+   <code class="language-*"> and <pre> — we override its background/color
+   and any per-instance inline backgrounds so every code editor in the
+   app picks up base-100 / base-content from the theme. !important is
+   required to beat both Prism's class rules and inline styles on the
+   host element. */
+ngx-codejar,
+ngx-codejar .codejar,
+ngx-codejar pre,
+ngx-codejar pre[class*="language-"],
+ngx-codejar code,
+ngx-codejar code[class*="language-"] {
+  background: var(--color-base-100) !important;
+  color: var(--color-base-content) !important;
+  text-shadow: none !important;
 }
-.ai-copilot-modal-large .modal-content {
-  height: calc(100vh - 105px);
-  max-height: none;
-  overflow: hidden !important;
+/* Line-number gutter (codejar adds line numbers via .codejar-linenumbers). */
+ngx-codejar .codejar-linenumbers,
+ngx-codejar .codejar-linenumber {
+  background: var(--color-base-200) !important;
+  color: var(--color-base-content) !important;
+  opacity: 0.6;
 }
-.ai-copilot-modal-large .modal-body {
-  height: calc(100vh - 195px);
-  max-height: none;
-  overflow: hidden;
-}
-.ai-copilot-modal-large .modal-dialog {
-  max-width: none;
-  width: 100%;
-  margin: 0;
-  overflow: hidden !important;
-}
-.ai-copilot-modal-large .modal-footer {
-  padding: 10px;
-  margin-top: 0;
-  width: 100%;
-  border-top: 1px solid #ddd;
-  background: #fff;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+/* Selection inside code editor — use primary token. */
+ngx-codejar ::selection {
+  background: var(--color-primary) !important;
+  color: var(--color-primary-content) !important;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -113,40 +98,6 @@ as-split.as-horizontal > as-split-gutter {
 }
 as-split.as-vertical > as-split-gutter {
   cursor: row-resize;
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
-   Fullscreen preview overlay (used by html-preview modal). */
-.fullscreen-preview {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: white;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  padding: 15px;
-}
-.fullscreen-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ddd;
-}
-.fullscreen-header span {
-  font-size: 18px;
-  font-weight: 500;
-}
-.fullscreen-iframe {
-  flex: 1;
-  width: 100%;
-  height: calc(100% - 50px);
-  border: 1px solid #ddd;
-  border-radius: 4px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -194,9 +145,27 @@ label {
    fixed/sticky elements use this variable as their top offset.                */
 :root {
   --cet-offset: 0px;
+  --sidebar-w: 0px;   /* starts hidden; .sidebar-visible sets 230px */
+
+  /* Layout chrome heights — change these here once if the navbar gets taller
+     or the status bar grows; every page's content min-height recomputes
+     automatically because they all read from these variables. */
+  --app-header-h: 4rem;     /* navbar = Tailwind h-16 */
+  --app-statusbar-h: 2.25rem; /* status bar = py-2 + text-xs + 1px border */
+  --app-main-pt: 0.5rem;    /* top padding on <main> = pt-2 */
+
+  /* Sidebar surfaces mapped to daisyUI v5 canonical theme tokens. The
+     <aside class="app-sidebar"> elements reference these by name and inherit
+     whatever the current theme defines for base-200 / base-300 / primary. */
+  --app-sidebar-bg: var(--color-base-200);
+  --app-sidebar-border: var(--color-base-300);
+  --app-sidebar-active-bg: var(--color-primary);
 }
 html.in-electron {
   --cet-offset: 30px;
+}
+html.sidebar-visible {
+  --sidebar-w: 230px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -229,6 +198,234 @@ details.dropdown[open] > .dropdown-content {
   flex-shrink: 0;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Sidebar toggle hint — a soft pulsing ring on the hamburger button that
+   appears only when the sidebar is hidden, reminding the user it exists.
+   One gentle pulse every 4 s (active 0–30 % of cycle, silent 30–100 %).
+   Stops immediately when .sidebar-visible is added to <html>. */
+@keyframes sidebar-hint-blink {
+  0%, 100% { outline-color: rgba(120, 120, 120, 0.38); }
+  50%       { outline-color: rgba(120, 120, 120, 0.82); }
+}
+
+html:not(.sidebar-visible) button[aria-label="Toggle sidebar"] {
+  outline: 2px dashed rgba(120, 120, 120, 0.38);
+  outline-offset: 3px;
+  animation: sidebar-hint-blink 2.5s ease-in-out infinite;
+}
+html.sidebar-visible button[aria-label="Toggle sidebar"] {
+  animation: none;
+  outline: none;
+}
+
+/* Lock the application frame to the viewport so it NEVER scrolls.
+   <body> is a flex column whose children share the viewport height:
+     - the Electron custom titlebar (injected by custom-electron-titlebar
+       at the top of <body>) keeps its natural height,
+     - <app-root> takes whatever remains via flex:1,
+     - inside <app-root>, the layout fills 100% of its parent down to
+       <main>, which is the SOLE element allowed to scroll. */
+html {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+app-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+dburst-areas {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Layout-level shell — Angular custom-element hosts default to `display:inline`,
+   which makes them collapse to zero height inside flex containers. The shell
+   layout (navbar + main + status bar) needs each row to take its natural
+   height, so make the custom-element hosts block-level. `flex-shrink: 0`
+   guarantees the navbar and status bar always reserve their natural height —
+   they CAN'T be squeezed off-canvas by content pressure from <main>. */
+dburst-top-menu-header,
+dburst-status-bar {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* When a sidebar/menu item has a sub-menu and the user is on a child route,
+   daisyUI v5 highlights BOTH the parent and the child because both anchors
+   share the same routerLink (parent's URL is a prefix of the child's). Show
+   only the deepest match by suppressing the parent's `menu-active` styling
+   whenever a descendant `<a>` already has `menu-active`. */
+.menu li:has(> ul .menu-active) > a.menu-active {
+  background-color: transparent;
+  color: inherit;
+  box-shadow: none;
+}
+
+/* External links — anything that opens in a new tab gets an underline so
+   users can tell it leaves the app. Excludes anchors styled as daisyUI buttons,
+   which already look like clickable affordances.
+   When the anchor contains an SVG icon, the default underline would draw
+   through the icon and look broken. In that case we drop the anchor-level
+   underline and only underline the text wrapped in a <span> inside. */
+a[target="_blank"]:not(.btn) {
+  text-decoration: underline;
+}
+a[target="_blank"]:not(.btn):has(svg) {
+  text-decoration: none;
+}
+a[target="_blank"]:not(.btn):has(svg) > span {
+  text-decoration: underline;
+}
+
+/* daisyUI v5's `.input` ships with `inline-size: clamp(...20rem...)` so plain
+   inputs cap around 320 px. Every input in our 12-column grids sits inside a
+   cell that already dictates the width, so we let the input fill its cell
+   instead of leaving empty space between it and the next column. */
+.input {
+  width: 100%;
+}
+
+/* Soften the daisyUI `.btn-outline` border. The stock border uses currentColor
+   which feels too strident in calm tabular UIs (Reports/Connections/Cubes
+   action columns). Use a quiet base-300 token by default; on hover the
+   default daisyUI behaviour (filled background, inverted text) kicks back in. */
+.btn-outline:not(.btn-primary):not(.btn-secondary):not(.btn-accent):not(.btn-info):not(.btn-success):not(.btn-warning):not(.btn-error):not(.btn-neutral) {
+  border-color: var(--color-base-300);
+  color: var(--color-base-content);
+}
+.btn-outline.btn-primary {
+  border-color: color-mix(in oklab, var(--color-primary) 35%, transparent);
+  color: var(--color-primary);
+}
+
+/* Disabled state for ANY outline button — neutral gray so a disabled primary
+   action (e.g. "Save & Continue Configuration" before the form is dirty)
+   doesn't take on a pastel coral hue in themes where primary is reddish. */
+.btn-outline:disabled,
+.btn-outline[disabled],
+.btn-outline.btn-disabled {
+  border-color: var(--color-base-300) !important;
+  color: color-mix(in oklab, var(--color-base-content) 30%, transparent) !important;
+  background-color: transparent !important;
+}
+
+/* Make `.badge-ghost` visible enough to read as a chip — daisyUI's default
+   is a near-invisible faint background. We add a thin border one notch
+   stronger than `.btn-outline` so a row's "sample" tag stands out from
+   the action buttons next to it without becoming loud.
+   Also override daisyUI's `white-space: nowrap` + fixed-height so long
+   labels (e.g. "Report Generation & Dashboards" in the Reports table)
+   wrap inside the pill instead of bleeding past its right edge. */
+.badge.badge-ghost {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 25%, transparent);
+  white-space: normal;
+  height: auto;
+  min-height: 1.5rem;
+  padding-block: 0.25rem;
+  text-align: center;
+}
+
+/* Form rows in modals — the connection-details modal puts each form row in
+   a direct-child 12-column grid div inside a dp-tab. Without gap between
+   them they touch vertically and the form looks squeezed. Add a comfortable
+   gap between consecutive grid rows inside dp-dialog tabs only (so this
+   never affects page-level dp-tab usage). Each row contains label+input+
+   Variables button, so the gap automatically separates Variables buttons by
+   the same amount as the form fields. */
+dp-dialog dp-tab > div[style*="grid-template-columns"] + div[style*="grid-template-columns"] {
+  margin-top: 0.375rem !important;
+}
+
+/* Quill (the rich-text editor inside dp-editor) ships with a hardcoded white
+   background and gray border. Map both to daisyUI tokens so the Notes field
+   in Reports/Connections/Cubes modals picks up the active theme instead of
+   sitting as a foreign white panel in autumn/dark/cupcake/etc. */
+.dp-editor-wrapper .ql-toolbar.ql-snow,
+.dp-editor-wrapper .ql-container.ql-snow {
+  border-color: var(--color-base-300);
+}
+.dp-editor-wrapper .ql-toolbar.ql-snow {
+  background-color: var(--color-base-200);
+}
+.dp-editor-wrapper .ql-container.ql-snow,
+.dp-editor-wrapper .ql-editor {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+}
+.dp-editor-wrapper .ql-editor.ql-blank::before {
+  color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+}
+
+/* ng-select — map its hardcoded white/gray look to daisyUI theme tokens so
+   the Reports picker, connection chooser, etc. blend with autumn/dark/cupcake
+   themes instead of staying a foreign white panel. */
+.ng-select .ng-select-container,
+.ng-select.ng-select-single .ng-select-container,
+.ng-select.ng-select-multiple .ng-select-container {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  border-color: var(--color-base-300);
+}
+.ng-select .ng-select-container .ng-value-container .ng-placeholder {
+  color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+}
+.ng-select .ng-arrow-wrapper .ng-arrow {
+  border-color: var(--color-base-content) transparent transparent;
+}
+.ng-select.ng-select-opened .ng-arrow-wrapper .ng-arrow {
+  border-color: transparent transparent var(--color-base-content);
+}
+.ng-dropdown-panel {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  border-color: var(--color-base-300);
+}
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+}
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option:hover,
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-marked {
+  background-color: var(--color-base-200);
+  color: var(--color-base-content);
+}
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-selected {
+  background-color: color-mix(in oklab, var(--color-primary) 20%, transparent);
+  color: var(--color-base-content);
+}
+.ng-dropdown-panel .ng-dropdown-panel-items .ng-optgroup {
+  background-color: var(--color-base-200);
+  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+}
+.ng-select .ng-value-container .ng-value {
+  color: var(--color-base-content);
+}
+
+/* Log preview textareas (Info/Warnings/Errors) — same story: defaulted to
+   white background which clashes with any non-light theme. Map to tokens. */
+.log-files-viewer textarea,
+textarea[id^="infoLogPreview"],
+textarea[id^="warningsLogPreview"],
+textarea[id^="errorsLogPreview"],
+textarea[id$="LogPreview"] {
+  background-color: var(--color-base-100) !important;
+  color: var(--color-base-content) !important;
+  border-color: var(--color-base-300) !important;
+}
+
 /* Fade transitions used by ng-select dropdowns. */
 .fade-transition {
   transition: opacity 0.1s ease-in-out;
@@ -236,4 +433,20 @@ details.dropdown[open] > .dropdown-content {
 }
 .fade-hidden {
   opacity: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Theme-picker swatch dots — responsive to display DPI.
+   1× screens: 6px logical = 6 device pixels (readable).
+   2× HiDPI: 4px logical = 8 device pixels (crisp, matches daisyUI.com). */
+.dp-theme-swatch-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+
+  @media (min-resolution: 2dppx), (-webkit-min-device-pixel-ratio: 2) {
+    width: 0.25rem;
+    height: 0.25rem;
+  }
 }

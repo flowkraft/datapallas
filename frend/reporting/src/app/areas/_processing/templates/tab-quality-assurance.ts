@@ -1,16 +1,16 @@
 export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         PDF / Excel
         {{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.FILE' | translate }}
       </div>
       <div style="grid-column:span 8">
-        <input id="qaBurstFile" [ngModel]="processingService.procBurstInfo.isSample ? processingService.procQualityAssuranceInfo.prefilledInputFilePath : processingService.procQualityAssuranceInfo.inputFileName" (ngModelChange)="processingService.procQualityAssuranceInfo.inputFileName = $event" class="input input-bordered" required />
+        <input id="qaBurstFile" [ngModel]="processingService.procBurstInfo.isSample ? processingService.procQualityAssuranceInfo.prefilledInputFilePath : processingService.procQualityAssuranceInfo.inputFileName" (ngModelChange)="processingService.procQualityAssuranceInfo.inputFileName = $event" class="input" required />
       </div>
 
       <div style="grid-column:span 2">
-      <label for="qaFileUploadInput" class="btn btn-ghost w-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg>&nbsp;Select</label>
+      <label for="qaFileUploadInput" class="btn btn-outline w-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg>&nbsp;Select</label>
       <input type="file" id="qaFileUploadInput" (change)="onQAFileSelected($event)" accept=".pdf" #qaFileUploadInput style="display: none;"/>
 
       <!--
@@ -21,46 +21,38 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
       </div>
     </div>
 
-    <p></p>
 
-    <div class="radio">
-      <label>
-        <input id="testTokensAll" type="radio" name="optradio" checked="checked" [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="ta" />{{
-          'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST-ALL-TOKENS' | translate
-        }}</label>
-    </div>
+    <label class="label">
+      <input id="testTokensAll" type="radio" name="optradio" class="radio radio-sm" checked="checked" [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="ta" />
+      <span>{{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST-ALL-TOKENS' | translate }}</span>
+    </label>
 
-    <p></p>
-
-    <div class="radio">
-      <label>
-        <input id="testTokensRandom" type="radio" name="optradio" [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="tr"
-          (focus)="selectQualityAssuranceMode('tr')" />{{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST' | translate }}
-        {{ processingService.procQualityAssuranceInfo.numberOfRandomTokens }}
-        {{
-          'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.RANDOM-BURST-TOKENS'
-            | translate
-        }}</label>
-      <input id="numberOfRandomTokens" class="input input-bordered" placeholder="2"
+    <div>
+      <label class="label">
+        <input id="testTokensRandom" type="radio" name="optradio" class="radio radio-sm"
+          [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="tr"
+          (focus)="selectQualityAssuranceMode('tr')" />
+        <span>{{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST' | translate }}
+          {{ processingService.procQualityAssuranceInfo.numberOfRandomTokens }}
+          {{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.RANDOM-BURST-TOKENS' | translate }}</span>
+      </label>
+      <input id="numberOfRandomTokens" class="input mt-1" placeholder="2"
         [(ngModel)]="processingService.procQualityAssuranceInfo.numberOfRandomTokens"
         (focus)="selectQualityAssuranceMode('numberOfRandomTokens')" />
     </div>
 
-    <p></p>
-
-    <div class="radio">
-      <label>
-        <input id="testTokensList" type="radio" name="optradio" [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="tl"
-          (focus)="selectQualityAssuranceMode('tl')" />{{
-          'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST-FOLLOWING' | translate
-        }}</label>
-      <input id="listOfTokens" class="input input-bordered"
+    <div>
+      <label class="label">
+        <input id="testTokensList" type="radio" name="optradio" class="radio radio-sm"
+          [(ngModel)]="processingService.procQualityAssuranceInfo.mode" value="tl"
+          (focus)="selectQualityAssuranceMode('tl')" />
+        <span>{{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.TEST-FOLLOWING' | translate }}</span>
+      </label>
+      <input id="listOfTokens" class="input mt-1 w-full"
         placeholder="clyde.grew@northridgehealth.org,alfreda.waldback@northridgehealth.org"
         [(ngModel)]="processingService.procQualityAssuranceInfo.listOfTokens"
         (focus)="selectQualityAssuranceMode('listOfTokens')" />
     </div>
-
-    <p></p>
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 1;margin-right: 40px">
@@ -93,7 +85,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
         <div style="grid-column:span 6;margin-right: 40px">
           @if (!xmlSettings.documentburster.settings.qualityassurance.emailserver.weburl.includes('mailhog')) {
             <a href="{{ xmlSettings.documentburster.settings.qualityassurance.emailserver.weburl }}" target="_blank">
-              <button class="btn" type="button">
+              <button class="btn btn-ghost" type="button">
                 <span style="color:dodgerblue">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg></span>&nbsp;&nbsp;&nbsp;<span [innerHTML]="
                   'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.VIEW-TESTED-EMAILS'
@@ -112,7 +104,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
 
       @if (processingService.procQualityAssuranceInfo.testEmailServerStatus !== 'started') {
         <div style="grid-column:span 6;margin-right: 40px">
-          <button class="btn" type="button" [disabled]="true">
+          <button class="btn btn-ghost" type="button" [disabled]="true">
             <span style="color:gray"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg></span>&nbsp;&nbsp;&nbsp;<span [innerHTML]="
                 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.INNER-HTML.VIEW-EMAILS'
                   | translate
@@ -126,7 +118,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
           processingService.procQualityAssuranceInfo.testEmailServerStatus === 'stopping'
         ) {
         <div style="grid-column:span 5">
-          <button type="button" class="btn w-full" [disabled]="true">
+          <button type="button" class="btn btn-outline w-full" [disabled]="true">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>&nbsp;&nbsp;&nbsp;
             @if (processingService.procQualityAssuranceInfo.testEmailServerStatus === 'starting') {
               <strong [innerHTML]="
@@ -144,7 +136,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
 
       @if (processingService.procQualityAssuranceInfo.testEmailServerStatus === 'stopped') {
         <div style="grid-column:span 5">
-          <button id="startTestEmailServer" type="button" class="btn w-full"
+          <button id="startTestEmailServer" type="button" class="btn btn-outline w-full"
             (click)="doStartStopTestEmailServer('start')" [disabled]="processingService.procQualityAssuranceInfo.mode === 'ta'">
             <span style="color:gray"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="inline-block w-4 h-4"><circle cx="12" cy="12" r="9"/></svg> </span>&nbsp;&nbsp;&nbsp;
             <strong>Start
@@ -159,7 +151,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
 
       @if (processingService.procQualityAssuranceInfo.testEmailServerStatus === 'started') {
         <div style="grid-column:span 5">
-          <button id="stopTestEmailServer" type="button" class="btn w-full"
+          <button id="stopTestEmailServer" type="button" class="btn btn-outline w-full"
             (click)="doStartStopTestEmailServer('shut')">
             <span style="color:dodgerblue"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="inline-block w-4 h-4"><circle cx="12" cy="12" r="9"/></svg> </span>&nbsp;&nbsp;&nbsp;
             <strong>Stop

@@ -1,12 +1,12 @@
 export const tabUploadFTPTemplate = `<ng-template #tabUploadFTPTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION.TAB-UPLOAD-FTP.COMMAND' | translate }}
       </div>
       <div style="grid-column:span 7">
         <input id="ftpCommand" [ngModel]="xmlSettings?.documentburster?.settings?.uploadsettings?.ftpcommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.ftpcommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.ftpcommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

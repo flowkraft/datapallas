@@ -1,5 +1,5 @@
 export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableDeliveryTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 12">
         <input

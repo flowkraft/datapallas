@@ -18,6 +18,7 @@ import Quill from 'quill';
 
 @Component({
     selector: 'dp-editor',
+    standalone: true,
     imports: [NgStyle],
     template: `
     <div class="dp-editor-wrapper" [ngStyle]="style">

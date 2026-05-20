@@ -1,5 +1,5 @@
 export const tabSupportTemplate = `<ng-template #tabSupportTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <strong><em>DataPallas</em> {{'AREAS.HELP.TAB-SUPPORT.DB-SUPPORT' | translate }}</strong>
     <br>

@@ -1,6 +1,6 @@
 export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplate>
-  <div class="well">
-    <div class="card card-bordered">
+  <div class="space-y-4">
+    <div class="card card-border">
       <div class="card-title">
         <h4>Embed Reports in External Web Applications</h4>
         <p>Copy and paste the following HTML snippets to embed your report components in external web applications.</p>

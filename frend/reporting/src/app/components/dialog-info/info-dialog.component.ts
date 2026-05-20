@@ -4,6 +4,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 @Component({
     selector: 'dburst-info-dialog',
+    standalone: true,
     imports: [DpDialogComponent],
     template: `
     <dp-dialog [header]="title" [(visible)]="isVisible" (visibleChange)="onVisibleChange($event)">

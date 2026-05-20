@@ -16,15 +16,16 @@ import { DpTabComponent } from './dp-tab.component';
 
 @Component({
     selector: 'dp-tabs',
+    standalone: true,
     imports: [NgTemplateOutlet, DpTabComponent],
     styles: [`:host { display: block; }`],
     template: `
     <div
       role="tablist"
-      class="tabs tabs-bordered flex-wrap"
-      style="border-bottom: 1px solid #ddd; margin-bottom: 0.75rem;"
+      class="tabs tabs-border flex-wrap"
+      style="border-bottom: 1px solid #ddd; margin-bottom: 0.5rem;"
     >
-      @for (tab of _tabs; track tab.id(); let i = $index) {
+      @for (tab of _tabs; track tab; let i = $index) {
         <button
           role="tab"
           type="button"

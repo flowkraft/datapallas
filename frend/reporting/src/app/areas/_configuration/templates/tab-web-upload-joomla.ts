@@ -1,5 +1,5 @@
 export const tabWebUploadJoomlaTemplate = `<ng-template #tabWebUploadJoomlaTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -23,7 +23,7 @@ export const tabWebUploadJoomlaTemplate = `<ng-template #tabWebUploadJoomlaTempl
       </div>
       <div style="grid-column:span 7">
         <input id="joomlaCommand" [ngModel]="xmlSettings?.documentburster?.settings?.webuploadsettings?.joomlacommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.joomlacommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.joomlacommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

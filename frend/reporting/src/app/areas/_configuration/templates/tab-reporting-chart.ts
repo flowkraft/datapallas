@@ -1,7 +1,7 @@
 export const tabReportingChartTemplate = `<ng-template
   #tabReportingChartTemplate
 >
-  <div class="well">
+  <div class="space-y-4">
     <dp-tabs>
       <dp-tab heading="Preview">
         <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 20px;">
@@ -9,7 +9,7 @@ export const tabReportingChartTemplate = `<ng-template
             <!-- Named components (aggregator report) -->
             @if (getNamedChartIds().length > 0) {
               @for (cid of getNamedChartIds(); track $index) {
-                <div class="card card-bordered" style="margin-bottom: 15px;">
+                <div class="card card-border" style="margin-bottom: 15px;">
                   <div class="card-title"><strong>{{cid}}</strong></div>
                   <div class="card-body">
                     @if (showChartPreview) {
@@ -33,7 +33,7 @@ export const tabReportingChartTemplate = `<ng-template
 
             <!-- Single unnamed component (standard report) — Mode 1: Angular fetches data once, pushes via [data] prop -->
             @if (getNamedChartIds().length === 0) {
-              <div class="card card-bordered">
+              <div class="card card-border">
                 <div class="card-body">
                   <!-- Only show chart if Chart Options script is configured and data exists -->
                   @if (reportDataResult && !reportDataResultIsError && activeChartConfigScriptGroovy?.trim() && reportDataResult?.data?.length > 0) {
@@ -114,7 +114,7 @@ export const tabReportingChartTemplate = `<ng-template
               [showLineNumbers]="true"
               style="height: 350px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; margin-top: 10px;"
             ></ngx-codejar>
-            <button id="btnAiHelpChartConfig" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.chart')">
+            <button id="btnAiHelpChartConfig" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.chart')">
               <strong>Hey AI, Help Me Configure This Chart ...</strong>
             </button>
           </div>
@@ -124,7 +124,7 @@ export const tabReportingChartTemplate = `<ng-template
       <dp-tab heading="Example (Chart Options)">
         <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
           <div style="grid-column:span 12">
-            <a id="btnSeeMoreChartExamples" href="https://datapallas.com/docs/bi-analytics/web-components/charts" target="_blank" class="btn btn-ghost w-full" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
+            <a id="btnSeeMoreChartExamples" href="https://datapallas.com/docs/bi-analytics/web-components/charts" target="_blank" class="btn btn-outline w-full" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
               See More Chart Examples
             </a>
             <ngx-codejar
@@ -136,7 +136,7 @@ export const tabReportingChartTemplate = `<ng-template
               [readonly]="true"
               style="height: 350px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8; margin-top: 10px;"
             ></ngx-codejar>
-            <button id="btnCopyToClipboardChartConfigExample" type="button" class="btn btn-ghost w-full" style="margin-top: 10px;" (click)="copyToClipboardChartConfigExample()">
+            <button id="btnCopyToClipboardChartConfigExample" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="copyToClipboardChartConfigExample()">
               Copy Example Chart Options To Clipboard
             </button>
           </div>

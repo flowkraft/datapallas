@@ -1,5 +1,5 @@
 export const tabWebUploadDrupalTemplate = `<ng-template #tabWebUploadDrupalTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -22,7 +22,7 @@ export const tabWebUploadDrupalTemplate = `<ng-template #tabWebUploadDrupalTempl
       <div style="grid-column:span 2">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-DRUPAL.COMMAND' | translate }}</div>
       <div style="grid-column:span 7">
         <input id="drupalCommand" [ngModel]="xmlSettings?.documentburster?.settings?.webuploadsettings?.drupalcommand"
-          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.drupalcommand', $event)" class="input input-bordered" />
+          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.drupalcommand', $event)" class="input" />
       </div>
 
       <div style="grid-column:span 3">

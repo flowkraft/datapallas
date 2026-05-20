@@ -1,7 +1,7 @@
 export const tabCmsWebPortalTemplate = `<ng-template
   #tabCmsWebPortalTemplate
 >
-  <div class="well" style="padding-bottom: 0;">
+  <div class="space-y-4 pb-0">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 14px">
       <div class="text-center" style="grid-column:span 12">
@@ -10,8 +10,7 @@ export const tabCmsWebPortalTemplate = `<ng-template
           href="#"
           [routerLink]="['/help','appsMenuSelected']"
           skipLocationChange="true"
-          class="btn btn-ghost"
-          style="font-size: 1.05em; padding: 10px 24px; border-radius: 4px; border: 1.5px solid #aaa;"
+          class="btn btn-outline"
         >
           Explore More Apps That Go Well Together with DataPallas
         </a>
@@ -49,7 +48,7 @@ export const tabCmsWebPortalTemplate = `<ng-template
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [class]="isDashboardRefreshing ? 'inline-block w-4 h-4 animate-spin' : 'inline-block w-4 h-4'"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
             </button>
           </div>
-          <table class="table" style="background:#fff; margin-bottom: 8px;">
+          <table class="table" style="background-color: var(--color-base-100); color: var(--color-base-content); margin-bottom: 8px;">
             <thead>
               <tr>
                 <th>Name</th>
@@ -63,7 +62,7 @@ export const tabCmsWebPortalTemplate = `<ng-template
                     {{ r.templateName || r.folderName }}
                     @if (r.type === 'config-samples') {
                       <span
-                        class="badge badge-primary"
+                        class="badge badge-ghost"
                         style="margin-left: 8px; font-size: 0.78em;"
                       >sample</span>
                     }
@@ -134,7 +133,7 @@ export const tabCmsWebPortalTemplate = `<ng-template
             <input
               type="text"
               id="dashboardSearch"
-              class="input input-bordered join-item"
+              class="input join-item"
               placeholder="Search by name"
               [ngModel]="dashboardSearchTerm"
               (ngModelChange)="onDashboardSearchChange($event)"

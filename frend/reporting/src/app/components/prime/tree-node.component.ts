@@ -13,6 +13,7 @@ import { iconSvg } from '../../shared/icon-svgs';
 
 @Component({
     selector: 'dburst-tree-node',
+    standalone: true,
     imports: [CommonModule], // Import itself for recursion if needed, but handled by parent loop here
     template: `
     <div

@@ -45,6 +45,7 @@ export interface TreeNode {
 
 @Component({
     selector: 'dburst-tree',
+    standalone: true,
     imports: [CommonModule, FormsModule, TreeNodeComponent], // Import CustomTreeNodeComponent here
     template: `
     <div

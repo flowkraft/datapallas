@@ -11,6 +11,7 @@ import { NgStyle } from '@angular/common';
 
 @Component({
     selector: 'dp-drawer',
+    standalone: true,
     imports: [NgStyle],
     template: `
     @if (visible()) {

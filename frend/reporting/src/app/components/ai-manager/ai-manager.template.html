@@ -1,21 +1,17 @@
-<!-- Standalone Mode: Dropdown Button -->
+<!-- Standalone Mode: split-button — main "Launch ChatGPT" lives OUTSIDE the
+     <details> so its click only opens the browser. The caret <summary> lives
+     INSIDE the <details> and is the only thing that toggles the dropdown.
+     The <ul> uses inline-positioned `bottom: 100%` for guaranteed upward
+     opening regardless of daisyUI cascade specificity. -->
 @if (mode() === 'standalone') {
-  <div
-    [ngClass]="{
-      'dropdown dropdown-top dropdown-end': dropdownDirection() === 'up',
-      'dropdown dropdown-end': dropdownDirection() !== 'up'
-    }"
-    style="white-space: nowrap; display: inline-flex"
-    >
+  <div style="white-space: nowrap; display: inline-flex;">
     <button
       type="button"
       id="btnAiCopilotLaunchExternal"
-      tabindex="0"
-      role="button"
-      class="btn btn-sm btn-ghost"
+      class="btn btn-sm btn-ghost rounded-r-none"
       (click)="triggerOpenCopilotBrowser()"
-    title="{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' |
-    translate }} (External)"
+      title="{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' |
+      translate }} (External)"
       >
       {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' |
       translate }}
@@ -24,9 +20,20 @@
         style="height: 16px; width: 16px; vertical-align: middle"
         alt="Copilot"
         />
-      &#9660;
-      </button>
-      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+    </button>
+    <details class="dropdown dropdown-end">
+      <summary
+        id="btnAiDropdownToggle"
+        class="btn btn-sm btn-ghost rounded-l-none"
+        style="list-style: none;"
+        title="Copilot Actions"
+        >{{ dropdownDirection() === 'up' ? '▲' : '▼' }}</summary>
+      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2"
+        [style.position]="'absolute'"
+        [style.bottom]="dropdownDirection() === 'up' ? '100%' : null"
+        [style.top]="dropdownDirection() === 'up' ? 'auto' : null"
+        [style.right]="'0'"
+        [style.margin-bottom]="dropdownDirection() === 'up' ? '0.25rem' : null">
         <li>
           <a
             href="javascript:void(0)"
@@ -102,7 +109,8 @@
             </li>
           }
         </ul>
-      </div>
+    </details>
+  </div>
     }
 
     <!-- AI Copilot modal (dp-dialog) -->
@@ -174,7 +182,7 @@
                   <div class="mb-3">
                     <input
                       type="text"
-                      class="input input-bordered input-sm"
+                      class="input input-sm"
                       placeholder="Search prompts..."
                       [(ngModel)]="searchTerm"
                       (ngModelChange)="onSearchChange()"

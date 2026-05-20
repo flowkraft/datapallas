@@ -6,6 +6,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 @Component({
     selector: 'dburst-confirm-dialog',
+    standalone: true,
     imports: [DpDialogComponent, FormsModule],
     template: `
     <dp-dialog id="confirmDialog" [header]="title" [(visible)]="isVisible" (visibleChange)="onVisibleChange($event)">
@@ -13,7 +14,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
       @if (confirmationText) {
         <div style="margin-top:10px;">
           <label style="font-size: 0.9em; color: #777;">Type <strong>{{confirmationText}}</strong> to confirm</label>
-          <input type="text" [(ngModel)]="confirmInput" class="input input-bordered input-sm" style="margin-top:6px;" />
+          <input type="text" [(ngModel)]="confirmInput" class="input input-sm" style="margin-top:6px;" />
         </div>
       }
       <div ngProjectAs="[footer]">

@@ -1,5 +1,5 @@
 export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-bottom: 5px">
       <div style="grid-column:span 2">
         PDF / Excel {{ 'AREAS.PROCESSING.TAB-BURST.FILE' | translate }}
@@ -9,7 +9,7 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
           id="burstFile"
           [ngModel]="processingService.procBurstInfo.isSample ? processingService.procBurstInfo.prefilledInputFilePath : processingService.procBurstInfo.inputFileName"
           (ngModelChange)="processingService.procBurstInfo.inputFileName = $event"
-          class="input input-bordered"
+          class="input"
           [disabled]="!this.storeService.configSys.sysInfo.setup.java.isJavaOk"
           autofocus
           required
@@ -17,7 +17,7 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
       </div>
 
       <div style="grid-column:span 3">
-        <label for="burstFileUploadInput" class="btn btn-ghost w-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg>&nbsp;Select File</label>
+        <label for="burstFileUploadInput" class="btn btn-outline w-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg>&nbsp;Select File</label>
         <input style="display: none;" type="file" id="burstFileUploadInput" (change)="onBurstFileSelected($event)" accept=".pdf" #burstFileUploadInput  [disabled]="!storeService.configSys.sysInfo.setup.java.isJavaOk"
         />
       <!--
@@ -49,9 +49,9 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
         <dburst-button-clear-logs btnId="btnClearLogsBurstReportsTab"></dburst-button-clear-logs>
       </div>
 
-      <div style="grid-column:span 3;margin-left: -20px">
+      <div style="grid-column:span 3;padding-left: 1rem">
         <a id="seeHowToBurst" href="https://datapallas.com/docs/report-bursting" target="_blank">
-            &nbsp;&nbsp;<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>&nbsp;&nbsp;see how
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>&nbsp;<span>see how</span>
         </a>
         <!--
         <dburst-button-native-system-dialog style="display: none;"

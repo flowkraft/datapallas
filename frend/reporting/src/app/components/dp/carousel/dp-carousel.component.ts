@@ -12,6 +12,7 @@ import { NgTemplateOutlet } from '@angular/common';
 
 @Component({
     selector: 'dp-carousel',
+    standalone: true,
     imports: [NgTemplateOutlet],
     template: `
     <div class="dp-carousel relative flex flex-col" [style]="style()">

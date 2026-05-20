@@ -1,5 +1,5 @@
 export const tabUploadCloudTemplate = `<ng-template #tabUploadCloudTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION.TAB-UPLOAD-CLOUD.COMMAND' | translate }}
@@ -9,7 +9,7 @@ export const tabUploadCloudTemplate = `<ng-template #tabUploadCloudTemplate>
           id="cloudUploadCommand"
           [ngModel]="xmlSettings?.documentburster?.settings?.uploadsettings?.cloudcommand"
           (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.cloudcommand', $event)"
-          class="input input-bordered"
+          class="input"
         />
       </div>
 

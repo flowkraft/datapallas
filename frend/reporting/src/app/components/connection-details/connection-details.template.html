@@ -1,5 +1,5 @@
 ﻿<dp-dialog id="modalExtConnection" [header]="modalConnectionInfo.modalTitle" [(visible)]="isModalEmailConnectionVisible"
-  [style]="{ width: '700px' }">
+  [style]="{ width: '85vw', 'max-width': '1200px', 'min-height': '80vh', 'max-height': '95vh' }">
   <div style="margin: 5px">
     <dp-tabs [activeIndex]="emailActiveTabIndex" (activeTabChange)="onEmailTabChange($event)">
 
@@ -19,10 +19,9 @@
           <div style="grid-column:span 10">
         <input id="connectionName" [(ngModel)]="
             modalConnectionInfo.email.documentburster.connection.name
-          " (ngModelChange)="updateModelAndForm()" class="input input-bordered" autofocus required />
+          " (ngModelChange)="updateModelAndForm()" class="input" autofocus required />
             </div>
           </div>
-          <p></p>
 
           <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
             <div style="grid-column:span 2">
@@ -35,7 +34,7 @@
         <input id="fromName" [(ngModel)]="
             modalConnectionInfo.email.documentburster.connection.emailserver
               .name
-          " class="input input-bordered" />
+          " class="input" />
               </div>
 
               <div style="grid-column:span 3">
@@ -45,8 +44,7 @@
                 </dburst-button-variables>
               </div>
             </div>
-            <p></p>
-            <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+              <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
               <div style="grid-column:span 2">
                 {{
                 "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.FROM-ADDRESS"
@@ -57,7 +55,7 @@
         <input id="fromEmailAddress" [(ngModel)]="
             modalConnectionInfo.email.documentburster.connection.emailserver
               .fromaddress
-          " class="input input-bordered" />
+          " class="input" />
                 </div>
 
                 <div style="grid-column:span 3">
@@ -67,8 +65,7 @@
                   </dburst-button-variables>
                 </div>
               </div>
-              <p></p>
-              <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+                  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                 <div style="grid-column:span 2">
                   {{
                   "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.HOST" | translate
@@ -78,7 +75,7 @@
         <input id="emailServerHost" [(ngModel)]="
             modalConnectionInfo.email.documentburster.connection.emailserver
               .host
-          " class="input input-bordered" />
+          " class="input" />
                   </div>
 
                   <div style="grid-column:span 3">
@@ -88,8 +85,7 @@
                     </dburst-button-variables>
                   </div>
                 </div>
-                <p></p>
-                <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+                      <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                   <div style="grid-column:span 2">
                     {{
                     "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.USER-NAME"
@@ -100,7 +96,7 @@
         <input id="userName" [(ngModel)]="
             modalConnectionInfo.email.documentburster.connection.emailserver
               .userid
-          " class="input input-bordered" />
+          " class="input" />
                     </div>
 
                     <div style="grid-column:span 3">
@@ -110,8 +106,7 @@
                       </dburst-button-variables>
                     </div>
                   </div>
-                  <p></p>
-                  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+                          <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                     <div style="grid-column:span 2">
                       {{
                       "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.PASSWORD"
@@ -123,7 +118,7 @@
           <input id="smtpPassword" [(ngModel)]="
               modalConnectionInfo.email.documentburster.connection.emailserver
                 .userpassword
-            " [type]="showEmailPassword ? 'text' : 'password'" class="input input-bordered join-item" />
+            " [type]="showEmailPassword ? 'text' : 'password'" class="input join-item" />
                           <span id="btnToggleEmailPassword" class="join-item" style="cursor:pointer" (click)="toggleRevealEmailPassword()">
                             @if (showEmailPassword) {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>} @else {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>}
                           </span>
@@ -137,8 +132,7 @@
                         </dburst-button-variables>
                       </div>
                     </div>
-                    <p></p>
-                    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+                              <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                       <div style="grid-column:span 2">
                         {{
                         "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.PORT" | translate
@@ -148,7 +142,7 @@
         <input id="smtpPort" [(ngModel)]="
             modalConnectionInfo.email.documentburster.connection.emailserver
               .port
-          " class="input input-bordered" />
+          " class="input" />
                         </div>
 
                         <div style="grid-column:span 3">
@@ -195,7 +189,7 @@
                               <button
                                 id="btnSendTestEmail"
                                 type="button"
-                                class="btn btn-primary w-full"
+                                class="btn btn-outline btn-primary w-full"
                                 (click)="doTestSMTPConnection()"
                                 [disabled]="isTestingConnection"
                                 >
@@ -210,8 +204,7 @@
                               <dburst-button-clear-logs btnId="btnClearLogsConnection"></dburst-button-clear-logs>
                             </div>
                           </div>
-                          <p></p>
-                          <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+                                          <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                             <div style="grid-column:span 2">
                               <a href="https://products.office.com/en-us/exchange " target="_blank ">
                                 <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="inline-block w-8 h-8 fill-current" style="color: orange"><title>Microsoft Exchange</title><path d="M9.605 3.15c-2.983.55-5.355 2.82-6.052 5.775a8.48 8.48 0 000 3.66c.697 2.955 3.069 5.225 6.052 5.775l.36.068V3.082zm4.79 0v15.428l.36-.068c2.982-.55 5.354-2.82 6.05-5.775a8.48 8.48 0 000-3.66c-.696-2.955-3.068-5.225-6.05-5.775zm-2.395.218c.406 0 .804.03 1.195.086V20.55a8.455 8.455 0 01-2.39 0V3.454c.391-.056.79-.086 1.195-.086z"/></svg>
@@ -349,7 +342,7 @@
                                     {{ "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.OAUTH2.TENANT-ID" | translate }}
                                   </div>
                                   <div style="grid-column:span 9">
-                                    <input id="oauth2TenantId" class="input input-bordered"
+                                    <input id="oauth2TenantId" class="input"
                                       [(ngModel)]="modalConnectionInfo.email.documentburster.connection.emailserver.oauth2tenantid"
                                       placeholder="common" />
                                     </div>
@@ -364,7 +357,7 @@
                                     {{ "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.OAUTH2.CLIENT-ID" | translate }}
                                   </div>
                                   <div style="grid-column:span 9">
-                                    <input id="oauth2ClientId" class="input input-bordered"
+                                    <input id="oauth2ClientId" class="input"
                                       [(ngModel)]="modalConnectionInfo.email.documentburster.connection.emailserver.oauth2clientid" />
                                     </div>
                                   </div>
@@ -376,7 +369,7 @@
                                         {{ "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.OAUTH2.AUTHORIZE-URL" | translate }}
                                       </div>
                                       <div style="grid-column:span 9">
-                                        <input id="oauth2AuthorizeUrl" class="input input-bordered"
+                                        <input id="oauth2AuthorizeUrl" class="input"
                                           [(ngModel)]="modalConnectionInfo.email.documentburster.connection.emailserver.oauth2authorizeurl" />
                                         </div>
                                       </div>
@@ -386,7 +379,7 @@
                                           {{ "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.OAUTH2.TOKEN-URL" | translate }}
                                         </div>
                                         <div style="grid-column:span 9">
-                                          <input id="oauth2TokenUrl" class="input input-bordered"
+                                          <input id="oauth2TokenUrl" class="input"
                                             [(ngModel)]="modalConnectionInfo.email.documentburster.connection.emailserver.oauth2tokenurl" />
                                           </div>
                                         </div>
@@ -396,7 +389,7 @@
                                             {{ "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.OAUTH2.SCOPE" | translate }}
                                           </div>
                                           <div style="grid-column:span 9">
-                                            <input id="oauth2Scope" class="input input-bordered"
+                                            <input id="oauth2Scope" class="input"
                                               [(ngModel)]="modalConnectionInfo.email.documentburster.connection.emailserver.oauth2scope" />
                                             </div>
                                           </div>
@@ -415,7 +408,7 @@
                                           <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                                             <div style="grid-column:span 3"></div>
                                             <div style="grid-column:span 9">
-                                              <button id="btnSignInOAuth" type="button" class="btn btn-primary w-full"
+                                              <button id="btnSignInOAuth" type="button" class="btn btn-outline btn-primary w-full"
                                                 (click)="onSignInOAuth()"
                 [disabled]="isSigningInOAuth
                             || !modalConnectionInfo.email.documentburster.connection.emailserver.oauth2clientid
@@ -473,7 +466,7 @@
                                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg> Sample connections are read-only. Use Duplicate to create an editable copy.
                                     </span>
                                   }
-                                  <button id="btnOKConfirmationConnectionModal" class="btn btn-primary" type="button" (click)="onModalOK()"
+                                  <button id="btnOKConfirmationConnectionModal" class="btn btn-outline btn-primary" type="button" (click)="onModalOK()"
       [disabled]="
         !modalConnectionInfo.email.documentburster.connection.name ||
         modalConnectionInfo.connectionSameFilePathAlreadyExists == 'file' || isTestingConnection || isEditingSample">
@@ -487,7 +480,7 @@
                                 </div>
                               </dp-dialog>
                               <dp-dialog id="modalDbConnection" [header]="modalConnectionInfo.modalTitle" [(visible)]="isModalDbConnectionVisible"
-                                [style]="{ 'max-width': '92vw', width: '800px' }">
+                                [style]="{ width: '95vw', 'max-width': '1600px', 'min-height': '85vh', 'max-height': '95vh' }">
                                 <div style="margin: 5px; overflow-x: hidden;">
                                   <!-- Tabs Container -->
                                   <dp-tabs [activeIndex]="dbActiveTabIndex" (activeTabChange)="onDbTabChange($event)">
@@ -507,7 +500,7 @@
                                         <div style="grid-column:span 10">
             <input id="dbConnectionName" [(ngModel)]="
                 modalConnectionInfo.database.documentburster.connection.name
-              " (ngModelChange)="updateModelAndForm()" class="input input-bordered" autofocus required
+              " (ngModelChange)="updateModelAndForm()" class="input" autofocus required
                                             [readonly]="mode() === 'viewMode'" />
                                           </div>
                                         </div>
@@ -560,7 +553,7 @@
             <input id="dbHost" [(ngModel)]="
                 modalConnectionInfo.database.documentburster.connection
                   .databaseserver.host
-              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input input-bordered" [readonly]="mode() === 'viewMode'" />
+              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input" [readonly]="mode() === 'viewMode'" />
                                               </div>
                                               <div style="grid-column:span 3">
                                                 @if (mode() !== 'viewMode') {
@@ -591,7 +584,7 @@
             <input id="dbPort" [(ngModel)]="
                 modalConnectionInfo.database.documentburster.connection
                   .databaseserver.port
-              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input input-bordered" [readonly]="mode() === 'viewMode'" />
+              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input" [readonly]="mode() === 'viewMode'" />
                                                 </div>
                                                 <div style="grid-column:span 3">
             <dburst-button-variables id="btnDbPortVariables" (sendSelectedVariable)="
@@ -621,7 +614,7 @@
               <input id="dbName" [(ngModel)]="
                   modalConnectionInfo.database.documentburster.connection
                     .databaseserver.database
-                " class="input input-bordered join-item" [placeholder]="modalConnectionInfo.database.documentburster.connection.databaseserver.type === 'duckdb' ? 'Select DuckDB file (optional for in-memory)' : 'Select SQLite database file'" readonly [title]="
+                " class="input join-item" [placeholder]="modalConnectionInfo.database.documentburster.connection.databaseserver.type === 'duckdb' ? 'Select DuckDB file (optional for in-memory)' : 'Select SQLite database file'" readonly [title]="
                   modalConnectionInfo.database.documentburster.connection
                     .databaseserver.database
                 " />
@@ -658,7 +651,7 @@
             <input id="dbName" [(ngModel)]="
                 modalConnectionInfo.database.documentburster.connection
                   .databaseserver.database
-              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input input-bordered" [readonly]="mode() === 'viewMode'" />
+              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input" [readonly]="mode() === 'viewMode'" />
                                                     </div>
                                                     <div style="grid-column:span 3">
                                                       @if (mode() !== 'viewMode') {
@@ -690,7 +683,7 @@
             <input id="dbUsername" [(ngModel)]="
                 modalConnectionInfo.database.documentburster.connection
                   .databaseserver.userid
-              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input input-bordered" [readonly]="mode() === 'viewMode'" />
+              " (ngModelChange)="resetSchemaStateOnConnectionChange()" class="input" [readonly]="mode() === 'viewMode'" />
                                                       </div>
                                                       <div style="grid-column:span 3">
                                                         @if (mode() !== 'viewMode') {
@@ -722,7 +715,7 @@
               <input id="dbPassword" [(ngModel)]="
                   modalConnectionInfo.database.documentburster.connection
                     .databaseserver.userpassword
-                " (ngModelChange)="resetSchemaStateOnConnectionChange()" [type]="showDbPassword ? 'text' : 'password'" class="input input-bordered join-item" [readonly]="mode() === 'viewMode'" />
+                " (ngModelChange)="resetSchemaStateOnConnectionChange()" [type]="showDbPassword ? 'text' : 'password'" class="input join-item" [readonly]="mode() === 'viewMode'" />
                                                             <span id="btnToggleDbPassword" class="join-item" style="cursor:pointer" (click)="toggleRevealDbPassword()">
                                                               @if (showDbPassword) {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>} @else {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>}
                                                             </span>
@@ -773,7 +766,7 @@
                                                           }}
                                                         </div>
                                                         <div style="grid-column:span 7">
-                                                          <button id="btnTestDbConnection" type="button" class="btn btn-primary w-full"
+                                                          <button id="btnTestDbConnection" type="button" class="btn btn-outline btn-primary w-full"
                                                             (click)="doTestDatabaseConnection()" [disabled]="isTestDbConnectionDisabled()">
               @if (isTestingConnection) {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionIcon" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>} @else {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionIcon" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>}&nbsp;&nbsp;{{
                                                             "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.TEST-DB-CONNECTION"
@@ -786,7 +779,6 @@
                                                         </div>
                                                       </div>
                                                       <!-- Add database vendor section -->
-                                                      <br />
                                                       <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                                                         <div style="grid-column:span 2">
                                                           <a href="https://www.oracle.com/database/" target="_blank">
@@ -801,7 +793,7 @@
                   | translate
               "></span>
                                                           <!-- Reduced spacing from <br /><br /> to <br /> -->
-                                                          <br /><br />
+                                                          <br />
                                                           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem">
                                                             <div>
                                                               <a href="https://www.microsoft.com/sql-server/" target="_blank">
@@ -861,7 +853,7 @@
                                                                   are
                                                                   configured and then test the connection or refresh the
                                                                 schema.</strong></span></p>
-                                                                <button id="btnTestDbConnectionDbSchema" type="button" class="btn btn-primary w-full"
+                                                                <button id="btnTestDbConnectionDbSchema" type="button" class="btn btn-outline btn-primary w-full"
                                                                   (click)="dbActiveTabIndex = 0; isConnectionDetailsTabActive = true; isDatabaseSchemaTabActive = false;">
               @if (isTestingConnection) {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionDbSchemaIcon" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>} @else {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionDbSchemaIcon" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>}&nbsp;&nbsp;{{
                                                                   "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.TEST-DB-CONNECTION"
@@ -1076,14 +1068,14 @@
                                                                             <!-- Original layout when domainGroupedSchemaExists is false -->
                                                                             @if (context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl' && !domainGroupedSchemaExists) {
                                                                               <div style="grid-column:span 6">
-                                                                                <button id="btnToggleDomainGroupedCodeView" type="button" class="btn btn-ghost w-full"
+                                                                                <button id="btnToggleDomainGroupedCodeView" type="button" class="btn btn-outline w-full"
                                                                                   (click)="toggleDomainGroupedCodeView()">
                                                                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg> Show Domain-Grouped Schema
                                                                                   Code
                                                                                 </button>
                                                                               </div>
                                                                               <div style="grid-column:span 6">
-                                                                                <button id="btnGenerateWithAIDomainGroupedSchema" class="btn btn-primary w-full"
+                                                                                <button id="btnGenerateWithAIDomainGroupedSchema" class="btn btn-outline btn-primary w-full"
                                                                                   (click)="launchAiCopilotForDomainSchemaGeneration()">
                                                                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>&nbsp; Generate Domain Schema
                                                                                   with AI Help
@@ -1095,7 +1087,7 @@
                                                                               <div style="grid-column:span 12">
                                                                                 @if (context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl') {
                                                                                   <div class="dropdown dropdown-end w-full" style="margin-bottom: 20px">
-                                                                                    <button id="btnGenerateSqlQueryWithAIDomainGroupedSchema" type="button" tabindex="0" role="button" class="btn btn-primary"
+                                                                                    <button id="btnGenerateSqlQueryWithAIDomainGroupedSchema" type="button" tabindex="0" role="button" class="btn btn-outline btn-primary"
                                                                                       style="width: calc(100% - 34px); text-align: left" (click)="launchAiCopilotForSchemaQuery()"
                         [disabled]="
                           !showSchemaTreeSelect ||
@@ -1119,7 +1111,7 @@
                                                                                   </div>
                                                                                 }
                                                                                 @if (context() === 'sqlQuery' || context() === 'scriptQuery' || context() === 'dashboardScript' || context() === 'cubeDsl') {
-                                                                                  <button id="btnGenerateSqlQueryWithAIDomainGroupedSchema" type="button" class="btn btn-primary"
+                                                                                  <button id="btnGenerateSqlQueryWithAIDomainGroupedSchema" type="button" class="btn btn-outline btn-primary"
                                                                                     style="width: calc(100% - 34px); text-align: left" (click)="launchAiCopilotForSchemaQuery()"
                         [disabled]="
                           !showSchemaTreeSelect ||
@@ -1149,7 +1141,7 @@
                                                                           <!-- Two buttons side by side, 50% width each -->
                                                                           <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px">
                                                                             <div style="grid-column:span 6">
-                                                                              <button type="button" id="btnToggleDomainGroupedCodeView" class="btn btn-ghost w-full"
+                                                                              <button type="button" id="btnToggleDomainGroupedCodeView" class="btn btn-outline w-full"
                                                                                 (click)="toggleDomainGroupedCodeView()">
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg> Show Domain-Grouped Schema
                                                                               </button>
@@ -1313,7 +1305,7 @@
                                                                           @if (context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl') {
                                                                             <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px">
                                                                               <div style="grid-column:span 4">
-                  <button id="btnDatabaseDiagramShowCode" type="button" class="btn btn-ghost w-full" [disabled]="
+                  <button id="btnDatabaseDiagramShowCode" type="button" class="btn btn-outline w-full" [disabled]="
                       !modalConnectionInfo.database.documentburster.connection
                         .name
                     " (click)="toggleDatabaseDiagramCodeView()">
@@ -1324,13 +1316,13 @@
                                                                                 @if (encodedPlantUmlDiagram) {
 <a id="btnDatabaseDiagramViewInBrowserLink" [href]="
                       'https://kroki.io/plantuml/svg/' + encodedPlantUmlDiagram
-                    " target="_blank" class="btn btn-ghost w-full">
+                    " target="_blank" class="btn btn-outline w-full">
                                                                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> View In Browser
                                                                                   </a>
                                                                                 }
                                                                                 @if (!encodedPlantUmlDiagram) {
                                                                                   <button id="btnDatabaseDiagramViewInBrowser" type="button"
-                                                                                    class="btn btn-ghost w-full" disabled>
+                                                                                    class="btn btn-outline w-full" disabled>
                                                                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> View In Browser
                                                                                   </button>
                                                                                 }
@@ -1349,7 +1341,7 @@
                                                                                 @if (encodedPlantUmlDiagram) {
 <a id="btnDatabaseDiagramViewInBrowserLink" [href]="
                       'https://kroki.io/plantuml/svg/' + encodedPlantUmlDiagram
-                    " target="_blank" class="btn btn-ghost w-full">
+                    " target="_blank" class="btn btn-outline w-full">
                                                                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> View In Browser
                                                                                   </a>
                                                                                 }
@@ -1372,7 +1364,7 @@
                                                                           <!-- Three buttons 1/3 width each -->
                                                                           <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px">
                                                                             <div style="grid-column:span 4">
-                                                                              <button id="btnDatabaseDiagramViewDiagram" type="button" class="btn btn-ghost w-full"
+                                                                              <button id="btnDatabaseDiagramViewDiagram" type="button" class="btn btn-outline w-full"
                                                                                 (click)="toggleDatabaseDiagramCodeView()">
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg> View Diagram
                                                                               </button>
@@ -1381,12 +1373,12 @@
                                                                               @if (encodedPlantUmlDiagram) {
 <a [href]="
                       'https://kroki.io/plantuml/svg/' + encodedPlantUmlDiagram
-                    " target="_blank" class="btn btn-ghost w-full">
+                    " target="_blank" class="btn btn-outline w-full">
                                                                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> View In Browser
                                                                                 </a>
                                                                               }
                                                                               @if (!encodedPlantUmlDiagram) {
-                                                                                <button type="button" class="btn btn-ghost w-full" disabled>
+                                                                                <button type="button" class="btn btn-outline w-full" disabled>
                                                                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> View In Browser
                                                                                 </button>
                                                                               }
@@ -1453,7 +1445,7 @@
                 "></markdown>
                                                                         @if (
                                                                           context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl') {
-                                                                          <button id="btnUbiquitousLanguageEdit" type="button" class="btn btn-ghost w-full"
+                                                                          <button id="btnUbiquitousLanguageEdit" type="button" class="btn btn-outline w-full"
                 style="margin-top: 10px" [disabled]="
                   !modalConnectionInfo.database.documentburster.connection.name
                 " (click)="toggleUbiquitousLanguageEditMode()">
@@ -1477,7 +1469,7 @@
                   box-sizing: border-box;
                   margin: 0 auto;
                 "></ngx-codejar>
-                                                                        <button id="btnUbiquitousLanguageEditDone" type="button" class="btn btn-ghost w-full"
+                                                                        <button id="btnUbiquitousLanguageEditDone" type="button" class="btn btn-outline w-full"
                                                                           style="margin-top: 10px" (click)="toggleUbiquitousLanguageEditMode()">
                                                                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> OK, I'm done editing 'Ubiquitous
                                                                           Language' Documentation
@@ -1544,7 +1536,7 @@
                                                                             the domain deepens.</strong>
                                                                           </p>
                                                                         </div>
-                                                                        <button id="btnUbiquitousLanguageStartEditing" type="button" class="btn btn-primary w-full"
+                                                                        <button id="btnUbiquitousLanguageStartEditing" type="button" class="btn btn-outline btn-primary w-full"
                 style="margin-top: 20px" [disabled]="
                   !modalConnectionInfo.database.documentburster.connection.name
                 " (click)="toggleUbiquitousLanguageEditMode()">
@@ -1628,7 +1620,7 @@
                                                                           <span id="schemaNotLoadedSeedData"><strong>To seed data, please ensure your connection details
                                                                           are configured and then test the connection.</strong></span>
                                                                         </p>
-                                                                        <button id="btnTestDbConnectionSeedData" type="button" class="btn btn-primary w-full"
+                                                                        <button id="btnTestDbConnectionSeedData" type="button" class="btn btn-outline btn-primary w-full"
                                                                           (click)="dbActiveTabIndex = 0; isConnectionDetailsTabActive = true; isSeedDataTabActive = false;">
                 @if (isTestingConnection) {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionSeedDataIcon" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>} @else {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionSeedDataIcon" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>}&nbsp;&nbsp;{{
                                                                           "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.TEST-DB-CONNECTION"
@@ -1659,13 +1651,13 @@
                                                                             ></ngx-codejar>
                                                                             <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
                                                                               <div style="grid-column:span 4">
-                                                                                <button id="btnAskAiSeed" type="button" class="btn btn-ghost w-full"
+                                                                                <button id="btnAskAiSeed" type="button" class="btn btn-outline w-full"
                                                                                   (click)="askAiForSeedHelp()">
                                                                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>&nbsp;Hey AI, Help Me...
                                                                                 </button>
                                                                               </div>
                                                                               <div style="grid-column:span 8">
-                                                                                <button id="btnRunCustomSeed" type="button" class="btn btn-primary w-full"
+                                                                                <button id="btnRunCustomSeed" type="button" class="btn btn-outline btn-primary w-full"
                                                                                   (click)="doRunCustomSeed()"
                                                                                   [disabled]="!customSeedScript?.trim() || mode() === 'viewMode' || isCustomSeedRunning || executionStatsService.jobStats.numberOfActiveJobs > 0">
                                                                                   @if (isCustomSeedRunning || executionStatsService.jobStats.numberOfActiveJobs > 0) {
@@ -1690,7 +1682,7 @@
                                                                             ></ngx-codejar>
                                                                             <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
                                                                               <div style="grid-column:span 4">
-                                                                                <button id="btnCopyExampleSeedScript" type="button" class="btn btn-ghost w-full"
+                                                                                <button id="btnCopyExampleSeedScript" type="button" class="btn btn-outline w-full"
                                                                                   (click)="copyExampleSeedScriptToClipboard()">
                                                                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>&nbsp;Copy Example Script To Clipboard
                                                                                 </button>
@@ -1745,7 +1737,7 @@
                                                           <!-- Button row -->
                                                           <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                                             <div style="display: flex; align-items: center; gap: 10px">
-                                                              <dburst-ai-manager #aiManagerInstance dropdownDirection="up" [showChat2db]="true" [initialActiveTabKey]="'PROMPTS'"
+                                                              <dburst-ai-manager #aiManagerInstance [dropdownDirection]="'up'" [showChat2db]="true" [initialActiveTabKey]="'PROMPTS'"
                                                                 [initialSelectedCategory]="'Database Schema'">
                                                               </dburst-ai-manager>
 
@@ -1767,7 +1759,7 @@
 
                                                             <div>
                                                               @if (mode() !== 'viewMode') {
-                                                                <button id="btnOKConfirmationDbConnectionModal" class="btn btn-primary" type="button"
+                                                                <button id="btnOKConfirmationDbConnectionModal" class="btn btn-outline btn-primary" type="button"
           (click)="onModalOK()" [disabled]="
             (!modalConnectionInfo.database.documentburster.connection.name ||
             modalConnectionInfo.connectionSameFilePathAlreadyExists == 'file' ||

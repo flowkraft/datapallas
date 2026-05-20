@@ -1,5 +1,5 @@
 export const tabExamplesTemplate = `<ng-template #tabExamplesTemplate>
-  <div class="well">
+  <div class="space-y-4">
     <h3 id="checkPointHelpExamples"><em>DataPallas</em> Examples</h3>
 
     <br />People are using <em>DataPallas</em> for the following situations

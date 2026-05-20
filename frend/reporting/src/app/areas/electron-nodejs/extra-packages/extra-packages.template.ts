@@ -5,7 +5,7 @@ export const extraPackagesTemplate = `<!-- <ng-template #extraPackagesTemplate> 
       <span [innerHTML]="'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.EXTRA-PACKAGES.INNER-HTML.ABOUT' | translate"></span>
       @for (extraPackage of extraPackages; track $index) {
         <div
-          [ngClass]="{'card border-primary': extraPackage.status != 'not-installed', 'card card-bordered' : extraPackage.status == 'not-installed' }"
+          [ngClass]="{'card border-primary': extraPackage.status != 'not-installed', 'card card-border' : extraPackage.status == 'not-installed' }"
         >
           <div class="card-title">
             <h3>

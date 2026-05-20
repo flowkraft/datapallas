@@ -1,5 +1,5 @@
 export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorHandlingTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <strong style="text-decoration: underline;"> {{
       'AREAS.CONFIGURATION.TAB-ADVANCED-ERROR-HANDLING.IF-ANY-RECIPIENT-FAILS' | translate }}</strong>
@@ -9,21 +9,21 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
 
       <div style="grid-column:span 12">
 
-        <div class="radio">
-          <label>
-            <input type="radio" id="stopImmediatelyOnError" name="failJob"
-              [ngModel]="xmlSettings?.documentburster?.settings?.failjobifanydistributionfails"
-              (ngModelChange)="setXmlPath('documentburster.settings.failjobifanydistributionfails', $event)" [value]="true" />{{
-            'AREAS.CONFIGURATION.TAB-ADVANCED-ERROR-HANDLING.STOP-ALL-DOCUMENT' | translate }}</label>
-        </div>
+        <label class="label">
+          <input type="radio" class="radio radio-sm" id="stopImmediatelyOnError" name="failJob"
+            [ngModel]="xmlSettings?.documentburster?.settings?.failjobifanydistributionfails"
+            (ngModelChange)="setXmlPath('documentburster.settings.failjobifanydistributionfails', $event)" [value]="true" />
+          <span>{{
+            'AREAS.CONFIGURATION.TAB-ADVANCED-ERROR-HANDLING.STOP-ALL-DOCUMENT' | translate }}</span>
+        </label>
 
-        <div class="radio">
-          <label>
-            <input type="radio" id="continueOnError" name="failJob"
-              [ngModel]="xmlSettings?.documentburster?.settings?.failjobifanydistributionfails"
-              (ngModelChange)="setXmlPath('documentburster.settings.failjobifanydistributionfails', $event)" [value]="false" />{{
-            'AREAS.CONFIGURATION.TAB-ADVANCED-ERROR-HANDLING.CONTINUE-DOCUMENT-DELIVERY' | translate }}</label>
-        </div>
+        <label class="label">
+          <input type="radio" class="radio radio-sm" id="continueOnError" name="failJob"
+            [ngModel]="xmlSettings?.documentburster?.settings?.failjobifanydistributionfails"
+            (ngModelChange)="setXmlPath('documentburster.settings.failjobifanydistributionfails', $event)" [value]="false" />
+          <span>{{
+            'AREAS.CONFIGURATION.TAB-ADVANCED-ERROR-HANDLING.CONTINUE-DOCUMENT-DELIVERY' | translate }}</span>
+        </label>
 
       </div>
 
@@ -53,7 +53,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
       </div>
       <div style="grid-column:span 8">
         <input id="retryPolicyDelay" [ngModel]="xmlSettings?.documentburster?.settings?.retrypolicy?.delay"
-          (ngModelChange)="setXmlPath('documentburster.settings.retrypolicy.delay', $event)" class="input input-bordered"
+          (ngModelChange)="setXmlPath('documentburster.settings.retrypolicy.delay', $event)" class="input"
           [disabled]="!xmlSettings?.documentburster.settings.enableretrypolicy" />
       </div>
 
@@ -85,7 +85,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
       </div>
       <div style="grid-column:span 8">
         <input id="retryPolicyMaxDelay" [ngModel]="xmlSettings?.documentburster?.settings?.retrypolicy?.maxdelay"
-          (ngModelChange)="setXmlPath('documentburster.settings.retrypolicy.maxdelay', $event)" class="input input-bordered"
+          (ngModelChange)="setXmlPath('documentburster.settings.retrypolicy.maxdelay', $event)" class="input"
           [disabled]="!xmlSettings?.documentburster.settings.enableretrypolicy" />
       </div>
 
@@ -120,7 +120,7 @@ export const tabAdvancedErrorHandlingTemplate = `<ng-template #tabAdvancedErrorH
       </div>
       <div style="grid-column:span 8">
         <input id="retryPolicyMaxRetries" [ngModel]="xmlSettings?.documentburster?.settings?.retrypolicy?.maxretries"
-          (ngModelChange)="setXmlPath('documentburster.settings.retrypolicy.maxretries', $event)" class="input input-bordered"
+          (ngModelChange)="setXmlPath('documentburster.settings.retrypolicy.maxretries', $event)" class="input"
           [disabled]="!xmlSettings?.documentburster.settings.enableretrypolicy" />
       </div>
 

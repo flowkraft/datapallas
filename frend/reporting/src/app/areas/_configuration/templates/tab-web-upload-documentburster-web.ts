@@ -1,5 +1,5 @@
 export const tabWebUploadDocumentBursterWebTemplate = `<ng-template #tabWebUploadDocumentBursterWebTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 

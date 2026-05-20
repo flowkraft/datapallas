@@ -6,7 +6,7 @@
         id="licenseKey"
         [(ngModel)]="licenseService?.licenseDetails?.license.key"
         (ngModelChange)="saveLicenseKey()"
-        class="input input-bordered"
+        class="input"
         [disabled]="!this.storeService.configSys.sysInfo.setup.java.isJavaOk"
         autofocus
         required

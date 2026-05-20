@@ -4,7 +4,7 @@ export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
   [(visible)]="isModalConfigurationTemplateVisible"
   [style]="{width: '800px'}"
 >
-  <div style="margin: 35px;">
+  <div class="space-y-4" style="margin: 35px;">
     @if (modalConfigurationTemplateInfo.fileInfo.type == 'config-jasper-reports') {
     <div class="alert alert-info" style="margin-bottom: 15px;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3"/></svg>&nbsp;
@@ -21,7 +21,7 @@ export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
       <div style="grid-column:span 10">
         <input
           type="text"
-          class="input input-bordered"
+          class="input"
           id="templateName"
           [(ngModel)]="modalConfigurationTemplateInfo.fileInfo.templateName"
           (ngModelChange)="updateModelAndForm()"
@@ -32,8 +32,6 @@ export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
         />
       </div>
     </div>
-
-    <p></p>
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
@@ -69,8 +67,6 @@ export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
       </div>
     </div>
 
-    <p></p>
-
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION-TEMPLATES.MODAL-CONF-TEMPLATE.NOTES' | translate
@@ -101,7 +97,7 @@ export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
             <input
               type="text"
               id="templateHowTo"
-              class="input input-bordered"
+              class="input"
               [ngModel]="modalConfigurationTemplateInfo.templateHowTo"
               readonly
             />
@@ -146,14 +142,15 @@ export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
     </span>
     <button
       id="btnOKConfirmation"
-      class="btn btn-primary dburst-button-question-confirm"
+      class="btn btn-outline btn-primary dburst-button-question-confirm"
       type="button"
       (click)="onModalOK()"
       [disabled]="
         !modalConfigurationTemplateInfo.fileInfo.templateName ||
         (modalConfigurationTemplateInfo.crudMode == 'create' &&
         (modalConfigurationTemplateInfo.templateFilePathExists == 'file')) ||
-        modalConfigurationTemplateInfo.fileInfo.type == 'config-jasper-reports'
+        modalConfigurationTemplateInfo.fileInfo.type == 'config-jasper-reports' ||
+        !isModalDirty()
       "
     >
       {{ modalConfigurationTemplateInfo.crudMode === 'create' ? 'Create &amp; Continue Configuration' : 'Save &amp; Continue Configuration' }}

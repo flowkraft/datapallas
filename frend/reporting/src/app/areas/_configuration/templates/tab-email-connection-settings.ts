@@ -1,7 +1,7 @@
 ﻿export const tabEmailConnectionSettingsTemplate = `<ng-template
   #tabEmailConnectionSettingsTemplate
 >
-  <div class="bg-base-200 rounded-box p-4">
+  <div class="bg-base-200 rounded-box p-3 space-y-1">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.CONNECTION' |
@@ -28,7 +28,7 @@
               tabindex="0"
               role="button"
               class="btn btn-sm"
-              [ngClass]="xmlSettings?.documentburster.settings.emailserver.useconn ? 'btn-primary' : 'btn-ghost'"
+              [ngClass]="xmlSettings?.documentburster.settings.emailserver.useconn ? 'btn-outline btn-primary' : 'btn-ghost'"
             >
               {{selectedEmailConnectionFile?.connectionName}}
               @if (selectedEmailConnectionFile?.defaultConnection) {
@@ -89,7 +89,7 @@
           id="fromName"
           [ngModel]="xmlSettings?.documentburster?.settings?.emailserver?.name"
           (ngModelChange)="setXmlPath('documentburster.settings.emailserver.name', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
       </div>
@@ -114,7 +114,7 @@
           id="fromEmailAddress"
           [ngModel]="xmlSettings?.documentburster?.settings?.emailserver?.fromaddress"
           (ngModelChange)="setXmlPath('documentburster.settings.emailserver.fromaddress', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
       </div>
@@ -139,7 +139,7 @@
           id="emailServerHost"
           [ngModel]="xmlSettings?.documentburster?.settings?.emailserver?.host"
           (ngModelChange)="setXmlPath('documentburster.settings.emailserver.host', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
       </div>
@@ -164,7 +164,7 @@
           id="userName"
           [ngModel]="xmlSettings?.documentburster?.settings?.emailserver?.userid"
           (ngModelChange)="setXmlPath('documentburster.settings.emailserver.userid', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
       </div>
@@ -191,7 +191,7 @@
             [ngModel]="xmlSettings?.documentburster?.settings?.emailserver?.userpassword"
             (ngModelChange)="setXmlPath('documentburster.settings.emailserver.userpassword', $event)"
             [type]="showSmtpPassword ? 'text' : 'password'"
-            class="input input-bordered join-item"
+            class="input join-item"
             [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
           />
           <span id="btnToggleSmtpPassword" class="join-item" style="cursor:pointer" (click)="toggleRevealSmtpPassword()">
@@ -220,7 +220,7 @@
           id="smtpPort"
           [ngModel]="xmlSettings?.documentburster?.settings?.emailserver?.port"
           (ngModelChange)="setXmlPath('documentburster.settings.emailserver.port', $event)"
-          class="input input-bordered"
+          class="input"
           [disabled]="xmlSettings?.documentburster.settings.emailserver.useconn"
         />
       </div>
@@ -279,7 +279,7 @@
         <button
           id="btnSendTestEmail"
           type="button"
-          class="btn btn-primary w-full"
+          class="btn btn-outline btn-primary w-full"
           (click)="doTestSMTPConnection()"
           [disabled]="isTestingEmailConnection"
         >

@@ -2,7 +2,9 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "cli": {
     "analytics": false,
-    "schematicCollections": ["@angular-eslint/schematics"]
+    "schematicCollections": [
+      "@angular-eslint/schematics"
+    ]
   },
   "version": 1,
   "newProjectRoot": "projects",
@@ -12,21 +14,36 @@
       "sourceRoot": "src",
       "projectType": "application",
       "schematics": {
-        "@schematics/angular:application": { "strict": true },
-        "@schematics/angular:component": { "style": "scss" }
+        "@schematics/angular:application": {
+          "strict": true
+        },
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
       },
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular/build:application",
+          "builder": "@angular-builders/custom-webpack:browser",
           "options": {
-            "outputPath": { "base": "dist" },
+            "outputPath": "dist",
             "index": "src/index.html",
-            "browser": "src/main.ts",
-            "polyfills": ["src/polyfills.ts"],
+            "main": "src/main.ts",
             "tsConfig": "src/tsconfig.app.json",
+            "polyfills": "src/polyfills.ts",
             "inlineStyleLanguage": "scss",
             "assets": ["src/favicon.ico", "src/assets"],
+            "allowedCommonJsDependencies": [
+              "rxjs",
+              "rxjs/operators",
+              "quill",
+              "lodash",
+              "dayjs",
+              "semver",
+              "stack-utils",
+              "feedparser-promised",
+              "xml2js"
+            ],
             "styles": [
               "src/styles.scss",
               "src/tailwind.css",
@@ -36,34 +53,23 @@
               "./node_modules/prismjs/themes/prism.css",
               "./node_modules/codejar-linenumbers/es/codejar-linenumbers.css"
             ],
-            "scripts": ["./node_modules/marked/marked.min.js"],
-            "externalDependencies": [
-              "electron",
-              "assert",
-              "buffer",
-              "child_process",
-              "crypto",
-              "events",
-              "fs",
-              "http",
-              "https",
-              "net",
-              "os",
-              "path",
-              "stream",
-              "timers",
-              "tls",
-              "url",
-              "util",
-              "zlib"
-            ]
+            "scripts": [
+              "./node_modules/marked/marked.min.js"
+            ],
+            "customWebpackConfig": {
+              "path": "./angular.webpack.js",
+              "replaceDuplicatePlugins": true
+            }
           },
           "configurations": {
             "dev": {
               "optimization": false,
               "outputHashing": "none",
               "sourceMap": true,
+              "aot": false,
               "extractLicenses": true,
+              "vendorChunk": true,
+              "buildOptimizer": false,
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -75,7 +81,11 @@
               "optimization": true,
               "outputHashing": "all",
               "sourceMap": false,
+              "namedChunks": false,
+              "aot": true,
               "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true,
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -87,7 +97,10 @@
               "optimization": false,
               "outputHashing": "none",
               "sourceMap": true,
+              "aot": false,
               "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": false,
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -107,7 +120,11 @@
               "optimization": true,
               "outputHashing": "all",
               "sourceMap": false,
+              "namedChunks": false,
+              "aot": true,
               "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true,
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -126,22 +143,47 @@
           }
         },
         "serve": {
-          "builder": "@angular/build:dev-server",
+          "builder": "@angular-builders/custom-webpack:dev-server",
           "options": {
             "proxyConfig": "proxy.conf.js",
-            "buildTarget": "angular-electron:build"
+            "browserTarget": "angular-electron:build"
           },
           "configurations": {
-            "dev": { "buildTarget": "angular-electron:build:dev" },
-            "production": { "buildTarget": "angular-electron:build:production" },
-            "web": { "buildTarget": "angular-electron:build:web" },
-            "web-production": { "buildTarget": "angular-electron:build:web-production" }
+            "dev": {
+              "browserTarget": "angular-electron:build:dev"
+            },
+            "production": {
+              "browserTarget": "angular-electron:build:production"
+            },
+            "web": {
+              "browserTarget": "angular-electron:build:web"
+            },
+            "web-production": {
+              "browserTarget": "angular-electron:build:web-production"
+            }
           }
         },
         "extract-i18n": {
-          "builder": "@angular/build:extract-i18n",
+          "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
             "buildTarget": "angular-electron:build"
+          }
+        },
+        "test": {
+          "builder": "@angular-builders/custom-webpack:karma",
+          "options": {
+            "main": "src/test.ts",
+            "polyfills": "src/polyfills-test.ts",
+            "tsConfig": "src/tsconfig.spec.json",
+            "karmaConfig": "src/karma.conf.js",
+            "inlineStyleLanguage": "scss",
+            "scripts": [],
+            "styles": ["src/styles.scss"],
+            "assets": ["src/favicon.ico", "src/assets"],
+            "customWebpackConfig": {
+              "path": "./angular.webpack.js",
+              "replaceDuplicatePlugins": true
+            }
           }
         },
         "lint": {
@@ -155,7 +197,7 @@
           "builder": "@storybook/angular:start-storybook",
           "options": {
             "configDir": ".storybook",
-            "buildTarget": "angular-electron:build",
+            "browserTarget": "angular-electron:build",
             "compodoc": true,
             "compodocArgs": ["-e", "json", "-d", "."],
             "port": 6006
@@ -165,7 +207,7 @@
           "builder": "@storybook/angular:build-storybook",
           "options": {
             "configDir": ".storybook",
-            "buildTarget": "angular-electron:build",
+            "browserTarget": "angular-electron:build",
             "compodoc": true,
             "compodocArgs": ["-e", "json", "-d", "."],
             "outputDir": "dist/storybook/angular-electron"

@@ -1,5 +1,5 @@
 export const tabSamplesTemplate = `<ng-template #tabSamplesTemplate>
-  <div class="well">
+  <div class="space-y-4">
     
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
@@ -39,7 +39,7 @@ export const tabSamplesTemplate = `<ng-template #tabSamplesTemplate>
             <tr
               id="tr{{sample.id}}"
               (click)="onSampleClick(sample)"
-              [ngClass]="{ 'info': sample.activeClicked}"
+              [ngClass]="{'bg-primary/10': sample.activeClicked}"
             >
             <td id="td{{sample.id}}">{{sample.name}}<br><button id="btnSamplesLearnMode{{sample.id}}" type="button" class="btn btn-xs btn-primary" (click)="doShowSamplesLearnMoreModal(sample)">Learn More</button>
             </td>

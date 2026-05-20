@@ -77,7 +77,7 @@ export const javaTemplate = `<!-- <ng-template #javaTemplate> -->
 
         <br /><br />
 
-        <div class="card card-bordered bg-base-100 shadow-sm">
+        <div class="card card-border bg-base-100 shadow-sm">
           <h4 id="checkPointInstallJava">
             <u
               >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.STEP2' | translate
@@ -120,7 +120,7 @@ export const javaTemplate = `<!-- <ng-template #javaTemplate> -->
 
 @if (this.stateStore.configSys.sysInfo.setup.isRestartRequired) {
   <div>
-    <div class="card card-bordered bg-base-100 shadow-sm">
+    <div class="card card-border bg-base-100 shadow-sm">
       <h4 id="checkPointRestartDocumentBurster">
         <u
           >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.RESTARTING' |
