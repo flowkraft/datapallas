@@ -60,8 +60,8 @@ import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 import { AiManagerComponent, AiManagerLaunchConfig } from '../../components/ai-manager/ai-manager.component';
 
 @Component({
-  selector: 'dburst-processing',
-  template: `
+    selector: 'dburst-processing',
+    template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
            style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
@@ -74,6 +74,7 @@ import { AiManagerComponent, AiManagerLaunchConfig } from '../../components/ai-m
     ${tabQualityAssuranceTemplate} ${tabLogsTemplate} ${tabSamplesTemplate}
     ${modalSamplesLearnMoreTemplate} ${tabLicenseTemplate} ${resumeJobsTemplate}
   `,
+    standalone: false
 })
 export class ProcessingComponent implements OnInit {
   isModalSamplesLearnMoreVisible = false;

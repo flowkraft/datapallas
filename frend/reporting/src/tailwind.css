@@ -1,17 +1,14 @@
 /* Tailwind v4 + daisyUI v5 — canonical minimal setup.
-   Same shape as the reference repo (manthanank/angular-tailwindcss): a single
-   `@import "tailwindcss"` is enough. Tailwind v4 auto-detects content files
-   from the project tree — no `@source` directive needed under esbuild + Vite.
-   (The old webpack-era `@source "./src/app"` triggered a null-byte path crash
-   inside @tailwindcss/postcss when Vite's html-proxy passed a virtual path
-   to it during dev-server runs; removing the directive sidesteps the bug.)
-
-   daisyUI is pulled via its pre-compiled CSS (all 35 themes + every component)
-   instead of the canonical `@plugin "daisyui" { themes: all }` — the plugin
-   directive works fine under esbuild prod, but is the same path-resolution
-   code path that crashes the Vite dev-server. Swap back to @plugin once
-   @tailwindcss/postcss publishes the Vite-virtual-path fix. */
+   Same shape as the reference repo (manthanank/angular-tailwindcss). Tailwind v4
+   auto-detects content files from the project tree, so no `@source` directive
+   is needed (and it would re-introduce a Vite path-resolution issue if added).
+   daisyUI registered via the canonical `@plugin` directive so all `@theme`
+   blocks get expanded by Tailwind in-line, instead of leaking through to
+   PostCSS as raw at-rules (which is what the pre-compiled daisyui.css import
+   was causing under Vite's html-proxy chunks). */
 
 @import "tailwindcss";
 
-@import "../node_modules/daisyui/daisyui.css";
+@plugin "daisyui" {
+  themes: all;
+}

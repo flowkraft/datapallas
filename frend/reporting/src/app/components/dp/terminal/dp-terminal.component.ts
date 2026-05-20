@@ -17,10 +17,9 @@ interface TerminalEntry {
 }
 
 @Component({
-  selector: 'dp-terminal',
-  standalone: true,
-  imports: [FormsModule],
-  template: `
+    selector: 'dp-terminal',
+    imports: [FormsModule],
+    template: `
     <div class="dp-terminal bg-black text-green-400 font-mono text-sm rounded p-2"
          style="min-height:120px; max-height:400px; overflow-y:auto; display:flex; flex-direction:column;">
       <div #scrollArea style="flex:1; overflow-y:auto;">
@@ -46,7 +45,7 @@ interface TerminalEntry {
         />
       </div>
     </div>
-  `,
+  `
 })
 export class DpTerminalComponent implements AfterViewInit {
   prompt = input<string>('$ ');

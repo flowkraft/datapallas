@@ -56,8 +56,9 @@ const PACK_DEFAULTS: Record<string, { host: string; port: string; database: stri
 };
 
 @Component({
-  selector: 'dburst-connection-details',
-  templateUrl: './connection-details.template.html',
+    selector: 'dburst-connection-details',
+    templateUrl: './connection-details.template.html',
+    standalone: false
 })
 export class ConnectionDetailsComponent implements OnInit {
   readonly iconSvg = iconSvg;

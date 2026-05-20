@@ -7,9 +7,10 @@ import { WebSocketService } from '../../providers/websocket.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 
 @Component({
-  selector: 'dburst-button-clear-logs',
-  templateUrl: './button-clear-logs.component.html',
-  styles: [':host {display: inline-block; width: 100%}'],
+    selector: 'dburst-button-clear-logs',
+    templateUrl: './button-clear-logs.component.html',
+    styles: [':host {display: inline-block; width: 100%}'],
+    standalone: false
 })
 export class ButtonClearLogsComponent {
   btnId = input<string>();

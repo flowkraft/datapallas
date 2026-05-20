@@ -8,7 +8,8 @@ import {
 } from '@angular/core';
 
 @Directive({
-  selector: '[scaleIframe]',
+    selector: '[scaleIframe]',
+    standalone: false
 })
 export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver;

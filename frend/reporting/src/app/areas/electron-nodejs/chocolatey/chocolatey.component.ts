@@ -6,8 +6,9 @@ import { RbElectronService } from '../electron.service';
 import { StateStoreService } from '../../../providers/state-store.service';
 
 @Component({
-  selector: 'dburst-chocolatey',
-  template: ` ${chocolateyTemplate} `,
+    selector: 'dburst-chocolatey',
+    template: ` ${chocolateyTemplate} `,
+    standalone: false
 })
 export class ChocolateyComponent {
   constructor(

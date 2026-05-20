@@ -11,10 +11,9 @@ import {
 import { NgStyle } from '@angular/common';
 
 @Component({
-  selector: 'dp-dialog',
-  standalone: true,
-  imports: [NgStyle],
-  styles: [`
+    selector: 'dp-dialog',
+    imports: [NgStyle],
+    styles: [`
     /* Reset browser chrome on the dialog element itself */
     dialog {
       padding: 0;
@@ -74,7 +73,7 @@ import { NgStyle } from '@angular/common';
       padding-top: 1rem;
     }
   `],
-  template: `
+    template: `
     <dialog
       #dlg
       class="modal"
@@ -98,7 +97,7 @@ import { NgStyle } from '@angular/common';
         </div>
       </div>
     </dialog>
-  `,
+  `
 })
 export class DpDialogComponent implements AfterViewInit {
   header = input<string>('');

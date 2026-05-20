@@ -11,10 +11,9 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 
 @Component({
-  selector: 'dp-carousel',
-  standalone: true,
-  imports: [NgTemplateOutlet],
-  template: `
+    selector: 'dp-carousel',
+    imports: [NgTemplateOutlet],
+    template: `
     <div class="dp-carousel relative flex flex-col" [style]="style()">
       <div class="flex-1 overflow-hidden">
         @if (itemTemplate && value()?.length) {
@@ -39,7 +38,7 @@ import { NgTemplateOutlet } from '@angular/common';
         >&#8594;</button>
       </div>
     </div>
-  `,
+  `
 })
 export class DpCarouselComponent implements OnChanges {
   value = input<any[]>([]);

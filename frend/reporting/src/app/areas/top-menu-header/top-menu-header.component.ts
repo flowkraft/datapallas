@@ -10,8 +10,9 @@ const DP_THEME_KEY = 'dp-theme';
 const DEFAULT_THEME = 'light';
 
 @Component({
-  selector: 'dburst-top-menu-header',
-  templateUrl: './top-menu-header.template.html',
+    selector: 'dburst-top-menu-header',
+    templateUrl: './top-menu-header.template.html',
+    standalone: false
 })
 export class TopMenuHeaderComponent implements OnInit {
   // All 35 daisyUI v5 built-in themes (groups intentional — visual ordering only).

@@ -17,10 +17,9 @@ import { NgStyle } from '@angular/common';
 import Quill from 'quill';
 
 @Component({
-  selector: 'dp-editor',
-  standalone: true,
-  imports: [NgStyle],
-  template: `
+    selector: 'dp-editor',
+    imports: [NgStyle],
+    template: `
     <div class="dp-editor-wrapper" [ngStyle]="style">
       <div #toolbar>
         <span class="ql-formats">
@@ -40,11 +39,11 @@ import Quill from 'quill';
       <div #container></div>
     </div>
   `,
-  providers: [{
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => DpEditorComponent),
-    multi: true,
-  }],
+    providers: [{
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => DpEditorComponent),
+            multi: true,
+        }]
 })
 export class DpEditorComponent implements AfterViewInit, ControlValueAccessor, OnDestroy {
   readonly = model<boolean>(false);

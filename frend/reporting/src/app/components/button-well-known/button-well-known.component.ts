@@ -13,8 +13,8 @@ export type EmailProviderSettings = {
 };
 
 @Component({
-  selector: 'dburst-button-well-known-email-providers',
-  template: `
+    selector: 'dburst-button-well-known-email-providers',
+    template: `
     <button
       id="btnWellKnownEmailProviders"
       type="button"
@@ -26,9 +26,10 @@ export type EmailProviderSettings = {
     </button>
     ${modalWellKnownTemplate}
   `,
-  styles: [
-    ':host #btnWellKnownEmailProviders {display: inline-block; width: 100%}',
-  ],
+    styles: [
+        ':host #btnWellKnownEmailProviders {display: inline-block; width: 100%}',
+    ],
+    standalone: false
 })
 export class ButtonWellKnownEmailProvidersComponent {
   isModalWellKnownVisible = false;

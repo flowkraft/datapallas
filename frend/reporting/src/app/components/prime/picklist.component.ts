@@ -4,12 +4,11 @@ import { FormsModule } from '@angular/forms'; // Import FormsModule if needed fo
 import { TreeNode, TreeComponent } from './tree.component'; // Import TreeComponent
 
 @Component({
-  selector: 'dburst-picklist',
-  standalone: true,
-  imports: [CommonModule, FormsModule, TreeComponent],
-  templateUrl: './picklist.component.html',
-  styles: [
-    `
+    selector: 'dburst-picklist',
+    imports: [CommonModule, FormsModule, TreeComponent],
+    templateUrl: './picklist.component.html',
+    styles: [
+        `
       :host {
         display: block;
       }
@@ -127,7 +126,7 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         color: #1d4ed8;
       }
     `,
-  ],
+    ]
 })
 export class PicklistComponent {
   private cdRef = inject(ChangeDetectorRef);

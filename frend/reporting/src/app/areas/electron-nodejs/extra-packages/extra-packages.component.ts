@@ -26,8 +26,9 @@ interface ExtPackage {
 }
 
 @Component({
-  selector: 'dburst-extra-packages',
-  template: `${extraPackagesTemplate} `,
+    selector: 'dburst-extra-packages',
+    template: `${extraPackagesTemplate} `,
+    standalone: false
 })
 export class ExtraPackagesComponent implements OnInit {
   protected extraPackages = [

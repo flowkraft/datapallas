@@ -2,11 +2,10 @@ import { Component, ContentChild, ElementRef, input, TemplateRef, inject } from 
 import { DpTabHeadingDirective } from './dp-tab-heading.directive';
 
 @Component({
-  selector: 'dp-tab',
-  standalone: true,
-  imports: [],
-  host: { role: 'tabpanel' },
-  template: `<ng-content></ng-content>`,
+    selector: 'dp-tab',
+    imports: [],
+    host: { role: 'tabpanel' },
+    template: `<ng-content></ng-content>`
 })
 export class DpTabComponent {
   id = input<string>('');

@@ -1,9 +1,10 @@
 /* Canonical Tailwind v4 PostCSS config — same shape as the reference
-   manthanank/angular-tailwindcss repo. Works under both Angular's esbuild
-   production builder (@angular/build:application) and the Vite-backed
-   dev-server, as long as `src/tailwind.css` does NOT contain a `@source`
-   directive (the explicit @source path triggers a null-byte path crash
-   when @tailwindcss/postcss processes Vite's html-proxy virtual files). */
+   manthanank/angular-tailwindcss repo. Works for production esbuild builds.
+   The Vite-backed dev-server (ng serve / @angular/build:dev-server) has a
+   separate known issue mangling Tailwind v4's @plugin directive — tracked
+   upstream at https://github.com/tailwindlabs/tailwindcss/issues/16964 and
+   not fixable from this config. Use `npm run electron:local` for development
+   until that fix lands. */
 module.exports = {
   plugins: {
     '@tailwindcss/postcss': {},

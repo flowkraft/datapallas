@@ -11,8 +11,9 @@ const DP_THEME_KEY = 'dp-theme';
 const DEFAULT_THEME = 'light';
 
 @Component({
-  selector: 'dburst-skins',
-  templateUrl: './skins.template.html',
+    selector: 'dburst-skins',
+    templateUrl: './skins.template.html',
+    standalone: false
 })
 export class SkinsComponent implements OnInit {
   ALL_THEMES = [

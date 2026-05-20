@@ -24,8 +24,9 @@ type BlogPost = {
 };
 
 @Component({
-  selector: 'dburst-whats-new',
-  templateUrl: './whats-new.component.html',
+    selector: 'dburst-whats-new',
+    templateUrl: './whats-new.component.html',
+    standalone: false
 })
 export class WhatsNewComponent {
   mode = 'news-releases';

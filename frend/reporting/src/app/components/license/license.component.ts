@@ -8,8 +8,9 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
 import { StateStoreService } from '../../providers/state-store.service';
 
 @Component({
-  selector: 'dburst-license',
-  templateUrl: './license.component.html',
+    selector: 'dburst-license',
+    templateUrl: './license.component.html',
+    standalone: false
 })
 export class LicenseComponent {
   licenseKey: string;

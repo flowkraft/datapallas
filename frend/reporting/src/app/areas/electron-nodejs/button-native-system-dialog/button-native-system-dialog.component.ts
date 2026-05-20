@@ -3,8 +3,9 @@ import { RbElectronService } from '../electron.service';
 import UtilitiesNodeJs from '../utilities-nodejs';
 
 @Component({
-  selector: 'dburst-button-native-system-dialog',
-  templateUrl: './button-native-system-dialog.component.html',
+    selector: 'dburst-button-native-system-dialog',
+    templateUrl: './button-native-system-dialog.component.html',
+    standalone: false
 })
 export class ButtonNativeSystemDialogComponent {
   btnId = input<string>();
@@ -79,14 +80,14 @@ export class ButtonNativeSystemDialogComponent {
           let defaultFolderPathExists =
             await UtilitiesNodeJs.existsAsync(defaultFolderPath);
 
-          if ((defaultFolderPathExists = !'dir')) {
+          if (!defaultFolderPathExists) {
             defaultFolderPath = 'C:/DataPallas';
 
             defaultFolderPathExists =
               await UtilitiesNodeJs.existsAsync(defaultFolderPath);
           }
 
-          if ((defaultFolderPathExists = !'dir'))
+          if (!defaultFolderPathExists)
             defaultFolderPath = this.rbElectronService.PORTABLE_EXECUTABLE_DIR;
 
           options.defaultPath = defaultFolderPath;

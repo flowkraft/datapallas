@@ -7,8 +7,9 @@ import { RbElectronService } from '../electron.service';
 import { StateStoreService } from '../../../providers/state-store.service';
 
 @Component({
-  selector: 'dburst-system-diagnostics',
-  template: ` ${systemDiagnosticsTemplate} `,
+    selector: 'dburst-system-diagnostics',
+    template: ` ${systemDiagnosticsTemplate} `,
+    standalone: false
 })
 export class SystemDiagnosticsComponent {
   constructor(

@@ -12,10 +12,9 @@ import { TreeNode } from './tree.component';
 import { iconSvg } from '../../shared/icon-svgs';
 
 @Component({
-  selector: 'dburst-tree-node',
-  standalone: true,
-  imports: [CommonModule], // Import itself for recursion if needed, but handled by parent loop here
-  template: `
+    selector: 'dburst-tree-node',
+    imports: [CommonModule], // Import itself for recursion if needed, but handled by parent loop here
+    template: `
     <div
       class="p-treenode-content {{ node().styleClass || '' }}"
       [style.padding-left]="level() * indentation() + 'rem'"
@@ -139,8 +138,8 @@ import { iconSvg } from '../../shared/icon-svgs';
       </ul>
     }
     `,
-  styles: [
-    `
+    styles: [
+        `
       :host {
         display: block; /* Ensure the component takes block space */
       }
@@ -304,8 +303,8 @@ import { iconSvg } from '../../shared/icon-svgs';
         white-space: nowrap;
       }
     `,
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush, // Use OnPush for performance with immutable data
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TreeNodeComponent {
   node = input.required<TreeNode>();

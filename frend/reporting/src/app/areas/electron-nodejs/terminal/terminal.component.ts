@@ -12,8 +12,9 @@ import UtilitiesElectron from '../utilities-electron';
 import { DpTerminalComponent } from '../../../components/dp/terminal/dp-terminal.component';
 
 @Component({
-  selector: 'dburst-terminal',
-  template: ` ${terminalTemplate} `,
+    selector: 'dburst-terminal',
+    template: ` ${terminalTemplate} `,
+    standalone: false
 })
 export class TerminalComponent implements AfterViewInit {
   readOnly = true;

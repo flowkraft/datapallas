@@ -37,8 +37,8 @@ import { StateStoreService } from '../../providers/state-store.service';
 //import { ElectronService } from '../../core/services/electron/electron.service';
 
 @Component({
-  selector: 'dburst-help',
-  template: `
+    selector: 'dburst-help',
+    template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
            style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
@@ -53,6 +53,7 @@ import { StateStoreService } from '../../providers/state-store.service';
     ${tabUpdateTemplate} ${tabAboutTemplate} ${tabComparisonTemplate}
     ${tabLogsTemplate} ${tabLicenseTemplate}
   `,
+    standalone: false
 })
 export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   @ViewChild('tabSupportTemplate', { static: true })

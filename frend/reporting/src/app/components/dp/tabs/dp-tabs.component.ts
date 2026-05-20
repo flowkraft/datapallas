@@ -15,11 +15,10 @@ import { NgTemplateOutlet } from '@angular/common';
 import { DpTabComponent } from './dp-tab.component';
 
 @Component({
-  selector: 'dp-tabs',
-  standalone: true,
-  imports: [NgTemplateOutlet, DpTabComponent],
-  styles: [`:host { display: block; }`],
-  template: `
+    selector: 'dp-tabs',
+    imports: [NgTemplateOutlet, DpTabComponent],
+    styles: [`:host { display: block; }`],
+    template: `
     <div
       role="tablist"
       class="tabs tabs-bordered flex-wrap"
@@ -48,7 +47,7 @@ import { DpTabComponent } from './dp-tab.component';
       }
     </div>
     <ng-content></ng-content>
-  `,
+  `
 })
 export class DpTabsComponent implements AfterContentInit, OnChanges {
   readonly tabComponents = contentChildren(DpTabComponent);

@@ -14,8 +14,9 @@ import { WebSocketService } from '../../providers/websocket.service';
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 
 @Component({
-  selector: 'dburst-status-bar',
-  templateUrl: './status-bar.template.html',
+    selector: 'dburst-status-bar',
+    templateUrl: './status-bar.template.html',
+    standalone: false
 })
 export class StatusBarComponent implements OnInit, OnDestroy {
   subscription: Subscription;

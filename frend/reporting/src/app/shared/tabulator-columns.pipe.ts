@@ -1,8 +1,9 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
-  name: 'tabulatorColumns',
-  pure: true,
+    name: 'tabulatorColumns',
+    pure: true,
+    standalone: false
 })
 export class TabulatorColumnsPipe implements PipeTransform {
   transform(columnNames: string[]): { title: string; field: string }[] {

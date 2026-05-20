@@ -17,8 +17,8 @@ import Utilities from '../../helpers/utilities';
 import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-crud/templates/reports/modal-conf-template';
 
 @Component({
-  selector: 'dburst-reports-list',
-  template: /*html*/ `
+    selector: 'dburst-reports-list',
+    template: /*html*/ `
     <div class="well">
       <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
         <div
@@ -248,6 +248,7 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
 
     ${modalConfigurationTemplateTemplate}
   `,
+    standalone: false
 })
 export class ReportsListComponent implements OnInit {
   embeddedMode = input<boolean>(false);

@@ -110,8 +110,8 @@ import { CubesService, CubeDefinition } from '../../providers/cubes.service';
 import { modalTemplatesGalleryTemplate } from './templates/modal-gallery';
 
 @Component({
-  selector: 'dburst-configuration',
-  template: `
+    selector: 'dburst-configuration',
+    template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
            style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
@@ -136,6 +136,7 @@ import { modalTemplatesGalleryTemplate } from './templates/modal-gallery';
     ${tabEmailAddressValidationTemplate} ${tabEmailTuningTemplate}
     ${tabLogsTemplate} ${tabLicenseTemplate} ${tabReportsListTemplate} ${modalAttachmentTemplate} ${modalTemplatesGalleryTemplate}
   `,
+    standalone: false
 })
 export class ConfigurationComponent implements OnInit {
 

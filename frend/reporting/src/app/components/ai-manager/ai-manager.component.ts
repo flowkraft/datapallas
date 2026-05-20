@@ -33,8 +33,9 @@ interface CategoryWithCount {
 }
 
 @Component({
-  selector: 'dburst-ai-manager',
-  templateUrl: './ai-manager.template.html',
+    selector: 'dburst-ai-manager',
+    templateUrl: './ai-manager.template.html',
+    standalone: false
 })
 export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   mode = input<'standalone' | 'embedded' | 'launchCopilot'>('standalone');

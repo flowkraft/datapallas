@@ -33,8 +33,9 @@ import UtilitiesElectron from '../utilities-electron';
 import { StateStoreService } from '../../../providers/state-store.service';
 
 @Component({
-  selector: 'dburst-update',
-  template: ` ${updateTemplate} `,
+    selector: 'dburst-update',
+    template: ` ${updateTemplate} `,
+    standalone: false
 })
 export class UpdateComponent implements OnInit {
   homeDirectoryPath: string;

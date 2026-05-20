@@ -7,8 +7,9 @@ import { RbElectronService } from '../electron.service';
 import { StateStoreService } from '../../../providers/state-store.service';
 
 @Component({
-  selector: 'dburst-java',
-  template: ` ${javaTemplate} `,
+    selector: 'dburst-java',
+    template: ` ${javaTemplate} `,
+    standalone: false
 })
 export class JavaComponent {
   constructor(

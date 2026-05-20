@@ -13,10 +13,9 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
 import { AppPathsService } from '../../providers/app-paths.service';
 
 @Component({
-  selector: 'dburst-ask-for-feature-dialog',
-  standalone: true,
-  imports: [DpDialogComponent, CommonModule, FormsModule, TranslateModule],
-  template: `${askForFeatureDialogTemplate}`,
+    selector: 'dburst-ask-for-feature-dialog',
+    imports: [DpDialogComponent, CommonModule, FormsModule, TranslateModule],
+    template: `${askForFeatureDialogTemplate}`
 })
 export class AskForFeatureDialogComponent implements OnInit {
   isVisible = true;

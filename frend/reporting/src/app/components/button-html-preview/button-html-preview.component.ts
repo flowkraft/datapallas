@@ -2,8 +2,8 @@ import { Component, input } from '@angular/core';
 import { modalHtmlPreviewTemplate } from './modal-html-preview.template';
 
 @Component({
-  selector: 'dburst-button-html-preview',
-  template: `
+    selector: 'dburst-button-html-preview',
+    template: `
     <button
       type="button"
       id="btnHtmlEmailPreview"
@@ -15,6 +15,7 @@ import { modalHtmlPreviewTemplate } from './modal-html-preview.template';
     </button>
     ${modalHtmlPreviewTemplate}
   `,
+    standalone: false
 })
 export class ButtonHtmlPreviewComponent {
   htmlCode = input<string>();

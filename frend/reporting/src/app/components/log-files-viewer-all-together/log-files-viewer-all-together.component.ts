@@ -6,8 +6,9 @@ import { JobsService } from '../../providers/jobs.service';
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 
 @Component({
-  selector: 'dburst-log-files-viewer-all-together',
-  templateUrl: './log-files-viewer-all-together.html',
+    selector: 'dburst-log-files-viewer-all-together',
+    templateUrl: './log-files-viewer-all-together.html',
+    standalone: false
 })
 export class LogFilesViewerAllTogetherComponent {
   constructor(

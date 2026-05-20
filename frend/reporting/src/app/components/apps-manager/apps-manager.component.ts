@@ -14,8 +14,9 @@ import { iconSvg } from '../../shared/icon-svgs';
 // This interface should be defined in a shared models file
 
 @Component({
-  selector: 'dburst-apps-manager',
-  templateUrl: './apps-manager.template.html',
+    selector: 'dburst-apps-manager',
+    templateUrl: './apps-manager.template.html',
+    standalone: false
 })
 export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
   readonly iconSvg = iconSvg;

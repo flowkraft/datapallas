@@ -5,8 +5,9 @@ import { UpdateInfo } from '../updater';
 import { whenUpdatingTemplate } from './when-updating.template';
 
 @Component({
-  selector: 'dburst-when-updating',
-  template: ` ${whenUpdatingTemplate} `,
+    selector: 'dburst-when-updating',
+    template: ` ${whenUpdatingTemplate} `,
+    standalone: false
 })
 export class WhenUpdatingComponent {
   //@Input() ctx: string = 'updatenow';

@@ -22,8 +22,8 @@ import Prism from 'prismjs';
 import 'prismjs/components/prism-groovy';
 
 @Component({
-  selector: 'dburst-cube-list',
-  template: `
+    selector: 'dburst-cube-list',
+    template: `
     ${tabsTemplate}
 
     <ng-template #tabCubeDefinitionsTemplate>
@@ -31,6 +31,7 @@ import 'prismjs/components/prism-groovy';
     </ng-template>
     ${tabLicenseTemplate}
   `,
+    standalone: false
 })
 export class CubeListComponent implements OnInit, OnDestroy {
   private connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');

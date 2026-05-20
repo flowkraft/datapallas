@@ -7,18 +7,6 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="assets/icons/icon.ico" />
-
-    <!-- Apply persisted daisyUI theme before first paint (avoids flash-of-wrong-theme).
-         main.ts repeats this once Angular bootstraps; the inline script just makes
-         it happen earlier. Key `dp-theme`, default `light`. -->
-    <script>
-      (function () {
-        try {
-          var t = localStorage.getItem('dp-theme') || 'light';
-          document.documentElement.setAttribute('data-theme', t);
-        } catch (e) { /* localStorage may be unavailable */ }
-      })();
-    </script>
   </head>
   <body>
     <app-root>Loading...</app-root>

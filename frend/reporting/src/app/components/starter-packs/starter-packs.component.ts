@@ -89,8 +89,9 @@ const getDefaultCommand = (
 };
 
 @Component({
-  selector: 'dburst-starter-packs',
-  templateUrl: './starter-packs.template.html',
+    selector: 'dburst-starter-packs',
+    templateUrl: './starter-packs.template.html',
+    standalone: false
 })
 export class StarterPacksComponent implements OnInit, OnDestroy {
   // --- State ---

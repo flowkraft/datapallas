@@ -5,10 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 @Component({
-  selector: 'dburst-confirm-dialog',
-  standalone: true,
-  imports: [DpDialogComponent, FormsModule],
-  template: `
+    selector: 'dburst-confirm-dialog',
+    imports: [DpDialogComponent, FormsModule],
+    template: `
     <dp-dialog id="confirmDialog" [header]="title" [(visible)]="isVisible" (visibleChange)="onVisibleChange($event)">
       <div [innerHTML]="message"></div>
       @if (confirmationText) {
@@ -33,7 +32,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
         ></button>
       </div>
     </dp-dialog>
-  `,
+  `
 })
 export class ConfirmDialogComponent implements OnInit {
   isVisible = true;

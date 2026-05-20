@@ -44,10 +44,9 @@ export interface TreeNode {
 }
 
 @Component({
-  selector: 'dburst-tree',
-  standalone: true,
-  imports: [CommonModule, FormsModule, TreeNodeComponent], // Import CustomTreeNodeComponent here
-  template: `
+    selector: 'dburst-tree',
+    imports: [CommonModule, FormsModule, TreeNodeComponent], // Import CustomTreeNodeComponent here
+    template: `
     <div
       id="{{ treeId() }}"
       class="p-tree p-component"
@@ -110,8 +109,8 @@ export interface TreeNode {
         </div>
       </div>
     `,
-  styles: [
-    `
+    styles: [
+        `
       :host {
         display: block;
       }
@@ -198,7 +197,7 @@ export interface TreeNode {
         color: #6c757d;
       }
     `,
-  ],
+    ]
 })
 export class TreeComponent implements OnInit, OnChanges {
   treeId = input<string | undefined>(undefined);

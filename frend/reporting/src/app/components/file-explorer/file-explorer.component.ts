@@ -2,11 +2,11 @@ import { Component, inject, OnInit, input } from '@angular/core';
 import { FileExplorerService } from './file-explorer.service';
 
 @Component({
-  selector: 'dburst-file-explorer',
-  templateUrl: './file-explorer.component.html',
-  // Enhanced styles to enforce column widths and prevent overflow
-  styles: [
-    `
+    selector: 'dburst-file-explorer',
+    templateUrl: './file-explorer.component.html',
+    // Enhanced styles to enforce column widths and prevent overflow
+    styles: [
+        `
       .selected-file {
         background-color: #d9edf7 !important; /* Light blue background */
         font-weight: bold;
@@ -240,7 +240,8 @@ import { FileExplorerService } from './file-explorer.service';
         }
       }
     `,
-  ],
+    ],
+    standalone: false
 })
 export class FileExplorerComponent implements OnInit {
   showPermissionsColumn = input<boolean>(false);

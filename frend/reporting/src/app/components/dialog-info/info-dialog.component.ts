@@ -3,10 +3,9 @@ import { Subject } from 'rxjs';
 import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 @Component({
-  selector: 'dburst-info-dialog',
-  standalone: true,
-  imports: [DpDialogComponent],
-  template: `
+    selector: 'dburst-info-dialog',
+    imports: [DpDialogComponent],
+    template: `
     <dp-dialog [header]="title" [(visible)]="isVisible" (visibleChange)="onVisibleChange($event)">
       <div [innerHTML]="message"></div>
       <div ngProjectAs="[footer]">
@@ -18,7 +17,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
         ></button>
       </div>
     </dp-dialog>
-  `,
+  `
 })
 export class InfoDialogComponent implements OnInit {
   isVisible = true;

@@ -11,8 +11,8 @@ import {
 import { FileExplorerComponent } from './file-explorer.component';
 
 @Component({
-  selector: 'dburst-file-explorer-dialog',
-  template: `
+    selector: 'dburst-file-explorer-dialog',
+    template: `
     <dp-dialog
       [(visible)]="visible"
       [header]="title()"
@@ -66,8 +66,8 @@ import { FileExplorerComponent } from './file-explorer.component';
       </div>
     </dp-dialog>
 `,
-  styles: [
-    `
+    styles: [
+        `
       .flex-row {
         display: flex;
         justify-content: space-between;
@@ -136,7 +136,8 @@ import { FileExplorerComponent } from './file-explorer.component';
         }
       }
     `,
-  ],
+    ],
+    standalone: false
 })
 export class FileExplorerDialogComponent implements OnInit {
   visible = model<boolean>(false);

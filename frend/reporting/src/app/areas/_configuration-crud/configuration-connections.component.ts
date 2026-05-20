@@ -23,8 +23,8 @@ import { ConnectionsService } from '../../providers/connections.service';
 import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
 
 @Component({
-  selector: 'dburst-connection-list',
-  template: `
+    selector: 'dburst-connection-list',
+    template: `
     <div>${tabsTemplate}</div>
     ${tabExternalConnectionsTemplate}
     <dburst-connection-details
@@ -32,6 +32,7 @@ import { ConnectionDetailsComponent } from '../../components/connection-details/
     ></dburst-connection-details>
     ${tabLicenseTemplate}
   `,
+    standalone: false
 })
 export class ConnectionListComponent implements OnInit, OnDestroy {
   connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');

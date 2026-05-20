@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 
 @Component({
-  selector: 'dburst-live-chat',
-  template: '<div id="dburst-live-chat-widget"></div>',
-  styles: [':host { display: block; }'],
+    selector: 'dburst-live-chat',
+    template: '<div id="dburst-live-chat-widget"></div>',
+    styles: [':host { display: block; }'],
+    standalone: false
 })
 export class LiveChatComponent implements OnInit {
   ngOnInit() {

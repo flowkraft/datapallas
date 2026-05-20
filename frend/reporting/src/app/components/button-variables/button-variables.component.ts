@@ -5,8 +5,8 @@ import { StateStoreService } from '../../providers/state-store.service';
 import { TranslateService } from '@ngx-translate/core';
 
 @Component({
-  selector: 'dburst-button-variables',
-  template: `
+    selector: 'dburst-button-variables',
+    template: `
     <button
       type="button"
       class="btn"
@@ -18,6 +18,7 @@ import { TranslateService } from '@ngx-translate/core';
     </button>
     ${modalVariablesTemplate}
   `,
+    standalone: false
 })
 export class ButtonVariablesComponent {
   isModalVariablesVisible = false;

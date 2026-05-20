@@ -10,10 +10,9 @@ import {
 import { NgStyle } from '@angular/common';
 
 @Component({
-  selector: 'dp-drawer',
-  standalone: true,
-  imports: [NgStyle],
-  template: `
+    selector: 'dp-drawer',
+    imports: [NgStyle],
+    template: `
     @if (visible()) {
       <div
         class="fixed inset-0 bg-black/40 z-[1000]"
@@ -32,7 +31,7 @@ import { NgStyle } from '@angular/common';
         <ng-content></ng-content>
       </aside>
     }
-  `,
+  `
 })
 export class DpDrawerComponent implements OnChanges {
   visible = model<boolean>(false);

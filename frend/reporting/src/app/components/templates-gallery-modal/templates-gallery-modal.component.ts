@@ -10,8 +10,9 @@ import { ApiService } from '../../providers/api.service';
 
 
 @Component({
-  selector: 'dburst-templates-gallery-modal',
-  templateUrl: './templates-gallery-modal.template.html'
+    selector: 'dburst-templates-gallery-modal',
+    templateUrl: './templates-gallery-modal.template.html',
+    standalone: false
 })
 export class TemplatesGalleryModalComponent {
 

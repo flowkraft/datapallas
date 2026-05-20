@@ -4,8 +4,8 @@ import { ActivatedRoute } from '@angular/router';
 import { leftMenuTemplate } from './templates/_left-menu';
 
 @Component({
-  selector: 'dburst-configuration-crud',
-  template: `
+    selector: 'dburst-configuration-crud',
+    template: `
     <aside class="app-sidebar fixed overflow-y-auto z-[810]"
            style="top:calc(50px + var(--cet-offset)); left:0; bottom:30px; width:230px; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
       ${leftMenuTemplate}
@@ -26,6 +26,7 @@ import { leftMenuTemplate } from './templates/_left-menu';
       </section>
     </div>
   `,
+    standalone: false
 })
 export class ConfigurationCrudComponent implements OnInit {
   activeSection = 'reports';

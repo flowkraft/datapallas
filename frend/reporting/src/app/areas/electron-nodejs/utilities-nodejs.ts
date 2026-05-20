@@ -45,7 +45,7 @@ export default class UtilitiesNodeJs {
     }
 
     const finalLength =
-      length || parseInt(response.headers.get('Content-Length' || '0'), 10);
+      length || parseInt(response.headers.get('Content-Length') || '0', 10);
     const reader = body.getReader();
     const writer = fs.createWriteStream(targetFile);
 
