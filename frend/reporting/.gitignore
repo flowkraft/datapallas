@@ -57,3 +57,5 @@ Thumbs.db
 ## Autonomous Coding Harness Templates (local dev only)
 #################
 .harness/
+# Angular version-bump backup files
+*.ng17bkp
