@@ -1,7 +1,6 @@
 "use client"
 
 import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js"
-import { Loader2 } from "lucide-react"
 
 interface PayPalCheckoutProps {
   invoiceId: number
@@ -73,15 +72,15 @@ export function PayPalCheckout({
   if (isPending) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Loading PayPal...</span>
+        <span className="loading loading-spinner loading-md text-base-content/40"></span>
+        <span className="ml-2 text-base-content/60">Loading PayPal...</span>
       </div>
     )
   }
 
   if (isRejected) {
     return (
-      <div className="p-4 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
+      <div className="p-4 text-sm text-error bg-error/10 rounded-md border border-error/30">
         Failed to load PayPal. Please try again later.
       </div>
     )

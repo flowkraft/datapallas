@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -127,7 +126,7 @@ export default function EditPayslipPage({ params }: { params: Promise<{ id: stri
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-base-content/60">Loading...</div>
       </div>
     )
   }
@@ -137,12 +136,14 @@ export default function EditPayslipPage({ params }: { params: Promise<{ id: stri
       <div className="flex items-center gap-4">
         <Link href={`/admin/payslips/${id}`}>
           <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+            </svg>
           </Button>
         </Link>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">Edit Payslip</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-3xl font-bold tracking-tight text-base-content">Edit Payslip</h2>
+          <p className="text-base-content/60">
             Update payslip {formData.payslipNumber}
           </p>
         </div>
@@ -304,7 +305,7 @@ export default function EditPayslipPage({ params }: { params: Promise<{ id: stri
                     onChange={handleChange}
                     placeholder="4500.00"
                     readOnly
-                    className="bg-muted"
+                    className="bg-base-200"
                   />
                 </div>
                 <div className="space-y-2">

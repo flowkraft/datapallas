@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Check, Copy } from "lucide-react"
 import { rbConfig } from "@/lib/rb-config"
 import { CodeBlock } from "@/components/CodeBlock"
 
@@ -86,20 +85,20 @@ export default function ChartsPage() {
   const tabClass = (tab: PageTab) =>
     `pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
       activeTab === tab
-        ? "border-rb-cyan text-rb-cyan"
-        : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
+        ? "border-primary text-primary"
+        : "border-transparent text-base-content/60 hover:text-base-content hover:border-base-300"
     }`
 
   return (
     <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h4 className="text-2xl font-bold text-foreground mb-2">Charts</h4>
-        <p className="text-muted-foreground mb-6">
-          Data visualization powered by <code className="text-sm bg-muted text-foreground px-1 rounded">&lt;rb-chart&gt;</code>.
+        <h4 className="text-2xl font-bold text-base-content mb-2">Charts</h4>
+        <p className="text-base-content/60 mb-6">
+          Data visualization powered by <code className="text-sm bg-base-200 text-base-content px-1 rounded">&lt;rb-chart&gt;</code>.
         </p>
 
         {/* Page-level tabs */}
-        <div className="border-b border-border mb-0">
+        <div className="border-b border-base-300 mb-0">
           <div className="flex space-x-6" role="tablist">
             <button id="examples-tab" role="tab" onClick={() => setActiveTab("examples")} className={tabClass("examples")}>Examples</button>
             <button id="config-tab" role="tab" onClick={() => setActiveTab("configuration")} className={tabClass("configuration")}>Configuration</button>
@@ -107,7 +106,7 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        <div className="bg-card border border-t-0 border-border rounded-b-lg p-4">
+        <div className="bg-base-100 border border-t-0 border-base-300 rounded-b-lg p-4">
           {/* Examples Tab */}
           {activeTab === "examples" && (
             isReady ? (
@@ -117,9 +116,9 @@ export default function ChartsPage() {
                     {category.name}
                   </h5>
                   {category.examples.map((example) => (
-                    <div key={example.id} id={`example-${example.id}`} className="border border-border rounded-lg mb-4 overflow-hidden p-4">
+                    <div key={example.id} id={`example-${example.id}`} className="border border-base-300 rounded-lg mb-4 overflow-hidden p-4">
                       <h6 className="font-semibold text-sm mb-1">{example.title}</h6>
-                      <p className="text-xs text-muted-foreground mb-3">{example.desc}</p>
+                      <p className="text-xs text-base-content/60 mb-3">{example.desc}</p>
                       <div style={{ height: "400px" }}>
                         {/* @ts-expect-error - Web component custom element */}
                         <rb-chart
@@ -136,7 +135,7 @@ export default function ChartsPage() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 text-muted-foreground">Loading web components...</div>
+              <div className="text-center py-12 text-base-content/60">Loading web components...</div>
             )
           )}
 
@@ -144,9 +143,13 @@ export default function ChartsPage() {
           {activeTab === "configuration" && (
             <div>
               <div className="flex justify-between items-start mb-2">
-                <span className="text-sm text-muted-foreground">Groovy DSL — shared configuration for all examples</span>
-                <button onClick={() => copyToClipboard(configDsl, "config")} className="inline-flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-muted">
-                  {copied === "config" ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                <span className="text-sm text-base-content/60">Groovy DSL — shared configuration for all examples</span>
+                <button onClick={() => copyToClipboard(configDsl, "config")} className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-base-300 rounded hover:bg-base-200">
+                  {copied === "config" ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 text-success"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
+                  )}
                 </button>
               </div>
               <div id="configCode">
@@ -159,9 +162,13 @@ export default function ChartsPage() {
           {activeTab === "usage" && (
             <div>
               <div className="flex justify-between items-start mb-2">
-                <span className="text-sm text-muted-foreground">HTML Usage</span>
-                <button onClick={() => copyToClipboard(usageCode, "usage")} className="inline-flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-muted">
-                  {copied === "usage" ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                <span className="text-sm text-base-content/60">HTML Usage</span>
+                <button onClick={() => copyToClipboard(usageCode, "usage")} className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-base-300 rounded hover:bg-base-200">
+                  {copied === "usage" ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 text-success"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
+                  )}
                 </button>
               </div>
               <div id="usageCode">

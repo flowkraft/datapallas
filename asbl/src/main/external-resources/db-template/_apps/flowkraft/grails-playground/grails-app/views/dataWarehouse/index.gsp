@@ -123,10 +123,10 @@
     </style>
 </head>
 <body>
-    <div class="row mt-4">
-        <div class="col-12">
-            <h4 class="mb-3"><i class="bi bi-database me-2"></i>Northwind Data Warehouse (Sample Data)</h4>
-            <p class="text-muted mb-3">OLAP analysis on ~8,000 sample sales transactions with Browser, DuckDB, and ClickHouse engines.
+    <div class="flex flex-wrap gap-4 mt-4">
+        <div class="w-full">
+            <h4 class="mb-3"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>Northwind Data Warehouse (Sample Data)</h4>
+            <p class="text-base-content/60 mb-3">OLAP analysis on ~8,000 sample sales transactions with Browser, DuckDB, and ClickHouse engines.
                 All three engines share the same data and the same pivot configuration &mdash; so you can compare them side by side and switch engines without changing anything else.</p>
 
             <!-- Data Warehouse Facts -->
@@ -139,76 +139,53 @@
                     <strong>DataPallas's approach:</strong> start with the simplest option. Only move to the next tier when your data volume actually demands it.
                 </p>
 
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
+                <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:0.75rem" class="mb-3">
+                    <div style="grid-column:span 4">
                         <div class="tier-card tier-browser">
-                            <h6 class="mb-1"><i class="bi bi-globe me-1"></i> Browser Pivot</h6>
+                            <h6 class="mb-1"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg> Browser Pivot</h6>
                             <span class="volume-badge">Up to ~100K rows</span>
-                            <p class="small text-muted mb-2">
+                            <p class="text-sm text-base-content/60 mb-2">
                                 The default. Zero setup, zero overhead. All processing happens in your browser.
                                 Most reports never need anything else &mdash; just build your reports normally.
                             </p>
-                            <a href="#engine-browser" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-arrow-down-short"></i> Jump to Browser
+                            <a href="#engine-browser" class="btn btn-outline btn-primary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"/></svg> Jump to Browser
                             </a>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div style="grid-column:span 4">
                         <div class="tier-card tier-duckdb">
-                            <h6 class="mb-1"><i class="bi bi-hdd me-1"></i> DuckDB</h6>
+                            <h6 class="mb-1"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg> DuckDB</h6>
                             <span class="volume-badge">~100K &ndash; 100M rows</span>
-                            <p class="small text-muted mb-2">
+                            <p class="text-sm text-base-content/60 mb-2">
                                 Almost no overhead &mdash; a single file on disk. Server-side aggregation handles
                                 medium to large volumes. You just need to be aware it exists and use / enable it.
                             </p>
-                            <a href="#engine-duckdb" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-arrow-down-short"></i> Jump to DuckDB
+                            <a href="#engine-duckdb" class="btn btn-outline btn-primary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"/></svg> Jump to DuckDB
                             </a>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div style="grid-column:span 4">
                         <div class="tier-card tier-clickhouse">
-                            <h6 class="mb-1"><i class="bi bi-server me-1"></i> ClickHouse</h6>
+                            <h6 class="mb-1"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.602H7.923a3.375 3.375 0 0 0-3.285 2.602l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m19.5 0a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3m19.5 0a3 3 0 0 0-3-3H5.25a3 3 0 0 0-3 3m16.5 0h.008v.008h-.008v-.008Zm-3 0h.008v.008h-.008v-.008Z"/></svg> ClickHouse</h6>
                             <span class="volume-badge">100M &ndash; 10B+ rows</span>
-                            <p class="small text-muted mb-2">
+                            <p class="text-sm text-base-content/60 mb-2">
                                 For truly massive volumes. A dedicated OLAP server with sub-second queries on billions of rows.
                                 Additional infrastructure and maintenance cost, but unmatched performance at scale.
                             </p>
-                            <a href="#engine-clickhouse" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-arrow-down-short"></i> Jump to ClickHouse
+                            <a href="#engine-clickhouse" class="btn btn-outline btn-primary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"/></svg> Jump to ClickHouse
                             </a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Bootstrap 5 Tabs -->
-            <ul class="nav nav-tabs" id="warehouseTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="warehouse-tab" data-bs-toggle="tab" data-bs-target="#warehouse-pane" type="button" role="tab" aria-controls="warehouse-pane" aria-selected="true">
-                        <i class="bi bi-database"></i> Data Warehouse
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="rawdata-tab" data-bs-toggle="tab" data-bs-target="#rawdata-pane" type="button" role="tab" aria-controls="rawdata-pane" aria-selected="false">
-                        <i class="bi bi-table"></i> Raw Data
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config-pane" type="button" role="tab" aria-controls="config-pane" aria-selected="false">
-                        <i class="bi bi-gear"></i> Configuration
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage-pane" type="button" role="tab" aria-controls="usage-pane" aria-selected="false">
-                        <i class="bi bi-code-slash"></i> Usage
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content border border-top-0 rounded-bottom p-3" id="warehouseTabContent">
-                <!-- Data Warehouse Tab -->
-                <div class="tab-pane fade show active" id="warehouse-pane" role="tabpanel" aria-labelledby="warehouse-tab">
+            <!-- daisyUI Tabs -->
+            <div class="tabs tabs-bordered" role="tablist">
+                <input type="radio" name="warehouse-tabs" role="tab" class="tab" aria-label="Data Warehouse" id="warehouse-tab" checked />
+                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="warehouse-pane">
 
                     <div class="alert alert-info mb-3">
                         <strong>~8,000 sales transactions</strong> across 10 Countries × 8 Product Categories × 8 Quarters (2023–2024),
@@ -218,7 +195,7 @@
 
                     <!-- Browser Engine -->
                     <div class="engine-section" id="engine-browser">
-                        <h6><i class="bi bi-globe"></i> Browser Engine</h6>
+                        <h6><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg> Browser Engine</h6>
                         <p class="engine-desc">
                             All ~8,000 rows loaded to your browser, aggregated client-side in JavaScript.
                             Drag-and-drop rearrangement is instant. Ideal for up to <strong>50K–100K rows</strong> (snappy).
@@ -234,7 +211,7 @@
 
                     <!-- DuckDB Engine -->
                     <div class="engine-section" id="engine-duckdb">
-                        <h6><i class="bi bi-hdd"></i> DuckDB Engine</h6>
+                        <h6><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg> DuckDB Engine</h6>
                         <p class="engine-desc">
                             Server-side embedded OLAP database (single file, zero setup).
                             Aggregation runs on the server, only results sent to browser.
@@ -251,14 +228,14 @@
 
                     <!-- ClickHouse Engine -->
                     <div class="engine-section" id="engine-clickhouse">
-                        <h6><i class="bi bi-server"></i> ClickHouse Engine</h6>
+                        <h6><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.602H7.923a3.375 3.375 0 0 0-3.285 2.602l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m19.5 0a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3m19.5 0a3 3 0 0 0-3-3H5.25a3 3 0 0 0-3 3m16.5 0h.008v.008h-.008v-.008Zm-3 0h.008v.008h-.008v-.008Z"/></svg> ClickHouse Engine</h6>
                         <p class="engine-desc">
                             Server-side columnar OLAP database (requires ClickHouse starter pack).
                             Built for scale: handles <strong>millions to billions of rows</strong> with sub-second queries.
                             The go-to for production analytics — <strong>100M–10B+ rows</strong> is everyday territory.
                         </p>
-                        <div id="clickhouseWarning" class="alert alert-warning mb-3 small">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
+                        <div id="clickhouseWarning" class="alert alert-warning mb-3 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
                             Start the ClickHouse starter pack from the Connections page to see warehouse data.
                         </div>
                         <rb-pivot-table
@@ -271,7 +248,7 @@
 
                     <!-- How to Use Guide -->
                     <div class="howto-section">
-                        <h5><i class="bi bi-lightbulb"></i> How to Use This Warehouse Pivot</h5>
+                        <h5><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg> How to Use This Warehouse Pivot</h5>
 
                         <p><strong>What you're looking at right now:</strong></p>
                         <p>
@@ -367,8 +344,8 @@
                         </ul>
 
                         <h6>Why This Matters — The "Excel Problem"</h6>
-                        <div class="row">
-                            <div class="col-md-6">
+                        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+                            <div style="grid-column:span 6">
                                 <p class="mb-1"><strong>What teams do today:</strong></p>
                                 <div class="sql-compare">
 <pre>
@@ -382,7 +359,7 @@
 </pre>
 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div style="grid-column:span 6">
                                 <p class="mb-1"><strong>What this does instead:</strong></p>
                                 <div class="pivot-compare">
 <strong>✓</strong> Data stays in the warehouse (no CSV exports)<br>
@@ -403,67 +380,69 @@
                 </div>
 
                 <!-- Raw Data Tab -->
-                <div class="tab-pane fade" id="rawdata-pane" role="tabpanel" aria-labelledby="rawdata-tab">
-                    <p class="text-muted small mb-3">
-                        <i class="bi bi-info-circle"></i> Raw source data (~8,000 rows) that feeds the warehouse pivot tables.
+                <input type="radio" name="warehouse-tabs" role="tab" class="tab" aria-label="Raw Data" id="rawdata-tab" />
+                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="rawdata-pane">
+                    <p class="text-base-content/60 text-sm mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg> Raw source data (~8,000 rows) that feeds the warehouse pivot tables.
                     </p>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="flex justify-between items-center mb-2">
                         <div>
-                            <label class="small text-muted me-2">Page size:</label>
-                            <select id="rawDataPageSize" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                            <label class="text-sm text-base-content/60 mr-2">Page size:</label>
+                            <select id="rawDataPageSize" class="select select-sm inline-block" style="width: auto;">
                                 <option value="10" selected>10</option>
                                 <option value="50">50</option>
                                 <option value="100">100</option>
                             </select>
                         </div>
-                        <span id="rawDataInfo" class="small text-muted"></span>
+                        <span id="rawDataInfo" class="text-sm text-base-content/60"></span>
                     </div>
-                    <div id="rawDataLoading" class="text-center py-4 d-none">
-                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
-                        <span class="text-muted ms-2">Loading data...</span>
+                    <div id="rawDataLoading" class="text-center py-4 hidden">
+                        <span class="loading loading-spinner loading-sm text-base-content/60"></span>
+                        <span class="text-base-content/60 ml-2">Loading data...</span>
                     </div>
-                    <div id="rawDataError" class="alert alert-danger d-none"></div>
-                    <div class="table-responsive">
-                        <table id="rawDataTable" class="table table-striped table-sm table-hover d-none">
-                            <thead id="rawDataHead" class="table-light"></thead>
+                    <div id="rawDataError" class="alert alert-error hidden"></div>
+                    <div class="overflow-x-auto">
+                        <table id="rawDataTable" class="table table-sm hidden">
+                            <thead id="rawDataHead"></thead>
                             <tbody id="rawDataBody"></tbody>
                         </table>
                     </div>
-                    <nav id="rawDataPagination" class="d-none" aria-label="Raw data pagination">
-                        <ul class="pagination pagination-sm justify-content-center"></ul>
+                    <nav id="rawDataPagination" class="hidden mt-3" aria-label="Raw data pagination">
+                        <div class="join flex justify-center" id="rawDataPaginationInner"></div>
                     </nav>
                 </div>
 
                 <!-- Configuration Tab -->
-                <div class="tab-pane fade" id="config-pane" role="tabpanel" aria-labelledby="config-tab">
-                    <p class="text-muted small mb-3">
-                        <i class="bi bi-info-circle me-1"></i>
+                <input type="radio" name="warehouse-tabs" role="tab" class="tab" aria-label="Configuration" id="config-tab" />
+                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="config-pane">
+                    <p class="text-base-content/60 text-sm mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>
                         All three reports use the same pivot table configuration &mdash; only the OLAP backend engine differs.
                         This lets you choose the engine that matches your data volume without changing your report definition.
                     </p>
                     <div class="engine-section mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-globe"></i> Browser Engine</h6>
-                            <button class="btn btn-outline-secondary btn-sm copy-config-btn" data-target="configCodeBrowser" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                        <div class="flex justify-between items-center">
+                            <h6 class="mb-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg> Browser Engine</h6>
+                            <button class="btn btn-outline btn-sm copy-config-btn" data-target="configCodeBrowser" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="configCodeBrowser" class="code-block mt-2"><code class="language-groovy">Loading configuration...</code></pre>
                     </div>
                     <div class="engine-section mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-hdd"></i> DuckDB Engine</h6>
-                            <button class="btn btn-outline-secondary btn-sm copy-config-btn" data-target="configCodeDuckdb" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                        <div class="flex justify-between items-center">
+                            <h6 class="mb-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg> DuckDB Engine</h6>
+                            <button class="btn btn-outline btn-sm copy-config-btn" data-target="configCodeDuckdb" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="configCodeDuckdb" class="code-block mt-2"><code class="language-groovy">Loading configuration...</code></pre>
                     </div>
                     <div class="engine-section mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-server"></i> ClickHouse Engine</h6>
-                            <button class="btn btn-outline-secondary btn-sm copy-config-btn" data-target="configCodeClickhouse" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                        <div class="flex justify-between items-center">
+                            <h6 class="mb-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.602H7.923a3.375 3.375 0 0 0-3.285 2.602l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m19.5 0a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3m19.5 0a3 3 0 0 0-3-3H5.25a3 3 0 0 0-3 3m16.5 0h.008v.008h-.008v-.008Zm-3 0h.008v.008h-.008v-.008Z"/></svg> ClickHouse Engine</h6>
+                            <button class="btn btn-outline btn-sm copy-config-btn" data-target="configCodeClickhouse" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="configCodeClickhouse" class="code-block mt-2"><code class="language-groovy">Loading configuration...</code></pre>
@@ -471,12 +450,13 @@
                 </div>
 
                 <!-- Usage Tab -->
-                <div class="tab-pane fade" id="usage-pane" role="tabpanel" aria-labelledby="usage-tab">
+                <input type="radio" name="warehouse-tabs" role="tab" class="tab" aria-label="Usage" id="usage-tab" />
+                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="usage-pane">
                     <div class="engine-section mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-globe"></i> Browser Engine</h6>
-                            <button class="btn btn-outline-secondary btn-sm copy-usage-btn" data-target="usageCodeBrowser" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                        <div class="flex justify-between items-center">
+                            <h6 class="mb-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg> Browser Engine</h6>
+                            <button class="btn btn-outline btn-sm copy-usage-btn" data-target="usageCodeBrowser" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="usageCodeBrowser" class="code-block mt-2"><code class="language-markup">&lt;rb-pivot-table
@@ -486,10 +466,10 @@
 &gt;&lt;/rb-pivot-table&gt;</code></pre>
                     </div>
                     <div class="engine-section mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-hdd"></i> DuckDB Engine</h6>
-                            <button class="btn btn-outline-secondary btn-sm copy-usage-btn" data-target="usageCodeDuckdb" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                        <div class="flex justify-between items-center">
+                            <h6 class="mb-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg> DuckDB Engine</h6>
+                            <button class="btn btn-outline btn-sm copy-usage-btn" data-target="usageCodeDuckdb" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="usageCodeDuckdb" class="code-block mt-2"><code class="language-markup">&lt;rb-pivot-table
@@ -499,10 +479,10 @@
 &gt;&lt;/rb-pivot-table&gt;</code></pre>
                     </div>
                     <div class="engine-section mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-server"></i> ClickHouse Engine</h6>
-                            <button class="btn btn-outline-secondary btn-sm copy-usage-btn" data-target="usageCodeClickhouse" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                        <div class="flex justify-between items-center">
+                            <h6 class="mb-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.602H7.923a3.375 3.375 0 0 0-3.285 2.602l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m19.5 0a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3m19.5 0a3 3 0 0 0-3-3H5.25a3 3 0 0 0-3 3m16.5 0h.008v.008h-.008v-.008Zm-3 0h.008v.008h-.008v-.008Z"/></svg> ClickHouse Engine</h6>
+                            <button class="btn btn-outline btn-sm copy-usage-btn" data-target="usageCodeClickhouse" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="usageCodeClickhouse" class="code-block mt-2"><code class="language-markup">&lt;rb-pivot-table
@@ -518,35 +498,33 @@
     </div>
 
     <!-- Copy-to-clipboard toast -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="copyToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="bi bi-check-circle me-1"></i> Copied to clipboard!
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
+    <div id="copyToast" class="toast toast-end toast-bottom hidden" style="position:fixed;z-index:1090;">
+        <div class="alert alert-success gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg> Copied to clipboard!
         </div>
     </div>
 
     <content tag="scripts">
     <script>
+        var SVG_CLIPBOARD = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>';
+        var SVG_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>';
         document.addEventListener('DOMContentLoaded', function() {
 
             // ================================================================
-            // Copy to Clipboard (matching pivot-tables pattern)
+            // Copy to Clipboard
             // ================================================================
-            var copyToast = new bootstrap.Toast(document.getElementById('copyToast'), { delay: 2000 });
+            var copyToastEl = document.getElementById('copyToast');
+            function showToast() {
+                copyToastEl.classList.remove('hidden');
+                setTimeout(function() { copyToastEl.classList.add('hidden'); }, 2000);
+            }
 
             function copyWithFeedback(btn, text) {
                 navigator.clipboard.writeText(text).then(function() {
-                    var icon = btn.querySelector('i');
-                    icon.classList.remove('bi-clipboard');
-                    icon.classList.add('bi-check');
-                    copyToast.show();
+                    btn.innerHTML = SVG_CHECK;
+                    showToast();
                     setTimeout(function() {
-                        icon.classList.remove('bi-check');
-                        icon.classList.add('bi-clipboard');
+                        btn.innerHTML = SVG_CLIPBOARD;
                     }, 2000);
                 });
             }
@@ -572,11 +550,11 @@
             var clickhouseWarning = document.getElementById('clickhouseWarning');
             if (clickhouseComponent) {
                 clickhouseComponent.addEventListener('pivotExecuted', function() {
-                    if (clickhouseWarning) clickhouseWarning.classList.add('d-none');
+                    if (clickhouseWarning) clickhouseWarning.classList.add('hidden');
                 });
                 clickhouseComponent.addEventListener('error', function(event) {
                     console.warn('[data-warehouse] ClickHouse connection failed:', event.detail);
-                    if (clickhouseWarning) clickhouseWarning.classList.remove('d-none');
+                    if (clickhouseWarning) clickhouseWarning.classList.remove('hidden');
                     showClickHouseWarningToast();
                 });
             }
@@ -618,7 +596,7 @@
             });
 
             // ================================================================
-            // Raw Data tab: server-side paginated Bootstrap table
+            // Raw Data tab: server-side paginated table
             // ================================================================
             (function() {
                 var apiBase = '${RbUtils.apiBaseUrl}';
@@ -630,8 +608,8 @@
                 var loaded = false;
 
                 function fetchPage() {
-                    document.getElementById('rawDataLoading').classList.remove('d-none');
-                    document.getElementById('rawDataError').classList.add('d-none');
+                    document.getElementById('rawDataLoading').classList.remove('hidden');
+                    document.getElementById('rawDataError').classList.add('hidden');
 
                     fetch(apiBase + '/reports/' + reportId + '/data?page=' + (currentPage + 1) + '&size=' + pageSize)
                         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -661,43 +639,40 @@
                                 'Showing ' + from + '-' + to + ' of ' + totalRows + ' rows';
 
                             // Show table, hide loading
-                            document.getElementById('rawDataLoading').classList.add('d-none');
-                            document.getElementById('rawDataTable').classList.remove('d-none');
-                            document.getElementById('rawDataPagination').classList.remove('d-none');
+                            document.getElementById('rawDataLoading').classList.add('hidden');
+                            document.getElementById('rawDataTable').classList.remove('hidden');
+                            document.getElementById('rawDataPagination').classList.remove('hidden');
 
                             renderPagination();
                             loaded = true;
                         })
                         .catch(function(err) {
-                            document.getElementById('rawDataLoading').classList.add('d-none');
+                            document.getElementById('rawDataLoading').classList.add('hidden');
                             document.getElementById('rawDataError').textContent = 'Failed to load data: ' + err.message;
-                            document.getElementById('rawDataError').classList.remove('d-none');
+                            document.getElementById('rawDataError').classList.remove('hidden');
                         });
                 }
 
                 function renderPagination() {
                     var totalPages = Math.ceil(totalRows / pageSize);
-                    var ul = document.querySelector('#rawDataPagination ul');
+                    var container = document.getElementById('rawDataPaginationInner');
                     var html = '';
 
-                    html += '<li class="page-item ' + (currentPage === 0 ? 'disabled' : '') + '">'
-                         +  '<a class="page-link" href="#" data-page="' + (currentPage - 1) + '">&laquo;</a></li>';
+                    html += '<a class="join-item btn btn-sm ' + (currentPage === 0 ? 'btn-disabled' : '') + '" href="#" data-page="' + (currentPage - 1) + '">&laquo;</a>';
 
                     for (var i = 0; i < totalPages; i++) {
                         if (totalPages <= 7 || i === 0 || i === totalPages - 1 || Math.abs(i - currentPage) <= 2) {
-                            html += '<li class="page-item ' + (i === currentPage ? 'active' : '') + '">'
-                                 +  '<a class="page-link" href="#" data-page="' + i + '">' + (i + 1) + '</a></li>';
+                            html += '<a class="join-item btn btn-sm ' + (i === currentPage ? 'btn-active' : '') + '" href="#" data-page="' + i + '">' + (i + 1) + '</a>';
                         } else if (i === 1 || i === totalPages - 2) {
-                            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                            html += '<span class="join-item btn btn-sm btn-disabled">...</span>';
                         }
                     }
 
-                    html += '<li class="page-item ' + (currentPage >= totalPages - 1 ? 'disabled' : '') + '">'
-                         +  '<a class="page-link" href="#" data-page="' + (currentPage + 1) + '">&raquo;</a></li>';
+                    html += '<a class="join-item btn btn-sm ' + (currentPage >= totalPages - 1 ? 'btn-disabled' : '') + '" href="#" data-page="' + (currentPage + 1) + '">&raquo;</a>';
 
-                    ul.innerHTML = html;
+                    container.innerHTML = html;
 
-                    ul.querySelectorAll('a[data-page]').forEach(function(a) {
+                    container.querySelectorAll('a[data-page]').forEach(function(a) {
                         a.addEventListener('click', function(e) {
                             e.preventDefault();
                             var p = parseInt(this.dataset.page);
@@ -706,10 +681,10 @@
                     });
                 }
 
-                // Load on tab show
-                var rawTab = document.getElementById('rawdata-tab');
-                if (rawTab) {
-                    rawTab.addEventListener('shown.bs.tab', function() {
+                // Load on tab show (input radio tab click)
+                var rawTabInput = document.getElementById('rawdata-tab');
+                if (rawTabInput) {
+                    rawTabInput.addEventListener('change', function() {
                         if (!loaded) fetchPage();
                     });
                 }
@@ -731,33 +706,21 @@
             if (!toastContainer) {
                 toastContainer = document.createElement('div');
                 toastContainer.id = 'toastContainer';
-                toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                toastContainer.className = 'toast toast-end toast-top';
                 toastContainer.style.zIndex = '9999';
+                toastContainer.style.position = 'fixed';
                 document.body.appendChild(toastContainer);
             }
 
-            var toastHtml =
-                '<div class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">'
-              + '  <div class="d-flex">'
-              + '    <div class="toast-body">'
-              + '      <i class="bi bi-exclamation-triangle me-2"></i>'
-              + '      <strong>ClickHouse Unavailable:</strong> Start the ClickHouse starter pack to enable the ClickHouse pivot table.'
-              + '    </div>'
-              + '    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>'
-              + '  </div>'
-              + '</div>';
+            var alertEl = document.createElement('div');
+            alertEl.className = 'alert alert-warning';
+            alertEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>'
+                + '<strong>ClickHouse Unavailable:</strong> Start the ClickHouse starter pack to enable the ClickHouse pivot table.';
+            toastContainer.appendChild(alertEl);
 
-            var tempDiv = document.createElement('div');
-            tempDiv.innerHTML = toastHtml;
-            var toastElement = tempDiv.firstElementChild;
-            toastContainer.appendChild(toastElement);
-
-            var toast = new bootstrap.Toast(toastElement, { delay: 5000 });
-            toast.show();
-
-            toastElement.addEventListener('hidden.bs.toast', function() {
-                toastElement.remove();
-            });
+            setTimeout(function() {
+                alertEl.remove();
+            }, 5000);
         }
     </script>
     </content>

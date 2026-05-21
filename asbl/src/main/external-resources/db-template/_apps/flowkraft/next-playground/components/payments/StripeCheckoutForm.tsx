@@ -7,7 +7,6 @@ import {
   useElements,
 } from "@stripe/react-stripe-js"
 import { Button } from "@/components/ui/button"
-import { Loader2, CreditCard } from "lucide-react"
 
 interface StripeCheckoutFormProps {
   invoiceId: number
@@ -88,7 +87,7 @@ export function StripeCheckoutForm({
       />
 
       {errorMessage && (
-        <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
+        <div className="p-3 text-sm text-error bg-error/10 rounded-md border border-error/30">
           {errorMessage}
         </div>
       )}
@@ -101,12 +100,14 @@ export function StripeCheckoutForm({
       >
         {isProcessing ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <span className="loading loading-spinner loading-xs mr-2"></span>
             Processing...
           </>
         ) : (
           <>
-            <CreditCard className="mr-2 h-4 w-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-2 h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/>
+            </svg>
             Pay {formatCurrency(amount, currency)}
           </>
         )}

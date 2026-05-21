@@ -29,7 +29,7 @@ export async function GET() {
     const stats = {
       totalPayslips: payslipCount.count,
       totalInvoices: invoiceCount.count,
-      totalRevenue: revenueResult.total || 0,
+      totalRevenue: Math.round((parseFloat(String(revenueResult.total)) || 0) * 100) / 100,
       pendingPayments: (pendingInvoices.count || 0) + (draftPayslips.count || 0),
     };
 

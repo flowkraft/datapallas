@@ -13,16 +13,16 @@
             overflow: hidden;
             padding: 1rem;
         }
-        [data-bs-theme="dark"] .example-card { border-color: #334155; }
+        [data-theme="dark"] .example-card { border-color: #334155; }
         .example-title { margin: 0 0 0.25rem 0; font-weight: 600; font-size: 0.95rem; }
         .example-desc { color: #6b7280; font-size: 0.85rem; margin: 0 0 1rem 0; }
-        [data-bs-theme="dark"] .example-desc { color: #94a3b8; }
+        [data-theme="dark"] .example-desc { color: #94a3b8; }
         .category-header {
             font-size: 1.1rem;
             font-weight: 700;
             margin: 2rem 0 1rem 0;
             padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--rb-cyan, #06b6d4);
+            border-bottom: 2px solid var(--color-primary);
         }
         .code-block {
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -41,33 +41,15 @@
 </head>
 <body>
     <div class="container">
-        <div class="row mt-4">
-            <div class="col-12">
+        <div class="flex flex-wrap gap-4 mt-4">
+            <div class="w-full">
                 <h4 class="mb-2">Charts</h4>
-                <p class="text-muted mb-4">Data visualization powered by <code>&lt;rb-chart&gt;</code>.</p>
+                <p class="text-base-content/60 mb-4">Data visualization powered by <code>&lt;rb-chart&gt;</code>.</p>
 
                 <!-- Page-level tabs -->
-                <ul class="nav nav-tabs" id="pageTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="examples-tab" data-bs-toggle="tab" data-bs-target="#examples-pane" type="button" role="tab" aria-controls="examples-pane" aria-selected="true">
-                            <i class="bi bi-bar-chart"></i> Examples
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config-pane" type="button" role="tab" aria-controls="config-pane" aria-selected="false">
-                            <i class="bi bi-gear"></i> Configuration
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage-pane" type="button" role="tab" aria-controls="usage-pane" aria-selected="false">
-                            <i class="bi bi-code-slash"></i> Usage
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content border border-top-0 rounded-bottom p-3" id="pageTabContent">
-                    <!-- Examples Tab -->
-                    <div class="tab-pane fade show active" id="examples-pane" role="tabpanel" aria-labelledby="examples-tab">
+                <div class="tabs tabs-bordered" role="tablist">
+                    <input type="radio" name="page-tabs" role="tab" class="tab" aria-label="Examples" id="examples-tab" checked />
+                    <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="examples-pane">
 
                         <h5 class="category-header">Live Examples</h5>
 
@@ -85,23 +67,23 @@
 
                     </div>
 
-                    <!-- Configuration Tab -->
-                    <div class="tab-pane fade" id="config-pane" role="tabpanel" aria-labelledby="config-tab">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="text-muted small">Groovy DSL — shared configuration for all examples</span>
-                            <button id="copyConfigBtn" class="btn btn-outline-secondary btn-sm" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                    <input type="radio" name="page-tabs" role="tab" class="tab" aria-label="Configuration" id="config-tab" />
+                    <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="config-pane">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-base-content/60 text-sm">Groovy DSL — shared configuration for all examples</span>
+                            <button id="copyConfigBtn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="configCode" class="code-block"><code class="language-groovy">Loading configuration...</code></pre>
                     </div>
 
-                    <!-- Usage Tab -->
-                    <div class="tab-pane fade" id="usage-pane" role="tabpanel" aria-labelledby="usage-tab">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="text-muted small">HTML Usage</span>
-                            <button id="copyUsageBtn" class="btn btn-outline-secondary btn-sm" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                    <input type="radio" name="page-tabs" role="tab" class="tab" aria-label="Usage" id="usage-tab" />
+                    <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="usage-pane">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-base-content/60 text-sm">HTML Usage</span>
+                            <button id="copyUsageBtn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="usageCode" class="code-block"><code class="language-markup">&lt;rb-chart
@@ -117,33 +99,31 @@
         </div>
     </div>
 
-    <!-- Toast container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="copyToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="bi bi-check-circle me-1"></i> Copied to clipboard!
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
+    <!-- Toast -->
+    <div id="copyToast" class="toast toast-end toast-bottom hidden" style="position:fixed;z-index:1090;">
+        <div class="alert alert-success gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg> Copied to clipboard!
         </div>
     </div>
 
     <content tag="scripts">
     <script>
+        var SVG_CLIPBOARD = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>';
+        var SVG_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>';
         document.addEventListener('DOMContentLoaded', function() {
-            var copyToast = new bootstrap.Toast(document.getElementById('copyToast'), { delay: 2000 });
+            var copyToastEl = document.getElementById('copyToast');
+            function showToast() {
+                copyToastEl.classList.remove('hidden');
+                setTimeout(function() { copyToastEl.classList.add('hidden'); }, 2000);
+            }
             var configCodeEl = document.getElementById('configCode');
 
             function copyWithFeedback(btn, text) {
                 navigator.clipboard.writeText(text).then(function() {
-                    var icon = btn.querySelector('i');
-                    icon.classList.remove('bi-clipboard');
-                    icon.classList.add('bi-check');
-                    copyToast.show();
+                    btn.innerHTML = SVG_CHECK;
+                    showToast();
                     setTimeout(function() {
-                        icon.classList.remove('bi-check');
-                        icon.classList.add('bi-clipboard');
+                        btn.innerHTML = SVG_CLIPBOARD;
                     }, 2000);
                 });
             }

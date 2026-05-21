@@ -2,7 +2,7 @@
 // Auto-discovers API key from api-key.txt or uses '123' fallback for development
 
 export const rbConfig = {
-  apiBaseUrl: process.env.NEXT_PUBLIC_RB_API_BASE_URL || "http://localhost:9090/api/reporting",
+  apiBaseUrl: process.env.NEXT_PUBLIC_RB_API_BASE_URL || "http://localhost:9090/api",
   apiKey: process.env.NEXT_PUBLIC_RB_API_KEY || "123", // Default dev key
 }
 

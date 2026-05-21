@@ -1,0 +1,13 @@
+{
+  "name": "grails-playground",
+  "private": true,
+  "scripts": {
+    "css:build": "tailwindcss --input src/tailwind.source.css --output grails-app/assets/stylesheets/tailwind.css --minify",
+    "css:watch": "tailwindcss --input src/tailwind.source.css --output grails-app/assets/stylesheets/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "daisyui": "^5.5.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

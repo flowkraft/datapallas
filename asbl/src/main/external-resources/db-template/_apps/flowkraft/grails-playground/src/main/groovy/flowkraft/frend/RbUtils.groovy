@@ -21,11 +21,13 @@ class RbUtils {
 
     /**
      * Returns the backend API base URL for DataPallas.
+     * Web components append /reports/{reportId}/config and /reports/{reportId}/data
+     * to this base URL, so this must end at /api to match the ReportsController at /api/reports.
      */
     static String getApiBaseUrl() {
         def config = Holders.grailsApplication?.config
         String baseUrl = config?.getProperty('datapallas.backend.baseUrl', String, 'http://localhost:9090')
-        return "${baseUrl}/api/reporting"
+        return "${baseUrl}/api"
     }
 
     /**
@@ -51,7 +53,7 @@ class RbUtils {
     }
 
     /**
-     * Returns the backend base URL without the /api/reporting suffix.
+     * Returns the backend base URL without the /api suffix.
      */
     static String getBackendBaseUrl() {
         def config = Holders.grailsApplication?.config

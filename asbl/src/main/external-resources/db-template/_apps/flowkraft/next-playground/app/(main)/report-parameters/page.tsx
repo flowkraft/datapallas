@@ -1,9 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { RefreshCw, Check, Copy, Sliders, Settings, Code } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
 import { rbConfig } from "@/lib/rb-config"
 import { CodeBlock } from "@/components/CodeBlock"
 
@@ -33,20 +30,17 @@ export default function ReportParametersPage() {
   const [recordCount, setRecordCount] = useState("Loading...")
   const [originalDataCount, setOriginalDataCount] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { toast } = useToast()
 
   useEffect(() => {
-    // Check if components are already loaded
     if (customElements.get("rb-parameters")) {
       setIsReady(true)
       return
     }
 
-    // Listen for the global loader event
     const handleComponentsLoaded = () => {
       setIsReady(true)
     }
-    
+
     window.addEventListener("rb-components-loaded", handleComponentsLoaded)
     return () => {
       window.removeEventListener("rb-components-loaded", handleComponentsLoaded)
@@ -125,18 +119,7 @@ export default function ReportParametersPage() {
         setCopiedUsage(true)
         setTimeout(() => setCopiedUsage(false), 2000)
       }
-
-      toast({
-        title: "Copied to clipboard",
-        duration: 2000,
-      })
-    } catch (err) {
-      toast({
-        title: "Copy failed",
-        variant: "destructive",
-        duration: 2000,
-      })
-    }
+    } catch { /* ignore */ }
   }
 
   const handleRunReport = async () => {
@@ -177,18 +160,8 @@ export default function ReportParametersPage() {
         setIsFiltered(true)
         setRecordCount(`${data.length} of ${originalDataCount} records`)
       }
-
-      toast({
-        title: "Report updated",
-        description: `Showing ${data.length} filtered records`,
-      })
     } catch (error) {
       console.error("Error running report:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to run report",
-        variant: "destructive",
-      })
     } finally {
       setIsSubmitting(false)
     }
@@ -201,11 +174,6 @@ export default function ReportParametersPage() {
     if (dataTableRef.current?.fetchData) {
       dataTableRef.current.fetchData({})
     }
-
-    toast({
-      title: "Filters cleared",
-      description: "Showing all records",
-    })
   }
 
   const usageCode = `<rb-parameters
@@ -214,79 +182,77 @@ export default function ReportParametersPage() {
   api-key="${rbConfig.apiKey}"
 ></rb-parameters>`
 
+  const tabClass = (tab: TabType) =>
+    `pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
+      activeTab === tab
+        ? "border-primary text-primary"
+        : "border-transparent text-base-content/60 hover:text-base-content hover:border-base-300"
+    }`
+
   return (
     <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+          <h1 className="text-3xl md:text-4xl font-bold text-base-content mb-3">
             Report Parameters
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-base-content/60">
             Define how users filter and customize reports at runtime.
           </p>
         </div>
 
         <div className="mb-6">
-          <div className="border-b border-border">
+          <div className="border-b border-base-300">
             <div className="flex space-x-8">
               <button
                 id="component-tab"
                 onClick={() => setActiveTab("component")}
-                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
-                  activeTab === "component"
-                    ? "border-rb-cyan text-rb-cyan"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
-                }`}
+                className={tabClass("component")}
               >
-                <Sliders className="w-4 h-4" />
+                {/* sliders / adjustments icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
                 Parameters
               </button>
               <button
                 id="config-tab"
                 onClick={() => setActiveTab("config")}
-                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
-                  activeTab === "config"
-                    ? "border-rb-cyan text-rb-cyan"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
-                }`}
+                className={tabClass("config")}
               >
-                <Settings className="w-4 h-4" />
+                {/* cog / settings icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
                 Configuration
               </button>
               <button
                 id="usage-tab"
                 onClick={() => setActiveTab("usage")}
-                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
-                  activeTab === "usage"
-                    ? "border-rb-cyan text-rb-cyan"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
-                }`}
+                className={tabClass("usage")}
               >
-                <Code className="w-4 h-4" />
+                {/* code brackets icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/></svg>
                 Usage
               </button>
             </div>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-lg shadow-sm">
+        <div className="bg-base-100 border border-base-300 rounded-lg shadow-sm">
           {activeTab === "component" && (
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="border border-border rounded-lg">
-                  <div className="border-b border-border p-4 flex justify-between items-center">
+                <div className="border border-base-300 rounded-lg">
+                  <div className="border-b border-base-300 p-4 flex justify-between items-center">
                     <span className="font-semibold">Parameter Form</span>
-                    <Button
+                    <button
                       onClick={() => {
                         if (paramsRef.current?.fetchConfig) {
                           paramsRef.current.fetchConfig()
                         }
                       }}
-                      variant="outline"
-                      size="sm"
+                      className="btn btn-sm btn-outline"
                     >
-                      <RefreshCw className="w-4 h-4" />
-                    </Button>
+                      {/* refresh / circular arrows icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                    </button>
                   </div>
                   <div className="p-4">
                     {/* @ts-expect-error - Web component custom element */}
@@ -298,18 +264,18 @@ export default function ReportParametersPage() {
                       api-key={rbConfig.apiKey}
                     />
                     <hr className="my-4" />
-                    <Button id="submitBtn" onClick={handleRunReport} disabled={isSubmitting} className="w-full">
+                    <button id="submitBtn" onClick={handleRunReport} disabled={isSubmitting} className="btn btn-primary w-full">
                       {isSubmitting ? "Loading..." : "Run Report"}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
-                <div className="border border-border rounded-lg">
-                  <div className="border-b border-border p-4">
+                <div className="border border-base-300 rounded-lg">
+                  <div className="border-b border-base-300 p-4">
                     <span className="font-semibold">Current Values</span>
                   </div>
                   <div className="p-4">
-                    <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-64">
+                    <pre className="bg-base-200 p-4 rounded text-sm overflow-auto max-h-64">
                       {JSON.stringify(paramValues, null, 2)}
                     </pre>
                   </div>
@@ -319,15 +285,15 @@ export default function ReportParametersPage() {
               <div
                 className={`border rounded-lg ${
                   isFiltered
-                    ? "border-yellow-500 shadow-[0_0_0_2px_rgba(234,179,8,0.25)]"
-                    : "border-border"
+                    ? "border-warning shadow-[0_0_0_2px_rgba(234,179,8,0.25)]"
+                    : "border-base-300"
                 }`}
               >
                 <div
                   className={`border-b p-4 flex justify-between items-center ${
                     isFiltered
-                      ? "bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900 border-yellow-500"
-                      : "border-border"
+                      ? "bg-warning/10 border-warning"
+                      : "border-base-300"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -335,17 +301,17 @@ export default function ReportParametersPage() {
                       {isFiltered ? "Filtered Results" : "Sample Data"}
                     </span>
                     {isFiltered && (
-                      <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded">
+                      <span className="bg-warning text-warning-content text-xs px-2 py-1 rounded">
                         Filtered
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span id="recordCount" className="text-sm text-muted-foreground">{recordCount}</span>
+                    <span id="recordCount" className="text-sm text-base-content/60">{recordCount}</span>
                     {isFiltered && (
-                      <Button id="clearFiltersBtn" onClick={handleClearFilters} variant="outline" size="sm">
+                      <button id="clearFiltersBtn" onClick={handleClearFilters} className="btn btn-sm btn-outline">
                         Clear Filters
-                      </Button>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -363,14 +329,14 @@ export default function ReportParametersPage() {
                 <div
                   className={`border-t p-3 text-sm ${
                     isFiltered
-                      ? "bg-yellow-50 dark:bg-yellow-950 border-yellow-500 text-yellow-800 dark:text-yellow-200"
-                      : "text-muted-foreground"
+                      ? "bg-warning/10 border-warning text-warning"
+                      : "text-base-content/60"
                   }`}
                 >
                   {isFiltered ? (
-                    <span>⚠️ Filters applied. Use the parameters above and click "Run Report" to change filters.</span>
+                    <span>⚠️ Filters applied. Use the parameters above and click &quot;Run Report&quot; to change filters.</span>
                   ) : (
-                    <span>ℹ️ Showing all records. Use the parameters above and click "Run Report" to filter.</span>
+                    <span>ℹ️ Showing all records. Use the parameters above and click &quot;Run Report&quot; to filter.</span>
                   )}
                 </div>
               </div>
@@ -380,19 +346,17 @@ export default function ReportParametersPage() {
           {activeTab === "config" && (
             <div className="relative">
               <div className="absolute top-4 right-4 z-10">
-                <Button
+                <button
                   onClick={() => copyToClipboard(configDsl || "", "config")}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2 bg-card/80 backdrop-blur"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-base-300 rounded hover:bg-base-200 bg-base-100/80 backdrop-blur"
                 >
                   {copiedConfig ? (
-                    <Check className="w-4 h-4 text-green-500" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-success"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
                   ) : (
-                    <Copy className="w-4 h-4" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                   )}
                   {copiedConfig ? "Copied!" : "Copy"}
-                </Button>
+                </button>
               </div>
               <div id="configCode">
                 <CodeBlock code={configDsl || "// Configuration will load after component initializes..."} language="groovy" />
@@ -403,19 +367,17 @@ export default function ReportParametersPage() {
           {activeTab === "usage" && (
             <div className="relative">
               <div className="absolute top-4 right-4 z-10">
-                <Button
+                <button
                   onClick={() => copyToClipboard(usageCode, "usage")}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2 bg-card/80 backdrop-blur"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-base-300 rounded hover:bg-base-200 bg-base-100/80 backdrop-blur"
                 >
                   {copiedUsage ? (
-                    <Check className="w-4 h-4 text-green-500" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-success"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
                   ) : (
-                    <Copy className="w-4 h-4" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                   )}
                   {copiedUsage ? "Copied!" : "Copy"}
-                </Button>
+                </button>
               </div>
               <div id="usageCode">
                 <CodeBlock code={usageCode} language="markup" />

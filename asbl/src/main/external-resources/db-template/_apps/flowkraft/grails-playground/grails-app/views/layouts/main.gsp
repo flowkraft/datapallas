@@ -4,40 +4,30 @@
     <meta charset="UTF-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title><g:layoutTitle default="DataPallas - Dashboards & Self Service Portals"/></title>
-    
+    <title><g:layoutTitle default="DataPallas - Dashboards &amp; Self Service Portals"/></title>
+
     <!-- Favicon - DataPallas paper plane icon -->
     <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m22 2-7 20-4-9-9-4Z' fill='%2322a7c8'/></svg>" type="image/svg+xml"/>
-    
-    <!-- Apply theme immediately to prevent flash - Load from SQLite -->
+
+    <!-- No-flash theme: apply from localStorage cache immediately, then sync from SQLite -->
     <script>
         (function() {
-            const cachedTheme = localStorage.getItem('rb-theme') || 'light';
-            document.documentElement.setAttribute('data-bs-theme', cachedTheme);
-            if (cachedTheme === 'dark') {
-                document.documentElement.classList.add('dark');
-            }
-            
-            // Then fetch from SQLite and update if different
+            var THEMES = ['light','dark','cupcake','bumblebee','emerald','corporate','synthwave','retro','cyberpunk','valentine','halloween','garden','forest','aqua','lofi','pastel','fantasy','wireframe','black','luxury','dracula','cmyk','autumn','business','acid','lemonade','night','coffee','winter','dim','nord','sunset','caramellatte','abyss','silk'];
+            var cached = localStorage.getItem('rb-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', THEMES.indexOf(cached) >= 0 ? cached : 'light');
             fetch('/settings?key=theme.mode')
-                .then(r => r.json())
-                .then(data => {
-                    if (data.value && data.value !== cachedTheme) {
-                        document.documentElement.setAttribute('data-bs-theme', data.value);
-                        if (data.value === 'dark') {
-                            document.documentElement.classList.add('dark');
-                        } else {
-                            document.documentElement.classList.remove('dark');
-                        }
-                        localStorage.setItem('rb-theme', data.value);
-                        updateThemeIcon && updateThemeIcon(data.value);
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.value && !localStorage.getItem('rb-theme') && THEMES.indexOf(d.value) >= 0) {
+                        document.documentElement.setAttribute('data-theme', d.value);
+                        localStorage.setItem('rb-theme', d.value);
                     }
                 })
-                .catch(() => {});
+                .catch(function() {});
         })();
     </script>
-    
-    <!-- DataPallas configuration -->
+
+    <!-- DataPallas runtime config (Groovy interpolation — do NOT remove) -->
     <%@ page import="flowkraft.frend.RbUtils" %>
     <script>
         window.rbConfig = {
@@ -45,371 +35,119 @@
             apiKey: '${RbUtils.apiKey}'
         };
     </script>
-    
-    <!-- Google Fonts - Inter for clean professional look (matches Next.js) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- AdminLTE v4 CSS (Bootstrap 5 included) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta3/dist/css/adminlte.min.css"/>
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
-    <!-- Prism.js syntax highlighting (Tomorrow Night theme) -->
+
+    <!-- Tailwind v4 + daisyUI v5 (pre-compiled via npm run css:build) -->
+    <asset:stylesheet src="tailwind.css"/>
+    <!-- Prism.js syntax highlighting (dark theme — neutral, works with all daisyUI themes) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"/>
-    
+
     <style>
-        /* DataPallas brand - matches Next.js theme */
-        :root {
-            --rb-cyan: #22a7c8;
-            --rb-dark: #1a2332;
-            --rb-gray: #6b7280;
-            --rb-light-gray: #f8fafc;
-        }
-        
-        /* Dark theme overrides */
-        [data-bs-theme="dark"] {
-            --bs-body-bg: #0f172a;
-            --bs-body-color: #e2e8f0;
-            --bs-tertiary-bg: #1e293b;
-            --bs-border-color: #334155;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-        
-        /* Fixed Top Navbar - matches Next.js */
-        .app-wrapper {
-            margin-left: 0 !important;
-            padding-top: 64px;
-        }
-        
-        .app-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            background: #fff !important;
-            border-bottom: 1px solid #e5e7eb;
-            height: 64px;
-        }
-        
-        [data-bs-theme="dark"] .app-header {
-            background: #0f172a !important;
-            border-bottom-color: #334155;
-        }
-        
-        /* Brand - matches Next.js */
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.125rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--rb-dark);
-            text-decoration: none;
-        }
-        
-        .navbar-brand .brand-icon {
-            color: var(--rb-cyan);
-            width: 20px;
-            height: 20px;
-        }
-        
-        [data-bs-theme="dark"] .navbar-brand {
-            color: #fff;
-        }
-        
-        /* Nav links - subtle, professional, matches Next.js */
-        .navbar-nav .nav-link {
-            color: var(--rb-gray);
-            font-weight: 500;
-            font-size: 0.875rem;
-            padding: 0.5rem 1rem !important;
-            transition: color 0.15s ease;
-        }
-        
-        .navbar-nav .nav-link:hover {
-            color: var(--rb-dark);
-        }
-        
-        .navbar-nav .nav-link.active {
-            color: var(--rb-cyan);
-        }
-        
-        [data-bs-theme="dark"] .navbar-nav .nav-link {
-            color: #9ca3af;
-        }
-        
-        [data-bs-theme="dark"] .navbar-nav .nav-link:hover {
-            color: #fff;
-        }
-        
-        [data-bs-theme="dark"] .navbar-nav .nav-link.active {
-            color: var(--rb-cyan);
-        }
-        
-        /* Content area */
-        .app-content {
-            padding: 0;
-        }
-        
-        .app-content-inner {
-            width: 100%;
-            padding: 2rem 1rem;
-        }
-        
-        /* Cards - clean, minimal */
-        .card {
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        
-        .card-header {
-            background: transparent;
-            border-bottom: 1px solid #e5e7eb;
-            font-weight: 600;
-        }
-        
-        [data-bs-theme="dark"] .card {
-            border-color: #334155;
-            background: #1e293b;
-        }
-        
-        [data-bs-theme="dark"] .card-header {
-            border-bottom-color: #334155;
-        }
-        
-        /* Footer - matches Next.js */
-        .app-footer {
-            background: var(--rb-light-gray);
-            border-top: 1px solid #e5e7eb;
-            color: var(--rb-gray);
-            font-size: 0.875rem;
-            padding: 1rem 0;
-        }
-        
-        [data-bs-theme="dark"] .app-footer {
-            background: #0f172a;
-            border-top-color: #334155;
-            color: #94a3b8;
-        }
-        
-        /* Admin button in navbar */
-        .btn-admin {
-            background: linear-gradient(135deg, #22a7c8 0%, #0891b2 100%);
-            color: white;
-            font-weight: 500;
-            font-size: 0.875rem;
-            padding: 0.375rem 0.75rem;
-            border-radius: 6px;
-            border: none;
-            text-decoration: none;
-            transition: transform 0.15s, box-shadow 0.15s;
-        }
-        
-        .btn-admin:hover {
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(34, 167, 200, 0.4);
-        }
-        
-        /* Theme toggle button */
-        .theme-toggle {
-            background: transparent;
-            border: none;
-            padding: 0.5rem;
-            color: var(--rb-gray);
-            cursor: pointer;
-            transition: color 0.15s;
-        }
-        
-        .theme-toggle:hover {
-            color: var(--rb-dark);
-        }
-        
-        [data-bs-theme="dark"] .theme-toggle {
-            color: #9ca3af;
-        }
-        
-        [data-bs-theme="dark"] .theme-toggle:hover {
-            color: #fff;
-        }
+        /* daisyUI v5 dropdown specificity fix */
+        .dropdown .dropdown-content { display: none; position: absolute; }
+        .dropdown:focus-within > .dropdown-content,
+        details.dropdown[open] > .dropdown-content { display: flex; flex-direction: column; position: absolute; }
+
+        /* Suppress parent menu-active when a descendant is active */
+        .menu li:has(> ul .menu-active) > a.menu-active { background-color: transparent; color: inherit; box-shadow: none; }
     </style>
-    
+
     <g:layoutHead/>
 </head>
-<body class="layout-top-nav">
-    <div class="app-wrapper">
-        
-        <!-- Header / Top Navbar - matches Next.js exactly -->
-        <nav class="app-header navbar navbar-expand-lg navbar-light">
-            <div class="container-fluid px-4">
-                <!-- Brand -->
-                <a class="navbar-brand" href="${createLink(uri: '/')}">
-                    <svg class="brand-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m22 2-7 20-4-9-9-4Z"/>
-                        <path d="M22 2 11 13"/>
-                    </svg>
-                    DataPallas
-                </a>
-                
-                <!-- Navbar toggler for mobile -->
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                
-                <!-- Navigation - matches Next.js navLinks exactly -->
-                <div class="collapse navbar-collapse" id="mainNav">
-                    <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <g:link uri="/" class="nav-link ${controllerName == 'home' || !controllerName ? 'active' : ''}">
-                                Home
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/tabulator" class="nav-link ${controllerName == 'tabulator' ? 'active' : ''}">
-                                Tabulator
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/charts" class="nav-link ${controllerName == 'charts' ? 'active' : ''}">
-                                Charts
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/pivot-tables" class="nav-link ${controllerName == 'pivotTables' ? 'active' : ''}">
-                                Pivot Tables
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/report-parameters" class="nav-link ${controllerName == 'reportParameters' ? 'active' : ''}">
-                                Parameters
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/reports" class="nav-link ${controllerName == 'reports' ? 'active' : ''}">
-                                Reports
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/data-warehouse" class="nav-link ${controllerName == 'dataWarehouse' ? 'active' : ''}">
-                                Data Warehouse
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/dashboards" class="nav-link ${controllerName == 'dashboards' ? 'active' : ''}">
-                                Dashboards
-                            </g:link>
-                        </li>
-                        <li class="nav-item">
-                            <g:link uri="/your-canvas" class="nav-link ${controllerName == 'yourCanvas' ? 'active' : ''}">
-                                Your Canvas
-                            </g:link>
-                        </li>
-                    </ul>
-                    
-                    <!-- Right side: Admin link + Theme toggle -->
-                    <ul class="navbar-nav align-items-center">
-                        <li class="nav-item me-2">
-                            <a href="${createLink(uri: '/admin')}" class="btn-admin">
-                                <i class="bi bi-gear me-1"></i> Admin
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="mainThemeToggle">
-                                <i class="bi bi-moon fs-5" id="mainThemeIcon"></i>
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
-        
-        <!-- Main Content -->
-        <main class="app-main">
-            <div class="app-content">
-                <div class="app-content-inner">
-                    <g:layoutBody/>
-                </div>
-            </div>
-        </main>
-        
-        <!-- Footer - matches Next.js -->
-        <footer class="app-footer">
-            <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
-                <span>&copy; 2025 FlowKraft Systems</span>
-                <a href="https://datapallas.com" target="_blank" class="text-decoration-none text-muted">
-                    datapallas.com
-                </a>
-            </div>
-        </footer>
+<body>
+
+<!-- ══ STICKY NAVBAR ═══════════════════════════════════════════════════════════
+     Mirrors DataPallas: frend/reporting/src/app/areas/top-menu-header/top-menu-header.template.html
+     Classes verbatim from P4.UI0 Section 4. -->
+<header class="bg-base-100/90 text-base-content sticky top-0 z-30 flex h-16 w-full backdrop-blur border-b border-base-300">
+  <nav class="navbar w-full py-0 px-4">
+
+    <!-- Left: brand + nav links -->
+    <div class="flex flex-1 items-center gap-2">
+
+      <!-- Brand -->
+      <a href="${createLink(uri: '/')}" class="flex items-center gap-2 shrink-0 no-underline">
+        <span class="logo-lg flex items-center gap-1">
+          <span class="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
+          <dp:brandLogo/>
+        </span>
+      </a>
+
+      <!-- Top nav links — hidden on small screens -->
+      <ul class="menu menu-horizontal px-1 hidden md:flex">
+        <li><a href="${createLink(uri: '/')}"               class="${(controllerName == 'home' || !controllerName) ? 'menu-active' : ''}">Analytics (Home)</a></li>
+        <li><a href="${createLink(uri: '/tabulator')}"      class="${controllerName == 'tabulator'       ? 'menu-active' : ''}">Tabulator</a></li>
+        <li><a href="${createLink(uri: '/charts')}"         class="${controllerName == 'charts'          ? 'menu-active' : ''}">Charts</a></li>
+        <li><a href="${createLink(uri: '/pivot-tables')}"   class="${controllerName == 'pivotTables'     ? 'menu-active' : ''}">Pivot Tables</a></li>
+        <li><a href="${createLink(uri: '/report-parameters')}" class="${controllerName == 'reportParameters' ? 'menu-active' : ''}">Parameters</a></li>
+        <li><a href="${createLink(uri: '/reports')}"        class="${controllerName == 'reports'         ? 'menu-active' : ''}">Reports</a></li>
+        <li><a href="${createLink(uri: '/data-warehouse')}" class="${controllerName == 'dataWarehouse'   ? 'menu-active' : ''}">Data Warehouse</a></li>
+        <li><a href="${createLink(uri: '/dashboards')}"     class="${controllerName == 'dashboards'      ? 'menu-active' : ''}">Dashboards</a></li>
+        <li><a href="${createLink(uri: '/your-canvas')}"    class="${controllerName == 'yourCanvas'      ? 'menu-active' : ''}">Your Canvas</a></li>
+      </ul>
     </div>
 
-    <!-- Bootstrap 5 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- AdminLTE v4 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-beta3/dist/js/adminlte.min.js"></script>
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    
-    <script>
-        async function toggleTheme() {
-            const html = document.documentElement;
-            const current = html.getAttribute('data-bs-theme') || 'light';
-            const next = current === 'light' ? 'dark' : 'light';
-            
-            // Update UI immediately
-            html.setAttribute('data-bs-theme', next);
-            if (next === 'dark') {
-                html.classList.add('dark');
-            } else {
-                html.classList.remove('dark');
-            }
-            localStorage.setItem('rb-theme', next);
-            updateThemeIcon(next);
-            
-            // Save to SQLite via API
-            try {
-                await fetch('/settings/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        key: 'theme.mode', 
-                        value: next, 
-                        category: 'theme' 
-                    })
-                });
-            } catch (e) {
-                console.error('Failed to save theme to database:', e);
-            }
-        }
-        
-        function updateThemeIcon(theme) {
-            const icon = document.getElementById('mainThemeIcon');
-            if (icon) {
-                icon.className = theme === 'dark' ? 'bi bi-sun fs-5' : 'bi bi-moon fs-5';
-            }
-        }
-        
-        // Initialize theme icon on load
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
-            updateThemeIcon(currentTheme);
-        });
-    </script>
-    
-    <!-- Prism.js syntax highlighting -->
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-groovy.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+    <!-- Right: Document Portal + Admin links + 35-theme picker -->
+    <div class="flex items-center gap-1">
+      <a href="${createLink(uri: '/portal')}" class="btn btn-ghost btn-sm normal-case">
+        <dp:icon name="portal"/> Self-Service Portal
+      </a>
+      <a href="${createLink(uri: '/admin')}" class="btn btn-ghost btn-sm normal-case">
+        <dp:icon name="admin"/> Admin
+      </a>
 
-    <!-- DataPallas Web Components -->
-    <script src="http://localhost:9090/rb-webcomponents/rb-webcomponents.umd.js"></script>
-    
-    <g:pageProperty name="page.scripts"/>
+      <a href="mailto:support@datapallas.com" class="btn btn-ghost btn-sm normal-case gap-1 hidden lg:flex">
+        <dp:icon name="email"/>
+        support@datapallas.com
+      </a>
+
+      <g:render template="/common/themePicker"/>
+    </div>
+
+  </nav>
+</header>
+
+<!-- ══ MAIN CONTENT ════════════════════════════════════════════════════════════ -->
+<div id="mainContent" style="min-height:calc(100vh - 4rem);display:flex;flex-direction:column;">
+  <main class="flex-1 p-4">
+    <g:layoutBody/>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-base-300 bg-base-200 text-base-content/60 text-sm py-4 px-4 flex justify-between items-center">
+    <span>&copy; 2026 FlowKraft Systems</span>
+    <a href="https://datapallas.com" target="_blank" class="no-underline text-base-content/60 hover:text-base-content">
+      datapallas.com
+    </a>
+  </footer>
+</div>
+
+<!-- HTMX — orthogonal to daisyUI, keep as-is -->
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+<!-- Prism.js syntax highlighting -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-groovy.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+
+<!-- DataPallas Web Components bridge (load-bearing — do NOT remove) -->
+<script src="http://localhost:9090/rb-webcomponents/rb-webcomponents.umd.js"></script>
+
+<g:render template="/common/setThemeScript"/>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sync checkmarks to current theme
+        var current = document.documentElement.getAttribute('data-theme') || 'light';
+        document.querySelectorAll('.theme-checkmark').forEach(function(el) {
+            el.style.visibility = el.getAttribute('data-theme-name') === current ? 'visible' : 'hidden';
+        });
+
+        // Sync trigger swatch to current theme
+        var trigger = document.getElementById('themeSwatchTrigger');
+        if (trigger) trigger.setAttribute('data-theme', current);
+    });
+</script>
+
+<g:pageProperty name="page.scripts"/>
 </body>
 </html>

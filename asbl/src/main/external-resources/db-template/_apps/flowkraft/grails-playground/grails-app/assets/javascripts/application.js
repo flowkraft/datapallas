@@ -6,7 +6,6 @@
 // to create separate JavaScript files as needed.
 //
 //= require webjars/dist/jquery.js
-//= require webjars/dist/js/bootstrap.bundle.js
 //= require_self
 
 if (typeof jQuery !== 'undefined') {

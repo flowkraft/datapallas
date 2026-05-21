@@ -14,16 +14,16 @@
             overflow: hidden;
             padding: 1rem;
         }
-        [data-bs-theme="dark"] .example-card { border-color: #334155; }
+        [data-theme="dark"] .example-card { border-color: #334155; }
         .example-title { margin: 0 0 0.25rem 0; font-weight: 600; font-size: 0.95rem; }
         .example-desc { color: #6b7280; font-size: 0.85rem; margin: 0 0 1rem 0; }
-        [data-bs-theme="dark"] .example-desc { color: #94a3b8; }
+        [data-theme="dark"] .example-desc { color: #94a3b8; }
         .category-header {
             font-size: 1.1rem;
             font-weight: 700;
             margin: 2rem 0 1rem 0;
             padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--rb-cyan, #06b6d4);
+            border-bottom: 2px solid var(--color-primary);
         }
         .code-block {
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -44,18 +44,18 @@
             padding: 1.5rem;
             margin-top: 2rem;
         }
-        [data-bs-theme="dark"] .howto-section { background: #1e293b; }
+        [data-theme="dark"] .howto-section { background: #1e293b; }
         .howto-section h5 {
             color: #2563eb;
             margin-bottom: 1rem;
         }
-        [data-bs-theme="dark"] .howto-section h5 { color: #60a5fa; }
+        [data-theme="dark"] .howto-section h5 { color: #60a5fa; }
         .howto-section h6 {
             color: #1e40af;
             margin-top: 1.25rem;
             margin-bottom: 0.5rem;
         }
-        [data-bs-theme="dark"] .howto-section h6 { color: #93c5fd; }
+        [data-theme="dark"] .howto-section h6 { color: #93c5fd; }
         .howto-section .step {
             background: white;
             border: 1px solid #e2e8f0;
@@ -63,13 +63,13 @@
             padding: 1rem;
             margin-bottom: 0.75rem;
         }
-        [data-bs-theme="dark"] .howto-section .step { background: #0f172a; border-color: #334155; }
+        [data-theme="dark"] .howto-section .step { background: #0f172a; border-color: #334155; }
         .howto-section .step-title {
             font-weight: 600;
             color: #334155;
             margin-bottom: 0.5rem;
         }
-        [data-bs-theme="dark"] .howto-section .step-title { color: #e2e8f0; }
+        [data-theme="dark"] .howto-section .step-title { color: #e2e8f0; }
         .howto-section .step-action {
             font-family: monospace;
             background: #e0e7ff;
@@ -77,7 +77,7 @@
             border-radius: 4px;
             color: #3730a3;
         }
-        [data-bs-theme="dark"] .howto-section .step-action { background: #312e81; color: #c7d2fe; }
+        [data-theme="dark"] .howto-section .step-action { background: #312e81; color: #c7d2fe; }
         .howto-section .insight {
             color: #059669;
             font-style: italic;
@@ -101,38 +101,20 @@
             border-radius: 6px;
             margin: 0.5rem 0;
         }
-        [data-bs-theme="dark"] .howto-section .pivot-compare { background: #064e3b; border-color: #065f46; }
+        [data-theme="dark"] .howto-section .pivot-compare { background: #064e3b; border-color: #065f46; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="row mt-4">
-            <div class="col-12">
+        <div class="flex flex-wrap gap-4 mt-4">
+            <div class="w-full">
                 <h4 class="mb-2">Pivot Tables</h4>
-                <p class="text-muted mb-4">Drag-and-drop data analysis with aggregation and grouping, powered by <code>&lt;rb-pivot-table&gt;</code>.</p>
+                <p class="text-base-content/60 mb-4">Drag-and-drop data analysis with aggregation and grouping, powered by <code>&lt;rb-pivot-table&gt;</code>.</p>
 
                 <!-- Page-level tabs -->
-                <ul class="nav nav-tabs" id="pageTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="examples-tab" data-bs-toggle="tab" data-bs-target="#examples-pane" type="button" role="tab" aria-controls="examples-pane" aria-selected="true">
-                            <i class="bi bi-grid-3x3"></i> Examples
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config-pane" type="button" role="tab" aria-controls="config-pane" aria-selected="false">
-                            <i class="bi bi-gear"></i> Configuration
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage-pane" type="button" role="tab" aria-controls="usage-pane" aria-selected="false">
-                            <i class="bi bi-code-slash"></i> Usage
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content border border-top-0 rounded-bottom p-3" id="pageTabContent">
-                    <!-- Examples Tab -->
-                    <div class="tab-pane fade show active" id="examples-pane" role="tabpanel" aria-labelledby="examples-tab">
+                <div class="tabs tabs-bordered" role="tablist">
+                    <input type="radio" name="page-tabs" role="tab" class="tab" aria-label="Examples" id="examples-tab" checked />
+                    <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="examples-pane">
 
                         <h5 class="category-header">Fundamentals</h5>
 
@@ -166,37 +148,14 @@
 
                         <h5 class="category-header">Putting It All Together</h5>
 
-                        <!-- Sales Overview with inner tabs (Pivot Table | Raw Data | Configuration | Usage) -->
+                        <!-- Sales Overview with inner tabs -->
                         <div class="example-card">
                             <h6 class="example-title">Sales Overview — Region × Product × Quarter</h6>
                             <p class="example-desc">64 rows of sales data (4 Regions × 4 Products × 4 Quarters). Drag, filter, aggregate, visualize — instant analysis grid.</p>
 
-                            <ul class="nav nav-tabs" id="salesOverviewTabs" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="so-pivot-tab" data-bs-toggle="tab" data-bs-target="#so-pivot-pane" type="button" role="tab" aria-selected="true">
-                                        <i class="bi bi-grid-3x3"></i> Pivot Table
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="so-rawdata-tab" data-bs-toggle="tab" data-bs-target="#so-rawdata-pane" type="button" role="tab" aria-selected="false">
-                                        <i class="bi bi-table"></i> Raw Data
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="so-config-tab" data-bs-toggle="tab" data-bs-target="#so-config-pane" type="button" role="tab" aria-selected="false">
-                                        <i class="bi bi-gear"></i> Configuration
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="so-usage-tab" data-bs-toggle="tab" data-bs-target="#so-usage-pane" type="button" role="tab" aria-selected="false">
-                                        <i class="bi bi-code-slash"></i> Usage
-                                    </button>
-                                </li>
-                            </ul>
-
-                            <div class="tab-content border border-top-0 rounded-bottom p-3" id="salesOverviewTabContent">
-                                <!-- Pivot Table Tab -->
-                                <div class="tab-pane fade show active" id="so-pivot-pane" role="tabpanel" aria-labelledby="so-pivot-tab">
+                            <div class="tabs tabs-bordered" role="tablist">
+                                <input type="radio" name="sales-overview-tabs" role="tab" class="tab" aria-label="Pivot Table" id="so-pivot-tab" checked />
+                                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="so-pivot-pane">
                                     <rb-pivot-table
                                         id="demoPivot"
                                         report-id="piv-examples"
@@ -207,7 +166,7 @@
 
                                     <!-- How to Use narrative -->
                                     <div class="howto-section">
-                                        <h5><i class="bi bi-lightbulb"></i> How to Use This Pivot Table</h5>
+                                        <h5><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg> How to Use This Pivot Table</h5>
 
                                         <p><strong>What you're looking at:</strong> 64 rows of sales data — 4 Regions × 4 Products × 4 Quarters.
                                         The pivot table transforms this into an instant analysis grid. No SQL, no formulas.</p>
@@ -261,8 +220,8 @@
 
                                         <h6>The Point: Why This Matters</h6>
 
-                                        <div class="row">
-                                            <div class="col-md-6">
+                                        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+                                            <div style="grid-column:span 6">
                                                 <p class="mb-1"><strong>Without pivot table:</strong></p>
                                                 <div class="sql-compare">
 <pre class="mb-0">-- Question 1: Revenue by region
@@ -276,7 +235,7 @@ FROM sales GROUP BY Product;
 -- 20 more queries for different angles...</pre>
                                                 </div>
                                             </div>
-                                            <div class="col-md-6">
+                                            <div style="grid-column:span 6">
                                                 <p class="mb-1"><strong>With pivot table:</strong></p>
                                                 <div class="pivot-compare">
                                                     <strong>✓</strong> Drag Region to rows → Question 1 answered<br>
@@ -294,10 +253,10 @@ FROM sales GROUP BY Product;
                                     </div>
                                 </div>
 
-                                <!-- Raw Data Tab -->
-                                <div class="tab-pane fade" id="so-rawdata-pane" role="tabpanel" aria-labelledby="so-rawdata-tab">
-                                    <p class="text-muted small mb-3">
-                                        <i class="bi bi-info-circle"></i> This is the raw source data (64 rows) that feeds the pivot table.
+                                <input type="radio" name="sales-overview-tabs" role="tab" class="tab" aria-label="Raw Data" id="so-rawdata-tab" />
+                                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="so-rawdata-pane">
+                                    <p class="text-base-content/60 text-sm mb-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg> This is the raw source data (64 rows) that feeds the pivot table.
                                     </p>
                                     <rb-tabulator
                                         id="rawDataTable"
@@ -308,23 +267,23 @@ FROM sales GROUP BY Product;
                                     ></rb-tabulator>
                                 </div>
 
-                                <!-- Configuration Tab -->
-                                <div class="tab-pane fade" id="so-config-pane" role="tabpanel" aria-labelledby="so-config-tab">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <span class="text-muted small">Groovy DSL — salesOverview configuration</span>
-                                        <button id="copySoConfigBtn" class="btn btn-outline-secondary btn-sm" title="Copy to clipboard">
-                                            <i class="bi bi-clipboard"></i>
+                                <input type="radio" name="sales-overview-tabs" role="tab" class="tab" aria-label="Configuration" id="so-config-tab" />
+                                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="so-config-pane">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span class="text-base-content/60 text-sm">Groovy DSL — salesOverview configuration</span>
+                                        <button id="copySoConfigBtn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                                         </button>
                                     </div>
                                     <pre id="soConfigCode" class="code-block"><code class="language-groovy">Loading configuration...</code></pre>
                                 </div>
 
-                                <!-- Usage Tab -->
-                                <div class="tab-pane fade" id="so-usage-pane" role="tabpanel" aria-labelledby="so-usage-tab">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <span class="text-muted small">HTML Usage</span>
-                                        <button id="copySoUsageBtn" class="btn btn-outline-secondary btn-sm" title="Copy to clipboard">
-                                            <i class="bi bi-clipboard"></i>
+                                <input type="radio" name="sales-overview-tabs" role="tab" class="tab" aria-label="Usage" id="so-usage-tab" />
+                                <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="so-usage-pane">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span class="text-base-content/60 text-sm">HTML Usage</span>
+                                        <button id="copySoUsageBtn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                                         </button>
                                     </div>
                                     <pre id="soUsageCode" class="code-block"><code class="language-markup">&lt;rb-pivot-table
@@ -340,22 +299,24 @@ FROM sales GROUP BY Product;
                     </div>
 
                     <!-- Configuration Tab -->
-                    <div class="tab-pane fade" id="config-pane" role="tabpanel" aria-labelledby="config-tab">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="text-muted small">Groovy DSL — shared configuration for all examples</span>
-                            <button id="copyConfigBtn" class="btn btn-outline-secondary btn-sm" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                    <input type="radio" name="page-tabs" role="tab" class="tab" aria-label="Configuration" id="config-tab" />
+                    <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="config-pane">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-base-content/60 text-sm">Groovy DSL — shared configuration for all examples</span>
+                            <button id="copyConfigBtn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="configCode" class="code-block"><code class="language-groovy">Loading configuration...</code></pre>
                     </div>
 
                     <!-- Usage Tab -->
-                    <div class="tab-pane fade" id="usage-pane" role="tabpanel" aria-labelledby="usage-tab">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="text-muted small">HTML Usage</span>
-                            <button id="copyUsageBtn" class="btn btn-outline-secondary btn-sm" title="Copy to clipboard">
-                                <i class="bi bi-clipboard"></i>
+                    <input type="radio" name="page-tabs" role="tab" class="tab" aria-label="Usage" id="usage-tab" />
+                    <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="usage-pane">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-base-content/60 text-sm">HTML Usage</span>
+                            <button id="copyUsageBtn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
                             </button>
                         </div>
                         <pre id="usageCode" class="code-block"><code class="language-markup">&lt;rb-pivot-table
@@ -371,33 +332,31 @@ FROM sales GROUP BY Product;
         </div>
     </div>
 
-    <!-- Toast container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="copyToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="bi bi-check-circle me-1"></i> Copied to clipboard!
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
+    <!-- Toast -->
+    <div id="copyToast" class="toast toast-end toast-bottom hidden" style="position:fixed;z-index:1090;">
+        <div class="alert alert-success gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg> Copied to clipboard!
         </div>
     </div>
 
     <content tag="scripts">
     <script>
+        var SVG_CLIPBOARD = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>';
+        var SVG_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>';
         document.addEventListener('DOMContentLoaded', function() {
-            var copyToast = new bootstrap.Toast(document.getElementById('copyToast'), { delay: 2000 });
+            var copyToastEl = document.getElementById('copyToast');
+            function showToast() {
+                copyToastEl.classList.remove('hidden');
+                setTimeout(function() { copyToastEl.classList.add('hidden'); }, 2000);
+            }
             var configCodeEl = document.getElementById('configCode');
 
             function copyWithFeedback(btn, text) {
                 navigator.clipboard.writeText(text).then(function() {
-                    var icon = btn.querySelector('i');
-                    icon.classList.remove('bi-clipboard');
-                    icon.classList.add('bi-check');
-                    copyToast.show();
+                    btn.innerHTML = SVG_CHECK;
+                    showToast();
                     setTimeout(function() {
-                        icon.classList.remove('bi-check');
-                        icon.classList.add('bi-clipboard');
+                        btn.innerHTML = SVG_CLIPBOARD;
                     }, 2000);
                 });
             }
