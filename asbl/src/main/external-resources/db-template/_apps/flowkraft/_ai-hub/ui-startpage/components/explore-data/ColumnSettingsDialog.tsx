@@ -1,6 +1,6 @@
 "use client";
 
-import { X, RotateCcw } from "lucide-react";
+// lucide-react removed
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import type { ColumnSettings, NumberStyle } from "@/lib/explore-data/column-settings";
 import { mergeColumnFormat } from "@/lib/explore-data/column-settings";
@@ -119,53 +119,53 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
-      <div className="fixed top-0 right-0 z-50 h-full w-96 bg-card border-l border-border shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed top-0 right-0 z-50 h-full w-96 bg-base-100 border-l border-base-300 shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground truncate">Column settings</h2>
-            <p className="text-[11px] text-muted-foreground font-mono truncate">{column.columnName} <span className="text-muted-foreground/60">({column.typeName})</span></p>
+            <h2 className="text-sm font-semibold text-base-content truncate">Column settings</h2>
+            <p className="text-[11px] text-base-content/60 font-mono truncate">{column.columnName} <span className="text-base-content/60/60">({column.typeName})</span></p>
           </div>
-          <button id="btnCloseColumnSettings" onClick={onClose} className="p-1 rounded-md text-muted-foreground hover:bg-accent shrink-0">
-            <X className="w-4 h-4" />
+          <button id="btnCloseColumnSettings" onClick={onClose} className="p-1 rounded-md text-base-content/60 hover:bg-base-200 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {/* Live preview */}
-          <div className="rounded-md bg-muted/40 border border-border px-3 py-2">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Preview</div>
-            <div className="text-sm font-medium text-foreground break-all">{preview}</div>
+          <div className="rounded-md bg-base-200/40 border border-base-300 px-3 py-2">
+            <div className="text-[10px] uppercase tracking-wider text-base-content/60 mb-1">Preview</div>
+            <div className="text-sm font-medium text-base-content break-all">{preview}</div>
           </div>
 
           {/* Display section — column title + view-as */}
           <section className="space-y-2">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Display</h3>
+            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60">Display</h3>
 
             <label className="block">
-              <span className="text-xs text-muted-foreground">Column title</span>
+              <span className="text-xs text-base-content/60">Column title</span>
               <input
                 type="text"
                 value={current.columnTitle ?? ""}
                 onChange={(e) => patch({ columnTitle: e.target.value || undefined })}
                 placeholder={column.columnName}
-                className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
               />
             </label>
 
             <label className="block">
-              <span className="text-xs text-muted-foreground">Display as</span>
+              <span className="text-xs text-base-content/60">Display as</span>
               <select
                 value={current.viewAs ?? "auto"}
                 onChange={(e) => patch({ viewAs: e.target.value === "auto" ? undefined : (e.target.value as FormatKind) })}
-                className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
               >
                 {VIEW_AS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-muted-foreground mt-1">Default is inferred from column name + values. Pick a different kind to override.</p>
+              <p className="text-[10px] text-base-content/60 mt-1">Default is inferred from column name + values. Pick a different kind to override.</p>
             </label>
 
 
@@ -174,14 +174,14 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
           {/* Number section */}
           {isNumberLike && (
             <section className="space-y-2">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Number</h3>
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60">Number</h3>
 
               <label className="block">
-                <span className="text-xs text-muted-foreground">Style</span>
+                <span className="text-xs text-base-content/60">Style</span>
                 <select
                   value={current.numberStyle ?? (effectiveKind === "currency" ? "currency" : effectiveKind === "percentage" ? "percent" : "decimal")}
                   onChange={(e) => patch({ numberStyle: e.target.value as NumberStyle })}
-                  className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                  className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                 >
                   <option value="decimal">Normal (1,234)</option>
                   <option value="currency">Currency ($1,234.56)</option>
@@ -193,11 +193,11 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
               {effectiveKind === "currency" && (
                 <>
                   <label className="block">
-                    <span className="text-xs text-muted-foreground">Unit of currency</span>
+                    <span className="text-xs text-base-content/60">Unit of currency</span>
                     <select
                       value={effectiveSpec.currency ?? "USD"}
                       onChange={(e) => patch({ currency: e.target.value })}
-                      className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                      className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
@@ -205,11 +205,11 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                     </select>
                   </label>
                   <label className="block">
-                    <span className="text-xs text-muted-foreground">Currency label style</span>
+                    <span className="text-xs text-base-content/60">Currency label style</span>
                     <select
                       value={effectiveSpec.currencyStyle ?? "symbol"}
                       onChange={(e) => patch({ currencyStyle: e.target.value as CurrencyStyle })}
-                      className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                      className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                     >
                       <option value="symbol">Symbol ($10)</option>
                       <option value="code">Code (USD 10)</option>
@@ -221,7 +221,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="text-xs text-muted-foreground">Decimals</span>
+                  <span className="text-xs text-base-content/60">Decimals</span>
                   <input
                     type="number"
                     min={0}
@@ -229,41 +229,41 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                     value={current.decimals ?? ""}
                     onChange={(e) => patch({ decimals: e.target.value === "" ? undefined : Number(e.target.value) })}
                     placeholder="auto"
-                    className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                    className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs text-muted-foreground">Scale ×</span>
+                  <span className="text-xs text-base-content/60">Scale ×</span>
                   <input
                     type="number"
                     step="any"
                     value={current.scale ?? ""}
                     onChange={(e) => patch({ scale: e.target.value === "" ? undefined : Number(e.target.value) })}
                     placeholder="1"
-                    className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                    className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                   />
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="text-xs text-muted-foreground">Prefix</span>
+                  <span className="text-xs text-base-content/60">Prefix</span>
                   <input
                     type="text"
                     value={current.prefix ?? ""}
                     onChange={(e) => patch({ prefix: e.target.value || undefined })}
                     placeholder="—"
-                    className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                    className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs text-muted-foreground">Suffix</span>
+                  <span className="text-xs text-base-content/60">Suffix</span>
                   <input
                     type="text"
                     value={current.suffix ?? ""}
                     onChange={(e) => patch({ suffix: e.target.value || undefined })}
                     placeholder="—"
-                    className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                    className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                   />
                 </label>
               </div>
@@ -274,7 +274,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                   checked={current.compact === true}
                   onChange={(e) => patch({ compact: e.target.checked || undefined })}
                 />
-                <span className="text-xs text-muted-foreground">Compact notation (1.2K, 3.4M)</span>
+                <span className="text-xs text-base-content/60">Compact notation (1.2K, 3.4M)</span>
               </label>
             </section>
           )}
@@ -282,14 +282,14 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
           {/* Date section */}
           {isDateLike && (
             <section className="space-y-2">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Date</h3>
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60">Date</h3>
 
               <label className="block">
-                <span className="text-xs text-muted-foreground">Granularity</span>
+                <span className="text-xs text-base-content/60">Granularity</span>
                 <select
                   value={current.dateUnit ?? "auto"}
                   onChange={(e) => patch({ dateUnit: e.target.value === "auto" ? undefined : (e.target.value as DateUnit) })}
-                  className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                  className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
                 >
                   <optgroup label="Auto">
                     <option value="auto">Auto (from query)</option>
@@ -305,7 +305,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                     ))}
                   </optgroup>
                 </select>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-[10px] text-base-content/60 mt-1">
                   "Auto" respects the group-by bucket you set in the Data tab. Override here if you want a different display granularity.
                 </p>
               </label>
@@ -314,17 +314,17 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-border">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-base-300">
           <button
             id="btnResetColumnSettings"
             onClick={() => onChange(undefined)}
             disabled={!settings}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-base-content/60 hover:bg-base-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <RotateCcw className="w-3 h-3" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>
             Reset to defaults
           </button>
-          <button id="btnDoneColumnSettings" onClick={onClose} className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+          <button id="btnDoneColumnSettings" onClick={onClose} className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-content hover:bg-primary/90 transition-colors">
             Done
           </button>
         </div>

@@ -56,19 +56,19 @@ export function Canvas() {
     <div
       id="canvasGridArea"
       ref={containerRef}
-      className="flex-1 overflow-auto bg-background p-4"
+      className="flex-1 overflow-auto bg-base-100 p-4"
       onClick={() => selectWidget(null)}
     >
       {widgets.length === 0 ? (
         <div className="flex items-center justify-center h-full min-h-[400px]">
           <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
-              <svg className="w-8 h-8 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-base-200/50 flex items-center justify-center">
+              <svg className="w-8 h-8 text-base-content/60/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-foreground mb-1">Empty canvas</h3>
-            <p className="text-sm text-muted-foreground max-w-xs">
+            <h3 className="text-lg font-medium text-base-content mb-1">Empty canvas</h3>
+            <p className="text-sm text-base-content/60 max-w-xs">
               Click a table from the left panel to add it to your dashboard
             </p>
           </div>

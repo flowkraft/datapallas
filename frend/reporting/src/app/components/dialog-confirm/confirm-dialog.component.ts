@@ -27,7 +27,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
         ></button>
         <button
           type="button"
-          class="btn btn-secondary dburst-button-question-decline"
+          class="btn btn-outline ml-2 dburst-button-question-decline"
           (click)="decline()"
           [innerHTML]="declineLabel"
         ></button>

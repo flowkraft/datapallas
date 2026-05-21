@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+// lucide-react removed
 import dynamic from "next/dynamic";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { fetchDslExample } from "@/lib/explore-data/ai-prompt-builder";
@@ -62,8 +62,8 @@ export function DslCustomizer({ dsl, onChange, componentType, columns = [], samp
       className="flex items-center gap-1 text-[10px]"
       title={syncError ?? "DSL parse error"}
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-      <span className="text-destructive">DSL error</span>
+      <span className="w-1.5 h-1.5 rounded-full bg-error" />
+      <span className="text-error">DSL error</span>
     </span>
   ) : null;
 
@@ -73,11 +73,11 @@ export function DslCustomizer({ dsl, onChange, componentType, columns = [], samp
         <button
           id="btnDslToggle"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-xs text-base-content/60 hover:text-base-content transition-colors"
         >
           {expanded
-            ? <ChevronDown className="w-3.5 h-3.5" />
-            : <ChevronRight className="w-3.5 h-3.5" />}
+            ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+            : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>}
           Customize with DSL{DSL_TYPE_LABELS[componentType] ? ` (${DSL_TYPE_LABELS[componentType]})` : ""}
           {statusDot}
         </button>
@@ -95,7 +95,7 @@ export function DslCustomizer({ dsl, onChange, componentType, columns = [], samp
 
       {expanded && (
         <>
-          <div id="dslEditorContainer" className="border border-border rounded-md overflow-hidden">
+          <div id="dslEditorContainer" className="border border-base-300 rounded-md overflow-hidden">
             {CodeMirror && (
               <CodeMirror
                 value={dsl}
@@ -112,9 +112,9 @@ export function DslCustomizer({ dsl, onChange, componentType, columns = [], samp
             <button
               id="btnAiHelpDsl"
               onClick={() => setDslHelpOpen(true)}
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-accent text-foreground transition-colors w-full justify-center"
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium border border-base-300 bg-base-100 hover:bg-base-200 text-base-content transition-colors w-full justify-center"
             >
-              <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 text-violet-500"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 1 2.455 2.456ZM16.5 20.25l-.259 1.035a3.375 3.375 0 0 1-2.455 2.456L12.75 24l1.036-.259a3.375 3.375 0 0 0 2.455-2.456l.259-1.035Z" /></svg>
               Hey AI, Help Me…
             </button>
           )}

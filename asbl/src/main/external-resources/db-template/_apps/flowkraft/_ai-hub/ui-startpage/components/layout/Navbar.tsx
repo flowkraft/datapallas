@@ -3,20 +3,19 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { Menu, X, Sun, Moon } from "lucide-react"
+import { setTheme } from "@/lib/daisy-themes"
+import { BrandLogo } from "@/components/shared/BrandLogo"
+import { IconSun, IconXMark, IconHamburger } from "@/components/shared/Icons"
 
 export function Navbar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
-  const [theme, setTheme] = useState<"light" | "dark">("light")
 
   const isActive = (path: string) => pathname === path
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    document.documentElement.setAttribute("data-theme", newTheme)
-    localStorage.setItem("rb-theme", newTheme)
+    const current = document.documentElement.getAttribute('data-theme') || 'light'
+    setTheme(current === 'light' ? 'dark' : 'light')
   }
 
   const navLinks = [
@@ -30,87 +29,64 @@ export function Navbar() {
   ]
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          {/* Brand */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg text-foreground">
-              <svg className="w-5 h-5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m22 2-7 20-4-9-9-4Z"/>
-                <path d="M22 2 11 13"/>
-              </svg>
-              DataPallas
-            </Link>
-          </div>
+    <header className="bg-base-100/90 text-base-content fixed top-0 left-0 right-0 z-30 flex h-16 w-full backdrop-blur border-b border-base-300">
+      <nav className="navbar w-full py-0 px-4">
+        {/* Brand */}
+        <div className="flex flex-1 items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 shrink-0 no-underline text-base-content">
+            <span className="logo-lg flex items-center gap-1">
+              <span className="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
+              <BrandLogo />
+            </span>
+          </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-1">
+          {/* Desktop nav */}
+          <ul className="menu menu-horizontal px-1 hidden md:flex">
             {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive(link.href)
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {link.label}
-              </Link>
+              <li key={link.href}>
+                <Link href={link.href} className={isActive(link.href) ? 'menu-active' : ''}>
+                  {link.label}
+                </Link>
+              </li>
             ))}
-
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="ml-2 p-2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="flex items-center md:hidden">
-            <button
-              onClick={toggleTheme}
-              className="mr-2 p-2 text-muted-foreground hover:text-foreground"
-              aria-label="Toggle theme"
-            >
-              {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-2 text-muted-foreground hover:text-foreground"
-              aria-label="Toggle menu"
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+          </ul>
         </div>
-      </div>
+
+        {/* Right: theme toggle + mobile menu */}
+        <div className="flex items-center gap-1">
+          <button onClick={toggleTheme} className="btn btn-square btn-ghost" aria-label="Toggle theme">
+            <IconSun />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className="btn btn-square btn-ghost md:hidden"
+            aria-label="Toggle menu"
+          >
+            {isOpen ? <IconXMark /> : <IconHamburger />}
+          </button>
+        </div>
+      </nav>
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden border-t border-border">
-          <div className="px-2 pt-2 pb-3 space-y-1">
+        <div className="md:hidden absolute top-16 left-0 right-0 border-t border-base-300 bg-base-100 z-50">
+          <ul className="menu w-full p-2">
             {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive(link.href)
-                    ? "text-primary bg-accent"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                {link.label}
-              </Link>
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setIsOpen(false)}
+                  className={isActive(link.href) ? 'menu-active' : ''}
+                >
+                  {link.label}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
-    </nav>
+    </header>
   )
 }

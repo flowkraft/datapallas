@@ -58,6 +58,10 @@
                 [routerLink]="['/configuration-crud', 'reports']"
                 skipLocationChange="true">Reports, Connections &amp; Cubes</a>
             </li>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li>
+              <a id="topMenuMoreSettings" (click)="moreSettings.show()">More Settings</a>
+            </li>
           </ul>
         </li>
 
@@ -148,3 +152,5 @@
     </div>
   </nav>
 </header>
+
+<dburst-more-settings #moreSettings></dburst-more-settings>

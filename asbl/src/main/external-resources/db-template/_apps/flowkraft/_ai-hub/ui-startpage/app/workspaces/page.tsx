@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, FileText, Folder, FolderOpen, Copy, Loader2, Code2 } from 'lucide-react';
+// lucide-react removed — icons replaced with inline heroicons below
 import { Button } from '@/components/ui/button';
 import { CodeEditor } from '@/components/CodeEditor';
 import { PreviewPanel } from '@/components/PreviewPanel';
@@ -296,7 +296,7 @@ export default function WorkspacesPage() {
         >
           {guides}
           <span className="file-tree-no-chevron" />
-          <FileText className="file-tree-icon file" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="file-tree-icon file"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
           <span className="file-tree-name">{node.name}</span>
         </div>
       );
@@ -346,12 +346,12 @@ export default function WorkspacesPage() {
             className={`file-tree-chevron${isExpanded ? ' expanded' : ''}`}
             onClick={(e) => { e.stopPropagation(); toggleFolder(node.fullPath); }}
           >
-            <ChevronRight />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
           </span>
           {isExpanded ? (
-            <FolderOpen className="file-tree-icon folder" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="file-tree-icon folder"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776" /></svg>
           ) : (
-            <Folder className="file-tree-icon folder" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="file-tree-icon folder"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg>
           )}
           <span className={`file-tree-name${isAthena ? ' font-semibold' : ''}`}>
             {node.name}
@@ -365,7 +365,7 @@ export default function WorkspacesPage() {
   if (loading) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8 animate-spin text-primary"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
       </div>
     );
   }
@@ -373,7 +373,7 @@ export default function WorkspacesPage() {
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Header */}
-      <div className="border-b border-border px-4 py-3">
+      <div className="border-b border-base-300 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link id="btn-back-to-agents" href="/agents" className="text-primary hover:underline">
@@ -416,7 +416,7 @@ export default function WorkspacesPage() {
         {/* LEFT PANEL: File Explorer */}
         <div
           id="file-explorer-panel"
-          className={`border-r border-border bg-card overflow-y-auto transition-all duration-300 ${
+          className={`border-r border-base-300 bg-base-100 overflow-y-auto transition-all duration-300 ${
             mobilePanel === 'files' ? 'block' : 'hidden'
           } md:block ${isLeftPanelCollapsed ? 'md:!w-12' : ''}`}
           style={isLeftPanelCollapsed ? undefined : { width: `${leftPanelWidth}%`, minWidth: '200px' }}
@@ -427,12 +427,12 @@ export default function WorkspacesPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsLeftPanelCollapsed(false)}
-                className="hover:bg-muted"
+                className="hover:bg-base-200"
                 title="Expand file explorer"
               >
-                <ChevronRight className="w-4 h-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
               </Button>
-              <div className="mt-4 text-xs text-muted-foreground rotate-90 whitespace-nowrap origin-center">
+              <div className="mt-4 text-xs text-base-content/60 rotate-90 whitespace-nowrap origin-center">
                 FILES
               </div>
             </div>
@@ -443,17 +443,17 @@ export default function WorkspacesPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsLeftPanelCollapsed(true)}
-                  className="hover:bg-muted"
+                  className="hover:bg-base-200"
                   title="Collapse file explorer"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
                 </Button>
               </div>
               <div className="file-tree">
                 <div className="file-tree-header">OUTPUT ARTIFACTS</div>
 
                 {files.length === 0 && (
-                  <p className="text-xs text-muted-foreground px-3 mt-2">
+                  <p className="text-xs text-base-content/60 px-3 mt-2">
                     No output artifacts found. Files will appear here as the oracles work on projects.
                   </p>
                 )}
@@ -483,43 +483,43 @@ export default function WorkspacesPage() {
           } md:block ${isCodeEditorCollapsed && showPreview ? 'md:!w-12 md:!min-w-[48px] md:!flex-none' : 'flex-1'}`}
         >
           {isCodeEditorCollapsed && showPreview ? (
-            <div className="flex flex-col items-center py-4 h-full border-r border-border bg-card">
+            <div className="flex flex-col items-center py-4 h-full border-r border-base-300 bg-base-100">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsCodeEditorCollapsed(false)}
-                className="hover:bg-muted"
+                className="hover:bg-base-200"
                 title="Show code editor"
               >
-                <Code2 className="w-4 h-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" /></svg>
               </Button>
-              <div className="mt-4 text-xs text-muted-foreground rotate-90 whitespace-nowrap origin-center">
+              <div className="mt-4 text-xs text-base-content/60 rotate-90 whitespace-nowrap origin-center">
                 CODE
               </div>
             </div>
           ) : selectedFile ? (
             <div className="h-full flex flex-col">
-              <div className="border-b border-border px-4 py-2 bg-muted/30 flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">{selectedFile.path}</p>
+              <div className="border-b border-base-300 px-4 py-2 bg-base-200/30 flex items-center justify-between">
+                <p className="text-sm font-medium text-base-content">{selectedFile.path}</p>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleCopyToClipboard}
-                    className="hover:bg-muted"
+                    className="hover:bg-base-200"
                     title="Copy to clipboard"
                   >
-                    <Copy className="w-4 h-4" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg>
                   </Button>
                   {showPreview && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsCodeEditorCollapsed(true)}
-                      className="hover:bg-muted"
+                      className="hover:bg-base-200"
                       title="Hide code editor, expand preview"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
                     </Button>
                   )}
                 </div>
@@ -533,9 +533,9 @@ export default function WorkspacesPage() {
               </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3 px-8">
+            <div className="h-full flex flex-col items-center justify-center text-base-content/60 gap-3 px-8">
               {selectedFolder && (
-                <div className="font-mono text-xs bg-muted px-3 py-1.5 rounded text-foreground/60 max-w-full truncate">
+                <div className="font-mono text-xs bg-base-200 px-3 py-1.5 rounded text-base-content/60 max-w-full truncate">
                   {selectedFolder}
                 </div>
               )}
@@ -555,7 +555,7 @@ export default function WorkspacesPage() {
             )}
             <div
               id="preview-panel"
-              className={`border-l border-border bg-card overflow-y-auto ${
+              className={`border-l border-base-300 bg-base-100 overflow-y-auto ${
                 mobilePanel === 'preview' ? 'block' : 'hidden'
               } md:block`}
               style={isCodeEditorCollapsed

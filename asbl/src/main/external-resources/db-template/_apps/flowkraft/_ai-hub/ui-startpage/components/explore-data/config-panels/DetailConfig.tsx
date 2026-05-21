@@ -20,23 +20,23 @@ export function DetailConfig({ config, columns, onChange }: DetailConfigProps) {
   return (
     <div id="configPanel-detail" className="space-y-3">
       <div>
-        <p className="text-xs text-muted-foreground mb-2">
+        <p className="text-xs text-base-content/60 mb-2">
           Single-row record viewer. Shows all columns of the first row as a key/value list.
         </p>
-        <span className="text-xs text-muted-foreground">Visible columns</span>
-        <div className="mt-1 max-h-64 overflow-y-auto border border-border rounded-md bg-background p-1 space-y-0.5">
+        <span className="text-xs text-base-content/60">Visible columns</span>
+        <div className="mt-1 max-h-64 overflow-y-auto border border-base-300 rounded-md bg-base-100 p-1 space-y-0.5">
           {columns.length === 0 && (
-            <p className="text-xs text-muted-foreground p-2">No columns detected yet.</p>
+            <p className="text-xs text-base-content/60 p-2">No columns detected yet.</p>
           )}
           {columns.map((c) => (
-            <label key={c.columnName} className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-accent rounded cursor-pointer">
+            <label key={c.columnName} className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-base-200 rounded cursor-pointer">
               <input
                 type="checkbox"
                 checked={!hidden.includes(c.columnName)}
                 onChange={() => toggle(c.columnName)}
               />
-              <span className="text-foreground">{c.columnName}</span>
-              <span className="text-muted-foreground ml-auto text-[10px]">{c.typeName}</span>
+              <span className="text-base-content">{c.columnName}</span>
+              <span className="text-base-content/60 ml-auto text-[10px]">{c.typeName}</span>
             </label>
           ))}
         </div>

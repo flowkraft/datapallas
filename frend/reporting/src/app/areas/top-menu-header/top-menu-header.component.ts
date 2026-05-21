@@ -1,4 +1,6 @@
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, ViewChild, OnInit, inject } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { BrandComponent } from '../../components/brand/brand.component';
 import { NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs/operators';
@@ -6,6 +8,7 @@ import { LicenseService } from '../../providers/license.service';
 import { AskForFeatureService } from '../../components/ask-for-feature/ask-for-feature.service';
 import { SamplesService } from '../../providers/samples.service';
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
+import { MoreSettingsComponent } from '../../components/more-settings/more-settings.component';
 import Utilities from '../../helpers/utilities';
 import { StateStoreService } from '../../providers/state-store.service';
 
@@ -15,9 +18,12 @@ const DEFAULT_THEME = 'light';
 @Component({
     selector: 'dburst-top-menu-header',
     templateUrl: './top-menu-header.template.html',
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS, BrandComponent, MoreSettingsComponent],
 })
 export class TopMenuHeaderComponent implements OnInit {
+  @ViewChild('moreSettings') moreSettings!: MoreSettingsComponent;
+
   // All 35 daisyUI v5 built-in themes (groups intentional — visual ordering only).
   ALL_THEMES = [
     'light', 'dark',

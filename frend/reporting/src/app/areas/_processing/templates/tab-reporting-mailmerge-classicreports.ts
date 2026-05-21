@@ -284,7 +284,7 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
                  here the component fetches its own data independently. -->
             <rb-tabulator
               [reportId]="processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport?.folderName"
-              [apiBaseUrl]="reportingService.reportingApiBaseUrl"
+              [apiBaseUrl]="reportsService.apiBaseUrl"
               [reportParams]="viewDataParams || {}"
               (dataFetched)="onViewDataFetched($any($event))"
               (dataLoaded)="onViewDataFetched($any($event))"

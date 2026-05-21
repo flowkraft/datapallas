@@ -46,7 +46,7 @@ function setDslMap(
 
 function GroupHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] uppercase tracking-wide text-muted-foreground pt-2 pb-1 border-t border-border/50">
+    <div className="text-[10px] uppercase tracking-wide text-base-content/60 pt-2 pb-1 border-t border-base-300/50">
       {children}
     </div>
   );
@@ -76,7 +76,7 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
   const heightMode = heightPx ? "fixed" : "auto";
 
   const dimensions = columns.filter((c) => getFieldKind(c) === "dimension");
-  const inputCls = "w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground";
+  const inputCls = "w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content";
 
   const setMap = (patch: Partial<FilterPaneDslOptions>) => {
     const next: FilterPaneDslOptions = { ...map };
@@ -90,7 +90,7 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
   return (
     <div className="space-y-3">
       <div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-base-content/60">
           Field to explore <span className="text-blue-500">(dimension)</span>
         </span>
         <select
@@ -111,13 +111,13 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
           )}
         </select>
       </div>
-      <p className="text-[10px] text-muted-foreground leading-relaxed">
+      <p className="text-[10px] text-base-content/60 leading-relaxed">
         Shows all distinct values for this field. Click a value to select it — all other widgets will highlight what&apos;s associated and dim what&apos;s excluded.
       </p>
 
       <GroupHeader>Display</GroupHeader>
       <div>
-        <span className="text-xs text-muted-foreground">Label</span>
+        <span className="text-xs text-base-content/60">Label</span>
         <input
           type="text"
           value={label}
@@ -128,20 +128,20 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
       </div>
 
       <GroupHeader>Behavior</GroupHeader>
-      <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
+      <label className="flex items-center gap-2 text-xs text-base-content cursor-pointer">
         <input
           type="checkbox"
           checked={multiSelect}
           onChange={(e) => setMap({ multiSelect: e.target.checked })}
-          className="rounded border-border"
+          className="rounded border-base-300"
         />
         <span>Multi-select</span>
-        <span className="text-[10px] text-muted-foreground ml-auto">
+        <span className="text-[10px] text-base-content/60 ml-auto">
           {multiSelect ? "checkboxes" : "single pick"}
         </span>
       </label>
       <div>
-        <span className="text-xs text-muted-foreground">Sort by</span>
+        <span className="text-xs text-base-content/60">Sort by</span>
         <select
           value={sort}
           onChange={(e) => setMap({ sort: e.target.value || undefined })}
@@ -155,7 +155,7 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
 
       <GroupHeader>Value list</GroupHeader>
       <div>
-        <span className="text-xs text-muted-foreground">Show search box</span>
+        <span className="text-xs text-base-content/60">Show search box</span>
         <select
           value={showSearch}
           onChange={(e) => {
@@ -168,22 +168,22 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
           <option value="on">Always on</option>
           <option value="off">Always off</option>
         </select>
-        <p className="text-[10px] text-muted-foreground mt-1">
+        <p className="text-[10px] text-base-content/60 mt-1">
           Auto shows the box only when there are many values.
         </p>
       </div>
-      <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
+      <label className="flex items-center gap-2 text-xs text-base-content cursor-pointer">
         <input
           type="checkbox"
           checked={showCount}
           onChange={(e) => setMap({ showCount: e.target.checked || undefined })}
-          className="rounded border-border"
+          className="rounded border-base-300"
         />
         <span>Show value counts</span>
-        <span className="text-[10px] text-muted-foreground ml-auto">e.g. USA (1,243)</span>
+        <span className="text-[10px] text-base-content/60 ml-auto">e.g. USA (1,243)</span>
       </label>
       <div>
-        <span className="text-xs text-muted-foreground">Max values</span>
+        <span className="text-xs text-base-content/60">Max values</span>
         <input
           type="number"
           min={1}
@@ -194,22 +194,22 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
           }}
           className={inputCls}
         />
-        <p className="text-[10px] text-muted-foreground mt-1">
+        <p className="text-[10px] text-base-content/60 mt-1">
           Caps the value list for high-cardinality fields.
         </p>
       </div>
 
       <GroupHeader>Layout</GroupHeader>
       <div>
-        <span className="text-xs text-muted-foreground">Height</span>
+        <span className="text-xs text-base-content/60">Height</span>
         <div className="flex gap-1 mt-1">
           <button
             type="button"
             onClick={() => setMap({ height: undefined })}
             className={`flex-1 text-xs px-2 py-1.5 rounded-md border transition-colors ${
               heightMode === "auto"
-                ? "border-primary bg-primary/5 text-foreground"
-                : "border-border text-muted-foreground hover:border-muted-foreground/50"
+                ? "border-primary bg-primary/5 text-base-content"
+                : "border-base-300 text-base-content/60 hover:border-muted-foreground/50"
             }`}
           >
             Auto
@@ -219,8 +219,8 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
             onClick={() => setMap({ height: `${heightPx ?? 240}px` })}
             className={`flex-1 text-xs px-2 py-1.5 rounded-md border transition-colors ${
               heightMode === "fixed"
-                ? "border-primary bg-primary/5 text-foreground"
-                : "border-border text-muted-foreground hover:border-muted-foreground/50"
+                ? "border-primary bg-primary/5 text-base-content"
+                : "border-base-300 text-base-content/60 hover:border-muted-foreground/50"
             }`}
           >
             Fixed
@@ -235,9 +235,9 @@ export function FilterPaneConfig({ config, columns, onChange }: FilterPaneConfig
                   const n = Number(e.target.value);
                   setMap({ height: `${Number.isFinite(n) && n > 0 ? n : 240}px` });
                 }}
-                className="w-16 text-sm bg-background border border-border rounded-md px-2 py-1 text-foreground"
+                className="w-16 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1 text-base-content"
               />
-              <span className="text-xs text-muted-foreground">px</span>
+              <span className="text-xs text-base-content/60">px</span>
             </div>
           )}
         </div>

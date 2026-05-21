@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@plugin "daisyui" { themes: all; }
 
-/* DataPallas Brand Colors — kept for backward compat during migration */
+/* DataPallas domain-specific semantic tokens — NOT shadcn, keep for all themes */
 :root {
   --rb-cyan: #3b82f6;
   --rb-cyan-light: #60a5fa;
@@ -9,28 +10,6 @@
 
   /* Font family using Next.js Inter + CalSans for headings */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-
-  /* Light theme — zinc-based neutrals with blue-tint, blue primary */
-  --background: #ffffff;
-  --foreground: #0a0a0f;
-  --card: #ffffff;
-  --card-foreground: #0a0a0f;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0f;
-  --primary: #3b82f6;
-  --primary-foreground: #fafafa;
-  --secondary: #f5f5f6;
-  --secondary-foreground: #18181b;
-  --muted: #f5f5f6;
-  --muted-foreground: #6e6e78;
-  --accent: #f5f5f6;
-  --accent-foreground: #18181b;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #e4e4ea;
-  --input: #e4e4ea;
-  --ring: #3b82f6;
-  --radius: 0.625rem;
 
   /* Semantic: chat */
   --chat-user-bg: #3b82f6;
@@ -52,29 +31,19 @@
   --athena-accent: #6d28d9;
 }
 
-/* Dark theme — Prefect.io-inspired deep dark with blue-tinted zinc */
-.dark,
-[data-theme="dark"] {
-  --background: #0a0a0f;
-  --foreground: #fafafa;
-  --card: #19191e;
-  --card-foreground: #fafafa;
-  --popover: #19191e;
-  --popover-foreground: #fafafa;
-  --primary: #3b82f6;
-  --primary-foreground: #18181b;
-  --secondary: #282830;
-  --secondary-foreground: #fafafa;
-  --muted: #282830;
-  --muted-foreground: #a0a0ac;
-  --accent: #282830;
-  --accent-foreground: #fafafa;
-  --destructive: #b33b3b;
-  --destructive-foreground: #fafafa;
-  --border: #282830;
-  --input: #2e2e38;
-  --ring: #3b82f6;
-
+/* Domain-specific dark overrides — chat, code, tags, Athena accent */
+[data-theme="dark"],
+[data-theme="synthwave"],
+[data-theme="halloween"],
+[data-theme="forest"],
+[data-theme="black"],
+[data-theme="luxury"],
+[data-theme="dracula"],
+[data-theme="business"],
+[data-theme="night"],
+[data-theme="coffee"],
+[data-theme="dim"],
+[data-theme="abyss"] {
   /* Semantic: chat */
   --chat-user-bg: #1e40af;
   --chat-user-fg: #dbeafe;
@@ -96,28 +65,6 @@
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius: var(--radius);
-
-  /* Semantic tokens for Tailwind utility classes */
   --color-chat-user-bg: var(--chat-user-bg);
   --color-chat-user-fg: var(--chat-user-fg);
   --color-chat-assistant-bg: var(--chat-assistant-bg);
@@ -129,18 +76,10 @@
   --color-tag-fg: var(--tag-fg);
   --color-tag-border: var(--tag-border);
   --color-athena-accent: var(--athena-accent);
-
-  /* Font family tokens */
   --font-heading: var(--font-heading), ui-serif, Georgia, serif;
 }
 
-* {
-  border-color: var(--border);
-}
-
 body {
-  background-color: var(--background);
-  color: var(--foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -172,7 +111,7 @@ textarea,
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-/* DataPallas brand utilities — will be replaced with primary in later phases */
+/* DataPallas brand utilities */
 .text-rb-cyan {
   color: var(--rb-cyan);
 }
@@ -210,7 +149,7 @@ input[type="button"],
   text-transform: uppercase;
   letter-spacing: 0.3px;
   padding: 6px 10px 4px;
-  color: var(--muted-foreground);
+  color: oklch(var(--bc) / 0.6);
 }
 
 .file-tree-row {
@@ -221,11 +160,11 @@ input[type="button"],
   cursor: default;
   user-select: none;
   position: relative;
-  color: var(--foreground);
+  color: oklch(var(--bc));
 }
 
 .file-tree-row:hover {
-  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+  background: oklch(var(--bc) / 0.04);
 }
 
 .file-tree-row.selected {
@@ -265,8 +204,7 @@ input[type="button"],
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(--border);
-  opacity: 0.35;
+  background: oklch(var(--bc) / 0.35);
 }
 
 /* Expand/collapse chevron */
@@ -312,7 +250,7 @@ input[type="button"],
 }
 
 .file-tree-icon.file {
-  color: var(--muted-foreground);
+  color: oklch(var(--bc) / 0.6);
 }
 
 /* File/folder name */
@@ -325,26 +263,23 @@ input[type="button"],
   line-height: 22px;
 }
 
-/* Rebind @tailwindcss/typography's hardcoded colors to the app's theme CSS
-   variables so `prose` works in both light and dark mode (controlled by the
-   `.dark` class on <html>) without relying on @media (prefers-color-scheme),
-   which is how `dark:prose-invert` misfires in this codebase. */
+/* Rebind @tailwindcss/typography's hardcoded colors to daisyUI semantic tokens
+   so `prose` works with any daisyUI theme. */
 .prose {
-  --tw-prose-body: var(--foreground);
-  --tw-prose-headings: var(--foreground);
-  --tw-prose-lead: var(--muted-foreground);
-  --tw-prose-links: var(--primary);
-  --tw-prose-bold: var(--foreground);
-  --tw-prose-counters: var(--muted-foreground);
-  --tw-prose-bullets: var(--muted-foreground);
-  --tw-prose-hr: var(--border);
-  --tw-prose-quotes: var(--foreground);
-  --tw-prose-quote-borders: var(--border);
-  --tw-prose-captions: var(--muted-foreground);
-  --tw-prose-code: var(--foreground);
-  --tw-prose-pre-code: var(--foreground);
-  --tw-prose-pre-bg: var(--muted);
-  --tw-prose-th-borders: var(--border);
-  --tw-prose-td-borders: var(--border);
+  --tw-prose-body: oklch(var(--bc));
+  --tw-prose-headings: oklch(var(--bc));
+  --tw-prose-lead: oklch(var(--bc) / 0.6);
+  --tw-prose-links: oklch(var(--p));
+  --tw-prose-bold: oklch(var(--bc));
+  --tw-prose-counters: oklch(var(--bc) / 0.6);
+  --tw-prose-bullets: oklch(var(--bc) / 0.6);
+  --tw-prose-hr: oklch(var(--b3));
+  --tw-prose-quotes: oklch(var(--bc));
+  --tw-prose-quote-borders: oklch(var(--b3));
+  --tw-prose-captions: oklch(var(--bc) / 0.6);
+  --tw-prose-code: oklch(var(--bc));
+  --tw-prose-pre-code: oklch(var(--bc));
+  --tw-prose-pre-bg: oklch(var(--b2));
+  --tw-prose-th-borders: oklch(var(--b3));
+  --tw-prose-td-borders: oklch(var(--b3));
 }
-

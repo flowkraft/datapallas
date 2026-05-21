@@ -3,60 +3,27 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Menu, X, Sun, Moon, Settings, Rocket } from "lucide-react"
-import { applyTheme } from "@/lib/themes"
-import { setSetting, getSetting, SETTING_KEYS } from "@/lib/settings"
+import { DAISY_THEMES, setTheme } from "@/lib/daisy-themes"
+import { BrandLogo } from "@/components/shared/BrandLogo"
+import { IconXMark, IconHamburger, IconSettings, IconRocketLaunch, IconEmail } from "@/components/shared/Icons"
 
 export function AINavbar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
-  const [mode, setMode] = useState<"light" | "dark">("dark")
   const [showSettings, setShowSettings] = useState(false)
 
+  // Sync checkmarks and trigger swatch on mount
   useEffect(() => {
-    const loadTheme = async () => {
-      try {
-        const savedMode = await getSetting(SETTING_KEYS.THEME_MODE) as "light" | "dark" | null
-        if (savedMode) {
-          setMode(savedMode)
-        }
-      } catch (error) {
-        const localMode = localStorage.getItem("rb-theme") as "light" | "dark"
-        if (localMode) {
-          setMode(localMode)
-        }
-      }
-    }
-    loadTheme()
-  }, [])
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    document.querySelectorAll<HTMLElement>('.theme-checkmark').forEach((el) => {
+      el.style.visibility = el.getAttribute('data-theme-name') === current ? 'visible' : 'hidden';
+    });
+    const trigger = document.getElementById('themeSwatchTrigger');
+    if (trigger) trigger.setAttribute('data-theme', current);
+  }, []);
 
-  // Active when the current pathname matches exactly OR is a child route
-  // (e.g. /explore-data/canvas-XXX highlights the "Explore Data" item).
   const isActive = (path: string) =>
     pathname === path || pathname?.startsWith(path + "/")
-
-  const toggleMode = async () => {
-    const newMode = mode === "light" ? "dark" : "light"
-    const currentTheme = localStorage.getItem("rb-color-theme") || "datapallas"
-
-    setMode(newMode)
-    document.documentElement.setAttribute("data-theme", newMode)
-
-    if (newMode === "dark") {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-    }
-
-    try {
-      await setSetting(SETTING_KEYS.THEME_MODE, newMode, "Theme mode (light/dark)")
-    } catch (error) {
-      console.error("Failed to save theme to settings:", error)
-    }
-
-    localStorage.setItem("rb-theme", newMode)
-    applyTheme(currentTheme, newMode)
-  }
 
   const handleUpdateAgents = () => {
     setShowSettings(false)
@@ -66,143 +33,154 @@ export function AINavbar() {
   const navLinks = [
     { href: "/explore-data", label: "Explore Data" },
     { href: "/chat2db", label: "Chat2DB" },
-    { href: "/agents", label: "Data Greeks (AI Crew)" },
+    { href: "/agents", label: "Data Geeks (AI Crew)" },
   ]
 
-  const isDataCanvas = pathname?.startsWith("/explore-data")
-  const brandLabel = isDataCanvas ? "DataPallas" : "Data Greeks"
-
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-foreground/[0.06]">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+    <header className="bg-base-100/90 text-base-content fixed top-0 left-0 right-0 z-30 flex h-16 w-full backdrop-blur border-b border-base-300">
+      <nav className="navbar w-full py-0 px-4">
+
+        {/* Left: brand + nav links */}
+        <div className="flex flex-1 items-center gap-2">
+
           {/* Brand */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg text-foreground">
-              <svg className="w-5 h-5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5"/>
-                <path d="M12 1v6m0 6v6"/>
-                <path d="m23 12-6-6m-6 6-6-6"/>
-              </svg>
-              {brandLabel}
-            </Link>
+          <Link href="/" className="flex items-center gap-2 shrink-0 no-underline text-base-content">
+            <span className="logo-lg flex items-center gap-1">
+              <span className="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
+              <BrandLogo />
+            </span>
+          </Link>
+
+          {/* Desktop nav links */}
+          <ul className="menu menu-horizontal px-1 hidden md:flex">
+            {navLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className={isActive(link.href) ? 'menu-active' : ''}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Right: support email + settings gear + 35-theme picker */}
+        <div className="flex items-center gap-1">
+
+          {/* Support email */}
+          <a href="mailto:support@datapallas.com" className="btn btn-ghost btn-sm normal-case gap-1">
+            <IconEmail />
+            support@datapallas.com
+          </a>
+
+          {/* Settings gear */}
+          <div className="relative">
+            <button
+              id="navbar-settings-button"
+              type="button"
+              onClick={() => setShowSettings(!showSettings)}
+              className="btn btn-square btn-ghost"
+              aria-label="Settings"
+            >
+              <IconSettings />
+            </button>
+
+            {showSettings && (
+              <>
+                {/* Click-outside overlay */}
+                <div className="fixed inset-0 z-30" onClick={() => setShowSettings(false)} />
+
+                {/* Dropdown */}
+                <div id="settings-dropdown" className="absolute right-0 top-full mt-1 z-40 w-64 bg-base-100 border border-base-300 rounded-box shadow-lg py-2">
+                  {/* Admin section */}
+                  <div className="px-4 py-2">
+                    <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Administration</span>
+                  </div>
+                  <button
+                    id="settings-update-agents-button"
+                    type="button"
+                    onClick={handleUpdateAgents}
+                    className="w-full text-left px-4 py-2.5 text-sm text-base-content hover:bg-base-200 transition-colors flex items-center gap-3"
+                  >
+                    <IconRocketLaunch />
+                    Update Agents
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`relative px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive(link.href)
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {link.label}
-                {isActive(link.href) && (
-                  <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" />
-                )}
-              </Link>
-            ))}
-
-            {/* Settings gear */}
-            <div className="relative ml-1">
-              <button
-                id="navbar-settings-button"
-                type="button"
-                onClick={() => setShowSettings(!showSettings)}
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md"
-                aria-label="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-
-              {showSettings && (
-                <>
-                  {/* Click-outside overlay */}
-                  <div className="fixed inset-0 z-30" onClick={() => setShowSettings(false)} />
-
-                  {/* Dropdown */}
-                  <div id="settings-dropdown" className="absolute right-0 top-full mt-1 z-40 w-64 bg-card border border-border rounded-lg shadow-lg py-2">
-                    {/* Theme section */}
-                    <div className="px-4 py-2">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Appearance</span>
+          {/* 35-theme daisyUI picker */}
+          <div className="dropdown dropdown-end" id="daisyThemePicker">
+            <button id="btnChangeSkin" tabIndex={0} type="button" className="btn btn-square btn-ghost" aria-label="Theme">
+              <div id="themeSwatchTrigger"
+                   style={{display:'inline-grid',gridTemplateColumns:'4px 4px',gridTemplateRows:'4px 4px',gap:'2px',padding:'2px',borderRadius:'3px',border:'1px solid rgba(128,128,128,0.2)',backgroundColor:'var(--color-base-100)',flexShrink:0}}>
+                <div style={{backgroundColor:'var(--color-base-content)',borderRadius:'50%'}}></div>
+                <div style={{backgroundColor:'var(--color-primary)',borderRadius:'50%'}}></div>
+                <div style={{backgroundColor:'var(--color-secondary)',borderRadius:'50%'}}></div>
+                <div style={{backgroundColor:'var(--color-accent)',borderRadius:'50%'}}></div>
+              </div>
+            </button>
+            <ul tabIndex={0} id="daisyThemePickerList"
+                className="dropdown-content menu bg-base-300 rounded-box max-h-96 overflow-y-auto w-52 p-2 shadow z-[1031]">
+              {DAISY_THEMES.map((t) => (
+                <li key={t}>
+                  <button
+                    type="button"
+                    id={`theme-${t}`}
+                    onClick={() => setTheme(t)}
+                    className="gap-3 px-2 cursor-pointer flex items-center w-full"
+                  >
+                    <div data-theme={t}
+                         style={{display:'inline-grid',gridTemplateColumns:'4px 4px',gridTemplateRows:'4px 4px',gap:'2px',padding:'2px',borderRadius:'3px',border:'1px solid rgba(128,128,128,0.2)',backgroundColor:'var(--color-base-100)',flexShrink:0,verticalAlign:'middle'}}>
+                      <div style={{backgroundColor:'var(--color-base-content)',borderRadius:'50%'}}></div>
+                      <div style={{backgroundColor:'var(--color-primary)',borderRadius:'50%'}}></div>
+                      <div style={{backgroundColor:'var(--color-secondary)',borderRadius:'50%'}}></div>
+                      <div style={{backgroundColor:'var(--color-accent)',borderRadius:'50%'}}></div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={toggleMode}
-                      className="w-full text-left px-4 py-2.5 text-sm text-card-foreground hover:bg-accent transition-colors flex items-center gap-3"
-                    >
-                      {mode === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-yellow-400" />}
-                      {mode === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
-                    </button>
-
-                    {/* Divider */}
-                    <div className="my-1 border-t border-border" />
-
-                    {/* Admin section */}
-                    <div className="px-4 py-2">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Administration</span>
-                    </div>
-                    <button
-                      id="settings-update-agents-button"
-                      type="button"
-                      onClick={handleUpdateAgents}
-                      className="w-full text-left px-4 py-2.5 text-sm text-card-foreground hover:bg-accent transition-colors flex items-center gap-3"
-                    >
-                      <Rocket className="w-4 h-4 text-muted-foreground" />
-                      Update Agents
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                    <div className="w-32 truncate capitalize">{t}</div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+                         className="h-3 w-3 shrink-0 theme-checkmark" data-theme-name={t}>
+                      <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/>
+                    </svg>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Mobile menu button */}
-          <div className="flex items-center md:hidden">
-            <button
-              type="button"
-              onClick={() => setShowSettings(!showSettings)}
-              className="mr-2 p-2 text-muted-foreground hover:text-foreground rounded-md"
-              aria-label="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-2 text-muted-foreground hover:text-foreground"
-              aria-label="Toggle menu"
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className="btn btn-square btn-ghost md:hidden"
+            aria-label="Toggle menu"
+          >
+            {isOpen ? <IconXMark /> : <IconHamburger />}
+          </button>
         </div>
-      </div>
+      </nav>
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden border-t border-border">
-          <div className="px-2 pt-2 pb-3 space-y-1">
+        <div className="md:hidden absolute top-16 left-0 right-0 border-t border-base-300 bg-base-100 z-50">
+          <ul className="menu w-full p-2">
             {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive(link.href)
-                    ? "text-primary bg-accent"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                {link.label}
-              </Link>
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setIsOpen(false)}
+                  className={isActive(link.href) ? 'menu-active' : ''}
+                >
+                  {link.label}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
-    </nav>
+    </header>
   )
 }

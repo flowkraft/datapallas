@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+// lucide-react removed
 import type { WidgetDisplayConfig } from "@/lib/stores/canvas-store";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import type { TabulatorDslOptions } from "@/lib/explore-data/dsl-sync/tabulator-mapping";
@@ -129,11 +129,11 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
     <div id="configPanel-tabulator" className="space-y-4">
       {/* ── Layout ── */}
       <div>
-        <span className="text-xs text-muted-foreground">Layout</span>
+        <span className="text-xs text-base-content/60">Layout</span>
         <select
           value={layout}
           onChange={(e) => setMapKey("layout", e.target.value)}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           {LAYOUTS.map((l) => (
             <option key={l.value} value={l.value}>{l.label}</option>
@@ -144,8 +144,8 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
       {/* ── Pagination ── */}
       {!hidePagination && (
         <div>
-          <span className="text-xs text-muted-foreground">Pagination</span>
-          <div className="flex mt-1 rounded-md overflow-hidden border border-border text-xs">
+          <span className="text-xs text-base-content/60">Pagination</span>
+          <div className="flex mt-1 rounded-md overflow-hidden border border-base-300 text-xs">
             {[true, false].map((v) => (
               <button
                 key={String(v)}
@@ -154,7 +154,7 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
                 className={`flex-1 py-1.5 transition-colors ${
                   pagination === v
                     ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-accent"
+                    : "text-base-content/60 hover:bg-base-200"
                 }`}
               >
                 {v ? "On" : "Off"}
@@ -163,7 +163,7 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
           </div>
           {pagination && (
             <div className="mt-2">
-              <span className="text-xs text-muted-foreground">Rows per page</span>
+              <span className="text-xs text-base-content/60">Rows per page</span>
               <input
                 type="number"
                 min={5}
@@ -171,7 +171,7 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
                 step={5}
                 value={pageSize}
                 onChange={(e) => setMapKey("paginationSize", Number(e.target.value) || 50)}
-                className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
               />
             </div>
           )}
@@ -180,11 +180,11 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
 
       {/* ── Theme ── */}
       <div>
-        <span className="text-xs text-muted-foreground">Theme</span>
+        <span className="text-xs text-base-content/60">Theme</span>
         <select
           value={theme}
           onChange={(e) => setMapKey("theme", e.target.value)}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           {THEMES.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
@@ -194,10 +194,10 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
 
       {/* ── Column visibility ── */}
       {columns.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Run a query to see columns</p>
+        <p className="text-xs text-base-content/60">Run a query to see columns</p>
       ) : (
         <div className="space-y-2">
-          <span className="text-xs text-muted-foreground">Column visibility</span>
+          <span className="text-xs text-base-content/60">Column visibility</span>
           <div className="space-y-0.5">
             {columns.map((col) => {
               const hidden = isHidden(col.columnName);
@@ -208,12 +208,15 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
                   data-hidden={hidden ? "true" : "false"}
                   onClick={() => toggleColumn(col.columnName)}
                   className={`w-full flex items-center gap-2 px-2 py-1 rounded text-xs text-left transition-colors ${
-                    hidden ? "text-muted-foreground/50" : "text-foreground hover:bg-accent"
+                    hidden ? "text-base-content/60/50" : "text-base-content hover:bg-base-200"
                   }`}
                 >
-                  {hidden ? <EyeOff className="w-3 h-3 shrink-0" /> : <Eye className="w-3 h-3 shrink-0" />}
+                  {hidden
+                    ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                    : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                  }
                   <span className={hidden ? "line-through" : ""}>{col.columnName}</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground">{col.typeName}</span>
+                  <span className="ml-auto text-[10px] text-base-content/60">{col.typeName}</span>
                 </button>
               );
             })}

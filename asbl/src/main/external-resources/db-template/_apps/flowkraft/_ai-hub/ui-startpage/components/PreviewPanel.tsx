@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileText, AlertCircle, ExternalLink } from 'lucide-react';
+// lucide-react removed
 import { Button } from '@/components/ui/button';
 
 interface PreviewPanelProps {
@@ -66,9 +66,9 @@ export function PreviewPanel({ fileName, fileContent, language }: PreviewPanelPr
 
   if (previewType === 'none') {
     return (
-      <div className="flex items-center justify-center h-full bg-muted/10">
-        <div className="text-center text-muted-foreground">
-          <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+      <div className="flex items-center justify-center h-full bg-base-200/10">
+        <div className="text-center text-base-content/60">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 mx-auto mb-4 opacity-50" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
           <p>No preview available for this file type</p>
           <p className="text-sm mt-2">Supported: HTML, PlantUML</p>
         </div>
@@ -78,9 +78,9 @@ export function PreviewPanel({ fileName, fileContent, language }: PreviewPanelPr
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full bg-destructive/10">
-        <div className="text-center text-destructive">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4" />
+      <div className="flex items-center justify-center h-full bg-error/10">
+        <div className="text-center text-error">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 mx-auto mb-4" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>
           <p className="font-semibold">{error}</p>
         </div>
       </div>
@@ -88,7 +88,7 @@ export function PreviewPanel({ fileName, fileContent, language }: PreviewPanelPr
   }
 
   return (
-    <div className="h-full overflow-auto bg-background">
+    <div className="h-full overflow-auto bg-base-100">
       {previewType === 'html' && (
         <HtmlPreview content={processedContent} fileName={fileName} />
       )}
@@ -102,14 +102,14 @@ export function PreviewPanel({ fileName, fileContent, language }: PreviewPanelPr
 // Shared preview header bar with "View in Browser" button
 function PreviewHeader({ label, onViewInBrowser }: { label: string; onViewInBrowser: () => void }) {
   return (
-    <div className="flex justify-between items-center p-4 border-b border-border bg-muted/50 sticky top-0 z-10">
-      <span className="text-sm text-muted-foreground">{label}</span>
+    <div className="flex justify-between items-center p-4 border-b border-base-300 bg-base-200/50 sticky top-0 z-10">
+      <span className="text-sm text-base-content/60">{label}</span>
       <Button
         variant="outline"
         size="sm"
         onClick={onViewInBrowser}
       >
-        <ExternalLink className="w-4 h-4 mr-1.5" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
         View in Browser
       </Button>
     </div>
@@ -128,7 +128,7 @@ function HtmlPreview({ content, fileName }: { content: string; fileName: string 
         <iframe
           srcDoc={content}
           sandbox="allow-scripts allow-same-origin"
-          className="w-full h-full border border-border rounded-lg"
+          className="w-full h-full border border-base-300 rounded-lg"
           title="HTML Preview"
         />
       </div>
@@ -147,7 +147,7 @@ function PlantUMLPreview({ url }: { url: string }) {
       <div className="flex-1 p-4 overflow-auto">
         <iframe
           src={url}
-          className="w-full h-full border border-border rounded-lg"
+          className="w-full h-full border border-base-300 rounded-lg"
           title="PlantUML Diagram"
         />
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Check, ExternalLink, Loader2 } from "lucide-react";
+// lucide-react removed
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
 import { sqlForDataSource } from "@/lib/explore-data/sql-builder";
@@ -86,14 +86,14 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-sm flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-base-100 border border-base-300 rounded-xl shadow-xl w-full max-w-sm flex flex-col" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h2 className="text-base font-semibold text-foreground">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
+            <h2 className="text-base font-semibold text-base-content">
               {isOverride ? "Update Dashboard" : "Save to DataPallas"}
             </h2>
-            <button id="btnCloseExportDialog" onClick={onClose} className="p-1 rounded-md text-muted-foreground hover:bg-accent">
-              <X className="w-4 h-4" />
+            <button id="btnCloseExportDialog" onClick={onClose} className="p-1 rounded-md text-base-content/60 hover:bg-base-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
             </button>
           </div>
 
@@ -101,7 +101,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           <div className="px-5 py-4 space-y-3">
 
             {!result?.success && (
-              <p className="text-sm text-foreground">
+              <p className="text-sm text-base-content">
                 {isOverride
                   ? <>This will <span className="font-semibold text-amber-600">override the existing &ldquo;{state.name}&rdquo; dashboard</span> and all existing configurations will be lost. Are you sure you want to continue?</>
                   : <>This will publish <span className="font-semibold">&ldquo;{state.name}&rdquo;</span> as a new dashboard in DataPallas.</>
@@ -122,30 +122,30 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
             {result?.success && (
               <div id="publishSuccess" className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
-                <Check className="w-4 h-4 shrink-0" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                 <div>
                   Dashboard published!{" "}
                   <a href={result.dashboardUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-emerald-700 underline">
-                    View dashboard <ExternalLink className="w-3 h-3" />
+                    View dashboard <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                   </a>
                 </div>
               </div>
             )}
             {result && !result.success && (
-              <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+              <p className="text-xs text-error bg-error/10 border border-error/20 rounded-md px-3 py-2">
                 {result.error}
               </p>
             )}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border">
+          <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-base-300">
             {result?.success ? (
               <button
                 id="btnPublishClose"
                 onClick={onClose}
-                className="px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-content hover:bg-primary/90 transition-colors"
               >
                 Close
               </button>
@@ -154,7 +154,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                 <button
                   id="btnPublishCancel"
                   onClick={onClose}
-                  className="px-4 py-1.5 rounded-md text-xs font-medium border border-border text-foreground hover:bg-muted transition-colors"
+                  className="px-4 py-1.5 rounded-md text-xs font-medium border border-base-300 text-base-content hover:bg-base-200 transition-colors"
                 >
                   No
                 </button>
@@ -162,10 +162,10 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                   id="btnPublishConfirm"
                   onClick={handleSave}
                   disabled={saving || !state.connectionId || !hasWidgets}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-content hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {saving ? (
-                    <><Loader2 className="w-3.5 h-3.5 animate-spin" />Saving…</>
+                    <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>Saving…</>
                   ) : (
                     "Yes, save"
                   )}

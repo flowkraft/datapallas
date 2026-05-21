@@ -49,6 +49,12 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
         <dburst-button-clear-logs btnId="btnClearLogsBurstReportsTab"></dburst-button-clear-logs>
       </div>
 
+      <div style="grid-column:span 3">
+        <button id="btnBurstSamples" type="button" class="btn btn-outline w-full" [routerLink]="['/processing','samplesMenuSelected']">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>&nbsp;Samples
+        </button>
+      </div>
+
       <div style="grid-column:span 3;padding-left: 1rem">
         <a id="seeHowToBurst" href="https://datapallas.com/docs/report-bursting" target="_blank">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>&nbsp;<span>see how</span>

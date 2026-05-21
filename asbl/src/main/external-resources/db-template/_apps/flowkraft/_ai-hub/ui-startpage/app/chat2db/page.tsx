@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Database, Plug, Check, AlertCircle, Copy, ChevronDown, Trash2, ExternalLink } from "lucide-react";
+// lucide-react removed — icons replaced with inline heroicons below
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import pako from "pako";
@@ -140,13 +140,13 @@ function HtmlIframe({ content, label, onFullScreen }: { content: string; label: 
 
   return (
     <div className="overflow-hidden rounded-xl border">
-      <div className="flex justify-between items-center px-3 py-1.5 text-xs text-muted-foreground border-b bg-muted/50">
+      <div className="flex justify-between items-center px-3 py-1.5 text-xs text-base-content/60 border-b bg-base-200/50">
         <span>{label}</span>
         <button
           onClick={onFullScreen}
-          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors hover:bg-accent"
+          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors hover:bg-base-200"
         >
-          <ExternalLink className="h-3 w-3" /> View Full Screen
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg> View Full Screen
         </button>
       </div>
       <iframe
@@ -189,7 +189,7 @@ function PlantUMLDiagram({ source }: { source: string }) {
       : source;
     return (
       <div>
-        <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 mb-2">
+        <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 mb-2">
           Kroki.io failed to render this diagram — showing source code
         </div>
         <pre className="overflow-x-auto rounded-lg text-xs bg-code-bg text-code-fg p-4" style={{ margin: 0 }}>
@@ -200,7 +200,7 @@ function PlantUMLDiagram({ source }: { source: string }) {
   }
 
   if (!svgHtml) {
-    return <div className="text-sm text-muted-foreground p-4">Rendering diagram...</div>;
+    return <div className="text-sm text-base-content/60 p-4">Rendering diagram...</div>;
   }
 
   return <div dangerouslySetInnerHTML={{ __html: svgHtml }} className="max-w-full [&>svg]:max-w-full" />;
@@ -231,7 +231,7 @@ function MarkdownCode({ className, children, ...props }: React.HTMLAttributes<HT
   }
 
   // Inline code
-  return <code className="px-1.5 py-0.5 rounded text-xs bg-muted" {...props}>{children}</code>;
+  return <code className="px-1.5 py-0.5 rounded text-xs bg-base-200" {...props}>{children}</code>;
 }
 
 /** Shared markdown components for ReactMarkdown — uses Prism for code highlighting. */
@@ -472,19 +472,19 @@ export default function Chat2DBPage() {
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col overflow-hidden">
       {/* ====== Connection bar (2-line compact layout, stays pinned) ====== */}
-      <div className="flex-shrink-0 border-b bg-background px-4 py-2 space-y-1.5">
+      <div className="flex-shrink-0 border-b bg-base-100 px-4 py-2 space-y-1.5">
         {/* Line 1: Brand */}
         <div className="flex items-center gap-2">
           <span className="text-lg">🦉</span>
           <span className="text-sm font-semibold text-athena-accent">Chat2DB</span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-base-content/60">
             powered by Athena — ask in plain English, get SQL + results + charts. Refine, drill deeper, visualize.
           </span>
         </div>
 
         {/* Line 2: DB controls + status */}
         <div className="flex items-center gap-2 text-sm">
-          <Database className="h-4 w-4 text-muted-foreground shrink-0" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4 text-base-content/60 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" /></svg>
 
           {/* Dropdown */}
           <select
@@ -500,7 +500,7 @@ export default function Chat2DBPage() {
                 setConnStatus("connected");
               }
             }}
-            className="h-8 rounded-md border bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+            className="h-8 rounded-md border bg-base-100 px-2 text-sm outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="">-- Select a database --</option>
             {connections.map((c) => (
@@ -517,12 +517,12 @@ export default function Chat2DBPage() {
             onClick={handleConnect}
             disabled={!selectedCode || connStatus === "connecting"}
           >
-            <Plug className="mr-1 h-3.5 w-3.5" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-1 h-3.5 w-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
             {connStatus === "connecting" ? "Connecting..." : "Connect"}
           </Button>
 
           {/* Send Tables checkbox */}
-          <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <label className="flex items-center gap-1.5 text-sm text-base-content/60">
             <input
               type="checkbox"
               checked={sendSchema}
@@ -532,7 +532,7 @@ export default function Chat2DBPage() {
             Send Tables
             <span
               title="Sends table names to Athena as a quick index. Recommended for database queries. Uncheck only for chit-chat or non-database topics."
-              className="cursor-help text-muted-foreground"
+              className="cursor-help text-base-content/60"
             >
               &#9432;
             </span>
@@ -542,24 +542,24 @@ export default function Chat2DBPage() {
           <div id="connection-status" className="ml-auto flex items-center gap-1.5 text-sm truncate">
             {connStatus === "connected" && (
               <>
-                <Check className="h-4 w-4 text-green-500 shrink-0" />
-                <span className="text-green-600 dark:text-green-400 truncate">Connected to {connectedCode}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4 text-green-500 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                <span className="text-green-600 truncate">Connected to {connectedCode}</span>
               </>
             )}
             {connStatus === "connecting" && (
-              <span className="text-muted-foreground">Connecting...</span>
+              <span className="text-base-content/60">Connecting...</span>
             )}
             {connStatus === "error" && (
               <>
-                <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-                <span className="text-red-600 dark:text-red-400 truncate">{connError}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4 text-red-500 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>
+                <span className="text-red-600 truncate">{connError}</span>
               </>
             )}
             {connStatus === "idle" && !connectedCode && (
-              <span className="text-muted-foreground">No database connected</span>
+              <span className="text-base-content/60">No database connected</span>
             )}
             {connStatus === "idle" && connectedCode && (
-              <span className="text-muted-foreground truncate">
+              <span className="text-base-content/60 truncate">
                 Press Connect to switch from {connectedCode}
               </span>
             )}
@@ -584,7 +584,7 @@ export default function Chat2DBPage() {
               </div>
             ) : (
               <Button size="sm" variant="ghost" onClick={() => setShowClearConfirm(true)}>
-                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-1 h-3.5 w-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
                 Clear
               </Button>
             )}
@@ -602,7 +602,7 @@ export default function Chat2DBPage() {
             messages.map((msg) => {
               if (msg.role === "system") {
                 return (
-                  <div key={msg.id} className="text-center text-xs text-muted-foreground py-1">
+                  <div key={msg.id} className="text-center text-xs text-base-content/60 py-1">
                     — {msg.content} —
                   </div>
                 );
@@ -629,14 +629,14 @@ export default function Chat2DBPage() {
                     <span className="text-xs font-semibold text-athena-accent">Athena</span>
                     {/* Error */}
                     {r?.error && (
-                      <div id="chat-error-response" className="rounded-2xl px-4 py-3 text-sm bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300">
+                      <div id="chat-error-response" className="rounded-2xl px-4 py-3 text-sm bg-red-50 text-red-700">
                         {r.error}
                         <div className="flex justify-end mt-2">
                           <button
                             onClick={() => copyToClipboard(r.error!, msg.id)}
-                            className="inline-flex items-center gap-1 rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-600 dark:text-red-400 transition-colors hover:bg-red-100 dark:hover:bg-red-900/30"
+                            className="inline-flex items-center gap-1 rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-600 transition-colors hover:bg-red-100"
                           >
-                            <Copy className="h-3 w-3" />
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg>
                             {copiedId === msg.id ? "Copied!" : "Copy"}
                           </button>
                         </div>
@@ -655,9 +655,9 @@ export default function Chat2DBPage() {
                           {seg.type === "sql_results" && (
                             <>
                               {r.sql && (
-                                <details className="rounded-xl bg-muted text-sm overflow-hidden">
-                                  <summary className="cursor-pointer px-4 py-2 text-xs text-muted-foreground hover:bg-accent">
-                                    <ChevronDown className="mr-1 inline h-3 w-3" />
+                                <details className="rounded-xl bg-base-200 text-sm overflow-hidden">
+                                  <summary className="cursor-pointer px-4 py-2 text-xs text-base-content/60 hover:bg-base-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-1 inline h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                                     Show SQL
                                   </summary>
                                   <pre className="overflow-x-auto px-4 py-3 text-xs bg-code-bg text-code-fg" style={{ margin: 0 }}>
@@ -667,13 +667,13 @@ export default function Chat2DBPage() {
                               )}
                               {r.data && r.data.length > 0 && (
                                 <div className="overflow-x-auto rounded-xl border text-sm">
-                                  <div className="px-3 py-1.5 text-xs text-muted-foreground border-b bg-muted/50">
+                                  <div className="px-3 py-1.5 text-xs text-base-content/60 border-b bg-base-200/50">
                                     {r.row_count} row{r.row_count !== 1 ? "s" : ""}
                                     {r.execution_time_ms ? ` · ${r.execution_time_ms.toFixed(0)} ms` : ""}
                                   </div>
                                   <table className="w-full text-left text-xs">
                                     <thead>
-                                      <tr className="border-b bg-muted/30">
+                                      <tr className="border-b bg-base-200/30">
                                         {Object.keys(r.data[0]).map((col) => (
                                           <th key={col} className="px-3 py-2 font-medium whitespace-nowrap">{col}</th>
                                         ))}
@@ -681,10 +681,10 @@ export default function Chat2DBPage() {
                                     </thead>
                                     <tbody>
                                       {r.data.slice(0, 20).map((row, i) => (
-                                        <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                                        <tr key={i} className="border-b last:border-0 hover:bg-base-200/20">
                                           {Object.values(row).map((val, j) => (
                                             <td key={j} className="px-3 py-1.5 whitespace-nowrap">
-                                              {val === null ? <span className="text-muted-foreground italic">null</span> : String(val)}
+                                              {val === null ? <span className="text-base-content/60 italic">null</span> : String(val)}
                                             </td>
                                           ))}
                                         </tr>
@@ -692,7 +692,7 @@ export default function Chat2DBPage() {
                                     </tbody>
                                   </table>
                                   {r.data.length > 20 && (
-                                    <div className="px-3 py-1.5 text-xs text-muted-foreground border-t bg-muted/50">
+                                    <div className="px-3 py-1.5 text-xs text-base-content/60 border-t bg-base-200/50">
                                       Showing 20 of {r.row_count} rows
                                     </div>
                                   )}
@@ -707,13 +707,13 @@ export default function Chat2DBPage() {
                           )}
                           {seg.type === "plantuml" && (
                             <div className="overflow-hidden rounded-xl border">
-                              <div className="flex justify-between items-center px-3 py-1.5 text-xs text-muted-foreground border-b bg-muted/50">
+                              <div className="flex justify-between items-center px-3 py-1.5 text-xs text-base-content/60 border-b bg-base-200/50">
                                 <span>PlantUML Diagram</span>
                                 <button
                                   onClick={() => window.open(krokiUrl("plantuml", seg.content), "_blank")}
-                                  className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors hover:bg-accent"
+                                  className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors hover:bg-base-200"
                                 >
-                                  <ExternalLink className="h-3 w-3" /> View Full Screen
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg> View Full Screen
                                 </button>
                               </div>
                               <div className="p-4 bg-white flex justify-center">
@@ -738,7 +738,7 @@ export default function Chat2DBPage() {
                           </MessageResponse>
                         )}
                         {r?.explanation && !r?.text_response && (
-                          <div className="prose prose-sm dark:prose-invert max-w-none rounded-2xl px-4 py-3 bg-chat-assistant-bg text-chat-assistant-fg">
+                          <div className="prose prose-sm max-w-none rounded-2xl px-4 py-3 bg-chat-assistant-bg text-chat-assistant-fg">
                             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{r.explanation}</ReactMarkdown>
                           </div>
                         )}
@@ -750,13 +750,13 @@ export default function Chat2DBPage() {
                       <div className="flex justify-end">
                         <button
                           onClick={() => copyToClipboard(r.raw_content!, msg.id)}
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent"
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-base-content/60 transition-colors hover:bg-base-200"
                           title="Copy Athena's response"
                         >
                           {copiedId === msg.id ? (
-                            <><Check className="h-3 w-3" /> Copied</>
+                            <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg> Copied</>
                           ) : (
-                            <><Copy className="h-3 w-3" /> Copy</>
+                            <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg> Copy</>
                           )}
                         </button>
                       </div>
@@ -773,7 +773,7 @@ export default function Chat2DBPage() {
               <MessageAvatar className="bg-chat-avatar-bg text-white" fallback="🦉" />
               <MessageContent>
                 <span className="text-xs font-semibold text-athena-accent">Athena</span>
-                <div id="chat-thinking-indicator" className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm bg-chat-assistant-bg text-muted-foreground">
+                <div id="chat-thinking-indicator" className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm bg-chat-assistant-bg text-base-content/60">
                   <span className="animate-pulse">Thinking</span>
                   <span className="flex gap-0.5">
                     <span className="animate-bounce [animation-delay:0ms]">.</span>
@@ -788,7 +788,7 @@ export default function Chat2DBPage() {
       </Conversation>
 
       {/* ====== Input bar ====== */}
-      <div className="border-t bg-background px-4 py-3">
+      <div className="border-t bg-base-100 px-4 py-3">
         <PromptInput
           id="chat-input-form"
           onSubmit={handleSubmit}

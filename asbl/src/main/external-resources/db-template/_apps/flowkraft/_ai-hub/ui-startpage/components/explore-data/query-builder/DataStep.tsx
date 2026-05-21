@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Table, Box, Check, ChevronsUpDown } from "lucide-react";
+// lucide-react removed
 import type { TableSchema } from "@/lib/explore-data/types";
 import type { CubeInfo } from "@/lib/explore-data/rb-api";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
@@ -51,13 +51,15 @@ export function DataStep({ tables, cubes = [], value, valueKind, onPickTable, on
     ? "Pick a table or cube..."
     : "Pick a table...";
 
-  const TriggerIcon = selectedCube ? Box : Table;
   const triggerIconClass = selectedCube ? "text-amber-500" : "text-emerald-500";
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <TriggerIcon className={cn("w-4 h-4 shrink-0", triggerIconClass)} />
+        {selectedCube
+          ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={cn("w-4 h-4 shrink-0", triggerIconClass)}><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
+          : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={cn("w-4 h-4 shrink-0", triggerIconClass)}><path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h1.5m-1.5 0c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h17.25m-17.25 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125" /></svg>
+        }
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
@@ -65,12 +67,12 @@ export function DataStep({ tables, cubes = [], value, valueKind, onPickTable, on
               type="button"
               role="combobox"
               aria-expanded={open}
-              className="flex-1 flex items-center justify-between text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground hover:bg-accent/50 transition-colors"
+              className="flex-1 flex items-center justify-between text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content hover:bg-base-200/50 transition-colors"
             >
-              <span className={cn("truncate", !selectedTable && !selectedCube && "text-muted-foreground")}>
+              <span className={cn("truncate", !selectedTable && !selectedCube && "text-base-content/60")}>
                 {triggerLabel}
               </span>
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="ml-2 h-4 w-4 shrink-0 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
             </button>
           </PopoverTrigger>
           <PopoverContent
@@ -97,15 +99,10 @@ export function DataStep({ tables, cubes = [], value, valueKind, onPickTable, on
                           setOpen(false);
                         }}
                       >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            isSelected ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <Table className="mr-2 h-3.5 w-3.5 text-emerald-500/70" />
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-2 h-3.5 w-3.5 text-emerald-500/70"><path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h1.5m-1.5 0c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h17.25m-17.25 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125" /></svg>
                         <span className="flex-1 truncate">{t.tableName}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
+                        <span className="ml-2 text-xs text-base-content/60">
                           ({t.columns.length} cols)
                         </span>
                       </CommandItem>
@@ -129,17 +126,12 @@ export function DataStep({ tables, cubes = [], value, valueKind, onPickTable, on
                             setOpen(false);
                           }}
                         >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              isSelected ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <Box className="mr-2 h-3.5 w-3.5 text-amber-500/70" />
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-2 h-3.5 w-3.5 text-amber-500/70"><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
                           <div className="flex-1 min-w-0">
                             <div className="truncate">{c.name}</div>
                             {c.description && (
-                              <div className="text-[10px] text-muted-foreground truncate">
+                              <div className="text-[10px] text-base-content/60 truncate">
                                 {c.description}
                               </div>
                             )}

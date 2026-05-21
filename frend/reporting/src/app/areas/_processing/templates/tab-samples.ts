@@ -11,10 +11,10 @@ export const tabSamplesTemplate = `<ng-template #tabSamplesTemplate>
           cellspacing="0"
         >
         
-          <thead>
-            
+          <thead class="bg-base-300">
+
             <tr>
-              <th style="width:11%">
+              <th style="width:13%">
                 {{ 'AREAS.CONFIGURATION-TEMPLATES.TAB-CONF-TEMPLATES.NAME' |
                 translate }}
               </th>
@@ -27,9 +27,6 @@ export const tabSamplesTemplate = `<ng-template #tabSamplesTemplate>
               <th>
                 Expected Output
               </th>
-              <th style="width:3%">
-                 Actions
-              </th>
          
             </tr>  
       
@@ -41,7 +38,9 @@ export const tabSamplesTemplate = `<ng-template #tabSamplesTemplate>
               (click)="onSampleClick(sample)"
               [ngClass]="{'bg-primary/10': sample.activeClicked}"
             >
-            <td id="td{{sample.id}}">{{sample.name}}<br><button id="btnSamplesLearnMode{{sample.id}}" type="button" class="btn btn-xs btn-primary" (click)="doShowSamplesLearnMoreModal(sample)">Learn More</button>
+            <td id="td{{sample.id}}">{{sample.name}}<br>
+              <button id="btnSamplesLearnMode{{sample.id}}" type="button" class="btn btn-xs btn-outline mt-1 w-full" (click)="doShowSamplesLearnMoreModal(sample)">Learn More</button>
+              <button type="button" id="btnSampleTryIt{{sample.id}}" class="btn btn-xs btn-primary mt-1 w-full" (click)="doSampleTryIt(sample)">Try It</button>
             </td>
             <td>
                 @if (sample.step1 == 'merge') {
@@ -135,11 +134,6 @@ export const tabSamplesTemplate = `<ng-template #tabSamplesTemplate>
             </td>
             <td id="tdInputSample{{sample.id}}" [innerHTML]="samplesService.getInputHtml(sample.id)"></td>
             <td id="tdOutputSample{{sample.id}}" [innerHTML]="samplesService.getOutputHtml(sample.id)"></td>
-            <td>
-            
-              <button type="button" id="btnSampleTryIt{{sample.id}}" class="btn btn-xs btn-primary" (click)="doSampleTryIt(sample)">&nbsp;&nbsp;&nbsp;&nbsp;Try It&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button>
-              <br><br>
-            </td>
 
             </tr>
             }

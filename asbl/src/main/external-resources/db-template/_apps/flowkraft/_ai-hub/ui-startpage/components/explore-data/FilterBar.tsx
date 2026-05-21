@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Filter, Settings2 } from "lucide-react";
+// lucide-react removed
 import { useCanvasStore, type ParamMeta } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "@/components/explore-data/widgets/useRbElementReady";
 import { executeQuery } from "@/lib/explore-data/rb-api";
@@ -133,7 +133,7 @@ export function FilterBar() {
 
   return (
     <>
-      <div id="parameterBarContainer" className="shrink-0 border-b border-border bg-muted/20 px-4 py-2">
+      <div id="parameterBarContainer" className="shrink-0 border-b border-base-300 bg-base-200/20 px-4 py-2">
         <div className="flex items-center gap-3 flex-wrap min-h-[32px]">
           {hasFilters && ready && React.createElement("rb-parameters", {
             ref: elRef,
@@ -142,9 +142,10 @@ export function FilterBar() {
           {!hasFilters && editMode && (
             <div
               onClick={() => setConfigOpen(true)}
-              className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer hover:text-primary transition-colors select-none"
+              className="flex items-center gap-2 text-xs font-bold text-base-content cursor-pointer hover:text-primary transition-colors select-none"
             >
-              <Filter className="w-3.5 h-3.5" strokeWidth={2.5} />
+              {/* Heroicon: funnel */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" /></svg>
               <span>No dashboard filters. Click to configure.</span>
             </div>
           )}
@@ -153,10 +154,11 @@ export function FilterBar() {
             <button
               id="btnConfigureFilters"
               onClick={() => setConfigOpen(true)}
-              className="ml-auto p-1 rounded-md transition-colors text-foreground hover:bg-accent"
+              className="ml-auto p-1 rounded-md transition-colors text-base-content hover:bg-base-200"
               title="Configure dashboard filters"
             >
-              <Settings2 className="w-3.5 h-3.5" strokeWidth={2.5} />
+              {/* Heroicon: adjustments-vertical */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 9.75V10.5" /></svg>
             </button>
           )}
         </div>

@@ -85,8 +85,8 @@ export function MessageResponse({
   return (
     <div
       className={cn(
-        "prose prose-sm dark:prose-invert max-w-none rounded-2xl px-4 py-3",
-        "bg-muted text-foreground",
+        "prose prose-sm max-w-none rounded-2xl px-4 py-3",
+        "bg-base-200 text-base-content",
         className,
       )}
       {...props}

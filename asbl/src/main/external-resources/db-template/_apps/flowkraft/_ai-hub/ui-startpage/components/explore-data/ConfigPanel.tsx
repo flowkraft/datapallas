@@ -9,7 +9,23 @@ import { sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { isTemporalExtraction, probeCardinality, probeSemanticType, pickDefaultAxes, canReuseAxisPicks, splitDimsAndMeasures, groupWidgetsByShape, groupWidgetsBySensibility, rankChartSubtypes, type CardinalityMap } from "@/lib/explore-data/smart-defaults";
 import { seedDisplayConfigForType, synthesizePostAggColumns, temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import type { TableSchema } from "@/lib/explore-data/types";
-import { Settings2, Database, Palette, Wand2, Loader2, Table, BarChart3, PieChart, Hash, Map as MapIcon, Workflow, Gauge as GaugeIcon, TrendingUp, BarChartHorizontal, FileText, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+// lucide-react removed — icons replaced with inline heroicons below
+// Icon components used from lucide: Settings2, Database, Palette, Wand2, Loader2, Table,
+// BarChart3, PieChart, Hash, MapIcon, Workflow, GaugeIcon, TrendingUp, BarChartHorizontal,
+// FileText, Sparkles, ChevronDown, ChevronRight — now inlined as SVG or passed via WIDGET_META
+import type { ComponentType } from "react";
+type IconComponent = ComponentType<{ className?: string }>;
+// Inline heroicon factories for WIDGET_META palette entries
+const _TableIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 19.5m9.75-14.25c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h.008v.008h-.008v-.008Zm0 3.75h.008v.008h-.008v-.008Zm-3 3.75h.008v.008h-.008v-.008Z" /></svg>;
+const _BarChart3Icon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>;
+const _PieChartIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" /></svg>;
+const _HashIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" /></svg>;
+const _MapIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" /></svg>;
+const _WorkflowIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 0-4.5H6v4.5Zm0 0H3.75m2.25 0v4.5m0-4.5v-4.5m0 9H3.75" /></svg>;
+const _GaugeIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" /></svg>;
+const _TrendingUpIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" /></svg>;
+const _BarChartHorizontalIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" /></svg>;
+const _FileTextIcon: IconComponent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>;
 import type { WidgetType } from "@/lib/stores/canvas-store";
 import { QueryBuilder } from "./query-builder/QueryBuilder";
 import { ChartConfig, CHART_TYPES } from "./config-panels/ChartConfig";
@@ -423,16 +439,18 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
 
   if (!selectedWidget) {
     return (
-      <div className="w-80 shrink-0 border-l border-border bg-muted/30 overflow-y-auto">
-        <div className="flex items-center justify-end border-b border-border px-2 py-1.5">
-          <button id="btnCollapseRightPanel" onClick={onCollapse} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Hide config panel">
-            <ChevronRight className="w-3.5 h-3.5" />
+      <div className="w-80 shrink-0 border-l border-base-300 bg-base-200/30 overflow-y-auto">
+        <div className="flex items-center justify-end border-b border-base-300 px-2 py-1.5">
+          <button id="btnCollapseRightPanel" onClick={onCollapse} className="p-1 rounded text-base-content/60 hover:text-base-content hover:bg-base-200 transition-colors" title="Hide config panel">
+            {/* Heroicon: chevron-right */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
           </button>
         </div>
         <div className="flex items-center justify-center h-[calc(100%-36px)]">
           <div className="text-center p-6">
-            <Settings2 className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Select a component to configure</p>
+            {/* Heroicon: adjustments-horizontal */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8 mx-auto mb-2 text-base-content/30"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" /></svg>
+            <p className="text-sm text-base-content/60">Select a component to configure</p>
           </div>
         </div>
       </div>
@@ -450,10 +468,11 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
   };
 
   return (
-    <div id="configPanel" className="w-80 shrink-0 border-l border-border bg-muted/30 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-end border-b border-border px-2 py-1.5 shrink-0">
-        <button id="btnCollapseRightPanel" onClick={onCollapse} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Hide config panel">
-          <ChevronRight className="w-3.5 h-3.5" />
+    <div id="configPanel" className="w-80 shrink-0 border-l border-base-300 bg-base-200/30 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-end border-b border-base-300 px-2 py-1.5 shrink-0">
+        <button id="btnCollapseRightPanel" onClick={onCollapse} className="p-1 rounded text-base-content/60 hover:text-base-content hover:bg-base-200 transition-colors" title="Hide config panel">
+          {/* Heroicon: chevron-right */}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </button>
       </div>
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -462,17 +481,17 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
             collapse under "More widgets". The grouping reactively updates as
             the user changes the Data tab (table / aggregation / group-by). */}
         {isDataWidget && (() => {
-          const WIDGET_META: Record<WidgetType, { label: string; Icon: typeof Table } | undefined> = {
-            tabulator: { label: "Table", Icon: Table },
-            chart: { label: "Chart", Icon: BarChart3 },
-            pivot: { label: "Pivot", Icon: PieChart },
-            number: { label: "Number", Icon: Hash },
-            map: { label: "Map", Icon: MapIcon },
-            sankey: { label: "Sankey", Icon: Workflow },
-            gauge: { label: "Gauge", Icon: GaugeIcon },
-            trend: { label: "Trend", Icon: TrendingUp },
-            progress: { label: "Progress", Icon: BarChartHorizontal },
-            detail: { label: "Detail", Icon: FileText },
+          const WIDGET_META: Record<WidgetType, { label: string; Icon: IconComponent } | undefined> = {
+            tabulator: { label: "Table", Icon: _TableIcon },
+            chart: { label: "Chart", Icon: _BarChart3Icon },
+            pivot: { label: "Pivot", Icon: _PieChartIcon },
+            number: { label: "Number", Icon: _HashIcon },
+            map: { label: "Map", Icon: _MapIcon },
+            sankey: { label: "Sankey", Icon: _WorkflowIcon },
+            gauge: { label: "Gauge", Icon: _GaugeIcon },
+            trend: { label: "Trend", Icon: _TrendingUpIcon },
+            progress: { label: "Progress", Icon: _BarChartHorizontalIcon },
+            detail: { label: "Detail", Icon: _FileTextIcon },
             text: undefined, divider: undefined, iframe: undefined, "filter-pane": undefined,
           };
 
@@ -551,15 +570,16 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
                 }}
                 className={`relative flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] font-medium rounded-md transition-colors ${
                   isSelected
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-base-100 text-base-content shadow-sm"
                     : isRecommended
-                      ? "text-foreground hover:bg-background/60"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "text-base-content hover:bg-base-100/60"
+                      : "text-base-content/60 hover:text-base-content"
                 }`}
                 title={isBest ? "Best fit for the current data" : undefined}
               >
                 {isBest && (
-                  <Sparkles id="sparklesBadge" className="sparkles-icon w-2.5 h-2.5 absolute top-0.5 right-0.5 text-amber-500" />
+                  /* Heroicon: sparkles */
+                  <svg id="sparklesBadge" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="sparkles-icon w-2.5 h-2.5 absolute top-0.5 right-0.5 text-amber-500"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" /></svg>
                 )}
                 <Icon className="w-3.5 h-3.5" />
                 {label}
@@ -573,10 +593,10 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
 
           return (
             <div id="visualizeAsSection">
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+              <label className="text-[10px] font-semibold text-base-content/60 uppercase tracking-wider mb-1.5 block">
                 Visualize as
               </label>
-              <div id="visualizeAsGrid" className="grid grid-cols-5 gap-0.5 p-0.5 bg-muted/50 rounded-lg">
+              <div id="visualizeAsGrid" className="grid grid-cols-5 gap-0.5 p-0.5 bg-base-200/50 rounded-lg">
                 {mainGrid.map((type) => renderButton(type, recSet.has(type), true))}
               </div>
               {moreGrid.length > 0 && (
@@ -585,18 +605,17 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
                     id="btnMoreWidgets"
                     type="button"
                     onClick={() => setShowMoreWidgets((v) => !v)}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wider w-full"
+                    className="flex items-center gap-1 text-[10px] font-semibold text-base-content/60 hover:text-base-content uppercase tracking-wider w-full"
                   >
-                    <ChevronDown
-                      className={`w-3 h-3 transition-transform ${showMoreWidgets ? "" : "-rotate-90"}`}
-                    />
+                    {/* Heroicon: chevron-down */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={`w-3 h-3 transition-transform ${showMoreWidgets ? "" : "-rotate-90"}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                     More widgets
                     <span className="font-normal normal-case lowercase ml-1">
                       ({moreGrid.length} less suited for this data)
                     </span>
                   </button>
                   {showMoreWidgets && (
-                    <div id="moreWidgetsGrid" className="grid grid-cols-5 gap-0.5 p-0.5 mt-1 bg-muted/30 rounded-lg">
+                    <div id="moreWidgetsGrid" className="grid grid-cols-5 gap-0.5 p-0.5 mt-1 bg-base-200/30 rounded-lg">
                       {moreGrid.map((type) => renderButton(type, false, false))}
                     </div>
                   )}
@@ -608,32 +627,34 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
 
         {/* Widget type label (for non-data widgets) */}
         {!isDataWidget && (
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
             {selectedWidget.type}
           </h3>
         )}
 
         {/* Tab switcher — only for data widgets */}
         {isDataWidget && (
-          <div className="flex gap-0.5 p-0.5 bg-muted/50 rounded-lg">
+          <div className="flex gap-0.5 p-0.5 bg-base-200/50 rounded-lg">
             <button
               id="btnDataTab"
               onClick={() => setActiveTab("data")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-md transition-colors ${
-                activeTab === "data" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                activeTab === "data" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content/60 hover:text-base-content"
               }`}
             >
-              <Database className="w-3 h-3" />
+              {/* Heroicon: circle-stack */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" /></svg>
               Data
             </button>
             <button
               id="btnDisplayTab"
               onClick={() => setActiveTab("display")}
               className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-md transition-colors ${
-                activeTab === "display" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                activeTab === "display" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content/60 hover:text-base-content"
               }`}
             >
-              <Palette className="w-3 h-3" />
+              {/* Heroicon: swatch */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" /></svg>
               Display
             </button>
           </div>
@@ -657,8 +678,8 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
                 in automatically, so the button is a quiet fallback for the
                 "typed SQL but haven't clicked Run yet" case and for retry on error. */}
             {columns.length === 0 && (
-              <div className="p-3 rounded-md border border-dashed border-border bg-muted/30 text-xs space-y-2">
-                <p className="text-muted-foreground">
+              <div className="p-3 rounded-md border border-dashed border-base-300 bg-base-200/30 text-xs space-y-2">
+                <p className="text-base-content/60">
                   No columns yet. Pick a table in the Data tab, or click Run to load the columns.
                 </p>
                 <button
@@ -666,13 +687,16 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
                   id="btnDetectColumns"
                   onClick={detectColumnsFromQuery}
                   disabled={widgetQueryLoading || !connectionId || !selectedWidget.dataSource}
-                  className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-base-300 bg-base-100 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {widgetQueryLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                  {widgetQueryLoading
+  ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+  : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" /></svg>
+}
                   {widgetQueryLoading ? "Detecting..." : "Detect columns from query"}
                 </button>
                 {(detectError || widgetQueryError) && (
-                  <p className="text-destructive">{detectError || widgetQueryError}</p>
+                  <p className="text-error">{detectError || widgetQueryError}</p>
                 )}
               </div>
             )}
@@ -718,7 +742,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
             {(selectedWidget.type === "chart" ||
               selectedWidget.type === "tabulator" ||
               selectedWidget.type === "pivot") && (
-              <div className="pt-2 border-t border-border/50">
+              <div className="pt-2 border-t border-base-300/50">
                 <BidirectionalDslCustomizer
                   widgetId={selectedWidget.id}
                   widgetType={selectedWidget.type}
@@ -733,16 +757,16 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
         {/* Text widget — textarea; rendered as markdown in the widget */}
         {isText && (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Text</label>
+            <label className="text-xs font-medium text-base-content/60">Text</label>
             <textarea
               id="txtWidgetTextContent"
               value={(selectedWidget.displayConfig.textContent as string) || ""}
               onChange={(e) => handleDisplayChange({ ...selectedWidget.displayConfig, textContent: e.target.value })}
               placeholder={"# Heading\n**bold**, *italic*\n- bullet one\n- bullet two"}
               rows={10}
-              className="w-full text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground font-mono resize-y min-h-[120px]"
+              className="w-full text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content font-mono resize-y min-h-[120px]"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-base-content/60">
               Supports simple markdown: <code># heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>- list</code>, <code>[link](url)</code>, tables.
             </p>
           </div>
@@ -750,7 +774,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
 
         {/* Divider widget — purely visual, no config */}
         {isDivider && (
-          <div className="text-xs text-muted-foreground p-3 rounded-md border border-dashed border-border bg-muted/30">
+          <div className="text-xs text-base-content/60 p-3 rounded-md border border-dashed border-base-300 bg-base-200/30">
             A divider has no configuration — it's a visual separator. Drag the corners to resize, or delete it with the × button.
           </div>
         )}
@@ -758,32 +782,32 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
         {/* iFrame widget — embed an external page. Sandboxed by default. */}
         {isIframe && (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">URL</label>
+            <label className="text-xs font-medium text-base-content/60">URL</label>
             <input
               type="url"
               value={(selectedWidget.displayConfig.iframeUrl as string) || ""}
               onChange={(e) => handleDisplayChange({ ...selectedWidget.displayConfig, iframeUrl: e.target.value })}
               placeholder="https://example.com/embed"
-              className="w-full text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+              className="w-full text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
             />
-            <label className="text-xs font-medium text-muted-foreground mt-2 block">Title (a11y)</label>
+            <label className="text-xs font-medium text-base-content/60 mt-2 block">Title (a11y)</label>
             <input
               value={(selectedWidget.displayConfig.iframeTitle as string) || ""}
               onChange={(e) => handleDisplayChange({ ...selectedWidget.displayConfig, iframeTitle: e.target.value })}
               placeholder="Embedded content"
-              className="w-full text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+              className="w-full text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
             />
-            <label className="text-xs font-medium text-muted-foreground mt-2 block">
+            <label className="text-xs font-medium text-base-content/60 mt-2 block">
               Sandbox
-              <span className="ml-1 text-[10px] font-normal text-muted-foreground">(space-separated tokens)</span>
+              <span className="ml-1 text-[10px] font-normal text-base-content/60">(space-separated tokens)</span>
             </label>
             <input
               value={(selectedWidget.displayConfig.iframeSandbox as string) ?? "allow-scripts allow-same-origin allow-popups allow-forms"}
               onChange={(e) => handleDisplayChange({ ...selectedWidget.displayConfig, iframeSandbox: e.target.value })}
               placeholder="allow-scripts allow-same-origin"
-              className="w-full text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground font-mono"
+              className="w-full text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content font-mono"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-base-content/60">
               Default sandbox blocks the embed from navigating the parent page. Clear to remove all restrictions, or use only the tokens you need (e.g. <code>allow-scripts</code>).
             </p>
           </div>
@@ -798,23 +822,26 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
               onChange={(ds: DataSource) => updateWidgetDataSource(selectedWidget.id, ds)}
               connectionId={connectionId}
             />
-            <div className="pt-2 border-t border-border/50">
+            <div className="pt-2 border-t border-base-300/50">
               {columns.length === 0 && (
-                <div className="mb-3 p-3 rounded-md border border-dashed border-border bg-muted/30 text-xs space-y-2">
-                  <p className="text-muted-foreground">
+                <div className="mb-3 p-3 rounded-md border border-dashed border-base-300 bg-base-200/30 text-xs space-y-2">
+                  <p className="text-base-content/60">
                     No columns yet. Pick a table in the Data tab, or click Run to load the columns.
                   </p>
                   <button
                     type="button"
                     onClick={detectColumnsFromQuery}
                     disabled={widgetQueryLoading || !connectionId || !selectedWidget.dataSource}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-base-300 bg-base-100 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {widgetQueryLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                    {widgetQueryLoading
+  ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+  : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" /></svg>
+}
                     {widgetQueryLoading ? "Detecting..." : "Detect columns from query"}
                   </button>
                   {(detectError || widgetQueryError) && (
-                    <p className="text-destructive">{detectError || widgetQueryError}</p>
+                    <p className="text-error">{detectError || widgetQueryError}</p>
                   )}
                 </div>
               )}

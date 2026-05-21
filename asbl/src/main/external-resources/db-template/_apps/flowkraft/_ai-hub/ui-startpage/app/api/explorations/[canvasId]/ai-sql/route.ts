@@ -4,7 +4,7 @@ import { lettaLocal } from "@letta-ai/vercel-ai-sdk-provider";
 
 type RouteContext = { params: Promise<{ canvasId: string }> };
 
-// POST /api/explore-data/[canvasId]/ai-sql
+// POST /api/explorations/[canvasId]/ai-sql
 // Sends a natural language prompt + schema context to AI, returns generated SQL
 export async function POST(request: NextRequest, _context: RouteContext) {
   const { prompt, schemaContext, connectionType } = await request.json();
