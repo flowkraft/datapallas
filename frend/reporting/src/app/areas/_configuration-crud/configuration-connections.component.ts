@@ -1,4 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit, OnDestroy, viewChild } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
+import { LicenseComponent } from '../../components/license/license.component';
 import { Subscription } from 'rxjs';
 import _ from 'lodash';
 
@@ -20,7 +23,6 @@ import {
 } from '../../providers/configuration-repository.service';
 import { FsService } from '../../providers/fs.service';
 import { ConnectionsService } from '../../providers/connections.service';
-import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
 
 @Component({
     selector: 'dburst-connection-list',
@@ -32,7 +34,8 @@ import { ConnectionDetailsComponent } from '../../components/connection-details/
     ></dburst-connection-details>
     ${tabLicenseTemplate}
   `,
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS, ConnectionDetailsComponent, LicenseComponent],
 })
 export class ConnectionListComponent implements OnInit, OnDestroy {
   connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');

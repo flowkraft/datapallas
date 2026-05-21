@@ -1,4 +1,6 @@
 import { Component, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
@@ -10,7 +12,8 @@ import { ToastrMessagesService } from '../../providers/toastr-messages.service';
     selector: 'dburst-button-clear-logs',
     templateUrl: './button-clear-logs.component.html',
     styles: [':host {display: inline-block; width: 100%}'],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, TranslateModule],
 })
 export class ButtonClearLogsComponent {
   btnId = input<string>();

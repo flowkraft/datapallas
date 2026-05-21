@@ -16,7 +16,7 @@ export const tabReportingChartTemplate = `<ng-template
                       <rb-chart
                         [reportId]="getCurrentReportCode()"
                         [componentId]="cid"
-                        [apiBaseUrl]="reportingService.reportingApiBaseUrl"
+                        [apiBaseUrl]="reportsService.apiBaseUrl"
                         [reportParams]="previewParams || {}"
                         [testMode]="true"
                         (dataFetched)="onChartDataFetched($any($event))"

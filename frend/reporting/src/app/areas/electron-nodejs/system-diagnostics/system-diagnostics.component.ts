@@ -1,4 +1,6 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 import { systemDiagnosticsTemplate } from './system-diagnostics.template';
 import { ConfirmService } from '../../../components/dialog-confirm/confirm.service';
@@ -9,7 +11,8 @@ import { StateStoreService } from '../../../providers/state-store.service';
 @Component({
     selector: 'dburst-system-diagnostics',
     template: ` ${systemDiagnosticsTemplate} `,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, TranslateModule],
 })
 export class SystemDiagnosticsComponent {
   constructor(

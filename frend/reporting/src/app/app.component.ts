@@ -2,13 +2,15 @@ import { Component, OnInit } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { RbElectronService } from './areas/electron-nodejs/electron.service';
 import { Router } from '@angular/router';
-
+import { AreasComponent } from './areas/areas.component';
+import { LiveChatComponent } from './components/live-chat/live-chat.component';
 
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
-    standalone: false
+    standalone: true,
+    imports: [AreasComponent, LiveChatComponent],
 })
 export class AppComponent implements OnInit {
   constructor(

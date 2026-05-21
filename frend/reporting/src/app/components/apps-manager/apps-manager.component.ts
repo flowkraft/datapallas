@@ -1,4 +1,7 @@
 import { Component, input, OnInit, ChangeDetectorRef, OnDestroy, OnChanges, SimpleChanges, viewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -16,7 +19,8 @@ import { iconSvg } from '../../shared/icon-svgs';
 @Component({
     selector: 'dburst-apps-manager',
     templateUrl: './apps-manager.template.html',
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, FormsModule, TranslateModule, AiManagerComponent],
 })
 export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
   readonly iconSvg = iconSvg;

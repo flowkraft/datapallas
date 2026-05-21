@@ -268,7 +268,7 @@ function createWindow(): BrowserWindow {
   if (serve) {
     const debug = require('electron-debug');
     debug();
-    require('electron-reloader')(module);
+    require('electron-reloader')(module, { watchRenderer: false });
     win.loadURL('http://localhost:4200');
   } else {
     let pathIndex = './index.html';

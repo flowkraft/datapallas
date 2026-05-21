@@ -1,8 +1,11 @@
 import { Component, output, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 import { modalVariablesTemplate } from './modal-variables.template';
 import { StateStoreService } from '../../providers/state-store.service';
-import { TranslateService } from '@ngx-translate/core';
 
 @Component({
     selector: 'dburst-button-variables',
@@ -18,7 +21,8 @@ import { TranslateService } from '@ngx-translate/core';
     </button>
     ${modalVariablesTemplate}
   `,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, FormsModule, DpDialogComponent, TranslateModule],
 })
 export class ButtonVariablesComponent {
   isModalVariablesVisible = false;

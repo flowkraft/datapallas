@@ -9,7 +9,7 @@ import {
 
 @Directive({
     selector: '[scaleIframe]',
-    standalone: false
+    standalone: true,
 })
 export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver;

@@ -1,11 +1,13 @@
 import { Component, inject, input, output } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RbElectronService } from '../electron.service';
 import UtilitiesNodeJs from '../utilities-nodejs';
 
 @Component({
     selector: 'dburst-button-native-system-dialog',
     templateUrl: './button-native-system-dialog.component.html',
-    standalone: false
+    standalone: true,
+    imports: [CommonModule],
 })
 export class ButtonNativeSystemDialogComponent {
   btnId = input<string>();

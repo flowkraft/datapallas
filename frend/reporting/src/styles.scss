@@ -135,7 +135,7 @@ label {
 #samplesTable thead th {
   position: sticky;
   top: -1px;
-  background-color: #f5f5f5;
+  background-color: var(--color-base-300);
   z-index: 1;
 }
 
@@ -145,7 +145,7 @@ label {
    fixed/sticky elements use this variable as their top offset.                */
 :root {
   --cet-offset: 0px;
-  --sidebar-w: 0px;   /* starts hidden; .sidebar-visible sets 230px */
+  --sidebar-w: 0px;   /* starts hidden; .sidebar-visible sets 255px */
 
   /* Layout chrome heights — change these here once if the navbar gets taller
      or the status bar grows; every page's content min-height recomputes
@@ -165,7 +165,7 @@ html.in-electron {
   --cet-offset: 30px;
 }
 html.sidebar-visible {
-  --sidebar-w: 230px;
+  --sidebar-w: 255px;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────

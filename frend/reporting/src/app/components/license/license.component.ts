@@ -1,4 +1,6 @@
 import { Component } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { WhatsNewComponent } from './whats-new/whats-new.component';
 
 import { LicenseService } from '../../providers/license.service';
 
@@ -10,7 +12,8 @@ import { StateStoreService } from '../../providers/state-store.service';
 @Component({
     selector: 'dburst-license',
     templateUrl: './license.component.html',
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS, WhatsNewComponent],
 })
 export class LicenseComponent {
   licenseKey: string;

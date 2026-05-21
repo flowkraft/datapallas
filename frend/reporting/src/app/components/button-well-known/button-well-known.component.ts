@@ -1,9 +1,12 @@
 import { Component, inject, output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 import * as allWellKnownEmailProviders from 'nodemailer-wellknown/services.json';
 
 import { modalWellKnownTemplate } from './modal-well-known.template';
-import { TranslateService } from '@ngx-translate/core';
 
 export type EmailProviderSettings = {
   host: string;
@@ -29,7 +32,8 @@ export type EmailProviderSettings = {
     styles: [
         ':host #btnWellKnownEmailProviders {display: inline-block; width: 100%}',
     ],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, FormsModule, TranslateModule, DpDialogComponent],
 })
 export class ButtonWellKnownEmailProvidersComponent {
   isModalWellKnownVisible = false;

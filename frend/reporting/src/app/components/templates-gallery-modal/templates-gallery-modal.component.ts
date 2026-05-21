@@ -1,4 +1,7 @@
 import { Component, input, output, viewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
+import { MarkdownModule } from 'ngx-markdown';
 import { HtmlDocTemplateDisplay, HtmlDocTemplateInfo, SamplesService } from '../../providers/samples.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -6,13 +9,17 @@ import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 import { TranslateService } from '@ngx-translate/core';
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ReportsService } from '../../providers/reports.service';
+import { GalleryService } from '../../providers/gallery.service';
 import { ApiService } from '../../providers/api.service';
-
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
+import { DpCarouselComponent } from '../dp/carousel/dp-carousel.component';
+import { ScaleIframeDirective } from '../../helpers/scale-iframe';
 
 @Component({
     selector: 'dburst-templates-gallery-modal',
     templateUrl: './templates-gallery-modal.template.html',
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, TranslateModule, MarkdownModule, DpDialogComponent, DpCarouselComponent, ScaleIframeDirective],
 })
 export class TemplatesGalleryModalComponent {
 
@@ -22,6 +29,7 @@ export class TemplatesGalleryModalComponent {
   constructor(
     protected settingsService: ConfigurationRepository,
     protected reportsService: ReportsService,
+    protected galleryService: GalleryService,
     protected messagesService: ToastrMessagesService,
     protected translateService: TranslateService,
     protected sanitizer: DomSanitizer,
@@ -216,7 +224,7 @@ export class TemplatesGalleryModalComponent {
     if (!currentTemplate) return;
 
     const variantOffset = currentTemplate.collectionIndex ? currentTemplate.collectionIndex - 1 : 0;
-    const url = this.reportsService.getGalleryTemplateViewUrl(currentTemplate.id, variantOffset);
+    const url = this.galleryService.getTemplateViewUrl(currentTemplate.id, variantOffset);
     window.open(url, '_blank');
   }
 
@@ -510,7 +518,7 @@ export class TemplatesGalleryModalComponent {
       for (let i = 0; i < template.templateFilePaths.length; i++) {
         const variant = variantOffset + i;
         const cacheKey = `${templateId}:${variant}`;
-        const result = await this.reportsService.loadGalleryTemplateContent(templateId, variant);
+        const result = await this.galleryService.loadTemplateContent(templateId, variant);
         if (result?.content) {
           template.htmlContent.push(result.content);
           template.assetBaseDir = result.assetBaseDir;
@@ -523,7 +531,7 @@ export class TemplatesGalleryModalComponent {
 
       // Load README
       try {
-        const readmeContent = await this.reportsService.loadGalleryTemplateReadme(templateId, variantOffset);
+        const readmeContent = await this.galleryService.loadTemplateReadme(templateId, variantOffset);
         template.readmeContent = readmeContent?.length > 0 ? readmeContent : '';
       } catch (error) {
         template.readmeContent = '';
@@ -531,7 +539,7 @@ export class TemplatesGalleryModalComponent {
 
       // Load AI prompt for “modify”
       try {
-        const modifyContent = await this.reportsService.loadGalleryTemplateAiPrompt(templateId, 'modify', variantOffset);
+        const modifyContent = await this.galleryService.loadTemplateAiPrompt(templateId, 'modify', variantOffset);
         template.selectedTemplateModifyPrompt = modifyContent?.length > 0 ? modifyContent : '';
       } catch (error) {
         template.selectedTemplateModifyPrompt = '';
@@ -539,7 +547,7 @@ export class TemplatesGalleryModalComponent {
 
       // Load AI prompt for “scratch”
       try {
-        const scratchContent = await this.reportsService.loadGalleryTemplateAiPrompt(templateId, 'scratch', variantOffset);
+        const scratchContent = await this.galleryService.loadTemplateAiPrompt(templateId, 'scratch', variantOffset);
         template.selectedTemplateScratchPrompt = scratchContent?.length > 0 ? scratchContent : '';
       } catch (error) {
         template.selectedTemplateScratchPrompt = '';

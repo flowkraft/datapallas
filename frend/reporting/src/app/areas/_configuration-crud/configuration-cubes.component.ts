@@ -1,4 +1,8 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, viewChild, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, viewChild, DestroyRef, inject, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { AngularSplitModule } from 'angular-split';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
+import { LicenseComponent } from '../../components/license/license.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
@@ -10,7 +14,6 @@ import { tabCubeDefinitionsTemplate } from './templates/cubes/tab-cube-definitio
 import { tabLicenseTemplate } from './templates/connections/tab-license';
 
 import { CubesService, CubeDefinition } from '../../providers/cubes.service';
-import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
 import { ConnectionsService } from '../../providers/connections.service';
 import { ApiService } from '../../providers/api.service';
 import { ConfirmService } from '../../components/dialog-confirm/confirm.service';
@@ -31,7 +34,9 @@ import 'prismjs/components/prism-groovy';
     </ng-template>
     ${tabLicenseTemplate}
   `,
-    standalone: false
+    standalone: true,
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [...SHARED_IMPORTS, AngularSplitModule, ConnectionDetailsComponent, LicenseComponent],
 })
 export class CubeListComponent implements OnInit, OnDestroy {
   private connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');

@@ -1,8 +1,7 @@
 export const leftMenuTemplate = `<!-- Sidebar Menu -->
 <ul class="sidebar-menu menu w-full py-2">
   <li class="header menu-title">
-    {{ 'AREAS.CONFIGURATION.LEFT-MENU.TOP-TITLE' | translate }}
-    (<strong>{{ settingsService.currentConfigurationTemplateName }}</strong>)
+    <span>CONFIG (<strong>{{ settingsService.currentConfigurationTemplateName }}</strong>)</span>
     @if (settingsService.currentConfigurationTemplate?.type === 'config-jasper-reports') {
       <br />
       <span style="font-size: 0.8em; opacity: 0.85;">

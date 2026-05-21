@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 import { extraPackagesTemplate } from './extra-packages.template';
 
@@ -28,7 +30,8 @@ interface ExtPackage {
 @Component({
     selector: 'dburst-extra-packages',
     template: `${extraPackagesTemplate} `,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, TranslateModule],
 })
 export class ExtraPackagesComponent implements OnInit {
   protected extraPackages = [

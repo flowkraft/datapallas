@@ -7,6 +7,12 @@ import {
   ChangeDetectorRef,
   OnDestroy,
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
+import { DpTabsComponent } from '../dp/tabs/dp-tabs.component';
+import { DpTabComponent } from '../dp/tabs/dp-tab.component';
 import { Subscription } from 'rxjs';
 import { AiManagerService, PromptInfo } from './ai-manager.service';
 import { InfoService } from '../../components/dialog-info/info.service';
@@ -35,7 +41,8 @@ interface CategoryWithCount {
 @Component({
     selector: 'dburst-ai-manager',
     templateUrl: './ai-manager.template.html',
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, FormsModule, TranslateModule, DpDialogComponent, DpTabsComponent, DpTabComponent],
 })
 export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   mode = input<'standalone' | 'embedded' | 'launchCopilot'>('standalone');

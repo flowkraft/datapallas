@@ -9,7 +9,14 @@
   ElementRef,
   DestroyRef,
   inject,
+  CUSTOM_ELEMENTS_SCHEMA,
 } from '@angular/core';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { AngularSplitModule } from 'angular-split';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { TemplatesGalleryModalComponent } from '../../components/templates-gallery-modal/templates-gallery-modal.component';
+import { LicenseComponent } from '../../components/license/license.component';
+import { ReportsListComponent } from '../../components/reports-list/reports-list.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ActivatedRoute } from '@angular/router';
@@ -101,12 +108,13 @@ import {
   AiManagerLaunchConfig,
 } from '../../components/ai-manager/ai-manager.component';
 import {
-  ReportingService,
+  DslService,
   ReportDataResult,
-} from '../../providers/reporting.service';
+} from '../../providers/dsl.service';
 import { ApiService } from '../../providers/api.service';
 import { ReportsService } from '../../providers/reports.service';
 import { CubesService, CubeDefinition } from '../../providers/cubes.service';
+import { DashboardService } from '../../providers/dashboard.service';
 import { modalTemplatesGalleryTemplate } from './templates/modal-gallery';
 
 @Component({
@@ -136,7 +144,9 @@ import { modalTemplatesGalleryTemplate } from './templates/modal-gallery';
     ${tabEmailAddressValidationTemplate} ${tabEmailTuningTemplate}
     ${tabLogsTemplate} ${tabLicenseTemplate} ${tabReportsListTemplate} ${modalAttachmentTemplate} ${modalTemplatesGalleryTemplate}
   `,
-    standalone: false
+    standalone: true,
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [...SHARED_IMPORTS, NgSelectModule, AngularSplitModule, TemplatesGalleryModalComponent, LicenseComponent, ConnectionDetailsComponent, ReportsListComponent],
 })
 export class ConfigurationComponent implements OnInit {
 
@@ -603,7 +613,7 @@ export class ConfigurationComponent implements OnInit {
     protected fsService: FsService,
     protected connectionsService: ConnectionsService,
     protected executionStatsService: ExecutionStatsService,
-    protected reportingService: ReportingService,
+    protected dslService: DslService,
     protected stateStore: StateStoreService,
     protected apiService: ApiService,
     protected reportsService: ReportsService,
@@ -616,6 +626,7 @@ export class ConfigurationComponent implements OnInit {
     protected changeDetectorRef: ChangeDetectorRef,
     protected sanitizer: DomSanitizer,
     public cubesService: CubesService,
+    protected dashboardService: DashboardService,
   ) { }
 
   private get currentReportId(): string {
@@ -1661,7 +1672,7 @@ export class ConfigurationComponent implements OnInit {
           this.activeParamsSpecScriptGroovy.trim() !== '') {
           // console.log('[DEBUG] doRunTestScript: parsing parameters DSL');
           parameters =
-            await this.reportingService.processGroovyParametersDsl(
+            await this.dslService.parseParameters(
               this.activeParamsSpecScriptGroovy,
               this.selectedDbConnCode,
             );
@@ -3394,11 +3405,7 @@ pivotTable {
   }
 
   getDashboardUrl(): string {
-    const baseUrl = this.getApiBaseUrl();
-    // Strip /api suffix to get server root, then append dashboard path
-    const serverRoot = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) :
-      baseUrl.includes('/api/') ? baseUrl.slice(0, baseUrl.indexOf('/api/')) : '';
-    return `${serverRoot}/dashboard/${this.getCurrentReportCode()}`;
+    return this.dashboardService.getDashboardUrl(this.getCurrentReportCode());
   }
 
   copyToClipboard(text: string) {
@@ -3475,7 +3482,7 @@ pivotTable {
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {
-        const parsed = await this.reportingService.processGroovyTabulatorDsl(content);
+        const parsed = await this.dslService.parseTabulator(content);
         // /parse-tabulator returns { options: {...}, namedOptions: {} }
         // Extract the flat options map; attach namedOptions for getNamedTabulatorIds()
         const opts = parsed?.options || parsed;
@@ -3516,7 +3523,7 @@ pivotTable {
     if (content && content.trim().length > 0) {
       try {
         // Try to parse chart DSL using backend service
-        const parsed = await this.reportingService.processGroovyChartDsl(content);
+        const parsed = await this.dslService.parseChart(content);
         this.activeChartConfigOptions = parsed;
         this.changeDetectorRef.detectChanges();
       } catch (err) {
@@ -3562,7 +3569,7 @@ pivotTable {
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {
-        const parsed = await this.reportingService.processGroovyPivotTableDsl(content);
+        const parsed = await this.dslService.parsePivot(content);
         this.activePivotTableConfigOptions = parsed;
         this.changeDetectorRef.detectChanges();
       } catch (err) {
@@ -3855,8 +3862,8 @@ pivotTable {
       {} as { [key: string]: any },
     );
     this.previewParams = paramsObject;
-    const result = await this.reportingService.fetchData(paramsObject, true);
-    // console.log('[DEBUG] runQueryWithParams: fetchData returned:', result);
+    const result = await this.reportsService.getReportData(this.currentReportId, paramsObject, true);
+    // console.log('[DEBUG] runQueryWithParams: getReportData returned:', result);
     return result;
   }
 
@@ -3944,7 +3951,7 @@ pivotTable {
         if (this.activeParamsSpecScriptGroovy &&
           this.activeParamsSpecScriptGroovy.trim() !== '') {
           parameters =
-            await this.reportingService.processGroovyParametersDsl(
+            await this.dslService.parseParameters(
               this.activeParamsSpecScriptGroovy,
               this.selectedDbConnCode,
             );

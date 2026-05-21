@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FileExplorerService } from './file-explorer.service';
 
 @Component({
@@ -241,7 +242,8 @@ import { FileExplorerService } from './file-explorer.service';
       }
     `,
     ],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule],
 })
 export class FileExplorerComponent implements OnInit {
   showPermissionsColumn = input<boolean>(false);

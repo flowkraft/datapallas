@@ -7,6 +7,18 @@
   AfterViewChecked,
   AfterViewInit,
 } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { LogFileViewerComponent } from '../../components/log-file-viewer/log-file-viewer.component';
+import { LicenseComponent } from '../../components/license/license.component';
+import { StarterPacksComponent } from '../../components/starter-packs/starter-packs.component';
+import {
+  JavaComponent,
+  ExtraPackagesComponent,
+  TerminalComponent,
+  SystemDiagnosticsComponent,
+  ButtonNativeSystemDialogComponent,
+  UpdateComponent,
+} from '../electron-nodejs/electron-nodejs.barrel';
 import { ActivatedRoute } from '@angular/router';
 
 //import RSS from 'vanilla-rss';
@@ -53,7 +65,10 @@ import { StateStoreService } from '../../providers/state-store.service';
     ${tabUpdateTemplate} ${tabAboutTemplate} ${tabComparisonTemplate}
     ${tabLogsTemplate} ${tabLicenseTemplate}
   `,
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS, LogFileViewerComponent, LicenseComponent, StarterPacksComponent,
+               JavaComponent, ExtraPackagesComponent, TerminalComponent, SystemDiagnosticsComponent,
+               ButtonNativeSystemDialogComponent, UpdateComponent],
 })
 export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   @ViewChild('tabSupportTemplate', { static: true })

@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, SecurityContext, ChangeDetectorRef, viewChild } from '@angular/core'; // Import SecurityContext
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser'; // Import DomSanitizer
 import { Subscription, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -91,7 +92,8 @@ const getDefaultCommand = (
 @Component({
     selector: 'dburst-starter-packs',
     templateUrl: './starter-packs.template.html',
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS],
 })
 export class StarterPacksComponent implements OnInit, OnDestroy {
   // --- State ---

@@ -1,4 +1,9 @@
 ﻿import { Component, OnInit, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
+import { WhenUpdatingComponent } from './when-updating';
+import { ButtonNativeSystemDialogComponent } from '../button-native-system-dialog/button-native-system-dialog.component';
 
 //import * as jetpack from 'fs-jetpack';
 //import * as slash from 'slash';
@@ -35,7 +40,8 @@ import { StateStoreService } from '../../../providers/state-store.service';
 @Component({
     selector: 'dburst-update',
     template: ` ${updateTemplate} `,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, FormsModule, TranslateModule, WhenUpdatingComponent, ButtonNativeSystemDialogComponent],
 })
 export class UpdateComponent implements OnInit {
   homeDirectoryPath: string;

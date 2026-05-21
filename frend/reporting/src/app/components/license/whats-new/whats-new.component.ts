@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { SHARED_IMPORTS } from '../../../shared/shared-imports';
 
 import * as _ from 'lodash';
 
@@ -26,7 +27,8 @@ type BlogPost = {
 @Component({
     selector: 'dburst-whats-new',
     templateUrl: './whats-new.component.html',
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS],
 })
 export class WhatsNewComponent {
   mode = 'news-releases';

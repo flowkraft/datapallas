@@ -453,55 +453,6 @@ export class ReportsService {
     }
   }
 
-  // ===== Gallery template methods (ID-based, no paths) =====
-
-  /**
-   * Load gallery template HTML content + asset base directory.
-   */
-  async loadGalleryTemplateContent(
-    templateId: string,
-    variant: number = 0,
-  ): Promise<{ content: string; assetBaseDir: string }> {
-    return this.apiService.get(`/system/gallery/templates/${encodeURIComponent(templateId)}/content`, { variant });
-  }
-
-  /**
-   * Load gallery template README.
-   */
-  async loadGalleryTemplateReadme(templateId: string, variant: number = 0): Promise<string> {
-    const textHeaders = new Headers({ Accept: 'text/plain' });
-    return this.apiService.get(
-      `/system/gallery/templates/${encodeURIComponent(templateId)}/readme`,
-      { variant },
-      textHeaders,
-      'text',
-    );
-  }
-
-  /**
-   * Load gallery template AI prompt (type: 'modify' or 'scratch').
-   */
-  async loadGalleryTemplateAiPrompt(
-    templateId: string,
-    type: 'modify' | 'scratch',
-    variant: number = 0,
-  ): Promise<string> {
-    const textHeaders = new Headers({ Accept: 'text/plain' });
-    return this.apiService.get(
-      `/system/gallery/templates/${encodeURIComponent(templateId)}/ai-prompt`,
-      { type, variant },
-      textHeaders,
-      'text',
-    );
-  }
-
-  /**
-   * Get the URL to view a gallery template in the browser.
-   */
-  getGalleryTemplateViewUrl(templateId: string, variant: number = 0): string {
-    return `/api/system/gallery/templates/${encodeURIComponent(templateId)}/view?variant=${variant}`;
-  }
-
   async loadAllReportTemplates() {
     this.templateFiles = await this.apiService.get('/reports?type=templates');
     return this.templateFiles;
@@ -684,6 +635,40 @@ export class ReportsService {
       default:
         return value;
     }
+  }
+
+  // V4: base URL for web components (rb-tabulator, rb-chart, rb-pivot-table).
+  // Component appends /reports/{id}/data to this — so /api is the right base now.
+  get apiBaseUrl(): string {
+    return this.apiService.BACKEND_URL;
+  }
+
+  async getReportData(
+    reportId: string,
+    parameters: { [key: string]: any },
+    testMode: boolean = false,
+  ) {
+    const params = new URLSearchParams();
+    if (testMode) {
+      params.set('testMode', 'true');
+    }
+
+    Object.entries(parameters).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        params.set(key, value.toString());
+      }
+    });
+
+    const paramsObj = {};
+    params.forEach((value, key) => {
+      paramsObj[key] = value;
+    });
+
+    const result = await this.apiService.get(
+      `/reports/${reportId}/data`,
+      paramsObj,
+    );
+    return result;
   }
 
 }

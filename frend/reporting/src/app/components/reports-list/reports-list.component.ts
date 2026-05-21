@@ -1,4 +1,5 @@
 ﻿import { Component, OnInit, input, DestroyRef, inject } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
@@ -249,7 +250,8 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
 
     ${modalConfigurationTemplateTemplate}
   `,
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS],
 })
 export class ReportsListComponent implements OnInit {
   embeddedMode = input<boolean>(false);

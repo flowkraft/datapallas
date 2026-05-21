@@ -1,4 +1,7 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
+import { LogFileViewerComponent } from '../log-file-viewer/log-file-viewer.component';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { WebSocketService } from '../../providers/websocket.service';
@@ -8,7 +11,8 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
 @Component({
     selector: 'dburst-log-files-viewer-all-together',
     templateUrl: './log-files-viewer-all-together.html',
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, LogFileViewerComponent, TranslateModule],
 })
 export class LogFilesViewerAllTogetherComponent {
   constructor(

@@ -16,7 +16,7 @@ export const tabReportingPivotTableTemplate = `<ng-template
                       <rb-pivot-table
                         [reportId]="getCurrentReportCode()"
                         [componentId]="cid"
-                        [apiBaseUrl]="reportingService.reportingApiBaseUrl"
+                        [apiBaseUrl]="reportsService.apiBaseUrl"
                         [reportParams]="previewParams || {}"
                         [testMode]="true"
                         (dataFetched)="onPivotDataFetched($any($event))"

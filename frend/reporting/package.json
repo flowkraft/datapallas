@@ -1,6 +1,10 @@
 {
   "name": "datapallas",
   "productName": "DataPallas",
+  "browser": {
+    "net": false,
+    "timers": false
+  },
   "license": "SSPL-1.0",
   "description": "Server Side Public License (SSPL) - Desktop and Server versions. SSPL terms apply upon distribution or service provision.",
   "version": "15.2.0",
@@ -14,17 +18,18 @@
   "private": true,
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
-    "css:build": "npx @tailwindcss/cli -i src/tailwind.source.css -o src/tailwind.css",
     "ng": "ng",
     "start": "npm-run-all -p electron:serve ng:serve",
     "ng:serve": "ng serve -c web -o",
-    "build": "npm run electron:serve-tsc && cross-env NODE_OPTIONS=--max_old_space_size=6144 ng build --base-href ./ --verbose > build.log",
+    "build": "npm run electron:serve-tsc && ng build --base-href ./",
     "build:dev": "npm run build -- -c dev",
     "build:prod": "npm run build -- -c production",
     "web:build": "npm run build -- -c web-production",
     "electron": "electron",
     "electron:serve-tsc": "tsc -p tsconfig-electron.serve.json",
-    "electron:serve": "wait-on tcp:4200 && npm run electron:serve-tsc && electron . --serve --stack_trace_limit=100",
+    "electron:serve-tsc:watch": "tsc -p tsconfig-electron.serve.json --watch --preserveWatchOutput",
+    "electron:start": "electron . --serve --stack_trace_limit=100",
+    "electron:serve": "wait-on tcp:4200 && npm run electron:serve-tsc && npm-run-all -p electron:serve-tsc:watch electron:start",
     "electron:local": "npm run build:prod && electron .",
     "electron:build": "npm run build:prod && electron-builder build --publish=never",
     "test": "ng test --watch=false",
@@ -151,7 +156,6 @@
     "zone.js": "0.15.1"
   },
   "devDependencies": {
-    "@angular-builders/custom-webpack": "18.0.0",
     "@angular-devkit/build-angular": "19.2.26",
     "@angular-eslint/builder": "19.8.1",
     "@angular-eslint/eslint-plugin": "19.8.1",
@@ -212,7 +216,6 @@
     "get-urls": "9.2.1",
     "gulp": "4.0.2",
     "jasmine": "4.5.0",
-    "node-polyfill-webpack-plugin": "4.1.0",
     "npm-run-all": "4.1.5",
     "playwright": "1.41.2",
     "plugin-error": "2.0.0",
@@ -228,8 +231,7 @@
     "ts-node": "10.9.2",
     "tsconfig-paths": "4.2.0",
     "typescript": "~5.8.3",
-    "wait-on": "6.0.1",
-    "webpack-bundle-analyzer": "4.10.2"
+    "wait-on": "6.0.1"
   },
   "engines": {
     "node": ">=20.11.1"

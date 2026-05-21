@@ -4,17 +4,21 @@ import {
   ChangeDetectorRef,
   viewChild,
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 import { terminalTemplate } from './terminal.template';
 import { ConfirmService } from '../../../components/dialog-confirm/confirm.service';
 import { RbElectronService } from '../electron.service';
 import UtilitiesElectron from '../utilities-electron';
 import { DpTerminalComponent } from '../../../components/dp/terminal/dp-terminal.component';
+import { DpDrawerComponent } from '../../../components/dp/drawer/dp-drawer.component';
 
 @Component({
     selector: 'dburst-terminal',
     template: ` ${terminalTemplate} `,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, TranslateModule, DpDrawerComponent, DpTerminalComponent],
 })
 export class TerminalComponent implements AfterViewInit {
   readOnly = true;

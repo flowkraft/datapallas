@@ -1,4 +1,8 @@
-﻿import { Component, inject, OnInit } from '@angular/core';
+﻿import { Component, inject, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { ConfigurationReportsComponent } from './configuration-reports.component';
+import { ConnectionListComponent } from './configuration-connections.component';
+import { CubeListComponent } from './configuration-cubes.component';
 import { ActivatedRoute } from '@angular/router';
 
 import { leftMenuTemplate } from './templates/_left-menu';
@@ -26,7 +30,9 @@ import { leftMenuTemplate } from './templates/_left-menu';
       </section>
     </div>
   `,
-    standalone: false
+    standalone: true,
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [...SHARED_IMPORTS, ConfigurationReportsComponent, ConnectionListComponent, CubeListComponent],
 })
 export class ConfigurationCrudComponent implements OnInit {
   activeSection = 'reports';

@@ -1,4 +1,7 @@
 import { Component, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 import { modalHtmlPreviewTemplate } from './modal-html-preview.template';
 
 @Component({
@@ -15,7 +18,8 @@ import { modalHtmlPreviewTemplate } from './modal-html-preview.template';
     </button>
     ${modalHtmlPreviewTemplate}
   `,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, TranslateModule, DpDialogComponent],
 })
 export class ButtonHtmlPreviewComponent {
   htmlCode = input<string>();

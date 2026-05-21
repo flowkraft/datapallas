@@ -4,6 +4,7 @@
 /dist
 /tmp
 /out-tsc
+src/tailwind.css
 /app-builds
 /release
 main.js

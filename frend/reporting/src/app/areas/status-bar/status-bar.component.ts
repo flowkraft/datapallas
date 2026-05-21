@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
 
 import { Subscription } from 'rxjs';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
@@ -16,7 +17,8 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
 @Component({
     selector: 'dburst-status-bar',
     templateUrl: './status-bar.template.html',
-    standalone: false
+    standalone: true,
+    imports: [...SHARED_IMPORTS],
 })
 export class StatusBarComponent implements OnInit, OnDestroy {
   subscription: Subscription;

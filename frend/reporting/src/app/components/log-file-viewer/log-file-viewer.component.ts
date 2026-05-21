@@ -1,4 +1,5 @@
 import { OnInit, Component, OnDestroy, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import { WebSocketService } from '../../providers/websocket.service';
@@ -6,7 +7,8 @@ import { WebSocketService } from '../../providers/websocket.service';
 @Component({
     selector: 'dburst-log-file-viewer',
     template: '@if (logFileName() == \'info.log\') {<div [innerHTML]="executionStatsService.logStats.infoLogContent" style="white-space: pre-wrap;"></div>}@if (logFileName() == \'warnings.log\') {<div [innerHTML]="executionStatsService.logStats.warningsLogContent" style="white-space: pre-wrap;"></div>}@if (logFileName() == \'errors.log\') {<div [innerHTML]="executionStatsService.logStats.errorsLogContent" style="white-space: pre-wrap;"></div>}',
-    standalone: false
+    standalone: true,
+    imports: [CommonModule],
 })
 export class LogFileViewerComponent implements OnInit, OnDestroy {
   logFileName = input<string>();

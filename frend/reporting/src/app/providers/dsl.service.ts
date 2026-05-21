@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { ReportParameter, ConfigurationRepository } from './configuration-repository.service';
+import { ConfigurationRepository } from './configuration-repository.service';
 
 export interface ReportDataResult {
   data: Array<Record<string, any>>;
@@ -54,72 +54,37 @@ export interface PivotTableOptionsDto {
 @Injectable({
   providedIn: 'root',
 })
-export class ReportingService {
+export class DslService {
   constructor(
     protected apiService: ApiService,
     protected settingsService: ConfigurationRepository,
   ) {}
 
-  // V4: base URL for web components (rb-tabulator, rb-chart, rb-pivot-table).
-  // Component appends /reports/{id}/data to this — so /api is the right base now.
-  get reportingApiBaseUrl(): string {
-    return this.apiService.BACKEND_URL;
-  }
-
-  async fetchData(
-    parameters: { [key: string]: any },
-    testMode: boolean = false,
-    reportId: string = this.settingsService.currentConfigurationTemplate
-      ?.folderName,
-  ) {
-    const params = new URLSearchParams();
-    if (testMode) {
-      params.set('testMode', 'true');
-    }
-
-    Object.entries(parameters).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        params.set(key, value.toString());
-      }
-    });
-
-    const paramsObj = {};
-    params.forEach((value, key) => {
-      paramsObj[key] = value;
-    });
-
-    const result = await this.apiService.get(
-      `/reports/${reportId}/data`,
-      paramsObj,
-    );
-    return result;
-  }
-
-  async processGroovyParametersDsl(
+  async parseParameters(
     groovyDslCode: string,
     connectionCode?: string,
-  ): Promise<ReportParameter[]> {
+  ): Promise<import('./configuration-repository.service').ReportParameter[]> {
     const body: any = { dslCode: groovyDslCode };
     if (connectionCode) body.connectionCode = connectionCode;
     const resp = await this.apiService.post(`/dsl/reportparameters/parse`, body);
     return resp?.parameters ?? resp;
   }
 
-  async processGroovyTabulatorDsl(
+  async parseTabulator(
     groovyDslCode: string,
   ): Promise<TabulatorOptionsDto> {
     const resp = await this.apiService.post(`/dsl/tabulator/parse`, { dslCode: groovyDslCode });
     return resp?.options ?? resp;
   }
 
-  async processGroovyChartDsl(
+  async parseChart(
     groovyDslCode: string,
   ): Promise<ChartOptionsDto> {
     const resp = await this.apiService.post(`/dsl/chart/parse`, { dslCode: groovyDslCode });
     return resp?.options ?? resp;
   }
 
-  async processGroovyPivotTableDsl(
+  async parsePivot(
     groovyDslCode: string,
   ): Promise<PivotTableOptionsDto> {
     const resp = await this.apiService.post(`/dsl/pivot/parse`, { dslCode: groovyDslCode });

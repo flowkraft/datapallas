@@ -1,4 +1,7 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
+import { ChocolateyComponent } from '../chocolatey/chocolatey.component';
 
 import { javaTemplate } from './java.template';
 
@@ -9,7 +12,8 @@ import { StateStoreService } from '../../../providers/state-store.service';
 @Component({
     selector: 'dburst-java',
     template: ` ${javaTemplate} `,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, TranslateModule, ChocolateyComponent],
 })
 export class JavaComponent {
   constructor(

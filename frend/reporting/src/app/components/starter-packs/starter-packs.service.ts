@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 
 /**
  * Defines the static properties of a starter pack.
@@ -37,8 +37,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (Oracle)',
       description: 'Sample Oracle database.',
       icon: 'oracle', // Use simple key matching iconMap
-      startCmd: 'service database start northwind oracle 1521', // Start command with port
-      stopCmd: 'service database stop northwind oracle', // Stop command
+      startCmd: 'system service database start northwind oracle 1521', // Start command with port
+      stopCmd: 'system service database stop northwind oracle', // Stop command
       tags: ['database', 'northwind', 'oracle'],
     },
     {
@@ -49,8 +49,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (SQL Server)',
       description: 'Sample SQL Server database.',
       icon: 'sqlserver', // Use simple key matching iconMap
-      startCmd: 'service database start northwind sqlserver 1433', // Start command with port
-      stopCmd: 'service database stop northwind sqlserver', // Stop command
+      startCmd: 'system service database start northwind sqlserver 1433', // Start command with port
+      stopCmd: 'system service database stop northwind sqlserver', // Stop command
       tags: ['database', 'northwind', 'sqlserver'],
     },
     {
@@ -61,8 +61,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (IBM Db2)',
       description: 'Sample IBM Db2 database.',
       icon: 'db2', // Use simple key matching iconMap
-      startCmd: 'service database start northwind db2 50000', // Start command with port
-      stopCmd: 'service database stop northwind db2', // Stop command
+      startCmd: 'system service database start northwind db2 50000', // Start command with port
+      stopCmd: 'system service database stop northwind db2', // Stop command
       tags: ['database', 'northwind', 'ibmdb2'],
     },
     {
@@ -73,8 +73,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (PostgreSQL)',
       description: 'Sample PostgreSQL database.',
       icon: 'postgresql', // Use simple key matching iconMap
-      startCmd: 'service database start northwind postgres 5432', // Start command with port
-      stopCmd: 'service database stop northwind postgres', // Stop command
+      startCmd: 'system service database start northwind postgres 5432', // Start command with port
+      stopCmd: 'system service database stop northwind postgres', // Stop command
       tags: ['database', 'northwind', 'postgres'],
     },
     {
@@ -85,8 +85,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (MySQL)',
       description: 'Sample MySQL database.',
       icon: 'mysql', // Use simple key matching iconMap
-      startCmd: 'service database start northwind mysql 3306', // Start command with port
-      stopCmd: 'service database stop northwind mysql', // Stop command
+      startCmd: 'system service database start northwind mysql 3306', // Start command with port
+      stopCmd: 'system service database stop northwind mysql', // Stop command
       tags: ['database', 'northwind', 'mysql'],
     },
     {
@@ -97,8 +97,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (MariaDB)',
       description: 'Sample MariaDB database.',
       icon: 'mariadb', // Use simple key matching iconMap
-      startCmd: 'service database start northwind mariadb 3307', // Start command with port
-      stopCmd: 'service database stop northwind mariadb', // Stop command
+      startCmd: 'system service database start northwind mariadb 3307', // Start command with port
+      stopCmd: 'system service database stop northwind mariadb', // Stop command
       tags: ['database', 'northwind', 'mariadb'],
     },
     {
@@ -109,8 +109,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (ClickHouse)',
       description: 'Sample ClickHouse OLAP database for analytics.',
       icon: 'clickhouse', // Use simple key matching iconMap
-      startCmd: 'service database start northwind clickhouse 8123', // Start command with port
-      stopCmd: 'service database stop northwind clickhouse', // Stop command
+      startCmd: 'system service database start northwind clickhouse 8123', // Start command with port
+      stopCmd: 'system service database stop northwind clickhouse', // Stop command
       tags: ['database', 'northwind', 'clickhouse', 'olap', 'analytics'],
     },
     {
@@ -121,8 +121,8 @@ export class StarterPacksService {
       displayName: 'Northwind DB (Supabase)',
       description: 'Supabase is the Postgres development platform. Start your project with a Postgres database, Authentication, instant APIs, Edge Functions, Realtime subscriptions, Storage, and Vector embeddings.',
       icon: 'supabase',
-      startCmd: 'service database start northwind supabase 5435',
-      stopCmd: 'service database stop northwind supabase',
+      startCmd: 'system service database start northwind supabase 5435',
+      stopCmd: 'system service database stop northwind supabase',
       tags: ['database', 'northwind', 'supabase', 'postgres', 'baas', ' backend-as-a-service', 'auth', 'real-time', 'storage', 'vector-embeddings'],
     },
     {
@@ -133,8 +133,8 @@ export class StarterPacksService {
       displayName: 'Redis',
       description: 'Your Dashboards Are About to Get Faster.',
       icon: 'redis',
-      startCmd: 'service database start cache redis 6379',
-      stopCmd: 'service database stop cache redis',
+      startCmd: 'system service database start cache redis 6379',
+      stopCmd: 'system service database stop cache redis',
       tags: ['database', 'redis', 'cache', 'in-memory', 'key-value', 'real-time', 'performance'],
     },
     {
@@ -145,8 +145,8 @@ export class StarterPacksService {
       displayName: 'TimescaleDB',
       description: 'PostgreSQL extended for time-series workloads. Hypertables, continuous aggregates, time-bucketed queries.',
       icon: 'timescaledb',
-      startCmd: 'service database start timeseries timescaledb 5433',
-      stopCmd: 'service database stop timeseries timescaledb',
+      startCmd: 'system service database start timeseries timescaledb 5433',
+      stopCmd: 'system service database stop timeseries timescaledb',
       tags: ['database', 'timescaledb', 'postgres', 'time-series', 'hypertable', 'analytics'],
     },
     // --- Add other families/packs here as needed ---

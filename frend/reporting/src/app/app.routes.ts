@@ -1,13 +1,11 @@
-import { NgModule } from '@angular/core';
-import { Routes, RouterModule } from '@angular/router';
+import { Routes } from '@angular/router';
 import { ConfigurationComponent } from './areas/_configuration/configuration.component';
 import { ConfigurationCrudComponent } from './areas/_configuration-crud/configuration-crud.component';
 import { HelpComponent } from './areas/_help/help.component';
-
 import { ProcessingComponent } from './areas/_processing/processing.component';
 import { NoJavaGuard } from './app-nojava-route-guard';
 
-const routes: Routes = [
+export const routes: Routes = [
   {
     path: '',
     component: ProcessingComponent,
@@ -92,14 +90,3 @@ const routes: Routes = [
     component: HelpComponent,
   },
 ];
-
-@NgModule({
-  imports: [
-    RouterModule.forRoot(routes, {
-      useHash: true,
-      initialNavigation: 'disabled',
-    }),
-  ],
-  exports: [RouterModule],
-})
-export class AppRoutingModule {}

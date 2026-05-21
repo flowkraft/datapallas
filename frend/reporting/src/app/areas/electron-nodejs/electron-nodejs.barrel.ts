@@ -1,0 +1,10 @@
+export { JavaComponent }                     from './java/java.component';
+export { ExtraPackagesComponent }            from './extra-packages/extra-packages.component';
+export { TerminalComponent }                 from './terminal/terminal.component';
+export { SystemDiagnosticsComponent }        from './system-diagnostics/system-diagnostics.component';
+export { ChocolateyComponent }               from './chocolatey/chocolatey.component';
+export { ButtonNativeSystemDialogComponent } from './button-native-system-dialog/button-native-system-dialog.component';
+export { UpdateComponent }                   from './update/update.component';
+export { WhenUpdatingComponent }             from './update/when-updating';
+export { DesktopAdminService }               from './desktop-admin.service';
+export { RbElectronService }                 from './electron.service';

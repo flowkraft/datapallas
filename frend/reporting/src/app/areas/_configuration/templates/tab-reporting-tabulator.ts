@@ -16,7 +16,7 @@ export const tabReportingTabulatorTemplate = `<ng-template
                       <rb-tabulator
                         [reportId]="getCurrentReportCode()"
                         [componentId]="cid"
-                        [apiBaseUrl]="reportingService.reportingApiBaseUrl"
+                        [apiBaseUrl]="reportsService.apiBaseUrl"
                         [reportParams]="previewParams || {}"
                         [testMode]="true"
                         (dataFetched)="onTabulatorDataFetched($any($event))"

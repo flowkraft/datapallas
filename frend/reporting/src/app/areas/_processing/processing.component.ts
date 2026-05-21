@@ -7,7 +7,12 @@
   TemplateRef,
   ElementRef,
   inject,
+  CUSTOM_ELEMENTS_SCHEMA,
 } from '@angular/core';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { LogFilesViewerSeparateTabsComponent } from '../../components/log-files-viewer-separate-tabs/log-files-viewer-separate-tabs.component';
+import { LicenseComponent } from '../../components/license/license.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -52,10 +57,11 @@ import { StateStoreService } from '../../providers/state-store.service';
 import { ReportsService } from '../../providers/reports.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import {
-  ReportingService,
+  DslService,
   ReportDataResult,
-} from '../../providers/reporting.service';
+} from '../../providers/dsl.service';
 import { AppsManagerService, ManagedApp } from '../../components/apps-manager/apps-manager.service';
+import { DashboardService } from '../../providers/dashboard.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
 import { AiManagerComponent, AiManagerLaunchConfig } from '../../components/ai-manager/ai-manager.component';
 
@@ -74,7 +80,9 @@ import { AiManagerComponent, AiManagerLaunchConfig } from '../../components/ai-m
     ${tabQualityAssuranceTemplate} ${tabLogsTemplate} ${tabSamplesTemplate}
     ${modalSamplesLearnMoreTemplate} ${tabLicenseTemplate} ${resumeJobsTemplate}
   `,
-    standalone: false
+    standalone: true,
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [...SHARED_IMPORTS, NgSelectModule, LogFilesViewerSeparateTabsComponent, LicenseComponent],
 })
 export class ProcessingComponent implements OnInit {
   isModalSamplesLearnMoreVisible = false;
@@ -307,7 +315,8 @@ export class ProcessingComponent implements OnInit {
   protected router                = inject(Router);
   protected changeDetectorRef     = inject(ChangeDetectorRef);
   protected storeService          = inject(StateStoreService);
-  protected reportingService      = inject(ReportingService);
+  protected dslService            = inject(DslService);
+  protected dashboardService      = inject(DashboardService);
   protected executionStatsService = inject(ExecutionStatsService);
   protected samplesService        = inject(SamplesService);
   protected sanitizer             = inject(DomSanitizer);
@@ -1368,7 +1377,7 @@ export class ProcessingComponent implements OnInit {
 
   doSampleTryIt(clickedSample: SampleInfo) {
     if (clickedSample.jobType === 'dashboard') {
-      window.open(`http://localhost:9090/dashboard/${clickedSample.configurationFileName}`, '_blank');
+      this.dashboardService.openDashboard(clickedSample.configurationFileName);
       return;
     }
 

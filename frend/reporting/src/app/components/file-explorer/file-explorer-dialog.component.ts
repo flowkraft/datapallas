@@ -8,7 +8,9 @@ import {
   NgZone,
   ChangeDetectorRef,
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FileExplorerComponent } from './file-explorer.component';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 @Component({
     selector: 'dburst-file-explorer-dialog',
@@ -137,7 +139,8 @@ import { FileExplorerComponent } from './file-explorer.component';
       }
     `,
     ],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, DpDialogComponent, FileExplorerComponent],
 })
 export class FileExplorerDialogComponent implements OnInit {
   visible = model<boolean>(false);
