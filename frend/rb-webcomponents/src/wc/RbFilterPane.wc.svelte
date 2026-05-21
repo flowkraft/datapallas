@@ -258,7 +258,7 @@
         const orderClause = sort === 'none' ? '' : ` ORDER BY "${field}" ${sort === 'desc' ? 'DESC' : 'ASC'}`;
         const sql = `SELECT DISTINCT "${field}" FROM "${tableName}" WHERE "${field}" IS NOT NULL${orderClause} LIMIT ${maxValues}`;
 
-        const res = await fetch(`${apiBaseUrl}/api/queries/execute`, {
+        const res = await fetch(`${apiBaseUrl}/api/queries/run-sql`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ connectionId: connectionId, sql }),

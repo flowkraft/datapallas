@@ -267,7 +267,7 @@
       if (apiBaseUrl) {
         try {
           const origin = new URL(apiBaseUrl, window.location.href).origin;
-          pivotApi.baseUrl = `${origin}/api/explorations/analytics`;
+          pivotApi.baseUrl = `${origin}/api/analytics`;
         } catch (e) {
           console.warn('[rb-pivot-table] Could not derive analytics URL from apiBaseUrl:', apiBaseUrl, e);
         }

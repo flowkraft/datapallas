@@ -34,7 +34,7 @@ import java.util.Map;
  *   - other connections → browser (client-side processing)
  */
 @RestController
-@RequestMapping("/api/explorations/analytics")
+@RequestMapping("/api/analytics")
 @CrossOrigin(origins = "*")
 public class AnalyticsController {
 

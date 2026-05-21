@@ -216,18 +216,6 @@ public class ConnectionsController {
 				"message", "SMS test sent successfully")));
 	}
 
-	// ========== TEST QUERY STUB (V3.7) ==========
-
-	@PostMapping(value = "/{connectionId}/test-query", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Map<String, Object>>> testQuery(
-			@PathVariable String connectionId,
-			@RequestBody Map<String, String> request) {
-		return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-				.body(Map.<String, Object>of(
-						"status", "not_implemented",
-						"message", "POST /api/connections/{id}/test-query — reserved, not yet implemented")));
-	}
-
 	// ========== OAUTH FLOW (V3.6 — moved from /api/oauth/email/*) ==========
 
 	@PostMapping(value = "/{connectionId}/oauth-sign-in",

@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sourcekraft.documentburster.cli.JsonOutputMixin;
 import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper;
 import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper.TokenResult;
 import com.sourcekraft.documentburster.common.security.SecretsCipher;
@@ -192,6 +193,9 @@ public class MainProgram implements Callable<Integer> {
 			@Mixin
 			private ConfigOptions config;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() {
 				return jobCommand.parent;
@@ -212,15 +216,21 @@ public class MainProgram implements Callable<Integer> {
 					}
 				}
 
-				CliJob job = getJob(config.configFile);
-				String outputMergedFilePath = job.doMerge(filePaths, outputFileName);
+				try {
+					CliJob job = getJob(config.configFile);
+					String outputMergedFilePath = job.doMerge(filePaths, outputFileName);
 
-				if (burst) {
-					job.doBurst(outputMergedFilePath, false, StringUtils.EMPTY, -1);
+					if (burst) {
+						job.doBurst(outputMergedFilePath, false, StringUtils.EMPTY, -1);
+					}
+
+					FileUtils.deleteQuietly(listFile);
+					jsonOutput.emitOk(Map.of("jobType", "merge", "outputFile", outputFileName != null ? outputFileName : ""));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("jobType", "merge"));
+					throw e;
 				}
-
-				FileUtils.deleteQuietly(listFile);
-				return 0;
 			}
 		}
 
@@ -231,6 +241,9 @@ public class MainProgram implements Callable<Integer> {
 
 			@Option(names = { "--job-id" }, required = true, description = "Job ID (UUID from POST /api/jobs response)")
 			private String jobId;
+
+			@Mixin
+			JsonOutputMixin jsonOutput;
 
 			@Override
 			protected MainProgram getMainProgram() { return jobCommand.parent; }
@@ -248,7 +261,22 @@ public class MainProgram implements Callable<Integer> {
 					System.err.println("Job not found: " + jobId);
 					return 1;
 				}
-				System.out.println(resp.body());
+				if (jsonOutput.json) {
+					// resp.body() is already JSON-shaped from the server (JobRecord.toMap())
+					System.out.println(resp.body());
+				} else {
+					// Human-readable 2-line summary parsed from the JSON body
+					try {
+						com.fasterxml.jackson.databind.JsonNode node =
+								new com.fasterxml.jackson.databind.ObjectMapper().readTree(resp.body());
+						String status = node.path("status").asText("unknown");
+						String startedAt = node.path("startedAt").asText("");
+						System.out.println("Job " + jobId);
+						System.out.println("  status: " + status + "   started: " + startedAt);
+					} catch (Exception parseEx) {
+						System.out.println(resp.body());
+					}
+				}
 				return resp.statusCode() == 200 ? 0 : 1;
 			}
 		}
@@ -260,6 +288,9 @@ public class MainProgram implements Callable<Integer> {
 
 			@Option(names = { "--job-id" }, required = true, description = "Job ID (UUID from POST /api/jobs response)")
 			private String jobId;
+
+			@Mixin
+			JsonOutputMixin jsonOutput;
 
 			@Override
 			protected MainProgram getMainProgram() { return jobCommand.parent; }
@@ -278,7 +309,11 @@ public class MainProgram implements Callable<Integer> {
 					return 1;
 				}
 				if (resp.statusCode() == 204) {
-					System.out.println("Job " + jobId + " cancelled.");
+					if (jsonOutput.json) {
+						jsonOutput.emit(Map.of("status", "ok", "jobId", jobId, "cancelled", true));
+					} else {
+						System.out.println("Job " + jobId + " cancelled.");
+					}
 					return 0;
 				}
 				System.err.println("Unexpected response: " + resp.statusCode());
@@ -322,11 +357,15 @@ public class MainProgram implements Callable<Integer> {
 			@Option(names = { "--format" }, description = "Output format: table or json (default: table)")
 			private String format = "table";
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
+				if (jsonOutput.json) format = "json";
 				File connectionsDir = new File(Utils.resolvePathAgainstPortableDir("config/connections"));
 				if (!connectionsDir.isDirectory()) {
 					System.out.println("No connections directory found.");
@@ -382,11 +421,15 @@ public class MainProgram implements Callable<Integer> {
 			@Option(names = { "--format" }, description = "Output format: table, csv, or json (default: table)")
 			private String format = "table";
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
+				if (jsonOutput.json) format = "json";
 				String filePath = Utils.resolvePathAgainstPortableDir(
 						"config/connections/" + connectionId + "/" + connectionId + ".xml");
 				CliJob job = getJob(filePath);
@@ -456,12 +499,20 @@ public class MainProgram implements Callable<Integer> {
 			@Option(names = { "--id" }, required = true, description = "Email connection ID (e.g. eml-my-email)")
 			private String connectionId;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				System.out.println("Use the DataPallas web UI or POST /api/connections/" + connectionId + "/test-email");
+				if (jsonOutput.json) {
+					jsonOutput.emitOk(Map.of("connectionId", connectionId, "details",
+							"Use POST /api/connections/" + connectionId + "/test-email for full testing"));
+				} else {
+					System.out.println("Use the DataPallas web UI or POST /api/connections/" + connectionId + "/test-email");
+				}
 				return 0;
 			}
 		}
@@ -483,14 +534,23 @@ public class MainProgram implements Callable<Integer> {
 			@Mixin
 			private ConfigOptions config;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				CliJob job = getJob(config.configFile);
-				job.doCheckTwilio(fromNumber, toNumber);
-				return 0;
+				try {
+					CliJob job = getJob(config.configFile);
+					job.doCheckTwilio(fromNumber, toNumber);
+					jsonOutput.emitOk(Map.of("connectionId", connectionId, "from", fromNumber, "to", toNumber));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("connectionId", connectionId));
+					throw e;
+				}
 			}
 		}
 
@@ -503,6 +563,9 @@ public class MainProgram implements Callable<Integer> {
 					description = "Database connection ID (e.g. db-northwind)")
 			private String connectionId;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
@@ -510,9 +573,15 @@ public class MainProgram implements Callable<Integer> {
 			public Integer call() throws Exception {
 				String filePath = Utils.resolvePathAgainstPortableDir(
 						"config/connections/" + connectionId + "/" + connectionId + ".xml");
-				CliJob job = getJob(filePath);
-				job.doTestAndFetchDatabaseSchema(filePath);
-				return 0;
+				try {
+					CliJob job = getJob(filePath);
+					job.doTestAndFetchDatabaseSchema(filePath);
+					jsonOutput.emitOk(Map.of("connectionId", connectionId));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("connectionId", connectionId));
+					throw e;
+				}
 			}
 		}
 
@@ -525,6 +594,9 @@ public class MainProgram implements Callable<Integer> {
 					description = "Database connection ID (e.g. db-northwind)")
 			private String connectionId;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
@@ -532,9 +604,15 @@ public class MainProgram implements Callable<Integer> {
 			public Integer call() throws Exception {
 				String filePath = Utils.resolvePathAgainstPortableDir(
 						"config/connections/" + connectionId + "/" + connectionId + ".xml");
-				CliJob job = getJob(filePath);
-				job.doTestAndFetchDatabaseSchema(filePath);
-				return 0;
+				try {
+					CliJob job = getJob(filePath);
+					job.doTestAndFetchDatabaseSchema(filePath);
+					jsonOutput.emitOk(Map.of("connectionId", connectionId, "schemaFetched", true));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("connectionId", connectionId));
+					throw e;
+				}
 			}
 		}
 
@@ -552,14 +630,23 @@ public class MainProgram implements Callable<Integer> {
 			@Option(names = { "-p", "--param" }, description = "Query parameters as key=value (repeatable)", paramLabel = "KEY=VALUE")
 			private Map<String, String> parameters = new HashMap<>();
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				CliJob job = getJob(config.configFile);
-				job.doFetchData(parameters, false);
-				return 0;
+				try {
+					CliJob job = getJob(config.configFile);
+					job.doFetchData(parameters, false);
+					jsonOutput.emitOk(Map.of("query", sqlQuery));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("query", sqlQuery));
+					throw e;
+				}
 			}
 		}
 
@@ -579,6 +666,9 @@ public class MainProgram implements Callable<Integer> {
 			@Option(names = { "-p", "--param" }, description = "Script parameters as key=value (repeatable)", paramLabel = "KEY=VALUE")
 			private Map<String, String> params = new HashMap<>();
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
@@ -588,9 +678,15 @@ public class MainProgram implements Callable<Integer> {
 						"config/connections/" + connectionId + "/" + connectionId + ".xml");
 				if (!scriptFile.exists())
 					throw new FileNotFoundException("Script file not found: " + scriptFile.getAbsolutePath());
-				CliJob job = getJob(filePath);
-				job.doRunSeedScript(filePath, scriptFile.getAbsolutePath(), params);
-				return 0;
+				try {
+					CliJob job = getJob(filePath);
+					job.doRunSeedScript(filePath, scriptFile.getAbsolutePath(), params);
+					jsonOutput.emitOk(Map.of("connectionId", connectionId, "scriptFile", scriptFile.getName()));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("connectionId", connectionId, "scriptFile", scriptFile.getName()));
+					throw e;
+				}
 			}
 		}
 
@@ -628,22 +724,31 @@ public class MainProgram implements Callable<Integer> {
 					description = "Optional: path to email connection XML to persist the refresh token")
 			private File emailConnectionFile;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return connectionCommand.parent; }
 
 			@Override
 			public Integer call() throws Exception {
-				System.out.println("Starting OAuth2 sign-in flow for provider: " + provider);
-				System.out.println("Your default browser will open in a moment to complete sign-in.");
+				if (!jsonOutput.json) {
+					System.out.println("Starting OAuth2 sign-in flow for provider: " + provider);
+					System.out.println("Your default browser will open in a moment to complete sign-in.");
+				}
 
 				OAuthFlowHelper.TokenResult result = OAuthFlowHelper.runAuthCodeFlow(
 						provider, tenantId, clientId, authorizeUrl, tokenUrl, scope);
 
 				if (emailConnectionFile == null) {
-					System.out.println();
-					System.out.println("=== OAuth2 sign-in successful ===");
-					System.out.println("userEmail:    " + result.userEmail);
-					System.out.println("refreshToken: " + result.refreshToken);
+					if (jsonOutput.json) {
+						jsonOutput.emit(Map.of("status", "ok", "refreshToken", result.refreshToken, "userEmail", result.userEmail));
+					} else {
+						System.out.println();
+						System.out.println("=== OAuth2 sign-in successful ===");
+						System.out.println("userEmail:    " + result.userEmail);
+						System.out.println("refreshToken: " + result.refreshToken);
+					}
 					return 0;
 				}
 
@@ -676,9 +781,14 @@ public class MainProgram implements Callable<Integer> {
 					marshaller.marshal(connSettings, os);
 				}
 
-				System.out.println("=== OAuth2 sign-in successful ===");
-				System.out.println("Signed in as : " + result.userEmail);
-				System.out.println("Saved to     : " + emailConnectionFile.getAbsolutePath());
+				if (jsonOutput.json) {
+					jsonOutput.emit(Map.of("status", "ok", "userEmail", result.userEmail,
+							"savedTo", emailConnectionFile.getAbsolutePath()));
+				} else {
+					System.out.println("=== OAuth2 sign-in successful ===");
+					System.out.println("Signed in as : " + result.userEmail);
+					System.out.println("Saved to     : " + emailConnectionFile.getAbsolutePath());
+				}
 				return 0;
 			}
 		}
@@ -697,6 +807,9 @@ public class MainProgram implements Callable<Integer> {
 
 		@Mixin
 		protected QaOptions qa;
+
+		@Mixin
+		JsonOutputMixin jsonOutput;
 
 		@Override
 		protected MainProgram getMainProgram() {
@@ -718,6 +831,7 @@ public class MainProgram implements Callable<Integer> {
 
 			CliJob job = getJob(config.configFile);
 			job.doBurst(inputFile.getAbsolutePath(), qa.isTestAll(), qa.getTestList(), qa.getRandomTestsCount());
+			jsonOutput.emitOk(Map.of("jobType", "burst", "input", inputFile != null ? inputFile.getAbsolutePath() : ""));
 			return 0;
 		}
 	}
@@ -739,6 +853,9 @@ public class MainProgram implements Callable<Integer> {
 		@Option(names = { "-p",
 				"--param" }, description = "Report parameters in key=value format (can be repeated)", paramLabel = "KEY=VALUE")
 		private Map<String, String> parameters = new HashMap<>();
+
+		@Mixin
+		JsonOutputMixin jsonOutput;
 
 		@Override
 		protected MainProgram getMainProgram() {
@@ -775,6 +892,7 @@ public class MainProgram implements Callable<Integer> {
 
 			job.doBurst(input, qa.isTestAll(), qa.getTestList(), qa.getRandomTestsCount());
 
+			jsonOutput.emitOk(Map.of("jobType", "generate"));
 			return 0;
 		}
 	}
@@ -811,6 +929,9 @@ public class MainProgram implements Callable<Integer> {
 			@Mixin
 			private ConfigOptions config;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() {
 				return systemCommand.parent;
@@ -818,9 +939,15 @@ public class MainProgram implements Callable<Integer> {
 
 			@Override
 			public Integer call() throws Exception {
-				CliJob job = getJob(config.configFile);
-				job.doCheckTwilio(fromNumber, toNumber);
-				return 0;
+				try {
+					CliJob job = getJob(config.configFile);
+					job.doCheckTwilio(fromNumber, toNumber);
+					jsonOutput.emitOk(Map.of("from", fromNumber, "to", toNumber));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("from", fromNumber, "to", toNumber));
+					throw e;
+				}
 			}
 		}
 
@@ -852,30 +979,42 @@ public class MainProgram implements Callable<Integer> {
 
 			@Command(name = "activate", description = "Activate license key")
 			public static class ActivateCommand extends LicenseBaseCommand implements Callable<Integer> {
+				@Mixin
+				JsonOutputMixin jsonOutput;
+
 				@Override
 				public Integer call() throws Exception {
 					CliJob job = getJob(null);
 					job.doActivateLicenseKey();
+					jsonOutput.emitOk(Map.of("status", "activated"));
 					return 0;
 				}
 			}
 
 			@Command(name = "deactivate", description = "Deactivate license key")
 			public static class DeactivateCommand extends LicenseBaseCommand implements Callable<Integer> {
+				@Mixin
+				JsonOutputMixin jsonOutput;
+
 				@Override
 				public Integer call() throws Exception {
 					CliJob job = getJob(null);
 					job.doDeactivateLicense();
+					jsonOutput.emitOk(Map.of("status", "deactivated"));
 					return 0;
 				}
 			}
 
 			@Command(name = "check", description = "Check license status")
 			public static class CheckCommand extends LicenseBaseCommand implements Callable<Integer> {
+				@Mixin
+				JsonOutputMixin jsonOutput;
+
 				@Override
 				public Integer call() throws Exception {
 					CliJob job = getJob(null);
 					job.doCheckLicense();
+					jsonOutput.emitOk(Map.of("licenseChecked", true));
 					return 0;
 				}
 			}
@@ -888,6 +1027,9 @@ public class MainProgram implements Callable<Integer> {
 
 			@Option(names = { "-f", "--file" }, required = true, description = "XML file with feature request details")
 			private File featureRequestFile;
+
+			@Mixin
+			JsonOutputMixin jsonOutput;
 
 			@Override
 			protected MainProgram getMainProgram() {
@@ -903,6 +1045,7 @@ public class MainProgram implements Callable<Integer> {
 
 				CliJob job = getJob(null);
 				job.doSendFeatureRequestEmail(featureRequestFile.getAbsolutePath());
+				jsonOutput.emitOk(Map.of("status", "ok"));
 				return 0;
 			}
 		}
@@ -973,6 +1116,9 @@ public class MainProgram implements Callable<Integer> {
 		@CommandLine.Unmatched
 		private List<String> unmatchedArgs;
 
+		@Mixin
+		JsonOutputMixin jsonOutput;
+
 		@Override
 		public Integer call() throws Exception {
 
@@ -996,6 +1142,7 @@ public class MainProgram implements Callable<Integer> {
 			CliJob job = getJob(null);
 			job.doService(serviceName, commandLine);
 
+			jsonOutput.emitOk(Map.of("service", serviceName, "command", commandLine));
 			return 0;
 		}
 
@@ -1007,6 +1154,9 @@ public class MainProgram implements Callable<Integer> {
 			@Parameters(index = "0", arity = "0..1", description = "Optional service name to filter (e.g. clickhouse, northwind)")
 			private String serviceName;
 
+			@Mixin
+			JsonOutputMixin jsonOutput;
+
 			@Override
 			protected MainProgram getMainProgram() { return serviceCommand.systemCommand.parent; }
 
@@ -1016,7 +1166,12 @@ public class MainProgram implements Callable<Integer> {
 						? "database info northwind " + serviceName
 						: "database list";
 				ServicesManager.Result result = ServicesManager.execute(cmd);
-				System.out.println(result.output);
+				if (jsonOutput.json) {
+					jsonOutput.emit(Map.of("services", result.output != null ? result.output : "",
+							"status", result.status != null ? result.status : "unknown"));
+				} else {
+					System.out.println(result.output);
+				}
 				return "error".equals(result.status) ? 1 : 0;
 			}
 		}

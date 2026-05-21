@@ -43,9 +43,9 @@ public class StarterPacksManagementService {
      * matching the old shellService.runBatFile() → ProcessService.spawn() behavior.
      *
      * The command string uses the same format as the CLI:
-     *   "service database start northwind postgres 5432"
+     *   "system service database start northwind postgres 5432"
      *
-     * If the "service" prefix is missing, it's prepended automatically.
+     * If the "system service" prefix is missing, it's prepended automatically.
      */
     public Mono<ExecuteCommandResponseDto> executeCommand(String command) {
         log.info("Executing command: {}", command);
@@ -55,9 +55,9 @@ public class StarterPacksManagementService {
             return Mono.just(new ExecuteCommandResponseDto("Error: empty command.", "error"));
         }
 
-        // Ensure "service" prefix is present — MainProgram picocli expects it
-        if (!cleanCommand.toLowerCase().startsWith("service ")) {
-            cleanCommand = "service " + cleanCommand;
+        // Ensure "system service" prefix — ServiceCommand lives under SystemCommand since B5+B6
+        if (!cleanCommand.toLowerCase().startsWith("system service ")) {
+            cleanCommand = "system service " + cleanCommand;
         }
 
         // Split into args array for MainProgram.execute() — same as DataPallas.bat
