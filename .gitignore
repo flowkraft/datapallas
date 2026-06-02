@@ -131,6 +131,9 @@ bkend/reporting/temp/
 #batch-web-lightmin
 #next
 frend/reporting/test-results/**/trace.zip
+frend/reporting/trace_*/
+
+frend/reporting/documentation.json
 
 log.txt
 
