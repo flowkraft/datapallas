@@ -135,7 +135,10 @@ function createSplashWindow(theme: 'light' | 'dark'): BrowserWindow {
   // theme param + load the html (unchanged)
   const splashPath = path.join(__dirname, 'splash.html');
   if (fs.existsSync(splashPath)) {
-    const splashUrl = new URL(path.join('file:', __dirname, 'splash.html'));
+    // pathToFileURL() handles Windows drive letters + backslashes correctly;
+    // `new URL(path.join('file:', ...))` produced malformed URLs like
+    // `file:\C:\…\splash.html` that Node's URL constructor rejects.
+    const splashUrl = require('url').pathToFileURL(splashPath);
     splashUrl.searchParams.set('theme', theme);
     splash.loadURL(splashUrl.href).catch(() => { });
   } else {
