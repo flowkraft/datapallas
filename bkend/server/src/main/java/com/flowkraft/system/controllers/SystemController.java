@@ -64,7 +64,7 @@ public class SystemController {
 	}
 
 	@GetMapping("/info/changelog")
-	public Mono<String> getChangelog(@RequestParam String itemName) throws Exception {
+	public Mono<Map<String, String>> getChangelog(@RequestParam String itemName) throws Exception {
 		String itemNameDecoded = URLDecoder.decode(itemName, StandardCharsets.UTF_8.toString());
 		return systemService.getChangelog(itemNameDecoded);
 	}

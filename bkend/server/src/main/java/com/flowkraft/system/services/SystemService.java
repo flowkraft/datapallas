@@ -5,7 +5,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.flowkraft.common.AppPaths;
@@ -23,6 +26,8 @@ import com.flowkraft.system.models.SystemInfo;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettingsInternal;
 import com.sourcekraft.documentburster.utils.Utils;
+
+import de.ailis.pherialize.Pherialize;
 
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
@@ -111,7 +116,7 @@ public class SystemService {
 		}).onErrorResume(e -> Mono.just(false));
 	}
 
-	public Mono<String> getChangelog(String itemNameDecoded) {
+	public Mono<Map<String, String>> getChangelog(String itemNameDecoded) {
 		String url = "https://www.pdfburst.com/store?edd_action=get_version&item_name=" + itemNameDecoded;
 		WebClient webClient = WebClient.create();
 		return webClient.get().uri(url).exchangeToMono(response -> {
@@ -121,7 +126,37 @@ public class SystemService {
 			} else {
 				return response.bodyToMono(String.class);
 			}
-		});
+		}).map(this::parseChangelogResponse);
+	}
+
+	// The licensing server (EDD) returns the changelog inside a PHP-serialized
+	// "sections" field. Decode it here and hand the caller plain text so the
+	// frontend never has to deal with the PHP-serialize format.
+	private Map<String, String> parseChangelogResponse(String rawBody) {
+		Map<String, String> result = new HashMap<>();
+		result.put("new_version", StringUtils.EMPTY);
+		result.put("changelog", StringUtils.EMPTY);
+
+		try {
+			JsonNode json = new ObjectMapper().readTree(rawBody);
+
+			if (json.hasNonNull("new_version"))
+				result.put("new_version", json.get("new_version").asText());
+
+			if (json.hasNonNull("sections")) {
+				String changelog = Pherialize.unserialize(json.get("sections").asText()).toArray()
+						.getString("changelog");
+				// Flatten the HTML wrapping into plain newlines.
+				changelog = changelog.replace("<p>", "\n").replace("</p>", "\n").replace("<br />", "")
+						.replace("<br/>", "");
+				result.put("changelog", changelog);
+			}
+		} catch (Exception e) {
+			// Leave the empty defaults when the licensing server is unreachable or
+			// returns an unexpected payload (expected for demo/offline installations).
+		}
+
+		return result;
 	}
 
 	public Mono<String> getBlogPosts() {

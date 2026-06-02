@@ -1,7 +1,5 @@
 ﻿import { Injectable } from '@angular/core';
 
-import { unserialize } from 'php-serialize';
-
 import * as xml2js from 'xml2js';
 
 import { Changelog, parser } from 'keep-a-changelog';
@@ -100,11 +98,8 @@ export class LicenseService {
 
         this.latestVersion = changeLogResponseAsJson.new_version;
 
-        const { changelog } = unserialize(changeLogResponseAsJson.sections, {
-          description: String,
-          changelog: String,
-        });
-        this.changeLogStr = changelog;
+        // Backend already decodes the licensing server's changelog to plain text.
+        this.changeLogStr = changeLogResponseAsJson.changelog;
       } catch {
         // Silently ignore changelog fetch failures (expected for demo/offline installations)
       }
