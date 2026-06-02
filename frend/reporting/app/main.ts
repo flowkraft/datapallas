@@ -395,6 +395,11 @@ try {
       serverProcess = _spawnSync('startRbsjServer.bat', [], {
         cwd: `${process.env.PORTABLE_EXECUTABLE_DIR}/tools/rbsj`,
         env: { ...process.env, ELECTRON_PID: process.pid.toString() },
+        // shell:true is required on Windows to spawn .bat/.cmd files; the Node
+        // bundled with Electron 37 (CVE-2024-27980 fix) throws EINVAL otherwise.
+        // windowsHide keeps the cmd.exe console hidden so no DOS window flashes.
+        shell: true,
+        windowsHide: true,
       });
       serverProcess.stdout.on('data', (data) => {
         sendSplashProgress({ text: String(data).trim(), progress: 20 });
@@ -786,8 +791,13 @@ ipcMain.handle('jetpack.findAsync', async (event, directory, options) => {
 
 async function _shutServer() {
   serverProcess = null;
-  _spawnSync('shutRbsjServer.bat', {
+  _spawnSync('shutRbsjServer.bat', [], {
     cwd: `${process.env.PORTABLE_EXECUTABLE_DIR}/tools/rbsj`,
+    // shell:true required on Windows for .bat/.cmd under Electron 37's Node
+    // (CVE-2024-27980 fix) — spawning them directly throws EINVAL.
+    // windowsHide keeps the cmd.exe console hidden so no DOS window flashes.
+    shell: true,
+    windowsHide: true,
   });
   await sleep(1000);
 }
