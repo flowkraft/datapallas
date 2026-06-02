@@ -3,7 +3,7 @@
 
 	<settings>
 
-		<skin>skin-black</skin>
+		<theme>dark</theme>
 		<backendurl>http://localhost:9090/api</backendurl>
 		<copiloturl>https://chatgpt.com/</copiloturl>
 

@@ -119,7 +119,8 @@ public class DataPallasServerSpringBootAssembler extends AbstractAssembler {
 		String content = FileUtils.readFileToString(
 				new File(packageDirPath + "/" + this.topFolderName + "/lib/frend/index.html"), "UTF-8");
 
-		assertThat(content.contains("skin-black")).isTrue();
+		// the compiled Angular app always bootstraps from the <app-root> element
+		assertThat(content.contains("app-root")).isTrue();
 
 		System.out.println(
 				"------------------------------------- VERIFIED_04:DataPallasServer copy 'frontent' web app (compiled) ... -------------------------------------");
