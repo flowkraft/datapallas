@@ -198,7 +198,7 @@ export default function DataWarehousePage() {
                 onClick={() => handlePageChange(p)}
                 className={`px-2.5 py-1 text-sm border rounded ${
                   p === rawCurrentPage
-                    ? "bg-rb-cyan text-white border-rb-cyan"
+                    ? "bg-rb-cyan text-primary-content border-rb-cyan"
                     : "border-base-300 hover:bg-base-200"
                 }`}
               >
@@ -340,7 +340,7 @@ export default function DataWarehousePage() {
                 className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
                   activeTab === tab.value
                     ? "border-rb-cyan text-rb-cyan"
-                    : "border-transparent text-base-content/60 hover:text-base-content hover:border-gray-300"
+                    : "border-transparent text-base-content/60 hover:text-base-content hover:border-base-300"
                 }`}
               >
                 {tab.icon}

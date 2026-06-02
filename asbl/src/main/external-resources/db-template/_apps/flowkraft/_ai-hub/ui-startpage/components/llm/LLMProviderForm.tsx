@@ -617,7 +617,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
         <Button
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className="bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
+          className="bg-primary hover:bg-primary/90 text-primary-content disabled:opacity-50"
         >
           {saving ? (
             <>

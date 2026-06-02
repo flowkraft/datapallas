@@ -25,7 +25,7 @@ export function CodeBlock({ code, language, style }: CodeBlockProps) {
   }, [code, language]);
 
   return (
-    <div className="overflow-auto bg-[#2d2d2d] rounded-lg" style={style}>
+    <div className="overflow-auto bg-base-300 rounded-lg" style={style}>
       <pre className="m-0 p-6 text-sm" style={{ background: 'transparent' }}>
         <code
           className={`language-${language}`}

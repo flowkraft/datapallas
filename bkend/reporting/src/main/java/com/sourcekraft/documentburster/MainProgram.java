@@ -162,6 +162,7 @@ public class MainProgram implements Callable<Integer> {
 			MainProgram.JobCommand.MergeCommand.class,
 			MainProgram.JobCommand.StatusCommand.class,
 			MainProgram.JobCommand.CancelCommand.class,
+			MainProgram.JobCommand.ResumeCommand.class,
 			MainProgram.JasperCommand.class })
 	public static class JobCommand implements Callable<Integer> {
 		@ParentCommand
@@ -278,6 +279,38 @@ public class MainProgram implements Callable<Integer> {
 					}
 				}
 				return resp.statusCode() == 200 ? 0 : 1;
+			}
+		}
+
+		/**
+		 * In-process resume of a previously paused burst job. Mirrors main's
+		 * top-level "resume" command (was moved under "job" with the rest of
+		 * the job lifecycle operations during the V2-V6 vocabulary refactor).
+		 *
+		 * Reads the .progress XML written by AbstractBurster._updateJobProgressAndSaveToFile,
+		 * picks up at the next token after lasttokenprocessed, and writes the
+		 * progress file as it goes — same mechanism as initial burst.
+		 */
+		@Command(name = "resume", description = "Resume a previously paused job from its .progress file")
+		public static class ResumeCommand extends BaseCommand implements Callable<Integer> {
+			@ParentCommand
+			JobCommand jobCommand;
+
+			@Parameters(index = "0", description = "Job progress file to resume", arity = "1")
+			private File jobProgressFile;
+
+			@Override
+			protected MainProgram getMainProgram() { return jobCommand.parent; }
+
+			@Override
+			public Integer call() throws Exception {
+				if (!jobProgressFile.exists()) {
+					throw new FileNotFoundException(
+							"Job progress file does not exist: " + jobProgressFile.getAbsolutePath());
+				}
+				CliJob job = getJob(null);
+				job.doResume(jobProgressFile.getAbsolutePath());
+				return 0;
 			}
 		}
 
@@ -507,13 +540,17 @@ public class MainProgram implements Callable<Integer> {
 
 			@Override
 			public Integer call() throws Exception {
-				if (jsonOutput.json) {
-					jsonOutput.emitOk(Map.of("connectionId", connectionId, "details",
-							"Use POST /api/connections/" + connectionId + "/test-email for full testing"));
-				} else {
-					System.out.println("Use the DataPallas web UI or POST /api/connections/" + connectionId + "/test-email");
+				String filePath = Utils.resolvePathAgainstPortableDir(
+						"config/connections/" + connectionId + ".xml");
+				try {
+					CliJob job = getJob(filePath);
+					job.doCheckEmail();
+					jsonOutput.emitOk(Map.of("connectionId", connectionId));
+					return 0;
+				} catch (Exception e) {
+					jsonOutput.emitError(e.getMessage(), Map.of("connectionId", connectionId));
+					throw e;
 				}
-				return 0;
 			}
 		}
 

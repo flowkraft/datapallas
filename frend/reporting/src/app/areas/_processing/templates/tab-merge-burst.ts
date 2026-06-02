@@ -159,7 +159,7 @@ export const tabMergeBurstTemplate = `<ng-template #tabMergeBurstTemplate>
             <button
               id="btnRun"
               type="button"
-              class="btn btn-primary"
+              class="btn btn-outline btn-primary"
               (click)="doMergeBurst()"
               [disabled]="!processingService.procMergeBurstInfo.mergedFileName || !processingService.procMergeBurstInfo.mergedFileName.endsWith('.pdf') || processingService.procMergeBurstInfo.inputFiles.length<=1 || executionStatsService.jobStats.numberOfActiveJobs > 0"
             >

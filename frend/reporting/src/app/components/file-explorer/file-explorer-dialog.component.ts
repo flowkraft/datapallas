@@ -15,6 +15,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 @Component({
     selector: 'dburst-file-explorer-dialog',
     template: `
+    @if (visible()) {
     <dp-dialog
       [(visible)]="visible"
       [header]="title()"
@@ -47,7 +48,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
           <div class="flex-col text-right">
             <button
               id="btnSelectFileExplorer"
-              class="btn btn-primary"
+              class="btn btn-outline btn-primary"
               type="button"
               [disabled]="!selectedFile"
               (click)="confirmSelection()"
@@ -67,6 +68,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
         </div>
       </div>
     </dp-dialog>
+    }
 `,
     styles: [
         `

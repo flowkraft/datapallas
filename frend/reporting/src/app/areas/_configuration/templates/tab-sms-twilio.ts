@@ -1,5 +1,6 @@
 export const tabSMSTwilioTemplate = `<ng-template #tabSMSTwilioTemplate>
 
+  @if (isModalSMSVisible) {
   <dp-dialog header="{{'AREAS.CONFIGURATION.TAB-SMS-TWILIO.SEND-TEST-SMS-MESSAGE' | translate}}"
     [(visible)]="isModalSMSVisible">
 
@@ -34,7 +35,7 @@ export const tabSMSTwilioTemplate = `<ng-template #tabSMSTwilioTemplate>
 
     </div>
     <div ngProjectAs="[footer]">
-      <button id='btnOKConfirmation' class="btn btn-primary" type="button" (click)="onSendTestSMS()"
+      <button id='btnOKConfirmation' class="btn btn-outline btn-primary" type="button" (click)="onSendTestSMS()"
         [disabled]="!this.modalSMSInfo.fromNumber || !this.modalSMSInfo.toNumber">
         {{ 'AREAS.CONFIGURATION.TAB-SMS-TWILIO.SEND-TEST-SMS' | translate }}</button>
       <button class="btn btn-ghost dburst-button-question-decline" type="button"
@@ -42,6 +43,7 @@ export const tabSMSTwilioTemplate = `<ng-template #tabSMSTwilioTemplate>
     </div>
 
   </dp-dialog>
+  }
 
 
   <div class="space-y-4">
@@ -115,7 +117,7 @@ export const tabSMSTwilioTemplate = `<ng-template #tabSMSTwilioTemplate>
       <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-SMS-TWILIO.TEST-CONNECTION' | translate }}</div>
       <div style="grid-column:span 7">
-        <button id="btnSendTestSMS" type="button" class="btn btn-primary w-full" (click)="onShowSendTestSMSModal()"
+        <button id="btnSendTestSMS" type="button" class="btn btn-outline btn-primary w-full" (click)="onShowSendTestSMSModal()"
           [disabled]="!xmlSettings?.documentburster.settings.smssettings.twilio.authtoken || !xmlSettings?.documentburster.settings.smssettings.twilio.accountsid">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>&nbsp;&nbsp;{{
           'AREAS.CONFIGURATION.TAB-SMS-TWILIO.SEND-TEST-SMS' | translate }}</button>

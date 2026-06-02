@@ -115,15 +115,16 @@ export interface TreeNode {
       :host {
         display: block;
       }
-      /* Base Tree Styles */
+      /* Base Tree Styles — daisyUI theme tokens so the tree follows the
+         active theme instead of locking to white + light-gray defaults. */
       .p-tree {
-        background: #ffffff; /* dt('tree.background') */
-        color: #4b5563; /* dt('tree.color') */
-        padding: 0.5rem; /* dt('tree.padding') */
-        border: 1px solid #dee2e6; /* Example border */
-        border-radius: 6px; /* Example border-radius */
-        position: relative; /* Needed for mask */
-        overflow: hidden; /* Contain elements */
+        background: var(--color-base-100);
+        color: var(--color-base-content);
+        padding: 0.5rem;
+        border: 1px solid var(--color-base-300);
+        border-radius: 6px;
+        position: relative;
+        overflow: hidden;
       }
       .p-tree-wrapper {
         overflow: auto; /* Enable scrolling if needed */
@@ -145,18 +146,21 @@ export interface TreeNode {
       }
       .p-tree-filter {
         width: 100%;
-        padding: 0.5rem 0.75rem; /* Basic input padding */
-        padding-right: 2.5rem; /* Space for icon */
-        border: 1px solid #ced4da;
+        padding: 0.5rem 0.75rem;
+        padding-right: 2.5rem;
+        border: 1px solid var(--color-base-300);
+        background: var(--color-base-100);
+        color: var(--color-base-content);
         border-radius: 6px;
-        box-sizing: border-box; /* Include padding and border in width */
+        box-sizing: border-box;
       }
       .p-tree-filter-icon {
         position: absolute;
         top: 50%;
         right: 0.75rem;
         transform: translateY(-50%);
-        color: #6c757d;
+        color: var(--color-base-content);
+        opacity: 0.6;
       }
 
       /* Loading Mask Styles */
@@ -166,20 +170,17 @@ export interface TreeNode {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(255, 255, 255, 0.4); /* Semi-transparent white */
+        background: color-mix(in oklab, var(--color-base-100) 60%, transparent);
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 10; /* Ensure it's above content */
+        z-index: 10;
       }
       .p-tree-loading-icon {
-        font-size: 2rem; /* dt('tree.loading.icon.size') */
+        font-size: 2rem;
         width: 2rem;
         height: 2rem;
-        color: var(
-          --primary-color,
-          #10b981
-        ); /* Use primary color if available */
+        color: var(--color-primary);
       }
       /* Add pi-spin animation if not globally available */
       @keyframes pi-spin {
@@ -195,7 +196,8 @@ export interface TreeNode {
       .p-tree-empty-message {
         padding: 1rem;
         text-align: center;
-        color: #6c757d;
+        color: var(--color-base-content);
+        opacity: 0.6;
       }
     `,
     ]

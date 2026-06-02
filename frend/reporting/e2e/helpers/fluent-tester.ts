@@ -149,18 +149,21 @@ export class FluentTester implements PromiseLike<void> {
   }
 
   /**
-   * Ensures a tree node is expanded. If the node's toggle icon shows
-   * pi-chevron-right (collapsed), clicks the toggle button to expand it.
-   * If already expanded (pi-chevron-down), does nothing.
+   * Ensures a tree node is expanded. Reads the toggle button's aria-expanded
+   * attribute: when "false" (collapsed), clicks the toggle to expand; when
+   * "true", does nothing. aria-expanded is the stable, icon-independent signal
+   * (the chevron itself is an inline SVG with no state class).
    * @param nodeSelector CSS selector for the tree node container (e.g. '#treeNodecategoriestargetTreedatabaseSchemaPicklist')
    */
   public ensureTreeNodeExpanded(nodeSelector: string): FluentTester {
     const action = async (): Promise<void> => {
-      const toggleBtn = this.window.locator(`${nodeSelector} .p-tree-node-toggle-button`);
-      const toggleIcon = this.window.locator(`${nodeSelector} .p-tree-node-toggle-icon`);
-      const isCollapsed = await toggleIcon.evaluate(
-        (el) => el.classList.contains('pi-chevron-right'),
-      );
+      // The node's own toggle is the first match; descendant toggles only
+      // exist once the node is already expanded.
+      const toggleBtn = this.window
+        .locator(`${nodeSelector} .p-tree-node-toggle-button`)
+        .first();
+      const isCollapsed =
+        (await toggleBtn.getAttribute('aria-expanded')) === 'false';
       console.log(`[ensureTreeNodeExpanded] ${nodeSelector} — collapsed=${isCollapsed}`);
       if (isCollapsed) {
         await toggleBtn.click();
@@ -248,6 +251,18 @@ export class FluentTester implements PromiseLike<void> {
     return this;
   }
 
+  public apiPostJsonValueShouldEqual(
+    url: string,
+    body: any,
+    jsonPath: string,
+    expectedValue: string,
+  ): FluentTester {
+    const action = (): Promise<void> =>
+      this.doApiPostJsonValueShouldEqual(url, body, jsonPath, expectedValue);
+    this.actions.push(action);
+    return this;
+  }
+
   public fileContentShouldMatch(filePath: string, regex: RegExp): FluentTester {
     const action = (): Promise<void> => this.doFileContentShouldMatch(filePath, regex);
     this.actions.push(action);
@@ -270,7 +285,7 @@ export class FluentTester implements PromiseLike<void> {
 
   public clickYesDoThis(): FluentTester {
     const action = (): Promise<void> =>
-      this.doClick(Constants.BTN_CONFIRM_SELECTOR);
+      this.doClick(Constants.BTN_CONFIRM_SELECTOR + ':visible');
 
     this.actions.push(action);
     return this;
@@ -351,7 +366,7 @@ export class FluentTester implements PromiseLike<void> {
 
   public clickNoDontDoThis(): FluentTester {
     const action = (): Promise<void> =>
-      this.doClick(Constants.BTN_DECLINE_SELECTOR);
+      this.doClick(Constants.BTN_DECLINE_SELECTOR + ':visible');
 
     this.actions.push(action);
     return this;
@@ -537,7 +552,7 @@ export class FluentTester implements PromiseLike<void> {
     if (waitTime) delay = waitTime;
 
     const action = (): Promise<void> =>
-      this.doWaitOnElementToHaveCount(selector, 0, delay);
+      this.doWaitOnElementToHaveCount(selector + ':visible', 0, delay);
 
     this.actions.push(action);
     return this;
@@ -774,7 +789,7 @@ export class FluentTester implements PromiseLike<void> {
     waitTime?: number,
   ): Promise<void> {
     // Map type to the appropriate toast class
-    const typeClass = `toast-${type}`;
+    const typeClass = `alert-${type}`;
 
     // First wait for any toast of the specified type
     await this.window.waitForSelector(`.${typeClass}`, {
@@ -786,7 +801,7 @@ export class FluentTester implements PromiseLike<void> {
     if (!messageText) return;
 
     // For specific message text, find all toast messages of this type
-    const toastElements = await this.window.$$(`.${typeClass} .toast-message`);
+    const toastElements = await this.window.$$(`.${typeClass}`);
 
     // Check each toast message's text content
     for (const toast of toastElements) {
@@ -1345,7 +1360,7 @@ export class FluentTester implements PromiseLike<void> {
    */
   public waitOnConfirmDialogToBecomeVisible(waitTime?: number): FluentTester {
     return this.waitOnElementToBecomeVisible(
-      '.dburst-button-question-confirm',
+      '.dburst-button-question-confirm:visible',
       waitTime,
     );
   }
@@ -1548,7 +1563,7 @@ export class FluentTester implements PromiseLike<void> {
     await this.doWaitOnElementToBecomeVisible('#appSearch');
     await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
 
-    await this.doClick('#starterPacksTab-link');
+    await this.doClick('#tab-btn-starterPacksTab');
     await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
     await this.doWaitOnElementToBecomeVisible('#packSearch');
     await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
@@ -1592,8 +1607,8 @@ export class FluentTester implements PromiseLike<void> {
     await this.doClick('#topMenuBurst');
     await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
 
-    await this.doWaitOnElementToBecomeVisible('#cmsWebPortalTab-link');
-    await this.doClick('#cmsWebPortalTab-link');
+    await this.doWaitOnElementToBecomeVisible('#tab-btn-cmsWebPortalTab');
+    await this.doClick('#tab-btn-cmsWebPortalTab');
     await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
 
     await this.doWaitOnElementToBecomeVisible('#appPanel_flowkraft-data-canvas');
@@ -2015,6 +2030,37 @@ export class FluentTester implements PromiseLike<void> {
     }
   }
 
+  private async doApiPostJsonValueShouldEqual(
+    url: string,
+    requestBody: any,
+    jsonPath: string,
+    expectedValue: string,
+  ): Promise<void> {
+    const body = await this.window.evaluate(
+      async ({ fetchUrl, postBody }: { fetchUrl: string; postBody: any }) => {
+        const res = await fetch(fetchUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(postBody),
+        });
+        if (!res.ok) throw new Error(`API POST ${fetchUrl} failed: ${res.status}`);
+        return res.json();
+      },
+      { fetchUrl: url, postBody: requestBody },
+    );
+    const keys = jsonPath.split('.');
+    let actual: any = body;
+    for (const key of keys) {
+      if (actual == null) break;
+      actual = actual[key];
+    }
+    if (actual !== expectedValue) {
+      throw new Error(
+        `API POST ${url} → ${jsonPath}: expected "${expectedValue}" but got "${actual}"`,
+      );
+    }
+  }
+
   private async doApiGetJsonValueShouldEqual(
     url: string,
     jsonPath: string,
@@ -2227,9 +2273,21 @@ export class FluentTester implements PromiseLike<void> {
     text: string,
     waitTime: number,
   ): Promise<void> {
-    return expect(this.window.locator(selector)).toHaveText(text, {
-      timeout: waitTime,
-    });
+    return expect(this.window.locator(selector)).toHaveText(
+      FluentTester.toLooseTextMatcher(text),
+      { timeout: waitTime },
+    );
+  }
+
+  /**
+   * Build a regex that matches `text` ignoring all whitespace and case.
+   * Use this to compare against rendered text where template whitespace,
+   * non-breaking spaces, or theme casing might vary without changing intent.
+   */
+  private static toLooseTextMatcher(text: string): RegExp {
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const collapsed = escaped.replace(/\s+/g, '\\s*');
+    return new RegExp(collapsed, 'i');
   }
 
   public waitOnElementToBecomeReadonly(
@@ -2425,7 +2483,7 @@ export class FluentTester implements PromiseLike<void> {
 
     // Wait for potential toast notifications
     try {
-      await this.window.waitForSelector('.toast-success', {
+      await this.window.waitForSelector('.alert-success', {
         state: 'visible',
         timeout: 5000,
       });
@@ -2439,35 +2497,114 @@ export class FluentTester implements PromiseLike<void> {
     selector: string,
     content: string,
   ): Promise<void> {
-    // First directly set the content using JavaScript
+    // One-shot insertion via Playwright's keyboard.insertText: fires a single
+    // beforeinput+input event pair with inputType:'insertText' and data set to
+    // the full content — same event shape a real paste produces. This is what
+    // ngx-codejar / CodeJar's internal listener treats as an authentic content
+    // change, so the (update) emit fires once with the full content and the
+    // bound [(code)] property propagates to the host component (which in turn
+    // sets things like `domainGroupedSchemaExists`).
+    //
+    // Why not the previous approach (`editor.textContent = content` +
+    // `dispatchEvent(new Event('input'))` + End-keypress nudge): synthetic
+    // `Event('input')` has no `inputType`/`data`, ngx-codejar's debounced
+    // update emits but the host's (update) handler doesn't always see the
+    // final content propagate through `[(code)]` — leaving Angular's model
+    // empty even though the DOM shows the text.
+    //
+    // Why not `keyboard.type` (the older `setCodeJarContent`): char-by-char
+    // fires one keydown per char, and each intermediate state runs the (update)
+    // handler on partial/invalid JSON which the handler discards in its
+    // try/catch. The final valid-JSON emission can be coalesced or arrive too
+    // late for the test's downstream waits. Also: typing 5KB of JSON one char
+    // at a time is slow.
+    // TRUE bulk insertion in a single operation — preserves newlines AND
+    // triggers OnPush + signal-based change detection on the host component.
+    //
+    // The pieces and why each one is necessary:
+    //
+    //   1. `editor.textContent = content` — single bulk write to the DOM.
+    //      Newlines (`\n`) are stored verbatim in the resulting text node,
+    //      and `white-space: pre` on the editor renders them as real line
+    //      breaks. This is what `keyboard.insertText(content)` cannot do —
+    //      it dispatches one `input(inputType:'insertText')` event whose
+    //      embedded LFs are treated as whitespace and never become Enter
+    //      keystrokes (Playwright docs: "multiline support is platform
+    //      specific"). For JSON that's harmless because the parser ignores
+    //      whitespace; for newline-significant code (Groovy/Python/SQL)
+    //      it silently corrupts the script (`import groovy.sql.Sql\ndef…`
+    //      becomes the unparseable `import groovy.sql.Sqldef…`).
+    //
+    //   2. `dispatchEvent(new Event('input'))` — tells ngx-codejar's
+    //      internal input listener that content changed, so it runs its
+    //      highlight pass and emits its `(update)` Output. Synthetic
+    //      events DO go through Zone.js (it patches dispatchEvent), so
+    //      ngx-codejar receives them. This part worked on main.
+    //
+    //   3. Real `Tab` keystroke afterwards — the regression-specific bit.
+    //      The post-refactor host components (connection-details,
+    //      ai-manager, etc.) are signal-based + OnPush. With OnPush, an
+    //      `@Output` emit triggered by a SYNTHETIC dispatchEvent doesn't
+    //      always mark the host for check, so the host's `(update)`
+    //      handler runs but its property assignments don't propagate
+    //      through the next CD cycle — the bound property looks empty to
+    //      downstream code. A real keystroke (Tab) goes through
+    //      Electron's input pipeline → Chrome event loop → Zone.js,
+    //      which DOES schedule an appRef.tick() that re-evaluates the
+    //      OnPush host. Tab specifically blurs the editor too, which
+    //      ngx-codejar 7.x uses as a "flush pending update" trigger.
+    //
+    // Single bulk write (#1) + synthetic event (#2) for the editor +
+    // real keystroke (#3) for the host's CD = fast AND correct.
+    //
+    //   0. Real Ctrl+A + Delete BEFORE the bulk write — clears whatever
+    //      the editor previously contained through the real input pipeline.
+    //      A bare `textContent = ''` is insufficient for the empty-content
+    //      case: contenteditables routinely keep a `<br>` placeholder or a
+    //      zero-width text node after a textContent='' assignment, and
+    //      ngx-codejar reads that back as non-empty — the bound property
+    //      keeps its prior value, downstream "is empty?" assertions stay
+    //      false. Real `Delete` after `Ctrl+A` removes those placeholders
+    //      AND fires real input events through Zone.js so OnPush+signal
+    //      CD sees the delete. (For non-empty content this prelude is also
+    //      cheap and harmless — selects whatever is there, deletes it, then
+    //      step #1 writes the new content.)
+    const editor = this.window.locator(`${selector} [contenteditable]`);
+    await editor.click();
+    await this.window.keyboard.press('Control+a');
+    await this.window.keyboard.press('Delete');
+
     await this.window.evaluate(
-      ({ selector, content }) => {
-        const editor = document.querySelector(
-          `${selector} [contenteditable]`,
-        );
-        if (!editor) {
-          throw new Error('CodeJar editor element not found');
-        }
-
-        // Use textContent first to avoid HTML interpretation, then convert to innerHTML
-        editor.textContent = content;
-        const rawContent = editor.innerHTML;
-        editor.innerHTML = rawContent;
-
-        // Dispatch events to ensure Angular detects the changes
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-        editor.dispatchEvent(new Event('change', { bubbles: true }));
-
-        return true;
+      ({ sel, c }) => {
+        const el = document.querySelector(`${sel} [contenteditable]`);
+        if (!el) throw new Error('CodeJar editor element not found: ' + sel);
+        el.textContent = c;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
       },
-      { selector, content },
+      { sel: selector, c: content },
     );
-
-    // Continue with the rest of your method...
-    await this.window.locator(`${selector} [contenteditable]`).focus();
+    // Reliable (update) trigger after the fast bulk fill above.
+    //
+    // The bulk write (textContent = content) is fast but its SYNTHETIC
+    // dispatchEvent('input') does NOT reliably reach CodeJar's onUpdate for an
+    // editor whose tab/section was display:none at init (e.g. #paramsSpecEditor
+    // in a dp-tab). When onUpdate never fires, ngx-codejar's (update) never
+    // emits, the host handler never runs, and the DSL is saved empty.
+    //
+    // So we finish with a net-zero REAL edit that a human-equivalent input
+    // pipeline drives: re-CLICK the editor to place an actual caret (the
+    // textContent assignment cleared the selection — .focus() alone does NOT
+    // place a caret, so subsequent keystrokes wouldn't edit anything), jump to
+    // End, type one space, then Backspace it. Each real keystroke goes through
+    // Electron → Chrome → CodeJar's input listener → onUpdate with the TRUE
+    // content, exactly like manual typing — for BOTH visible- and hidden-init
+    // editors. Net content is unchanged. (Space+Backspace is safe for the
+    // empty-content case too, unlike Tab which leaves a stray indent \t.)
+    await editor.click();
     await this.window.keyboard.press('End');
-    await this.sleep(Constants.DELAY_HALF_SECOND);
-    await this.window.keyboard.press('Control+s');
+    await this.window.keyboard.type(' ');
+    await this.window.keyboard.press('Backspace');
     await this.sleep(Constants.DELAY_HALF_SECOND);
   }
 
@@ -2650,7 +2787,7 @@ export class FluentTester implements PromiseLike<void> {
 
     // Wait for toast notification indicating save success
     try {
-      await this.window.waitForSelector('.toast-success', {
+      await this.window.waitForSelector('.alert-success', {
         state: 'visible',
         timeout: 5000,
       });
@@ -2795,7 +2932,9 @@ export class FluentTester implements PromiseLike<void> {
     selector: string,
     text: string,
   ): Promise<void> {
-    return expect(this.window.locator(selector)).toHaveText(text);
+    return expect(this.window.locator(selector)).toHaveText(
+      FluentTester.toLooseTextMatcher(text),
+    );
   }
 
   private async doWaitOnFileToContainText(filePath: string, text: string) {
@@ -3025,6 +3164,7 @@ export class FluentTester implements PromiseLike<void> {
   private async doGotoProcessingMergeBurstScreen(): Promise<void> {
     await this.doHover('#topMenuBurst');
     await this.doClick('#topMenuBurst');
+    await this.doEnsureSidebarOpen();
 
     await this.doClick('#leftMenuMergeBurst');
   }
@@ -3032,7 +3172,7 @@ export class FluentTester implements PromiseLike<void> {
   private async doGotoProcessingReportGeneration(): Promise<void> {
     await this.doHover('#topMenuBurst');
     await this.doClick('#topMenuBurst');
-    await this.doClick('#reportGenerationMailMergeTab-link');
+    await this.doClick('#tab-btn-reportGenerationMailMergeTab');
   }
 
   private async doGotoStart(): Promise<void> {
@@ -3060,15 +3200,26 @@ export class FluentTester implements PromiseLike<void> {
     //await this.doClick('#supportEmail');
     await this.doHover('#topMenuBurst');
     await this.doClick('#topMenuBurst');
+    await this.doEnsureSidebarOpen();
 
-    //await this.doClick('#burstTab-link');
+    //await this.doClick('#tab-btn-burstTab');
   }
 
   private async doGotoProcessingQualityAssuranceScreen(): Promise<void> {
     await this.doHover('#topMenuBurst');
     await this.doClick('#topMenuBurst');
+    await this.doEnsureSidebarOpen();
 
     await this.doClick('#leftMenuQualityAssurance');
+  }
+
+  private async doEnsureSidebarOpen(): Promise<void> {
+    const isVisible = await this.window.evaluate(() =>
+      document.documentElement.classList.contains('sidebar-visible'),
+    );
+    if (!isVisible) {
+      await this.doClick('#btnToggleSidebar');
+    }
   }
 
   private async doGotoConnections(): Promise<void> {

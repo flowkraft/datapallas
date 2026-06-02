@@ -1,4 +1,5 @@
-export const modalSamplesLearnMoreTemplate = `<dp-dialog
+export const modalSamplesLearnMoreTemplate = `@if (isModalSamplesLearnMoreVisible) {
+<dp-dialog
   [header]="modalSampleInfo.title"
   [(visible)]="isModalSamplesLearnMoreVisible"
   [style]="{width: '800px'}"
@@ -144,7 +145,7 @@ export const modalSamplesLearnMoreTemplate = `<dp-dialog
     </div>
 
     <div style="grid-column:span 10">
-      <button type="button" id="btnViewConfigurationFile{{modalSampleInfo.id}}" class="btn btn-primary btn-xs" (click)="doSampleViewConfigurationFile(modalSampleInfo.configurationFilePath, modalSampleInfo.configurationFileName)">&nbsp;&nbsp;&nbsp;&nbsp;View Configuration&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button>
+      <button type="button" id="btnViewConfigurationFile{{modalSampleInfo.id}}" class="btn btn-outline btn-primary btn-xs" (click)="doSampleViewConfigurationFile(modalSampleInfo.configurationFilePath, modalSampleInfo.configurationFileName)">&nbsp;&nbsp;&nbsp;&nbsp;View Configuration&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button>
     </div>
 
    </div>
@@ -160,4 +161,5 @@ export const modalSamplesLearnMoreTemplate = `<dp-dialog
     </button>
   </div>
 </dp-dialog>
+}
 `;

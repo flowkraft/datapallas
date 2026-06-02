@@ -211,6 +211,7 @@ export class TemplatesGalleryModalComponent {
       message: 'Are you sure you want to replace the current template with this one?',
       confirmAction: () => {
         this.useTemplate.emit(template);
+        this.closeTemplateGallery();
       },
       cancelAction: () => {
         // Do nothing if No is pressed

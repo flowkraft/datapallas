@@ -104,12 +104,12 @@
       root.style.cssText = "display:flex;flex-direction:column;justify-content:center;height:100%;padding:8px;font-family:inherit;";
 
       const labelEl = document.createElement("div");
-      labelEl.style.cssText = "font-size:11px;color:#666;margin-bottom:2px;";
+      labelEl.style.cssText = "font-size:11px;color:color-mix(in oklab, currentColor 60%, transparent);margin-bottom:2px;";
       labelEl.textContent = label;
       root.appendChild(labelEl);
 
       const valueEl = document.createElement("div");
-      valueEl.style.cssText = "font-size:22px;font-weight:600;color:#222;line-height:1.1;";
+      valueEl.style.cssText = "font-size:22px;font-weight:600;color:inherit;line-height:1.1;";
       valueEl.textContent = formatVal(current, fmt);
       root.appendChild(valueEl);
 

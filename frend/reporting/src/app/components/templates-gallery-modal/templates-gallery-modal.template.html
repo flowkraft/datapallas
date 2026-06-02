@@ -1,10 +1,13 @@
-export const modalGalleryTemplate = `<dp-dialog
+export const modalGalleryTemplate = `@if (templateGalleryState !== 'closed') {
+<dp-dialog
 id="templateGalleryModal"
 [header]="galleryDialogTitle"
+[headerId]="'galleryDialogTitle'"
 [visible]="templateGalleryState !== 'closed'"
-[closable]="false"
+[closable]="true"
 [style]="{width: '95vw', height: '95vh', 'max-height': '95vh', padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column'}"
 (onShow)="addDialogEscapeHandler()"
+(onHide)="closeTemplateGallery()"
 >
 
 <div style="flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; height: calc(89vh - 120px);">
@@ -18,7 +21,7 @@ id="templateGalleryModal"
       <!-- Button to proceed to templates -->
       @if (templateGalleryState === 'examples-gallery') {
         <div style="margin-top: 20px; text-align: center;">
-          <button type="button" id="btnConfirmAiGalleryInstructions" class="btn btn-primary btn-lg" (click)="closeGeneralAiInstructions()">
+          <button type="button" id="btnConfirmAiGalleryInstructions" class="btn btn-outline btn-primary btn-lg" (click)="closeGeneralAiInstructions()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>&nbsp;{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.GALLERY-CONFIRM' | translate }}
           </button>
         </div>
@@ -28,7 +31,7 @@ id="templateGalleryModal"
         <div style="margin-top: 20px; text-align: center;">
           <a href="https://datapallas.com/docs/artificial-intelligence" target="_blank"
             id="btnConfirmAiHelp"
-            class="btn btn-primary btn-lg"
+            class="btn btn-outline btn-primary btn-lg"
             role="button">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>&nbsp;{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.AI-HELP-CONFIRM' | translate }}
           </a>
@@ -113,7 +116,7 @@ id="templateGalleryModal"
         </button>&nbsp;&nbsp;&nbsp;
         <button type="button"
           id="btnAiCopilotPromptTop"
-          class="btn btn-primary"
+          class="btn btn-outline btn-primary"
           style="width: 250px"
           (click)="openBingAICopilot()">
           {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' | translate }}
@@ -132,7 +135,7 @@ id="templateGalleryModal"
           </button>
           <button type="button"
             id="btnAiCopilotPromptBottom"
-            class="btn btn-primary"
+            class="btn btn-outline btn-primary"
             style="width: 250px"
             (click)="openBingAICopilot()">
             {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.LAUNCH-COPILOT' | translate }}
@@ -162,44 +165,54 @@ id="templateGalleryModal"
         </div>
       }
 
-      <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; flex-wrap: nowrap;">
+      <div style="flex: 0 0 auto; display: flex; justify-content: flex-end; align-items: center; flex-wrap: nowrap;">
         <!-- Only show template-specific buttons when NOT on general instructions -->
         @if (templateGalleryState !== 'examples-gallery' && templateGalleryState !== 'hey-ai') {
           <!-- Conditionally show either the "Use Template" or "Get AI Prompt" button -->
           @if (templateGalleryState === 'templates') {
             <button type="button"
               id="btnUseSelectedTemplate"
-              class="btn btn-ghost" style="margin-left: 5px;"
+              class="btn btn-sm btn-ghost" style="margin-left: 5px;"
               (click)="useSelectedTemplate(getSelectedGalleryTemplate())">
               {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.USE-TEMPLATE' | translate }}
             </button>
           }
-          <button type="button" id="btnViewHtmlInBrowserModal" class="btn btn-ghost" (click)="viewCurrentTemplateInBrowser()">
+          <button type="button" id="btnViewHtmlInBrowserModal" class="btn btn-sm btn-ghost" (click)="viewCurrentTemplateInBrowser()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.VIEW-IN-BROWSER' | translate }}
           </button>
           @if (templateGalleryState === 'templates') {
-            <div style="margin-left: 5px; display: inline-block;">
-              <div class="dropdown dropdown-top dropdown-end" style="display: flex; flex-direction: row;">
-                <button type="button" id="btnGetAiPrompt" tabindex="0" role="button" class="btn btn-primary"
+            <div class="dropdown dropdown-top dropdown-end" style="margin-left: 5px;">
+              <div class="join">
+                <button type="button" id="btnGetAiPrompt" class="btn btn-sm btn-outline btn-primary join-item"
+                  (mousedown)="$event.preventDefault()"
                   (click)="showCurrentTemplateAiPrompt('modify')">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.GET-AI-PROMPT' | translate }} &#9650;
-                </button>
-                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
-                  <li><a href="javascript:void(0)" id="btnAiPromptModify" (click)="showCurrentTemplateAiPrompt('modify')">
-                  {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-MODIFY' | translate }}</a>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.GET-AI-PROMPT' | translate }}
+              </button>
+                <button type="button" id="btnAiPromptDropdownToggle"
+                  tabindex="0" role="button"
+                  class="btn btn-sm btn-outline btn-primary btn-square join-item">&#9650;</button>
+              </div>
+              <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+                <li>
+                  <a href="javascript:void(0)" id="btnAiPromptModify"
+                     (click)="$any($event.currentTarget).blur(); showCurrentTemplateAiPrompt('modify')">
+                    {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-MODIFY' | translate }}
+                  </a>
                 </li>
-                <li><a href="javascript:void(0)" id="btnAiPromptRebuild" (click)="showCurrentTemplateAiPrompt('rebuild')">
-                {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-REBUILD' | translate }}</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      }
+                <li>
+                  <a href="javascript:void(0)" id="btnAiPromptRebuild"
+                     (click)="$any($event.currentTarget).blur(); showCurrentTemplateAiPrompt('rebuild')">
+                    {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.PROMPT-REBUILD' | translate }}
+                  </a>
+                </li>
+              </ul>
+            </div>
+          }
       <!-- Update the Readme button to only appear when README content exists -->
       @if (selectedTemplateReadme) {
         <button type="button"
           id="btnViewTemplateReadme"
-          class="btn btn-ghost" style="margin-left: 5px;"
+          class="btn btn-sm btn-ghost" style="margin-left: 5px;"
           (click)="showCurrentTemplateReadme()"
           >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.README' | translate }}
@@ -209,10 +222,12 @@ id="templateGalleryModal"
 
     <button type="button"
       id="btnCloseTemplateGallery"
-      class="btn btn-ghost" style="margin-left: 5px;"
+      class="btn btn-sm btn-ghost" style="margin-left: 5px;"
       (click)="closeTemplateGallery()">
       {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.CLOSE' | translate }}
     </button>
   </div>
 </div>
-</dp-dialog>`;
+</dp-dialog>
+}
+`;

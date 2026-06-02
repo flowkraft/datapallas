@@ -136,10 +136,10 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
     setTimeout(() => {
       // Find carousel arrows in the document
       const prevArrows = document.querySelectorAll(
-        '.p-carousel .p-carousel-prev',
+        '.dp-carousel .dp-carousel-prev',
       );
       const nextArrows = document.querySelectorAll(
-        '.p-carousel .p-carousel-next',
+        '.dp-carousel .dp-carousel-next',
       );
 
       prevArrows.forEach((arrow) => {

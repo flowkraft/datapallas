@@ -8,6 +8,19 @@
   }
 }
 
+/* Apply the daisyUI theme to the rb-* web components FROM OUTSIDE (the
+   components hardcode no framework — they read these optional vars). */
+rb-report {
+  --rb-report-paper: var(--color-base-100);
+}
+rb-tabulator, rb-pivot-table, rb-chart {
+  --rb-table-accent: var(--color-primary);
+  --rb-table-accent-text: var(--color-primary-content);
+  --rb-pivot-accent: var(--color-primary);
+  --rb-pivot-surface: var(--color-base-100);
+  --rb-chart-accent: var(--color-primary);
+}
+
 /* Keep tabulator inline display fix */
 .tabulator img,
 .tabulator svg {

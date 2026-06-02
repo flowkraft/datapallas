@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ApiService } from './api.service';
+import { DP_DEFAULT_THEME } from '../shared/theme-defaults';
 
 @Injectable({
   providedIn: 'root',
@@ -9,7 +10,7 @@ export class PreferencesService {
   xmlInternalSettings = {
     documentburster: {
       settings: {
-        theme: 'light',
+        theme: DP_DEFAULT_THEME,
         backendurl: 'http://localhost:9090',
         copiloturl: 'https://chatgpt.com/',
         showsamples: false,

@@ -17,7 +17,7 @@ export const tabExamplesTemplate = `<ng-template #tabExamplesTemplate>
       href="https://www.pdfburst.com/blog/report-distribution-software/"
       target="_blank"
     >
-      <button class="btn btn-primary btn-xs" type="button">
+      <button class="btn btn-outline btn-primary btn-xs" type="button">
         View Examples
       </button>
     </a>
@@ -36,7 +36,7 @@ export const tabExamplesTemplate = `<ng-template #tabExamplesTemplate>
       href="https://www.pdfburst.com/blog/crystal-reports-distribution/"
       target="_blank"
     >
-      <button class="btn btn-primary btn-xs" type="button">
+      <button class="btn btn-outline btn-primary btn-xs" type="button">
         View Examples
       </button>
     </a>
@@ -51,7 +51,7 @@ export const tabExamplesTemplate = `<ng-template #tabExamplesTemplate>
     >
     using <em>DataPallas</em>&nbsp;&nbsp;
     <a href="https://www.pdfburst.com/blog/email-payslips/" target="_blank">
-      <button class="btn btn-primary btn-xs" type="button">
+      <button class="btn btn-outline btn-primary btn-xs" type="button">
         View Examples
       </button>
     </a>

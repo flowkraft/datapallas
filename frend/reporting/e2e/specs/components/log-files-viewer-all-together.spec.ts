@@ -36,7 +36,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnGreatNoErrorsNoWarnings')
         .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .elementShouldBeVisible('dburst-log-files-viewer-all-together #infoLog')
         .elementShouldBeVisible(
           'dburst-log-files-viewer-all-together #errorsLog',
@@ -96,7 +96,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnErrors')
         .appStatusShouldShowErrors()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .elementShouldBeVisible('dburst-log-files-viewer-all-together #infoLog')
         .elementShouldBeVisible(
           'dburst-log-files-viewer-all-together #errorsLog',
@@ -239,7 +239,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnErrors')
         .appStatusShouldShowErrors()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .waitOnElementToContainText(
           'dburst-log-files-viewer-all-together #infoLog dburst-log-file-viewer div',
           '1',
@@ -408,7 +408,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnGreatNoErrorsNoWarnings')
         .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .elementShouldBeVisible('dburst-log-files-viewer-all-together #infoLog')
         .elementShouldBeVisible(
           'dburst-log-files-viewer-all-together #errorsLog',
@@ -469,7 +469,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnWarnings')
         .appStatusShouldShowWarnings()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .elementShouldHaveText(
           'dburst-log-files-viewer-all-together #infoLog dburst-log-file-viewer div',
           '',
@@ -533,7 +533,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnErrors')
         .appStatusShouldShowErrors()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .elementShouldHaveText(
           'dburst-log-files-viewer-all-together #infoLog dburst-log-file-viewer div',
           '',
@@ -622,7 +622,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnErrors')
         .appStatusShouldShowErrors()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .elementShouldContainText(
           'dburst-log-files-viewer-all-together #infoLog dburst-log-file-viewer div',
           '2',
@@ -758,7 +758,7 @@ test.describe('', async () => {
         .appShouldBeReadyToRunNewJobs()
         .waitOnElementToBecomeVisible('#btnErrors')
         .appStatusShouldShowErrors()
-        .click('#logsTab-link')
+        .click('#tab-btn-logsTab')
         .elementShouldBeVisible('dburst-log-files-viewer-all-together #infoLog')
         .elementShouldBeVisible(
           'dburst-log-files-viewer-all-together #errorsLog',
@@ -854,7 +854,7 @@ async function _shouldCorrectlyDisplayLogFiles(firstPage: Page) {
     .appShouldBeReadyToRunNewJobs()
     .waitOnElementToBecomeVisible('#btnErrors')
     .appStatusShouldShowErrors()
-    .click('#logsTab-link')
+    .click('#tab-btn-logsTab')
     .elementShouldBeVisible('dburst-log-files-viewer-all-together #infoLog')
     .elementShouldBeVisible('dburst-log-files-viewer-all-together #errorsLog')
     .elementShouldBeVisible('dburst-log-files-viewer-all-together #warningsLog')

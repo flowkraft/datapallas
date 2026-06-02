@@ -174,15 +174,26 @@ public class JobsController {
 	/** DELETE /api/jobs/{id} — cancel a running job. */
 	@DeleteMapping(value = "/{id}", consumes = MediaType.ALL_VALUE)
 	public ResponseEntity<Void> cancelJob(@PathVariable String id) {
+		// log.info("DELETE /api/jobs/{} (cancel)", id);
 		Optional<JobRecord> optRec = jobStore.find(id);
-		if (optRec.isEmpty()) return ResponseEntity.notFound().build();
+		if (optRec.isEmpty()) {
+			// log.warn("DELETE /api/jobs/{} — jobStore.find returned EMPTY (job not tracked); cancel cannot signal worker", id);
+			return ResponseEntity.notFound().build();
+		}
 		JobRecord rec = optRec.get();
-		if (!rec.jobSignalBaseName.isBlank()) {
+		String baseName = rec.effectiveSignalBaseName();
+		// log.info("DELETE /api/jobs/{} — found job: effectiveSignalBaseName='{}' (initial='{}' active='{}') status='{}'",
+		// 		id, baseName, rec.jobSignalBaseName, rec.activeJobFilePath, rec.status);
+		if (!baseName.isBlank()) {
+			String cancelPath = AppPaths.JOBS_DIR_PATH + "/" + baseName + ".cancel";
 			try {
-				FileUtils.touch(new File(AppPaths.JOBS_DIR_PATH + "/" + rec.jobSignalBaseName + ".cancel"));
+				FileUtils.touch(new File(cancelPath));
+				// log.info("CANCEL signal written to: {}", cancelPath);
 			} catch (Exception e) {
 				log.warn("Could not touch cancel file for job {}: {}", id, e.getMessage());
 			}
+		} else {
+			// log.warn("DELETE cancel /api/jobs/{} — effectiveSignalBaseName is BLANK; no .cancel file written, worker will never see signal", id);
 		}
 		jobStore.updateStatus(id, "failed");
 		return ResponseEntity.noContent().build();
@@ -194,27 +205,83 @@ public class JobsController {
 			@PathVariable String id,
 			@RequestBody Map<String, Object> body) {
 		String action = (String) body.get("action");
+		// log.info("PATCH /api/jobs/{} action={}", id, action);
 		Optional<JobRecord> optRec = jobStore.find(id);
-		if (optRec.isEmpty()) return ResponseEntity.notFound().build();
+		if (optRec.isEmpty()) {
+			// log.warn("PATCH /api/jobs/{} — jobStore.find returned EMPTY (job not tracked); pause/cancel cannot signal worker", id);
+			return ResponseEntity.notFound().build();
+		}
 		JobRecord rec = optRec.get();
+		String baseName = rec.effectiveSignalBaseName();
+		// log.info("PATCH /api/jobs/{} — found job: effectiveSignalBaseName='{}' (initial='{}' active='{}') status='{}'",
+		// 		id, baseName, rec.jobSignalBaseName, rec.activeJobFilePath, rec.status);
 		switch (String.valueOf(action)) {
 			case "pause":
-				if (!rec.jobSignalBaseName.isBlank()) {
+				if (!baseName.isBlank()) {
+					String pausePath = AppPaths.JOBS_DIR_PATH + "/" + baseName + ".pause";
 					try {
-						FileUtils.touch(new File(AppPaths.JOBS_DIR_PATH + "/" + rec.jobSignalBaseName + ".pause"));
+						FileUtils.touch(new File(pausePath));
+						// log.info("PAUSE signal written to: {}", pausePath);
 					} catch (Exception e) {
 						log.warn("Could not touch pause file for job {}: {}", id, e.getMessage());
 					}
+				} else {
+					// log.warn("PATCH pause /api/jobs/{} — effectiveSignalBaseName is BLANK; no .pause file written, worker will never see signal", id);
 				}
 				jobStore.updateStatus(id, "paused");
 				break;
 			case "resume":
+				if (rec.activeJobFilePath != null && !rec.activeJobFilePath.isBlank()) {
+					final String jobFilePath = rec.activeJobFilePath;
+					// log.info("Spawning resume worker for {} with jobFilePath={}", id, jobFilePath);
+					jobExecutionService.executeAsync(new String[] { "job", "resume", jobFilePath }, () -> {
+						try {
+							FileUtils.forceDelete(new File(jobFilePath));
+						} catch (java.io.IOException e) {
+							log.warn("Could not delete job file {} after resume: {}", jobFilePath, e.getMessage());
+						}
+					});
+				} else {
+					log.warn("PATCH resume /api/jobs/{} — activeJobFilePath is BLANK; cannot spawn resume worker", id);
+				}
 				jobStore.updateStatus(id, "running");
 				break;
 			default:
 				return ResponseEntity.badRequest().body(Map.of("error", "Unknown action: " + action));
 		}
 		return ResponseEntity.ok(rec.toMap());
+	}
+
+	/**
+	 * POST /api/jobs/resume — resume a previously-paused burst job from its
+	 * on-disk .progress file. Distinct from {@code PATCH /jobs/{id}} because
+	 * resume operates on a file path (the JobRecord may no longer be in
+	 * memory — e.g. across app restarts) while pause/cancel act on the
+	 * in-memory active job by id.
+	 *
+	 * Body: { jobFilePath, cleanupPath? }. The worker runs in-process with
+	 * CLI args ["resume", jobFilePath]; cleanupPath is force-deleted afterwards.
+	 * For backwards compatibility the legacy keys {id, info} from the main
+	 * branch are also accepted: id → jobFilePath, info → cleanupPath.
+	 */
+	@PostMapping("/resume")
+	public ResponseEntity<Void> resumeFromDisk(@RequestBody @NotNull Map<String, String> body) {
+		String jobFilePath = body.getOrDefault("jobFilePath", body.get("id"));
+		String cleanupPath = body.getOrDefault("cleanupPath", body.get("info"));
+		log.info("POST /api/jobs/resume jobFilePath={} cleanupPath={}", jobFilePath, cleanupPath);
+		if (jobFilePath == null || jobFilePath.isBlank()) {
+			return ResponseEntity.badRequest().build();
+		}
+		jobExecutionService.executeAsync(new String[] { "job", "resume", jobFilePath }, () -> {
+			if (cleanupPath != null && !cleanupPath.isBlank()) {
+				try {
+					FileUtils.forceDelete(new File(cleanupPath));
+				} catch (java.io.IOException e) {
+					log.warn("Could not delete job file {}: {}", cleanupPath, e.getMessage());
+				}
+			}
+		});
+		return ResponseEntity.ok().build();
 	}
 
 	// ── Housekeeping endpoints (scope boundary — these are NOT touched by C9) ──

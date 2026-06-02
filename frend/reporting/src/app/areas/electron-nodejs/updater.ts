@@ -927,14 +927,14 @@ export class Updater {
     let exists = await fsExtra.pathExists(scriptFilePath);
  
     if (exists)
-      console.log(scriptFilePath);
+      // console.log(scriptFilePath);
     else
       throw new Error(`!!! scriptFilePath File Path Not Found -  ${scriptFilePath}`);
  
     exists = await fsExtra.pathExists(newScriptFilePath);
  
     if (exists)
-      console.log(newScriptFilePath);
+      // console.log(newScriptFilePath);
     else
       throw new Error(`!!! newScriptFilePath File Path Not Found -  ${newScriptFilePath}`);
     

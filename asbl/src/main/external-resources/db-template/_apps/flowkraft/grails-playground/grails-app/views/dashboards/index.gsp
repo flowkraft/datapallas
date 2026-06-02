@@ -33,30 +33,23 @@
         .kpi-card {
             border-radius: 8px;
             padding: 1.25rem;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--color-base-300);
             border-left: 4px solid;
+            background: var(--color-base-200);
             transition: transform 0.2s, box-shadow 0.2s;
         }
         .kpi-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
-        [data-theme="dark"] .kpi-card {
-            border-color: #334155;
-            background: #1e293b;
-        }
-        [data-theme="dark"] .kpi-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
 
         .kpi-card .kpi-label {
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: #6b7280;
+            color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
             margin-bottom: 0.25rem;
         }
-        [data-theme="dark"] .kpi-card .kpi-label { color: #94a3b8; }
 
         .kpi-card .kpi-value {
             font-size: 1.5rem;
@@ -65,24 +58,20 @@
         }
         .kpi-card .kpi-detail {
             font-size: 0.8rem;
-            color: #6b7280;
+            color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
         }
-        [data-theme="dark"] .kpi-card .kpi-detail { color: #94a3b8; }
 
-        .kpi-up { color: #16a34a; }
-        .kpi-down { color: #dc2626; }
-        .kpi-warn { color: #d97706; }
+        .kpi-up { color: var(--color-success); }
+        .kpi-down { color: var(--color-error); }
+        .kpi-warn { color: var(--color-warning); }
 
         /* Dashboard panels */
         .dash-panel {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--color-base-300);
             border-radius: 8px;
             padding: 1.25rem;
             margin-bottom: 1.5rem;
-        }
-        [data-theme="dark"] .dash-panel {
-            border-color: #334155;
-            background: #1e293b;
+            background: var(--color-base-200);
         }
         .dash-panel h6 {
             font-weight: 600;
@@ -123,7 +112,7 @@
                     <div class="kpi-card" id="kpi-profit" style="border-left-color: #2563eb;">
                         <div class="kpi-label">Gross Profit</div>
                         <div class="kpi-value">$292,180</div>
-                        <div class="kpi-detail"><span style="color: #2563eb; font-weight: 600;">34.5%</span> profit margin</div>
+                        <div class="kpi-detail"><span style="color: var(--color-primary); font-weight: 600;">34.5%</span> profit margin</div>
                     </div>
                     <div class="kpi-card" id="kpi-orders" style="border-left-color: #7c3aed;">
                         <div class="kpi-label">Total Orders</div>

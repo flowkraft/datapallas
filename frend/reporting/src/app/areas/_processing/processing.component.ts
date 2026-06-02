@@ -27,8 +27,9 @@ import { leftMenuTemplate } from './templates/_left-menu';
 import { tabsTemplate } from './templates/_tabs';
 
 import { tabBurstTemplate } from './templates/tab-burst';
-import { tabReportGenerationMailMergeTemplate } from './templates/tab-reporting-mailmerge-classicreports';
-import { tabCmsWebPortalTemplate } from './templates/tab-cms-webportal';
+import { tabGenerateReportsTemplate } from './templates/tab-generate-reports';
+import { tabExploreDataTemplate } from './templates/tab-explore-data';
+import { tabCustomerPortalTemplate } from './templates/tab-customer-portal';
 
 import { tabMergeBurstTemplate } from './templates/tab-merge-burst';
 import { tabQualityAssuranceTemplate } from './templates/tab-quality-assurance';
@@ -75,8 +76,8 @@ import { AiManagerComponent, AiManagerLaunchConfig } from '../../components/ai-m
     <div class="relative" style="margin-left:var(--sidebar-w); transition:margin-left 0.2s ease; padding-left:1rem; padding-right:1rem; min-height: calc(100vh - var(--app-header-h) - var(--app-statusbar-h) - var(--cet-offset) - var(--app-main-pt));">
       <section class="content"><div>${tabsTemplate}</div></section>
     </div>
-    ${tabBurstTemplate} ${tabReportGenerationMailMergeTemplate}
-    ${tabCmsWebPortalTemplate} ${tabMergeBurstTemplate}
+    ${tabBurstTemplate} ${tabGenerateReportsTemplate}
+    ${tabExploreDataTemplate} ${tabCustomerPortalTemplate} ${tabMergeBurstTemplate}
     ${tabQualityAssuranceTemplate} ${tabLogsTemplate} ${tabSamplesTemplate}
     ${modalSamplesLearnMoreTemplate} ${tabLicenseTemplate} ${resumeJobsTemplate}
   `,
@@ -94,7 +95,7 @@ export class ProcessingComponent implements OnInit {
     capReportDistribution: false,
     capReportGenerationMailMerge: false,
     inputDetails: '' as string | SafeHtml,
-    outputDetails: '',
+    outputDetails: '' as string | SafeHtml,
     notes: '',
     configurationFilePath: '',
     configurationFileName: '',
@@ -106,11 +107,14 @@ export class ProcessingComponent implements OnInit {
   @ViewChild('tabBurstTemplate', { static: true })
   tabBurstTemplate: TemplateRef<any>;
 
-  @ViewChild('tabReportGenerationMailMergeTemplate', { static: true })
-  tabReportGenerationMailMergeTemplate: TemplateRef<any>;
+  @ViewChild('tabGenerateReportsTemplate', { static: true })
+  tabGenerateReportsTemplate: TemplateRef<any>;
 
-  @ViewChild('tabCmsWebPortalTemplate', { static: true })
-  tabCmsWebPortalTemplate: TemplateRef<any>;
+  @ViewChild('tabExploreDataTemplate', { static: true })
+  tabExploreDataTemplate: TemplateRef<any>;
+
+  @ViewChild('tabCustomerPortalTemplate', { static: true })
+  tabCustomerPortalTemplate: TemplateRef<any>;
 
   @ViewChild('tabMergeBurstTemplate', { static: true })
   tabMergeBurstTemplate: TemplateRef<any>;
@@ -152,12 +156,17 @@ export class ProcessingComponent implements OnInit {
     {
       id: 'reportGenerationMailMergeTab',
       heading: 'AREAS.PROCESSING.TABS.MAILMERGE-CLASSICREPORTS',
-      ngTemplateOutlet: 'tabReportGenerationMailMergeTemplate',
+      ngTemplateOutlet: 'tabGenerateReportsTemplate',
     },
     {
       id: 'cmsWebPortalTab',
       heading: 'AREAS.PROCESSING.TABS.CMS-WEBPORTAL',
-      ngTemplateOutlet: 'tabCmsWebPortalTemplate',
+      ngTemplateOutlet: 'tabExploreDataTemplate',
+    },
+    {
+      id: 'customerPortalTab',
+      heading: 'AREAS.PROCESSING.TABS.CUSTOMER-PORTAL',
+      ngTemplateOutlet: 'tabCustomerPortalTemplate',
     },
     {
       id: 'mergeBurstTab',
@@ -193,6 +202,7 @@ export class ProcessingComponent implements OnInit {
         'burstTab',
         'reportGenerationMailMergeTab',
         'cmsWebPortalTab',
+        'customerPortalTab',
         'logsTab',
         'licenseTab',
       ],
@@ -221,6 +231,8 @@ export class ProcessingComponent implements OnInit {
     },
   };
   currentLeftMenu: string;
+  // Index of the active <dp-tab> in `visibleTabs`. Bound to <dp-tabs [activeIndex]>.
+  activeTabIdx = 0;
 
   protected reportgenerationmailmerge = [
     { id: 'payslips.xml', name: 'Payslips' },
@@ -501,13 +513,7 @@ export class ProcessingComponent implements OnInit {
   }
 
   private activateTabForMode(processingMode: string) {
-    if (processingMode === 'processing-sample-generate') {
-      this.visibleTabs[1].active = true;
-      this.visibleTabs[0].active = false;
-    } else {
-      this.visibleTabs[0].active = true;
-      this.visibleTabs[1].active = false;
-    }
+    this.activeTabIdx = processingMode === 'processing-sample-generate' ? 1 : 0;
   }
 
   // ==========================================================================
@@ -1304,9 +1310,8 @@ export class ProcessingComponent implements OnInit {
     this.modalSampleInfo.inputDetails =
       this.sanitizer.bypassSecurityTrustHtml(inputDetailsHTML);
 
-    this.modalSampleInfo.outputDetails = this.samplesService.getOutputHtml(
-      clickedSample.id,
-      true,
+    this.modalSampleInfo.outputDetails = this.sanitizer.bypassSecurityTrustHtml(
+      this.samplesService.getOutputHtml(clickedSample.id, true),
     );
 
     this.modalSampleInfo.documentation = clickedSample.documentation;
@@ -1318,9 +1323,30 @@ export class ProcessingComponent implements OnInit {
     this.isModalSamplesLearnMoreVisible = false;
   }
 
-  onSampleClick(clickedSample: { id: string }) {
+  onSampleClick(clickedSample: { id: string }, ev?: MouseEvent) {
     for (const sample of this.samplesService.samples) {
       sample.activeClicked = sample.id === clickedSample.id ? true : false;
+    }
+
+    // Under e2e, Playwright's click('#tr…') dispatches a real mouse event at
+    // the row's geometric center; if that pixel sits inside the <a target="_blank">
+    // rendered by getInputHtml/getOutputHtml in the row's Input/Output <td>, the
+    // browser delivers the click to the anchor and window.open fires as a
+    // side-effect of selecting the row. Suppress that side-effect when (and only
+    // when) the click coordinates match the row's geometric center — real-user
+    // anchor clicks land near the anchor's own center, not the row's, so they
+    // pass through and still open the file in the external browser.
+    if (!this.settingsService.RUNNING_IN_E2E || !ev) return;
+    const anchor = (ev.target as HTMLElement | null)?.closest('a');
+    if (!anchor || anchor.getAttribute('target') !== '_blank') return;
+    const tr = anchor.closest('tr');
+    if (!tr) return;
+    const r = tr.getBoundingClientRect();
+    if (
+      Math.abs(ev.clientX - (r.left + r.width / 2)) <= 3 &&
+      Math.abs(ev.clientY - (r.top + r.height / 2)) <= 3
+    ) {
+      ev.preventDefault();
     }
   }
 

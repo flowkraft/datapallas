@@ -653,7 +653,7 @@ export class ConfigurationComponent implements OnInit {
   // Explicit method calls use ɵɵrestoreView and always resolve to the component, so this method
   // is the safe write path. Uses lodash _.set so callers pass a string path, not an expression.
   setXmlPath(path: string, val: any) {
-    console.log('[RB-DIAG] 🔧 setXmlPath: path="' + path + '" val="' + val + '"');
+    // console.log('[RB-DIAG] 🔧 setXmlPath: path="' + path + '" val="' + val + '"');
     _.set(this.xmlSettings, path, val);
     this.settingsChanged.next(val);
   }
@@ -669,13 +669,13 @@ export class ConfigurationComponent implements OnInit {
     const writeBackStatus = (typeof newValue === 'string' && s != null)
       ? (s.burstfilename === newValue ? '✅ WRITE_OK (model updated)' : '❌ WRITE_FAILED (model still="' + s.burstfilename + '", user typed="' + newValue + '")')
       : '(non-string/settings null)';
-    console.log('[RB-DIAG] 📝 markSettingsDirty:', writeBackStatus, '| settings=', s ? 'OK' : 'NULL/UNDEF');
+    // console.log('[RB-DIAG] 📝 markSettingsDirty:', writeBackStatus, '| settings=', s ? 'OK' : 'NULL/UNDEF');
     this.settingsChanged.next(newValue);
   }
 
   markSettingsDirtyFromQuill(newValue: any) {
     const html = typeof newValue === 'string' ? newValue : (newValue?.htmlValue ?? '');
-    console.log('[RB-DIAG] 🔧 markSettingsDirtyFromQuill: html length=' + (html?.length ?? 0));
+    // console.log('[RB-DIAG] 🔧 markSettingsDirtyFromQuill: html length=' + (html?.length ?? 0));
     if (this.xmlSettings?.documentburster?.settings) {
       (this.xmlSettings.documentburster.settings as any).emailsettings.html = html;
     }
@@ -814,6 +814,9 @@ export class ConfigurationComponent implements OnInit {
 
   async onJasperReportSelected(report: any) {
     if (!report) return;
+
+    // ng-select uses one-way `[ngModel]`; the handler owns the model write.
+    this.selectedJasperReport = report;
 
     if (report.filePath === '__inline__') {
       // Inline .jrxml mode: load or create the template file
@@ -1030,7 +1033,7 @@ export class ConfigurationComponent implements OnInit {
       .pipe(debounceTime(30), takeUntilDestroyed(this.destroyRef))
       .subscribe(async (_newValue: any) => {
         const bf = (this.xmlSettings?.documentburster?.settings as any)?.burstfilename;
-        console.log('[RB-DIAG] 💾 SAVE: bf_in_model="' + bf + '" (this is what gets saved to disk)');
+        // console.log('[RB-DIAG] 💾 SAVE: bf_in_model="' + bf + '" (this is what gets saved to disk)');
         await this.reportsService.saveReportSettings(
           this.currentReportId,
           this.xmlSettings,
@@ -1060,13 +1063,13 @@ export class ConfigurationComponent implements OnInit {
 
     const newPath = Utilities.slash(params.configurationFilePath || '');
 
-    console.log(`[RB-DIAG] ▶ initRoute #${_cn}: leftMenu=${this.currentLeftMenu} path=${params.configurationFilePath} _loadingPath=${this._loadingPath} settings-null=${this.xmlSettings.documentburster.settings == null}`);
+    // console.log(`[RB-DIAG] ▶ initRoute #${_cn}: leftMenu=${this.currentLeftMenu} path=${params.configurationFilePath} _loadingPath=${this._loadingPath} settings-null=${this.xmlSettings.documentburster.settings == null}`);
 
     // Synchronous guard BEFORE any await: route.params emits multiple times on startup.
     // Both emissions start concurrently; without this, both see settings=null and both
     // proceed to load, causing the second load to overwrite the user's typed value.
     if (!params.reloadConfiguration && this._loadingPath === newPath) {
-      console.log(`[RB-DIAG] ◀ initRoute #${_cn}: SKIPPED — guard fired (same path in flight)`);
+      // console.log(`[RB-DIAG] ◀ initRoute #${_cn}: SKIPPED — guard fired (same path in flight)`);
       return;
     }
 
@@ -1075,7 +1078,7 @@ export class ConfigurationComponent implements OnInit {
       this.xmlSettings.documentburster.settings != null &&
       this.settingsService.currentConfigurationTemplatePath === newPath;
 
-    console.log(`[RB-DIAG] initRoute #${_cn}: alreadyLoaded=${alreadyLoaded} settings-null=${this.xmlSettings.documentburster.settings == null}`);
+    // console.log(`[RB-DIAG] initRoute #${_cn}: alreadyLoaded=${alreadyLoaded} settings-null=${this.xmlSettings.documentburster.settings == null}`);
 
     //make sure that the XML file is loaded only once
     if (
@@ -1101,9 +1104,9 @@ export class ConfigurationComponent implements OnInit {
           Object.assign(this.xmlSettings.documentburster, loaded.documentburster);
           const _bf_after_assign = (this.xmlSettings.documentburster as any)?.settings?.burstfilename;
           if (_bf_before_assign !== undefined && _bf_before_assign !== _bf_after_assign) {
-            console.warn('[RB-DIAG] 🚨 RACE DETECTED: Object.assign OVERWROTE user input! before="' + _bf_before_assign + '" → after="' + _bf_after_assign + '"');
+            // console.warn('[RB-DIAG] 🚨 RACE DETECTED: Object.assign OVERWROTE user input! before="' + _bf_before_assign + '" → after="' + _bf_after_assign + '"');
           } else {
-            console.log('[RB-DIAG] ✅ Object.assign OK: bf="' + _bf_after_assign + '" (no user input was overwritten)');
+            // console.log('[RB-DIAG] ✅ Object.assign OK: bf="' + _bf_after_assign + '" (no user input was overwritten)');
           }
           this.stateStore.configSys.currentConfigFile.configuration.settings = {
             ...(this.xmlSettings.documentburster.settings as any),
@@ -1112,16 +1115,16 @@ export class ConfigurationComponent implements OnInit {
           // Search all configs (configurationFiles includes both user configs and samples).
           const stripLeadingSlash = (p: string) => p?.replace(/^\//, '') || '';
           const targetPath = stripLeadingSlash(newPath);
-          console.log('[RB-DIAG] find template: targetPath=', targetPath,
-            'configurationFiles count=', this.settingsService.configurationFiles?.length,
-            'sample paths=', this.settingsService.configurationFiles?.slice(0, 3).map(c => c.filePath));
+          // console.log('[RB-DIAG] find template: targetPath=', targetPath,
+          //   'configurationFiles count=', this.settingsService.configurationFiles?.length,
+          //   'sample paths=', this.settingsService.configurationFiles?.slice(0, 3).map(c => c.filePath));
           this.settingsService.currentConfigurationTemplate = this.settingsService
             .configurationFiles?.find(
               (confTemplate) =>
                 stripLeadingSlash(confTemplate.filePath) === targetPath,
             );
-          console.log('[RB-DIAG] currentConfigurationTemplate=', this.settingsService.currentConfigurationTemplate?.folderName,
-            'filePath=', this.settingsService.currentConfigurationTemplate?.filePath);
+          // console.log('[RB-DIAG] currentConfigurationTemplate=', this.settingsService.currentConfigurationTemplate?.folderName,
+          //   'filePath=', this.settingsService.currentConfigurationTemplate?.filePath);
 
           // Lazy load DSL details for this specific configuration
           if (this.settingsService.currentConfigurationTemplate) {
@@ -1228,7 +1231,7 @@ export class ConfigurationComponent implements OnInit {
   }
 
   refreshTabs() {
-    console.log('[RB-DIAG] refreshTabs START: settings=', this.xmlSettings?.documentburster?.settings != null ? 'OK' : 'NULL/UNDEF');
+    // console.log('[RB-DIAG] refreshTabs START: settings=', this.xmlSettings?.documentburster?.settings != null ? 'OK' : 'NULL/UNDEF');
     this.visibleTabs = [];
 
     this.changeDetectorRef.detectChanges();
@@ -1251,7 +1254,7 @@ export class ConfigurationComponent implements OnInit {
 
       return visibleTabsIds.includes(item.id) && shouldShow;
     });
-    console.log('[RB-DIAG] refreshTabs END: settings=', this.xmlSettings?.documentburster?.settings != null ? 'OK' : 'NULL/UNDEF');
+    // console.log('[RB-DIAG] refreshTabs END: settings=', this.xmlSettings?.documentburster?.settings != null ? 'OK' : 'NULL/UNDEF');
   }
 
   async onSelectOutputFolderPath(filePath: string) {
@@ -1980,21 +1983,24 @@ export class ConfigurationComponent implements OnInit {
   }
 
   onSqlQueryChanged(event: string) {
+    const content = this.readEditorContent('sqlQueryEditor', event);
     this.xmlReporting.documentburster.report.datasource.sqloptions.query =
-      event;
-    this.markSettingsDirty(event);
+      content;
+    this.markSettingsDirty(content);
   }
 
   async onScriptContentChanged(event: string) {
-    this.activeDatasourceScriptGroovy = event;
+    const content = this.readEditorContent('groovyScriptEditor', event);
+    this.activeDatasourceScriptGroovy = content;
     await this.saveExternalReportingScript('datasourceScript');
-    this.markSettingsDirty(event);
+    this.markSettingsDirty(content);
   }
 
   async onTransformationCodeChanged(event: string) {
-    this.activeTransformScriptGroovy = event;
+    const content = this.readEditorContent('transformationCodeEditor', event);
+    this.activeTransformScriptGroovy = content;
     await this.saveExternalReportingScript('transformScript');
-    this.markSettingsDirty(event);
+    this.markSettingsDirty(content);
   }
 
   highlightGroovyCode = (editor: CodeJarContainer) => {
@@ -2065,10 +2071,8 @@ export class ConfigurationComponent implements OnInit {
   }
 
   onDatabaseConnectionChanged(connectionCode: string) {
-    // Logic when SQL database connection changes
+    this.selectedDbConnCode = connectionCode;
     this.markSettingsDirty(connectionCode);
-    // Refresh cubes available for the newly selected connection so the
-    // "Cubes" reuse button shows/hides correctly.
     this.refreshCubesForCurrentConnection();
   }
 
@@ -3455,30 +3459,38 @@ pivotTable {
   //  DSL script handlers
   // ==========================================================================
 
+  /**
+   * Single source of truth for reading a CodeJar editor's content inside an
+   * (update) handler. ngx-codejar's emitted `(update)` payload can lag or be
+   * empty for an editor whose tab/section was display:none at init (e.g. the
+   * Report Parameters / Tabulator / Chart / Pivot tabs). The live
+   * `[contenteditable]` text is always the actual editor content, so EVERY
+   * editor handler reads through here — one approach, identical behaviour
+   * whether the editor inited visible or hidden. Falls back to the emitted
+   * event only if the DOM read fails.
+   */
+  private readEditorContent(editorId: string, emittedEvent: string): string {
+    try {
+      const el = document.querySelector(`#${editorId} [contenteditable]`);
+      const text = el?.textContent;
+      if (typeof text === 'string' && text.length > 0) return text;
+    } catch {
+      // fall through to the emitted event
+    }
+    return emittedEvent;
+  }
+
   async onParametersSpecChanged(event: string) {
-    this.activeParamsSpecScriptGroovy = event;
+    const content = this.readEditorContent('paramsSpecEditor', event);
+    this.activeParamsSpecScriptGroovy = content;
     await this.saveExternalReportingScript('paramsSpecScript');
-    this.markSettingsDirty(event);
+    this.markSettingsDirty(content);
   }
   async onTabulatorConfigChanged(event: string) {
-    // Try to read the raw textContent from the underlying CodeJar contenteditable element
-    let content = event;
-    try {
-      if (this.tabulatorConfigEditorRef && this.tabulatorConfigEditorRef.nativeElement) {
-        const root = this.tabulatorConfigEditorRef.nativeElement as HTMLElement;
-        const contentEditable = root.querySelector('[contenteditable]');
-        const text = contentEditable?.textContent;
-        if (typeof text === 'string' && text.length > 0) {
-          content = text;
-        }
-      }
-    } catch (err) {
-      // ignore and fallback to provided event string
-    }
+    const content = this.readEditorContent('tabulatorConfigEditor', event);
     this.activeTabulatorConfigScriptGroovy = content;
-    // console.debug('Tabulator content saved length:', content.length, 'lines:', (content || '').split(/\r?\n/).length);
     await this.saveExternalReportingScript('tabulatorConfigScript');
-    this.markSettingsDirty(event);
+    this.markSettingsDirty(content);
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {
@@ -3502,23 +3514,10 @@ pivotTable {
   }
 
   async onChartConfigChanged(event: string) {
-    let content = event;
-    try {
-      if (this.chartConfigEditorRef && this.chartConfigEditorRef.nativeElement) {
-        const root = this.chartConfigEditorRef.nativeElement as HTMLElement;
-        const contentEditable = root.querySelector('[contenteditable]');
-        const text = contentEditable?.textContent;
-        if (typeof text === 'string' && text.length > 0) {
-          content = text;
-        }
-      }
-    } catch (err) {
-      // ignore and fallback to provided event string
-    }
+    const content = this.readEditorContent('chartConfigEditor', event);
     this.activeChartConfigScriptGroovy = content;
-    // console.debug('Chart content saved length:', content.length, 'lines:', (content || '').split(/\r?\n/).length);
     await this.saveExternalReportingScript('chartConfigScript');
-    this.markSettingsDirty(event);
+    this.markSettingsDirty(content);
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {
@@ -3549,23 +3548,10 @@ pivotTable {
   }
 
   async onPivotTableConfigChanged(event: string) {
-    let content = event;
-    try {
-      if (this.pivotTableConfigEditorRef && this.pivotTableConfigEditorRef.nativeElement) {
-        const root = this.pivotTableConfigEditorRef.nativeElement as HTMLElement;
-        const contentEditable = root.querySelector('[contenteditable]');
-        const text = contentEditable?.textContent;
-        if (typeof text === 'string' && text.length > 0) {
-          content = text;
-        }
-      }
-    } catch (err) {
-      // ignore and fallback to provided event string
-    }
+    const content = this.readEditorContent('pivotTableConfigEditor', event);
     this.activePivotTableConfigScriptGroovy = content;
-    // console.debug('Pivot Table content saved length:', content.length, 'lines:', (content || '').split(/\r?\n/).length);
     await this.saveExternalReportingScript('pivotTableConfigScript');
-    this.markSettingsDirty(event);
+    this.markSettingsDirty(content);
     // Only parse if content is non-empty (skip parsing empty/whitespace-only scripts)
     if (content && content.trim().length > 0) {
       try {

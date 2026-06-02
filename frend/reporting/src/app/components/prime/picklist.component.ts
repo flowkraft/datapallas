@@ -33,10 +33,13 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         flex-direction: column; /* Added */
       }
 
+      /* All colors below use daisyUI theme tokens (--color-base-*, --color-primary*)
+         so the picklist follows the active theme instead of locking to a fixed
+         light-gray palette inherited from the PrimeNG defaults. */
       .p-picklist-header {
-        background: #f9fafb; /* Example header background */
-        color: #374151; /* Example header text color */
-        border: 1px solid #e5e7eb;
+        background: var(--color-base-200);
+        color: var(--color-base-content);
+        border: 1px solid var(--color-base-300);
         padding: 0.75rem 1rem;
         font-weight: 600;
         border-bottom: 0 none;
@@ -45,20 +48,16 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
       }
 
       /* Ensure tree takes remaining space */
-      /* Style dburst-tree directly if needed, or use a wrapper */
-      /* Note: Styling the component host (dburst-tree) from here might be limited */
       .p-picklist-list-container > dburst-tree {
         flex-grow: 1;
-        border-top-left-radius: 0; /* Adjust if tree has border */
+        border-top-left-radius: 0;
         border-top-right-radius: 0;
-        border: 1px solid #e5e7eb; /* Match header border */
-        border-top: 0; /* Remove top border if header has bottom */
-        /* Ensure the tree itself allows scrolling if content overflows */
-        /* The style binding in the template already sets height */
+        border: 1px solid var(--color-base-300);
+        border-top: 0;
         overflow-y: auto;
       }
 
-      /* Basic Button Styles (Keep existing ones) */
+      /* Basic Button Styles */
       .p-button {
         display: inline-flex;
         cursor: pointer;
@@ -68,9 +67,9 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         text-align: center;
         overflow: hidden;
         position: relative;
-        border: 1px solid #ced4da;
-        background: #f8f9fa;
-        color: #495057;
+        border: 1px solid var(--color-base-300);
+        background: var(--color-base-200);
+        color: var(--color-base-content);
         padding: 0.5rem 1rem;
         font-size: 1rem;
         transition:
@@ -81,29 +80,29 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         border-radius: 6px;
       }
       .p-button:enabled:hover {
-        background: #e9ecef;
-        color: #495057;
-        border-color: #ced4da;
+        background: var(--color-base-300);
+        color: var(--color-base-content);
+        border-color: var(--color-base-300);
       }
       .p-button:disabled {
         opacity: 0.65;
         cursor: default;
       }
       .p-button-icon-only {
-        width: 2.5rem; /* Adjust size as needed */
+        width: 2.5rem;
         padding: 0.5rem 0;
         justify-content: center;
       }
       .p-button .pi {
-        font-size: 1.25rem; /* Adjust icon size */
+        font-size: 1.25rem;
       }
 
       .p-picklist-field-toolbar {
         display: flex;
         gap: 0.25rem;
         padding: 0.35rem 0.5rem;
-        background: #f0f9ff;
-        border: 1px solid #e5e7eb;
+        background: var(--color-base-200);
+        border: 1px solid var(--color-base-300);
         border-top: 0;
         border-bottom: 0;
       }
@@ -116,15 +115,15 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         font-size: 0.8rem;
       }
       .p-button-toolbar-active {
-        background: #dbeafe;
-        border-color: #3b82f6;
-        color: #1d4ed8;
+        background: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-100));
+        border-color: var(--color-primary);
+        color: var(--color-primary);
         font-weight: 600;
       }
       .p-button-toolbar-active:enabled:hover {
-        background: #bfdbfe;
-        border-color: #3b82f6;
-        color: #1d4ed8;
+        background: color-mix(in oklab, var(--color-primary) 28%, var(--color-base-100));
+        border-color: var(--color-primary);
+        color: var(--color-primary);
       }
     `,
     ]

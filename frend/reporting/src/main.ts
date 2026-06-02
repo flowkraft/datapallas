@@ -4,10 +4,11 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
 import { appConfig } from './app/app.config';
 import { APP_CONFIG } from './environments/environment';
+import { DP_THEME_KEY, DP_DEFAULT_THEME } from './app/shared/theme-defaults';
 
 document.documentElement.setAttribute(
   'data-theme',
-  localStorage.getItem('dp-theme') || 'light',
+  localStorage.getItem(DP_THEME_KEY) || DP_DEFAULT_THEME,
 );
 
 if (APP_CONFIG.production) {

@@ -697,14 +697,14 @@ electronBeforeAfterAllTest(
         .waitOnElementToBecomeEnabled('#btnTestDbConnection', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
         .sleep(Constants.DELAY_ONE_SECOND)
         .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .click('#seedDataTab-link')
+        .click('#tab-btn-seedDataTab')
         .waitOnElementToBecomeInvisible('#btnTestDbConnectionSeedData', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
         .waitOnElementToBecomeVisible('#seedTemplateSelect');
 
       // ── Switch to My Script sub-tab and inject the seed script.
       await new FluentTester(firstPage)
-        .waitOnElementToBecomeVisible('#seedTabMyScript-link')
-        .click('#seedTabMyScript-link')
+        .waitOnElementToBecomeVisible('#tab-btn-seedTabMyScript')
+        .click('#tab-btn-seedTabMyScript')
         .waitOnElementToBecomeVisible('#seedCustomScriptEditor')
         .setCodeJarContentSingleShot('#seedCustomScriptEditor', ALGO_TRADER_SEED_SCRIPT)
         .codeJarShouldContainText('#seedCustomScriptEditor', SEED_SCRIPT_MARKER);
@@ -1769,7 +1769,7 @@ electronBeforeAfterAllTest(
       await hideToastsForScreenshots(firstPage);
 
       // gotoDataCanvas() already opens the burger menu and clicks
-      // #cmsWebPortalTab-link, then waits for #appPanel_flowkraft-data-canvas.
+      // #tab-btn-cmsWebPortalTab, then waits for #appPanel_flowkraft-data-canvas.
       // After this returns we're already on the CMS Web Portal tab — no inner
       // tab to navigate to.
       await new FluentTester(firstPage).gotoDataCanvas();

@@ -6,7 +6,7 @@ export const modalHtmlPreviewTemplate = `<dp-dialog header="{{
   </div>
 
   <div ngProjectAs="[footer]">
-    <button id="btnClose" class="btn btn-primary" type="button" (click)="isModalHtmlPreviewVisible = false">{{
+    <button id="btnClose" class="btn btn-outline btn-primary" type="button" (click)="isModalHtmlPreviewVisible = false">{{
       'BUTTONS.CLOSE' | translate }}</button>
   </div>
 

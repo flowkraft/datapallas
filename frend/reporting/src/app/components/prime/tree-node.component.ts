@@ -5,6 +5,8 @@ import {
   TemplateRef,
   HostBinding,
   ChangeDetectionStrategy,
+  signal,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
@@ -26,18 +28,28 @@ import { iconSvg } from '../../shared/icon-svgs';
       }"
       (click)="onNodeClick($event)"
       >
-      <!-- Toggler -->
+      <!-- Toggler — inline heroicon SVG (chevron-down when expanded, chevron-right
+           when collapsed). The pre-refactor template used PrimeIcons CSS classes
+           ('pi pi-chevron-right' / 'pi pi-chevron-down'), but PrimeIcons CSS is no
+           longer loaded since the PrimeNG removal — the spans rendered empty and
+           the toggle button looked blank. Inline SVG mirrors how every other UI
+           element in the codebase emits icons post-refactor. -->
       @if (!isNodeLeaf()) {
         <button
           type="button"
           class="p-tree-node-toggle-button p-link"
+          [attr.aria-expanded]="isExpanded()"
           (click)="toggle($event)"
           >
-          <span
-            class="p-tree-node-toggle-icon pi"
-            [ngClass]="node().expanded ? 'pi-chevron-down' : 'pi-chevron-right'"
-            >
-          </span>
+          @if (isExpanded()) {
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="p-tree-node-toggle-icon inline-block w-3 h-3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="p-tree-node-toggle-icon inline-block w-3 h-3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          }
         </button>
       }
       <!-- Placeholder for leaf nodes to maintain alignment -->
@@ -102,7 +114,7 @@ import { iconSvg } from '../../shared/icon-svgs';
     </div>
 
     <!-- Children -->
-    @if (node().expanded && node().children && node().children.length) {
+    @if (isExpanded() && node().children && node().children.length) {
       <ul
         class="p-treenode-children"
         role="group"
@@ -162,37 +174,39 @@ import { iconSvg } from '../../shared/icon-svgs';
         /* Indentation is handled by padding-left on content now */
       }
 
-      /* Node Content Area */
+      /* Node Content Area — daisyUI theme tokens replace the previous
+         hardcoded light-gray + emerald palette. Selected/hover states map to
+         --color-primary so they follow whichever brand color the active
+         theme uses, instead of always rendering green. */
       .p-treenode-content {
-        border-radius: 4px; /* dt('tree.node.border.radius') */
-        padding: 0.25rem 0.5rem; /* dt('tree.node.padding') - Adjusted for tighter fit */
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
         display: flex;
         align-items: center;
         outline-color: transparent;
-        color: #4b5563; /* dt('tree.node.color') */
-        gap: 0.5rem; /* dt('tree.node.gap') */
+        color: var(--color-base-content);
+        gap: 0.5rem;
         transition:
           background 0.2s,
           color 0.2s,
-          box-shadow 0.2s; /* dt('tree.transition.duration') */
-        cursor: default; /* Default cursor */
+          box-shadow 0.2s;
+        cursor: default;
       }
       .p-treenode-selectable {
-        cursor: pointer; /* Pointer cursor only for selectable nodes */
+        cursor: pointer;
       }
       .p-treenode-content:focus-visible {
-        /* Use focus-visible for keyboard nav */
-        box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.5); /* dt('tree.node.focus.ring.shadow') - Example focus */
-        outline: 0 none; /* dt('tree.node.focus.ring.width') etc. */
+        box-shadow: 0 0 0 0.2rem color-mix(in oklab, var(--color-primary) 50%, transparent);
+        outline: 0 none;
       }
       .p-treenode-selectable:not(.p-highlight):not(.p-treenode-selected):hover {
-        background: #f3f4f6; /* dt('tree.node.hover.background') */
-        color: #374151; /* dt('tree.node.hover.color') */
+        background: var(--color-base-200);
+        color: var(--color-base-content);
       }
       /* Selection Highlight (non-checkbox) */
       .p-treenode-content.p-highlight {
-        background: #d1fae5; /* dt('tree.node.selected.background') - Lighter green */
-        color: #065f46; /* dt('tree.node.selected.color') - Darker green */
+        background: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-100));
+        color: var(--color-primary);
       }
 
       /* Toggler Button */
@@ -205,34 +219,32 @@ import { iconSvg } from '../../shared/icon-svgs';
         overflow: hidden;
         position: relative;
         flex-shrink: 0;
-        width: 1.5rem; /* dt('tree.node.toggle.button.size') */
+        width: 1.5rem;
         height: 1.5rem;
-        color: #6b7280; /* dt('tree.node.toggle.button.color') */
+        color: var(--color-base-content);
+        opacity: 0.7;
         border: 0 none;
         background: transparent;
-        border-radius: 50%; /* dt('tree.node.toggle.button.border.radius') */
+        border-radius: 50%;
         transition:
           background 0.2s,
           color 0.2s,
-          box-shadow 0.2s;
+          box-shadow 0.2s,
+          opacity 0.2s;
         outline-color: transparent;
         padding: 0;
       }
       .p-tree-node-toggle-button:enabled:hover {
-        background: #e5e7eb; /* dt('tree.node.toggle.button.hover.background') */
-        color: #4b5563; /* dt('tree.node.toggle.button.hover.color') */
+        background: var(--color-base-300);
+        color: var(--color-base-content);
+        opacity: 1;
       }
       .p-treenode-content.p-highlight .p-tree-node-toggle-button:hover {
-        background: rgba(
-          6,
-          95,
-          70,
-          0.1
-        ); /* dt('tree.node.toggle.button.selected.hover.background') */
-        color: #065f46; /* dt('tree.node.toggle.button.selected.hover.color') */
+        background: color-mix(in oklab, var(--color-primary) 12%, transparent);
+        color: var(--color-primary);
       }
       .p-tree-node-toggle-icon {
-        font-size: 0.875rem; /* Adjust icon size */
+        font-size: 0.875rem;
       }
 
       /* Checkbox */
@@ -242,9 +254,9 @@ import { iconSvg } from '../../shared/icon-svgs';
         user-select: none;
         vertical-align: bottom;
         position: relative;
-        width: 1.25rem; /* Checkbox size */
+        width: 1.25rem;
         height: 1.25rem;
-        margin-right: 0.5rem; /* Spacing */
+        margin-right: 0.5rem;
       }
       .p-checkbox-box {
         display: flex;
@@ -252,48 +264,51 @@ import { iconSvg } from '../../shared/icon-svgs';
         align-items: center;
         width: 1.25rem;
         height: 1.25rem;
-        border: 1px solid #ced4da; /* Checkbox border */
+        border: 1px solid var(--color-base-300);
         border-radius: 4px;
-        background: #ffffff;
+        background: var(--color-base-100);
         transition:
           background-color 0.2s,
           border-color 0.2s,
           box-shadow 0.2s;
       }
       .p-checkbox-box.p-highlight {
-        border-color: var(--primary-color, #10b981);
-        background: var(--primary-color, #10b981);
+        border-color: var(--color-primary);
+        background: var(--color-primary);
       }
       .p-checkbox-box.p-indeterminate {
-        border-color: var(--primary-color, #10b981);
-        background: var(--primary-color, #10b981);
+        border-color: var(--color-primary);
+        background: var(--color-primary);
       }
       .p-checkbox-box.p-weak-highlight {
-        border-color: #93c5fd;
-        background: #bfdbfe;
+        border-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-base-300));
+        background: color-mix(in oklab, var(--color-primary) 25%, var(--color-base-100));
       }
       .p-checkbox-icon {
-        font-size: 0.875rem; /* Icon size */
-        color: #ffffff; /* Icon color when selected */
+        font-size: 0.875rem;
+        color: var(--color-primary-content, #ffffff);
         transition-duration: 0.2s;
-        line-height: normal; /* Ensure icon aligns well */
+        line-height: normal;
       }
       .p-checkbox-box:not(.p-highlight):not(.p-indeterminate):hover {
-        border-color: var(--primary-color, #10b981); /* Hover border */
+        border-color: var(--color-primary);
       }
 
       /* Node Icon */
       .p-treenode-icon {
-        color: #6b7280; /* dt('tree.node.icon.color') */
-        margin-right: 0.5rem; /* Spacing */
-        transition: color 0.2s;
+        color: var(--color-base-content);
+        opacity: 0.6;
+        margin-right: 0.5rem;
+        transition: color 0.2s, opacity 0.2s;
       }
       .p-treenode-selectable:not(.p-highlight):not(.p-treenode-selected):hover
         .p-treenode-icon {
-        color: #4b5563; /* dt('tree.node.icon.hover.color') */
+        color: var(--color-base-content);
+        opacity: 0.9;
       }
       .p-treenode-content.p-highlight .p-treenode-icon {
-        color: #065f46; /* dt('tree.node.icon.selected.color') */
+        color: var(--color-primary);
+        opacity: 1;
       }
 
       /* Node Label */
@@ -309,6 +324,18 @@ import { iconSvg } from '../../shared/icon-svgs';
 })
 export class TreeNodeComponent {
   node = input.required<TreeNode>();
+  // Local override for the expansion state. `node` is a read-only signal input;
+  // mutating `node().expanded` does not bump the signal's version, so under
+  // OnPush + signal-based CD the bindings that read it never re-evaluate. We
+  // hold the override locally and let `isExpanded()` fall back to the input's
+  // initial value when no toggle has happened yet. `toggle()` writes to this
+  // signal AND keeps `node().expanded` in sync so external callers (parent
+  // tree, picklist) reading the node object directly still observe the change.
+  private expandedOverride = signal<boolean | null>(null);
+  isExpanded = computed<boolean>(() => {
+    const override = this.expandedOverride();
+    return override !== null ? override : !!this.node().expanded;
+  });
   level = input<number>(0);
   indentation = input<number>(1.5);
   selectable = input<boolean>(false);
@@ -399,11 +426,15 @@ export class TreeNodeComponent {
 
   toggle(event: Event) {
     event.stopPropagation(); // Prevent node click event
-    this.node().expanded = !this.node().expanded;
+    const newExpanded = !this.isExpanded();
+    this.expandedOverride.set(newExpanded);
+    // Keep the node object's `expanded` flag in sync so external readers
+    // (parent tree, picklist filter, persisted state) observe the new value.
+    this.node().expanded = newExpanded;
     this.nodeToggle.emit({
       originalEvent: event,
       node: this.node(),
-      expanded: this.node().expanded,
+      expanded: newExpanded,
     });
   }
 
@@ -436,7 +467,7 @@ export class TreeNodeComponent {
 
   getIconSvg(): string {
     if (this.node().icon) return iconSvg(this.node().icon!);
-    if (this.node().expanded && !this.isNodeLeaf()) {
+    if (this.isExpanded() && !this.isNodeLeaf()) {
       return this.node().expandedIcon ? iconSvg(this.node().expandedIcon!) : iconSvg('folder-open');
     }
     return this.node().collapsedIcon ? iconSvg(this.node().collapsedIcon!) : iconSvg('folder');

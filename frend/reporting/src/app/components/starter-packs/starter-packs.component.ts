@@ -226,7 +226,7 @@ export class StarterPacksComponent implements OnInit, OnDestroy {
       // 4. If any pack is in a transitional state (starting/stopping), start polling
       // This handles the case where user navigates away and back while a pack is starting
       if (PollingHelper.hasTransitionalItems(this.starterPacks)) {
-        console.log('[StarterPacks] Detected transitional states on init, starting polling...');
+        // console.log('[StarterPacks] Detected transitional states on init, starting polling...');
         this.startTransitionPolling();
       }
 

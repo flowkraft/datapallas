@@ -230,6 +230,10 @@ public class ReportsController {
 	public Mono<ConfigurationFileInfo> getReportDetails(@PathVariable String id) throws Exception {
 		String path = resolveSettingsPath(id);
 		ConfigurationFileInfo details = rbSettingsService.loadConfigDetails(path);
+		// System.out.println("[RB-DIAG] getReportDetails id=" + id + " path=" + path
+		// 		+ " details=" + (details != null ? "OK" : "null")
+		// 		+ " reportParameters=" + (details != null && details.reportParameters != null
+		// 				? details.reportParameters.size() : "null"));
 		return details != null ? Mono.just(details) : Mono.empty();
 	}
 
@@ -490,11 +494,30 @@ public class ReportsController {
 	@GetMapping(value = "/{reportId}/settings", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<DocumentBursterSettings> loadReportSettings(@PathVariable String reportId) throws Exception {
 		String fullPath = resolveSettingsPath(reportId);
-		System.out.println("[RB-DIAG] loadReportSettings reportId=" + reportId + " fullPath=" + fullPath);
+		// System.out.println("[RB-DIAG] loadReportSettings reportId=" + reportId + " fullPath=" + fullPath);
 		DocumentBursterSettings dbSettings = rbSettingsService.loadSettings(fullPath);
-		System.out.println("[RB-DIAG] loadReportSettings settings=" + (dbSettings.settings != null ? "OK version=" + dbSettings.settings.version : "NULL"));
+		// System.out.println("[RB-DIAG] loadReportSettings settings=" + (dbSettings.settings != null ? "OK version=" + dbSettings.settings.version : "NULL"));
 		preserveExistingPasswords(dbSettings, fullPath);
 		rbSettingsService.saveSettings(dbSettings, fullPath);
+		maskPasswords(dbSettings);
+		return Mono.just(dbSettings);
+	}
+
+	/**
+	 * Load any settings.xml-shaped file by its path under PORTABLE_EXECUTABLE_DIR.
+	 *
+	 * Distinct from loadReportSettings(reportId), which always resolves to
+	 * {reportId}/settings.xml. This endpoint is used by the configuration-load
+	 * workflow (Configuration → reports list → Load) when the file under
+	 * load is NOT the default settings.xml — e.g. migrated configs named
+	 * {something}/15-settings-6.2-custom.xml.
+	 */
+	@GetMapping(value = "/load-by-path", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<DocumentBursterSettings> loadSettingsByPath(@RequestParam String path) throws Exception {
+		String fullPath = resolvePathAgainstPortableDir(path);
+		// System.out.println("[RB-DIAG] loadSettingsByPath path=" + path + " fullPath=" + fullPath);
+		DocumentBursterSettings dbSettings = rbSettingsService.loadSettings(fullPath);
+		// System.out.println("[RB-DIAG] loadSettingsByPath settings=" + (dbSettings.settings != null ? "OK version=" + dbSettings.settings.version : "NULL"));
 		maskPasswords(dbSettings);
 		return Mono.just(dbSettings);
 	}
@@ -503,8 +526,8 @@ public class ReportsController {
 	public void saveReportSettings(@PathVariable String reportId, @RequestBody DocumentBursterSettings settings)
 			throws Exception {
 		String fullPath = resolveSettingsPath(reportId);
-		System.out.println("[RB-DIAG] saveReportSettings reportId=" + reportId + " fullPath=" + fullPath);
-		System.out.println("[RB-DIAG] saveReportSettings settings=" + (settings.settings != null ? "OK burstfilename=" + settings.settings.burstfilename : "NULL"));
+		// System.out.println("[RB-DIAG] saveReportSettings reportId=" + reportId + " fullPath=" + fullPath);
+		// System.out.println("[RB-DIAG] saveReportSettings settings=" + (settings.settings != null ? "OK burstfilename=" + settings.settings.burstfilename : "NULL"));
 		preserveExistingPasswords(settings, fullPath);
 		rbSettingsService.saveSettings(settings, fullPath);
 	}
@@ -743,18 +766,24 @@ public class ReportsController {
 	 */
 	private void updateDocumentPathOnly(String reportId, String newDocumentPath) throws Exception {
 		String settingsPath = resolveSettingsPath(reportId);
+		if (settingsPath == null) return;
 		String configDir = new java.io.File(settingsPath).getParent();
-		String reportingPath = configDir + "/reporting.xml";
-		java.io.File reportingFile = new java.io.File(reportingPath);
+		java.io.File reportingFile = new java.io.File(configDir, "reporting.xml");
 		if (!reportingFile.exists()) return;
 
-		String xml = java.nio.file.Files.readString(reportingFile.toPath());
-		String updated = xml.replaceFirst(
-			"<documentpath>[^<]*</documentpath>",
-			"<documentpath>" + newDocumentPath + "</documentpath>"
-		);
-		if (!xml.equals(updated)) {
-			java.nio.file.Files.writeString(reportingFile.toPath(), updated);
+		// Atomic load → mutate → save on the same monitor that saveSettingsReporting
+		// uses. Without this outer lock, the unsynchronized load can read reporting.xml
+		// in the brief window after FileOutputStream truncates it to 0 bytes but before
+		// the JAXB marshaller has written any content — surfacing as a SAXParseException
+		// "Premature end of file". Java's synchronized is reentrant, so the nested
+		// saveSettingsReporting call from the same thread re-acquires safely.
+		synchronized (rbSettingsService) {
+			com.sourcekraft.documentburster.common.settings.model.ReportingSettings reporting =
+					rbSettingsService.loadSettingsReporting(settingsPath);
+			if (reporting != null && reporting.report != null && reporting.report.template != null) {
+				reporting.report.template.documentpath = newDocumentPath;
+				rbSettingsService.saveSettingsReporting(reporting, settingsPath);
+			}
 		}
 	}
 }

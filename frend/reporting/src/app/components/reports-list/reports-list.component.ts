@@ -48,7 +48,7 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
               <tr
                 id="{{configurationFile.folderName}}_{{configurationFile.fileName}}"
                 (click)="onConfTemplateClick(configurationFile, $event)"
-                [ngClass]="{'bg-primary/10': configurationFile.activeClicked}"
+                [ngClass]="{'bg-primary/10': configurationFile.activeClicked, 'info': configurationFile.activeClicked}"
               >
                 <td>
                   {{ configurationFile.templateName }}

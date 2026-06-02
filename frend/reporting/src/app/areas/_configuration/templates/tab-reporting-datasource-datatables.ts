@@ -83,7 +83,7 @@
                 xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard') && getDatabaseConnectionFilesForUI().length === 0) {
             <div id="noDbConnectionsMessageSql" style="padding-top: 6px;">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>&nbsp;No database connections defined&nbsp;
-              <a id="createDbConnectionLinkSql" [routerLink]="['/configuration-connections']" skipLocationChange="true" class="btn btn-primary btn-sm">
+              <a id="createDbConnectionLinkSql" [routerLink]="['/configuration-connections']" skipLocationChange="true" class="btn btn-outline btn-primary btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>&nbsp;Create Database Connection
               </a>
             </div>
@@ -129,7 +129,7 @@
                     @if (hasCubesForCurrentConnection) {
                     <button id="btnReuseCubeSqlQuery" type="button"
                       title="Reuse a cube to generate SQL for this report"
-                      class="btn btn-ghost"
+                      class="btn btn-outline"
                       style="flex: 0 0 25%;"
                       (click)="showCubesReuseModal()">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5L12 2.25L3 7.5M21 7.5L12 12.75M21 7.5V16.5L12 21.75M3 7.5L12 12.75M3 7.5V16.5L12 21.75M12 12.75V21.75"/></svg>&nbsp;<strong>Cubes</strong>
@@ -137,7 +137,7 @@
                     }
                     <button id="btnHelpWithSqlQueryAI" type="button"
                       title="Write SQL code to fetch report data from the database"
-                      class="btn btn-ghost"
+                      class="btn btn-outline"
                       [ngStyle]="{ flex: hasCubesForCurrentConnection ? '0 0 calc(75% - 6px)' : '1 1 100%' }"
                       (click)="showDbConnectionModal()"
                       [disabled]="getDatabaseConnectionFilesForUI().length === 0 || !xmlReporting.documentburster.report.datasource.sqloptions.conncode">
@@ -152,7 +152,7 @@
                   <button
                     id="btnTestSqlQuery"
                     type="button"
-                    class="btn btn-primary w-full"
+                    class="btn btn-outline btn-primary w-full"
                     (click)="doTestSqlQuery()"
                     [disabled]="isReportDataLoading || getDatabaseConnectionFilesForUI().length === 0 || !xmlReporting.documentburster.report.datasource.sqloptions.conncode || !xmlReporting.documentburster.report.datasource.sqloptions.query"
                   >
@@ -236,29 +236,35 @@
                       @if (hasCubesForCurrentConnection) {
                       <button id="btnReuseCubeScript" type="button"
                         title="Reuse a cube to generate SQL for this script"
-                        class="btn btn-ghost"
+                        class="btn btn-outline"
                         style="flex: 0 0 25%;"
                         (click)="showCubesReuseModal()">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5L12 2.25L3 7.5M21 7.5L12 12.75M21 7.5V16.5L12 21.75M3 7.5L12 12.75M3 7.5V16.5L12 21.75M12 12.75V21.75"/></svg>&nbsp;<strong>Cubes</strong>
                       </button>
                       }
-                      <div class="dropdown dropdown-end"
-                        [ngStyle]="{ flex: hasCubesForCurrentConnection ? '0 0 calc(75% - 6px)' : '1 1 100%', display: 'flex' }">
-                        <button id="btnHelpWithScriptAI" type="button" tabindex="0" role="button" class="btn btn-ghost" style="flex: 1; text-align: left;" (click)="showDbConnectionModal(xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'dashboardScript' : 'scriptQuery')">
-                          <strong>{{ xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'Hey AI, Help Me Build This Dashboard ...' : 'Hey AI, Help Me With This Groovy Script ...' }} &#9660;</strong>
+                      <div [ngStyle]="{ flex: hasCubesForCurrentConnection ? '0 0 calc(75% - 6px)' : '1 1 100%' }"
+                        style="display: inline-flex; align-items: stretch;">
+                        <button id="btnHelpWithScriptAI" type="button" class="btn btn-outline" style="flex: 1; text-align: left;"
+                          (click)="showDbConnectionModal(xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'dashboardScript' : 'scriptQuery')">
+                          <strong>{{ xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'Hey AI, Help Me Build This Dashboard ...' : 'Hey AI, Help Me With This Groovy Script ...' }}</strong>
                         </button>
-                        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
-                          <li>
-                            <a id="btnHelpWithScriptAIDropdownItem" href="#" (click)="showDbConnectionModal(xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'dashboardScript' : 'scriptQuery'); $event.preventDefault();">
-                              {{ xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'Hey AI, Help Me Build This Dashboard ...' : 'Hey AI, Help Me With This Groovy Script ...' }}
-                            </a>
-                          </li>
-                          <li>
-                            <a id="btnHelpWithSqlQueryAIDropdownItem" href="#" (click)="showDbConnectionModal(); $event.preventDefault();">
-                              Hey AI, Help Me With This SQL Query ...
-                            </a>
-                          </li>
-                        </ul>
+                        <details class="dropdown dropdown-end" #scriptAiDropdown>
+                          <summary id="btnHelpWithScriptAIDropdownToggle" class="btn btn-outline" style="list-style:none;">&#9660;</summary>
+                          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+                            <li>
+                              <a href="javascript:void(0)" id="btnHelpWithScriptAIDropdownItem"
+                                 (click)="$any(scriptAiDropdown).open = false; showDbConnectionModal(xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'dashboardScript' : 'scriptQuery')">
+                                {{ xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard' ? 'Hey AI, Help Me Build This Dashboard ...' : 'Hey AI, Help Me With This Groovy Script ...' }}
+                              </a>
+                            </li>
+                            <li>
+                              <a href="javascript:void(0)" id="btnHelpWithSqlQueryAIDropdownItem"
+                                 (click)="$any(scriptAiDropdown).open = false; showDbConnectionModal()">
+                                Hey AI, Help Me With This SQL Query ...
+                              </a>
+                            </li>
+                          </ul>
+                        </details>
                       </div>
                     </div>
                   </div>
@@ -270,7 +276,7 @@
                     <button
                       id="btnTestScript"
                       type="button"
-                      class="btn btn-primary w-full"
+                      class="btn btn-outline btn-primary w-full"
                       (click)="doRunTestScript()"
                       [disabled]="isReportDataLoading"
                     >
@@ -1170,7 +1176,7 @@ Column 3, 15"
             </label>
           </div>
           <div style="grid-column:span 6">
-            <button id="btnHelpWithTransformationAI" type="button" class="btn btn-ghost" (click)="askAiForHelp('script.additionaltransformation')">
+            <button id="btnHelpWithTransformationAI" type="button" class="btn btn-outline w-full" (click)="askAiForHelp('script.additionaltransformation')">
              <strong>Hey AI, Help Me With This Groovy Script ...</strong>
             </button>
           </div>
@@ -1203,7 +1209,7 @@ Column 3, 15"
         <div style="grid-column:span 5">
           <button
             type="button"
-            class="btn btn-primary w-full"
+            class="btn btn-outline btn-primary w-full"
             (click)="triggerFeatureRequestDialog(xmlReporting?.documentburster.report.datasource.type)"
           >
             Request <span class="badge">New</span> Feature
@@ -1214,6 +1220,7 @@ Column 3, 15"
     }
   </div>
 </ng-template>
+@if (isModalParametersVisible) {
 <dp-dialog
     header="Enter Report Parameters"
     [(visible)]="isModalParametersVisible"
@@ -1235,10 +1242,11 @@ Column 3, 15"
             type="button"
             id="btnTestQueryRun"
             (click)="onRunQueryWithParams()"
-            class="btn btn-primary"
+            class="btn btn-outline btn-primary"
             [disabled]="!reportParamsValid">Test Query</button>
     </div>
 </dp-dialog>
+}
 
 <!-- ===================================================================== -->
 <!-- Cubes Reuse Modal — pick fields, generate SQL, copy to clipboard      -->
@@ -1283,7 +1291,7 @@ Column 3, 15"
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btnCubeReuseShowSql" type="button" class="btn btn-primary"
+        <button id="btnCubeReuseShowSql" type="button" class="btn btn-outline btn-primary"
           [disabled]="!hasCubesReuseFieldSelections"
           (click)="showCubesReuseSql()">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>&nbsp;Get SQL
@@ -1322,7 +1330,7 @@ Column 3, 15"
         }
       </div>
       <div class="modal-footer">
-        <button id="btnCubeReuseCopySql" type="button" class="btn btn-primary"
+        <button id="btnCubeReuseCopySql" type="button" class="btn btn-outline btn-primary"
           (click)="copyCubesReuseSqlToClipboard()" [disabled]="cubesReuseSqlLoading">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>&nbsp;Copy SQL to Clipboard
         </button>

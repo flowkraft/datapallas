@@ -545,7 +545,7 @@ async function publishDashboard(page: Page): Promise<{ reportId: string; dashboa
 
   const [response] = await Promise.all([
     page.waitForResponse(
-      r => /\/explore-data\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
+      r => /\/explorations\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
       { timeout: 90_000 },
     ),
     confirmBtn.click(),

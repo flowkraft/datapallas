@@ -20,14 +20,17 @@ import { AppsManagerService, ManagedApp } from '../apps-manager/apps-manager.ser
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 
-// Define constants for tab indices for clarity
-const CHAT2DB_TAB_INDEX = 0;
-const PROMPTS_TAB_INDEX = 1;
-const HEY_AI_TAB_INDEX = 2;
+// The modal has two tabs (AI Prompts at 0, Hey AI at 1). All callers of
+// launchWithConfiguration() target the Prompts tab — so that's the only index
+// referenced programmatically. The Hey AI tab is reachable only by user click,
+// which routes through onTabSelect with the numeric index from dp-tabs.
+const PROMPTS_TAB_INDEX = 0;
 
-// Add launch configuration interface
 export type AiManagerLaunchConfig = {
-  initialActiveTabKey?: 'PROMPTS' | 'CHAT2DB' | 'HEY_AI';
+  // Currently only the Prompts tab is opened programmatically. Kept on the
+  // config so existing callers compile unchanged; the Hey AI tab is reachable
+  // by user click only.
+  initialActiveTabKey?: 'PROMPTS';
   initialSelectedCategory?: string;
   initialExpandedPromptId?: string;
   promptVariables?: { [key: string]: string };
@@ -45,22 +48,19 @@ interface CategoryWithCount {
     imports: [CommonModule, FormsModule, TranslateModule, DpDialogComponent, DpTabsComponent, DpTabComponent],
 })
 export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
-  mode = input<'standalone' | 'embedded' | 'launchCopilot'>('standalone');
+  mode = input<'standalone' | 'modal-only'>('modal-only');
   dropdownDirection = input<'down' | 'up'>('down');
 
   showChat2db = input<boolean>(false);
 
-  chat2dbApp: ManagedApp;
+  // Used by the Launch Chat2DB dropdown button outside the modal (lines 51-95
+  // of the template). Not related to the modal's tabs.
+  chat2dbApp?: ManagedApp;
 
   // Internal state
   isModalVisible: boolean = false;
-  intendedTabIndex: number = PROMPTS_TAB_INDEX;
-  aiActiveTabIndex: number = 0;
-
-  // Flags to keep track of which tab is logically active
-  isChat2dbTabActive: boolean = false;
-  isPromptsTabActive: boolean = false;
-  isHeyAiTabActive: boolean = false;
+  aiActiveTabIndex: number = PROMPTS_TAB_INDEX;
+  isPromptsTabActive: boolean = true;
 
   // --- AI Prompts Tab State ---
   allPrompts: PromptInfo[] = [];
@@ -148,96 +148,31 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
    * Called from the template's play/stop button in the dropdown.
    */
   toggleChat2dbApp(): void {
-    if (!this.chat2dbApp) return;
+    const app = this.chat2dbApp;
+    if (!app) return;
 
-    const isStarting = this.chat2dbApp.state !== 'running';
+    const isStarting = app.state !== 'running';
     const dialogQuestion = isStarting
-      ? `Start ${this.chat2dbApp.name}? Be patient — the first start takes longer while required components download and configure; subsequent start/stop cycles are faster.`
-      : `Stop ${this.chat2dbApp.name}?`;
+      ? `Start ${app.name}? Be patient — the first start takes longer while required components download and configure; subsequent start/stop cycles are faster.`
+      : `Stop ${app.name}?`;
 
     this.confirmService.askConfirmation({
       message: dialogQuestion,
       confirmAction: async () => {
         // Set immediate UI feedback
-        this.chat2dbApp.state = isStarting ? 'starting' : 'stopping';
+        app.state = isStarting ? 'starting' : 'stopping';
         this.cdRef.detectChanges();
-        await this.appsManagerService.toggleApp(this.chat2dbApp);
+        await this.appsManagerService.toggleApp(app);
         // Re-fetch actual state from service after toggle completes
         const freshApp = await this.appsManagerService.getAppById('flowkraft-data-canvas');
         if (freshApp) {
-          this.chat2dbApp.state = freshApp.state;
-          this.chat2dbApp.lastOutput = freshApp.lastOutput;
-          this.chat2dbApp.currentCommandValue = freshApp.currentCommandValue;
+          app.state = freshApp.state;
+          app.lastOutput = freshApp.lastOutput;
+          app.currentCommandValue = freshApp.currentCommandValue;
         }
         this.cdRef.detectChanges();
       },
     });
-  }
-
-  /**
-   * Determine active tab based on configuration and update tab state
-   */
-  private initializeTabConfiguration(): void {
-    let tabIndexToActivate = this.determineInitialActiveTab();
-    this.setActiveTab(tabIndexToActivate);
-  }
-
-  /**
-   * Calculate which tab should be active initially
-   */
-  private determineInitialActiveTab(): number {
-    // Default tab based on Chat2DB visibility
-    let tabIndexToActivate = this.showChat2db()
-      ? CHAT2DB_TAB_INDEX
-      : PROMPTS_TAB_INDEX;
-
-    // Override with explicit configuration if provided
-    if (this.initialActiveTabKey()) {
-      switch (this.initialActiveTabKey()) {
-        case 'PROMPTS':
-          tabIndexToActivate = this.showChat2db()
-            ? PROMPTS_TAB_INDEX
-            : CHAT2DB_TAB_INDEX;
-          break;
-        case 'CHAT2DB':
-          if (this.showChat2db()) tabIndexToActivate = CHAT2DB_TAB_INDEX;
-          break;
-        case 'HEY_AI':
-          tabIndexToActivate = this.showChat2db()
-            ? HEY_AI_TAB_INDEX
-            : PROMPTS_TAB_INDEX;
-          break;
-      }
-    }
-
-    return tabIndexToActivate;
-  }
-
-  /**
-   * Apply any filters specified in the initial configuration
-   */
-  private applyInitialFiltersIfNeeded(): void {
-    // Only apply filters if the prompts tab is active
-    if (this.isPromptsTabActive) {
-      this.selectedCategory = this.initialSelectedCategory() || 'All Prompts';
-      this.applyFilters();
-    }
-  }
-
-  /**
-   * Process and expand the specified prompt if needed
-   */
-  private processExpandedPromptIfNeeded(): void {
-    // Only process if the prompts tab is active and an expanded prompt ID was specified
-    if (this.isPromptsTabActive && this.initialExpandedPromptId()) {
-      const promptDef = this.allPrompts.find(
-        (p) => p.id === this.initialExpandedPromptId(),
-      );
-
-      if (promptDef) {
-        this.expandPromptWithVariables(promptDef);
-      }
-    }
   }
 
   private expandPromptWithVariables(promptDef: PromptInfo): void {
@@ -261,8 +196,9 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   private _applyVariablesAndExpand(promptDef: PromptInfo): void {
     let text = promptDef.promptText || '';
 
-    if (this.promptVariables()) {
-      Object.entries(this.promptVariables()).forEach(([key, val]) => {
+    const vars = this.promptVariables();
+    if (vars) {
+      Object.entries(vars).forEach(([key, val]) => {
         // Remove brackets and collapse whitespace for the regex
         const inner = key.replace(/^\[|\]$/g, '').replace(/\s+/g, '\\s+');
         // Match [ ... ] with any whitespace inside
@@ -425,36 +361,9 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.onTabSelect(e.index);
   }
 
-  // Helper to set the active tab flags
   setActiveTab(index: number): void {
-    this.intendedTabIndex = index;
     this.aiActiveTabIndex = index;
-    this.isChat2dbTabActive = this.showChat2db() && index === CHAT2DB_TAB_INDEX;
-    // Adjust index checks based on Chat2DB visibility
-    const promptsIndex = this.showChat2db() ? PROMPTS_TAB_INDEX : CHAT2DB_TAB_INDEX;
-    const heyAiIndex = this.showChat2db() ? HEY_AI_TAB_INDEX : PROMPTS_TAB_INDEX;
-
-    this.isPromptsTabActive = index === promptsIndex;
-    this.isHeyAiTabActive = index === heyAiIndex;
-
-    // Ensure only one tab is active if Chat2DB is hidden and indices shift
-    if (!this.showChat2db()) {
-      if (this.isPromptsTabActive && this.isHeyAiTabActive) {
-        // Default to prompts if somehow both became active due to index shift
-        this.isHeyAiTabActive = false;
-      }
-    } else {
-      // Ensure only one is active when Chat2DB is shown
-      if (
-        this.isChat2dbTabActive &&
-        (this.isPromptsTabActive || this.isHeyAiTabActive)
-      ) {
-        this.isPromptsTabActive = false;
-        this.isHeyAiTabActive = false;
-      } else if (this.isPromptsTabActive && this.isHeyAiTabActive) {
-        this.isHeyAiTabActive = false; // Prioritize prompts if conflict
-      }
-    }
+    this.isPromptsTabActive = index === PROMPTS_TAB_INDEX;
   }
 
   // --- Standalone Mode: Dropdown Button Actions ---
@@ -464,18 +373,9 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
     window.open(url, '_blank');
   }
 
-  openChat2dbModal(): void {
-    if (this.mode() === 'standalone' && this.showChat2db()) {
-      this.setActiveTab(CHAT2DB_TAB_INDEX);
-      this.pendingInit = true;
-      this.isModalVisible = true;
-    }
-  }
-
   openAiPromptsModal(): void {
     if (this.mode() === 'standalone') {
-      const targetIndex = this.showChat2db() ? PROMPTS_TAB_INDEX : CHAT2DB_TAB_INDEX;
-      this.setActiveTab(targetIndex);
+      this.setActiveTab(PROMPTS_TAB_INDEX);
       this.pendingInit = true;
       this.isModalVisible = true;
     }
@@ -485,15 +385,14 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.isModalVisible = false;
   }
 
-  // Method called when a tab is selected to update internal state if needed
   onTabSelect(tabIndex: number): void {
-    console.log(`Tab selected: ${tabIndex}`);
     this.setActiveTab(tabIndex);
-    // Add any logic needed when a tab becomes active
   }
 
   // Public method to launch with configuration
   public launchWithConfiguration(config?: AiManagerLaunchConfig): void {
+    this.initialExpandedPromptId.set(undefined);
+    this.promptVariables.set({});
     if (config?.initialActiveTabKey)
       this.initialActiveTabKey.set(config.initialActiveTabKey);
     if (config?.initialSelectedCategory)
@@ -515,26 +414,24 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
 
   private completeInitialization(): void {
     try {
-      const idx = this.determineInitialActiveTab();
-      this.setActiveTab(idx);
-      if (this.isPromptsTabActive) {
-        if (this.initialSelectedCategory()) {
-          this.selectedCategory = this.initialSelectedCategory();
-          this.applyFilters();
-        }
-        if (this.initialExpandedPromptId()) {
-          const p = this.allPrompts.find(
-            (x) => x.id === this.initialExpandedPromptId(),
-          );
-          if (p) {
-            if (
-              this.promptVariables() &&
-              Object.keys(this.promptVariables()).length > 0
-            ) {
-              this.expandPromptWithVariables(p);
-            } else {
-              this.expandPrompt(p);
-            }
+      // Programmatic open always lands on the Prompts tab (the only key the
+      // launch config supports). Hey AI is a user-click-only destination.
+      this.setActiveTab(PROMPTS_TAB_INDEX);
+
+      const category = this.initialSelectedCategory();
+      if (category) {
+        this.selectedCategory = category;
+        this.applyFilters();
+      }
+      const expandedId = this.initialExpandedPromptId();
+      if (expandedId) {
+        const p = this.allPrompts.find((x) => x.id === expandedId);
+        if (p) {
+          const vars = this.promptVariables();
+          if (vars && Object.keys(vars).length > 0) {
+            this.expandPromptWithVariables(p);
+          } else {
+            this.expandPrompt(p);
           }
         }
       }

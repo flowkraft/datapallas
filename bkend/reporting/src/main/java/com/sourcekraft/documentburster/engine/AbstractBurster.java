@@ -443,6 +443,7 @@ public abstract class AbstractBurster {
 			return this.requestedCancelOrPauseProcessing;
 
 		File pauseFile = new File(getTempFolder() + getPauseJobFileName());
+		// log.info("[CHECK-SIGNAL] looking for pause file at: {} (exists={})", pauseFile.getAbsolutePath(), pauseFile.exists());
 
 		boolean shouldPause = pauseFile.exists();
 

@@ -339,7 +339,7 @@ export default function AgentDebugPage({ params }: { params: Promise<{ agentId: 
         </div>
 
         {loading && <div className="text-base-content/60">Loading agent details...</div>}
-        {error && <div className="text-red-500 bg-red-50 p-3 rounded">Error: {error}</div>}
+        {error && <div className="text-error bg-error/10 p-3 rounded">Error: {error}</div>}
 
         {!loading && agent && (
           <>
@@ -526,7 +526,7 @@ export default function AgentDebugPage({ params }: { params: Promise<{ agentId: 
               <div className="col-span-5 bg-base-100 border border-base-300 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-base-content mb-3 flex items-center gap-2">
                   {/* Heroicon: bolt */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-yellow-500"><path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" /></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-warning"><path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" /></svg>
                   Agent Simulator
                 </h3>
 
@@ -691,7 +691,7 @@ export default function AgentDebugPage({ params }: { params: Promise<{ agentId: 
                 </h3>
 
                 {sleeptimeLoading && <div className="text-base-content/60 text-sm">Loading sleeptime details...</div>}
-                {sleeptimeError && <div className="text-red-500 text-sm">Error: {sleeptimeError}</div>}
+                {sleeptimeError && <div className="text-error text-sm">Error: {sleeptimeError}</div>}
                 {!sleeptimeLoading && !sleeptimeError && !sleeptimeAgent && (
                   <div className="text-base-content/60 text-sm">No sleeptime agent found sharing memory with this agent.</div>
                 )}
@@ -776,10 +776,10 @@ export default function AgentDebugPage({ params }: { params: Promise<{ agentId: 
                               <li key={tool.id} className="flex items-center gap-1">
                                 <span className="text-primary">{tool.name}</span>
                                 {isCustom && (
-                                  <span className="text-[9px] px-1 py-0.5 rounded bg-green-100 text-green-700">custom</span>
+                                  <span className="text-[9px] px-1 py-0.5 rounded bg-success/10 text-success">custom</span>
                                 )}
                                 {isBase && (
-                                  <span className="text-[9px] px-1 py-0.5 rounded bg-red-100 text-red-700">base</span>
+                                  <span className="text-[9px] px-1 py-0.5 rounded bg-error/10 text-error">base</span>
                                 )}
                               </li>
                             );

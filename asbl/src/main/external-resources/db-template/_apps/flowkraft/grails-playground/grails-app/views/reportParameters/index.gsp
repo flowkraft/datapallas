@@ -19,22 +19,22 @@
         }
         /* Filter state styles */
         #dataTableCard.filtered .card-header {
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
-            border-bottom-color: #ffc107;
+            background: color-mix(in oklab, var(--color-warning) 14%, var(--color-base-100));
+            border-bottom-color: var(--color-warning);
         }
         #dataTableCard.filtered {
-            border-color: #ffc107;
-            box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25);
+            border-color: var(--color-warning);
+            box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-warning) 25%, transparent);
         }
         #dataTableCard.filtered .card-footer {
-            background-color: #fff3cd;
-            border-top-color: #ffc107;
-            color: #856404;
+            background-color: color-mix(in oklab, var(--color-warning) 14%, var(--color-base-100));
+            border-top-color: var(--color-warning);
+            color: var(--color-warning);
         }
         .filter-param {
             display: inline-block;
-            background: #fff;
-            border: 1px solid #ffc107;
+            background: var(--color-base-100);
+            border: 1px solid var(--color-warning);
             border-radius: 4px;
             padding: 2px 8px;
             margin: 0 4px;

@@ -97,12 +97,7 @@ electronBeforeAfterAllTest(
       await firstPage.evaluate(() => {
         const style = document.createElement('style');
         style.id = '__hide_toasts_for_screenshots';
-        style.textContent = `
-          #toast-container,
-          .toast-container,
-          .ngx-toastr,
-          .toast { display: none !important; }
-        `;
+        style.textContent = `.toast { display: none !important; }`;
         document.head.appendChild(style);
       });
 
@@ -120,8 +115,8 @@ electronBeforeAfterAllTest(
         .waitOnElementToBecomeEnabled('#btnEdit')
         .click('#btnEdit')
         .waitOnElementToBecomeVisible('#modalDbConnection')
-        .waitOnElementToBecomeVisible('#seedDataTab-link')
-        .click('#seedDataTab-link');
+        .waitOnElementToBecomeVisible('#tab-btn-seedDataTab')
+        .click('#tab-btn-seedDataTab');
 
       // Before testing the connection the Seed Data tab shows a placeholder
       // with a single button that routes to Connection Details to test first.
@@ -134,13 +129,13 @@ electronBeforeAfterAllTest(
         .confirmDialogShouldBeVisible()
         .clickYesDoThis()
         .waitOnElementToBecomeEnabled('#btnTestDbConnection', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
-        .click('#seedDataTab-link')
+        .click('#tab-btn-seedDataTab')
         .waitOnElementToBecomeVisible('#seedTemplateSelect');
 
       // ── Switch to Example sub-tab and pick "Invoice Seeder" ─────────────────
       await new FluentTester(firstPage)
-        .waitOnElementToBecomeVisible('#seedTabExample-link')
-        .click('#seedTabExample-link')
+        .waitOnElementToBecomeVisible('#tab-btn-seedTabExample')
+        .click('#tab-btn-seedTabExample')
         .waitOnElementToBecomeEnabled('#seedTemplateSelect')
         .waitOnElementToBecomeVisible(
           `#seedTemplateSelect option[value="${INVOICE_SEEDER_TEMPLATE_ID}"]`,
@@ -169,8 +164,8 @@ electronBeforeAfterAllTest(
         .waitOnElementToBecomeEnabled('#btnCopyExampleSeedScript')
         .click('#btnCopyExampleSeedScript')
         .clipboardShouldContainText(INVOICE_SEEDER_MARKER)
-        .waitOnElementToBecomeVisible('#seedTabMyScript-link')
-        .click('#seedTabMyScript-link')
+        .waitOnElementToBecomeVisible('#tab-btn-seedTabMyScript')
+        .click('#tab-btn-seedTabMyScript')
         .waitOnElementToBecomeVisible('#seedCustomScriptEditor')
         .pasteClipboardIntoCodeJar('#seedCustomScriptEditor')
         .codeJarShouldContainText('#seedCustomScriptEditor', INVOICE_SEEDER_MARKER);

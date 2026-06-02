@@ -58,7 +58,13 @@ export class LicenseComponent {
     });
   }
 
-  async saveLicenseKey() {
+  onLicenseKeyChanged(value: string) {
+    // Mirror the #burstFile pattern (tab-burst.ts) — Angular 19's template
+    // compiler drops the implicit two-way assignment when an explicit
+    // (ngModelChange) is present, so the model write must be done here.
+    if (this.licenseService?.licenseDetails?.license) {
+      this.licenseService.licenseDetails.license.key = value;
+    }
     return this.licenseService.saveLicense();
   }
 }

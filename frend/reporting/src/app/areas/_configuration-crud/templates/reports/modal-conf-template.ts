@@ -1,5 +1,6 @@
 ﻿import { html } from 'code-tag';
-export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
+export const modalConfigurationTemplateTemplate = /*html*/ `@if (isModalConfigurationTemplateVisible) {
+<dp-dialog
   [header]="modalConfigurationTemplateInfo.modalTitle"
   [(visible)]="isModalConfigurationTemplateVisible"
   [style]="{width: '800px'}"
@@ -165,4 +166,5 @@ export const modalConfigurationTemplateTemplate = /*html*/ `<dp-dialog
       {{ 'BUTTONS.CANCEL' | translate }}
     </button>
   </div>
-</dp-dialog> `;
+</dp-dialog>
+} `;

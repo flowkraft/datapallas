@@ -1,5 +1,5 @@
 @if (executionStatsService.logStats.foundDirtyLogFiles) {
-  <div [id]="viewerId">
+  <div [id]="viewerId()">
     <dp-tabs>
       @if (executionStatsService.logStats.infoLogFileSize > 0) {
         <dp-tab

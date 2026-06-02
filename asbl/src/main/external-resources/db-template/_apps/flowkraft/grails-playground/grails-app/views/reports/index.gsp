@@ -8,17 +8,17 @@
         .employee-cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
         .employee-card {
             padding: 1rem 1.5rem;
-            border: 2px solid #e2e8f0;
+            border: 2px solid var(--color-base-300);
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
-            background: white;
+            background: var(--color-base-100);
             min-width: 180px;
         }
-        .employee-card:hover { border-color: #3b82f6; background: #f0f9ff; }
-        .employee-card.active { border-color: #2563eb; background: #dbeafe; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
-        .employee-name { font-weight: 600; color: #1e40af; }
-        .employee-id { font-size: 0.85rem; color: #64748b; }
+        .employee-card:hover { border-color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 14%, var(--color-base-100)); }
+        .employee-card.active { border-color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 14%, var(--color-base-100)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 20%, transparent); }
+        .employee-name { font-weight: 600; color: var(--color-primary); }
+        .employee-id { font-size: 0.85rem; color: color-mix(in oklab, var(--color-base-content) 60%, transparent); }
         .payslip-container { min-height: 400px; }
         .code-block {
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;

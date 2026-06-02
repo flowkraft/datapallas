@@ -1,5 +1,5 @@
 export async function fetchQueryData(queryId: string) {
-  console.log(`Mock API: Fetching data for query ${queryId}`);
+  // console.log(`Mock API: Fetching data for query ${queryId}`);
 
   // Example data
   const sampleData = [

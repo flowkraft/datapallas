@@ -30,7 +30,7 @@ export const modalWellKnownTemplate = `<dp-dialog id="modalWellKnownEmailProvide
 
 
   <div ngProjectAs="[footer]">
-    <button id="btnOKConfirmation" class="btn btn-primary" type="button" (click)="onModalOK()"
+    <button id="btnOKConfirmation" class="btn btn-outline btn-primary" type="button" (click)="onModalOK()"
       [disabled]="!getSelectedProvider()">{{
       'COMPONENTS.BUTTON-WELL-KNOWN.LOAD-SMTP-SETTINGS' | translate }}</button>
 

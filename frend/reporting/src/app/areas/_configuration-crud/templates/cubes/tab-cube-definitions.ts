@@ -14,7 +14,7 @@ export const tabCubeDefinitionsTemplate = `
           @for (cube of pagedCubes; track $index) {
             <tr
                 [id]="cube.id"
-                [ngClass]="{'bg-primary/10': cube.activeClicked}"
+                [ngClass]="{'bg-primary/10': cube.activeClicked, 'info': cube.activeClicked}"
                 (click)="onCubeClick(cube)"
                 style="cursor: pointer">
               <td>
@@ -178,10 +178,10 @@ export const tabCubeDefinitionsTemplate = `
                   style="height: 350px; border: 1px solid var(--color-base-300); border-radius: 4px 4px 0 0; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: var(--color-base-100); color: var(--color-base-content);">
                 </ngx-codejar>
                 <div style="display: flex;">
-                  <button id="btnAiHelpCubeDslFullEditor" type="button" class="btn btn-ghost" style="flex: 1; border-radius: 0 0 0 4px;" (click)="showDbConnectionModalForCubeDsl()">
+                  <button id="btnAiHelpCubeDslFullEditor" type="button" class="btn btn-outline" style="flex: 1; border-radius: 0 0 0 4px;" (click)="showDbConnectionModalForCubeDsl()">
                     <strong>Hey AI, Help Me ...</strong>
                   </button>
-                  <button id="btnToggleCubePreviewShow" type="button" class="btn btn-ghost" style="flex: 1; border-radius: 0 0 4px 0;" (click)="toggleCubePreview()">
+                  <button id="btnToggleCubePreviewShow" type="button" class="btn btn-outline" style="flex: 1; border-radius: 0 0 4px 0;" (click)="toggleCubePreview()">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg> Show Preview
                   </button>
                 </div>
@@ -233,10 +233,10 @@ export const tabCubeDefinitionsTemplate = `
                       style="height: 390px; border: 1px solid var(--color-base-300); border-radius: 4px 4px 0 0; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: var(--color-base-100); color: var(--color-base-content);">
                     </ngx-codejar>
                     <div style="display: flex;">
-                      <button id="btnAiHelpCubeDsl" type="button" class="btn btn-ghost" style="flex: 1; border-radius: 0 0 0 4px;" (click)="showDbConnectionModalForCubeDsl()">
+                      <button id="btnAiHelpCubeDsl" type="button" class="btn btn-outline" style="flex: 1; border-radius: 0 0 0 4px;" (click)="showDbConnectionModalForCubeDsl()">
                         <strong>Hey AI, Help Me ...</strong>
                       </button>
-                      <button id="btnToggleCubePreviewHide" type="button" class="btn btn-ghost" style="flex: 1; border-radius: 0 0 4px 0;" (click)="toggleCubePreview()">
+                      <button id="btnToggleCubePreviewHide" type="button" class="btn btn-outline" style="flex: 1; border-radius: 0 0 4px 0;" (click)="toggleCubePreview()">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg> Expand Code Editor
                       </button>
                     </div>
@@ -283,7 +283,7 @@ export const tabCubeDefinitionsTemplate = `
                 </div>
                 }
               </div>
-              <button id="btnViewSql" type="button" class="btn btn-primary w-full"
+              <button id="btnViewSql" type="button" class="btn btn-outline btn-primary w-full"
                 style="border-radius: 0 0 4px 4px; margin: 0;"
                 [disabled]="!hasFieldSelections"
                 (click)="viewSql()">
@@ -300,7 +300,7 @@ export const tabCubeDefinitionsTemplate = `
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg> Sample cubes are read-only. Use Duplicate to create an editable copy.
       </span>
       }
-      <button id="btnOKConfirmationCubeModal" type="button" class="btn btn-primary"
+      <button id="btnOKConfirmationCubeModal" type="button" class="btn btn-outline btn-primary"
         (click)="saveCube()"
         [disabled]="!editingCube.name || cubeNameAlreadyExists || editingCube.isSample">
         Save
@@ -331,7 +331,7 @@ export const tabCubeDefinitionsTemplate = `
       }
     </div>
     <div class="modal-action">
-      <button id="btnCopyCubeSql" type="button" class="btn btn-primary" (click)="copySqlToClipboard()" [disabled]="sqlLoading">
+      <button id="btnCopyCubeSql" type="button" class="btn btn-outline btn-primary" (click)="copySqlToClipboard()" [disabled]="sqlLoading">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.262c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg> Copy SQL to Clipboard
       </button>
       <button id="btnCloseCubeSqlModal" type="button" class="btn btn-ghost" (click)="closeSqlModal()">Close</button>

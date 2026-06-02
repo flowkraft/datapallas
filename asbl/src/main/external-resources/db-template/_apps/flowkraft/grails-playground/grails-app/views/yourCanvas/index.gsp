@@ -8,42 +8,30 @@
         .canvas-hero {
             text-align: center;
             padding: 3rem 2rem;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: linear-gradient(135deg, color-mix(in oklab, var(--color-primary) 12%, var(--color-base-100)) 0%, color-mix(in oklab, var(--color-primary) 22%, var(--color-base-100)) 100%);
             border-radius: 12px;
             margin-bottom: 2rem;
-        }
-        [data-theme="dark"] .canvas-hero {
-            background: linear-gradient(135deg, #0c4a6e 0%, #164e63 100%);
         }
         .canvas-hero h1 {
             font-size: 2.5rem;
             font-weight: 700;
-            color: #0369a1;
+            color: var(--color-primary);
             margin-bottom: 1rem;
-        }
-        [data-theme="dark"] .canvas-hero h1 {
-            color: #7dd3fc;
         }
         .canvas-hero .lead {
             font-size: 1.25rem;
-            color: #475569;
+            color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
             max-width: 700px;
             margin: 0 auto 1.5rem;
-        }
-        [data-theme="dark"] .canvas-hero .lead {
-            color: #cbd5e1;
         }
 
         .canvas-section {
             margin-bottom: 3rem;
         }
         .canvas-section h4 {
-            color: #1e40af;
+            color: var(--color-primary);
             margin-bottom: 1rem;
             font-weight: 600;
-        }
-        [data-theme="dark"] .canvas-section h4 {
-            color: #93c5fd;
         }
 
         .component-showcase {
@@ -54,8 +42,8 @@
         }
 
         .showcase-card {
-            background: white;
-            border: 1px solid #e2e8f0;
+            background: var(--color-base-100);
+            border: 1px solid var(--color-base-300);
             border-radius: 12px;
             padding: 1.5rem;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -63,10 +51,6 @@
         .showcase-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-        }
-        [data-theme="dark"] .showcase-card {
-            background: #1e293b;
-            border-color: #334155;
         }
 
         .showcase-card .icon {
@@ -76,20 +60,14 @@
             margin-bottom: 1rem;
         }
         .showcase-card h5 {
-            color: #1e293b;
+            color: var(--color-base-content);
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
-        [data-theme="dark"] .showcase-card h5 {
-            color: #f1f5f9;
-        }
         .showcase-card p {
-            color: #64748b;
+            color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
             font-size: 0.95rem;
             margin-bottom: 0;
-        }
-        [data-theme="dark"] .showcase-card p {
-            color: #94a3b8;
         }
 
         .code-snippet {
@@ -113,8 +91,8 @@
         }
 
         .cta-section {
-            background: linear-gradient(135deg, #22a7c8 0%, #1d4ed8 100%);
-            color: white;
+            background: linear-gradient(135deg, color-mix(in oklab, var(--color-primary) 12%, var(--color-base-100)) 0%, color-mix(in oklab, var(--color-primary) 22%, var(--color-base-100)) 100%);
+            color: var(--color-base-content);
             padding: 2.5rem;
             border-radius: 12px;
             text-align: center;
@@ -131,8 +109,8 @@
             margin: 0 auto 1.5rem;
         }
         .cta-section .btn {
-            background: white;
-            color: #1e40af;
+            background: var(--color-primary);
+            color: var(--color-primary-content);
             font-weight: 600;
             padding: 0.75rem 2rem;
             border-radius: 8px;
@@ -163,7 +141,7 @@
             width: 2rem;
             height: 2rem;
             background: var(--color-primary);
-            color: white;
+            color: var(--color-primary-content);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -172,10 +150,7 @@
             font-size: 0.9rem;
         }
         .step-list li strong {
-            color: #1e293b;
-        }
-        [data-theme="dark"] .step-list li strong {
-            color: #f1f5f9;
+            color: var(--color-base-content);
         }
     </style>
 </head>

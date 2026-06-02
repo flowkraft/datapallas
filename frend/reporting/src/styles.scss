@@ -125,10 +125,14 @@ label {
   display: none;
 }
 
-/* Content area height anchor (used by tab panels). */
+/* Content area is pinned to the exact space between the header and the status
+   bar (same chrome math the .relative wrapper uses) and scrolls internally when
+   a tab's content is taller than that. Because it can never grow past this
+   height, <main> never overflows the viewport — so the status bar stays visible
+   on every screen and the Electron window itself never shows a scrollbar. */
 .content {
-  overflow-y: hidden;
-  height: 100%;
+  height: calc(100vh - var(--app-header-h) - var(--app-statusbar-h) - var(--cet-offset) - var(--app-main-pt));
+  overflow-y: auto;
 }
 
 /* Sticky table header in samples list. */

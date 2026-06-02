@@ -53,7 +53,7 @@
       </div>
       <div style="grid-column:span 5">
         @if (xmlReporting?.documentburster.report.template.outputtype !== 'output.none' && (xmlReporting?.documentburster.report.template.outputtype !== 'output.jasper' || selectedJasperReport?.filePath === '__inline__')) {
-        <button id="btnAskAiForHelpOutput" type="button" class="btn btn-ghost" (click)="askAiForHelp((xmlReporting?.documentburster.report.template.outputtype))">
+        <button id="btnAskAiForHelpOutput" type="button" class="btn btn-outline w-full" (click)="askAiForHelp((xmlReporting?.documentburster.report.template.outputtype))">
               <strong>{{ getAiHelpButtonLabel(xmlReporting?.documentburster.report.template.outputtype) }}</strong>
         </button>
         }
@@ -340,7 +340,7 @@
         <div style="grid-column:span 5">
           <button
             type="button"
-            class="btn btn-primary w-full"
+            class="btn btn-outline btn-primary w-full"
             (click)="triggerFeatureRequestDialog(xmlReporting?.documentburster.report.template.outputtype)"
           >
             <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.REQUEST-FEATURE' | translate"></span>

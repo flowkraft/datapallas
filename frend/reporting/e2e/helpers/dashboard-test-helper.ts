@@ -264,7 +264,7 @@ export async function getCanvasComponentIds(
   page: Page,
   canvasId: string,
 ): Promise<Record<string, string[]>> {
-  const response = await page.request.get(`http://localhost:9090/api/explore-data/${canvasId}`);
+  const response = await page.request.get(`http://localhost:9090/api/explorations/${canvasId}`);
   const canvas: { state: string } = await response.json();
   const state = JSON.parse(canvas.state);
   const ids: Record<string, string[]> = {};

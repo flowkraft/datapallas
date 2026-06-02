@@ -420,10 +420,13 @@ public class ReportsService {
 		
 		ConfigurationFileInfo configDetails = new ConfigurationFileInfo();
 		configDetails.folderName = folderName;
-		configDetails.filePath = settingsFilePath.replace("\\", "/");
-		
+		// Match against a forward-slash form so the substring checks below hold on
+		// every OS: callers may pass a native path (backslashes on Windows).
+		String normalizedPath = settingsFilePath.replace("\\", "/");
+		configDetails.filePath = normalizedPath;
+
 		// Determine type based on path
-		if (settingsFilePath.contains("/config/reports-jasper/")) {
+		if (normalizedPath.contains("/config/reports-jasper/")) {
 			configDetails.type = "config-jasper-reports";
 			// Find the .jrxml in the same folder and parse parameters from it
 			File[] jrxmlFiles = itemDir.toFile().listFiles(
@@ -433,9 +436,9 @@ public class ReportsService {
 				configDetails.reportParameters = ReportParametersHelper.parseJrxmlParameters(jrxmlContent);
 			}
 			return configDetails;
-		} else if (settingsFilePath.contains("/config/reports/")) {
+		} else if (normalizedPath.contains("/config/reports/")) {
 			configDetails.type = "config-reports";
-		} else if (settingsFilePath.contains("/config/samples/")) {
+		} else if (normalizedPath.contains("/config/samples/")) {
 			configDetails.type = "config-samples";
 		} else {
 			// For burst configs, no DSL files to parse
@@ -912,7 +915,7 @@ public class ReportsService {
 		return cipher.encrypt(value);
 	}
 
-	public ReportingSettings loadSettingsReporting(String configFilePath) throws Exception {
+	public synchronized ReportingSettings loadSettingsReporting(String configFilePath) throws Exception {
 
 		Settings settings = new Settings(configFilePath);
 		settings.loadSettings();
@@ -1376,6 +1379,11 @@ public class ReportsService {
 	/**
 	 * Restore default configuration values for a report atomically.
 	 * Preserves the template name.
+	 *
+	 * Semantic: conservative and non-destructive. Only settings.xml and
+	 * reporting.xml are restored from config/_defaults/. Any other per-report
+	 * artifact (groovy scripts, uploaded document templates, generated configs,
+	 * ...) is left untouched, preserving user work.
 	 */
 	public void restoreDefaults(String reportId) throws Exception {
 

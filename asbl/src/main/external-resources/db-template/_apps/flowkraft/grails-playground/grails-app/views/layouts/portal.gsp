@@ -10,22 +10,7 @@
     <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m22 2-7 20-4-9-9-4Z' fill='%2322a7c8'/></svg>" type="image/svg+xml"/>
 
     <!-- No-flash theme: apply from localStorage cache immediately, then sync from SQLite -->
-    <script>
-        (function() {
-            var THEMES = ['light','dark','cupcake','bumblebee','emerald','corporate','synthwave','retro','cyberpunk','valentine','halloween','garden','forest','aqua','lofi','pastel','fantasy','wireframe','black','luxury','dracula','cmyk','autumn','business','acid','lemonade','night','coffee','winter','dim','nord','sunset','caramellatte','abyss','silk'];
-            var cached = localStorage.getItem('rb-theme') || 'light';
-            document.documentElement.setAttribute('data-theme', THEMES.indexOf(cached) >= 0 ? cached : 'light');
-            fetch('/settings?key=theme.mode')
-                .then(function(r) { return r.json(); })
-                .then(function(d) {
-                    if (d.value && !localStorage.getItem('rb-theme') && THEMES.indexOf(d.value) >= 0) {
-                        document.documentElement.setAttribute('data-theme', d.value);
-                        localStorage.setItem('rb-theme', d.value);
-                    }
-                })
-                .catch(function() {});
-        })();
-    </script>
+    <g:render template="/common/themeInit"/>
 
     <!-- DataPallas runtime config (Groovy interpolation — do NOT remove) -->
     <%@ page import="flowkraft.frend.RbUtils" %>
@@ -120,7 +105,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var current = document.documentElement.getAttribute('data-theme') || 'light';
+        var current = document.documentElement.getAttribute('data-theme') || 'dark';
         document.querySelectorAll('.theme-checkmark').forEach(function(el) {
             el.style.visibility = el.getAttribute('data-theme-name') === current ? 'visible' : 'hidden';
         });

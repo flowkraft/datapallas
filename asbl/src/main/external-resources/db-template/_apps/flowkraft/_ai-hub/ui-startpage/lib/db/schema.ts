@@ -43,15 +43,9 @@ export const DEFAULT_CONFIG = {
     value: 'grails',
     description: 'Preferred web app stack for self-service portals (grails or nextjs)',
   },
-  // Theme settings - persisted in SQLite instead of localStorage
-  'theme.color': {
-    value: 'datapallas',
-    description: 'Color theme name (datapallas, ocean, forest, sunset, etc.)',
-  },
-  'theme.mode': {
-    value: 'light',
-    description: 'Theme mode (light or dark)',
-  },
+  // NOTE: theme is intentionally NOT seeded. The app-wide default lives in code
+  // (DEFAULT_THEME in app/layout.tsx). 'theme.color' is written only when a user
+  // explicitly picks a theme, so it always reflects a real user choice.
   'llm.provider': {
     value: '{"activeProviderId":"openai","providers":{}}',
     description: 'LLM API provider configuration (JSON)',

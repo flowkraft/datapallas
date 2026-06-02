@@ -175,7 +175,7 @@ async function publishDashboard(page: Page): Promise<{ reportId: string; dashboa
 
   const [response] = await Promise.all([
     page.waitForResponse(
-      r => /\/explore-data\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
+      r => /\/explorations\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
       { timeout: 90_000 },
     ),
     confirmBtn.click(),
@@ -259,7 +259,7 @@ test.describe('Data Canvas Use Cases', () => {
       : app.context.pages()[0];
 
     const connectionCode = toConnectionCode(CONNECTION_NAME, DB_VENDOR);
-    const dbConnsResp = await fetch('http://localhost:9090/api/connections/database');
+    const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database');
     const existingConns: Array<{ fileName: string }> = await dbConnsResp.json();
     if (!existingConns.some(c => c.fileName === `${connectionCode}.xml`)) {
       await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
@@ -2918,7 +2918,7 @@ return ctx.dbSql.rows(sql)`,
     await page.waitForLoadState('networkidle');
     await page.evaluate(async () => {
       const res = await fetch('http://localhost:9090/api/system/preferences', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: { showsamples: true } }),
       });

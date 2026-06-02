@@ -105,7 +105,7 @@ test.describe('', async () => {
 
       ft = ft
         .gotoBurstScreen()
-        .click('#reportGenerationMailMergeTab-link')
+        .click('#tab-btn-reportGenerationMailMergeTab')
         .elementShouldBeVisible('#selectMailMergeClassicReport')
         .elementShouldNotBeVisible('#mailMergeClassicReportInputFile')
         .elementShouldNotBeVisible('#browseMailMergeClassicReportInputFile')
@@ -145,9 +145,9 @@ test.describe('', async () => {
       return ft
         .moveFile(tempStoragePath, docxTemplatePath)
         .gotoBurstScreen()
-        .waitOnElementToBecomeVisible('#reportGenerationMailMergeTab-link')
-        .waitOnElementToBecomeEnabled('#reportGenerationMailMergeTab-link')
-        .click('#reportGenerationMailMergeTab-link')
+        .waitOnElementToBecomeVisible('#tab-btn-reportGenerationMailMergeTab')
+        .waitOnElementToBecomeEnabled('#tab-btn-reportGenerationMailMergeTab')
+        .click('#tab-btn-reportGenerationMailMergeTab')
         .waitOnElementToBecomeVisible('#noReportsShowMeHowToConfigureReports')
         .waitOnElementToBecomeEnabled('#noReportsShowMeHowToConfigureReports');
     },
@@ -239,7 +239,7 @@ test.describe('', async () => {
 
       // When no user-created DB connection exists yet, the first one is
       // automatically made the default — skip makeConnectionAsDefault in that case.
-      const dbConnsResp = await fetch('http://localhost:9090/api/connections/database');
+      const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database');
       const dbConns: Array<{ fileName: string; isSample?: boolean }> = await dbConnsResp.json();
       const hasUserDbConn = dbConns.some(c => !c.isSample);
 

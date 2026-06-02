@@ -114,8 +114,9 @@
     }
 
     <!-- AI Copilot modal (dp-dialog) -->
+    @if (isModalVisible) {
     <dp-dialog header="AI Copilot" [(visible)]="isModalVisible"
-      [style]="{ width: '90vw', 'max-width': '1100px' }">
+      [style]="{ width: '90vw', 'max-width': '1100px', height: '85vh' }">
       <!-- Embed the shared tab content -->
       <ng-container *ngTemplateOutlet="tabContentView"></ng-container>
       <div ngProjectAs="[footer]">
@@ -143,10 +144,6 @@
           </button>
         </div>
     </dp-dialog>
-
-    <!-- Embedded Mode: Just the Tab Content -->
-    @if (mode() === 'embedded') {
-      <ng-container *ngTemplateOutlet="tabContentView"></ng-container>
     }
 
     <!-- Shared Tab Content View -->
@@ -156,27 +153,33 @@
         (activeTabChange)="onAiTabChange($event)"
         style="height: 100%; display: flex; flex-direction: column; overflow: hidden; width: 100%;"
         >
-        <!-- Tab 1: AI Prompts -->
-        <dp-tab>
+        <!-- Tab 1: AI Prompts — flex:1 fills the tab strip's remaining height.
+             No inline `display` here: the inactive tab relies on the [hidden]
+             attribute (display:none), which an inline display:flex would override. -->
+        <dp-tab style="flex: 1 1 auto; min-height: 0;">
           <ng-template dpTabHeading>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>&nbsp; AI Prompts
           </ng-template>
 
-            <!-- AI Prompts UI - Fixed container with single scrollbar -->
+            <!-- AI Prompts UI — fills the dialog body via flex; inner regions
+                 (sidebar list + prompt text) own the only scrollbars. -->
             <div
               class="container-fluid pt-3"
         style="
-          height: calc(100vh - 215px);
+          height: 100%;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
           overflow: hidden;
           width: 100%;
           max-width: 100%;
           padding: 0 15px;
         "
               >
-              <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;height: 100%; margin: 0; width: 100%">
-                <!-- Left Sidebar - Narrower to prevent content overflow -->
+              <div style="display:flex;gap:1rem;flex: 1 1 auto;min-height: 0; margin: 0; width: 100%">
+                <!-- Left Sidebar - user-resizable (drag the bottom-right grip), like the email editor's resizable area -->
                 <div
-                  style="grid-column:span 3;height: 100%;overflow-y: hidden;border-right: 1px solid #eee;padding-right: 10px;"
+                  style="flex: 0 0 auto;width: 320px;min-width: 220px;max-width: 640px;resize: horizontal;height: 100%;overflow: hidden;display: flex;flex-direction: column;border-right: 1px solid var(--color-base-300);padding-right: 10px;"
                   >
                   <!-- Search Input -->
                   <div class="mb-3">
@@ -189,12 +192,13 @@
                       />
                     </div>
 
-                    <!-- Category/Tags Tabs -->
-                    <dp-tabs>
-                      <dp-tab heading="Categories">
+                    <!-- Category/Tags Tabs — fill the sidebar so the list is the
+                         ONLY scroller (no outer sidebar scrollbar). -->
+                    <dp-tabs style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden;">
+                      <dp-tab heading="Categories" style="flex: 1 1 auto; min-height: 0;">
                         <ul
                           class="list-group list-group-flush"
-                          style="max-height: 420px; overflow-y: auto"
+                          style="height: 100%; min-height: 0; overflow-y: auto"
                           >
                           @for (cat of categoriesWithCounts; track cat) {
                             <li
@@ -223,10 +227,10 @@
                         </dp-tab>
 
                         <!-- Tags Tab -->
-                        <dp-tab heading="Tags">
+                        <dp-tab heading="Tags" style="flex: 1 1 auto; min-height: 0;">
                           <div
                             class="tags-container"
-                            style="padding-top: 10px; max-height: 420px; overflow-y: auto"
+                            style="padding-top: 10px; height: 100%; min-height: 0; overflow-y: auto"
                             >
                             @for (tag of uniqueTags; track tag) {
                               <span
@@ -240,7 +244,7 @@
                       display: inline-block;
                       padding: 3px 6px;
                       border-radius: 3px;
-                      border: 1px solid #ddd;
+                      border: 1px solid var(--color-base-300);
                     "
                                 >
                                 {{ tag }}
@@ -253,13 +257,15 @@
 
                     <!-- Right Content Area - Ensure no horizontal overflow -->
                     <div
-                      style="grid-column:span 9;height: 100%;padding-left: 15px;padding-right: 15px;display: flex;flex-direction: column;overflow: visible;"
+                      style="flex: 1 1 auto;min-width: 0;min-height: 0;padding-left: 15px;padding-right: 15px;display: flex;flex-direction: column;overflow: hidden;"
                       >
-                      <!-- Content Container - Scrolls within itself -->
+                      <!-- Content Container - flex column; the inner prompt text owns the scroll -->
                       <div
               style="
-                flex: 1;
-                overflow: auto;
+                flex: 1 1 auto;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
                 width: 100%;
                 max-width: 100%;
                 margin-top: 15px;
@@ -270,7 +276,7 @@
                         >
                         <!-- Expanded Prompt View -->
                         @if (expandedPrompt) {
-                          <div style="max-width: 100%">
+                          <div style="max-width: 100%; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;">
                             <!-- CHANGED: Moved Back to List button to a dedicated row above the title -->
                             <div class="mb-3">
                               <button
@@ -281,7 +287,7 @@
                               </button>
                               <button
                                 id="btnCopyPromptText"
-                                class="btn btn-sm btn-primary"
+                                class="btn btn-sm btn-outline btn-primary"
                                 (click)="copyToClipboard(expandedPrompt.promptText)"
                                 title="Copy prompt text to clipboard"
                                 style="white-space: nowrap"
@@ -297,8 +303,8 @@
                                 {{ expandedPrompt.title }}
                               </h4>
                             </div>
-                            <div class="card mb-3" style="max-width: 100%">
-                              <div class="card-body">
+                            <div class="card mb-3" style="max-width: 100%; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
+                              <div class="card-body" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden;">
                                 <p>
                                   <strong>Description:</strong> {{
                                   expandedPrompt.description }}
@@ -322,7 +328,7 @@
                             display: inline-block;
                             padding: 3px 6px;
                             border-radius: 3px;
-                            border: 1px solid #ddd;
+                            border: 1px solid var(--color-base-300);
                           "
                                           >
                                           {{ tag }}
@@ -336,11 +342,12 @@
                       style="
                         white-space: pre-wrap;
                         word-wrap: break-word;
-                        background-color: #f8f9fa;
-                        border: 1px solid #dee2e6;
+                        background-color: var(--color-base-200);
+                        border: 1px solid var(--color-base-300);
                         padding: 10px;
                         border-radius: 4px;
-                        max-height: 290px;
+                        flex: 1 1 auto;
+                        min-height: 120px;
                         overflow-y: auto;
                         max-width: 100%;
                         margin-top: 15px;
@@ -361,7 +368,8 @@
                           @if (!expandedPrompt) {
                             <div
                 style="
-                  max-height: calc(100vh - 290px);
+                  flex: 1 1 auto;
+                  min-height: 0;
                   overflow-y: auto;
                   padding-bottom: 15px;
                 "
@@ -456,13 +464,13 @@
                     </dp-tab>
 
                     <!-- Tab 2: Hey AI -->
-                    <dp-tab>
+                    <dp-tab style="flex: 1 1 auto; min-height: 0;">
                       <ng-template dpTabHeading>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>&nbsp; Hey AI, Help Me...
                       </ng-template>
                       <div
                         class="p-3"
-                        style="height: calc(100vh - 215px); overflow: auto; max-width: 100%"
+                        style="height: 100%; overflow: auto; max-width: 100%"
                         >
                         <p>"Hey AI" tab content placeholder</p>
                       </div>

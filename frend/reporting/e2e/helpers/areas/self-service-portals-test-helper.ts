@@ -152,7 +152,13 @@ export class SelfServicePortalsTestHelper {
     if (contextOptions.deviceScaleFactor && contextOptions.deviceScaleFactor !== 1) {
       launchArgs.push(`--force-device-scale-factor=${contextOptions.deviceScaleFactor}`);
     }
-    const browser = await chromium.launch({ headless, args: launchArgs });
+    // Use the system Edge (Chromium 130+) instead of Playwright 1.41.2's bundled
+    // chromium-1097 (~Chromium 121, January 2024). The bundled version has known
+    // crash regressions in heavy daisyUI v5 / color-mix(in oklab, ...) rendering
+    // that fire on the heavier playground pages (Demo Pivot's 15-pivot grid,
+    // Warehouse OLAP). System Edge has the fixes; tests rendering lighter pages
+    // already pass with the bundled Chromium, so this change is downside-free.
+    const browser = await chromium.launch({ headless, args: launchArgs, channel: 'msedge' });
     const context = await browser.newContext(contextOptions);
     const page = await context.newPage();
     return { browser, context, page };

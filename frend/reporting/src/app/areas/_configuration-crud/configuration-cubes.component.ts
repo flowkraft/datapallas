@@ -417,9 +417,16 @@ cube {
       const result = await this.cubesService.parseDsl(
         this.editingCube.dslCode,
       );
-      this.parsedCube = result;
-      this.parsedCubeConfigJson = JSON.stringify(result);
-      this.cdRef.detectChanges();
+      // Only re-bind `parsedCube` when the parse output actually differs.
+      // ngx-codejar can emit (update) events with unchanged content during
+      // Angular CD cycles; without this guard each spurious emit creates a new
+      // object reference and the WC's reactive `$: if (cubeConfig)` wipes the
+      // user's checkbox selections between clicks.
+      if (!_.isEqual(this.parsedCube, result)) {
+        this.parsedCube = result;
+        this.parsedCubeConfigJson = JSON.stringify(result);
+        this.cdRef.detectChanges();
+      }
     } catch (e: any) {
       this.parseDslError = e?.message || 'Failed to parse DSL';
       this.parsedCube = null;

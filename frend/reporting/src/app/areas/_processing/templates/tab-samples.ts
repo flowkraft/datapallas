@@ -35,12 +35,12 @@ export const tabSamplesTemplate = `<ng-template #tabSamplesTemplate>
             @for (sample of samplesService.samples; track $index) {
             <tr
               id="tr{{sample.id}}"
-              (click)="onSampleClick(sample)"
+              (click)="onSampleClick(sample, $event)"
               [ngClass]="{'bg-primary/10': sample.activeClicked}"
             >
             <td id="td{{sample.id}}">{{sample.name}}<br>
               <button id="btnSamplesLearnMode{{sample.id}}" type="button" class="btn btn-xs btn-outline mt-1 w-full" (click)="doShowSamplesLearnMoreModal(sample)">Learn More</button>
-              <button type="button" id="btnSampleTryIt{{sample.id}}" class="btn btn-xs btn-primary mt-1 w-full" (click)="doSampleTryIt(sample)">Try It</button>
+              <button type="button" id="btnSampleTryIt{{sample.id}}" class="btn btn-xs btn-outline btn-primary mt-1 w-full" (click)="doSampleTryIt(sample)">Try It</button>
             </td>
             <td>
                 @if (sample.step1 == 'merge') {

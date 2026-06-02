@@ -79,6 +79,14 @@ public class JobExecutionService {
 
 		executor.submit(() -> {
 			jobStore.updateStatus(jobId, "running");
+			// Wire the jobFilePath sink so the worker (CliJob) can report its
+			// actual temp jobFilePath back to the JobRecord — pause/cancel
+			// signal files must use the SAME basename the burst engine checks,
+			// and resume needs to pass this exact path back as a CLI arg.
+			Settings.ACTIVE_JOB_FILE_PATH_SINK.set(jobFilePath -> {
+				jobStore.find(jobId).ifPresent(rec -> rec.activeJobFilePath = jobFilePath);
+				// log.info("Worker reported active jobFilePath for {}: {}", jobId, jobFilePath);
+			});
 			try {
 				System.setProperty("DOCUMENTBURSTER_HOME", AppPaths.PORTABLE_EXECUTABLE_DIR_PATH);
 				Settings.PORTABLE_EXECUTABLE_DIR_PATH = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH;
@@ -94,6 +102,8 @@ public class JobExecutionService {
 				WebSocketJobsExecutionStatsInfo info = new WebSocketJobsExecutionStatsInfo("on.process.failed");
 				info.setExceptionMessage(e.getMessage());
 				messagingTemplate.convertAndSend(Constants.WS_TOPIC_EXECUTION_STATS, info);
+			} finally {
+				Settings.ACTIVE_JOB_FILE_PATH_SINK.remove();
 			}
 		});
 	}

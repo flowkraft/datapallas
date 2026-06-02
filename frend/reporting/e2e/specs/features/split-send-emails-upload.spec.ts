@@ -95,35 +95,35 @@ const _splitSendVerifyEmailsAndUploads = (
   // FTP settings
   ft.click('#leftMenuUploadSettings')
     // FTP settings
-    .click('#ftpTab-link')
+    .click('#tab-btn-ftpTab')
     .click('#ftpCommand')
     .typeText(
       '-T ${extracted_file_path} --ftp-create-dirs -u user:password ftp://ftp.example.com/reports/',
     )
     // File Share settings
-    .click('#fileShareTab-link')
+    .click('#tab-btn-fileShareTab')
     .click('#fileShareCommand')
     .typeText('-T ${extracted_file_path} file://hostname/path/to/the%20folder')
     // FTPS settings
-    .click('#ftpsTab-link')
+    .click('#tab-btn-ftpsTab')
     .click('#ftpsCommand')
     .typeText(
       '-T ${extracted_file_path} --ssl -u user:password ftp://ftp.example.com/reports/',
     )
     // SFTP settings
-    .click('#sftpTab-link')
+    .click('#tab-btn-sftpTab')
     .click('#sftpCommand')
     .typeText(
       '-T ${extracted_file_path} --ftp-create-dirs -u user:password sftp://ftp.example.com/reports/',
     )
     // HTTPS settings
-    .click('#httpTab-link')
+    .click('#tab-btn-httpTab')
     .click('#httpCommand')
     .typeText(
       '-T ${extracted_file_path} --ntlm -u user:password https://sharepointserver.com/reports/',
     )
     // Cloud Upload settings
-    .click('#cloudUploadTab-link')
+    .click('#tab-btn-cloudUploadTab')
     .click('#cloudUploadCommand')
     .typeText(
       '-T ${extracted_file_path} --ntlm -u user:password https://s3.amazonaws.com/documentburster',

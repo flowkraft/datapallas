@@ -32,7 +32,7 @@ export const modalVariablesTemplate = `<dp-dialog id="modalSelectVariable" heade
   </label>
 
   <div ngProjectAs="[footer]">
-    <button id="btnOKConfirmation" class="btn btn-primary dburst-button-question-confirm" type="button" (click)="onModalOK()"
+    <button id="btnOKConfirmation" class="btn btn-outline btn-primary dburst-button-question-confirm" type="button" (click)="onModalOK()"
       [disabled]="!getSelectedVariable()">{{
       'BUTTONS.OK' | translate }}</button>
 

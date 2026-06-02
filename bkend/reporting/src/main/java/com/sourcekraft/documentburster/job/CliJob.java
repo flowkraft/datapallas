@@ -325,6 +325,20 @@ public class CliJob {
 
 		jobFilePath = getJobFilePath();
 
+		// Publish the actual jobFilePath (the full temp path, e.g.
+		// ".../temp/temp-524") to the caller — server-side JobsController uses
+		// it to (a) write pause/cancel signal files at the matching basename
+		// and (b) pass it back to the worker as the CLI arg for resume.
+		java.util.function.Consumer<String> sink =
+				com.sourcekraft.documentburster.common.settings.Settings.ACTIVE_JOB_FILE_PATH_SINK.get();
+		if (sink != null) {
+			try {
+				sink.accept(jobFilePath);
+			} catch (Exception ignored) {
+				/* sink errors must not crash the burst */
+			}
+		}
+
 		JobDetails jobDetails = new JobDetails();
 
 		jobDetails.filepath = targetFilePath;

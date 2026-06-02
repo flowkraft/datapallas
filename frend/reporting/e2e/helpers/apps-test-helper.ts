@@ -94,7 +94,7 @@ export class AppsTestHelper {
       .waitOnElementToContainText(stateSel, 'stopped', timeout)
       .click(btnSel)
       .confirmDialogShouldBeVisible()
-      .waitOnElementToContainText('#confirmDialog .modal-body', appName)
+      .waitOnElementToContainText('#confirmDialog .modal-box', appName)
       .clickYesDoThis();
 
     // Wait for starting state

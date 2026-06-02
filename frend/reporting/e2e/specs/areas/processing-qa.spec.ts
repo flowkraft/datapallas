@@ -280,7 +280,7 @@ const _splitSendVerifyEmails = async (
     // email message settings
     ConfigurationTestHelper.loadConfiguration(ft, folderName)
       .click('#leftMenuEmailSettings')
-      .click('#emailMessageTab-link')
+      .click('#tab-btn-emailMessageTab')
       .click('#emailToAddress');
 
     if (processingMode == Constants.PROC_GENERATE) {
@@ -309,7 +309,7 @@ const _splitSendVerifyEmails = async (
     }
 
     if (processingMode == Constants.PROC_GENERATE) {
-      ft.click('#reportGenerationMailMergeTab-link')
+      ft.click('#tab-btn-reportGenerationMailMergeTab')
         .click('#selectMailMergeClassicReport')
         .waitOnElementToBecomeVisible(
           'span.ng-option-label:has-text("Payslips (input CSV)")',

@@ -56,7 +56,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 1;margin-right: 40px">
-        <button id="btnRunTest" type="button" class="btn btn-primary" (click)="doRunTest()" [disabled]="
+        <button id="btnRunTest" type="button" class="btn btn-outline btn-primary" (click)="doRunTest()" [disabled]="
             runTestShouldBeDisabled() ||
             executionStatsService.jobStats.numberOfActiveJobs > 0
           ">

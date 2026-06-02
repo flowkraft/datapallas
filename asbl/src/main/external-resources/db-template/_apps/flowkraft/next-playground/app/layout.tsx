@@ -30,10 +30,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // App-wide default daisyUI theme for first-time visitors (no saved choice).
+  // Single source of truth in code — change this one value to change the default.
+  // A user's pick is persisted (localStorage 'rb-theme' + server 'theme.color') and always wins.
+  const DEFAULT_THEME = "dark";
   const noFlashScript = `(function() {
+  var DEFAULT_THEME = ${JSON.stringify(DEFAULT_THEME)};
   var THEMES = ['light','dark','cupcake','bumblebee','emerald','corporate','synthwave','retro','cyberpunk','valentine','halloween','garden','forest','aqua','lofi','pastel','fantasy','wireframe','black','luxury','dracula','cmyk','autumn','business','acid','lemonade','night','coffee','winter','dim','nord','sunset','caramellatte','abyss','silk'];
-  var cached = localStorage.getItem('rb-theme') || 'light';
-  document.documentElement.setAttribute('data-theme', THEMES.indexOf(cached) >= 0 ? cached : 'light');
+  var cached = localStorage.getItem('rb-theme') || DEFAULT_THEME;
+  document.documentElement.setAttribute('data-theme', THEMES.indexOf(cached) >= 0 ? cached : DEFAULT_THEME);
   fetch('/api/settings?key=theme.color')
     .then(function(r) { return r.json(); })
     .then(function(d) {

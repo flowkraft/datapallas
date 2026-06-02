@@ -60,20 +60,29 @@ export class StatusBarComponent implements OnInit, OnDestroy {
     this.webSocketService.wsSubscriptions = [];
   }
 
+  // Job types that go through AbstractBurster — they create .progress files
+  // and honor .pause / .cancel signals. Everything else (email tests, license
+  // activate/deactivate, SMS tests, docker/starter-pack ops, app updates) is
+  // either too quick to pause meaningfully or doesn't use the signal-file flow.
+  private static readonly PAUSABLE_JOB_TYPES = new Set(['burst', 'generate', 'merge']);
+
   shouldShowPauseCancelButtons() {
-    if (
-      this.executionStatsService.jobStats.niceWorkingOnFileNames === 'email' ||
-      this.executionStatsService.jobStats.niceWorkingOnFileNames ===
-        'license' ||
-      this.executionStatsService.jobStats.niceWorkingOnFileNames === 'twilio' ||
-      this.executionStatsService.jobStats.pauseJobFileExists > 0 ||
-      this.executionStatsService.jobStats.cancelJobFileExists > 0 ||
-      this.executionStatsService.jobStats.numberOfActiveUpdateJobs > 0
-    ) {
+    const stats = this.executionStatsService.jobStats;
+
+    // Already in a pause/cancel transition — hide to avoid re-triggering.
+    if (stats.pauseJobFileExists > 0 || stats.cancelJobFileExists > 0) {
       return false;
     }
 
-    return true;
+    // App update jobs aren't tracked in workingOnJobs but still bump active count.
+    if (stats.numberOfActiveUpdateJobs > 0) {
+      return false;
+    }
+
+    // Show only when at least one running job is a pausable type.
+    return stats.workingOnJobs.some(j =>
+      StatusBarComponent.PAUSABLE_JOB_TYPES.has(j?.jobType),
+    );
   }
 
   // jobs

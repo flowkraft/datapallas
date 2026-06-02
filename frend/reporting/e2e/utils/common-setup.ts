@@ -23,6 +23,42 @@ process.on('unhandledRejection', (reason, p) => {
 
 const isElectron = process.env.TEST_ENV === 'electron';
 
+// Surface renderer-side JS errors + console warnings/errors to the e2e stdout
+// where they sit next to the trace. Without this, a renderer crash (signal-
+// migration bug, NG0100, infinite CD, OOM) only shows as "Target page... has
+// been closed" with no JS context. We mark each Page once because the Electron
+// page is reused across tests and unmarked attachment would stack listeners.
+function attachRendererCaptureOnce(page: Page) {
+  const p = page as Page & { __rbRendererCaptureAttached?: boolean };
+  if (p.__rbRendererCaptureAttached) return;
+  p.__rbRendererCaptureAttached = true;
+
+  page.on('console', (msg) => {
+    const t = msg.type();
+    if (t === 'error' || t === 'warning') {
+      console.log(`[RENDERER ${t}] ${msg.text()}`);
+      return;
+    }
+    // Surface opt-in diagnostic markers from the renderer to test stdout.
+    // The source emits [RB-DIAG] lines from key paths (configuration.component
+    // _initFromRouteParams, the save subscription, etc.). Without this filter,
+    // type=='log' messages would be dropped and these traces invisible.
+    const text = msg.text();
+    if (text.startsWith('[RB-DIAG]')) {
+      console.log(`[RENDERER ${t}] ${text}`);
+    }
+  });
+  page.on('pageerror', (err) => {
+    console.log(`[RENDERER pageerror] ${err.stack || err.message}`);
+  });
+  page.on('crash', () => {
+    console.log('[RENDERER crash] page crashed');
+  });
+  page.on('close', () => {
+    console.log('[RENDERER close] page closed');
+  });
+}
+
 export const electronBeforeAfterAllTest = isElectron
   ? base.extend<
       {
@@ -73,6 +109,8 @@ export const electronBeforeAfterAllTest = isElectron
 
             //await firstPage.reload();
 
+            attachRendererCaptureOnce(firstPage);
+
             const ft = new FluentTester(firstPage);
 
             await ft.gotoStartScreen();
@@ -117,6 +155,8 @@ export const electronBeforeAfterAllTest = isElectron
           }
 
           const [firstPage] = context.pages();
+
+          attachRendererCaptureOnce(firstPage);
 
           const ft = new FluentTester(firstPage);
 

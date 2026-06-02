@@ -4,8 +4,8 @@
     <div style="grid-column:span 8">
       <input
         id="licenseKey"
-        [(ngModel)]="licenseService?.licenseDetails?.license.key"
-        (ngModelChange)="saveLicenseKey()"
+        [ngModel]="licenseService?.licenseDetails?.license.key"
+        (ngModelChange)="onLicenseKeyChanged($event)"
         class="input"
         [disabled]="!this.storeService.configSys.sysInfo.setup.java.isJavaOk"
         autofocus
@@ -21,7 +21,7 @@
           style="grid-column:span 3"
           >
           <a href="https://store.datapallas.com" target="_blank">
-            <button id="btnGetLicenseKey" class="btn btn-primary" type="button">
+            <button id="btnGetLicenseKey" class="btn btn-outline btn-primary" type="button">
               {{ "COMPONENTS.LICENSE.GET-LICENSE-KEY" | translate }}
             </button>
           </a>
@@ -36,7 +36,7 @@
           >
           <button
             id="btnCheckLicenseKeyDisabled"
-            class="btn btn-primary"
+            class="btn btn-outline btn-primary"
             type="button"
             [disabled]="true"
             >
@@ -52,7 +52,7 @@
             ) {
             <button
               id="btnCheckLicenseKey"
-              class="btn btn-primary"
+              class="btn btn-outline btn-primary"
               type="button"
               (click)="verifyLicense('check')"
               [disabled]="executionStatsService?.jobStats.numberOfActiveJobs > 0"
@@ -67,7 +67,7 @@
             ) {
             <button
               id="btnActivateLicenseKey"
-              class="btn btn-primary"
+              class="btn btn-outline btn-primary"
               type="button"
               (click)="verifyLicense('activate')"
               [disabled]="executionStatsService?.jobStats.numberOfActiveJobs > 0"

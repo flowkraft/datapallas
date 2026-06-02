@@ -208,12 +208,12 @@
       case "url": {
         const url = String(v);
         const safe = escapeHtml(url);
-        return `<a href="${safe}" target="_blank" rel="noopener noreferrer" style="color:#2171b5;text-decoration:underline">${safe}</a>`;
+        return `<a href="${safe}" target="_blank" rel="noopener noreferrer" style="color:var(--rb-accent, var(--color-primary, #2171b5));text-decoration:underline">${safe}</a>`;
       }
       case "email": {
         const addr = String(v);
         const safe = escapeHtml(addr);
-        return `<a href="mailto:${safe}" style="color:#2171b5;text-decoration:underline">${safe}</a>`;
+        return `<a href="mailto:${safe}" style="color:var(--rb-accent, var(--color-primary, #2171b5));text-decoration:underline">${safe}</a>`;
       }
       case "image": {
         const url = String(v);
@@ -238,7 +238,7 @@
         // 2-letter codes → monospace tag; full names → plain text.
         const raw = String(v);
         if (/^[A-Za-z]{2}$/.test(raw)) {
-          return `<span class="rb-fmt-state" style="padding:1px 6px;border:1px solid #ccc;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;">${escapeHtml(raw.toUpperCase())}</span>`;
+          return `<span class="rb-fmt-state" style="padding:1px 6px;border:1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;">${escapeHtml(raw.toUpperCase())}</span>`;
         }
         return escapeHtml(raw);
       }
@@ -296,7 +296,7 @@
 
       if (data.length > 1) {
         const note = document.createElement("div");
-        note.style.cssText = "font-size:11px;color:#999;margin-bottom:6px;";
+        note.style.cssText = "font-size:11px;color:color-mix(in oklab, currentColor 60%, transparent);margin-bottom:6px;";
         note.textContent = `Showing row ${idx + 1} of ${data.length}.`;
         wrap.appendChild(note);
       }
@@ -309,7 +309,7 @@
       const interactive = options.interactive === true;
       for (const [key, val] of entries) {
         const dt = document.createElement("dt");
-        dt.style.cssText = "color:#666;font-weight:600;display:flex;align-items:center;gap:4px;";
+        dt.style.cssText = "color:color-mix(in oklab, currentColor 60%, transparent);font-weight:600;display:flex;align-items:center;gap:4px;";
         const label = document.createElement("span");
         label.textContent = titles[key] ?? key;
         dt.appendChild(label);
@@ -321,7 +321,7 @@
           btn.dataset.field = key;
           btn.setAttribute("aria-label", "Column settings for " + key);
           btn.title = "Column settings";
-          btn.style.cssText = "padding:1px;border:none;background:transparent;color:#999;cursor:pointer;line-height:0;opacity:0.4;";
+          btn.style.cssText = "padding:1px;border:none;background:transparent;color:color-mix(in oklab, currentColor 60%, transparent);cursor:pointer;line-height:0;opacity:0.4;";
           btn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/></svg>`;
           btn.onmouseenter = () => { btn.style.opacity = "1"; };
           btn.onmouseleave = () => { btn.style.opacity = "0.4"; };
@@ -329,7 +329,7 @@
         }
 
         const dd = document.createElement("dd");
-        dd.style.cssText = "margin:0;color:#222;word-break:break-word;";
+        dd.style.cssText = "margin:0;color:inherit;word-break:break-word;";
         const spec = formats[key];
         if (spec && spec.kind) {
           dd.innerHTML = formatByKind(val, spec);

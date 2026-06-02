@@ -360,7 +360,7 @@ export function SchemaBrowser({
                                   addWidgetFromCube(cube.id);
                                   setPendingAdd(null);
                                 }}
-                                className="font-bold text-blue-600 hover:underline"
+                                className="font-bold text-primary hover:underline"
                               >
                                 Yes
                               </button>
@@ -541,7 +541,7 @@ function TableNode({
             type="button"
             id={`btnConfirmAdd-${table.tableName}`}
             onClick={onConfirmAdd}
-            className="font-bold text-blue-600 hover:underline"
+            className="font-bold text-primary hover:underline"
           >
             Yes
           </button>

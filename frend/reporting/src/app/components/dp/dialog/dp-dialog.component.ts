@@ -40,21 +40,32 @@ import { NgStyle } from '@angular/common';
        looks like a foreign white panel sitting on top of a colored theme. */
     .dp-dialog-box {
       position: relative;
+      display: flex;
+      flex-direction: column;
       background: var(--color-base-100);
       color: var(--color-base-content);
       border-radius: var(--radius-box, 8px);
       padding: 1rem 1.5rem;
       max-width: 90vw;
       max-height: 85vh;
-      overflow-y: auto;
+      overflow: hidden;
       box-shadow: 0 25px 50px -12px color-mix(in oklab, var(--color-base-content) 25%, transparent);
       z-index: 1;
     }
-    /* Close button — top-right of the box, theme-aware */
+    /* Scrollable body — the ONLY part of the dialog that scrolls. The header
+       (drag handle) and footer (modal-action) stay pinned, so dialog action
+       buttons are always visible no matter how tall the projected content is. */
+    .dp-dialog-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    /* Close button — top-right of the box, theme-aware bordered circle. */
     .dp-close-btn {
       position: absolute;
       top: 0.5rem;
       right: 0.5rem;
+      z-index: 10;
       width: 1.75rem;
       height: 1.75rem;
       display: flex;
@@ -65,7 +76,7 @@ import { NgStyle } from '@angular/common';
       background: transparent;
       color: var(--color-base-content);
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: 1rem;
       line-height: 1;
       padding: 0;
     }
@@ -75,6 +86,7 @@ import { NgStyle } from '@angular/common';
        gets the grab cursor on the entire header strip, not just on the title
        text). Hand cursor on hover, closed-fist while actually dragging. */
     .dp-drag-handle {
+      flex: 0 0 auto;
       margin: -1.5rem -1.5rem 0;
       padding: 1.5rem 1.5rem 0.5rem;
       cursor: grab;
@@ -89,6 +101,7 @@ import { NgStyle } from '@angular/common';
     }
     /* Footer actions row */
     .modal-action {
+      flex: 0 0 auto;
       display: flex;
       justify-content: flex-end;
       gap: 0.5rem;
@@ -99,7 +112,7 @@ import { NgStyle } from '@angular/common';
     <dialog
       #dlg
       class="modal"
-      [attr.aria-labelledby]="headerId"
+      [attr.aria-labelledby]="effectiveHeaderId"
       (close)="onNativeClose()"
       (click)="onDialogClick($event)"
     >
@@ -108,18 +121,21 @@ import { NgStyle } from '@angular/common';
         (click)="$event.stopPropagation()">
         @if (closable()) {
           <button
+            [id]="closeId() || null"
             class="dp-close-btn"
             type="button"
             (click)="close()"
             aria-label="Close"
-          >✕</button>
+          >&times;</button>
         }
         <div class="dp-drag-handle"
              [class.dp-dragging]="dragging"
              (mousedown)="onDragStart($event)">
-          <h3 [id]="headerId" class="font-bold text-lg pr-8">{{ header() }}</h3>
+          <h3 [id]="effectiveHeaderId" class="font-bold text-lg pr-8">{{ header() }}</h3>
         </div>
-        <ng-content></ng-content>
+        <div class="dp-dialog-body">
+          <ng-content></ng-content>
+        </div>
         <div class="modal-action">
           <ng-content select="[footer]"></ng-content>
         </div>
@@ -129,6 +145,8 @@ import { NgStyle } from '@angular/common';
 })
 export class DpDialogComponent implements AfterViewInit {
   header = input<string>('');
+  headerId = input<string | undefined>(undefined);
+  closeId = input<string | undefined>(undefined);
   visible = model<boolean>(false);
   modal = input<boolean>(true);
   closable = input<boolean>(true);
@@ -142,7 +160,11 @@ export class DpDialogComponent implements AfterViewInit {
   private dlg = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
   private box = viewChild.required<ElementRef<HTMLDivElement>>('box');
 
-  readonly headerId = `dp-dlg-${Math.random().toString(36).slice(2, 8)}`;
+  private readonly defaultHeaderId = `dp-dlg-${Math.random().toString(36).slice(2, 8)}`;
+
+  get effectiveHeaderId(): string {
+    return this.headerId() || this.defaultHeaderId;
+  }
   private viewReady = false;
 
   // Drag state — grabbing the header offsets the modal-box via translate3d,

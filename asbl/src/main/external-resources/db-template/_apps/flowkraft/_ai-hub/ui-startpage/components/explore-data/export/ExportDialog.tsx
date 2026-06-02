@@ -103,30 +103,30 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
             {!result?.success && (
               <p className="text-sm text-base-content">
                 {isOverride
-                  ? <>This will <span className="font-semibold text-amber-600">override the existing &ldquo;{state.name}&rdquo; dashboard</span> and all existing configurations will be lost. Are you sure you want to continue?</>
+                  ? <>This will <span className="font-semibold text-warning">override the existing &ldquo;{state.name}&rdquo; dashboard</span> and all existing configurations will be lost. Are you sure you want to continue?</>
                   : <>This will publish <span className="font-semibold">&ldquo;{state.name}&rdquo;</span> as a new dashboard in DataPallas.</>
                 }
               </p>
             )}
 
             {!state.connectionId && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <p className="text-xs text-warning bg-warning/10 border border-warning/20 rounded-md px-3 py-2">
                 Select a database connection first (in any widget&apos;s Data tab)
               </p>
             )}
             {!hasWidgets && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <p className="text-xs text-warning bg-warning/10 border border-warning/20 rounded-md px-3 py-2">
                 Add at least one data widget before saving
               </p>
             )}
 
             {result?.success && (
-              <div id="publishSuccess" className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
+              <div id="publishSuccess" className="flex items-center gap-2 text-xs text-success bg-success/10 border border-success/20 rounded-md px-3 py-2">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                 <div>
                   Dashboard published!{" "}
                   <a href={result.dashboardUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-emerald-700 underline">
+                    className="inline-flex items-center gap-1 text-success underline">
                     View dashboard <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                   </a>
                 </div>

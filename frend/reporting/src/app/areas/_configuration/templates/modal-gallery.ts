@@ -4,5 +4,5 @@ export const modalTemplatesGalleryTemplate = `<dburst-templates-gallery-modal
   (useTemplate)="onGalleryTemplateUsed($event)"
   #templatesGalleryModal>
 </dburst-templates-gallery-modal>
-<dburst-ai-manager #aiManagerInstance hidden></dburst-ai-manager>
+<dburst-ai-manager #aiManagerInstance></dburst-ai-manager>
   `;

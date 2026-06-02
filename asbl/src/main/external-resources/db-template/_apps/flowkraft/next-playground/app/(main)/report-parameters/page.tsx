@@ -285,7 +285,7 @@ export default function ReportParametersPage() {
               <div
                 className={`border rounded-lg ${
                   isFiltered
-                    ? "border-warning shadow-[0_0_0_2px_rgba(234,179,8,0.25)]"
+                    ? "border-warning ring-2 ring-warning/30"
                     : "border-base-300"
                 }`}
               >

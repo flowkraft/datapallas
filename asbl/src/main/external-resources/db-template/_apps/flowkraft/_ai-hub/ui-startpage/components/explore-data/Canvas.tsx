@@ -106,11 +106,11 @@ export function Canvas() {
                   <div
                     id={`widgetResizeGrip-${widget.id}`}
                     aria-hidden="true"
-                    style={{ position: "absolute", right: 0, bottom: 0, width: 15, height: 4, background: "var(--foreground)", zIndex: 30, pointerEvents: "none" }}
+                    style={{ position: "absolute", right: 0, bottom: 0, width: 15, height: 4, background: "var(--color-base-content)", zIndex: 30, pointerEvents: "none" }}
                   />
                   <div
                     aria-hidden="true"
-                    style={{ position: "absolute", right: 0, bottom: 0, width: 4, height: 15, background: "var(--foreground)", zIndex: 30, pointerEvents: "none" }}
+                    style={{ position: "absolute", right: 0, bottom: 0, width: 4, height: 15, background: "var(--color-base-content)", zIndex: 30, pointerEvents: "none" }}
                   />
                 </>
               )}

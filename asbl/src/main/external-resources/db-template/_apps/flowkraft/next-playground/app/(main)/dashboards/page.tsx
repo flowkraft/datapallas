@@ -44,14 +44,14 @@ export default function DashboardsPage() {
                 label="Total Revenue"
                 value="$847,320"
                 detail={<><span className="text-success"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3 h-3 inline"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/></svg> 12.5%</span> vs last period</>}
-                borderColor="border-l-green-500"
+                borderColor="border-l-success"
               />
               <KpiCard
                 id="kpi-profit"
                 label="Gross Profit"
                 value="$292,180"
                 detail={<><span className="text-info font-semibold">34.5%</span> profit margin</>}
-                borderColor="border-l-blue-500"
+                borderColor="border-l-info"
               />
               <KpiCard
                 id="kpi-orders"
@@ -65,7 +65,7 @@ export default function DashboardsPage() {
                 label="Outstanding AR"
                 value="$128,450"
                 detail={<><span className="text-warning"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 inline"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg> 23 invoices</span> overdue</>}
-                borderColor="border-l-red-500"
+                borderColor="border-l-error"
               />
             </div>
 
@@ -93,7 +93,7 @@ export default function DashboardsPage() {
                 label="Days Sales Outstanding"
                 value="28"
                 detail={<><span className="text-success"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3 h-3 inline"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"/></svg> 3 days</span> vs target: 30</>}
-                borderColor="border-l-yellow-500"
+                borderColor="border-l-warning"
               />
               <KpiCard
                 id="kpi-top-region"
@@ -108,7 +108,7 @@ export default function DashboardsPage() {
             {/* Charts Row: Revenue Trend + Revenue by Category */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <DashPanel id="panel-revenueTrend" title="Revenue Trend" icon={
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-blue-500">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-info">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/>
                 </svg>
               }>
@@ -161,7 +161,7 @@ export default function DashboardsPage() {
                 />
               </DashPanel>
               <DashPanel id="panel-arAging" title="Accounts Receivable Aging" icon={
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-yellow-500">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-warning">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                 </svg>
               }>

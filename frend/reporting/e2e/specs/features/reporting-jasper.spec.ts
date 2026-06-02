@@ -290,7 +290,7 @@ ORDER BY "EmployeeID"
         .click('#btnTestSqlQuery')
         .confirmDialogShouldBeVisible()
         .clickYesDoThis()
-        .click('#reportingTabulatorTab-link')
+        .click('#tab-btn-reportingTabulatorTab')
         .waitOnTabulatorToBecomeVisible()
         .waitOnTabulatorToHaveRowCount(3)
         .tabulatorCellShouldHaveText(0, 'FirstName', 'Nancy')
@@ -300,7 +300,7 @@ ORDER BY "EmployeeID"
       // Choose the employee profile card template
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingTemplateOutputTab-link')
+        .click('#tab-btn-reportingTemplateOutputTab')
         .waitOnElementToBecomeVisible('#reportOutputType')
         .dropDownSelectOptionHavingValue('#reportOutputType', 'output.jasper');
 
@@ -414,7 +414,7 @@ ORDER BY "EmployeeID"
         .click('#btnTestSqlQuery')
         .confirmDialogShouldBeVisible()
         .clickYesDoThis()
-        .click('#reportingTabulatorTab-link')
+        .click('#tab-btn-reportingTabulatorTab')
         .waitOnTabulatorToBecomeVisible()
         .waitOnTabulatorToHaveRowCount(3)
         .tabulatorCellShouldHaveText(0, 'FirstName', 'Nancy')
@@ -424,7 +424,7 @@ ORDER BY "EmployeeID"
       // Write a custom directory card template directly in the editor
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingTemplateOutputTab-link')
+        .click('#tab-btn-reportingTemplateOutputTab')
         .waitOnElementToBecomeVisible('#reportOutputType')
         .dropDownSelectOptionHavingValue('#reportOutputType', 'output.jasper');
 
@@ -565,14 +565,14 @@ ORDER BY "EmployeeID"
         .click('#btnTestSqlQuery')
         .confirmDialogShouldBeVisible()
         .clickYesDoThis()
-        .click('#reportingTabulatorTab-link')
+        .click('#tab-btn-reportingTabulatorTab')
         .waitOnTabulatorToBecomeVisible()
         .waitOnTabulatorToHaveRowCount(3);
 
       // Write a template that receives the employee info and fetches their recent orders
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingTemplateOutputTab-link')
+        .click('#tab-btn-reportingTemplateOutputTab')
         .waitOnElementToBecomeVisible('#reportOutputType')
         .dropDownSelectOptionHavingValue('#reportOutputType', 'output.jasper');
 
@@ -753,14 +753,14 @@ log.info("Invoice data ready: {} invoices", ctx.reportData.size())
         .click('#btnTestScript')
         .confirmDialogShouldBeVisible()
         .clickYesDoThis()
-        .click('#reportingTabulatorTab-link')
+        .click('#tab-btn-reportingTabulatorTab')
         .waitOnTabulatorToBecomeVisible()
         .waitOnTabulatorToHaveRowCount(3);
 
       // Write an invoice template: header + line item table
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingTemplateOutputTab-link')
+        .click('#tab-btn-reportingTemplateOutputTab')
         .waitOnElementToBecomeVisible('#reportOutputType')
         .dropDownSelectOptionHavingValue('#reportOutputType', 'output.jasper');
 
@@ -902,8 +902,8 @@ function createDbConnection(
       .confirmDialogShouldBeVisible()
       .clickYesDoThis()
       .waitOnElementToBecomeDisabled('#btnTestDbConnection')
-      .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'fa-spin')
-      .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'fa-spin')
+      .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
+      .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
       .waitOnToastToBecomeVisible(
         'success',
         'Successfully connected to the database',

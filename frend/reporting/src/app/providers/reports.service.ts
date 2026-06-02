@@ -231,13 +231,14 @@ export class ReportsService {
       documentburster: { settings: {} },
     };
 
-    // Extract reportId from paths like "config/reports/my-report/settings.xml"
-    const parts = configFilePath.replace(/\\/g, '/').split('/');
-    const reportId = parts.length >= 2 ? parts[parts.length - 2] : '_defaults';
-    const result = await this.apiService.get(
-      `/reports/${encodeURIComponent(reportId)}/settings`,
-    );
-    console.log('[RB-DIAG] loadSettingsByPath reportId:', reportId, 'result keys:', result ? Object.keys(result) : result);
+    // Use the by-path backend endpoint — distinct from /reports/{id}/settings,
+    // which always resolves to {id}/settings.xml. The configuration-load
+    // workflow needs to read arbitrary files (e.g. migrated configs named
+    // burst/15-settings-6.2-custom.xml) by their full path, not by reportId.
+    const result = await this.apiService.get(`/reports/load-by-path`, {
+      path: configFilePath,
+    });
+    // console.log('[RB-DIAG] loadSettingsByPath path:', configFilePath, 'result keys:', result ? Object.keys(result) : result);
     xmlSettings.documentburster = result;
 
     return xmlSettings;

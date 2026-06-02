@@ -26,7 +26,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
             settingsService.currentConfigurationTemplateName
           ]" skipLocationChange="true"
             >&nbsp;
-            <button class="btn btn-primary btn-xs" type="button">
+            <button class="btn btn-outline btn-primary btn-xs" type="button">
               {{
               'AREAS.CONFIGURATION.TAB-ENABLE-DISABLE-DELIVERY.EMAIL-CONFIGURATION'
               | translate }}
@@ -64,7 +64,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           settingsService.currentConfigurationTemplateName
         ]" skipLocationChange="true"
             >&nbsp;
-            <button class="btn btn-primary btn-xs" type="button">
+            <button class="btn btn-outline btn-primary btn-xs" type="button">
               {{
               'AREAS.CONFIGURATION.TAB-ENABLE-DISABLE-DELIVERY.UPLOAD-CONFIGURATION'
               | translate }}
@@ -103,7 +103,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           settingsService.currentConfigurationTemplateName
         ]" skipLocationChange="true"
             >&nbsp;
-            <button class="btn btn-primary btn-xs" type="button">
+            <button class="btn btn-outline btn-primary btn-xs" type="button">
               {{
               'AREAS.CONFIGURATION.TAB-ENABLE-DISABLE-DELIVERY.WEB-CONFIGURATION'
               | translate }}
@@ -142,7 +142,7 @@ export const tabEnableDisableDeliveryTemplate = `<ng-template #tabEnableDisableD
           settingsService.currentConfigurationTemplateName
         ]" skipLocationChange="true"
             >&nbsp;
-            <button class="btn btn-primary btn-xs" type="button">
+            <button class="btn btn-outline btn-primary btn-xs" type="button">
               {{
               'AREAS.CONFIGURATION.TAB-ENABLE-DISABLE-DELIVERY.SMS-CONFIGURATION'
               | translate }}

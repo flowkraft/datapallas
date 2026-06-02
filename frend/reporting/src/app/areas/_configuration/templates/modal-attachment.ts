@@ -1,4 +1,5 @@
-﻿export const modalAttachmentTemplate = `<dp-dialog id="modalSelectAttachment"
+﻿export const modalAttachmentTemplate = `@if (isModalAttachmentVisible) {
+<dp-dialog id="modalSelectAttachment"
   header="{{ 'AREAS.CONFIGURATION.MODAL-ATTACHMENT.SELECT-ATTACHMENT' | translate }}"
   [(visible)]="isModalAttachmentVisible"
 >
@@ -40,7 +41,7 @@
   <div ngProjectAs="[footer]">
     <button
       id="btnOKConfirmation"
-      class="btn btn-primary dburst-button-question-confirm-attachment"
+      class="btn btn-outline btn-primary dburst-button-question-confirm-attachment"
       type="button"
       (click)="onOKAttachmentModal()"
       [disabled]="!modalAttachmentInfo.attachmentFilePath"
@@ -56,4 +57,5 @@
     </button>
   </div>
 </dp-dialog>
+}
 `;

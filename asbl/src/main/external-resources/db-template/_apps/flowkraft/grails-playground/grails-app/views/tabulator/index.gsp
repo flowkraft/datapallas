@@ -7,16 +7,14 @@
     <style>
         rb-tabulator { display: block; width: 100%; }
         .example-card {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--color-base-300);
             border-radius: 8px;
             margin-bottom: 1.5rem;
             overflow: hidden;
             padding: 1rem;
         }
-        [data-theme="dark"] .example-card { border-color: #334155; }
         .example-title { margin: 0 0 0.25rem 0; font-weight: 600; font-size: 0.95rem; }
-        .example-desc { color: #6b7280; font-size: 0.85rem; margin: 0 0 1rem 0; }
-        [data-theme="dark"] .example-desc { color: #94a3b8; }
+        .example-desc { color: color-mix(in oklab, var(--color-base-content) 60%, transparent); font-size: 0.85rem; margin: 0 0 1rem 0; }
         .category-header {
             font-size: 1.1rem;
             font-weight: 700;

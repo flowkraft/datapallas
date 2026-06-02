@@ -82,12 +82,16 @@
         // Note: In production, use your actual Stripe publishable key
         const stripe = Stripe('pk_test_placeholder');
         const elements = stripe.elements();
+        // Resolve active daisyUI theme colors so the Stripe card iframe matches the theme.
+        const rootStyle = getComputedStyle(document.documentElement);
+        const baseContent = rootStyle.getPropertyValue('--color-base-content').trim() || '#1e293b';
+        const mutedContent = 'color-mix(in oklab, ' + baseContent + ' 60%, transparent)';
         const cardElement = elements.create('card', {
             style: {
                 base: {
                     fontSize: '16px',
-                    color: '#1e293b',
-                    '::placeholder': { color: '#94a3b8' }
+                    color: baseContent,
+                    '::placeholder': { color: mutedContent }
                 }
             }
         });

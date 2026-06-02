@@ -11,7 +11,7 @@ let _copilotUrlPromise: Promise<string> | null = null;
 
 export function fetchCopilotUrl(): Promise<string> {
   if (!_copilotUrlPromise) {
-    _copilotUrlPromise = fetch(`${RB_BASE}/system/copilot-url`)
+    _copilotUrlPromise = fetch(`${RB_BASE}/system/info/copilot-url`)
       .then((res) => {
         if (!res.ok) return "https://chatgpt.com/";
         return res.text().then((url) => url?.trim() || "https://chatgpt.com/");
@@ -28,7 +28,7 @@ export function fetchCopilotUrl(): Promise<string> {
 let _lastConnections: ConnectionInfo[] = [];
 
 export async function fetchConnections(): Promise<ConnectionInfo[]> {
-  const res = await fetch(`${RB_BASE}/connections/database`);
+  const res = await fetch(`${RB_BASE}/connections?type=database`);
   if (!res.ok) throw new Error("Failed to load connections");
   const list = await res.json();
   _lastConnections = Array.isArray(list) ? list : [];

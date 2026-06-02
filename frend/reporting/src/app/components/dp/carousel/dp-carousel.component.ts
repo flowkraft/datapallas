@@ -15,29 +15,37 @@ import { NgTemplateOutlet } from '@angular/common';
     standalone: true,
     imports: [NgTemplateOutlet],
     template: `
-    <div class="dp-carousel relative flex flex-col" [style]="style()">
-      <div class="flex-1 overflow-hidden">
-        @if (itemTemplate && value()?.length) {
-          <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: value()[_page] }"></ng-container>
-        }
-      </div>
-      <div class="flex justify-center items-center gap-4 py-2 shrink-0">
+    <div class="dp-carousel" [style]="containerStyle">
+      <div style="display:flex;flex-direction:row;align-items:center;flex:1;overflow:hidden;min-height:0;">
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-ghost"
+          class="btn btn-ghost dp-carousel-prev"
+          [style.visibility]="(value()?.length ?? 0) > 1 ? 'visible' : 'hidden'"
+          style="flex-shrink:0;align-self:center;height:5rem;width:2.5rem;padding:0;font-size:1.75rem;border-radius:50%;"
           [disabled]="!circular() && _page === 0"
           (click)="prev()"
           aria-label="Previous"
-        >&#8592;</button>
-        <span class="text-sm text-base-content/60">{{ _page + 1 }} / {{ value()?.length ?? 0 }}</span>
+        >&#8249;</button>
+        <div style="flex:1;overflow:hidden;height:100%;">
+          @if (itemTemplate && value()?.length) {
+            <ng-container *ngTemplateOutlet="itemTemplate; context: { $implicit: value()[_page] }"></ng-container>
+          }
+        </div>
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-ghost"
+          class="btn btn-ghost dp-carousel-next"
+          [style.visibility]="(value()?.length ?? 0) > 1 ? 'visible' : 'hidden'"
+          style="flex-shrink:0;align-self:center;height:5rem;width:2.5rem;padding:0;font-size:1.75rem;border-radius:50%;"
           [disabled]="!circular() && _page === (value()?.length ?? 1) - 1"
           (click)="next()"
           aria-label="Next"
-        >&#8594;</button>
+        >&#8250;</button>
       </div>
+      @if ((value()?.length ?? 0) > 1) {
+        <div style="text-align:center;padding:2px 0;font-size:0.8rem;color:#888;flex-shrink:0;">
+          {{ _page + 1 }} / {{ value()?.length ?? 0 }}
+        </div>
+      }
     </div>
   `
 })
@@ -54,6 +62,22 @@ export class DpCarouselComponent implements OnChanges {
   @ContentChild('item') itemTemplate?: TemplateRef<any>;
 
   _page = 0;
+
+  get containerStyle(): Record<string, string> | string {
+    const base: Record<string, string> = {
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+    };
+    const override = this.style();
+    if (!override || (typeof override === 'object' && Object.keys(override).length === 0)) {
+      return base;
+    }
+    if (typeof override === 'string') {
+      return `display:flex;flex-direction:column;height:100%;${override}`;
+    }
+    return { ...base, ...override };
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['page']) {

@@ -1,5 +1,5 @@
-export const tabReportGenerationMailMergeTemplate = `<ng-template
-  #tabReportGenerationMailMergeTemplate
+export const tabGenerateReportsTemplate = `<ng-template
+  #tabGenerateReportsTemplate
 >
   <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-bottom: 3px">
@@ -72,8 +72,7 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
       <div style="grid-column:span 7;padding-top: 6px;">
         no reports configured&nbsp;
         <a id="noReportsShowMeHowToConfigureReports" href="https://datapallas.com/docs/report-generation" target="_blank">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>&nbsp;{{'AREAS.PROCESSING.TAB-REPORTING-MAILMERGE-CLASSICREPORTS.SHOW-ME-HOW-TO' | translate
-          }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>&nbsp;<span>{{'AREAS.PROCESSING.TAB-REPORTING-MAILMERGE-CLASSICREPORTS.SHOW-ME-HOW-TO' | translate}}</span>
         </a>
       </div>
       }
@@ -128,7 +127,7 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
         <button
           id="btnGenerateReports"
           type="button"
-          class="btn btn-primary"
+          class="btn btn-outline btn-primary"
           (click)="doGenerateReports()"
           [disabled]="shouldBeDisabledGenerateReportsButton()"
         >
@@ -176,7 +175,7 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
       <br /><br />
 
       <a href="#" [routerLink]="['/help', 'installSetupMenuSelected']" skipLocationChange="true"
-        ><button type="button" class="btn btn-primary">
+        ><button type="button" class="btn btn-outline btn-primary">
           {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INSTALL' | translate }}
           <em>Java</em>
         </button></a
@@ -211,7 +210,7 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
           <button
             id="goToQa"
             type="button"
-            class="btn btn-primary btn-sm"
+            class="btn btn-outline btn-primary btn-sm"
             [routerLink]="['/processingQa','qualityMenuSelected',processingService.procReportingMailMergeInfo.prefilledInputFilePath, processingService.procReportingMailMergeInfo.prefilledConfigurationFilePath, 'csv-generate-reports']"
             skipLocationChange="true">
             {{ 'AREAS.PROCESSING.TAB-BURST.RUN-QA' | translate }}
@@ -318,7 +317,9 @@ export const tabReportGenerationMailMergeTemplate = `<ng-template
     }
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
-      <dburst-log-files-viewer-separate-tabs viewerId="logsViewerGenerateReportsTab"></dburst-log-files-viewer-separate-tabs>
+      <div style="grid-column:span 12">
+        <dburst-log-files-viewer-separate-tabs viewerId="logsViewerGenerateReportsTab"></dburst-log-files-viewer-separate-tabs>
+      </div>
     </div>
   </div>
 </ng-template> `;

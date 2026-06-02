@@ -151,7 +151,7 @@ export class SamplesService {
           "output/${input_document_name}/${timestamp?format['yyyy.MM.dd_HH.mm.ss.SSS']}",
       },
       outputHtmlHardcoded:
-        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> clyde.grew@northridgehealth.org.xls employee payslip<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> kyle.butford@northridgehealth.org.xls employee payslip<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> alfreda.waldback@northridgehealth.org.xls employee payslip',
+        `${iconSvg('file-excel-o')} clyde.grew@northridgehealth.org.xls employee payslip<br>${iconSvg('file-excel-o')} kyle.butford@northridgehealth.org.xls employee payslip<br>${iconSvg('file-excel-o')} alfreda.waldback@northridgehealth.org.xls employee payslip`,
       //configurationFilePath: `${this.settingsService.PORTABLE_EXECUTABLE_DIR}/config/samples/split-only/settings.xml`,
       configurationFilePath: `config/samples/split-only/settings.xml`,
       configurationFileName: 'split-only',
@@ -187,7 +187,7 @@ export class SamplesService {
           "output/${input_document_name}/${timestamp?format['yyyy.MM.dd_HH.mm.ss.SSS']}",
       },
       outputHtmlHardcoded:
-        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> United States of America.xls<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> Australia.xls<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> Canada.xls<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> United Kingdom.xls<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg> Germany.xls<br>etc... (separate file containing customer list for each country)',
+        `${iconSvg('file-excel-o')} United States of America.xls<br>${iconSvg('file-excel-o')} Australia.xls<br>${iconSvg('file-excel-o')} Canada.xls<br>${iconSvg('file-excel-o')} United Kingdom.xls<br>${iconSvg('file-excel-o')} Germany.xls<br>etc... (separate file containing customer list for each country)`,
       //configurationFilePath: `${this.settingsService.PORTABLE_EXECUTABLE_DIR}/config/samples/split-only/settings.xml`,
       configurationFilePath: `config/samples/split-only/settings.xml`,
       configurationFileName: 'split-only',
@@ -754,7 +754,7 @@ export class SamplesService {
         data: [],
         folder: '',
       },
-      outputHtmlHardcoded: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg> Interactive dashboard (no output files)',
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive dashboard (no output files)`,
       configurationFilePath: `config/samples/g-dashboard/settings.xml`,
       configurationFileName: 'g-dashboard',
       notes: ``,
@@ -783,7 +783,7 @@ export class SamplesService {
         data: [],
         folder: '',
       },
-      outputHtmlHardcoded: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg> Interactive pivot table (no output files)',
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive pivot table (no output files)`,
       configurationFilePath: `config/samples/g-pivottable/settings.xml`,
       configurationFileName: 'g-pivottable',
       notes: ``,
@@ -853,7 +853,7 @@ export class SamplesService {
           "output/${input_document_name}/${timestamp?format['yyyy.MM.dd_HH.mm.ss.SSS']}",
       },
       outputHtmlHardcoded:
-        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg> letter to student clyde.grew@northridgeschool.edu<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg> letter to student kyle.butford@northridgeschool.edu<br><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg> letter to student alfreda.waldback@northridgeschool.edu',
+        `${iconSvg('envelope')} letter to student clyde.grew@northridgeschool.edu<br>${iconSvg('envelope')} letter to student kyle.butford@northridgeschool.edu<br>${iconSvg('envelope')} letter to student alfreda.waldback@northridgeschool.edu`,
       //configurationFilePath: `${this.settingsService.PORTABLE_EXECUTABLE_DIR}/config/samples/mail-merge-emails/settings.xml`,
       configurationFilePath: `config/samples/mail-merge-emails/settings.xml`,
       configurationFileName: 'split-only',
@@ -918,9 +918,10 @@ export class SamplesService {
     }
 
     let inputFileIconSvg = iconSvg('file-pdf-o');
-    if (inputLabel.endsWith('.xls')) {
+    if (inputLabel.endsWith('.xls') || inputLabel.endsWith('.xlsx')) {
       inputFileIconSvg = iconSvg('file-excel-o');
-    } else if (inputLabel.endsWith('.csv')) {
+    } else if (inputLabel.endsWith('.csv') || inputLabel.endsWith('.html')
+        || inputLabel.endsWith('.docx') || inputLabel.endsWith('.txt')) {
       inputFileIconSvg = iconSvg('file-text-o');
     } else if (inputLabel.endsWith('.db') || inputLabel.endsWith('.duckdb')) {
       inputFileIconSvg = iconSvg('database');
@@ -971,9 +972,17 @@ export class SamplesService {
     const outputs: string[] = sample.output.data;
     let outputLabel = outputs[0].replace('file:', '');
 
-    const SVG_FILE = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>';
-    const SVG_ENVELOPE = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>';
-    const SVG_AT = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display:inline-block;width:1rem;height:1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm0 0c0 1.657 1.007 3 2.25 3S21 13.657 21 12a9 9 0 10-2.636 6.364M16.5 12V8.25"/></svg>';
+    // Pick the registry icon for an output filename so each file type
+    // gets a visually distinct icon: spreadsheet for .xls/.xlsx, text-doc
+    // for .csv/.html/.docx/.txt, plain document for .pdf and anything else.
+    const fileIcon = (label: string): string => {
+      if (label.endsWith('.xls') || label.endsWith('.xlsx')) return iconSvg('file-excel-o');
+      if (label.endsWith('.csv') || label.endsWith('.html')
+        || label.endsWith('.docx') || label.endsWith('.txt')) return iconSvg('file-text-o');
+      return iconSvg('file-pdf-o');
+    };
+    const SVG_ENVELOPE = iconSvg('envelope');
+    const SVG_AT = iconSvg('at-symbol');
 
     let outputHtml = '';
     if (fullDetails) {
@@ -986,9 +995,9 @@ export class SamplesService {
       }
     } else {
       if (sample.capReportDistribution)
-        outputHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${SVG_FILE} ${outputLabel}`;
+        outputHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
       else
-        outputHtml = `${SVG_FILE} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
+        outputHtml = `${fileIcon(outputLabel)} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
     }
 
     //console.log(`outputHtml = ${outputHtml}`);
@@ -996,9 +1005,9 @@ export class SamplesService {
     if (!fullDetails) {
       for (let index = 1; index < outputs.length; index++) {
         outputLabel = outputs[index].replace('file:', '');
-        let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${SVG_FILE} ${outputLabel}`;
+        let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
         if (!sample.capReportDistribution)
-          currentHtml = `${SVG_FILE} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
+          currentHtml = `${fileIcon(outputLabel)} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
 
         outputHtml = `${outputHtml}<br>${currentHtml}`;
       }
@@ -1009,9 +1018,9 @@ export class SamplesService {
         outputLabel = outputs[index].replace('file:', '');
         //console.log(`outputLabel = ${outputLabel}`);
 
-        let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${SVG_FILE} ${outputLabel}`;
+        let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
         if (!sample.capReportDistribution)
-          currentHtml = `${SVG_FILE} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
+          currentHtml = `${fileIcon(outputLabel)} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
 
         outputHtml = `${outputHtml}<br>${currentHtml}`;
       }
@@ -1021,7 +1030,7 @@ export class SamplesService {
 
         for (let index = 0; index < outputs.length; index++) {
           outputLabel = outputs[index].replace('file:', '');
-          let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${SVG_FILE} ${outputLabel}`;
+          let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
           outputHtml = `${outputHtml}<br>${currentHtml}`;
         }
       }

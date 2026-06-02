@@ -178,6 +178,82 @@
     }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Theme inheritance (framework-agnostic). A <canvas> can't use currentColor,
+  // var() or color-mix, so we resolve concrete values from the host's computed
+  // style + an OPTIONAL CSS-variable contract, then re-apply on theme change.
+  // Fallbacks are neutral — NO daisyUI / Tailwind hardcoded here. A host MAY map
+  // its own theme from outside:
+  //   rb-chart { --rb-chart-grid: …; --rb-chart-palette: c1,c2,…; --rb-chart-accent: … }
+  // ──────────────────────────────────────────────────────────────────────────
+  const RB_DEFAULT_PALETTE = ['#509ee3', '#88bf4d', '#a989c5', '#ef8c8c', '#f9d45c', '#f2a86f', '#98d9d9', '#7172ad'];
+  const RB_SINGLE_COLOR_TYPES = new Set(['bar', 'line', 'scatter', 'bubble', 'radar']);
+  let _themeObserver: MutationObserver | null = null;
+
+  // rgb()/rgba() → lower-alpha rgba; returns input unchanged for unparseable colors.
+  function rbToAlpha(color: string, alpha: number): string {
+    const m = color && color.match(/^rgba?\(([^)]+)\)/);
+    if (!m) return color || `rgba(127,127,127,${alpha})`;
+    const [r, g, b] = m[1].split(',').map((s) => s.trim());
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function rbReadThemeColors() {
+    const cs = container ? getComputedStyle(container) : null;
+    const text = (cs?.color || '').trim() || '#333';
+    const v = (name: string) => (cs?.getPropertyValue(name) || '').trim();
+    const grid = v('--rb-chart-grid') || rbToAlpha(text, 0.15);
+    const pv = v('--rb-chart-palette');
+    const palette = pv ? pv.split(',').map((s) => s.trim()).filter(Boolean) : RB_DEFAULT_PALETTE;
+    const accent = v('--rb-chart-accent') || palette[0];
+    return { text, grid, palette, accent };
+  }
+
+  // Inject inherited text/grid colors (always) + a palette for colourless datasets
+  // (single-colour chart types only — pie/doughnut need per-slice arrays we don't touch).
+  // Only fills values the caller/server config left undefined, so explicit colors win.
+  function rbApplyThemeColors(cfg: any) {
+    if (!cfg) return;
+    const c = rbReadThemeColors();
+    const o = (cfg.options = cfg.options || {});
+    if (o.color === undefined) o.color = c.text;
+    o.plugins = o.plugins || {};
+    if (o.plugins.legend?.display !== false) {
+      o.plugins.legend = o.plugins.legend || {};
+      o.plugins.legend.labels = Object.assign({ color: c.text }, o.plugins.legend.labels);
+    }
+    o.plugins.title = Object.assign({ color: c.text }, o.plugins.title);
+    o.scales = o.scales || { x: {}, y: {} };
+    for (const k of Object.keys(o.scales)) {
+      const sc = o.scales[k];
+      if (!sc || typeof sc !== 'object') continue;
+      sc.ticks = Object.assign({ color: c.text }, sc.ticks);
+      sc.grid = Object.assign({ color: c.grid }, sc.grid);
+      sc.border = Object.assign({ color: c.grid }, sc.border);
+    }
+    if (RB_SINGLE_COLOR_TYPES.has(cfg.type)) {
+      (cfg.data?.datasets || []).forEach((ds: any, i: number) => {
+        const col = c.palette[i % c.palette.length];
+        if (ds.backgroundColor === undefined) ds.backgroundColor = cfg.type === 'line' ? rbToAlpha(col, 0.25) : col;
+        if (ds.borderColor === undefined) ds.borderColor = col;
+      });
+    }
+  }
+
+  // Re-resolve + repaint when the host swaps theme (data-theme / class / style on <html>).
+  function rbSetupThemeObserver() {
+    if (_themeObserver || typeof MutationObserver === 'undefined') return;
+    _themeObserver = new MutationObserver(() => {
+      if (!chart) return;
+      rbApplyThemeColors(chart.config);
+      try { chart.update('none'); } catch { /* ignore */ }
+    });
+    _themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'class', 'style'],
+    });
+  }
+
   function buildConfig() {
     const normalizedData = normalizeDataForChart(data);
     // Extract Chart.js options from chartConfig.options (DSL mode) or use props
@@ -496,10 +572,12 @@
       if (wantsBoxplot) await ensureBoxPlotRegistered(ChartCtor);
 
       const config = buildConfig();
+      rbApplyThemeColors(config);
       const ctx2d = canvas?.getContext('2d');
       if (!ctx2d) return;
       chart = new ChartCtor(ctx2d, config);
       lastChartType = config.type;
+      rbSetupThemeObserver();
       dispatch('ready', { chart });
 
       // forward click events
@@ -666,7 +744,7 @@
     const now = Date.now();
     // Log at most once per second
     if (now - _lastAfterUpdateLogTime > 1000) {
-      console.log('[DEBUG] rb-chart afterUpdate called', _afterUpdateCount, 'times total');
+      // console.log('[DEBUG] rb-chart afterUpdate called', _afterUpdateCount, 'times total');
       _lastAfterUpdateLogTime = now;
     }
     // Warn if called excessively
@@ -699,7 +777,8 @@
           mergedOptions = Object.assign({}, mergedOptions, options);
         }
         chart.config.options = mergedOptions;
-        
+        rbApplyThemeColors(chart.config);
+
         try { chart.update(); } catch (err) { dispatch('chartError', { message: String(err) }); }
       }
     } catch (err) {
@@ -709,6 +788,7 @@
   });
 
   onDestroy(() => {
+    if (_themeObserver) { _themeObserver.disconnect(); _themeObserver = null; }
     destroyChart();
   });
 

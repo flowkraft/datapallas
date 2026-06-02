@@ -102,12 +102,12 @@ export class PollingHelper {
     ).subscribe({
       next: async () => {
         iterationCount++;
-        console.log(`Polling iteration ${iterationCount}/${this.MAX_POLLING_ITERATIONS}...`);
+        // console.log(`Polling iteration ${iterationCount}/${this.MAX_POLLING_ITERATIONS}...`);
         
         try {
           const shouldStop = await onPoll();
           if (shouldStop) {
-            console.log(`Polling stopped: stable state reached after ${iterationCount} iterations`);
+            // console.log(`Polling stopped: stable state reached after ${iterationCount} iterations`);
             // Note: We can't unsubscribe from within the callback, 
             // the caller should track and stop the subscription
           }
@@ -147,7 +147,7 @@ export class PollingHelper {
     onMaxIterations: () => void;
     label: string;
   }): Subscription {
-    console.log(`[${config.label}] Starting polling subscription (max timeout: ${this.getMaxTimeoutDescription()})...`);
+    // console.log(`[${config.label}] Starting polling subscription (max timeout: ${this.getMaxTimeoutDescription()})...`);
 
     let subscription: Subscription;
     subscription = this.createPollingSubscription(

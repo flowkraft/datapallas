@@ -1,4 +1,5 @@
-﻿<dp-dialog id="modalExtConnection" [header]="modalConnectionInfo.modalTitle" [(visible)]="isModalEmailConnectionVisible"
+﻿@if (isModalEmailConnectionVisible) {
+<dp-dialog id="modalExtConnection" [header]="modalConnectionInfo.modalTitle" [(visible)]="isModalEmailConnectionVisible"
   [style]="{ width: '85vw', 'max-width': '1200px', 'min-height': '80vh', 'max-height': '95vh' }">
   <div style="margin: 5px">
     <dp-tabs [activeIndex]="emailActiveTabIndex" (activeTabChange)="onEmailTabChange($event)">
@@ -479,6 +480,8 @@
                                   </button>
                                 </div>
                               </dp-dialog>
+}
+@if (isModalDbConnectionVisible) {
                               <dp-dialog id="modalDbConnection" [header]="modalConnectionInfo.modalTitle" [(visible)]="isModalDbConnectionVisible"
                                 [style]="{ width: '95vw', 'max-width': '1600px', 'min-height': '85vh', 'max-height': '95vh' }">
                                 <div style="margin: 5px; overflow-x: hidden;">
@@ -768,7 +771,9 @@
                                                         <div style="grid-column:span 7">
                                                           <button id="btnTestDbConnection" type="button" class="btn btn-outline btn-primary w-full"
                                                             (click)="doTestDatabaseConnection()" [disabled]="isTestDbConnectionDisabled()">
-              @if (isTestingConnection) {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionIcon" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>} @else {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" id="btnTestDbConnectionIcon" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>}&nbsp;&nbsp;{{
+              <!-- Spin condition mirrors the button-disabled gate so the icon stays in
+                   the spinning state for the full busy window. -->
+              <span id="btnTestDbConnectionIcon" [innerHTML]="iconSvg('database')" [class.animate-spin]="isTestingConnection || isSchemaLoading" style="display:inline-flex; align-items:center;"></span>&nbsp;&nbsp;{{
                                                             "AREAS.CONFIGURATION.TAB-EMAIL-CONNECTION-SETTINGS.TEST-DB-CONNECTION"
                                                             | translate
                                                             }}
@@ -925,7 +930,7 @@
                                                                   @if (mode() !== 'viewMode') {
                                                                     <button id="btnRefreshDatabaseSchema" class="btn btn-ghost btn-xm" (click)="refreshDatabaseSchema()"
                                                                       title="Refresh Database Schema" [disabled]="isSchemaLoading">
-                                                                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [class]="isSchemaLoading ? 'inline-block w-4 h-4 animate-spin' : 'inline-block w-4 h-4'"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                                                                      <svg xmlns="http://www.w3.org/2000/svg" id="btnRefreshDatabaseSchemaIcon" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [class]="isSchemaLoading ? 'inline-block w-4 h-4 animate-spin' : 'inline-block w-4 h-4'"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
                                                                     </button>
                                                                   }
                                                                 </div></div>
@@ -1051,6 +1056,7 @@
                                                                             </div>
                                                                           }
                                                                           @if (
+                                                                            context() !== 'crud' &&
                                                                             domainGroupedSchemaExists &&
                                                                             domainTargetSchemaObjects.length === 0
                                                                             ) {
@@ -1082,13 +1088,30 @@
                                                                                 </button>
                                                                               </div>
                                                                             }
-                                                                            <!-- New split button layout when domainGroupedSchemaExists is true -->
+                                                                            <!-- Post-schema button layout. THREE branches by context:
+                                                                                 - 'crud': single full-width "Show Domain-Grouped Schema Code"
+                                                                                   button. No AI/SQL gen affordance because configuring a
+                                                                                   connection is not the right moment to author SQL — keeps the
+                                                                                   surface lean. Same intent as the Database Schema tab's
+                                                                                   `context !== 'crud'` guard.
+                                                                                 - 'sqlQuery' | 'scriptQuery' | 'dashboardScript' | 'cubeDsl':
+                                                                                   single full-width AI-gen button (handled below).
+                                                                                 - other non-crud contexts (e.g. reporting datasource picker):
+                                                                                   split-button — primary AI-gen action + caret dropdown that
+                                                                                   exposes "Show Code". -->
                                                                             @if (domainGroupedSchemaExists) {
                                                                               <div style="grid-column:span 12">
-                                                                                @if (context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl') {
-                                                                                  <div class="dropdown dropdown-end w-full" style="margin-bottom: 20px">
-                                                                                    <button id="btnGenerateSqlQueryWithAIDomainGroupedSchema" type="button" tabindex="0" role="button" class="btn btn-outline btn-primary"
-                                                                                      style="width: calc(100% - 34px); text-align: left" (click)="launchAiCopilotForSchemaQuery()"
+                                                                                @if (context() === 'crud') {
+                                                                                  <button id="btnToggleDomainGroupedCodeView" type="button" class="btn btn-outline w-full"
+                                                                                    style="margin-bottom: 20px;"
+                                                                                    (click)="toggleDomainGroupedCodeView()">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg> Show Domain-Grouped Schema Code
+                                                                                  </button>
+                                                                                }
+                                                                                @if (context() !== 'crud' && context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl') {
+                                                                                  <div class="w-full" style="margin-bottom: 20px; display: inline-flex; align-items: stretch;">
+                                                                                    <button id="btnGenerateSqlQueryWithAIDomainGroupedSchema" type="button" class="btn btn-outline btn-primary"
+                                                                                      style="flex: 1; text-align: left;" (click)="launchAiCopilotForSchemaQuery()"
                         [disabled]="
                           !showSchemaTreeSelect ||
                           domainTargetSchemaObjects.length === 0
@@ -1097,17 +1120,19 @@
                                                                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>&nbsp; Generate SQL Query with Help From AI
                                                                                       </div>
                                                                                     </button>
-                                                                                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
-                                                                                      <li>
-                          <a id="liAToggleDomainGroupedCodeView" href="#" (click)="
-                              toggleDomainGroupedCodeView();
-                              $event.preventDefault()
-                            ">
-                                                                                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg> Show Domain-Grouped
-                                                                                          Schema Code
-                                                                                        </a>
-                                                                                      </li>
-                                                                                    </ul>
+                                                                                    <details class="dropdown dropdown-end" #domainSchemaAiDropdown>
+                                                                                      <summary id="btnToggleDomainGroupedCodeViewDropdown" class="btn btn-outline btn-primary"
+                                                                                        style="list-style:none;"
+                                                                                        [class.btn-disabled]="!showSchemaTreeSelect || domainTargetSchemaObjects.length === 0">&#9660;</summary>
+                                                                                      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+                                                                                        <li>
+                                                                                          <a href="javascript:void(0)" id="liAToggleDomainGroupedCodeView"
+                                                                                             (click)="$any(domainSchemaAiDropdown).open = false; toggleDomainGroupedCodeView()">
+                                                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg> Show Domain-Grouped Schema Code
+                                                                                          </a>
+                                                                                        </li>
+                                                                                      </ul>
+                                                                                    </details>
                                                                                   </div>
                                                                                 }
                                                                                 @if (context() === 'sqlQuery' || context() === 'scriptQuery' || context() === 'dashboardScript' || context() === 'cubeDsl') {
@@ -1737,7 +1762,7 @@
                                                           <!-- Button row -->
                                                           <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                                             <div style="display: flex; align-items: center; gap: 10px">
-                                                              <dburst-ai-manager #aiManagerInstance [dropdownDirection]="'up'" [showChat2db]="true" [initialActiveTabKey]="'PROMPTS'"
+                                                              <dburst-ai-manager #aiManagerInstance [mode]="'standalone'" [dropdownDirection]="'up'" [showChat2db]="true" [initialActiveTabKey]="'PROMPTS'"
                                                                 [initialSelectedCategory]="'Database Schema'">
                                                               </dburst-ai-manager>
 
@@ -1782,3 +1807,4 @@
                                                           [fileFilterExtensions]="['.db', '.sqlite', '.sqlite3', '.duckdb', '.ddb']"
                                                         (fileSelected)="onSqliteFileSelected($event)"></dburst-file-explorer-dialog>
                                                       </dp-dialog>
+}

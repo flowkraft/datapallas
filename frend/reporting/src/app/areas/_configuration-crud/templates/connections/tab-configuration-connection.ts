@@ -36,7 +36,7 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
           <tr
           id="{{connectionFile.fileName}}"
           (click)="onItemClick(connectionFile)"
-          [ngClass]="{'bg-primary/10': connectionFile.activeClicked}"
+          [ngClass]="{'bg-primary/10': connectionFile.activeClicked, 'info': connectionFile.activeClicked}"
         >
           <td>
             {{connectionFile.connectionName}}
@@ -168,7 +168,7 @@ export const tabExternalConnectionsTemplate = `<ng-template #tabExternalConnecti
         <button
           id="btnGoBack"
           type="button"
-          class="btn btn-primary"
+          class="btn btn-outline btn-primary"
           style="width:100%"
           (click)="goBack()"
         >

@@ -175,8 +175,9 @@ test.describe('Security Tests', async () => {
           SECURITY_EMAIL_CONNECTION_NAME,
         )
         // Assert: reveal-password API decrypts back to the original value
-        .apiGetJsonValueShouldEqual(
-          `http://localhost:9090/api/connections/${emailConnectionId}/reveal-password?field=userpassword`,
+        .apiPostJsonValueShouldEqual(
+          `http://localhost:9090/api/connections/${emailConnectionId}/reveal-password`,
+          { field: 'userpassword' },
           'password',
           KNOWN_EMAIL_PASSWORD,
         );
@@ -222,8 +223,9 @@ test.describe('Security Tests', async () => {
         .waitOnElementToBecomeInvisible('#btnOKConfirmationDbConnectionModal')
         .waitOnElementToBecomeVisible(`#${SECURITY_DB_CONNECTION_FILENAME}`)
         // Assert: reveal-password API decrypts back to the original value
-        .apiGetJsonValueShouldEqual(
-          `http://localhost:9090/api/connections/${SECURITY_DB_CONNECTION_CODE}/reveal-password?field=userpassword`,
+        .apiPostJsonValueShouldEqual(
+          `http://localhost:9090/api/connections/${SECURITY_DB_CONNECTION_CODE}/reveal-password`,
+          { field: 'userpassword' },
           'password',
           KNOWN_DB_PASSWORD,
         );

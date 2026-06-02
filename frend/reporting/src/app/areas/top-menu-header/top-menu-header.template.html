@@ -6,7 +6,7 @@
 
     <!-- Left: hamburger + logo + main nav -->
     <div class="flex flex-1 items-center gap-2">
-      <button type="button" aria-label="Toggle sidebar"
+      <button type="button" id="btnToggleSidebar" aria-label="Toggle sidebar"
         class="btn btn-square btn-ghost"
         (click)="toggleSidebar()">
         <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -32,13 +32,9 @@
           </a>
         </li>
 
-        <li class="dropdown">
-          <div id="topMenuConfiguration" tabindex="0" role="button" class="flex items-center cursor-pointer">
-            {{ 'AREAS.TOP-MENU-HEADER.CONFIGURATION' | translate }}
-            @if (settingsService.currentConfigurationTemplateName) {
-              <span class="ml-1">({{ settingsService.currentConfigurationTemplateName }})</span>
-            }
-            &nbsp;▾
+        <li tabindex="0" role="button" class="dropdown">
+          <div class="flex items-center cursor-pointer">
+            <span id="topMenuConfiguration">{{ ('AREAS.TOP-MENU-HEADER.CONFIGURATION' | translate) + (settingsService.currentConfigurationTemplateName ? ' (' + settingsService.currentConfigurationTemplateName + ') ' : ' ') }}</span>▾
           </div>
           <ul id="topMenuConfigurationList" tabindex="0"
             class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2"
@@ -65,8 +61,8 @@
           </ul>
         </li>
 
-        <li class="dropdown">
-          <div id="topMenuHelp" tabindex="0" role="button" class="flex items-center cursor-pointer">
+        <li id="topMenuHelp" tabindex="0" role="button" class="dropdown">
+          <div class="flex items-center cursor-pointer">
             {{ 'AREAS.TOP-MENU-HEADER.HELP-AND-SUPPORT' | translate }}&nbsp;▾
           </div>
           <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2"

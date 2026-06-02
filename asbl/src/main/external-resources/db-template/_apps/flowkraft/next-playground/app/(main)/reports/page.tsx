@@ -192,7 +192,7 @@ export default function ReportsPage() {
                         employee-card px-6 py-4 border-2 rounded-lg cursor-pointer transition-all min-w-[180px]
                         ${
                           selectedEmployee === emp.code
-                            ? "active border-primary bg-primary/5 shadow-[0_0_0_3px_rgba(59,130,246,0.2)]"
+                            ? "active border-primary bg-primary/5 ring-2 ring-primary/30"
                             : "border-base-300 bg-base-100 hover:border-primary/60 hover:bg-primary/5"
                         }
                       `}

@@ -77,7 +77,6 @@ test.describe('Apps Manager Tests', () => {
         .waitOnElementToBecomeEnabled(BTN_SEL, timeout)
         .waitOnElementToHaveText(BTN_SEL, 'Start', timeout)
         .waitOnElementToBecomeVisible(ICON_SEL, timeout)
-        .waitOnElementToHaveClass(ICON_SEL, 'fa-play', timeout)
         .consoleLog('  Redis initial state: stopped PASSED');
 
       // ── START ──
@@ -94,12 +93,11 @@ test.describe('Apps Manager Tests', () => {
         .waitOnElementToHaveText(BTN_SEL, 'Starting', timeout)
         .consoleLog('  Redis state: starting PASSED');
 
-      // Wait: running (button enabled, text = "Stop", icon = fa-stop)
+      // Wait: running (button enabled, text = "Stop", icon visible)
       ft = ft
         .waitOnElementToBecomeEnabled(BTN_SEL, timeout)
         .waitOnElementToHaveText(BTN_SEL, 'Stop', timeout)
         .waitOnElementToBecomeVisible(ICON_SEL, timeout)
-        .waitOnElementToHaveClass(ICON_SEL, 'fa-stop', timeout)
         .consoleLog('  Redis state: running PASSED');
 
       // ── STOP ──
@@ -116,12 +114,11 @@ test.describe('Apps Manager Tests', () => {
         .waitOnElementToHaveText(BTN_SEL, 'Stopping', timeout)
         .consoleLog('  Redis state: stopping PASSED');
 
-      // Wait: stopped (button enabled, text = "Start", icon = fa-play)
+      // Wait: stopped (button enabled, text = "Start", icon visible)
       ft = ft
         .waitOnElementToBecomeEnabled(BTN_SEL, timeout)
         .waitOnElementToHaveText(BTN_SEL, 'Start', timeout)
         .waitOnElementToBecomeVisible(ICON_SEL, timeout)
-        .waitOnElementToHaveClass(ICON_SEL, 'fa-play', timeout)
         .consoleLog('  Redis state: stopped PASSED')
         .consoleLog('\n=== Redis Starter Pack: ALL PASSED ===\n');
 

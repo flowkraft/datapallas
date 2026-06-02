@@ -14,17 +14,17 @@ export function SelectionBar() {
   if (!hasFilterPanes || selections.length === 0) return null;
 
   return (
-    <div className="shrink-0 border-b border-base-300 bg-blue-50/50 px-4 py-1.5 flex items-center gap-2 flex-wrap">
+    <div className="shrink-0 border-b border-base-300 bg-primary/5 px-4 py-1.5 flex items-center gap-2 flex-wrap">
       <span className="text-[10px] text-base-content/60 uppercase tracking-wider font-medium">Selections</span>
       {selections.map((s, i) => (
         <span
           key={`${s.field}-${s.value}-${i}`}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 border border-blue-200"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary border border-primary/20"
         >
           <span className="font-medium">{s.field}:</span> {s.value}
           <button
             onClick={() => toggleSelection(s.field, s.value)}
-            className="p-0.5 rounded-full hover:bg-blue-200 transition-colors"
+            className="p-0.5 rounded-full hover:bg-primary/20 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
           </button>

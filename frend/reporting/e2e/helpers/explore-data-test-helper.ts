@@ -684,7 +684,7 @@ export async function arrangeWidgets(
   // the Next.js app (8440) where the page itself is served.
   const API = 'http://localhost:9090/api';
   await page.evaluate(async ({ cid, ls, api }) => {
-    const getResp = await fetch(`${api}/explore-data/${cid}`);
+    const getResp = await fetch(`${api}/explorations/${cid}`);
     if (!getResp.ok) throw new Error(`GET canvas ${cid} failed: ${getResp.status}`);
     const canvas = await getResp.json();
     const state = JSON.parse(canvas.state);
@@ -694,7 +694,7 @@ export async function arrangeWidgets(
     }
     for (let i = 0; i < widgets.length; i++) widgets[i].gridPosition = ls[i];
 
-    const putResp = await fetch(`${api}/explore-data/${cid}`, {
+    const putResp = await fetch(`${api}/explorations/${cid}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ state: JSON.stringify(state) }),
@@ -1161,7 +1161,7 @@ export async function publishDashboard(
 
   const [response] = await Promise.all([
     page.waitForResponse(
-      r => /\/explore-data\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
+      r => /\/explorations\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
       { timeout: 90_000 },
     ),
     confirmBtn.click(),

@@ -189,7 +189,7 @@ function PlantUMLDiagram({ source }: { source: string }) {
       : source;
     return (
       <div>
-        <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 mb-2">
+        <div className="rounded-md bg-warning/10 px-3 py-2 text-xs text-warning mb-2">
           Kroki.io failed to render this diagram — showing source code
         </div>
         <pre className="overflow-x-auto rounded-lg text-xs bg-code-bg text-code-fg p-4" style={{ margin: 0 }}>
@@ -624,7 +624,7 @@ export default function Chat2DBPage() {
               const r = msg.response;
               return (
                 <Message key={msg.id} from="assistant">
-                  <MessageAvatar className="bg-chat-avatar-bg text-white" fallback="🦉" />
+                  <MessageAvatar className="bg-chat-avatar-bg text-primary-content" fallback="🦉" />
                   <MessageContent>
                     <span className="text-xs font-semibold text-athena-accent">Athena</span>
                     {/* Error */}
@@ -716,7 +716,7 @@ export default function Chat2DBPage() {
                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg> View Full Screen
                                 </button>
                               </div>
-                              <div className="p-4 bg-white flex justify-center">
+                              <div className="p-4 bg-base-100 flex justify-center">
                                 <PlantUMLDiagram source={seg.content} />
                               </div>
                             </div>
@@ -770,7 +770,7 @@ export default function Chat2DBPage() {
           {/* Thinking indicator */}
           {isLoading && (
             <Message from="assistant">
-              <MessageAvatar className="bg-chat-avatar-bg text-white" fallback="🦉" />
+              <MessageAvatar className="bg-chat-avatar-bg text-primary-content" fallback="🦉" />
               <MessageContent>
                 <span className="text-xs font-semibold text-athena-accent">Athena</span>
                 <div id="chat-thinking-indicator" className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm bg-chat-assistant-bg text-base-content/60">

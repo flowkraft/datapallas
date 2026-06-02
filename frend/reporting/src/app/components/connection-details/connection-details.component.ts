@@ -696,6 +696,14 @@ export class ConnectionDetailsComponent implements OnInit {
     }
 
     const performTestLogic = async (filePathToTest: string) => {
+      // Minimum time the button stays in its busy/disabled state. In-process
+      // (same-JVM) execution makes the test + schema fetch resolve in
+      // microseconds for file-based DBs (SQLite/DuckDB); without a floor the
+      // spinner would flicker for a single frame. The DB work itself is never
+      // slowed — only how long the busy state stays visible.
+      const MIN_BUSY_MS = 800;
+      const startedAt = Date.now();
+
       this.isTestingConnection = true;
       this.testConnectionSuccess = false;
       this.testConnectionError = false;
@@ -707,26 +715,33 @@ export class ConnectionDetailsComponent implements OnInit {
 
       try {
         const connectionCode = this.getConnectionCode(filePathToTest);
+        // Both round-trips are part of the one operation the button promises
+        // ("Test Connection & Fetch Database Schema"), so await both before
+        // clearing the busy state.
         await this.connectionsService.testConnection(connectionCode, 'database');
-        this.isTestingConnection = false;
+        await this.loadSchemaFromBackend(filePathToTest);
         this.testConnectionSuccess = true;
         this.testConnectionError = false;
         this.messagesService.showSuccess(
           'Successfully connected to the database and fetched schema.',
         );
-        this.loadSchemaFromBackend(filePathToTest);
       } catch (err) {
-        this.isTestingConnection = false;
         this.testConnectionSuccess = false;
         this.testConnectionError = true;
         this.messagesService.showError(
           err?.message ||
           'Failed to connect to the database or fetch schema. Please check logs.',
         );
-        this.isSchemaLoading = false;
         this.showSchemaTreeSelect = false;
+      } finally {
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < MIN_BUSY_MS) {
+          await new Promise((resolve) => setTimeout(resolve, MIN_BUSY_MS - elapsed));
+        }
+        this.isTestingConnection = false;
+        this.isSchemaLoading = false;
+        this.cdRef.detectChanges();
       }
-      this.cdRef.detectChanges();
     };
 
     const proceedWithTest = async () => {
@@ -796,7 +811,11 @@ export class ConnectionDetailsComponent implements OnInit {
   }
 
   isTestDbConnectionDisabled(): boolean {
-    if (this.isTestingConnection) {
+    // The button performs one operation — test the connection AND fetch the
+    // schema — across two backend round-trips. Stay disabled until BOTH finish,
+    // not just the connection test, so the busy state reflects the whole
+    // operation the label promises.
+    if (this.isTestingConnection || this.isSchemaLoading) {
       return true;
     }
 

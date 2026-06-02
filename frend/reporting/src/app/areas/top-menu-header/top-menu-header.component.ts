@@ -11,9 +11,7 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
 import { MoreSettingsComponent } from '../../components/more-settings/more-settings.component';
 import Utilities from '../../helpers/utilities';
 import { StateStoreService } from '../../providers/state-store.service';
-
-const DP_THEME_KEY = 'dp-theme';
-const DEFAULT_THEME = 'light';
+import { DP_THEME_KEY, DP_DEFAULT_THEME } from '../../shared/theme-defaults';
 
 @Component({
     selector: 'dburst-top-menu-header',
@@ -35,7 +33,7 @@ export class TopMenuHeaderComponent implements OnInit {
     'abyss', 'silk',
   ];
 
-  activeTheme = DEFAULT_THEME;
+  activeTheme = DP_DEFAULT_THEME;
 
   // Tracks whether the user explicitly opened the sidebar while on the Processing screen
   // during this session. False on every app start → Processing always begins hidden.
@@ -57,7 +55,7 @@ export class TopMenuHeaderComponent implements OnInit {
     // survives localStorage clears; fall back to localStorage for offline mode.
     const xmlTheme =
       this.settingsService.xmlInternalSettings.documentburster?.settings?.theme;
-    this.activeTheme = xmlTheme || localStorage.getItem(DP_THEME_KEY) || DEFAULT_THEME;
+    this.activeTheme = xmlTheme || localStorage.getItem(DP_THEME_KEY) || DP_DEFAULT_THEME;
     document.documentElement.setAttribute('data-theme', this.activeTheme);
     localStorage.setItem(DP_THEME_KEY, this.activeTheme);
 

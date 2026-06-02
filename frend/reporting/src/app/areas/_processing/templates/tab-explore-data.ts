@@ -1,5 +1,5 @@
-export const tabCmsWebPortalTemplate = `<ng-template
-  #tabCmsWebPortalTemplate
+export const tabExploreDataTemplate = `<ng-template
+  #tabExploreDataTemplate
 >
   <div class="space-y-4 pb-0">
 

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.1.0 - 2026-06-02
+
+### Changed
+
+- **Complete modern theme-based UI overhaul** — Brand-new look across the entire application, with 35 built-in themes you can switch between in one click (light, dark, corporate, retro, cyberpunk, and more). Every screen — Processing, Configuration, Customer Portals, Explore Data — now shares a clean, modern visual system that adapts instantly to your chosen theme.
+
+- **Improved REST & CLI interfaces** — Endpoint names, parameters, and command-line arguments now follow consistent naming patterns across both interfaces, so moving between them feels familiar. Existing integrations should require minimal changes.
+
+- **Improved Explore Data & Build Dashboards capabilities** — Smoother widget interactions, better filter handling, more reliable auto-save and undo/redo, and tighter sync between the visual canvas and the DSL editor. Dashboards stay responsive even with many widgets on screen.
+
+- **Improved Customer Portal sample apps** — The bundled Grails portal and Next.js admin sample have been refreshed with the same modern look and theme system as the rest of the application. Both remain ready-to-use starting points for building your own self-service portals.
+
 ## 15.2.0 - 2026-05-18
 
 ### Added

@@ -112,7 +112,7 @@ const _splitSendVerifyEmailsAndSMSes = (
     ft.click('#accountSid').typeText('00').click('#authToken').typeText('01');
   }
   // SMS Message settings
-  ft.click('#smsMessageTab-link')
+  ft.click('#tab-btn-smsMessageTab')
     .click('#fromTelephoneNumber')
     .typeText('00')
     .click('#toTelephoneNumber')

@@ -56,7 +56,7 @@ export const tabWebUploadDocumentBursterWebTemplate = `<ng-template #tabWebUploa
 
       <div style="grid-column:span 3">
         <a href="https://datapallas.com/docs/document-portal/quickstart" target="_blank">
-          <button class="btn btn-primary" type="button">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-DOCUMENTBURSTER.LIVE-DEMO'
+          <button class="btn btn-outline btn-primary" type="button">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-DOCUMENTBURSTER.LIVE-DEMO'
             | translate }}</button>
         </a>
       </div>

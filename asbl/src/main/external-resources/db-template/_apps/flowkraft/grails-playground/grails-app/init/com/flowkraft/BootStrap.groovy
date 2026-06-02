@@ -24,10 +24,11 @@ class BootStrap {
     }
 
     private void createDefaultSettings() {
-        // Theme settings - persisted in SQLite instead of localStorage
-        Setting.setValue('theme.color', 'datapallas', 'theme', 'Color theme name')
-        Setting.setValue('theme.mode', 'light', 'theme', 'Theme mode (light/dark)')
-        
+        // NOTE: the default theme is intentionally NOT seeded here. The app-wide
+        // default lives in code (window.RB_DEFAULT_THEME in views/common/_themeInit.gsp).
+        // The 'theme.color' setting is created only when a user explicitly picks a
+        // theme, so it always represents a real user choice (never a factory default).
+
         // Company settings
         Setting.setValue('company.name', 'FlowKraft Inc.', 'company', 'Company name')
         Setting.setValue('company.email', 'contact@flowkraft.com', 'company', 'Company email')

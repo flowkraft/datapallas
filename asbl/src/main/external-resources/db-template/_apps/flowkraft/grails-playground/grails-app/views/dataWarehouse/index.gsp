@@ -21,14 +21,14 @@
             max-height: 400px;
         }
         .engine-section {
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--color-base-300);
             border-radius: 8px;
             padding: 1rem;
             margin-bottom: 1.5rem;
-            background: #ffffff;
+            background: var(--color-base-100);
         }
         .engine-section h6 {
-            color: #1e40af;
+            color: var(--color-primary);
             margin-bottom: 0.75rem;
             display: flex;
             align-items: center;
@@ -36,45 +36,45 @@
         }
         .engine-section .engine-desc {
             font-size: 0.9rem;
-            color: #64748b;
+            color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
             margin-bottom: 1rem;
         }
         .howto-section {
-            background: #f8f9fa;
+            background: var(--color-base-200);
             border-radius: 8px;
             padding: 1.5rem;
             margin-top: 2rem;
         }
         .howto-section h5 {
-            color: #2563eb;
+            color: var(--color-primary);
             margin-bottom: 1rem;
         }
         .howto-section h6 {
-            color: #1e40af;
+            color: var(--color-primary);
             margin-top: 1.25rem;
             margin-bottom: 0.5rem;
         }
         .howto-section .step {
-            background: white;
-            border: 1px solid #e2e8f0;
+            background: var(--color-base-100);
+            border: 1px solid var(--color-base-300);
             border-radius: 6px;
             padding: 1rem;
             margin-bottom: 0.75rem;
         }
         .howto-section .step-title {
             font-weight: 600;
-            color: #334155;
+            color: var(--color-base-content);
             margin-bottom: 0.5rem;
         }
         .howto-section .step-action {
             font-family: monospace;
-            background: #e0e7ff;
+            background: color-mix(in oklab, var(--color-primary) 14%, var(--color-base-100));
             padding: 2px 6px;
             border-radius: 4px;
-            color: #3730a3;
+            color: var(--color-primary);
         }
         .howto-section .insight {
-            color: #059669;
+            color: var(--color-success);
             font-style: italic;
         }
         .howto-section ul {
@@ -90,8 +90,8 @@
             margin: 0.5rem 0;
         }
         .howto-section .pivot-compare {
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
+            background: color-mix(in oklab, var(--color-success) 14%, var(--color-base-100));
+            border: 1px solid color-mix(in oklab, var(--color-success) 40%, var(--color-base-100));
             padding: 0.75rem;
             border-radius: 6px;
             margin: 0.5rem 0;
@@ -100,14 +100,14 @@
             scroll-margin-top: 80px;
         }
         .tier-card {
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--color-base-300);
             border-radius: 8px;
             padding: 1rem;
             height: 100%;
             transition: border-color 0.2s;
         }
         .tier-card:hover {
-            border-color: #93c5fd;
+            border-color: var(--color-primary);
         }
         .tier-card .volume-badge {
             display: inline-block;

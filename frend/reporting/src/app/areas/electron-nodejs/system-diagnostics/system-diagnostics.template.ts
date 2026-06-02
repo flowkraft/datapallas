@@ -18,7 +18,7 @@ export const systemDiagnosticsTemplate = `<!--<ng-template #systemDiagnosticsTem
 
   <!--
   <div>
-    <button type="button" class="btn btn-primary" (click)="restartApp()">
+    <button type="button" class="btn btn-outline btn-primary" (click)="restartApp()">
       <i class="fa fa-play"></i
       >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.RESTART' | translate
       }} <em>DataPallas</em>

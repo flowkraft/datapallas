@@ -11,7 +11,7 @@ import * as jetpack from 'fs-jetpack';
  * doesn't (or vice versa), the bug is in the interface layer, not the engine.
  */
 export class InterfaceTestHelper {
-  static readonly PORTABLE_DIR = process.env.PORTABLE_EXECUTABLE_DIR;
+  static readonly PORTABLE_DIR = process.env.PORTABLE_EXECUTABLE_DIR!;
 
   /**
    * Assert that burst produced the expected output files.
@@ -155,7 +155,7 @@ export class InterfaceTestHelper {
     args: string[],
     timeoutMs: number = 120000,
   ): { exitCode: number; stdout: string; stderr: string } {
-    const { execSync } = require('child_process');
+    const { spawnSync } = require('child_process');
     const os = require('os');
     const isWindows = os.platform() === 'win32';
 
@@ -163,47 +163,60 @@ export class InterfaceTestHelper {
     const cmd = isWindows ? 'datapallas.bat' : './datapallas.sh';
     const fullCommand = `cd "${absoluteDir}" && set "PORTABLE_EXECUTABLE_DIR=" && ${cmd} ${args.join(' ')}`;
 
-    try {
-      const stdout = execSync(fullCommand, {
-        timeout: timeoutMs,
-        encoding: 'utf-8',
-      });
-      return { exitCode: 0, stdout: stdout || '', stderr: '' };
-    } catch (error: any) {
-      return {
-        exitCode: error.status || 1,
-        stdout: error.stdout || '',
-        stderr: error.stderr || '',
-      };
+    // spawnSync (not execSync) — execSync returns *only* stdout and reveals
+    // stderr only when the child throws. datapallas.bat launches Ant with
+    // <java failonerror="false"/>, which prints "Java Result: <N>" to stderr
+    // when the CLI returns non-zero but lets Ant (and the bat) still exit 0.
+    // So the success path needs stderr too — spawnSync gives us both streams
+    // unconditionally.
+    const result = spawnSync(fullCommand, {
+      shell: true,
+      timeout: timeoutMs,
+      encoding: 'utf-8',
+    });
+    const stdout: string = result.stdout ?? '';
+    const stderr: string = result.stderr ?? '';
+    let exitCode: number = result.status ?? 1;
+
+    // Recover Java's real exit code from the Ant-printed line.
+    const javaResultMatch = stderr.match(/Java Result:\s*(\d+)/);
+    if (javaResultMatch) {
+      exitCode = parseInt(javaResultMatch[1], 10);
     }
+    return { exitCode, stdout, stderr };
   }
 
   /**
-   * Execute a job via REST API and wait for completion.
+   * Submit a job via the REST API and wait for completion.
    *
-   * @param endpoint REST endpoint (e.g., '/api/jobs/burst')
-   * @param body request body
+   * JobsController exposes a single POST /api/jobs/ endpoint that dispatches on
+   * a `type` discriminator in the body. The old per-type paths (POST /api/jobs/burst,
+   * /api/jobs/generate, /api/jobs/merge) no longer exist.
+   *
+   * @param type job type — drives the controller switch
+   * @param payload type-specific fields merged with `{type}` into the request body
    * @param baseUrl backend URL (default: http://localhost:9090)
    * @param timeoutMs wait timeout (default: 120 seconds)
    */
   static async execRest(
-    endpoint: string,
-    body: any,
+    type: 'burst' | 'generate' | 'merge',
+    payload: any,
     baseUrl: string = 'http://localhost:9090',
     timeoutMs: number = 120000,
   ): Promise<void> {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    const response = await fetch(`${baseUrl}/api/jobs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ type, ...payload }),
     });
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`REST ${endpoint} failed: ${response.status} ${text}`);
+      throw new Error(`REST POST /api/jobs (type=${type}) failed: ${response.status} ${text}`);
     }
 
-    // The job runs async — wait for completion via info.log
+    // POST /api/jobs/ returns 202 Accepted immediately with {jobId, status}.
+    // Wait for the engine to complete by polling info.log for 'Execution Ended'.
     await this.waitForJobCompletion(timeoutMs);
   }
 }

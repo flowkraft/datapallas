@@ -30,7 +30,7 @@ const PROMPT_IDS: Record<AiMode, Record<AiKind, string>> = {
 // ── Template fetching ─────────────────────────────────────────────────────────
 
 async function fetchTemplate(promptId: string): Promise<string> {
-  const res = await fetch(`${RB_BASE}/ai/prompts/${encodeURIComponent(promptId)}`);
+  const res = await fetch(`${RB_BASE}/system/ai-prompts/${encodeURIComponent(promptId)}`);
   if (!res.ok) throw new Error(`Prompt template "${promptId}" not found (HTTP ${res.status})`);
   const data = await res.json();
   return data.promptText || "";

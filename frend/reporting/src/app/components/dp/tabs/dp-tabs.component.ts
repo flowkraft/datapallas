@@ -66,8 +66,13 @@ export class DpTabsComponent implements AfterContentInit, OnChanges {
     // React to content children changes
     effect(() => {
       const tabs = this.tabComponents();
+      const newIds = tabs.map(t => t.id()).join(',');
+      const oldIds = this._tabs.map(t => t.id()).join(',');
       this._tabs = [...tabs];
-      if (this._tabs.length && this.activeIdx >= this._tabs.length) {
+      if (newIds !== oldIds) {
+        // Tab set changed (navigation) — reset to the declared activeIndex
+        this.activeIdx = this.activeIndex();
+      } else if (this._tabs.length && this.activeIdx >= this._tabs.length) {
         this.activeIdx = 0;
       }
       Promise.resolve().then(() => {

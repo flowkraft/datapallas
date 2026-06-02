@@ -8,16 +8,14 @@
         rb-pivot-table { display: block; width: 100%; }
         rb-tabulator { display: block; width: 100%; min-height: 300px; }
         .example-card {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--color-base-300);
             border-radius: 8px;
             margin-bottom: 1.5rem;
             overflow: hidden;
             padding: 1rem;
         }
-        [data-theme="dark"] .example-card { border-color: #334155; }
         .example-title { margin: 0 0 0.25rem 0; font-weight: 600; font-size: 0.95rem; }
-        .example-desc { color: #6b7280; font-size: 0.85rem; margin: 0 0 1rem 0; }
-        [data-theme="dark"] .example-desc { color: #94a3b8; }
+        .example-desc { color: color-mix(in oklab, var(--color-base-content) 60%, transparent); font-size: 0.85rem; margin: 0 0 1rem 0; }
         .category-header {
             font-size: 1.1rem;
             font-weight: 700;
@@ -39,47 +37,41 @@
             max-height: 600px;
         }
         .howto-section {
-            background: #f8f9fa;
+            background: var(--color-base-200);
             border-radius: 8px;
             padding: 1.5rem;
             margin-top: 2rem;
         }
-        [data-theme="dark"] .howto-section { background: #1e293b; }
         .howto-section h5 {
-            color: #2563eb;
+            color: var(--color-primary);
             margin-bottom: 1rem;
         }
-        [data-theme="dark"] .howto-section h5 { color: #60a5fa; }
         .howto-section h6 {
-            color: #1e40af;
+            color: var(--color-primary);
             margin-top: 1.25rem;
             margin-bottom: 0.5rem;
         }
-        [data-theme="dark"] .howto-section h6 { color: #93c5fd; }
         .howto-section .step {
-            background: white;
-            border: 1px solid #e2e8f0;
+            background: var(--color-base-100);
+            border: 1px solid var(--color-base-300);
             border-radius: 6px;
             padding: 1rem;
             margin-bottom: 0.75rem;
         }
-        [data-theme="dark"] .howto-section .step { background: #0f172a; border-color: #334155; }
         .howto-section .step-title {
             font-weight: 600;
-            color: #334155;
+            color: var(--color-base-content);
             margin-bottom: 0.5rem;
         }
-        [data-theme="dark"] .howto-section .step-title { color: #e2e8f0; }
         .howto-section .step-action {
             font-family: monospace;
-            background: #e0e7ff;
+            background: color-mix(in oklab, var(--color-primary) 14%, var(--color-base-100));
             padding: 2px 6px;
             border-radius: 4px;
-            color: #3730a3;
+            color: var(--color-primary);
         }
-        [data-theme="dark"] .howto-section .step-action { background: #312e81; color: #c7d2fe; }
         .howto-section .insight {
-            color: #059669;
+            color: var(--color-success);
             font-style: italic;
         }
         .howto-section ul {
@@ -95,13 +87,12 @@
             margin: 0.5rem 0;
         }
         .howto-section .pivot-compare {
-            background: #ecfdf5;
-            border: 1px solid #a7f3d0;
+            background: color-mix(in oklab, var(--color-success) 14%, var(--color-base-100));
+            border: 1px solid color-mix(in oklab, var(--color-success) 40%, var(--color-base-100));
             padding: 0.75rem;
             border-radius: 6px;
             margin: 0.5rem 0;
         }
-        [data-theme="dark"] .howto-section .pivot-compare { background: #064e3b; border-color: #065f46; }
     </style>
 </head>
 <body>

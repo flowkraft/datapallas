@@ -42,9 +42,7 @@ export const DOCS_IMAGES_DIR = path.resolve(
  *
  * Toasts pop in/out during the test as a side effect of user actions (Saved,
  * Connection started, etc.) and routinely leak into screenshots taken seconds
- * after the action. The hiding rule covers the three classes used across the
- * Angular UI (`#toast-container`, `.toast-container`, `.ngx-toastr`) plus the
- * generic `.toast`. The injected style stays on the page for the lifetime of
+ * after the action. The injected style stays on the page for the lifetime of
  * the page — call once early in the test, then every subsequent capture is
  * toast-free without needing per-shot setup/teardown.
  *
@@ -55,8 +53,7 @@ export async function hideToastsForScreenshots(page: Page): Promise<void> {
     if (document.getElementById('__hide_toasts_for_screenshots')) return;
     const style = document.createElement('style');
     style.id = '__hide_toasts_for_screenshots';
-    style.textContent =
-      `#toast-container, .toast-container, .ngx-toastr, .toast { display: none !important; }`;
+    style.textContent = `.toast { display: none !important; }`;
     document.head.appendChild(style);
   });
 }

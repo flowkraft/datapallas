@@ -427,6 +427,7 @@ export class WebSocketService extends WebSocketEndpoint {
           this.executionStatsService.jobStats.workingOnJobs.push({
             jobFilePath: activeJob.jobFilePath,
             fileName: fileName,
+            jobType: activeJob.job?.jobtype || '',
           });
         }
       }

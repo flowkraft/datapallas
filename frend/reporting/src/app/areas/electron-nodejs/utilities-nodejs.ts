@@ -1,17 +1,21 @@
 import * as xml2js from 'xml2js';
 import Utilities from '../../helpers/utilities';
 
-// Node-builtin + native-deps access via window.require so esbuild's static
-// analyzer treats this as a property access (not a module import) and never
-// tries to resolve `fs`, `path`, `os`, etc. at build time. The Electron
-// renderer always exposes window.require; this file is never reached in the
-// web build (electron.service.ts is swapped for electron.service.empty-web.ts
-// via angular.json fileReplacements, which severs all imports into here).
-const fs      = (window as any).require('fs');
-const AdmZip  = (window as any).require('adm-zip');
-const path    = (window as any).require('path');
-const os      = (window as any).require('os');
-const jetpack = (window as any).require('fs-jetpack');
+// Native-module access via a property-access call so esbuild's static analyser
+// never sees a bare require('fs') / require('adm-zip') … and does not attempt
+// to bundle Node built-ins. In Electron renderer window.require is always
+// present; in a plain Node.js context (e.g. Jasmine upgrade tests) fall back
+// to the module-local require — _req('fs') is still a property-like call that
+// esbuild ignores. The web build never reaches this file (fileReplacements in
+// angular.json severs the import chain before bundling).
+const _req: (id: string) => any =
+  typeof window !== 'undefined' ? (window as any).require : require;
+
+const fs      = _req('fs');
+const AdmZip  = _req('adm-zip');
+const path    = _req('path');
+const os      = _req('os');
+const jetpack = _req('fs-jetpack');
 
 export default class UtilitiesNodeJs {
   static pathResolve(pathSegments: string[]): string {

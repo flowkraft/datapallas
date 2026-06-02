@@ -41,7 +41,7 @@
     @if (settingsService.isDefaultEmailConnectionConfigured()) {
       <button
         type="button"
-        class="btn btn-primary dburst-button-question-confirm"
+        class="btn btn-outline btn-primary dburst-button-question-confirm"
         (click)="confirm('send-message')"
         [innerHTML]="confirmLabel"
       ></button>
@@ -49,7 +49,7 @@
     @if (!settingsService.isDefaultEmailConnectionConfigured()) {
       <button
         type="button"
-        class="btn btn-primary dburst-button-question-confirm"
+        class="btn btn-outline btn-primary dburst-button-question-confirm"
         (click)="confirm('configure-email-properly')"
         [innerHTML]="'COMPONENTS.ASK-FOR-FEATURE-DIALOG.INNER-HTML.CONFIGURE-EMAIL-PROPERLY' | translate"
       ></button>
