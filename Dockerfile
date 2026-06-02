@@ -77,10 +77,6 @@ RUN mvn dependency:copy-dependencies -P docker
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS frontend-build
 
-# node-gyp toolchain — Electron 37's install-app-deps rebuilds native
-# modules (bufferutil) from source; Alpine ships no Python by default.
-RUN apk add --no-cache python3 make g++
-
 # Build date arg for cache busting
 ARG BUILD_DATE=dev
 

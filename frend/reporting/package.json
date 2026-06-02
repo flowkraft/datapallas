@@ -17,7 +17,7 @@
   "main": "app/main.js",
   "private": true,
   "scripts": {
-    "postinstall": "electron-builder install-app-deps",
+    "electron:install-app-deps": "electron-builder install-app-deps",
     "ng": "ng",
     "start": "npm-run-all -p electron:serve ng:serve",
     "ng:serve": "ng serve -c web -o",
@@ -31,7 +31,7 @@
     "electron:start": "electron . --serve --stack_trace_limit=100",
     "electron:serve": "wait-on tcp:4200 && npm run electron:serve-tsc && npm-run-all -p electron:serve-tsc:watch electron:start",
     "electron:local": "npm run build:prod && electron .",
-    "electron:build": "npm run build:prod && electron-builder build --publish=never",
+    "electron:build": "npm run build:prod && npm run electron:install-app-deps && electron-builder build --publish=never",
     "test": "ng test --watch=false",
     "test:watch": "ng test",
     "e2e": "npm run build:prod && playwright test -c e2e/playwright.config.ts e2e/",
@@ -99,7 +99,7 @@
     "_custom:playwright-scripts-electron": "npm run build:prod && cross-env TEST_ENV=electron TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e playwright test -c e2e/playwright.config.ts e2e/",
     "_custom:playwright-tests-web": "wait-on tcp:4201 && cross-env TEST_ENV=web TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e playwright test -c e2e/playwright.config.ts e2e/",
     "_custom:playwright-scripts-web": "npm-run-all -p _custom:ng:serve _custom:playwright-tests-web",
-    "_custom:electron:windows": "npm run build:prod && electron-builder build --windows --ia32"
+    "_custom:electron:windows": "npm run build:prod && npm run electron:install-app-deps && electron-builder build --windows --ia32"
   },
   "dependencies": {
     "@angular/animations": "19.2.22",
