@@ -1,16 +1,16 @@
 export const tabUploadFileShareTemplate = `<ng-template #tabUploadFileShareTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.COMMAND' | translate }}</div>
-      <div class="col-xs-7">
-        <input id="fileShareCommand" [(ngModel)]="xmlSettings?.documentburster.settings.uploadsettings.filesharecommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+      <div style="grid-column:span 7">
+        <input id="fileShareCommand" [ngModel]="xmlSettings?.documentburster?.settings?.uploadsettings?.filesharecommand"
+          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.filesharecommand', $event)" class="input" />
       </div>
 
-      <div class="col-xs-3">
+      <div style="grid-column:span 3">
         <dburst-button-variables id="btnFileShareVariables"
           (sendSelectedVariable)="updateFormControlWithSelectedVariable('fileShareCommand',$event)">
         </dburst-button-variables>
@@ -18,11 +18,11 @@ export const tabUploadFileShareTemplate = `<ng-template #tabUploadFileShareTempl
 
     </div>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.SYNOPSIS' | translate }}</div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 7">
         <em>[{{
           'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.OPTIONS' | translate }}][URL...]</em>
       </div>
@@ -31,11 +31,11 @@ export const tabUploadFileShareTemplate = `<ng-template #tabUploadFileShareTempl
 
     <br>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.EXAMPLE' | translate }}</div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 7">
         <em [innerHTML]="'-T \\$\\{extracted_file_path\\} file://hostname/path/to/the%20folder'"></em>
       </div>
 
@@ -43,11 +43,11 @@ export const tabUploadFileShareTemplate = `<ng-template #tabUploadFileShareTempl
 
     <br>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.HINT' | translate }}</div>
-      <div class="col-xs-7">{{
+      <div style="grid-column:span 7">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.FULL-CURL-POWER' | translate }}Full cURL power is available here -
         <a href="http://curl.haxx.se/" target="_blank">http://curl.haxx.se/ </a>
         <span [innerHTML]="'AREAS.CONFIGURATION.TAB-UPLOAD-FILE-SHARE.INNER-HTML.USE-CASES'

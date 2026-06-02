@@ -1,8 +1,9 @@
 export const dockerTemplate = `
   <!-- Docker Desktop not found -->
-  <div class="row" *ngIf="!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && !stateStore?.configSys?.sysInfo?.setup?.docker?.version">
+  @if (!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && !stateStore?.configSys?.sysInfo?.setup?.docker?.version) {
+  <div>
     <br />
-    <span class="label label-warning">
+    <span class="badge badge-warning">
       <strong>
         <em>Docker Desktop</em>
         {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.DOCKER.NOT-FOUND' | translate}}
@@ -27,18 +28,20 @@ export const dockerTemplate = `
 
     <a href="#" [routerLink]="['/help', 'appsMenuSelected']" [queryParams]="{activeTab: 'extraPackagesTab'}"
     skipLocationChange="true">
-      <button id="btnInstallDockerTabPortal" type="button" class="btn btn-primary">
+      <button id="btnInstallDockerTabPortal" type="button" class="btn btn-outline btn-primary">
         {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.DOCKER.INSTALL' | translate}}
         <em>Docker Desktop</em>
       </button>
     </a>
     <br/><br/>
   </div>
+  }
 
   <!-- Docker Desktop too old -->
-  <div class="row" *ngIf="!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && stateStore?.configSys?.sysInfo?.setup?.docker?.version">
+  @if (!stateStore?.configSys?.sysInfo?.setup?.docker?.isDockerOk && stateStore?.configSys?.sysInfo?.setup?.docker?.version) {
+  <div>
     <br /><br />
-    <span id="dockerInstallationOld" class="label label-warning">
+    <span id="dockerInstallationOld" class="badge badge-warning">
       <strong>
         <em>Docker Desktop</em>
         {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.DOCKER.TOO-OLD' | translate}}
@@ -62,11 +65,12 @@ export const dockerTemplate = `
 
     <a href="#" [routerLink]="['/help', 'appsMenuSelected']" [queryParams]="{activeTab: 'extraPackagesTab'}"
     skipLocationChange="true">
-      <button id="btnUpdateDockerTabPortal" type="button" class="btn btn-primary">
+      <button id="btnUpdateDockerTabPortal" type="button" class="btn btn-outline btn-primary">
         {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.DOCKER.UPDATE' | translate}}
         <em>Docker Desktop</em>
       </button>
     </a>
     <br/><br/>
   </div>
+  }
 `;

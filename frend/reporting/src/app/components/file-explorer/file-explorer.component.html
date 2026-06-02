@@ -2,204 +2,241 @@
   [style]="{ width: '425px', 'min-width': '400px' }"
   class="container"
   role="main"
->
+  >
   <!-- Quick Links in separate row -->
-  <div class="row" style="margin-bottom: 10px">
-    <div class="col-xs-12">
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-bottom: 10px">
+    <div style="grid-column:span 12">
       <ul class="list-inline" style="margin: 0; padding-left: 0">
-        <li *ngFor="let link of metaInfo.quickLinks | keyvalue">
-          <a
-            href="javascript:void(0)"
-            (click)="navigateToDirectoryFromLink(link.value)"
-            [title]="'Jump to ' + link.value"
-            >{{ link.key }}</a
-          >
-        </li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- Breadcrumb navigation -->
-  <div class="row">
-    <div class="col-xs-12">
-      <ol class="breadcrumb compact-breadcrumb">
-        <!-- Base Directory as Home -->
-        <li>
-          <a
-            href="javascript:void(0)"
-            (click)="navigateToDirectory(baseDirPath)"
-            [title]="'Go to ' + baseDirPath"
-            >{{ getBaseName() }}</a
-          >
-        </li>
-
-        <!-- Display each segment of the relative path -->
-        <ng-container
-          *ngFor="
-            let segment of getDisplayPathSegments();
-            let i = index;
-            let last = last
-          "
-        >
-          <li [class.active]="last">
+        @for (link of metaInfo.quickLinks | keyvalue; track link) {
+          <li>
             <a
-              *ngIf="!last"
               href="javascript:void(0)"
-              (click)="navigateToSegmentPath(i)"
-              >{{ segment }}</a
-            >
-            <span *ngIf="last">{{ segment }}</span>
-          </li>
-        </ng-container>
-      </ol>
+              (click)="navigateToDirectoryFromLink(link.value)"
+              [title]="'Jump to ' + link.value"
+              >{{ link.key }}</a
+              >
+            </li>
+          }
+        </ul>
+      </div>
     </div>
-  </div>
 
-  <!-- Files and directories table -->
-  <div class="row">
-    <div class="col-xs-12">
-      <table
-        class="table table-hover table-striped table-bordered compact-table"
-      >
-        <colgroup>
-          <col class="col-name" />
-          <col *ngIf="showPermissionsColumn" class="col-permission" />
-          <col class="col-size" />
-          <!-- Ensure col-size is present -->
-          <col class="col-date" />
-          <!-- Ensure col-date is present -->
-          <col *ngIf="showActionsColumn" class="col-actions" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="col-name">Name</th>
-            <th *ngIf="showPermissionsColumn" class="col-permission">
-              Permission
-            </th>
-            <th class="col-size">Size</th>
-            <!-- Add Size header -->
-            <th class="col-date">Date Modified</th>
-            <!-- Add Date Modified header -->
-            <th *ngIf="showActionsColumn" class="col-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Parent directory row -->
-          <tr *ngIf="fileTree?.parentDirectory">
-            <td class="col-filename">
-              <span class="glyphicon glyphicon-arrow-up"></span>
-              <a
-                *ngIf="fileTree.parentDirectory.readable"
-                href="javascript:void(0)"
+    <!-- Breadcrumb navigation -->
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 12">
+        <div class="breadcrumbs compact-breadcrumb"><ul>
+          <!-- Base Directory as Home -->
+          <li>
+            <a
+              href="javascript:void(0)"
+              (click)="navigateToDirectory(baseDirPath)"
+              [title]="'Go to ' + baseDirPath"
+              >{{ getBaseName() }}</a
+              >
+            </li>
+
+            <!-- Display each segment of the relative path -->
+            @for (
+              segment of getDisplayPathSegments(); track
+              segment; let i = $index; let last = $last) {
+              <li>
+                @if (!last) {
+                  <a
+                    href="javascript:void(0)"
+                    (click)="navigateToSegmentPath(i)"
+                    >{{ segment }}</a
+                    >
+                  }
+                  @if (last) {
+                    <span>{{ segment }}</span>
+                  }
+                </li>
+              }
+            </ul></div>
+          </div>
+        </div>
+
+        <!-- Files and directories table -->
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+          <div style="grid-column:span 12">
+            <table
+              class="table table-zebra compact-table"
+              >
+              <colgroup>
+              <col class="col-name" />
+              @if (showPermissionsColumn()) {
+                <col class="col-permission" />
+              }
+              <col class="col-size" />
+              <!-- Ensure col-size is present -->
+              <col class="col-date" />
+              <!-- Ensure col-date is present -->
+              @if (showActionsColumn()) {
+                <col class="col-actions" />
+              }
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="col-name">Name</th>
+                @if (showPermissionsColumn()) {
+                  <th class="col-permission">
+                    Permission
+                  </th>
+                }
+                <th class="col-size">Size</th>
+                <!-- Add Size header -->
+                <th class="col-date">Date Modified</th>
+                <!-- Add Date Modified header -->
+                @if (showActionsColumn()) {
+                  <th class="col-actions">Actions</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Parent directory row -->
+              @if (fileTree?.parentDirectory) {
+                <tr>
+                  <td class="col-filename">
+                    <span class="glyphicon glyphicon-arrow-up"></span>
+                    @if (fileTree.parentDirectory.readable) {
+                      <a
+                        href="javascript:void(0)"
                 (click)="
                   navigateToDirectoryFromLink(fileTree.parentDirectory.fullName)
                 "
-                title="View Parent Directory"
-              >
-                Parent Directory
-              </a>
-              <span *ngIf="!fileTree.parentDirectory.readable"
-                >Parent Directory</span
-              >
-            </td>
-            <td *ngIf="showPermissionsColumn" class="col-permission">
-              {{ fileTree.parentDirectory.accessAttributes }}
-            </td>
-            <td class="col-size"></td>
-            <!-- Add empty cell for Size -->
-            <td class="col-date"></td>
-            <!-- Add empty cell for Date -->
-            <td *ngIf="showActionsColumn" class="col-actions"></td>
-          </tr>
+                        title="View Parent Directory"
+                        >
+                        Parent Directory
+                      </a>
+                    }
+                    @if (!fileTree.parentDirectory.readable) {
+                      <span
+                        >Parent Directory</span
+                        >
+                      }
+                    </td>
+                    @if (showPermissionsColumn()) {
+                      <td class="col-permission">
+                        {{ fileTree.parentDirectory.accessAttributes }}
+                      </td>
+                    }
+                    <td class="col-size"></td>
+                    <!-- Add empty cell for Size -->
+                    <td class="col-date"></td>
+                    <!-- Add empty cell for Date -->
+                    @if (showActionsColumn()) {
+                      <td class="col-actions"></td>
+                    }
+                  </tr>
+                }
 
-          <!-- Child directories -->
-          <tr *ngFor="let childDir of fileTree?.childDirectories">
-            <td class="col-filename">
-              <span class="glyphicon glyphicon-folder-close"></span>
-              <a
-                id="childDirLink{{ childDir.name }}"
-                *ngIf="childDir.readable"
-                href="javascript:void(0)"
-                (click)="navigateToDirectoryFromLink(childDir.fullName)"
-                title="View '{{ childDir.name }}' Folder"
-              >
-                {{ childDir.name }}
-              </a>
-              <span *ngIf="!childDir.readable">{{ childDir.name }}</span>
-            </td>
-            <td *ngIf="showPermissionsColumn" class="col-permission">
-              {{ childDir.accessAttributes }}
-            </td>
-            <td class="col-size"></td>
-            <!-- Add empty cell for Size -->
-            <td class="col-date">{{ childDir.dateTime }}</td>
-            <!-- Display Date for directories -->
-            <td *ngIf="showActionsColumn" class="col-actions"></td>
-          </tr>
+                <!-- Child directories -->
+                @for (childDir of fileTree?.childDirectories; track childDir) {
+                  <tr>
+                    <td class="col-filename">
+                      <span class="glyphicon glyphicon-folder-close"></span>
+                      @if (childDir.readable) {
+                        <a
+                          id="childDirLink{{ childDir.name }}"
+                          href="javascript:void(0)"
+                          (click)="navigateToDirectoryFromLink(childDir.fullName)"
+                          title="View '{{ childDir.name }}' Folder"
+                          >
+                          {{ childDir.name }}
+                        </a>
+                      }
+                      @if (!childDir.readable) {
+                        <span>{{ childDir.name }}</span>
+                      }
+                    </td>
+                    @if (showPermissionsColumn()) {
+                      <td class="col-permission">
+                        {{ childDir.accessAttributes }}
+                      </td>
+                    }
+                    <td class="col-size"></td>
+                    <!-- Add empty cell for Size -->
+                    <td class="col-date">{{ childDir.dateTime }}</td>
+                    <!-- Display Date for directories -->
+                    @if (showActionsColumn()) {
+                      <td class="col-actions"></td>
+                    }
+                  </tr>
+                }
 
-          <!-- Files -->
-          <tr
-            *ngFor="let file of fileTree?.files"
-            [class.selected-file]="selectedFile === file.fullName"
-            (click)="selectFile(file)"
-            (dblclick)="selectAndConfirmFile(file)"
-          >
-            <td id="tdFileName{{ file.name }}" class="col-filename">
-              <span class="glyphicon glyphicon-file"></span>
-              <a
-                *ngIf="file.readable && isViewableFile(file.name)"
-                href="javascript:void(0)"
-                (click)="$event.stopPropagation(); viewFile(file.fullName)"
-                title="View '{{ file.name }}'"
-              >
-                {{ file.name }}
-              </a>
-              <span *ngIf="!file.readable || !isViewableFile(file.name)">{{
-                file.name
-              }}</span>
-            </td>
-            <td *ngIf="showPermissionsColumn" class="col-permission">
-              {{ file.accessAttributes }}
-            </td>
-            <td class="col-size">{{ file.size }}</td>
-            <!-- Display Size for files -->
-            <td class="col-date">{{ file.dateTime }}</td>
-            <!-- Display Date for files -->
-            <td *ngIf="showActionsColumn" class="col-actions">
-              <button
-                *ngIf="file.readable"
-                class="btn btn-xs btn-info"
-                (click)="$event.stopPropagation(); downloadFile(file.fullName)"
-                title="Download '{{ file.name }}'"
-              >
-                Download
-              </button>
-            </td>
-          </tr>
+                <!-- Files -->
+                @for (file of fileTree?.files; track file) {
+                  <tr
+                    [class.selected-file]="selectedFile === file.fullName"
+                    (click)="selectFile(file)"
+                    (dblclick)="selectAndConfirmFile(file)"
+                    >
+                    <td id="tdFileName{{ file.name }}" class="col-filename">
+                      <span class="glyphicon glyphicon-file"></span>
+                      @if (file.readable && isViewableFile(file.name)) {
+                        <a
+                          href="javascript:void(0)"
+                          (click)="$event.stopPropagation(); viewFile(file.fullName)"
+                          title="View '{{ file.name }}'"
+                          >
+                          {{ file.name }}
+                        </a>
+                      }
+                      @if (!file.readable || !isViewableFile(file.name)) {
+                        <span>{{
+                          file.name
+                        }}</span>
+                      }
+                    </td>
+                    @if (showPermissionsColumn()) {
+                      <td class="col-permission">
+                        {{ file.accessAttributes }}
+                      </td>
+                    }
+                    <td class="col-size">{{ file.size }}</td>
+                    <!-- Display Size for files -->
+                    <td class="col-date">{{ file.dateTime }}</td>
+                    <!-- Display Date for files -->
+                    @if (showActionsColumn()) {
+                      <td class="col-actions">
+                        @if (file.readable) {
+                          <button
+                            class="btn btn-xs btn-info"
+                            (click)="$event.stopPropagation(); downloadFile(file.fullName)"
+                            title="Download '{{ file.name }}'"
+                            >
+                            Download
+                          </button>
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
 
-          <!-- No items message -->
-          <tr
-            *ngIf="
-              (!fileTree?.childDirectories ||
-                fileTree.childDirectories.length === 0) &&
-              (!fileTree?.files || fileTree.files.length === 0)
-            "
-          >
-            <!-- Adjust colspan based on visible columns -->
-            <td
+                <!-- No items message -->
+                @if (
+                  (!fileTree?.childDirectories ||
+                  fileTree.childDirectories.length === 0) &&
+                  (!fileTree?.files || fileTree.files.length === 0)
+                  ) {
+                  <tr
+                    >
+                    <!-- Adjust colspan based on visible columns -->
+                    <td
               [attr.colspan]="
                 2 +
-                (showPermissionsColumn ? 1 : 0) +
-                (showActionsColumn ? 1 : 0) +
+                (showPermissionsColumn() ? 1 : 0) +
+                (showActionsColumn() ? 1 : 0) +
                 2
               "
-              class="text-center"
-            >
-              No files or directories found
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+                      class="text-center"
+                      >
+                      No files or directories found
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>

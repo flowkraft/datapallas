@@ -1,179 +1,143 @@
-<footer class="main-footer" style="padding: 3px">
-  <div class="row">
-    <div class="col-xs-6">
-      <span
-        id="noJobsRunning"
-        *ngIf="executionStatsService.jobStats.numberOfActiveJobs === 0"
-        >{{ "AREAS.STATUS-BAR.NO-JOBS-RUNNING" | translate }}</span
-      >
-      <span
-        id="workingOn"
-        *ngIf="
-          executionStatsService.jobStats.numberOfActiveJobs > 0 &&
-          executionStatsService.jobStats.pauseJobFileExists === 0 &&
-          executionStatsService.jobStats.cancelJobFileExists === 0
-        "
-      >
-        &nbsp;{{ "AREAS.STATUS-BAR.WORKING-ON" | translate }} {{
-        executionStatsService.jobStats.niceWorkingOnFileNames }} ...
-        <span
-          id="progressJobFileExists"
-          *ngIf="executionStatsService.jobStats.progressJobFileExists > 0"
-          >.</span
-        >
+<!-- Status bar — thin daisyUI footer, sticky at bottom. Two columns:
+     left = job/working-on text, right = log-state dropdown (cancel-pause + errors). -->
+<footer class="bg-base-200 text-base-content border-t border-base-300 px-4 py-2 text-xs font-semibold flex items-center gap-4">
+
+  <div class="flex-1 flex items-center gap-2 min-w-0 truncate">
+    @if (executionStatsService.jobStats.numberOfActiveJobs === 0) {
+      <span id="noJobsRunning">{{ "AREAS.STATUS-BAR.NO-JOBS-RUNNING" | translate }}</span>
+    }
+    @if (
+      executionStatsService.jobStats.numberOfActiveJobs > 0 &&
+      executionStatsService.jobStats.pauseJobFileExists === 0 &&
+      executionStatsService.jobStats.cancelJobFileExists === 0
+    ) {
+      <span id="workingOn">
+        {{ "AREAS.STATUS-BAR.WORKING-ON" | translate }}
+        {{ executionStatsService.jobStats.niceWorkingOnFileNames }} ...
+        @if (executionStatsService.jobStats.progressJobFileExists > 0) {
+          <span id="progressJobFileExists">.</span>
+        }
       </span>
-      <span
-        id="pauseJobFileExists"
-        *ngIf="executionStatsService.jobStats.pauseJobFileExists > 0"
-        >{{ "AREAS.STATUS-BAR.WAIT-EXECUTING-COMMAND" | translate }}
-        <strong>{{ "AREAS.STATUS-BAR.PAUSE" | translate }}</strong> ...</span
-      >
-      <span
-        id="cancelJobFileExists"
-        *ngIf="executionStatsService.jobStats.cancelJobFileExists > 0"
-        >{{ "AREAS.STATUS-BAR.WAIT-EXECUTING-COMMAND" | translate }}
-        <strong>{{ "AREAS.STATUS-BAR.CANCEL" | translate }}</strong> ...</span
-      >
-    </div>
-
-    <div
-      class="col-xs-2"
-      *ngIf="
-        executionStatsService.jobStats.numberOfActiveJobs > 0 &&
-        shouldShowPauseCancelButtons()
-      "
-    >
-      <progressbar
-        *ngIf="executionStatsService.jobStats.progressValue > 0"
-        [value]="executionStatsService.jobStats.progressValue"
-        style="margin: 0px; text-align: left"
-      >
-      </progressbar>
-    </div>
-
-    <div
-      class="col-xs-3"
-      *ngIf="
-        executionStatsService.jobStats.numberOfActiveJobs > 0 &&
-        !shouldShowPauseCancelButtons()
-      "
-    >
-      <progressbar
-        *ngIf="executionStatsService.jobStats.progressValue > 0"
-        [value]="executionStatsService.jobStats.progressValue"
-        style="margin: 0px; text-align: left"
-      >
-      </progressbar>
-    </div>
-
-    <div
-      class="col-xs-1"
-      *ngIf="
-        executionStatsService.jobStats.numberOfActiveJobs > 0 &&
-        shouldShowPauseCancelButtons()
-      "
-    >
-      <div class="btn-group dropup pull-right">
-        <button
-          id="btnCancelPauseRunningJobs"
-          class="btn btn-default btn-xs dropdown-toggle"
-          type="button"
-          data-toggle="dropdown"
-        >
-          <span id="cancelPause" class="label label-default"
-            >{{ "AREAS.STATUS-BAR.CANCEL-PAUSE" | translate }}</span
-          >
-          <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-          <li *ngFor="let job of executionStatsService.jobStats.workingOnJobs">
-            <a
-              id="btnPause{{ job?.fileName }}"
-              (click)="doPauseCancelJob(job.fileName, job.jobFilePath, 'pause')"
-              style="cursor: pointer"
-            >
-              <i class="fa fa-pause-circle-o"></i>&nbsp;
-              <u
-                >{{ "AREAS.STATUS-BAR.PAUSE" | translate }} {{ job?.fileName }}
-                {{ "AREAS.STATUS-BAR.PROCESSING" | translate }}</u
-              >
-            </a>
-            <br />
-            <a
-              id="btnCancel{{ job?.fileName }}"
-              (click)="
-                doPauseCancelJob(job.fileName, job.jobFilePath, 'cancel')
-              "
-              style="cursor: pointer"
-            >
-              <i class="fa fa-window-close-o"></i>&nbsp;
-              <u
-                >{{ "AREAS.STATUS-BAR.CANCEL" | translate }} {{ job?.fileName }}
-                {{ "AREAS.STATUS-BAR.PROCESSING" | translate }}</u
-              >
-            </a>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div style="width: 98%">
-      <div class="btn-group dropup pull-right">
-        <button
-          id="btnGreatNoErrorsNoWarnings"
-          class="btn btn-default btn-xs dropdown-toggle"
-          type="button"
-          data-toggle="dropdown"
-          *ngIf="
-            executionStatsService.logStats.warningsLogFileSize <= 0 &&
-            executionStatsService.logStats.errorsLogFileSize <= 0
-          "
-        >
-          {{ "AREAS.STATUS-BAR.NO-ERRORS-WARNINGS" | translate }}
-          <span class="caret"></span>
-        </button>
-        <button
-          id="btnWarnings"
-          type="button"
-          class="btn btn-warning btn-xs dropdown-toggle"
-          data-toggle="dropdown"
-          *ngIf="
-            executionStatsService.logStats.warningsLogFileSize > 0 &&
-            executionStatsService.logStats.errorsLogFileSize <= 0
-          "
-        >
-          {{ "AREAS.STATUS-BAR.UPS-VIEW-WARNINGS" | translate }}
-          <span class="caret"></span>
-        </button>
-        <button
-          id="btnErrors"
-          type="button"
-          class="btn btn-danger btn-xs dropdown-toggle"
-          data-toggle="dropdown"
-          *ngIf="executionStatsService.logStats.errorsLogFileSize > 0"
-        >
-          {{ "AREAS.STATUS-BAR.UPS-VIEW-ERRORS" | translate }}
-          <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-          <li>
-            <a href="#" [routerLink]="['/processing', 'logsMenuSelected']">
-              <u>{{ "AREAS.STATUS-BAR.VIEW-LOGS" | translate }}</u>
-            </a>
-          </li>
-          <li *ngIf="settingsService.isJServerStarted">
-            <a href="#"
-              ><i
-                class="fa fa-check-circle-o"
-                style="color: #4caf50"
-                *ngIf="settingsService.isJServerStarted"
-              ></i
-              ><span *ngIf="settingsService.isJServerStarted">server is UP</span
-              >&nbsp;<i class="fa fa-arrows-v"></i
-            ></a>
-          </li>
-        </ul>
-      </div>
-    </div>
+    }
+    @if (executionStatsService.jobStats.pauseJobFileExists > 0) {
+      <span id="pauseJobFileExists">
+        {{ "AREAS.STATUS-BAR.WAIT-EXECUTING-COMMAND" | translate }}
+        <strong>{{ "AREAS.STATUS-BAR.PAUSE" | translate }}</strong> ...
+      </span>
+    }
+    @if (executionStatsService.jobStats.cancelJobFileExists > 0) {
+      <span id="cancelJobFileExists">
+        {{ "AREAS.STATUS-BAR.WAIT-EXECUTING-COMMAND" | translate }}
+        <strong>{{ "AREAS.STATUS-BAR.CANCEL" | translate }}</strong> ...
+      </span>
+    }
   </div>
+
+  @if (executionStatsService.jobStats.numberOfActiveJobs > 0 &&
+       executionStatsService.jobStats.progressValue > 0) {
+    <progress class="progress progress-info w-32 h-2"
+      [value]="executionStatsService.jobStats.progressValue" max="100"></progress>
+  }
+
+  <!-- Right-side: cancel-pause running jobs (conditional) -->
+  @if (executionStatsService.jobStats.numberOfActiveJobs > 0 &&
+       shouldShowPauseCancelButtons()) {
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnCancelPauseRunningJobs"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-ghost btn-xs cursor-pointer">
+        <span id="cancelPause" class="badge badge-ghost badge-sm">
+          {{ "AREAS.STATUS-BAR.CANCEL-PAUSE" | translate }}
+        </span>&nbsp;▴
+      </button>
+      <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+        @for (job of executionStatsService.jobStats.workingOnJobs; track job) {
+          <li>
+            <a [id]="'btnPause' + job?.fileName"
+              (click)="doPauseCancelJob(job.fileName, 'pause')"
+              tabindex="0"
+              style="cursor:pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <u>{{ "AREAS.STATUS-BAR.PAUSE" | translate }} {{ job?.fileName }} {{ "AREAS.STATUS-BAR.PROCESSING" | translate }}</u>
+            </a>
+            <a [id]="'btnCancel' + job?.fileName"
+              (click)="doPauseCancelJob(job.fileName, 'cancel')"
+              tabindex="0"
+              style="cursor:pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <u>{{ "AREAS.STATUS-BAR.CANCEL" | translate }} {{ job?.fileName }} {{ "AREAS.STATUS-BAR.PROCESSING" | translate }}</u>
+            </a>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  <!-- Right-side: error/warning/no-issues dropdown — exactly one of three buttons renders. -->
+  @if (executionStatsService.logStats.warningsLogFileSize <= 0 &&
+       executionStatsService.logStats.errorsLogFileSize <= 0) {
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnGreatNoErrorsNoWarnings"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-ghost btn-xs cursor-pointer">
+        {{ "AREAS.STATUS-BAR.NO-ERRORS-WARNINGS" | translate }}&nbsp;▴
+      </button>
+      <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+        <li>
+          <a [routerLink]="['/processing', 'logsMenuSelected']">
+            <u>{{ "AREAS.STATUS-BAR.VIEW-LOGS" | translate }}</u>
+          </a>
+        </li>
+        @if (settingsService.isJServerStarted) {
+          <li>
+            <a>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="color:#4caf50"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>server is UP</span>
+            </a>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+  @if (executionStatsService.logStats.warningsLogFileSize > 0 &&
+       executionStatsService.logStats.errorsLogFileSize <= 0) {
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnWarnings"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-warning btn-xs cursor-pointer">
+        {{ "AREAS.STATUS-BAR.UPS-VIEW-WARNINGS" | translate }}&nbsp;▴
+      </button>
+      <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+        <li>
+          <a [routerLink]="['/processing', 'logsMenuSelected']">
+            <u>{{ "AREAS.STATUS-BAR.VIEW-LOGS" | translate }}</u>
+          </a>
+        </li>
+      </ul>
+    </div>
+  }
+  @if (executionStatsService.logStats.errorsLogFileSize > 0) {
+    <div class="dropdown dropdown-top dropdown-end">
+      <button id="btnErrors"
+        type="button"
+        tabindex="0"
+        role="button"
+        class="btn btn-error btn-xs cursor-pointer">
+        {{ "AREAS.STATUS-BAR.UPS-VIEW-ERRORS" | translate }}&nbsp;▴
+      </button>
+      <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+        <li>
+          <a [routerLink]="['/processing', 'logsMenuSelected']">
+            <u>{{ "AREAS.STATUS-BAR.VIEW-LOGS" | translate }}</u>
+          </a>
+        </li>
+      </ul>
+    </div>
+  }
 </footer>

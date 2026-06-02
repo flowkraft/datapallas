@@ -156,7 +156,7 @@
       valueText.setAttribute("text-anchor", "middle");
       valueText.setAttribute("font-size", String(Math.max(14, radius * 0.28)));
       valueText.setAttribute("font-weight", "600");
-      valueText.setAttribute("fill", "#333");
+      valueText.setAttribute("fill", "currentColor");
       valueText.textContent = formatVal(value, fmt);
       svg.appendChild(valueText);
 
@@ -166,7 +166,7 @@
       labelText.setAttribute("y", String(cy + 16));
       labelText.setAttribute("text-anchor", "middle");
       labelText.setAttribute("font-size", "11");
-      labelText.setAttribute("fill", "#666");
+      labelText.setAttribute("fill", "color-mix(in oklab, currentColor 60%, transparent)");
       labelText.textContent = label;
       svg.appendChild(labelText);
 

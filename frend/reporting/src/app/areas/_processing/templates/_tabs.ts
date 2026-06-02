@@ -1,10 +1,10 @@
 export const tabsTemplate = `
-<tabset #processingTabs>
-
-  <tab *ngFor="let tab of visibleTabs" [id]="tab.id" [heading]="tab.heading | translate" [active]="tab.active">
-    <ng-container [ngTemplateOutlet]="this[tab.ngTemplateOutlet]">
-    </ng-container>
-  </tab>
-
-</tabset>
+<dp-tabs [activeIndex]="activeTabIdx">
+  @for (tab of visibleTabs; track tab.id) {
+    <dp-tab [id]="tab.id" [heading]="tab.heading | translate">
+      <ng-container [ngTemplateOutlet]="this[tab.ngTemplateOutlet]">
+      </ng-container>
+    </dp-tab>
+  }
+</dp-tabs>
 `;

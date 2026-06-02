@@ -20,23 +20,14 @@ import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper;
 import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper.TokenResult;
 
 /**
- * REST endpoints for the interactive OAuth2 sign-in flow used by the
- * email-connection Advanced tab in the DataPallas UI.
- *
- * Flow:
- *   1. Angular POSTs to /start → backend opens system browser, returns flowId
- *   2. Angular GETs /events (SSE) → streams status updates
- *   3. Backend completes the loopback PKCE flow, pushes success/error event
- *   4. Angular writes the returned refreshToken + userEmail into the connection form
- *
- * Uses Spring MVC's {@link SseEmitter} (servlet async), not WebFlux's
- * {@code Flux<ServerSentEvent>} — the rest of the app runs on the servlet
- * stack (Tomcat + DispatcherServlet) and Flux returns from MVC controllers
- * fall back to a plain text/plain render on dispatch failure, which then
- * collides with GlobalExceptionHandler's JSON error body.
+ * @deprecated Endpoints moved to ConnectionsController under
+ *             /api/connections/{id}/oauth-sign-in,
+ *             /api/connections/{id}/oauth-flow/{flowId}/events,
+ *             /api/connections/{id}/oauth-flow/{flowId}/cancel (V3.6).
+ *             This class is kept as a dead reference only — @RestController
+ *             removed so Spring does not register any routes from it.
  */
-@RestController
-@RequestMapping(value = "/api/oauth/email")
+@Deprecated
 public class EmailOAuthController {
 
     private static final Logger log = LoggerFactory.getLogger(EmailOAuthController.class);

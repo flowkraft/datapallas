@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from '@storybook/angular';
+import type { Meta, StoryObj } from '@storybook/angular';
 import { baseMeta } from './_utils/setup';
 import { StateStoreService } from '../app/providers/state-store.service';
 import { ChocolateyComponent } from '../app/areas/electron-nodejs/chocolatey/chocolatey.component';

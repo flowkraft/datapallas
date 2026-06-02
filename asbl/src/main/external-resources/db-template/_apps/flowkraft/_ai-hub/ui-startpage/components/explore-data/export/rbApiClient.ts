@@ -22,7 +22,7 @@ interface SaveResult {
 export async function saveDashboardToDataPallas(canvasId: string): Promise<SaveResult> {
   try {
     const res = await fetch(
-      `${RB_BASE}/explore-data/${encodeURIComponent(canvasId)}/export`,
+      `${RB_BASE}/explorations/${encodeURIComponent(canvasId)}/export`,
       { method: "POST" },
     );
 

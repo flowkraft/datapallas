@@ -80,13 +80,13 @@ export function ConversationEmptyState({
   return (
     <div
       className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground",
+        "flex flex-1 flex-col items-center justify-center gap-3 text-center text-base-content/60",
         className,
       )}
       {...props}
     >
       {icon && <div className="text-4xl">{icon}</div>}
-      <h3 className="text-lg font-medium text-foreground">{title}</h3>
+      <h3 className="text-lg font-medium text-base-content">{title}</h3>
       {description && <p className="max-w-sm text-sm">{description}</p>}
     </div>
   );

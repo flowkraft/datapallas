@@ -1,11 +1,11 @@
 export const tabAboutTemplate = `<ng-template #tabAboutTemplate>
-  <div class="well">
+  <div class="bg-base-200 rounded-box p-4">
 
     <strong>{{
       'AREAS.HELP.TAB-ABOUT.VERSION' | translate }}</strong>
     <br>
     <br>
-    <span class="label label-default">
+    <span class="badge badge-ghost">
       <em>{{settingsService.product}}</em>&nbsp;{{settingsService.version}}
     </span>
 
@@ -18,7 +18,7 @@ export const tabAboutTemplate = `<ng-template #tabAboutTemplate>
       <li>{{
         'AREAS.HELP.TAB-ABOUT.PURCHASE-COMMERCIAL-LICENSE' | translate }}&nbsp;
         <a href="https://www.pdfburst.com/store" target="_blank">
-          <button class="btn btn-primary btn-xs" type="button">{{
+          <button class="btn btn-outline btn-primary btn-xs" type="button">{{
             'AREAS.HELP.TAB-ABOUT.BUY-NOW' | translate }}</button>
         </a>
       </li>

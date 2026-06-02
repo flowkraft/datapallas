@@ -1,36 +1,47 @@
-import { Injectable } from '@angular/core';
-import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { ApplicationRef, createComponent, EnvironmentInjector, Injectable } from '@angular/core';
 import { ConfirmDialogComponent } from './confirm-dialog.component';
 
 @Injectable()
 export class ConfirmService {
-  modalRef?: BsModalRef;
-  constructor(protected modalService: BsModalService) {}
+  constructor(
+    private appRef: ApplicationRef,
+    private envInjector: EnvironmentInjector,
+  ) {}
 
-  askConfirmation(options: any, modalConfig?: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      // Use the modalConfig parameter if provided, otherwise empty object
-      this.modalRef = this.modalService.show(
-        ConfirmDialogComponent,
-        modalConfig || {},
-      );
-      this.modalRef.content.title = options.title
-        ? options.title
-        : 'Confirmation';
-      this.modalRef.content.message = options.message;
-      this.modalRef.content.confirmLabel = options.confirmLabel
-        ? options.confirmLabel
-        : 'Yes';
-      this.modalRef.content.declineLabel = options.declineLabel
-        ? options.declineLabel
-        : 'No';
+  askConfirmation(options: any, modalConfig?: any): Promise<boolean> {
+    return new Promise((resolve) => {
+      const ref = createComponent(ConfirmDialogComponent, {
+        environmentInjector: this.envInjector,
+      });
 
-      this.modalRef.content.confirmAction = options.confirmAction;
-      this.modalRef.content.confirmationText = options.confirmationText || null;
+      const inst = ref.instance;
+      inst.title = options.title || 'Confirmation';
+      inst.message = options.message;
+      inst.confirmLabel = options.confirmLabel || 'Yes';
+      inst.declineLabel = options.declineLabel || 'No';
+      inst.confirmAction = options.confirmAction;
+      inst.confirmationText = options.confirmationText || null;
 
-      this.modalRef.content.onClose.subscribe((result: boolean) => {
-        this.modalService.hide();
-        resolve(result);
+      document.body.appendChild(ref.location.nativeElement);
+      this.appRef.attachView(ref.hostView);
+      ref.changeDetectorRef.detectChanges();
+
+      // Belt-and-suspenders: directly open the native <dialog>. If dp-dialog's
+      // effect-based auto-open misfires (signal propagation timing, viewReady race),
+      // this guarantees the modal becomes visible synchronously after CD.
+      const dialogEl = ref.location.nativeElement.querySelector('dialog') as HTMLDialogElement | null;
+      if (dialogEl && !dialogEl.open) {
+        try { dialogEl.showModal(); } catch { /* already shown or detached */ }
+      }
+
+      inst.onClose.subscribe({
+        next: (result: boolean) => resolve(result),
+        complete: () => {
+          setTimeout(() => {
+            this.appRef.detachView(ref.hostView);
+            ref.destroy();
+          }, 300);
+        },
       });
     });
   }

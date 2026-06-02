@@ -891,19 +891,19 @@
     </form>
     {#if showReload}
       {#if !showConfirm}
-        <button id="btnReloadDashboard" type="button" style="display:block;width:100%;margin-top:12px;padding:10px 20px;background:#0f766e;color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;" on:click={handleReloadClick}>
+        <button id="btnReloadDashboard" type="button" style="display:block;width:100%;margin-top:12px;padding:10px 20px;background:var(--rb-accent, var(--color-primary, currentColor));color:var(--rb-accent-text, var(--color-primary-content, #fff));border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;" on:click={handleReloadClick}>
           Reload
         </button>
       {:else}
-        <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 16px;background:#f0fdf4;border:1px solid #0f766e;border-radius:6px;">
-          <span style="flex:1;font-size:13px;color:#0f172a;">Reload dashboard with current parameters?</span>
-          <button id="btnConfirmReload" type="button" style="padding:6px 16px;background:#0f766e;color:white;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;" on:click={confirmReload}>Yes</button>
-          <button id="btnCancelReload" type="button" style="padding:6px 16px;background:#e2e8f0;color:#334155;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;" on:click={cancelReload}>No</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 16px;background:var(--color-base-200, color-mix(in srgb, currentColor 6%, transparent));border:1px solid var(--rb-border, color-mix(in srgb, currentColor 18%, transparent));border-radius:6px;">
+          <span style="flex:1;font-size:13px;color:inherit;">Reload dashboard with current parameters?</span>
+          <button id="btnConfirmReload" type="button" style="padding:6px 16px;background:var(--rb-accent, var(--color-primary, currentColor));color:var(--rb-accent-text, var(--color-primary-content, #fff));border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;" on:click={confirmReload}>Yes</button>
+          <button id="btnCancelReload" type="button" style="padding:6px 16px;background:color-mix(in srgb, currentColor 12%, transparent);color:inherit;border:1px solid var(--rb-border, color-mix(in srgb, currentColor 18%, transparent));border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;" on:click={cancelReload}>No</button>
         </div>
       {/if}
     {/if}
   {:else}
-    <div class="rb-no-params" style="padding: 1rem; color: #666; text-align: center;">
+    <div class="rb-no-params" style="padding: 1rem; color: color-mix(in srgb, currentColor 60%, transparent); text-align: center;">
       No parameters defined. Check console for debug info.
     </div>
   {/if}
@@ -940,17 +940,23 @@
     margin-bottom: 0.25rem;
   }
   
+  /* Native form inputs inherit the page: transparent background, currentColor
+     text, structural border derived from currentColor. Focus ring uses the host
+     accent. A host MAY override: rb-parameters { --rb-border / --rb-accent / --rb-surface }.
+     No daisyUI / Tailwind hardcoded. */
   .form-control {
     padding: 0.5rem;
-    border: 1px solid #ccc;
+    border: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
     border-radius: 4px;
     font-size: 1rem;
+    background: transparent;
+    color: inherit;
   }
-  
+
   .form-control:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    border-color: var(--rb-accent, var(--color-primary, currentColor));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-accent, var(--color-primary, currentColor)) 25%, transparent);
   }
   
   .text-danger {
@@ -969,8 +975,8 @@
     width: 100%;
     margin-top: 12px;
     padding: 10px 20px;
-    background: var(--accent, #0f766e);
-    color: white;
+    background: var(--rb-accent, var(--color-primary, currentColor));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 6px;
     font-size: 14px;
@@ -983,26 +989,28 @@
 
   /* Multi-select control — trigger button opens a centered modal with a
      searchable, paginated checkbox list. "All" / "None" buttons set or clear
-     the draft selection; OK commits, Cancel discards. Palette tracks the file's
-     existing colours (#ccc, #666, #007bff) for visual consistency. */
+     the draft selection; OK commits, Cancel discards. Theme-inheriting: trigger
+     is transparent, the floating modal uses an opaque surface (--rb-surface,
+     Canvas) so it stays readable over any content. No daisyUI / Tailwind. */
   .rb-multi-trigger {
     display: flex;
     align-items: center;
     gap: 8px;
     text-align: left;
     cursor: pointer;
-    background: #fff;
+    background: transparent;
+    color: inherit;
   }
   .rb-multi-trigger-summary {
     flex: 1;
-    color: #666;
+    color: color-mix(in srgb, currentColor 60%, transparent);
     font-size: 0.85rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .rb-multi-trigger-caret {
-    color: #666;
+    color: color-mix(in srgb, currentColor 60%, transparent);
     font-size: 0.75rem;
   }
   .rb-multi-overlay {
@@ -1015,7 +1023,8 @@
     justify-content: center;
   }
   .rb-multi-modal {
-    background: #fff;
+    background: var(--rb-surface, Canvas);
+    color: inherit;
     border-radius: 6px;
     padding: 16px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
@@ -1036,12 +1045,12 @@
     justify-content: flex-end;
     gap: 8px;
     padding-top: 8px;
-    border-top: 1px solid #ccc;
+    border-top: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
   }
   .rb-multi-ok {
-    background: #007bff;
-    color: #fff;
-    border: 1px solid #007bff;
+    background: var(--rb-accent, var(--color-primary, currentColor));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+    border: 1px solid var(--rb-accent, var(--color-primary, currentColor));
     padding: 4px 16px;
     border-radius: 3px;
     font-size: 0.85rem;
@@ -1060,24 +1069,24 @@
     gap: 8px;
     flex-wrap: wrap;
     padding: 4px 0;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
   }
   .rb-multi-link {
     background: transparent;
-    border: 1px solid #ccc;
-    color: #666;
+    border: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
+    color: color-mix(in srgb, currentColor 60%, transparent);
     padding: 2px 12px;
     border-radius: 3px;
     font-size: 0.8rem;
     cursor: pointer;
   }
   .rb-multi-link:hover {
-    background: #f5f5f5;
+    background: color-mix(in srgb, currentColor 8%, transparent);
   }
   .rb-multi-count {
     margin-left: auto;
     font-size: 0.75rem;
-    color: #666;
+    color: color-mix(in srgb, currentColor 60%, transparent);
     font-weight: 500;
   }
   .rb-multi-list {
@@ -1099,7 +1108,7 @@
     margin-bottom: 0;
   }
   .rb-multi-row:hover {
-    background: #f5f5f5;
+    background: color-mix(in srgb, currentColor 8%, transparent);
   }
   .rb-multi-row input[type="checkbox"] {
     width: 1rem;
@@ -1111,14 +1120,14 @@
     justify-content: center;
     gap: 12px;
     padding: 4px;
-    border-top: 1px solid #ccc;
+    border-top: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
     font-size: 0.8rem;
-    color: #666;
+    color: color-mix(in srgb, currentColor 60%, transparent);
   }
   .rb-multi-pager button {
     background: transparent;
-    border: 1px solid #ccc;
-    color: #666;
+    border: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
+    color: color-mix(in srgb, currentColor 60%, transparent);
     padding: 2px 8px;
     border-radius: 3px;
     cursor: pointer;
@@ -1128,6 +1137,6 @@
     cursor: not-allowed;
   }
   .rb-multi-pager button:not(:disabled):hover {
-    background: #f5f5f5;
+    background: color-mix(in srgb, currentColor 8%, transparent);
   }
 </style>

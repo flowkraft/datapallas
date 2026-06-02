@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Eye, EyeOff, RefreshCw, Loader2, Search, Lock, Download, AlertTriangle, ExternalLink } from "lucide-react";
+// lucide-react removed
 import { Button } from "@/components/ui/button";
 import {
   PROVIDER_CONFIGS,
@@ -272,9 +272,9 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
 
   // Shared input class names
   const inputCls =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent";
+    "w-full rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content placeholder:text-base-content/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent";
   const labelCls =
-    "block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5";
+    "block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1.5";
 
   // Render the provider <select> with optgroup
   const renderProviderSelect = () => {
@@ -304,7 +304,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
         </select>
 
         {providerDef?.description && (
-          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+          <p className="text-xs text-base-content/60 mt-1.5 leading-relaxed">
             {providerDef.description}
           </p>
         )}
@@ -328,12 +328,12 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
             placeholder="https://api.example.com/v1"
             className={`${inputCls} ${
               !providerDef.baseUrlEditable
-                ? "bg-muted text-muted-foreground cursor-not-allowed pr-9"
+                ? "bg-base-200 text-base-content/60 cursor-not-allowed pr-9"
                 : ""
             }`}
           />
           {!providerDef.baseUrlEditable && (
-            <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
           )}
         </div>
       </div>
@@ -356,13 +356,13 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
         <button
           type="button"
           onClick={() => setShowApiKey(!showApiKey)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-base-content/60 hover:text-base-content transition-colors"
           title={showApiKey ? "Hide API key" : "Show API key"}
         >
           {showApiKey ? (
-            <EyeOff className="w-4 h-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
           ) : (
-            <Eye className="w-4 h-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
           )}
         </button>
       </div>
@@ -378,7 +378,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
         {/* Warning banner */}
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-3">
           <div className="flex gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
             <div className="text-sm text-amber-800 dark:text-amber-200">
               <p className="font-medium mb-1">Local LLM Hardware Requirements</p>
               <p className="text-xs leading-relaxed">
@@ -397,7 +397,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
                 className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-amber-700 dark:text-amber-300 hover:underline"
               >
                 Browse available models at ollama.com/library
-                <ExternalLink className="w-3 h-3" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
               </a>
             </div>
           </div>
@@ -431,9 +431,9 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
               title="Download model from Ollama registry"
             >
               {pulling ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
               ) : (
-                <Download className="w-4 h-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
               )}
               <span className="ml-1.5">{pulling ? "Pulling..." : "Pull"}</span>
             </Button>
@@ -442,13 +442,13 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
           {/* Progress bar */}
           {(pulling || pullStatus) && (
             <div className="mt-2">
-              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-base-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary transition-all duration-300 rounded-full"
                   style={{ width: `${pullProgress}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-1 truncate">
+              <p className="text-xs text-base-content/60 mt-1 truncate">
                 {pullStatus}
                 {pulling && pullProgress > 0 && ` (${pullProgress}%)`}
               </p>
@@ -511,17 +511,17 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
               }`}
             />
             {fetchedModels.length > 0 && (
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/60 pointer-events-none"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
             )}
 
             {/* Dropdown list */}
             {showModelDropdown && fetchedModels.length > 0 && (
               <div
                 ref={modelDropdownRef}
-                className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-background shadow-lg"
+                className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-base-300 bg-base-100 shadow-lg"
               >
                 {filteredModels.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                  <div className="px-3 py-2 text-sm text-base-content/60">
                     No models match &quot;{modelSearch}&quot;
                   </div>
                 ) : (
@@ -530,17 +530,17 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
                       key={m.id}
                       type="button"
                       onClick={() => selectModel(m)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-base-200 transition-colors ${
                         m.id === model
                           ? "bg-primary/10 text-primary font-medium"
-                          : "text-foreground"
+                          : "text-base-content"
                       }`}
                     >
                       <div className="truncate">
                         {m.name !== m.id ? (
                           <>
                             <span>{m.name}</span>
-                            <span className="text-muted-foreground ml-2 text-xs">
+                            <span className="text-base-content/60 ml-2 text-xs">
                               {m.id}
                             </span>
                           </>
@@ -570,9 +570,9 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
             }
           >
             {fetchingModels ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
             ) : (
-              <RefreshCw className="w-4 h-4" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
             )}
             <span className="ml-1.5 hidden sm:inline">
               {fetchingModels ? "Fetching..." : "Fetch Models"}
@@ -582,8 +582,8 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
 
         {/* Show selected model below when dropdown is open */}
         {model && showModelDropdown && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Selected: <span className="font-medium text-foreground">{model}</span>
+          <p className="text-xs text-base-content/60 mt-1">
+            Selected: <span className="font-medium text-base-content">{model}</span>
           </p>
         )}
       </div>
@@ -598,7 +598,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
       {isProviderChanged && (
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2">
           <div className="flex gap-2 items-start">
-            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
             <p className="text-xs text-amber-800 dark:text-amber-200">
               Switching providers requires a restart to apply new API keys.
               After saving, stop and start your FlowKraft&apos;s AI Hub application again before provisioning agents.
@@ -617,11 +617,11 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
         <Button
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className="bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
+          className="bg-primary hover:bg-primary/90 text-primary-content disabled:opacity-50"
         >
           {saving ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-2 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
               Saving...
             </>
           ) : (

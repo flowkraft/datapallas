@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { RefreshCw, Check, Copy, FileText, Code } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { rbConfig } from "@/lib/rb-config"
@@ -133,28 +132,30 @@ export default function ReportsPage() {
     <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+          <h1 className="text-3xl md:text-4xl font-bold text-base-content mb-3">
             Reports
           </h1>
-          <p className="text-lg text-muted-foreground mb-4">
-            Embed full reports using the <code className="bg-muted px-2 py-1 rounded text-sm">&lt;rb-report&gt;</code> component in{" "}
-            <code className="bg-muted px-2 py-1 rounded text-sm">entity-code</code> mode.
+          <p className="text-lg text-base-content/60 mb-4">
+            Embed full reports using the <code className="bg-base-200 px-2 py-1 rounded text-sm">&lt;rb-report&gt;</code> component in{" "}
+            <code className="bg-base-200 px-2 py-1 rounded text-sm">entity-code</code> mode.
             Click a person's name to view their document.
           </p>
         </div>
 
         <div className="mb-6">
-          <div className="border-b border-border">
+          <div className="border-b border-base-300">
             <div className="flex space-x-8">
               <button
                 onClick={() => setActiveTab("component")}
                 className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
                   activeTab === "component"
-                    ? "border-rb-cyan text-rb-cyan"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-base-content/60 hover:text-base-content hover:border-base-300"
                 }`}
               >
-                <FileText className="w-4 h-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+                </svg>
                 Report
               </button>
               <button
@@ -162,18 +163,20 @@ export default function ReportsPage() {
                 onClick={() => setActiveTab("usage")}
                 className={`pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
                   activeTab === "usage"
-                    ? "border-rb-cyan text-rb-cyan"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-base-content/60 hover:text-base-content hover:border-base-300"
                 }`}
               >
-                <Code className="w-4 h-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/>
+                </svg>
                 Usage
               </button>
             </div>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-lg shadow-sm">
+        <div className="bg-base-100 border border-base-300 rounded-lg shadow-sm">
           {activeTab === "component" && (
             <div className="p-6">
               {/* Employee Selection */}
@@ -189,15 +192,15 @@ export default function ReportsPage() {
                         employee-card px-6 py-4 border-2 rounded-lg cursor-pointer transition-all min-w-[180px]
                         ${
                           selectedEmployee === emp.code
-                            ? "active border-blue-600 bg-blue-50 dark:bg-blue-950 shadow-[0_0_0_3px_rgba(59,130,246,0.2)]"
-                            : "border-border bg-card hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+                            ? "active border-primary bg-primary/5 ring-2 ring-primary/30"
+                            : "border-base-300 bg-base-100 hover:border-primary/60 hover:bg-primary/5"
                         }
                       `}
                     >
-                      <div className="font-semibold text-blue-900 dark:text-blue-100">
+                      <div className="font-semibold text-base-content">
                         {emp.name}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-base-content/60">
                         {emp.code} • {emp.department}
                       </div>
                     </div>
@@ -206,8 +209,8 @@ export default function ReportsPage() {
               </div>
 
               {/* Payslip Display */}
-              <div className="border border-border rounded-lg">
-                <div className="border-b border-border p-4 flex justify-between items-center">
+              <div className="border border-base-300 rounded-lg">
+                <div className="border-b border-base-300 p-4 flex justify-between items-center">
                   <span className="font-semibold">Employee Payslip</span>
                   <Button
                     onClick={handleRefresh}
@@ -215,13 +218,17 @@ export default function ReportsPage() {
                     size="sm"
                     disabled={!selectedEmployee}
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                    </svg>
                   </Button>
                 </div>
                 <div className="p-6 min-h-[400px] relative">
                   {showPlaceholder && (
-                    <div className="text-center text-muted-foreground py-20">
-                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <div className="text-center text-base-content/60 py-20">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 mx-auto mb-4 opacity-30">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+                      </svg>
                       <p>Select an employee above to view their payslip</p>
                     </div>
                   )}
@@ -248,12 +255,16 @@ export default function ReportsPage() {
                   onClick={() => copyToClipboard(usageCode)}
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2 bg-card/80 backdrop-blur"
+                  className="flex items-center gap-2 bg-base-100/80 backdrop-blur"
                 >
                   {copiedUsage ? (
-                    <Check className="w-4 h-4 text-green-500" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-success">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+                    </svg>
                   ) : (
-                    <Copy className="w-4 h-4" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/>
+                    </svg>
                   )}
                   {copiedUsage ? "Copied!" : "Copy"}
                 </Button>

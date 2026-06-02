@@ -15,7 +15,7 @@ export class SamplesTestHelper {
     // 1. Open modal and verify basic content
     ft = ft
       .click(`#btnSamplesLearnMode${sampleId}`)
-      .waitOnElementToBecomeVisible('p-dialog')
+      .waitOnElementToBecomeVisible('dp-dialog')
       .waitOnElementToBecomeVisible('#modalInputDetails')
       .waitOnElementToBecomeVisible('#modalOutputDetails');
 
@@ -47,35 +47,37 @@ export class SamplesTestHelper {
       );
     }
 
-    // 4. Verify file type icons based on input/output types
+    // 4. Verify file type icons based on input/output types. iconSvg() in
+    //    shared/icon-svgs.ts stamps a `data-icon` attribute on every emitted
+    //    <svg> so callers can target a specific icon by registry name.
     if (
       expectedInputFile?.includes('.xlsx') ||
       expectedInputFile?.includes('.xls') ||
       expectedOutputFile?.includes('.xlsx') ||
       expectedOutputFile?.includes('.xls')
     ) {
-      ft = ft.elementShouldBeVisible('p-dialog i.fa-file-excel-o');
+      ft = ft.elementShouldBeVisible('dp-dialog svg[data-icon="file-excel-o"]');
     }
 
     if (
       expectedInputFile?.includes('.pdf') ||
       expectedOutputFile?.includes('.pdf')
     ) {
-      ft = ft.elementShouldBeVisible('p-dialog i.fa-file-pdf-o');
+      ft = ft.elementShouldBeVisible('dp-dialog svg[data-icon="file-pdf-o"]');
     }
 
     if (
       expectedInputFile?.includes('.html') ||
       expectedOutputFile?.includes('.html')
     ) {
-      ft = ft.elementShouldBeVisible('p-dialog i.fa-file-code-o');
+      ft = ft.elementShouldBeVisible('dp-dialog svg[data-icon="file-text-o"]');
     }
 
     if (
       expectedInputFile?.includes('.docx') ||
       expectedOutputFile?.includes('.docx')
     ) {
-      ft = ft.elementShouldBeVisible('p-dialog i.fa-file-word-o');
+      ft = ft.elementShouldBeVisible('dp-dialog svg[data-icon="file-text-o"]');
     }
 
     // 5. Verify notes section
@@ -139,7 +141,7 @@ export class SamplesTestHelper {
     if (capReportGenerationMailMerge) {
       ft = ft
         .click('#leftMenuReportingSettings')
-        .click('#reportingTemplateOutputTab-link')
+        .click('#tab-btn-reportingTemplateOutputTab')
         .waitOnElementToBecomeVisible('#reportOutputType')
         .sleep(3 * Constants.DELAY_ONE_SECOND);
 

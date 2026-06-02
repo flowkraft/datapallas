@@ -76,7 +76,7 @@ export class ConfTemplatesTestHelper {
       .waitOnElementToBecomeVisible(`#btnLoadConfirmYes_${folderName}_${PATHS.SETTINGS_CONFIG_FILE}`)
       .click(`#btnLoadConfirmYes_${folderName}_${PATHS.SETTINGS_CONFIG_FILE}`)
       .click('#leftMenuEmailSettings') // email SMTP settings
-      .click('#emailMessageTab-link') // email message settings
+      .click('#tab-btn-emailMessageTab') // email message settings
       .inputShouldHaveValue('#emailBccAddress', bccValue)
       .inputShouldHaveValue('#emailSubject', subjectValue);
   };
@@ -95,7 +95,7 @@ export class ConfTemplatesTestHelper {
       .waitOnElementToBecomeVisible(`#btnLoadConfirmYes_${folderName}_${PATHS.SETTINGS_CONFIG_FILE}`)
       .click(`#btnLoadConfirmYes_${folderName}_${PATHS.SETTINGS_CONFIG_FILE}`)
       .click('#leftMenuEmailSettings') // email SMTP settings
-      .click('#emailMessageTab-link') // email message settings
+      .click('#tab-btn-emailMessageTab') // email message settings
       .click('#emailBccAddress')
       .typeText(`BCC ${templateName}`)
       //.waitOnElementWithTextToBecomeVisible('Saved')
@@ -226,7 +226,7 @@ export class ConfTemplatesTestHelper {
       .click(`#btnLoadConfirmYes_${folderName}_${PATHS.SETTINGS_CONFIG_FILE}`)
       .waitOnElementToHaveText(
         '.sidebar-menu .header',
-        `CONFIGURATION (${templateName})`,
+        `CONFIG (${templateName})`,
       ).sleep(3 * Constants.DELAY_ONE_SECOND);
 
     if (mailMergeCapability) {

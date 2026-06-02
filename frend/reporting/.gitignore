@@ -4,6 +4,7 @@
 /dist
 /tmp
 /out-tsc
+src/tailwind.css
 /app-builds
 /release
 main.js
@@ -57,3 +58,5 @@ Thumbs.db
 ## Autonomous Coding Harness Templates (local dev only)
 #################
 .harness/
+# Angular version-bump backup files
+*.ng17bkp

@@ -10,7 +10,7 @@
   /** Report folder name (e.g., "sales-summary") */
   export let reportId: string = '';
   
-  /** Base URL for API calls (e.g., "http://localhost:9090/api/reporting") */
+  /** Base URL for API calls (e.g., "http://localhost:9090/api") */
   export let apiBaseUrl: string = '';
   
   /** API key for authentication (passed from host app) */
@@ -64,12 +64,12 @@
   // ============================================================================
   
   onMount(async () => {
-    console.log('[RbReport] onMount - reportId:', reportId, 'apiBaseUrl:', apiBaseUrl, 'entityCode:', entityCode);
+    // console.log('[RbReport] onMount - reportId:', reportId, 'apiBaseUrl:', apiBaseUrl, 'entityCode:', entityCode);
     
     // Read attributes from host custom element (light DOM — walk up, same as RbTabulator)
     await tick();
     const hostElement = container?.closest('rb-report') || container?.closest('rb-dashboard');
-    console.log('[RbReport] onMount - hostElement:', hostElement);
+    // console.log('[RbReport] onMount - hostElement:', hostElement);
 
     if (hostElement) {
       if (!reportId) reportId = hostElement.getAttribute('report-id') || '';
@@ -84,18 +84,18 @@
     // Read print-button-label attribute
     if (hostElement && hostElement.hasAttribute('print-button-label')) {
       printButtonLabel = hostElement.getAttribute('print-button-label') || 'Print';
-      console.log('[RbReport] onMount - read print-button-label from attribute:', printButtonLabel);
+      // console.log('[RbReport] onMount - read print-button-label from attribute:', printButtonLabel);
     }
     
-    console.log('[RbReport] onMount - after attribute read: reportId:', reportId, 'apiBaseUrl:', apiBaseUrl, 'entityCode:', entityCode);
+    // console.log('[RbReport] onMount - after attribute read: reportId:', reportId, 'apiBaseUrl:', apiBaseUrl, 'entityCode:', entityCode);
     
     if (reportId && apiBaseUrl) {
       // In entity mode, skip config loading and directly fetch data with entityCode
       if (entityCode) {
-        console.log('[RbReport] onMount - entity mode, calling fetchData()');
+        // console.log('[RbReport] onMount - entity mode, calling fetchData()');
         await fetchData();
       } else {
-        console.log('[RbReport] onMount - normal mode, calling loadConfig()');
+        // console.log('[RbReport] onMount - normal mode, calling loadConfig()');
         await loadConfig();
       }
     } else {
@@ -105,14 +105,14 @@
   
   // Watch for prop changes
   $: if (reportId && apiBaseUrl && !configLoaded && !entityCode) {
-    console.log('[RbReport] prop watcher triggered - loadConfig()');
+    // console.log('[RbReport] prop watcher triggered - loadConfig()');
     loadConfig();
   }
   
   // Watch for entityCode changes - fetch data directly in entity mode
   // Use prevEntityCode to detect actual changes and re-fetch
   $: if (reportId && apiBaseUrl && entityCode && entityCode !== prevEntityCode) {
-    console.log('[RbReport] entityCode watcher triggered - entityCode:', entityCode, 'prevEntityCode:', prevEntityCode);
+    // console.log('[RbReport] entityCode watcher triggered - entityCode:', entityCode, 'prevEntityCode:', prevEntityCode);
     prevEntityCode = entityCode;
     dataLoaded = false; // Reset to allow fresh fetch
     fetchData();
@@ -174,7 +174,7 @@
   }
   
   async function fetchData() {
-    console.log('[RbReport] fetchData called - reportId:', reportId, 'apiBaseUrl:', apiBaseUrl, 'entityCode:', entityCode);
+    // console.log('[RbReport] fetchData called - reportId:', reportId, 'apiBaseUrl:', apiBaseUrl, 'entityCode:', entityCode);
     
     if (!reportId || !apiBaseUrl) {
       console.warn('[RbReport] fetchData - missing reportId or apiBaseUrl, returning');
@@ -198,7 +198,7 @@
       
       // Include entityCode if present (for single-entity HTML rendering)
       if (entityCode) {
-        console.log('[RbReport] fetchData - adding entityCode to params:', entityCode);
+        // console.log('[RbReport] fetchData - adding entityCode to params:', entityCode);
         params.set('entityCode', entityCode);
       }
       
@@ -209,26 +209,26 @@
       });
       
       const url = `${apiBaseUrl}/reports/${reportId}/data?${params.toString()}`;
-      console.log('[RbReport] fetchData - fetching from URL:', url);
+      // console.log('[RbReport] fetchData - fetching from URL:', url);
       
       const response = await fetch(url, { headers });
-      console.log('[RbReport] fetchData - response status:', response.status);
+      // console.log('[RbReport] fetchData - response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status}`);
       }
       
       const result = await response.json();
-      console.log('[RbReport] fetchData - result:', result);
-      console.log('[RbReport] fetchData - data length:', result.data?.length);
-      console.log('[RbReport] fetchData - renderedHtml length:', result.renderedHtml?.length);
+      // console.log('[RbReport] fetchData - result:', result);
+      // console.log('[RbReport] fetchData - data length:', result.data?.length);
+      // console.log('[RbReport] fetchData - renderedHtml length:', result.renderedHtml?.length);
 
       reportData = result.data || [];
       renderedHtml = result.renderedHtml || '';
       dataLoaded = true;
       fetchCounter++; // Force re-render of named components on re-fetch
       
-      console.log('[RbReport] fetchData - dataLoaded set to true, renderedHtml:', renderedHtml ? renderedHtml.substring(0, 200) + '...' : 'empty');
+      // console.log('[RbReport] fetchData - dataLoaded set to true, renderedHtml:', renderedHtml ? renderedHtml.substring(0, 200) + '...' : 'empty');
       
       // After data loaded, update child components
       await tick();
@@ -386,7 +386,7 @@
   }
 
   function handleDashboardParamSubmit(e: CustomEvent) {
-    console.log('[RbReport] handleDashboardParamSubmit - received submit event, detail:', e.detail);
+    // console.log('[RbReport] handleDashboardParamSubmit - received submit event, detail:', e.detail);
     currentDashboardParams = e.detail || {};
     // Do NOT call injectDashboard() here — that would destroy and re-create ALL elements
     // (including rb-parameters itself, resetting the user's selections).
@@ -453,6 +453,19 @@
     
     return { labels, datasets };
   }
+
+  // Theme the report document FROM OUTSIDE: make its page (html/body) background
+  // transparent so the host page (or a --rb-report-paper the host sets on
+  // <rb-report>) shows through. The report's own card/sections keep their
+  // template styling. No daisyUI/Tailwind is hardcoded in this component.
+  function withThemedReportBackground(html: string): string {
+    if (!html) return html;
+    const inject = '<style>html,body{background:transparent !important;}</style>';
+    if (/<head[^>]*>/i.test(html)) return html.replace(/<head([^>]*)>/i, (m) => m + inject);
+    if (/<html[^>]*>/i.test(html)) return html.replace(/<html([^>]*)>/i, (m) => m + inject);
+    return inject + html;
+  }
+  $: themedReportHtml = withThemedReportBackground(renderedHtml);
 </script>
 
 <div bind:this={container} class="rb-report">
@@ -575,7 +588,7 @@
       <iframe 
         bind:this={reportIframe}
         class="rb-report-iframe"
-        srcdoc={renderedHtml}
+        srcdoc={themedReportHtml}
         title="Report for {entityCode}"
         sandbox="allow-same-origin allow-scripts allow-modals"
       ></iframe>
@@ -590,11 +603,18 @@
 </div>
 
 <style>
+  /* Theme-inheriting & framework-agnostic: the component's OWN chrome (container,
+     toolbar, buttons, sections) inherits the page; text uses currentColor and
+     structure derives from currentColor via color-mix. The backend-generated
+     report HTML (rendered in the iframe) is NOT styled here. A host MAY override:
+     rb-report { --rb-border / --rb-accent / --rb-accent-text }. No daisyUI / Tailwind. */
   .rb-report {
     width: 100%;
     font-family: system-ui, -apple-system, sans-serif;
+    background: transparent;
+    color: inherit;
   }
-  
+
   .rb-report-loading {
     display: flex;
     align-items: center;
@@ -602,7 +622,7 @@
     padding: 16px;
     color: #666;
   }
-  
+
   .rb-report-spinner {
     width: 20px;
     height: 20px;
@@ -631,28 +651,28 @@
   
   .rb-report-parameters {
     padding: 16px;
-    background: #f9fafb;
+    background: var(--color-base-200, color-mix(in srgb, currentColor 5%, transparent));
     border-radius: 8px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--rb-border, color-mix(in srgb, currentColor 14%, transparent));
   }
-  
+
   .rb-report-run-btn {
     margin-top: 12px;
     padding: 8px 16px;
-    background: #3b82f6;
-    color: white;
+    background: var(--rb-accent, var(--color-primary, currentColor));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
   }
-  
+
   .rb-report-run-btn:hover:not(:disabled) {
-    background: #2563eb;
+    opacity: 0.9;
   }
-  
+
   .rb-report-run-btn:disabled {
-    background: #9ca3af;
+    opacity: 0.5;
     cursor: not-allowed;
   }
   
@@ -674,9 +694,12 @@
   .rb-report-iframe {
     width: 100%;
     min-height: 600px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--rb-border, color-mix(in srgb, currentColor 14%, transparent));
     border-radius: 4px;
-    background: white;
+    /* No hardcoded paper color — the document page is themed FROM OUTSIDE: the
+       host page shows through by default, or a host may set --rb-report-paper
+       on <rb-report>. The report's own card/sections keep their template look. */
+    background: var(--rb-report-paper, transparent);
   }
   
   .rb-report-no-content {
@@ -699,22 +722,22 @@
     align-items: center;
     gap: 6px;
     padding: 8px 16px;
-    background: #3b82f6;
-    color: white;
+    background: var(--rb-accent, var(--color-primary, currentColor));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    transition: background-color 0.2s;
+    transition: opacity 0.2s;
   }
-  
+
   .rb-report-print-btn:hover {
-    background: #2563eb;
+    opacity: 0.9;
   }
-  
+
   .rb-report-print-btn:active {
-    background: #1d4ed8;
+    opacity: 0.8;
   }
   
   .rb-report-print-icon {

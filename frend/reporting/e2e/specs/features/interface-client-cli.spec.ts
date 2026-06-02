@@ -23,7 +23,7 @@ test.describe('CLI — Burst (samples.spec.ignore)', () => {
   test('01_monthly_payslips_split_only (pdf2pdf)', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'burst', 'samples/burst/Payslips.pdf',
+      'job', 'burst', 'samples/burst/Payslips.pdf',
       '-c', 'config/samples/split-only/settings.xml',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -35,7 +35,7 @@ test.describe('CLI — Burst (samples.spec.ignore)', () => {
   test('02_excel_distinct_sheets_split_only (xls2xls)', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'burst', 'samples/burst/Payslips-Distinct-Sheets.xls',
+      'job', 'burst', 'samples/burst/Payslips-Distinct-Sheets.xls',
       '-c', 'config/samples/split-only/settings.xml',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -47,7 +47,7 @@ test.describe('CLI — Burst (samples.spec.ignore)', () => {
   test('03_excel_distinct_column_values (xls2xls)', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'burst', 'samples/burst/Customers-Distinct-Column-Values.xls',
+      'job', 'burst', 'samples/burst/Customers-Distinct-Column-Values.xls',
       '-c', 'config/samples/split-only/settings.xml',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -57,7 +57,7 @@ test.describe('CLI — Burst (samples.spec.ignore)', () => {
   test('04_split_two_times (pdf2pdf)', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'burst', 'samples/burst/Split2Times.pdf',
+      'job', 'burst', 'samples/burst/Split2Times.pdf',
       '-c', 'config/samples/split-two-times/settings.xml',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -72,7 +72,7 @@ test.describe('CLI — Generate CSV (samples.spec.ignore)', () => {
   test('06_generate_payslips_csv2docx', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-csv2docx/settings.xml',
+      'job', 'generate', '-c', 'config/samples/g-csv2docx/settings.xml',
       'samples/reports/payslips/Payslips.csv',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -82,7 +82,7 @@ test.describe('CLI — Generate CSV (samples.spec.ignore)', () => {
   test('07_generate_payslips_csv2html', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-csv2htm/settings.xml',
+      'job', 'generate', '-c', 'config/samples/g-csv2htm/settings.xml',
       'samples/reports/payslips/Payslips.csv',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -92,7 +92,7 @@ test.describe('CLI — Generate CSV (samples.spec.ignore)', () => {
   test('08_generate_payslips_csv2pdf', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-csv2pdf/settings.xml',
+      'job', 'generate', '-c', 'config/samples/g-csv2pdf/settings.xml',
       'samples/reports/payslips/Payslips.csv',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -102,7 +102,7 @@ test.describe('CLI — Generate CSV (samples.spec.ignore)', () => {
   test('09_generate_payslips_csv2xlsx', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-csv2xls/settings.xml',
+      'job', 'generate', '-c', 'config/samples/g-csv2xls/settings.xml',
       'samples/reports/payslips/Payslips.csv',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -112,7 +112,7 @@ test.describe('CLI — Generate CSV (samples.spec.ignore)', () => {
   test('10_generate_payslips_xls2xls', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-xls2xls/settings.xml',
+      'job', 'generate', '-c', 'config/samples/g-xls2xls/settings.xml',
       'samples/reports/payslips/Payslips.xlsx',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -126,7 +126,7 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
   test('11_generate_student_profiles_sql2foppdf', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-sql2fop-stud/settings.xml', 'g-sql2fop-stud',
+      'job', 'generate', '-c', 'config/samples/g-sql2fop-stud/settings.xml', 'g-sql2fop-stud',
     ]);
     expect(result.exitCode).toEqual(0);
     await InterfaceTestHelper.assertOutputFiles(
@@ -137,7 +137,7 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
   test('12_generate_customer_statements_sql2html', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-sql2htm-cst-stmt/settings.xml', 'g-sql2htm-cst-stmt',
+      'job', 'generate', '-c', 'config/samples/g-sql2htm-cst-stmt/settings.xml', 'g-sql2htm-cst-stmt',
     ]);
     expect(result.exitCode).toEqual(0);
     await InterfaceTestHelper.assertOutputFiles([
@@ -152,7 +152,7 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
   test('13_generate_customer_sales_summary_sql2xlsx', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-sql2xls-cst-sles/settings.xml', 'g-sql2xls-cst-sles',
+      'job', 'generate', '-c', 'config/samples/g-sql2xls-cst-sles/settings.xml', 'g-sql2xls-cst-sles',
     ]);
     expect(result.exitCode).toEqual(0);
     await InterfaceTestHelper.assertOutputFiles(['CustomerSalesSummary.xlsx'], 'xlsx');
@@ -161,7 +161,7 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
   test('15_generate_category_region_crosstab_script2html', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-scr2htm-cross/settings.xml', 'g-scr2htm-cross',
+      'job', 'generate', '-c', 'config/samples/g-scr2htm-cross/settings.xml', 'g-scr2htm-cross',
     ]);
     expect(result.exitCode).toEqual(0);
     await InterfaceTestHelper.assertOutputFiles(['CategoryRegionCrosstab.html'], 'html');
@@ -170,7 +170,7 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
   test('16_generate_monthly_sales_trend_script2html', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-scr2htm-trend/settings.xml', 'g-scr2htm-trend',
+      'job', 'generate', '-c', 'config/samples/g-scr2htm-trend/settings.xml', 'g-scr2htm-trend',
     ]);
     expect(result.exitCode).toEqual(0);
     await InterfaceTestHelper.assertOutputFiles(['MonthlySalesTrend.html'], 'html');
@@ -179,7 +179,7 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
   test('17_generate_supplier_scorecards_script2html', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-scr2htm-supc/settings.xml', 'g-scr2htm-supc',
+      'job', 'generate', '-c', 'config/samples/g-scr2htm-supc/settings.xml', 'g-scr2htm-supc',
     ]);
     expect(result.exitCode).toEqual(0);
     await InterfaceTestHelper.assertOutputFiles([
@@ -192,7 +192,7 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
   test('20_generate_adhoc_employee_profile_script2pdf', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'generate', '-c', 'config/samples/g-scr2pdf-adhoc/settings.xml', 'g-scr2pdf-adhoc',
+      'job', 'generate', '-c', 'config/samples/g-scr2pdf-adhoc/settings.xml', 'g-scr2pdf-adhoc',
       '-p', '"EmployeeID=E001"', '-p', '"FirstName=John"', '-p', '"LastName=Doe"',
       '-p', '"Title=Sales Representative"', '-p', '"City=Seattle"', '-p', '"Country=USA"',
     ]);
@@ -219,7 +219,7 @@ test.describe('CLI — Merge (samples.spec.ignore)', () => {
     ].join('\n'));
 
     const result = InterfaceTestHelper.execCli([
-      'document', 'merge', listFile, '-o', 'merged.pdf',
+      'job', 'merge', listFile, '-o', 'merged.pdf',
       '-b', '-c', 'config/samples/split-only/settings.xml',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -237,7 +237,7 @@ test.describe('CLI — QA Testing (processing-qa.spec.ignore)', () => {
   test('burst --testall', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'burst', 'samples/burst/Payslips.pdf',
+      'job', 'burst', 'samples/burst/Payslips.pdf',
       '-c', 'config/samples/split-only/settings.xml', '-ta',
     ]);
     expect(result.exitCode).toEqual(0);
@@ -249,7 +249,7 @@ test.describe('CLI — QA Testing (processing-qa.spec.ignore)', () => {
   test('burst --testlist single token', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'burst', 'samples/burst/Payslips.pdf',
+      'job', 'burst', 'samples/burst/Payslips.pdf',
       '-c', 'config/samples/split-only/settings.xml',
       '-tl', 'clyde.grew@northridgehealth.org',
     ]);
@@ -260,7 +260,7 @@ test.describe('CLI — QA Testing (processing-qa.spec.ignore)', () => {
   test('burst --testrandom 2', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
     const result = InterfaceTestHelper.execCli([
-      'burst', 'samples/burst/Payslips.pdf',
+      'job', 'burst', 'samples/burst/Payslips.pdf',
       '-c', 'config/samples/split-only/settings.xml',
       '-tr', '2',
     ]);
@@ -296,6 +296,178 @@ test.describe('CLI — System Commands', () => {
     const settingsXml = fs.readFileSync(path.join(PORTABLE_DIR, 'config/burst/settings.xml'), 'utf-8');
     const versionMatch = settingsXml.match(/<version>([^<]+)<\/version>/);
     expect(batLog).toContain(versionMatch![1]);
+  });
+});
+
+// ── Job (additional) — status / cancel / generate-QA ──
+//
+// `job burst`/`generate`/`merge` are covered above by the per-sample tests.
+// This block covers the rest of the `job` group that was not previously asserted:
+//   - status / cancel: HTTP relay to the running Spring server on :9090
+//   - generate --testall / --testlist / --testrandom: QA-mode mixin parity with burst
+
+test.describe('CLI — Job (additional)', () => {
+
+  test('job status --job-id <unknown> exits 1', async () => {
+    // Backend responds 404 for an unknown UUID → StatusCommand prints
+    // "Job not found" to stderr and returns 1.
+    const result = InterfaceTestHelper.execCli([
+      'job', 'status', '--job-id', '00000000-0000-0000-0000-000000000000',
+    ]);
+    expect(result.exitCode).toEqual(1);
+  });
+
+  test('job cancel --job-id <unknown> exits 1', async () => {
+    // Same 404 path as status — CancelCommand prints "Job not found" → 1.
+    const result = InterfaceTestHelper.execCli([
+      'job', 'cancel', '--job-id', '00000000-0000-0000-0000-000000000000',
+    ]);
+    expect(result.exitCode).toEqual(1);
+  });
+
+  test('job generate --testall (csv2html)', async () => {
+    InterfaceTestHelper.cleanOutputAndLogs();
+    const result = InterfaceTestHelper.execCli([
+      'job', 'generate', '-c', 'config/samples/g-csv2htm/settings.xml',
+      'samples/reports/payslips/Payslips.csv', '-ta',
+    ]);
+    expect(result.exitCode).toEqual(0);
+    await InterfaceTestHelper.assertOutputFiles(['0.html', '1.html', '2.html'], 'html');
+  });
+
+  test('job generate --testlist single token', async () => {
+    InterfaceTestHelper.cleanOutputAndLogs();
+    const result = InterfaceTestHelper.execCli([
+      'job', 'generate', '-c', 'config/samples/g-csv2htm/settings.xml',
+      'samples/reports/payslips/Payslips.csv', '-tl', '0',
+    ]);
+    expect(result.exitCode).toEqual(0);
+    await InterfaceTestHelper.assertOutputFileCount(1, 'html');
+  });
+
+  test('job generate --testrandom 2', async () => {
+    InterfaceTestHelper.cleanOutputAndLogs();
+    const result = InterfaceTestHelper.execCli([
+      'job', 'generate', '-c', 'config/samples/g-csv2htm/settings.xml',
+      'samples/reports/payslips/Payslips.csv', '-tr', '2',
+    ]);
+    expect(result.exitCode).toEqual(0);
+    await InterfaceTestHelper.assertOutputFileCount(2, 'html');
+  });
+});
+
+// ── Connections ──
+//
+// Testground seeds only eml-contact.xml (flat file, no database connection
+// directory). That's enough to assert:
+//   - `connection list` and its filter/format variants dispatch and exit 0
+//   - error-path leaf commands (test-database, fetch-schema, run-seed) reach
+//     the file-existence check and exit 1 with FileNotFoundException
+// Skipped: test-email (placeholder SMTP would hit the network),
+// test-query / run-sql / oauth-sign-in (require a real DB or interactive browser).
+
+test.describe('CLI — Connections', () => {
+
+  test('connection list dispatches (default table format)', async () => {
+    const result = InterfaceTestHelper.execCli(['connection', 'list']);
+    expect(result.exitCode).toEqual(0);
+  });
+
+  test('connection list --type=email dispatches', async () => {
+    const result = InterfaceTestHelper.execCli([
+      'connection', 'list', '--type', 'email',
+    ]);
+    expect(result.exitCode).toEqual(0);
+  });
+
+  test('connection list --type=database dispatches', async () => {
+    const result = InterfaceTestHelper.execCli([
+      'connection', 'list', '--type', 'database',
+    ]);
+    expect(result.exitCode).toEqual(0);
+  });
+
+  test('connection list --json dispatches', async () => {
+    const result = InterfaceTestHelper.execCli([
+      'connection', 'list', '--json',
+    ]);
+    expect(result.exitCode).toEqual(0);
+  });
+
+  test('connection test-database --id <missing> exits 1', async () => {
+    // BaseCommand.getJob → FileNotFoundException → execution handler → 1.
+    const result = InterfaceTestHelper.execCli([
+      'connection', 'test-database', '--id', 'db-does-not-exist-zzz',
+    ]);
+    expect(result.exitCode).toEqual(1);
+  });
+
+  test('connection fetch-schema --id <missing> exits 1', async () => {
+    const result = InterfaceTestHelper.execCli([
+      'connection', 'fetch-schema', '--id', 'db-does-not-exist-zzz',
+    ]);
+    expect(result.exitCode).toEqual(1);
+  });
+
+  test('connection run-seed --script-file <missing> exits 1', async () => {
+    // RunSeedCommand checks scriptFile.exists() before getJob → predictable 1.
+    const result = InterfaceTestHelper.execCli([
+      'connection', 'run-seed',
+      '--id', 'db-does-not-exist-zzz',
+      '--script-file', 'does-not-exist.groovy',
+    ]);
+    expect(result.exitCode).toEqual(1);
+  });
+});
+
+// ── System (additional) — test-sms / feature-request / service status ──
+//
+// `system license check` is covered above. Remaining surface:
+//   - test-sms: assert REQUIRED-arg validation (no Twilio network call)
+//   - feature-request: assert FileNotFoundException path on missing -f
+//   - service status: assert dispatch without docker assumptions
+// Skipped: license activate / deactivate (mutate persistent machine license state).
+
+test.describe('CLI — System (additional)', () => {
+
+  test('system test-sms missing required --from returns picocli usage (exit 2)', async () => {
+    const result = InterfaceTestHelper.execCli([
+      'system', 'test-sms', '--to', '+10000000000',
+    ]);
+    expect(result.exitCode).toEqual(2);
+  });
+
+  test('system feature-request -f <missing> exits 1', async () => {
+    const result = InterfaceTestHelper.execCli([
+      'system', 'feature-request', '-f', 'does-not-exist-feature-request.xml',
+    ]);
+    expect(result.exitCode).toEqual(1);
+  });
+
+  test('system service status dispatches', async () => {
+    // Outcome depends on whether docker-compose is up locally; we only verify
+    // the CLI parsed and routed the command — exit code is meaningful (not undefined).
+    const result = InterfaceTestHelper.execCli(['system', 'service', 'status']);
+    expect(result.exitCode).toBeDefined();
+  });
+});
+
+// ── Jasper ──
+//
+// jasper exists both as a top-level command and nested under `job`. We assert
+// both paths parse identically by triggering picocli's required-arg validation,
+// which proves the alias is wired without needing a JDBC fixture for a real run.
+
+test.describe('CLI — Jasper', () => {
+
+  test('jasper missing required args returns picocli usage (exit 2)', async () => {
+    const result = InterfaceTestHelper.execCli(['jasper']);
+    expect(result.exitCode).toEqual(2);
+  });
+
+  test('job jasper (alias) missing required args returns picocli usage (exit 2)', async () => {
+    const result = InterfaceTestHelper.execCli(['job', 'jasper']);
+    expect(result.exitCode).toEqual(2);
   });
 });
 

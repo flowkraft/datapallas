@@ -72,7 +72,7 @@ electronBeforeAfterAllTest(
     try {
       // ── SETUP 1: Start the AI Hub from the Processing → CMS Web Portal tab ─
       // gotoDataCanvas() (fluent-tester.ts:1540) navigates: top menu → Burst
-      // (Processing) → click #cmsWebPortalTab-link → land on the filtered app
+      // (Processing) → click #tab-btn-cmsWebPortalTab → land on the filtered app
       // panel showing only `flowkraft-data-canvas`. Same path used by the
       // existing apps-third-party.spec.ts:17.
       // This is the easiest user-facing entry point — one click in Processing

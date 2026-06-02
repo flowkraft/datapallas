@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.common.Utils;
+import static com.sourcekraft.documentburster.utils.Utils.resolvePathAgainstPortableDir;
 import com.flowkraft.system.dtos.ProcessOutputResultDto;
 
 import reactor.core.publisher.Flux;
@@ -47,7 +48,7 @@ public class ProcessService {
 		List<String> newArgs = new ArrayList<>();
 		for (String arg : args) {
 			String modifiedArg = arg.replace("PORTABLE_EXECUTABLE_DIR_PATH/",
-					AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/");
+					AppPaths.PORTABLE_EXECUTABLE_DIR_PATH.concat("/"));
 			if (os.contains("nix") || os.contains("nux") || os.contains("mac")) {
 				modifiedArg = modifiedArg.replace(".bat", ".sh");
 			}
@@ -63,8 +64,8 @@ public class ProcessService {
 		String workingDirectoryPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH;
 
 		if (cwdPath.isPresent()) {
-			workingDirectoryPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-					+ URLDecoder.decode(cwdPath.get(), StandardCharsets.UTF_8.toString());
+			workingDirectoryPath = resolvePathAgainstPortableDir(
+					URLDecoder.decode(cwdPath.get(), StandardCharsets.UTF_8.toString()));
 		}
 
 		ProcessBuilder processBuilder = new ProcessBuilder(commandWithShell);
@@ -147,6 +148,7 @@ public class ProcessService {
 		File tempFile = File.createTempFile("elevated-batch-cmd-script", ".cmd", new File("/temp/"));
 		String elevatedScriptFilePath = tempFile.getAbsolutePath();
 
+		String bashLogPath = resolvePathAgainstPortableDir("logs/bash.service.log");
 		String scriptContent = "::::::::::::::::::::::::::::::::::::::::::::\n" + ":: Elevate.cmd - Version 4\n"
 				+ ":: Automatically check & get admin rights\n"
 				+ ":: see \"https://stackoverflow.com/a/12264592/1016343\" for description\n"
@@ -175,8 +177,8 @@ public class ProcessService {
 				+ " if '%1'=='ELEV' (del \"%vbsGetPrivileges%\" 1>nul 2>nul  &  shift /1)\n"
 				+ "::::::::::::::::::::::::\n" + "::START\n" + "::::::::::::::::::::::::\n"
 				+ " REM Run shell as admin (example) - put here code as you like\n" + " " + commandToElevate
-				+ " 2>&1 >> " + AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/logs/bash.service.log\n"
-				+ " del /f /s *.cmd 2>&1 >> " + AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/logs/bash.service.log\n"
+				+ " 2>&1 >> " + bashLogPath + "\n"
+				+ " del /f /s *.cmd 2>&1 >> " + bashLogPath + "\n"
 				+ " cmd /k\n";
 
 		Files.write(Paths.get(elevatedScriptFilePath), scriptContent.getBytes());

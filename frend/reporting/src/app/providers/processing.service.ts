@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CfgTmplFileInfo } from './settings.service';
+import { CfgTmplFileInfo } from './configuration-repository.service';
 
 @Injectable({
   providedIn: 'root',

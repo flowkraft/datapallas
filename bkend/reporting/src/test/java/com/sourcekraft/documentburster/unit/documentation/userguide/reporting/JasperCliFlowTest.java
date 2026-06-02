@@ -231,8 +231,8 @@ public class JasperCliFlowTest {
 	private void executeCliGenerate(String configPath, String reportName,
 			String testName, String... extraArgs) throws Throwable {
 
-		// Build args exactly as Electron would: generate -c {configPath} {reportName} [-p key=value]
-		String[] baseArgs = new String[]{"generate", "-c", configPath, reportName};
+		// Build args exactly as Electron would: job generate -c {configPath} {reportName} [-p key=value]
+		String[] baseArgs = new String[]{"job", "generate", "-c", configPath, reportName};
 		String[] args = new String[baseArgs.length + extraArgs.length];
 		System.arraycopy(baseArgs, 0, args, 0, baseArgs.length);
 		System.arraycopy(extraArgs, 0, args, baseArgs.length, extraArgs.length);

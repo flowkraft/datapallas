@@ -143,7 +143,7 @@ public class CanvasExportService {
 
         // ── Step 6: Generate + write all sidecar files server-side ────────────
         DashboardFileGenerator.GeneratedFiles files = DashboardFileGenerator.generate(
-                widgets, parametersList, reportId, rbApiBaseUrl + "/reporting");
+                widgets, parametersList, reportId, rbApiBaseUrl);
 
         writeIfPresent(templateDir, reportId + "-template.html",                 files.templateHtml());
         writeIfPresent(configDir,   reportId + "-chart-config.groovy",           files.chartConfigGroovy());

@@ -14,8 +14,8 @@ package com.flowkraft
  * - /your-canvas        -> Build your own
  * - /admin/*            -> Admin panel
  * - /payment/*          -> Payment API endpoints
- * - /payslips/*         -> Customer portal payslip views
- * - /invoices/*         -> Customer portal invoice views
+ * - /portal/payslips/*  -> Customer portal payslip views
+ * - /portal/invoices/*  -> Customer portal invoice views
  */
 class UrlMappings {
 
@@ -40,17 +40,20 @@ class UrlMappings {
         "/your-canvas"(controller: 'yourCanvas', action: 'index')
         
         // ===== PORTAL ROUTES =====
-        
+
+        // Portal landing
+        "/portal"(controller: 'portalHome', action: 'index')
+
         // Customer payslip portal
-        "/payslips"(controller: 'portalPayslip', action: 'index')
-        "/payslips/$id"(controller: 'portalPayslip', action: 'show')
-        "/payslips/$id/download"(controller: 'portalPayslip', action: 'download')
-        
+        "/portal/payslips"(controller: 'portalPayslip', action: 'index')
+        "/portal/payslips/$id"(controller: 'portalPayslip', action: 'show')
+        "/portal/payslips/$id/download"(controller: 'portalPayslip', action: 'download')
+
         // Customer invoice portal
-        "/invoices"(controller: 'portalInvoice', action: 'index')
-        "/invoices/$id"(controller: 'portalInvoice', action: 'show')
-        "/invoices/$id/pay"(controller: 'portalInvoice', action: 'pay')
-        "/invoices/$id/download"(controller: 'portalInvoice', action: 'download')
+        "/portal/invoices"(controller: 'portalInvoice', action: 'index')
+        "/portal/invoices/$id"(controller: 'portalInvoice', action: 'show')
+        "/portal/invoices/$id/pay"(controller: 'portalInvoice', action: 'pay')
+        "/portal/invoices/$id/download"(controller: 'portalInvoice', action: 'download')
         
         // ===== ADMIN ROUTES =====
         

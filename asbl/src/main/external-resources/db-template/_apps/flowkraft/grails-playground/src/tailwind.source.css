@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@source "../grails-app/views/**/*.gsp";
+@plugin "daisyui" {
+  themes: all;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import Utilities from '../helpers/utilities';
 
@@ -18,16 +18,33 @@ export interface InspectResult {
   birthTime?: Date;
 }
 
+// ANTI-PATTERN WARNING: Injecting FsService in an Angular component or service is almost always
+// wrong. Angular apps should consume domain-level APIs (saveReport, loadConfiguration, etc.) and
+// let the backend own all path resolution and file I/O. Direct FS calls from the frontend bypass
+// the backend's domain model, scatter path knowledge across layers, and make the app brittle to
+// deployment layout changes.
+//
+// The known legitimate exceptions in this codebase are narrow and Electron-specific:
+//   • LicenseService  — reads/writes license.xml (a singleton sidecar file with no domain endpoint)
+//   • ConfigurationRepository — bootstraps the XML settings file before any domain service exists
+//   • ConfigurationComponent — creates the initial folder scaffold on first run
+//   • ConnectionDetailsComponent — copies a connection template file before the connection exists
+//     (no domain endpoint covers this pre-creation step)
+//   • FsService.resolveAbsolutePath — translates a relative path to an absolute one using the
+//     backend's PORTABLE_EXECUTABLE_DIR anchor (no other service owns this contract)
+//
+// Every NEW injection of FsService must be argued at the call site: if a domain-level API could
+// handle the operation instead, use that. If you are adding a new caller, add it to the list above.
 @Injectable({
   providedIn: 'root',
 })
 export class FsService {
-  constructor(protected apiService: ApiService) {}
+  protected apiService = inject(ApiService);
 
   async removeAsync(path: string) {
     //console.log('removeAsync', path);
     return this.apiService.delete(
-      `/system/fs/delete-quietly?path=${encodeURIComponent(
+      `/system/fs?path=${encodeURIComponent(
         Utilities.slash(path),
       )}`,
     );
@@ -100,7 +117,7 @@ export class FsService {
 
   async readAsync(path: string): Promise<string> {
     return this.apiService.get(
-      '/system/fs/read-file-to-string',
+      '/system/fs/content',
       { path: encodeURIComponent(path) },
       new Headers({
         Accept: 'text/plain',
@@ -111,8 +128,8 @@ export class FsService {
 
   async writeAsync(path: string, content: string) {
     const encodedPath = encodeURIComponent(Utilities.slash(path));
-    return this.apiService.post(
-      `/system/fs/write-string-to-file?path=${encodedPath}`,
+    return this.apiService.put(
+      `/system/fs/content?path=${encodedPath}`,
       content,
       new Headers({
         'Content-Type': 'text/plain',
@@ -156,5 +173,16 @@ export class FsService {
         symlinks: criteria.symlinks,
       },
     );
+  }
+
+  async resolveAbsolutePath(relativePath: string): Promise<string> {
+    if (relativePath.startsWith('/')) {
+      relativePath = relativePath.substring(1);
+    }
+    const response = await this.apiService.get(
+      '/system/fs/resolve',
+      { path: relativePath },
+    );
+    return response.absolutePath;
   }
 }

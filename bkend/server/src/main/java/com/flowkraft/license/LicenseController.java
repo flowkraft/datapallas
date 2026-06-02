@@ -28,6 +28,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,7 +39,7 @@ import com.flowkraft.license.model.LicenseDetails;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping(value = "/api/license", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/system/license", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
 public final class LicenseController {
 
 	@Autowired
@@ -64,28 +65,28 @@ public final class LicenseController {
 
 	}
 
-	@PutMapping("/activate")
+	@PostMapping("/activate")
 	public void activateLicense() throws Throwable {
 
 		licenseService.activateLicense();
 
 	}
 
-	@PutMapping("/check")
-	public void checkLicense() throws Throwable {
+	@GetMapping("/status")
+	public void getLicenseStatus() throws Throwable {
 
 		licenseService.checkLicense();
 
 	}
 
-	@PutMapping("/deactivate")
+	@PostMapping("/deactivate")
 	public void deActivateLicense() throws Throwable {
 
 		licenseService.deActivateLicense();
 
 	}
 
-	@PutMapping("/about")
+	@GetMapping("/about")
 	public Mono<AboutInfo> about() throws Exception {
 
 		

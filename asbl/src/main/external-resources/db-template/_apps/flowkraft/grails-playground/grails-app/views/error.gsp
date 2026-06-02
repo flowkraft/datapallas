@@ -9,7 +9,7 @@
         <div class="container">
             <g:if env="development">
                 <g:if test="${Throwable.isInstance(exception)}">
-                    <g:renderException exception="${exception}" detailsClass="alert alert-danger" stackClass="bg-body-secondary" snippetClass="bg-body-secondary snippet" lineErrorClass="bg-danger" />
+                    <g:renderException exception="${exception}" detailsClass="alert alert-error" stackClass="bg-body-secondary" snippetClass="bg-body-secondary snippet" lineErrorClass="bg-error" />
                 </g:if>
                 <g:elseif test="${request.getAttribute('javax.servlet.error.exception')}">
                     <g:renderException exception="${request.getAttribute('javax.servlet.error.exception')}" />

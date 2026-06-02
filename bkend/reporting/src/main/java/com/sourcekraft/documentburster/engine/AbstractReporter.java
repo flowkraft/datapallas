@@ -181,7 +181,7 @@ public abstract class AbstractReporter extends AbstractBurster {
 
 		if (reportParameters != null) {
 			reportParameters.forEach((k, v) -> {
-				System.out.println("[DEBUG] AbstractReporter.initializeResources - Setting ctx.variables " + k + " = " + v);
+				// System.out.println("[DEBUG] AbstractReporter.initializeResources - Setting ctx.variables " + k + " = " + v);
 				ctx.variables.set(k, v);
 			});
 		}

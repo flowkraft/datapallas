@@ -1,6 +1,7 @@
 export const javaTemplate = `<!-- <ng-template #javaTemplate> -->
 
-<div *ngIf="!this.stateStore.configSys.sysInfo.setup.isRestartRequired">
+@if (!this.stateStore.configSys.sysInfo.setup.isRestartRequired) {
+  <div>
     <span
       id="checkPointJavaPreRequisite"
       [innerHTML]="'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INNER-HTML.REQUIRED-SHORT' | translate"
@@ -14,100 +15,112 @@ export const javaTemplate = `<!-- <ng-template #javaTemplate> -->
     ></span>
 
     <br />
-    <div *ngIf="this.stateStore.configSys.sysInfo.setup.java.isJavaOk">
-      <br />
-      <span class="label label-success"
-        id="labelGreatJavaWasFound"><i class="fa fa-check-square-o"></i>&nbsp;<strong
-          >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.GREAT' | translate }},
-          <em>Java</em>
-          {{this.stateStore.configSys.sysInfo.setup.java.version}}
-          {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.FOUND' | translate }}
-          <em>DataPallas</em></strong
-        ></span
-      >
-    </div>
+    @if (this.stateStore.configSys.sysInfo.setup.java.isJavaOk) {
+      <div>
+        <br />
+        <span class="badge badge-success"
+          id="labelGreatJavaWasFound"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>&nbsp;<strong
+            >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.GREAT' | translate }},
+            <em>Java</em>
+            {{this.stateStore.configSys.sysInfo.setup.java.version}}
+            {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.FOUND' | translate }}
+            <em>DataPallas</em></strong
+          ></span
+        >
+      </div>
+    }
 
-    <div *ngIf="!this.stateStore.configSys.sysInfo.setup.java.isJavaOk">
-      <span class=" label label-warning"
-        ><strong
-          ><em>Java</em>
-          {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.NOT-FOUND' | translate
-          }}
-        </strong></span
-      >
-      &nbsp;
-      <span class="label label-primary"
-        ><strong
-          >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.BELOW-INSTRUCTIONS' |
-          translate }} <em>Java</em></strong
-        ></span
-      >
-
-      <br /><br />
-
-      <dburst-chocolatey></dburst-chocolatey>
-      <br />
-
-      <span class="label label-success" *ngIf="this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk"
-        ><i class="fa fa-check-square-o"></i>&nbsp;<strong
-          ><em>Chocolatey</em>
-          {{this.stateStore.configSys.sysInfo.setup.chocolatey.version}}
-          {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.FOUND-READY' |
-          translate }}
-          <em>Java</em></strong
-        ></span
-      >
-      <span class="label label-warning" *ngIf="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk"
-        ><strong
-          ><em>Chocolatey</em>
-          {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.NOT-FOUND' | translate
-          }}, {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.YOU-NEED-INSTALL' |
-          translate }}
-          <em>Chocolatey</em></strong
-        ></span
-      >
-
-      <br /><br />
-
-      <p-panel #pnlStep2JavaInstallation>
-        <h4 id="checkPointInstallJava">
-          <u
-            >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.STEP2' | translate
-            }} <em>Java</em></u
-          >
-        </h4>
-
-        <span
-          [innerHTML]="'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INNER-HTML.REQUIRED-LONG' | translate"
-        ></span>
+    @if (!this.stateStore.configSys.sysInfo.setup.java.isJavaOk) {
+      <div>
+        <span class="badge badge-warning"
+          ><strong
+            ><em>Java</em>
+            {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.NOT-FOUND' | translate
+            }}
+          </strong></span
+        >
+        &nbsp;
+        <span class="badge badge-primary"
+          ><strong
+            >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.BELOW-INSTRUCTIONS' |
+            translate }} <em>Java</em></strong
+          ></span
+        >
 
         <br /><br />
 
-        <button
-          id="btnInstallJava"
-          type="button"
-          class="btn btn-primary"
-          [disabled]="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk"
-          (click)="installJava()"
-        >
-          <i class="fa fa-play"></i
-          >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INSTALL' |
-          translate }} <em>Java</em>
-        </button>
-        <span *ngIf="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk"
-          >&nbsp;&nbsp;<strong
-            ><em
-              >( {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.FIRST' |
-              translate }} )</em
-            ></strong
-          ></span
-        >
-      </p-panel>
-    </div>
-  </div>
+        <dburst-chocolatey></dburst-chocolatey>
+        <br />
 
-  <div *ngIf="this.stateStore.configSys.sysInfo.setup.isRestartRequired">
-    <p-panel #pnlRestartDocumentBurster>
+        @if (this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
+          <span class="badge badge-success"
+            ><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>&nbsp;<strong
+              ><em>Chocolatey</em>
+              {{this.stateStore.configSys.sysInfo.setup.chocolatey.version}}
+              {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.FOUND-READY' |
+              translate }}
+              <em>Java</em></strong
+            ></span
+          >
+        }
+        @if (!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
+          <span class="badge badge-warning"
+            ><strong
+              ><em>Chocolatey</em>
+              {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.NOT-FOUND' | translate
+              }}, {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.YOU-NEED-INSTALL' |
+              translate }}
+              <em>Chocolatey</em></strong
+            ></span
+          >
+        }
+
+        <br /><br />
+
+        <div class="card card-border bg-base-100 shadow-sm">
+          <h4 id="checkPointInstallJava">
+            <u
+              >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.STEP2' | translate
+              }} <em>Java</em></u
+            >
+          </h4>
+
+          <span
+            [innerHTML]="'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INNER-HTML.REQUIRED-LONG' | translate"
+          ></span>
+
+          <br /><br />
+
+          <button
+            id="btnInstallJava"
+            type="button"
+            class="btn btn-outline btn-primary"
+            [disabled]="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk"
+            (click)="installJava()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg
+            >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INSTALL' |
+            translate }} <em>Java</em>
+          </button>
+          @if (!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
+            <span
+              >&nbsp;&nbsp;<strong
+                ><em
+                  >( {{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.FIRST' |
+                  translate }} )</em
+                ></strong
+              ></span
+            >
+          }
+        </div>
+      </div>
+    }
+  </div>
+}
+
+@if (this.stateStore.configSys.sysInfo.setup.isRestartRequired) {
+  <div>
+    <div class="card card-border bg-base-100 shadow-sm">
       <h4 id="checkPointRestartDocumentBurster">
         <u
           >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.RESTARTING' |
@@ -123,14 +136,15 @@ export const javaTemplate = `<!-- <ng-template #javaTemplate> -->
       <button
         id="btnRestartDocumentBurster"
         type="button"
-        class="btn btn-primary"
+        class="btn btn-outline btn-primary"
         (click)="restartApp()"
       >
-        <i class="fa fa-play"></i
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg
         >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.RESTART' |
         translate }}Restart <em>DataPallas</em>
       </button>
-    </p-panel>
+    </div>
   </div>
+}
 
   <!--  </ng-template>-->`;

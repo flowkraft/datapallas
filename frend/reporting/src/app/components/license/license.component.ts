@@ -1,15 +1,19 @@
 import { Component } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { WhatsNewComponent } from './whats-new/whats-new.component';
 
 import { LicenseService } from '../../providers/license.service';
 
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { StateStoreService } from '../../providers/state-store.service';
 
 @Component({
-  selector: 'dburst-license',
-  templateUrl: './license.component.html',
+    selector: 'dburst-license',
+    templateUrl: './license.component.html',
+    standalone: true,
+    imports: [...SHARED_IMPORTS, WhatsNewComponent],
 })
 export class LicenseComponent {
   licenseKey: string;
@@ -17,7 +21,7 @@ export class LicenseComponent {
   constructor(
     protected licenseService: LicenseService,
     protected confirmService: ConfirmService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected executionStatsService: ExecutionStatsService,
     protected storeService: StateStoreService,
   ) {}
@@ -54,7 +58,13 @@ export class LicenseComponent {
     });
   }
 
-  async saveLicenseKey() {
+  onLicenseKeyChanged(value: string) {
+    // Mirror the #burstFile pattern (tab-burst.ts) — Angular 19's template
+    // compiler drops the implicit two-way assignment when an explicit
+    // (ngModelChange) is present, so the model write must be done here.
+    if (this.licenseService?.licenseDetails?.license) {
+      this.licenseService.licenseDetails.license.key = value;
+    }
     return this.licenseService.saveLicense();
   }
 }

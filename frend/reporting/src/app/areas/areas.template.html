@@ -1,9 +1,7 @@
-<dburst-top-menu-header> </dburst-top-menu-header>
-
-<div>
-  <router-outlet></router-outlet>
-</div>
-
-<div id="statusBar">
-  <dburst-status-bar></dburst-status-bar>
+<div class="bg-base-100 flex flex-col flex-1 min-h-0">
+  <dburst-top-menu-header></dburst-top-menu-header>
+  <main class="flex-1 overflow-y-auto min-h-0 pt-2">
+    <router-outlet></router-outlet>
+  </main>
+  <dburst-status-bar class="mt-auto"></dburst-status-bar>
 </div>

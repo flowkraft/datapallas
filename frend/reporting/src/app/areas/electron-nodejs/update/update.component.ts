@@ -1,4 +1,9 @@
-import { Component, Input, OnInit } from '@angular/core';
+﻿import { Component, OnInit, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
+import { WhenUpdatingComponent } from './when-updating';
+import { ButtonNativeSystemDialogComponent } from '../button-native-system-dialog/button-native-system-dialog.component';
 
 //import * as jetpack from 'fs-jetpack';
 //import * as slash from 'slash';
@@ -21,9 +26,10 @@ import { ExecutionStatsService } from '../../../providers/execution-stats.servic
 import { ToastrMessagesService } from '../../../providers/toastr-messages.service';
 import { UsageDetailsInfo } from '../../../models/usage-details-info.model';
 import { ConfirmService } from '../../../components/dialog-confirm/confirm.service';
-import { SettingsService } from '../../../providers/settings.service';
+import { ConfigurationRepository } from '../../../providers/configuration-repository.service';
+import { AppPathsService } from '../../../providers/app-paths.service';
 import { ReportsService } from '../../../providers/reports.service';
-import { ShellService } from '../../../providers/shell.service';
+import { ApiService } from '../../../providers/api.service';
 import { DesktopAdminService } from '../desktop-admin.service';
 import { RbElectronService } from '../electron.service';
 import { FsService } from '../../../providers/fs.service';
@@ -32,8 +38,10 @@ import UtilitiesElectron from '../utilities-electron';
 import { StateStoreService } from '../../../providers/state-store.service';
 
 @Component({
-  selector: 'dburst-update',
-  template: ` ${updateTemplate} `,
+    selector: 'dburst-update',
+    template: ` ${updateTemplate} `,
+    standalone: true,
+    imports: [CommonModule, FormsModule, TranslateModule, WhenUpdatingComponent, ButtonNativeSystemDialogComponent],
 })
 export class UpdateComponent implements OnInit {
   homeDirectoryPath: string;
@@ -44,16 +52,17 @@ export class UpdateComponent implements OnInit {
   updateInfo = new UpdateInfo();
   updater: Updater;
 
-  @Input() succint: boolean = false;
+  succint = input<boolean>(false);
 
   constructor(
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
+    protected appPathsService: AppPathsService,
     protected reportsService: ReportsService,
     protected licenseService: LicenseService,
     protected executionStatsService: ExecutionStatsService,
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
-    protected shellService: ShellService,
+    protected apiService: ApiService,
     protected desktopAdminService: DesktopAdminService,
     protected electronService: RbElectronService,
     protected fsService: FsService,
@@ -241,17 +250,17 @@ export class UpdateComponent implements OnInit {
       if (this.updateInfo.mode == 'update-now') {
         //START - REMOVE THIS AFTER FEW RELEASES (when the jar will be there)
         let updateJarExists = await UtilitiesNodeJs.existsAsync(
-          this.settingsService.UPDATE_JAR_FILE_PATH,
+          this.appPathsService.UPDATE_JAR_FILE_PATH,
         );
         if (!updateJarExists) {
-          // console.log(`from: ${this._updater.upgdDbTempDirectoryPath}/from/DocumentBurster/lib/burst/${this.electronService.path.basename(this._settingsService.UPDATE_JAR_FILE_PATH)}, to: ${this.settingsService.UPDATE_JAR_FILE_PATH}`)
+          // console.log(`from: ${this._updater.upgdDbTempDirectoryPath}/from/DocumentBurster/lib/burst/${this.electronService.path.basename(this._appPathsService.UPDATE_JAR_FILE_PATH)}, to: ${this.appPathsService.UPDATE_JAR_FILE_PATH}`)
           await UtilitiesNodeJs.copyAsync(
             `${
               this.updater.upgdDbTempDirectoryPath
             }/from/DocumentBurster/lib/burst/${Utilities.basename(
-              this.settingsService.UPDATE_JAR_FILE_PATH,
+              this.appPathsService.UPDATE_JAR_FILE_PATH,
             )}`,
-            this.settingsService.UPDATE_JAR_FILE_PATH,
+            this.appPathsService.UPDATE_JAR_FILE_PATH,
           );
         }
         //END - REMOVE THIS AFTER FEW RELEASES (when the jar will be there)
@@ -261,11 +270,9 @@ export class UpdateComponent implements OnInit {
         if (this.licenseService.licenseDetails.license.key)
           await this.licenseService.verifyLicense('check');
 
-        await this.shellService.doKillOldExeThenCopyAndStartNewExe(
-          this.updateInfo.jobFilePath,
-          `${this.updater.updateDestinationDirectoryPath}/DocumentBurster.exe`,
-          this.updater.upgdDbTempDirectoryPath,
-        );
+        await this.apiService.post('/system/update/apply', {
+          jobFilePath: this.updateInfo.jobFilePath,
+        });
       }
 
       this.messagesService.showInfo('Update Done!');

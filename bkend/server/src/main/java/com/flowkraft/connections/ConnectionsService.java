@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.jobs.services.JobExecutionService;
+import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.reports.ReportsService;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.job.CliJob;
@@ -40,7 +41,7 @@ public class ConnectionsService {
 	private ReportsService reportsService;
 
 	private String getConnectionsDir() {
-		return AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/connections";
+		return Utils.resolvePathAgainstPortableDir("config/connections");
 	}
 
 	/**
@@ -134,16 +135,15 @@ public class ConnectionsService {
 
 	/**
 	 * Test an email connection by sending a test message.
-	 * Goes through DocumentBurster.execute() → CliJob.doCheckEmail() for proper
-	 * .job file lifecycle (status bar "Working on...").
+	 * Invokes CliJob.doCheckEmail() directly — the `connection test-email` CLI
+	 * subcommand is now a thin stub that redirects to this REST endpoint, so
+	 * the server must do the work itself (same pattern as testSms() below).
 	 */
 	public void testEmailConnection(String connectionId) throws Throwable {
 		String connectionFilePath = resolveEmailConnectionPath(connectionId);
 		log.info("Testing email connection: {}", connectionId);
-		jobExecutionService.executeSync(new String[] {
-				"system", "test-email",
-				"--email-connection-file", connectionFilePath
-		});
+		CliJob job = new CliJob(connectionFilePath);
+		job.doCheckEmail();
 		log.info("Email connection test completed for: {}", connectionId);
 	}
 
@@ -155,30 +155,27 @@ public class ConnectionsService {
 	public void testInlineEmailConnection(String reportId) throws Throwable {
 		String settingsPath;
 		if ("burst".equals(reportId)) {
-			settingsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml";
+			settingsPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
 		} else {
-			settingsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports/" + reportId + "/settings.xml";
+			settingsPath = Utils.resolvePathAgainstPortableDir("config/reports/" + reportId + "/settings.xml");
 		}
 		log.info("Testing inline email connection from report config: {}", settingsPath);
-		jobExecutionService.executeSync(new String[] {
-				"system", "test-email",
-				"--email-connection-file", settingsPath
-		});
+		CliJob job = new CliJob(settingsPath);
+		job.doCheckEmail();
 		log.info("Inline email connection test completed for report: {}", reportId);
 	}
 
 	/**
-	 * Test a database connection and fetch its schema.
-	 * Goes through DocumentBurster.execute() → CliJob.doTestAndFetchDatabaseSchema()
-	 * which handles testing, schema fetch, and saving information-schema.json + table-names.txt.
+	 * Test a database connection and fetch its schema. Invokes
+	 * CliJob.doTestAndFetchDatabaseSchema() directly — same pattern as
+	 * testEmailConnection and testSms; matches the `connection test-database`
+	 * CLI command's own implementation.
 	 */
 	public void testDatabaseConnection(String connectionId) throws Throwable {
 		String connectionFilePath = prepareConnectionFilePath(connectionId);
 		log.info("Testing database connection: {}", connectionId);
-		jobExecutionService.executeSync(new String[] {
-				"system", "test-and-fetch-database-schema",
-				"--database-connection-file", connectionFilePath
-		});
+		CliJob job = new CliJob(connectionFilePath);
+		job.doTestAndFetchDatabaseSchema(connectionFilePath);
 		log.info("Database connection test and schema fetch completed for: {}", connectionId);
 	}
 
@@ -188,8 +185,7 @@ public class ConnectionsService {
 	public void testSms(String fromNumber, String toNumber, String configFilePath) throws Exception {
 		log.info("Testing SMS: from={}, to={}", fromNumber, toNumber);
 
-		String fullConfigPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/"
-				+ configFilePath.replaceFirst("^/", "");
+		String fullConfigPath = Utils.resolvePathAgainstPortableDir(configFilePath.replaceFirst("^/", ""));
 
 		CliJob job = new CliJob(fullConfigPath);
 		job.doCheckTwilio(fromNumber, toNumber);

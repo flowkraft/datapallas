@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart3, Plus, X, Loader2 } from "lucide-react";
+// lucide-react removed
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import type { NumericBucket, TimeBucket } from "@/lib/stores/canvas-store";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
@@ -240,10 +240,10 @@ export function SummarizeStep({
     <div className="space-y-1.5">
       {/* Aggregations */}
       <div className="flex items-center gap-2">
-        <BarChart3 className="w-4 h-4 text-blue-500 shrink-0" />
-        <span className="text-xs text-muted-foreground">Summarize</span>
-        <button id="btnAddAggregation" onClick={addAgg} className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground">
-          <Plus className="w-3.5 h-3.5" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-blue-500 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>
+        <span className="text-xs text-base-content/60">Summarize</span>
+        <button id="btnAddAggregation" onClick={addAgg} className="p-0.5 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
         </button>
       </div>
 
@@ -253,25 +253,25 @@ export function SummarizeStep({
             id={`selectAggFunc-${i}`}
             value={a.aggregation}
             onChange={(e) => updateAgg(i, { aggregation: e.target.value })}
-            className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground w-20"
+            className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content w-20"
           >
             {AGGREGATIONS.map((agg) => (
               <option key={agg} value={agg}>{agg}</option>
             ))}
           </select>
-          <span className="text-xs text-muted-foreground">of</span>
+          <span className="text-xs text-base-content/60">of</span>
           <select
             id={`selectAggField-${i}`}
             value={a.field}
             onChange={(e) => updateAgg(i, { field: e.target.value })}
-            className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground min-w-0 flex-1"
+            className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
           >
             {columns.map((c) => (
               <option key={c.columnName} value={c.columnName}>{c.columnName}</option>
             ))}
           </select>
-          <button id={`btnRemoveAgg-${i}`} onClick={() => removeAgg(i)} className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
-            <X className="w-3 h-3" />
+          <button id={`btnRemoveAgg-${i}`} onClick={() => removeAgg(i)} className="p-0.5 rounded hover:bg-error/10 text-base-content/60 hover:text-error">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
           </button>
         </div>
       ))}
@@ -279,7 +279,7 @@ export function SummarizeStep({
       {/* Group By — only show when there are aggregations */}
       {summarize.length > 0 && (
         <div className="ml-6 space-y-1">
-          <span className="text-xs text-muted-foreground">Group by:</span>
+          <span className="text-xs text-base-content/60">Group by:</span>
 
           {/* Selected group-by rows. Each row = col name + (bucket picker for numerics) + × */}
           {selectedGroupBy.length > 0 && (
@@ -302,7 +302,7 @@ export function SummarizeStep({
                     </span>
                     {isNumeric && (
                       <>
-                        <span className="text-[10px] text-muted-foreground">bin:</span>
+                        <span className="text-[10px] text-base-content/60">bin:</span>
                         <select
                           value={currentNumBins == null ? "none" : String(currentNumBins)}
                           onChange={(e) => {
@@ -310,7 +310,7 @@ export function SummarizeStep({
                             setNumericBucket(col, v === "none" ? null : Number(v));
                           }}
                           disabled={isProbing}
-                          className="text-[11px] bg-background border border-border rounded px-1.5 py-0.5 text-foreground"
+                          className="text-[11px] bg-base-100 border border-base-300 rounded px-1.5 py-0.5 text-base-content"
                           title={numRange
                             ? `Column range: ${numRange.min} – ${numRange.max}${currentNumBucket ? ` (width ${currentNumBucket.width})` : ""}`
                             : "Range not yet probed"}
@@ -328,12 +328,12 @@ export function SummarizeStep({
                     )}
                     {isDateCol && (
                       <>
-                        <span className="text-[10px] text-muted-foreground">bucket:</span>
+                        <span className="text-[10px] text-base-content/60">bucket:</span>
                         <select
                           value={currentTimeBucket ?? "none"}
                           onChange={(e) => setTemporalBucket(col, e.target.value as TemporalBucketChoice)}
                           disabled={isProbing}
-                          className="text-[11px] bg-background border border-border rounded px-1.5 py-0.5 text-foreground"
+                          className="text-[11px] bg-base-100 border border-base-300 rounded px-1.5 py-0.5 text-base-content"
                           title={dateRange
                             ? `Column range: ${dateRange.min} – ${dateRange.max}${currentTimeBucket ? ` (using ${currentTimeBucket})` : ""}`
                             : "Range not yet probed — pick a bucket to override"}
@@ -356,14 +356,14 @@ export function SummarizeStep({
                         </select>
                       </>
                     )}
-                    {isProbing && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                    {isProbing && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 animate-spin text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>}
                     <button
                       id={`btnRemoveGroupBy-${col}`}
                       onClick={() => toggleGroupBy(col)}
-                      className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                      className="p-0.5 rounded hover:bg-error/10 text-base-content/60 hover:text-error"
                       aria-label={`Remove ${col} from group-by`}
                     >
-                      <X className="w-3 h-3" />
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
                 );
@@ -379,7 +379,7 @@ export function SummarizeStep({
                   key={c.columnName}
                   id={`btnGroupBy-${c.columnName}`}
                   onClick={() => toggleGroupBy(c.columnName)}
-                  className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:border-foreground/30"
+                  className="text-[11px] px-2 py-0.5 rounded-full border border-base-300 text-base-content/60 hover:border-foreground/30"
                 >
                   {c.columnName}
                 </button>

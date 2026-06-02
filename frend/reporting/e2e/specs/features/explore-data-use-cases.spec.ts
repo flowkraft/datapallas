@@ -175,7 +175,7 @@ async function publishDashboard(page: Page): Promise<{ reportId: string; dashboa
 
   const [response] = await Promise.all([
     page.waitForResponse(
-      r => /\/explore-data\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
+      r => /\/explorations\/[^/]+\/export$/.test(r.url()) && r.request().method() === 'POST',
       { timeout: 90_000 },
     ),
     confirmBtn.click(),
@@ -259,7 +259,7 @@ test.describe('Data Canvas Use Cases', () => {
       : app.context.pages()[0];
 
     const connectionCode = toConnectionCode(CONNECTION_NAME, DB_VENDOR);
-    const dbConnsResp = await fetch('http://localhost:9090/api/connections/database');
+    const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database');
     const existingConns: Array<{ fileName: string }> = await dbConnsResp.json();
     if (!existingConns.some(c => c.fileName === `${connectionCode}.xml`)) {
       await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
@@ -346,7 +346,7 @@ test.describe('Data Canvas Use Cases', () => {
       // total_revenue: Northwind carries substantial revenue across all order lines
       const d1RevId = (d1Ids['number'] ?? [])[0];
       const d1RevData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d1ReportCode, cid: d1RevId });
       const d1TotalRevenue = Number(d1RevData.data[0].total_revenue);
@@ -355,7 +355,7 @@ test.describe('Data Canvas Use Cases', () => {
       // total_orders and unique_customers: Northwind customers placed multiple orders each
       const d1OrdId = (d1Ids['number'] ?? [])[1];
       const d1OrdData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d1ReportCode, cid: d1OrdId });
       const d1TotalOrders = Number(d1OrdData.data[0].total_orders);
@@ -363,7 +363,7 @@ test.describe('Data Canvas Use Cases', () => {
 
       const d1CustId = (d1Ids['number'] ?? [])[2];
       const d1CustData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d1ReportCode, cid: d1CustId });
       const d1UniqueCust = Number(d1CustData.data[0].unique_customers);
@@ -441,7 +441,7 @@ test.describe('Data Canvas Use Cases', () => {
       // total_products: Northwind ships at least 77 products
       const d2ProdId = (d2Ids['number'] ?? [])[0];
       const d2ProdData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d2ReportCode, cid: d2ProdId });
       const d2TotalProducts = Number(d2ProdData.data[0].total_products);
@@ -450,7 +450,7 @@ test.describe('Data Canvas Use Cases', () => {
       // discontinued: Northwind has some discontinued products
       const d2DiscId = (d2Ids['number'] ?? [])[1];
       const d2DiscData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d2ReportCode, cid: d2DiscId });
       expect(Number(d2DiscData.data[0].discontinued)).toBeGreaterThan(0);
@@ -458,7 +458,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Category revenue chart: Northwind has exactly 8 categories
       const d2CatId = (d2Ids['chart'] ?? [])[0];
       const d2CatData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d2ReportCode, cid: d2CatId });
       expect(d2CatData.data.length).toBe(8);
@@ -466,7 +466,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Reorder alert tabulator: every listed product is genuinely below its reorder level
       const d2TabId = (d2Ids['tabulator'] ?? [])[0];
       const d2TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d2ReportCode, cid: d2TabId });
       expect(d2TabData.data.length).toBeGreaterThan(0);
@@ -539,7 +539,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Test fixture has 3 employees (see NorthwindDataGenerator.createEmployees)
       const d3NumId = (d3Ids['number'] ?? [])[0];
       const d3NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d3ReportCode, cid: d3NumId });
       expect(Number(d3NumData.data[0].total_employees)).toBe(3);
@@ -547,7 +547,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Employee directory: exactly 3 rows (test fixture employees), all contact columns populated
       const d3TabId = (d3Ids['tabulator'] ?? [])[0];
       const d3TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d3ReportCode, cid: d3TabId });
       expect(d3TabData.data.length).toBe(3);
@@ -621,7 +621,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Northwind has customers across multiple countries — total is positive
       const d4NumId = (d4Ids['number'] ?? [])[0];
       const d4NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d4ReportCode, cid: d4NumId });
       expect(Number(d4NumData.data[0].total_customers)).toBeGreaterThan(0);
@@ -629,7 +629,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Top-10 revenue chart: exactly 10 rows, all with positive revenue
       const d4ChartId = (d4Ids['chart'] ?? [])[0];
       const d4ChartData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d4ReportCode, cid: d4ChartId });
       expect(d4ChartData.data.length).toBe(10);
@@ -700,7 +700,7 @@ test.describe('Data Canvas Use Cases', () => {
       // total_suppliers: Northwind sources from multiple countries
       const d5SupId = (d5Ids['number'] ?? [])[0];
       const d5SupData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d5ReportCode, cid: d5SupId });
       expect(Number(d5SupData.data[0].total_suppliers)).toBeGreaterThan(0);
@@ -708,7 +708,7 @@ test.describe('Data Canvas Use Cases', () => {
       // below_reorder: Northwind always has products at or below their reorder level
       const d5ReorderId = (d5Ids['number'] ?? [])[1];
       const d5ReorderData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d5ReportCode, cid: d5ReorderId });
       expect(Number(d5ReorderData.data[0].below_reorder)).toBeGreaterThan(0);
@@ -716,7 +716,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Reorder alert table: every row is genuinely at or below its reorder threshold
       const d5TabId = (d5Ids['tabulator'] ?? [])[0];
       const d5TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d5ReportCode, cid: d5TabId });
       expect(d5TabData.data.length).toBeGreaterThan(0);
@@ -822,17 +822,17 @@ test.describe('Data Canvas Use Cases', () => {
 
       // All three inline-list shippers must return distinct, positive freight totals
       const speedyData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&shipper=${encodeURIComponent('Speedy Express')}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&shipper=${encodeURIComponent('Speedy Express')}`);
         return r.json();
       }, { rc: reportCode, cid: numId });
       expect(Number(speedyData.data[0].total_freight)).toBeGreaterThan(0);
       const unitedData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&shipper=${encodeURIComponent('United Package')}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&shipper=${encodeURIComponent('United Package')}`);
         return r.json();
       }, { rc: reportCode, cid: numId });
       expect(Number(unitedData.data[0].total_freight)).toBeGreaterThan(0);
       const federalData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&shipper=${encodeURIComponent('Federal Shipping')}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&shipper=${encodeURIComponent('Federal Shipping')}`);
         return r.json();
       }, { rc: reportCode, cid: numId });
       expect(Number(federalData.data[0].total_freight)).toBeGreaterThan(0);
@@ -926,7 +926,7 @@ test.describe('Data Canvas Use Cases', () => {
       // total_revenue: Northwind has substantial revenue across all order lines.
       const d7RevId = (d7Ids['number'] ?? [])[0];
       const d7RevData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d7ReportCode, cid: d7RevId });
       const totalRevenue = Number(d7RevData.data[0].total_revenue);
@@ -935,7 +935,7 @@ test.describe('Data Canvas Use Cases', () => {
       // avg_order_value must be positive and far below total (it is per-order, not total).
       const d7AvgId = (d7Ids['number'] ?? [])[1];
       const d7AvgData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d7ReportCode, cid: d7AvgId });
       const avgOrderValue = Number(d7AvgData.data[0].avg_order_value);
@@ -945,7 +945,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Category chart: Northwind has exactly 8 categories, all with positive revenue.
       const d7CatId = (d7Ids['chart'] ?? [])[0];
       const d7CatData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d7ReportCode, cid: d7CatId });
       expect(d7CatData.data.length).toBe(8);
@@ -957,7 +957,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Quarterly chart: Northwind spans 1996–1998 → 7–9 YYYY-Q rows, each a valid label.
       const d7QtrId = (d7Ids['chart'] ?? [])[1];
       const d7QtrData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d7ReportCode, cid: d7QtrId });
       expect(d7QtrData.data.length).toBeGreaterThanOrEqual(7);
@@ -1031,7 +1031,7 @@ test.describe('Data Canvas Use Cases', () => {
       // total_stock: Northwind products carry inventory
       const d8StockId = (d8Ids['number'] ?? [])[0];
       const d8StockData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d8ReportCode, cid: d8StockId });
       expect(Number(d8StockData.data[0].total_stock)).toBeGreaterThan(0);
@@ -1039,7 +1039,7 @@ test.describe('Data Canvas Use Cases', () => {
       // below_reorder: Northwind has products at or below their reorder level
       const d8ReorderId = (d8Ids['number'] ?? [])[1];
       const d8ReorderData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d8ReportCode, cid: d8ReorderId });
       expect(Number(d8ReorderData.data[0].below_reorder)).toBeGreaterThan(0);
@@ -1047,7 +1047,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Low-stock detail: every row must have UnitsInStock < 10
       const d8TabId = (d8Ids['tabulator'] ?? [])[0];
       const d8TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d8ReportCode, cid: d8TabId });
       expect(d8TabData.data.length).toBeGreaterThan(0);
@@ -1116,7 +1116,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Northwind ships to at least 10 countries
       const d9NumId = (d9Ids['number'] ?? [])[0];
       const d9NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d9ReportCode, cid: d9NumId });
       expect(Number(d9NumData.data[0].countries_served)).toBeGreaterThanOrEqual(10);
@@ -1124,7 +1124,7 @@ test.describe('Data Canvas Use Cases', () => {
       // Country analysis table: avg_freight ≈ total_freight / order_count for the top row
       const d9TabId = (d9Ids['tabulator'] ?? [])[0];
       const d9TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d9ReportCode, cid: d9TabId });
       expect(d9TabData.data.length).toBeGreaterThan(0);
@@ -1210,7 +1210,7 @@ test.describe('Data Canvas Use Cases', () => {
 
       // startDate=2024-01-01 → trend contains only 2024 months
       const trendData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&startDate=2024-01-01`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&startDate=2024-01-01`);
         return r.json();
       }, { rc: reportCode, cid: trendId });
       expect(trendData.data.length).toBeGreaterThan(0);
@@ -1220,14 +1220,14 @@ test.describe('Data Canvas Use Cases', () => {
 
       // startDate far in the past → trend returns many months (all data included)
       const allTrendData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&startDate=1990-01-01`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&startDate=1990-01-01`);
         return r.json();
       }, { rc: reportCode, cid: trendId });
       expect(allTrendData.data.length).toBeGreaterThan(1);
 
       // startDate far in the future → no orders exist yet, trend returns 0 rows
       const futureTrendData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&startDate=2030-01-01`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&startDate=2030-01-01`);
         return r.json();
       }, { rc: reportCode, cid: trendId });
       expect(futureTrendData.data.length).toBe(0);
@@ -1311,7 +1311,7 @@ test.describe('Data Canvas Use Cases', () => {
 
       // Beverages filter: all rows belong to Beverages
       const bevData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&category=${encodeURIComponent('Beverages')}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&category=${encodeURIComponent('Beverages')}`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(bevData.data.length).toBeGreaterThan(0);
@@ -1321,7 +1321,7 @@ test.describe('Data Canvas Use Cases', () => {
 
       // Dairy Products filter: all rows belong to Dairy Products
       const dairyData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&category=${encodeURIComponent('Dairy Products')}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&category=${encodeURIComponent('Dairy Products')}`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(dairyData.data.length).toBeGreaterThan(0);
@@ -1412,21 +1412,21 @@ test.describe('Data Canvas Use Cases', () => {
 
       // topN=5 → 5 rows
       const data5 = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&topN=5`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&topN=5`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(data5.data.length).toBe(5);
 
       // topN=10 → 10 rows
       const data10 = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&topN=10`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&topN=10`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(data10.data.length).toBe(10);
 
       // topN=25 → 25 rows (third inline-list option)
       const data25 = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&topN=25`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&topN=25`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(data25.data.length).toBe(25);
@@ -1505,7 +1505,7 @@ return data`,
       // top_performer_freight: the best employee moved positive freight
       const d13NumId = (d13Ids['number'] ?? [])[0];
       const d13NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d13ReportCode, cid: d13NumId });
       expect(Number(d13NumData.data[0].top_performer_freight)).toBeGreaterThan(0);
@@ -1513,7 +1513,7 @@ return data`,
       // Freight by employee chart: exactly 3 rows (test fixture employees), DESC by total_freight
       const d13Chart0Id = (d13Ids['chart'] ?? [])[0];
       const d13Chart0Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d13ReportCode, cid: d13Chart0Id });
       expect(d13Chart0Data.data.length).toBe(3);
@@ -1526,7 +1526,7 @@ return data`,
       // Monthly freight trend chart: 18 months of data (createBulkDashboardOrders spans 18 months), all positive
       const d13Chart1Id = (d13Ids['chart'] ?? [])[1];
       const d13Chart1Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d13ReportCode, cid: d13Chart1Id });
       expect(d13Chart1Data.data.length).toBeGreaterThan(5); // at least several months
@@ -1538,7 +1538,7 @@ return data`,
       // Employee countries map: all 3 test-fixture employees are in USA
       const d13MapId = (d13Ids['map'] ?? [])[0];
       const d13MapData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d13ReportCode, cid: d13MapId });
       expect(d13MapData.data.length).toBe(1); // all employees share Country=USA
@@ -1548,7 +1548,7 @@ return data`,
       // Employee performance table: all employees in the test fixture, sorted by total_freight DESC
       const d13TabId = (d13Ids['tabulator'] ?? [])[0];
       const d13TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d13ReportCode, cid: d13TabId });
       expect(d13TabData.data.length).toBe(3);
@@ -1638,28 +1638,28 @@ return data`,
 
       // 2023 total_revenue must be positive
       const revenueData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
         return r.json();
       }, { rc: reportCode, cid: d14NumRevId });
       expect(Number(revenueData.data[0].total_revenue)).toBeGreaterThan(0);
 
       // 2023 total_freight must be positive
       const freightData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
         return r.json();
       }, { rc: reportCode, cid: d14NumFrtId });
       expect(Number(freightData.data[0].total_freight)).toBeGreaterThan(0);
 
       // 2023 avg_order_value must be positive
       const avgData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
         return r.json();
       }, { rc: reportCode, cid: d14NumAvgId });
       expect(Number(avgData.data[0].avg_order_value)).toBeGreaterThan(0);
 
       // 2023 date range → monthly chart contains only 2023 months
       const chartData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
         return r.json();
       }, { rc: reportCode, cid: d14Chart0Id });
       expect(chartData.data.length).toBeGreaterThan(0);
@@ -1669,7 +1669,7 @@ return data`,
 
       // Quarterly chart: 2023 has 4 quarters, each with positive revenue
       const quarterlyData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&dateFrom=2023-01-01&dateTo=2023-12-31`);
         return r.json();
       }, { rc: reportCode, cid: d14Chart1Id });
       expect(quarterlyData.data.length).toBe(4);
@@ -1681,7 +1681,7 @@ return data`,
 
       // Future range → no data (both date boundaries gate the result)
       const futureData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&dateFrom=2030-01-01&dateTo=2030-12-31`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&dateFrom=2030-01-01&dateTo=2030-12-31`);
         return r.json();
       }, { rc: reportCode, cid: d14NumRevId });
       expect(Number(futureData.data[0].total_revenue ?? 0)).toBe(0);
@@ -1751,7 +1751,7 @@ return data`,
       // total_products: test fixture has exactly 20 products
       const d15NumProdId = (d15Ids['number'] ?? [])[0];
       const d15NumProdData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d15ReportCode, cid: d15NumProdId });
       const totalProducts = Number(d15NumProdData.data[0].total_products);
@@ -1760,7 +1760,7 @@ return data`,
       // avg_price: positive across the catalog
       const d15NumAvgId = (d15Ids['number'] ?? [])[1];
       const d15NumAvgData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d15ReportCode, cid: d15NumAvgId });
       expect(Number(d15NumAvgData.data[0].avg_price)).toBeGreaterThan(0);
@@ -1768,7 +1768,7 @@ return data`,
       // Products by category: exactly 8 categories, each has at least 1 product
       const d15Chart0Id = (d15Ids['chart'] ?? [])[0];
       const d15Chart0Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d15ReportCode, cid: d15Chart0Id });
       expect(d15Chart0Data.data.length).toBe(8);
@@ -1780,7 +1780,7 @@ return data`,
       // Price range distribution: at least 2 buckets, known bucket names only
       const d15Chart1Id = (d15Ids['chart'] ?? [])[1];
       const d15Chart1Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d15ReportCode, cid: d15Chart1Id });
       expect(d15Chart1Data.data.length).toBeGreaterThanOrEqual(2);
@@ -1793,7 +1793,7 @@ return data`,
       // Full-catalog table (Visual plain): exactly one row per product, no LIMIT
       const d15TabId = (d15Ids['tabulator'] ?? [])[0];
       const d15TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d15ReportCode, cid: d15TabId });
       expect(d15TabData.data.length).toBe(totalProducts);
@@ -1868,7 +1868,7 @@ return data`,
 
       const d16NumId = (d16Ids['number'] ?? [])[0];
       const d16NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d16ReportCode, cid: d16NumId });
       const totalSuppliers = Number(d16NumData.data[0].total_suppliers);
@@ -1878,7 +1878,7 @@ return data`,
       // fixture has 5 distinct supplier countries (UK, USA, Japan, Australia, Italy).
       const d16Chart0Id = (d16Ids['chart'] ?? [])[0];
       const d16Chart0Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d16ReportCode, cid: d16Chart0Id });
       expect(d16Chart0Data.data.length).toBe(5);
@@ -1890,7 +1890,7 @@ return data`,
       // Avg price by supplier chart: exactly 6 rows, all with positive avg_price
       const d16Chart1Id = (d16Ids['chart'] ?? [])[1];
       const d16Chart1Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d16ReportCode, cid: d16Chart1Id });
       expect(d16Chart1Data.data.length).toBe(6);
@@ -1902,7 +1902,7 @@ return data`,
       // Supplier countries map: fixture suppliers span multiple countries, all with positive count
       const d16MapId = (d16Ids['map'] ?? [])[0];
       const d16MapData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d16ReportCode, cid: d16MapId });
       expect(d16MapData.data.length).toBeGreaterThan(0);
@@ -1913,7 +1913,7 @@ return data`,
       // Supplier directory: one row per supplier, all have required contact columns
       const d16TabId = (d16Ids['tabulator'] ?? [])[0];
       const d16TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d16ReportCode, cid: d16TabId });
       expect(d16TabData.data.length).toBe(totalSuppliers);
@@ -1995,7 +1995,7 @@ return data`,
       // Busiest month KPI: exactly 1 row, month_num in 01–12, order_count positive
       const d17NumId = (d17Ids['number'] ?? [])[0];
       const d17NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d17ReportCode, cid: d17NumId });
       expect(d17NumData.data.length).toBe(1);
@@ -2006,7 +2006,7 @@ return data`,
       // Daily order trend: each row is a valid ISO date with positive daily order count
       const d17TrendId = (d17Ids['trend'] ?? [])[0];
       const d17TrendData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d17ReportCode, cid: d17TrendId });
       expect(d17TrendData.data.length).toBeGreaterThan(0);
@@ -2019,7 +2019,7 @@ return data`,
       // rows sorted by EmployeeID ASC, each row has positive order count.
       const d17ChartId = (d17Ids['chart'] ?? [])[0];
       const d17ChartData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d17ReportCode, cid: d17ChartId });
       expect(d17ChartData.data.length).toBeGreaterThan(0);
@@ -2038,7 +2038,7 @@ return data`,
       // Quarterly chart: at least 4 quarters across the 18-month fixture, each with positive revenue
       const d17Chart1Id = (d17Ids['chart'] ?? [])[1];
       const d17Chart1Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d17ReportCode, cid: d17Chart1Id });
       expect(d17Chart1Data.data.length).toBeGreaterThanOrEqual(4);
@@ -2051,7 +2051,7 @@ return data`,
       // Monthly tabulator: dataset spans multiple months, all rows have positive orders
       const d17TabId = (d17Ids['tabulator'] ?? [])[0];
       const d17TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d17ReportCode, cid: d17TabId });
       expect(d17TabData.data.length).toBeGreaterThan(5);
@@ -2143,14 +2143,14 @@ return data`,
 
       // countries_served: fixture orders ship to multiple distinct countries
       const d18NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: reportCode, cid: d18NumId });
       expect(Number(d18NumData.data[0].countries_served)).toBeGreaterThan(1);
 
       // Global freight map: multiple countries, every row has positive freight
       const d18MapData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: reportCode, cid: d18MapId });
       expect(d18MapData.data.length).toBeGreaterThan(1);
@@ -2160,7 +2160,7 @@ return data`,
 
       // Order count chart (filtered default Germany,France): rows only from those countries
       const d18Chart0Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&countries=Germany,France`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&countries=Germany,France`);
         return r.json();
       }, { rc: reportCode, cid: d18Chart0Id });
       expect(d18Chart0Data.data.length).toBeGreaterThan(0);
@@ -2171,7 +2171,7 @@ return data`,
 
       // Avg freight chart (filtered Germany,France): rows only from those countries
       const d18Chart1Data = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&countries=Germany,France`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&countries=Germany,France`);
         return r.json();
       }, { rc: reportCode, cid: d18Chart1Id });
       expect(d18Chart1Data.data.length).toBeGreaterThan(0);
@@ -2182,7 +2182,7 @@ return data`,
 
       // Germany,France → only rows for Germany or France
       const multiData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&countries=Germany,France`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&countries=Germany,France`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(multiData.data.length).toBeGreaterThan(0);
@@ -2192,7 +2192,7 @@ return data`,
 
       // Germany only → fewer rows than Germany+France
       const singleData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&countries=Germany`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&countries=Germany`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(singleData.data.length).toBeGreaterThan(0);
@@ -2203,7 +2203,7 @@ return data`,
 
       // Non-existent country → zero rows (filter doesn't leak all data)
       const noData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&countries=Atlantis`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&countries=Atlantis`);
         return r.json();
       }, { rc: reportCode, cid: tabId });
       expect(noData.data.length).toBe(0);
@@ -2292,7 +2292,7 @@ return data`,
       // total_discount: positive impact across all order lines
       const d19NumDiscId = (d19Ids['number'] ?? [])[0];
       const d19NumDiscData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d19ReportCode, cid: d19NumDiscId });
       expect(Number(d19NumDiscData.data[0].total_discount)).toBeGreaterThan(0);
@@ -2300,7 +2300,7 @@ return data`,
       // avg_discount_rate is a fraction between 0 and 1
       const d19NumId = (d19Ids['number'] ?? [])[1];
       const d19NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d19ReportCode, cid: d19NumId });
       const avgRate = Number(d19NumData.data[0].avg_discount_rate);
@@ -2310,7 +2310,7 @@ return data`,
       // Monthly discount trend: data spans multiple months, discount_amount non-negative each month
       const d19TrendId = (d19Ids['trend'] ?? [])[0];
       const d19TrendData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d19ReportCode, cid: d19TrendId });
       expect(d19TrendData.data.length).toBeGreaterThan(0);
@@ -2324,7 +2324,7 @@ return data`,
       // 0.05 and 0.10 row (all non-zero-discount rows).
       const d19TabId = (d19Ids['tabulator'] ?? [])[0];
       const d19TabData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&minDiscount=0.04`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&minDiscount=0.04`);
         return r.json();
       }, { rc: d19ReportCode, cid: d19TabId });
       expect(d19TabData.data.length).toBeGreaterThan(0);
@@ -2335,7 +2335,7 @@ return data`,
       // Raise the threshold via the bound param → strictly fewer rows (only
       // the 0.10-discount rows survive; 0.05-discount rows drop out).
       const d19HighData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&minDiscount=0.09`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&minDiscount=0.09`);
         return r.json();
       }, { rc: d19ReportCode, cid: d19TabId });
       for (const row of d19HighData.data) {
@@ -2346,7 +2346,7 @@ return data`,
       // Lower the threshold below 0 → all rows including zero-discount ones,
       // strictly more than the 0.04 baseline.
       const d19LowData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}&minDiscount=-0.01`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&minDiscount=-0.01`);
         return r.json();
       }, { rc: d19ReportCode, cid: d19TabId });
       expect(d19LowData.data.length).toBeGreaterThan(d19TabData.data.length);
@@ -2354,7 +2354,7 @@ return data`,
       // Discount buckets chart: 'No Discount' bucket must exist (many items have 0 discount)
       const d19ChartId = (d19Ids['chart'] ?? [])[0];
       const d19ChartData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d19ReportCode, cid: d19ChartId });
       const buckets = d19ChartData.data.map((r: { discount_bucket: string }) => r.discount_bucket);
@@ -2454,15 +2454,15 @@ return data`,
       const d20OrdId  = (d20Ids['number'] ?? [])[2];
       const [d20RevData, d20CustData, d20OrdData] = await Promise.all([
         page.evaluate(async ({ rc, cid }) => {
-          const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
           return r.json();
         }, { rc: d20ReportCode, cid: d20RevId }),
         page.evaluate(async ({ rc, cid }) => {
-          const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
           return r.json();
         }, { rc: d20ReportCode, cid: d20CustId }),
         page.evaluate(async ({ rc, cid }) => {
-          const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
           return r.json();
         }, { rc: d20ReportCode, cid: d20OrdId }),
       ]);
@@ -2473,7 +2473,7 @@ return data`,
       // Custom-DSL chart: monthly revenue must return multiple months, all with positive revenue.
       const d20ChartId = (d20Ids['chart'] ?? [])[0];
       const d20ChartData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d20ReportCode, cid: d20ChartId });
       expect(d20ChartData.data.length).toBeGreaterThanOrEqual(12);
@@ -2485,7 +2485,7 @@ return data`,
       // Global freight map: multiple countries shipping, all with positive freight totals
       const d20MapId = (d20Ids['map'] ?? [])[0];
       const d20MapData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d20ReportCode, cid: d20MapId });
       expect(d20MapData.data.length).toBeGreaterThan(1);
@@ -2853,7 +2853,7 @@ return ctx.dbSql.rows(sql)`,
       // Total revenue KPI: the full Northwind order dataset drives a positive revenue total
       const d22NumId = (d22Ids['number'] ?? [])[0];
       const d22NumData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d22ReportCode, cid: d22NumId });
       expect(Number(d22NumData.data[0].total_revenue)).toBeGreaterThan(0);
@@ -2861,7 +2861,7 @@ return ctx.dbSql.rows(sql)`,
       // Pin map: exactly the 10 GEO_ROWS seeded in setupGeoLocations, all in valid lat/lon range
       const d22MapId = (d22Ids['map'] ?? [])[0];
       const d22MapData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d22ReportCode, cid: d22MapId });
       expect(d22MapData.data.length).toBe(10);
@@ -2878,7 +2878,7 @@ return ctx.dbSql.rows(sql)`,
       // Pivot: employee × category cross-tab has data with Beverages category present
       const d22PivotId = (d22Ids['pivot'] ?? [])[0];
       const d22PivotData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d22ReportCode, cid: d22PivotId });
       expect(d22PivotData.data.length).toBeGreaterThan(0);
@@ -2918,7 +2918,7 @@ return ctx.dbSql.rows(sql)`,
     await page.waitForLoadState('networkidle');
     await page.evaluate(async () => {
       const res = await fetch('http://localhost:9090/api/system/preferences', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: { showsamples: true } }),
       });
@@ -2986,7 +2986,7 @@ return ctx.dbSql.rows(sql)`,
       // KPI — total revenue must be positive (Northwind has ~$1.3M in sales)
       const d23RevId = (d23Ids['number'] ?? [])[0];
       const d23RevData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d23ReportCode, cid: d23RevId });
       expect(Number(d23RevData.data[0].Revenue)).toBeGreaterThan(0);
@@ -2994,7 +2994,7 @@ return ctx.dbSql.rows(sql)`,
       // Category chart — exactly 8 Northwind categories, Beverages present, all > 0
       const d23CatId = (d23Ids['chart'] ?? [])[0];
       const d23CatData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d23ReportCode, cid: d23CatId });
       expect(d23CatData.data.length).toBe(8);
@@ -3008,7 +3008,7 @@ return ctx.dbSql.rows(sql)`,
       // all with positive revenue.
       const d23CountryId = (d23Ids['chart'] ?? [])[1];
       const d23CountryData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d23ReportCode, cid: d23CountryId });
       expect(d23CountryData.data.length).toBe(10);
@@ -3021,7 +3021,7 @@ return ctx.dbSql.rows(sql)`,
       // orders; all 3 have positive values for all three cube measures.
       const d23EmpId = (d23Ids['tabulator'] ?? [])[0];
       const d23EmpData = await page.evaluate(async ({ rc, cid }) => {
-        const r = await fetch(`/api/reporting/reports/${rc}/data?componentId=${cid}`);
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
         return r.json();
       }, { rc: d23ReportCode, cid: d23EmpId });
       expect(d23EmpData.data.length).toBe(3);

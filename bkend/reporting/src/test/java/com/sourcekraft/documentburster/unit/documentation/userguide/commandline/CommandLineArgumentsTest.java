@@ -134,16 +134,8 @@ public class CommandLineArgumentsTest {
 						}
 					};
 					return cls.cast(cmd);
-				} else if (cls == MainProgram.ResumeCommand.class) {
-					MainProgram.ResumeCommand cmd = new MainProgram.ResumeCommand() {
-						@Override
-						protected CliJob getJob(String configFilePath) throws Exception {
-							return testJob;
-						}
-					};
-					return cls.cast(cmd);
-				} else if (cls == MainProgram.DocumentCommand.MergeCommand.class) {
-					MainProgram.DocumentCommand.MergeCommand cmd = new MainProgram.DocumentCommand.MergeCommand() {
+				} else if (cls == MainProgram.JobCommand.MergeCommand.class) {
+					MainProgram.JobCommand.MergeCommand cmd = new MainProgram.JobCommand.MergeCommand() {
 						@Override
 						protected CliJob getJob(String configFilePath) throws Exception {
 							return testJob;
@@ -203,7 +195,7 @@ public class CommandLineArgumentsTest {
 
 	@Test
 	public void validBurstCommand() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH };
 		executeCommand(args);
 
 		PdfTestUtils.assertDefaultResults(burster, Arrays.asList("alfreda.waldback@northridgehealth.org",
@@ -212,7 +204,7 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = MissingParameterException.class)
 	public void missingInputFileBurstCommand() throws Throwable {
-		String[] args = new String[] { "burst" };
+		String[] args = new String[] { "job", "burst" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
 		// This will throw MissingParameterException because <inputFile> is required
@@ -224,7 +216,7 @@ public class CommandLineArgumentsTest {
 
 	@Test
 	public void burstCommandWithTestAllOption() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testall" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testall" };
 		executeCommand(args);
 
 		PdfTestUtils.assertDefaultResults(burster, Arrays.asList("alfreda.waldback@northridgehealth.org",
@@ -236,14 +228,12 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void burstCommandWithInvalidTestList() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testlist=aaaa,bbbb,cccc" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testlist=aaaa,bbbb,cccc" };
 
-		// Parse arguments
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 		cmd.parseArgs(args);
 
-		// Get the burst command
-		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("burst").getCommand();
+		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("job").getSubcommands().get("burst").getCommand();
 
 		// Call the command directly - this should throw IllegalArgumentException
 		burstCommand.call();
@@ -251,17 +241,13 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = ParameterException.class)
 	public void burstCommandWithInvalidRandomTestsValue() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testrandom=-2" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testrandom=-2" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
-		// Parse arguments - this will validate the parameters and throw
-		// ParameterException
 		cmd.parseArgs(args);
 
-		// Get the command instance
-		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("burst").getCommand();
+		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("job").getSubcommands().get("burst").getCommand();
 
-		// Execute the command - this should throw an exception
 		burstCommand.call();
 
 		fail("Expected exception was not thrown");
@@ -269,7 +255,7 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = ParameterException.class)
 	public void burstCommandWithNonNumericRandomTestsValue() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testrandom=abc" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testrandom=abc" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
 		// This will throw ParameterException because "abc" can't be converted to an
@@ -282,7 +268,7 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = MutuallyExclusiveArgsException.class)
 	public void burstCommandWithMutuallyExclusiveOptions() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH,
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH,
 				"--testlist=clyde.grew@northridgehealth.org,alfreda.waldback@northridgehealth.org", "--testrandom=2" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
@@ -293,7 +279,7 @@ public class CommandLineArgumentsTest {
 
 	@Test
 	public void burstCommandWithValidTestList() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH,
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH,
 				"--testlist=clyde.grew@northridgehealth.org,alfreda.waldback@northridgehealth.org" };
 		executeCommand(args);
 
@@ -311,7 +297,7 @@ public class CommandLineArgumentsTest {
 
 	@Test
 	public void burstCommandWithRandomTests() throws Throwable {
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testrandom=2" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testrandom=2" };
 		executeCommand(args);
 
 		// Assert no quality-assurance files are generated
@@ -351,38 +337,28 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = MissingParameterException.class)
 	public void missingMergeFileCommand() throws Throwable {
-		String[] args = new String[] { "document", "merge" };
+		String[] args = new String[] { "job", "merge" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
-		// Parse arguments - this will validate required parameters
 		cmd.parseArgs(args);
 
-		// Get the merge command through the command hierarchy
-		CommandLine documentCmd = cmd.getSubcommands().get("document");
-		CommandLine mergeCmd = documentCmd.getSubcommands().get("merge");
-		MainProgram.DocumentCommand.MergeCommand command = (MainProgram.DocumentCommand.MergeCommand) mergeCmd
-				.getCommand();
+		CommandLine mergeCmd = cmd.getSubcommands().get("job").getSubcommands().get("merge");
+		MainProgram.JobCommand.MergeCommand command = (MainProgram.JobCommand.MergeCommand) mergeCmd.getCommand();
 
-		// Call the command directly - this will throw MissingParameterException
 		command.call();
 	}
 
 	@Test(expected = FileNotFoundException.class)
 	public void mergeCommandWithNonExistingFile() throws Throwable {
-		String[] args = new String[] { "document", "merge",
+		String[] args = new String[] { "job", "merge",
 				"src/test/resources/input/unit/other/not-existing-merge-file-Invoicec-Oct-Nov-Dec-bCpvjjzdk1.mf" };
 
-		// Parse arguments
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 		cmd.parseArgs(args);
 
-		// Get the merge command through the command hierarchy
-		CommandLine documentCmd = cmd.getSubcommands().get("document");
-		CommandLine mergeCmd = documentCmd.getSubcommands().get("merge");
-		MainProgram.DocumentCommand.MergeCommand command = (MainProgram.DocumentCommand.MergeCommand) mergeCmd
-				.getCommand();
+		CommandLine mergeCmd = cmd.getSubcommands().get("job").getSubcommands().get("merge");
+		MainProgram.JobCommand.MergeCommand command = (MainProgram.JobCommand.MergeCommand) mergeCmd.getCommand();
 
-		// Call the command directly - this will throw FileNotFoundException
 		command.call();
 	}
 
@@ -393,19 +369,14 @@ public class CommandLineArgumentsTest {
 		FileUtils.copyFile(new File(MERGE_FILE_ONE_FILE_NOT_EXISTING_INVOICES_OCT_NOV_DEC_PATH),
 				new File(mergeFilePath));
 
-		String[] args = new String[] { "document", "merge", mergeFilePath };
+		String[] args = new String[] { "job", "merge", mergeFilePath };
 
-		// Parse arguments
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 		cmd.parseArgs(args);
 
-		// Get the merge command through the command hierarchy
-		CommandLine documentCmd = cmd.getSubcommands().get("document");
-		CommandLine mergeCmd = documentCmd.getSubcommands().get("merge");
-		MainProgram.DocumentCommand.MergeCommand command = (MainProgram.DocumentCommand.MergeCommand) mergeCmd
-				.getCommand();
+		CommandLine mergeCmd = cmd.getSubcommands().get("job").getSubcommands().get("merge");
+		MainProgram.JobCommand.MergeCommand command = (MainProgram.JobCommand.MergeCommand) mergeCmd.getCommand();
 
-		// Call the command directly - this will throw FileNotFoundException
 		command.call();
 	}
 
@@ -414,7 +385,7 @@ public class CommandLineArgumentsTest {
 		String mergeFilePath = testJob.getTempFolder() + FilenameUtils.getName(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH);
 		FileUtils.copyFile(new File(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH), new File(mergeFilePath));
 
-		String[] args = new String[] { "document", "merge", mergeFilePath };
+		String[] args = new String[] { "job", "merge", mergeFilePath };
 		executeCommand(args);
 
 		assertMergeResults("merged.pdf");
@@ -432,7 +403,7 @@ public class CommandLineArgumentsTest {
 		String mergeFilePath = testJob.getTempFolder() + FilenameUtils.getName(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH);
 		FileUtils.copyFile(new File(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH), new File(mergeFilePath));
 
-		String[] args = new String[] { "document", "merge", mergeFilePath, "-o", "mergedTest2.pdf" };
+		String[] args = new String[] { "job", "merge", mergeFilePath, "-o", "mergedTest2.pdf" };
 		executeCommand(args);
 
 		assertMergeResults("mergedTest2.pdf");
@@ -450,7 +421,7 @@ public class CommandLineArgumentsTest {
 		String mergeFilePath = testJob.getTempFolder() + FilenameUtils.getName(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH);
 		FileUtils.copyFile(new File(MERGE_FILE_INVOICES_OCT_NOV_DEC_PATH), new File(mergeFilePath));
 
-		String[] args = new String[] { "document", "merge", mergeFilePath, "-o", "mergedTest3.pdf", "-b" };
+		String[] args = new String[] { "job", "merge", mergeFilePath, "-o", "mergedTest3.pdf", "-b" };
 		executeCommand(args);
 
 		assertMergeResults("mergedTest3.pdf");
@@ -464,38 +435,23 @@ public class CommandLineArgumentsTest {
 	}
 
 	/*
-	 * RESUME COMMAND TESTS
+	 * JOB STATUS / CANCEL COMMAND TESTS
 	 */
 
 	@Test(expected = MissingParameterException.class)
-	public void missingJobFileResumeCommand() throws Throwable {
-		String[] args = new String[] { "resume" };
+	public void missingJobIdStatusCommand() throws Throwable {
+		String[] args = new String[] { "job", "status" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
-
-		// Parse arguments - this will validate required parameters
 		cmd.parseArgs(args);
-
-		// Get the resume command
-		MainProgram.ResumeCommand resumeCommand = cmd.getSubcommands().get("resume").getCommand();
-
-		// Call the command directly - this will throw MissingParameterException
-		resumeCommand.call();
+		fail("Expected MissingParameterException for missing --job-id");
 	}
 
-	@Test(expected = FileNotFoundException.class)
-	public void resumeCommandWithNonExistingFile() throws Throwable {
-		String[] args = new String[] { "resume",
-				"src/test/resources/input/unit/other/non-existing-job-progress-file.jpr" };
-
-		// Parse arguments
+	@Test(expected = MissingParameterException.class)
+	public void missingJobIdCancelCommand() throws Throwable {
+		String[] args = new String[] { "job", "cancel" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 		cmd.parseArgs(args);
-
-		// Get the resume command
-		MainProgram.ResumeCommand resumeCommand = cmd.getSubcommands().get("resume").getCommand();
-
-		// Call the command directly - this will throw FileNotFoundException
-		resumeCommand.call();
+		fail("Expected MissingParameterException for missing --job-id");
 	}
 
 	/*
@@ -504,11 +460,9 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = MissingParameterException.class)
 	public void missingInputFileGenerateCommand() throws Throwable {
-		String[] args = new String[] { "generate" };
+		String[] args = new String[] { "job", "generate" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
-		// This will throw MissingParameterException because <input> is a required
-		// parameter
 		cmd.parseArgs(args);
 
 		// We shouldn't get here
@@ -517,14 +471,12 @@ public class CommandLineArgumentsTest {
 
 	@Test(expected = CommandLine.ParameterException.class)
 	public void generateCommandMissingConfig() throws Throwable {
-		String[] args = new String[] { "generate", "data.csv" };
+		String[] args = new String[] { "job", "generate", "data.csv" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
-		// Parse arguments - this will validate required parameters
 		cmd.parseArgs(args);
 
-		// Get the corresponding command instance
-		MainProgram.GenerateCommand generateCommand = cmd.getSubcommands().get("generate").getCommand();
+		MainProgram.GenerateCommand generateCommand = cmd.getSubcommands().get("job").getSubcommands().get("generate").getCommand();
 
 		// Call the command's business logic - this should throw the exception
 		generateCommand.call();
@@ -533,11 +485,9 @@ public class CommandLineArgumentsTest {
 	@Test(expected = MissingParameterException.class)
 	public void missingArgumentForTestRandomOption() throws Throwable {
 		// Test what happens when --testrandom is used without a value
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testrandom" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testrandom" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
-		// This should throw MissingParameterException because --testrandom requires a
-		// value
 		cmd.parseArgs(args);
 
 		// We shouldn't get here
@@ -547,11 +497,9 @@ public class CommandLineArgumentsTest {
 	@Test(expected = ParameterException.class)
 	public void nonNumericValueForTestRandomOption() throws Throwable {
 		// Test what happens when --testrandom has a non-numeric value
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testrandom=a" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testrandom=a" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
-		// This should throw ParameterException because "a" can't be converted to
-		// Integer
 		cmd.parseArgs(args);
 
 		// We shouldn't get here
@@ -561,14 +509,12 @@ public class CommandLineArgumentsTest {
 	@Test(expected = ParameterException.class)
 	public void negativeValueForTestRandomOption() throws Throwable {
 		// Test what happens when --testrandom has a negative value
-		String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH, "--testrandom=-2" };
+		String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH, "--testrandom=-2" };
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 
-		// Parse the arguments first (this will pass since -2 is a valid integer)
 		cmd.parseArgs(args);
 
-		// Get the burst command instance
-		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("burst").getCommand();
+		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("job").getSubcommands().get("burst").getCommand();
 
 		// Call the command - this should throw ParameterException due to validation in
 		// call() method

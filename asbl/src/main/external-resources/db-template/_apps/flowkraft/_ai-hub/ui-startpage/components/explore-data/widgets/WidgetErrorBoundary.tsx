@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+// lucide-react removed
 
 /**
  * Wraps a single explore-data widget. When the child throws during render or
@@ -56,17 +56,17 @@ export class WidgetErrorBoundary extends Component<WidgetErrorBoundaryProps, Wid
     return (
       <div className="flex h-full w-full items-center justify-center p-3 overflow-auto">
         <div className="max-w-full w-full">
-          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-            <AlertTriangle className="w-4 h-4 mt-0.5 text-destructive shrink-0" />
+          <div className="flex items-start gap-2 rounded-md border border-error/30 bg-error/5 p-3">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mt-0.5 text-error shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-foreground">This widget crashed</div>
-              <div className="mt-1 text-[11px] text-muted-foreground break-words">{message}</div>
+              <div className="text-xs font-medium text-base-content">This widget crashed</div>
+              <div className="mt-1 text-[11px] text-base-content/60 break-words">{message}</div>
               <button
                 type="button"
                 onClick={this.handleReset}
-                className="mt-2 inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-accent border border-border"
+                className="mt-2 inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-base-content hover:bg-base-200 border border-base-300"
               >
-                <RotateCcw className="w-3 h-3" /> Retry
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg> Retry
               </button>
             </div>
           </div>

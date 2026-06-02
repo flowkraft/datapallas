@@ -7,7 +7,7 @@ import { autoFilterPaneField, probeCardinality, classifyColumn } from "@/lib/exp
 import { useRbElementReady } from "./useRbElementReady";
 import { useDslConfig } from "@/lib/hooks/use-dsl-config";
 import type { FilterPaneDslOptions } from "@/lib/explore-data/dsl-sync/filter-pane-mapping";
-import { Loader2, Sparkles } from "lucide-react";
+import { IconSparkles as Sparkles } from "@/components/shared/Icons";
 
 /**
  * ============================================================================
@@ -183,7 +183,7 @@ export function FilterPaneWidget({ widgetId }: FilterPaneWidgetProps) {
   if (!field) {
     if (!table) {
       return (
-        <div className="flex items-center justify-center h-full text-xs text-muted-foreground p-2 text-center">
+        <div className="flex items-center justify-center h-full text-xs text-base-content/60 p-2 text-center">
           Pick a table in the Data tab, then choose a field to filter by.
         </div>
       );
@@ -194,26 +194,29 @@ export function FilterPaneWidget({ widgetId }: FilterPaneWidgetProps) {
           <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-primary/10 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <p className="text-xs font-medium text-foreground mb-1">Pick a field to filter by</p>
-          <p className="text-[11px] text-muted-foreground mb-2">
+          <p className="text-xs font-medium text-base-content mb-1">Pick a field to filter by</p>
+          <p className="text-[11px] text-base-content/60 mb-2">
             We&apos;ll auto-pick a low-cardinality column from {table}.
           </p>
           <button
             type="button"
             onClick={handleAutoPickField}
             disabled={autoBusy}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary text-primary-content text-[11px] font-medium hover:bg-primary/90 disabled:opacity-60"
           >
-            {autoBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {autoBusy
+              ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+              : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 1 2.455 2.456ZM16.5 20.25l-.259 1.035a3.375 3.375 0 0 1-2.455 2.456L12.75 24l1.036-.259a3.375 3.375 0 0 0 2.455-2.456l.259-1.035Z" /></svg>
+            }
             {autoBusy ? "Analyzing…" : "Auto-pick field"}
           </button>
-          {autoErr && <p className="mt-1.5 text-[10px] text-destructive">{autoErr}</p>}
+          {autoErr && <p className="mt-1.5 text-[10px] text-error">{autoErr}</p>}
         </div>
       </div>
     );
   }
-  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>;
-  if (!ready) return <div className="flex items-center justify-center h-full text-xs text-muted-foreground">Loading components...</div>;
+  if (loading) return <div className="flex items-center justify-center h-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 animate-spin text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></div>;
+  if (!ready) return <div className="flex items-center justify-center h-full text-xs text-base-content/60">Loading components...</div>;
 
   return (
     // @ts-expect-error - Web component custom element

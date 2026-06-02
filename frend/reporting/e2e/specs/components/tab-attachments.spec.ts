@@ -11,7 +11,7 @@ test.describe('', async () => {
 
       await ft
         .gotoConfigurationEmailSettings()
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .click('#attachmentsTable tbody tr:first-child td')
         .click('#btnDeleteAttachment')
         .clickYesDoThis()
@@ -19,7 +19,7 @@ test.describe('', async () => {
         .click('#topMenuBurst')
         .gotoConfigurationGeneralSettings()
         .click('#leftMenuEmailSettings')
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .elementShouldBeVisible('#noAttachments');
     },
   );
@@ -31,7 +31,7 @@ test.describe('', async () => {
 
       await ft
         .gotoConfigurationEmailSettings()
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .click('#attachmentsTable tbody tr:first-child td')
         .click('#btnEditAttachment')
         .click('#attachmentPath')
@@ -40,7 +40,7 @@ test.describe('', async () => {
         .click('#topMenuBurst')
         .gotoConfigurationEmailSettings()
         .click('#leftMenuEmailSettings')
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .elementShouldContainText(
           '#attachmentsTable tbody tr:first-child td',
           'C:/Test/Test.pdf',
@@ -55,7 +55,7 @@ test.describe('', async () => {
 
       await ft
         .gotoConfigurationEmailSettings()
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .click('#btnNewAttachment')
         .click('#btnAttachmentPathVariables')
         .click('#\\$\\{var0\\}')
@@ -91,7 +91,7 @@ test.describe('', async () => {
         )
         .click('#topMenuBurst')
         .gotoConfigurationEmailSettings()
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .elementShouldContainText(
           '#attachmentsTable tbody tr:first-child td',
           '${extracted_file_path}',
@@ -113,7 +113,7 @@ test.describe('', async () => {
         .clickYesDoThis()
         .click('#topMenuBurst')
         .gotoConfigurationEmailSettings()
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .elementShouldContainText(
           '#attachmentsTable tbody tr:first-child td',
           '${extracted_file_path}',
@@ -130,7 +130,7 @@ test.describe('', async () => {
         .clickYesDoThis()
         .click('#topMenuBurst')
         .gotoConfigurationEmailSettings()
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .waitOnElementToBecomeVisible('#noAttachments');
     },
   );

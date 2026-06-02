@@ -1,5 +1,5 @@
 export const tabBlogTemplate = `<ng-template #tabBlogTemplate>
-  <div class="well" style="height: 600px; overflow-y: scroll;">
+  <div class="overflow-y-auto" style="height: 600px;">
 
     <div id="blogRss"></div>
 

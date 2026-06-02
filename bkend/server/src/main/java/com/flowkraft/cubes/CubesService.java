@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
+import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
 import com.sourcekraft.documentburster.common.settings.Settings;
 
@@ -38,11 +39,11 @@ public class CubesService {
 	private static final Logger log = LoggerFactory.getLogger(CubesService.class);
 
 	private String getCubesDir() {
-		return AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/cubes";
+		return Utils.resolvePathAgainstPortableDir("config/cubes");
 	}
 
 	private String getSamplesCubesDir() {
-		return AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/samples-cubes";
+		return Utils.resolvePathAgainstPortableDir("config/samples-cubes");
 	}
 
 	private String getCubeDir(String cubeId) {

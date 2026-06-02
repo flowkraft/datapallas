@@ -1,5 +1,5 @@
 export const tabComparisonTemplate = `<ng-template #tabComparisonTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <strong>
       <a href="https://www.pdfburst.com/features.html" target="_blank">
@@ -34,7 +34,7 @@ export const tabComparisonTemplate = `<ng-template #tabComparisonTemplate>
     </ol>
     <br>
     <a href="https://www.pdfburst.com/features.html" target="_blank">
-      <button class="btn btn-primary" type="button">{{
+      <button class="btn btn-outline btn-primary" type="button">{{
         'AREAS.HELP.TAB-COMPARISON.VIEW-ALL-FEATURES' | translate }}</button>
     </a>
 

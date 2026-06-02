@@ -1,149 +1,113 @@
 export const tabReportingTabulatorTemplate = `<ng-template
   #tabReportingTabulatorTemplate
 >
-  <div class="well">
-    <!-- Top Area: Setup Options 
-    <div class="row">
-      <div class="col-xs-12">
-        <tabset>
-          <tab heading="{{ 'AREAS.CONFIGURATION.TAB-REPORTING-TABULATOR.GENERAL-CONFIG' | translate }}">
-            <div class="row" style="margin-top: 10px;">
-              <div class="col-xs-12">
-                <div class="alert alert-info">
-                  General Table Configuration settings would come here (layout, height, responsive options, etc.)
-                </div>
-              </div>
-            </div>
-          </tab>
-          
-          <tab heading="{{ 'AREAS.CONFIGURATION.TAB-REPORTING-TABULATOR.COLUMNS' | translate }}">
-            <div class="row" style="margin-top: 10px;">
-              <div class="col-xs-12">
-                <div class="alert alert-info">
-                  Column configuration would come here (field mappings, titles, visibility, width)
-                </div>
-              </div>
-            </div>
-          </tab>
-          
-          <tab heading="{{ 'AREAS.CONFIGURATION.TAB-REPORTING-TABULATOR.SORTING' | translate }}">
-            <div class="row" style="margin-top: 10px;">
-              <div class="col-xs-12">
-                <div class="alert alert-info">
-                  Sorting configuration would come here (enable/disable sorting, initial sort order)
-                </div>
-              </div>
-            </div>
-          </tab>
-          
-          <tab heading="{{ 'AREAS.CONFIGURATION.TAB-REPORTING-TABULATOR.PAGINATION' | translate }}">
-            <div class="row" style="margin-top: 10px;">
-              <div class="col-xs-12">
-                <div class="alert alert-info">
-                  Pagination settings would come here (enable/disable pagination, page size, page size selector)
-                </div>
-              </div>
-            </div>
-          </tab>
-        </tabset>
-      </div>
-    </div>
-    -->
-
-    <!-- Bottom Area: Table Preview with Tabset -->
-    <!-- Top area notice removed (was debug banner) -->
-    <tabset>
-      <tab heading="Preview">
-        <div class="row" style="margin-top: 20px;">
-          <div class="col-xs-12">
+  <div class="space-y-4">
+    <dp-tabs>
+      <dp-tab heading="Preview">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 20px;">
+          <div style="grid-column:span 12">
             <!-- Named components (aggregator report) -->
-            <ng-container *ngIf="getNamedTabulatorIds().length > 0">
-              <div *ngFor="let cid of getNamedTabulatorIds()" class="panel panel-default" style="margin-bottom: 15px;">
-                <div class="panel-heading"><strong>{{cid}}</strong></div>
-                <div class="panel-body">
-                  <rb-tabulator
-                    *ngIf="showTabulatorPreview"
-                    [reportId]="getCurrentReportCode()"
-                    [componentId]="cid"
-                    [apiBaseUrl]="reportingService.reportingApiBaseUrl"
-                    [reportParams]="previewParams || {}"
-                    [testMode]="true"
-                    (dataFetched)="onTabulatorDataFetched($any($event))"
-                    (fetchError)="onTabulatorFetchError($any($event))"
-                    (ready)="onTabReady($event)"
-                    (initError)="onTabError($any($event).detail.message)"
-                    (tableError)="onTabError($any($event).detail.message)"
-                  ></rb-tabulator>
+            @if (getNamedTabulatorIds().length > 0) {
+              @for (cid of getNamedTabulatorIds(); track $index) {
+                <div class="card card-border" style="margin-bottom: 15px;">
+                  <div class="card-title"><strong>{{cid}}</strong></div>
+                  <div class="card-body">
+                    @if (showTabulatorPreview) {
+                      <rb-tabulator
+                        [reportId]="getCurrentReportCode()"
+                        [componentId]="cid"
+                        [apiBaseUrl]="reportsService.apiBaseUrl"
+                        [reportParams]="previewParams || {}"
+                        [testMode]="true"
+                        (dataFetched)="onTabulatorDataFetched($any($event))"
+                        (fetchError)="onTabulatorFetchError($any($event))"
+                        (ready)="onTabReady($event)"
+                        (initError)="onTabError($any($event).detail.message)"
+                        (tableError)="onTabError($any($event).detail.message)"
+                      ></rb-tabulator>
+                    }
+                  </div>
                 </div>
-              </div>
-            </ng-container>
+              }
+            }
 
             <!-- Single unnamed component (standard report) — Mode 1: Angular fetches data once, pushes via [data] prop -->
-            <div *ngIf="getNamedTabulatorIds().length === 0" class="panel panel-default">
-              <div class="panel-body">
-                <!-- Clear All Filters link — only visible when filters are active -->
-                <div *ngIf="tabulatorHasActiveFilters" style="text-align: right; margin-bottom: 6px;">
-                  <a href="javascript:void(0)" (click)="clearAllTabulatorFilters()" style="font-weight: bold; cursor: pointer;">Clear All Filters</a>
+            @if (getNamedTabulatorIds().length === 0) {
+              <div class="card card-border">
+                <div class="card-body">
+                  <!-- Clear All Filters link — only visible when filters are active -->
+                  @if (tabulatorHasActiveFilters) {
+                    <div style="text-align: right; margin-bottom: 6px;">
+                      <a href="javascript:void(0)" (click)="clearAllTabulatorFilters()" style="font-weight: bold; cursor: pointer;">Clear All Filters</a>
+                    </div>
+                  }
+
+                  <!-- Show table when data exists -->
+                  @if (reportDataResult && !reportDataResultIsError && reportDataResult?.data?.length > 0) {
+                    <rb-tabulator #tabulator
+                      [data]="reportDataResult?.data"
+                      [columns]="activeTabulatorConfigOptions?.columns || (reportDataResult?.reportColumnNames | tabulatorColumns)"
+                      [options]="activeTabulatorConfigOptions || {}"
+                      [loading]="isReportDataLoading"
+                      (ready)="onTabReady($event)"
+                      (dataFiltered)="onTabulatorFiltered($any($event))"
+                      (initError)="onTabError($any($event).detail.message)"
+                      (tableError)="onTabError($any($event).detail.message)"
+                    ></rb-tabulator>
+                  }
+
+                  <!-- Show 'No Data' when no query run or query returned empty -->
+                  @if (!reportDataResult || (!reportDataResultIsError && (!reportDataResult?.data || reportDataResult?.data?.length === 0))) {
+                    <div id="noDataTabulator" class="text-center" style="padding: 20px;">
+                      <strong>No Data</strong>
+                    </div>
+                  }
+
+                  @if (reportDataResult && reportDataResultIsError) {
+                    <div>
+                      <div class="alert alert-error">
+                        <strong>Error:</strong> Query failed. Check Logs below.
+                      </div>
+                      <pre style="white-space:pre-wrap;max-height:300px;overflow:auto;">
+                        {{ reportDataResult.data?.[0]?.ERROR_MESSAGE }}
+                      </pre>
+                      <div
+                        id="errorsLogTabulator"
+                        class="card-body"
+                        style="
+                          color: red;
+                          height: 421px;
+                          overflow-y: scroll;
+                          overflow-x: auto;
+                          -webkit-user-select: all;
+                          user-select: all;
+                        "
+                      >
+                        <dburst-log-file-viewer
+                          logFileName="errors.log"
+                        ></dburst-log-file-viewer>
+                      </div>
+                    </div>
+                  }
+
+                  @if (reportDataResult) {
+                    <div>
+                      <br/>
+                      <p>Execution Time: {{ reportDataResult.executionTimeMillis }}ms</p>
+                      <p>Total Rows: {{ reportDataResult.data?.length || 0 }}</p>
+                    </div>
+                  }
+
                 </div>
-
-                <!-- Show table when data exists -->
-                <rb-tabulator #tabulator
-                  *ngIf="reportDataResult && !reportDataResultIsError && reportDataResult?.data?.length > 0"
-                  [data]="reportDataResult?.data"
-                  [columns]="activeTabulatorConfigOptions?.columns || (reportDataResult?.reportColumnNames | tabulatorColumns)"
-                  [options]="activeTabulatorConfigOptions || {}"
-                  [loading]="isReportDataLoading"
-                  (ready)="onTabReady($event)"
-                  (dataFiltered)="onTabulatorFiltered($any($event))"
-                  (initError)="onTabError($any($event).detail.message)"
-                  (tableError)="onTabError($any($event).detail.message)"
-                ></rb-tabulator>
-
-                <!-- Show 'No Data' when no query run or query returned empty -->
-                <div id="noDataTabulator" *ngIf="!reportDataResult || (!reportDataResultIsError && (!reportDataResult?.data || reportDataResult?.data?.length === 0))" class="text-center" style="padding: 20px;">
-                  <strong>No Data</strong>
-                </div>
-
-                <div *ngIf="reportDataResult && reportDataResultIsError">
-                  <div class="alert alert-danger">
-                    <strong>Error:</strong> Query failed. Check Logs below.
-                  </div>
-                  <pre style="white-space:pre-wrap;max-height:300px;overflow:auto;">
-                    {{ reportDataResult.data?.[0]?.ERROR_MESSAGE }}
-                  </pre>
-                  <div
-                    id="errorsLogTabulator"
-                    class="panel-body"
-                    style="
-                      color: red;
-                      height: 421px;
-                      overflow-y: scroll;
-                      overflow-x: auto;
-                      -webkit-user-select: all;
-                      user-select: all;
-                    "
-                  >
-                    <dburst-log-file-viewer
-                      logFileName="errors.log"
-                    ></dburst-log-file-viewer>
-                  </div>
-                </div>
-
-                <div *ngIf="reportDataResult">
-                  <br/>
-                  <p>Execution Time: {{ reportDataResult.executionTimeMillis }}ms</p>
-                  <p>Total Rows: {{ reportDataResult.data?.length || 0 }}</p>
-                </div>
-
               </div>
-            </div>
+            }
           </div>
         </div>
-      </tab>
+      </dp-tab>
 
-      <tab heading="Tabulator Options" id="tabulatorOptionsTab">
-        <div class="row" style="margin-top: 10px;">
-          <div class="col-xs-12">
+      <dp-tab heading="Tabulator Options" id="tabulatorOptionsTab">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
+          <div style="grid-column:span 12">
             <ngx-codejar
               id="tabulatorConfigEditor"
               #tabulatorConfigEditor
@@ -154,17 +118,17 @@ export const tabReportingTabulatorTemplate = `<ng-template
               [showLineNumbers]="true"
               style="height: 350px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; margin-top: 10px;"
             ></ngx-codejar>
-            <button id="btnAiHelpTabulatorConfig" type="button" class="btn btn-default btn-block" style="margin-top: 10px;" (click)="askAiForHelp('dsl.tabulator')">
+            <button id="btnAiHelpTabulatorConfig" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="askAiForHelp('dsl.tabulator')">
               <strong>Hey AI, Help Me Configure This Tabulator Table ...</strong>
             </button>
           </div>
         </div>
-      </tab>
+      </dp-tab>
 
-      <tab heading="Example (Tabulator Options)">
-        <div class="row" style="margin-top: 10px;">
-          <div class="col-xs-12">
-            <a id="btnSeeMoreTabulatorExamples" href="https://datapallas.com/docs/bi-analytics/web-components/datatables" target="_blank" class="btn btn-default btn-block" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
+      <dp-tab heading="Example (Tabulator Options)">
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
+          <div style="grid-column:span 12">
+            <a id="btnSeeMoreTabulatorExamples" href="https://datapallas.com/docs/bi-analytics/web-components/datatables" target="_blank" class="btn btn-outline w-full" style="color: #337ab7; text-decoration: underline; margin-bottom: 10px;">
               See More Tabulator Configuration Examples
             </a>
             <ngx-codejar
@@ -176,12 +140,12 @@ export const tabReportingTabulatorTemplate = `<ng-template
               [readonly]="true"
               style="height: 350px; border: 1px solid #ccc; border-radius: 4px; overflow-y: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8; margin-top: 10px;"
             ></ngx-codejar>
-            <button id="btnCopyToClipboardTabulatorConfigExample" type="button" class="btn btn-default btn-block" style="margin-top: 10px;" (click)="copyToClipboardTabulatorConfigExample()">
+            <button id="btnCopyToClipboardTabulatorConfigExample" type="button" class="btn btn-outline w-full" style="margin-top: 10px;" (click)="copyToClipboardTabulatorConfigExample()">
               Copy Example Tabulator Options To Clipboard
             </button>
           </div>
         </div>
-      </tab>
-    </tabset>
+      </dp-tab>
+    </dp-tabs>
   </div>
 </ng-template>`;

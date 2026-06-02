@@ -23,7 +23,7 @@ import jakarta.validation.Valid;
  * Delegates command execution to ServicesManager via StarterPacksManagementService.
  */
 @RestController
-@RequestMapping(value = "/api/starter-packs",
+@RequestMapping(value = "/api/system/services",
 		produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
 public class StarterPacksController {
 

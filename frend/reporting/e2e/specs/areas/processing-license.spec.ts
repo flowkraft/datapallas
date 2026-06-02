@@ -16,7 +16,7 @@ test.describe('', async () => {
       return (
         ft
           .gotoBurstScreen()
-          .click('#licenseTab-link')
+          .click('#tab-btn-licenseTab')
           // STEP0 - start from a demo license key
           .elementShouldBeVisible('#statusDemoLicense')
           .appShouldBeReadyToRunNewJobs()

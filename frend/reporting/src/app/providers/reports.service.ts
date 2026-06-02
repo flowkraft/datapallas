@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import { APP_CONFIG } from '../../environments/environment';
 
@@ -128,7 +128,9 @@ export class ReportsService {
     pivotTableOptions?: any;
   }> = new Map();
 
-  constructor(public apiService: ApiService) {
+  public apiService = inject(ApiService);
+
+  constructor() {
     this.CONFIGURATION_FOLDER_PATH = `${APP_CONFIG.folders.config}`;
     this.INTERNAL_SETTINGS_FILE_PATH = `${this.CONFIGURATION_FOLDER_PATH}/_internal/settings.xml`;
     this.CONFIGURATION_DEFAULTS_FOLDER_PATH = `${this.CONFIGURATION_FOLDER_PATH}/_defaults`;
@@ -197,9 +199,7 @@ export class ReportsService {
       },
     };
 
-    xmlSettings.documentburster = await this.apiService.get('/reports/load', {
-      path: this.getDefaultsConfigurationValuesFilePath(),
-    });
+    xmlSettings.documentburster = await this.apiService.get('/reports/_defaults/settings');
 
     this.version = xmlSettings.documentburster.settings.version;
 
@@ -231,10 +231,15 @@ export class ReportsService {
       documentburster: { settings: {} },
     };
 
-    xmlSettings.documentburster = await this.apiService.get(
-      '/reports/load',
-      { path: configFilePath },
-    );
+    // Use the by-path backend endpoint — distinct from /reports/{id}/settings,
+    // which always resolves to {id}/settings.xml. The configuration-load
+    // workflow needs to read arbitrary files (e.g. migrated configs named
+    // burst/15-settings-6.2-custom.xml) by their full path, not by reportId.
+    const result = await this.apiService.get(`/reports/load-by-path`, {
+      path: configFilePath,
+    });
+    // console.log('[RB-DIAG] loadSettingsByPath path:', configFilePath, 'result keys:', result ? Object.keys(result) : result);
+    xmlSettings.documentburster = result;
 
     return xmlSettings;
   }
@@ -245,8 +250,8 @@ export class ReportsService {
       documentburster: any;
     },
   ) {
-    xmlSettings.documentburster.settings.attachments.items.attachmentItems.forEach(
-      (item: { selected: boolean }) => {
+    xmlSettings.documentburster.settings?.attachments?.items?.attachmentItems?.forEach(
+      (item: { selected?: boolean }) => {
         delete item.selected;
       },
     );
@@ -270,33 +275,6 @@ export class ReportsService {
     return this.apiService.put(
       `/reports/${encodeURIComponent(reportId)}/datasource`,
       xmlReporting.documentburster,
-    );
-  }
-
-  /**
-   * Load a template file by its path. Used when the path is known
-   * (e.g., per-output-type templates: payslips-html.html, payslips-pdf.html).
-   */
-  async loadTemplateByPath(templatePath: string): Promise<string> {
-    const textHeaders = new Headers({ Accept: 'text/plain' });
-    return this.apiService.get(
-      `/reports/load-template`,
-      { path: templatePath },
-      textHeaders,
-      'text',
-    );
-  }
-
-  /**
-   * Save a template file by its path. Used when the path is known
-   * (e.g., per-output-type templates).
-   */
-  async saveTemplateByPath(templatePath: string, content: string): Promise<void> {
-    const textHeaders = new Headers({ 'Content-Type': 'text/plain' });
-    return this.apiService.post(
-      `/reports/save-template?path=${encodeURIComponent(templatePath)}`,
-      content,
-      textHeaders,
     );
   }
 
@@ -406,7 +384,7 @@ export class ReportsService {
     }
 
     // Use minimal endpoint for fast startup, full endpoint only when explicitly needed
-    const endpoint = fullLoad ? '/reports/load-all' : '/reports/load-all-minimal';
+    const endpoint = fullLoad ? '/reports?withDetails=true' : '/reports';
     this.configurationFiles = await this.apiService.get(endpoint);
 
     return this.configurationFiles;
@@ -439,9 +417,7 @@ export class ReportsService {
     }
 
     try {
-      const details = await this.apiService.get('/reports/load-config-details', {
-        path: configFile.filePath,
-      });
+      const details = await this.apiService.get(`/reports/${encodeURIComponent(configFile.folderName)}`);
 
       if (details) {
         // Merge loaded details into the config
@@ -478,65 +454,9 @@ export class ReportsService {
     }
   }
 
-  // ===== Gallery template methods (ID-based, no paths) =====
-
-  /**
-   * Load gallery template HTML content + asset base directory.
-   */
-  async loadGalleryTemplateContent(
-    templateId: string,
-    variant: number = 0,
-  ): Promise<{ content: string; assetBaseDir: string }> {
-    return this.apiService.get(`/gallery/templates/${encodeURIComponent(templateId)}/content`, { variant });
-  }
-
-  /**
-   * Load gallery template README.
-   */
-  async loadGalleryTemplateReadme(templateId: string, variant: number = 0): Promise<string> {
-    const textHeaders = new Headers({ Accept: 'text/plain' });
-    return this.apiService.get(
-      `/gallery/templates/${encodeURIComponent(templateId)}/readme`,
-      { variant },
-      textHeaders,
-      'text',
-    );
-  }
-
-  /**
-   * Load gallery template AI prompt (type: 'modify' or 'scratch').
-   */
-  async loadGalleryTemplateAiPrompt(
-    templateId: string,
-    type: 'modify' | 'scratch',
-    variant: number = 0,
-  ): Promise<string> {
-    const textHeaders = new Headers({ Accept: 'text/plain' });
-    return this.apiService.get(
-      `/gallery/templates/${encodeURIComponent(templateId)}/ai-prompt`,
-      { type, variant },
-      textHeaders,
-      'text',
-    );
-  }
-
-  /**
-   * Get the URL to view a gallery template in the browser.
-   */
-  getGalleryTemplateViewUrl(templateId: string, variant: number = 0): string {
-    return `/api/gallery/templates/${encodeURIComponent(templateId)}/view?variant=${variant}`;
-  }
-
   async loadAllReportTemplates() {
-    this.templateFiles = await this.apiService.get(
-      '/reports/load-templates-all',
-    );
-
+    this.templateFiles = await this.apiService.get('/reports?type=templates');
     return this.templateFiles;
-  }
-
-  async loadSqlOptionsAsync(sql: string) {
-    return this.apiService.get('/reports/load-sql-options', { sql });
   }
 
   getConfigurations() {
@@ -638,7 +558,7 @@ export class ReportsService {
     capReportGenerationMailMerge: boolean,
     copyFromReportId?: string,
   ): Promise<CfgTmplFileInfo> {
-    return this.apiService.post('/reports/configurations', {
+    return this.apiService.post('/reports', {
       reportId,
       templateName,
       capReportDistribution,
@@ -655,7 +575,7 @@ export class ReportsService {
     capReportGenerationMailMerge: boolean,
   ): Promise<CfgTmplFileInfo> {
     return this.apiService.post(
-      `/reports/configurations/${sourceReportId}/duplicate`,
+      `/reports/${sourceReportId}/duplicate`,
       {
         targetReportId,
         templateName,
@@ -666,13 +586,90 @@ export class ReportsService {
   }
 
   async deleteReport(reportId: string): Promise<void> {
-    return this.apiService.delete(`/reports/configurations/${reportId}`);
+    return this.apiService.delete(`/reports/${reportId}`);
   }
 
   async restoreDefaults(reportId: string): Promise<void> {
     return this.apiService.post(
-      `/reports/configurations/${reportId}/restore-defaults`,
+      `/reports/${reportId}/restore-defaults`,
     );
+  }
+
+  requiresInputFile(report: CfgTmplFileInfo): boolean {
+    if (!report) return true;
+    if (report.dsInputType === 'ds.jasper') return false;
+    if (report.dsInputType === 'ds.sqlquery') return false;
+    if (report.dsInputType === 'ds.scriptfile') {
+      const sel = (report.scriptOptionsSelectFileExplorer ?? 'notused');
+      return sel !== 'notused';
+    }
+    return true;
+  }
+
+  requiresParameters(report: CfgTmplFileInfo): boolean {
+    if (!report) return true;
+    return !!(report.reportParameters && report.reportParameters.length > 0);
+  }
+
+  allowedInputFileTypes(report: CfgTmplFileInfo): string {
+    if (!report) return 'notused';
+    const dsInputType = report.dsInputType;
+    const scriptOptionsSelectFileExplorer = report.scriptOptionsSelectFileExplorer;
+    if (!dsInputType) return 'notused';
+    if (['ds.csvfile', 'ds.tsvfile', 'ds.fixedwidthfile'].includes(dsInputType))
+      return '.csv, .tsv, .tab, .txt, .prn, .dat';
+    if (dsInputType === 'ds.xmlfile') return '.xml';
+    if (dsInputType === 'ds.excelfile') return '.xlsx, .xls';
+    if (dsInputType === 'ds.script') return scriptOptionsSelectFileExplorer;
+    return 'notused';
+  }
+
+  convertParamValue(type: string, value: any): any {
+    switch (type) {
+      case 'LocalDate':
+      case 'LocalDateTime':
+        return value;
+      case 'Integer':
+        return parseInt(value, 10);
+      case 'Boolean':
+        return Boolean(value);
+      default:
+        return value;
+    }
+  }
+
+  // V4: base URL for web components (rb-tabulator, rb-chart, rb-pivot-table).
+  // Component appends /reports/{id}/data to this — so /api is the right base now.
+  get apiBaseUrl(): string {
+    return this.apiService.BACKEND_URL;
+  }
+
+  async getReportData(
+    reportId: string,
+    parameters: { [key: string]: any },
+    testMode: boolean = false,
+  ) {
+    const params = new URLSearchParams();
+    if (testMode) {
+      params.set('testMode', 'true');
+    }
+
+    Object.entries(parameters).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        params.set(key, value.toString());
+      }
+    });
+
+    const paramsObj = {};
+    params.forEach((value, key) => {
+      paramsObj[key] = value;
+    });
+
+    const result = await this.apiService.get(
+      `/reports/${reportId}/data`,
+      paramsObj,
+    );
+    return result;
   }
 
 }

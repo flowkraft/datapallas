@@ -59,7 +59,7 @@ public class WrongCommandLineArgumentsTest {
 	public void invalidArgument() throws Throwable {
 		// Testing invalid flag - Picocli throws UnmatchedArgumentException for
 		// unexpected flags
-		String[] args = new String[] { "burst", "-x", PAYSLIPS_REPORT_PATH };
+		String[] args = new String[] { "job", "burst", "-x", PAYSLIPS_REPORT_PATH };
 
 		// This will throw UnmatchedArgumentException because -x is an unknown option
 		new CommandLine(program, createTestFactory()).parseArgs(args);
@@ -68,14 +68,14 @@ public class WrongCommandLineArgumentsTest {
 	@Test
 	public void invalidBurstInputFile() throws Throwable {
 		// Testing nonexistent input file
-		String[] args = new String[] { "burst", "C:/inexistent_file.pdf" };
+		String[] args = new String[] { "job", "burst", "C:/inexistent_file.pdf" };
 
 		// Parse arguments but don't execute yet
 		CommandLine cmd = new CommandLine(program, createTestFactory());
 		cmd.parseArgs(args);
 
 		// Get the burst command instance
-		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("burst").getCommand();
+		MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("job").getSubcommands().get("burst").getCommand();
 
 		try {
 			// Call the command directly - this should throw FileNotFoundException
@@ -90,7 +90,7 @@ public class WrongCommandLineArgumentsTest {
 	@Test
 	public void missingRequiredArguments() throws Throwable {
 		// Testing missing required parameters
-		String[] args = new String[] { "burst" };
+		String[] args = new String[] { "job", "burst" };
 
 		int exitCode = new CommandLine(program, createTestFactory()).execute(args);
 

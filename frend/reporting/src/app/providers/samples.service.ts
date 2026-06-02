@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { SettingsService } from './settings.service';
+import { ConfigurationRepository } from './configuration-repository.service';
 import { ApiService } from './api.service';
 import { ReportsService } from './reports.service';
 import Utilities from '../helpers/utilities';
+import { iconSvg } from '../shared/icon-svgs';
 
 export interface SampleInfo {
   id: string;
@@ -71,7 +72,7 @@ export interface HtmlDocTemplateDisplay extends HtmlDocTemplateInfo {
 export class SamplesService {
   constructor(
     protected translateService: TranslateService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected reportsService: ReportsService,
     protected apiService: ApiService,
   ) { }
@@ -150,7 +151,7 @@ export class SamplesService {
           "output/${input_document_name}/${timestamp?format['yyyy.MM.dd_HH.mm.ss.SSS']}",
       },
       outputHtmlHardcoded:
-        '<i class="fa fa-file-excel-o"></i> clyde.grew@northridgehealth.org.xls employee payslip<br><i class="fa fa-file-excel-o"></i> kyle.butford@northridgehealth.org.xls employee payslip<br><i class="fa fa-file-excel-o"></i> alfreda.waldback@northridgehealth.org.xls employee payslip',
+        `${iconSvg('file-excel-o')} clyde.grew@northridgehealth.org.xls employee payslip<br>${iconSvg('file-excel-o')} kyle.butford@northridgehealth.org.xls employee payslip<br>${iconSvg('file-excel-o')} alfreda.waldback@northridgehealth.org.xls employee payslip`,
       //configurationFilePath: `${this.settingsService.PORTABLE_EXECUTABLE_DIR}/config/samples/split-only/settings.xml`,
       configurationFilePath: `config/samples/split-only/settings.xml`,
       configurationFileName: 'split-only',
@@ -186,7 +187,7 @@ export class SamplesService {
           "output/${input_document_name}/${timestamp?format['yyyy.MM.dd_HH.mm.ss.SSS']}",
       },
       outputHtmlHardcoded:
-        '<i class="fa fa-file-excel-o"></i> United States of America.xls<br><i class="fa fa-file-excel-o"></i> Australia.xls<br><i class="fa fa-file-excel-o"></i> Canada.xls<br><i class="fa fa-file-excel-o"></i> United Kingdom.xls<br><i class="fa fa-file-excel-o"></i> Germany.xls<br>etc... (separate file containing customer list for each country)',
+        `${iconSvg('file-excel-o')} United States of America.xls<br>${iconSvg('file-excel-o')} Australia.xls<br>${iconSvg('file-excel-o')} Canada.xls<br>${iconSvg('file-excel-o')} United Kingdom.xls<br>${iconSvg('file-excel-o')} Germany.xls<br>etc... (separate file containing customer list for each country)`,
       //configurationFilePath: `${this.settingsService.PORTABLE_EXECUTABLE_DIR}/config/samples/split-only/settings.xml`,
       configurationFilePath: `config/samples/split-only/settings.xml`,
       configurationFileName: 'split-only',
@@ -753,7 +754,7 @@ export class SamplesService {
         data: [],
         folder: '',
       },
-      outputHtmlHardcoded: '<i class="fa fa-dashboard"></i> Interactive dashboard (no output files)',
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive dashboard (no output files)`,
       configurationFilePath: `config/samples/g-dashboard/settings.xml`,
       configurationFileName: 'g-dashboard',
       notes: ``,
@@ -782,7 +783,7 @@ export class SamplesService {
         data: [],
         folder: '',
       },
-      outputHtmlHardcoded: '<i class="fa fa-dashboard"></i> Interactive pivot table (no output files)',
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive pivot table (no output files)`,
       configurationFilePath: `config/samples/g-pivottable/settings.xml`,
       configurationFileName: 'g-pivottable',
       notes: ``,
@@ -852,7 +853,7 @@ export class SamplesService {
           "output/${input_document_name}/${timestamp?format['yyyy.MM.dd_HH.mm.ss.SSS']}",
       },
       outputHtmlHardcoded:
-        '<i class="fa fa-envelope-o"></i> letter to student clyde.grew@northridgeschool.edu<br><i class="fa fa-envelope-o"></i> letter to student kyle.butford@northridgeschool.edu<br><i class="fa fa-envelope-o"></i> letter to student alfreda.waldback@northridgeschool.edu',
+        `${iconSvg('envelope')} letter to student clyde.grew@northridgeschool.edu<br>${iconSvg('envelope')} letter to student kyle.butford@northridgeschool.edu<br>${iconSvg('envelope')} letter to student alfreda.waldback@northridgeschool.edu`,
       //configurationFilePath: `${this.settingsService.PORTABLE_EXECUTABLE_DIR}/config/samples/mail-merge-emails/settings.xml`,
       configurationFilePath: `config/samples/mail-merge-emails/settings.xml`,
       configurationFileName: 'split-only',
@@ -916,37 +917,38 @@ export class SamplesService {
       inputUrl = inputsUrl[0].replace('file:', '');
     }
 
-    let inputFileIcon = 'fa-file-pdf-o';
-    if (inputLabel.endsWith('.xls')) {
-      inputFileIcon = 'fa-file-excel-o';
-    } else if (inputLabel.endsWith('.csv')) {
-      inputFileIcon = 'fa-file-text-o';
+    let inputFileIconSvg = iconSvg('file-pdf-o');
+    if (inputLabel.endsWith('.xls') || inputLabel.endsWith('.xlsx')) {
+      inputFileIconSvg = iconSvg('file-excel-o');
+    } else if (inputLabel.endsWith('.csv') || inputLabel.endsWith('.html')
+        || inputLabel.endsWith('.docx') || inputLabel.endsWith('.txt')) {
+      inputFileIconSvg = iconSvg('file-text-o');
     } else if (inputLabel.endsWith('.db') || inputLabel.endsWith('.duckdb')) {
-      inputFileIcon = 'fa-database';
+      inputFileIconSvg = iconSvg('database');
     }
 
-    let inputHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;${inputLabel}`;
+    let inputHtml = `${inputFileIconSvg}&nbsp;${inputLabel}`;
     if (fullDetails)
-      inputHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;${inputLabel}`;
+      inputHtml = `${inputFileIconSvg}&nbsp;${inputLabel}`;
 
     if (inputUrl) {
-      inputHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
+      inputHtml = `${inputFileIconSvg}&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
       if (fullDetails)
-        inputHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
+        inputHtml = `${inputFileIconSvg}&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
     }
 
     for (let index = 1; index < inputs.length; index++) {
       inputLabel = inputs[index].replace('file:', '');
-      let currentHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;${inputLabel}`;
+      let currentHtml = `${inputFileIconSvg}&nbsp;${inputLabel}`;
       if (fullDetails)
-        currentHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;${inputLabel}`;
+        currentHtml = `${inputFileIconSvg}&nbsp;${inputLabel}`;
 
       if (inputUrl) {
         inputUrl = inputsUrl[index].replace('file:', '');
         // Fixed: Added missing quote in target="_blank" attribute
-        currentHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
+        currentHtml = `${inputFileIconSvg}&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
         if (fullDetails)
-          currentHtml = `<i class="fa ${inputFileIcon}"></i>&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
+          currentHtml = `${inputFileIconSvg}&nbsp;<a href="${inputUrl}" target="_blank">${inputLabel}</a>`;
       }
 
       inputHtml = `${inputHtml}<br>${currentHtml}`;
@@ -970,12 +972,17 @@ export class SamplesService {
     const outputs: string[] = sample.output.data;
     let outputLabel = outputs[0].replace('file:', '');
 
-    let attachmentFileIcon = 'fa-file-pdf-o';
-    if (outputLabel.endsWith('.docx')) attachmentFileIcon = 'fa-file-word-o';
-    if (outputLabel.endsWith('.html')) attachmentFileIcon = 'fa-file-code-o';
-
-    if (outputLabel.endsWith('.xls')) attachmentFileIcon = 'fa-file-excel-o';
-    if (outputLabel.endsWith('.xlsx')) attachmentFileIcon = 'fa-file-excel-o';
+    // Pick the registry icon for an output filename so each file type
+    // gets a visually distinct icon: spreadsheet for .xls/.xlsx, text-doc
+    // for .csv/.html/.docx/.txt, plain document for .pdf and anything else.
+    const fileIcon = (label: string): string => {
+      if (label.endsWith('.xls') || label.endsWith('.xlsx')) return iconSvg('file-excel-o');
+      if (label.endsWith('.csv') || label.endsWith('.html')
+        || label.endsWith('.docx') || label.endsWith('.txt')) return iconSvg('file-text-o');
+      return iconSvg('file-pdf-o');
+    };
+    const SVG_ENVELOPE = iconSvg('envelope');
+    const SVG_AT = iconSvg('at-symbol');
 
     let outputHtml = '';
     if (fullDetails) {
@@ -988,9 +995,9 @@ export class SamplesService {
       }
     } else {
       if (sample.capReportDistribution)
-        outputHtml = `<i class="fa fa-envelope-o"></i> ${sample.recipientType} with <i class="fa fa-at"></i> ${sample.documentType} <i class="fa ${attachmentFileIcon}"></i> ${outputLabel}`;
+        outputHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
       else
-        outputHtml = `<i class="fa ${attachmentFileIcon}"></i> ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
+        outputHtml = `${fileIcon(outputLabel)} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
     }
 
     //console.log(`outputHtml = ${outputHtml}`);
@@ -998,9 +1005,9 @@ export class SamplesService {
     if (!fullDetails) {
       for (let index = 1; index < outputs.length; index++) {
         outputLabel = outputs[index].replace('file:', '');
-        let currentHtml = `<i class="fa fa-envelope-o"></i> ${sample.recipientType} with <i class="fa fa-at"></i> ${sample.documentType} <i class="fa ${attachmentFileIcon}"></i> ${outputLabel}`;
+        let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
         if (!sample.capReportDistribution)
-          currentHtml = `<i class="fa ${attachmentFileIcon}"></i> ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
+          currentHtml = `${fileIcon(outputLabel)} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
 
         outputHtml = `${outputHtml}<br>${currentHtml}`;
       }
@@ -1011,9 +1018,9 @@ export class SamplesService {
         outputLabel = outputs[index].replace('file:', '');
         //console.log(`outputLabel = ${outputLabel}`);
 
-        let currentHtml = `<i class="fa fa-envelope-o"></i> ${sample.recipientType} with <i class="fa fa-at"></i> ${sample.documentType} <i class="fa ${attachmentFileIcon}"></i> ${outputLabel}`;
+        let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
         if (!sample.capReportDistribution)
-          currentHtml = `<i class="fa ${attachmentFileIcon}"></i> ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
+          currentHtml = `${fileIcon(outputLabel)} ${outputLabel} ${sample.recipientType} ${sample.documentType}`;
 
         outputHtml = `${outputHtml}<br>${currentHtml}`;
       }
@@ -1023,7 +1030,7 @@ export class SamplesService {
 
         for (let index = 0; index < outputs.length; index++) {
           outputLabel = outputs[index].replace('file:', '');
-          let currentHtml = `<i class="fa fa-envelope-o"></i> ${sample.recipientType} with <i class="fa fa-at"></i> ${sample.documentType} <i class="fa ${attachmentFileIcon}"></i> ${outputLabel}`;
+          let currentHtml = `${SVG_ENVELOPE} ${sample.recipientType} with ${SVG_AT} ${sample.documentType} ${fileIcon(outputLabel)} ${outputLabel}`;
           outputHtml = `${outputHtml}<br>${currentHtml}`;
         }
       }

@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -87,12 +86,14 @@ export default function NewInvoicePage() {
       <div className="flex items-center gap-4">
         <Link href="/admin/invoices">
           <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+            </svg>
           </Button>
         </Link>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">New Invoice</h2>
-          <p className="text-muted-foreground">Create a new customer invoice</p>
+          <h2 className="text-3xl font-bold tracking-tight text-base-content">New Invoice</h2>
+          <p className="text-base-content/60">Create a new customer invoice</p>
         </div>
       </div>
 
@@ -249,7 +250,7 @@ export default function NewInvoicePage() {
                     step="0.01"
                     value={formData.taxAmount}
                     readOnly
-                    className="bg-muted"
+                    className="bg-base-200"
                   />
                 </div>
                 <div className="space-y-2">
@@ -274,7 +275,7 @@ export default function NewInvoicePage() {
                     step="0.01"
                     value={formData.totalAmount}
                     readOnly
-                    className="bg-muted"
+                    className="bg-base-200"
                   />
                 </div>
                 <div className="space-y-2">

@@ -647,6 +647,7 @@
         "BURST": "Burst Reports",
         "MAILMERGE-CLASSICREPORTS": "Generate Reports",
         "CMS-WEBPORTAL": "Explore Data & Build Dashboards",
+        "CUSTOMER-PORTAL": "Customer Portal",
         "LOGGING-TRACING": "Logging and Tracing",
         "MERGE-BURST": "Merge -> Burst",
         "QUALITY-ASSURANCE": "Quality Assurance",

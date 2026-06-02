@@ -72,6 +72,19 @@ public class Settings extends DumpToString {
 	 */
 	public static String PORTABLE_EXECUTABLE_DIR_PATH = StringUtils.EMPTY;
 
+	/**
+	 * Per-thread sink for the worker to publish its actual jobFilePath (the
+	 * full path to the temp file, e.g. ".../temp/temp-524") back to the
+	 * server-side caller that invoked DocumentBurster.execute(). Used by
+	 * JobsController to (a) write pause/cancel signal files at the correct
+	 * basename and (b) pass jobFilePath as the CLI arg for resume.
+	 *
+	 * The server-side caller sets this ThreadLocal before invoking execute()
+	 * and clears it afterwards; the worker reads it from CliJob._createJobFile
+	 * once jobFilePath is established.
+	 */
+	public static final ThreadLocal<java.util.function.Consumer<String>> ACTIVE_JOB_FILE_PATH_SINK = new ThreadLocal<>();
+
 	private static final long serialVersionUID = 6953576182023603829L;
 
 	private Logger log = LoggerFactory.getLogger(Settings.class);
@@ -488,7 +501,7 @@ public class Settings extends DumpToString {
 			}
 
 			// 3. Default: first db-* connection folder with <default>true</default>
-			String connectionsDir = PORTABLE_EXECUTABLE_DIR_PATH + "/config/connections";
+			String connectionsDir = Paths.get(PORTABLE_EXECUTABLE_DIR_PATH, "config", "connections").toString();
 			File connDir = new File(connectionsDir);
 			if (connDir.exists() && connDir.isDirectory()) {
 				File[] dbFolders = connDir.listFiles(

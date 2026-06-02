@@ -1,4 +1,4 @@
-import {
+﻿import {
   Component,
   OnInit,
   ChangeDetectorRef,
@@ -7,6 +7,18 @@ import {
   AfterViewChecked,
   AfterViewInit,
 } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { LogFileViewerComponent } from '../../components/log-file-viewer/log-file-viewer.component';
+import { LicenseComponent } from '../../components/license/license.component';
+import { StarterPacksComponent } from '../../components/starter-packs/starter-packs.component';
+import {
+  JavaComponent,
+  ExtraPackagesComponent,
+  TerminalComponent,
+  SystemDiagnosticsComponent,
+  ButtonNativeSystemDialogComponent,
+  UpdateComponent,
+} from '../electron-nodejs/electron-nodejs.barrel';
 import { ActivatedRoute } from '@angular/router';
 
 //import RSS from 'vanilla-rss';
@@ -31,18 +43,19 @@ import { tabUpdateTemplate } from './templates/tab-update';
 import { tabComparisonTemplate } from './templates/tab-comparison';
 import { tabLogsTemplate } from './templates/tab-logs';
 import { tabLicenseTemplate } from './templates/tab-license';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import Utilities from '../../helpers/utilities';
 import { StateStoreService } from '../../providers/state-store.service';
 //import { ElectronService } from '../../core/services/electron/electron.service';
 
 @Component({
-  selector: 'dburst-help',
-  template: `
-    <aside class="main-sidebar">
-      <section class="sidebar">${leftMenuTemplate}</section>
+    selector: 'dburst-help',
+    template: `
+    <aside class="app-sidebar fixed overflow-y-auto z-[810]"
+           style="top:calc(64px + var(--cet-offset)); left:0; bottom:30px; width:var(--sidebar-w); overflow-x:hidden; transition:width 0.2s ease; background-color:var(--app-sidebar-bg); border-right:1px solid var(--app-sidebar-border);">
+      ${leftMenuTemplate}
     </aside>
-    <div class="content-wrapper">
+    <div class="relative" style="margin-left:var(--sidebar-w); transition:margin-left 0.2s ease; padding-left:1rem; padding-right:1rem; min-height: calc(100vh - var(--app-header-h) - var(--app-statusbar-h) - var(--cet-offset) - var(--app-main-pt));">
       <section class="content"><div>${tabsTemplate}</div></section>
     </div>
     ${tabSupportTemplate} ${tabDocumentationTemplate} ${tabServicesTemplate}
@@ -52,6 +65,10 @@ import { StateStoreService } from '../../providers/state-store.service';
     ${tabUpdateTemplate} ${tabAboutTemplate} ${tabComparisonTemplate}
     ${tabLogsTemplate} ${tabLicenseTemplate}
   `,
+    standalone: true,
+    imports: [...SHARED_IMPORTS, LogFileViewerComponent, LicenseComponent, StarterPacksComponent,
+               JavaComponent, ExtraPackagesComponent, TerminalComponent, SystemDiagnosticsComponent,
+               ButtonNativeSystemDialogComponent, UpdateComponent],
 })
 export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   @ViewChild('tabSupportTemplate', { static: true })
@@ -259,10 +276,16 @@ export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   currentLeftMenu: string;
   activeTabId: string = '';
 
+  get activeTabIndex(): number {
+    if (!this.activeTabId) return 0;
+    const idx = this.visibleTabs.findIndex(t => t.id === this.activeTabId);
+    return idx >= 0 ? idx : 0;
+  }
+
   constructor(
     protected route: ActivatedRoute,
     protected changeDetectorRef: ChangeDetectorRef,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected storeService: StateStoreService,
     //protected electronService: ElectronService,
   ) {}
@@ -292,15 +315,7 @@ export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    if (this.activeTabId) {
-      setTimeout(() => {
-        this.changeDetectorRef.detectChanges();
-        const tabHeader = document.querySelector(`.nav-link[href="#${this.activeTabId}"]`) as HTMLElement;
-        if (tabHeader) {
-          tabHeader.click();
-        }
-      }, 100);
-    }
+    // activeTabIndex getter drives dp-tabs [activeIndex] binding — no DOM click needed
   }
 
   ngAfterViewChecked() {

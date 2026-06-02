@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from '@storybook/angular';
+import type { Meta, StoryObj } from '@storybook/angular';
 import { BrandComponent } from '../app/components/brand/brand.component';
 
 type Story = StoryObj<BrandComponent>;

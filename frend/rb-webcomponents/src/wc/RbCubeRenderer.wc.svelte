@@ -40,10 +40,25 @@
     parseCubeData(cubeConfig);
   }
 
+  // Identity of the cube currently displayed — used to decide whether a re-bind
+  // of `cubeConfig` represents a genuine cube swap (must wipe selections) or
+  // just the host re-pushing the same cube content with a new object reference
+  // (must preserve selections so user clicks aren't lost).
+  let activeCubeSignature: string = '';
+
+  function computeCubeSignature(data: any, cubeName: string): string {
+    if (!data) return '';
+    const target = (cubeName && cubeName !== '(default)' && data.namedOptions?.[cubeName])
+      ? data.namedOptions[cubeName]
+      : data;
+    return (target.sqlTable || target.sql || '') + '|' + (cubeName || '');
+  }
+
   function parseCubeData(data: any) {
     if (!data) {
       activeCube = null;
       cubeNames = [];
+      activeCubeSignature = '';
       return;
     }
 
@@ -62,10 +77,14 @@
       activeCube = data;
     }
 
-    selectedDimensions = new Set();
-    selectedMeasures = new Set();
-    selectedSegments = new Set();
-    initExpanded();
+    const newSignature = computeCubeSignature(data, selectedCubeName);
+    if (newSignature !== activeCubeSignature) {
+      selectedDimensions = new Set();
+      selectedMeasures = new Set();
+      selectedSegments = new Set();
+      activeCubeSignature = newSignature;
+      initExpanded();
+    }
   }
 
   function selectCube(name: string) {
@@ -269,7 +288,7 @@
 <div bind:this={container} id="cubePreviewContainer" class="rb-cube-root">
   {#if !activeCube}
     <div class="rb-cube-empty">
-      <div style="text-align: center; color: #999; padding: 40px 0;">
+      <div style="text-align: center; color: color-mix(in oklab, currentColor 60%, transparent); padding: 40px 0;">
         <div style="font-size: 48px; margin-bottom: 10px;">&#x1f4e6;</div>
         <p>Write Cube DSL on the left to see a preview here</p>
       </div>
@@ -598,7 +617,9 @@
   .rb-cube-select {
     width: 100%;
     padding: 6px 10px;
-    border: 1px solid #ccc;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
     border-radius: 4px;
     font-size: 13px;
   }
@@ -608,14 +629,14 @@
     font-weight: 600;
   }
   .rb-cube-desc {
-    color: #888;
+    color: color-mix(in oklab, currentColor 60%, transparent);
     margin: 0 0 8px 0;
     font-size: 11px;
   }
   .rb-cube-table {
     font-size: 12px;
     margin-bottom: 10px;
-    color: #555;
+    color: color-mix(in oklab, currentColor 60%, transparent);
   }
 
   /* ── File explorer tree ── */
@@ -633,20 +654,20 @@
   .rb-tree-header {
     cursor: pointer;
     font-weight: 600;
-    color: #444;
+    color: inherit;
   }
   .rb-tree-header:hover {
-    background: #f0f0f0;
+    background: color-mix(in oklab, currentColor 8%, transparent);
   }
   .rb-tree-join-header {
-    color: #6a4f00;
+    color: inherit;
     font-weight: 700;
   }
   .rb-tree-arrow {
     width: 12px;
     text-align: center;
     font-size: 10px;
-    color: #999;
+    color: color-mix(in oklab, currentColor 60%, transparent);
     flex-shrink: 0;
   }
   .rb-tree-folder-icon {
@@ -660,7 +681,7 @@
     cursor: default;
   }
   .rb-tree-field:hover {
-    background: #f5f8ff;
+    background: color-mix(in oklab, currentColor 6%, transparent);
   }
 
   /* ── Technical view (show everything) ── */
@@ -682,7 +703,7 @@
     font-size: 12px;
   }
   .rb-cube-meta {
-    color: #999;
+    color: color-mix(in oklab, currentColor 60%, transparent);
     font-size: 11px;
     margin-left: 4px;
   }
@@ -699,15 +720,15 @@
     margin: 0;
   }
   .rb-cube-badge {
-    background: #337ab7;
-    color: white;
+    background: var(--rb-accent, var(--color-primary));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
     font-size: 9px;
     padding: 1px 4px;
     border-radius: 3px;
     margin-left: 4px;
   }
   .rb-cube-hint {
-    color: #999;
+    color: color-mix(in oklab, currentColor 60%, transparent);
     font-size: 11px;
     margin-top: 5px;
   }
@@ -718,9 +739,9 @@
     margin-top: 8px;
     padding: 4px 0;
     font-size: 11px;
-    color: #999;
+    color: color-mix(in oklab, currentColor 60%, transparent);
     cursor: pointer;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
   }
   .rb-show-toggle input[type="checkbox"] {
     margin: 0;
@@ -739,7 +760,8 @@
     transform: translate(-50%, -50%);
     width: 700px;
     max-height: 80vh;
-    background: white;
+    color: inherit;
+    background: var(--rb-surface, Canvas);
     border-radius: 8px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     z-index: 10001;
@@ -751,7 +773,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
   }
   .rb-cube-modal-header h4 {
     margin: 0;
@@ -762,7 +784,7 @@
     border: none;
     font-size: 24px;
     cursor: pointer;
-    color: #666;
+    color: color-mix(in oklab, currentColor 60%, transparent);
   }
   .rb-cube-modal-body {
     padding: 16px;
@@ -783,35 +805,36 @@
   }
   .rb-cube-modal-footer {
     padding: 12px 16px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
     display: flex;
     justify-content: space-between;
   }
   .rb-cube-copy-btn {
     padding: 8px 20px;
-    background: #5cb85c;
-    color: white;
+    background: var(--rb-accent, var(--color-primary));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
   }
   .rb-cube-copy-btn:hover:not(:disabled) {
-    background: #449d44;
+    filter: brightness(0.92);
   }
   .rb-cube-copy-btn:disabled {
-    background: #ccc;
+    background: color-mix(in oklab, currentColor 18%, transparent);
     cursor: not-allowed;
   }
   .rb-cube-close-btn {
     padding: 8px 20px;
-    background: #f5f5f5;
-    border: 1px solid #ccc;
+    color: inherit;
+    background: var(--color-base-200, color-mix(in oklab, currentColor 8%, transparent));
+    border: 1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
   }
   .rb-cube-close-btn:hover {
-    background: #e8e8e8;
+    background: color-mix(in oklab, currentColor 14%, transparent);
   }
 </style>

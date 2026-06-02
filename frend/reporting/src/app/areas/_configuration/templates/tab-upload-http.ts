@@ -1,16 +1,16 @@
 export const tabUploadHTTPTemplate = `<ng-template #tabUploadHTTPTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.COMMAND' | translate }}</div>
-      <div class="col-xs-7">
-        <input id="httpCommand" [(ngModel)]="xmlSettings?.documentburster.settings.uploadsettings.httpcommand"
-          (ngModelChange)='settingsChangedEventHandler($event)' class="form-control" />
+      <div style="grid-column:span 7">
+        <input id="httpCommand" [ngModel]="xmlSettings?.documentburster?.settings?.uploadsettings?.httpcommand"
+          (ngModelChange)="setXmlPath('documentburster.settings.uploadsettings.httpcommand', $event)" class="input" />
       </div>
 
-      <div class="col-xs-3">
+      <div style="grid-column:span 3">
         <dburst-button-variables id="btnHttpVariables"
           (sendSelectedVariable)="updateFormControlWithSelectedVariable('httpCommand',$event)">
         </dburst-button-variables>
@@ -18,13 +18,13 @@ export const tabUploadHTTPTemplate = `<ng-template #tabUploadHTTPTemplate>
 
     </div>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">
+      <div style="grid-column:span 2">
         <em>{{
           'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.SYNOPSIS' | translate }}</em>
       </div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 7">
         <em>[{{
           'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.OPTIONS' | translate }}][URL...]</em>
       </div>
@@ -33,11 +33,11 @@ export const tabUploadHTTPTemplate = `<ng-template #tabUploadHTTPTemplate>
 
     <br>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.EXAMPLE' | translate }}</div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 7">
         <em [innerHTML]="'-T \\$\\{extracted_file_path\\} http://www.example.com/'"></em>
       </div>
 
@@ -45,11 +45,11 @@ export const tabUploadHTTPTemplate = `<ng-template #tabUploadHTTPTemplate>
 
     <br>
 
-    <div class="row">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.HINT' | translate }}</div>
-      <div class="col-xs-7">{{
+      <div style="grid-column:span 7">{{
         'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.FULL-CURL-POWER' | translate }} -
         <a href="http://curl.haxx.se/" target="_blank">http://curl.haxx.se/ </a>
         <span [innerHTML]="'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.INNER-HTML.CURL-INTEGRATION'

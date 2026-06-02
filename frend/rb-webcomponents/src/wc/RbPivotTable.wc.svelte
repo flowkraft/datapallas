@@ -263,8 +263,7 @@
         colOrder,
       }, engineToUse);
 
-      // Derive analytics API URL from apiBaseUrl (e.g. http://host:port/api/reporting -> http://host:port/api/analytics).
-      // Use URL.origin so we don't depend on the exact /api/... path structure of apiBaseUrl.
+      // Derive analytics API URL from apiBaseUrl; use origin so we don't depend on its exact path.
       if (apiBaseUrl) {
         try {
           const origin = new URL(apiBaseUrl, window.location.href).origin;
@@ -274,22 +273,22 @@
         }
       }
 
-      console.log('[rb-pivot-table] Executing server-side pivot:', request);
+      // console.log('[rb-pivot-table] Executing server-side pivot:', request);
       const response = await pivotApi.executePivot(request, `pivot-${reportId}`);
 
       // Check if backend returned 'browser' engine (non-OLAP connection)
       if ((response as any).engine === 'browser') {
-        console.log('[rb-pivot-table] Backend detected non-OLAP connection, switching to browser processing');
+        // console.log('[rb-pivot-table] Backend detected non-OLAP connection, switching to browser processing');
         dispatch('pivotEngineDetected', { detectedEngine: 'browser' });
         loading = false;
         return;
       }
 
-      console.log('[rb-pivot-table] Server response received:', {
-        rowCount: response.metadata.rowCount,
-        executionTimeMs: response.metadata.executionTimeMs,
-        aggregator: response.metadata.aggregatorUsed,
-      });
+      // console.log('[rb-pivot-table] Server response received:', {
+      //   rowCount: response.metadata.rowCount,
+      //   executionTimeMs: response.metadata.executionTimeMs,
+      //   aggregator: response.metadata.aggregatorUsed,
+      // });
 
       // Inject missing columns so PivotData discovers all draggable fields.
       // Server returns only GROUP BY dimensions + aggregated value, but the source
@@ -390,13 +389,13 @@
 
       try {
         // Fetch config (deduplicated across all rb-pivot-table instances with same report-id)
-        console.log('[rb-pivot-table] Fetching config from:', `${apiBaseUrl}/reports/${reportId}/config`);
+        // console.log('[rb-pivot-table] Fetching config from:', `${apiBaseUrl}/reports/${reportId}/config`);
         const config = await fetchConfigCached(`${apiBaseUrl}/reports/${reportId}/config`, headers);
-        console.log('[rb-pivot-table] Config received:', {
-          hasPivotTable: config.hasPivotTable,
-          pivotTableDsl: config.pivotTableDsl ? `${config.pivotTableDsl.length} chars` : 'MISSING',
-          pivotTableOptions: config.pivotTableOptions
-        });
+        // console.log('[rb-pivot-table] Config received:', {
+        //   hasPivotTable: config.hasPivotTable,
+        //   pivotTableDsl: config.pivotTableDsl ? `${config.pivotTableDsl.length} chars` : 'MISSING',
+        //   pivotTableOptions: config.pivotTableOptions
+        // });
 
         // Apply pivot table options from config (named or default)
         const pivotOpts = (componentId && config.namedPivotTableOptions?.[componentId])
@@ -424,13 +423,13 @@
         // Apply engine mode from backend auto-detection
         if (config.pivotEngineMode) {
           engine = config.pivotEngineMode as PivotEngine;
-          console.log('[rb-pivot-table] Backend detected engine mode:', engine);
+          // console.log('[rb-pivot-table] Backend detected engine mode:', engine);
         }
 
         // Store raw DSL for Configuration tab display
         if (config.pivotTableDsl) {
           configDsl = config.pivotTableDsl;
-          console.log('[rb-pivot-table] configDsl set, length:', configDsl.length);
+          // console.log('[rb-pivot-table] configDsl set, length:', configDsl.length);
         } else {
           console.warn('[rb-pivot-table] No pivotTableDsl in config response!');
         }
@@ -440,7 +439,7 @@
         // - DuckDB/ClickHouse: skip fetch, server-side aggregation via /api/analytics/pivot
         const needsDataFetch = engine === 'browser' || !shouldUseServerProcessing();
         if (needsDataFetch) {
-          console.log('[rb-pivot-table]', engine, 'mode: fetching dataset from /data endpoint...');
+          // console.log('[rb-pivot-table]', engine, 'mode: fetching dataset from /data endpoint...');
           // Build data URL with user params + testMode + componentId
           const dataQueryParams = new URLSearchParams(reportParams as Record<string, string>);
           if (testMode) dataQueryParams.set('testMode', 'true');
@@ -472,7 +471,7 @@
             reportColumnNames: dataResult?.reportColumnNames || [],
           });
         } else {
-          console.log('[rb-pivot-table] Server-side aggregation mode (', engine, '): skipping data download, will aggregate on server');
+          // console.log('[rb-pivot-table] Server-side aggregation mode (', engine, '): skipping data download, will aggregate on server');
           // Server-side aggregation will happen via reactive statement when user interacts
         }
 
@@ -1495,7 +1494,12 @@
     return p;
   }
 
-  // CSS embedded for shadow DOM
+  // CSS embedded for shadow DOM.
+  // Theme-inheriting & framework-agnostic: backgrounds inherit the page (transparent),
+  // text uses currentColor, structure is derived from currentColor via color-mix, and
+  // OPAQUE overlays fall back to the CSS system color `Canvas`. A host MAY override:
+  //   rb-pivot-table { --rb-pivot-border/-header-bg/-surface/-accent }
+  // No daisyUI / Tailwind hardcoded here.
   const PIVOT_CSS = `
 .pvtUi-container {
   font-family: Verdana, sans-serif;
@@ -1512,7 +1516,7 @@
   cursor: pointer;
 }
 .pvtUi {
-  color: #2a3f5f;
+  color: inherit;
   font-family: Verdana;
   border-collapse: collapse;
 }
@@ -1532,8 +1536,9 @@ table.pvtTable {
 }
 table.pvtTable thead tr th,
 table.pvtTable tbody tr th {
-  background-color: #ebf0f8;
-  border: 1px solid #c8d4e3;
+  background-color: var(--rb-pivot-header-bg, color-mix(in srgb, currentColor 8%, transparent));
+  color: inherit;
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 18%, transparent));
   font-size: 8pt;
   padding: 5px;
 }
@@ -1544,10 +1549,10 @@ table.pvtTable .pvtTotalLabel {
   text-align: right;
 }
 table.pvtTable tbody tr td {
-  color: #2a3f5f;
+  color: inherit;
   padding: 5px;
-  background-color: #fff;
-  border: 1px solid #c8d4e3;
+  background-color: transparent;
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 12%, transparent));
   vertical-align: top;
   text-align: right;
 }
@@ -1566,8 +1571,8 @@ button.pvtRowOrder, button.pvtColOrder {
   color: inherit;
 }
 .pvtAxisContainer, .pvtVals {
-  border: 1px solid #a2b1c6;
-  background: #f2f5fa;
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 18%, transparent));
+  background: var(--rb-pivot-header-bg, color-mix(in srgb, currentColor 6%, transparent));
   padding: 5px;
   min-width: 20px;
   min-height: 20px;
@@ -1584,17 +1589,18 @@ button.pvtRowOrder, button.pvtColOrder {
 }
 .pvtDropdownIcon {
   float: right;
-  color: #a2b1c6;
+  color: color-mix(in srgb, currentColor 55%, transparent);
 }
 .pvtDropdownCurrent {
   text-align: left;
-  border: 1px solid #a2b1c6;
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 22%, transparent));
   border-radius: 4px;
   display: inline-block;
   position: relative;
   width: 210px;
   box-sizing: border-box;
-  background: white;
+  background: var(--rb-pivot-surface, Canvas);
+  color: inherit;
   padding: 2px 5px;
   cursor: pointer;
   font-size: 12px;
@@ -1603,14 +1609,15 @@ button.pvtRowOrder, button.pvtColOrder {
   border-radius: 4px 4px 0 0;
 }
 .pvtDropdownMenu {
-  background: white;
+  background: var(--rb-pivot-surface, Canvas);
+  color: inherit;
   position: absolute;
   width: 100%;
   min-width: 200px;
   margin-top: -1px;
   border-radius: 0 0 4px 4px;
-  border: 1px solid #a2b1c6;
-  border-top: 1px solid #dfe8f3;
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 22%, transparent));
+  border-top: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 12%, transparent));
   box-sizing: border-box;
   max-height: 300px;
   overflow-y: auto;
@@ -1625,10 +1632,10 @@ button.pvtRowOrder, button.pvtColOrder {
   box-sizing: border-box;
 }
 .pvtDropdownValue:hover {
-  background: #f2f5fa;
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 .pvtDropdownActiveValue {
-  background: #ebf0f8;
+  background: var(--rb-pivot-accent, color-mix(in srgb, currentColor 16%, transparent));
 }
 .pvtVals {
   text-align: center;
@@ -1647,11 +1654,12 @@ button.pvtRowOrder, button.pvtColOrder {
 .pvtAxisContainer li.pvtPlaceholder {
   border-radius: 5px;
   padding: 3px 15px;
-  border: 1px dashed #a2b1c6;
+  border: 1px dashed var(--rb-pivot-border, color-mix(in srgb, currentColor 30%, transparent));
 }
 .pvtAxisContainer li span.pvtAttr {
-  background: #f3f6fa;
-  border: 1px solid #c8d4e3;
+  background: var(--rb-pivot-header-bg, color-mix(in srgb, currentColor 8%, transparent));
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 18%, transparent));
+  color: inherit;
   padding: 2px 5px;
   white-space: nowrap;
   border-radius: 5px;
@@ -1659,7 +1667,7 @@ button.pvtRowOrder, button.pvtColOrder {
 }
 button.pvtTriangle {
   cursor: pointer;
-  color: #506784;
+  color: inherit;
   background: none;
   border: none;
   padding: 0 2px;
@@ -1677,8 +1685,9 @@ button.pvtTriangle {
 .pvtFilterBox {
   z-index: 100;
   width: 300px;
-  border: 1px solid #506784;
-  background-color: #fff;
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 30%, transparent));
+  background-color: var(--rb-pivot-surface, Canvas);
+  color: inherit;
   position: absolute;
   text-align: center;
   user-select: none;
@@ -1696,7 +1705,9 @@ button.pvtTriangle {
 .pvtFilterBox input[type='text'] {
   width: 230px;
   padding: 5px;
-  border: 1px solid #c8d4e3;
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 22%, transparent));
+  background: transparent;
+  color: inherit;
   border-radius: 4px;
   margin-bottom: 5px;
 }
@@ -1707,7 +1718,7 @@ button.pvtTriangle {
   overflow-y: scroll;
   width: 100%;
   max-height: 30vh;
-  border-top: 1px solid #dfe8f3;
+  border-top: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 14%, transparent));
 }
 .pvtCheckItem {
   display: block;
@@ -1722,7 +1733,7 @@ button.pvtTriangle {
   font-size: 14px;
 }
 .pvtCheckItem.selected {
-  background: #ebf0f8;
+  background: var(--rb-pivot-accent, color-mix(in srgb, currentColor 16%, transparent));
 }
 .pvtCheckItem:hover .pvtOnly {
   display: block;
@@ -1737,7 +1748,7 @@ button.pvtTriangle {
   font-size: 12px;
   padding-left: 5px;
   cursor: pointer;
-  color: #119dff;
+  color: var(--rb-pivot-accent, currentColor);
 }
 .pvtOnlySpacer {
   display: block;
@@ -1750,24 +1761,24 @@ button.pvtCloseX {
   top: 5px;
   font-size: 18px;
   cursor: pointer;
-  color: #506784;
+  color: inherit;
   background: none;
   border: none;
   padding: 0;
 }
 button.pvtButton {
-  color: #506784;
+  color: inherit;
   border-radius: 5px;
   padding: 3px 6px;
-  background: #f2f5fa;
-  border: 1px solid #c8d4e3;
+  background: var(--rb-pivot-header-bg, color-mix(in srgb, currentColor 8%, transparent));
+  border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 18%, transparent));
   font-size: 14px;
   margin: 3px;
   cursor: pointer;
 }
 button.pvtButton:hover {
-  background: #e2e8f0;
-  border-color: #a2b1c6;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  border-color: var(--rb-pivot-border, color-mix(in srgb, currentColor 28%, transparent));
 }
 .pvtError {
   color: #e15759;

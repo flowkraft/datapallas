@@ -1,51 +1,54 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RbElectronService } from '../electron.service';
 import UtilitiesNodeJs from '../utilities-nodejs';
 
 @Component({
-  selector: 'dburst-button-native-system-dialog',
-  templateUrl: './button-native-system-dialog.component.html',
+    selector: 'dburst-button-native-system-dialog',
+    templateUrl: './button-native-system-dialog.component.html',
+    standalone: true,
+    imports: [CommonModule],
 })
 export class ButtonNativeSystemDialogComponent {
-  @Input() btnId: string;
-  @Input() style: string;
+  btnId = input<string>();
+  style = input<string>();
 
-  @Input() value: string;
-  @Input() screen: string;
+  value = input<string>();
+  screen = input<string>();
 
-  @Input() saveDialog: string;
+  saveDialog = input<string>();
 
-  @Input() defaultPath: string;
+  defaultPath = input<string>();
 
-  @Input() dialogType: string;
-  @Input() dialogTitle: string;
+  dialogType = input<string>();
+  dialogTitle = input<string>();
 
-  @Output() pathsSelected: EventEmitter<any> = new EventEmitter();
+  pathsSelected = output<any>();
 
-  constructor(protected rbElectronService: RbElectronService) {}
+  protected rbElectronService = inject(RbElectronService);
 
   async onClick() {
     let options: any;
 
-    if (!this.saveDialog) {
+    if (!this.saveDialog()) {
       options = {
         title:
-          this.dialogTitle ||
-          'Select ' + (this.dialogType === 'folder' ? 'Folder' : 'File'),
-        defaultPath: this.defaultPath || 'C:/DataPallas',
-        buttonLabel: this.value,
+          this.dialogTitle() ||
+          'Select ' + (this.dialogType() === 'folder' ? 'Folder' : 'File'),
+        defaultPath: this.defaultPath() || 'C:/DataPallas',
+        buttonLabel: this.value(),
         properties: [
-          this.dialogType === 'folder' ? 'openDirectory' : 'openFile',
-          this.dialogType === 'files' ? 'multiSelections' : null,
+          this.dialogType() === 'folder' ? 'openDirectory' : 'openFile',
+          this.dialogType() === 'files' ? 'multiSelections' : null,
         ],
       };
     } else {
       options = {
         title:
-          this.dialogTitle ||
-          'Select ' + (this.dialogType === 'folder' ? 'Folder' : 'File'),
-        defaultPath: this.defaultPath || 'C:/Users/username/Desktop/test/',
-        buttonLabel: this.value,
+          this.dialogTitle() ||
+          'Select ' + (this.dialogType() === 'folder' ? 'Folder' : 'File'),
+        defaultPath: this.defaultPath() || 'C:/Users/username/Desktop/test/',
+        buttonLabel: this.value(),
       };
     }
 
@@ -67,26 +70,26 @@ export class ButtonNativeSystemDialogComponent {
       this.pathsSelected.emit('');
     } else {
       let paths: string[];
-      if (this.saveDialog) {
+      if (this.saveDialog()) {
         paths[0] = (
           await this.rbElectronService.dialog.showSaveDialog(options)
         ).filePath;
         this.pathsSelected.emit(paths[0]);
       } else {
-        if (this.screen === 'letmeupdate') {
+        if (this.screen() === 'letmeupdate') {
           let defaultFolderPath = 'C:/DocumentBurster';
 
           let defaultFolderPathExists =
             await UtilitiesNodeJs.existsAsync(defaultFolderPath);
 
-          if ((defaultFolderPathExists = !'dir')) {
+          if (!defaultFolderPathExists) {
             defaultFolderPath = 'C:/DataPallas';
 
             defaultFolderPathExists =
               await UtilitiesNodeJs.existsAsync(defaultFolderPath);
           }
 
-          if ((defaultFolderPathExists = !'dir'))
+          if (!defaultFolderPathExists)
             defaultFolderPath = this.rbElectronService.PORTABLE_EXECUTABLE_DIR;
 
           options.defaultPath = defaultFolderPath;
@@ -98,7 +101,7 @@ export class ButtonNativeSystemDialogComponent {
 
         paths = (await this.rbElectronService.dialog.showOpenDialog(options))
           .filePaths;
-        if (this.dialogType === 'files') this.pathsSelected.emit(paths);
+        if (this.dialogType() === 'files') this.pathsSelected.emit(paths);
         else this.pathsSelected.emit(paths[0]);
       }
     }

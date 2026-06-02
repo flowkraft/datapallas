@@ -1,171 +1,191 @@
-<tabset *ngIf="mode != 'changelog'">
-  
-  <tab heading="Releases">
-    <div style="height: 340px; overflow-y: scroll; overflow-x: auto">
-      <br />
-      <span *ngIf="visibleReleaseBlogPostAnnouncement?.length > 0">
-        <a
-          href="{{ visibleReleaseBlogPostAnnouncement[0]?.link }}"
-          class="btn btn-default"
-          target="_blank"
-          >{{
-            "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.READ-ANNOUNCEMENT"
+@if (mode != 'changelog') {
+  <dp-tabs>
+    <dp-tab heading="Releases">
+      <div style="height: 340px; overflow-y: scroll; overflow-x: auto">
+        <br />
+        @if (visibleReleaseBlogPostAnnouncement?.length > 0) {
+          <span>
+            <a
+              href="{{ visibleReleaseBlogPostAnnouncement[0]?.link }}"
+              class="btn btn-ghost"
+              target="_blank"
+              >{{
+              "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.READ-ANNOUNCEMENT"
               | translate
-          }}</a
-        >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      </span>
-      <span *ngIf="visibleReleaseIndex > 0">
-        <i
-          class="fa fa-arrow-circle-left fa-2x"
-          aria-hidden="true"
+              }}</a
+              >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            </span>
+          }
+          @if (visibleReleaseIndex > 0) {
+            <span>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-6 h-6" aria-hidden="true"
           title="{{
             'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.NEXT-RELEASE'
               | translate
           }}"
-          style="cursor: pointer"
-          (click)="handleVisibleRelease('previous')"
-        ></i
-        >&nbsp;&nbsp;&nbsp;
-      </span>
-      <i
-        *ngIf="visibleReleaseIndex < changeLog?.releases.length - 1"
-        class="fa fa-arrow-circle-right fa-2x"
-        aria-hidden="true"
+                style="cursor: pointer"
+                (click)="handleVisibleRelease('previous')"
+                ><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 9l-3 3m0 0l3 3m-3-3h7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg
+                >&nbsp;&nbsp;&nbsp;
+              </span>
+            }
+            @if (visibleReleaseIndex < changeLog?.releases.length - 1) {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-6 h-6" aria-hidden="true"
         title="{{
           'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.PREV-RELEASE'
             | translate
         }}"
-        style="cursor: pointer"
-        (click)="handleVisibleRelease('next')"
-      ></i>
-      <br /><br />
-      <h4>
-        <div *ngIf="visibleReleaseIndex == 0">
-          <strong
-            >{{
-              "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.LATEST"
-                | translate
+                style="cursor: pointer"
+                (click)="handleVisibleRelease('next')"
+              ><path stroke-linecap="round" stroke-linejoin="round" d="M12.75 15l3-3m0 0l-3-3m3 3h-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            }
+            <br /><br />
+            <h4>
+              @if (visibleReleaseIndex == 0) {
+                <div>
+                  <strong
+                    >{{
+                    "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.LATEST"
+                    | translate
+                    }}
+                  </strong>
+                  <em>DocumentBurster</em>
+                  is {{ visibleRelease?.version }}
+                  -
+                  {{ visibleReleaseDate }}
+                </div>
+              }
+              @if (visibleReleaseIndex != 0) {
+                <div>
+                  <em>DocumentBurster</em> {{ visibleRelease?.version }} -
+                  {{ visibleReleaseDate }}
+                </div>
+              }
+            </h4>
+            <br />
+            @if (visibleRelease?.changes.get('added').length > 0) {
+              <div>
+                {{
+                "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.ADDED" | translate
+                }}
+                <br />
+                <br />
+                <ul>
+                  @for (change of visibleRelease?.changes.get('added'); track change) {
+                    <li>
+                      <markdown [data]="change.title"></markdown>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+            <br />
+            @if (visibleRelease?.changes.get('changed').length > 0) {
+              <div>
+                {{
+                "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.CHANGED" | translate
+                }}
+                <br />
+                <br />
+                <ul>
+                  @for (change of visibleRelease?.changes.get('changed'); track change) {
+                    <li>
+                      <markdown [data]="change.title"></markdown>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+            <br />
+            @if (visibleRelease?.changes.get('fixed').length > 0) {
+              <div>
+                {{
+                "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.FIXED" | translate
+                }}
+                <br />
+                <br />
+                <ul>
+                  @for (change of visibleRelease?.changes.get('fixed'); track change) {
+                    <li>
+                      <markdown [data]="change.title"></markdown>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        </dp-tab>
+        <dp-tab>
+          <ng-template dpTabHeading>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>&nbsp;&nbsp;{{
+            "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.NEWS" | translate
             }}
-          </strong>
-          <em>DocumentBurster</em>
-          is {{ visibleRelease?.version }}
-          -
-          {{ visibleReleaseDate }}
-        </div>
-        <div *ngIf="visibleReleaseIndex != 0">
-          <em>DocumentBurster</em> {{ visibleRelease?.version }} -
-          {{ visibleReleaseDate }}
-        </div>
-      </h4>
-      <br />
-      <div *ngIf="visibleRelease?.changes.get('added').length > 0">
-        {{
-          "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.ADDED" | translate
-        }}
-        <br />
-        <br />
-        <ul>
-          <li *ngFor="let change of visibleRelease?.changes.get('added')">
-            <markdown [data]="change.title"></markdown>
-          </li>
-        </ul>
-      </div>
-      <br />
-      <div *ngIf="visibleRelease?.changes.get('changed').length > 0">
-        {{
-          "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.CHANGED" | translate
-        }}
-        <br />
-        <br />
-        <ul>
-          <li *ngFor="let change of visibleRelease?.changes.get('changed')">
-            <markdown [data]="change.title"></markdown>
-          </li>
-        </ul>
-      </div>
-      <br />
-      <div *ngIf="visibleRelease?.changes.get('fixed').length > 0">
-        {{
-          "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.FIXED" | translate
-        }}
-        <br />
-        <br />
-        <ul>
-          <li *ngFor="let change of visibleRelease?.changes.get('fixed')">
-            <markdown [data]="change.title"></markdown>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </tab>
-  <tab>
-    <ng-template tabHeading>
-      <i class="fa fa-podcast" aria-hidden="true"></i>&nbsp;&nbsp;{{
-        "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.NEWS" | translate
-      }}
-    </ng-template>
-    <div style="height: 340px; overflow-y: scroll; overflow-x: auto">
-      <br />
-      <a
-        href="{{ visibleBlogPost?.link }}"
-        class="btn btn-default"
-        target="_blank"
-        >{{
-          "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.READ-FULL"
-            | translate
-        }}</a
-      >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <i
-        *ngIf="visibleBlogPostIndex > 0"
-        class="fa fa-arrow-circle-left fa-2x"
-        aria-hidden="true"
+          </ng-template>
+          <div style="height: 340px; overflow-y: scroll; overflow-x: auto">
+            <br />
+            <a
+              href="{{ visibleBlogPost?.link }}"
+              class="btn btn-ghost"
+              target="_blank"
+              >{{
+              "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.READ-FULL"
+              | translate
+              }}</a
+              >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              @if (visibleBlogPostIndex > 0) {
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-6 h-6" aria-hidden="true"
         title="{{
           'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.PREV-ARTICLE'
             | translate
         }}"
-        style="cursor: pointer"
-        (click)="handleVisibleAnnouncement('previous')"
-      ></i
-      >&nbsp;&nbsp;&nbsp;<i
-        *ngIf="visibleBlogPostIndex < blogPosts?.length - 1"
-        class="fa fa-arrow-circle-right fa-2x"
-        aria-hidden="true"
+                  style="cursor: pointer"
+                  (click)="handleVisibleAnnouncement('previous')"
+                  ><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 9l-3 3m0 0l3 3m-3-3h7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg
+                  >
+                  }&nbsp;&nbsp;&nbsp;@if (visibleBlogPostIndex < blogPosts?.length - 1) {
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-6 h-6" aria-hidden="true"
         title="{{
           'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.NEXT-ARTICLE'
             | translate
         }}"
-        style="cursor: pointer"
-        (click)="handleVisibleAnnouncement('next')"
-      ></i>
-      <br /><br />
-      <h4>
-        <u
-          ><a href="{{ visibleBlogPost?.link }}" target="_blank">{{
-            visibleBlogPost?.title
-          }}</a></u
-        >
-      </h4>
-      <iframe
-        srcdoc="{{ visibleBlogPost?.summary }}"
-        frameborder="0"
-        style="width: 100%; height: 62%; overflow-y: visible; overflow-x: auto"
-      ></iframe>
-    </div>
-  </tab>
-
-</tabset>
-<div
-  *ngIf="mode == 'changelog'"
-  style="height: 382px; overflow-y: scroll; overflow-x: auto"
->
-  <markdown [data]="changeLogMarkdown"></markdown>
-</div>
-<hr />
-<button type="button" class="btn" (click)="handleViewMode()">
-  <span *ngIf="mode != 'changelog'">{{
-    "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.VIEW-FULL" | translate
-  }}</span>
-  <span *ngIf="mode == 'changelog'">{{
-    "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.VIEW-NEWS" | translate
-  }}</span>
-</button>
+                    style="cursor: pointer"
+                    (click)="handleVisibleAnnouncement('next')"
+                  ><path stroke-linecap="round" stroke-linejoin="round" d="M12.75 15l3-3m0 0l-3-3m3 3h-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                }
+                <br /><br />
+                <h4>
+                  <u
+                    ><a href="{{ visibleBlogPost?.link }}" target="_blank">{{
+                    visibleBlogPost?.title
+                  }}</a></u
+                  >
+                </h4>
+                <iframe
+                  srcdoc="{{ visibleBlogPost?.summary }}"
+                  frameborder="0"
+                  style="width: 100%; height: 62%; overflow-y: visible; overflow-x: auto"
+                ></iframe>
+              </div>
+            </dp-tab>
+          </dp-tabs>
+        }
+        @if (mode == 'changelog') {
+          <div
+            style="height: 382px; overflow-y: scroll; overflow-x: auto"
+            >
+            <markdown [data]="changeLogMarkdown"></markdown>
+          </div>
+        }
+        <hr />
+        <button type="button" class="btn" (click)="handleViewMode()">
+          @if (mode != 'changelog') {
+            <span>{{
+              "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.VIEW-FULL" | translate
+            }}</span>
+          }
+          @if (mode == 'changelog') {
+            <span>{{
+              "AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.WHATS-NEW.VIEW-NEWS" | translate
+            }}</span>
+          }
+        </button>

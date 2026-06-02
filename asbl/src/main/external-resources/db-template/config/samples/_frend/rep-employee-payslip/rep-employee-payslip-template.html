@@ -15,15 +15,15 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             font-size: 14px;
             line-height: 1.5;
-            color: #333;
-            background: #fff;
+            color: var(--color-base-content);
+            background: var(--color-base-100);
             padding: 20px;
         }
-        
+
         .payslip {
             max-width: 700px;
             margin: 0 auto;
-            border: 1px solid #ddd;
+            border: 1px solid var(--color-base-300);
             border-radius: 4px;
             overflow: hidden;
         }
@@ -64,21 +64,21 @@
         }
         
         .employee-info {
-            background: #f8fafc;
+            background: var(--color-base-200);
             padding: 16px 24px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--color-base-300);
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
-        
+
         .info-item {
             display: flex;
             gap: 8px;
         }
-        
+
         .info-label {
-            color: #64748b;
+            color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
             font-size: 12px;
             min-width: 80px;
         }
@@ -95,36 +95,36 @@
         .section-title {
             font-size: 13px;
             font-weight: 600;
-            color: #475569;
+            color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 12px;
             padding-bottom: 8px;
-            border-bottom: 2px solid #e2e8f0;
+            border-bottom: 2px solid var(--color-base-300);
         }
-        
+
         .row {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid color-mix(in oklab, var(--color-base-300) 50%, transparent);
         }
-        
+
         .row:last-child {
             border-bottom: none;
         }
-        
+
         .row-label {
-            color: #475569;
+            color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
         }
-        
+
         .row-value {
             font-weight: 500;
             font-family: 'Consolas', 'Monaco', monospace;
         }
-        
+
         .row.total {
-            background: #f8fafc;
+            background: var(--color-base-200);
             margin: 8px -24px -20px;
             padding: 12px 24px;
             font-weight: 600;
@@ -159,45 +159,52 @@
         }
         
         .ytd-section {
-            background: #f8fafc;
+            background: var(--color-base-200);
             padding: 16px 24px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid var(--color-base-300);
         }
-        
+
         .ytd-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 16px;
             text-align: center;
         }
-        
+
         .ytd-item {
             padding: 8px;
         }
-        
+
         .ytd-label {
             font-size: 11px;
-            color: #64748b;
+            color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 4px;
         }
-        
+
         .ytd-value {
             font-size: 16px;
             font-weight: 600;
             font-family: 'Consolas', 'Monaco', monospace;
         }
-        
+
         .footer {
             padding: 16px 24px;
             text-align: center;
             font-size: 11px;
-            color: #94a3b8;
-            border-top: 1px solid #e2e8f0;
+            color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+            border-top: 1px solid var(--color-base-300);
         }
         
-        /* ===== PRINT STYLES ===== */
+        /* ===== PRINT STYLES =====
+           Force the structural colors back to the literal paper-and-ink palette
+           on print. On screen the report themes via daisyUI v5 CSS variables;
+           for print we need deterministic colors so the PDF/paper looks the
+           same regardless of which host theme was active when it was generated.
+           Brand / semantic colors (blue header, green net-pay, green earnings,
+           red deductions) stay literal everywhere — they carry meaning, not
+           theme. */
         @media print {
             /* Force browsers to print background colors and images */
             * {
@@ -205,57 +212,79 @@
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
             }
-            
-            /* Remove body padding/margin for print */
+
+            /* Remove body padding/margin for print + restore literal paper colors */
             body {
                 padding: 0;
                 margin: 0;
+                background: #fff !important;
+                color: #333 !important;
             }
-            
-            /* Ensure payslip fits on one page */
+
+            /* Ensure payslip fits on one page + literal border */
             .payslip {
                 max-width: 100%;
-                border: none;
+                border: 1px solid #ddd !important;
                 box-shadow: none;
                 page-break-inside: avoid;
             }
-            
-            /* Reduce section padding slightly for print */
-            .section {
-                padding: 14px 20px;
-            }
-            
+
             .header {
                 padding: 18px 20px;
-            }
-            
-            .employee-info {
-                padding: 12px 20px;
-            }
-            
-            .net-pay-section {
-                padding: 14px 20px;
-            }
-            
-            .ytd-section {
-                padding: 12px 20px;
-            }
-            
-            .footer {
-                padding: 12px 20px;
-            }
-            
-            /* Ensure colored backgrounds print correctly */
-            .header {
                 background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
                 color: white !important;
             }
-            
+
+            .employee-info {
+                padding: 12px 20px;
+                background: #f8fafc !important;
+                border-bottom-color: #e2e8f0 !important;
+            }
+
+            .info-label,
+            .ytd-label {
+                color: #64748b !important;
+            }
+
+            .section {
+                padding: 14px 20px;
+            }
+
+            .section-title {
+                color: #475569 !important;
+                border-bottom-color: #e2e8f0 !important;
+            }
+
+            .row {
+                border-bottom-color: #f1f5f9 !important;
+            }
+
+            .row-label {
+                color: #475569 !important;
+            }
+
+            .row.total {
+                background: #f8fafc !important;
+            }
+
             .net-pay-section {
+                padding: 14px 20px;
                 background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
                 color: white !important;
             }
-            
+
+            .ytd-section {
+                padding: 12px 20px;
+                background: #f8fafc !important;
+                border-top-color: #e2e8f0 !important;
+            }
+
+            .footer {
+                padding: 12px 20px;
+                color: #94a3b8 !important;
+                border-top-color: #e2e8f0 !important;
+            }
+
             /* Hide page margins if possible */
             @page {
                 margin: 0.5cm;

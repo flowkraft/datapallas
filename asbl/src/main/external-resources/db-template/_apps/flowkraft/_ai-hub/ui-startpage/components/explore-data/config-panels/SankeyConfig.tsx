@@ -39,12 +39,12 @@ export function SankeyConfig({ config, columns, onChange, cardinality }: SankeyC
   return (
     <div id="configPanel-sankey" className="space-y-3">
       <div>
-        <span className="text-xs text-muted-foreground">Source <span className="text-blue-500">(dimension)</span></span>
+        <span className="text-xs text-base-content/60">Source <span className="text-blue-500">(dimension)</span></span>
         <select
           id="selectSankeySource"
           value={sourceField}
           onChange={(e) => onChange({ ...config, sourceField: e.target.value })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           <option value="">Auto-detect</option>
           {dimensions.map((c) => (
@@ -54,12 +54,12 @@ export function SankeyConfig({ config, columns, onChange, cardinality }: SankeyC
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Target <span className="text-blue-500">(dimension)</span></span>
+        <span className="text-xs text-base-content/60">Target <span className="text-blue-500">(dimension)</span></span>
         <select
           id="selectSankeyTarget"
           value={targetField}
           onChange={(e) => onChange({ ...config, targetField: e.target.value })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           <option value="">Auto-detect</option>
           {dimensions.map((c) => (
@@ -69,12 +69,12 @@ export function SankeyConfig({ config, columns, onChange, cardinality }: SankeyC
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Value <span className="text-emerald-500">(measure)</span></span>
+        <span className="text-xs text-base-content/60">Value <span className="text-emerald-500">(measure)</span></span>
         <select
           id="selectSankeyValue"
           value={valueField}
           onChange={(e) => onChange({ ...config, valueField: e.target.value })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           <option value="">Auto-detect</option>
           {measures.map((c) => (
@@ -85,7 +85,7 @@ export function SankeyConfig({ config, columns, onChange, cardinality }: SankeyC
 
       {/* ── Color palette ── */}
       <div>
-        <span className="text-xs text-muted-foreground">Color palette</span>
+        <span className="text-xs text-base-content/60">Color palette</span>
         <div className="grid grid-cols-5 gap-1 mt-1">
           {PALETTES.map(({ id, label, colors }) => {
             const selected = palette === id;
@@ -95,7 +95,7 @@ export function SankeyConfig({ config, columns, onChange, cardinality }: SankeyC
                 onClick={() => onChange({ ...config, sankeyPalette: id })}
                 title={label}
                 className={`flex flex-col items-center gap-0.5 p-1 rounded border transition-colors ${
-                  selected ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"
+                  selected ? "border-primary bg-primary/5" : "border-base-300 hover:border-base-content/30"
                 }`}
               >
                 <div className="flex gap-0.5">
@@ -103,7 +103,7 @@ export function SankeyConfig({ config, columns, onChange, cardinality }: SankeyC
                     <div key={c} style={{ backgroundColor: c }} className="w-2.5 h-2.5 rounded-sm" />
                   ))}
                 </div>
-                <span className="text-[9px] text-muted-foreground">{label}</span>
+                <span className="text-[9px] text-base-content/60">{label}</span>
               </button>
             );
           })}

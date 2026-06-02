@@ -73,7 +73,7 @@ export class ConfigurationTestHelper {
         )
         .waitOnElementToHaveText(
           '.sidebar-menu .header',
-          'CONFIGURATION (Bursting)',
+          'CONFIG (Bursting)',
         );
     }
 
@@ -109,13 +109,13 @@ export class ConfigurationTestHelper {
       .inputShouldHaveValue('#smtpPort', '25')
       .elementCheckBoxShouldNotBeSelected('#btnSSL')
       .elementCheckBoxShouldNotBeSelected('#btnTLS')
-      .click('#emailMessageTab-link') // email message settings
+      .click('#tab-btn-emailMessageTab') // email message settings
       .inputShouldHaveValue('#emailToAddress', '${burst_token}')
       .inputShouldHaveValue('#emailCcAddress', '')
       .inputShouldHaveValue('#emailBccAddress', '')
       .inputShouldHaveValue('#emailSubject', '')
       .elementShouldHaveText('#wysiwygEmailMessage', '')
-      .click('#attachmentsTab-link') // email attachments settings
+      .click('#tab-btn-attachmentsTab') // email attachments settings
       .elementShouldContainText(
         'tbody tr:first-child td',
         '${extracted_file_path}',
@@ -127,30 +127,30 @@ export class ConfigurationTestHelper {
       .elementCheckBoxShouldNotBeSelected('#btnArchiveAttachmentsTogether')
       .inputShouldHaveValue('#archiveFileName', 'reports-${burst_token}.zip')
       .click('#leftMenuUploadSettings') // Upload settings
-      .click('#ftpTab-link') // FTP settings
+      .click('#tab-btn-ftpTab') // FTP settings
       .inputShouldHaveValue('#ftpCommand', '')
-      .click('#fileShareTab-link') // File Share settings
+      .click('#tab-btn-fileShareTab') // File Share settings
       .inputShouldHaveValue('#fileShareCommand', '')
-      .click('#ftpsTab-link') // FTPS settings
+      .click('#tab-btn-ftpsTab') // FTPS settings
       .inputShouldHaveValue('#ftpsCommand', '')
-      .click('#sftpTab-link') // SFTP settings
+      .click('#tab-btn-sftpTab') // SFTP settings
       .inputShouldHaveValue('#sftpCommand', '')
-      .click('#httpTab-link') // HTTPS settings
+      .click('#tab-btn-httpTab') // HTTPS settings
       .inputShouldHaveValue('#httpCommand', '')
-      .click('#cloudUploadTab-link') // Cloud settings
+      .click('#tab-btn-cloudUploadTab') // Cloud settings
       .inputShouldHaveValue('#cloudUploadCommand', '')
       .click('#leftMenuDocuments2WebSettings') // documents2web settings
-      .click('#documentBursterWebTab-link') // documents2web settings
+      .click('#tab-btn-documentBursterWebTab') // documents2web settings
       //.inputShouldHaveValue('#documentBursterWebCommand', '')
-      .click('#sharePointTab-link') // SharePoint settings
+      .click('#tab-btn-sharePointTab') // SharePoint settings
       .inputShouldHaveValue('#sharePointCommand', '')
-      .click('#wordPressTab-link') // WordPress settings
+      .click('#tab-btn-wordPressTab') // WordPress settings
       .inputShouldHaveValue('#wordPressCommand', '')
-      .click('#drupalTab-link') // Drupal settings
+      .click('#tab-btn-drupalTab') // Drupal settings
       .inputShouldHaveValue('#drupalCommand', '')
-      .click('#joomlaTab-link') // Joomla settings
+      .click('#tab-btn-joomlaTab') // Joomla settings
       .inputShouldHaveValue('#joomlaCommand', '')
-      .click('#otherWebPlatformsTab-link') // Other Web Platforms settings
+      .click('#tab-btn-otherWebPlatformsTab') // Other Web Platforms settings
       .inputShouldHaveValue('#otherWebPlatformsCommand', '')
       .click('#leftMenuSMSSettings') // SMS settings
       .inputShouldHaveValue('#accountSid', '')
@@ -158,7 +158,7 @@ export class ConfigurationTestHelper {
       .click('#leftMenuTwilioSettings') // Twilio settings
       .inputShouldHaveValue('#accountSid', '')
       .inputShouldHaveValue('#authToken', '')
-      .click('#smsMessageTab-link') // SMS Message settings
+      .click('#tab-btn-smsMessageTab') // SMS Message settings
       .inputShouldHaveValue('#fromTelephoneNumber', '')
       .inputShouldHaveValue('#toTelephoneNumber', '')
       .inputShouldHaveValue('#smsText', '')
@@ -203,14 +203,14 @@ export class ConfigurationTestHelper {
       .elementShouldBeVisible('#disabled6')
       .click('#leftMenuAdvancedSettings') // Advanced settings
       .click('#btnEnableIncubatingFeatures') // Show the Incubating Features
-      .click('#emailAddressValidationTab-link') // Email Address Validation
+      .click('#tab-btn-emailAddressValidationTab') // Email Address Validation
       .elementCheckBoxShouldBeSelected('#btnAllowQuotedIdentifiers')
       .elementCheckBoxShouldBeSelected('#btnAllowParensInLocalPart')
       .elementCheckBoxShouldNotBeSelected('#btnAllowDomainLiterals')
       .elementCheckBoxShouldNotBeSelected('#btnAllowDotInaText')
       .elementCheckBoxShouldNotBeSelected('#btnAllowSquareBracketsInaText')
       .inputShouldHaveValue('#txtSkipValidationFor', '')
-      .click('#emailTuningTab-link') // Email Tuning
+      .click('#tab-btn-emailTuningTab') // Email Tuning
       .elementCheckBoxShouldNotBeSelected('#btnSJMActive')
       .inputShouldHaveValue('#replyToAddress', '')
       .inputShouldHaveValue('#replyToName', '')
@@ -274,7 +274,7 @@ export class ConfigurationTestHelper {
         .setValue('#smtpPort', '05')
         .click('#btnSSL')
         .click('#btnTLS')
-        .click('#emailMessageTab-link') // email message settings
+        .click('#tab-btn-emailMessageTab') // email message settings
         .setValue('#emailToAddress', '00')
         .setValue('#emailCcAddress', '01')
         .setValue('#emailBccAddress', '02')
@@ -282,34 +282,34 @@ export class ConfigurationTestHelper {
         .elementShouldBeVisible('#wysiwygEmailMessage')
         .elementShouldNotBeVisible('#codeJarHtmlEmailEditorDiv')
         .setQuillContent('#wysiwygEmailMessage', wysiwygTestContent)
-        .click('#attachmentsTab-link') // .setValue('#wysiwygEmailMessage', '04') email attachments settings
+        .click('#tab-btn-attachmentsTab') // .setValue('#wysiwygEmailMessage', '04') email attachments settings
         .click('#btnArchiveAttachmentsTogether')
         .setValue('#archiveFileName', '01')
         .click('#leftMenuUploadSettings') // upload settings
-        .click('#ftpTab-link') // FTP settings
+        .click('#tab-btn-ftpTab') // FTP settings
         .setValue('#ftpCommand', 'ftp')
-        .click('#fileShareTab-link') // File Share settings
+        .click('#tab-btn-fileShareTab') // File Share settings
         .setValue('#fileShareCommand', 'fileshare')
-        .click('#ftpsTab-link') // FTPS settings
+        .click('#tab-btn-ftpsTab') // FTPS settings
         .setValue('#ftpsCommand', 'ftps')
-        .click('#sftpTab-link') // SFTP settings
+        .click('#tab-btn-sftpTab') // SFTP settings
         .setValue('#sftpCommand', 'sftp')
-        .click('#httpTab-link') // HTTPS settings
+        .click('#tab-btn-httpTab') // HTTPS settings
         .setValue('#httpCommand', 'http')
-        .click('#cloudUploadTab-link') // Cloud settings
+        .click('#tab-btn-cloudUploadTab') // Cloud settings
         .setValue('#cloudUploadCommand', 'cloud')
         .click('#leftMenuDocuments2WebSettings') // documents2web settings
-        .click('#documentBursterWebTab-link') // documents2web settings
+        .click('#tab-btn-documentBursterWebTab') // documents2web settings
         //.setValue('#documentBursterWebCommand', 'documentbursterweb')
-        .click('#sharePointTab-link') // SharePoint settings
+        .click('#tab-btn-sharePointTab') // SharePoint settings
         .setValue('#sharePointCommand', 'sharepoint')
-        .click('#wordPressTab-link') // WordPress settings
+        .click('#tab-btn-wordPressTab') // WordPress settings
         .setValue('#wordPressCommand', 'wordpress')
-        .click('#drupalTab-link') // Drupal settings
+        .click('#tab-btn-drupalTab') // Drupal settings
         .setValue('#drupalCommand', 'drupal')
-        .click('#joomlaTab-link') // Joomla settings
+        .click('#tab-btn-joomlaTab') // Joomla settings
         .setValue('#joomlaCommand', 'joomla')
-        .click('#otherWebPlatformsTab-link') // Other Web Platforms settings
+        .click('#tab-btn-otherWebPlatformsTab') // Other Web Platforms settings
         .setValue('#otherWebPlatformsCommand', 'otherwebplatforms')
         .click('#leftMenuSMSSettings') // SMS settings
         .setValue('#accountSid', '00')
@@ -317,7 +317,7 @@ export class ConfigurationTestHelper {
         .click('#leftMenuTwilioSettings') // Twilio settings
         .setValue('#accountSid', '00')
         .setValue('#authToken', '01')
-        .click('#smsMessageTab-link') // SMS Message settings
+        .click('#tab-btn-smsMessageTab') // SMS Message settings
         .setValue('#fromTelephoneNumber', '00')
         .setValue('#toTelephoneNumber', '01')
         .setValue('#smsText', '02')
@@ -358,14 +358,14 @@ export class ConfigurationTestHelper {
         .setValue('#retryPolicyMaxRetries', '3')
         .click('#leftMenuAdvancedSettings') // Advanced settings
         .click('#btnEnableIncubatingFeatures') // Show the Incubating Features
-        .click('#emailAddressValidationTab-link') // Email Address Validation
+        .click('#tab-btn-emailAddressValidationTab') // Email Address Validation
         .click('#btnAllowQuotedIdentifiers')
         .click('#btnAllowParensInLocalPart')
         .click('#btnAllowDomainLiterals')
         .click('#btnAllowDotInaText')
         .click('#btnAllowSquareBracketsInaText')
         .setValue('#txtSkipValidationFor', '00')
-        .click('#emailTuningTab-link') // Email Tuning
+        .click('#tab-btn-emailTuningTab') // Email Tuning
         .click('#btnSJMActive')
         .setValue('#replyToAddress', '00')
         .setValue('#replyToName', '01')
@@ -385,7 +385,7 @@ export class ConfigurationTestHelper {
         .setValue('#proxyPassword', '13')
         .setValue('#proxySocks5BridgePort', '14')
         .click('#leftMenuEmailSettings')
-        .click('#emailMessageTab-link')
+        .click('#tab-btn-emailMessageTab')
         .waitOnElementToBecomeVisible('#codeJarHtmlEmailEditorDiv')
         .elementShouldNotBeVisible('#wysiwygEmailMessage')
         // At this point, the code editor should contain the HTML from the WYSIWYG editor
@@ -419,11 +419,11 @@ export class ConfigurationTestHelper {
 
         .waitOnElementToBecomeVisible('#btnOpenTemplateGalleryDropdownItem')
         .click('#btnOpenTemplateGalleryDropdownItem')
-        .waitOnElementToBecomeVisible('.p-carousel-next')
-        .waitOnElementToBecomeEnabled('.p-carousel-next')
+        .waitOnElementToBecomeVisible('.dp-carousel-next')
+        .waitOnElementToBecomeEnabled('.dp-carousel-next')
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('.p-carousel-next').sleep(Constants.DELAY_ONE_SECOND)
-        .click('.p-carousel-next').sleep(Constants.DELAY_ONE_SECOND)
+        .click('.dp-carousel-next').sleep(Constants.DELAY_ONE_SECOND)
+        .click('.dp-carousel-next').sleep(Constants.DELAY_ONE_SECOND)
         .click('#btnUseSelectedTemplate')
         .clickNoDontDoThis()
         .click('#btnUseSelectedTemplate')
@@ -450,7 +450,7 @@ export class ConfigurationTestHelper {
         )
         .elementShouldHaveText(
           '.sidebar-menu .header',
-          'CONFIGURATION (Bursting)',
+          'CONFIG (Bursting)',
         )
         .inputShouldHaveValue('#burstFileName', '00')
         .inputShouldHaveValue('#outputFolder', '01')
@@ -479,7 +479,7 @@ export class ConfigurationTestHelper {
         .elementCheckBoxShouldBeSelected('#btnSSL')
         .elementCheckBoxShouldBeSelected('#btnTLS')
         // email message settings
-        .click('#emailMessageTab-link')
+        .click('#tab-btn-emailMessageTab')
         .inputShouldHaveValue('#emailToAddress', '00')
         .inputShouldHaveValue('#emailCcAddress', '01')
         .inputShouldHaveValue('#emailBccAddress', '02')
@@ -490,7 +490,7 @@ export class ConfigurationTestHelper {
         .codeJarShouldNotContainText('#codeJarHtmlEmailEditor', codeJarTestContent)
         .codeJarShouldNotContainText('#codeJarHtmlEmailEditor', wysiwygTestContent)
         // email attachments settings
-        .click('#attachmentsTab-link')
+        .click('#tab-btn-attachmentsTab')
         .elementShouldHaveText(
           'tbody tr:first-child td',
           '${extracted_file_path}',
@@ -503,44 +503,44 @@ export class ConfigurationTestHelper {
         .inputShouldHaveValue('#archiveFileName', '01')
         // upload settings
         .click('#leftMenuUploadSettings')
-        .click('#ftpTab-link')
+        .click('#tab-btn-ftpTab')
         .inputShouldHaveValue('#ftpCommand', 'ftp')
         // File Share settings
-        .click('#fileShareTab-link')
+        .click('#tab-btn-fileShareTab')
         .inputShouldHaveValue('#fileShareCommand', 'fileshare')
         // FTPS settings
-        .click('#ftpsTab-link')
+        .click('#tab-btn-ftpsTab')
         .inputShouldHaveValue('#ftpsCommand', 'ftps')
         // SFTP settings
-        .click('#sftpTab-link')
+        .click('#tab-btn-sftpTab')
         .inputShouldHaveValue('#sftpCommand', 'sftp')
         // HTTPS settings
-        .click('#httpTab-link')
+        .click('#tab-btn-httpTab')
         .inputShouldHaveValue('#httpCommand', 'http')
         // Cloud settings
-        .click('#cloudUploadTab-link')
+        .click('#tab-btn-cloudUploadTab')
         .inputShouldHaveValue('#cloudUploadCommand', 'cloud')
         // documents2web settings
         .click('#leftMenuDocuments2WebSettings')
-        .click('#documentBursterWebTab-link')
+        .click('#tab-btn-documentBursterWebTab')
         //.inputShouldHaveValue(
         //  '#documentBursterWebCommand',
         //  'documentbursterweb',
         //)
         // SharePoint settings
-        .click('#sharePointTab-link')
+        .click('#tab-btn-sharePointTab')
         .inputShouldHaveValue('#sharePointCommand', 'sharepoint')
         // WordPress settings
-        .click('#wordPressTab-link')
+        .click('#tab-btn-wordPressTab')
         .inputShouldHaveValue('#wordPressCommand', 'wordpress')
         // Drupal settings
-        .click('#drupalTab-link')
+        .click('#tab-btn-drupalTab')
         .inputShouldHaveValue('#drupalCommand', 'drupal')
         // Joomla settings
-        .click('#joomlaTab-link')
+        .click('#tab-btn-joomlaTab')
         .inputShouldHaveValue('#joomlaCommand', 'joomla')
         // Other Web Platforms settings
-        .click('#otherWebPlatformsTab-link')
+        .click('#tab-btn-otherWebPlatformsTab')
         .inputShouldHaveValue('#otherWebPlatformsCommand', 'otherwebplatforms')
         // SMS settings
         .click('#leftMenuSMSSettings')
@@ -551,7 +551,7 @@ export class ConfigurationTestHelper {
         .inputShouldHaveValue('#accountSid', '00')
         .inputShouldHaveValue('#authToken', '******')
         // SMS Message settings
-        .click('#smsMessageTab-link')
+        .click('#tab-btn-smsMessageTab')
         .inputShouldHaveValue('#fromTelephoneNumber', '00')
         .inputShouldHaveValue('#toTelephoneNumber', '01')
         .inputShouldHaveValue('#smsText', '02')
@@ -594,14 +594,14 @@ export class ConfigurationTestHelper {
         .inputShouldHaveValue('#retryPolicyMaxDelay', '2')
         .inputShouldHaveValue('#retryPolicyMaxRetries', '3')
         .click('#leftMenuAdvancedSettings') // Advanced settings
-        .click('#emailAddressValidationTab-link') // Email Address Validation
+        .click('#tab-btn-emailAddressValidationTab') // Email Address Validation
         .elementCheckBoxShouldNotBeSelected('#btnAllowQuotedIdentifiers')
         .elementCheckBoxShouldNotBeSelected('#btnAllowParensInLocalPart')
         .elementCheckBoxShouldBeSelected('#btnAllowDomainLiterals')
         .elementCheckBoxShouldBeSelected('#btnAllowDotInaText')
         .elementCheckBoxShouldBeSelected('#btnAllowSquareBracketsInaText')
         .inputShouldHaveValue('#txtSkipValidationFor', '00')
-        .click('#emailTuningTab-link') // Email Tuning
+        .click('#tab-btn-emailTuningTab') // Email Tuning
         .elementCheckBoxShouldBeSelected('#btnSJMActive')
         .inputShouldHaveValue('#replyToAddress', '00')
         .inputShouldHaveValue('#replyToName', '01')
@@ -899,14 +899,14 @@ export class ConfigurationTestHelper {
       .waitOnElementToBecomeVisible('#btnTestSqlQuery') // Assumed ID
       .elementShouldBeDisabled('#btnTestSqlQuery') // Assumed ID
 
-      .waitOnElementToBecomeEnabled('#tabSqlReportParameters-link')
-      .click('#tabSqlReportParameters-link') // Assumed ID
+      .waitOnElementToBecomeEnabled('#tab-btn-tabSqlReportParameters')
+      .click('#tab-btn-tabSqlReportParameters') // Assumed ID
       .sleep(Constants.DELAY_ONE_SECOND) // Wait for the tab to be ready
       .waitOnElementToBecomeVisible('#paramsSpecEditor')
       .codeJarShouldContainText('#paramsSpecEditor', '')
 
-      .waitOnElementToBecomeEnabled('#tabSqlExampleReportParameters-link')
-      .click('#tabSqlExampleReportParameters-link') // Assumed ID
+      .waitOnElementToBecomeEnabled('#tab-btn-tabSqlExampleReportParameters')
+      .click('#tab-btn-tabSqlExampleReportParameters') // Assumed ID
       .sleep(Constants.DELAY_ONE_SECOND)
       .waitOnElementToBecomeVisible('#paramsSpecExampleEditor')
       .codeJarShouldContainText('#paramsSpecExampleEditor', 'Report start date')
@@ -916,7 +916,7 @@ export class ConfigurationTestHelper {
       //.click('#btnCopyToClipboardParametersSpecExampleSql')
       //.waitOnElementWithTextToBecomeVisible('Example parameters script copied to clipboard!')
       //.clipboardShouldContainText('Report start date')
-      .click('#tabSqlCode-link')
+      .click('#tab-btn-tabSqlCode')
       .waitOnElementToBecomeVisible('#sqlQueryEditor')
 
       // .elementShouldBeDisabled('#btnHelpWithSqlQueryAI') // If no connection selected or available
@@ -957,14 +957,14 @@ export class ConfigurationTestHelper {
       .waitOnElementToBecomeVisible('#groovyScriptEditor') // Wait for the section to be visible
       .waitOnElementToBecomeVisible('#btnHelpWithScriptAI') // Assumed ID
 
-      .waitOnElementToBecomeEnabled('#tabScriptReportParameters-link')
-      .click('#tabScriptReportParameters-link') // Assumed ID
+      .waitOnElementToBecomeEnabled('#tab-btn-tabScriptReportParameters')
+      .click('#tab-btn-tabScriptReportParameters') // Assumed ID
       .sleep(Constants.DELAY_ONE_SECOND)
       .waitOnElementToBecomeVisible('#paramsSpecEditor')
       .codeJarShouldContainText('#paramsSpecEditor', '')
 
-      .waitOnElementToBecomeEnabled('#tabScriptExampleReportParameters-link')
-      .click('#tabScriptExampleReportParameters-link') // Assumed ID
+      .waitOnElementToBecomeEnabled('#tab-btn-tabScriptExampleReportParameters')
+      .click('#tab-btn-tabScriptExampleReportParameters') // Assumed ID
       .sleep(Constants.DELAY_ONE_SECOND)
       .waitOnElementToBecomeVisible('#paramsSpecExampleEditor')
       .codeJarShouldContainText('#paramsSpecExampleEditor', 'Report start date')
@@ -974,7 +974,7 @@ export class ConfigurationTestHelper {
       //.click('#btnCopyToClipboardParametersSpecExampleScript')
       //.waitOnElementWithTextToBecomeVisible('Example parameters script copied to clipboard!')
       //.clipboardShouldContainText('Report start date')
-      .click('#tabScriptCode-link')
+      .click('#tab-btn-tabScriptCode')
       .waitOnElementToBecomeVisible('#groovyScriptEditor')
 
       .elementCheckBoxShouldNotBeSelected('#btnShowMoreScriptOptions')
@@ -1057,7 +1057,7 @@ export class ConfigurationTestHelper {
 
     // Test Template/Output tab basic functionality and UI elements
     ft = ft
-      .click('#reportingTemplateOutputTab-link')
+      .click('#tab-btn-reportingTemplateOutputTab')
       .waitOnElementToBecomeVisible('#reportOutputType')
       .selectedOptionShouldContainText('#reportOutputType', 'None')
       .elementShouldNotBeVisible('#btnAskAiForHelpOutput')
@@ -1156,9 +1156,9 @@ export class ConfigurationTestHelper {
       .waitOnElementToBecomeInvisible('#selectTemplateFile');
 
     ft = ft
-      .click('#reportingTabulatorTab-link')
+      .click('#tab-btn-reportingTabulatorTab')
       .waitOnElementToBecomeVisible('#noDataTabulator')
-      .click('#reportingTemplateOutputTab-link')
+      .click('#tab-btn-reportingTemplateOutputTab')
       .waitOnElementToBecomeVisible('#reportOutputType')
       .selectedOptionShouldContainText('#reportOutputType', 'None')
 
@@ -1189,9 +1189,9 @@ export class ConfigurationTestHelper {
       .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
       .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
       .click('#leftMenuReportingSettings')
-      .waitOnElementToBecomeVisible('#reportingDataSourceDataTablesTab-link')
-      .waitOnElementToBecomeEnabled('#reportingDataSourceDataTablesTab-link')
-      .click('#reportingDataSourceDataTablesTab-link')
+      .waitOnElementToBecomeVisible('#tab-btn-reportingDataSourceDataTablesTab')
+      .waitOnElementToBecomeEnabled('#tab-btn-reportingDataSourceDataTablesTab')
+      .click('#tab-btn-reportingDataSourceDataTablesTab')
       .waitOnElementToBecomeVisible('#dsTypes')
       .waitOnElementToBecomeEnabled('#dsTypes');
 
@@ -1429,7 +1429,7 @@ export class ConfigurationTestHelper {
       .waitOnToastToBecomeVisible('info', 'Saved');
 
     // Now move to Template Output tab
-    ft = ft.click('#reportingTemplateOutputTab-link').sleep(2 * Constants.DELAY_ONE_SECOND);
+    ft = ft.click('#tab-btn-reportingTemplateOutputTab').sleep(2 * Constants.DELAY_ONE_SECOND);
 
     // Define HTML-based output types (exclude DOCX)
     const htmlBasedOutputTypes = ['output.pdf', 'output.xlsx', 'output.html', 'output.fop2pdf', 'output.any'];
@@ -1453,8 +1453,8 @@ export class ConfigurationTestHelper {
       //.waitOnElementToBecomeVisible('#btnConfirmAiGalleryInstructions')
       //.click('#btnConfirmAiGalleryInstructions')
       // Wait for template gallery to load
-      .waitOnElementToBecomeVisible('.p-carousel-next')
-      .waitOnElementToBecomeEnabled('.p-carousel-next');
+      .waitOnElementToBecomeVisible('.dp-carousel-next')
+      .waitOnElementToBecomeEnabled('.dp-carousel-next');
 
     // Choose a random template from the available ones
     const randomTemplateIndex =
@@ -1466,7 +1466,7 @@ export class ConfigurationTestHelper {
     // Navigate to that random template (if not already on the first one)
     if (randomTemplateIndex > 1) {
       for (let i = 1; i < randomTemplateIndex; i++) {
-        ft = ft.click('.p-carousel-next').sleep(Constants.DELAY_HALF_SECOND);
+        ft = ft.click('.dp-carousel-next').sleep(Constants.DELAY_HALF_SECOND);
       }
     }
 
@@ -1556,7 +1556,7 @@ export class ConfigurationTestHelper {
       //.waitOnElementToBecomeVisible('#btnConfirmAiGalleryInstructions')
       //.click('#btnConfirmAiGalleryInstructions')
       // Wait for gallery to load and try to use first template
-      .waitOnElementToBecomeVisible('.p-carousel-next')
+      .waitOnElementToBecomeVisible('.dp-carousel-next')
       .click('#btnUseSelectedTemplate')
       .clickYesDoThis()
       .waitOnToastToBecomeVisible(
@@ -1570,8 +1570,8 @@ export class ConfigurationTestHelper {
       .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
       .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
       .click('#leftMenuReportingSettings')
-      .waitOnElementToBecomeVisible('#reportingDataSourceDataTablesTab-link')
-      .click('#reportingDataSourceDataTablesTab-link');
+      .waitOnElementToBecomeVisible('#tab-btn-reportingDataSourceDataTablesTab')
+      .click('#tab-btn-reportingDataSourceDataTablesTab');
 
     // Verify the CSV datasource settings were correctly saved
     ft = ft
@@ -1738,8 +1738,7 @@ export class ConfigurationTestHelper {
       .dropDownSelectOptionHavingValue('#dsTypes', 'ds.scriptfile')
       .sleep(3 * Constants.DELAY_ONE_SECOND) 
       .waitOnElementToBecomeVisible('#groovyScriptEditor')
-      //.codeJarShouldContainText('#groovyScriptEditor', uniqueScriptValue)
-      .codeJarShouldContainText('#groovyScriptEditor', 'Groovy Datasource Script')
+      .codeJarShouldContainText('#groovyScriptEditor', uniqueScriptValue)
       // .selectedOptionShouldContainText('#scriptDatabaseConnection', 'Your Test Connection Name') // If asserting
       .click('#lblShowMoreScriptOptions')
       .waitOnElementToBecomeVisible('#scriptIdColumn')
@@ -1803,7 +1802,7 @@ export class ConfigurationTestHelper {
       .click('#lblShowAdditionalTransformation');
 
     // Verify the template output settings
-    ft = ft.click('#reportingTemplateOutputTab-link');
+    ft = ft.click('#tab-btn-reportingTemplateOutputTab');
 
     // IMPROVED: First check the gallery-selected template (should have complex HTML content)
     ft = ft
@@ -1896,7 +1895,7 @@ export class ConfigurationTestHelper {
       ft = ft
         .click('#btnCopyPromptText')
         .waitOnConfirmDialogToBecomeVisible()
-        .click('.dburst-button-question-confirm')
+        .click('.dburst-button-question-confirm:visible')
         .waitOnConfirmDialogToBecomeInvisible();
 
       ft = ft.clipboardShouldContainText(
@@ -1910,7 +1909,7 @@ export class ConfigurationTestHelper {
       ft = ft
         .click('#btnCopyPromptText')
         .waitOnConfirmDialogToBecomeVisible()
-        .click('.dburst-button-question-confirm')
+        .click('.dburst-button-question-confirm:visible')
         .waitOnConfirmDialogToBecomeInvisible();
 
       ft = ft.clipboardShouldContainText(
@@ -1924,7 +1923,7 @@ export class ConfigurationTestHelper {
       ft = ft
         .click('#btnCopyPromptText')
         .waitOnConfirmDialogToBecomeVisible()
-        .click('.dburst-button-question-confirm')
+        .click('.dburst-button-question-confirm:visible')
         .waitOnConfirmDialogToBecomeInvisible();
 
       ft = ft.clipboardShouldContainText(
@@ -1954,7 +1953,7 @@ export class ConfigurationTestHelper {
       //.elementShouldBeVisible('#aiInstructionsContent')
       //.waitOnElementToBecomeVisible('#btnConfirmAiGalleryInstructions')
       //.click('#btnConfirmAiGalleryInstructions')
-      .waitOnElementToBecomeVisible('.p-carousel-next')
+      .waitOnElementToBecomeVisible('.dp-carousel-next')
       .pageShouldContainText('View Template'); // Verify at least one template exists
 
     // Calculate random template index based on provided count
@@ -1982,7 +1981,7 @@ export class ConfigurationTestHelper {
         );
 
       ft = ft
-        .click('.p-carousel-next')
+        .click('.dp-carousel-next')
         .waitOnElementToBecomeVisible('.template-footer')
         // Verify each template has a title and tags
         .elementShouldContainText('#galleryDialogTitle', 'Examples (Gallery)')
@@ -2043,8 +2042,8 @@ export class ConfigurationTestHelper {
       }
     }
 
-    // Step 8: Close the gallery modal
-    ft = ft.click('#btnCloseTemplateGalleryX');
+    // Step 8: Close the gallery modal via dp-dialog's built-in close button
+    ft = ft.click('#templateGalleryModal .dp-close-btn');
 
     // Return to original state - set output type to None
     return ft

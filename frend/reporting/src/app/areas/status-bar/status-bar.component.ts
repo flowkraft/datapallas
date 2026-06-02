@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
 
 import { Subscription } from 'rxjs';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
@@ -11,11 +12,13 @@ import { ConfirmService } from '../../components/dialog-confirm/confirm.service'
 import { JobsService } from '../../providers/jobs.service';
 import { StateStoreService } from '../../providers/state-store.service';
 import { WebSocketService } from '../../providers/websocket.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 
 @Component({
-  selector: 'dburst-status-bar',
-  templateUrl: './status-bar.template.html',
+    selector: 'dburst-status-bar',
+    templateUrl: './status-bar.template.html',
+    standalone: true,
+    imports: [...SHARED_IMPORTS],
 })
 export class StatusBarComponent implements OnInit, OnDestroy {
   subscription: Subscription;
@@ -26,7 +29,7 @@ export class StatusBarComponent implements OnInit, OnDestroy {
     protected executionStatsService: ExecutionStatsService,
     protected webSocketService: WebSocketService,
     protected storeService: StateStoreService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
   ) {}
 
   async ngOnInit() {
@@ -57,41 +60,48 @@ export class StatusBarComponent implements OnInit, OnDestroy {
     this.webSocketService.wsSubscriptions = [];
   }
 
+  // Job types that go through AbstractBurster — they create .progress files
+  // and honor .pause / .cancel signals. Everything else (email tests, license
+  // activate/deactivate, SMS tests, docker/starter-pack ops, app updates) is
+  // either too quick to pause meaningfully or doesn't use the signal-file flow.
+  private static readonly PAUSABLE_JOB_TYPES = new Set(['burst', 'generate', 'merge']);
+
   shouldShowPauseCancelButtons() {
-    if (
-      this.executionStatsService.jobStats.niceWorkingOnFileNames === 'email' ||
-      this.executionStatsService.jobStats.niceWorkingOnFileNames ===
-        'license' ||
-      this.executionStatsService.jobStats.niceWorkingOnFileNames === 'twilio' ||
-      this.executionStatsService.jobStats.pauseJobFileExists > 0 ||
-      this.executionStatsService.jobStats.cancelJobFileExists > 0 ||
-      this.executionStatsService.jobStats.numberOfActiveUpdateJobs > 0
-    ) {
+    const stats = this.executionStatsService.jobStats;
+
+    // Already in a pause/cancel transition — hide to avoid re-triggering.
+    if (stats.pauseJobFileExists > 0 || stats.cancelJobFileExists > 0) {
       return false;
     }
 
-    return true;
+    // App update jobs aren't tracked in workingOnJobs but still bump active count.
+    if (stats.numberOfActiveUpdateJobs > 0) {
+      return false;
+    }
+
+    // Show only when at least one running job is a pausable type.
+    return stats.workingOnJobs.some(j =>
+      StatusBarComponent.PAUSABLE_JOB_TYPES.has(j?.jobType),
+    );
   }
 
   // jobs
-  doPauseCancelJob(fileName: string, jobFilePath: string, command: string) {
-    let message = 'Cancel ' + fileName + ' job processing?';
-
-    if (command === 'pause') {
-      message = 'Pause ' + fileName + ' job processing?';
-    }
+  doPauseCancelJob(fileName: string, command: string) {
+    const message = command === 'pause'
+      ? 'Pause ' + fileName + ' job processing?'
+      : 'Cancel ' + fileName + ' job processing?';
 
     this.confirmService.askConfirmation({
-      message: message,
+      message,
       confirmAction: () => {
+        const jobId = this.executionStatsService.jobStats.currentJobId;
         if (command === 'pause') {
           this.executionStatsService.jobStats.pauseJobFileExists = 1;
+          if (jobId) this.jobsService.pauseJob(jobId);
         } else {
           this.executionStatsService.jobStats.cancelJobFileExists = 1;
+          if (jobId) this.jobsService.cancelJob(jobId);
         }
-
-        // Backend creates the pause/cancel marker file
-        this.jobsService.pauseOrCancel(command, jobFilePath);
       },
     });
   }

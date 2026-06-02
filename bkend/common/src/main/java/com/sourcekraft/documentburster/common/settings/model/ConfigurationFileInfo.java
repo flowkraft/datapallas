@@ -38,6 +38,10 @@ public class ConfigurationFileInfo extends DumpToString {
 	public boolean useEmlConn;
 	public String emlConnCode;
 
+	// For SQL/Script reports (dsInputType ds.db / ds.script): the DB connection code
+	public boolean useDbConn;
+	public String dbConnCode;
+
 	public String scriptOptionsSelectFileExplorer;
 
 	// For JasperReports: the DB connection code to use (from datasource.properties or default)

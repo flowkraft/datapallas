@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import Utilities from '../helpers/utilities';
 import { HttpParams } from '@angular/common/http';
 import { StateStoreService } from './state-store.service';
@@ -24,7 +24,9 @@ export class ApiService {
   private jwtToken: string;
   private apiKey: string = '';
 
-  constructor(protected stateStore: StateStoreService) {
+  protected stateStore = inject(StateStoreService);
+
+  constructor() {
     this.headers = new Headers({
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -129,7 +131,6 @@ export class ApiService {
     }
 
     const url = `${this.BACKEND_URL}${path}`;
-    //console.log(`apiService.request.url: ${JSON.stringify(url)}`);
 
     const headers = new Headers(customHeaders || this.headers);
     
@@ -241,6 +242,10 @@ export class ApiService {
 
   public put(path: string, body: any, customHeaders?: Headers): Promise<any> {
     return this.request(path, RequestMethod.put, body, customHeaders);
+  }
+
+  public patch(path: string, body?: any, customHeaders?: Headers): Promise<any> {
+    return this.request(path, RequestMethod.patch, body, customHeaders);
   }
 
   public delete(path: string, body?: any): Promise<any> {

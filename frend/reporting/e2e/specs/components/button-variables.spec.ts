@@ -60,7 +60,7 @@ test.describe('', async () => {
         .click('#btnShowMoreVariables')
         .click('#\\$\\{var5\\}')
         .clickYesDoThis()
-        .click('#emailMessageTab-link') // email message settings
+        .click('#tab-btn-emailMessageTab') // email message settings
         .click('#emailToAddress')
         .typeText('')
         .click('#btnEmailToAddressVariables')
@@ -88,7 +88,7 @@ test.describe('', async () => {
         .click('#btnShowMoreVariables')
         .click('#\\$\\{var4\\}')
         .clickYesDoThis()
-        .click('#attachmentsTab-link') // email attachments settings
+        .click('#tab-btn-attachmentsTab') // email attachments settings
         .click('#btnNewAttachment')
         .click('#btnAttachmentPathVariables')
         .click('#\\$\\{var0\\}')
@@ -102,39 +102,39 @@ test.describe('', async () => {
         .click('#\\$\\{var1\\}')
         .clickYesDoThis()
         .click('#leftMenuUploadSettings') // FTP settings
-        .click('#ftpTab-link')
+        .click('#tab-btn-ftpTab')
         .click('#ftpCommand')
         .typeText('')
         .click('#btnFtpVariables')
         .click('#\\$\\{var0\\}')
         .clickYesDoThis()
-        .click('#fileShareTab-link') // File Share settings
+        .click('#tab-btn-fileShareTab') // File Share settings
         .click('#fileShareCommand')
         .typeText('')
         .click('#btnFileShareVariables')
         .click('#\\$\\{var2\\}')
         .clickYesDoThis()
-        .click('#ftpsTab-link') // FTPS settings
+        .click('#tab-btn-ftpsTab') // FTPS settings
         .click('#ftpsCommand')
         .typeText('')
         .click('#btnFtpsVariables')
         .click('#btnShowMoreVariables')
         .click('#\\$\\{var3\\}')
         .clickYesDoThis()
-        .click('#sftpTab-link') // SFTP settings
+        .click('#tab-btn-sftpTab') // SFTP settings
         .click('#sftpCommand')
         .typeText('')
         .click('#btnSftpVariables')
         .click('#\\$\\{var1\\}')
         .clickYesDoThis()
-        .click('#httpTab-link') // HTTPS settings
+        .click('#tab-btn-httpTab') // HTTPS settings
         .click('#httpCommand')
         .typeText('')
         .click('#btnHttpVariables')
         .click('#btnShowMoreVariables')
         .click('#\\$\\{var4\\}')
         .clickYesDoThis()
-        .click('#cloudUploadTab-link') // Cloud Upload settings
+        .click('#tab-btn-cloudUploadTab') // Cloud Upload settings
         .click('#cloudUploadCommand')
         .typeText('')
         .click('#btnCloudUploadVariables')
@@ -148,33 +148,33 @@ test.describe('', async () => {
         //.click('#btnDocumentBursterWebVariables')
         //.click('#\\$\\{var0\\}')
         //.clickYesDoThis()
-        .click('#sharePointTab-link') // SharePoint settings
+        .click('#tab-btn-sharePointTab') // SharePoint settings
         .click('#sharePointCommand')
         .typeText('')
         .click('#btnSharePointVariables')
         .click('#\\$\\{var1\\}')
         .clickYesDoThis()
-        .click('#wordPressTab-link') // WordPress settings
+        .click('#tab-btn-wordPressTab') // WordPress settings
         .click('#wordPressCommand')
         .typeText('')
         .click('#btnWordPressVariables')
         .click('#\\$\\{var2\\}')
         .clickYesDoThis()
-        .click('#drupalTab-link') // Drupal settings
+        .click('#tab-btn-drupalTab') // Drupal settings
         .click('#drupalCommand')
         .typeText('')
         .click('#btnDrupalVariables')
         .click('#btnShowMoreVariables')
         .click('#\\$\\{var3\\}')
         .clickYesDoThis()
-        .click('#joomlaTab-link') // Joomla settings
+        .click('#tab-btn-joomlaTab') // Joomla settings
         .click('#joomlaCommand')
         .typeText('')
         .click('#btnJoomlaVariables')
         .click('#btnShowMoreVariables')
         .click('#\\$\\{var4\\}')
         .clickYesDoThis()
-        .click('#otherWebPlatformsTab-link') // Other Web Platforms settings
+        .click('#tab-btn-otherWebPlatformsTab') // Other Web Platforms settings
         .click('#otherWebPlatformsCommand')
         .typeText('')
         .click('#btnOtherWebPlatformsVariables')
@@ -192,7 +192,7 @@ test.describe('', async () => {
         .click('#btnAuthTokenVariables')
         .click('#\\$\\{var1\\}')
         .clickYesDoThis()
-        .click('#smsMessageTab-link') // SMS Message settings
+        .click('#tab-btn-smsMessageTab') // SMS Message settings
         .click('#fromTelephoneNumber')
         .typeText('')
         .click('#btnFromTelephoneNumberVariables')
@@ -232,48 +232,48 @@ test.describe('', async () => {
         .inputShouldHaveValue('#userName', '${var3}')
         .inputShouldHaveValue('#smtpPassword', '${var4}')
         .inputShouldHaveValue('#smtpPort', '${var5}')
-        .click('#emailMessageTab-link') // email message settings
+        .click('#tab-btn-emailMessageTab') // email message settings
         .inputShouldHaveValue('#emailToAddress', '${var0}')
         .inputShouldHaveValue('#emailCcAddress', '${var1}')
         .inputShouldHaveValue('#emailBccAddress', '${var2}')
         .inputShouldHaveValue('#emailSubject', '${var3}')
         .elementShouldContainText('#wysiwygEmailMessage .ql-editor', '${var4}')
-        .click('#attachmentsTab-link') // email attachments settings
+        .click('#tab-btn-attachmentsTab') // email attachments settings
         .elementShouldContainText(
           '#attachmentsTable tbody tr:nth-child(2) td',
           '${var0}',
         )
         .inputShouldHaveValue('#archiveFileName', '${var1}')
         .click('#leftMenuUploadSettings') // Upload settings
-        .click('#ftpTab-link')
+        .click('#tab-btn-ftpTab')
         .inputShouldHaveValue('#ftpCommand', '${var0}')
-        .click('#fileShareTab-link') // File Share settings
+        .click('#tab-btn-fileShareTab') // File Share settings
         .inputShouldHaveValue('#fileShareCommand', '${var2}')
-        .click('#ftpsTab-link') // FTPS settings
+        .click('#tab-btn-ftpsTab') // FTPS settings
         .inputShouldHaveValue('#ftpsCommand', '${var3}')
-        .click('#sftpTab-link') // SFTP settings
+        .click('#tab-btn-sftpTab') // SFTP settings
         .inputShouldHaveValue('#sftpCommand', '${var1}')
-        .click('#httpTab-link') // HTTPS settings
+        .click('#tab-btn-httpTab') // HTTPS settings
         .inputShouldHaveValue('#httpCommand', '${var4}')
-        .click('#cloudUploadTab-link') // Upload to Cloud settings
+        .click('#tab-btn-cloudUploadTab') // Upload to Cloud settings
         .inputShouldHaveValue('#cloudUploadCommand', '${var5}')
         .click('#leftMenuDocuments2WebSettings') // documents2web settings)
-        //.click('#documentBursterWebTab-link') // Documents2Web settings
+        //.click('#tab-btn-documentBursterWebTab') // Documents2Web settings
         //.inputShouldHaveValue('#documentBursterWebCommand', '${var0}')
-        .click('#sharePointTab-link') // SharePoint settings
+        .click('#tab-btn-sharePointTab') // SharePoint settings
         .inputShouldHaveValue('#sharePointCommand', '${var1}')
-        .click('#wordPressTab-link') // WordPress settings
+        .click('#tab-btn-wordPressTab') // WordPress settings
         .inputShouldHaveValue('#wordPressCommand', '${var2}')
-        .click('#drupalTab-link') // Drupal settings
+        .click('#tab-btn-drupalTab') // Drupal settings
         .inputShouldHaveValue('#drupalCommand', '${var3}')
-        .click('#joomlaTab-link') // Joomla settings
+        .click('#tab-btn-joomlaTab') // Joomla settings
         .inputShouldHaveValue('#joomlaCommand', '${var4}')
-        .click('#otherWebPlatformsTab-link') // Other Web Platforms settings
+        .click('#tab-btn-otherWebPlatformsTab') // Other Web Platforms settings
         .inputShouldHaveValue('#otherWebPlatformsCommand', '${var5}')
         .click('#leftMenuSMSSettings') // SMS settings
         .inputShouldHaveValue('#accountSid', '${var0}')
         .inputShouldHaveValue('#authToken', '${var1}')
-        .click('#smsMessageTab-link') // SMS Message settings
+        .click('#tab-btn-smsMessageTab') // SMS Message settings
         .inputShouldHaveValue('#fromTelephoneNumber', '${var0}')
         .inputShouldHaveValue('#toTelephoneNumber', '${var1}')
         .inputShouldHaveValue('#smsText', '${var2}')

@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { X, ArrowUp, ArrowDown, Minus, GripVertical } from "lucide-react";
+import { IconGripVertical as GripVertical } from "@/components/shared/Icons";
 import type { WidgetDisplayConfig } from "@/lib/stores/canvas-store";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
@@ -190,11 +190,11 @@ export function PivotConfig({ config, columns, onChange }: PivotConfigProps) {
         />
 
         <div>
-          <span className="text-xs text-muted-foreground">Aggregation</span>
+          <span className="text-xs text-base-content/60">Aggregation</span>
           <select
             value={aggregator}
             onChange={(e) => setAggregator(e.target.value)}
-            className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+            className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
           >
             {AGGREGATORS.map((a) => (
               <option key={a} value={a}>{a}</option>
@@ -240,9 +240,9 @@ function FieldZone({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
+        <span className="text-xs text-base-content/60 flex items-center gap-1">
           {label}
-          <span className="text-[9px] text-muted-foreground/60">({accept}s)</span>
+          <span className="text-[9px] text-base-content/40">({accept}s)</span>
         </span>
         {showSort && fields.length > 0 && onCycleAxis && (
           <AxisSortToggle order={axisDir} onClick={onCycleAxis} />
@@ -252,12 +252,12 @@ function FieldZone({
         ref={setNodeRef}
         className={[
           "mt-1 min-h-[36px] border border-dashed rounded-md p-1.5 flex flex-wrap gap-1 transition-colors",
-          isOver && !isDropForbidden ? "border-primary bg-primary/5" : "border-border",
-          isOver && isDropForbidden ? "border-destructive/50 bg-destructive/5 cursor-not-allowed" : "",
+          isOver && !isDropForbidden ? "border-primary bg-primary/5" : "border-base-300",
+          isOver && isDropForbidden ? "border-error/50 bg-error/5 cursor-not-allowed" : "",
         ].join(" ")}
       >
         {fields.length === 0 && (
-          <span className="text-[10px] text-muted-foreground/50 px-1 py-0.5 self-center">
+          <span className="text-[10px] text-base-content/30 px-1 py-0.5 self-center">
             Drag {accept}s here
           </span>
         )}
@@ -278,16 +278,16 @@ function AvailableZone({ fields }: { fields: ColumnSchema[] }) {
   const { setNodeRef, isOver } = useDroppable({ id: "available" });
   return (
     <div>
-      <span className="text-xs text-muted-foreground">Available fields</span>
+      <span className="text-xs text-base-content/60">Available fields</span>
       <div
         ref={setNodeRef}
         className={[
           "mt-1 min-h-[36px] border border-dashed rounded-md p-1.5 flex flex-wrap gap-1 transition-colors",
-          isOver ? "border-primary bg-primary/5" : "border-border/60 bg-muted/20",
+          isOver ? "border-primary bg-primary/5" : "border-base-300/60 bg-base-200/20",
         ].join(" ")}
       >
         {fields.length === 0 && (
-          <span className="text-[10px] text-muted-foreground/50 px-1 py-0.5 self-center">
+          <span className="text-[10px] text-base-content/30 px-1 py-0.5 self-center">
             All fields assigned — drag one back here to remove it.
           </span>
         )}
@@ -318,14 +318,14 @@ function DraggableChip({
       <button
         {...listeners}
         {...attributes}
-        className="cursor-grab active:cursor-grabbing flex items-center text-muted-foreground hover:text-foreground"
+        className="cursor-grab active:cursor-grabbing flex items-center text-base-content/60 hover:text-base-content"
         aria-label={`Drag ${field}`}
       >
-        <GripVertical className="w-2.5 h-2.5" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" /></svg>
       </button>
       <span className="font-mono text-[10px]">{field}</span>
-      <button id={`btnRemovePivotField-${field}`} onClick={onRemove} className="hover:text-destructive text-muted-foreground" aria-label={`Remove ${field}`}>
-        <X className="w-2.5 h-2.5" />
+      <button id={`btnRemovePivotField-${field}`} onClick={onRemove} className="hover:text-error text-base-content/60" aria-label={`Remove ${field}`}>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
       </button>
     </span>
   );
@@ -364,7 +364,6 @@ function FieldChip({
 }
 
 function AxisSortToggle({ order, onClick }: { order?: AxisOrder; onClick: () => void }) {
-  const Icon = order === "ascending" ? ArrowUp : order === "descending" ? ArrowDown : Minus;
   const label = order === "ascending" ? "Sort A→Z"
               : order === "descending" ? "Sort Z→A"
               : "Default order (click to sort A→Z)";
@@ -372,12 +371,17 @@ function AxisSortToggle({ order, onClick }: { order?: AxisOrder; onClick: () => 
     <button
       onClick={onClick}
       className={`flex items-center gap-0.5 text-[10px] px-1 py-0.5 transition-colors ${
-        order ? "text-primary" : "text-muted-foreground/50 hover:text-muted-foreground"
+        order ? "text-primary" : "text-base-content/30 hover:text-base-content/60"
       }`}
       title={label}
       aria-label={label}
     >
-      <Icon className="w-2.5 h-2.5" />
+      {order === "ascending"
+        ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" /></svg>
+        : order === "descending"
+        ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" /></svg>
+        : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+      }
       <span>{order === "ascending" ? "A→Z" : order === "descending" ? "Z→A" : "—"}</span>
     </button>
   );

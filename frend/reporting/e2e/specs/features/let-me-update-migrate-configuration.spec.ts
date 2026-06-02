@@ -41,7 +41,7 @@ test.describe('', async () => {
           'System Diagnostics / Update',
         )
         .click('#topMenuHelpJava')
-        .click('#updateTab-link')
+        .click('#tab-btn-updateTab')
         .click('#btnLetMeUpdateManually')
         .waitOnElementToBecomeVisible('#oldDbInstallationFolder')
         .waitOnElementToBecomeEnabled('#oldDbInstallationFolder')

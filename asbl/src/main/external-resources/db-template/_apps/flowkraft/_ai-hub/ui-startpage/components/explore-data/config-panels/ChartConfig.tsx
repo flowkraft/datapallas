@@ -1,7 +1,42 @@
 "use client";
 
-import { BarChart3, TrendingUp, PieChart, Circle, Filter, AlignStartHorizontal, AreaChart, Combine, Disc3, BoxSelect, BarChart2, Plus, X as XIcon } from "lucide-react";
+// lucide-react removed
 import type { WidgetDisplayConfig } from "@/lib/stores/canvas-store";
+
+// ── Heroicon wrapper components used in CHART_TYPES array ────────────────────
+const _BarChart3 = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>
+);
+const _TrendingUp = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" /></svg>
+);
+const _PieChart = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" /></svg>
+);
+const _Circle = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><circle cx="12" cy="12" r="9" /></svg>
+);
+const _Filter = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" /></svg>
+);
+const _AlignStartHorizontal = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75h18M3 9.75v4.5M3 9.75V5.25m0 4.5h4.5m13.5 0h-9" /></svg>
+);
+const _AreaChart = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 18 9 12l3 3 6-6 3 3" /></svg>
+);
+const _Combine = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625Z" /></svg>
+);
+const _Disc3 = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2" /></svg>
+);
+const _BoxSelect = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><rect x="3" y="6" width="18" height="12" rx="1" /><line x1="12" y1="6" x2="12" y2="18" /><line x1="3" y1="12" x2="21" y2="12" /></svg>
+);
+const _BarChart2 = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4.125C3 3.504 3.504 3 4.125 3h2.25c.621 0 1.125.504 1.125 1.125v17.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 0 1 3 21.375V4.125ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v12.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 13.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125v-8.25Z" /></svg>
+);
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
 import { isSensibleChartSubtype, rankChartSubtypes, type ChartRankingHints } from "@/lib/explore-data/smart-defaults";
@@ -29,18 +64,18 @@ const PALETTES = [
 ] as const;
 
 export const CHART_TYPES = [
-  { type: "bar",       icon: BarChart3,            label: "Bar" },
-  { type: "row",       icon: AlignStartHorizontal, label: "Row" },
-  { type: "line",      icon: TrendingUp,           label: "Line" },
-  { type: "area",      icon: AreaChart,            label: "Area" },
-  { type: "combo",     icon: Combine,              label: "Combo" },
-  { type: "scatter",   icon: Circle,               label: "Scatter" },
-  { type: "bubble",    icon: Disc3,                label: "Bubble" },
-  { type: "pie",       icon: PieChart,             label: "Pie" },
-  { type: "doughnut",  icon: Circle,               label: "Donut" },
-  { type: "boxplot",   icon: BoxSelect,            label: "Box" },
-  { type: "waterfall", icon: BarChart2,            label: "Waterfall" },
-  { type: "funnel",    icon: Filter,               label: "Funnel" },
+  { type: "bar",       icon: _BarChart3,            label: "Bar" },
+  { type: "row",       icon: _AlignStartHorizontal, label: "Row" },
+  { type: "line",      icon: _TrendingUp,           label: "Line" },
+  { type: "area",      icon: _AreaChart,            label: "Area" },
+  { type: "combo",     icon: _Combine,              label: "Combo" },
+  { type: "scatter",   icon: _Circle,               label: "Scatter" },
+  { type: "bubble",    icon: _Disc3,                label: "Bubble" },
+  { type: "pie",       icon: _PieChart,             label: "Pie" },
+  { type: "doughnut",  icon: _Circle,               label: "Donut" },
+  { type: "boxplot",   icon: _BoxSelect,            label: "Box" },
+  { type: "waterfall", icon: _BarChart2,            label: "Waterfall" },
+  { type: "funnel",    icon: _Filter,               label: "Funnel" },
 ];
 
 interface ChartConfigProps {
@@ -211,14 +246,14 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
   return (
     <div id="configPanel-chart" className="space-y-3">
       <div>
-        <span className="text-xs text-muted-foreground">Chart type</span>
+        <span className="text-xs text-base-content/60">Chart type</span>
         <div className="grid grid-cols-4 gap-1 mt-1">
           {subtypeOrdered.map(({ type, icon: Icon, label, sensible, reason }) => {
             const isSelected = chartType === type;
             const baseClass = "flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-md text-[10px] transition-colors";
             const stateClass = isSelected
               ? "bg-primary/10 text-primary border border-primary/30"
-              : "text-muted-foreground hover:bg-accent border border-transparent";
+              : "text-base-content/60 hover:bg-base-200 border border-transparent";
             const dimClass = !sensible && !isSelected ? "opacity-40" : "";
             return (
               <button
@@ -237,7 +272,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
           })}
         </div>
         {columns.length === 0 && (
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-[10px] text-base-content/60 mt-1">
             Pick a table or run a query so we can suggest which charts fit your data shape.
           </p>
         )}
@@ -245,20 +280,20 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
 
       {chartType === "bubble" && (
         <div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-base-content/60">
             Size <span className="text-emerald-500">(measure)</span>
           </span>
           <select
             value={bubbleSizeField}
             onChange={(e) => setBubbleSizeField(e.target.value)}
-            className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+            className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
           >
             <option value="">Constant size</option>
             {measures.map((c) => (
               <option key={c.columnName} value={c.columnName}>{c.columnName}</option>
             ))}
           </select>
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-[10px] text-base-content/60 mt-1">
             Optional. When set, each bubble's radius reflects this measure.
           </p>
         </div>
@@ -271,7 +306,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
       )}
 
       <div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-base-content/60">
           X axis <span className="text-blue-500">(dimension)</span>
         </span>
         <div className="mt-1 space-y-1">
@@ -281,7 +316,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                 id={`selectChartXAxis-${idx}`}
                 value={field}
                 onChange={(e) => setXFields(replaceAt(xFields, idx, e.target.value))}
-                className="flex-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                className="flex-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
               >
                 {dimensions.length > 0 && (
                   <optgroup label="Dimensions">
@@ -298,17 +333,17 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                   </optgroup>
                 )}
               </select>
-              <span className="text-[10px] text-muted-foreground w-20 shrink-0">
+              <span className="text-[10px] text-base-content/60 w-20 shrink-0">
                 {idx === 0 ? "X axis" : "series by"}
               </span>
               <button
                 id={`btnRemoveChartXAxis-${idx}`}
                 type="button"
                 onClick={() => removeXSlot(idx)}
-                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                className="p-1 rounded hover:bg-error/10 text-base-content/60 hover:text-error"
                 aria-label="Remove"
               >
-                <XIcon className="w-3 h-3" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
               </button>
             </div>
           ))}
@@ -320,9 +355,9 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                 const first = [...dimensions, ...measures].find((c) => !used.has(c.columnName));
                 if (first) addXSlot(first.columnName);
               }}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-dashed border-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content"
             >
-              <Plus className="w-3 h-3" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               {xFields.length === 0 ? "Add X axis" : "Add series breakout"}
             </button>
           )}
@@ -330,7 +365,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-base-content/60">
           Y axis <span className="text-emerald-500">(measure)</span>
         </span>
         <div className="mt-1 space-y-1">
@@ -340,7 +375,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                 id={`selectChartYAxis-${idx}`}
                 value={field}
                 onChange={(e) => setYFields(replaceAt(yFields, idx, e.target.value))}
-                className="flex-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                className="flex-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
               >
                 {measures.length > 0 && (
                   <optgroup label="Measures">
@@ -357,17 +392,17 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                   </optgroup>
                 )}
               </select>
-              <span className="text-[10px] text-muted-foreground w-20 shrink-0">
+              <span className="text-[10px] text-base-content/60 w-20 shrink-0">
                 {idx === 0 ? "Y axis" : `+ metric`}
               </span>
               <button
                 id={`btnRemoveChartYAxis-${idx}`}
                 type="button"
                 onClick={() => removeYSlot(idx)}
-                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                className="p-1 rounded hover:bg-error/10 text-base-content/60 hover:text-error"
                 aria-label="Remove"
               >
-                <XIcon className="w-3 h-3" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
               </button>
             </div>
           ))}
@@ -379,9 +414,9 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                 const first = [...measures, ...dimensions].find((c) => !used.has(c.columnName));
                 if (first) addYSlot(first.columnName);
               }}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-dashed border-base-300 text-base-content/60 hover:bg-base-200 hover:text-base-content"
             >
-              <Plus className="w-3 h-3" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               {yFields.length === 0 ? "Add Y axis" : "Add metric"}
             </button>
           )}
@@ -394,20 +429,20 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Chart title</span>
+        <span className="text-xs text-base-content/60">Chart title</span>
         <input
           id="inputChartTitle"
           type="text"
           value={chartTitle}
           onChange={(e) => setChartTitle(e.target.value)}
           placeholder="Optional title…"
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground placeholder:text-muted-foreground/40"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content placeholder:text-base-content/60/40"
         />
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Legend</span>
-        <div className="flex mt-1 rounded-md overflow-hidden border border-border text-xs">
+        <span className="text-xs text-base-content/60">Legend</span>
+        <div className="flex mt-1 rounded-md overflow-hidden border border-base-300 text-xs">
           {(["auto", "show", "hide"] as const).map((v) => (
             <button
               key={v}
@@ -416,7 +451,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
               className={`flex-1 py-1.5 capitalize transition-colors ${
                 legend === v
                   ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-accent"
+                  : "text-base-content/60 hover:bg-base-200"
               }`}
             >
               {v}
@@ -426,7 +461,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Color palette</span>
+        <span className="text-xs text-base-content/60">Color palette</span>
         <div className="grid grid-cols-5 gap-1 mt-1">
           {PALETTES.map(({ id, label, colors }) => {
             const selected = palette === id;
@@ -436,7 +471,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                 onClick={() => setPalette(id)}
                 title={label}
                 className={`flex flex-col items-center gap-0.5 p-1 rounded border transition-colors ${
-                  selected ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"
+                  selected ? "border-primary bg-primary/5" : "border-base-300 hover:border-muted-foreground/50"
                 }`}
               >
                 <div className="flex gap-0.5">
@@ -444,7 +479,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
                     <div key={c} style={{ backgroundColor: c }} className="w-2.5 h-2.5 rounded-sm" />
                   ))}
                 </div>
-                <span className="text-[9px] text-muted-foreground">{label}</span>
+                <span className="text-[9px] text-base-content/60">{label}</span>
               </button>
             );
           })}

@@ -1,131 +1,36 @@
 @import "tailwindcss";
+@plugin "daisyui" { themes: all; }
 
-@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
-
-/* DataPallas Brand Colors - Cyan #22a7c8 */
-:root {
-  --rb-cyan: #22a7c8;
-  --rb-cyan-light: #3ab8d6;
-  --rb-cyan-dark: #1a8aa6;
-  
-  /* Font family using Next.js Inter */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-
-  /* Light theme (default) */
-  --background: #fafafa;
-  --foreground: #1e293b;
-  --card: #ffffff;
-  --card-foreground: #1e293b;
-  --popover: #ffffff;
-  --popover-foreground: #1e293b;
-  --primary: var(--rb-cyan);
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #1e293b;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: var(--rb-cyan);
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: var(--rb-cyan);
-  --radius: 0.5rem;
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
-/* Dark theme - applied via .dark class OR [data-theme="dark"] */
-.dark,
-[data-theme="dark"] {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --card: #1e293b;
-  --card-foreground: #f1f5f9;
-  --popover: #1e293b;
-  --popover-foreground: #f1f5f9;
-  --primary: var(--rb-cyan);
-  --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #f1f5f9;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: var(--rb-cyan);
-  --accent-foreground: #ffffff;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #f8fafc;
-  --border: #334155;
-  --input: #334155;
-  --ring: var(--rb-cyan);
+/* Apply the daisyUI theme to the rb-* web components FROM OUTSIDE (the
+   components hardcode no framework — they read these optional vars). */
+rb-report {
+  --rb-report-paper: var(--color-base-100);
+}
+rb-tabulator, rb-pivot-table, rb-chart {
+  --rb-table-accent: var(--color-primary);
+  --rb-table-accent-text: var(--color-primary-content);
+  --rb-pivot-accent: var(--color-primary);
+  --rb-pivot-surface: var(--color-base-100);
+  --rb-chart-accent: var(--color-primary);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius: var(--radius);
-}
-
-* {
-  border-color: var(--border);
-}
-
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-}
-
-/* Smooth transitions for theme changes */
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-/* DataPallas brand utilities */
-.text-rb-cyan {
-  color: var(--rb-cyan);
-}
-
-.bg-rb-cyan {
-  background-color: var(--rb-cyan);
-}
-
-.border-rb-cyan {
-  border-color: var(--rb-cyan);
-}
-
-/* Prevent Tailwind Preflight (img,svg { display:block }) from breaking
-   Tabulator cell contents — star ratings, icons, progress bars, etc.
-   Needed because rb-tabulator uses shadow:"none" (no Shadow DOM). */
+/* Keep tabulator inline display fix */
 .tabulator img,
 .tabulator svg {
   display: inline;
   vertical-align: middle;
 }
 
-/* Cursor pointer for all interactive elements */
-button,
-[role="button"],
-a,
-select,
-input[type="checkbox"],
-input[type="radio"],
-input[type="submit"],
-input[type="button"],
-.cursor-pointer {
+/* Keep cursor pointer rules */
+button, [role="button"], a, select,
+input[type="checkbox"], input[type="radio"],
+input[type="submit"], input[type="button"], .cursor-pointer {
   cursor: pointer;
 }

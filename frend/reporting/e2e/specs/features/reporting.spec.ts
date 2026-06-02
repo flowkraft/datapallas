@@ -851,7 +851,7 @@ log.info("Transformation complete. Rows after filter: {}", ctx.reportData.size()
         // --- STEP 5: Database Schema picklist — state + moves + AI Copilot ---
         ft = ft.consoleLog('STEP 5: Database Schema picklist + AI Copilot');
         ft = ft
-          .click('#databaseSchemaTab-link')
+          .click('#tab-btn-databaseSchemaTab')
           .waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer')
           .waitOnElementToBecomeVisible('#chooseTableLabelDbSchema')
           .elementShouldBeDisabled('#btnGenerateWithAIDbSchema');
@@ -899,7 +899,7 @@ log.info("Transformation complete. Rows after filter: {}", ctx.reportData.size()
           .waitOnElementToBecomeVisible('#btnCopyPromptText')
           .click('#btnCopyPromptText')
           .waitOnConfirmDialogToBecomeVisible()
-          .click('.dburst-button-question-confirm')
+          .click('.dburst-button-question-confirm:visible')
           .waitOnConfirmDialogToBecomeInvisible()
           .clipboardShouldContainText('You are an expert SQL Developer')
           .clipboardShouldContainText('"tableName": "Products"')
@@ -910,7 +910,7 @@ log.info("Transformation complete. Rows after filter: {}", ctx.reportData.size()
         // --- STEP 6: Domain-Grouped Schema picklist — state + moves + AI SQL Gen ---
         ft = ft.consoleLog('STEP 6: Domain-Grouped Schema picklist + AI SQL Gen');
         ft = ft
-          .click('#domainGroupedDatabaseSchemaTab-link')
+          .click('#tab-btn-domainGroupedDatabaseSchemaTab')
           .waitOnElementToBecomeVisible('#domainGroupedSchemaPicklist')
           .waitOnElementToBecomeVisible('#chooseTableLabelDomainGroupedSchema')
           .elementShouldBeDisabled('#btnGenerateSqlQueryWithAIDomainGroupedSchema');
@@ -961,7 +961,7 @@ log.info("Transformation complete. Rows after filter: {}", ctx.reportData.size()
           .waitOnElementToBecomeVisible('#btnCopyPromptText')
           .click('#btnCopyPromptText')
           .waitOnConfirmDialogToBecomeVisible()
-          .click('.dburst-button-question-confirm')
+          .click('.dburst-button-question-confirm:visible')
           .waitOnConfirmDialogToBecomeInvisible()
           .clipboardShouldContainText('You are an expert SQL Developer')
           .clipboardShouldContainText('"tableName": "Orders"')
@@ -1654,8 +1654,8 @@ function configureAndRunReportGeneration2(
       aiHelp: '#btnHelpWithSqlQueryAI',
       test: '#btnTestSqlQuery',
       codeEditor: '#sqlQueryEditor',
-      paramsTab: '#tabSqlReportParameters-link',
-      codeTab: '#tabSqlCode-link',
+      paramsTab: '#tab-btn-tabSqlReportParameters',
+      codeTab: '#tab-btn-tabSqlCode',
       prompt1: 'You are an expert SQL Developer',
       prompt2TableNameProducts: '"tableName": "Products"',
       prompt3ColumnNameDiscontinued: '"columnName": "Discontinued"',
@@ -1666,8 +1666,8 @@ function configureAndRunReportGeneration2(
       aiHelp: '#btnHelpWithScriptAI',
       test: '#btnTestScript',
       codeEditor: '#groovyScriptEditor',
-      paramsTab: '#tabScriptReportParameters-link',
-      codeTab: '#tabScriptCode-link',
+      paramsTab: '#tab-btn-tabScriptReportParameters',
+      codeTab: '#tab-btn-tabScriptCode',
       prompt1: 'You are an expert Groovy Developer',
       prompt2TableNameProducts: '"tableName": "Products"',
       prompt3ColumnNameDiscontinued: '"columnName": "Discontinued"',
@@ -1750,7 +1750,7 @@ function configureAndRunReportGeneration2(
             .sleep(Constants.DELAY_ONE_SECOND)
             .appStatusShouldBeGreatNoErrorsNoWarnings()
 
-          ft = ft.click('#databaseSchemaTab-link')
+          ft = ft.click('#tab-btn-databaseSchemaTab')
             .waitOnElementToBecomeInvisible('#btnTestDbConnectionDbSchema')
             .waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer')
             .waitOnElementToBecomeEnabled(
@@ -1768,7 +1768,7 @@ function configureAndRunReportGeneration2(
           ft = ft.waitOnElementToBecomeVisible('#btnCopyPromptText')
             .click('#btnCopyPromptText')
             .waitOnConfirmDialogToBecomeVisible()
-            .click('.dburst-button-question-confirm')
+            .click('.dburst-button-question-confirm:visible')
             .waitOnConfirmDialogToBecomeInvisible()
             .clipboardShouldContainText(ids.prompt1)
             .clipboardShouldContainText(ids.prompt2TableNameProducts)
@@ -1803,7 +1803,7 @@ function configureAndRunReportGeneration2(
             ft = ft.waitOnElementToBecomeVisible('#btnCopyPromptText')
               .click('#btnCopyPromptText')
               .waitOnConfirmDialogToBecomeVisible()
-              .click('.dburst-button-question-confirm')
+              .click('.dburst-button-question-confirm:visible')
               .waitOnConfirmDialogToBecomeInvisible()
               .clipboardShouldContainText(ids.prompt1)
               .clipboardShouldContainText(ids.prompt2TableNameProducts)
@@ -1837,7 +1837,7 @@ function configureAndRunReportGeneration2(
             ft = ft.waitOnElementToBecomeVisible('#btnCopyPromptText')
               .click('#btnCopyPromptText')
               .waitOnConfirmDialogToBecomeVisible()
-              .click('.dburst-button-question-confirm')
+              .click('.dburst-button-question-confirm:visible')
               .waitOnConfirmDialogToBecomeInvisible()
               .clipboardShouldContainText(ids.prompt1)
               .clipboardShouldContainText(ids.prompt4TableNameOrders)
@@ -1845,7 +1845,7 @@ function configureAndRunReportGeneration2(
               .click('#btnCloseAiCopilotModal')
               .waitOnElementToBecomeInvisible('#btnCopyPromptText');
 
-            ft = ft.click('#databaseSchemaTab-link')
+            ft = ft.click('#tab-btn-databaseSchemaTab')
               .waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer')
               //.waitOnElementToBecomeVisible('#btnRefreshDatabaseSchema')
               .click('#btnCloseDbConnectionModal');
@@ -1868,7 +1868,7 @@ function configureAndRunReportGeneration2(
             ft = ft.waitOnElementToBecomeVisible('#btnCopyPromptText')
               .click('#btnCopyPromptText')
               .waitOnConfirmDialogToBecomeVisible()
-              .click('.dburst-button-question-confirm')
+              .click('.dburst-button-question-confirm:visible')
               .waitOnConfirmDialogToBecomeInvisible()
               .clipboardShouldContainText(ids.prompt1)
               .clipboardShouldContainText(ids.prompt4TableNameOrders)
@@ -1876,28 +1876,28 @@ function configureAndRunReportGeneration2(
               .click('#btnCloseAiCopilotModal')
               .waitOnElementToBecomeInvisible('#btnCopyPromptText')
 
-            ft = ft.waitOnElementToBecomeEnabled('#databaseSchemaTab-link')
-              .click('#databaseSchemaTab-link')
+            ft = ft.waitOnElementToBecomeEnabled('#tab-btn-databaseSchemaTab')
+              .click('#tab-btn-databaseSchemaTab')
               .waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer')
               //.waitOnElementToBecomeVisible('#btnRefreshDatabaseSchema')
-              .waitOnElementToBecomeEnabled('#connectionDetailsTab-link')
-              .waitOnElementToBecomeEnabled('#databaseDiagramTab-link')
-              .waitOnElementToBecomeEnabled('#databaseUbiquitousLanguageTab-link')
-              .waitOnElementToBecomeEnabled('#toolsTab-link')
-              .click('#connectionDetailsTab-link')
+              .waitOnElementToBecomeEnabled('#tab-btn-connectionDetailsTab')
+              .waitOnElementToBecomeEnabled('#tab-btn-databaseDiagramTab')
+              .waitOnElementToBecomeEnabled('#tab-btn-databaseUbiquitousLanguageTab')
+              .waitOnElementToBecomeEnabled('#tab-btn-toolsTab')
+              .click('#tab-btn-connectionDetailsTab')
               .waitOnElementToBecomeVisible('#btnTestDbConnection')
-              .click('#databaseDiagramTab-link')
+              .click('#tab-btn-databaseDiagramTab')
               .waitOnElementToBecomeVisible('#plantUmlDiagram')
               .waitOnElementToBecomeEnabled('#btnDatabaseDiagramViewInBrowserLink')
               .elementShouldNotBeVisible('#btnDatabaseDiagramShowCode')
               .elementShouldNotBeVisible('#btnGenerateWithAIErDiagram')
-              .click('#databaseUbiquitousLanguageTab-link')
+              .click('#tab-btn-databaseUbiquitousLanguageTab')
               .waitOnElementToBecomeVisible('#ubiquitousLanguageViewer')
               .elementShouldNotBeVisible('#noUbiquitousLanguageContentInfo')
               .elementShouldNotBeVisible('#btnUbiquitousLanguageStartEditing')
               .elementShouldNotBeVisible('#ubiquitousLanguageEditor')
               // TODO: Write Chat2DB tab e2e tests for FlowKraft AI Hub app
-              .click('#toolsTab-link')
+              .click('#tab-btn-toolsTab')
               .click('#btnCloseDbConnectionModal');
 
           }
@@ -1985,7 +1985,7 @@ function configureAndRunReportGeneration2(
     }
 
     ft = ft
-      .click('#reportingTabulatorTab-link')
+      .click('#tab-btn-reportingTabulatorTab')
       .waitOnTabulatorToBecomeVisible();
 
     //ft = ft.consoleLog(`[DEBUG] 2nd time hasParams=${hasParams}, expecting ${expectedRowCount} rows after Test button.`);
@@ -2016,7 +2016,7 @@ function configureAndRunReportGeneration2(
   // Configure output type and template
   ft = ft
     .sleep(Constants.DELAY_ONE_SECOND)
-    .click('#reportingTemplateOutputTab-link')
+    .click('#tab-btn-reportingTemplateOutputTab')
     .waitOnElementToBecomeVisible('#reportOutputType')
     .dropDownSelectOptionHavingValue('#reportOutputType', params.outputType);
 
@@ -2166,7 +2166,7 @@ function configureAndRunReportGeneration(
   // Configure output type and template
   ft = ft
     .sleep(Constants.DELAY_ONE_SECOND)
-    .click('#reportingTemplateOutputTab-link')
+    .click('#tab-btn-reportingTemplateOutputTab')
     .waitOnElementToBecomeVisible('#reportOutputType')
     .dropDownSelectOptionHavingValue('#reportOutputType', params.outputType)
     .sleep(3 * Constants.DELAY_ONE_SECOND);
@@ -2300,8 +2300,8 @@ function createDbConnection(
     dbConnectionType === 'dbcon-domaingrouped-schema' || dbConnectionType === 'dbcon-all-features'
   ) {
     ft = ft
-      .waitOnElementToBecomeVisible('#domainGroupedDatabaseSchemaTab-link')
-      .click('#domainGroupedDatabaseSchemaTab-link') // Ensure the tab is active
+      .waitOnElementToBecomeVisible('#tab-btn-domainGroupedDatabaseSchemaTab')
+      .click('#tab-btn-domainGroupedDatabaseSchemaTab') // Ensure the tab is active
       .waitOnElementToBecomeInvisible(
         'span:has-text("To load the schema, please ensure your connection details are configured")',
       )
@@ -2379,8 +2379,8 @@ function createDbConnection(
     // ER Diagram (PlantUML)
     const odEntity = dbVendor === 'clickhouse' ? 'OrderDetails' : '"Order Details"';
     ft = ft
-      .waitOnElementToBecomeVisible('#databaseDiagramTab-link')
-      .click('#databaseDiagramTab-link')
+      .waitOnElementToBecomeVisible('#tab-btn-databaseDiagramTab')
+      .click('#tab-btn-databaseDiagramTab')
       .waitOnElementToBecomeVisible('#btnDatabaseDiagramShowCode')
       .click('#btnDatabaseDiagramShowCode')
       .waitOnElementToBecomeVisible('#plantUmlEditor')
@@ -2424,8 +2424,8 @@ Customers ||--o{ Orders : places
     // Ubiquitous Language (Markdown)
     const odLabel = dbVendor === 'clickhouse' ? 'OrderDetails' : 'Order Details';
     ft = ft
-      .waitOnElementToBecomeVisible('#databaseUbiquitousLanguageTab-link')
-      .click('#databaseUbiquitousLanguageTab-link')
+      .waitOnElementToBecomeVisible('#tab-btn-databaseUbiquitousLanguageTab')
+      .click('#tab-btn-databaseUbiquitousLanguageTab')
       .waitOnElementToBecomeVisible('#btnUbiquitousLanguageStartEditing')
       .click('#btnUbiquitousLanguageStartEditing')
       .waitOnElementToBecomeVisible('#ubiquitousLanguageEditor')

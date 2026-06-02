@@ -30,6 +30,7 @@ import org.unix4j.Unix4j;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.jobs.models.FileInfo;
 import com.flowkraft.system.dtos.DirCriteriaDto;
 import com.flowkraft.system.dtos.FileCriteriaDto;
 import com.flowkraft.system.dtos.FindCriteriaDto;
@@ -235,6 +236,23 @@ public class FileSystemService {
 		}
 
 		return path;
+	}
+
+	public List<FileInfo> fsList(String fullPath) {
+		File directory = new File(fullPath);
+		if (!directory.exists() || !directory.isDirectory()) {
+			return java.util.Collections.emptyList();
+		}
+		return java.util.Arrays.stream(directory.listFiles())
+			.map(file -> {
+				FileInfo info = new FileInfo(file.getName(), StringUtils.EMPTY, false);
+				info.filePath = file.getAbsolutePath();
+				info.fileSize = file.length();
+				info.isDirectory = file.isDirectory();
+				info.lastModified = file.lastModified();
+				return info;
+			})
+			.collect(Collectors.toList());
 	}
 
 	public Optional<InspectResultDto> fsInspect(String path, Optional<String> checksum, Optional<Boolean> mode,

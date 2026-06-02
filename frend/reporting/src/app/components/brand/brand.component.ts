@@ -1,11 +1,9 @@
 import { Component } from '@angular/core';
 
 @Component({
-  selector: 'rb-brand',
-  templateUrl: './brand.component.html',
+    selector: 'rb-brand',
+    templateUrl: './brand.component.html',
+    standalone: true,
+    imports: [],
 })
-export class BrandComponent {
-  get isSidebarCollapsed(): boolean {
-    return document.body.classList.contains('sidebar-collapse');
-  }
-}
+export class BrandComponent {}

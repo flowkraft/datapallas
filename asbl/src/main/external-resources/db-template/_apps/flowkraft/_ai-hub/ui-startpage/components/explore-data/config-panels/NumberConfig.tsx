@@ -51,7 +51,7 @@ export function NumberConfig({ config, columns, onChange }: NumberConfigProps) {
     <div id="configPanel-number" className="space-y-3">
       {/* Field */}
       <div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-base-content/60">
           Value field <span className="text-emerald-500">(measure)</span>
           {isAutoField(config, "numberField") && <AutoBadge reason="First non-ID numeric column." />}
         </span>
@@ -59,7 +59,7 @@ export function NumberConfig({ config, columns, onChange }: NumberConfigProps) {
           id="selectNumberField"
           value={effectiveField}
           onChange={(e) => onChange(clearAutoFlag({ ...config, numberField: e.target.value }, "numberField"))}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           <option value="">First column</option>
           {measures.length > 0 && (
@@ -81,7 +81,7 @@ export function NumberConfig({ config, columns, onChange }: NumberConfigProps) {
 
       {/* Format */}
       <div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-base-content/60">
           Format
           {!config.numberFormat && <AutoBadge reason="Inferred from column name: currency for price/revenue/freight/etc., else plain number." />}
         </span>
@@ -89,7 +89,7 @@ export function NumberConfig({ config, columns, onChange }: NumberConfigProps) {
           id="selectNumberFormat"
           value={format}
           onChange={(e) => onChange(clearAutoFlag({ ...config, numberFormat: e.target.value }, "numberFormat"))}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           {FORMATS.map((f) => (
             <option key={f.value} value={f.value}>{f.label}</option>
@@ -99,13 +99,13 @@ export function NumberConfig({ config, columns, onChange }: NumberConfigProps) {
 
       {/* Label */}
       <div>
-        <span className="text-xs text-muted-foreground">Label</span>
+        <span className="text-xs text-base-content/60">Label</span>
         <input
           id="inputNumberLabel"
           value={label}
           onChange={(e) => onChange({ ...config, numberLabel: e.target.value })}
           placeholder="Auto from field name"
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         />
       </div>
     </div>

@@ -32,12 +32,12 @@ export function ProgressConfig({ config, columns, onChange }: ProgressConfigProp
   return (
     <div id="configPanel-progress" className="space-y-3">
       <div>
-        <span className="text-xs text-muted-foreground">Value <span className="text-emerald-500">(measure)</span></span>
+        <span className="text-xs text-base-content/60">Value <span className="text-emerald-500">(measure)</span></span>
         <select
           id="selectProgressField"
           value={field}
           onChange={(e) => onChange({ ...config, field: e.target.value })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           <option value="">Auto-detect</option>
           {measures.map((c) => (
@@ -47,22 +47,22 @@ export function ProgressConfig({ config, columns, onChange }: ProgressConfigProp
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Goal</span>
+        <span className="text-xs text-base-content/60">Goal</span>
         <input
           id="inputProgressGoal"
           type="number"
           value={goal}
           onChange={(e) => onChange({ ...config, goal: Number(e.target.value) })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         />
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Format</span>
+        <span className="text-xs text-base-content/60">Format</span>
         <select
           value={format}
           onChange={(e) => onChange({ ...config, format: e.target.value })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           {FORMATS.map((f) => (
             <option key={f.value} value={f.value}>{f.label}</option>
@@ -71,12 +71,12 @@ export function ProgressConfig({ config, columns, onChange }: ProgressConfigProp
       </div>
 
       <div>
-        <span className="text-xs text-muted-foreground">Label</span>
+        <span className="text-xs text-base-content/60">Label</span>
         <input
           value={label}
           onChange={(e) => onChange({ ...config, label: e.target.value })}
           placeholder="Auto from field name"
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         />
       </div>
     </div>

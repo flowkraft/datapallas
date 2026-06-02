@@ -1,5 +1,5 @@
 export const tabExtraPackagesTemplate = `<ng-template #tabExtraPackagesTemplate>
-  <div class="well" style="height: 600px; overflow-y: scroll;">
+  <div class="overflow-y-auto" style="height: 600px;">
 
     <dburst-extra-packages></dburst-extra-packages>
     

@@ -1,5 +1,5 @@
 export const tabReviewsTemplate = `<ng-template #tabReviewsTemplate>
-  <div class="well">
+  <div class="space-y-4">
 
     <em>"DocumentBurster has saved 2+ hours a day of manual report running and emailing. The task takes minutes to
       complete from
@@ -17,7 +17,7 @@ export const tabReviewsTemplate = `<ng-template #tabReviewsTemplate>
     <br>
     <br>
     <a href="https://datapallas.com/uses" target="_blank">
-      <button class="btn btn-primary" type="button">View More Customer Reviews</button>
+      <button class="btn btn-outline btn-primary" type="button">View More Customer Reviews</button>
     </a>
     <br>
     <br>
@@ -32,7 +32,7 @@ export const tabReviewsTemplate = `<ng-template #tabReviewsTemplate>
     <br>
     <br>
     <a href="https://www.pdfburst.com/clients.html" target="_blank">
-      <button class="btn btn-primary" type="button">Who is using
+      <button class="btn btn-outline btn-primary" type="button">Who is using
         <em>DataPallas</em>
       </button>
     </a>

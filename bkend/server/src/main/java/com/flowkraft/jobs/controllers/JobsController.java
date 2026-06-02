@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import jakarta.validation.constraints.NotNull;
@@ -20,19 +21,22 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.flowkraft.common.AppPaths;
-import com.flowkraft.jobs.models.ClientServerCommunicationInfo;
-import com.flowkraft.jobs.models.FileInfo;
+import com.flowkraft.jobs.models.JobRecord;
+import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.jobs.services.JobExecutionService;
+import com.flowkraft.jobs.services.JobStore;
 import com.flowkraft.jobs.services.JobsService;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -47,206 +51,278 @@ public class JobsController {
 	@Autowired
 	JobExecutionService jobExecutionService;
 
-	@GetMapping("")
-	public Flux<FileInfo> jobs() throws Exception {
+	@Autowired
+	JobStore jobStore;
 
-		return Flux.fromStream(jobsService.fetchStats());
-
-	}
-
-	@PostMapping("")
-	public Mono<ResponseEntity<Void>> doBurst(
-			@RequestBody @NotNull ClientServerCommunicationInfo clientServerCommunicationInfo) throws Exception {
-
-		//System.out.println("JobManController: doBurst");
-
-		jobsService.doBurst(clientServerCommunicationInfo);
-
-		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-
-	}
-
-	@PostMapping("/pause/cancel")
-	public Mono<ResponseEntity<Void>> doPauseCancelJob(
-			@RequestBody @NotNull ClientServerCommunicationInfo clientServerCommunicationInfo) throws Exception {
-
-		String pauseCancelFilePath = AppPaths.JOBS_DIR_PATH + "/"
-				+ FilenameUtils.getBaseName(clientServerCommunicationInfo.info) + '.'
-				+ clientServerCommunicationInfo.id;
-		FileUtils.touch(new File(pauseCancelFilePath));
-
-		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-	}
-
-	@PostMapping("/resume")
-	public Mono<ResponseEntity<Void>> doResumeJob(
-			@RequestBody @NotNull ClientServerCommunicationInfo clientServerCommunicationInfo) throws Exception {
-
-		//System.out.println(clientServerCommunicationInfo.id);
-		//System.out.println(clientServerCommunicationInfo.info);
-
-		jobsService.doResume(clientServerCommunicationInfo);
-
-		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-	}
-
-	@DeleteMapping("/cancel/resume")
-	public Mono<ResponseEntity<Void>> doCancelResumeJob(
-			@RequestBody @NotNull ClientServerCommunicationInfo clientServerCommunicationInfo) throws Exception {
-
-		//System.out.println(clientServerCommunicationInfo.id);
-		//System.out.println(clientServerCommunicationInfo.info);
-
-		FileUtils.deleteQuietly(new File(clientServerCommunicationInfo.id));
-		FileUtils.deleteQuietly(new File(clientServerCommunicationInfo.info));
-
-		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-	}
-
-	@DeleteMapping(value = "/files/quarantine", consumes = MediaType.ALL_VALUE)
-	public Mono<ResponseEntity<Void>> clearQuarantinedFiles() throws Exception {
-
-		// System.out.println("Controller clearQuarantinedFiles");
-
-		File quarantineDirectory = new File(AppPaths.QUARANTINE_DIR_PATH);
-		FileUtils.cleanDirectory(quarantineDirectory);
-		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-
-	}
-
-	@DeleteMapping("/temp/{folderName}")
-	public Mono<ResponseEntity<Void>> clearTempFiles(@PathVariable String folderName) throws Exception {
-
-		//System.out.println("Controller /temp/{folderName}");
-
-		long activeJobs = jobsService.fetchStats().count();
-
-		if (activeJobs == 0)
-			FileUtils.deleteQuietly(new File(AppPaths.JOBS_DIR_PATH + "/" + folderName));
-
-		return Mono.just(new ResponseEntity<Void>(HttpStatus.OK));
-	}
-
-	// ========== IN-PROCESS JOB EXECUTION (replaces DataPallas.bat spawning) ==========
+	// ── Async job dispatch ─────────────────────────────────────────────────────
 
 	/**
-	 * Burst a document into individual files based on burst tokens.
-	 *
-	 * @param request { inputFile, reportId?, testAll?, testList?, testRandom? }
-	 *                inputFile accepts both relative and absolute paths — same as CLI.
-	 *                reportId is resolved to a config file path via resolveSettingsPath().
-	 *                QA testing: testAll (boolean), testList (comma-separated), testRandom (count).
+	 * POST /api/jobs — unified async dispatch.
+	 * Body: { type: "burst"|"generate"|"merge", ...type-specific params }
+	 * Returns 202 Accepted + Location: /api/jobs/{id} + body { jobId, status }.
 	 */
-	@PostMapping(value = "/burst", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Map<String, String>>> submitBurst(@RequestBody Map<String, Object> request) {
-		String inputFile = (String) request.get("inputFile");
-		String reportId = (String) request.get("reportId");
-
-		if (inputFile == null || inputFile.isBlank()) {
-			return Mono.just(ResponseEntity.badRequest().body(Map.of("error", "inputFile is required")));
+	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Map<String, Object>> submitJob(@RequestBody Map<String, Object> request) {
+		String type = (String) request.get("type");
+		if (type == null || type.isBlank()) {
+			return ResponseEntity.badRequest().body(Map.of("error", "type is required"));
 		}
 
 		List<String> args = new ArrayList<>();
-		args.add("burst");
-		args.add(resolveFilePath(inputFile));
+		String jobSignalBaseName;
 
-		if (reportId != null && !reportId.isBlank()) {
-			String configPath = resolveSettingsPath(reportId);
-			args.add("-c");
-			args.add(configPath);
+		switch (type) {
+			case "burst": {
+				String inputFile = (String) request.get("inputFile");
+				if (inputFile == null || inputFile.isBlank())
+					return ResponseEntity.badRequest().body(Map.of("error", "inputFile is required for burst"));
+				args.add("job"); args.add("burst"); args.add(resolveFilePath(inputFile));
+				String reportId = (String) request.get("reportId");
+				if (reportId != null && !reportId.isBlank()) { args.add("-c"); args.add(resolveSettingsPath(reportId)); }
+				addQaArgs(args, request);
+				jobSignalBaseName = FilenameUtils.getBaseName(inputFile);
+				break;
+			}
+			case "generate": {
+				String reportId = (String) request.get("reportId");
+				if (reportId == null || reportId.isBlank())
+					return ResponseEntity.badRequest().body(Map.of("error", "reportId is required for generate"));
+				args.add("job"); args.add("generate"); args.add("-c"); args.add(resolveSettingsPath(reportId));
+				String input = (String) request.get("input");
+				if (input != null && !input.isBlank()) {
+					args.add(input.contains("/") || input.contains("\\") ? resolveFilePath(input) : input);
+				} else {
+					args.add(reportId);
+				}
+				addParamArgs(args, request);
+				addQaArgs(args, request);
+				jobSignalBaseName = reportId;
+				break;
+			}
+			case "merge": {
+				String listFile = (String) request.get("listFile");
+				if (listFile == null || listFile.isBlank())
+					return ResponseEntity.badRequest().body(Map.of("error", "listFile is required for merge"));
+				args.add("job"); args.add("merge"); args.add(resolveFilePath(listFile));
+				String outputName = (String) request.get("outputName");
+				if (outputName != null && !outputName.isBlank()) { args.add("-o"); args.add(outputName); }
+				if (Boolean.TRUE.equals(request.get("burst"))) {
+					args.add("-b");
+					String reportId = (String) request.get("reportId");
+					if (reportId != null && !reportId.isBlank()) { args.add("-c"); args.add(resolveSettingsPath(reportId)); }
+				}
+				jobSignalBaseName = FilenameUtils.getBaseName(listFile);
+				break;
+			}
+			default:
+				return ResponseEntity.badRequest().body(Map.of("error", "Unknown job type: " + type));
 		}
 
-		// QA testing options (same as CLI -ta, -tl, -tr flags)
-		if (Boolean.TRUE.equals(request.get("testAll"))) {
-			args.add("-ta");
-		} else if (request.get("testList") != null) {
-			args.add("-tl");
-			args.add(String.valueOf(request.get("testList")));
-		} else if (request.get("testRandom") != null) {
-			args.add("-tr");
-			args.add(String.valueOf(request.get("testRandom")));
-		}
-
-		log.info("Submitting burst job: {}", args);
-		jobExecutionService.executeAsync(args.toArray(new String[0]));
-		return Mono.just(ResponseEntity.ok(Map.of("status", "submitted")));
+		JobRecord job = jobStore.create(type, request, jobSignalBaseName);
+		jobExecutionService.executeTracked(args.toArray(new String[0]), job.id, jobStore);
+		log.info("Dispatched {} job id={}", type, job.id);
+		return ResponseEntity.status(HttpStatus.ACCEPTED)
+				.header("Location", "/api/jobs/" + job.id)
+				.body(Map.of("jobId", job.id, "status", job.status));
 	}
 
-	/**
-	 * Generate reports from a data source using a configuration template.
-	 *
-	 * @param request { reportId: "payslips", input?: "data.csv", params?: { startDate: "2025-01-01" } }
-	 *                reportId is required — resolved to config path.
-	 *                input is the input data identifier (filename, template name, or report name).
-	 *                params are key-value pairs passed as -p arguments.
-	 */
-	@PostMapping(value = "/generate", consumes = MediaType.APPLICATION_JSON_VALUE)
-	@SuppressWarnings("unchecked")
-	public Mono<ResponseEntity<Map<String, String>>> submitGenerate(@RequestBody Map<String, Object> request) {
-		String reportId = (String) request.get("reportId");
-		String input = (String) request.get("input");
-		Map<String, String> params = (Map<String, String>) request.get("params");
+	// ── Job resource endpoints ─────────────────────────────────────────────────
 
-		if (reportId == null || reportId.isBlank()) {
-			return Mono.just(ResponseEntity.badRequest().body(Map.of("error", "reportId is required")));
+	/** GET /api/jobs — list recent jobs, replacing GET /api/jobs/stats. */
+	@GetMapping(consumes = MediaType.ALL_VALUE)
+	public ResponseEntity<List<Map<String, Object>>> listJobs(
+			@RequestParam(required = false) String status,
+			@RequestParam(defaultValue = "20") int limit) {
+		List<Map<String, Object>> out = jobStore.list(status, limit).stream()
+				.map(JobRecord::toMap).toList();
+		return ResponseEntity.ok(out);
+	}
+
+	/** GET /api/jobs/{id} — status of a single job. */
+	@GetMapping(value = "/{id}", consumes = MediaType.ALL_VALUE)
+	public ResponseEntity<Map<String, Object>> getJob(@PathVariable String id) {
+		return jobStore.find(id)
+				.map(rec -> ResponseEntity.ok(rec.toMap()))
+				.orElse(ResponseEntity.notFound().<Map<String, Object>>build());
+	}
+
+	/** GET /api/jobs/{id}/logs — SSE stream of status events for a job. */
+	@GetMapping(value = "/{id}/logs", produces = MediaType.TEXT_EVENT_STREAM_VALUE, consumes = MediaType.ALL_VALUE)
+	public SseEmitter getJobLogs(@PathVariable String id) {
+		Optional<JobRecord> optRec = jobStore.find(id);
+		if (optRec.isEmpty()) {
+			SseEmitter dead = new SseEmitter(0L);
+			try {
+				dead.send(SseEmitter.event().name("error").data(Map.of("error", "Unknown jobId: " + id)));
+				dead.complete();
+			} catch (Exception ignored) {}
+			return dead;
 		}
+		JobRecord job = optRec.get();
+		if ("done".equals(job.status) || "failed".equals(job.status)) {
+			SseEmitter terminal = new SseEmitter(0L);
+			try {
+				terminal.send(SseEmitter.event().name("status").data(Map.of("status", job.status, "id", id)));
+				terminal.complete();
+			} catch (Exception ignored) {}
+			return terminal;
+		}
+		SseEmitter existing = jobStore.getEmitter(id);
+		return existing != null ? existing : jobStore.createEmitter(id);
+	}
 
-		String configPath = resolveSettingsPath(reportId);
-
-		List<String> args = new ArrayList<>();
-		args.add("generate");
-		args.add("-c");
-		args.add(configPath);
-
-		if (input != null && !input.isBlank()) {
-			// If the input is a file path (contains / or \), resolve it.
-			// If it's a template name (e.g., "g-sql2fop-stud"), leave it as-is.
-			if (input.contains("/") || input.contains("\\")) {
-				args.add(resolveFilePath(input));
-			} else {
-				args.add(input);
+	/** DELETE /api/jobs/{id} — cancel a running job. */
+	@DeleteMapping(value = "/{id}", consumes = MediaType.ALL_VALUE)
+	public ResponseEntity<Void> cancelJob(@PathVariable String id) {
+		// log.info("DELETE /api/jobs/{} (cancel)", id);
+		Optional<JobRecord> optRec = jobStore.find(id);
+		if (optRec.isEmpty()) {
+			// log.warn("DELETE /api/jobs/{} — jobStore.find returned EMPTY (job not tracked); cancel cannot signal worker", id);
+			return ResponseEntity.notFound().build();
+		}
+		JobRecord rec = optRec.get();
+		String baseName = rec.effectiveSignalBaseName();
+		// log.info("DELETE /api/jobs/{} — found job: effectiveSignalBaseName='{}' (initial='{}' active='{}') status='{}'",
+		// 		id, baseName, rec.jobSignalBaseName, rec.activeJobFilePath, rec.status);
+		if (!baseName.isBlank()) {
+			String cancelPath = AppPaths.JOBS_DIR_PATH + "/" + baseName + ".cancel";
+			try {
+				FileUtils.touch(new File(cancelPath));
+				// log.info("CANCEL signal written to: {}", cancelPath);
+			} catch (Exception e) {
+				log.warn("Could not touch cancel file for job {}: {}", id, e.getMessage());
 			}
 		} else {
-			// For SQL/Script data sources, the reportId doubles as the input name.
-			// The CLI equivalent: DataPallas generate -c config/.../settings.xml g-sql2fop-stud
-			args.add(reportId);
+			// log.warn("DELETE cancel /api/jobs/{} — effectiveSignalBaseName is BLANK; no .cancel file written, worker will never see signal", id);
 		}
+		jobStore.updateStatus(id, "failed");
+		return ResponseEntity.noContent().build();
+	}
 
-		if (params != null) {
-			for (Map.Entry<String, String> entry : params.entrySet()) {
-				args.add("-p");
-				args.add(entry.getKey() + "=" + entry.getValue());
-			}
+	/** PATCH /api/jobs/{id} — pause or resume a job. Body: { action: "pause"|"resume" } */
+	@PatchMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Map<String, Object>> patchJob(
+			@PathVariable String id,
+			@RequestBody Map<String, Object> body) {
+		String action = (String) body.get("action");
+		// log.info("PATCH /api/jobs/{} action={}", id, action);
+		Optional<JobRecord> optRec = jobStore.find(id);
+		if (optRec.isEmpty()) {
+			// log.warn("PATCH /api/jobs/{} — jobStore.find returned EMPTY (job not tracked); pause/cancel cannot signal worker", id);
+			return ResponseEntity.notFound().build();
 		}
-
-		// QA testing options (same as burst endpoint)
-		if (Boolean.TRUE.equals(request.get("testAll"))) {
-			args.add("-ta");
-		} else if (request.get("testList") != null) {
-			args.add("-tl");
-			args.add(String.valueOf(request.get("testList")));
-		} else if (request.get("testRandom") != null) {
-			args.add("-tr");
-			args.add(String.valueOf(request.get("testRandom")));
+		JobRecord rec = optRec.get();
+		String baseName = rec.effectiveSignalBaseName();
+		// log.info("PATCH /api/jobs/{} — found job: effectiveSignalBaseName='{}' (initial='{}' active='{}') status='{}'",
+		// 		id, baseName, rec.jobSignalBaseName, rec.activeJobFilePath, rec.status);
+		switch (String.valueOf(action)) {
+			case "pause":
+				if (!baseName.isBlank()) {
+					String pausePath = AppPaths.JOBS_DIR_PATH + "/" + baseName + ".pause";
+					try {
+						FileUtils.touch(new File(pausePath));
+						// log.info("PAUSE signal written to: {}", pausePath);
+					} catch (Exception e) {
+						log.warn("Could not touch pause file for job {}: {}", id, e.getMessage());
+					}
+				} else {
+					// log.warn("PATCH pause /api/jobs/{} — effectiveSignalBaseName is BLANK; no .pause file written, worker will never see signal", id);
+				}
+				jobStore.updateStatus(id, "paused");
+				break;
+			case "resume":
+				if (rec.activeJobFilePath != null && !rec.activeJobFilePath.isBlank()) {
+					final String jobFilePath = rec.activeJobFilePath;
+					// log.info("Spawning resume worker for {} with jobFilePath={}", id, jobFilePath);
+					jobExecutionService.executeAsync(new String[] { "job", "resume", jobFilePath }, () -> {
+						try {
+							FileUtils.forceDelete(new File(jobFilePath));
+						} catch (java.io.IOException e) {
+							log.warn("Could not delete job file {} after resume: {}", jobFilePath, e.getMessage());
+						}
+					});
+				} else {
+					log.warn("PATCH resume /api/jobs/{} — activeJobFilePath is BLANK; cannot spawn resume worker", id);
+				}
+				jobStore.updateStatus(id, "running");
+				break;
+			default:
+				return ResponseEntity.badRequest().body(Map.of("error", "Unknown action: " + action));
 		}
-
-		log.info("Submitting generate job: {}", args);
-		jobExecutionService.executeAsync(args.toArray(new String[0]));
-		return Mono.just(ResponseEntity.ok(Map.of("status", "submitted")));
+		return ResponseEntity.ok(rec.toMap());
 	}
 
 	/**
-	 * Merge multiple documents into one, optionally burst the result.
+	 * POST /api/jobs/resume — resume a previously-paused burst job from its
+	 * on-disk .progress file. Distinct from {@code PATCH /jobs/{id}} because
+	 * resume operates on a file path (the JobRecord may no longer be in
+	 * memory — e.g. across app restarts) while pause/cancel act on the
+	 * in-memory active job by id.
 	 *
-	 * @param request { listFile: "temp/merge-abc", outputName: "combined.pdf", burst?: true, reportId?: "..." }
+	 * Body: { jobFilePath, cleanupPath? }. The worker runs in-process with
+	 * CLI args ["resume", jobFilePath]; cleanupPath is force-deleted afterwards.
+	 * For backwards compatibility the legacy keys {id, info} from the main
+	 * branch are also accepted: id → jobFilePath, info → cleanupPath.
 	 */
+	@PostMapping("/resume")
+	public ResponseEntity<Void> resumeFromDisk(@RequestBody @NotNull Map<String, String> body) {
+		String jobFilePath = body.getOrDefault("jobFilePath", body.get("id"));
+		String cleanupPath = body.getOrDefault("cleanupPath", body.get("info"));
+		log.info("POST /api/jobs/resume jobFilePath={} cleanupPath={}", jobFilePath, cleanupPath);
+		if (jobFilePath == null || jobFilePath.isBlank()) {
+			return ResponseEntity.badRequest().build();
+		}
+		jobExecutionService.executeAsync(new String[] { "job", "resume", jobFilePath }, () -> {
+			if (cleanupPath != null && !cleanupPath.isBlank()) {
+				try {
+					FileUtils.forceDelete(new File(cleanupPath));
+				} catch (java.io.IOException e) {
+					log.warn("Could not delete job file {}: {}", cleanupPath, e.getMessage());
+				}
+			}
+		});
+		return ResponseEntity.ok().build();
+	}
+
+	// ── Housekeeping endpoints (scope boundary — these are NOT touched by C9) ──
+
+	/** DELETE /api/jobs/quarantine — clear quarantined files. */
+	@DeleteMapping(value = "/quarantine", consumes = MediaType.ALL_VALUE)
+	public Mono<ResponseEntity<Void>> clearQuarantinedFiles() throws Exception {
+		FileUtils.cleanDirectory(new File(AppPaths.QUARANTINE_DIR_PATH));
+		return Mono.just(new ResponseEntity<>(HttpStatus.OK));
+	}
+
+	/** DELETE /api/jobs/temp/{folderName} — clear temp folder for a completed job. */
+	@DeleteMapping("/temp/{folderName}")
+	public Mono<ResponseEntity<Void>> clearTempFiles(@PathVariable String folderName) throws Exception {
+		long activeJobs = jobsService.fetchStats().count();
+		if (activeJobs == 0)
+			FileUtils.deleteQuietly(new File(AppPaths.JOBS_DIR_PATH + "/" + folderName));
+		return Mono.just(new ResponseEntity<>(HttpStatus.OK));
+	}
+
 	/**
-	 * Prepare a merge file list. Takes an array of file paths, writes them
-	 * to a temp file (one per line), returns the temp file path for use with /merge.
-	 * Replaces the old shellService.generateMergeFileInTempFolder().
+	 * DELETE /api/jobs/resume-file — remove a resume-pending job file.
+	 * Used by the Angular "Clear this job" action for pre-C9 paused jobs
+	 * that have no UUID in JobStore.
+	 */
+	@DeleteMapping(value = "/resume-file", consumes = MediaType.ALL_VALUE)
+	public ResponseEntity<Void> clearResumeFile(@RequestParam String path) {
+		try {
+			FileUtils.deleteQuietly(new File(Utils.resolvePathAgainstPortableDir(path)));
+		} catch (Exception e) {
+			log.warn("Could not delete resume file {}: {}", path, e.getMessage());
+		}
+		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * POST /api/jobs/merge-prepare-list — prepare file list for a merge job.
+	 * Utility endpoint that writes filePaths to a temp file and returns its path.
 	 */
 	@SuppressWarnings("unchecked")
-	@PostMapping(value = "/merge/prepare-list", consumes = MediaType.APPLICATION_JSON_VALUE)
+	@PostMapping(value = "/merge-prepare-list", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<Map<String, String>>> prepareMergeList(@RequestBody Map<String, Object> request) throws Exception {
 		List<String> filePaths = (List<String>) request.get("filePaths");
 		if (filePaths == null || filePaths.isEmpty()) {
@@ -256,10 +332,8 @@ public class JobsController {
 		String uniqueId = Long.toString(System.currentTimeMillis(), 36)
 				+ Long.toString((long) (Math.random() * 1e9), 36);
 		String listFilePath = "temp/merge-files-" + uniqueId;
-		String fullPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + listFilePath;
+		String fullPath = Utils.resolvePathAgainstPortableDir(listFilePath);
 
-		// Resolve each path against PORTABLE_EXECUTABLE_DIR so both absolute
-		// paths (from REST tests) and relative paths (from UI samples) work.
 		List<String> resolvedPaths = filePaths.stream()
 				.map(this::resolveFilePath)
 				.collect(Collectors.toList());
@@ -269,77 +343,54 @@ public class JobsController {
 		return Mono.just(ResponseEntity.ok(Map.of("listFile", listFilePath)));
 	}
 
-	/**
-	 * Merge multiple documents into one, optionally burst the result.
-	 */
-	@PostMapping(value = "/merge", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<Map<String, String>>> submitMerge(@RequestBody Map<String, Object> request) {
-		String listFile = (String) request.get("listFile");
-		String outputName = (String) request.get("outputName");
-		Boolean burst = (Boolean) request.get("burst");
-		String reportId = (String) request.get("reportId");
+	// ── Private helpers ────────────────────────────────────────────────────────
 
-		if (listFile == null || listFile.isBlank()) {
-			return Mono.just(ResponseEntity.badRequest().body(Map.of("error", "listFile is required")));
+	private void addQaArgs(List<String> args, Map<String, Object> request) {
+		if (Boolean.TRUE.equals(request.get("testAll"))) {
+			args.add("-ta");
+		} else if (request.get("testList") != null) {
+			args.add("-tl");
+			args.add(String.valueOf(request.get("testList")));
+		} else if (request.get("testRandom") != null) {
+			args.add("-tr");
+			args.add(String.valueOf(request.get("testRandom")));
 		}
-
-		List<String> args = new ArrayList<>();
-		args.add("document");
-		args.add("merge");
-		args.add(resolveFilePath(listFile));
-
-		if (outputName != null && !outputName.isBlank()) {
-			args.add("-o");
-			args.add(outputName);
-		}
-
-		if (Boolean.TRUE.equals(burst)) {
-			args.add("-b");
-			if (reportId != null && !reportId.isBlank()) {
-				String configPath = resolveSettingsPath(reportId);
-				args.add("-c");
-				args.add(configPath);
-			}
-		}
-
-		log.info("Submitting merge job: {}", args);
-		jobExecutionService.executeAsync(args.toArray(new String[0]));
-		return Mono.just(ResponseEntity.ok(Map.of("status", "submitted")));
 	}
 
-	// ── Path resolution (same logic as ReportsController.resolveSettingsPath) ──
+	@SuppressWarnings("unchecked")
+	private void addParamArgs(List<String> args, Map<String, Object> request) {
+		Map<String, String> params = (Map<String, String>) request.get("params");
+		if (params != null) {
+			for (Map.Entry<String, String> entry : params.entrySet()) {
+				args.add("-p");
+				args.add(entry.getKey() + "=" + entry.getValue());
+			}
+		}
+	}
 
 	private String resolveSettingsPath(String reportId) {
-		String reportsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports/" + reportId + "/settings.xml";
+		String reportsPath = Utils.resolvePathAgainstPortableDir("config/reports/" + reportId + "/settings.xml");
 		if (new File(reportsPath).exists()) return reportsPath;
 
-		String samplesPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/samples/" + reportId + "/settings.xml";
+		String samplesPath = Utils.resolvePathAgainstPortableDir("config/samples/" + reportId + "/settings.xml");
 		if (new File(samplesPath).exists()) return samplesPath;
 
-		String frendSamplesPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/samples/_frend/" + reportId + "/settings.xml";
+		String frendSamplesPath = Utils.resolvePathAgainstPortableDir("config/samples/_frend/" + reportId + "/settings.xml");
 		if (new File(frendSamplesPath).exists()) return frendSamplesPath;
 
-		String jasperPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports-jasper/" + reportId + "/settings.xml";
+		String jasperPath = Utils.resolvePathAgainstPortableDir("config/reports-jasper/" + reportId + "/settings.xml");
 		if (new File(jasperPath).exists()) return jasperPath;
 
-		String burstPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml";
+		String burstPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
 		if ("burst".equals(reportId) && new File(burstPath).exists()) return burstPath;
 
 		return reportsPath;
 	}
 
-	/**
-	 * Resolve a file path against PORTABLE_EXECUTABLE_DIR if relative.
-	 * Absolute paths are returned as-is.
-	 * The CLI's DataPallas.bat cd's into the installation dir, so relative paths
-	 * work there. For in-process execution, the JVM CWD is bkend/server/ — relative
-	 * paths must be resolved against PORTABLE_EXECUTABLE_DIR.
-	 */
 	private String resolveFilePath(String filePath) {
 		if (filePath == null || filePath.isBlank()) return filePath;
 		File f = new File(filePath);
 		if (f.isAbsolute()) return filePath;
 		return new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, filePath).getAbsolutePath();
 	}
-
 }

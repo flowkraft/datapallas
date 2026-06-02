@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 
 /**
@@ -10,7 +10,7 @@ import { ApiService } from './api.service';
   providedIn: 'root',
 })
 export class SystemService {
-  constructor(protected apiService: ApiService) {}
+  protected apiService = inject(ApiService);
 
   async getServicesStatus(skipProbe?: boolean): Promise<any> {
     return this.apiService.get('/system/services/status', { skipProbe });
@@ -21,16 +21,16 @@ export class SystemService {
   }
 
   async checkUrl(url: string): Promise<any> {
-    return this.apiService.get('/system/check-url', { url });
+    return this.apiService.get('/system/test-url', { url });
   }
 
   async getBlogPosts(): Promise<any> {
-    return this.apiService.get('/system/blog-posts');
+    return this.apiService.get('/system/info/news');
   }
 
   async getChangelog(itemName: string): Promise<any> {
     return this.apiService.get(
-      `/system/changelog?itemName=${encodeURIComponent(itemName)}`,
+      `/system/info/changelog?itemName=${encodeURIComponent(itemName)}`,
     );
   }
 }

@@ -44,6 +44,7 @@ export class ExecutionStatsService {
     workingOnFileNames: [],
     niceWorkingOnFileNames: '',
     jobsToResume: [],
+    currentJobId: null as string | null,
   };
 
   constructor() {}

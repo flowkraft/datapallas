@@ -679,8 +679,24 @@
   .rb-map-loading { color: #666; }
   .rb-map-error { color: #dc3545; background: #fff5f5; border: 1px solid #dc3545; border-radius: 4px; }
   /* Leaflet tiles should fill the container */
-  :global(.leaflet-container) { background: #eef2f5; font-family: inherit; }
+  :global(.leaflet-container) { background: transparent; font-family: inherit; }
+  /* Overlay chrome (tooltips, popups, zoom controls) — Leaflet's CDN CSS hardcodes
+     white surfaces + dark text. Theme them so they read against the host's palette.
+     Data-feature colors (markers, choropleth, grid) are left untouched. */
+  :global(.leaflet-tooltip),
+  :global(.leaflet-popup-content-wrapper),
+  :global(.leaflet-popup-tip) {
+    background: var(--rb-surface, Canvas);
+    color: inherit;
+    border-color: var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
+  }
   :global(.leaflet-tooltip) { font-size: 11px; }
+  :global(.leaflet-bar a),
+  :global(.leaflet-bar a:hover) {
+    background: var(--rb-surface, Canvas);
+    color: inherit;
+    border-color: var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
+  }
   /* Hide Leaflet / OpenStreetMap attribution without affecting map sizing —
      disabling attributionControl in map options triggered a Leaflet sizing regression. */
   :global(.leaflet-control-attribution) { display: none !important; }

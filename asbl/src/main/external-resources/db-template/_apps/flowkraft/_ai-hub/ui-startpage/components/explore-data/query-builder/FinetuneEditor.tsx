@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Play, Loader2, Sparkles } from "lucide-react";
+// lucide-react removed
 import dynamic from "next/dynamic";
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
@@ -114,11 +114,11 @@ export function FinetuneEditor({
     <div className="space-y-2">
       {cfg.subtitle && (
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{cfg.subtitle}</span>
+          <span className="text-xs text-base-content/60">{cfg.subtitle}</span>
         </div>
       )}
 
-      <div id={cfg.containerid} className="border border-border rounded-md overflow-hidden">
+      <div id={cfg.containerid} className="border border-base-300 rounded-md overflow-hidden">
         {CodeMirror && (
           <CodeMirror
             value={value}
@@ -141,9 +141,9 @@ export function FinetuneEditor({
           type="button"
           id={cfg.aiButtonId}
           onClick={onAiHelp}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-accent text-foreground transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-base-300 bg-base-100 hover:bg-base-200 text-base-content transition-colors"
         >
-          <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 text-violet-500"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 1 2.455 2.456ZM16.5 20.25l-.259 1.035a3.375 3.375 0 0 1-2.455 2.456L12.75 24l1.036-.259a3.375 3.375 0 0 0 2.455-2.456l.259-1.035Z" /></svg>
           Hey AI, Help Me…
         </button>
 
@@ -152,9 +152,12 @@ export function FinetuneEditor({
           id={cfg.runButtonId}
           onClick={() => { if (value.trim()) onRun(value); }}
           disabled={!value.trim() || executing}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-content hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          {executing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+          {executing
+            ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+            : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>
+          }
           {executing ? "Running..." : cfg.runLabel}
         </button>
       </div>

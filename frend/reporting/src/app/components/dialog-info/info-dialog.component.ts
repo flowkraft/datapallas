@@ -1,46 +1,46 @@
 import { Component, OnInit } from '@angular/core';
-import { BsModalRef } from 'ngx-bootstrap/modal';
 import { Subject } from 'rxjs';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
 
 @Component({
-  selector: 'dburst-info-dialog',
-  template: `
-    <div class="modal-header">
-      <h4 class="modal-title pull-left" [innerHTML]="title"></h4>
-      <button
-        type="button"
-        class="btn-close close pull-right"
-        aria-label="Close"
-        (click)="confirm()"
-      >
-        <span aria-hidden="true" class="visually-hidden">&times;</span>
-      </button>
-    </div>
-    <div class="modal-body" [innerHTML]="message"></div>
-    <div class="modal-footer">
-      <button
-        type="button"
-        class="btn btn-primary dburst-button-question-confirm"
-        (click)="confirm()"
-        [innerHTML]="confirmLabel"
-      ></button>
-    </div>
-  `,
+    selector: 'dburst-info-dialog',
+    standalone: true,
+    imports: [DpDialogComponent],
+    template: `
+    <dp-dialog [header]="title" [(visible)]="isVisible" (visibleChange)="onVisibleChange($event)">
+      <div [innerHTML]="message"></div>
+      <div ngProjectAs="[footer]">
+        <button
+          type="button"
+          class="btn btn-outline btn-primary dburst-button-question-confirm"
+          (click)="confirm()"
+          [innerHTML]="confirmLabel"
+        ></button>
+      </div>
+    </dp-dialog>
+  `
 })
 export class InfoDialogComponent implements OnInit {
-  onClose: Subject<boolean>;
-  title: string;
-  message: string;
-  confirmLabel: string;
+  isVisible = true;
+  onClose = new Subject<boolean>();
+  title = 'Information';
+  message = '';
+  confirmLabel = 'OK';
 
-  constructor(protected bsModalRef: BsModalRef) {}
-
-  ngOnInit(): void {
-    this.onClose = new Subject();
-  }
+  ngOnInit(): void {}
 
   confirm() {
-    this.onClose?.next(true);
-    this.bsModalRef.hide();
+    this._close(true);
+  }
+
+  onVisibleChange(visible: boolean) {
+    if (!visible) this._close(true);
+  }
+
+  private _close(result: boolean) {
+    if (this.onClose.isStopped) return;
+    this.isVisible = false;
+    this.onClose.next(result);
+    this.onClose.complete();
   }
 }

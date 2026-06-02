@@ -1,12 +1,13 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, inject, OnInit, input } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FileExplorerService } from './file-explorer.service';
 
 @Component({
-  selector: 'dburst-file-explorer',
-  templateUrl: './file-explorer.component.html',
-  // Enhanced styles to enforce column widths and prevent overflow
-  styles: [
-    `
+    selector: 'dburst-file-explorer',
+    templateUrl: './file-explorer.component.html',
+    // Enhanced styles to enforce column widths and prevent overflow
+    styles: [
+        `
       .selected-file {
         background-color: #d9edf7 !important; /* Light blue background */
         font-weight: bold;
@@ -240,11 +241,13 @@ import { FileExplorerService } from './file-explorer.service';
         }
       }
     `,
-  ],
+    ],
+    standalone: true,
+    imports: [CommonModule],
 })
 export class FileExplorerComponent implements OnInit {
-  @Input() showPermissionsColumn: boolean = false;
-  @Input() showActionsColumn: boolean = false;
+  showPermissionsColumn = input<boolean>(false);
+  showActionsColumn = input<boolean>(false);
 
   metaInfo: any = {
     title: 'File Explorer',
@@ -266,7 +269,7 @@ export class FileExplorerComponent implements OnInit {
   // Base directory path - will be initialized from meta info
   baseDirPath: string = '/'; // Initialize to prevent errors on early clicks
 
-  constructor(private fileExplorerService: FileExplorerService) {}
+  private fileExplorerService = inject(FileExplorerService);
 
   ngOnInit() {
     this.loadMetaInfo();

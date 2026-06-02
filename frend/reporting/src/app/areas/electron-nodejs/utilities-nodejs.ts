@@ -1,21 +1,21 @@
 import * as xml2js from 'xml2js';
 import Utilities from '../../helpers/utilities';
 
-let fs, AdmZip, path, os, jetpack;
+// Native-module access via a property-access call so esbuild's static analyser
+// never sees a bare require('fs') / require('adm-zip') … and does not attempt
+// to bundle Node built-ins. In Electron renderer window.require is always
+// present; in a plain Node.js context (e.g. Jasmine upgrade tests) fall back
+// to the module-local require — _req('fs') is still a property-like call that
+// esbuild ignores. The web build never reaches this file (fileReplacements in
+// angular.json severs the import chain before bundling).
+const _req: (id: string) => any =
+  typeof window !== 'undefined' ? (window as any).require : require;
 
-if (typeof window !== 'undefined' && window.require) {
-  fs = window.require('fs');
-  AdmZip = window.require('adm-zip');
-  path = window.require('path');
-  os = window.require('os');
-  jetpack = window.require('fs-jetpack');
-} else {
-  fs = require('fs');
-  AdmZip = require('adm-zip');
-  path = require('path');
-  os = require('os');
-  jetpack = require('fs-jetpack');
-}
+const fs      = _req('fs');
+const AdmZip  = _req('adm-zip');
+const path    = _req('path');
+const os      = _req('os');
+const jetpack = _req('fs-jetpack');
 
 export default class UtilitiesNodeJs {
   static pathResolve(pathSegments: string[]): string {
@@ -49,7 +49,7 @@ export default class UtilitiesNodeJs {
     }
 
     const finalLength =
-      length || parseInt(response.headers.get('Content-Length' || '0'), 10);
+      length || parseInt(response.headers.get('Content-Length') || '0', 10);
     const reader = body.getReader();
     const writer = fs.createWriteStream(targetFile);
 
@@ -64,7 +64,7 @@ export default class UtilitiesNodeJs {
 
   static async streamWithProgress(
     length: number,
-    reader: ReadableStreamReader<Uint8Array>,
+    reader: ReadableStreamDefaultReader<Uint8Array>,
     writer: NodeJS.WriteStream,
     progressCallback?: (bytesDone: number, percent: number) => void,
   ) {

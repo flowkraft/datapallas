@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Info, Code, Rocket, Loader2, Copy, X, CheckCircle2, XCircle, Terminal, FolderOpen, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -333,13 +332,6 @@ export default function AgentsPage() {
           ? 'bg-red-700'
           : 'bg-zinc-800';
 
-    const StatusIcon =
-      logStatus === 'success'
-        ? CheckCircle2
-        : logStatus === 'error'
-          ? XCircle
-          : Loader2;
-
     const handleCopy = () => {
       const text = [...logLines]
         .reverse()
@@ -362,8 +354,26 @@ export default function AgentsPage() {
           {/* Header bar */}
           <div className={`${headerBg} px-4 py-3 flex items-center justify-between text-white`}>
             <div className="flex items-center gap-2">
-              <Terminal className="w-5 h-5" />
-              <StatusIcon id={`provision-status-${logStatus}`} className={`w-5 h-5 ${logStatus === 'running' ? 'animate-spin' : ''}`} />
+              {/* Heroicon: command-line (terminal) */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+              {logStatus === 'running' ? (
+                /* Heroicon: arrow-path (spinner) */
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" id={`provision-status-${logStatus}`} className="w-5 h-5 animate-spin">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              ) : logStatus === 'success' ? (
+                /* Heroicon: check-circle */
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" id={`provision-status-${logStatus}`} className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              ) : (
+                /* Heroicon: x-circle */
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" id={`provision-status-${logStatus}`} className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              )}
               <span className="font-semibold">Provisioning Logs</span>
             </div>
             <div className="flex items-center gap-2">
@@ -372,7 +382,10 @@ export default function AgentsPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-white/20 hover:bg-white/30 transition-colors"
                 title="Copy logs to clipboard"
               >
-                <Copy className="w-4 h-4" />
+                {/* Heroicon: clipboard-document */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                </svg>
                 Copy
               </button>
               <button
@@ -384,7 +397,10 @@ export default function AgentsPage() {
                 disabled={provisioning}
                 title={provisioning ? 'Wait for provisioning to complete' : 'Close log panel'}
               >
-                <X className="w-4 h-4" />
+                {/* Heroicon: x-mark */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
                 Close
               </button>
             </div>
@@ -423,7 +439,7 @@ export default function AgentsPage() {
     return (
       <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center py-12">
-          <p className="text-muted-foreground">Loading agents...</p>
+          <p className="text-base-content/60">Loading agents...</p>
         </div>
         {renderLogPanel()}
       </div>
@@ -437,8 +453,8 @@ export default function AgentsPage() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div id="agents-empty-state" className="text-center mb-12">
-            <h1 id="agents-page-heading" className="text-4xl font-bold text-foreground mb-4">Welcome to AI Crew</h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <h1 id="agents-page-heading" className="text-4xl font-bold text-base-content mb-4">Welcome to AI Crew</h1>
+            <p className="text-lg text-base-content/60 max-w-2xl mx-auto">
               No agents found. Provision the DataPallas AI Crew to get started.
             </p>
           </div>
@@ -450,17 +466,23 @@ export default function AgentsPage() {
               size="lg"
               onClick={() => setShowProvisionConfirm(true)}
               disabled={provisioning}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              className="bg-primary hover:bg-primary/90 text-primary-content px-8 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {provisioning ? (
                 <>
-                  <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+                  {/* Heroicon: arrow-path */}
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 mr-3 animate-spin">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
                   Provisioning... (60-120s)
                 </>
               ) : (
                 <>
-                  <Rocket className="w-6 h-6 mr-3" />
-                  Provision DataPallas's AI Crew Agents
+                  {/* Heroicon: rocket-launch */}
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 mr-3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 0 1-2.448-2.448 14.9 14.9 0 0 1 .06-.312m-2.24 2.39a4.493 4.493 0 0 0-1.757 4.306 4.493 4.493 0 0 0 4.306-1.758M16.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
+                  </svg>
+                  Provision DataPallas&apos;s AI Crew Agents
                 </>
               )}
             </Button>
@@ -468,30 +490,30 @@ export default function AgentsPage() {
 
           {/* Info Section */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-card border border-border rounded-lg p-6 text-center">
-              <h3 className="font-semibold text-foreground mb-2">Athena</h3>
-              <p className="text-sm text-muted-foreground font-medium">DataPallas Guru & Data Architect/Expert</p>
-              <p className="text-xs text-muted-foreground mt-2">Get help mastering DataPallas, designing data models, writing SQL, architecting business intelligence and reporting solutions</p>
+            <div className="bg-base-100 border border-base-300 rounded-lg p-6 text-center">
+              <h3 className="font-semibold text-base-content mb-2">Athena</h3>
+              <p className="text-sm text-base-content/60 font-medium">DataPallas Guru & Data Architect/Expert</p>
+              <p className="text-xs text-base-content/60 mt-2">Get help mastering DataPallas, designing data models, writing SQL, architecting business intelligence and reporting solutions</p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-6 text-center">
-              <h3 className="font-semibold text-foreground mb-2">Hephaestus</h3>
-              <p className="text-sm text-muted-foreground font-medium">Automation & Backend Expert</p>
-              <p className="text-xs text-muted-foreground mt-2">Ask about scheduled jobs, ETL pipelines, cron automations, Groovy scripts, and backend integrations</p>
+            <div className="bg-base-100 border border-base-300 rounded-lg p-6 text-center">
+              <h3 className="font-semibold text-base-content mb-2">Hephaestus</h3>
+              <p className="text-sm text-base-content/60 font-medium">Automation & Backend Expert</p>
+              <p className="text-xs text-base-content/60 mt-2">Ask about scheduled jobs, ETL pipelines, cron automations, Groovy scripts, and backend integrations</p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-6 text-center">
-              <h3 className="font-semibold text-foreground mb-2">Hermes</h3>
-              <p className="text-sm text-muted-foreground font-medium">Grails Guru & Web Portal Expert</p>
-              <p className="text-xs text-muted-foreground mt-2">Ask about building dashboards, admin panels, customer portals, and self-service web applications</p>
+            <div className="bg-base-100 border border-base-300 rounded-lg p-6 text-center">
+              <h3 className="font-semibold text-base-content mb-2">Hermes</h3>
+              <p className="text-sm text-base-content/60 font-medium">Grails Guru & Web Portal Expert</p>
+              <p className="text-xs text-base-content/60 mt-2">Ask about building dashboards, admin panels, customer portals, and self-service web applications</p>
             </div>
           </div>
 
           {/* Requirements Note */}
-          <div className="mt-8 bg-muted/50 border border-border rounded-lg p-6">
-            <h4 className="font-semibold text-foreground mb-2">Requirements</h4>
-            <p className="text-sm text-muted-foreground">
-              Make sure you have <code className="bg-background px-2 py-1 rounded text-xs">OPENAI_API_KEY</code> and{' '}
-              <code className="bg-background px-2 py-1 rounded text-xs">OPENAI_API_BASE</code> configured in your{' '}
-              <code className="bg-background px-2 py-1 rounded text-xs">.env</code> file before provisioning.
+          <div className="mt-8 bg-base-200/50 border border-base-300 rounded-lg p-6">
+            <h4 className="font-semibold text-base-content mb-2">Requirements</h4>
+            <p className="text-sm text-base-content/60">
+              Make sure you have <code className="bg-base-100 px-2 py-1 rounded text-xs">OPENAI_API_KEY</code> and{' '}
+              <code className="bg-base-100 px-2 py-1 rounded text-xs">OPENAI_API_BASE</code> configured in your{' '}
+              <code className="bg-base-100 px-2 py-1 rounded text-xs">.env</code> file before provisioning.
             </p>
           </div>
         </div>
@@ -513,7 +535,7 @@ export default function AgentsPage() {
                   handleProvisionAgents();
                 }}
                 disabled={provisioning}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="bg-primary hover:bg-primary/90 text-primary-content"
               >
                 Yes, Provision Agents
               </Button>
@@ -539,8 +561,8 @@ export default function AgentsPage() {
       <div className="mb-8 max-w-7xl mx-auto">
         <div className="flex items-start justify-between">
           <div>
-            <h1 id="agents-page-heading" className="text-3xl font-bold text-foreground mb-2">The Oracles of Ancient Greece</h1>
-            <p className="text-muted-foreground">
+            <h1 id="agents-page-heading" className="text-3xl font-bold text-base-content mb-2">The Oracles of Ancient Greece</h1>
+            <p className="text-base-content/60">
               FlowKraft&apos;s council of AI oracles, each a master of their domain. Seek their counsel or explore their workspace.
             </p>
           </div>
@@ -549,19 +571,19 @@ export default function AgentsPage() {
               type="checkbox"
               checked={showAlternatives}
               onChange={(e) => setShowAlternatives(e.target.checked)}
-              className="rounded border-border text-primary focus:ring-primary cursor-pointer"
+              className="rounded border-base-300 text-primary focus:ring-primary cursor-pointer"
             />
-            <span className="text-xs text-muted-foreground">Show Next.js &amp; WordPress Oracles</span>
+            <span className="text-xs text-base-content/60">Show Next.js &amp; WordPress Oracles</span>
           </label>
         </div>
       </div>
 
       {/* Agents Table */}
       <div id="agents-table" className="max-w-7xl mx-auto mb-6">
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="bg-base-100 border border-base-300 rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="bg-muted/50 px-6 py-3 border-b border-border">
-            <div className="grid grid-cols-12 gap-4 font-semibold text-sm text-muted-foreground">
+          <div className="bg-base-200/50 px-6 py-3 border-b border-base-300">
+            <div className="grid grid-cols-12 gap-4 font-semibold text-sm text-base-content/60">
               <div className="col-span-12 sm:col-span-2">Name</div>
               <div className="hidden sm:block sm:col-span-4">Description</div>
               <div className="hidden md:block md:col-span-4">Tags</div>
@@ -570,7 +592,7 @@ export default function AgentsPage() {
           </div>
 
           {/* Table Body */}
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-base-300">
             {visibleAgents.map((agent) => {
               const athena = isAthena(agent);
               const alternative = isAlternativeOracle(agent);
@@ -579,7 +601,7 @@ export default function AgentsPage() {
                   key={agent.id}
                   id={`agent-row-${agent.name.toLowerCase().replace(/\s+/g, '-')}`}
                   data-highlighted={athena ? 'true' : undefined}
-                  className={`grid grid-cols-12 gap-4 px-6 py-4 hover:bg-muted/30 transition-colors ${
+                  className={`grid grid-cols-12 gap-4 px-6 py-4 hover:bg-base-200/30 transition-colors ${
                     athena ? 'bg-primary/5 border-l-2 border-l-primary' : ''
                   }`}
                 >
@@ -589,14 +611,14 @@ export default function AgentsPage() {
                       <span
                         className={`${
                           athena
-                            ? 'font-semibold text-foreground'
-                            : 'font-normal text-foreground ml-3'
+                            ? 'font-semibold text-base-content'
+                            : 'font-normal text-base-content ml-3'
                         }`}
                       >
                         {agent.name}
                       </span>
                       {alternative && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-base-200 text-base-content/60">
                           alt
                         </span>
                       )}
@@ -605,7 +627,7 @@ export default function AgentsPage() {
 
                   {/* Description Column */}
                   <div className="hidden sm:block sm:col-span-4">
-                    <p className={`text-sm ${athena ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                    <p className={`text-sm ${athena ? 'text-base-content font-medium' : 'text-base-content/60'}`}>
                       {getDescription(agent)}
                     </p>
                   </div>
@@ -632,18 +654,24 @@ export default function AgentsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleShowInfo(agent)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-base-content/60 hover:text-base-content"
                       title="View details"
                     >
-                      <Info className="w-4 h-4" />
+                      {/* Heroicon: information-circle */}
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                      </svg>
                     </Button>
                     <Button
                       variant="default"
                       size="sm"
                       onClick={() => handleChatWithAgent(agent)}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                      className="bg-primary hover:bg-primary/90 text-primary-content"
                     >
-                      <MessageSquare className="w-4 h-4 mr-1.5" />
+                      {/* Heroicon: chat-bubble-left-right */}
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                      </svg>
                       Chat
                     </Button>
                   </div>
@@ -661,9 +689,12 @@ export default function AgentsPage() {
           variant="outline"
           size="lg"
           onClick={() => router.push('/workspaces')}
-          className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          className="border-primary text-primary hover:bg-primary hover:text-primary-content"
         >
-          <FolderOpen className="w-5 h-5 mr-2" />
+          {/* Heroicon: folder-open */}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 mr-2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776" />
+          </svg>
           View Oracle Workspaces
         </Button>
         {/* Project dropdown */}
@@ -672,37 +703,49 @@ export default function AgentsPage() {
             variant="outline"
             size="lg"
             onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-            className="border-primary hover:bg-primary hover:text-primary-foreground"
+            className="border-primary hover:bg-primary hover:text-primary-content"
           >
-            <FolderOpen className="w-5 h-5 mr-2" />
+            {/* Heroicon: folder-open */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 mr-2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776" />
+            </svg>
             Projects
-            <ChevronDown className="w-4 h-4 ml-2" />
+            {/* Heroicon: chevron-down */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 ml-2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
           </Button>
 
           {projectDropdownOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setProjectDropdownOpen(false)} />
-              <div className="absolute left-0 mt-2 w-56 bg-card border border-border rounded-md shadow-lg z-50">
+              <div className="absolute left-0 mt-2 w-56 bg-base-100 border border-base-300 rounded-box shadow-lg z-50">
                 <div className="py-1">
                   <button
                     onClick={() => {
                       window.open('http://localhost:8442/?workspace=/workspaces/datapallas.code-workspace', '_blank', 'noopener,noreferrer');
                       setProjectDropdownOpen(false);
                     }}
-                    className="w-full px-4 py-2.5 text-sm text-left hover:bg-muted transition-colors flex items-center gap-3"
+                    className="w-full px-4 py-2.5 text-sm text-left hover:bg-base-200 transition-colors flex items-center gap-3"
                   >
-                    <Code className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-card-foreground">DataPallas</span>
+                    {/* Heroicon: code-bracket */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-base-content/60">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+                    </svg>
+                    <span className="text-base-content">DataPallas</span>
                   </button>
                   <button
                     onClick={() => {
                       window.open('http://localhost:8442/?workspace=/workspaces/flowkraft-apps.code-workspace', '_blank', 'noopener,noreferrer');
                       setProjectDropdownOpen(false);
                     }}
-                    className="w-full px-4 py-2.5 text-sm text-left hover:bg-muted transition-colors flex items-center gap-3"
+                    className="w-full px-4 py-2.5 text-sm text-left hover:bg-base-200 transition-colors flex items-center gap-3"
                   >
-                    <Code className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-card-foreground">The Apps</span>
+                    {/* Heroicon: code-bracket */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-base-content/60">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+                    </svg>
+                    <span className="text-base-content">The Apps</span>
                   </button>
                 </div>
               </div>
@@ -724,13 +767,13 @@ export default function AgentsPage() {
             <div className="space-y-4 pt-4">
               {/* Description */}
               <div>
-                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Description</h4>
-                <p className="text-foreground">{getDescription(selectedAgent)}</p>
+                <h4 className="font-semibold text-sm text-base-content/60 mb-2">Description</h4>
+                <p className="text-base-content">{getDescription(selectedAgent)}</p>
               </div>
 
               {/* Tags */}
               <div>
-                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Tags</h4>
+                <h4 className="font-semibold text-sm text-base-content/60 mb-2">Tags</h4>
                 <div className="flex flex-wrap gap-2">
                   {selectedAgent.tags.map((tag) => (
                     <span
@@ -745,8 +788,8 @@ export default function AgentsPage() {
 
               {/* Matrix Room */}
               <div>
-                <h4 className="font-semibold text-sm text-muted-foreground mb-2">Matrix Room</h4>
-                <code className="text-sm bg-muted px-2 py-1 rounded">
+                <h4 className="font-semibold text-sm text-base-content/60 mb-2">Matrix Room</h4>
+                <code className="text-sm bg-base-200 px-2 py-1 rounded">
                   {selectedAgent.matrixRoom}
                 </code>
               </div>
@@ -758,9 +801,12 @@ export default function AgentsPage() {
                     handleChatWithAgent(selectedAgent);
                     setIsModalOpen(false);
                   }}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  className="bg-primary hover:bg-primary/90 text-primary-content"
                 >
-                  <MessageSquare className="w-4 h-4 mr-2" />
+                  {/* Heroicon: chat-bubble-left-right */}
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                  </svg>
                   Chat with {selectedAgent.name}
                 </Button>
               </div>
@@ -780,14 +826,14 @@ export default function AgentsPage() {
           </DialogHeader>
 
           {/* Tab bar */}
-          <div className="flex border-b border-border -mx-6 px-6">
+          <div className="flex border-b border-base-300 -mx-6 px-6">
             <button
               type="button"
               onClick={() => setSettingsTab('update')}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 settingsTab === 'update'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  : 'border-transparent text-base-content/60 hover:text-base-content'
               }`}
             >
               Update Agents
@@ -798,7 +844,7 @@ export default function AgentsPage() {
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 settingsTab === 'provider'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  : 'border-transparent text-base-content/60 hover:text-base-content'
               }`}
             >
               API Provider
@@ -808,7 +854,7 @@ export default function AgentsPage() {
           {/* Tab: Update Agents */}
           {settingsTab === 'update' && (
             <div>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-base-content/60 mb-4">
                 This will re-provision your AI crew agents. Existing agent configurations
                 and memory blocks will be updated to match the latest definitions.
               </p>
@@ -819,14 +865,14 @@ export default function AgentsPage() {
                   type="checkbox"
                   checked={giveDbQueryToolToAthena}
                   onChange={(e) => setGiveDbQueryToolToAthena(e.target.checked)}
-                  className="mt-0.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                  className="mt-0.5 rounded border-base-300 text-primary focus:ring-primary cursor-pointer"
                 />
                 <div>
-                  <span className="text-sm font-medium text-foreground">Give db_query tool to Athena</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <span className="text-sm font-medium text-base-content">Give db_query tool to Athena</span>
+                  <p className="text-xs text-base-content/60 mt-0.5">
                     When checked, Athena gets READ-ONLY access to query your
                     DataPallas database connections.{' '}
-                    <strong className="text-foreground">When unchecked, no AI agent
+                    <strong className="text-base-content">When unchecked, no AI agent
                     has any database access whatsoever.</strong>
                   </p>
                 </div>
@@ -838,11 +884,11 @@ export default function AgentsPage() {
                   type="checkbox"
                   checked={forceUpdate}
                   onChange={(e) => setForceUpdate(e.target.checked)}
-                  className="mt-0.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                  className="mt-0.5 rounded border-base-300 text-primary focus:ring-primary cursor-pointer"
                 />
                 <div>
-                  <span className="text-sm font-medium text-foreground">Force recreate</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <span className="text-sm font-medium text-base-content">Force recreate</span>
+                  <p className="text-xs text-base-content/60 mt-0.5">
                     Delete and recreate all agents from scratch. Use this if agents are
                     in a broken state. All conversation history will be lost.
                   </p>
@@ -857,7 +903,7 @@ export default function AgentsPage() {
                     handleProvisionAgents(forceUpdate, giveDbQueryToolToAthena);
                   }}
                   disabled={provisioning}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  className="bg-primary hover:bg-primary/90 text-primary-content"
                 >
                   Yes, Update Agents
                 </Button>

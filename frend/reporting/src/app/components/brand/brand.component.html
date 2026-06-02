@@ -1,14 +1,7 @@
-<!-- logo for regular state and mobile devices -->
-<span class="logo-lg">
-  <i
-    class="fa"
-    [ngClass]="isSidebarCollapsed ? 'fa-angle-right' : 'fa-angle-left'"
-    data-toggle="push-menu"
-    style="font-size: 20px; margin-right: 4px;"
-  ></i>
-  <strong>Data</strong><em>Pallas</em>&nbsp;
+<span class="logo-lg flex items-center gap-1">
+  <span class="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="28" height="28"
-       style="vertical-align: -6px; margin-left: 3px; filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.7));">
+       style="display: inline-block; vertical-align: -6px; margin-left: 3px; filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.7));">
     <!-- Cornice — warm stone -->
     <rect x="32" y="56" width="192" height="14" fill="#f0e2c0"/>
     <!-- Frieze — vivid terracotta (strong contrast on dark) -->
@@ -32,4 +25,3 @@
     <rect x="0"   y="220" width="256" height="14" fill="#c8a860"/>
   </svg>
 </span>
-

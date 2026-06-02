@@ -1,17 +1,21 @@
-export const modalWellKnownTemplate = `<p-dialog id="modalWellKnownEmailProviders" header="{{
+export const modalWellKnownTemplate = `<dp-dialog id="modalWellKnownEmailProviders" header="{{
   'COMPONENTS.BUTTON-WELL-KNOWN.WELL-KNOWN-PROVIDERS' | translate }}" [(visible)]="isModalWellKnownVisible"
-  [baseZIndex]="1000" [modal]="true">
+>
 
   <div style="max-height: 450px; width: 375px; overflow: auto; cursor: pointer">
-    <table class="table table-condensed table-hover table-bordered">
+    <table class="table table-xs">
       <tbody>
-        <tr *ngFor="let provider of providers" (dblclick)="onModalOK()" (click)="onProviderClick(provider)"
-          [ngClass]="{ 'info': provider.active }">
-          <td id='{{provider.name}}'>{{provider.name}}
-            <span *ngIf="provider.active">
-              <br>{{provider.settings | json}}</span>
-          </td>
-        </tr>
+        @for (provider of providers; track $index) {
+          <tr (dblclick)="onModalOK()" (click)="onProviderClick(provider)"
+            [ngClass]="{'bg-primary/10': provider.active}">
+            <td id='{{provider.name}}'>{{provider.name}}
+              @if (provider.active) {
+                <span>
+                  <br>{{provider.settings | json}}</span>
+              }
+            </td>
+          </tr>
+        }
       </tbody>
     </table>
   </div>
@@ -25,16 +29,14 @@ export const modalWellKnownTemplate = `<p-dialog id="modalWellKnownEmailProvider
   </div>
 
 
-  <p-footer>
-
-    <button id="btnOKConfirmation" class="btn btn-primary" type="button" (click)="onModalOK()"
+  <div ngProjectAs="[footer]">
+    <button id="btnOKConfirmation" class="btn btn-outline btn-primary" type="button" (click)="onModalOK()"
       [disabled]="!getSelectedProvider()">{{
       'COMPONENTS.BUTTON-WELL-KNOWN.LOAD-SMTP-SETTINGS' | translate }}</button>
 
-    <button id="btnClose" class="btn btn-flat btn-default" type="button" (click)="onModalClose()">{{
+    <button id="btnClose" class="btn btn-ghost" type="button" (click)="onModalClose()">{{
       'BUTTONS.CANCEL' | translate }}</button>
+  </div>
 
-  </p-footer>
-
-</p-dialog>
+</dp-dialog>
 `;

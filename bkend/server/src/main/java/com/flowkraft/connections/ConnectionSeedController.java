@@ -18,9 +18,9 @@ import reactor.core.publisher.Mono;
 /**
  * REST endpoints for the Seed Data tab in the Connection Details modal.
  *
- * POST /api/connections/{connectionCode}/run-custom-seed  — execute a Groovy seed script
- * GET  /api/connections/{connectionCode}/seed-status      — check seed_inv_* table state
- * GET  /api/seed-templates                               — list bundled .groovy templates
+ * POST /api/connections/{connectionCode}/run-seed     — execute a Groovy seed script
+ * GET  /api/connections/{connectionCode}/seed-status  — check seed_inv_* table state
+ * GET  /api/connections/seed-templates                — list bundled .groovy templates
  */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -40,7 +40,7 @@ public class ConnectionSeedController {
      * Body: { "script": "...", "params": { "N": 10000, ... } }
      * Response: { "ok": bool, "durationMs": long, "rowCounts": { table: count }, "error"?: string }
      */
-    @PostMapping(value = "/api/connections/{connectionCode}/run-custom-seed",
+    @PostMapping(value = "/api/connections/{connectionCode}/run-seed",
                  consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> runCustomSeed(
             @PathVariable String connectionCode,
@@ -78,7 +78,7 @@ public class ConnectionSeedController {
      *
      * Response: [{ "id": string, "displayName": string, "description": string, "source": string }]
      */
-    @GetMapping(value = "/api/seed-templates", consumes = MediaType.ALL_VALUE)
+    @GetMapping(value = "/api/connections/seed-templates", consumes = MediaType.ALL_VALUE)
     public Mono<List<Map<String, Object>>> listSeedTemplates() {
         return Mono.fromCallable(() -> {
             log.debug("list-seed-templates");

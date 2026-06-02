@@ -58,12 +58,12 @@ export function GaugeConfig({ config, columns, onChange }: GaugeConfigProps) {
     <div id="configPanel-gauge" className="space-y-3">
       {/* Value field */}
       <div>
-        <span className="text-xs text-muted-foreground">Value <span className="text-emerald-500">(measure)</span></span>
+        <span className="text-xs text-base-content/60">Value <span className="text-emerald-500">(measure)</span></span>
         <select
           id="selectGaugeField"
           value={field}
           onChange={(e) => onChange({ ...config, field: e.target.value })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           <option value="">Auto-detect</option>
           {measures.map((c) => (
@@ -75,47 +75,47 @@ export function GaugeConfig({ config, columns, onChange }: GaugeConfigProps) {
       {/* Min / Max */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <span className="text-xs text-muted-foreground">Min</span>
+          <span className="text-xs text-base-content/60">Min</span>
           <input
             id="inputGaugeMin"
             type="number"
             value={min}
             onChange={(e) => onChange({ ...config, min: Number(e.target.value) })}
-            className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+            className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
           />
         </div>
         <div>
-          <span className="text-xs text-muted-foreground">Max</span>
+          <span className="text-xs text-base-content/60">Max</span>
           <input
             id="inputGaugeMax"
             type="number"
             value={max}
             onChange={(e) => onChange({ ...config, max: Number(e.target.value) })}
-            className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+            className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
           />
         </div>
       </div>
 
       {/* Label */}
       <div>
-        <span className="text-xs text-muted-foreground">Label</span>
+        <span className="text-xs text-base-content/60">Label</span>
         <input
           id="inputGaugeLabel"
           value={label}
           onChange={(e) => onChange({ ...config, label: e.target.value })}
           placeholder="Auto from field name"
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         />
       </div>
 
       {/* Format */}
       <div>
-        <span className="text-xs text-muted-foreground">Format</span>
+        <span className="text-xs text-base-content/60">Format</span>
         <select
           id="selectGaugeFormat"
           value={format}
           onChange={(e) => onChange({ ...config, gaugeFormat: e.target.value })}
-          className="w-full mt-1 text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+          className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
         >
           {FORMAT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -126,10 +126,10 @@ export function GaugeConfig({ config, columns, onChange }: GaugeConfigProps) {
       {/* Color bands */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground">Color bands (up to…)</span>
+          <span className="text-xs text-base-content/60">Color bands (up to…)</span>
           <button
             onClick={() => onChange({ ...config, gaugeBands: DEFAULT_BANDS })}
-            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            className="text-[10px] text-base-content/60 hover:text-base-content transition-colors"
           >
             Reset
           </button>
@@ -150,35 +150,35 @@ export function GaugeConfig({ config, columns, onChange }: GaugeConfigProps) {
                   style={{ backgroundColor: renderedColor }}
                   title={label}
                 />
-                <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
+                <span className="text-xs text-base-content/60 w-20 shrink-0">{label}</span>
                 <input
                   id={`inputGaugeBand-${idx}`}
                   type="number"
                   value={band.to}
                   onChange={(e) => setBandTo(idx, Number(e.target.value))}
-                  className="flex-1 text-sm bg-background border border-border rounded-md px-2 py-1 text-foreground"
+                  className="flex-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1 text-base-content"
                 />
               </div>
             );
           })}
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1">
+        <p className="text-[10px] text-base-content/60 mt-1">
           Each band covers from the previous threshold up to this value. Values are on the same scale as Min / Max.
         </p>
       </div>
 
       {/* Risk-metric mode — flips color order so high values render red.
           Storage key stays `gaugeBandsReverse` for backward compat. */}
-      <label htmlFor="cbGaugeHigherIsWorse" className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
+      <label htmlFor="cbGaugeHigherIsWorse" className="flex items-center gap-2 text-xs text-base-content cursor-pointer">
         <input
           id="cbGaugeHigherIsWorse"
           type="checkbox"
           checked={reverseColors}
           onChange={(e) => onChange({ ...config, gaugeBandsReverse: e.target.checked })}
-          className="rounded border-border"
+          className="rounded border-base-300"
         />
         <span>Higher = worse</span>
-        <span className="text-[10px] text-muted-foreground ml-auto">
+        <span className="text-[10px] text-base-content/60 ml-auto">
           {reverseColors ? "risk metric" : "performance metric"}
         </span>
       </label>

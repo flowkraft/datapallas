@@ -389,7 +389,7 @@ const DASHBOARD_HTML = `<meta charset="utf-8">
 
   <!-- Parameters -->
   <div class="params-bar">
-    <rb-parameters report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" show-reload="true"></rb-parameters>
+    <rb-parameters report-id="my-dashboard" api-base-url="http://localhost:9090/api" show-reload="true"></rb-parameters>
   </div>
 
   <!-- KPI Cards — all 4 share component-id="atomicValues" (1 fetch, cached), each picks a different field -->
@@ -397,25 +397,25 @@ const DASHBOARD_HTML = `<meta charset="utf-8">
     <div class="kpi-card">
       <p class="kpi-label">Revenue</p>
       <p class="kpi-value">
-        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="atomicValues" field="revenue" format="currency"></rb-value>
+        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="atomicValues" field="revenue" format="currency"></rb-value>
       </p>
     </div>
     <div class="kpi-card">
       <p class="kpi-label">Orders</p>
       <p class="kpi-value">
-        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="atomicValues" field="orders" format="number"></rb-value>
+        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="atomicValues" field="orders" format="number"></rb-value>
       </p>
     </div>
     <div class="kpi-card">
       <p class="kpi-label">Avg Order Value</p>
       <p class="kpi-value">
-        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="atomicValues" field="avgOrderValue" format="currency"></rb-value>
+        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="atomicValues" field="avgOrderValue" format="currency"></rb-value>
       </p>
     </div>
     <div class="kpi-card">
       <p class="kpi-label">Customers</p>
       <p class="kpi-value">
-        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="atomicValues" field="customers" format="number"></rb-value>
+        <rb-value report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="atomicValues" field="customers" format="number"></rb-value>
       </p>
     </div>
   </div>
@@ -424,11 +424,11 @@ const DASHBOARD_HTML = `<meta charset="utf-8">
   <div class="charts-row">
     <div class="card">
       <h2 class="card-title">Revenue Trend</h2>
-      <rb-chart report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="revenueTrend"></rb-chart>
+      <rb-chart report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="revenueTrend"></rb-chart>
     </div>
     <div class="card">
       <h2 class="card-title">Revenue by Category</h2>
-      <rb-chart report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="revenueByCategory"></rb-chart>
+      <rb-chart report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="revenueByCategory"></rb-chart>
     </div>
   </div>
 
@@ -436,7 +436,7 @@ const DASHBOARD_HTML = `<meta charset="utf-8">
   <div class="table-section">
     <div class="card">
       <h2 class="card-title">Top 10 Customers</h2>
-      <rb-tabulator report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="topCustomers"></rb-tabulator>
+      <rb-tabulator report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="topCustomers"></rb-tabulator>
     </div>
   </div>
 
@@ -444,7 +444,7 @@ const DASHBOARD_HTML = `<meta charset="utf-8">
   <div class="pivot-section">
     <div class="card">
       <h2 class="card-title">Order Explorer</h2>
-      <rb-pivot-table report-id="my-dashboard" api-base-url="http://localhost:9090/api/reporting" component-id="orderExplorer"></rb-pivot-table>
+      <rb-pivot-table report-id="my-dashboard" api-base-url="http://localhost:9090/api" component-id="orderExplorer"></rb-pivot-table>
     </div>
   </div>
 </div>`;
@@ -485,15 +485,15 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
         .confirmDialogShouldBeVisible()
         .clickYesDoThis()
         .waitOnElementToBecomeDisabled('#btnTestDbConnection')
-        .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'fa-spin')
-        .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'fa-spin')
+        .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
+        .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
         .waitOnToastToBecomeVisible(
           'success',
           'Successfully connected to the database',
           Constants.DELAY_HUNDRED_SECONDS,
         )
         // Navigate to Database Schema tab to verify schema was loaded (as shown in tutorial)
-        .click('#databaseSchemaTab-link')
+        .click('#tab-btn-databaseSchemaTab')
         .waitOnElementToBecomeInvisible(
           'span:has-text("To load the schema, please ensure your connection details are configured")',
         )
@@ -525,13 +525,13 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
 
       // Set report parameters spec (country filter)
       ft = ft
-        .waitOnElementToBecomeEnabled('#tabScriptReportParameters-link')
-        .click('#tabScriptReportParameters-link')
+        .waitOnElementToBecomeEnabled('#tab-btn-tabScriptReportParameters')
+        .click('#tab-btn-tabScriptReportParameters')
         .sleep(Constants.DELAY_ONE_SECOND)
         .waitOnElementToBecomeVisible('#paramsSpecEditor')
         .setCodeJarContentSingleShot('#paramsSpecEditor', PARAMS_SPEC)
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#tabScriptCode-link')
+        .click('#tab-btn-tabScriptCode')
         .waitOnElementToBecomeVisible('#groovyScriptEditor')
         .sleep(Constants.DELAY_ONE_SECOND);
 
@@ -559,7 +559,7 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
       // Configure the dashboard HTML template
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingTemplateOutputTab-link')
+        .click('#tab-btn-reportingTemplateOutputTab')
         .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
         .sleep(3 * Constants.DELAY_ONE_SECOND)
         .setCodeJarContentSingleShot('#codeJarHtmlTemplateEditor', DASHBOARD_HTML);
@@ -567,27 +567,27 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
       // Step 6: Configure Tabulator DSL — click main Tabulator tab, then "Tabulator Options" sub-tab
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingTabulatorTab-link')
+        .click('#tab-btn-reportingTabulatorTab')
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#tabulatorOptionsTab-link')
+        .click('#tab-btn-tabulatorOptionsTab')
         .waitOnElementToBecomeVisible('#tabulatorConfigEditor')
         .setCodeJarContentSingleShot('#tabulatorConfigEditor', TABULATOR_DSL);
 
       // Step 6: Configure Chart DSL — click main Chart tab, then "Chart Options" sub-tab
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingChartTab-link')
+        .click('#tab-btn-reportingChartTab')
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#chartOptionsTab-link')
+        .click('#tab-btn-chartOptionsTab')
         .waitOnElementToBecomeVisible('#chartConfigEditor')
         .setCodeJarContentSingleShot('#chartConfigEditor', CHART_DSL);
 
       // Step 6: Configure Pivot Table DSL — click main Pivot Table tab, then "Pivot Table Options" sub-tab
       ft = ft
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#reportingPivotTableTab-link')
+        .click('#tab-btn-reportingPivotTableTab')
         .sleep(Constants.DELAY_ONE_SECOND)
-        .click('#pivotTableOptionsTab-link')
+        .click('#tab-btn-pivotTableOptionsTab')
         .waitOnElementToBecomeVisible('#pivotTableConfigEditor')
         .setCodeJarContentSingleShot('#pivotTableConfigEditor', PIVOT_DSL);
 
@@ -652,7 +652,7 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
         const { browser, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
 
         try {
-          const viewUrl = `${DASHBOARD_BASE_URL}/api/reports/view-template?path=templates/reports/my-dashboard/my-dashboard-dashboard.html`;
+          const viewUrl = `${DASHBOARD_BASE_URL}/api/reports/preview-template?path=templates/reports/my-dashboard/my-dashboard-dashboard.html`;
 
           await SelfServicePortalsTestHelper.waitForServerReady(
             page,

@@ -84,7 +84,7 @@ const _splitSendVerifyEmails = (
     .click('#btnSendDocumentsEmail')
     // email SMTP settings
     .click('#leftMenuEmailSettings') // email message settings
-    .click('#emailMessageTab-link')
+    .click('#tab-btn-emailMessageTab')
     .click('#emailSubject')
     .typeText('Subject $burst_token$')
     // email message settings
@@ -92,11 +92,11 @@ const _splitSendVerifyEmails = (
     .typeText('Message $burst_token$');
 
   if (attachmentsCommand === Constants.ATTACHMENTS_CLEAR) {
-    ft.click('#attachmentsTab-link')
+    ft.click('#tab-btn-attachmentsTab')
       .click('#btnClearAttachments')
       .clickYesDoThis();
   } else if (attachmentsCommand === Constants.ATTACHMENTS_ADD_AND_ZIP) {
-    ft.click('#attachmentsTab-link')
+    ft.click('#tab-btn-attachmentsTab')
       .click('#btnNewAttachment')
       .click('#attachmentPath')
       .typeText(
@@ -112,7 +112,7 @@ const _splitSendVerifyEmails = (
       )
       .click('#btnArchiveAttachmentsTogether');
   } else if (attachmentsCommand === Constants.ATTACHMENTS_XLS_ONLY) {
-    ft.click('#attachmentsTab-link')
+    ft.click('#tab-btn-attachmentsTab')
       .click('#btnClearAttachments')
       .clickYesDoThis()
       .click('#btnNewAttachment')

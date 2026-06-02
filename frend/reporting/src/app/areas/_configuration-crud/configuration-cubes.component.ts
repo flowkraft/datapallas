@@ -1,7 +1,12 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, viewChild, DestroyRef, inject, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { AngularSplitModule } from 'angular-split';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
+import { LicenseComponent } from '../../components/license/license.component';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import * as _ from 'lodash';
 
 import { tabsTemplate } from './templates/cubes/_tabs';
@@ -9,20 +14,19 @@ import { tabCubeDefinitionsTemplate } from './templates/cubes/tab-cube-definitio
 import { tabLicenseTemplate } from './templates/connections/tab-license';
 
 import { CubesService, CubeDefinition } from '../../providers/cubes.service';
-import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
 import { ConnectionsService } from '../../providers/connections.service';
 import { ApiService } from '../../providers/api.service';
 import { ConfirmService } from '../../components/dialog-confirm/confirm.service';
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 
 import Prism from 'prismjs';
 import 'prismjs/components/prism-groovy';
 
 @Component({
-  selector: 'dburst-cube-list',
-  template: `
+    selector: 'dburst-cube-list',
+    template: `
     ${tabsTemplate}
 
     <ng-template #tabCubeDefinitionsTemplate>
@@ -30,11 +34,14 @@ import 'prismjs/components/prism-groovy';
     </ng-template>
     ${tabLicenseTemplate}
   `,
+    standalone: true,
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    imports: [...SHARED_IMPORTS, AngularSplitModule, ConnectionDetailsComponent, LicenseComponent],
 })
 export class CubeListComponent implements OnInit, OnDestroy {
-  @ViewChild('connectionDetailsModal') private connectionDetailsModalInstance!: ConnectionDetailsComponent;
+  private connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');
   private showSamplesSub?: Subscription;
-  private destroy$ = new Subject<void>();
+  private destroyRef = inject(DestroyRef);
   private cubeSearchSubject = new Subject<string>();
 
   // Search + pagination
@@ -130,7 +137,7 @@ cube {
     protected apiService: ApiService,
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected executionStatsService: ExecutionStatsService,
     protected cdRef: ChangeDetectorRef,
     protected route: ActivatedRoute,
@@ -139,7 +146,7 @@ cube {
 
   async ngOnInit() {
     this.cubeSearchSubject
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
         this.cubeSearchTerm = term;
         this.cubePageIndex = 0;
@@ -170,8 +177,6 @@ cube {
   }
 
   ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
     this.showSamplesSub?.unsubscribe();
   }
 
@@ -314,7 +319,7 @@ cube {
   }
 
   showDbConnectionModalForCubeDsl() {
-    if (!this.connectionDetailsModalInstance) return;
+    if (!this.connectionDetailsModalInstance()) return;
     if (!this.editingCube?.connectionId) {
       this.messagesService.showInfo('Pick a database connection for this cube first.');
       return;
@@ -326,8 +331,8 @@ cube {
       this.messagesService.showError('Cannot find the database connection for this cube.');
       return;
     }
-    this.connectionDetailsModalInstance.context = 'cubeDsl';
-    this.connectionDetailsModalInstance.showCrudModal(
+    this.connectionDetailsModalInstance().context.set('cubeDsl');
+    this.connectionDetailsModalInstance().showCrudModal(
       'update',
       'database-connection',
       false,
@@ -412,9 +417,16 @@ cube {
       const result = await this.cubesService.parseDsl(
         this.editingCube.dslCode,
       );
-      this.parsedCube = result;
-      this.parsedCubeConfigJson = JSON.stringify(result);
-      this.cdRef.detectChanges();
+      // Only re-bind `parsedCube` when the parse output actually differs.
+      // ngx-codejar can emit (update) events with unchanged content during
+      // Angular CD cycles; without this guard each spurious emit creates a new
+      // object reference and the WC's reactive `$: if (cubeConfig)` wipes the
+      // user's checkbox selections between clicks.
+      if (!_.isEqual(this.parsedCube, result)) {
+        this.parsedCube = result;
+        this.parsedCubeConfigJson = JSON.stringify(result);
+        this.cdRef.detectChanges();
+      }
     } catch (e: any) {
       this.parseDslError = e?.message || 'Failed to parse DSL';
       this.parsedCube = null;

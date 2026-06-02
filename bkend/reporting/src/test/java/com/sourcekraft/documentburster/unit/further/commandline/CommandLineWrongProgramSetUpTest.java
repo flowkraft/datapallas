@@ -63,8 +63,8 @@ public class CommandLineWrongProgramSetUpTest {
                     };
                     return cls.cast(cmd);
                 }
-                else if (cls == MainProgram.DocumentCommand.MergeCommand.class) {
-                    MainProgram.DocumentCommand.MergeCommand cmd = new MainProgram.DocumentCommand.MergeCommand() {
+                else if (cls == MainProgram.JobCommand.MergeCommand.class) {
+                    MainProgram.JobCommand.MergeCommand cmd = new MainProgram.JobCommand.MergeCommand() {
                         @Override
                         protected CliJob getJob(String configFilePath) throws Exception {
                             // Create a CliJob that will fail when trying to use the temp directory
@@ -88,16 +88,13 @@ public class CommandLineWrongProgramSetUpTest {
 
     @Test
     public void testForValidBurstArguments() {
-        // Using the new command structure - "burst" instead of "-f"
-        String[] args = new String[] { "burst", PAYSLIPS_REPORT_PATH };
-        
+        String[] args = new String[] { "job", "burst", PAYSLIPS_REPORT_PATH };
+
         try {
-            // Parse arguments first
             CommandLine cmd = new CommandLine(program, createTestFactory());
             cmd.parseArgs(args);
-            
-            // Get the burst command
-            MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("burst").getCommand();
+
+            MainProgram.BurstCommand burstCommand = cmd.getSubcommands().get("job").getSubcommands().get("burst").getCommand();
             
             // Call directly to allow exceptions to propagate
             burstCommand.call();
@@ -115,19 +112,15 @@ public class CommandLineWrongProgramSetUpTest {
 
     @Test
     public void testForValidMergeArguments1() {
-        // Using the new command structure - "document merge" instead of "-mf"
-        String[] args = new String[] { "document", "merge", MERGE_FILE_PATH };
-        
+        String[] args = new String[] { "job", "merge", MERGE_FILE_PATH };
+
         try {
-            // Parse arguments
             CommandLine cmd = new CommandLine(program, createTestFactory());
             cmd.parseArgs(args);
-            
-            // Get the merge command through the command hierarchy
-            CommandLine documentCmd = cmd.getSubcommands().get("document");
-            CommandLine mergeCmd = documentCmd.getSubcommands().get("merge");
-            MainProgram.DocumentCommand.MergeCommand command = 
-                (MainProgram.DocumentCommand.MergeCommand) mergeCmd.getCommand();
+
+            CommandLine mergeCmd = cmd.getSubcommands().get("job").getSubcommands().get("merge");
+            MainProgram.JobCommand.MergeCommand command =
+                (MainProgram.JobCommand.MergeCommand) mergeCmd.getCommand();
             
             // Call directly to allow exceptions to propagate
             command.call();
@@ -144,19 +137,15 @@ public class CommandLineWrongProgramSetUpTest {
 
     @Test
     public void testForValidMergeArguments2() {
-        // Using the new command structure with output option
-        String[] args = new String[] { "document", "merge", MERGE_FILE_PATH, "-o", "mergedTest.pdf" };
-        
+        String[] args = new String[] { "job", "merge", MERGE_FILE_PATH, "-o", "mergedTest.pdf" };
+
         try {
-            // Parse arguments
             CommandLine cmd = new CommandLine(program, createTestFactory());
             cmd.parseArgs(args);
-            
-            // Get the merge command through the command hierarchy
-            CommandLine documentCmd = cmd.getSubcommands().get("document");
-            CommandLine mergeCmd = documentCmd.getSubcommands().get("merge");
-            MainProgram.DocumentCommand.MergeCommand command = 
-                (MainProgram.DocumentCommand.MergeCommand) mergeCmd.getCommand();
+
+            CommandLine mergeCmd = cmd.getSubcommands().get("job").getSubcommands().get("merge");
+            MainProgram.JobCommand.MergeCommand command =
+                (MainProgram.JobCommand.MergeCommand) mergeCmd.getCommand();
             
             // Call directly to allow exceptions to propagate
             command.call();
@@ -173,19 +162,15 @@ public class CommandLineWrongProgramSetUpTest {
 
     @Test
     public void testForValidMergeArguments3() {
-        // Using the new command structure with output and burst options
-        String[] args = new String[] { "document", "merge", MERGE_FILE_PATH, "-o", "mergedTest.pdf", "-b" };
-        
+        String[] args = new String[] { "job", "merge", MERGE_FILE_PATH, "-o", "mergedTest.pdf", "-b" };
+
         try {
-            // Parse arguments
             CommandLine cmd = new CommandLine(program, createTestFactory());
             cmd.parseArgs(args);
-            
-            // Get the merge command through the command hierarchy
-            CommandLine documentCmd = cmd.getSubcommands().get("document");
-            CommandLine mergeCmd = documentCmd.getSubcommands().get("merge");
-            MainProgram.DocumentCommand.MergeCommand command = 
-                (MainProgram.DocumentCommand.MergeCommand) mergeCmd.getCommand();
+
+            CommandLine mergeCmd = cmd.getSubcommands().get("job").getSubcommands().get("merge");
+            MainProgram.JobCommand.MergeCommand command =
+                (MainProgram.JobCommand.MergeCommand) mergeCmd.getCommand();
             
             // Call directly to allow exceptions to propagate
             command.call();

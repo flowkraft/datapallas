@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, SecurityContext, ChangeDetectorRef, ViewChild } from '@angular/core'; // Import SecurityContext
+import { Component, OnInit, OnDestroy, SecurityContext, ChangeDetectorRef, viewChild } from '@angular/core'; // Import SecurityContext
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser'; // Import DomSanitizer
 import { Subscription, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -89,8 +90,10 @@ const getDefaultCommand = (
 };
 
 @Component({
-  selector: 'dburst-starter-packs',
-  templateUrl: './starter-packs.template.html',
+    selector: 'dburst-starter-packs',
+    templateUrl: './starter-packs.template.html',
+    standalone: true,
+    imports: [...SHARED_IMPORTS],
 })
 export class StarterPacksComponent implements OnInit, OnDestroy {
   // --- State ---
@@ -113,7 +116,7 @@ export class StarterPacksComponent implements OnInit, OnDestroy {
   private pollingSubscription: Subscription | null = null;
 
   // AI Manager
-  @ViewChild(AiManagerComponent) private aiManagerInstance!: AiManagerComponent;
+  private aiManagerInstance = viewChild<AiManagerComponent>(AiManagerComponent);
 
   // Inject DomSanitizer along with other services
   constructor(
@@ -223,7 +226,7 @@ export class StarterPacksComponent implements OnInit, OnDestroy {
       // 4. If any pack is in a transitional state (starting/stopping), start polling
       // This handles the case where user navigates away and back while a pack is starting
       if (PollingHelper.hasTransitionalItems(this.starterPacks)) {
-        console.log('[StarterPacks] Detected transitional states on init, starting polling...');
+        // console.log('[StarterPacks] Detected transitional states on init, starting polling...');
         this.startTransitionPolling();
       }
 
@@ -436,9 +439,6 @@ export class StarterPacksComponent implements OnInit, OnDestroy {
     this.applyFilters(); // Re-apply filters without the tag constraint
   }
 
-  /**
-   * TrackBy function for *ngFor to improve performance.
-   */
   trackPackById(index: number, pack: StarterPackUIData): string {
     return pack.id; // Use the unique ID for tracking
   }
@@ -456,7 +456,7 @@ export class StarterPacksComponent implements OnInit, OnDestroy {
     if (iconData) {
       // Construct the full SVG string
       // You can adjust height, width, fill, class, style as needed
-      const svg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" height="20" width="20" style="fill: currentColor; margin-right: 10px; vertical-align: middle;" class="pull-left"><title>${iconData.title}</title><path d="${iconData.path}"/></svg>`;
+      const svg = `<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" height="20" width="20" style="fill: currentColor; margin-right: 10px; vertical-align: middle;" class="float-left"><title>${iconData.title}</title><path d="${iconData.path}"/></svg>`;
       // Sanitize the HTML before binding
       return this.sanitizer.bypassSecurityTrustHtml(svg);
     }

@@ -11,7 +11,7 @@ let _copilotUrlPromise: Promise<string> | null = null;
 
 export function fetchCopilotUrl(): Promise<string> {
   if (!_copilotUrlPromise) {
-    _copilotUrlPromise = fetch(`${RB_BASE}/system/copilot-url`)
+    _copilotUrlPromise = fetch(`${RB_BASE}/system/info/copilot-url`)
       .then((res) => {
         if (!res.ok) return "https://chatgpt.com/";
         return res.text().then((url) => url?.trim() || "https://chatgpt.com/");
@@ -28,7 +28,7 @@ export function fetchCopilotUrl(): Promise<string> {
 let _lastConnections: ConnectionInfo[] = [];
 
 export async function fetchConnections(): Promise<ConnectionInfo[]> {
-  const res = await fetch(`${RB_BASE}/connections/database`);
+  const res = await fetch(`${RB_BASE}/connections?type=database`);
   if (!res.ok) throw new Error("Failed to load connections");
   const list = await res.json();
   _lastConnections = Array.isArray(list) ? list : [];
@@ -68,7 +68,7 @@ export function ensureConnectionsLoaded(): Promise<ConnectionInfo[]> {
 }
 
 export async function fetchSchema(connectionId: string): Promise<SchemaInfo> {
-  const res = await fetch(`${RB_BASE}/explore-data/schema/${encodeURIComponent(connectionId)}`);
+  const res = await fetch(`${RB_BASE}/queries/schema/${encodeURIComponent(connectionId)}`);
   if (!res.ok) throw new Error("Failed to load schema");
   return res.json();
 }
@@ -81,7 +81,7 @@ export async function executeQuery(
   console.log('[executeQuery] FETCH-START sql=' + sql.slice(0, 80));
   const body: Record<string, unknown> = { connectionId, sql };
   if (filterValues && Object.keys(filterValues).length > 0) body.params = filterValues;
-  const res = await fetch(`${RB_BASE}/explore-data/queries/execute`, {
+  const res = await fetch(`${RB_BASE}/queries/run-sql`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -103,7 +103,7 @@ export async function executeScript(
 ): Promise<QueryResult> {
   const body: Record<string, unknown> = { connectionId, script };
   if (filterValues && Object.keys(filterValues).length > 0) body.filterValues = filterValues;
-  const res = await fetch(`${RB_BASE}/explore-data/scripts/execute`, {
+  const res = await fetch(`${RB_BASE}/queries/run-script`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -191,13 +191,13 @@ export async function parseCubeDsl(dslCode: string): Promise<unknown> {
 // --- Canvas CRUD ---
 
 export async function listCanvases(): Promise<unknown[]> {
-  const res = await fetch(`${RB_BASE}/explore-data`);
+  const res = await fetch(`${RB_BASE}/explorations`);
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function createCanvas(name: string): Promise<{ id: string }> {
-  const res = await fetch(`${RB_BASE}/explore-data`, {
+  const res = await fetch(`${RB_BASE}/explorations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -207,13 +207,13 @@ export async function createCanvas(name: string): Promise<{ id: string }> {
 }
 
 export async function fetchCanvas(canvasId: string): Promise<unknown> {
-  const res = await fetch(`${RB_BASE}/explore-data/${encodeURIComponent(canvasId)}`);
+  const res = await fetch(`${RB_BASE}/explorations/${encodeURIComponent(canvasId)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 export async function updateCanvas(canvasId: string, body: unknown): Promise<void> {
-  const res = await fetch(`${RB_BASE}/explore-data/${encodeURIComponent(canvasId)}`, {
+  const res = await fetch(`${RB_BASE}/explorations/${encodeURIComponent(canvasId)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -222,7 +222,7 @@ export async function updateCanvas(canvasId: string, body: unknown): Promise<voi
 }
 
 export async function deleteCanvas(canvasId: string): Promise<void> {
-  await fetch(`${RB_BASE}/explore-data/${encodeURIComponent(canvasId)}`, { method: "DELETE" });
+  await fetch(`${RB_BASE}/explorations/${encodeURIComponent(canvasId)}`, { method: "DELETE" });
 }
 
 // --- Associative exploration ---

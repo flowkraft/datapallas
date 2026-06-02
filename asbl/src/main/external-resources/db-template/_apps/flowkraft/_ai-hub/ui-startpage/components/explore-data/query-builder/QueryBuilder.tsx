@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+// lucide-react removed
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { VisualQuery, DataSource, DataSourceMode } from "@/lib/stores/canvas-store";
 import type { SchemaInfo, ConnectionInfo } from "@/lib/explore-data/types";
@@ -148,14 +148,14 @@ export function QueryBuilder({ widgetId, dataSource, onChange, connectionId }: Q
   return (
     <div className="space-y-3">
       {!connectionId && (
-        <div className="text-[11px] text-muted-foreground p-2 rounded-md border border-dashed border-border">
+        <div className="text-[11px] text-base-content/60 p-2 rounded-md border border-dashed border-base-300">
           Pick a connection in the left panel to continue.
         </div>
       )}
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-          <Loader2 className="w-3 h-3 animate-spin" /> Loading schema...
+        <div className="flex items-center gap-2 text-xs text-base-content/60 py-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> Loading schema...
         </div>
       )}
 
@@ -163,7 +163,7 @@ export function QueryBuilder({ widgetId, dataSource, onChange, connectionId }: Q
       {connectionId && !loading && (
         <>
           {/* Top tabs: Visual | Finetune */}
-          <div className="flex gap-0.5 p-0.5 bg-muted/50 rounded-lg">
+          <div className="flex gap-0.5 p-0.5 bg-base-200/50 rounded-lg">
             {(["visual", "finetune"] as TopTab[]).map((tab) => (
               <button
                 key={tab}
@@ -171,8 +171,8 @@ export function QueryBuilder({ widgetId, dataSource, onChange, connectionId }: Q
                 onClick={() => switchTopTab(tab)}
                 className={`flex-1 px-2 py-1 text-[11px] font-medium rounded-md capitalize transition-colors ${
                   topTab === tab
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-base-100 text-base-content shadow-sm"
+                    : "text-base-content/60 hover:text-base-content"
                 }`}
               >
                 {tab}
@@ -200,7 +200,7 @@ export function QueryBuilder({ widgetId, dataSource, onChange, connectionId }: Q
                 id="selectQueryMode"
                 value={ftTab}
                 onChange={(e) => switchFtTab(e.target.value as FtTab)}
-                className="w-full text-sm bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                className="w-full text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
               >
                 <option value="sql">SQL</option>
                 <option value="script">Script (get more power, IF needed)</option>
@@ -219,14 +219,14 @@ export function QueryBuilder({ widgetId, dataSource, onChange, connectionId }: Q
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-2 overflow-hidden">
+            <div className="text-xs text-error bg-error/10 border border-error/20 rounded-md p-2 overflow-hidden">
               Query error: {error.split('\n')[0].slice(0, 200)}
             </div>
           )}
 
           {/* Result count */}
           {queryResult && (
-            <div className={`text-xs font-medium transition-colors duration-300 ${justRan ? "text-green-600" : "text-muted-foreground"}`}>
+            <div className={`text-xs font-medium transition-colors duration-300 ${justRan ? "text-green-600" : "text-base-content/60"}`}>
               ✓ {queryResult.rowCount} row{queryResult.rowCount !== 1 ? "s" : ""} returned
             </div>
           )}

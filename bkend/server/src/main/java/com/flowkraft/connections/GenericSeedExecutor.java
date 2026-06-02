@@ -58,21 +58,26 @@ public class GenericSeedExecutor {
             throws Exception {
 
         ConnectionFactory.syncPath();
+        // Side-effect: materializes the sample connection's XML file on first
+        // access for sample connections (`rbt-sample-northwind-*`). Must run
+        // before the CLI command tries to load the connection by id.
         connectionsService.prepareConnectionFilePath(connectionCode);
-
-        // Connection file path is deterministic after prepareConnectionFilePath()
-        String connectionFilePath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH
-                + "/config/connections/" + connectionCode + "/" + connectionCode + ".xml";
 
         // Write script to a temp file — CliJob.doRunSeedScript() reads it by path
         new File(AppPaths.JOBS_DIR_PATH).mkdirs();
         File tempScript = File.createTempFile("seed-", ".groovy", new File(AppPaths.JOBS_DIR_PATH));
         Files.writeString(tempScript.toPath(), script);
 
-        // Build CLI args: system run-seed-script --database-connection-file ... --script-file ... [-p k=v ...]
+        // Build CLI args for the post-refactor structure:
+        //   connection run-seed --id <connectionCode> --script-file <path> [-p k=v ...]
+        // The old shape (`system run-seed-script --database-connection-file <fullPath>`)
+        // was lost when the CLI tree was re-parented under `connection` and switched to
+        // `--id` (connection ID) instead of full path. The `connection run-seed`
+        // command's call() invokes CliJob.doRunSeedScript() with the same semantics,
+        // so we keep the async fire-and-forget pattern; only the args change.
         List<String> argList = new ArrayList<>(Arrays.asList(
-                "system", "run-seed-script",
-                "--database-connection-file", connectionFilePath,
+                "connection", "run-seed",
+                "--id", connectionCode,
                 "--script-file", tempScript.getAbsolutePath()
         ));
         if (params != null) {
@@ -170,7 +175,7 @@ public class GenericSeedExecutor {
     private String resolveVendorType(String connectionCode) throws Exception {
         ConnectionFactory.syncPath();
         Settings settings = new Settings(
-                AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml");
+                Utils.resolvePathAgainstPortableDir("config/burst/settings.xml"));
         ConnectionFactory.syncPath(); // re-sync after Settings constructor (mirrors ConnectionFactory.newConnectionManager)
         settings.loadSettings();
         DocumentBursterConnectionDatabaseSettings dbSettings =

@@ -1,4 +1,7 @@
-import { ChangeDetectorRef, Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy, viewChild } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
+import { LicenseComponent } from '../../components/license/license.component';
 import { Subscription } from 'rxjs';
 import _ from 'lodash';
 
@@ -16,15 +19,14 @@ import {
   ExtConnection,
   newDatabaseServer,
   newEmailServer,
-  SettingsService,
-} from '../../providers/settings.service';
+  ConfigurationRepository,
+} from '../../providers/configuration-repository.service';
 import { FsService } from '../../providers/fs.service';
 import { ConnectionsService } from '../../providers/connections.service';
-import { ConnectionDetailsComponent } from '../../components/connection-details/connection-details.component';
 
 @Component({
-  selector: 'dburst-connection-list',
-  template: `
+    selector: 'dburst-connection-list',
+    template: `
     <div>${tabsTemplate}</div>
     ${tabExternalConnectionsTemplate}
     <dburst-connection-details
@@ -32,10 +34,11 @@ import { ConnectionDetailsComponent } from '../../components/connection-details/
     ></dburst-connection-details>
     ${tabLicenseTemplate}
   `,
+    standalone: true,
+    imports: [...SHARED_IMPORTS, ConnectionDetailsComponent, LicenseComponent],
 })
 export class ConnectionListComponent implements OnInit, OnDestroy {
-  @ViewChild('connectionDetailsModal')
-  connectionDetailsModalInstance!: ConnectionDetailsComponent;
+  connectionDetailsModalInstance = viewChild.required<ConnectionDetailsComponent>('connectionDetailsModal');
 
   goBackLocation = '';
   configurationFilePath = '';
@@ -47,7 +50,7 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
     protected fsService: FsService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected connectionsService: ConnectionsService,
     protected infoService: InfoService,
     protected executionStatsService: ExecutionStatsService,
@@ -203,14 +206,14 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
       return;
     }
     // Show the modal in update mode for the selected connection
-    await this.connectionDetailsModalInstance.showCrudModal(
+    await this.connectionDetailsModalInstance().showCrudModal(
       'update',
       'email-connection',
       false,
       selectedConnection
     );
     // Call the test method on the modal instance
-    await this.connectionDetailsModalInstance.doTestSMTPConnection();
+    await this.connectionDetailsModalInstance().doTestSMTPConnection();
   }
 
   async doTestDatabaseConnection() {
@@ -221,14 +224,14 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
       return;
     }
     // Show the modal in update mode for the selected connection
-    await this.connectionDetailsModalInstance.showCrudModal(
+    await this.connectionDetailsModalInstance().showCrudModal(
       'update',
       'database-connection',
       false,
       selectedConnection
     );
     // Call the test method on the modal instance
-    await this.connectionDetailsModalInstance.doTestDatabaseConnection();
+    await this.connectionDetailsModalInstance().doTestDatabaseConnection();
   }
 
   async showCrudModal(
@@ -237,7 +240,7 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
     duplicate?: boolean,
   ) {
     //console.log('ConfigurationConnectionsComponet: showCrudModal()');
-    this.connectionDetailsModalInstance.showCrudModal(
+    this.connectionDetailsModalInstance().showCrudModal(
       crudMode,
       connectionType,
       duplicate,
@@ -379,7 +382,7 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
             ...(selectedConnection.dbserver || newDatabaseServer),
           };
           payloadForSelectedToSave = tempConnectionInfo.database;
-          // Ensure SettingsService has defaultDatabaseConnectionFile property and logic
+          // Ensure ConfigurationRepository has defaultDatabaseConnectionFile property and logic
           (this.settingsService as any).defaultDatabaseConnectionFile =
             selectedConnection;
         } else {

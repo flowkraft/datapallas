@@ -7,7 +7,7 @@ import { fetchCanvas } from "@/lib/explore-data/rb-api";
 import { Canvas } from "@/components/explore-data/Canvas";
 import { FilterBar } from "@/components/explore-data/FilterBar";
 import { SelectionBar } from "@/components/explore-data/SelectionBar";
-import { X } from "lucide-react";
+// heroicons replace lucide X
 
 interface PageProps {
   params: Promise<{ canvasId: string }>;
@@ -55,21 +55,22 @@ export default function CanvasPreviewPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-muted-foreground text-sm">Loading preview...</div>
+        <div className="text-base-content/60 text-sm">Loading preview...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-base-100">
       {/* Minimal header */}
-      <div className="h-10 shrink-0 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-4">
-        <span className="text-sm font-semibold text-foreground">{store.name}</span>
+      <div className="h-10 shrink-0 border-b border-base-300 bg-base-100/80 backdrop-blur-sm flex items-center justify-between px-4">
+        <span className="text-sm font-semibold text-base-content">{store.name}</span>
         <button
           onClick={() => router.push(`/explore-data/${canvasId}`)}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-accent transition-colors"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-base-content/60 hover:bg-base-200 transition-colors"
         >
-          <X className="w-3.5 h-3.5" />
+          {/* Heroicon: x-mark */}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
           Close Preview
         </button>
       </div>

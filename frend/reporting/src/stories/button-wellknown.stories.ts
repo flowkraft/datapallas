@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from '@storybook/angular';
+import type { Meta, StoryObj } from '@storybook/angular';
 import { baseMeta } from './_utils/setup';
 import { ButtonWellKnownEmailProvidersComponent } from '../app/components/button-well-known/button-well-known.component';
 

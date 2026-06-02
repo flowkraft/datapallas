@@ -1,74 +1,94 @@
-import { Component, OnInit } from '@angular/core';
-import { BsModalRef } from 'ngx-bootstrap/modal';
+import { Component, ElementRef, OnInit, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 
+import { FormsModule } from '@angular/forms';
+import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
+
 @Component({
-  selector: 'dburst-confirm-dialog',
-  template: `
-    <div id="confirmDialog" class="modal-dialog-center">
-      <div class="modal-header">
-        <h4 class="modal-title pull-left" [innerHTML]="title"></h4>
+    selector: 'dburst-confirm-dialog',
+    standalone: true,
+    imports: [DpDialogComponent, FormsModule],
+    template: `
+    <dp-dialog id="confirmDialog" [header]="title" [(visible)]="isVisible" (visibleChange)="onVisibleChange($event)">
+      <div [innerHTML]="message"></div>
+      @if (confirmationText) {
+        <div style="margin-top:10px;">
+          <label style="font-size: 0.9em; color: #777;">Type <strong>{{confirmationText}}</strong> to confirm</label>
+          <input type="text" [(ngModel)]="confirmInput" class="input input-sm" style="margin-top:6px;" />
+        </div>
+      }
+      <div ngProjectAs="[footer]">
         <button
           type="button"
-          class="btn-close close pull-right"
-          aria-label="Close"
-          (click)="decline()"
-        >
-          <span aria-hidden="true" class="visually-hidden">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body" [innerHTML]="message"></div>
-      <div *ngIf="confirmationText" style="margin-top:10px;">
-        <label style="font-size: 0.9em; color: #777;">Type <strong>{{confirmationText}}</strong> to confirm</label>
-        <input type="text" [(ngModel)]="confirmInput" class="form-control input-sm" style="margin-top:6px;" />
-      </div>
-      <div class="modal-footer">
-        <button
-          type="button"
-          class="btn btn-primary dburst-button-question-confirm"
+          class="btn btn-outline btn-primary dburst-button-question-confirm"
           (click)="confirm()"
           [innerHTML]="confirmLabel"
-          [disabled]="confirmationText && confirmInput !== confirmationText"
+          [disabled]="!!(confirmationText && confirmInput !== confirmationText)"
         ></button>
         <button
           type="button"
-          class="btn btn-secondary dburst-button-question-decline"
+          class="btn btn-outline ml-2 dburst-button-question-decline"
           (click)="decline()"
           [innerHTML]="declineLabel"
         ></button>
       </div>
-    </div>
-  `,
+    </dp-dialog>
+  `
 })
 export class ConfirmDialogComponent implements OnInit {
-  onClose: Subject<boolean>;
-  title: string;
-  message: string;
-  confirmLabel: string;
-  declineLabel: string;
-  confirmAction: Function;
-  confirmationText: string; // optional: when set, user must type this text to enable confirm
-  confirmInput: string;
+  private elRef = inject(ElementRef<HTMLElement>);
 
-  constructor(protected bsModalRef: BsModalRef) {}
+  isVisible = true;
+  onClose = new Subject<boolean>();
+  title = 'Confirmation';
+  message = '';
+  confirmLabel = 'Yes';
+  declineLabel = 'No';
+  confirmAction?: Function;
+  confirmationText?: string;
+  confirmInput = '';
 
   ngOnInit(): void {
-    this.onClose = new Subject();
     this.confirmInput = '';
   }
 
   confirm() {
-    // If confirmationText is provided, check equality before allowing confirm
-    if (this.confirmationText && this.confirmInput !== this.confirmationText) {
-      return; // do nothing
-    }
-    this.bsModalRef.hide();
-    this.onClose?.next(true);
-    return this.confirmAction();
+    if (this.confirmationText && this.confirmInput !== this.confirmationText) return;
+    // Close FIRST, then run confirmAction. This matches the original ngx-bootstrap
+    // behavior (main branch): bsModalRef.hide() → onClose.next → confirmAction().
+    // Critical when confirmAction chains another askConfirmation() — opening the
+    // next dialog before closing this one leaves both visible simultaneously, so
+    // `waitOnConfirmDialogToBecomeInvisible` (count==0) between chained confirms
+    // never succeeds. e.g. doTestSMTPConnection: "Save now?" → "Send test email?".
+    this._close(true);
+    if (this.confirmAction) this.confirmAction();
   }
 
   decline() {
-    this.bsModalRef.hide();
-    this.onClose?.next(false);
+    this._close(false);
+  }
+
+  onVisibleChange(visible: boolean) {
+    if (!visible) this._close(false);
+  }
+
+  private _close(result: boolean) {
+    if (this.onClose.isStopped) return;
+    this.isVisible = false;
+    this.onClose.next(result);
+    this.onClose.complete();
+    // Force-hide the entire component subtree synchronously. Setting display:none
+    // on the host element is the only path that's guaranteed to make Playwright's
+    // `:visible` return false in the same task — independent of Angular CD timing,
+    // dp-dialog's effect scheduling, or browser top-layer quirks for native <dialog>.
+    // Necessary to match main's ngx-bootstrap behavior where bsModalRef.hide() was a
+    // synchronous DOM removal. The component is still destroyed 300ms later by
+    // ConfirmService, this just hides it in the meantime.
+    const host = this.elRef.nativeElement as HTMLElement;
+    host.style.display = 'none';
+    const dlg = host.querySelector('dialog') as HTMLDialogElement | null;
+    if (dlg?.open) {
+      try { dlg.close(); } catch { /* already closing */ }
+    }
   }
 }

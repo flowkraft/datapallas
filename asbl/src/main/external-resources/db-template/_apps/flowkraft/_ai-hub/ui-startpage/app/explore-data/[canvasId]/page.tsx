@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+// heroicons replace lucide ChevronRight / ChevronLeft
 import { useCanvasStore, type ParametersConfig } from "@/lib/stores/canvas-store";
 import { useSaveStatusStore } from "@/lib/stores/save-status-store";
 import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
@@ -134,7 +134,7 @@ export default function CanvasEditorPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-muted-foreground text-sm">Loading canvas...</div>
+        <div className="text-base-content/60 text-sm">Loading canvas...</div>
       </div>
     );
   }
@@ -159,10 +159,11 @@ export default function CanvasEditorPage({ params }: PageProps) {
             <button
               id="btnExpandLeftPanel"
               onClick={() => setLeftOpen(true)}
-              className="w-6 shrink-0 border-r border-border bg-muted/30 flex items-center justify-center hover:bg-accent transition-colors"
+              className="w-6 shrink-0 border-r border-base-300 bg-base-200/30 flex items-center justify-center hover:bg-base-200 transition-colors"
               title="Show sidebar"
             >
-              <ChevronRight className="w-5 h-5 text-foreground font-bold" />
+              {/* Heroicon: chevron-right */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5 text-base-content font-bold"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
             </button>
           )
         )}
@@ -180,10 +181,11 @@ export default function CanvasEditorPage({ params }: PageProps) {
               <button
                 id="btnExpandRightPanel"
                 onClick={() => { rightManualClose.current = false; setRightOpen(true); }}
-                className="w-6 shrink-0 border-l border-border bg-muted/30 flex items-center justify-center hover:bg-accent transition-colors"
+                className="w-6 shrink-0 border-l border-base-300 bg-base-200/30 flex items-center justify-center hover:bg-base-200 transition-colors"
                 title="Show config panel"
               >
-                <ChevronLeft className="w-5 h-5 text-foreground font-bold" />
+                {/* Heroicon: chevron-left */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5 text-base-content font-bold"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
               </button>
             )
           )}

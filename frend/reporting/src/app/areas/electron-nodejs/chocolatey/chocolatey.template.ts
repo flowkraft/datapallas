@@ -1,37 +1,42 @@
 export const chocolateyTemplate = ` <!--<ng-template #chocolateyTemplate> -->
-  <p-panel #pnlStep1ChocoInstallation>
+  <div class="card card-border bg-base-100 shadow-sm">
     <h4 id="checkPointChocolatey">
-      <div *ngIf="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk">
-        <u
-          >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.CHOCOLATEY.STEP1' |
-          translate }} <em>Chocolatey</em></u
-        >
-      </div>
-      <div *ngIf="this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk">
-        <s
-          >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.CHOCOLATEY.STEP1' |
-          translate }} <em>Chocolatey</em></s
-        >&nbsp;&nbsp;<span class="label label-default"
-          ><i class="fa fa-check-square-o"></i
-          >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.CHOCOLATEY.INSTALLED'
-          | translate }}</span
-        >
-      </div>
+      @if (!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
+        <div>
+          <u
+            >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.CHOCOLATEY.STEP1' |
+            translate }} <em>Chocolatey</em></u
+          >
+        </div>
+      }
+      @if (this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
+        <div>
+          <s
+            >{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.CHOCOLATEY.STEP1' |
+            translate }} <em>Chocolatey</em></s
+          >&nbsp;&nbsp;<span class="badge badge-ghost"
+            ><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg
+            >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.CHOCOLATEY.INSTALLED'
+            | translate }}</span
+          >
+        </div>
+      }
     </h4>
     <div
       [innerHTML]="'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.CHOCOLATEY.INNER-HTML.BEFORE-JAVA' | translate"
     ></div>
     <br /><br />
-    <button
-      id="btnInstallChocolatey"
-      *ngIf="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk"
-      type="button"
-      class="btn btn-primary"
-      (click)="installChocolatey()"
-    >
-      <i class="fa fa-play"></i
-      >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INSTALL' | translate
-      }} <em>Chocolatey</em>
-    </button>
-  </p-panel>
+    @if (!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
+      <button
+        id="btnInstallChocolatey"
+        type="button"
+        class="btn btn-outline btn-primary"
+        (click)="installChocolatey()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg
+        >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INSTALL' | translate
+        }} <em>Chocolatey</em>
+      </button>
+    }
+  </div>
   <!--</ng-template> -->`;

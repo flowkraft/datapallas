@@ -125,19 +125,14 @@ electronBeforeAfterAllTest(
         .waitOnElementToBecomeVisible('#northwind-customers')
         .waitOnElementToBecomeVisible('#northwind-sales');
 
-      // Hide any transient ngx-toastr toasts globally for the rest of the test.
+      // Hide any transient toasts globally for the rest of the test.
       // Without this, the "Connection 'Northwind Sample' saved successfully"
       // toast from SETUP leaks into capture #1 (default lasts ~5s, our settle
       // is only 800ms). One CSS rule, applied once, no need to restore.
       await firstPage.evaluate(() => {
         const style = document.createElement('style');
         style.id = '__hide_toasts_for_screenshots';
-        style.textContent = `
-          #toast-container,
-          .toast-container,
-          .ngx-toastr,
-          .toast { display: none !important; }
-        `;
+        style.textContent = `.toast { display: none !important; }`;
         document.head.appendChild(style);
       });
 

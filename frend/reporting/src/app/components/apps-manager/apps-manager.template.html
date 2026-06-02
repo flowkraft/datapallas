@@ -1,563 +1,559 @@
-<ng-container [ngSwitch]="dropdownDirection">
+﻿@switch (dropdownDirection()) {
   <!-- DropDown or DropUp Mode -->
-  <ng-container *ngSwitchCase="'down'">
-    <div class="btn-group dropdown">
+  @case ('down') {
+    <div class="dropdown dropdown-end">
       <ng-container *ngTemplateOutlet="dropdownButton"></ng-container>
     </div>
-  </ng-container>
-  <ng-container *ngSwitchCase="'up'">
-    <div class="btn-group dropup">
+  }
+  @case ('up') {
+    <div class="dropdown dropdown-top dropdown-end">
       <ng-container *ngTemplateOutlet="dropdownButton"></ng-container>
     </div>
-  </ng-container>
+  }
 
   <!-- Expanded List Mode -->
-  <ng-container *ngSwitchCase="'expandedList'">
-    <!-- Hidden AI Manager (only rendered when askAiForHelpOutputTypeCode is provided) -->
-    <dburst-ai-manager *ngIf="askAiForHelpOutputTypeCode" #aiManagerInstance hidden></dburst-ai-manager>
-    
+  @case ('expandedList') {
+    <!-- Hidden AI Manager (only rendered when askAiForHelpOutputTypeCode() is provided) -->
+    @if (askAiForHelpOutputTypeCode()) {
+      <dburst-ai-manager #aiManagerInstance></dburst-ai-manager>
+    }
+
     <!-- Search/Tag/Refresh Row (adapted from starter-packs.template.html) -->
-    <div *ngIf="!inputAppsToShow" class="row" style="margin-bottom: 10px; display:flex; align-items:center;">
-      <div class="col-md-6">
-        <div class="form-group" style="margin-bottom:0">
-          <label for="appSearch" class="sr-only">Search Apps</label>
-          <div class="input-group input-group-sm">
-            <input type="text" id="appSearch" class="form-control" placeholder="Search ..." [ngModel]="searchTerm" (ngModelChange)="searchSubject.next($event)" />
-            <span class="input-group-btn" *ngIf="searchTerm">
-              <button class="btn btn-default" type="button" title="Clear Search" (click)="searchSubject.next(''); searchTerm=''">
-                <i class="fa fa-times"></i>
-              </button>
-            </span>
+    @if (!inputAppsToShow()) {
+      <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-bottom: 10px; display:flex; align-items:center;">
+        <div style="grid-column:span 6">
+          <div class="mb-4" style="margin-bottom:0">
+            <label for="appSearch" class="sr-only">Search Apps</label>
+            <div class="join">
+              <input type="text" id="appSearch" class="input join-item" placeholder="Search ..." [ngModel]="searchTerm" (ngModelChange)="searchSubject.next($event)" />
+              @if (searchTerm) {
+                  <button class="btn btn-ghost join-item" type="button" title="Clear Search" (click)="searchSubject.next(''); searchTerm=''">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+              }
+            </div>
           </div>
         </div>
+        <div style="grid-column:span 5">
+          @if (allTags.length === 0 && !isLoading && !isRefreshing) {
+            <span class="text-base-content/60 small">No tags defined.</span>
+          }
+          @for (tag of allTags; track tag) {
+            <span style="margin-right:5px">
+              <button class="btn btn-xs" [class.btn-primary]="selectedTag === tag" [class.btn-ghost]="selectedTag !== tag" (click)="filterByTag(tag)" title="Filter by tag: {{ tag }}">{{ tag }}</button>
+            </span>
+          }
+          @if (selectedTag) {
+            <button class="btn btn-xs btn-warning" style="margin-left:5px" (click)="clearTagFilter()" title="Clear tag filter"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> {{ selectedTag }}</button>
+          }
+        </div>
+        <div class="text-right" style="grid-column:span 1">
+          <button class="btn btn-ghost" type="button" (click)="refreshData()" [disabled]="isLoading || isRefreshing" title="Refresh List">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.25" stroke="currentColor" [class]="isRefreshing ? 'inline-block w-5 h-5 animate-spin' : 'inline-block w-5 h-5'"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="col-md-5">
-        <span *ngIf="allTags.length === 0 && !isLoading && !isRefreshing" class="text-muted small">No tags defined.</span>
-        <span *ngFor="let tag of allTags" style="margin-right:5px">
-          <button class="btn btn-xs" [class.btn-primary]="selectedTag === tag" [class.btn-default]="selectedTag !== tag" (click)="filterByTag(tag)" title="Filter by tag: {{ tag }}">{{ tag }}</button>
-        </span>
-        <button *ngIf="selectedTag" class="btn btn-xs btn-warning" style="margin-left:5px" (click)="clearTagFilter()" title="Clear tag filter"><i class="fa fa-times"></i> {{ selectedTag }}</button>
-      </div>
-      <div class="col-md-1 text-right">
-        <button class="btn btn-default btn-sm" type="button" (click)="refreshData()" [disabled]="isLoading || isRefreshing" title="Refresh List">
-          <i class="fa fa-refresh" [class.fa-spin]="isRefreshing"></i>
-        </button>
-      </div>
-    </div>
+    }
     <div class="list-group">
-      <!-- Scoped styles for app cards in expandedList mode -->
+      <!-- Scoped styles: structural only (z-index, hover lift). Colors come from theme tokens. -->
       <style>
         .app-card-expanded {
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          transition: all 0.2s ease-in-out;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+          transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
           position: relative;
           z-index: 1;
         }
         .app-card-expanded:hover,
         .app-card-expanded:focus-within {
-          border-color: #bbb;
           box-shadow: 0 4px 12px rgba(0,0,0,0.15);
           transform: translateY(-2px);
           z-index: 200;
         }
-        .app-card-expanded.panel-info {
-          border-color: #bce8f1;
-        }
-        .app-card-expanded.panel-info:hover {
-          border-color: #31708f;
-        }
-        .app-card-expanded.panel-primary {
-          border-color: #337ab7;
-        }
-        .app-card-expanded.panel-danger {
-          border-color: #ebccd1;
-        }
-        .app-card-expanded.panel-danger:hover {
-          border-color: #a94442;
-        }
-        .app-card-expanded .btn-group.open {
-          z-index: 300;
-        }
-        .app-card-expanded .btn-group.open .dropdown-menu {
-          z-index: 10000;
-        }
+        .app-card-expanded .dropdown:focus-within { z-index: 300; }
+        .app-card-expanded .dropdown-content { z-index: 10000; }
       </style>
-      <div *ngFor="let app of visibleApps; trackBy: trackByAppId" class="panel app-card-expanded"
-           [id]="'appPanel_' + sanitizeAppId(app.id)"
+@for (app of visibleApps; track trackByAppId($index, app)) {
+  <div class="card card-border bg-base-100 shadow-sm app-card-expanded"
+    [id]="'appPanel_' + sanitizeAppId(app.id)"
            [ngClass]="{
-  'panel-info': isAppRunning(app),
-  'panel-primary': isStartingOrStopping(app),
-  'panel-danger': isAppError(app),
-  'panel-default': isAppStopped(app)
+  'border-info': isAppRunning(app),
+  'border-primary': isStartingOrStopping(app),
+  'border-error': isAppError(app)
 }" style="margin-bottom: 10px; overflow: visible;">
-        <script>
-          // DEBUG: Output app state and url for troubleshooting Launch button
-          try {
-            console.log('[AppsManager] Render app:', {
-              id: '{{app.id}}',
-              name: '{{app.name}}',
-              state: '{{app.state}}',
-              url: '{{app.url}}',
-              isAppRunning: '{{isAppRunning(app)}}',
-              showStop: '{{isAppRunning(app) || isStartingOrStopping(app)}}',
-              showLaunch: '{{isAppRunning(app) && app.url}}'
-            });
-          } catch (e) {}
-        </script>
-
-
-        <div class="panel-heading" style="position: relative;">
-          <h4 class="panel-title">
-            <!-- Stop icon in heading (consistent with dropdown mode) -->
-            <span *ngIf="isAppRunning(app) && app.type !== 'desktop'"
-                  style="margin-right: 10px; vertical-align: middle; cursor: pointer;"
-                  (click)="onToggleApp(app); $event.stopPropagation();"
-                  title="Stop">
-              <i class="fa fa-stop" style="color: #888; font-size: 16px;"></i>
-            </span>
-
-            <i *ngIf="app.icon" [class]="app.icon" [style.color]="(app.state === 'starting' || app.state === 'stopping') ? 'white' : '#333'" style="margin-right: 6px"></i>
-            <span [id]="'appName_' + sanitizeAppId(app.id)" [style.color]="(app.state === 'starting' || app.state === 'stopping') ? 'white' : '#333'">{{ app.name }}</span>
-            <strong [id]="'appState_' + sanitizeAppId(app.id)" [style.color]="app.state === 'running' ? '#31708f' : (app.state === 'starting' || app.state === 'stopping') ? 'white' : '#888'" style="margin-left: 6px;">
-              <i *ngIf="isStartingOrStopping(app)" class="fa fa-spinner fa-spin" style="margin-right: 5px;"></i>
-              {{ isAppRunning(app) ? 'running' : isAppStarting(app) ? 'starting' : isAppStopping(app) ? 'stopping' : 'stopped' }}
-            </strong>
-          </h4>
-          <!-- App Source Badge -->
-          <span *ngIf="app.tags?.includes('DataPallas\'s App')" 
-                class="label" 
-                style="position: absolute; top: 8px; right: 10px; background-color: #5a9bb8; color: white; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 3px;"
-                title="Built and maintained by DataPallas">
-            <i class="fa fa-check-circle" style="margin-right: 4px;"></i>Our App
+    <script>
+      // DEBUG: Output app state and url for troubleshooting Launch button
+      try {
+      // console.log('[AppsManager] Render app:', {
+      // id: '{{app.id}}',
+      // name: '{{app.name}}',
+      // state: '{{app.state}}',
+      // url: '{{app.url}}',
+      // isAppRunning: '{{isAppRunning(app)}}',
+      // showStop: '{{isAppRunning(app) || isStartingOrStopping(app)}}',
+      // showLaunch: '{{isAppRunning(app) && app.url}}'
+      // });
+      } catch (e) {}
+    </script>
+    <!-- Header: bg-base-200 strip with bottom border (daisyUI tokens only) -->
+    <header class="bg-base-200 border-b border-base-300 px-4 py-3 flex items-center gap-2">
+      <h2 class="card-title text-base-content flex items-center gap-2 flex-wrap" style="margin: 0; font-size: 1rem;">
+        <!-- Stop icon in heading (consistent with dropdown mode) -->
+        @if (isAppRunning(app) && app.type !== 'desktop') {
+          <span
+            style="vertical-align: middle; cursor: pointer;"
+            (click)="onToggleApp(app); $event.stopPropagation();"
+            title="Stop">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/70"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
           </span>
-          <span *ngIf="!app.tags?.includes('DataPallas\'s App')" 
-                class="label" 
-                style="position: absolute; top: 8px; right: 10px; background-color: #777; color: white; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 3px;"
-                title="Third-party application">
-            <ng-container *ngIf="app.website; else noWebsite">
-              <a [href]="app.website" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
-                <i class="fa fa-external-link" style="margin-right: 4px;"></i>3rd Party
-              </a>
-            </ng-container>
-            <ng-template #noWebsite>
-              <i class="fa fa-external-link" style="margin-right: 4px;"></i>3rd Party
-            </ng-template>
-          </span>
+        }
+        @if (app.icon) {
+          <span [innerHTML]="iconSvg(app.icon)" class="text-base-content" style="display:inline-flex; align-items:center;"></span>
+        }
+        <span [id]="'appName_' + sanitizeAppId(app.id)">{{ app.name }}</span>
+        <strong [id]="'appState_' + sanitizeAppId(app.id)"
+          [ngClass]="{
+            'text-info': isAppRunning(app),
+            'text-primary': isStartingOrStopping(app),
+            'text-base-content/60': isAppStopped(app)
+          }"
+          style="font-weight: 600;">
+          @if (isStartingOrStopping(app)) {
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin" style="margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          }
+          {{ isAppRunning(app) ? 'running' : isAppStarting(app) ? 'starting' : isAppStopping(app) ? 'stopping' : 'stopped' }}
+        </strong>
+      </h2>
+      <!-- App Source Badge (right-aligned via ml-auto, plain neutral badge) -->
+      @if (app.tags?.includes('DataPallas\'s App')) {
+        <span class="badge badge-sm gap-1 ml-auto" title="Built and maintained by DataPallas">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Our App
+        </span>
+      }
+      @if (!app.tags?.includes('DataPallas\'s App')) {
+        <span class="badge badge-sm gap-1 ml-auto" title="Third-party application">
+          @if (app.website) {
+            <a [href]="app.website" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>3rd Party
+            </a>
+          } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>3rd Party
+          }
+        </span>
+      }
+    </header>
+    <div class="card-body">
+      @if (!app.tags?.includes('DataPallas\'s App') && app.website) {
+        <div style="margin-bottom: 8px;">
+          <a [href]="app.website" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #31708f; font-weight: 500;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="margin-right: 6px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>{{ app.website }}
+          </a>
         </div>
-        <div class="panel-body">
-          <div *ngIf="!app.tags?.includes('DataPallas\'s App') && app.website" style="margin-bottom: 8px;">
-            <a [href]="app.website" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #31708f; font-weight: 500;">
-              <i class="fa fa-external-link" style="margin-right: 6px;"></i>{{ app.website }}
-            </a>
-          </div>
-          <div *ngIf="app.tutorialLink" style="margin-bottom: 10px;">
-            <a [href]="app.tutorialLink.url"
-               target="_blank"
-               rel="noopener noreferrer"
-               style="font-size: 0.95em; color: #2b6cb0; text-decoration: underline; text-underline-offset: 3px; letter-spacing: 0.01em;">
-              {{ app.tutorialLink.label }}
-            </a>
-          </div>
-          <p class="text-muted" [innerHTML]="app.description"></p>
-          
-          <!-- Editable Command Input (only for Docker apps, hidden when showDevButtons=false) -->
-          <div *ngIf="app.type === 'docker' && showDevButtons" class="form-group" style="margin-top: 10px; margin-bottom: 10px;">
-            <label class="sr-only" [for]="'cmd-' + app.id">Command</label>
-            <input
-              type="text"
-              class="form-control input-sm"
-              style="font-family: monospace; font-size: 0.9em;"
-              [id]="'cmd-' + app.id"
-              [(ngModel)]="app.currentCommandValue"
-              [disabled]="isStartingOrStopping(app)"
-              placeholder="Command to execute (edit port if needed)"
-              title="Edit the command (e.g., change port) before starting/stopping."
+      }
+      @if (app.tutorialLink) {
+        <div style="margin-bottom: 10px;">
+          <a [href]="app.tutorialLink.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="font-size: 0.95em; color: #2b6cb0; text-decoration: underline; text-underline-offset: 3px; letter-spacing: 0.01em;">
+            {{ app.tutorialLink.label }}
+          </a>
+        </div>
+      }
+      <p class="text-base-content/60" [innerHTML]="app.description"></p>
+      <!-- Editable Command Input (only for Docker apps, hidden when showDevButtons()=false) -->
+      @if (app.type === 'docker' && showDevButtons()) {
+        <div class="mb-4" style="margin-top: 10px; margin-bottom: 10px;">
+          <label class="sr-only" [for]="'cmd-' + app.id">Command</label>
+          <input
+            type="text"
+            class="input input-sm"
+            style="font-family: monospace; font-size: 0.9em;"
+            [id]="'cmd-' + app.id"
+            [(ngModel)]="app.currentCommandValue"
+            [disabled]="isStartingOrStopping(app)"
+            placeholder="Command to execute (edit port if needed)"
+            title="Edit the command (e.g., change port) before starting/stopping."
             />
           </div>
+        }
+        <!-- Build Options: show for Docker apps when stopped (Start is enabled) -->
+        @if (showDevButtons() && app.type === 'docker' && isAppStopped(app)) {
+          <div
+            style="margin-top: 5px; margin-bottom: 10px;">
+            @if (isFlowkraftApp(app)) {
+              <label class="checkbox-inline" style="font-size: 0.85em; cursor: pointer;"
+                title="Rebuild image using cache. Use when source code changed (*.groovy, *.java, *.gsp, views, assets)">
+                <input type="checkbox"
+                  [checked]="app.currentCommandValue?.includes('--build')"
+                  (change)="toggleCommandFlag(app, '--build', $event)"
+                  [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app) || app.currentCommandValue?.includes('--no-cache') || app.currentCommandValue?.includes('--full')" />
+                  <code>--build</code>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                </label>
+              }
+              @if (isFlowkraftApp(app)) {
+                <label class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
+                  title="Full rebuild without cache. Use when Dockerfile or dependencies changed (build.gradle, pom.xml) — slower">
+                  <input type="checkbox"
+                    [checked]="app.currentCommandValue?.includes('--no-cache')"
+                    (change)="toggleCommandFlag(app, '--no-cache', $event)"
+                    [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
+                    <code>--no-cache</code>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                  </label>
+                }
+                @if (isFlowkraftApp(app) && (app.id === 'flowkraft-grails' || app.id === 'flowkraft-bkend-boot-groovy')) {
+                  <label class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
+                    title="Enable Liquibase Groovy DSL database migrations. Runs changesets from db/migration/changelog.groovy on startup.">
+                    <input type="checkbox"
+                      [checked]="app.currentCommandValue?.includes('--liquibase')"
+                      (change)="toggleCommandFlag(app, '--liquibase', $event)"
+                      [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
+                      <code>--liquibase</code>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                    </label>
+                  }
+                  <!-- Reprovision as a switch (adds --reprovision to start command) -->
+                  @if (isCmsWebPortal(app)) {
+                    <label class="checkbox-inline" style="font-size: 0.85em; margin-left: 0; cursor: pointer;" title="Reprovision the site: runs provisioning and theme rebuild">
+                      <input type="checkbox"
+                        [checked]="app.currentCommandValue?.includes('--reprovision')"
+                        (change)="toggleCommandFlag(app, '--reprovision', $event)"
+                        [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
+                        <code>--reprovision</code>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                      </label>
+                    }
+                    @if (app.tags?.includes('DataPallas\'s App')) {
+                      <label class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
+                        title="Full rebuild without cache and remove local images first. Heaviest operation — slower.">
+                        <input type="checkbox"
+                          [checked]="app.currentCommandValue?.includes('--full')"
+                          (change)="toggleCommandFlag(app, '--full', $event)"
+                          [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
+                          <code>--full</code>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                        </label>
+                      }
+                    </div>
+                  }
+                  <!-- Build Options: show for Docker apps when stopped (Start is enabled) -->
+                  @if (showDevButtons() && app.type === 'docker' && isAppRunning(app)) {
+                    <div
+                      style="margin-top: 5px; margin-bottom: 10px;">
+                      @if (app.tags?.includes('DataPallas\'s App')) {
+                        <label class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;" title="Remove persistent volumes (permanently deletes data stored in volumes)">
+                          <input type="checkbox"
+                            [checked]="app.stopCmd?.includes('--volumes')"
+                            (change)="toggleVolumesFlag(app, $event)"
+                            [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
+                            <code>--volumes</code>
+                            <span style="color: #666; font-size: .85em; margin-left: 8px;">(Requires typing <strong>DELETE</strong>)</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+                          </label>
+                        }
+                      </div>
+                    }
+                    <!-- Card actions footer: Start/AI on left, Launch on right (like BS3 card-footer) -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 0.5rem;">
+                      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <!-- Action Button with Spinner and Dynamic Text -->
+                        <button
+                          [id]="'btnStartStop_' + sanitizeAppId(app.id)"
+                          class="btn btn-sm btn-outline"
+                [ngClass]="{
+                  'btn-primary': isAppRunning(app) || isStartingOrStopping(app)
+                }"
+                          [disabled]="isStartingOrStopping(app)"
+                          (click)="onToggleApp(app)"
+                          >
+                          @if (isStartingOrStopping(app)) {
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [id]="'appSpinner_' + sanitizeAppId(app.id)" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                          }
+                          @if (!isStartingOrStopping(app)) {
+                            @if (isAppRunning(app)) {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [id]="'appIcon_' + sanitizeAppId(app.id)" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>} @else {<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [id]="'appIcon_' + sanitizeAppId(app.id)" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>}
+                          }
+                          {{ isAppStarting(app) ? 'Starting' : isAppStopping(app) ? 'Stopping' : isAppRunning(app) ? 'Stop' : 'Start' }}
+                        </button>
+                        <!-- Ask AI Button (only when askAiForHelpOutputTypeCode() is provided) -->
+                        @if (askAiForHelpOutputTypeCode()) {
+                          <button
+                            [id]="'btnAskAi_' + sanitizeAppId(app.id)"
+                            type="button"
+                            class="btn btn-sm btn-outline"
+                            (click)="askAiForHelp()"
+                            >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg> {{ getAiButtonLabel() }}
+                          </button>
+                        }
+                      </div>
+                      <div>
+                        <!-- Launch Button — unified: hidden if launch===false, native disabled button when stopped -->
+                        @if (app.type !== 'desktop' && app.launch !== false) {
+                          @if (isAppRunning(app)) {
+                            @if (app.launchLinks?.length > 1) {
+                              <!-- Running + multiple links: dropdown -->
+                              <div class="dropdown dropdown-end dropdown-top" style="position: relative; z-index: 9999;">
+                                <button type="button"
+                                  [id]="'btnLaunch_' + sanitizeAppId(app.id)"
+                                  tabindex="0" role="button"
+                                  class="btn btn-sm btn-outline"
+                                  [title]="'Launch ' + app.name">
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> Launch
+                                </button>
+                                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+                                  @for (link of app.launchLinks; track link) {
+                                    <li>
+                                      <a [href]="link.url" target="_blank">
+                                        @if (link.icon) {
+                                          <span [innerHTML]="iconSvg(link.icon)" style="margin-right: 6px; display:inline-flex; align-items:center;"></span>
+                                        }
+                                        <span [innerHTML]="link.label"></span>
+                                      </a>
+                                    </li>
+                                  }
+                                </ul>
+                              </div>
+                            } @else {
+                              <!-- Running + single URL: plain link -->
+                              <a
+                                [id]="'btnLaunch_' + sanitizeAppId(app.id)"
+                                [href]="app.url"
+                                target="_blank"
+                                class="btn btn-sm btn-outline"
+                                [title]="'Launch ' + app.name">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> Launch
+                              </a>
+                            }
+                          } @else {
+                            <!-- Stopped: native disabled button — same for all apps -->
+                            <button
+                              [id]="'btnLaunch_' + sanitizeAppId(app.id)"
+                              class="btn btn-sm btn-outline"
+                              disabled
+                              [title]="app.name + ' is stopped'">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> Launch
+                            </button>
+                          }
+                        }
+                      </div>
+                    </div>
+                    <!-- Last Output with Copy Button -->
+                    @if (app.lastOutput) {
+                      <pre class="mt-2.5 py-1 px-1.5 text-xs rounded bg-base-200 text-base-content/80 border border-base-300 relative overflow-y-auto" style="max-height: 35px; min-height: 35px;">
+                        {{ app.lastOutput }}
+                        <button class="btn btn-ghost btn-xs absolute top-1 right-1" (click)="copyToClipboard(app.lastOutput)">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
+                        </button>
+                      </pre>
+                    }
+                    <!-- Demo Login Info (shown only when app has demoInfo) -->
+                    @if (app.demoInfo && isCmsWebPortal(app)) {
+                      <div class="mt-4 p-3 rounded-md text-sm border"
+                           [ngClass]="isAppRunning(app) ? 'bg-base-100 border-base-300 text-base-content' : 'bg-base-200 border-base-300 text-base-content/70'">
+                        <div class="mb-3 pb-2 border-b border-base-300"
+                             [ngClass]="isAppRunning(app) ? 'text-base-content/70' : 'text-base-content/50'">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 mr-1.5" [ngClass]="isAppRunning(app) ? 'text-info' : 'text-base-content/40'"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>Try the demo logins
+                        </div>
+                        <div style="line-height: 1.85;">
+                          <div class="mb-2">
+                            <span class="text-base-content/60">Admin:</span>
+                            <span class="ml-2 font-semibold px-2 rounded cursor-pointer select-all"
+                                  [ngClass]="isAppRunning(app) ? 'bg-primary/10 border border-primary/30 text-primary' : 'bg-base-300 text-base-content/70'"
+                                  title="Copy username"
+                                  (click)="copyCredential('u2changeme', $event)">u2changeme</span>
+                            <button class="btn btn-ghost btn-xs align-middle ml-1"
+                              title="Copy username"
+                              (click)="copyCredential('u2changeme', $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
+                            </button>
+                            <span class="mx-1.5 text-base-content/30">/</span>
+                            <span class="font-semibold px-2 rounded cursor-pointer select-all"
+                                  [ngClass]="isAppRunning(app) ? 'bg-primary/10 border border-primary/30 text-primary' : 'bg-base-300 text-base-content/70'"
+                                  title="Copy password"
+                                  (click)="copyCredential('p2changeme123!', $event)">p2changeme123!</span>
+                            <button class="btn btn-ghost btn-xs align-middle ml-1"
+                              title="Copy password"
+                              (click)="copyCredential('p2changeme123!', $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
+                            </button>
+                            <span class="ml-3.5">
+                              <a href="http://localhost:8080/wp-admin" target="_blank" [ngClass]="isAppRunning(app) ? 'text-info' : 'text-base-content/40'">Login to Admin Area</a>
+                              <span class="mx-1.5 text-base-content/20">•</span>
+                              <a href="http://localhost:8080/my-documents" target="_blank" [ngClass]="isAppRunning(app) ? 'text-info' : 'text-base-content/40'">Login to Frontend</a>
+                            </span>
+                          </div>
+                          <div>
+                            <span class="text-base-content/60">Employee:</span>
+                            <span class="ml-2 font-semibold px-2 rounded cursor-pointer select-all"
+                                  [ngClass]="isAppRunning(app) ? 'bg-primary/10 border border-primary/30 text-primary' : 'bg-base-300 text-base-content/70'"
+                                  title="Copy username"
+                                  (click)="copyCredential('clyde.grew', $event)">clyde.grew</span>
+                            <button class="btn btn-ghost btn-xs align-middle ml-1"
+                              title="Copy username"
+                              (click)="copyCredential('clyde.grew', $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
+                            </button>
+                            <span class="mx-1.5 text-base-content/30">/</span>
+                            <span class="font-semibold px-2 rounded cursor-pointer select-all"
+                                  [ngClass]="isAppRunning(app) ? 'bg-primary/10 border border-primary/30 text-primary' : 'bg-base-300 text-base-content/70'"
+                                  title="Copy password"
+                                  (click)="copyCredential('demo1234', $event)">demo1234</span>
+                            <button class="btn btn-ghost btn-xs align-middle ml-1"
+                              title="Copy password"
+                              (click)="copyCredential('demo1234', $event)">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
+                            </button>
+                            <span class="ml-3.5">
+                              <a href="http://localhost:8080/my-documents" target="_blank" [ngClass]="isAppRunning(app) ? 'text-info' : 'text-base-content/40'">Login to Frontend</a>
+                            </span>
+                            <span class="ml-3 text-base-content/50">— sees only own docs</span>
+                          </div>
+                        </div>
+                        <div class="mt-3 text-xs text-base-content/40 select-all">
+                          Other employees: kyle.butford, alfreda.waldback (password: demo1234)
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        }
 
-          <!-- Build Options: show for Docker apps when stopped (Start is enabled) -->
-          <div *ngIf="showDevButtons && app.type === 'docker' && isAppStopped(app)"
-               style="margin-top: 5px; margin-bottom: 10px;">
-            <label *ngIf="isFlowkraftApp(app)" class="checkbox-inline" style="font-size: 0.85em; cursor: pointer;"
-                   title="Rebuild image using cache. Use when source code changed (*.groovy, *.java, *.gsp, views, assets)">
-              <input type="checkbox" 
-                     [checked]="app.currentCommandValue?.includes('--build')"
-                     (change)="toggleCommandFlag(app, '--build', $event)"
-                     [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app) || app.currentCommandValue?.includes('--no-cache') || app.currentCommandValue?.includes('--full')" />
-              <code>--build</code>
-              <i class="fa fa-info-circle text-muted" style="margin-left: 3px;"></i>
-            </label>
-            <label *ngIf="isFlowkraftApp(app)" class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
-                   title="Full rebuild without cache. Use when Dockerfile or dependencies changed (build.gradle, pom.xml) — slower">
-              <input type="checkbox" 
-                     [checked]="app.currentCommandValue?.includes('--no-cache')"
-                     (change)="toggleCommandFlag(app, '--no-cache', $event)"
-                     [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
-              <code>--no-cache</code>
-              <i class="fa fa-info-circle text-muted" style="margin-left: 3px;"></i>
-            </label>
-            <label *ngIf="isFlowkraftApp(app) && (app.id === 'flowkraft-grails' || app.id === 'flowkraft-bkend-boot-groovy')" class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
-                   title="Enable Liquibase Groovy DSL database migrations. Runs changesets from db/migration/changelog.groovy on startup.">
-              <input type="checkbox" 
-                     [checked]="app.currentCommandValue?.includes('--liquibase')"
-                     (change)="toggleCommandFlag(app, '--liquibase', $event)"
-                     [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
-              <code>--liquibase</code>
-              <i class="fa fa-info-circle text-muted" style="margin-left: 3px;"></i>
-            </label>
-
-            <!-- Reprovision as a switch (adds --reprovision to start command) -->
-            <label *ngIf="isCmsWebPortal(app)" class="checkbox-inline" style="font-size: 0.85em; margin-left: 0; cursor: pointer;" title="Reprovision the site: runs provisioning and theme rebuild">
-              <input type="checkbox"
-                     [checked]="app.currentCommandValue?.includes('--reprovision')"
-                     (change)="toggleCommandFlag(app, '--reprovision', $event)"
-                     [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
-              <code>--reprovision</code>
-              <i class="fa fa-info-circle text-muted" style="margin-left: 3px;"></i>
-            </label>
-
-            <label *ngIf="app.tags?.includes('DataPallas\'s App')" class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
-                   title="Full rebuild without cache and remove local images first. Heaviest operation — slower.">
-              <input type="checkbox"
-                     [checked]="app.currentCommandValue?.includes('--full')"
-                     (change)="toggleCommandFlag(app, '--full', $event)"
-                     [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
-              <code>--full</code>
-              <i class="fa fa-info-circle text-muted" style="margin-left: 3px;"></i>
-            </label>
-
-          </div>
-          
-          <!-- Build Options: show for Docker apps when stopped (Start is enabled) -->
-          <div *ngIf="showDevButtons && app.type === 'docker' && isAppRunning(app)" 
-               style="margin-top: 5px; margin-bottom: 10px;">
-
-            <label *ngIf="app.tags?.includes('DataPallas\'s App')" class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;" title="Remove persistent volumes (permanently deletes data stored in volumes)">
-              <input type="checkbox"
-                     [checked]="app.stopCmd?.includes('--volumes')"
-                     (change)="toggleVolumesFlag(app, $event)"
-                     [disabled]="isStartingOrStopping(app) || isDockerRequiredButMissing(app)" />
-              <code>--volumes</code>
-              <span style="color: #666; font-size: .85em; margin-left: 8px;">(Requires typing <strong>DELETE</strong>)</span>
-              <i class="fa fa-info-circle text-muted" style="margin-left: 3px;"></i>
-            </label>
-          </div>
-
-          
-          <!-- Action Button with Spinner and Dynamic Text -->
+        <ng-template #dropdownButton>
           <button
-            [id]="'btnStartStop_' + sanitizeAppId(app.id)"
-            class="btn"
-            [ngClass]="{
-              'btn-primary': isAppRunning(app) || isStartingOrStopping(app),
-              'btn-default': isAppStopped(app)
-            }"
-            [disabled]="isStartingOrStopping(app)"
-            (click)="onToggleApp(app)"
-          >
-            <i *ngIf="isStartingOrStopping(app)" [id]="'appSpinner_' + sanitizeAppId(app.id)" class="fa fa-spinner fa-spin"></i>
-            <i *ngIf="!isStartingOrStopping(app)" [id]="'appIcon_' + sanitizeAppId(app.id)" class="fa"
-               [ngClass]="{'fa-play': !isAppRunning(app), 'fa-stop': isAppRunning(app)}"></i>
-            {{ isAppStarting(app) ? 'Starting' : isAppStopping(app) ? 'Stopping' : isAppRunning(app) ? 'Stop' : 'Start' }}
-          </button>
-
-            <!-- Duplicate general volumes checkbox removed (CMS-specific volumes block above retained) -->
-
-          <!-- Ask AI Button (only when askAiForHelpOutputTypeCode is provided) -->
-          <button
-            *ngIf="askAiForHelpOutputTypeCode"
-            [id]="'btnAskAi_' + sanitizeAppId(app.id)"
+            id="appsManagerDropdownToggle"
             type="button"
-            class="btn btn-default"
-            style="margin-left: 10px;"
-            (click)="askAiForHelp()"
-          >
-            <i class="fa fa-magic"></i> {{ getAiButtonLabel() }}
+            tabindex="0"
+            role="button"
+            class="btn btn-ghost"
+            >
+            @if ((visibleApps?.length || 0) > 0) {
+              @if (visibleApps[0]?.icon) {
+                <span
+                  [innerHTML]="iconSvg(visibleApps[0]?.icon)"
+                  [ngClass]="visibleApps[0]?.state === 'running' ? 'text-info' : 'text-base-content/60'"
+                  style="margin-right: 6px; display:inline-flex; align-items:center;"
+                ></span>
+              }
+              <span
+                id="appsManagerToggleAppName{{sanitizeAppId(visibleApps[0]?.id)}}"
+                [ngClass]="{
+                  'text-info': visibleApps[0]?.state === 'running',
+                  'text-primary': visibleApps[0]?.state === 'starting' || visibleApps[0]?.state === 'stopping',
+                  'text-base-content/60': visibleApps[0]?.state !== 'running' && visibleApps[0]?.state !== 'starting' && visibleApps[0]?.state !== 'stopping'
+                }">
+                {{ visibleApps[0]?.name }}
+                @if (visibleApps[0]?.type !== 'desktop') {
+                  <strong id="appsManagerToggleAppState{{sanitizeAppId(visibleApps[0]?.id)}}" style="margin-left: 6px;">
+                    @if (visibleApps[0]?.state === 'starting' || visibleApps[0]?.state === 'stopping') {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin" style="margin-right: 4px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                    }
+                    {{ visibleApps[0]?.state === 'running' ? 'running' : (visibleApps[0]?.state === 'starting' ? 'starting' : (visibleApps[0]?.state === 'stopping' ? 'stopping' : 'stopped')) }}
+                  </strong>
+                }
+              </span>
+            } @else {
+              Manage Apps
+            }
+            {{ dropdownDirection() === 'up' ? '▲' : '▼' }}
           </button>
-          
-          <!-- Launch Dropdown (when app has multiple launchLinks) -->
-          <div *ngIf="app.type !== 'desktop' && app.launchLinks?.length > 1" 
-            class="btn-group pull-right" 
-            style="margin-left: 10px; position: relative; z-index: 9999;">
-            <button type="button"
-                    [id]="'btnLaunch_' + sanitizeAppId(app.id)"
-                    class="btn btn-default dropdown-toggle"
-                    data-toggle="dropdown"
-                    [disabled]="!isAppRunning(app)"
-                    [class.disabled]="!isAppRunning(app)"
-                    [title]="isAppRunning(app) ? 'Launch ' + app.name : app.name + ' is stopped'">
-              <i class="fa fa-external-link"></i> Launch <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-right" style="z-index: 10000;">
-              <li *ngFor="let link of app.launchLinks">
-                <a [href]="isAppRunning(app) ? link.url : null" 
-                   target="_blank"
-                   [class.disabled]="!isAppRunning(app)"
-                   [style.pointerEvents]="!isAppRunning(app) ? 'none' : 'auto'"
-                   [style.color]="!isAppRunning(app) ? '#999' : 'inherit'">
-                  <i *ngIf="link.icon" [class]="link.icon" style="margin-right: 6px; width: 14px; text-align: center;"></i>
-                  <span [innerHTML]="link.label"></span>
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <!-- Simple Launch Button (when app has single URL or no launchLinks) -->
-          <a *ngIf="app.type !== 'desktop' && (!app.launchLinks || app.launchLinks.length <= 1)"
-             [id]="'btnLaunch_' + sanitizeAppId(app.id)"
-             [href]="isAppRunning(app) && app.url ? app.url : null"
-             target="_blank"
-             class="btn btn-default pull-right"
-             [class.disabled]="!isAppRunning(app) || !app.url"
-             [attr.tabindex]="!isAppRunning(app) || !app.url ? -1 : 0"
-             [attr.aria-disabled]="!isAppRunning(app) || !app.url"
-             [style.pointerEvents]="!isAppRunning(app) || !app.url ? 'none' : 'auto'"
-             [title]="isAppRunning(app) && app.url ? ('Launch ' + app.name) : (isAppRunning(app) ? (app.name + ' has no URL') : (app.name + ' is stopped'))"
-             style="margin-left: 10px;">
-            <i class="fa fa-external-link"></i> Launch
-          </a>
-          
-          <!-- Last Output with Copy Button -->
-          <pre *ngIf="app.lastOutput" style="margin-top: 10px; max-height: 35px; min-height: 35px; overflow-y: auto; background: #f8f9fa; padding: 5px; position: relative;">
-            {{ app.lastOutput }}
-            <button class="btn btn-default btn-xs" style="position: absolute; top: 5px; right: 5px;" (click)="copyToClipboard(app.lastOutput)">
-              <i class="fa fa-copy"></i>
-            </button>
-          </pre>
-          <!-- Demo Login Info (shown only when app has demoInfo) -->
-          <div *ngIf="app.demoInfo && isCmsWebPortal(app)" 
-               [ngStyle]="{
-                 'margin-top': '18px',
-                 'padding': '14px 16px',
-                 'background': isAppRunning(app) ? '#f0f7fa' : '#fafbfc',
-                 'border': isAppRunning(app) ? '1px solid #d0e4ed' : '1px solid #e8e8e8',
-                 'border-radius': '6px',
-                 'font-size': '0.88em',
-                 'color': isAppRunning(app) ? '#333' : '#555'
-               }">
-            <div [ngStyle]="{
-                   'margin-bottom': '12px',
-                   'padding-bottom': '8px',
-                   'border-bottom': isAppRunning(app) ? '1px solid #d0e4ed' : '1px solid #eee',
-                   'color': isAppRunning(app) ? '#555' : '#666'
-                 }">
-              <i class="fa fa-key" [ngStyle]="{'color': isAppRunning(app) ? '#5a9bb8' : '#888', 'margin-right': '6px'}"></i>Try the demo logins
-            </div>
-            <div style="line-height: 1.85;">
-              <div style="margin-bottom: 8px;">
-                <span style="color: #666;">Admin:</span>
-                <span [ngStyle]="{
-                        'font-weight': '600',
-                        'color': isAppRunning(app) ? '#2c5282' : '#555',
-                        'margin-left': '8px',
-                        'background': isAppRunning(app) ? '#fff' : '#f0f0f0',
-                        'padding': '2px 8px',
-                        'border-radius': '3px',
-                        'border': isAppRunning(app) ? '1px solid #d0e4ed' : 'none',
-                        'cursor': 'pointer',
-                        'user-select': 'all'
-                      }"
-                      title="Copy username"
-                      (click)="copyCredential('u2changeme', $event)">u2changeme</span>
-                <button class="btn btn-default btn-xs" 
-                        style="margin-left: 4px; padding: 0 4px; font-size: 10px; vertical-align: middle;"
-                        title="Copy username"
-                        (click)="copyCredential('u2changeme', $event)">
-                  <i class="fa fa-copy"></i>
-                </button>
-                <span style="color: #bbb; margin: 0 6px;">/</span>
-                <span [ngStyle]="{
-                        'font-weight': '600',
-                        'color': isAppRunning(app) ? '#2c5282' : '#555',
-                        'background': isAppRunning(app) ? '#fff' : '#f0f0f0',
-                        'padding': '2px 8px',
-                        'border-radius': '3px',
-                        'border': isAppRunning(app) ? '1px solid #d0e4ed' : 'none',
-                        'cursor': 'pointer',
-                        'user-select': 'all'
-                      }"
-                      title="Copy password"
-                      (click)="copyCredential('p2changeme123!', $event)">p2changeme123!</span>
-                <button class="btn btn-default btn-xs" 
-                        style="margin-left: 4px; padding: 0 4px; font-size: 10px; vertical-align: middle;"
-                        title="Copy password"
-                        (click)="copyCredential('p2changeme123!', $event)">
-                  <i class="fa fa-copy"></i>
-                </button>
-                <span style="margin-left: 14px;">
-                  <a href="http://localhost:8080/wp-admin" target="_blank" [ngStyle]="{'color': isAppRunning(app) ? '#5a9bb8' : '#999', 'text-decoration': 'underline'}">Login to Admin Area</a>
-                  <span style="color: #ddd; margin: 0 6px;">•</span>
-                  <a href="http://localhost:8080/my-documents" target="_blank" [ngStyle]="{'color': isAppRunning(app) ? '#5a9bb8' : '#999', 'text-decoration': 'underline'}">Login to Frontend</a>
-                </span>
-              </div>
-              <div>
-                <span style="color: #666;">Employee:</span>
-                <span [ngStyle]="{
-                        'font-weight': '600',
-                        'color': isAppRunning(app) ? '#2c5282' : '#555',
-                        'margin-left': '8px',
-                        'background': isAppRunning(app) ? '#fff' : '#f0f0f0',
-                        'padding': '2px 8px',
-                        'border-radius': '3px',
-                        'border': isAppRunning(app) ? '1px solid #d0e4ed' : 'none',
-                        'cursor': 'pointer',
-                        'user-select': 'all'
-                      }"
-                      title="Copy username"
-                      (click)="copyCredential('clyde.grew', $event)">clyde.grew</span>
-                <button class="btn btn-default btn-xs" 
-                        style="margin-left: 4px; padding: 0 4px; font-size: 10px; vertical-align: middle;"
-                        title="Copy username"
-                        (click)="copyCredential('clyde.grew', $event)">
-                  <i class="fa fa-copy"></i>
-                </button>
-                <span style="color: #bbb; margin: 0 6px;">/</span>
-                <span [ngStyle]="{
-                        'font-weight': '600',
-                        'color': isAppRunning(app) ? '#2c5282' : '#555',
-                        'background': isAppRunning(app) ? '#fff' : '#f0f0f0',
-                        'padding': '2px 8px',
-                        'border-radius': '3px',
-                        'border': isAppRunning(app) ? '1px solid #d0e4ed' : 'none',
-                        'cursor': 'pointer',
-                        'user-select': 'all'
-                      }"
-                      title="Copy password"
-                      (click)="copyCredential('demo1234', $event)">demo1234</span>
-                <button class="btn btn-default btn-xs" 
-                        style="margin-left: 4px; padding: 0 4px; font-size: 10px; vertical-align: middle;"
-                        title="Copy password"
-                        (click)="copyCredential('demo1234', $event)">
-                  <i class="fa fa-copy"></i>
-                </button>
-                <span style="margin-left: 14px;">
-                  <a href="http://localhost:8080/my-documents" target="_blank" [ngStyle]="{'color': isAppRunning(app) ? '#5a9bb8' : '#999', 'text-decoration': 'underline'}">Login to Frontend</a>
-                </span>
-                <span style="color: #888; margin-left: 12px;">— sees only own docs</span>
-              </div>
-            </div>
-            <div style="margin-top: 12px; font-size: 0.85em; color: #999; user-select: all;">
-              Other employees: kyle.butford, alfreda.waldback (password: demo1234)
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </ng-container>
-
-  <ng-template #dropdownButton>
-    <button
-      id="appsManagerDropdownToggle"
-      type="button"
-      class="btn btn-default dropdown-toggle"
-      data-toggle="dropdown"
-      aria-haspopup="true"
-      aria-expanded="false"
-    >
-      <ng-container *ngIf="(visibleApps?.length || 0) > 0; else manageAppsLabel">
-        <i
-          *ngIf="visibleApps[0]?.icon"
-          [class]="visibleApps[0]?.icon"
-          [style.color]="visibleApps[0]?.state === 'running' ? '#31708f' : '#888'"
-          style="margin-right: 6px"
-        ></i>
-        <span
-          id="appsManagerToggleAppName{{sanitizeAppId(visibleApps[0]?.id)}}"
-          [style.color]="visibleApps[0]?.state === 'running' ? '#31708f' : (visibleApps[0]?.state === 'starting' || visibleApps[0]?.state === 'stopping') ? '#337ab7' : '#888'">
-          {{ visibleApps[0]?.name }}
-          <strong *ngIf="visibleApps[0]?.type !== 'desktop'" id="appsManagerToggleAppState{{sanitizeAppId(visibleApps[0]?.id)}}" style="margin-left: 6px;">
-            <i *ngIf="visibleApps[0]?.state === 'starting' || visibleApps[0]?.state === 'stopping'" class="fa fa-spinner fa-spin" style="margin-right: 4px;"></i>
-            {{ visibleApps[0]?.state === 'running' ? 'running' : (visibleApps[0]?.state === 'starting' ? 'starting' : (visibleApps[0]?.state === 'stopping' ? 'stopping' : 'stopped')) }}
-          </strong>
-        </span>
-      </ng-container>
-      <ng-template #manageAppsLabel>
-        Manage Apps
-      </ng-template>
-      <span class="caret"></span>
-    </button>
-    <ul class="dropdown-menu" role="menu">
-      <li role="menuitem" *ngFor="let app of visibleApps; trackBy: trackByAppId" [id]="'appsManagerApp' + sanitizeAppId(app.id)">
-        <a class="dropdown-item" href="javascript:void(0)">
-          <!-- Stop icon to the left of app name when running (dropdown mode) -->
-          <span *ngIf="app.state === 'running' && app.type !== 'desktop'"
-                [id]="'appsManagerAppStopBtn' + sanitizeAppId(app.id)"
-                style="margin-right: 10px; vertical-align: middle; cursor: pointer;"
-                (click)="onToggleApp(app); $event.stopPropagation();"
-                title="Stop">
-            <i class="fa fa-stop" style="color: #888; font-size: 16px;"></i>
-          </span>
-          <i
-            *ngIf="app.icon"
-            [class]="app.icon"
-            [style.color]="isAppRunning(app) ? '#31708f' : '#888'"
-            style="margin-right: 6px"
-          ></i>
-          <span [id]="'appsManagerAppName' + sanitizeAppId(app.id)" [style.color]="app.state === 'running' ? '#31708f' : (app.state === 'starting' || app.state === 'stopping') ? '#337ab7' : '#888'">
-            {{ app.name }}
-            <strong *ngIf="app.type !== 'desktop'" [id]="'appsManagerAppState' + sanitizeAppId(app.id)" style="margin-left: 6px;">
-              <i *ngIf="app.state === 'starting' || app.state === 'stopping'" class="fa fa-spinner fa-spin" style="margin-right: 4px;"></i>
-              {{ app.state === 'running' ? 'running' : (app.state === 'starting' ? 'starting' : (app.state === 'stopping' ? 'stopping' : 'stopped')) }}
-            </strong>
-          </span>
-          <!-- Launch label when running and has URL -->
-          <span
-            *ngIf="app.url && app.type !== 'desktop'"
-            class="btn btn-link btn-xs"
-            style="padding: 0 4px; margin-left: 12px; vertical-align: middle;"
+          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+            @for (app of visibleApps; track trackByAppId($index, app)) {
+              <li role="menuitem" [id]="'appsManagerApp' + sanitizeAppId(app.id)">
+                <a class="dropdown-item" href="javascript:void(0)">
+                  <!-- Stop icon to the left of app name when running (dropdown mode) -->
+                  @if (app.state === 'running' && app.type !== 'desktop') {
+                    <span
+                      [id]="'appsManagerAppStopBtn' + sanitizeAppId(app.id)"
+                      style="margin-right: 10px; vertical-align: middle; cursor: pointer;"
+                      (click)="onToggleApp(app); $event.stopPropagation();"
+                      title="Stop">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
+                    </span>
+                  }
+                  @if (app.icon) {
+                    <span
+                      [innerHTML]="iconSvg(app.icon)"
+                      [ngClass]="isAppRunning(app) ? 'text-info' : 'text-base-content/60'"
+                      style="margin-right: 6px; display:inline-flex; align-items:center;"
+                    ></span>
+                  }
+                  <span [id]="'appsManagerAppName' + sanitizeAppId(app.id)"
+                    [ngClass]="{
+                      'text-info': app.state === 'running',
+                      'text-primary': app.state === 'starting' || app.state === 'stopping',
+                      'text-base-content/60': app.state !== 'running' && app.state !== 'starting' && app.state !== 'stopping'
+                    }">
+                    {{ app.name }}
+                    @if (app.type !== 'desktop') {
+                      <strong [id]="'appsManagerAppState' + sanitizeAppId(app.id)" style="margin-left: 6px;">
+                        @if (app.state === 'starting' || app.state === 'stopping') {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin" style="margin-right: 4px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                        }
+                        {{ app.state === 'running' ? 'running' : (app.state === 'starting' ? 'starting' : (app.state === 'stopping' ? 'stopping' : 'stopped')) }}
+                      </strong>
+                    }
+                  </span>
+                  <!-- Launch label when running and has URL -->
+                  @if (app.url && app.type !== 'desktop') {
+                    <span
+                      class="btn btn-link btn-xs"
+                      style="padding: 0 4px; margin-left: 12px; vertical-align: middle;"
             [title]="
               app.state === 'running'
                 ? 'Launch ' + app.name
                 : app.name + ' is stopped, please start it'
             "
-          >
-            <ng-container *ngIf="app.state === 'running'; else disabledLaunchDropdown">
-              <a
-                [href]="app.url"
-                target="_blank"
-                (click)="$event.stopPropagation()"
-                style="color: inherit; text-decoration: none;"
-              >
-                <i class="fa fa-external-link"></i>
-                Launch
-              </a>
-            </ng-container>
-            <ng-template #disabledLaunchDropdown>
-              <button
-                disabled
-                style="background: none; border: none; color: #bbb; cursor: not-allowed; opacity: 0.6; padding: 0;"
-                (click)="$event.stopPropagation()"
-              >
-                <i class="fa fa-external-link"></i>
-                Launch
-              </button>
-            </ng-template>
-          </span>
-          <!-- Start button when stopped (hidden during starting/stopping) -->
-          <button
-            *ngIf="app.type !== 'desktop' && isAppStopped(app)"
-            class="btn btn-xs btn-link"
-            style="padding: 0 4px; vertical-align: middle;"
-            (click)="onToggleApp(app); $event.stopPropagation();"
-            [title]="'Start ' + app.name"
-            [id]="'appsManagerAppStartBtn' + sanitizeAppId(app.id)"
-          >
-            <i class="fa fa-play" style="color: #555"></i>
-          </button>
-          <!-- Desktop launch button -->
-          <button
-            *ngIf="app.type === 'desktop'"
-            class="btn btn-xs btn-link"
-            style="padding: 0 4px; vertical-align: middle;"
-            (click)="onToggleApp(app); $event.stopPropagation();"
-            [title]="'Launch ' + app.name"
-          >
-            <i class="fa fa-play-circle" [style.color]="app.state === 'running' ? '#31708f' : '#888'"></i>
-          </button>
-        </a>
-      </li>
-    </ul>
-  </ng-template>
-</ng-container>
+                      >
+                      @if (app.state === 'running') {
+                        <a
+                          [href]="app.url"
+                          target="_blank"
+                          (click)="$event.stopPropagation()"
+                          style="color: inherit; text-decoration: none;"
+                          >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                          Launch
+                        </a>
+                      } @else {
+                        <button
+                          disabled
+                          style="background: none; border: none; color: #bbb; cursor: not-allowed; opacity: 0.6; padding: 0;"
+                          (click)="$event.stopPropagation()"
+                          >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                          Launch
+                        </button>
+                      }
+                    </span>
+                  }
+                  <!-- Start button when stopped (hidden during starting/stopping) -->
+                  @if (app.type !== 'desktop' && isAppStopped(app)) {
+                    <button
+                      class="btn btn-xs btn-link"
+                      style="padding: 0 4px; vertical-align: middle;"
+                      (click)="onToggleApp(app); $event.stopPropagation();"
+                      [title]="'Start ' + app.name"
+                      [id]="'appsManagerAppStartBtn' + sanitizeAppId(app.id)"
+                      >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="color: #555"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
+                    </button>
+                  }
+                  <!-- Desktop launch button -->
+                  @if (app.type === 'desktop') {
+                    <button
+                      class="btn btn-xs btn-link"
+                      style="padding: 0 4px; vertical-align: middle;"
+                      (click)="onToggleApp(app); $event.stopPropagation();"
+                      [title]="'Launch ' + app.name"
+                      >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" [style.color]="app.state === 'running' ? '#31708f' : '#888'" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15.9099 11.6722C16.1671 11.8151 16.1671 12.1849 15.9099 12.3278L10.3071 15.4405C10.0572 15.5794 9.75 15.3986 9.75 15.1127V8.88732C9.75 8.60139 10.0572 8.42065 10.3071 8.55951L15.9099 11.6722Z"/></svg>
+                    </button>
+                  }
+                </a>
+              </li>
+            }
+          </ul>
+        </ng-template>

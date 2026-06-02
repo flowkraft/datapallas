@@ -3,7 +3,6 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -143,7 +142,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-base-content/60">Loading...</div>
       </div>
     )
   }
@@ -153,12 +152,14 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
       <div className="flex items-center gap-4">
         <Link href={`/admin/invoices/${id}`}>
           <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+            </svg>
           </Button>
         </Link>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">Edit Invoice</h2>
-          <p className="text-muted-foreground">Update invoice {formData.invoiceNumber}</p>
+          <h2 className="text-3xl font-bold tracking-tight text-base-content">Edit Invoice</h2>
+          <p className="text-base-content/60">Update invoice {formData.invoiceNumber}</p>
         </div>
       </div>
 
@@ -315,7 +316,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                     step="0.01"
                     value={formData.taxAmount}
                     readOnly
-                    className="bg-muted"
+                    className="bg-base-200"
                   />
                 </div>
                 <div className="space-y-2">
@@ -340,7 +341,7 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
                     step="0.01"
                     value={formData.totalAmount}
                     readOnly
-                    className="bg-muted"
+                    className="bg-base-200"
                   />
                 </div>
                 <div className="space-y-2">

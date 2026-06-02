@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from '@storybook/angular';
+import type { Meta, StoryObj } from '@storybook/angular';
 import { ButtonClearLogsComponent } from '../app/components/button-clear-logs/button-clear-logs.component';
 import { ExecutionStatsService } from '../app/providers/execution-stats.service';
 import { baseMeta } from './_utils/setup';

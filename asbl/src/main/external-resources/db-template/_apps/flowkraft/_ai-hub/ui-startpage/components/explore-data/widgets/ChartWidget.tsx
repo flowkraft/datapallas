@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useWidgetData } from "./useWidgetData";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "./useRbElementReady";
-import { Loader2, Sparkles, Hash, Eye, EyeOff } from "lucide-react";
+import { IconSparkles as Sparkles } from "@/components/shared/Icons";
 import { fetchSchema, getConnectionType } from "@/lib/explore-data/rb-api";
 import { buildSql } from "@/lib/explore-data/sql-builder";
 import {
@@ -546,28 +546,31 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
           <div className="w-10 h-10 mx-auto mb-2.5 rounded-full bg-primary/10 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-sm font-medium text-foreground mb-1">
+          <p className="text-sm font-medium text-base-content mb-1">
             {vq?.table ?? "This data"} has no aggregation yet
           </p>
-          <p className="text-[11px] text-muted-foreground mb-3">
+          <p className="text-[11px] text-base-content/60 mb-3">
             A chart needs rows to be grouped and summarized. Pick defaults, or configure manually in the Data tab.
           </p>
           <button
             type="button"
             onClick={handleAutoSummarize}
             disabled={autoBusy}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-content text-xs font-medium hover:bg-primary/90 disabled:opacity-60"
           >
-            {autoBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {autoBusy
+              ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+              : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 1 2.455 2.456ZM16.5 20.25l-.259 1.035a3.375 3.375 0 0 1-2.455 2.456L12.75 24l1.036-.259a3.375 3.375 0 0 0 2.455-2.456l.259-1.035Z" /></svg>
+            }
             {autoBusy ? "Analyzing…" : "Auto-summarize this data"}
           </button>
-          {autoErr && <p className="mt-2 text-[11px] text-destructive">{autoErr}</p>}
+          {autoErr && <p className="mt-2 text-[11px] text-error">{autoErr}</p>}
           <button
             type="button"
             onClick={() => widget && changeWidgetRenderMode(widget.id, "number")}
-            className="block mx-auto mt-2 text-[11px] text-muted-foreground hover:text-foreground"
+            className="block mx-auto mt-2 text-[11px] text-base-content/60 hover:text-base-content"
           >
-            <Hash className="inline w-3 h-3 mr-1" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="inline w-3 h-3 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" /></svg>
             Show as Number instead
           </button>
         </div>
@@ -577,13 +580,13 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">
-      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 animate-spin text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
     </div>
   );
-  if (error) return <div className="text-xs text-destructive p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
+  if (error) return <div className="text-xs text-error p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
   if (!result) return null;
   if (!ready) return (
-    <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+    <div className="flex items-center justify-center h-full text-xs text-base-content/60">
       Loading components...
     </div>
   );
@@ -596,31 +599,31 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
         <rb-chart ref={ref} style={{ position: "absolute", inset: 0, display: "block" }} />
       </div>
       {hiddenCount > 0 && widget && (
-        <div className="shrink-0 px-2 py-0.5 text-[10px] text-muted-foreground bg-muted/40 border-t border-border/50 flex items-center justify-between gap-2">
+        <div className="shrink-0 px-2 py-0.5 text-[10px] text-base-content/60 bg-base-200/40 border-t border-base-300/50 flex items-center justify-between gap-2">
           <span className="truncate">
             showing top {TOP_N_DEFAULT} of {TOP_N_DEFAULT + hiddenCount} — + {hiddenCount} more hidden
           </span>
           <button
             type="button"
             onClick={() => updateWidgetDisplayConfig(widget.id, { ...(widget.displayConfig || {}), chartShowAll: true })}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-accent text-foreground/80 font-medium shrink-0"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-base-200 text-base-content/80 font-medium shrink-0"
             title="Show all bars — may be cluttered"
           >
-            <Eye className="w-3 h-3" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
             Show all
           </button>
         </div>
       )}
       {(widget?.displayConfig?.chartShowAll as boolean | undefined) === true && widget && (
-        <div className="shrink-0 px-2 py-0.5 text-[10px] text-muted-foreground bg-muted/40 border-t border-border/50 flex items-center justify-between gap-2">
+        <div className="shrink-0 px-2 py-0.5 text-[10px] text-base-content/60 bg-base-200/40 border-t border-base-300/50 flex items-center justify-between gap-2">
           <span className="truncate">showing all bars (no top-N limit)</span>
           <button
             type="button"
             onClick={() => updateWidgetDisplayConfig(widget.id, { ...(widget.displayConfig || {}), chartShowAll: false })}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-accent text-foreground/80 font-medium shrink-0"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-base-200 text-base-content/80 font-medium shrink-0"
             title="Return to top-N view"
           >
-            <EyeOff className="w-3 h-3" />
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
             Show top {TOP_N_DEFAULT}
           </button>
         </div>

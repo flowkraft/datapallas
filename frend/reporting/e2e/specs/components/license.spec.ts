@@ -34,7 +34,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldBeVisible('#btnCheckLicenseKeyDisabled')
       .elementShouldBeVisible('#statusInvalidLicense')
       .elementShouldBeVisible('#version');
@@ -67,7 +67,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       // STEP0 - start from a demo (empty) license key
       .elementShouldBeVisible('#btnGetLicenseKey')
       .elementShouldBeVisible('#statusDemoLicense')
@@ -106,7 +106,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .inputShouldHaveValue('#licenseKey', Constants.TEST_LICENSE_KEY)
       .elementShouldBeVisible('#btnActivateLicenseKey')
       .elementShouldBeVisible('#statusDemoLicense')
@@ -140,7 +140,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       // STEP0 - start from a demo (empty) license key
       .elementShouldBeVisible('#btnGetLicenseKey')
       .elementShouldBeVisible('#statusDemoLicense')
@@ -179,7 +179,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldBeVisible('#btnCheckLicenseKey')
       .elementShouldBeVisible('#statusInvalidLicense')
       .elementShouldBeVisible('#version');
@@ -206,7 +206,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldBeVisible('#btnCheckLicenseKey')
       .elementShouldBeVisible('#statusActiveLicenseKey')
       .elementShouldBeVisible('#version')
@@ -240,7 +240,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldBeVisible('#btnCheckLicenseKey')
       .elementShouldBeVisible('#statusExpiredLicense')
       .elementShouldBeVisible('#version');
@@ -273,7 +273,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldBeVisible('#btnCheckLicenseKey')
       .elementShouldBeVisible('#statusInvalidLicense')
       .elementShouldBeVisible('#version');
@@ -303,7 +303,7 @@ test.describe('', async () => {
 
     await ft
       .click('#topMenuBurst')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldBeVisible('#btnCheckLicenseKey')
       .elementShouldBeVisible('#statusActiveLicenseKey')
       .elementShouldBeVisible('#version')

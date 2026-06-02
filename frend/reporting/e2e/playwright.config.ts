@@ -16,8 +16,8 @@ const config = {
     toMatchSnapshot: { threshold: 0.2 },
   },
   // Give failing tests 3 retry attempts
-  retries: 1,
-  //retries: 2,
+  //retries: 1,
+  retries: 2,
   //retries: 3,
   //retries: 0,
   // Limit the number of workers on CI, use default locally

@@ -14,7 +14,6 @@ import { StripeProvider } from "./StripeProvider"
 import { StripeCheckoutForm } from "./StripeCheckoutForm"
 import { PayPalProvider } from "./PayPalProvider"
 import { PayPalCheckout } from "./PayPalCheckout"
-import { CreditCard, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getSetting, SETTING_KEYS } from "@/lib/settings"
 
@@ -124,7 +123,9 @@ export function InvoicePayment({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2">
-          <CreditCard className="h-4 w-4" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/>
+          </svg>
           Pay Now
         </Button>
       </DialogTrigger>
@@ -138,23 +139,13 @@ export function InvoicePayment({
 
         {paymentComplete ? (
           <div className="py-8 text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-              <svg
-                className="h-6 w-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-6 w-6 text-success">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-green-600">Payment Successful!</h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h3 className="text-lg font-semibold text-success">Payment Successful!</h3>
+            <p className="text-sm text-base-content/60 mt-1">
               Your payment has been processed.
             </p>
           </div>
@@ -168,10 +159,12 @@ export function InvoicePayment({
                   "flex items-center gap-2 px-4 py-2 rounded-md border transition-all",
                   paymentMethod === "stripe"
                     ? "border-primary bg-primary/5 text-primary"
-                    : "border-border hover:border-primary/50"
+                    : "border-base-300 hover:border-primary/50"
                 )}
               >
-                <CreditCard className="h-4 w-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-4 w-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/>
+                </svg>
                 <span className="font-medium">Card</span>
               </button>
               <button
@@ -180,7 +173,7 @@ export function InvoicePayment({
                   "flex items-center gap-2 px-4 py-2 rounded-md border transition-all",
                   paymentMethod === "paypal"
                     ? "border-[#0070ba] bg-[#0070ba]/5 text-[#0070ba]"
-                    : "border-border hover:border-[#0070ba]/50"
+                    : "border-base-300 hover:border-[#0070ba]/50"
                 )}
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -191,7 +184,7 @@ export function InvoicePayment({
             </div>
 
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
+              <div className="p-3 text-sm text-error bg-error/10 rounded-md border border-error/30">
                 {error}
               </div>
             )}
@@ -201,8 +194,8 @@ export function InvoicePayment({
               <div className="min-h-[200px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">
+                    <span className="loading loading-spinner loading-md text-base-content/40"></span>
+                    <span className="ml-2 text-base-content/60">
                       Initializing payment...
                     </span>
                   </div>
@@ -217,7 +210,7 @@ export function InvoicePayment({
                   </StripeProvider>
                 ) : error ? null : (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="loading loading-spinner loading-md text-base-content/40"></span>
                   </div>
                 )}
               </div>

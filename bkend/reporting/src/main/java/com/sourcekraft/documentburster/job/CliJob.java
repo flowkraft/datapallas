@@ -46,6 +46,7 @@ import com.sourcekraft.documentburster.engine.BursterFactory;
 import com.sourcekraft.documentburster.engine.pdf.Merger;
 import com.sourcekraft.documentburster.job.model.JobDetails;
 import com.sourcekraft.documentburster.job.model.JobProgressDetails;
+import com.sourcekraft.documentburster.common.security.SecretsCipher;
 import com.sourcekraft.documentburster.scripting.Scripting;
 import com.sourcekraft.documentburster.sender.factory.EmailMessageFactory;
 import com.sourcekraft.documentburster.sender.factory.SmsMessageFactory;
@@ -180,11 +181,9 @@ public class CliJob {
 					(new Scripting()).executeSenderScript(Scripts.EMAIL, message);
 
 				} finally {
-
 					rnfXmlFile.delete();
-
 					_deleteJobFileWithRetry(jobFile);
-			}
+				}
 
 			} else
 				throw new Exception("'Request New Feature' XML file does not exist: " + newFeatureRequestFilePath);
@@ -325,6 +324,20 @@ public class CliJob {
 	private File _createJobFile(String targetFilePath, String jobType) throws Exception {
 
 		jobFilePath = getJobFilePath();
+
+		// Publish the actual jobFilePath (the full temp path, e.g.
+		// ".../temp/temp-524") to the caller — server-side JobsController uses
+		// it to (a) write pause/cancel signal files at the matching basename
+		// and (b) pass it back to the worker as the CLI arg for resume.
+		java.util.function.Consumer<String> sink =
+				com.sourcekraft.documentburster.common.settings.Settings.ACTIVE_JOB_FILE_PATH_SINK.get();
+		if (sink != null) {
+			try {
+				sink.accept(jobFilePath);
+			} catch (Exception ignored) {
+				/* sink errors must not crash the burst */
+			}
+		}
 
 		JobDetails jobDetails = new JobDetails();
 
@@ -750,6 +763,50 @@ public class CliJob {
 			}
 
 			log.info("Seed script completed for: {}", connectionFilePath);
+		} finally {
+			_deleteJobFileWithRetry(jobFile);
+		}
+	}
+
+	public List<Map<String, Object>> doRunSql(String connectionFilePath, String sql) throws Exception {
+		File jobFile = null;
+		try {
+			jobFile = _createJobFile(connectionFilePath, "run-sql");
+
+			com.sourcekraft.documentburster.common.settings.Settings connSettings =
+					new com.sourcekraft.documentburster.common.settings.Settings(StringUtils.EMPTY);
+			com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionDatabaseSettings dbSettings =
+					connSettings.loadSettingsConnectionDatabaseByPath(connectionFilePath);
+			dbSettings.connection.databaseserver.ensureDriverAndUrl();
+			Class.forName(dbSettings.connection.databaseserver.driver);
+
+			String decryptedPassword = dbSettings.connection.databaseserver.userpassword;
+			try {
+				decryptedPassword = com.sourcekraft.documentburster.common.security.SecretsCipher
+						.getInstance(com.sourcekraft.documentburster.common.settings.Settings.PORTABLE_EXECUTABLE_DIR_PATH)
+						.decrypt(dbSettings.connection.databaseserver.userpassword);
+			} catch (Exception e) {
+				log.warn("Failed to decrypt database password: {}", e.getMessage());
+			}
+
+			List<Map<String, Object>> rows = new java.util.ArrayList<>();
+			try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
+					dbSettings.connection.databaseserver.url,
+					dbSettings.connection.databaseserver.userid,
+					decryptedPassword);
+					java.sql.Statement stmt = conn.createStatement();
+					java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+				java.sql.ResultSetMetaData meta = rs.getMetaData();
+				int colCount = meta.getColumnCount();
+				List<String> colNames = new java.util.ArrayList<>();
+				for (int c = 1; c <= colCount; c++) colNames.add(meta.getColumnLabel(c));
+				while (rs.next()) {
+					Map<String, Object> row = new LinkedHashMap<>();
+					for (int c = 1; c <= colCount; c++) row.put(colNames.get(c - 1), rs.getObject(c));
+					rows.add(row);
+				}
+			}
+			return rows;
 		} finally {
 			_deleteJobFileWithRetry(jobFile);
 		}

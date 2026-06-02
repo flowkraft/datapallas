@@ -30,7 +30,7 @@ import reactor.core.publisher.Mono;
  * there is a single source of truth.
  */
 @RestController
-@RequestMapping(value = "/api/ai", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/system/ai-prompts", produces = MediaType.APPLICATION_JSON_VALUE)
 public class AiPromptController {
 
     private static final Logger log = LoggerFactory.getLogger(AiPromptController.class);
@@ -57,8 +57,8 @@ public class AiPromptController {
     // Endpoints
     // ────────────────────────────────────────────────────────────────────────
 
-    /** GET /api/ai/prompts — list all prompts (metadata only, no promptText) */
-    @GetMapping(value = "/prompts", consumes = MediaType.ALL_VALUE)
+    /** GET /api/system/ai-prompts — list all prompts (metadata only, no promptText) */
+    @GetMapping(value = "", consumes = MediaType.ALL_VALUE)
     public Mono<List<Map<String, Object>>> listPrompts() {
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map<String, Object> p : promptsById.values()) {
@@ -69,8 +69,8 @@ public class AiPromptController {
         return Mono.just(list);
     }
 
-    /** GET /api/ai/prompts/{id} — get a single prompt including its text */
-    @GetMapping(value = "/prompts/{id}", consumes = MediaType.ALL_VALUE)
+    /** GET /api/system/ai-prompts/{id} — get a single prompt including its text */
+    @GetMapping(value = "/{id}", consumes = MediaType.ALL_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> getPrompt(@PathVariable String id) {
         Map<String, Object> prompt = promptsById.get(id);
         if (prompt == null) {

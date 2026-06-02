@@ -1,260 +1,152 @@
-<header class="main-header">
-  <!-- Logo -->
-  <a
-    href="#"
-    class="logo"
-  >
-    <rb-brand
-    ></rb-brand>
-  </a>
-  
-  <!-- Header Navbar -->
-  <nav class="navbar navbar-static-top" role="navigation">
-    <!-- Collect the nav links, forms, and other content for toggling -->
-    <div class="collapse navbar-collapse pull-left" id="navbar-collapse">
-      <ul id="topMenu" class="nav navbar-nav">
-        <li routerLinkActive="active">
-          <a
-            id="topMenuBurst"
-            href="#"
+<!-- daisyUI navbar — full-width sticky top bar. Pattern lifted verbatim from
+     daisyui.com homepage (drawer + navbar shell). The hamburger <label> toggles
+     #app-drawer in areas.template.html. -->
+<header class="bg-base-100/90 text-base-content sticky top-0 z-30 flex h-16 w-full backdrop-blur border-b border-base-300">
+  <nav class="navbar w-full py-0 px-4">
+
+    <!-- Left: hamburger + logo + main nav -->
+    <div class="flex flex-1 items-center gap-2">
+      <button type="button" id="btnToggleSidebar" aria-label="Toggle sidebar"
+        class="btn btn-square btn-ghost"
+        (click)="toggleSidebar()">
+        <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none"
+          viewBox="0 0 24 24" class="inline-block h-5 w-5 stroke-current md:h-6 md:w-6">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
+
+      <a [routerLink]="['/processing', 'burstMenuSelected']" skipLocationChange="true"
+         class="flex items-center gap-2 shrink-0 no-underline">
+        <rb-brand></rb-brand>
+      </a>
+
+      <ul id="topMenu" class="menu menu-horizontal px-1 hidden md:flex">
+
+        <li>
+          <a id="topMenuBurst"
             [routerLink]="['/processing', 'burstMenuSelected']"
             skipLocationChange="true"
-            >{{ 'AREAS.TOP-MENU-HEADER.BURST' | translate }}</a
-          >
+            routerLinkActive="menu-active">
+            {{ 'AREAS.TOP-MENU-HEADER.BURST' | translate }}
+          </a>
         </li>
 
-        <li class="dropdown" routerLinkActive="active">
-          <a
-            id="topMenuConfiguration"
-            href="#"
-            class="dropdown-toggle"
-            data-toggle="dropdown"
-            >{{ 'AREAS.TOP-MENU-HEADER.CONFIGURATION' | translate }}
-            <span *ngIf="settingsService.currentConfigurationTemplateName">
-              ({{ settingsService.currentConfigurationTemplateName }})</span
-            >&nbsp;
-            <span class="caret"></span>
-          </a>
-          <ul id="topMenuConfigurationList" class="dropdown-menu" role="menu">
-            <ng-container
-              *ngFor="let configurationFile of this.settingsService.getConfigurations()"
-            >
-              <li *ngIf="configurationFile.isFallback">
-                <a
-                  id="topMenuConfigurationLoad_{{ configurationFile.folderName }}_{{ configurationFile.fileName }}"
-                  href="#"
-                  [routerLink]="[
-                    '/configuration',
-                    'generalSettingsMenuSelected',
-                    configurationFile.filePath,
-                    configurationFile.templateName
-                  ]"
-                  skipLocationChange="true"
-                  >{{ configurationFile.templateName }}
-                </a>
-              </li>
-            </ng-container>
-            <li class="divider"></li>
+        <li tabindex="0" role="button" class="dropdown">
+          <div class="flex items-center cursor-pointer">
+            <span id="topMenuConfiguration">{{ ('AREAS.TOP-MENU-HEADER.CONFIGURATION' | translate) + (settingsService.currentConfigurationTemplateName ? ' (' + settingsService.currentConfigurationTemplateName + ') ' : ' ') }}</span>▾
+          </div>
+          <ul id="topMenuConfigurationList" tabindex="0"
+            class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2"
+            (click)="closeDropdown()">
+            @for (configurationFile of this.settingsService.getConfigurations(); track configurationFile) {
+              @if (configurationFile.isFallback) {
+                <li>
+                  <a id="topMenuConfigurationLoad_{{ configurationFile.folderName }}_{{ configurationFile.fileName }}"
+                    [routerLink]="['/configuration','generalSettingsMenuSelected',configurationFile.filePath,configurationFile.templateName]"
+                    skipLocationChange="true">{{ configurationFile.templateName }}</a>
+                </li>
+              }
+            }
+            <li><hr class="my-1 border-base-300"/></li>
             <li>
-              <a
-                id="topConfigurationCrud"
-                href="#"
+              <a id="topConfigurationCrud"
                 [routerLink]="['/configuration-crud', 'reports']"
-                skipLocationChange="true"
-                >Reports, Connections & Cubes</a
-              >
+                skipLocationChange="true">Reports, Connections &amp; Cubes</a>
             </li>
-            <li *ngIf="false" class="divider"></li>
-            <li *ngIf="false">
-              <a href="#"
-                >Samples&nbsp;<i
-                  style="margin-top: 5px"
-                  class="fa fa-caret-right pull-right"
-                  >&nbsp;</i
-                ></a
-              >
-              <ul class="dropdown-menu">
-                <li
-                  *ngIf="this.settingsService.getSampleConfigurations().length == 0"
-                >
-                  No Samples
-                </li>
-                <li
-                  *ngFor="let configurationFile of this.settingsService.getSampleConfigurations()"
-                >
-                  <a
-                    id="topMenuConfigurationLoad_{{ configurationFile.folderName }}_{{ configurationFile.fileName }}"
-                    href="#"
-                    [routerLink]="[
-                  '/configuration',
-                  'generalSettingsMenuSelected',
-                  configurationFile.filePath,
-                  configurationFile.templateName
-                ]"
-                    skipLocationChange="true"
-                    >{{ configurationFile.templateName }}
-                  </a>
-                </li>
-              </ul>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li>
+              <a id="topMenuMoreSettings" (click)="moreSettings.show()">More Settings</a>
             </li>
           </ul>
         </li>
 
-        <li routerLinkActive="active" class="dropdown">
-          <a
-            id="topMenuHelp"
-            href="#"
-            class="dropdown-toggle"
-            data-toggle="dropdown"
-            >{{ 'AREAS.TOP-MENU-HEADER.HELP-AND-SUPPORT' | translate }}&nbsp;
-            <span class="caret"></span>
-          </a>
-          <ul class="dropdown-menu" role="menu">
-            <li>
-              <a
-                id="topMenuHelpSupport"
-                href="#"
-                [routerLink]="['/help', 'supportMenuSelected']"
-                skipLocationChange="true"
-                >{{ 'AREAS.TOP-MENU-HEADER.GET-SOFTWARE-SUPPORT' | translate
-                }}</a
-              >
-            </li>
-            <li>
-              <a
-                id="topMenuHelpServices"
-                href="#"
-                [routerLink]="['/help', 'servicesMenuSelected']"
-                skipLocationChange="true"
-              >
-                {{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-SERVICES' | translate
-                }}</a
-              >
-            </li>
-            <li class="divider"></li>
-            <li>
-              <a
-                id="topMenuStarterPacks"
-                href="#"
-                [routerLink]="['/help','appsMenuSelected']"
-                skipLocationChange="true"
-              >
-                Apps / Starter Packs / Extra Utils</a
-              >
-            </li>
-            <li class="divider"></li>
-            <li>
-              <a
-                id="topMenuHelpDocumentation"
-                href="#"
-                [routerLink]="['/help', 'docsMenuSelected']"
-                skipLocationChange="true"
-                >{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTATION' | translate }}</a
-              >
-            </li>
-            <li>
-              <a
-                id="topMenuHelpExamples"
-                href="#"
-                [routerLink]="['/help', 'useCasesMenuSelected']"
-                skipLocationChange="true"
-                >{{ 'AREAS.TOP-MENU-HEADER.EXAMPLES' | translate }}</a
-              >
-            </li>
-            <li class="divider"></li>
-            <li>
-              <a
-                id="topMenuHelpCustomerReviews"
-                href="#"
-                [routerLink]="['/help', 'reviewsMenuSelected']"
-                skipLocationChange="true"
-                >{{ 'AREAS.TOP-MENU-HEADER.CUSTOMER-REVIEWS' | translate }}</a
-              >
-            </li>
-            <li>
-              <a
-                id="topMenuHelpBlog"
-                href="#"
-                [routerLink]="['/help', 'blogMenuSelected']"
-                skipLocationChange="true"
-              >
-                {{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-BLOG' | translate
-                }}</a
-              >
-            </li>
-
-            <li class="divider"></li>
-
-            <li *ngIf="isRunningInsideElectron()">
-              <a
-                id="topMenuHelpJava"
-                href="#"
-                [routerLink]="['/help', 'installSetupMenuSelected']"
-                skipLocationChange="true"
-              >
-                {{ 'AREAS.TOP-MENU-HEADER.INSTALL-SETUP' | translate }}</a
-              >
-            </li>
-
-            <li class="divider" *ngIf="isRunningInsideElectron()"></li>
-
-            <li>
-              <a
-                id="topMenuHelpLicense"
-                href="#"
-                [routerLink]="['/help','licenseMenuSelected']"
-                skipLocationChange="true"
-              >
-                {{ 'AREAS.HELP.LEFT-MENU.LICENSE' | translate }}
-              </a>
-            </li>
-            <li>
-              <a
-                id="topMenuHelpAbout"
-                href="#"
-                [routerLink]="['/help', 'aboutMenuSelected']"
-                skipLocationChange="true"
-                >{{ 'AREAS.TOP-MENU-HEADER.ABOUT' | translate }}</a
-              >
-            </li>
+        <li id="topMenuHelp" tabindex="0" role="button" class="dropdown">
+          <div class="flex items-center cursor-pointer">
+            {{ 'AREAS.TOP-MENU-HEADER.HELP-AND-SUPPORT' | translate }}&nbsp;▾
+          </div>
+          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1031] min-w-max p-2 mt-2"
+            (click)="closeDropdown()">
+            <li><a id="topMenuHelpSupport" [routerLink]="['/help', 'supportMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.GET-SOFTWARE-SUPPORT' | translate }}</a></li>
+            <li><a id="topMenuHelpServices" [routerLink]="['/help', 'servicesMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-SERVICES' | translate }}</a></li>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li><a id="topMenuStarterPacks" [routerLink]="['/help','appsMenuSelected']" skipLocationChange="true">Apps / Starter Packs / Extra Utils</a></li>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li><a id="topMenuHelpDocumentation" [routerLink]="['/help', 'docsMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTATION' | translate }}</a></li>
+            <li><a id="topMenuHelpExamples" [routerLink]="['/help', 'useCasesMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.EXAMPLES' | translate }}</a></li>
+            <li><hr class="my-1 border-base-300"/></li>
+            <li><a id="topMenuHelpCustomerReviews" [routerLink]="['/help', 'reviewsMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.CUSTOMER-REVIEWS' | translate }}</a></li>
+            <li><a id="topMenuHelpBlog" [routerLink]="['/help', 'blogMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-BLOG' | translate }}</a></li>
+            <li><hr class="my-1 border-base-300"/></li>
+            @if (isRunningInsideElectron()) {
+              <li><a id="topMenuHelpJava" [routerLink]="['/help', 'installSetupMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.INSTALL-SETUP' | translate }}</a></li>
+              <li><hr class="my-1 border-base-300"/></li>
+            }
+            <li><a id="topMenuHelpLicense" [routerLink]="['/help','licenseMenuSelected']" skipLocationChange="true">{{ 'AREAS.HELP.LEFT-MENU.LICENSE' | translate }}</a></li>
+            <li><a id="topMenuHelpAbout" [routerLink]="['/help', 'aboutMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.ABOUT' | translate }}</a></li>
           </ul>
         </li>
+
       </ul>
     </div>
 
-    <div class="navbar-custom-menu">
-      <ul class="nav navbar-nav">
-        <li>
-          <a
-            id="askForFeature"
-            href="#"
-            (click)="onAskForFeatureModalShow(); false"
-            >Request <span class="badge">New</span> Feature</a
-          >
-        </li>
+    <!-- Right: actions + theme picker -->
+    <div class="flex items-center gap-1">
+      <a id="askForFeature" href="#"
+        class="btn btn-ghost btn-sm normal-case"
+        (click)="onAskForFeatureModalShow(); false">
+        Request <span class="badge badge-sm">New</span> Feature
+      </a>
+      <a id="supportEmail"
+        class="btn btn-ghost btn-sm normal-case"
+        [routerLink]="['/help', 'supportMenuSelected']"
+        skipLocationChange="true">support&#64;datapallas.com</a>
 
-        <li>
-          <a
-            id="supportEmail"
-            href="#"
-            [routerLink]="['/help', 'supportMenuSelected']"
-            skipLocationChange="true"
-            >support@datapallas.com</a
-          >
-        </li>
-        <li class="divider">&nbsp;</li>
-        <!-- Control Sidebar Toggle Button -->
-        <li
-          *ngIf="!settingsService.RUNNING_IN_E2E"
-          data-toggle="control-sidebar"
-        >
-          <a id="btnChangeSkin" style="cursor: pointer">
-            <i class="fa fa-gears"></i>
-          </a>
-        </li>
-      </ul>
+      <!-- Theme picker — daisyUI homepage pattern: single-column list, each
+           row a 4-cell preview swatch (base/primary/secondary/accent) bound to
+           the theme's data-theme so the swatch *is* the theme's actual palette.
+           Hidden in e2e mode for deterministic Playwright baselines. -->
+      @if (!settingsService.RUNNING_IN_E2E) {
+        <div class="dropdown dropdown-end">
+          <div id="btnChangeSkin" tabindex="0" role="button"
+            class="btn btn-square btn-ghost" aria-label="Theme">
+            <div [attr.data-theme]="activeTheme"
+                 style="display:inline-grid;grid-template-columns:4px 4px;grid-template-rows:4px 4px;gap:2px;padding:2px;border-radius:3px;border:1px solid rgba(128,128,128,0.2);background-color:var(--color-base-100);flex-shrink:0">
+              <div style="background-color:var(--color-base-content);border-radius:50%"></div>
+              <div style="background-color:var(--color-primary);border-radius:50%"></div>
+              <div style="background-color:var(--color-secondary);border-radius:50%"></div>
+              <div style="background-color:var(--color-accent);border-radius:50%"></div>
+            </div>
+          </div>
+          <ul tabindex="0"
+            class="dropdown-content menu bg-base-300 rounded-box max-h-96 overflow-y-auto w-52 p-2 shadow z-[1031]">
+            @for (theme of ALL_THEMES; track theme) {
+              <li>
+                <button type="button"
+                  [id]="'theme-' + theme"
+                  class="gap-3 px-2 cursor-pointer"
+                  (click)="setTheme(theme)">
+                  <div [attr.data-theme]="theme"
+                       style="display:inline-grid;grid-template-columns:4px 4px;grid-template-rows:4px 4px;gap:2px;padding:2px;border-radius:3px;border:1px solid rgba(128,128,128,0.2);background-color:var(--color-base-100);flex-shrink:0;vertical-align:middle">
+                    <div style="background-color:var(--color-base-content);border-radius:50%"></div>
+                    <div style="background-color:var(--color-primary);border-radius:50%"></div>
+                    <div style="background-color:var(--color-secondary);border-radius:50%"></div>
+                    <div style="background-color:var(--color-accent);border-radius:50%"></div>
+                  </div>
+                  <div class="w-32 truncate capitalize">{{ theme }}</div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+                       class="h-3 w-3 shrink-0"
+                       [class.invisible]="activeTheme !== theme">
+                    <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"></path>
+                  </svg>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
     </div>
   </nav>
 </header>
-<!--<dburst-skins></dburst-skins> -->
-<dburst-skins *ngIf="!settingsService.RUNNING_IN_E2E"></dburst-skins>
+
+<dburst-more-settings #moreSettings></dburst-more-settings>

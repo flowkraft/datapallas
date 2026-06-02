@@ -1,41 +1,40 @@
-export const modalSamplesLearnMoreTemplate = `<p-dialog 
-  [header]="modalSampleInfo.title" 
-  [(visible)]="isModalSamplesLearnMoreVisible" 
-  [modal]="true" 
+export const modalSamplesLearnMoreTemplate = `@if (isModalSamplesLearnMoreVisible) {
+<dp-dialog
+  [header]="modalSampleInfo.title"
+  [(visible)]="isModalSamplesLearnMoreVisible"
   [style]="{width: '800px'}"
-  [contentStyle]="{overflow: 'auto', minHeight: '400px'}"
-  class="modal-dialog-center">
+>
   <div style="margin: 25px;">
-  
-  <div class="row">
-    
-  <div class="col-xs-2">
+
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+
+  <div style="grid-column:span 2">
     <strong>{{
       'AREAS.TOP-MENU-HEADER.DOCUMENTATION' | translate
-    }}</strong> 
+    }}</strong>
   </div>
 
-  <div class="col-xs-10">
-      <a href="{{modalSampleInfo.documentation}}" target="_blank">{{modalSampleInfo.documentation}}</a>    
+  <div style="grid-column:span 10">
+      <a href="{{modalSampleInfo.documentation}}" target="_blank">{{modalSampleInfo.documentation}}</a>
   </div>
- 
+
  </div>
-  <br/>  
-  <div class="row">
-      <div class="col-xs-2">
+  <br/>
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 2">
       {{
         'SAMPLES.MODAL.FEATURES' | translate
       }}
       </div>
-      
-      <div class="col-xs-10">
-        
+
+      <div style="grid-column:span 10">
+
       <input
           type="checkbox"
           id="btnCapReportSplitting"
           [ngModel]="modalSampleInfo.capReportSplitting" onclick="return false;"
           />
-        <label 
+        <label
           for="btnCapReportSplitting" class="checkboxlabel">
           &nbsp;{{'AREAS.CONFIGURATION-TEMPLATES.MODAL-CONF-TEMPLATE.CAP-REPORT-SPLITTING' | translate}}
         </label>
@@ -46,7 +45,7 @@ export const modalSamplesLearnMoreTemplate = `<p-dialog
           id="btnCapReportDistribution"
           [ngModel]="modalSampleInfo.capReportDistribution" onclick="return false;"
           />
-        <label 
+        <label
           for="btnCapReportDistribution" class="checkboxlabel">
           &nbsp;{{'AREAS.CONFIGURATION-TEMPLATES.MODAL-CONF-TEMPLATE.CAP-REPORT-DISTRIBUTION' | translate}}
         </label>
@@ -56,26 +55,26 @@ export const modalSamplesLearnMoreTemplate = `<p-dialog
           id="btnCapReportGenerationMailMerge"
           [ngModel]="modalSampleInfo.capReportGenerationMailMerge" onclick="return false;"
           />
-        <label 
+        <label
           for="btnCapReportGenerationMailMerge" class="checkboxlabel">
           &nbsp;{{'AREAS.CONFIGURATION-TEMPLATES.MODAL-CONF-TEMPLATE.CAP-REPORT-GENERATION' | translate}}
         </label>
-              
+
       </div>
-    
+
     </div>
     <p></p>
-    
-    <div class="row">
-    <div class="col-xs-2">
+
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+    <div style="grid-column:span 2">
     {{
       'SAMPLES.MODAL.INPUT' | translate
     }}
     </div>
 
-    <div class="col-xs-10">
+    <div style="grid-column:span 10">
 
-        <div id="modalInputDetails" 
+        <div id="modalInputDetails"
          [innerHTML]="modalSampleInfo.inputDetails"
          style="
            display: block;
@@ -87,78 +86,80 @@ export const modalSamplesLearnMoreTemplate = `<p-dialog
            margin: 10px 0;
          ">
     </div>
-            
+
     </div>
   </div>
-  
+
   <br/>
   <br/>
 
-  <div class="row">
-  <div class="col-xs-2">
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+  <div style="grid-column:span 2">
   {{
     'SAMPLES.MODAL.EXPECTED-OUTPUT' | translate
   }}
   </div>
 
-  <div id="modalOutputDetails" class="col-xs-10" [innerHTML]="modalSampleInfo.outputDetails">
+  <div id="modalOutputDetails" style="grid-column:span 10" [innerHTML]="modalSampleInfo.outputDetails">
   </div>
 </div>
 
 <br/>
 <br/>
 
-  <div class="row">
+  <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-      <div class="col-xs-2">{{
+      <div style="grid-column:span 2">{{
         'SAMPLES.MODAL.NOTES' | translate
       }}
       </div>
-      
-      <div id="div{{modalSampleInfo.id}}" class="col-xs-10" [innerHTML] = "modalSampleInfo.notes">
 
-          
-      </div>    
+      <div id="div{{modalSampleInfo.id}}" style="grid-column:span 10" [innerHTML] = "modalSampleInfo.notes">
+
+
+      </div>
   </div>
-    
+
   <p></p>
-  
-  <div class="row" *ngIf="!modalSampleInfo.capReportGenerationMailMerge">
-    
-    <div class="col-xs-2">
-    {{
-      'SAMPLES.MODAL.CONFIGURATION' | translate
-    }}
-      </div>
 
-      <div class="col-xs-10">
-        <input type="text" id="templateHowTo" class="form-control"
-          [ngModel]="modalSampleInfo.configurationFilePath" readonly />
-        
+  @if (!modalSampleInfo.capReportGenerationMailMerge) {
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 2">
+      {{
+        'SAMPLES.MODAL.CONFIGURATION' | translate
+      }}
+        </div>
+
+        <div style="grid-column:span 10">
+          <input type="text" id="templateHowTo" class="input"
+            [ngModel]="modalSampleInfo.configurationFilePath" readonly />
+
+        </div>
       </div>
-    </div>
+  }
     <br/>
-    <div class="row">
-    
-    <div class="col-xs-2">
-      
-    </div>
-  
-    <div class="col-xs-10">
-      <button type="button" id="btnViewConfigurationFile{{modalSampleInfo.id}}" class="btn btn-primary btn-xs" (click)="doSampleViewConfigurationFile(modalSampleInfo.configurationFilePath, modalSampleInfo.configurationFileName)">&nbsp;&nbsp;&nbsp;&nbsp;View Configuration&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button>
-    </div>
-   
-   </div>
-   
-    </div> 
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
-    
+    <div style="grid-column:span 2">
+
+    </div>
+
+    <div style="grid-column:span 10">
+      <button type="button" id="btnViewConfigurationFile{{modalSampleInfo.id}}" class="btn btn-outline btn-primary btn-xs" (click)="doSampleViewConfigurationFile(modalSampleInfo.configurationFilePath, modalSampleInfo.configurationFileName)">&nbsp;&nbsp;&nbsp;&nbsp;View Configuration&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button>
+    </div>
+
+   </div>
+
+    </div>
+
+
     <p></p>
-    
-  <p-footer>
-    <button id="btnCloseSamplesLearnMoreModal" class="btn btn-flat btn-default" type="button" (click)="doCloseSamplesLearnMoreModal()">
+
+  <div ngProjectAs="[footer]">
+    <button id="btnCloseSamplesLearnMoreModal" class="btn btn-ghost" type="button" (click)="doCloseSamplesLearnMoreModal()">
       {{ 'BUTTONS.CLOSE' | translate }}
     </button>
-  </p-footer>
-</p-dialog>
+  </div>
+</dp-dialog>
+}
 `;

@@ -1,62 +1,55 @@
 package com.flowkraft
 
-/**
- * Portal Payslip Controller
- * Customer-facing payslip viewing and download
- */
 class PortalPayslipController {
 
     static layout = 'portal'
 
-    /**
-     * List payslips for the current customer/employee
-     * In a real app, this would filter by logged-in user
-     */
-    def index() {
-        // For demo purposes, show all payslips
-        // In production, filter by employee ID from session
-        def payslips = Payslip.list(sort: 'dateCreated', order: 'desc', max: 20)
-        [payslipList: payslips]
+    private static Date daysAgo(int n) { new Date(System.currentTimeMillis() - (long)n * 86400000L) }
+
+    private static List<MockPayslip> samplePayslips() {
+        [
+            new MockPayslip(id: 1L, payslipNumber: 'PAY-2024-04', status: 'downloaded',
+                employeeName: 'Jane Smith', employeeEmail: 'jane@example.com',
+                employeeId: 'EMP-001', department: 'Engineering',
+                payPeriodStart: new Date(124, 3, 1), payPeriodEnd: new Date(124, 3, 30),
+                grossAmount: 5000.00, deductions: 1150.00, netAmount: 3850.00,
+                dateCreated: daysAgo(45)),
+            new MockPayslip(id: 2L, payslipNumber: 'PAY-2024-03', status: 'viewed',
+                employeeName: 'Jane Smith', employeeEmail: 'jane@example.com',
+                employeeId: 'EMP-001', department: 'Engineering',
+                payPeriodStart: new Date(124, 2, 1), payPeriodEnd: new Date(124, 2, 31),
+                grossAmount: 5000.00, deductions: 1150.00, netAmount: 3850.00,
+                dateCreated: daysAgo(75)),
+            new MockPayslip(id: 3L, payslipNumber: 'PAY-2024-02', status: 'sent',
+                employeeName: 'Jane Smith', employeeEmail: 'jane@example.com',
+                employeeId: 'EMP-001', department: 'Engineering',
+                payPeriodStart: new Date(124, 1, 1), payPeriodEnd: new Date(124, 1, 29),
+                grossAmount: 5000.00, deductions: 1150.00, netAmount: 3850.00,
+                dateCreated: daysAgo(105)),
+        ]
     }
 
-    /**
-     * View a single payslip
-     */
+    def index() {
+        [payslipList: samplePayslips()]
+    }
+
     def show(Long id) {
-        def payslip = Payslip.get(id)
+        def payslip = samplePayslips().find { it.id == id }
         if (!payslip) {
             flash.error = "Payslip not found"
             redirect action: 'index'
             return
         }
-        
-        // Mark as viewed if it was sent
-        if (payslip.status == 'sent') {
-            payslip.status = 'viewed'
-            payslip.save()
-        }
-        
         [payslip: payslip]
     }
 
-    /**
-     * Download payslip PDF
-     */
     def download(Long id) {
-        def payslip = Payslip.get(id)
+        def payslip = samplePayslips().find { it.id == id }
         if (!payslip) {
             flash.error = "Payslip not found"
             redirect action: 'index'
             return
         }
-        
-        // Mark as downloaded
-        if (payslip.status in ['sent', 'viewed']) {
-            payslip.status = 'downloaded'
-            payslip.save()
-        }
-        
-        // TODO: Generate and return PDF
         flash.message = "PDF download will be implemented"
         redirect action: 'show', id: payslip.id
     }

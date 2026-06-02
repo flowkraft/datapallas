@@ -14,34 +14,34 @@ electronBeforeAfterAllTest(
         '#checkPointHelpSupport',
         'ParkTrent Properties Group, Australia',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
       )
-      .click('#logsTab-link')
+      .click('#tab-btn-logsTab')
       .elementShouldBeVisible('#warningsLog')
       .click('#leftMenuHelpServices')
       .elementShouldHaveText(
         '#checkPointHelpServices',
         'sales@datapallas.com',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
       )
       .click('#leftMenuStarterPacks')
       .waitOnElementToBecomeVisible('#cmd-db-northwind-postgres')
-      .waitOnElementToBecomeEnabled('#extraPackagesTab-link')
-      .click('#extraPackagesTab-link')
+      .waitOnElementToBecomeEnabled('#tab-btn-extraPackagesTab')
+      .click('#tab-btn-extraPackagesTab')
       .waitOnElementToBecomeVisible('#package-notepadplusplus')
       .click('#leftMenuHelpDocumentation')
       .elementShouldContainText(
         '#checkPointHelpDocumentation',
         'Advanced Report Delivery Scenarios',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -51,7 +51,7 @@ electronBeforeAfterAllTest(
         '#checkPointHelpExamples',
         'DataPallas Examples',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -61,7 +61,7 @@ electronBeforeAfterAllTest(
         '#checkPointHelpCustomerReviews',
         'Michael B., Finance Systems Team',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -74,7 +74,7 @@ electronBeforeAfterAllTest(
           Constants.DELAY_FIVE_THOUSANDS_SECONDS
         )
         */
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -88,11 +88,11 @@ electronBeforeAfterAllTest(
           '#checkPointJavaPreRequisite',
           'as a prerequisite',
         )
-        .click('#systemDiagnosticsTab-link')
+        .click('#tab-btn-systemDiagnosticsTab')
         .elementShouldHaveText('#checkPointHelpJavaPreRequisite', 'Status')
-        .click('#terminalTab-link')
+        .click('#tab-btn-terminalTab')
         .elementShouldBeVisible('#p-terminal')
-        .click('#updateTab-link')
+        .click('#tab-btn-updateTab')
         .elementShouldBeVisible('#btnLetMeUpdateManually');
     }
 
@@ -102,11 +102,11 @@ electronBeforeAfterAllTest(
         '#statusDemoLicense',
         'Open Source (Community Support)',
       )
-      .click('#logsTab-link')
+      .click('#tab-btn-logsTab')
       .elementShouldBeVisible('#warningsLog')
       .click('#leftMenuHelpAbout')
       .elementShouldHaveText('#checkPointHelpAbout', 'Copyright')
-      .click('#comparisonTab-link')
+      .click('#tab-btn-comparisonTab')
       .elementShouldHaveText(
         '#checkPointHelpComparison',
         'DocumentBurster Server Features',
@@ -129,8 +129,8 @@ electronBeforeAfterAllTest(
       .click('#topMenuHelp')
       .click('#topMenuStarterPacks')
       .waitOnElementToBecomeVisible('#cmd-db-northwind-postgres')
-      .waitOnElementToBecomeEnabled('#extraPackagesTab-link')
-      .click('#extraPackagesTab-link')
+      .waitOnElementToBecomeEnabled('#tab-btn-extraPackagesTab')
+      .click('#tab-btn-extraPackagesTab')
       .waitOnElementToBecomeVisible('#package-notepadplusplus')
       .gotoBurstScreen()
       .click('#topMenuHelp')
@@ -139,7 +139,7 @@ electronBeforeAfterAllTest(
         '#checkPointHelpDocumentation',
         'Advanced Report Delivery Scenarios',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -151,7 +151,7 @@ electronBeforeAfterAllTest(
         '#checkPointHelpExamples',
         'DataPallas Examples',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -163,7 +163,7 @@ electronBeforeAfterAllTest(
         '#checkPointHelpCustomerReviews',
         'Michael B., Finance Systems Team',
       )
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -172,7 +172,7 @@ electronBeforeAfterAllTest(
       .click('#topMenuHelp')
       .click('#topMenuHelpBlog')
       .elementShouldBeVisible('#blogRss')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .elementShouldHaveText(
         '#statusDemoLicense',
         'Open Source (Community Support)',
@@ -184,7 +184,7 @@ electronBeforeAfterAllTest(
         '#statusDemoLicense',
         'Open Source (Community Support)',
       )
-      .click('#logsTab-link')
+      .click('#tab-btn-logsTab')
       .elementShouldBeVisible('#warningsLog')
       .gotoBurstScreen()
       .click('#topMenuHelp')

@@ -68,6 +68,47 @@ public class JobExecutionService {
 	}
 
 	/**
+	 * Execute a tracked job asynchronously. Updates {@link JobStore} status
+	 * (queued → running → done/failed) and sends SSE events via the emitter
+	 * registered for the given job ID. Also sends the legacy WebSocket notification
+	 * so existing UI stats panels continue to work alongside the new job model.
+	 */
+	public void executeTracked(String[] args, String jobId, JobStore jobStore) {
+		final String cmdDescription = String.join(" ", args);
+		log.info("Submitting tracked job {}: {}", jobId, cmdDescription);
+
+		executor.submit(() -> {
+			jobStore.updateStatus(jobId, "running");
+			// Wire the jobFilePath sink so the worker (CliJob) can report its
+			// actual temp jobFilePath back to the JobRecord — pause/cancel
+			// signal files must use the SAME basename the burst engine checks,
+			// and resume needs to pass this exact path back as a CLI arg.
+			Settings.ACTIVE_JOB_FILE_PATH_SINK.set(jobFilePath -> {
+				jobStore.find(jobId).ifPresent(rec -> rec.activeJobFilePath = jobFilePath);
+				// log.info("Worker reported active jobFilePath for {}: {}", jobId, jobFilePath);
+			});
+			try {
+				System.setProperty("DOCUMENTBURSTER_HOME", AppPaths.PORTABLE_EXECUTABLE_DIR_PATH);
+				Settings.PORTABLE_EXECUTABLE_DIR_PATH = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH;
+				DocumentBurster.execute(args);
+				log.info("Tracked job completed: {} ({})", jobId, cmdDescription);
+				jobStore.updateStatus(jobId, "done");
+				messagingTemplate.convertAndSend(Constants.WS_TOPIC_EXECUTION_STATS,
+						new WebSocketJobsExecutionStatsInfo("on.process.complete", 0));
+			} catch (Throwable e) {
+				log.error("Tracked job failed: {} ({}): {}", jobId, cmdDescription, e.getMessage(), e);
+				jobStore.find(jobId).ifPresent(rec -> rec.resultMetadata.put("error", e.getMessage()));
+				jobStore.updateStatus(jobId, "failed");
+				WebSocketJobsExecutionStatsInfo info = new WebSocketJobsExecutionStatsInfo("on.process.failed");
+				info.setExceptionMessage(e.getMessage());
+				messagingTemplate.convertAndSend(Constants.WS_TOPIC_EXECUTION_STATS, info);
+			} finally {
+				Settings.ACTIVE_JOB_FILE_PATH_SINK.remove();
+			}
+		});
+	}
+
+	/**
 	 * Execute a job asynchronously with a callback that runs after the job
 	 * completes (before WebSocket notification). Used by PollScheduler for
 	 * post-burst cleanup.

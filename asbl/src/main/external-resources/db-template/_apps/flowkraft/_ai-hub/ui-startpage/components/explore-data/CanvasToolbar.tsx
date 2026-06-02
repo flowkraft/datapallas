@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { useSaveStatusStore, type SaveStatus } from "@/lib/stores/save-status-store";
 import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
-import { Save, Eye, Pencil, Download, Maximize2, Undo2, Redo2, Loader2, AlertCircle, Check, Circle } from "lucide-react";
+// lucide-react removed — icons replaced with inline heroicons below
 import { ExportDialog } from "./export/ExportDialog";
 
 interface CanvasToolbarProps {
@@ -46,20 +46,20 @@ function SaveStatusIndicator() {
 
   switch (status as SaveStatus) {
     case "saving":
-      return render(<Loader2 className="w-3 h-3 animate-spin" />, "Saving…", "text-muted-foreground");
+      return render(<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>, "Saving…", "text-base-content/60");
     case "dirty":
-      return render(<Circle className="w-2.5 h-2.5 fill-current" />, "Unsaved changes", "text-amber-600");
+      return render(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5"><circle cx="12" cy="12" r="5" /></svg>, "Unsaved changes", "text-warning");
     case "saved":
       return render(
-        <Check className="w-3 h-3" />,
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>,
         lastSavedAt ? `Saved · ${formatRelative(Date.now() - lastSavedAt)}` : "Saved",
-        "text-emerald-600",
+        "text-success",
       );
     case "error":
       return render(
-        <AlertCircle className="w-3 h-3" />,
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>,
         "Save failed",
-        "text-destructive",
+        "text-error",
         lastError ?? undefined,
       );
     case "idle":
@@ -80,14 +80,14 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
   const saving = saveStatus === "saving";
 
   return (
-    <div className="h-12 shrink-0 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-4">
+    <div className="h-12 shrink-0 border-b border-base-300 bg-base-100/80 backdrop-blur-sm flex items-center justify-between px-4">
       {/* Left: canvas name */}
       <div className="flex items-center gap-2">
         {editing ? (
           <input
             id="txtDashboardName"
             autoFocus
-            className="text-sm font-semibold bg-transparent border-b border-primary outline-none text-foreground px-1 py-0.5"
+            className="text-sm font-semibold bg-transparent border-b border-primary outline-none text-base-content px-1 py-0.5"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => { setEditing(false); }}
@@ -97,7 +97,7 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
           <button
             id="btnCanvasName"
             onClick={() => editMode && setEditing(true)}
-            className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+            className="text-sm font-semibold text-base-content hover:text-primary transition-colors"
           >
             {name}
           </button>
@@ -120,18 +120,20 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
             <button
               onClick={onUndo}
               disabled={!canUndo}
-              className="p-1.5 rounded-md text-muted-foreground hover:bg-accent transition-colors disabled:opacity-30"
+              className="p-1.5 rounded-md text-base-content/60 hover:bg-base-200 transition-colors disabled:opacity-30"
               title="Undo (Ctrl+Z)"
             >
-              <Undo2 className="w-3.5 h-3.5" />
+              {/* Heroicon: arrow-uturn-left */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>
             </button>
             <button
               onClick={onRedo}
               disabled={!canRedo}
-              className="p-1.5 rounded-md text-muted-foreground hover:bg-accent transition-colors disabled:opacity-30"
+              className="p-1.5 rounded-md text-base-content/60 hover:bg-base-200 transition-colors disabled:opacity-30"
               title="Redo (Ctrl+Shift+Z)"
             >
-              <Redo2 className="w-3.5 h-3.5" />
+              {/* Heroicon: arrow-uturn-right */}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" /></svg>
             </button>
             <div className="w-px h-5 bg-border mx-1" />
           </>
@@ -143,24 +145,25 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
           onClick={() => setEditMode(!editMode)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
             editMode
-              ? "text-muted-foreground hover:bg-accent"
+              ? "text-base-content/60 hover:bg-base-200"
               : "text-primary bg-primary/10"
           }`}
         >
           {editMode ? (
-            <><Eye className="w-3.5 h-3.5" />Preview</>
+            <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>Preview</>
           ) : (
-            <><Pencil className="w-3.5 h-3.5" />Edit</>
+            <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>Edit</>
           )}
         </button>
 
         {/* Full-screen preview */}
         <button
           onClick={() => router.push(`/explore-data/${canvasId}/preview`)}
-          className="p-1.5 rounded-md text-muted-foreground hover:bg-accent transition-colors"
+          className="p-1.5 rounded-md text-base-content/60 hover:bg-base-200 transition-colors"
           title="Full-screen preview"
         >
-          <Maximize2 className="w-3.5 h-3.5" />
+          {/* Heroicon: arrows-pointing-out */}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
         </button>
 
         <div className="w-px h-5 bg-border mx-1" />
@@ -179,9 +182,10 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
                 ? "No changes to publish"
                 : "Publish Dashboard"
           }
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-content hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
         >
-          <Download className="w-3.5 h-3.5" />
+          {/* Heroicon: arrow-up-tray */}
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
           Publish Dashboard
         </button>
       </div>

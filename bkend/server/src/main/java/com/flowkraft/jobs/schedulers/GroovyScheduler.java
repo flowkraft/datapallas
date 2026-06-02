@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.flowkraft.common.AppPaths;
+import com.sourcekraft.documentburster.utils.Utils;
 
 import groovy.lang.Binding;
 import groovy.util.GroovyScriptEngine;
@@ -36,7 +37,7 @@ public class GroovyScheduler {
 				pollDirReceived.mkdirs();
 			}
 
-			String scriptsFolderPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/scripts/batch/";
+			String scriptsFolderPath = Utils.resolvePathAgainstPortableDir("scripts/batch/");
 
 			String scriptName = "schedules.groovy";
 

@@ -172,7 +172,7 @@
         rect.setAttribute("width", String(Math.max(1, (nd.x1 ?? 0) - (nd.x0 ?? 0))));
         rect.setAttribute("height", String(Math.max(1, (nd.y1 ?? 0) - (nd.y0 ?? 0))));
         rect.setAttribute("fill", palette[(nd.index ?? 0) % palette.length]);
-        rect.setAttribute("stroke", "#fff");
+        rect.setAttribute("stroke", "var(--rb-surface, Canvas)");
         rect.style.cursor = "pointer";
         const title = document.createElementNS(svgNS, "title");
         title.textContent = `${nd.name}: ${formatNumber(nd.value ?? 0)}`;
@@ -187,7 +187,7 @@
         label.setAttribute("dy", "0.35em");
         label.setAttribute("text-anchor", onLeft ? "start" : "end");
         label.setAttribute("font-size", "11");
-        label.setAttribute("fill", "#333");
+        label.setAttribute("fill", "currentColor");
         label.textContent = nd.name;
         nodeG.appendChild(label);
       }

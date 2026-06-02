@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useWidgetData } from "./useWidgetData";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "./useRbElementReady";
-import { Loader2, Sparkles, BarChart3 } from "lucide-react";
+import { IconSparkles as Sparkles, IconBarChart3 as BarChart3 } from "@/components/shared/Icons";
 import { fetchSchema } from "@/lib/explore-data/rb-api";
 import { autoPivotLayout, isIdColumn, probeCardinality, classifyColumn } from "@/lib/explore-data/smart-defaults";
 import { useEffectiveField } from "@/lib/hooks/use-effective-field";
@@ -184,41 +184,44 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
           <div className="w-10 h-10 mx-auto mb-2.5 rounded-full bg-primary/10 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-sm font-medium text-foreground mb-1">
+          <p className="text-sm font-medium text-base-content mb-1">
             {vq?.table ?? "This data"} — pick a pivot layout
           </p>
-          <p className="text-[11px] text-muted-foreground mb-3">
+          <p className="text-[11px] text-base-content/60 mb-3">
             A pivot needs rows, columns, and values. Pick a sensible default, or configure in the Display tab.
           </p>
           <button
             type="button"
             onClick={handleAutoLayout}
             disabled={autoBusy}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-content text-xs font-medium hover:bg-primary/90 disabled:opacity-60"
           >
-            {autoBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {autoBusy
+              ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+              : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 1 2.455 2.456ZM16.5 20.25l-.259 1.035a3.375 3.375 0 0 1-2.455 2.456L12.75 24l1.036-.259a3.375 3.375 0 0 0 2.455-2.456l.259-1.035Z" /></svg>
+            }
             {autoBusy ? "Analyzing…" : "Auto-pick rows, columns, values"}
           </button>
-          {autoErr && <p className="mt-2 text-[11px] text-destructive">{autoErr}</p>}
+          {autoErr && <p className="mt-2 text-[11px] text-error">{autoErr}</p>}
         </div>
       </div>
     );
   }
 
-  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
-  if (error) return <div className="text-xs text-destructive p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 animate-spin text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></div>;
+  if (error) return <div className="text-xs text-error p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
   if (!result || result.data.length === 0) return null;
-  if (!ready) return <div className="flex items-center justify-center h-full text-xs text-muted-foreground">Loading components...</div>;
+  if (!ready) return <div className="flex items-center justify-center h-full text-xs text-base-content/60">Loading components...</div>;
 
   return (
     <div className="h-full flex flex-col">
       {showChartNudge && widget && (
-        <div className="shrink-0 mx-2 mt-2 mb-1 px-2.5 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[11px] text-foreground flex items-center gap-2">
+        <div className="shrink-0 mx-2 mt-2 mb-1 px-2.5 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[11px] text-base-content flex items-center gap-2">
           <span className="truncate flex-1">One dimension + one measure reads more clearly as a Chart.</span>
           <button
             type="button"
             onClick={() => changeWidgetRenderMode(widget.id, "chart")}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-background border border-border hover:bg-accent transition-colors font-medium"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-base-100 border border-base-300 hover:bg-base-200 transition-colors font-medium"
           >
             <BarChart3 className="w-3 h-3" />
             Convert to Chart

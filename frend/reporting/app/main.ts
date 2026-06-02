@@ -268,14 +268,18 @@ function createWindow(): BrowserWindow {
   if (serve) {
     const debug = require('electron-debug');
     debug();
-    require('electron-reloader')(module);
+    require('electron-reloader')(module, { watchRenderer: false });
     win.loadURL('http://localhost:4200');
   } else {
     let pathIndex = './index.html';
     if (fs.existsSync(path.join(__dirname, '../dist/index.html'))) {
       pathIndex = '../dist/index.html';
     }
-    const url = new URL(path.join('file:', __dirname, pathIndex));
+    // pathToFileURL() handles Windows drive letters + backslashes correctly;
+    // the previous `new URL(path.join('file:', ...))` produced malformed URLs
+    // like `file:\C:\…\index.html` that Node's URL constructor rejects when
+    // the file:// branch is exercised (electron:local path, not --serve).
+    const url = require('url').pathToFileURL(path.resolve(__dirname, pathIndex));
     win.loadURL(url.href);
 
     // Attach titlebar to window - safe attempt

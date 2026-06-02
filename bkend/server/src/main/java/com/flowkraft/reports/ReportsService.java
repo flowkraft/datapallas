@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.system.dtos.FindCriteriaDto;
+import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.system.services.FileSystemService;
 import com.flowkraft.reporting.dsl.chart.ChartOptionsParser;
 import com.flowkraft.reporting.dsl.pivottable.PivotTableOptionsParser;
@@ -123,7 +124,7 @@ public class ReportsService {
 
 			if (isRealSettingsXmlFile) {
 
-				String fullFilePath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + filePath;
+				String fullFilePath = Utils.resolvePathAgainstPortableDir(filePath.replaceFirst("^/", ""));
 				String settingsFileContent = fileSystemService.unixCliCat(fullFilePath);
 
 				// Parse basic fields using safe helper method
@@ -153,12 +154,17 @@ public class ReportsService {
 					templateRelativeFilePath = "./config/samples/" + folderName + "/settings.xml";
 				}
 
+				String strDbConnectionCode = StringUtils.EMPTY;
 				if (boolReportGenerationMailMerge) {
 					String reportingXmlFilePath = Paths.get(fullFilePath).getParent().toString() + "/reporting.xml";
 					String reportingXmlFileContent = fileSystemService.unixCliCat(reportingXmlFilePath);
 
 					dsInputType = extractXmlTagValue(reportingXmlFileContent, "type", StringUtils.EMPTY);
 					scriptOptionsSelectFileExplorer = extractXmlTagValue(reportingXmlFileContent, "selectfileexplorer", "globpattern");
+
+					if (dsInputType.equals("ds.sqlquery") || dsInputType.equals("ds.scriptfile") || dsInputType.equals("ds.dashboard")) {
+						strDbConnectionCode = extractXmlTagValue(reportingXmlFileContent, "conncode", StringUtils.EMPTY);
+					}
 				}
 
 				ConfigurationFileInfo configFile = new ConfigurationFileInfo();
@@ -177,6 +183,8 @@ public class ReportsService {
 				configFile.activeClicked = false;
 				configFile.useEmlConn = boolUseEmailConnection;
 				configFile.emlConnCode = strEmailConnectionCode;
+				configFile.useDbConn = !strDbConnectionCode.isEmpty();
+				configFile.dbConnCode = strDbConnectionCode;
 
 				// NOTE: DSL options are NOT loaded here for performance
 				// They will be loaded on-demand via loadConfigDetails()
@@ -197,7 +205,7 @@ public class ReportsService {
 			.compile("<jasperReport[^>]*\\sname=\"([^\"]+)\"", Pattern.DOTALL);
 
 	private void scanJasperReports(List<ConfigurationFileInfo> configurationFiles) throws Exception {
-		String jasperReportsDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports-jasper";
+		String jasperReportsDir = Utils.resolvePathAgainstPortableDir("config/reports-jasper");
 			File jasperDir = new File(jasperReportsDir);
 			if (!jasperDir.exists() || !jasperDir.isDirectory()) {
 				return;
@@ -270,7 +278,7 @@ public class ReportsService {
 
 				ConfigurationFileInfo configFile = new ConfigurationFileInfo();
 				configFile.fileName = "settings.xml";
-				configFile.filePath = ("/config/reports-jasper/" + reportFolder.getName() + "/settings.xml")
+				configFile.filePath = ("config/reports-jasper/" + reportFolder.getName() + "/settings.xml")
 						.replace("\\", "/");
 				configFile.relativeFilePath = "./config/reports-jasper/" + reportFolder.getName() + "/settings.xml";
 				configFile.templateName = reportName;
@@ -302,8 +310,8 @@ public class ReportsService {
 	 */
 	private void ensureJasperConfigFiles(File reportFolder, String jrxmlFileName, String reportName) {
 		try {
-			String burstDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst";
-			String defaultsDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/_defaults";
+			String burstDir = Utils.resolvePathAgainstPortableDir("config/burst");
+			String defaultsDir = Utils.resolvePathAgainstPortableDir("config/_defaults");
 
 			// --- settings.xml (same pattern as NoExeAssembler) ---
 			File settingsFile = new File(reportFolder, "settings.xml");
@@ -362,7 +370,7 @@ public class ReportsService {
 
 	private String findDefaultDbConnectionCode() {
 		try {
-			File connectionsDir = new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/connections");
+			File connectionsDir = new File(Utils.resolvePathAgainstPortableDir("config/connections"));
 			if (!connectionsDir.exists())
 				return null;
 
@@ -394,13 +402,12 @@ public class ReportsService {
 	 * Called on-demand when user selects a specific report to view/edit.
 	 * Parses reportParameters, tabulatorOptions, chartOptions, pivotTableOptions.
 	 * 
-	 * @param settingsFilePath The relative file path to settings.xml (e.g., "/config/samples/_frend/sales-region-prod-qtr/settings.xml")
+	 * @param settingsFilePath The absolute path to settings.xml — resolved by the caller via resolveSettingsPath()
 	 * @return ConfigurationFileInfo with all DSL options populated
 	 */
 	public ConfigurationFileInfo loadConfigDetails(String settingsFilePath) throws Exception {
 		
-		// Convert relative path to absolute
-		String fullFilePath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + settingsFilePath;
+		String fullFilePath = settingsFilePath;
 		Path settingsPath = Paths.get(fullFilePath);
 		
 		if (!Files.exists(settingsPath)) {
@@ -413,10 +420,13 @@ public class ReportsService {
 		
 		ConfigurationFileInfo configDetails = new ConfigurationFileInfo();
 		configDetails.folderName = folderName;
-		configDetails.filePath = settingsFilePath.replace("\\", "/");
-		
+		// Match against a forward-slash form so the substring checks below hold on
+		// every OS: callers may pass a native path (backslashes on Windows).
+		String normalizedPath = settingsFilePath.replace("\\", "/");
+		configDetails.filePath = normalizedPath;
+
 		// Determine type based on path
-		if (settingsFilePath.contains("/config/reports-jasper/")) {
+		if (normalizedPath.contains("/config/reports-jasper/")) {
 			configDetails.type = "config-jasper-reports";
 			// Find the .jrxml in the same folder and parse parameters from it
 			File[] jrxmlFiles = itemDir.toFile().listFiles(
@@ -426,9 +436,9 @@ public class ReportsService {
 				configDetails.reportParameters = ReportParametersHelper.parseJrxmlParameters(jrxmlContent);
 			}
 			return configDetails;
-		} else if (settingsFilePath.contains("/config/reports/")) {
+		} else if (normalizedPath.contains("/config/reports/")) {
 			configDetails.type = "config-reports";
-		} else if (settingsFilePath.contains("/config/samples/")) {
+		} else if (normalizedPath.contains("/config/samples/")) {
 			configDetails.type = "config-samples";
 		} else {
 			// For burst configs, no DSL files to parse
@@ -626,7 +636,7 @@ public class ReportsService {
 
 			if (isRealSettingsXmlFile) {
 
-				String fullFilePath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + filePath;
+				String fullFilePath = Utils.resolvePathAgainstPortableDir(filePath.replaceFirst("^/", ""));
 
 				// System.out.println("filePath = " + filePath);
 				// System.out.println("fullFilePath = " + fullFilePath);
@@ -905,7 +915,7 @@ public class ReportsService {
 		return cipher.encrypt(value);
 	}
 
-	public ReportingSettings loadSettingsReporting(String configFilePath) throws Exception {
+	public synchronized ReportingSettings loadSettingsReporting(String configFilePath) throws Exception {
 
 		Settings settings = new Settings(configFilePath);
 		settings.loadSettings();
@@ -1038,7 +1048,7 @@ public class ReportsService {
 
 	// DATABASE START
 	public Stream<ConnectionFileInfo> loadSettingsConnectionDatabaseAll() throws Exception {
-		File connectionsFolder = new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/" + "config/connections");
+		File connectionsFolder = new File(Utils.resolvePathAgainstPortableDir("config/connections"));
 
 		if (!connectionsFolder.exists()) {
 			return Stream.empty();
@@ -1184,12 +1194,12 @@ public class ReportsService {
 			dto.connection.name = "Northwind Sample (SQLite)";
 			dto.connection.databaseserver.type = "sqlite";
 			dto.connection.databaseserver.database =
-				AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/db/sample-northwind-sqlite/northwind.db";
+				Utils.resolvePathAgainstPortableDir("db/sample-northwind-sqlite/northwind.db");
 		} else if (id.contains("rbt-sample-northwind-duckdb-4f2")) {
 			dto.connection.name = "Northwind Sample (DuckDB)";
 			dto.connection.databaseserver.type = "duckdb";
 			dto.connection.databaseserver.database =
-				AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/db/sample-northwind-duckdb/northwind.duckdb";
+				Utils.resolvePathAgainstPortableDir("db/sample-northwind-duckdb/northwind.duckdb");
 		} else {
 			return null;
 		}
@@ -1201,7 +1211,7 @@ public class ReportsService {
 
 	public DocumentBursterSettingsInternal loadSettingsInternal(String internalConfigFilePath) throws Exception {
 
-		Settings settings = new Settings(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml");
+		Settings settings = new Settings(Utils.resolvePathAgainstPortableDir("config/burst/settings.xml"));
 		return settings.loadSettingsInternal();
 	}
 
@@ -1286,8 +1296,8 @@ public class ReportsService {
 			boolean capReportDistribution, boolean capReportGenerationMailMerge,
 			String copyFromReportId) throws Exception {
 
-		String reportsDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports";
-		String defaultsDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/_defaults";
+		String reportsDir = Utils.resolvePathAgainstPortableDir("config/reports");
+		String defaultsDir = Utils.resolvePathAgainstPortableDir("config/_defaults");
 		String targetDir = reportsDir + "/" + reportId;
 
 		// 1. Create folder
@@ -1299,7 +1309,7 @@ public class ReportsService {
 			String copyFromDir = reportsDir + "/" + copyFromReportId;
 			// If source is "burst" (the legacy fallback), use defaults
 			if ("burst".equals(copyFromReportId)) {
-				sourceSettingsPath = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst/settings.xml";
+				sourceSettingsPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
 			} else {
 				sourceSettingsPath = copyFromDir + "/settings.xml";
 			}
@@ -1341,7 +1351,7 @@ public class ReportsService {
 		// 4. Build and return ConfigurationFileInfo
 		ConfigurationFileInfo configFile = new ConfigurationFileInfo();
 		configFile.fileName = "settings.xml";
-		configFile.filePath = "/config/reports/" + reportId + "/settings.xml";
+		configFile.filePath = "config/reports/" + reportId + "/settings.xml";
 		configFile.relativeFilePath = "./config/reports/" + reportId + "/settings.xml";
 		configFile.templateName = templateName;
 		configFile.isFallback = false;
@@ -1369,19 +1379,24 @@ public class ReportsService {
 	/**
 	 * Restore default configuration values for a report atomically.
 	 * Preserves the template name.
+	 *
+	 * Semantic: conservative and non-destructive. Only settings.xml and
+	 * reporting.xml are restored from config/_defaults/. Any other per-report
+	 * artifact (groovy scripts, uploaded document templates, generated configs,
+	 * ...) is left untouched, preserving user work.
 	 */
 	public void restoreDefaults(String reportId) throws Exception {
 
-		String defaultsDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/_defaults";
+		String defaultsDir = Utils.resolvePathAgainstPortableDir("config/_defaults");
 
 		// Resolve the actual settings path — "burst" lives at config/burst/, others at config/reports/{id}/
 		String targetSettingsPath;
 		String targetDir;
 		if ("burst".equals(reportId)) {
-			targetDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/burst";
+			targetDir = Utils.resolvePathAgainstPortableDir("config/burst");
 			targetSettingsPath = targetDir + "/settings.xml";
 		} else {
-			String reportsDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports";
+			String reportsDir = Utils.resolvePathAgainstPortableDir("config/reports");
 			targetDir = reportsDir + "/" + reportId;
 			targetSettingsPath = targetDir + "/settings.xml";
 		}
@@ -1426,7 +1441,7 @@ public class ReportsService {
 	}
 
 	public void deleteConfiguration(String reportId) throws Exception {
-		String reportsDir = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH + "/config/reports";
+		String reportsDir = Utils.resolvePathAgainstPortableDir("config/reports");
 		File targetDir = new File(reportsDir + "/" + reportId);
 		if (targetDir.exists() && targetDir.isDirectory()) {
 			org.apache.commons.io.FileUtils.deleteDirectory(targetDir);

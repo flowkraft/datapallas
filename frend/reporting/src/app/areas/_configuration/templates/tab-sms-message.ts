@@ -1,19 +1,19 @@
 export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
-  <div class="well">
-    <div class="row">
-      <div class="col-xs-2">
+  <div class="space-y-4">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION.TAB-SMS-MESSAGE.FROM-NUMBER' | translate }}
       </div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 7">
         <input
           id="fromTelephoneNumber"
-          [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.fromtelephonenumber"
-          (ngModelChange)="settingsChangedEventHandler($event)"
-          class="form-control"
+          [ngModel]="xmlSettings?.documentburster?.settings?.smssettings?.fromtelephonenumber"
+          (ngModelChange)="setXmlPath('documentburster.settings.smssettings.fromtelephonenumber', $event)"
+          class="input"
         />
       </div>
 
-      <div class="col-xs-3">
+      <div style="grid-column:span 3">
         <dburst-button-variables
           id="btnFromTelephoneNumberVariables"
           (sendSelectedVariable)="updateFormControlWithSelectedVariable('fromTelephoneNumber',$event)"
@@ -24,20 +24,20 @@ export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
 
     <p></p>
 
-    <div class="row">
-      <div class="col-xs-2">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION.TAB-SMS-MESSAGE.TO-NUMBER' | translate }}
       </div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 7">
         <input
           id="toTelephoneNumber"
-          [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.totelephonenumber"
-          (ngModelChange)="settingsChangedEventHandler($event)"
-          class="form-control"
+          [ngModel]="xmlSettings?.documentburster?.settings?.smssettings?.totelephonenumber"
+          (ngModelChange)="setXmlPath('documentburster.settings.smssettings.totelephonenumber', $event)"
+          class="input"
         />
       </div>
 
-      <div class="col-xs-3">
+      <div style="grid-column:span 3">
         <dburst-button-variables
           id="btnToTelephoneNumberVariables"
           (sendSelectedVariable)="updateFormControlWithSelectedVariable('toTelephoneNumber',$event)"
@@ -47,21 +47,21 @@ export const tabSMSMessageTemplate = `<ng-template #tabSMSMessageTemplate>
     </div>
 
     <p></p>
-    <div class="row">
-      <div class="col-xs-2">
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 2">
         {{ 'AREAS.CONFIGURATION.TAB-SMS-MESSAGE.TEXT' | translate }}
       </div>
-      <div class="col-xs-7">
+      <div style="grid-column:span 7">
         <textarea
-          [(ngModel)]="xmlSettings?.documentburster.settings.smssettings.text"
-          (ngModelChange)="settingsChangedEventHandler($event)"
-          class="form-control"
+          [ngModel]="xmlSettings?.documentburster?.settings?.smssettings?.text"
+          (ngModelChange)="setXmlPath('documentburster.settings.smssettings.text', $event)"
+          class="textarea textarea-bordered"
           rows="5"
           id="smsText"
         ></textarea>
       </div>
 
-      <div class="col-xs-3">
+      <div style="grid-column:span 3">
         <dburst-button-variables
           id="btnSmsTextVariables"
           (sendSelectedVariable)="updateFormControlWithSelectedVariable('smsText',$event)"

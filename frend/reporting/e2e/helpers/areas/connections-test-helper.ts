@@ -353,13 +353,13 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeEnabled('#btnOKConfirmationConnectionModal')
       .click('#btnWellKnownEmailProviders')
       .waitOnElementToBecomeVisible('#btnShowMoreProviders')
-      .click('#modalWellKnownEmailProviders *[id=btnClose]')
+      .click('#modalWellKnownEmailProviders #btnClose:visible')
       .waitOnElementToBecomeInvisible('#btnShowMoreProviders')
       .click('#btnWellKnownEmailProviders')
       .waitOnElementToBecomeVisible('#btnShowMoreProviders')
       .click('#btnShowMoreProviders')
-      .click('#QQex')
-      .click('#modalWellKnownEmailProviders *[id=btnOKConfirmation]')
+      .click('#QQex:visible')
+      .click('#modalWellKnownEmailProviders #btnOKConfirmation:visible')
       .inputShouldHaveValue('#emailServerHost', 'smtp.exmail.qq.com')
       .inputShouldHaveValue('#smtpPort', '465')
       .elementCheckBoxShouldBeSelected('#btnSSL')
@@ -367,25 +367,25 @@ export class ConnectionsTestHelper {
       .click('#fromName')
       .typeText('')
       .click('#btnFromNameVariables')
-      .click('#\\$\\{var0\\}')
-      .click('#modalSelectVariable *[id=btnOKConfirmation]')
+      .click('#\\$\\{var0\\}:visible')
+      .click('#modalSelectVariable #btnOKConfirmation:visible')
       .click('#fromEmailAddress')
       .typeText('')
       .click('#btnFromEmailAddressVariables')
-      .click('#\\$\\{var1\\}')
-      .click('#modalSelectVariable *[id=btnOKConfirmation]')
+      .click('#\\$\\{var1\\}:visible')
+      .click('#modalSelectVariable #btnOKConfirmation:visible')
       .click('#userName')
       .typeText('')
       .click('#btnUserNameVariables')
-      .click('#\\$\\{var2\\}')
-      .click('#modalSelectVariable *[id=btnOKConfirmation]')
+      .click('#\\$\\{var2\\}:visible')
+      .click('#modalSelectVariable #btnOKConfirmation:visible')
       .click('#smtpPassword')
       .typeText('')
       .click('#btnSmtpPasswordVariables')
-      .click('#btnShowMoreVariables')
-      .waitOnElementToBecomeVisible('#\\$\\{var3\\}')
-      .click('#\\$\\{var3\\}')
-      .click('#modalSelectVariable *[id=btnOKConfirmation]')
+      .click('#btnShowMoreVariables:visible')
+      .waitOnElementToBecomeVisible('#\\$\\{var3\\}:visible')
+      .click('#\\$\\{var3\\}:visible')
+      .click('#modalSelectVariable #btnOKConfirmation:visible')
       .pageShouldContainText('Create Email Connection')
       .click('#btnOKConfirmationConnectionModal')
       .waitOnElementToHaveText(
@@ -469,19 +469,19 @@ export class ConnectionsTestHelper {
       .elementShouldBeDisabled('#smtpPassword')
       .elementShouldBeDisabled('#btnTLS')
       .elementShouldBeDisabled('#btnSSL')
-      .elementShouldHaveAttribute('#btnFromNameVariables button', 'disabled')
+      .elementShouldHaveAttribute('#btnFromNameVariables > button', 'disabled')
       .elementShouldHaveAttribute(
-        '#btnFromEmailAddressVariables button',
+        '#btnFromEmailAddressVariables > button',
         'disabled',
       )
       .elementShouldHaveAttribute(
-        '#btnEmailServerHostVariables button',
+        '#btnEmailServerHostVariables > button',
         'disabled',
       )
-      .elementShouldHaveAttribute('#btnSmtpPortVariables button', 'disabled')
-      .elementShouldHaveAttribute('#btnUserNameVariables button', 'disabled')
+      .elementShouldHaveAttribute('#btnSmtpPortVariables > button', 'disabled')
+      .elementShouldHaveAttribute('#btnUserNameVariables > button', 'disabled')
       .elementShouldHaveAttribute(
-        '#btnSmtpPasswordVariables button',
+        '#btnSmtpPasswordVariables > button',
         'disabled',
       );
 
@@ -975,14 +975,12 @@ export class ConnectionsTestHelper {
           .waitOnElementToBecomeEnabled(btnSel, timeout)
           .waitOnElementToHaveText(btnSel, 'Stop', timeout)
           .waitOnElementToBecomeVisible(iconSel, timeout)
-          .waitOnElementToHaveClass(iconSel, 'fa-stop', timeout)
           .consoleLog(`Starter pack '${packId}' is 'running'.`);
       case 'stopped':
         return seq
           .waitOnElementToBecomeEnabled(btnSel, timeout)
           .waitOnElementToHaveText(btnSel, 'Start', timeout)
           .waitOnElementToBecomeVisible(iconSel, timeout)
-          .waitOnElementToHaveClass(iconSel, 'fa-play', timeout)
           .consoleLog(`Starter pack '${packId}' is 'stopped'.`);
       case 'error':
         return seq
@@ -1341,8 +1339,8 @@ export class ConnectionsTestHelper {
       .consoleLog(`[SeedWipe] Opened modal for ${connectionCode}`);
 
     ft = ft
-      .waitOnElementToBecomeVisible('#seedDataTab-link')
-      .click('#seedDataTab-link');
+      .waitOnElementToBecomeVisible('#tab-btn-seedDataTab')
+      .click('#tab-btn-seedDataTab');
 
     ft = ft
       .waitOnElementToBecomeVisible('#btnTestDbConnectionSeedData')
@@ -1366,13 +1364,21 @@ export class ConnectionsTestHelper {
 
     ft = ft
       .confirmDialogShouldBeVisible()
-      .clickYesDoThis()
-      .waitOnElementToBecomeDisabled('#btnTestDbConnection')
-      .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'fa-spin')
-      .consoleLog('[SeedWipe] Connection test running');
+      .clickYesDoThis();
+
+    // Brief disabled/spinner state only catchable for non-file-based vendors. The
+    // in-process REST refactor (was shell process spawning) makes the SQLite/DuckDB
+    // test resolve in microseconds — Playwright's polling can miss the disabled
+    // window. The downstream Schema-tab placeholder vanish below confirms success.
+    if (!isFileBased) {
+      ft = ft
+        .waitOnElementToBecomeDisabled('#btnTestDbConnection')
+        .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin');
+    }
+    ft = ft.consoleLog('[SeedWipe] Connection test running');
 
     ft = ft
-      .click('#databaseSchemaTab-link')
+      .click('#tab-btn-databaseSchemaTab')
       .waitOnElementToBecomeInvisible(
         'span:has-text("To load the schema, please ensure your connection details are configured")',
       );
@@ -1382,7 +1388,7 @@ export class ConnectionsTestHelper {
       .consoleLog('[SeedWipe] Schema loaded — switching back to Seed Data');
 
     return ft
-      .click('#seedDataTab-link')
+      .click('#tab-btn-seedDataTab')
       .waitOnElementToBecomeVisible('#seedTemplateSelect');
   }
 
@@ -1418,8 +1424,8 @@ export class ConnectionsTestHelper {
     exampleMarker: string,
   ): FluentTester {
     ft = ft
-      .waitOnElementToBecomeVisible('#seedTabExample-link')
-      .click('#seedTabExample-link')
+      .waitOnElementToBecomeVisible('#tab-btn-seedTabExample')
+      .click('#tab-btn-seedTabExample')
       .waitOnElementToBecomeEnabled('#seedTemplateSelect');
 
     if (templateId !== null) {
@@ -1462,8 +1468,8 @@ export class ConnectionsTestHelper {
     // reads the clipboard inside the page and dispatches a real `input` event,
     // so Copy is still tested end-to-end via `clipboardShouldContainText` above.
     return ft
-      .waitOnElementToBecomeVisible('#seedTabMyScript-link')
-      .click('#seedTabMyScript-link')
+      .waitOnElementToBecomeVisible('#tab-btn-seedTabMyScript')
+      .click('#tab-btn-seedTabMyScript')
       .waitOnElementToBecomeVisible('#seedCustomScriptEditor')
       .pasteClipboardIntoCodeJar('#seedCustomScriptEditor')
       .consoleLog('[SeedWipe] Pasted clipboard into My Script')
@@ -1484,8 +1490,8 @@ export class ConnectionsTestHelper {
     marker: string,
   ): FluentTester {
     return ft
-      .waitOnElementToBecomeVisible('#seedTabMyScript-link')
-      .click('#seedTabMyScript-link')
+      .waitOnElementToBecomeVisible('#tab-btn-seedTabMyScript')
+      .click('#tab-btn-seedTabMyScript')
       .waitOnElementToBecomeVisible('#seedCustomScriptEditor')
       .setCodeJarContentSingleShot('#seedCustomScriptEditor', source)
       .consoleLog('[SeedWipe] Injected inline script into My Script')
@@ -1517,7 +1523,7 @@ export class ConnectionsTestHelper {
   /**
    * Switches to the Database Schema tab and clicks Refresh. Confirms the
    * "This will refresh the Database Schema. Continue?" dialog and waits for
-   * the spinner on `#btnRefreshDatabaseSchema .fa-refresh` to start and stop —
+   * the `animate-spin` class on `#btnRefreshDatabaseSchemaIcon` to appear and clear —
    * the same pattern other tests use (e.g. connections.spec.ts:992-1015).
    *
    * The refresh delegates to `connectionsService.testConnection` + a fresh
@@ -1529,20 +1535,24 @@ export class ConnectionsTestHelper {
     fullTimeout: number,
   ): FluentTester {
     return ft
-      .waitOnElementToBecomeVisible('#databaseSchemaTab-link')
-      .click('#databaseSchemaTab-link')
+      .waitOnElementToBecomeVisible('#tab-btn-databaseSchemaTab')
+      .click('#tab-btn-databaseSchemaTab')
       .waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer')
       .waitOnElementToBecomeVisible('#btnRefreshDatabaseSchema')
       .click('#btnRefreshDatabaseSchema')
       .waitOnElementToContainText(
-        '#confirmDialog .modal-body',
+        '#confirmDialog .modal-box',
         'This will refresh the Database Schema. Continue?',
       )
       .clickYesDoThis()
-      .waitOnElementToHaveClass('#btnRefreshDatabaseSchema .fa-refresh', 'fa-spin')
+      // Drop the "wait for spinner to APPEAR" assertion: in-process REST makes
+      // file-based vendors (SQLite/DuckDB) resolve too fast to catch. The
+      // "wait for spinner to DISAPPEAR" below is idempotent — passes immediately
+      // if spinner never appeared, waits through it if it did. Downstream
+      // table-visibility assertions confirm refresh actually ran.
       .waitOnElementNotToHaveClass(
-        '#btnRefreshDatabaseSchema .fa-refresh',
-        'fa-spin',
+        '#btnRefreshDatabaseSchemaIcon',
+        'animate-spin',
         fullTimeout,
       )
       .consoleLog('[SeedWipe] Database Schema refreshed');
@@ -1596,7 +1606,7 @@ export class ConnectionsTestHelper {
    */
   private static returnToSeedDataTab(ft: FluentTester): FluentTester {
     return ft
-      .click('#seedDataTab-link')
+      .click('#tab-btn-seedDataTab')
       .waitOnElementToBecomeVisible('#seedTemplateSelect');
   }
 
@@ -1631,7 +1641,7 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeVisible('#btnCopyPromptText')
       .click('#btnCopyPromptText')
       .waitOnConfirmDialogToBecomeVisible()
-      .click('.dburst-button-question-confirm')
+      .click('.dburst-button-question-confirm:visible')
       .waitOnConfirmDialogToBecomeInvisible()
       .clipboardShouldContainText('Products')
       .clipboardShouldContainText('Categories')
@@ -1650,7 +1660,7 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeVisible('#btnCopyPromptText')
       .click('#btnCopyPromptText')
       .waitOnConfirmDialogToBecomeVisible()
-      .click('.dburst-button-question-confirm')
+      .click('.dburst-button-question-confirm:visible')
       .waitOnConfirmDialogToBecomeInvisible()
       .clipboardShouldContainText('"tableName": "Products"')
       .clipboardShouldContainText('"columnName": "Discontinued"')
@@ -1698,7 +1708,7 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeVisible('#btnCopyPromptText')
       .click('#btnCopyPromptText')
       .waitOnConfirmDialogToBecomeVisible()
-      .click('.dburst-button-question-confirm')
+      .click('.dburst-button-question-confirm:visible')
       .waitOnConfirmDialogToBecomeInvisible()
       // Products = full details
       .clipboardShouldContainText('"tableName": "Products"')
@@ -1731,7 +1741,7 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeVisible(`#treeNodecategoriestargetTree${picklistId}`)
       .waitOnElementToBecomeVisible(`#treeNodeproductstargetTree${picklistId}`)
       // Switch to Connection Details tab to reset isDatabaseSchemaTabActive
-      .click('#connectionDetailsTab-link')
+      .click('#tab-btn-connectionDetailsTab')
       .waitOnElementToBecomeVisible('#btnTestDbConnection')
       .sleep(Constants.DELAY_HALF_SECOND);
 
@@ -1762,7 +1772,7 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeVisible('#btnCopyPromptText')
       .click('#btnCopyPromptText')
       .waitOnConfirmDialogToBecomeVisible()
-      .click('.dburst-button-question-confirm')
+      .click('.dburst-button-question-confirm:visible')
       .waitOnConfirmDialogToBecomeInvisible()
       .clipboardShouldContainText('Tables Included by Name Only')
       .clipboardShouldNotContainText('"columnName"')
@@ -1777,7 +1787,7 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeVisible('#btnCopyPromptText')
       .click('#btnCopyPromptText')
       .waitOnConfirmDialogToBecomeVisible()
-      .click('.dburst-button-question-confirm')
+      .click('.dburst-button-question-confirm:visible')
       .waitOnConfirmDialogToBecomeInvisible()
       .clipboardShouldContainText('"columnName"')
       .clipboardShouldNotContainText('Tables Included by Name Only')

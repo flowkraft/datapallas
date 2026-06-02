@@ -1,10 +1,11 @@
-export const modalVariablesTemplate = `<p-dialog id="modalSelectVariable" header="{{
-  'COMPONENTS.BUTTON-VARIABLES.SELECT-VARIABLE' | translate }}" [(visible)]="isModalVariablesVisible" class="modal-dialog-center"
-  [baseZIndex]="1000" [modal]="true">
+export const modalVariablesTemplate = `<dp-dialog id="modalSelectVariable" header="{{
+  'COMPONENTS.BUTTON-VARIABLES.SELECT-VARIABLE' | translate }}" [(visible)]="isModalVariablesVisible"
+  [style]="{'width': '600px', 'max-width': '600px'}"
+>
 
-  <div style="max-height: 549px; overflow: auto; cursor: pointer">
+  <div style="height: 400px; overflow-y: auto; cursor: pointer">
 
-    <table class="table table-condensed table-hover table-bordered">
+    <table class="table table-xs">
       <thead>
         <tr>
           <th>{{
@@ -14,31 +15,30 @@ export const modalVariablesTemplate = `<p-dialog id="modalSelectVariable" header
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let variable of variables" (dblclick)="onModalOK()" (click)="onVariableClick(variable)"
-          [ngClass]="{ 'info': variable.active }">
-          <td id='{{variable.name}}'>{{variable.name}}</td>
-          <td>{{variable.type}}</td>
-        </tr>
+        @for (variable of variables; track $index) {
+          <tr (dblclick)="onModalOK()" (click)="onVariableClick(variable)"
+            [ngClass]="{'bg-primary/10': variable.active}">
+            <td id='{{variable.name}}'>{{variable.name}}</td>
+            <td>{{variable.type}}</td>
+          </tr>
+        }
       </tbody>
     </table>
   </div>
-  <div class="checkbox">
-    <label id='btnShowMoreVariables'>
-      &nbsp;&nbsp;
-      <input type="checkbox" [(ngModel)]="showMoreCheckBoxValue" (ngModelChange)='onShowMore()'>Show
-      More
-    </label>
-  </div>
+  <label id="btnShowMoreVariables" class="label cursor-pointer mt-2">
+    <input type="checkbox" class="checkbox checkbox-sm"
+      [(ngModel)]="showMoreCheckBoxValue" (ngModelChange)="onShowMore()" />
+    <span>Show More</span>
+  </label>
 
-  <p-footer>
-    <button id="btnOKConfirmation" class="btn btn-primary dburst-button-question-confirm" type="button" (click)="onModalOK()"
+  <div ngProjectAs="[footer]">
+    <button id="btnOKConfirmation" class="btn btn-outline btn-primary dburst-button-question-confirm" type="button" (click)="onModalOK()"
       [disabled]="!getSelectedVariable()">{{
       'BUTTONS.OK' | translate }}</button>
 
     <button id="btnClose" class="btn" type="button" (click)="onModalClose()">{{
       'BUTTONS.CANCEL' | translate }}</button>
+  </div>
 
-  </p-footer>
-
-</p-dialog>
+</dp-dialog>
 `;

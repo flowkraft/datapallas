@@ -1,12 +1,15 @@
-import { Component, OnInit, OnDestroy, Input } from '@angular/core';
+﻿import { Component, OnInit, input, DestroyRef, inject } from '@angular/core';
+import { SHARED_IMPORTS } from '../../shared/shared-imports';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
 import _ from 'lodash';
 import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { ToastrMessagesService } from '../../providers/toastr-messages.service';
-import { CfgTmplFileInfo, SettingsService } from '../../providers/settings.service';
+import { CfgTmplFileInfo, ConfigurationRepository } from '../../providers/configuration-repository.service';
+import { AppPathsService } from '../../providers/app-paths.service';
 import { ReportsService } from '../../providers/reports.service';
 import { SamplesService } from '../../providers/samples.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
@@ -15,77 +18,107 @@ import Utilities from '../../helpers/utilities';
 import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-crud/templates/reports/modal-conf-template';
 
 @Component({
-  selector: 'dburst-reports-list',
-  template: /*html*/ `
-    <div class="well">
-      <div class="row">
+    selector: 'dburst-reports-list',
+    template: /*html*/ `
+    <div class="space-y-4">
+      <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
         <div
-          [ngClass]="embeddedMode ? 'col-xs-12' : 'col-xs-10'"
+          [style.grid-column]="embeddedMode() ? 'span 12' : 'span 10'"
           style="cursor: pointer; overflow: auto"
         >
           <table
             id="confTemplatesTable"
-            class="table table-responsive table-hover table-bordered"
+            class="table"
             cellspacing="0"
           >
             <thead>
               <tr>
                 <th>{{ 'AREAS.CONFIGURATION-TEMPLATES.TAB-CONF-TEMPLATES.NAME' | translate }}</th>
                 <th>{{ 'AREAS.CONFIGURATION-TEMPLATES.TAB-CONF-TEMPLATES.CAPABILITIES' | translate }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
-                <th *ngIf="!embeddedMode">{{ 'AREAS.CONFIGURATION-TEMPLATES.TAB-CONF-TEMPLATES.HOW-TO-USE' | translate }}</th>
-                <th *ngIf="!embeddedMode">Actions&nbsp;&nbsp;&nbsp;&nbsp;</th>
+                @if (!embeddedMode()) {
+                <th>{{ 'AREAS.CONFIGURATION-TEMPLATES.TAB-CONF-TEMPLATES.HOW-TO-USE' | translate }}</th>
+                }
+                @if (!embeddedMode()) {
+                <th>Actions&nbsp;&nbsp;&nbsp;&nbsp;</th>
+                }
               </tr>
             </thead>
             <tbody>
-              <ng-container *ngFor="let configurationFile of pagedConfigurationFiles">
+              @for (configurationFile of pagedConfigurationFiles; track $index) {
               <tr
                 id="{{configurationFile.folderName}}_{{configurationFile.fileName}}"
                 (click)="onConfTemplateClick(configurationFile, $event)"
-                [ngClass]="{ 'info': configurationFile.activeClicked }"
+                [ngClass]="{'bg-primary/10': configurationFile.activeClicked, 'info': configurationFile.activeClicked}"
               >
                 <td>
                   {{ configurationFile.templateName }}
-                  <span *ngIf="configurationFile.type=='config-jasper-reports'" class="label" style="margin-left: 5px; background-color: #8fbcd4; color: #fff;">
-                    <i class="fa fa-diamond"></i> Jasper
+                  @if (configurationFile.type=='config-jasper-reports') {
+                  <span class="label" style="margin-left: 5px; background-color: #8fbcd4; color: #fff;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg> Jasper
                   </span>
-                  <span *ngIf="configurationFile.filePath === settingsService.currentConfigurationTemplatePath" style="margin-left: 6px; font-size: 11px; color: #777; font-style: italic;">(current)</span>
+                  }
+                  @if (configurationFile.filePath === settingsService.currentConfigurationTemplatePath) {
+                  <span style="margin-left: 6px; font-size: 11px; color: #777; font-style: italic;">(current)</span>
+                  }
                 </td>
                 <td>
-                  <span class="label label-default" *ngIf="!configurationFile.capReportGenerationMailMerge">
-                    <i class="fa fa-scissors">&nbsp;</i><em>Splitting</em>
+                  <div class="flex flex-wrap gap-1">
+                  @if (!configurationFile.capReportGenerationMailMerge) {
+                  <span class="badge badge-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.5 2.5 0 013.81-2.19M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536-.887a2.5 2.5 0 013.81 2.19m-1.733-2.19l2.077-1.2M21 12l-2.429-7.941A2.25 2.25 0 0016.5 2.4H7.5a2.25 2.25 0 00-2.071 1.659L3 12m18 0c0 1.415-.58 2.695-1.512 3.614M21 12H3m0 0c0 1.415.58 2.695 1.512 3.614"/></svg>&nbsp;<em>Splitting</em>
                   </span>
-                  <span class="label label-default" *ngIf="configurationFile.capReportGenerationMailMerge">
-                    <i class="fa fa-file-text-o">&nbsp;</i><em>Report Generation & Dashboards</em>
-                  </span>&nbsp;
-                  <span class="label label-default" *ngIf="configurationFile.capReportDistribution">
-                    <i class="fa fa-envelope-o">&nbsp;</i><em>Distribution</em>
+                  }
+                  @if (configurationFile.capReportGenerationMailMerge) {
+                  <span class="badge badge-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>&nbsp;<em>Report Generation & Dashboards</em>
                   </span>
+                  }
+                  @if (configurationFile.capReportDistribution) {
+                  <span class="badge badge-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>&nbsp;<em>Distribution</em>
+                  </span>
+                  }
+                  </div>
                 </td>
-                <td *ngIf="!embeddedMode">
-                  <span *ngIf="!configurationFile.isFallback && !configurationFile.capReportGenerationMailMerge"
+                @if (!embeddedMode()) {
+                <td>
+                  @if (!configurationFile.isFallback && !configurationFile.capReportGenerationMailMerge) {
+                  <span
                     >&lt;config&gt;{{configurationFile.relativeFilePath}}&lt;/config&gt;</span
                   >
+                  }
+                  @if (configurationFile.isFallback) {
                   <span
-                    *ngIf="configurationFile.isFallback"
                     [innerHTML]="'AREAS.CONFIGURATION-TEMPLATES.TAB-CONF-TEMPLATES.INNER-HTML.DEFAULT-CONFIGURATION' | translate"
                   ></span>
+                  }
                 </td>
-                <td *ngIf="!embeddedMode">
-                  <button id="btnRestore_{{configurationFile.folderName}}_{{configurationFile.fileName}}" type="button" class="btn btn-xs btn-default" (click)="restoreDefaultConfigurationValues()">Restore Defaults</button>
+                }
+                @if (!embeddedMode()) {
+                <td>
+                  <button id="btnRestore_{{configurationFile.folderName}}_{{configurationFile.fileName}}" type="button" class="btn btn-xs btn-ghost" (click)="restoreDefaultConfigurationValues()">Restore Defaults</button>
                 </td>
+                }
               </tr>
-              <tr *ngIf="loadInviteRow?.filePath === configurationFile.filePath">
-                <td *ngFor="let x of loadInviteLeadingCells" style="border-top: none; background: #f4f9fc;"></td>
+              @if (loadInviteRow?.filePath === configurationFile.filePath) {
+              <tr>
+                @for (x of loadInviteLeadingCells; track $index) {
+                <td style="border-top: none; background: #f4f9fc;"></td>
+                }
                 <td [attr.colspan]="totalColumns - loadInviteColumnIndex" style="padding: 4px 12px 6px; border-top: none; background: #f4f9fc;">
                   <a id="btnLoadInvite_{{configurationFile.folderName}}_{{configurationFile.fileName}}"
                      href="#" (click)="showLoadConfirm(configurationFile); $event.preventDefault(); $event.stopPropagation()"
                      style="font-size: 12px; color: #3c8dbc; font-weight: bold;">
-                    <i class="fa fa-sign-in"></i> Load
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/></svg> Load
                   </a>
                 </td>
               </tr>
-              <tr *ngIf="loadConfirmRow?.filePath === configurationFile.filePath">
-                <td *ngFor="let x of loadInviteLeadingCells" style="border-top: none; background: #f4f9fc;"></td>
+              }
+              @if (loadConfirmRow?.filePath === configurationFile.filePath) {
+              <tr>
+                @for (x of loadInviteLeadingCells; track $index) {
+                <td style="border-top: none; background: #f4f9fc;"></td>
+                }
                 <td [attr.colspan]="totalColumns - loadInviteColumnIndex" style="padding: 4px 12px 6px; border-top: none; background: #f4f9fc; font-size: 12px;">
                   <span style="color: #777;">Sure?&nbsp;</span>
                   <a id="btnLoadConfirmYes_{{configurationFile.folderName}}_{{configurationFile.fileName}}"
@@ -97,17 +130,25 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
                      style="color: #999;">No</a>
                 </td>
               </tr>
-              </ng-container>
-              <tr *ngIf="pagedConfigurationFiles.length === 0">
+              }
+              }
+              @if (pagedConfigurationFiles.length === 0) {
+              <tr>
                 <td [attr.colspan]="totalColumns" style="text-align: center; color: #999; padding: 20px;">
-                  <span *ngIf="searchTerm">No reports match '{{ searchTerm }}'</span>
-                  <span *ngIf="!searchTerm">No reports yet</span>
+                  @if (searchTerm) {
+                  <span>No reports match '{{ searchTerm }}'</span>
+                  }
+                  @if (!searchTerm) {
+                  <span>No reports yet</span>
+                  }
                 </td>
               </tr>
+              }
             </tbody>
           </table>
 
-          <nav *ngIf="filteredConfigurationFiles.length > pageSize" style="margin-top: 10px;">
+          @if (filteredConfigurationFiles.length > pageSize) {
+          <nav style="margin-top: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #777; font-size: 12px;">
                 Showing {{ pageStart + 1 }}-{{ pageEnd }} of {{ filteredConfigurationFiles.length }}
@@ -116,96 +157,104 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
                 <li [ngClass]="{ 'disabled': pageIndex === 0 }">
                   <a href="#" (click)="prevPage(); $event.preventDefault()">&laquo;</a>
                 </li>
+                @for (p of pageNumbers; track $index) {
                 <li
-                  *ngFor="let p of pageNumbers"
                   [ngClass]="{ 'active': p === pageIndex }"
                 >
                   <a href="#" (click)="goToPage(p); $event.preventDefault()">{{ p + 1 }}</a>
                 </li>
+                }
                 <li [ngClass]="{ 'disabled': pageIndex >= totalPages - 1 }">
                   <a href="#" (click)="nextPage(); $event.preventDefault()">&raquo;</a>
                 </li>
               </ul>
             </div>
           </nav>
+          }
         </div>
 
-        <div class="col-xs-2" *ngIf="!embeddedMode">
+        @if (!embeddedMode()) {
+        <div style="grid-column:span 2">
           <button
             id="btnNew"
             type="button"
-            class="btn btn-flat btn-default col-xs-12"
+            class="btn btn-outline w-full"
             (click)="showCrudModal('create')"
             style="margin-bottom: 5px"
           >
-            <i class="fa fa-plus"></i> {{ 'BUTTONS.NEW' | translate }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> {{ 'BUTTONS.NEW' | translate }}
           </button>
           <p></p>
           <button
             id="btnEdit"
             type="button"
-            class="btn btn-flat btn-default col-xs-12"
+            class="btn btn-outline w-full"
             (click)="showCrudModal('update')"
             [ngClass]="{ 'disabled': !getSelectedConfiguration() }"
             style="margin-bottom: 5px"
           >
-            <i class="fa fa-pencil-square-o"></i> {{ 'BUTTONS.EDIT' | translate }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg> {{ 'BUTTONS.EDIT' | translate }}
           </button>
           <p></p>
           <button
             id="btnDuplicate"
             type="button"
-            class="btn btn-flat btn-default col-xs-12"
+            class="btn btn-outline w-full"
             (click)="showCrudModal('create', true)"
             [ngClass]="{ 'disabled': !getSelectedConfiguration() }"
             style="margin-bottom: 5px"
           >
-            <i class="fa fa-clone"></i> {{ 'BUTTONS.DUPLICATE' | translate }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg> {{ 'BUTTONS.DUPLICATE' | translate }}
           </button>
           <button
             id="btnDelete"
             type="button"
-            class="btn btn-flat btn-default col-xs-12"
+            class="btn btn-outline w-full"
             (click)="onDeleteSelectedTemplate()"
             [ngClass]="{ 'disabled': !getSelectedConfiguration() || getSelectedConfiguration().isFallback }"
           >
-            <i class="fa fa-minus"></i> {{ 'BUTTONS.DELETE' | translate }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg> {{ 'BUTTONS.DELETE' | translate }}
           </button>
         </div>
+        }
       </div>
 
-      <div class="row" style="margin-top: 10px;" *ngIf="totalPages >= 2 || searchTerm">
-        <div class="col-xs-10">
-          <div class="input-group">
-            <span class="input-group-addon"><i class="fa fa-search"></i></span>
+      @if (totalPages >= 2 || searchTerm) {
+      <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
+        <div style="grid-column:span 10">
+          <div class="join">
+            <span class="join-item btn btn-ghost"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z"/></svg></span>
             <input
               type="text"
               id="reportsListSearch"
-              class="form-control"
+              class="input join-item"
               placeholder="Search by name"
               [ngModel]="searchTerm"
               (ngModelChange)="onSearchChange($event)"
             />
-            <span class="input-group-btn" *ngIf="searchTerm">
-              <button
-                type="button"
-                class="btn btn-default"
-                (click)="onSearchChange('')"
-                title="Clear search"
-              >
-                <i class="fa fa-times"></i>
-              </button>
-            </span>
+            @if (searchTerm) {
+            <button
+              type="button"
+              class="join-item btn btn-ghost"
+              (click)="onSearchChange('')"
+              title="Clear search"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            }
           </div>
         </div>
       </div>
+      }
     </div>
 
     ${modalConfigurationTemplateTemplate}
   `,
+    standalone: true,
+    imports: [...SHARED_IMPORTS],
 })
-export class ReportsListComponent implements OnInit, OnDestroy {
-  @Input() embeddedMode = false;
+export class ReportsListComponent implements OnInit {
+  embeddedMode = input<boolean>(false);
 
   isModalConfigurationTemplateVisible = false;
 
@@ -219,6 +268,16 @@ export class ReportsListComponent implements OnInit, OnDestroy {
     modalTitle: string;
   };
 
+  /** JSON snapshot of fileInfo at the moment showCrudModal() opened the dialog.
+   *  Used by isModalDirty() so the Save button stays disabled until the user
+   *  actually edits something. */
+  private modalSnapshot = '';
+
+  /** True only when fileInfo differs from the snapshot taken on modal open. */
+  isModalDirty(): boolean {
+    return JSON.stringify(this.modalConfigurationTemplateInfo?.fileInfo) !== this.modalSnapshot;
+  }
+
   searchTerm = '';
   pageSize = 5;
   pageIndex = 0;
@@ -231,7 +290,7 @@ export class ReportsListComponent implements OnInit, OnDestroy {
   loadInviteColumnIndex = 0;
 
   get totalColumns(): number {
-    return this.embeddedMode ? 2 : 4;
+    return this.embeddedMode() ? 2 : 4;
   }
 
   get loadInviteLeadingCells(): number[] {
@@ -239,10 +298,11 @@ export class ReportsListComponent implements OnInit, OnDestroy {
   }
 
   private searchSubject = new Subject<string>();
-  private destroy$ = new Subject<void>();
+  private destroyRef = inject(DestroyRef);
 
   constructor(
-    public settingsService: SettingsService,
+    public settingsService: ConfigurationRepository,
+    protected appPathsService: AppPathsService,
     protected confirmService: ConfirmService,
     protected messagesService: ToastrMessagesService,
     protected reportsService: ReportsService,
@@ -276,7 +336,7 @@ export class ReportsListComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     this.searchSubject
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
         this.searchTerm = term;
         this.pageIndex = 0;
@@ -287,11 +347,6 @@ export class ReportsListComponent implements OnInit, OnDestroy {
       await this.settingsService.loadAllReports();
 
     this.applyFilters();
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   // === Search + Pagination ===
@@ -382,7 +437,7 @@ export class ReportsListComponent implements OnInit, OnDestroy {
     }
 
     // Skip invitation when clicking the Actions column (last column, non-embedded only)
-    if (!this.embeddedMode && this.loadInviteColumnIndex === this.totalColumns - 1) {
+    if (!this.embeddedMode() && this.loadInviteColumnIndex === this.totalColumns - 1) {
       this.loadInviteRow = null;
       this.loadConfirmRow = null;
       return;
@@ -533,6 +588,8 @@ export class ReportsListComponent implements OnInit, OnDestroy {
     }
 
     await this.updateModelAndForm();
+    // Snapshot AFTER all open-time writes so isModalDirty() returns false on first render.
+    this.modalSnapshot = JSON.stringify(this.modalConfigurationTemplateInfo.fileInfo);
     this.isModalConfigurationTemplateVisible = true;
   }
 
@@ -542,7 +599,7 @@ export class ReportsListComponent implements OnInit, OnDestroy {
         ? _.kebabCase(this.modalConfigurationTemplateInfo.fileInfo.templateName)
         : '${folder-name}';
 
-      this.modalConfigurationTemplateInfo.fileInfo.filePath = `${this.settingsService.CONFIGURATION_REPORTS_FOLDER_PATH}/${folderName}/settings.xml`;
+      this.modalConfigurationTemplateInfo.fileInfo.filePath = `${this.appPathsService.CONFIGURATION_REPORTS_FOLDER_PATH}/${folderName}/settings.xml`;
       this.modalConfigurationTemplateInfo.fileInfo.relativeFilePath = `./config/reports/${folderName}/settings.xml`;
       this.modalConfigurationTemplateInfo.fileInfo.folderName = folderName;
 

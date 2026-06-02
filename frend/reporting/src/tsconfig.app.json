@@ -7,6 +7,9 @@
       "node"
     ]
   },
+  "angularCompilerOptions": {
+    "preserveWhitespaces": false
+  },
   "files": [
     "main.ts",
     "polyfills.ts"

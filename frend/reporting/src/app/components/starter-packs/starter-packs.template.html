@@ -1,298 +1,273 @@
 <div class="container-fluid">
-  
+
   <!--<dburst-docker></dburst-docker>-->
 
   <!-- Intro paragraph -->
-  <p class="text-muted" style="margin-bottom: 15px; font-size: 0.95em;">
+  <p class="text-base-content/60" style="margin-bottom: 15px; font-size: 0.95em;">
     Each starter pack below launches a <strong>Northwind</strong> sample database — a realistic dataset with customers, orders, products, and employees — preloaded into a different database engine. Use them to quickly learn how DataPallas connects to, queries, and generates reports from each supported database vendor.
   </p>
 
   <!-- Header Row: Title, Search, Tags, Refresh -->
   <div
-    class="row"
-    style="margin-bottom: 15px; display: flex; align-items: center"
-  >
+    style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-bottom: 15px; align-items: center"
+    >
     <!-- Search Box -->
-    <div class="col-md-6">
-      <div class="form-group" style="margin-bottom: 0">
+    <div style="grid-column:span 6">
+      <div class="mb-4">
         <label for="packSearch" class="sr-only">Search Packs</label>
-        <div class="input-group input-group-sm">
+        <div class="join">
           <input
             type="text"
             id="packSearch"
-            class="form-control"
+            class="input join-item input-sm"
             placeholder="Search ..."
             [ngModel]="searchTerm"
             (ngModelChange)="searchSubject.next($event)"
-          />
-          <span class="input-group-btn" *ngIf="searchTerm">
-            <button
-              class="btn btn-default"
-              type="button"
-              title="Clear Search"
-              (click)="searchSubject.next(''); searchTerm=''"
+            />
+            @if (searchTerm) {
+              <button
+                class="join-item btn btn-ghost btn-sm"
+                type="button"
+                title="Clear Search"
+                (click)="searchSubject.next(''); searchTerm=''"
+                >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Tag Filter Area -->
+      <div style="grid-column:span 5">
+        @if (allTags.length === 0 && !isLoading && !isRefreshing) {
+          <span
+            class="text-base-content/60 small"
             >
-              <i class="fa fa-times"></i>
+            No tags defined.</span
+            >
+        }
+        @for (tag of allTags; track tag) {
+          <span style="margin-right: 5px">
+            <button
+              class="btn btn-xs"
+              [class.btn-primary]="selectedTag === tag"
+              [class.btn-ghost]="selectedTag !== tag"
+              (click)="filterByTag(tag)"
+              title="Filter by tag: {{ tag }}"
+              >
+              {{ tag }}
             </button>
           </span>
-        </div>
+        }
+        @if (selectedTag) {
+          <button
+            class="btn btn-xs btn-warning"
+            style="margin-left: 5px"
+            (click)="clearTagFilter()"
+            title="Clear tag filter"
+            >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> {{ selectedTag }}
+          </button>
+        }
+      </div>
+
+      <!-- Refresh Button -->
+      <div class="text-right" style="grid-column:span 1">
+        <button
+          class="btn btn-ghost"
+          type="button"
+          (click)="refreshData()"
+          [disabled]="isLoading || isRefreshing"
+          title="Refresh List"
+          >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.25" stroke="currentColor" [class]="isRefreshing ? 'inline-block w-5 h-5 animate-spin' : 'inline-block w-5 h-5'"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+        </button>
       </div>
     </div>
 
-    <!-- Tag Filter Area -->
-    <div class="col-md-5">
-      <span
-        *ngIf="allTags.length === 0 && !isLoading && !isRefreshing"
-        class="text-muted small"
-      >
-        No tags defined.</span
-      >
-      <span *ngFor="let tag of allTags" style="margin-right: 5px">
-        <button
-          class="btn btn-xs"
-          [class.btn-primary]="selectedTag === tag"
-          [class.btn-default]="selectedTag !== tag"
-          (click)="filterByTag(tag)"
-          title="Filter by tag: {{ tag }}"
-        >
-          {{ tag }}
-        </button>
-      </span>
-      <button
-        *ngIf="selectedTag"
-        class="btn btn-xs btn-warning"
-        style="margin-left: 5px"
-        (click)="clearTagFilter()"
-        title="Clear tag filter"
-      >
-        <i class="fa fa-times"></i> {{ selectedTag }}
-      </button>
-    </div>
-
-    <!-- Refresh Button -->
-    <div class="col-md-1 text-right">
-      <button
-        class="btn btn-default btn-sm"
-        type="button"
-        (click)="refreshData()"
-        [disabled]="isLoading || isRefreshing"
-        title="Refresh List"
-      >
-        <i class="fa fa-refresh" [class.fa-spin]="isRefreshing"></i>
-      </button>
-    </div>
-  </div>
-
-  <!-- Loading/Error/No Results Messages -->
-  <div *ngIf="isLoading" id="starterPacksLoadingIndicator" class="text-center">
-    Loading starter packs... <i class="fa fa-spinner fa-spin"></i>
-  </div>
-  <div *ngIf="!isLoading && error" class="alert alert-danger">{{ error }}</div>
-  <div
-    *ngIf="!isLoading && !isRefreshing && !error && starterPacks.length === 0"
-    class="alert alert-info"
-  >
-    No starter packs available or configured.
-  </div>
-  <div
-    *ngIf="!isLoading && !isRefreshing && !error && starterPacks.length > 0 && filteredStarterPacks.length === 0"
-    class="alert alert-warning"
-  >
-    No starter packs match your current search/filter criteria.
-  </div>
-
-  
-  <!-- Starter Pack List -->
-  <div class="row" *ngIf="!isLoading && filteredStarterPacks.length > 0">
-    <!-- Scoped styles for starter pack cards - consistent with apps-manager -->
-    <style>
-      .starter-pack-card {
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        transition: all 0.2s ease-in-out;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      }
-      .starter-pack-card:hover {
-        border-color: #bbb;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
-      }
-      .starter-pack-card.panel-info {
-        border-color: #bce8f1;
-      }
-      .starter-pack-card.panel-info:hover {
-        border-color: #31708f;
-      }
-      .starter-pack-card.panel-primary {
-        border-color: #337ab7;
-      }
-      .starter-pack-card.panel-danger {
-        border-color: #ebccd1;
-      }
-      .starter-pack-card.panel-danger:hover {
-        border-color: #a94442;
-      }
-      .starter-pack-card .panel-title {
-        color: #333;
-      }
-      .starter-pack-card.panel-primary .panel-title,
-      .starter-pack-card.panel-primary .panel-heading {
-        color: white;
-      }
-    </style>
-    <!-- Changed col-lg-4 to col-lg-6 to show 2 packs per row on large screens -->
-    <div
-      class="col-md-6 col-lg-6"
-      *ngFor="let pack of filteredStarterPacks; trackBy: trackPackById"
-    >
+    <!-- Loading/Error/No Results Messages -->
+    @if (isLoading) {
+      <div id="starterPacksLoadingIndicator" class="text-center">
+        Loading starter packs... <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+      </div>
+    }
+    @if (!isLoading && error) {
+      <div class="alert alert-error">{{ error }}</div>
+    }
+    @if (!isLoading && !isRefreshing && !error && starterPacks.length === 0) {
       <div
-        class="panel starter-pack-card"
-        [id]="'starterPack_' + pack.id"
+        class="alert alert-info"
+        >
+        No starter packs available or configured.
+      </div>
+    }
+    @if (!isLoading && !isRefreshing && !error && starterPacks.length > 0 && filteredStarterPacks.length === 0) {
+      <div
+        class="alert alert-warning"
+        >
+        No starter packs match your current search/filter criteria.
+      </div>
+    }
+
+
+    <!-- Starter Pack List -->
+    @if (!isLoading && filteredStarterPacks.length > 0) {
+      <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+        <!-- Scoped styles: structural only (hover lift). Colors come from theme tokens. -->
+        <style>
+          .starter-pack-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+          }
+          .starter-pack-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+          }
+        </style>
+<!-- 2 packs per row on large screens -->
+@for (pack of filteredStarterPacks; track trackPackById($index, pack)) {
+  <div
+    style="grid-column:span 6"
+    >
+    <div
+      class="card card-border bg-base-100 shadow-sm starter-pack-card"
+      [id]="'starterPack_' + pack.id"
         [ngClass]="{
-          'panel-info': pack.status === 'running',
-          'panel-primary': pack.status === 'starting' || pack.status === 'stopping',
-          'panel-danger': pack.status === 'error',
-          'panel-default': pack.status === 'stopped' || pack.status === 'unknown'
+          'border-info': pack.status === 'running',
+          'border-primary': pack.status === 'starting' || pack.status === 'stopping',
+          'border-error': pack.status === 'error'
         }"
       >
-        <div class="panel-heading">
-          <h3 class="panel-title">
-            <span [innerHTML]="getIconSvg(pack.icon)"></span>
-            <span [style.color]="pack.status === 'starting' || pack.status === 'stopping' ? 'white' : '#333'">{{ pack.displayName }}</span>
-            <strong style="margin-left: 6px;"
-              [style.color]="pack.status === 'running' ? '#31708f' : (pack.status === 'starting' || pack.status === 'stopping') ? 'white' : '#888'">
-              <i *ngIf="pack.status === 'starting' || pack.status === 'stopping'" class="fa fa-spinner fa-spin" style="margin-right: 5px;"></i>
-              {{ pack.status === 'running' ? 'running' : pack.status === 'starting' ? 'starting' : pack.status === 'stopping' ? 'stopping' : 'stopped' }}
-            </strong>
-          </h3>
-        </div>
-        <div class="panel-body">
-          <!-- Display Tags -->
+      <header class="bg-base-200 border-b border-base-300 px-4 py-3 flex items-center gap-2">
+        <h2 class="card-title text-base-content flex items-center gap-2 flex-wrap" style="margin: 0; font-size: 1rem;">
+          <span [innerHTML]="getIconSvg(pack.icon)" style="display:inline-flex; align-items:center;"></span>
+          <span>{{ pack.displayName }}</span>
+          <strong style="font-weight: 600;"
+            [ngClass]="{
+              'text-info': pack.status === 'running',
+              'text-primary': pack.status === 'starting' || pack.status === 'stopping',
+              'text-base-content/60': pack.status === 'stopped' || pack.status === 'unknown' || pack.status === 'error'
+            }">
+            @if (pack.status === 'starting' || pack.status === 'stopping') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin" style="margin-right: 5px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            }
+            {{ pack.status === 'running' ? 'running' : pack.status === 'starting' ? 'starting' : pack.status === 'stopping' ? 'stopping' : 'stopped' }}
+          </strong>
+        </h2>
+      </header>
+      <div class="card-body">
+        <!-- Display Tags -->
+        @if (pack.tags && pack.tags.length > 0) {
           <div
-            *ngIf="pack.tags && pack.tags.length > 0"
             style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px"
-          >
-            <span
-              *ngFor="let tag of pack.tags"
-              class="label label-default"
-              style="display: inline-block"
-              >{{ tag }}</span
             >
-          </div>
-
+            @for (tag of pack.tags; track tag) {
+              <span
+                class="badge badge-ghost"
+                style="display: inline-block"
+                >{{ tag }}</span
+                >
+              }
+            </div>
+          }
           <!-- Command Display/Edit using Input -->
-          <div class="form-group" style="margin-top: 10px; margin-bottom: 10px">
+          <div class="mb-4">
             <label class="sr-only" [for]="'cmd-' + pack.id">Command</label>
             <input
               type="text"
-              class="form-control input-sm"
+              class="input input-sm"
               style="font-family: monospace; font-size: 0.9em"
               [id]="'cmd-' + pack.id"
               [(ngModel)]="pack.currentCommandValue"
               [disabled]="pack.status === 'starting' || pack.status === 'stopping'"
               placeholder="Command to execute"
               title="Command to execute. Edit here for this action."
-            />
-          </div>
-
-          <!-- Action Buttons Row: Start/Stop -->
-          <div style="display: flex; align-items: center; gap: 8px">
-            <button
-              type="button"
-              class="btn btn-sm"
-              [disabled]="pack.status === 'starting' || pack.status === 'stopping'"
+              />
+            </div>
+            <!-- Action Buttons Row: Start/Stop -->
+            <div style="display: flex; align-items: center; gap: 8px">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline"
+                [disabled]="pack.status === 'starting' || pack.status === 'stopping'"
               [ngClass]="{
-                      'btn-default': pack.status === 'stopped' || pack.status === 'unknown' || pack.status === 'error',
                       'btn-primary': pack.status === 'running' || pack.status === 'starting' || pack.status === 'stopping'
                     }"
-              [id]="'btnStartStop_' + pack.id"
-              (click)="togglePackState(pack)"
-              [title]="pack.status === 'running' ? 'Stop using the command above' : 'Start using the command above'"
-            >
-              <i
-                *ngIf="pack.status !== 'starting' && pack.status !== 'stopping'"
-                class="fa"
-                [id]="'starterPackIcon_' + pack.id"
-                [ngClass]="{
-                  'fa-play': pack.status === 'stopped' || pack.status === 'unknown' || pack.status === 'error',
-                  'fa-stop': pack.status === 'running'
-                }"
-              ></i>
-              <i
-                *ngIf="pack.status === 'starting' || pack.status === 'stopping'"
-                [id]="'starterPackSpinner_' + pack.id"
-                class="fa fa-spinner fa-spin"
-              ></i>
-              {{ pack.status === 'running' ? 'Stop' : pack.status === 'starting' ? 'Starting' : pack.status === 'stopping' ? 'Stopping' : 'Start' }}
-            </button>
+                [id]="'btnStartStop_' + pack.id"
+                (click)="togglePackState(pack)"
+                [title]="pack.status === 'running' ? 'Stop using the command above' : 'Start using the command above'"
+                >
+                @if (pack.status !== 'starting' && pack.status !== 'stopping') {
+                  @if (pack.status === 'running') {
+                    <svg [id]="'starterPackIcon_' + pack.id" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
+                  } @else {
+                    <svg [id]="'starterPackIcon_' + pack.id" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+                  }
+                }
+                @if (pack.status === 'starting' || pack.status === 'stopping') {
+                  <svg [id]="'starterPackSpinner_' + pack.id" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 animate-spin"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                }
+                {{ pack.status === 'running' ? 'Stop' : pack.status === 'starting' ? 'Starting' : pack.status === 'stopping' ? 'Stopping' : 'Start' }}
+              </button>
+            </div>
+            <br/>
+            <!-- Supabase website link + extended description (only for Supabase packs) -->
+            @if (pack.target === 'supabase') {
+              <div style="margin-bottom: 8px">
+                <a href="https://supabase.com/" target="_blank" rel="noopener noreferrer"
+                  style="text-decoration: none; color: #31708f; font-weight: 500;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="margin-right: 6px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>https://supabase.com/
+                </a>
+                <small class="text-base-content/60" style="display: block; margin-top: 6px;">
+                  {{ pack.description }}
+                </small>
+              </div>
+            }
+            <!-- Redis website link + extended description (only for Redis packs) -->
+            @if (pack.target === 'redis') {
+              <div style="margin-bottom: 8px">
+                <a href="https://redis.io/" target="_blank" rel="noopener noreferrer"
+                  style="text-decoration: none; color: #31708f; font-weight: 500;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="margin-right: 6px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>https://redis.io/
+                </a>
+                <small class="text-base-content/60" style="display: block; margin-top: 6px;">
+                  {{ pack.description }}
+                </small>
+              </div>
+            }
+            <!-- TimescaleDB website link + extended description (only for TimescaleDB packs) -->
+            @if (pack.target === 'timescaledb') {
+              <div style="margin-bottom: 8px">
+                <a href="https://www.timescale.com/" target="_blank" rel="noopener noreferrer"
+                  style="text-decoration: none; color: #31708f; font-weight: 500;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4" style="margin-right: 6px;"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>https://www.timescale.com/
+                </a>
+                <small class="text-base-content/60" style="display: block; margin-top: 6px;">
+                  {{ pack.description }}
+                </small>
+              </div>
+            }
+            <!-- Last Output Display (Separate from Command) -->
+            @if (pack.lastOutput) {
+              <div class="mt-3 relative">
+                <pre class="text-xs rounded bg-base-200 text-base-content/80 border border-base-300 py-1 px-2 mb-0 overflow-y-auto" style="max-height: 80px; white-space: pre-wrap;"
+                  ><code>{{ pack.lastOutput }}</code></pre>
+                  <button
+                    class="btn btn-ghost btn-xs absolute top-1 right-1 opacity-70"
+                    title="Copy to Clipboard"
+                    (click)="copyToClipboard(pack.lastOutput)"
+                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg>
+                  </button>
+                </div>
+              }
+              <!-- Removed Inline Info, Edit Start, Edit Stop sections -->
+            </div>
           </div>
-
-          <br/>
-
-          <!-- Supabase website link + extended description (only for Supabase packs) -->
-          <div *ngIf="pack.target === 'supabase'" style="margin-bottom: 8px">
-            <a href="https://supabase.com/" target="_blank" rel="noopener noreferrer"
-               style="text-decoration: none; color: #31708f; font-weight: 500;">
-              <i class="fa fa-external-link" style="margin-right: 6px;"></i>https://supabase.com/
-            </a>
-            <small class="text-muted" style="display: block; margin-top: 6px;">
-              {{ pack.description }}
-            </small>
-          </div>
-
-          <!-- Redis website link + extended description (only for Redis packs) -->
-          <div *ngIf="pack.target === 'redis'" style="margin-bottom: 8px">
-            <a href="https://redis.io/" target="_blank" rel="noopener noreferrer"
-               style="text-decoration: none; color: #31708f; font-weight: 500;">
-              <i class="fa fa-external-link" style="margin-right: 6px;"></i>https://redis.io/
-            </a>
-            <small class="text-muted" style="display: block; margin-top: 6px;">
-              {{ pack.description }}
-            </small>
-          </div>
-
-          <!-- TimescaleDB website link + extended description (only for TimescaleDB packs) -->
-          <div *ngIf="pack.target === 'timescaledb'" style="margin-bottom: 8px">
-            <a href="https://www.timescale.com/" target="_blank" rel="noopener noreferrer"
-               style="text-decoration: none; color: #31708f; font-weight: 500;">
-              <i class="fa fa-external-link" style="margin-right: 6px;"></i>https://www.timescale.com/
-            </a>
-            <small class="text-muted" style="display: block; margin-top: 6px;">
-              {{ pack.description }}
-            </small>
-          </div>
-
-          <!-- Last Output Display (Separate from Command) -->
-          <div
-            *ngIf="pack.lastOutput"
-            style="margin-top: 15px; position: relative"
-          >
-            <pre
-              style="
-                max-height: 80px; /* Increased height for 2-3 lines */
-                overflow-y: auto;
-                font-size: 0.85em; /* Slightly smaller */
-                background-color: #f8f9fa; /* Lighter background */
-                border: 1px solid #e9ecef; /* Lighter border */
-                padding: 5px 8px;
-                margin-bottom: 0; /* Remove default margin */
-              "
-            ><code style="white-space: pre-wrap;">{{ pack.lastOutput }}</code></pre>
-            <button
-              class="btn btn-default btn-xs"
-              style="position: absolute; top: 5px; right: 5px; opacity: 0.7"
-              title="Copy to Clipboard"
-              (click)="copyToClipboard(pack.lastOutput)"
-            >
-              <i class="fa fa-copy"></i>
-            </button>
-          </div>
-
-          <!-- Removed Inline Info, Edit Start, Edit Stop sections -->
         </div>
-      </div>
+      }
     </div>
-  </div>
+  }
 
-  <dburst-ai-manager #aiManagerInstance hidden></dburst-ai-manager>
+  <dburst-ai-manager #aiManagerInstance></dburst-ai-manager>
 </div>

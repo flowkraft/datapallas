@@ -1,15 +1,15 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, input, model, output, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Import CommonModule
 import { FormsModule } from '@angular/forms'; // Import FormsModule if needed for inputs/buttons potentially
 import { TreeNode, TreeComponent } from './tree.component'; // Import TreeComponent
 
 @Component({
-  selector: 'dburst-picklist',
-  standalone: true,
-  imports: [CommonModule, FormsModule, TreeComponent],
-  templateUrl: './picklist.component.html',
-  styles: [
-    `
+    selector: 'dburst-picklist',
+    standalone: true,
+    imports: [CommonModule, FormsModule, TreeComponent],
+    templateUrl: './picklist.component.html',
+    styles: [
+        `
       :host {
         display: block;
       }
@@ -33,10 +33,13 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         flex-direction: column; /* Added */
       }
 
+      /* All colors below use daisyUI theme tokens (--color-base-*, --color-primary*)
+         so the picklist follows the active theme instead of locking to a fixed
+         light-gray palette inherited from the PrimeNG defaults. */
       .p-picklist-header {
-        background: #f9fafb; /* Example header background */
-        color: #374151; /* Example header text color */
-        border: 1px solid #e5e7eb;
+        background: var(--color-base-200);
+        color: var(--color-base-content);
+        border: 1px solid var(--color-base-300);
         padding: 0.75rem 1rem;
         font-weight: 600;
         border-bottom: 0 none;
@@ -45,20 +48,16 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
       }
 
       /* Ensure tree takes remaining space */
-      /* Style dburst-tree directly if needed, or use a wrapper */
-      /* Note: Styling the component host (dburst-tree) from here might be limited */
       .p-picklist-list-container > dburst-tree {
         flex-grow: 1;
-        border-top-left-radius: 0; /* Adjust if tree has border */
+        border-top-left-radius: 0;
         border-top-right-radius: 0;
-        border: 1px solid #e5e7eb; /* Match header border */
-        border-top: 0; /* Remove top border if header has bottom */
-        /* Ensure the tree itself allows scrolling if content overflows */
-        /* The style binding in the template already sets height */
+        border: 1px solid var(--color-base-300);
+        border-top: 0;
         overflow-y: auto;
       }
 
-      /* Basic Button Styles (Keep existing ones) */
+      /* Basic Button Styles */
       .p-button {
         display: inline-flex;
         cursor: pointer;
@@ -68,9 +67,9 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         text-align: center;
         overflow: hidden;
         position: relative;
-        border: 1px solid #ced4da;
-        background: #f8f9fa;
-        color: #495057;
+        border: 1px solid var(--color-base-300);
+        background: var(--color-base-200);
+        color: var(--color-base-content);
         padding: 0.5rem 1rem;
         font-size: 1rem;
         transition:
@@ -81,29 +80,29 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         border-radius: 6px;
       }
       .p-button:enabled:hover {
-        background: #e9ecef;
-        color: #495057;
-        border-color: #ced4da;
+        background: var(--color-base-300);
+        color: var(--color-base-content);
+        border-color: var(--color-base-300);
       }
       .p-button:disabled {
         opacity: 0.65;
         cursor: default;
       }
       .p-button-icon-only {
-        width: 2.5rem; /* Adjust size as needed */
+        width: 2.5rem;
         padding: 0.5rem 0;
         justify-content: center;
       }
       .p-button .pi {
-        font-size: 1.25rem; /* Adjust icon size */
+        font-size: 1.25rem;
       }
 
       .p-picklist-field-toolbar {
         display: flex;
         gap: 0.25rem;
         padding: 0.35rem 0.5rem;
-        background: #f0f9ff;
-        border: 1px solid #e5e7eb;
+        background: var(--color-base-200);
+        border: 1px solid var(--color-base-300);
         border-top: 0;
         border-bottom: 0;
       }
@@ -116,36 +115,33 @@ import { TreeNode, TreeComponent } from './tree.component'; // Import TreeCompon
         font-size: 0.8rem;
       }
       .p-button-toolbar-active {
-        background: #dbeafe;
-        border-color: #3b82f6;
-        color: #1d4ed8;
+        background: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-100));
+        border-color: var(--color-primary);
+        color: var(--color-primary);
         font-weight: 600;
       }
       .p-button-toolbar-active:enabled:hover {
-        background: #bfdbfe;
-        border-color: #3b82f6;
-        color: #1d4ed8;
+        background: color-mix(in oklab, var(--color-primary) 28%, var(--color-base-100));
+        border-color: var(--color-primary);
+        color: var(--color-primary);
       }
     `,
-  ],
+    ]
 })
 export class PicklistComponent {
-  constructor(private cdRef: ChangeDetectorRef) {}
+  private cdRef = inject(ChangeDetectorRef);
 
-  @Input() picklistId: string | undefined;
+  picklistId = input<string | undefined>(undefined);
 
-  @Input() sourceItems: TreeNode[] = [];
-  @Output() sourceItemsChange = new EventEmitter<TreeNode[]>();
+  sourceItems = model<TreeNode[]>([]);
+  targetItems = model<TreeNode[]>([]);
 
-  @Input() targetItems: TreeNode[] = [];
-  @Output() targetItemsChange = new EventEmitter<TreeNode[]>();
+  sourceHeader = input<string>('');
+  targetHeader = input<string>('');
+  sourceFilterPlaceholder = input<string>('Filter...');
+  targetFilterPlaceholder = input<string>('Filter...');
 
-  @Input() sourceHeader: string = '';
-  @Input() targetHeader: string = '';
-  @Input() sourceFilterPlaceholder: string = 'Filter...';
-  @Input() targetFilterPlaceholder: string = 'Filter...';
-
-  @Input() enableFieldSelection: boolean = false;
+  enableFieldSelection = input<boolean>(false);
 
   // When true, the picklist treats top-level source nodes as "groups" and
   // their child nodes (those marked with `originalParentKey`) as "leaves".
@@ -155,7 +151,7 @@ export class PicklistComponent {
   // on the fly if it no longer exists in source. The original parent
   // identity is read from each leaf's `originalParentKey` / `originalParentLabel`
   // fields, which the caller must populate when building the source tree.
-  @Input() flattenGroupNodes: boolean = false;
+  flattenGroupNodes = input<boolean>(false);
 
   selectedSourceNodes: TreeNode[] = [];
   selectedTargetNodes: TreeNode[] = [];
@@ -163,11 +159,11 @@ export class PicklistComponent {
   fieldSelectionMode: 'allDetails' | 'namesOnly' | 'custom' = 'allDetails';
 
   get activeTargetSelection(): TreeNode[] {
-    return this.enableFieldSelection ? this.fieldIncludedNodes : this.selectedTargetNodes;
+    return this.enableFieldSelection() ? this.fieldIncludedNodes : this.selectedTargetNodes;
   }
 
   set activeTargetSelection(value: TreeNode[]) {
-    if (this.enableFieldSelection) {
+    if (this.enableFieldSelection()) {
       this.fieldIncludedNodes = value;
       this.fieldSelectionMode = 'custom';
       // If a previously-empty (p-fully-deselected) target row now has any
@@ -175,7 +171,7 @@ export class PicklistComponent {
       // render normally again. updateTableNodeStyles() respects the marker
       // and will skip the row, so we have to clear it BEFORE that runs.
       const includedKeys = new Set((value || []).map((n) => n.key));
-      for (const t of this.targetItems) {
+      for (const t of this.targetItems()) {
         if (t.styleClass !== 'p-fully-deselected') continue;
         const isLeafTable = !t.children?.length;
         const reincluded = isLeafTable
@@ -197,7 +193,7 @@ export class PicklistComponent {
     // moves are impossible because promoteToTableLevel always returns
     // table-level nodes.
     const promoted = this.promoteToTableLevel(
-      this.sourceItems,
+      this.sourceItems(),
       this.selectedSourceNodes,
     );
     if (promoted.length === 0) {
@@ -208,14 +204,14 @@ export class PicklistComponent {
     const nodesToKeep: TreeNode[] = [];
     const nodesToMove: TreeNode[] = [];
     this.partitionNodes(
-      this.sourceItems,
+      this.sourceItems(),
       promotedKeys,
       nodesToKeep,
       nodesToMove,
     );
-    this.sourceItems = nodesToKeep;
-    this.targetItems = [...this.targetItems, ...nodesToMove];
-    if (this.enableFieldSelection) {
+    this.sourceItems.set(nodesToKeep);
+    this.targetItems.set([...this.targetItems(), ...nodesToMove]);
+    if (this.enableFieldSelection()) {
       this.autoIncludeNodes(nodesToMove);
       this.updateTableNodeStyles();
     }
@@ -224,14 +220,14 @@ export class PicklistComponent {
   }
 
   moveAllToTarget() {
-    if (!this.sourceItems || this.sourceItems.length === 0) return;
+    if (!this.sourceItems() || this.sourceItems().length === 0) return;
     // Always collect at the TABLE level — never move orphan column nodes
     // (defensive against any stale state in source).
-    const movedItems = this.collectAllTableNodes(this.sourceItems);
+    const movedItems = this.collectAllTableNodes(this.sourceItems());
     if (movedItems.length === 0) return;
-    this.targetItems = [...this.targetItems, ...movedItems];
-    this.sourceItems = [];
-    if (this.enableFieldSelection) {
+    this.targetItems.set([...this.targetItems(), ...movedItems]);
+    this.sourceItems.set([]);
+    if (this.enableFieldSelection()) {
       this.autoIncludeNodes(movedItems);
       this.updateTableNodeStyles();
     }
@@ -246,7 +242,7 @@ export class PicklistComponent {
     // Then promote to table level so a column-level click on the right
     // moves the WHOLE TABLE back to source — never just the orphan column.
     const promoted = this.promoteToTableLevel(
-      this.targetItems,
+      this.targetItems(),
       this.activeTargetSelection,
     );
     if (promoted.length === 0) {
@@ -257,25 +253,25 @@ export class PicklistComponent {
     const nodesToKeep: TreeNode[] = [];
     const nodesToMove: TreeNode[] = [];
     this.partitionNodes(
-      this.targetItems,
+      this.targetItems(),
       promotedKeys,
       nodesToKeep,
       nodesToMove,
     );
-    this.targetItems = nodesToKeep;
+    this.targetItems.set(nodesToKeep);
     // Strip any target-only visual state (partialSelected, p-weak-selected,
     // p-fully-deselected) before the nodes land back in source — the source
     // tree uses simple binary checkboxes only.
     this.resetTargetSideState(nodesToMove);
-    if (this.flattenGroupNodes) {
+    if (this.flattenGroupNodes()) {
       // Re-group each leaf back under its original parent group in source.
       // If the parent no longer exists (because all its children were moved
       // out earlier and the empty group was dropped), recreate it on the fly.
       this.regroupLeavesIntoSource(nodesToMove);
     } else {
-      this.sourceItems = [...this.sourceItems, ...nodesToMove];
+      this.sourceItems.set([...this.sourceItems(), ...nodesToMove]);
     }
-    if (this.enableFieldSelection) {
+    if (this.enableFieldSelection()) {
       this.removeFromFieldSelection(nodesToMove);
     }
     this.clearSelection();
@@ -300,7 +296,7 @@ export class PicklistComponent {
   onTargetWeakClick(event: { originalEvent: Event; node: TreeNode }) {
     if (!event?.node) return;
     event.node.styleClass = 'p-fully-deselected';
-    if (this.enableFieldSelection) {
+    if (this.enableFieldSelection()) {
       this.removeFromFieldSelection([event.node]);
     }
     this.clearSelection();
@@ -308,18 +304,18 @@ export class PicklistComponent {
   }
 
   moveAllToSource() {
-    if (!this.targetItems || this.targetItems.length === 0) return;
+    if (!this.targetItems() || this.targetItems().length === 0) return;
     // Strip target-only visual state from every node before they return
     // to source.
-    this.resetTargetSideState(this.targetItems);
-    if (this.flattenGroupNodes) {
+    this.resetTargetSideState(this.targetItems());
+    if (this.flattenGroupNodes()) {
       // Restore every leaf in target back into its original parent group.
-      this.regroupLeavesIntoSource(this.targetItems);
+      this.regroupLeavesIntoSource(this.targetItems());
     } else {
-      this.sourceItems = [...this.sourceItems, ...this.targetItems];
+      this.sourceItems.set([...this.sourceItems(), ...this.targetItems()]);
     }
-    this.targetItems = [];
-    if (this.enableFieldSelection) {
+    this.targetItems.set([]);
+    if (this.enableFieldSelection()) {
       this.fieldIncludedNodes = [];
     }
     this.clearSelection();
@@ -330,10 +326,10 @@ export class PicklistComponent {
 
   selectAllFields(): void {
     this.fieldIncludedNodes = [];
-    this.collectAllNodes(this.targetItems, this.fieldIncludedNodes);
+    this.collectAllNodes(this.targetItems(), this.fieldIncludedNodes);
     this.fieldIncludedNodes = [...this.fieldIncludedNodes];
-    this.clearPartialSelected(this.targetItems);
-    this.clearFullyDeselectedMarker(this.targetItems);
+    this.clearPartialSelected(this.targetItems());
+    this.clearFullyDeselectedMarker(this.targetItems());
     this.fieldSelectionMode = 'allDetails';
     this.updateTableNodeStyles();
     this.cdRef.detectChanges();
@@ -341,8 +337,8 @@ export class PicklistComponent {
 
   selectNamesOnly(): void {
     this.fieldIncludedNodes = [];
-    this.clearPartialSelected(this.targetItems);
-    this.clearFullyDeselectedMarker(this.targetItems);
+    this.clearPartialSelected(this.targetItems());
+    this.clearFullyDeselectedMarker(this.targetItems());
     this.fieldSelectionMode = 'namesOnly';
     this.updateTableNodeStyles();
     this.cdRef.detectChanges();
@@ -374,7 +370,7 @@ export class PicklistComponent {
       (this.fieldIncludedNodes || []).map((n) => n.key),
     );
 
-    for (const tableNode of this.targetItems) {
+    for (const tableNode of this.targetItems()) {
       // Skip rows the user explicitly emptied via the third tri-state
       // click. They're parked on the right but not part of any bucket
       // — they won't be sent to AI.
@@ -522,7 +518,7 @@ export class PicklistComponent {
    */
   private isTableNode(node: TreeNode): boolean {
     if (!node) return false;
-    if (this.flattenGroupNodes) {
+    if (this.flattenGroupNodes()) {
       return !!node.originalParentKey;
     }
     if (!node.children?.length) return true;
@@ -576,7 +572,7 @@ export class PicklistComponent {
   private regroupLeavesIntoSource(leaves: TreeNode[]): void {
     if (!leaves || leaves.length === 0) return;
 
-    const newSource = [...this.sourceItems];
+    const newSource = [...this.sourceItems()];
 
     // Build a map of existing parent-key → group node so leaves with the
     // same parent reuse the same group reference. A "group" here is any
@@ -599,7 +595,7 @@ export class PicklistComponent {
           group = {
             key: parentKey,
             label: parentLabel,
-            icon: 'fa fa-layer-group',
+            icon: 'layer-group',
             children: [],
           };
           groupByKey.set(parentKey, group);
@@ -615,15 +611,15 @@ export class PicklistComponent {
       }
     }
 
-    this.sourceItems = newSource;
+    this.sourceItems.set(newSource);
   }
 
   private updateTableNodeStyles(): void {
-    if (!this.enableFieldSelection) return;
+    if (!this.enableFieldSelection()) return;
     const includedKeys = new Set(
       (this.fieldIncludedNodes || []).map((n) => n.key),
     );
-    for (const tableNode of this.targetItems) {
+    for (const tableNode of this.targetItems()) {
       // Tables marked as "fully deselected" (third tri-state) keep that
       // marker until something explicitly re-selects them. Nothing in this
       // function should overwrite it back to weak-selected.
@@ -733,7 +729,6 @@ export class PicklistComponent {
   }
 
   private updateEmitters() {
-    this.sourceItemsChange.emit([...this.sourceItems]);
-    this.targetItemsChange.emit([...this.targetItems]);
+    // model() signals notify parent automatically when .set() is called
   }
 }

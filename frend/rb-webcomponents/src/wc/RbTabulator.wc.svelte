@@ -187,6 +187,35 @@
 .tabulator-row.tabulator-moving .tabulator-cell { color: #333 !important; }
 `;
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // "inherit" theme — framework-agnostic. Sits on top of Tabulator's structural
+  // (light) CSS and overrides only COLORS so the table inherits the page:
+  //   • background → transparent (theme shows through)
+  //   • text       → inherit (currentColor = page text color)
+  //   • borders/header/hover → derived from currentColor via color-mix
+  // No daisyUI / Tailwind hardcoded. A host MAY override from outside:
+  //   rb-tabulator { --rb-table-border/-header-bg/-row-alt-bg/-row-hover-bg/-accent/-accent-text }
+  // ──────────────────────────────────────────────────────────────────────────
+  const INHERIT_OVERRIDE_CSS = `
+.rb-theme-inherit .tabulator { background: transparent !important; color: inherit !important; border: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 18%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-header { background: var(--rb-table-header-bg, color-mix(in srgb, currentColor 7%, transparent)) !important; color: inherit !important; border-bottom: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 18%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-header .tabulator-col { background: transparent !important; color: inherit !important; border-right: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 10%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
+.rb-theme-inherit .tabulator .tabulator-tableholder { background: transparent !important; }
+.rb-theme-inherit .tabulator .tabulator-tableholder .tabulator-table { background: transparent !important; color: inherit !important; }
+.rb-theme-inherit .tabulator .tabulator-row { background: transparent !important; color: inherit !important; border-bottom: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 9%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-row.tabulator-row-even { background: var(--rb-table-row-alt-bg, color-mix(in srgb, currentColor 4%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-row:hover, .rb-theme-inherit .tabulator .tabulator-row.tabulator-row-even:hover { background: var(--rb-table-row-hover-bg, color-mix(in srgb, currentColor 10%, transparent)) !important; color: inherit !important; }
+.rb-theme-inherit .tabulator .tabulator-row .tabulator-cell { border-right: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 7%, transparent)) !important; color: inherit !important; }
+.rb-theme-inherit .tabulator .tabulator-row.tabulator-selected, .rb-theme-inherit .tabulator .tabulator-row.tabulator-selected .tabulator-cell { background: var(--rb-table-accent, color-mix(in srgb, currentColor 22%, transparent)) !important; color: var(--rb-table-accent-text, inherit) !important; }
+.rb-theme-inherit .tabulator .tabulator-footer { background: transparent !important; color: inherit !important; border-top: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 18%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-footer .tabulator-page { background: var(--rb-table-header-bg, color-mix(in srgb, currentColor 7%, transparent)) !important; color: inherit !important; border: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 18%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-footer .tabulator-page:hover { background: color-mix(in srgb, currentColor 14%, transparent) !important; }
+.rb-theme-inherit .tabulator .tabulator-footer .tabulator-page.active { background: var(--rb-table-accent, color-mix(in srgb, currentColor 30%, transparent)) !important; color: var(--rb-table-accent-text, inherit) !important; border-color: var(--rb-table-accent, transparent) !important; }
+.rb-theme-inherit .tabulator .tabulator-footer .tabulator-page-size, .rb-theme-inherit .tabulator .tabulator-header-filter input, .rb-theme-inherit .tabulator .tabulator-header-filter select { background: transparent !important; color: inherit !important; border: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 18%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-col-resize-handle { border-right: 2px solid var(--rb-table-border, color-mix(in srgb, currentColor 12%, transparent)) !important; }
+`;
+
   // Map theme names → embedded CSS strings
   const THEME_CSS_MAP: Record<string, string> = {
     '': lightCSS, 'light': lightCSS, 'default': lightCSS,
@@ -247,12 +276,22 @@
       document.head.appendChild(contrastStyle);
     }
 
-    if (!resolvedTheme || resolvedTheme === 'light' || resolvedTheme === 'default') {
+    // Default (no theme) / 'inherit' → inherit the host theme; 'light' → stock light.
+    const isInherit = !resolvedTheme || resolvedTheme === 'default' || resolvedTheme === 'inherit';
+    if (isInherit || resolvedTheme === 'light') {
+      // Tabulator's structural (layout) CSS — always needed.
       const cssId = 'rb-tabulator-css';
       if (!document.getElementById(cssId)) {
         const style = document.createElement('style');
         style.id = cssId;
         style.textContent = stripSourceMapComment(lightCSS);
+        document.head.appendChild(style);
+      }
+      // Color override: inherit page bg/text, derive structure from currentColor.
+      if (isInherit && !document.getElementById('rb-tabulator-inherit')) {
+        const style = document.createElement('style');
+        style.id = 'rb-tabulator-inherit';
+        style.textContent = INHERIT_OVERRIDE_CSS;
         document.head.appendChild(style);
       }
       return;
@@ -280,15 +319,19 @@
     }
   }
 
-  // Computed theme wrapper class for CSS scoping
-  $: themeWrapperClass = theme && theme !== 'light' && theme !== 'default'
-    ? `rb-tabulator-root rb-theme-${theme}`
-    : 'rb-tabulator-root';
+  // Default (no theme) / 'inherit' → inherit the host theme via .rb-theme-inherit.
+  $: isInheritTheme = !theme || theme === 'default' || theme === 'inherit';
 
-  // Base text color — Tabulator themes don't set explicit color, so we provide
-  // a sensible default to prevent host-page dark/light mode from leaking in.
-  $: themeTextColor = DARK_THEMES.has(theme) ? '#ddd' : '#333';
-  $: themeMode = DARK_THEMES.has(theme) ? 'dark' : 'light';
+  // Computed theme wrapper class for CSS scoping
+  $: themeWrapperClass = isInheritTheme
+    ? 'rb-tabulator-root rb-theme-inherit'
+    : (theme !== 'light' ? `rb-tabulator-root rb-theme-${theme}` : 'rb-tabulator-root');
+
+  // Text color: inherit (page currentColor) for the inherit theme; explicit for
+  // named light/dark themes (Tabulator themes don't set their own text color).
+  $: themeTextColor = isInheritTheme ? 'inherit' : (DARK_THEMES.has(theme) ? '#ddd' : '#333');
+  // 'inherit' mode keeps the hardcoded contrast-fix CSS (light/dark only) inert.
+  $: themeMode = isInheritTheme ? 'inherit' : (DARK_THEMES.has(theme) ? 'dark' : 'light');
 
   // only once tableBuilt has fired do we sync data/columns
   function updateTable() {
@@ -529,7 +572,7 @@
     const now = Date.now();
     // Log at most once per second
     if (now - _lastAfterUpdateLogTime > 1000) {
-      console.log('[DEBUG] rb-tabulator afterUpdate called', _afterUpdateCount, 'times total');
+      // console.log('[DEBUG] rb-tabulator afterUpdate called', _afterUpdateCount, 'times total');
       _lastAfterUpdateLogTime = now;
     }
     // Warn if called excessively

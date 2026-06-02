@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, Plus, X } from "lucide-react";
+// lucide-react removed
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { isParamRef } from "@/lib/explore-data/sql-builder";
 
@@ -161,10 +161,10 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <Filter className="w-4 h-4 text-orange-500 shrink-0" />
-        <span className="text-xs text-muted-foreground">Filter</span>
-        <button id="btnAddFilter" onClick={addFilter} className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground">
-          <Plus className="w-3.5 h-3.5" />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-orange-500 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" /></svg>
+        <span className="text-xs text-base-content/60">Filter</span>
+        <button id="btnAddFilter" onClick={addFilter} className="p-0.5 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
         </button>
       </div>
 
@@ -180,7 +180,7 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
               id={`selectFilterCol-${i}`}
               value={f.column}
               onChange={(e) => updateFilter(i, { column: e.target.value })}
-              className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground min-w-0 flex-1"
+              className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
             >
               {columns.map((c) => (
                 <option key={c.columnName} value={c.columnName}>{c.columnName}</option>
@@ -191,7 +191,7 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
               id={`selectFilterOp-${i}`}
               value={f.operator}
               onChange={(e) => updateFilter(i, { operator: e.target.value })}
-              className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground w-20"
+              className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content w-20"
             >
               {ops.map((op) => (
                 <option key={op.value} value={op.value}>{op.label}</option>
@@ -205,14 +205,14 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
                   value={f.value}
                   onChange={(e) => updateFilter(i, { value: e.target.value })}
                   placeholder="min"
-                  className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground min-w-0 flex-1"
+                  className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
                 />
-                <span className="text-[10px] text-muted-foreground shrink-0">and</span>
+                <span className="text-[10px] text-base-content/60 shrink-0">and</span>
                 <input
                   value={f.valueTo || ""}
                   onChange={(e) => updateFilter(i, { valueTo: e.target.value })}
                   placeholder="max"
-                  className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground min-w-0 flex-1"
+                  className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
                 />
               </div>
             ) : !NO_VALUE_OPS.includes(f.operator) && (
@@ -226,7 +226,7 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
                     className="text-primary/50 hover:text-primary shrink-0"
                     title="Unbind parameter — use a literal value instead"
                   >
-                    <X className="w-2.5 h-2.5" />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
               ) : (
@@ -240,7 +240,7 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
                         ? "comma-separated: 1, 5, 10  or  PAID, PENDING"
                         : "value"
                     }
-                    className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground min-w-0 flex-1"
+                    className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
                   />
                   {/* Param bind toggle — only shown when params exist and operator supports it */}
                   {canBind && (
@@ -250,7 +250,7 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
                         type="button"
                         title={`Bind to dashboard filter \${${availableParams[0]}}`}
                         onClick={() => bindParam(i, availableParams[0])}
-                        className="text-[11px] font-mono text-muted-foreground hover:text-primary hover:bg-primary/10 px-1 py-0.5 rounded shrink-0 leading-none"
+                        className="text-[11px] font-mono text-base-content/60 hover:text-primary hover:bg-primary/10 px-1 py-0.5 rounded shrink-0 leading-none"
                       >
                         {'${}'}
                       </button>
@@ -259,7 +259,7 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
                         id={`selectBindParam-${i}`}
                         value=""
                         onChange={(e) => { if (e.target.value) bindParam(i, e.target.value); }}
-                        className="text-[11px] font-mono bg-background border border-border rounded px-1 py-0.5 text-muted-foreground hover:text-primary shrink-0"
+                        className="text-[11px] font-mono bg-base-100 border border-base-300 rounded px-1 py-0.5 text-base-content/60 hover:text-primary shrink-0"
                         title="Bind to a dashboard filter parameter"
                       >
                         <option value="">{'${}'}</option>
@@ -273,8 +273,8 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
               )
             )}
 
-            <button id={`btnRemoveFilter-${i}`} onClick={() => removeFilter(i)} className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
-              <X className="w-3 h-3" />
+            <button id={`btnRemoveFilter-${i}`} onClick={() => removeFilter(i)} className="p-0.5 rounded hover:bg-error/10 text-base-content/60 hover:text-error">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
             </button>
           </div>
         );

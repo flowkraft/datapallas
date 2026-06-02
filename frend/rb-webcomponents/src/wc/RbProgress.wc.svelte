@@ -83,7 +83,7 @@
       const goal = options.goal ?? 100;
       const fmt = options.format ?? "number";
       const label = options.label ?? field;
-      const baseColor = options.color ?? "#509ee3";
+      const baseColor = options.color ?? "var(--rb-accent, var(--color-primary, #509ee3))";
 
       const pct = goal > 0 ? value / goal : 0;
       const filledPct = Math.max(0, Math.min(1, pct));
@@ -96,24 +96,24 @@
       const header = document.createElement("div");
       header.style.cssText = "display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;";
       const labelEl = document.createElement("div");
-      labelEl.style.cssText = "font-size:11px;color:#666;";
+      labelEl.style.cssText = "font-size:11px;color:color-mix(in oklab, currentColor 60%, transparent);";
       labelEl.textContent = label;
       const valueEl = document.createElement("div");
-      valueEl.style.cssText = "font-size:14px;font-weight:600;color:#222;";
+      valueEl.style.cssText = "font-size:14px;font-weight:600;color:inherit;";
       valueEl.textContent = `${formatVal(value, fmt)} / ${formatVal(goal, fmt)}`;
       header.appendChild(labelEl);
       header.appendChild(valueEl);
       root.appendChild(header);
 
       const bar = document.createElement("div");
-      bar.style.cssText = "position:relative;width:100%;height:14px;background:#eee;border-radius:7px;overflow:hidden;";
+      bar.style.cssText = "position:relative;width:100%;height:14px;background:color-mix(in oklab, currentColor 12%, transparent);border-radius:7px;overflow:hidden;";
       const fill = document.createElement("div");
       fill.style.cssText = `position:absolute;left:0;top:0;height:100%;width:${(filledPct * 100).toFixed(1)}%;background:${fillColor};transition:width 0.3s ease;`;
       bar.appendChild(fill);
       root.appendChild(bar);
 
       const pctEl = document.createElement("div");
-      pctEl.style.cssText = `font-size:11px;margin-top:4px;color:${overflow ? "#2e7d32" : "#666"};`;
+      pctEl.style.cssText = `font-size:11px;margin-top:4px;color:${overflow ? "#2e7d32" : "color-mix(in oklab, currentColor 60%, transparent)"};`;
       pctEl.textContent = `${(pct * 100).toFixed(1)}%${overflow ? " — exceeded" : ""}`;
       root.appendChild(pctEl);
 

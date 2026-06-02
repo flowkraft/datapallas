@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 
 export interface CubeDefinition {
@@ -18,7 +18,7 @@ export interface CubeDefinition {
 export class CubesService {
   cubeDefinitions: CubeDefinition[] = [];
 
-  constructor(protected apiService: ApiService) {}
+  protected apiService = inject(ApiService);
 
   async loadAll(): Promise<CubeDefinition[]> {
     const list = await this.apiService.get('/cubes');
@@ -74,7 +74,7 @@ export class CubesService {
     selectedMeasures: string[],
     selectedSegments: string[] = [],
   ): Promise<{ sql: string; dialect: string }> {
-    return this.apiService.post('/cubes/get-sql', {
+    return this.apiService.post('/cubes/generate-sql', {
       dslCode,
       connectionId,
       selectedDimensions,

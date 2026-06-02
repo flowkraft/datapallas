@@ -87,7 +87,7 @@ const _splitVerifyBigFile = (
 
   ft.gotoBurstScreen();
   if (pauseCancelMode.includes('after-pdf-generated')) {
-    ft.click('#licenseTab-link')
+    ft.click('#tab-btn-licenseTab')
       // STEP0 - start from a demo license key
       .elementShouldBeVisible('#statusDemoLicense')
       .appShouldBeReadyToRunNewJobs()
@@ -100,12 +100,12 @@ const _splitVerifyBigFile = (
       .waitOnProcessingToStart(Constants.CHECK_PROCESSING_STATUS_BAR)
       .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_STATUS_BAR)
       .waitOnElementToBecomeVisible('#btnCheckLicenseKey', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
-      .click('#burstTab-link')
+      .click('#tab-btn-burstTab')
       .waitOnElementToBecomeVisible('#logsViewerBurstReportsTab')
       .click('#btnClearLogsBurstReportsTab')
       .clickYesDoThis()
       .waitOnElementToBecomeInvisible('#logsViewerBurstReportsTab')
-      .click('#licenseTab-link')
+      .click('#tab-btn-licenseTab')
       .click('#btnCheckLicenseKey')
       .clickYesDoThis()
       .waitOnProcessingToStart(Constants.CHECK_PROCESSING_STATUS_BAR)
@@ -123,7 +123,7 @@ const _splitVerifyBigFile = (
         Constants.DELAY_FIVE_THOUSANDS_SECONDS,
       )
       .appShouldBeReadyToRunNewJobs()
-      .click('#burstTab-link')
+      .click('#tab-btn-burstTab')
       .waitOnElementToBecomeVisible('#logsViewerBurstReportsTab')
       .click('#btnClearLogsBurstReportsTab')
       .clickYesDoThis()
@@ -194,7 +194,7 @@ const _splitVerifyBigFile = (
   }
 
   if (pauseCancelMode.includes('after-pdf-generated')) {
-    ft.click('#licenseTab-link')
+    ft.click('#tab-btn-licenseTab')
       // de-activating the test license key
       .click('#deactivateLicenseKey')
       .clickYesDoThis()
@@ -207,7 +207,7 @@ const _splitVerifyBigFile = (
       .appStatusShouldBeGreatNoErrorsNoWarnings();
   }
 
-  ft.click('#burstTab-link')
+  ft.click('#tab-btn-burstTab')
     .click('#btnClearLogsBurstReportsTab')
     .clickYesDoThis()
     .waitOnElementToBecomeInvisible('#logsViewerBurstReportsTab')

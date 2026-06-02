@@ -1,0 +1,62 @@
+<dialog id="moreSettingsModal" class="modal" (click)="onDialogClick($event)">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <h3 class="font-bold text-lg mb-4">More Settings</h3>
+
+    <!-- AI Assistant URL -->
+    <div class="mb-6">
+      <h4 class="font-semibold mb-2">AI Assistant URL</h4>
+      @if (settingsService.xmlInternalSettings?.documentburster?.settings) {
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          placeholder="https://chatgpt.com"
+          [(ngModel)]="settingsService.xmlInternalSettings.documentburster.settings.copiloturl"
+          (ngModelChange)="onCopilotUrlChanged.next($event)"
+        />
+      }
+    </div>
+
+    <!-- Good AI Chat Options -->
+    <div class="mb-6">
+      <h4 class="font-semibold mb-2">Good AI Chat Options</h4>
+      <div class="flex items-center justify-between py-1">
+        <span>ChatGPT</span>
+        <button type="button" class="btn btn-sm btn-ghost" (click)="copyToClipboard('https://chatgpt.com/')">
+          <i class="fa fa-copy"></i> Copy URL
+        </button>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <span>Microsoft Copilot</span>
+        <button type="button" class="btn btn-sm btn-ghost" (click)="copyToClipboard('https://copilot.microsoft.com/')">
+          <i class="fa fa-copy"></i> Copy URL
+        </button>
+      </div>
+      <div class="flex items-center justify-between py-1">
+        <span>Z.ai (GLM model)</span>
+        <button type="button" class="btn btn-sm btn-ghost" (click)="copyToClipboard('https://chat.z.ai/')">
+          <i class="fa fa-copy"></i> Copy URL
+        </button>
+      </div>
+    </div>
+
+    <!-- Samples -->
+    <div class="mb-6">
+      <h4 class="font-semibold mb-2">Samples</h4>
+      @if (settingsService.xmlInternalSettings?.documentburster?.settings) {
+        <label class="label cursor-pointer justify-start gap-3">
+          <input
+            type="checkbox"
+            class="checkbox"
+            [checked]="settingsService.showSamples"
+            (change)="onShowSamplesChanged($any($event.target).checked)"
+          />
+          <span class="label-text">Show sample connections, reports &amp; cubes</span>
+        </label>
+      }
+    </div>
+
+    <div class="modal-action">
+      <button type="button" class="btn" (click)="close()">Close</button>
+    </div>
+  </div>
+</dialog>

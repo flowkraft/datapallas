@@ -1,24 +1,23 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { setTheme } from 'ngx-bootstrap/utils';
 import { RbElectronService } from './areas/electron-nodejs/electron.service';
 import { Router } from '@angular/router';
-
-declare var $: any;
+import { AreasComponent } from './areas/areas.component';
+import { LiveChatComponent } from './components/live-chat/live-chat.component';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss'],
+    selector: 'app-root',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss'],
+    standalone: true,
+    imports: [AreasComponent, LiveChatComponent],
 })
-export class AppComponent implements AfterViewInit, OnInit {
+export class AppComponent implements OnInit {
   constructor(
     protected electronService: RbElectronService,
     protected translate: TranslateService,
     protected router: Router,
   ) {
-    setTheme('bs3'); // or 'bs4'
-
     this.translate.setDefaultLang('en');
 
     if (this.electronService.isElectron) {
@@ -29,6 +28,7 @@ export class AppComponent implements AfterViewInit, OnInit {
         shadow: true,
         icon: null,
       });
+      document.documentElement.classList.add('in-electron');
 
       try {
         const ipcRenderer = (window as any).require?.('electron')?.ipcRenderer;
@@ -110,7 +110,4 @@ export class AppComponent implements AfterViewInit, OnInit {
     this.router.initialNavigation(); // manually start the initial navigation
   }
 
-  ngAfterViewInit() {
-    $('#topMenu').smartmenus();
-  }
 }

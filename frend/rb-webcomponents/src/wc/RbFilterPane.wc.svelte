@@ -171,7 +171,7 @@
     // ====================================================================
     if (reportId && apiBaseUrl) {
       try {
-        const configUrl = `${apiBaseUrl}/api/reports/${reportId}/config`;
+        const configUrl = `${apiBaseUrl}/reports/${reportId}/config`;
         const headers = buildHeaders();
         const config = await fetchConfigCached(configUrl, headers);
 
@@ -258,7 +258,7 @@
         const orderClause = sort === 'none' ? '' : ` ORDER BY "${field}" ${sort === 'desc' ? 'DESC' : 'ASC'}`;
         const sql = `SELECT DISTINCT "${field}" FROM "${tableName}" WHERE "${field}" IS NOT NULL${orderClause} LIMIT ${maxValues}`;
 
-        const res = await fetch(`${apiBaseUrl}/api/queries/execute`, {
+        const res = await fetch(`${apiBaseUrl}/queries/run-sql`, {
           method: 'POST',
           headers,
           body: JSON.stringify({ connectionId: connectionId, sql }),
@@ -270,7 +270,7 @@
 
       } else if (reportId && apiBaseUrl) {
         // Report mode: fetch data and extract distinct values
-        let dataUrl = `${apiBaseUrl}/api/reports/${reportId}/data?componentId=${componentId}`;
+        let dataUrl = `${apiBaseUrl}/reports/${reportId}/data?componentId=${componentId}`;
         if (testMode) dataUrl += '&testMode=true';
 
         // Append report params
@@ -344,40 +344,45 @@
     display: block;
     width: 100%;
   }
+  /* Theme-inheriting & framework-agnostic: container/surfaces inherit the page,
+     text uses currentColor, structure is derived from currentColor via color-mix.
+     A host MAY override: rb-filter-pane { --rb-border / --rb-surface / --rb-accent }.
+     No daisyUI / Tailwind hardcoded. */
   .rb-filter-pane {
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 13px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--rb-border, color-mix(in srgb, currentColor 18%, transparent));
     border-radius: 8px;
     overflow: hidden;
-    background: #fff;
+    background: transparent;
+    color: inherit;
   }
   .pane-header {
     display: flex;
     align-items: center;
     gap: 6px;
     padding: 8px 10px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
+    border-bottom: 1px solid var(--rb-border, color-mix(in srgb, currentColor 18%, transparent));
+    background: color-mix(in srgb, currentColor 6%, transparent);
   }
   .pane-label {
     font-weight: 600;
     font-size: 12px;
-    color: #334155;
+    color: inherit;
     flex: 1;
   }
   .pane-search {
     font-size: 11px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
     border-radius: 4px;
     padding: 3px 6px;
     outline: none;
     width: 100px;
-    background: #fff;
-    color: #334155;
+    background: transparent;
+    color: inherit;
   }
   .pane-search:focus {
-    border-color: #94a3b8;
+    border-color: var(--rb-accent, var(--color-primary, currentColor));
   }
   .pane-list {
     overflow-y: auto;
@@ -393,18 +398,18 @@
     width: 100%;
     text-align: left;
     font-size: 12px;
-    color: #334155;
+    color: inherit;
   }
   .pane-item:hover {
-    background: #f1f5f9;
+    background: color-mix(in srgb, currentColor 8%, transparent);
   }
   .pane-item.selected {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: var(--rb-accent, color-mix(in srgb, currentColor 16%, transparent));
+    color: var(--rb-accent-text, inherit);
     font-weight: 600;
   }
   .pane-item.excluded {
-    color: #94a3b8;
+    color: color-mix(in srgb, currentColor 60%, transparent);
     opacity: 0.5;
   }
   .pane-dot {
@@ -414,13 +419,13 @@
     margin-right: 8px;
     flex-shrink: 0;
   }
-  .pane-dot.selected { background: #3b82f6; }
-  .pane-dot.associated { background: #e2e8f0; }
-  .pane-dot.excluded { background: #cbd5e1; }
+  .pane-dot.selected { background: var(--rb-accent, var(--color-primary, currentColor)); }
+  .pane-dot.associated { background: color-mix(in srgb, currentColor 25%, transparent); }
+  .pane-dot.excluded { background: color-mix(in srgb, currentColor 40%, transparent); }
   .pane-value { flex: 1; }
   .pane-item-count {
     font-size: 10px;
-    color: #94a3b8;
+    color: color-mix(in srgb, currentColor 60%, transparent);
     margin-left: 4px;
   }
   .pane-loading, .pane-error {
@@ -432,9 +437,9 @@
   .pane-error { color: #dc2626; }
   .pane-footer {
     font-size: 11px;
-    color: #94a3b8;
+    color: color-mix(in srgb, currentColor 60%, transparent);
     padding: 4px 10px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--rb-border, color-mix(in srgb, currentColor 18%, transparent));
     text-align: right;
   }
 </style>

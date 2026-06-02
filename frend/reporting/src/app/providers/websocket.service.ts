@@ -1,6 +1,6 @@
 import { Subject, Subscription, interval } from 'rxjs';
 import { TopicOptions, WebSocketEndpoint } from '../helpers/websocket-endpoint';
-import { SettingsService } from './settings.service';
+import { ConfigurationRepository } from './configuration-repository.service';
 import { Constants } from '../helpers/constants';
 import { ApiService } from './api.service';
 import { Injectable } from '@angular/core';
@@ -15,7 +15,7 @@ import { StateStoreService } from './state-store.service';
 export class WebSocketService extends WebSocketEndpoint {
   constructor(
     protected apiService: ApiService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
     protected executionStatsService: ExecutionStatsService,
     protected toastMessagesService: ToastrMessagesService,
     protected stateStore: StateStoreService,
@@ -164,7 +164,7 @@ export class WebSocketService extends WebSocketEndpoint {
       logFileName,
       subscriptionLogFileContent,
     );
-    await this.apiService.put('/jobs/logs/tailer', {
+    await this.apiService.post('/jobs/logs/tailer', {
       fileName: logFileName,
       command: 'start',
     });
@@ -209,7 +209,7 @@ export class WebSocketService extends WebSocketEndpoint {
       this.logsSubjects.get(logFileName).complete();
       this.subscriptionsLogFileContent.get(logFileName).unsubscribe();
       this.logsSubjects.delete(logFileName);
-      await this.apiService.put('/jobs/logs/tailer', {
+      await this.apiService.post('/jobs/logs/tailer', {
         fileName: logFileName,
         command: 'stop',
       });
@@ -317,6 +317,8 @@ export class WebSocketService extends WebSocketEndpoint {
     exitValue: number,
     exceptionMessage = '',
   ) => {
+    this.executionStatsService.jobStats.currentJobId = null;
+
     if (this.callBacksProcessing.onProcessingComplete) {
       this.callBacksProcessing.onProcessingComplete();
       this.callBacksProcessing.onProcessingComplete = null;
@@ -425,6 +427,7 @@ export class WebSocketService extends WebSocketEndpoint {
           this.executionStatsService.jobStats.workingOnJobs.push({
             jobFilePath: activeJob.jobFilePath,
             fileName: fileName,
+            jobType: activeJob.job?.jobtype || '',
           });
         }
       }

@@ -1,13 +1,18 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
+import { LogFileViewerComponent } from '../log-file-viewer/log-file-viewer.component';
 import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import { ConfirmService } from '../dialog-confirm/confirm.service';
 import { WebSocketService } from '../../providers/websocket.service';
 import { JobsService } from '../../providers/jobs.service';
-import { SettingsService } from '../../providers/settings.service';
+import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 
 @Component({
-  selector: 'dburst-log-files-viewer-all-together',
-  templateUrl: './log-files-viewer-all-together.html',
+    selector: 'dburst-log-files-viewer-all-together',
+    templateUrl: './log-files-viewer-all-together.html',
+    standalone: true,
+    imports: [CommonModule, LogFileViewerComponent, TranslateModule],
 })
 export class LogFilesViewerAllTogetherComponent {
   constructor(
@@ -15,7 +20,7 @@ export class LogFilesViewerAllTogetherComponent {
     protected executionStatsService: ExecutionStatsService,
     protected jobsService: JobsService,
     protected logsService: WebSocketService,
-    protected settingsService: SettingsService,
+    protected settingsService: ConfigurationRepository,
   ) {}
 
   clearQuarantinedAndLogFiles(shouldClearLogFiles: boolean) {
