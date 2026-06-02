@@ -18,7 +18,6 @@ import com.sourcekraft.documentburster.utils.DumpToString;
 
 public class InternalSettings extends DumpToString {
 
-    public String skin;
     public String theme;
     public String backendurl;
     public String copiloturl;

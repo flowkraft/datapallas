@@ -92,7 +92,7 @@ public class ConnectionsService {
 		}
 		if (!Settings.isShowSamplesEnabled()) {
 			throw new IllegalStateException(
-					"Sample connections are disabled. Enable them in Skin Options → "
+					"Sample connections are disabled. Enable them in Configuration → More Settings"
 							+ "'Show sample connections & cubes' to use this connection.");
 		}
 		String xmlPath = getConnectionFilePath(connectionId);
