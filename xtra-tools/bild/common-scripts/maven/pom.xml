@@ -203,13 +203,6 @@
 
 		</plugins>
 	</reporting>
-	<!-- <pluginRepositories> <pluginRepository>
-	<id>jboss-public-repository-group</id> 
-		<name>JBoss Public Repository Group</name>
-	<url>http://repository.jboss.org/nexus/content/groups/public/</url> 
-		<releases> <enabled>true</enabled> </releases> <snapshots>
-	<enabled>true</enabled> 
-		</snapshots> </pluginRepository> </pluginRepositories> -->
 	<dependencies>
 
 		<dependency>
@@ -247,6 +240,15 @@
 			<version>${jpdfunit.version}</version>
 			<scope>test</scope>
 		</dependency>
+		<!-- jPDFUnit's old transitive pdfbox (package org.pdfbox, distinct from the
+		     app's org.apache.pdfbox). Vendored via lib-repository/install-jars.cmd;
+		     declared explicitly because install:install-file generates a depless pom. -->
+		<dependency>
+			<groupId>pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>0.7.2</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.assertj</groupId>
 			<artifactId>assertj-core</artifactId>
@@ -254,15 +256,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-	<repositories>
-		<repository>
-			<id>jboss-public</id>
-			<name>JBoss Public Repository Group</name>
-			<url>https://repository.jboss.org/nexus/content/groups/public/</url>
-			<releases><enabled>true</enabled></releases>
-			<snapshots><enabled>true</enabled></snapshots>
-		</repository>
-	</repositories>
 	<distributionManagement>
 		<site>
 			<id>site</id>

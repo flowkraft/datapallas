@@ -111,10 +111,35 @@ export class Helpers {
 
   static electronAppLaunch = async (
     relativePath: string,
+    opts?: { javaMissing?: boolean },
   ): Promise<ElectronApplication> => {
     // If an Electron app is already running, return it
     if (this.currentElectronApp) {
       return this.currentElectronApp;
+    }
+
+    // Screenshot prereq states need a machine that genuinely has no Java. Instead
+    // of a code seam in main.ts, we launch against a REAL no-Java environment:
+    // strip java/jdk/jre out of PATH (whatever case the key uses on Windows) and
+    // clear JAVA_HOME/JRE_HOME, so the app's UNTOUCHED `java -version` probe finds
+    // nothing — identical to launching the .exe from a shell with Java removed.
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      PORTABLE_EXECUTABLE_DIR: process.env.PORTABLE_EXECUTABLE_DIR,
+      RUNNING_IN_E2E: 'true',
+      SHOULD_SEND_STATS: 'false',
+    };
+    if (opts?.javaMissing) {
+      for (const key of Object.keys(env)) {
+        if (key.toLowerCase() === 'path') {
+          env[key] = (env[key] || '')
+            .split(path.delimiter)
+            .filter((entry) => !/jdk|jre|java/i.test(entry))
+            .join(path.delimiter);
+        }
+      }
+      env.JAVA_HOME = '';
+      env.JRE_HOME = '';
     }
 
     this.currentElectronApp = await electron.launch({
@@ -122,11 +147,7 @@ export class Helpers {
         path.join(__dirname, `${relativePath}/app/main.js`),
         path.join(__dirname, `${relativePath}/app/package.json`),
       ],
-      env: {
-        PORTABLE_EXECUTABLE_DIR: process.env.PORTABLE_EXECUTABLE_DIR,
-        RUNNING_IN_E2E: 'true',
-        SHOULD_SEND_STATS: 'false',
-      },
+      env: env as { [key: string]: string },
     });
     this.currentElectronApp.context().tracing.start({
       screenshots: true,

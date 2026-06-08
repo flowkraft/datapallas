@@ -33,8 +33,14 @@ ARG BUILD_DATE=dev
 
 WORKDIR /app
 
-# Install custom jar that's not in Maven Central (rarely changes, cache it)
+# Install vendored jars that are not on Maven Central (rarely change, cache them).
+# Mirrors lib-repository/install-jars.cmd: pherialize, plus jpdfunit and its old
+# pdfbox 0.7.2 (test-only PDF assertions). These must be installed BEFORE
+# dependency:go-offline so it does not cache a "not found" marker that later
+# breaks the backend build's test-scope resolution.
 COPY ./xtra-tools/bild/common-scripts/maven/lib-repository/burst/pherialize-1.2.1.jar /tmp/
+COPY ./xtra-tools/bild/common-scripts/maven/lib-repository/burst/jpdfunit-1.1.jar /tmp/
+COPY ./xtra-tools/bild/common-scripts/maven/lib-repository/burst/pdfbox-0.7.2.jar /tmp/
 RUN mvn install:install-file \
     -Dfile=/tmp/pherialize-1.2.1.jar \
     -DgroupId=de.ailis.pherialize \
@@ -42,7 +48,21 @@ RUN mvn install:install-file \
     -Dversion=1.2.1 \
     -Dpackaging=jar \
     -P docker && \
-    rm /tmp/pherialize-1.2.1.jar
+    mvn install:install-file \
+    -Dfile=/tmp/jpdfunit-1.1.jar \
+    -DgroupId=net.sf.jpdfunit \
+    -DartifactId=jpdfunit \
+    -Dversion=1.1 \
+    -Dpackaging=jar \
+    -P docker && \
+    mvn install:install-file \
+    -Dfile=/tmp/pdfbox-0.7.2.jar \
+    -DgroupId=pdfbox \
+    -DartifactId=pdfbox \
+    -Dversion=0.7.2 \
+    -Dpackaging=jar \
+    -P docker && \
+    rm /tmp/pherialize-1.2.1.jar /tmp/jpdfunit-1.1.jar /tmp/pdfbox-0.7.2.jar
 
 # Copy ONLY pom.xml files first (for dependency caching)
 COPY ./pom.xml ./pom.xml

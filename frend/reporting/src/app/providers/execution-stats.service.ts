@@ -28,9 +28,6 @@ export class ExecutionStatsService {
     infoLogContent: '',
     warningsLogLines: [],
     warningsLogContent: '',
-    infoTailingActive: 0,
-    errorsTailingActive: 0,
-    warningsTailingActive: 0,
   };
 
   jobStats = {

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ThemePicker } from "@/components/shared/ThemePicker"
 import { BrandLogo } from "@/components/shared/BrandLogo"
+import { BrandWordmark } from "@/components/shared/BrandWordmark"
 import { IconPortal, IconAdmin, IconEmail } from "@/components/shared/Icons"
 
 const navLinks = [
@@ -36,7 +37,7 @@ export function Navbar() {
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2 shrink-0 no-underline">
             <span className="logo-lg flex items-center gap-1">
-              <span className="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
+              <BrandWordmark />
               <BrandLogo />
             </span>
           </Link>

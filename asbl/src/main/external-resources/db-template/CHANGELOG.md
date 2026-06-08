@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.2.0 - 2026-06-08
+
+### Fixed
+
+- **"Java not found / Install Java" message now appears correctly when Java is missing** — When Java was not installed, the Processing screen could come up blank instead of showing the expected "Java not found / Install Java" guidance. The screen now always loads and clearly tells you that Java is required and how to install it, even when the rest of the application can't start.
+
 ## 16.1.0 - 2026-06-02
 
 ### Changed

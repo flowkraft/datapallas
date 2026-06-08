@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  In-app "Confirmation" modal replica, DataPallas dark theme. Reusable for the
+  generic "Are you sure that you want to perform this action?" prompt the app
+  shows when the user clicks Install Chocolatey / Install Java during the
+  quickstart prerequisite flow — that mid-install moment isn't capturable from
+  the DOM without actually running the install.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="749" height="213" viewBox="0 0 749 213"
+     font-family="'Segoe UI', Tahoma, sans-serif">
+  <!-- modal card (daisyUI dark base-100) -->
+  <rect x="0.5" y="0.5" width="748" height="212" rx="8" fill="#1d232a" stroke="#2a323c" stroke-width="1"/>
+
+  <!-- title -->
+  <text x="28" y="50" font-size="23" fill="#e8eaed" font-weight="600">Confirmation</text>
+
+  <!-- close X -->
+  <g stroke="#9aa4b2" stroke-width="2" stroke-linecap="round">
+    <line x1="709" y1="31" x2="723" y2="45"/>
+    <line x1="723" y1="31" x2="709" y2="45"/>
+  </g>
+
+  <!-- header divider -->
+  <line x1="0" y1="76" x2="749" y2="76" stroke="#2a323c" stroke-width="1"/>
+
+  <!-- message -->
+  <text x="28" y="124" font-size="19" fill="#c7cdd6">Are you sure that you want to perform this action?</text>
+
+  <!-- footer divider -->
+  <line x1="0" y1="152" x2="749" y2="152" stroke="#2a323c" stroke-width="1"/>
+
+  <!-- Yes button (primary) -->
+  <rect x="543" y="167" width="88" height="34" rx="6" fill="#4b7bf5"/>
+  <text x="587" y="190" font-size="16" fill="#ffffff" text-anchor="middle">Yes</text>
+
+  <!-- No button (neutral) -->
+  <rect x="641" y="167" width="84" height="34" rx="6" fill="#2a323c"/>
+  <text x="683" y="190" font-size="16" fill="#c7cdd6" text-anchor="middle">No</text>
+</svg>

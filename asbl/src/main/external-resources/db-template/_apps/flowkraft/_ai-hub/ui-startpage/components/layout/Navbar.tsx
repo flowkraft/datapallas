@@ -35,7 +35,13 @@ export function Navbar() {
         <div className="flex flex-1 items-center gap-2">
           <Link href="/" className="flex items-center gap-2 shrink-0 no-underline text-base-content">
             <span className="logo-lg flex items-center gap-1">
-              <span className="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
+              <span
+              className="text-2xl tracking-tight"
+              style={{ fontFamily: "var(--font-brand), 'Cormorant Garamond', ui-serif, Georgia, 'Times New Roman', serif", fontWeight: 700 }}
+            >
+              <span style={{ fontStyle: "italic", color: "currentColor" }}>Data</span>
+              <span style={{ fontStyle: "normal", color: "#d18361" }}>Pallas</span>
+            </span>
               <BrandLogo />
             </span>
           </Link>

@@ -994,7 +994,7 @@
                                                                           the "No ER Diagram Available" pattern from the diagram tab. -->
                                                                           @if (!domainGroupedSchemaExists) {
 <div id="noDomainGroupedSchemaAvailable" class="text-center" style="
-                    border: 1px solid #ccc;
+                    border: 1px solid var(--color-base-300);
                     border-radius: 4px;
                     padding: 20px;
                     min-height: 375px;
@@ -1011,10 +1011,10 @@
                   <div style="
                       margin-top: 20px;
                       text-align: left;
-                      border: 1px solid #e0e0e0;
+                      border: 1px solid var(--color-base-300);
                       padding: 15px;
                       border-radius: 5px;
-                      background-color: #f9f9f9;
+                      background-color: var(--color-base-100);
                       max-width: 85%;
                       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
                     ">
@@ -1260,7 +1260,7 @@
                                                                             !encodedPlantUmlDiagram || encodedPlantUmlDiagram.length === 0
                                                                             ) {
 <div id="noErDiagramAvailable" class="text-center" style="
-                  border: 1px solid #ccc;
+                  border: 1px solid var(--color-base-300);
                   border-radius: 4px;
                   padding: 20px;
                   min-height: 400px;
@@ -1281,10 +1281,10 @@
                 <div style="
                     margin-top: 20px;
                     text-align: left;
-                    border: 1px solid #e0e0e0;
+                    border: 1px solid var(--color-base-300);
                     padding: 15px;
                     border-radius: 5px;
-                    background-color: #f9f9f9;
+                    background-color: var(--color-base-100);
                     max-width: 85%;
                     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
                   ">
@@ -1318,7 +1318,7 @@
                                                                                   </li>
                                                                                 </ul>
                                                                               </div>
-                                                                              <p style="margin-top: 20px; font-size: 0.85em; color: #555">
+                                                                              <p style="margin-top: 20px; font-size: 0.85em; color: var(--color-base-content); opacity: 0.7">
                                                                                 Need help with PlantUML syntax? Visit the official
                                                                                 <a href="https://plantuml.com/er-diagram" target="_blank" rel="noopener noreferrer"
                                                                                   title="Opens PlantUML ER Diagram documentation in a new tab">
@@ -1353,7 +1353,7 @@
                                                                                 }
                                                                               </div>
                                                                               <div style="grid-column:span 4">
-                                                                                <button id="btnGenerateWithAIErDiagram" [ngClass]="erDiagramExists ? 'btn-ghost' : 'btn-primary'"
+                                                                                <button id="btnGenerateWithAIErDiagram" [ngClass]="erDiagramExists ? 'btn-ghost' : 'btn-outline btn-primary'"
                                                                                   class="btn w-full" (click)="launchAiCopilotForErDiagram()" [disabled]="!showSchemaTreeSelect">
                                                                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>&nbsp; Generate with AI
                                                                                 </button>
@@ -1409,7 +1409,7 @@
                                                                               }
                                                                             </div>
                                                                             <div style="grid-column:span 4">
-                                                                              <button id="btnGenerateWithAIErDiagram" [ngClass]="erDiagramExists ? 'btn-ghost' : 'btn-primary'"
+                                                                              <button id="btnGenerateWithAIErDiagram" [ngClass]="erDiagramExists ? 'btn-ghost' : 'btn-outline btn-primary'"
                                                                                 class="btn w-full" (click)="launchAiCopilotForErDiagram()" [disabled]="!showSchemaTreeSelect">
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path stroke-linecap="round" stroke-linejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>&nbsp; Generate with AI
                                                                               </button>
@@ -1461,12 +1461,12 @@
                                                                         <markdown id="ubiquitousLanguageViewer" [data]="ubiquitousLanguageMarkdown" class="markdown-content"
                 style="
                   width: 100%;
-                  border: 1px solid #ccc;
+                  border: 1px solid var(--color-base-300);
                   border-radius: 4px;
                   padding: 15px;
                   min-height: 400px;
                   overflow-y: auto;
-                  background-color: white;
+                  background-color: var(--color-base-100);
                 "></markdown>
                                                                         @if (
                                                                           context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl') {
@@ -1508,7 +1508,7 @@
                                                                       ) {
                                                                       <div>
               <div id="noUbiquitousLanguageContentInfo" class="text-center" style="
-                  border: 1px solid #ddd;
+                  border: 1px solid var(--color-base-300);
                   border-radius: 4px;
                   padding: 10px;
                   min-height: 400px;
@@ -1516,7 +1516,8 @@
                   flex-direction: column;
                   justify-content: center;
                   align-items: center;
-                  background-color: #f9f9f9;
+                  background-color: var(--color-base-200);
+                  color: var(--color-base-content);
                 ">
                                                                           <span style="margin-bottom: 10px">
                                                                             <strong>Understanding Your Data: The Ubiquitous Language</strong>
@@ -1525,7 +1526,7 @@
                     max-width: 90%;
                     font-size: 0.95em;
                     line-height: 1.6;
-                    color: #333;
+                    color: var(--color-base-content);
                   ">
                                                                             <a href="https://martinfowler.com/bliki/UbiquitousLanguage.html" target="_blank">Ubiquitous
                                                                             Language</a>, a concept from Domain-Driven Design, is a common, shared
@@ -1539,10 +1540,10 @@
                     margin-top: 10px;
                     margin-bottom: 10px;
                     text-align: left;
-                    border: 1px solid #e0e0e0;
+                    border: 1px solid var(--color-base-300);
                     padding: 10px 10px;
                     border-radius: 5px;
-                    background-color: #fff;
+                    background-color: var(--color-base-100);
                     max-width: 90%;
                     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
                   ">
@@ -1555,7 +1556,7 @@
                                                                             </p>
                                                                             <markdown [data]="getUbiquitousLanguageExampleMarkdown()" class="compact-markdown-example"></markdown>
                                                                           </div>
-                                                                          <p style="max-width: 90%; font-size: 0.9em; color: #555">
+                                                                          <p style="max-width: 90%; font-size: 0.9em; color: var(--color-base-content); opacity: 0.7">
                                                                             <strong>This is a living document. Start with what you know and
                                                                               collaboratively refine it over time as your understanding of
                                                                             the domain deepens.</strong>

@@ -373,15 +373,30 @@ export class ProcessingComponent implements OnInit {
   }
 
   async ngOnInit() {
-    this.cmsPortalApp = [await this.appsManagerService.getAppById('cms-webportal')];
+    // Backend loads are BEST-EFFORT: the REST backend (:9090) is down whenever Java
+    // isn't installed (the prerequisite screen), so these calls reject. Each is
+    // swallowed so ngOnInit always reaches the route.params subscription below, which
+    // builds the tabset via refreshTabs() — without this the content renders blank.
+    // The burst tab's Java state comes from Electron's _getSystemInfo (IPC), not the
+    // REST backend, so the "Java not found / Install Java" block still renders.
+    const safe = async (label: string, op: () => Promise<any>): Promise<any> => {
+      try {
+        return await op();
+      } catch (err) {
+        console.warn(`[RB] processing ngOnInit: ${label} failed (backend likely down) — continuing`, err);
+        return undefined;
+      }
+    };
+
+    this.cmsPortalApp = [await safe('getAppById', () => this.appsManagerService.getAppById('cms-webportal'))];
 
     this.settingsService.currentConfigurationTemplateName = '';
     this.settingsService.currentConfigurationTemplatePath = '';
     delete this.processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport;
 
-    await this.settingsService.loadAllConnections();
+    await safe('loadAllConnections', () => this.settingsService.loadAllConnections());
     this.settingsService.configurationFiles =
-      await this.settingsService.loadAllReports({ forceReload: true });
+      (await safe('loadAllReports', () => this.settingsService.loadAllReports({ forceReload: true }))) ?? [];
     // Dashboard search debounce
     this.dashboardSearchSubject
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
@@ -392,7 +407,7 @@ export class ProcessingComponent implements OnInit {
       });
 
     this.applyDashboardFilter();
-    await this.samplesService.fillSamplesNotes();
+    await safe('fillSamplesNotes', () => this.samplesService.fillSamplesNotes());
 
     // Reload dashboard list when the user toggles "Show sample connections & cubes".
     // BehaviorSubject fires the current value synchronously on subscribe — skip
@@ -413,8 +428,9 @@ export class ProcessingComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(async (params) => { await this.handleRouteParams(params); });
 
-    this.xmlSettings = await this.reportsService.loadReportSettings('burst');
-    if (this.xmlSettings?.documentburster)
+    this.xmlSettings =
+      (await safe('loadReportSettings', () => this.reportsService.loadReportSettings('burst'))) ?? this.xmlSettings;
+    if (this.xmlSettings?.documentburster?.settings)
       this.processingService.procMergeBurstInfo.mergedFileName =
         this.xmlSettings.documentburster.settings.mergefilename;
   }

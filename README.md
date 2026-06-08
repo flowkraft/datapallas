@@ -32,7 +32,7 @@ To explore the full range of what DataPallas can do — from PDF bursting to SQL
 
 | What you need | What you're using today | DataPallas |
 |---|---|---|
-| **[1.&nbsp;Data Exploration](https://datapallas.com/docs/data-exploration)** | ~~Google Looker~~, ~~SQL Server Management Studio~~, ~~Toad~~, ~~manual SQL queries~~ | Chat2DB AI — ask in natural language, get SQL, results, and charts |
+| **[1.&nbsp;Data Exploration](https://datapallas.com/docs/data-exploration)** | ~~Qlik~~, ~~SQL Server Management Studio~~, ~~Toad~~, ~~manual SQL queries~~ | Chat2DB AI — ask in natural language, get SQL, results, and charts |
 | **[2.&nbsp;Dashboards&nbsp;&amp;&nbsp;Analytics](https://datapallas.com/docs/bi-analytics/dashboards)** | ~~Tableau~~, ~~Power BI~~, ~~Metabase~~, ~~Superset~~ | Embeddable data-tables, charts, pivot tables, and analytics |
 | **[3.&nbsp;Report Generation](https://datapallas.com/docs/report-generation)** | ~~Crystal Reports~~, ~~SSRS~~, ~~JasperReports~~ | Pixel-perfect PDFs, Excel, HTML, Word from any data source |
 

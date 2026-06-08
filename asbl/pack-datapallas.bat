@@ -95,4 +95,4 @@ REM by DockerAssembler from the pom.xml <revision> placeholder — do not pass
 REM the version manually here, let docker inspect discover it from the image.
 
 REM CMD:        docker login -u flowkraft && docker push flowkraft/datapallas-server:latest && for /f "tokens=*" %v in ('docker inspect --format "{{ index .Config.Labels \"version\" }}" flowkraft/datapallas-server:latest') do docker push flowkraft/datapallas-server:%v
-REM PowerShell: docker login -u flowkraft; docker push flowkraft/datapallas-server:latest; $v = docker inspect --format '{{ index .Config.Labels \"version\" }}' flowkraft/datapallas-server:latest; docker push flowkraft/datapallas-server:$v
+REM PowerShell: docker login -u flowkraft; docker push flowkraft/datapallas-server:latest; $v = docker inspect --format '{{ .Config.Labels.version }}' flowkraft/datapallas-server:latest; docker push flowkraft/datapallas-server:$v

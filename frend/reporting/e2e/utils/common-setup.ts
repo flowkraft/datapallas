@@ -105,7 +105,15 @@ export const electronBeforeAfterAllTest = isElectron
               );
             }
 
-            const firstPage = await electronApp.firstWindow();
+            // Use the LIVE app, not the captured fixture value. A test may have
+            // closed+relaunched the singleton (e.g. the screenshot prereq states
+            // reboot per Java/Choco combination), which makes `electronApp` stale.
+            // Helpers.currentElectronApp always points at the running app; fall
+            // back to the fixture value when nothing relaunched (the common case,
+            // where they are the same object → identical behaviour).
+            const firstPage = await (
+              Helpers.currentElectronApp ?? electronApp
+            ).firstWindow();
 
             //await firstPage.reload();
 

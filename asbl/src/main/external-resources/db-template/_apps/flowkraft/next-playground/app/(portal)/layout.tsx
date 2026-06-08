@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useEffect } from "react"
 import { ThemePicker } from "@/components/shared/ThemePicker"
 import { BrandLogo } from "@/components/shared/BrandLogo"
+import { BrandWordmark } from "@/components/shared/BrandWordmark"
 import { IconAnalytics, IconAdmin, IconEmail, IconHome, IconPayslip, IconInvoice } from "@/components/shared/Icons"
 
 export default function PortalLayout({
@@ -37,7 +38,7 @@ export default function PortalLayout({
           <div className="flex-1 flex items-center gap-4">
             <Link href="/portal" className="flex items-center gap-2 shrink-0 no-underline">
               <span className="logo-lg flex items-center gap-1">
-                <span className="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
+                <BrandWordmark />
                 <BrandLogo />
               </span>
             </Link>

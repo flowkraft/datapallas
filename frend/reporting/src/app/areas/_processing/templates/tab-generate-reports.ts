@@ -152,7 +152,7 @@ export const tabGenerateReportsTemplate = `<ng-template
     </div>
 
     @if (!storeService.configSys.sysInfo.setup.java.isJavaOk) {
-    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+    <div style="max-width:56rem">
       <br /><br />
       <span class="badge badge-warning"
         ><strong
@@ -164,7 +164,7 @@ export const tabGenerateReportsTemplate = `<ng-template
       <br /><br />
 
       <strong
-        id="checkPointJavaPreRequisite"
+        id="checkPointJavaPreRequisiteGenerate"
         [innerHTML]="'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INNER-HTML.REQUIRED-SHORT' | translate"
       ></strong>
 

@@ -18,6 +18,18 @@ const fontHeading = localFont({
   variable: "--font-heading",
 });
 
+// Brand wordmark font — Cormorant Garamond, self-hosted from vendored woff2
+// files so the build never reaches out to Google Fonts. Needs italic ("Data")
+// + normal ("Pallas"), weight 700.
+const fontBrand = localFont({
+  src: [
+    { path: "../assets/fonts/cormorant-garamond-latin-700-normal.woff2", weight: "700", style: "normal" },
+    { path: "../assets/fonts/cormorant-garamond-latin-700-italic.woff2", weight: "700", style: "italic" },
+  ],
+  display: "swap",
+  variable: "--font-brand",
+});
+
 export const metadata: Metadata = {
   title: "DataPallas",
   description: "DataPallas — Explore Data & Build Dashboards",
@@ -49,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${fontHeading.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${fontHeading.variable} ${fontBrand.variable}`}>
       <body className="font-sans antialiased min-h-screen flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: noFlashScript }} />
         <RbWebComponentsLoader />

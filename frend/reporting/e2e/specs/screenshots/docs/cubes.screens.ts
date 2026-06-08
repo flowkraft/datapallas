@@ -20,7 +20,7 @@
 //     npx cross-env TEST_ENV=electron TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 ^
 //       RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e ^
 //       playwright test -c e2e/playwright.config.ts ^
-//       e2e/specs/screenshots/cubes.spec.ts
+//       e2e/specs/screenshots/cubes.screens.ts
 //
 //   Or via the gulp wrapper:
 //     npm run custom:start-server-and-e2e-electron-grep -- --grep "Cubes — docs screenshots"

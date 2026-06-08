@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Burst Reports toolbar replica, DataPallas dark theme (daisyUI "dark"):
+  base-100 content #11161d, button surface #161b22, borders/dividers #2a323c,
+  content text #e8eaed, muted tabs #8b95a3. The "Samples" button is ringed in
+  DataPallas orange to point the reader at it — it's the button that opens the
+  Samples gallery shown in the next screenshot.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1493" height="197" viewBox="0 0 1493 197"
+     font-family="'Segoe UI', Tahoma, sans-serif">
+  <!-- app content background (base-100) -->
+  <rect x="0" y="0" width="1493" height="197" fill="#11161d"/>
+
+  <!-- ── Tabs ───────────────────────────────────────────────────────────── -->
+  <text x="14" y="30" font-size="20" fill="#f1f3f5" font-weight="600">Burst Reports</text>
+  <rect x="12" y="42" width="126" height="3" rx="1.5" fill="#e8eaed"/>
+  <text x="162" y="30" font-size="20" fill="#8b95a3">Generate Reports</text>
+  <text x="330" y="30" font-size="20" fill="#8b95a3">Explore Data &amp; Build Dashboards</text>
+  <text x="632" y="30" font-size="20" fill="#8b95a3">Customer Portal</text>
+  <text x="792" y="30" font-size="20" fill="#8b95a3">Logging and Tracing</text>
+  <text x="980" y="30" font-size="20" fill="#8b95a3">License</text>
+
+  <!-- tabs divider -->
+  <line x1="0" y1="53" x2="1493" y2="53" stroke="#2a323c" stroke-width="1"/>
+
+  <!-- ── Row 2: file input ──────────────────────────────────────────────── -->
+  <text x="8" y="92" font-size="21" fill="#e8eaed" font-weight="600">PDF / Excel File</text>
+  <rect x="250" y="64" width="858" height="48" rx="6" fill="#0d1219" stroke="#2a323c" stroke-width="1"/>
+
+  <!-- Select File button -->
+  <rect x="1185" y="64" width="300" height="48" rx="6" fill="#161b22" stroke="#2a323c" stroke-width="1"/>
+  <path d="M1297 84 v14 h26 v-11 h-14 l-3 -3 h-9 z" fill="none" stroke="#c7cdd6" stroke-width="1.6" stroke-linejoin="round"/>
+  <text x="1335" y="95" font-size="19" fill="#e8eaed">Select File</text>
+
+  <!-- ── Row 3: actions ─────────────────────────────────────────────────── -->
+  <!-- Burst (disabled) -->
+  <rect x="245" y="129" width="118" height="48" rx="6" fill="#11161d" stroke="#262d36" stroke-width="1"/>
+  <path d="M281 145 l13 8 l-13 8 z" fill="none" stroke="#5b6470" stroke-width="1.6" stroke-linejoin="round"/>
+  <text x="302" y="160" font-size="19" fill="#5b6470">Burst</text>
+
+  <!-- Clear Logs -->
+  <rect x="390" y="129" width="300" height="48" rx="6" fill="#161b22" stroke="#2a323c" stroke-width="1"/>
+  <path d="M471 142 h13 l6 6 v18 h-19 z" fill="none" stroke="#c7cdd6" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M484 142 v6 h6" fill="none" stroke="#c7cdd6" stroke-width="1.4"/>
+  <text x="500" y="160" font-size="19" fill="#e8eaed">Clear Logs</text>
+
+  <!-- Samples (highlighted) -->
+  <rect x="722" y="129" width="290" height="48" rx="6" fill="#161b22" stroke="#2a323c" stroke-width="1"/>
+  <g stroke="#d6a06a" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M801 161 v-3 c0 -7 3 -12 8 -12 s8 5 8 12 v3"/>
+    <path d="M797 161 h24"/>
+    <path d="M806 162 a3 3 0 0 0 6 0"/>
+    <path d="M809 146 v-2"/>
+  </g>
+  <text x="832" y="160" font-size="19" fill="#e8eaed">Samples</text>
+
+  <!-- orange highlight ring around the Samples button -->
+  <rect x="706" y="116" width="322" height="74" rx="37" fill="none" stroke="#e8833a" stroke-width="5"/>
+
+  <!-- see how link -->
+  <g stroke="#c7cdd6" stroke-width="1.4" fill="none" stroke-linejoin="round">
+    <path d="M1186 150 c6 -3 13 -3 18 0 v15 c-5 -3 -12 -3 -18 0 z"/>
+    <path d="M1204 150 c5 -3 12 -3 18 0 v15 c-6 -3 -13 -3 -18 0 z"/>
+  </g>
+  <text x="1232" y="161" font-size="19" fill="#e8eaed" text-decoration="underline">see how</text>
+</svg>

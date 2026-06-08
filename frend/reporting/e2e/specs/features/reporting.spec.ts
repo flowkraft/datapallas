@@ -37,7 +37,7 @@ const DB_VENDORS_SELECTED: string[] = (() => {
   //return ['ibmdb2'];
 
   // ── DEV OVERRIDES (uncomment ONE line to limit vendor scope) ──
-  // return ['supabase']; // DEV FOCUS — comment out to restore full rotation
+  return ['mariadb']; // DEV FOCUS — comment out to restore full rotation
   
   //return ['postgres'];
   //return ['duckdb'];

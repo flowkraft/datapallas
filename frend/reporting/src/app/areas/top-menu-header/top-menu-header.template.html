@@ -41,7 +41,7 @@
             (click)="closeDropdown()">
             @for (configurationFile of this.settingsService.getConfigurations(); track configurationFile) {
               @if (configurationFile.isFallback) {
-                <li>
+                <li id="topMenuConfigBursting">
                   <a id="topMenuConfigurationLoad_{{ configurationFile.folderName }}_{{ configurationFile.fileName }}"
                     [routerLink]="['/configuration','generalSettingsMenuSelected',configurationFile.filePath,configurationFile.templateName]"
                     skipLocationChange="true">{{ configurationFile.templateName }}</a>
@@ -104,10 +104,8 @@
 
       <!-- Theme picker — daisyUI homepage pattern: single-column list, each
            row a 4-cell preview swatch (base/primary/secondary/accent) bound to
-           the theme's data-theme so the swatch *is* the theme's actual palette.
-           Hidden in e2e mode for deterministic Playwright baselines. -->
-      @if (!settingsService.RUNNING_IN_E2E) {
-        <div class="dropdown dropdown-end">
+           the theme's data-theme so the swatch *is* the theme's actual palette. -->
+      <div class="dropdown dropdown-end">
           <div id="btnChangeSkin" tabindex="0" role="button"
             class="btn btn-square btn-ghost" aria-label="Theme">
             <div [attr.data-theme]="activeTheme"
@@ -144,7 +142,6 @@
             }
           </ul>
         </div>
-      }
     </div>
   </nav>
 </header>

@@ -65,7 +65,7 @@
 //   npx cross-env TEST_ENV=electron TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 ^
 //     RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e ^
 //     playwright test -c e2e/playwright.config.ts ^
-//     e2e/specs/screenshots/blog/algo-trading.spec.ts
+//     e2e/specs/screenshots/blog/algo-trading.screens.ts
 //
 //   Grep individual blocks:
 //     --grep "Algo Trading — Seed Data"
@@ -144,26 +144,32 @@ const ALGO_TRADING_IMAGES_DIR = path.resolve(
   'public', 'images', 'blog', 'algo-trading',
 );
 
+// Every capture writes a `-dark.png` companion (the new dark-theme run)
+// next to the original light `.png`, so the two themes can be compared
+// before the dark set replaces the originals. One transform, applied in
+// every wrapper below.
+const darkName = (filename: string) => filename.replace(/\.png$/i, '-dark.png');
+
 // Local wrappers that pre-bind ALGO_TRADING_IMAGES_DIR so every capture
 // call in this spec writes to the blog-post folder without each call site
 // having to repeat the path.
 const captureDocsScreenshot = (page: Page, filename: string) =>
-  _captureDocsScreenshot(page, filename, ALGO_TRADING_IMAGES_DIR);
+  _captureDocsScreenshot(page, darkName(filename), ALGO_TRADING_IMAGES_DIR);
 const captureDocsScreenshotFitToViewport = (page: Page, filename: string) =>
-  _captureDocsScreenshotFitToViewport(page, filename, ALGO_TRADING_IMAGES_DIR);
+  _captureDocsScreenshotFitToViewport(page, darkName(filename), ALGO_TRADING_IMAGES_DIR);
 const captureDocsScreenshotWithHighlight = (page: Page, filename: string, spec: HighlightSpec) =>
-  _captureDocsScreenshotWithHighlight(page, filename, spec, ALGO_TRADING_IMAGES_DIR);
+  _captureDocsScreenshotWithHighlight(page, darkName(filename), spec, ALGO_TRADING_IMAGES_DIR);
 const captureDocsScreenshotWholeContent = (
   page: Page,
   filename: string,
   options?: { containerSelector?: string; chromePadding?: number; highlight?: HighlightSpec },
-) => _captureDocsScreenshotWholeContent(page, filename, ALGO_TRADING_IMAGES_DIR, options);
+) => _captureDocsScreenshotWholeContent(page, darkName(filename), ALGO_TRADING_IMAGES_DIR, options);
 const captureDocsScreenshotOfElement = (
   page: Page,
   filename: string,
   selector: string,
   opts?: { targetWidth?: number },
-) => _captureDocsScreenshotOfElement(page, filename, selector, {
+) => _captureDocsScreenshotOfElement(page, darkName(filename), selector, {
   ...(opts ?? {}),
   outDir: ALGO_TRADING_IMAGES_DIR,
 });
@@ -173,7 +179,7 @@ const captureDocsScreenshotOfElementWithHighlight = (
   elementSelector: string,
   highlightSelector: string,
   opts?: { targetWidth?: number; trimBottomEmpty?: boolean },
-) => _captureDocsScreenshotOfElementWithHighlight(page, filename, elementSelector, highlightSelector, {
+) => _captureDocsScreenshotOfElementWithHighlight(page, darkName(filename), elementSelector, highlightSelector, {
   ...(opts ?? {}),
   outDir: ALGO_TRADING_IMAGES_DIR,
 });
@@ -550,7 +556,7 @@ electronBeforeAfterAllTest(
     // Clear this block's stale screenshots (007/008/009/010/011*) so any
     // orphaned PNGs from previous runs don't linger in the docs folder.
     clearBlogScreenshots([
-      '007*.png', '008*.png', '009*.png', '010*.png', '011*.png',
+      '007*-dark.png', '008*-dark.png', '009*-dark.png', '010*-dark.png', '011*-dark.png',
     ]);
 
     try {
@@ -865,7 +871,7 @@ electronBeforeAfterAllTest(
 
     // Clear D1's stale screenshots (02*) so renamed/removed captures
     // from earlier runs don't linger as orphans in the docs folder.
-    clearBlogScreenshots('02*.png');
+    clearBlogScreenshots('02*-dark.png');
 
     let externalBrowser: Browser | null = null;
 
@@ -1226,7 +1232,7 @@ electronBeforeAfterAllTest(
 
     // Clear D2's stale screenshots (03*) so renamed/removed captures
     // from earlier runs don't linger as orphans in the docs folder.
-    clearBlogScreenshots('03*.png');
+    clearBlogScreenshots('03*-dark.png');
 
     let externalBrowser: Browser | null = null;
 
@@ -1483,7 +1489,7 @@ electronBeforeAfterAllTest(
 
     // Clear D3's stale screenshots (04*) so renamed/removed captures
     // from earlier runs don't linger as orphans in the docs folder.
-    clearBlogScreenshots('04*.png');
+    clearBlogScreenshots('04*-dark.png');
 
     let externalBrowser: Browser | null = null;
 

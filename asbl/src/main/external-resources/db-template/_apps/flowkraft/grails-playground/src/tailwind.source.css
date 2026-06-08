@@ -4,6 +4,42 @@
   themes: all;
 }
 
+/* ── Brand wordmark font (self-hosted, offline-safe) ───────────────────────────
+   Cormorant Garamond 700 normal + italic. woff2 files live in
+   grails-app/assets/fonts/ and are served by the Grails asset-pipeline.
+   The ../fonts/ url() is resolved + digest-rewritten by asset-pipeline at
+   prod compile time, so NO network request is ever made. */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/cormorant-garamond-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/cormorant-garamond-latin-700-italic.woff2') format('woff2');
+}
+
+/* ── Official DataPallas wordmark ──────────────────────────────────────────────
+   "Data" italic in inherited foreground (white on the dark navbar),
+   "Pallas" upright in the terracotta brand color. Mirrors reportburster.com. */
+.brand-wordmark {
+  font-family: 'Cormorant Garamond', ui-serif, Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+}
+.brand-wordmark .brand-data {
+  font-style: italic;
+  color: currentColor;
+}
+.brand-wordmark .brand-pallas {
+  font-style: normal;
+  color: hsl(18 55% 60%); /* #d18361 terracotta */
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;

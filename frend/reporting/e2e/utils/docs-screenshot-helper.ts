@@ -152,6 +152,12 @@ export async function captureDocsScreenshotOfElement(
   const fullPath = path.join(outDir, filename);
   const el = page.locator(selector);
   await el.waitFor({ state: 'visible', timeout: 10_000 });
+  // Don't rasterise an element caught mid-mount or mid-reflow — in that transient
+  // it renders as an empty/stretched shell and the capture comes out uniformly
+  // blank (this bit the #configPanel "*-display" shots). Wait until it has
+  // rendered text content AND a stable size first. Best-effort: never hangs the
+  // capture beyond the timeout.
+  await waitForElementSettled(page, selector);
   let buffer = await el.screenshot();
   if (opts.trimBottomEmpty) {
     buffer = await trimBottomEmptyRows(buffer, opts.trimBottomPadding ?? 24);
@@ -161,6 +167,44 @@ export async function captureDocsScreenshotOfElement(
     .resize({ width: targetWidth, fit: 'inside', kernel: 'lanczos3', withoutEnlargement: true })
     .toFile(fullPath);
   console.log(`[screenshot] ${filename} → ${fullPath} (element-scoped: ${selector}, lanczos3)`);
+}
+
+/**
+ * Poll a cheap geometry+content signature for `selector` until the element has
+ * rendered text content AND that signature is stable across two consecutive
+ * frames — i.e. it has settled and is no longer mounting/reflowing. Used to
+ * gate element screenshots so we never capture an empty/stretched shell.
+ *
+ * Best-effort: returns after `timeoutMs` regardless, so a legitimately
+ * text-sparse element can never hang the capture. `selector` must be a plain
+ * CSS selector (all call sites pass element IDs like `#configPanel`).
+ */
+async function waitForElementSettled(
+  page: Page,
+  selector: string,
+  timeoutMs = 4_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let prev = '';
+  let stableHits = 0;
+  while (Date.now() < deadline) {
+    const sig = await page.evaluate((sel) => {
+      const node = document.querySelector(sel);
+      if (!node) return null;
+      const r = node.getBoundingClientRect();
+      const textLen = (node.textContent || '').replace(/\s+/g, '').length;
+      return `${Math.round(r.height)}|${node.childElementCount}|${textLen}`;
+    }, selector);
+    // `|0` at the end means textLen === 0 → still an empty shell.
+    const hasContent = sig !== null && !/\|0$/.test(sig);
+    if (hasContent && sig === prev) {
+      if (++stableHits >= 2) return;
+    } else {
+      stableHits = 0;
+    }
+    prev = sig ?? '';
+    await page.waitForTimeout(120);
+  }
 }
 
 /**
@@ -673,4 +717,121 @@ export async function captureDocsScreenshotWithHighlight(
   });
 
   console.log(`[screenshot+highlight] ${filename} → ${fullPath}`);
+}
+
+/**
+ * Highlight MULTIPLE elements at once (by CSS selector) with the DataPallas
+ * brand-orange ring, then take one full-viewport screenshot, then revert every
+ * element so the live page is left untouched.
+ *
+ * Same outline + outer-glow recipe as `captureDocsScreenshotWithHighlight`, but:
+ *   - colour is DataPallas orange `#d18361` instead of blue `#2563eb`
+ *   - it rings SEVERAL elements in a single shot (one annotated reference frame
+ *     that points the reader at, e.g., a tab button AND a menu item together)
+ *   - no callout text — these shots reproduce the user's multi-arrow annotated
+ *     references where the orange rings alone carry the meaning.
+ *
+ * BEST-EFFORT per selector: a missing / detached element is skipped (logged,
+ * never thrown) so one absent target can't fail the whole screenshot run —
+ * important here because the action button on an app card is `Start` when the
+ * app is stopped but `Launch` when running, so callers pass both and we ring
+ * whichever is actually present.
+ *
+ * The save/restore uses the SAME `dataset.docscreen*` inline-style snapshot
+ * approach as the single-element helper, applied independently to each element.
+ *
+ * Each target is either a bare selector string (outside ring, the default) or
+ * `{ selector, inset: true }` for elements flush against a clipping boundary
+ * (overflow:hidden ancestor, a sticky header painting over the top, or the
+ * viewport edge) where the outside ring would be cut off — there the ring is
+ * painted just INSIDE the element so it stays fully visible.
+ */
+export type HighlightTarget = string | { selector: string; inset?: boolean };
+
+export async function captureDocsScreenshotWithHighlights(
+  page: Page,
+  filename: string,
+  targets: HighlightTarget[],
+  outDir: string = DOCS_IMAGES_DIR,
+): Promise<void> {
+  // Normalize bare-string targets to the object form (outside ring by default).
+  const specs = targets.map((t) =>
+    typeof t === 'string' ? { selector: t, inset: false } : { selector: t.selector, inset: t.inset ?? false },
+  );
+
+  // Apply the orange ring to every selector that resolves to a visible element.
+  // Track which ones we actually styled so we only revert those afterwards.
+  const applied: string[] = [];
+  for (const { selector, inset } of specs) {
+    const locator = page.locator(selector).first();
+    try {
+      await locator.waitFor({ state: 'visible', timeout: 4_000 });
+      await locator.scrollIntoViewIfNeeded().catch(() => {});
+      await locator.evaluate((el: HTMLElement, useInset: boolean) => {
+        // Snapshot originals so the live page is restored byte-for-byte.
+        el.dataset.docscreenPrevShadow = el.style.boxShadow ?? '';
+        el.dataset.docscreenPrevTransition = el.style.transition ?? '';
+        el.dataset.docscreenPrevOutline = el.style.outline ?? '';
+        el.dataset.docscreenPrevOutlineOffset = el.style.outlineOffset ?? '';
+        el.dataset.docscreenPrevPosition = el.style.position ?? '';
+        el.dataset.docscreenPrevZIndex = el.style.zIndex ?? '';
+
+        el.style.transition = 'none';
+        if (useInset) {
+          // INSET ring — DataPallas brand orange painted just INSIDE the
+          // element's edges (plus the same soft outer glow). Used for targets
+          // that sit flush against a clipping boundary the outside ring can't
+          // escape: the tab buttons (the sticky top-menu header overpaints the
+          // ring's top, and the first tab's left hits the window edge) and the
+          // dashboards table (its bottom reaches the viewport edge). A solid
+          // 3px inset ring is always fully visible; unlike the abandoned inset
+          // *glow*, it doesn't tint the interior/text.
+          el.style.outline = '';
+          el.style.outlineOffset = '';
+          el.style.boxShadow = 'inset 0 0 0 3px #d18361, 0 0 14px rgba(209, 131, 97, 0.45)';
+        } else {
+          // Outer ring — painted OUTSIDE the element (outline doesn't take
+          // layout space; the soft drop-shadow softens it).
+          el.style.outline = '3px solid #d18361';
+          el.style.outlineOffset = '2px';
+          el.style.boxShadow = '0 0 14px rgba(209, 131, 97, 0.45)';
+        }
+        // Lift above sibling backgrounds so they don't overpaint the ring/glow.
+        if (!el.style.position || el.style.position === 'static') {
+          el.style.position = 'relative';
+        }
+        el.style.zIndex = '20';
+      }, inset);
+      applied.push(selector);
+    } catch {
+      console.log(`[screenshot+highlights] target not found, skipping: ${selector}`);
+    }
+  }
+
+  await page.waitForTimeout(150);
+
+  await jetpack.dirAsync(outDir);
+  const fullPath = path.join(outDir, filename);
+  await page.screenshot({ path: fullPath, fullPage: false });
+
+  // Revert only the elements we actually styled.
+  for (const selector of applied) {
+    const locator = page.locator(selector).first();
+    await locator.evaluate((el: HTMLElement) => {
+      el.style.boxShadow = el.dataset.docscreenPrevShadow ?? '';
+      el.style.transition = el.dataset.docscreenPrevTransition ?? '';
+      el.style.outline = el.dataset.docscreenPrevOutline ?? '';
+      el.style.outlineOffset = el.dataset.docscreenPrevOutlineOffset ?? '';
+      el.style.position = el.dataset.docscreenPrevPosition ?? '';
+      el.style.zIndex = el.dataset.docscreenPrevZIndex ?? '';
+      delete el.dataset.docscreenPrevShadow;
+      delete el.dataset.docscreenPrevTransition;
+      delete el.dataset.docscreenPrevOutline;
+      delete el.dataset.docscreenPrevOutlineOffset;
+      delete el.dataset.docscreenPrevPosition;
+      delete el.dataset.docscreenPrevZIndex;
+    }).catch(() => {});
+  }
+
+  console.log(`[screenshot+highlights] ${filename} → ${fullPath} (${applied.length}/${specs.length} rings)`);
 }

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Windows right-click context menu replica for the DataPallas.exe quickstart shot
+  (replaces the old ReportBurster.exe original 000_00_ExeRunAsAdministrator.png).
+  Rendered to PNG by quickstart.screens.ts. Pure synthetic recreation of an OS
+  context menu — there's no DataPallas DOM to screenshot for this.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="504" height="68" viewBox="0 0 504 68"
+     font-family="'Segoe UI', Tahoma, sans-serif">
+  <rect width="504" height="68" fill="#ffffff"/>
+
+  <!-- Selected file: DataPallas.exe app icon (temple on a warm rounded tile, from
+       frend/reporting/src/assets/icons/datapallas-icon-bg.svg) + filename -->
+  <svg x="9" y="14" width="38" height="38" viewBox="0 0 256 256">
+    <defs>
+      <linearGradient id="dpBg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fcf7ee"/>
+        <stop offset="1" stop-color="#ead9b8"/>
+      </linearGradient>
+      <filter id="dpTile" x="-15%" y="-15%" width="130%" height="130%">
+        <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#3a2c12" flood-opacity="0.30"/>
+      </filter>
+    </defs>
+    <!-- rounded app-icon tile (warm) so the pale temple reads on the white row -->
+    <rect x="10" y="10" width="236" height="236" rx="50" fill="url(#dpBg)"
+          stroke="#d3b97e" stroke-width="3" filter="url(#dpTile)"/>
+    <!-- temple, scaled + centred into the tile so it reads crisp (not edge-to-edge).
+         Colours are the exact source-logo values — unchanged. -->
+    <g transform="translate(30,18) scale(0.77)">
+      <rect x="32" y="56" width="192" height="14" fill="#f0e2c0"/>
+      <rect x="32" y="70" width="192" height="22" fill="#c9603a"/>
+      <rect x="32" y="92" width="192" height="8" fill="#e8d4a8"/>
+      <rect x="32" y="100" width="192" height="6" fill="#d4a843"/>
+      <rect x="44"  y="106" width="36" height="98" fill="#f8f2e8"/>
+      <rect x="110" y="106" width="36" height="98" fill="#f8f2e8"/>
+      <rect x="176" y="106" width="36" height="98" fill="#f8f2e8"/>
+      <rect x="77"  y="106" width="5" height="98" fill="#b89858"/>
+      <rect x="143" y="106" width="5" height="98" fill="#b89858"/>
+      <rect x="209" y="106" width="3" height="98" fill="#b89858"/>
+      <rect x="32" y="204" width="192" height="6" fill="#d4a843"/>
+      <rect x="20"  y="210" width="216" height="10" fill="#e8d4a8"/>
+      <rect x="0"   y="220" width="256" height="14" fill="#c8a860"/>
+    </g>
+  </svg>
+  <text x="52" y="40" font-size="15" fill="#1b1b1b">DataPallas.exe</text>
+
+  <!-- Context menu panel -->
+  <g transform="translate(244,3)">
+    <rect x="0" y="0" width="258" height="62" fill="#f2f2f2" stroke="#c9c9c9" stroke-width="1"/>
+
+    <!-- Open (hovered/bold) -->
+    <rect x="1" y="1" width="256" height="30" fill="#cce4f7" stroke="#a6cef0" stroke-width="1"/>
+    <text x="44" y="21" font-size="14" font-weight="700" fill="#000000">Open</text>
+
+    <!-- Run as administrator (with UAC shield) -->
+    <g transform="translate(18,38)">
+      <path d="M6 0 L13 2.5 L13 9 C13 14 6 17 6 17 C6 17 -1 14 -1 9 L-1 2.5 Z"
+            fill="#fdd835" stroke="#1f6fb2" stroke-width="1"/>
+      <path d="M6 0 L13 2.5 L13 9 C13 14 6 17 6 17 Z" fill="#1f6fb2" opacity="0.85"/>
+    </g>
+    <text x="44" y="53" font-size="14" fill="#000000">Run as administrator</text>
+  </g>
+</svg>

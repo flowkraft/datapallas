@@ -3214,6 +3214,11 @@ export class FluentTester implements PromiseLike<void> {
   }
 
   private async doEnsureSidebarOpen(): Promise<void> {
+    // Screenshot runs document the clean default screen WITHOUT the left sidebar,
+    // and no *.screens.ts spec navigates via the left menu. Skip the forced open
+    // so the sidebar never flashes on during doc captures. Functional specs (which
+    // DO click #leftMenu* items) never run in screenshot mode, so this is safe.
+    if (process.env.E2E_SCREENSHOTS) return;
     const isVisible = await this.window.evaluate(() =>
       document.documentElement.classList.contains('sidebar-visible'),
     );

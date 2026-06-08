@@ -27,7 +27,7 @@
 //     npx cross-env TEST_ENV=electron TEST_LICENSE_KEY=51b0aa18f2bbc066efdca8b53c2dacc8 ^
 //       RUNNING_IN_E2E=true PORTABLE_EXECUTABLE_DIR=testground/e2e ^
 //       playwright test -c e2e/playwright.config.ts ^
-//       e2e/specs/screenshots/connections.spec.ts
+//       e2e/specs/screenshots/connections.screens.ts
 //
 //   Or via the gulp wrapper (set E2E_GREP="Connections — docs"):
 //     npm run custom:start-server-and-e2e-electron-grep
@@ -41,7 +41,7 @@ import { electronBeforeAfterAllTest } from '../../../utils/common-setup';
 import { Constants } from '../../../utils/constants';
 import { FluentTester } from '../../../helpers/fluent-tester';
 import { ConnectionsTestHelper } from '../../../helpers/areas/connections-test-helper';
-import { captureDocsScreenshot } from '../../../utils/docs-screenshot-helper';
+import { captureDocsScreenshot, captureDocsScreenshotWithHighlights } from '../../../utils/docs-screenshot-helper';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 //
@@ -93,7 +93,7 @@ electronBeforeAfterAllTest(
       connectionCreated = true;
 
       // Hide any transient toasts so they don't leak into screenshots
-      // (mirrors the technique from cubes.spec.ts).
+      // (mirrors the technique from cubes.screens.ts).
       await firstPage.evaluate(() => {
         const style = document.createElement('style');
         style.id = '__hide_toasts_for_screenshots';
@@ -177,8 +177,12 @@ electronBeforeAfterAllTest(
       // Step 4 ("Paste, Set Volume, Run") references this frame. Shows the
       // "ready to run" moment — pasted Groovy in My Script + the Run Script
       // button visible. Deliberately NOT clicking Run: the doc describes
-      // what to click, capturing pre-click is enough.
-      await captureDocsScreenshot(firstPage, '045_82_seed-data-my-script.png');
+      // what to click, capturing pre-click is enough. Ring the "Hey AI, Help
+      // Me…" button (#btnAskAiSeed) so the reader's eye lands on the AI helper
+      // — this frame feeds the video's "Hey AI builds the seed script" scene.
+      await captureDocsScreenshotWithHighlights(firstPage, '045_82_seed-data-my-script.png', [
+        '#btnAskAiSeed',
+      ]);
       console.log('[capture 2] 045_82_seed-data-my-script.png');
 
       console.log('[DONE] All Seed Data screenshots captured.');

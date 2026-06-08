@@ -23,6 +23,6 @@ export class LogFileViewerComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    this.logsService.tailerStop(this.logFileName());
+    this.logsService.stopTailing(this.logFileName());
   }
 }

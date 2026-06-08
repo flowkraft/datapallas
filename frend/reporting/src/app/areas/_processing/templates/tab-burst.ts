@@ -71,7 +71,7 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
     </div>
 
     @if (!storeService.configSys.sysInfo.setup.java.isJavaOk && !storeService.configSys.sysInfo.setup.java.version) {
-    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+    <div style="max-width:56rem">
       <br /><br />
       <span class="badge badge-warning"
         ><strong
@@ -106,7 +106,7 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
     }
 
     @if (!storeService.configSys.sysInfo.setup.java.isJavaOk && storeService.configSys.sysInfo.setup.java.version) {
-    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+    <div style="max-width:56rem">
       <br /><br />
       <span id="javaInstallationOld" class="badge badge-warning"
         ><strong

@@ -51,6 +51,8 @@
             "styles": [
               "src/styles.scss",
               "src/tailwind.source.css",
+              "./node_modules/@fontsource/cormorant-garamond/700.css",
+              "./node_modules/@fontsource/cormorant-garamond/700-italic.css",
               "./node_modules/quill/dist/quill.core.css",
               "./node_modules/quill/dist/quill.snow.css",
               "./node_modules/quill/dist/quill.bubble.css",

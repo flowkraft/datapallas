@@ -44,7 +44,7 @@
     <div class="flex-1 flex items-center gap-4">
       <a href="${createLink(uri: '/portal')}" class="flex items-center gap-2 shrink-0 no-underline">
         <span class="logo-lg flex items-center gap-1">
-          <span class="text-2xl font-bold tracking-tight"><strong>Data</strong><em>Pallas</em></span>
+          <span class="brand-wordmark text-2xl tracking-tight"><span class="brand-data">Data</span><span class="brand-pallas">Pallas</span></span>
           <dp:brandLogo/>
         </span>
       </a>

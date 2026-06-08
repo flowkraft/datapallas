@@ -63,7 +63,15 @@ export class WebSocketService extends WebSocketEndpoint {
   logsSubjects: Map<string, Subject<string>>;
   subscriptionsLogFileContent: Map<string, Subscription>;
 
-  subscriptionCheckIfLogFileWasCreatedIsEmptyOrRemoved: Subscription;
+  // Per-file tailing lifecycle, reference-counted by how many
+  // <dburst-log-file-viewer> components are currently mounted for a file.
+  // Tailing spins up on the 0->1 transition and is fully torn down on 1->0.
+  // Every resource that needs cleanup is stored per-file so it can actually be
+  // unsubscribed — there is no shared/global handle to leak when the three
+  // viewers (info/warnings/errors) mount together.
+  private tailingRefCount = new Map<string, number>();
+  private sizePollers = new Map<string, Subscription>();
+  private backendTailerActive = new Map<string, boolean>();
 
   handleFileTailerEvent(receivedEvent: string) {
     // console.log(`handleFileTailerEvent data = ${receivedEvent}`);
@@ -85,134 +93,160 @@ export class WebSocketService extends WebSocketEndpoint {
     //const payload = message.message.filesPayload[0];
   }
 
-  async startTailing(logFileName: string) {
-    const repeat = interval(750);
-    this.subscriptionCheckIfLogFileWasCreatedIsEmptyOrRemoved =
-      repeat.subscribe((val) =>
-        this.checkIfFileWasCreatedIsEmptyOrRemoved(logFileName),
-      );
+  // Called from dburst-log-file-viewer.ngOnInit. Reference-counted: only the
+  // first viewer mounted for a file wires up the content pipeline and the size
+  // poller; later viewers for the same file just bump the count.
+  startTailing(logFileName: string) {
+    const count = (this.tailingRefCount.get(logFileName) ?? 0) + 1;
+    this.tailingRefCount.set(logFileName, count);
+    if (count > 1) return;
+
+    this.subscribeToFileContent(logFileName);
+
+    // A dedicated poller per file keeps the backend Tailer in sync with the
+    // file's size: start it when the file has content, stop it and blank the
+    // viewer when the file is emptied or removed. Stored so stopTailing can
+    // cancel it — the previous single shared interval handle leaked one timer
+    // per viewer for the lifetime of the app.
+    const poller = interval(750).subscribe(() =>
+      this.syncBackendTailer(logFileName),
+    );
+    this.sizePollers.set(logFileName, poller);
+    this.syncBackendTailer(logFileName);
   }
 
-  async tailerStart(logFileName: string) {
-    if (logFileName == 'info.log')
-      if (this.executionStatsService.logStats.infoTailingActive > 0) {
-        this.executionStatsService.logStats.infoTailingActive = 2;
-        return;
-      } else this.executionStatsService.logStats.infoTailingActive++;
+  // Called from dburst-log-file-viewer.ngOnDestroy. Only the last viewer for a
+  // file tears tailing down; everything created in startTailing is released.
+  stopTailing(logFileName: string) {
+    const count = (this.tailingRefCount.get(logFileName) ?? 0) - 1;
+    if (count > 0) {
+      this.tailingRefCount.set(logFileName, count);
+      return;
+    }
+    this.tailingRefCount.delete(logFileName);
 
-    if (logFileName == 'errors.log')
-      if (this.executionStatsService.logStats.errorsTailingActive > 0) {
-        this.executionStatsService.logStats.errorsTailingActive = 2;
-        return;
-      } else this.executionStatsService.logStats.errorsTailingActive++;
+    const poller = this.sizePollers.get(logFileName);
+    if (poller) {
+      poller.unsubscribe();
+      this.sizePollers.delete(logFileName);
+    }
 
-    if (logFileName == 'warnings.log')
-      if (this.executionStatsService.logStats.warningsTailingActive > 0) {
-        this.executionStatsService.logStats.warningsTailingActive = 2;
-        return;
-      } else this.executionStatsService.logStats.warningsTailingActive++;
+    const contentSub = this.subscriptionsLogFileContent.get(logFileName);
+    if (contentSub) {
+      contentSub.unsubscribe();
+      this.subscriptionsLogFileContent.delete(logFileName);
+    }
 
+    if (this.logsSubjects.has(logFileName)) {
+      this.logsSubjects.get(logFileName).complete();
+      this.logsSubjects.delete(logFileName);
+    }
+
+    if (this.backendTailerActive.get(logFileName)) {
+      this.backendTailerActive.set(logFileName, false);
+      this.apiService.post('/jobs/logs/tailer', {
+        fileName: logFileName,
+        command: 'stop',
+      });
+    }
+
+    this.clearFileBuffer(logFileName);
+  }
+
+  // Accumulates the lines streamed over /topic/tailer into the viewer's bound
+  // buffer. Lives for as long as a viewer is mounted; backend start/stop only
+  // controls whether lines actually arrive, never this subscription.
+  private subscribeToFileContent(logFileName: string) {
     const subscriptionLogFileContent = this.getLogs$(logFileName).subscribe(
       (logLine: string) => {
-        //console.log(`this.logFileName = ${logFileName}, logLine = ${logLine}`);
+        const stats = this.executionStatsService.logStats;
 
         if (logFileName == 'info.log') {
-          if (
-            !this.executionStatsService.logStats.infoLogLines.includes(logLine)
-          ) {
-            this.executionStatsService.logStats.infoLogLines.unshift(logLine);
+          if (!stats.infoLogLines.includes(logLine)) {
+            stats.infoLogLines.unshift(logLine);
           }
-          this.executionStatsService.logStats.infoLogContent =
-            this.executionStatsService.logStats.infoLogLines.join('\n'); // Update the content property
+          stats.infoLogContent = stats.infoLogLines.join('\n');
         }
 
         if (logFileName == 'errors.log') {
-          if (
-            !this.executionStatsService.logStats.errorsLogLines.includes(
-              logLine,
-            )
-          ) {
-            this.executionStatsService.logStats.errorsLogLines.unshift(logLine);
+          if (!stats.errorsLogLines.includes(logLine)) {
+            stats.errorsLogLines.unshift(logLine);
           }
-          this.executionStatsService.logStats.errorsLogContent =
-            this.executionStatsService.logStats.errorsLogLines.join('\n'); // Update the content property
-
-          //console.log(
-          //  `this.executionStatsService.logStats.errorsLogContent = ${this.executionStatsService.logStats.errorsLogContent}`,
-          //);
+          stats.errorsLogContent = stats.errorsLogLines.join('\n');
         }
 
         if (logFileName == 'warnings.log') {
-          if (
-            !this.executionStatsService.logStats.warningsLogLines.includes(
-              logLine,
-            )
-          ) {
-            this.executionStatsService.logStats.warningsLogLines.unshift(
-              logLine,
-            );
+          if (!stats.warningsLogLines.includes(logLine)) {
+            stats.warningsLogLines.unshift(logLine);
           }
-          this.executionStatsService.logStats.warningsLogContent =
-            this.executionStatsService.logStats.warningsLogLines.join('\n'); // Update the content property
+          stats.warningsLogContent = stats.warningsLogLines.join('\n');
         }
       },
     );
-
-    //console.log(`this.logFileName = ${logFileName}, start`);
 
     this.subscriptionsLogFileContent.set(
       logFileName,
       subscriptionLogFileContent,
     );
-    await this.apiService.post('/jobs/logs/tailer', {
-      fileName: logFileName,
-      command: 'start',
-    });
   }
 
-  async tailerStop(logFileName: string) {
-    //console.log(
-    //  `tailerStop: logFileName = ${logFileName}, logStats = ${JSON.stringify(this.executionStatsService.logStats)}`,
-    //);
-    if (logFileName == 'info.log')
-      if (this.executionStatsService.logStats.infoTailingActive == 2) {
-        this.executionStatsService.logStats.infoTailingActive--;
-        return;
-      } else {
-        this.executionStatsService.logStats.infoTailingActive = 0;
+  // Keeps the backend Tailer running exactly while the file has content. Driven
+  // by the per-file poller off the live size in logStats (refreshed by the
+  // execution-stats websocket). Idempotent: POSTs only on a real transition, so
+  // it is safe to call every tick.
+  private syncBackendTailer(logFileName: string) {
+    const size = this.logFileSize(logFileName);
+    const active = this.backendTailerActive.get(logFileName) === true;
 
-        delete this.executionStatsService.logStats.infoLogContent;
-        this.executionStatsService.logStats.infoLogLines = [];
+    if (size > 0) {
+      if (!active) {
+        this.backendTailerActive.set(logFileName, true);
+        this.apiService.post('/jobs/logs/tailer', {
+          fileName: logFileName,
+          command: 'start',
+        });
       }
-
-    if (logFileName == 'errors.log')
-      if (this.executionStatsService.logStats.errorsTailingActive == 2) {
-        this.executionStatsService.logStats.errorsTailingActive--;
-        return;
-      } else {
-        this.executionStatsService.logStats.errorsTailingActive = 0;
-        delete this.executionStatsService.logStats.errorsLogContent;
-        this.executionStatsService.logStats.errorsLogLines = [];
+    } else {
+      // Emptied or removed: stop the backend tailer and drop buffered lines so
+      // the viewer goes blank.
+      if (active) {
+        this.backendTailerActive.set(logFileName, false);
+        this.apiService.post('/jobs/logs/tailer', {
+          fileName: logFileName,
+          command: 'stop',
+        });
       }
+      this.clearFileBuffer(logFileName);
+    }
+  }
 
-    if (logFileName == 'warnings.log')
-      if (this.executionStatsService.logStats.warningsTailingActive == 2) {
-        this.executionStatsService.logStats.warningsTailingActive--;
-        return;
-      } else {
-        this.executionStatsService.logStats.warningsTailingActive = 0;
-        delete this.executionStatsService.logStats.warningsLogContent;
-        this.executionStatsService.logStats.warningsLogLines = [];
-      }
+  private logFileSize(logFileName: string): number {
+    const stats = this.executionStatsService.logStats;
+    switch (logFileName) {
+      case 'info.log':
+        return stats.infoLogFileSize;
+      case 'errors.log':
+        return stats.errorsLogFileSize;
+      case 'warnings.log':
+        return stats.warningsLogFileSize;
+      case 'bash.service.log':
+        return stats.bashServiceLogFileSize;
+      default:
+        return -1;
+    }
+  }
 
-    if (this.logsSubjects.has(logFileName)) {
-      this.logsSubjects.get(logFileName).complete();
-      this.subscriptionsLogFileContent.get(logFileName).unsubscribe();
-      this.logsSubjects.delete(logFileName);
-      await this.apiService.post('/jobs/logs/tailer', {
-        fileName: logFileName,
-        command: 'stop',
-      });
+  private clearFileBuffer(logFileName: string) {
+    const stats = this.executionStatsService.logStats;
+    if (logFileName == 'info.log') {
+      stats.infoLogLines = [];
+      stats.infoLogContent = '';
+    } else if (logFileName == 'errors.log') {
+      stats.errorsLogLines = [];
+      stats.errorsLogContent = '';
+    } else if (logFileName == 'warnings.log') {
+      stats.warningsLogLines = [];
+      stats.warningsLogContent = '';
     }
   }
 
@@ -245,61 +279,6 @@ export class WebSocketService extends WebSocketEndpoint {
     stats.errorsLogContent = '';
     stats.warningsLogLines = [];
     stats.warningsLogContent = '';
-  }
-
-  async checkIfFileWasCreatedIsEmptyOrRemoved(logFileName: string) {
-    let logFileExists = false;
-    let logFileSize = -1;
-
-    switch (logFileName) {
-      case 'info.log': {
-        logFileExists =
-          this.executionStatsService.logStats.infoLogFileSize >= 0;
-        logFileSize = this.executionStatsService.logStats.infoLogFileSize;
-        break;
-      }
-      case 'errors.log': {
-        logFileExists =
-          this.executionStatsService.logStats.errorsLogFileSize >= 0;
-        logFileSize = this.executionStatsService.logStats.errorsLogFileSize;
-
-        break;
-      }
-      case 'warnings.log': {
-        logFileExists =
-          this.executionStatsService.logStats.warningsLogFileSize >= 0;
-        logFileSize = this.executionStatsService.logStats.warningsLogFileSize;
-
-        break;
-      }
-      case 'bash.service.log': {
-        logFileExists =
-          this.executionStatsService.logStats.bashServiceLogFileSize >= 0;
-        logFileSize =
-          this.executionStatsService.logStats.bashServiceLogFileSize;
-        break;
-      }
-      default: {
-        logFileExists = false;
-        logFileSize = -1;
-
-        break;
-      }
-    }
-
-    //console.log(
-    //  `checkIfFileWasCreatedIsEmptyOrRemoved this.logFileName = ${logFileName}, logFileExists = ${logFileExists}, logFileSize = ${logFileSize}`,
-    //);
-
-    if (logFileExists) {
-      if (logFileSize <= 0) {
-        this.tailerStop(logFileName);
-      } else if (logFileSize > 0) {
-        this.tailerStart(logFileName);
-      }
-    } else {
-      this.tailerStop(logFileName);
-    }
   }
 
   async checkLogsFolder() {}

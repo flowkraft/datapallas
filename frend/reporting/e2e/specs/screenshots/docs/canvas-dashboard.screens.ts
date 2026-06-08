@@ -272,7 +272,7 @@ async function setVisualization(page: Page, vizType: WidgetType): Promise<void> 
  *     `on:change` already fires `selectionChanged` internally, which
  *     VisualQueryBuilder listens for. A second synthetic dispatch races
  *     two concurrent generateCubeSql calls and locks the widget on
- *     `loading=true`. canvas.spec.ts works without it; we do too. */
+ *     `loading=true`. canvas.screens.ts works without it; we do too. */
 async function tickFields(
   page: Page,
   dims: string[],
@@ -321,7 +321,7 @@ async function tickFields(
  *  empty placeholder). Each widget type maps to a specific web component via
  *  WEB_COMPONENT; `.last()` targets the most recently added one. 30s budget
  *  because the AI Hub container can be slow on first query after a cold
- *  start (esp. when this spec runs after canvas.spec.ts + cubes.spec.ts).
+ *  start (esp. when this spec runs after canvas.screens.ts + cubes.screens.ts).
  *
  *  Number widgets need a deeper check than "element is visible". rb-value
  *  initializes with `loading=true` and renders the literal text "..." (its
@@ -359,7 +359,7 @@ const FINAL_LAYOUT = [
  *      ticked measure/dim, or the SQL/Groovy editor).
  *   4. Paint a prominent blue ring on the current widget's container so
  *      the docs reader instantly sees WHICH widget this step just built.
- *      Uses the same `box-shadow` injection trick as cubes.spec.ts.
+ *      Uses the same `box-shadow` injection trick as cubes.screens.ts.
  *
  *  Returns a dispose() callback the caller invokes after the screenshot to
  *  remove the highlight before the next step. */
@@ -437,7 +437,7 @@ async function arrangeAndHighlight(
   }
 
   // 4. Inject a prominent blue ring around the current widget. Using the same
-  //    box-shadow trick as cubes.spec.ts so the highlight is part of the
+  //    box-shadow trick as cubes.screens.ts so the highlight is part of the
   //    element's own paint and survives any ancestor overflow / stacking.
   await page.evaluate((id) => {
     const el = document.getElementById(`widget-${id}`) as HTMLElement | null;
