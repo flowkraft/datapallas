@@ -23,4 +23,12 @@ export class RbElectronService {
     // No API key needed - XSRF-TOKEN cookie is used instead
     return null;
   }
+
+  // No native environment to refresh in web mode.
+  async refreshEnv(): Promise<void> {}
+
+  // The renderer doesn't manage the backend in web mode.
+  async startBackendServer(): Promise<{ started: boolean; reason: string }> {
+    return { started: false, reason: 'not-electron' };
+  }
 }
