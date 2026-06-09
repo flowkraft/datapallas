@@ -1,5 +1,3 @@
-import { ChildProcess } from 'child_process';
-
 import type {
   OpenDialogOptions,
   OpenDialogReturnValue,
@@ -83,10 +81,32 @@ export default class UtilitiesElectron {
 
   static async getEnvVariableValue(envVariableName: string): Promise<string> {
     if (UtilitiesElectron.isIpcRendererAvailable()) {
-      return ipcRenderer.invoke(envVariableName);
+      return ipcRenderer.invoke('process.env', envVariableName);
     } else {
       return '';
     }
+  }
+
+  static async refreshEnv(): Promise<void> {
+    if (UtilitiesElectron.isIpcRendererAvailable()) {
+      await ipcRenderer.invoke('refreshEnv');
+    }
+  }
+
+  // Chocolatey version read from choco.exe's file metadata — never executes choco, so it
+  // cannot rewrite/corrupt chocolatey.config.
+  static async getChocoVersion(): Promise<string> {
+    if (UtilitiesElectron.isIpcRendererAvailable()) {
+      return ipcRenderer.invoke('choco.version');
+    }
+    return '';
+  }
+
+  static async startBackendServer(): Promise<{ started: boolean; reason: string }> {
+    if (UtilitiesElectron.isIpcRendererAvailable()) {
+      return ipcRenderer.invoke('backend.start');
+    }
+    return { started: false, reason: 'not-electron' };
   }
 
   static async childProcessExec(
@@ -101,11 +121,14 @@ export default class UtilitiesElectron {
     return { stdout, stderr };
   }
 
+  // The 'child_process.spawn' IPC handler resolves once the spawned process EXITS,
+  // returning a serializable { code, pid } — NOT a live ChildProcess (streams can't
+  // cross IPC). Callers must await completion, never read .stdout/.stderr.
   static async childProcessSpawn(
     command: string,
     args?: string[],
     options?: {},
-  ): Promise<ChildProcess> {
+  ): Promise<{ code: number; pid?: number }> {
     return ipcRenderer.invoke('child_process.spawn', command, args, options);
   }
 

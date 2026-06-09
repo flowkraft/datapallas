@@ -24,6 +24,8 @@ import { ExecutionStatsService } from '../../providers/execution-stats.service';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-groovy';
 
+import { PAGE_WINDOW_MAX, buildPageWindow } from '../../helpers/pagination';
+
 @Component({
     selector: 'dburst-cube-list',
     template: `
@@ -210,10 +212,24 @@ cube {
   prevCubePage() { if (this.cubePageIndex > 0) this.goToCubePage(this.cubePageIndex - 1); }
   nextCubePage() { if (this.cubePageIndex < this.totalCubePages - 1) this.goToCubePage(this.cubePageIndex + 1); }
 
+  // Exposed for the template: the jump-to-page input only appears once pages are
+  // collapsed behind a "…" (more pages than the windowed bar can show).
+  readonly cubePageWindowMax = PAGE_WINDOW_MAX;
+
+  jumpToCubePage(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const n = parseInt(input.value, 10);
+    const target = isNaN(n) ? this.cubePageIndex + 1 : Math.min(Math.max(n, 1), this.totalCubePages);
+    input.value = String(target);
+    this.goToCubePage(target - 1);
+  }
+
   get totalCubePages(): number {
     return Math.max(1, Math.ceil(this.filteredCubes.length / this.cubePageSize));
   }
-  get cubePageNumbers(): number[] { return Array.from({ length: this.totalCubePages }, (_, i) => i); }
+  get cubePageNumbers(): number[] {
+    return buildPageWindow(this.totalCubePages, this.cubePageIndex);
+  }
   get cubePageStart(): number { return this.cubePageIndex * this.cubePageSize; }
   get cubePageEnd(): number { return Math.min(this.filteredCubes.length, this.cubePageStart + this.cubePageSize); }
 

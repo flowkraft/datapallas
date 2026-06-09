@@ -122,7 +122,7 @@ public class PollScheduler {
 					FileUtils.moveFile(polledFile, fileToProcess);
 
 					// In-process execution via JobExecutionService (replaces ShellService)
-					jobExecutionService.executeAsync(new String[] { "burst", filePathToProcess }, () -> {
+					jobExecutionService.executeAsync(new String[] { "job", "burst", filePathToProcess }, () -> {
 						try {
 							List<FileInfo> progressFile = this.jobsService.fetchStats()
 									.filter(f -> f.fileName.endsWith(Constants.EXTENTION_PROGRESS_FILE)

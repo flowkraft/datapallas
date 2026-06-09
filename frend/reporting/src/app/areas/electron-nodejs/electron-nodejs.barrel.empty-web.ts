@@ -26,7 +26,6 @@ export class WhenUpdatingComponent {}
 
 @Injectable({ providedIn: 'root' })
 export class DesktopAdminService {
-  typeCommandOnTerminalAndThenPressEnter(_command: string): void {}
   createJobFile(_tag: string): Promise<string> { return Promise.resolve(''); }
 }
 

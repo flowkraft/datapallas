@@ -512,10 +512,13 @@ def generate_let_me_update_baseline():
     shutil.move(f'{PORTABLE_EXECUTABLE_DIR_LET_ME_UPDATE_BASELINE}/file-1.txt', f'{PORTABLE_EXECUTABLE_DIR_LET_ME_UPDATE_BASELINE}/DocumentBurster.exe')    
     
 def open_folder(window_title, folder_path):
-    
-    app = Application().connect(title=window_title)
-    dialog = app.window(title=window_title)
-    
+
+    # Match on a stable prefix of the title rather than the full string, so the
+    # match survives changes to the trailing executable name in the dialog title.
+    title_pattern = re.escape(window_title[:50]) + ".*"
+    app = Application().connect(title_re=title_pattern)
+    dialog = app.window(title_re=title_pattern)
+
     # Set the focus to the 'Edit' control again
     dialog.Edit.click_input()
     dialog.Edit.set_text(folder_path.replace("/", "\\"))

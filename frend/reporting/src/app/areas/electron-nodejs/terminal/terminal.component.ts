@@ -9,6 +9,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { terminalTemplate } from './terminal.template';
 import { ConfirmService } from '../../../components/dialog-confirm/confirm.service';
+import { ToastrMessagesService } from '../../../providers/toastr-messages.service';
 import { RbElectronService } from '../electron.service';
 import UtilitiesElectron from '../utilities-electron';
 import { DpTerminalComponent } from '../../../components/dp/terminal/dp-terminal.component';
@@ -32,6 +33,7 @@ export class TerminalComponent implements AfterViewInit {
     protected electronService: RbElectronService,
     protected confirmService: ConfirmService,
     protected changeDetectorRef: ChangeDetectorRef,
+    protected messagesService: ToastrMessagesService,
   ) {}
 
   ngAfterViewInit() {
@@ -56,7 +58,6 @@ export class TerminalComponent implements AfterViewInit {
           } catch (error) {
             response = error;
           }
-          this.electronService.typeCommandOnTerminalAndThenPressEnter('choco --version');
           break;
 
         case 'choco --version':
@@ -64,6 +65,31 @@ export class TerminalComponent implements AfterViewInit {
             const throwError = false;
             const version = await this.electronService.checkChocoVersion(throwError);
             response = 'Chocolatey ' + version;
+          } catch (error) {
+            response = error;
+          }
+          break;
+
+        case 'mvn -version':
+        case 'mvn --version':
+          try {
+            const { stdout } = await UtilitiesElectron.childProcessExec(
+              'mvn --version',
+            );
+            response = stdout;
+          } catch (error) {
+            response = error;
+          }
+          break;
+
+        case 'choco info docker-desktop':
+        case 'choco info vscode':
+        case 'choco info winmerge':
+        case 'choco info notepadplusplus':
+        case 'choco info maven':
+          try {
+            const { stdout } = await UtilitiesElectron.childProcessExec(command);
+            response = stdout;
           } catch (error) {
             response = error;
           }
@@ -81,17 +107,15 @@ export class TerminalComponent implements AfterViewInit {
           try {
             const unInstallCommand = `& ${this.electronService.PORTABLE_EXECUTABLE_DIR}/tools/chocolatey/uninstall.ps1`;
             const testCommand = 'choco --version';
-            const elevatedScript =
-              await this.electronService.getCommandReadyToBeRunAsAdministratorUsingPowerShell(
-                unInstallCommand,
-                testCommand,
-              );
-            elevatedScript.stderr.on('data', (data) => {
-              response = response + '\n' + data;
-            });
-            for await (const data of elevatedScript.stdout) {
-              response = response + '\n' + data;
-            }
+            // The uninstall runs in a separate elevated PowerShell window
+            // (Start-Process -Wait -Verb RunAs); spawn resolves once that window
+            // exits, so awaiting is the completion signal. Its output stays in the
+            // elevated window and is not streamed back here.
+            await this.electronService.getCommandReadyToBeRunAsAdministratorUsingPowerShell(
+              unInstallCommand,
+              testCommand,
+            );
+            response = 'Chocolatey uninstall finished.';
           } catch (error) {
             response = error;
           }
@@ -100,13 +124,19 @@ export class TerminalComponent implements AfterViewInit {
         case 'choco install openjdk --yes':
         case 'choco install temurin --yes':
         case 'choco install temurin17 --yes':
+        case 'choco install maven --yes':
         case 'choco install notepadplusplus --yes':
         case 'choco install winmerge --yes':
+        case 'choco install docker-desktop --yes':
+        case 'choco install vscode --yes':
         case 'choco uninstall openjdk --yes':
         case 'choco uninstall temurin --yes':
         case 'choco uninstall temurin17 --yes':
+        case 'choco uninstall maven --yes':
         case 'choco uninstall notepadplusplus --yes':
         case 'choco uninstall winmerge --yes':
+        case 'choco uninstall docker-desktop --yes':
+        case 'choco uninstall vscode --yes':
           try {
             const testCommand = 'choco --version';
             await this.electronService.getCommandReadyToBeRunAsAdministratorUsingPowerShell(
@@ -116,6 +146,12 @@ export class TerminalComponent implements AfterViewInit {
           } catch (error) {
             response = error;
           }
+          break;
+
+        case 'clear':
+        case 'cls':
+          this.dpTerminal()?.clear();
+          response = '';
           break;
 
         case '':
@@ -138,6 +174,16 @@ export class TerminalComponent implements AfterViewInit {
 
   honourReadOnly() {
     return !this.readOnly;
+  }
+
+  /** Copy a documented command (from the "View Available Commands" panel) to the clipboard. */
+  async copyCommand(command: string) {
+    try {
+      await navigator.clipboard.writeText(command);
+      this.messagesService.showSuccess(command, 'Copied to clipboard');
+    } catch {
+      this.messagesService.showError('Could not copy to clipboard');
+    }
   }
 
   toggleReadOnly() {

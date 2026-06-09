@@ -48,19 +48,33 @@ export const tabCubeDefinitionsTemplate = `
           <span style="color: #777; font-size: 12px;">
             Showing {{ cubePageStart + 1 }}-{{ cubePageEnd }} of {{ filteredCubes.length }}
           </span>
-          <ul class="pagination" style="margin: 0;">
-            <li [ngClass]="{ 'disabled': cubePageIndex === 0 }">
-              <a href="#" (click)="prevCubePage(); $event.preventDefault()">&laquo;</a>
-            </li>
-            @for (p of cubePageNumbers; track $index) {
-            <li [ngClass]="{ 'active': p === cubePageIndex }">
-              <a href="#" (click)="goToCubePage(p); $event.preventDefault()">{{ p + 1 }}</a>
-            </li>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="join" style="margin: 0;">
+              <button type="button" class="join-item btn btn-sm" [disabled]="cubePageIndex === 0"
+                (click)="prevCubePage(); $event.preventDefault()">&laquo;</button>
+              @for (p of cubePageNumbers; track $index) {
+                @if (p === -1) {
+                <button type="button" class="join-item btn btn-sm btn-disabled">&hellip;</button>
+                } @else {
+                <button type="button" class="join-item btn btn-sm"
+                  [ngClass]="{ 'btn-active': p === cubePageIndex }"
+                  (click)="goToCubePage(p); $event.preventDefault()">{{ p + 1 }}</button>
+                }
+              }
+              <button type="button" class="join-item btn btn-sm" [disabled]="cubePageIndex >= totalCubePages - 1"
+                (click)="nextCubePage(); $event.preventDefault()">&raquo;</button>
+            </div>
+            @if (totalCubePages > cubePageWindowMax) {
+            <span style="color: #777; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+              Page
+              <input type="number" min="1" [max]="totalCubePages" [value]="cubePageIndex + 1"
+                class="input input-bordered input-xs" style="width: 4rem;"
+                (focus)="$any($event.target).select()"
+                (change)="jumpToCubePage($event)" (keyup.enter)="jumpToCubePage($event)" />
+              of {{ totalCubePages }}
+            </span>
             }
-            <li [ngClass]="{ 'disabled': cubePageIndex >= totalCubePages - 1 }">
-              <a href="#" (click)="nextCubePage(); $event.preventDefault()">&raquo;</a>
-            </li>
-          </ul>
+          </div>
         </div>
       </nav>
       }

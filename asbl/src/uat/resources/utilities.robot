@@ -13,6 +13,29 @@ Take Named Screenshot If Requested
     Log    TAKE_SCREENSHOTS value: ${take_screenshots}    level=TRACE
     Run Keyword If    ${take_screenshots}    Capture Page Screenshot    ${screenshot_name}.png
 
+Ensure Sidebar Open
+    [Documentation]    The Processing screen starts with the left sidebar collapsed
+    ...    (CSS --sidebar-w:0). Open it only when not already visible, so an already-open
+    ...    sidebar is never toggled shut. Mirrors the e2e fluent-tester doEnsureSidebarOpen().
+    ${is_visible}=    Execute Javascript    return document.documentElement.classList.contains('sidebar-visible')
+    Run Keyword If    not ${is_visible}    Click Element    id=btnToggleSidebar
+
+Capture Samples Screen If Requested
+    [Documentation]    Navigate to the Samples screen and capture the 005_25 quickstart
+    ...    walkthrough screenshot. This step is screenshot-only — the click makes no
+    ...    assertion — so plain runs (TAKE_SCREENSHOTS unset) skip it entirely.
+    ${take_screenshots}=    Get Environment Variable    TAKE_SCREENSHOTS    default=False
+    Run Keyword If    ${take_screenshots}    Capture Samples Screen
+
+Capture Samples Screen
+    [Documentation]    Open the collapsed Processing sidebar, click the Samples menu item
+    ...    and capture the walkthrough screenshot.
+    Ensure Sidebar Open
+    Wait Until Element Is Visible    id=leftMenuSamples    timeout=30
+    Click Element    id=leftMenuSamples
+    Sleep  5s
+    Capture Page Screenshot    005_25_Quickstart_View_Samples.png
+
 Quickstart Payslips.pdf Should Work Fine
     
     Sleep  1s
@@ -71,9 +94,9 @@ Quickstart Payslips.pdf Should Work Fine
     # screen "Done"
     Take Named Screenshot If Requested     005_20_Quickstart_Done_Bursting
     Sleep  1s
-    Click Element    id=leftMenuSamples
-    Sleep  5s
-    Take Named Screenshot If Requested     005_25_Quickstart_View_Samples
+    # Samples navigation is screenshot-only (no assertion); skipped on plain runs.
+    # When capturing, the collapsed Processing sidebar is opened first.
+    Capture Samples Screen If Requested
     Sleep  1s
     Close Electron Application
 

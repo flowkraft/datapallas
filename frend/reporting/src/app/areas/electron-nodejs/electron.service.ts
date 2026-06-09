@@ -11,7 +11,6 @@ import type {
 import type * as CustomElectronTitlebar from 'custom-electron-titlebar/dist';
 
 //import * as process from 'process';
-import type { ChildProcess } from 'child_process';
 
 import * as semver from 'semver';
 import { SemVer } from 'semver';
@@ -262,20 +261,30 @@ export class RbElectronService {
 
   async checkChocoVersion(throwError = false) {
     try {
-      const { stdout, stderr } =
-        await UtilitiesElectron.childProcessExec('choco --version');
+      // Read the version from choco.exe's file metadata instead of running `choco --version`.
+      // Every choco command rewrites chocolatey.config; a version check must never do that
+      // (it can race a concurrent install and corrupt the config). Backs the terminal's
+      // `choco --version`.
+      const version = await UtilitiesElectron.getChocoVersion();
+      if (!version && throwError)
+        throw new Error('Chocolatey was not detected on this system.');
 
-      //if (!this.isChocoOk) this.isChocoOk = true;
-      //this.chocoVersion = stdout;
-      //console.log(`this.chocoVersion  = ${this.chocoVersion}`);
-
-      return stdout;
+      return version;
     } catch (error) {
-      //if (this.isChocoOk) this.isChocoOk = false;
-      //this.chocoVersion = undefined;
-
       if (throwError) throw error;
     }
+  }
+
+  /** Re-read PATH/JAVA_HOME from the registry into the main process so a just-installed
+   *  tool (Chocolatey/Java) is detected without restarting DataPallas. */
+  async refreshEnv(): Promise<void> {
+    return UtilitiesElectron.refreshEnv();
+  }
+
+  /** Start the packaged backend server and wait for it to come up. Returns
+   *  { started:false, reason:'dev' } in dev mode (the build flow owns the server there). */
+  async startBackendServer(): Promise<{ started: boolean; reason: string }> {
+    return UtilitiesElectron.startBackendServer();
   }
 
   /*
@@ -343,19 +352,97 @@ export class RbElectronService {
     }
   }
 
-  async installChocolatey(): Promise<ChildProcess> {
+  // Writes an IDEMPOTENT repair script that makes a freshly (re)installed Chocolatey config
+  // bullet-proof. chocolatey.config can end up corrupt — either with a UTF-8 BOM or with
+  // leftover bytes after a non-truncating overwrite ("Fehler im XML-Dokument (21,14)") — and
+  // then EVERY `choco` command fails to deserialize its config. The script validates the
+  // config and ONLY if it fails to parse, atomically rewrites a known-good MINIMAL config
+  // (UTF-8 WITHOUT BOM, truncating) which choco re-expands to the full config on its next run.
+  // Running it on a valid config is a no-op. Returns the script path.
+  async generateChocolateyConfigRepairScript(): Promise<string> {
+    const repairScriptFilePath = Utilities.slash(
+      this.PORTABLE_EXECUTABLE_DIR + '/temp/repair-chocolatey-config.ps1',
+    );
+
+    const scriptContent = `$ErrorActionPreference = 'SilentlyContinue'
+
+$base = $env:ChocolateyInstall
+if ([string]::IsNullOrWhiteSpace($base)) { $base = 'C:\\ProgramData\\chocolatey' }
+$cfg = Join-Path $base 'config\\chocolatey.config'
+
+if (-not (Test-Path $cfg)) { exit 0 }
+
+function Test-XmlOk($p) {
+  try { [void][xml](Get-Content -Raw -LiteralPath $p -ErrorAction Stop); return $true }
+  catch { return $false }
+}
+
+# A corrupt .backup can be 'restored' by choco over a good config - drop it if it is broken.
+$bak = "$cfg.backup"
+if ((Test-Path $bak) -and -not (Test-XmlOk $bak)) { Remove-Item -Force -LiteralPath $bak }
+
+# Already valid -> leave it untouched (idempotent; preserves any customisation).
+if (Test-XmlOk $cfg) { exit 0 }
+
+$minimal = @'
+<?xml version="1.0" encoding="utf-8"?>
+<chocolatey>
+  <config>
+    <add key="cacheLocation" value="" />
+    <add key="containsLegacyPackageInstalls" value="true" />
+    <add key="commandExecutionTimeoutSeconds" value="2700" />
+    <add key="proxy" value="" />
+    <add key="proxyUser" value="" />
+    <add key="proxyPassword" value="" />
+  </config>
+  <sources>
+    <source id="chocolatey" value="https://community.chocolatey.org/api/v2/" />
+  </sources>
+  <features>
+    <feature name="checksumFiles" enabled="true" />
+    <feature name="autoUninstaller" enabled="false" />
+    <feature name="allowGlobalConfirmation" enabled="false" />
+    <feature name="failOnAutoUninstaller" enabled="false" />
+    <feature name="failOnStandardError" enabled="false" />
+  </features>
+</chocolatey>
+'@
+
+$dir = Split-Path $cfg
+if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+
+# Atomic + truncating + UTF-8 WITHOUT BOM => defeats BOTH failure modes (leftover tail + BOM).
+$enc = New-Object System.Text.UTF8Encoding($false)
+$tmp = "$cfg.tmp"
+[System.IO.File]::WriteAllText($tmp, $minimal, $enc)
+Move-Item -LiteralPath $tmp -Destination $cfg -Force
+exit 0
+`;
+
+    await UtilitiesNodeJs.writeAsync(repairScriptFilePath, scriptContent);
+
+    return repairScriptFilePath;
+  }
+
+  async installChocolatey(): Promise<{ code: number; pid?: number }> {
     //https://chocolatey.org/docs/installation#install-using-powershell-from-cmdexe
 
     //Step 1 generate /temp/installChocolatey.cmd
+    // The repair runs as the LAST step so any corruption caused while the bootstrap was
+    // writing chocolatey.config (e.g. our own `choco -v` detection probing concurrently)
+    // is healed before we report success.
+    const repairScriptFilePath = await this.generateChocolateyConfigRepairScript();
     const scriptContent = `@echo off
 
 SET DIR=%~dp0%
-    
+
 ::download install.ps1
 %systemroot%/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "((new-object net.webclient).DownloadFile('https://chocolatey.org/install.ps1','%DIR%install.ps1'))"
 ::run installer
 %systemroot%/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '%DIR%install.ps1' %*"
 del /f /s install.ps1
+::post-install sanity test + idempotent auto-repair of chocolatey.config
+%systemroot%/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${repairScriptFilePath}"
 `;
 
     const scriptFilePath = Utilities.slash(
@@ -376,7 +463,7 @@ del /f /s install.ps1
 
   async getCommandReadyToBeRunAsAdministratorUsingBatchCmd(
     command: string,
-  ): Promise<ChildProcess> {
+  ): Promise<{ code: number; pid?: number }> {
     const elevatedScriptFilePath =
       await this.generateScriptForRunningCommandAsAdministratorUsingBatchCmd(
         command,
@@ -394,7 +481,7 @@ del /f /s install.ps1
   async getCommandReadyToBeRunAsAdministratorUsingPowerShell(
     command: string,
     testCommand = '',
-  ): Promise<ChildProcess> {
+  ): Promise<{ code: number; pid?: number }> {
     const elevatedScriptFilePath =
       await this.generateScriptForRunningCommandAsAdministratorUsingPowerShell(
         command,
@@ -442,6 +529,14 @@ del /f /s install.ps1
 
     const now = dayjs().format('DD/MM/YYYY HH:mm:ss');
 
+    // For choco commands, heal a possibly-corrupt chocolatey.config BEFORE the precondition
+    // check (so `choco --version` can pass) and AFTER the command runs (the install itself
+    // can corrupt it). This runs inside the already-elevated session — no extra UAC prompt.
+    const isChocoCommand = /choco/i.test(commandToElevate) || /choco/i.test(testCommand);
+    const repairCall = isChocoCommand
+      ? `& "${await this.generateChocolateyConfigRepairScript()}"`
+      : '';
+
     const scriptContent = `
 trap {
   Add-Content ${this.logFilePath} "${now} POWERSHELL ERROR: $($_.Exception.Message)"
@@ -468,11 +563,13 @@ if (!(Test-Path -Path "${this.logFilePath}")) {
   Clear-Content -Path "${this.logFilePath}"
 }
 
+${repairCall}
 ${testCommand}
 
 if($?) {
   Write-Host "Please wait while executing '${commandToElevate}' as Administrator...";
   ${commandToElevate} 2>&1 | timestamp | Out-File -Append -Encoding ascii ${this.logFilePath};
+  ${repairCall}
 } else {
   Add-Content ${this.logFilePath} "${now} ERRROR - Could not execute '${commandToElevate}' because '${testCommand}' failed!"
   Write-Host "${now} ERRROR - Could not execute '${commandToElevate}' because '${testCommand}' failed!"
@@ -610,12 +707,14 @@ Add-Type -AssemblyName System.Windows.Forms
   }
 
   typeCommandOnTerminalAndThenPressEnter(command: string) {
+    if (!this.pTerminalInput) return;
     this.pTerminalInput.value = command;
-    this.pTerminalInput.dispatchEvent(new Event('input'));
+    // `input` updates the dp-terminal's ngModel; the Enter keydown must carry
+    // key:'Enter' (not the legacy keyCode:13) because dp-terminal submits via
+    // Angular's (keydown.enter), which matches on event.key.
+    this.pTerminalInput.dispatchEvent(new Event('input', { bubbles: true }));
     this.pTerminalInput.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        keyCode: 13,
-      } as KeyboardEventInit),
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
     );
     this.pTerminalInput.focus();
   }

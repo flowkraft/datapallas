@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>DataPallas</title>
   <style>
+    /* Portable-extraction splash (rasterised to splash-dark.bmp). Colours match the
+       daisyUI v5 'dark' theme (base-100 #1d232a) and the brand: "D" = foreground white,
+       "P" = terracotta #d18361, temple icon from brand.component. */
     :root{
-      --bg-dark: #111213;
-      --dp-d: #f4f4f4;
-      --dp-p: #2b7fe5;
-      --text-light: #ddd;
+      --bg: #1d232a;       /* daisyUI dark base-100 */
+      --dp-d: #e8ebf2;     /* dark base-content (the "Data" foreground) */
+      --dp-p: #d18361;     /* brand terracotta (the "Pallas" colour) */
     }
 
     html,body{
@@ -19,21 +21,17 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      -webkit-font-smoothing:antialiased;
-      background: var(--bg-dark);
-      color: var(--text-light);
+      background: var(--bg);
       overflow:hidden;
     }
 
     .viewport {
-      width: 560px;
-      height: 320px;
+      width: 180px;
+      height: 150px;
       display:flex;
       align-items:center;
       justify-content:center;
       box-sizing:border-box;
-      margin:0;
       pointer-events:none;
       user-select:none;
     }
@@ -43,40 +41,48 @@
       flex-direction:column;
       align-items:center;
       justify-content:center;
-      gap:8px;
-      text-align:center;
+      gap:6px;
     }
 
-    svg.dp {
-      width: 84px;    /* logical width, small and discreet */
-      height: auto;
+    .temple {
+      width: 56px;
+      height: 56px;
       display:block;
+      filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.5));
     }
 
-    .label {
-      font-size:13px;
-      color: var(--text-light);
-      opacity:0.95;
-      letter-spacing:0.2px;
-      margin-top:2px;
+    /* D italic + P upright monogram, Garamond — same treatment as the wordmark. */
+    .dp {
+      font-family: Georgia,'Times New Roman',serif;
+      font-weight: 700;
+      font-size: 60px;
+      line-height: 1;
+      letter-spacing: 1px;
     }
+    .dp .d { font-style: italic; color: var(--dp-d); }
+    .dp .p { font-style: normal; color: var(--dp-p); }
   </style>
 </head>
 <body>
-  <div class="viewport" role="status" aria-live="polite">
-    <div class="mini" aria-hidden="false">
-      <!-- Variation 5: Larger P -->
-      <svg class="dp" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DP">
-        <g text-anchor="middle" dominant-baseline="middle">
-          <text x="50%" y="50%" font-family="Montserrat, Poppins, 'Segoe UI', sans-serif" font-weight="700">
-  <tspan font-size="72" fill="var(--dp-d)">D</tspan>
-  <tspan dx="-6" font-size="80" fill="var(--dp-p)">P</tspan>
-</text>
-
-        </g>
+  <div class="viewport" role="status">
+    <div class="mini">
+      <!-- Temple of Pallas Athena — identical artwork to brand.component. -->
+      <svg class="temple" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DataPallas">
+        <rect x="32" y="56" width="192" height="14" fill="#f0e2c0"/>
+        <rect x="32" y="70" width="192" height="22" fill="#c9603a"/>
+        <rect x="32" y="92" width="192" height="8" fill="#e8d4a8"/>
+        <rect x="32" y="100" width="192" height="6" fill="#d4a843"/>
+        <rect x="44"  y="106" width="36" height="98" fill="#f8f2e8"/>
+        <rect x="110" y="106" width="36" height="98" fill="#f8f2e8"/>
+        <rect x="176" y="106" width="36" height="98" fill="#f8f2e8"/>
+        <rect x="77"  y="106" width="5" height="98" fill="#b89858"/>
+        <rect x="143" y="106" width="5" height="98" fill="#b89858"/>
+        <rect x="209" y="106" width="3" height="98" fill="#b89858"/>
+        <rect x="32" y="204" width="192" height="6" fill="#d4a843"/>
+        <rect x="20"  y="210" width="216" height="10" fill="#e8d4a8"/>
+        <rect x="0"   y="220" width="256" height="14" fill="#c8a860"/>
       </svg>
-
-      <div class="label" id="msg">Starting…</div>
+      <div class="dp" aria-label="DP"><span class="d">D</span><span class="p">P</span></div>
     </div>
   </div>
 </body>

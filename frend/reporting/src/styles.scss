@@ -124,6 +124,24 @@ label {
 .cet-window-icon img {
   display: none;
 }
+/* Hand/grab cursor over the title bar to signal the window can be dragged. Cover both
+   the visible bar (.cet-titlebar) and the drag layer (.cet-drag-region) so whichever
+   element wins the cursor hit-test shows the grab. Window controls and the menubar
+   keep a normal pointer. */
+.cet-titlebar,
+.cet-drag-region {
+  cursor: grab !important;
+}
+.cet-titlebar:active,
+.cet-drag-region:active {
+  cursor: grabbing !important;
+}
+.cet-controls,
+.cet-controls *,
+.cet-menubar,
+.cet-menubar * {
+  cursor: default !important;
+}
 
 /* Content area is pinned to the exact space between the header and the status
    bar (same chrome math the .relative wrapper uses) and scrolls internally when

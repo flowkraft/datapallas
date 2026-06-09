@@ -20,7 +20,7 @@ Command Line Payslips.pdf Should Work Fine
   Sleep  1s
   Refresh Env Variables
 
-  ${command}=    Set Variable    cmd /c "refreshenv && ${PORTABLE_EXECUTABLE_DIR}/datapallas.bat burst ${PORTABLE_EXECUTABLE_DIR}/samples/burst/Payslips.pdf"
+  ${command}=    Set Variable    cmd /c "refreshenv && ${PORTABLE_EXECUTABLE_DIR}/datapallas.bat job burst ${PORTABLE_EXECUTABLE_DIR}/samples/burst/Payslips.pdf"
   ${rc}    ${output}=    Run And Return Rc And Output    ${command}
   Log    ${output}
   Should Be Equal As Integers    ${rc}    0

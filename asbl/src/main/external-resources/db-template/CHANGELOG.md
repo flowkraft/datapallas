@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.3.0 - 2026-06-09
+
+### Fixed
+
+- **The "Install Java" and "Install Chocolatey" buttons now work reliably** — Clicking these buttons now correctly starts the installation. Previously they could appear to do nothing when pressed.
+
+- **Clear "please wait" feedback while installing** — When you start installing Java or Chocolatey, the button is now disabled and a spinning "Please wait while … is being installed" indicator appears, so you can tell the installation is in progress instead of wondering whether anything is happening.
+
+- **No need to restart after installing Java or Chocolatey** — Once an installation finishes, DataPallas recognises the newly installed Java or Chocolatey on its own. After Java is installed it also starts up the parts that need Java and refreshes the screen automatically, so the application is ready to use without having to close and reopen it.
+
+- **"Uninstall Chocolatey" no longer stops with an error** — Removing Chocolatey from within DataPallas previously could fail partway through. It now completes cleanly.
+
+- **Terminal results no longer get overwritten** — When you run a command such as checking the Java version in the built-in terminal, its result now stays on screen instead of being briefly shown and then replaced.
+
 ## 16.2.0 - 2026-06-08
 
 ### Fixed

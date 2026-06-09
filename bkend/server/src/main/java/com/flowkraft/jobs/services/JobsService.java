@@ -76,7 +76,7 @@ public class JobsService implements JobsApi {
 		this.state.numberOfActiveJobs = 1;
 
 		// In-process execution via JobExecutionService (replaces ShellService.runDocumentBursterBatScriptFile)
-		jobExecutionService.executeAsync(new String[] { "resume", jobFilePath }, () -> {
+		jobExecutionService.executeAsync(new String[] { "job", "resume", jobFilePath }, () -> {
 			try {
 				FileUtils.forceDelete(new File(serverTransactionInfo.info));
 			} catch (java.io.IOException e) {

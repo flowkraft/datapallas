@@ -169,7 +169,114 @@ _startJavaNoAndUI = async (chocoStatus) => {
   }
 };
 
+_refreshEnv = () => {
+  // Re-read PATH and JAVA_HOME from the registry so THIS gulp process (and the Electron
+  // child it spawns) picks up tools installed AFTER the terminal session started — e.g.
+  // a freshly-installed Chocolatey or Java. Without this, a launched-from-an-old-terminal
+  // Electron inherits that terminal's frozen PATH and its `choco --version` / `java
+  // -version` detection fails until you open a brand-new terminal. Mirrors what
+  // production tools/rbsj/startServer.bat does with `refreshenv`.
+  const { execSync } = require("child_process");
+  const reg = (name, scope) => {
+    try {
+      return execSync(
+        `powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('${name}','${scope}')"`,
+        { encoding: "utf8" },
+      ).trim();
+    } catch {
+      return "";
+    }
+  };
+  const machinePath = reg("Path", "Machine");
+  const userPath = reg("Path", "User");
+  if (machinePath || userPath) {
+    process.env.PATH = [machinePath, userPath].filter(Boolean).join(";");
+  }
+  const javaHome = reg("JAVA_HOME", "Machine") || reg("JAVA_HOME", "User");
+  // Only set JAVA_HOME when the registry actually has one. Don't delete it otherwise —
+  // Java may be on PATH without a persisted JAVA_HOME, which is all Maven needs.
+  if (javaHome) process.env.JAVA_HOME = javaHome;
+};
+
+_isJavaAvailable = () => {
+  // The server chain runs Maven (mvn clean install / spring-boot:run). Maven works with
+  // EITHER a valid JAVA_HOME OR `java` on PATH — mvn.cmd falls back to PATH when JAVA_HOME
+  // is unset. So detect Java by actually running it; requiring JAVA_HOME here would
+  // false-negative a perfectly working PATH-only Java install and skip the server.
+  try {
+    require("child_process").execSync("java -version", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+_isMavenAvailable = () => {
+  // The server chain also runs `mvn` directly. `where mvn` checks PATH presence
+  // WITHOUT invoking mvn (which itself needs JAVA_HOME), so we can report "Maven
+  // missing" independently of the Java check.
+  try {
+    require("child_process").execSync("where mvn", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+_writePrerequisiteLogs = () => {
+  // Mirror production tools/rbsj/startRbsjServer.bat "exe mode": write the REAL
+  // `java -version` and `choco`/`docker` output to the same log files the Electron UI
+  // reads for local (server-less) Java/Chocolatey detection:
+  //   logs/rbsj-exe.log  <- `java -version`   (becomes "'java' is not recognized")
+  //   logs/electron.log  <- `choco --version` then `docker --version`
+  // With Java (and maybe Chocolatey) uninstalled these capture the real "not
+  // recognized" output, which is exactly what the UI keys off to show the
+  // "Install Chocolatey" / "Install Java" prerequisite screens.
+  const { execSync } = require("child_process");
+  const capture = (cmd) => {
+    try {
+      return execSync(`${cmd} 2>&1`, { encoding: "utf8" });
+    } catch (e) {
+      return (e.stdout || "") + (e.stderr || "") || `${e.message}\n`;
+    }
+  };
+  const logsDir = "testground/e2e/logs";
+  jetpack.write(`${logsDir}/rbsj-exe.log`, capture("java -version"));
+  jetpack.write(
+    `${logsDir}/electron.log`,
+    capture("choco --version") + capture("docker --version"),
+  );
+};
+
 _startServerAndDoX = (npm_x_script) => {
+  // The server chain (`_custom:start-server`) runs Maven (mvn clean install /
+  // spring-boot:run), which needs BOTH `java` and `mvn` on PATH. If EITHER is missing it
+  // fails hard and would kill the whole gulp chain. In production
+  // DataPallas.exe still launches and shows the Install screen, so the dev flow must
+  // mirror that: skip the server, write the same prerequisite logs the .bat scripts
+  // write, then still bring up the UI. When both are present, everything below runs
+  // unchanged.
+  //
+  // First refresh PATH/JAVA_HOME from the registry so a Choco/Java installed via the UI
+  // earlier this session is seen on this very run — no need to open a fresh terminal.
+  _refreshEnv();
+  const javaOk = _isJavaAvailable();
+  const mavenOk = _isMavenAvailable();
+  if (!javaOk || !mavenOk) {
+    const missing = [!javaOk && "Java (java)", !mavenOk && "Maven (mvn)"]
+      .filter(Boolean)
+      .join(" + ");
+    console.log(
+      `\n[start-server] ${missing} not detected. Spring Boot server will NOT be ` +
+        "started. Writing prerequisite logs (java/choco/docker) and launching the UI " +
+        `directly so the 'Install' screen can be tested.\n` +
+        `[start-server] Starting 'npm run "${npm_x_script}"'...\n`,
+    );
+    _writePrerequisiteLogs();
+    spawn("npm", ["run", npm_x_script], { stdio: "inherit", shell: true });
+    return;
+  }
+
   const server = spawn("npm", ["run", "_custom:start-server"], {
     stdio: "pipe",
     shell: true,

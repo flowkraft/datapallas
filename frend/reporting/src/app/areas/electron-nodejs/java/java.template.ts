@@ -27,6 +27,14 @@ export const javaTemplate = `<!-- <ng-template #javaTemplate> -->
             <em>DataPallas</em></strong
           ></span
         >
+        <!-- Java is detected but the backend server (which needs Java) is still coming up.
+             Keep the user waiting with visible feedback until it is truly ready. -->
+        @if (installing) {
+          <div class="mt-2 flex items-center gap-2 text-sm opacity-80" id="startingServerNotice">
+            <span class="loading loading-spinner loading-sm"></span>
+            <span>Starting the <em>DataPallas</em> backend&hellip; please wait, this can take up to a minute. The screen will switch over automatically once it is ready.</span>
+          </div>
+        }
       </div>
     }
 
@@ -95,13 +103,23 @@ export const javaTemplate = `<!-- <ng-template #javaTemplate> -->
             id="btnInstallJava"
             type="button"
             class="btn btn-outline btn-primary"
-            [disabled]="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk"
+            [disabled]="!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk || installing"
             (click)="installJava()"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg
-            >&nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INSTALL' |
+            @if (installing) {
+              <span class="loading loading-spinner loading-sm"></span>
+            } @else {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
+            }
+            &nbsp;{{'AREAS.INSTALL-SETUP-UPGRADE.COMPONENTS.JAVA.INSTALL' |
             translate }} <em>Java</em>
           </button>
+          @if (installing) {
+            <div class="mt-2 flex items-center gap-2 text-sm opacity-80">
+              <span class="loading loading-spinner loading-sm"></span>
+              <span>Please wait while <em>Java</em> is being installed&hellip; This can take a few minutes (the JDK download is large). A confirmation will appear when it finishes.</span>
+            </div>
+          }
           @if (!this.stateStore.configSys.sysInfo.setup.chocolatey.isChocoOk) {
             <span
               >&nbsp;&nbsp;<strong

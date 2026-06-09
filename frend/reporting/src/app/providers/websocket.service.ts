@@ -25,7 +25,27 @@ export class WebSocketService extends WebSocketEndpoint {
     this.subscriptionsLogFileContent = new Map<string, Subscription>();
   }
 
+  // Guards against opening two parallel STOMP connections / duplicate topic subscriptions.
+  // The connection can be initiated from StatusBarComponent.ngOnInit (normal start, where
+  // Java is OK at boot) OR from InitService after a Java install (where the status bar
+  // early-returned and never connected). Only one should ever take effect. Transient drops
+  // are handled separately by the base class's scheduleReconnection(), which does not go
+  // through this method, so this flag does not block legitimate reconnects.
+  private wsConnectionInitiated = false;
+
   async makeWSConnectionAndHandleMessages() {
+    if (this.wsConnectionInitiated) return;
+    this.wsConnectionInitiated = true;
+
+    // Fires exactly once per session, at the single point the live connection is
+    // established — and by here the backend is always confirmed up: on a normal start the
+    // window is only created after "Started ServerApplication", and in the Install Java
+    // flow this runs only after waitForServerPort() succeeded. So it's the one coherent
+    // "app is ready" moment for BOTH paths.
+    // showSuccess renders via innerHTML, so HTML entities/emojis work. &#128170; = 💪.
+    this.toastMessagesService.showSuccess(
+      '&#128170; Great, everything is ready — enjoy using DataPallas! &#128293;',
+    );
     //console.log(
     //  `this.BACKEND_URL = ${this.BACKEND_URL}, this.apiService.BACKEND_URL = ${this.apiService.BACKEND_URL}`,
     //);

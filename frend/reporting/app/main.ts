@@ -109,7 +109,9 @@ function chooseTheme(): 'light' | 'dark' {
 // create a minimal splash BrowserWindow and show it immediately
 // ...existing code...
 function createSplashWindow(theme: 'light' | 'dark'): BrowserWindow {
-  const bg = theme === 'light' ? '#ffffff' : '#1f1f1f';
+  // Match splash.html's themed backgrounds (daisyUI v5 light base-100 / dark base-100) so
+  // there is no colour flash before the page paints.
+  const bg = theme === 'light' ? '#ffffff' : '#1d232a';
   const splash = new BrowserWindow({
     width: 560,
     height: 320,
@@ -392,23 +394,7 @@ try {
 
       // Packaged mode only — dev mode already returned above.
       // Start/monitor server, forwarding log lines to splash with sendSplashProgress().
-      serverProcess = _spawnSync('startRbsjServer.bat', [], {
-        cwd: `${process.env.PORTABLE_EXECUTABLE_DIR}/tools/rbsj`,
-        env: { ...process.env, ELECTRON_PID: process.pid.toString() },
-        // shell:true is required on Windows to spawn .bat/.cmd files; the Node
-        // bundled with Electron 37 (CVE-2024-27980 fix) throws EINVAL otherwise.
-        // windowsHide keeps the cmd.exe console hidden so no DOS window flashes.
-        shell: true,
-        windowsHide: true,
-      });
-      serverProcess.stdout.on('data', (data) => {
-        sendSplashProgress({ text: String(data).trim(), progress: 20 });
-        handleServerOutput(data, false);
-      });
-      serverProcess.stderr.on('data', (data) => {
-        sendSplashProgress({ text: String(data).trim(), progress: 15 });
-        handleServerOutput(data, true);
-      });
+      startBackendServer();
 
       // Rely primarily on the server's stdout to decide when to create the main window.
       // The handleServerOutput() callback will call createWindow() when it detects
@@ -557,6 +543,29 @@ function handleServerOutput(data: Buffer | string, isError = false) {
   }
 }
 
+// Spawn the packaged backend (startRbsjServer.bat) and wire its output to the splash /
+// log / handleServerOutput pipeline. Used both at startup AND after a Java install (so the
+// server can come up without a manual restart).
+function startBackendServer(): void {
+  serverProcess = _spawnSync('startRbsjServer.bat', [], {
+    cwd: `${process.env.PORTABLE_EXECUTABLE_DIR}/tools/rbsj`,
+    env: { ...process.env, ELECTRON_PID: process.pid.toString() },
+    // shell:true is required on Windows to spawn .bat/.cmd files; the Node
+    // bundled with Electron 37 (CVE-2024-27980 fix) throws EINVAL otherwise.
+    // windowsHide keeps the cmd.exe console hidden so no DOS window flashes.
+    shell: true,
+    windowsHide: true,
+  });
+  serverProcess.stdout.on('data', (data) => {
+    sendSplashProgress({ text: String(data).trim(), progress: 20 });
+    handleServerOutput(data, false);
+  });
+  serverProcess.stderr.on('data', (data) => {
+    sendSplashProgress({ text: String(data).trim(), progress: 15 });
+    handleServerOutput(data, true);
+  });
+}
+
 ipcMain.handle('dialog.show-save', async (event, options) => {
   const result = await dialog.showSaveDialog(options);
   return result;
@@ -575,10 +584,72 @@ ipcMain.handle('child_process.exec', async (event, command) => {
 ipcMain.handle(
   'child_process.spawn',
   async (event, command, args?, options?) => {
-    const spawnPromise = promisify(_spawnSync);
-    return spawnPromise(command, args, options);
+    // Spawn and resolve when the process EXITS, returning a serializable result. A live
+    // ChildProcess can't cross IPC, and `promisify(spawn)` never resolves (spawn has no
+    // error-first callback) — which produced the "reply was never sent" error. Resolving
+    // on exit also lets callers await an elevated install/uninstall to completion.
+    return await new Promise((resolve, reject) => {
+      const child = _spawnSync(command, args ?? [], options ?? {});
+      child.on('error', reject);
+      child.on('exit', (code) => resolve({ code: code ?? 0, pid: child.pid }));
+    });
   },
 );
+
+// Re-read PATH / JAVA_HOME from the registry into THIS (main) process's env so detection
+// commands run right after an install (e.g. `choco --version` via getSystemInfo) see a
+// freshly-installed tool without forcing a DataPallas restart.
+function refreshMainEnv(): void {
+  const { execSync } = require('child_process');
+  const reg = (name: string, scope: string) => {
+    try {
+      return execSync(
+        `powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('${name}','${scope}')"`,
+        { encoding: 'utf8' },
+      ).trim();
+    } catch {
+      return '';
+    }
+  };
+  try {
+    const machinePath = reg('Path', 'Machine');
+    const userPath = reg('Path', 'User');
+    if (machinePath || userPath) {
+      process.env.PATH = [machinePath, userPath].filter(Boolean).join(';');
+    }
+    const javaHome = reg('JAVA_HOME', 'Machine') || reg('JAVA_HOME', 'User');
+    if (javaHome) process.env.JAVA_HOME = javaHome;
+  } catch {
+    // best-effort
+  }
+}
+
+ipcMain.handle('refreshEnv', async () => {
+  refreshMainEnv();
+  return true;
+});
+
+// Start the packaged backend server, wait for it to come up, and report the result — so
+// the renderer can do a full reload after installing Java instead of forcing a manual
+// restart. In dev the backend is owned by the build (gulp/mvn) flow, so this is a no-op
+// and the renderer falls back to its "restart required" prompt.
+ipcMain.handle('backend.start', async () => {
+  if (!app.isPackaged) return { started: false, reason: 'dev' };
+  // Idempotent: if the backend is already listening (normal start, or a prior install
+  // flow), do NOT spawn a second server on the same port — just confirm readiness. This
+  // covers the case where the user opens the Install Java screen from the Help menu while
+  // Java/the server are already fine.
+  const alreadyUp = await waitForServerPort(9090, 1500);
+  if (alreadyUp) {
+    setBackendReady(true, 'already-running');
+    return { started: true, reason: 'already-running' };
+  }
+  refreshMainEnv();
+  startBackendServer();
+  const ok = await waitForServerPort(9090, 120000);
+  if (ok) setBackendReady(true, 'after-install');
+  return { started: ok, reason: ok ? 'ok' : 'timeout' };
+});
 
 ipcMain.handle('process.env', async (event, envVariableName) => {
   return process.env[envVariableName];
@@ -606,6 +677,12 @@ ipcMain.handle('log', async (event, level, message) => {
 
 ipcMain.handle('getSystemInfo', async (event) => {
   return _getSystemInfo();
+});
+
+// Chocolatey version read from choco.exe's file metadata — never executes choco, so it can
+// never rewrite (and corrupt) chocolatey.config. Backs the terminal's `choco --version`.
+ipcMain.handle('choco.version', async () => {
+  return getChocoVersionNonInvasive();
 });
 
 ipcMain.handle('app.relaunch', async (event) => {
@@ -868,13 +945,14 @@ async function _getSystemInfo(): Promise<{
   const logLines = electronLogFileContent.split(/\r?\n/).map((l) => l.trim());
   const firstNonEmptyLine = logLines.find((l) => l.length > 0) || '';
 
-  // Extract Chocolatey version (probe first, fallback to log search)
+  // Extract Chocolatey version WITHOUT executing choco.exe. `choco -v`, like every choco
+  // command, migrates/rewrites chocolatey.config — and getSystemInfo runs on a ~3s poll
+  // WHILE the bootstrap installer is still writing that same file. Those concurrent writers
+  // are what corrupted the config ("Fehler im XML-Dokument (21,14)"). We read choco.exe's PE
+  // file version instead (touches no config), falling back to the install log.
   let chocoVersion = '';
   if (chocoIsInstalled) {
-    const v = await getVersionFromCommand(
-      'choco',
-      process.platform === 'win32' ? '-v' : '--version',
-    );
+    const v = await getChocoVersionNonInvasive();
     if (v) {
       chocoVersion = v;
     } else {
@@ -1023,6 +1101,25 @@ async function getVersionFromCommand(cmd: string, args = '--version'): Promise<s
   }
 }
 
+// Read Chocolatey's version WITHOUT executing choco.exe. Running `choco -v` (like every
+// choco command) migrates/rewrites chocolatey.config; doing that from getSystemInfo — which
+// polls every few seconds while the bootstrap installer is still writing that same file —
+// is what corrupted the config. Reading choco.exe's PE file version touches no config.
+async function getChocoVersionNonInvasive(): Promise<string> {
+  try {
+    const base = process.env.ChocolateyInstall || 'C:\\ProgramData\\chocolatey';
+    const exe = path.join(base, 'choco.exe');
+    if (!fs.existsSync(exe)) return '';
+    const { stdout } = await execAsync(
+      `powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Item '${exe}').VersionInfo.ProductVersion"`,
+    );
+    const m = (stdout || '').match(/(\d+(?:\.\d+){0,})/);
+    return m ? m[1] : '';
+  } catch {
+    return '';
+  }
+}
+
 async function readLogFileSmart(filePath: string): Promise<string> {
   const encodings: BufferEncoding[] = ['utf8', 'utf16le', 'latin1'];
   for (const encoding of encodings) {
@@ -1106,7 +1203,7 @@ async function generateSplashIfMissing(): Promise<void> {
       const splashHtml = path.join(__dirname, 'splash-bmp.html'); // static small-mark page
       const pxW = Math.round(logicalW * embedScale);
       const pxH = Math.round(logicalH * embedScale);
-      const bg = '#1f1f1f';
+      const bg = '#1d232a'; // daisyUI dark base-100, matches splash-bmp.html
 
       const w = new BrowserWindow({
         width: logicalW,

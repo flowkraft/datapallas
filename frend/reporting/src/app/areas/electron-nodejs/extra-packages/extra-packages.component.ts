@@ -4,13 +4,11 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { extraPackagesTemplate } from './extra-packages.template';
 
-import { DesktopAdminService } from '../desktop-admin.service';
-import { ConfirmService } from '../../../components/dialog-confirm/confirm.service';
 import { ExecutionStatsService } from '../../../providers/execution-stats.service';
-import Utilities from '../../../helpers/utilities';
 import { TranslateService } from '@ngx-translate/core';
 import UtilitiesElectron from '../utilities-electron';
 import { StateStoreService } from '../../../providers/state-store.service';
+import { ToastrMessagesService } from '../../../providers/toastr-messages.service';
 //import { ElectronService } from '../electron.service';
 
 interface ExtPackage {
@@ -34,7 +32,7 @@ interface ExtPackage {
     imports: [CommonModule, TranslateModule],
 })
 export class ExtraPackagesComponent implements OnInit {
-  protected extraPackages = [
+  protected extraPackages: ExtPackage[] = [
     {
       id: 'docker-desktop',
       name: 'Docker Desktop',
@@ -45,8 +43,8 @@ export class ExtraPackagesComponent implements OnInit {
       packageManager: 'choco',
       dependsOn: '',
       cmdInstall: 'choco install docker-desktop --yes',
-      cmdUnInstall: 'choco uninstall docker-desktop',
-      cmdGetInfo: 'choco info docker-desktop -lo',
+      cmdUnInstall: 'choco uninstall docker-desktop --yes',
+      cmdGetInfo: 'choco info docker-desktop',
     },
     {
       id: 'vscode',
@@ -58,8 +56,8 @@ export class ExtraPackagesComponent implements OnInit {
       packageManager: 'choco',
       dependsOn: '',
       cmdInstall: 'choco install vscode --yes',
-      cmdUnInstall: 'choco uninstall vscode',
-      cmdGetInfo: 'choco info vscode -lo',
+      cmdUnInstall: 'choco uninstall vscode --yes',
+      cmdGetInfo: 'choco info vscode',
     },
     {
       id: 'winmerge',
@@ -71,8 +69,8 @@ export class ExtraPackagesComponent implements OnInit {
       packageManager: 'choco',
       dependsOn: '',
       cmdInstall: 'choco install winmerge --yes',
-      cmdUnInstall: 'choco uninstall winmerge',
-      cmdGetInfo: 'choco info winmerge -lo',
+      cmdUnInstall: 'choco uninstall winmerge --yes',
+      cmdGetInfo: 'choco info winmerge',
     }
     ,
     {
@@ -85,19 +83,41 @@ export class ExtraPackagesComponent implements OnInit {
       packageManager: 'choco',
       dependsOn: '',
       cmdInstall: 'choco install notepadplusplus --yes',
-      cmdUnInstall: 'choco uninstall notepadplusplus',
-      cmdGetInfo: 'choco info notepadplusplus -lo',
+      cmdUnInstall: 'choco uninstall notepadplusplus --yes',
+      cmdGetInfo: 'choco info notepadplusplus',
+    }
+    ,
+    {
+      id: 'maven',
+      name: 'Apache Maven',
+      icon: 'maven.svg',
+      website: 'https://maven.apache.org',
+      description: ` is a build automation and dependency management tool for Java projects.`,
+      status: 'not-installed',
+      packageManager: 'choco',
+      dependsOn: '',
+      cmdInstall: 'choco install maven --yes',
+      cmdUnInstall: 'choco uninstall maven --yes',
+      cmdGetInfo: 'choco info maven',
     }
   ];
 
   constructor(
     protected translateService: TranslateService,
-    protected desktopAdminService: DesktopAdminService,
-    //protected electronService: ElectronService,
     protected stateStore: StateStoreService,
     protected executionStatsService: ExecutionStatsService,
-    protected confirmService: ConfirmService,
+    protected messagesService: ToastrMessagesService,
   ) { }
+
+  /** Copy a command to the clipboard and confirm with a toast (same UX as the terminal panel). */
+  async copyCommand(command: string) {
+    try {
+      await navigator.clipboard.writeText(command);
+      this.messagesService.showSuccess(command, 'Copied to clipboard');
+    } catch {
+      this.messagesService.showError('Could not copy to clipboard');
+    }
+  }
 
   async ngOnInit() {
     await this.fetchExtraPackagesDetails();
@@ -144,19 +164,6 @@ export class ExtraPackagesComponent implements OnInit {
       } else {
         return 0;
       }
-    });
-  }
-
-  doInstallUninstallAction(pckage: ExtPackage, action: string) {
-    const dialogQuestion = `${Utilities.titleCase(action)} ${pckage.name}?`;
-
-    this.confirmService.askConfirmation({
-      message: dialogQuestion,
-      confirmAction: () => {
-        this.desktopAdminService.typeCommandOnTerminalAndThenPressEnter(
-          `choco ${action} ${pckage.id} --yes`,
-        );
-      },
     });
   }
 }

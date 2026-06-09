@@ -16,6 +16,7 @@ import { ConfirmService } from '../dialog-confirm/confirm.service';
 import Utilities from '../../helpers/utilities';
 
 import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-crud/templates/reports/modal-conf-template';
+import { PAGE_WINDOW_MAX, buildPageWindow } from '../../helpers/pagination';
 
 @Component({
     selector: 'dburst-reports-list',
@@ -153,21 +154,33 @@ import { modalConfigurationTemplateTemplate } from '../../areas/_configuration-c
               <span style="color: #777; font-size: 12px;">
                 Showing {{ pageStart + 1 }}-{{ pageEnd }} of {{ filteredConfigurationFiles.length }}
               </span>
-              <ul class="pagination" style="margin: 0;">
-                <li [ngClass]="{ 'disabled': pageIndex === 0 }">
-                  <a href="#" (click)="prevPage(); $event.preventDefault()">&laquo;</a>
-                </li>
-                @for (p of pageNumbers; track $index) {
-                <li
-                  [ngClass]="{ 'active': p === pageIndex }"
-                >
-                  <a href="#" (click)="goToPage(p); $event.preventDefault()">{{ p + 1 }}</a>
-                </li>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="join" style="margin: 0;">
+                  <button type="button" class="join-item btn btn-sm" [disabled]="pageIndex === 0"
+                    (click)="prevPage(); $event.preventDefault()">&laquo;</button>
+                  @for (p of pageNumbers; track $index) {
+                    @if (p === -1) {
+                    <button type="button" class="join-item btn btn-sm btn-disabled">&hellip;</button>
+                    } @else {
+                    <button type="button" class="join-item btn btn-sm"
+                      [ngClass]="{ 'btn-active': p === pageIndex }"
+                      (click)="goToPage(p); $event.preventDefault()">{{ p + 1 }}</button>
+                    }
+                  }
+                  <button type="button" class="join-item btn btn-sm" [disabled]="pageIndex >= totalPages - 1"
+                    (click)="nextPage(); $event.preventDefault()">&raquo;</button>
+                </div>
+                @if (totalPages > pageWindowMax) {
+                <span style="color: #777; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                  Page
+                  <input type="number" min="1" [max]="totalPages" [value]="pageIndex + 1"
+                    class="input input-bordered input-xs" style="width: 4rem;"
+                    (focus)="$any($event.target).select()"
+                    (change)="jumpToPage($event)" (keyup.enter)="jumpToPage($event)" />
+                  of {{ totalPages }}
+                </span>
                 }
-                <li [ngClass]="{ 'disabled': pageIndex >= totalPages - 1 }">
-                  <a href="#" (click)="nextPage(); $event.preventDefault()">&raquo;</a>
-                </li>
-              </ul>
+              </div>
             </div>
           </nav>
           }
@@ -392,6 +405,18 @@ export class ReportsListComponent implements OnInit {
     if (this.pageIndex < this.totalPages - 1) this.goToPage(this.pageIndex + 1);
   }
 
+  // Exposed for the template: the jump-to-page input only earns its place once pages
+  // are collapsed behind a "…" (i.e. more pages than the windowed bar can show).
+  readonly pageWindowMax = PAGE_WINDOW_MAX;
+
+  jumpToPage(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const n = parseInt(input.value, 10);
+    const target = isNaN(n) ? this.pageIndex + 1 : Math.min(Math.max(n, 1), this.totalPages);
+    input.value = String(target);
+    this.goToPage(target - 1);
+  }
+
   get totalPages(): number {
     return Math.max(
       1,
@@ -400,7 +425,7 @@ export class ReportsListComponent implements OnInit {
   }
 
   get pageNumbers(): number[] {
-    return Array.from({ length: this.totalPages }, (_, i) => i);
+    return buildPageWindow(this.totalPages, this.pageIndex);
   }
 
   get pageStart(): number {

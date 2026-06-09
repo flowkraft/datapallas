@@ -743,14 +743,14 @@
           "I-KNOW": "I know what I am doing",
           "VIEW-AVAILABLE-COMMANDS": "View Available Commands",
           "INNER-HTML": {
-            "FIND-JAVA-VERSION": "Find <em>Java</em> Version",
-            "FIND-CHOCOLATEY-VERSION": "Find <em>Chocolatey</em> Version",
-            "INSTALL-CHOCOLATEY": "Install <em>Chocolatey</em>",
-            "UNINSTALL-CHOCOLATEY": "Uninstall <em>Chocolatey</em>",
-            "INSTALL-JAVA": "Install Latest <em>Java</em> (requires <em>Chocolatey</em>)",
-            "UNINSTALL-JAVA": "Uninstall <em>Java</em> (requires <em>Chocolatey</em>)",
-            "INSTALL-JAVA17": "Install <em>Java 17</em> (requires <em>Chocolatey</em>)",
-            "UNINSTALL-JAVA17": "Uninstall <em>Java 17</em> (requires <em>Chocolatey</em>)"
+            "FIND-JAVA-VERSION": "Check Java Version",
+            "FIND-CHOCOLATEY-VERSION": "Check Chocolatey Version",
+            "INSTALL-CHOCOLATEY": "Install Chocolatey>",
+            "UNINSTALL-CHOCOLATEY": "Uninstall Chocolatey",
+            "INSTALL-JAVA": "Install Latest Java (requires Chocolatey)",
+            "UNINSTALL-JAVA": "Uninstall Java (requires Chocolatey)",
+            "INSTALL-JAVA17": "Install Java 17 (requires Chocolatey)",
+            "UNINSTALL-JAVA17": "Uninstall Java 17 (requires Chocolatey)"
           }
         },
         "DIAGNOSTICS": {
@@ -811,11 +811,12 @@
         },
         "EXTRA-PACKAGES": {
           "INNER-HTML": {
-            "ABOUT": "<h5><strong>A list of external tools which bring additional value when used together with <em>DataPallas</em></strong></h5><p><br/>A good chunk of the below tools can be easily installed and/or uninstalled using <strong>Chocolatey</strong>, a very good <strong>package manager</strong> for <strong>Windows</strong>. All the below commands should be executed by first starting a <strong>DOS/Powershell command prompt</strong> and then by typing the respective commands inside the DOS/Windows Powershell command prompt.<br/></p><p>It is recommended to start the <strong>DOS/Powershell command prompt</strong> using Windows Start button -> Search for DOS/Powershell -> <strong>Right mouse click</strong> and then select &quot;<strong>Run as administrator</strong>&quot;<br /><br /></p>",
+            "ABOUT": "<h5>A list of external tools which bring additional value when used together with <em>DataPallas</em></h5><p><br/>A good chunk of the below tools can be easily installed and/or uninstalled using <strong>Chocolatey</strong>, a very good <strong>package manager</strong> for <strong>Windows</strong>. All the below commands should be executed by first starting a <strong>DOS/Powershell command prompt</strong> and then by typing the respective commands inside the DOS/Windows Powershell command prompt.<br/></p><p>It is recommended to start the <strong>DOS/Powershell command prompt</strong> using Windows Start button -> Search for DOS/Powershell -> <strong>Right mouse click</strong> and then select &quot;<strong>Run as administrator</strong>&quot;<br /><br /></p>",
             "NOTEPADPLUSPLUS": " is a free (as in “free speech” and also as in “free beer”) source code editor and Notepad replacement. Notepad++ is useful when editing DataPallas configuration files and scripts.",
             "VSCODE": "  is a code editor redefined and optimized for building and debugging modern applications.",
             "WINMERGE": " is an Open Source differencing and merging tool for Windows. WinMerge can compare both folders and files, presenting differences in a visual text format that is easy to understand and handle. WinMerge can be used for comparing DataPallas configuration files and scripts.",
-            "DOCKER-DESKTOP": " a very good containerization software. Docker is required for running (some) DataPallas extra packages."
+            "DOCKER-DESKTOP": " a very good containerization software. Docker is required for running (some) DataPallas extra packages.",
+            "MAVEN": " is a build automation and dependency management tool for Java projects."
           },
           "INSTALLED": {
             "ALREADY": "already installed",

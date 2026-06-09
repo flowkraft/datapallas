@@ -37,7 +37,7 @@ Let me manualy Update Should Work Fine
     Sleep  1s
     Wait Until Page Contains Element    id=labelGreatJavaWasFound
     Sleep  1s
-    Click Element    id=updateTab-link
+    Click Element    id=tab-btn-updateTab
     Sleep  1s
     
     
@@ -50,14 +50,14 @@ Let me manualy Update Should Work Fine
     
     Click Button    id=btnSelectExistingInstallation
     Sleep  1s
-    Open Folder   Select the installation/location path from where you want to migrate your existing configuration values and data. The selected folder should contain the DataPallas.exe file   ${PROJECT_PATH}/frend/reporting/testground
+    Open Folder   Select the installation/location path from where you want to migrate your existing configuration values and data. The selected folder should contain the DocumentBurster.exe/DataPallas.exe file   ${PROJECT_PATH}/frend/reporting/testground
     Sleep  1s
     Wait Until Page Contains Element    id=errorMsg
     Sleep  2s
 
     Click Button    id=btnSelectExistingInstallation
     Sleep  2s
-    Open Folder   Select the installation/location path from where you want to migrate your existing configuration values and data. The selected folder should contain the DataPallas.exe file   ${PROJECT_PATH}/frend/reporting/testground/upgrade/baseline/DocumentBurster
+    Open Folder   Select the installation/location path from where you want to migrate your existing configuration values and data. The selected folder should contain the DocumentBurster.exe/DataPallas.exe file   ${PROJECT_PATH}/frend/reporting/testground/upgrade/baseline/DocumentBurster
     Sleep  1s
     Wait Until Page Contains Element    id=btnMigrate
     Wait Until Page Contains Element   xpath=//ol/li[contains(.//text(), 'baseline')]

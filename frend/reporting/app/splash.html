@@ -37,10 +37,14 @@
 
   <style>
     :root {
-      --bg-dark: #1f1f1f;
+      --bg-dark: #1d232a;
+      /* daisyUI v5 dark base-100 */
       --bg-light: #ffffff;
-      --accent: #2f6fc6;
-      --accent-2: #2bb5ff;
+      /* daisyUI v5 light base-100 */
+      --accent: #d18361;
+      /* brand terracotta (the "Pallas" colour) */
+      --accent-2: #d4a843;
+      /* temple gold */
       --text-white: #fff;
       --card-bg: rgba(28, 28, 28, 0.88);
       --card-bg-light: rgba(255, 255, 255, 0.98);
@@ -139,15 +143,35 @@
       width: 100%;
       max-height: 92px;
       padding: 4px 6px;
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       flex: 0 0 auto;
     }
 
-    .logo svg {
+    /* wordmark sizes by height so the temple icon sits neatly beside it */
+    .logo .wordmark-svg {
+      height: 58px;
+      width: auto;
+      max-width: 80%;
       display: block;
-      width: 100%;
-      height: auto;
       overflow: visible;
+    }
+
+    .logo .temple {
+      width: 52px;
+      height: 52px;
+      flex: 0 0 auto;
+      display: block;
+      filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+      /* the temple artwork sits low inside its 256 box, so nudge up a touch to line its
+         visual centre up with the wordmark */
+      transform: translateY(-4px);
+    }
+
+    html.theme-light .logo .temple {
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
     }
 
     .subtitle {
@@ -245,6 +269,8 @@
       opacity: 0.98;
       font-weight: 800;
       fill: var(--accent);
+      font-style: normal;
+      /* "Pallas" upright, like the brand wordmark ("Data" stays italic) */
     }
   </style>
 </head>
@@ -254,13 +280,29 @@
     <!-- content wrapper: group the 4 visual items and position them together -->
     <div class="content" aria-hidden="false">
       <div class="logo" aria-hidden="true">
-        <svg viewBox="0 0 1200 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img"
+        <svg class="wordmark-svg" viewBox="0 0 510 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img"
           aria-label="DataPallas">
           <title>DataPallas</title>
           <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-size="94"
             font-family="Roboto, Arial, sans-serif" class="t-light">
             Data<tspan class="t-bold">Pallas</tspan>
           </text>
+        </svg>
+        <!-- Temple of Pallas Athena — identical artwork to brand.component. -->
+        <svg class="temple" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DataPallas">
+          <rect x="32" y="56" width="192" height="14" fill="#f0e2c0" />
+          <rect x="32" y="70" width="192" height="22" fill="#c9603a" />
+          <rect x="32" y="92" width="192" height="8" fill="#e8d4a8" />
+          <rect x="32" y="100" width="192" height="6" fill="#d4a843" />
+          <rect x="44" y="106" width="36" height="98" fill="#f8f2e8" />
+          <rect x="110" y="106" width="36" height="98" fill="#f8f2e8" />
+          <rect x="176" y="106" width="36" height="98" fill="#f8f2e8" />
+          <rect x="77" y="106" width="5" height="98" fill="#b89858" />
+          <rect x="143" y="106" width="5" height="98" fill="#b89858" />
+          <rect x="209" y="106" width="3" height="98" fill="#b89858" />
+          <rect x="32" y="204" width="192" height="6" fill="#d4a843" />
+          <rect x="20" y="210" width="216" height="10" fill="#e8d4a8" />
+          <rect x="0" y="220" width="256" height="14" fill="#c8a860" />
         </svg>
       </div>
 
