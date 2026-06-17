@@ -659,7 +659,7 @@
   .rb-report-run-btn {
     margin-top: 12px;
     padding: 8px 16px;
-    background: var(--rb-accent, var(--color-primary, currentColor));
+    background: var(--rb-accent, var(--color-primary, #2171b5));
     color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 4px;
@@ -722,7 +722,7 @@
     align-items: center;
     gap: 6px;
     padding: 8px 16px;
-    background: var(--rb-accent, var(--color-primary, currentColor));
+    background: var(--rb-accent, var(--color-primary, #2171b5));
     color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 4px;

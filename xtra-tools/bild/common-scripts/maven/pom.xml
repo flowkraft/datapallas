@@ -65,7 +65,7 @@
 						--add-opens java.base/java.text=ALL-UNNAMED --add-opens java.desktop/java.awt.font=ALL-UNNAMED</argLine>
 					<!-- Increase timeout for tests that run nested Maven builds downloading large deps (e.g., DuckDB 70MB+) -->
 					<forkedProcessExitTimeoutInSeconds>1800</forkedProcessExitTimeoutInSeconds>
-					<forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
+					<forkedProcessTimeoutInSeconds>5400</forkedProcessTimeoutInSeconds>
 				</configuration>
 			</plugin>
 			<plugin>

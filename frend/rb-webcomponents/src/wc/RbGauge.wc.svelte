@@ -2,7 +2,7 @@
 
 <!--
   rb-gauge — semicircle gauge with optional colored bands.
-  Pure SVG, zero deps. Mirrors Metabase's gauge visualization.
+  Pure SVG, zero deps.
 
   Consumer modes (mirror rb-map):
   1. Self-contained: report-id + api-base-url attrs; fetches { gaugeOptions } + data.

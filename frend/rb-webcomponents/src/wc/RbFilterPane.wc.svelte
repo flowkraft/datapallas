@@ -382,7 +382,7 @@
     color: inherit;
   }
   .pane-search:focus {
-    border-color: var(--rb-accent, var(--color-primary, currentColor));
+    border-color: var(--rb-accent, var(--color-primary, #2171b5));
   }
   .pane-list {
     overflow-y: auto;
@@ -419,7 +419,7 @@
     margin-right: 8px;
     flex-shrink: 0;
   }
-  .pane-dot.selected { background: var(--rb-accent, var(--color-primary, currentColor)); }
+  .pane-dot.selected { background: var(--rb-accent, var(--color-primary, #2171b5)); }
   .pane-dot.associated { background: color-mix(in srgb, currentColor 25%, transparent); }
   .pane-dot.excluded { background: color-mix(in srgb, currentColor 40%, transparent); }
   .pane-value { flex: 1; }

@@ -2,9 +2,7 @@
 
 <!--
   rb-sankey — flow diagram (source → target ribbons weighted by value).
-  Mirrors Metabase's Sankey viz. Uses d3-sankey for layout, hand-rolled SVG
-  for rendering (no extra d3 chart deps).
-
+  
   ── Consumer modes (mirror rb-map) ─────────────────────────────────────────
   1. Self-contained: set `report-id` + `api-base-url` attributes; component
      fetches { sankeyOptions: { sourceField, targetField, valueField } } + data.
@@ -25,7 +23,6 @@
     return p;
   }
 
-  // 8-color qualitative palette — same vibe as Metabase's default series colors.
   const PALETTE = [
     "#509ee3", "#88bf4d", "#a989c5", "#ef8c8c", "#f9d45c",
     "#f2a86f", "#98d9d9", "#7172ad",

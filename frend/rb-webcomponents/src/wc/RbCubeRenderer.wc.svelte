@@ -720,7 +720,7 @@
     margin: 0;
   }
   .rb-cube-badge {
-    background: var(--rb-accent, var(--color-primary));
+    background: var(--rb-accent, var(--color-primary, #2171b5));
     color: var(--rb-accent-text, var(--color-primary-content, #fff));
     font-size: 9px;
     padding: 1px 4px;
@@ -811,7 +811,7 @@
   }
   .rb-cube-copy-btn {
     padding: 8px 20px;
-    background: var(--rb-accent, var(--color-primary));
+    background: var(--rb-accent, var(--color-primary, #2171b5));
     color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 4px;

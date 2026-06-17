@@ -3,8 +3,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 //
 // Builds a 6-widget "Northwind Sales Overview" dashboard on the Data Canvas
-// step-by-step. KPI-led layout (the canonical Tableau / Metabase / Superset
-// skeleton): 3 headline numbers across the top, full-width revenue trend in
+// step-by-step. KPI-led layout 
+// 3 headline numbers across the top, full-width revenue trend in
 // the middle, categorical breakdown + leaderboard table at the bottom.
 //
 //   Row 1 (h:2): [Total Revenue w:4][Total Orders w:4][Pareto Share w:4]

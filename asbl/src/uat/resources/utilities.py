@@ -66,89 +66,106 @@ def click_x_close_DataPallas():
 
 
 def wait_for_powershell_and_accept_completion():
-    # Get the directory that this script is in
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    print(f"DEBUG: Looking for images in directory: {os.path.abspath(script_dir)}")
+    # The "Command execution completed..." dialog is a System.Windows.Forms.MessageBox
+    # raised by electron.service.ts after an elevated install command finishes.
+    # Its window title is "Info" (NOT "PowerShell") and it is a standard Win32
+    # dialog (window class "#32770"). We target it by title/class via PyWinAuto,
+    # which is immune to theme / DPI / resolution / monitor drift. Pixel-based
+    # image matching is kept only as a last-ditch fallback.
 
-    # Construct the path to the image file
-    image_path = os.path.join(script_dir, 'images', 'ok_button_powershell.png')
-    print(f"DEBUG: Full image path: {os.path.abspath(image_path)}")
-
-    # Check if image file exists
-    if not os.path.exists(image_path):
-        print(f"ERROR: Image file does not exist at {os.path.abspath(image_path)}")
-        return
-
-    button_location = None
-
-    # Wait for up to 300 seconds for the OK button to appear
-    print(f"DEBUG: Starting to look for PowerShell OK button (will try for 300 seconds)")
+    # Primary: find and click OK by window title/class with PyWinAuto.
+    print('DEBUG: Waiting up to 300s for the "Info" completion dialog via PyWinAuto')
     for attempt in range(300):
-        print(f"DEBUG: Attempt {attempt+1}/300 to find OK button")
+        try:
+            app = Application(backend="win32").connect(
+                title="Info", class_name="#32770", timeout=1
+            )
+            dlg = app.window(title="Info", class_name="#32770")
+            dlg.wait("visible ready", timeout=5)
+            print(f"DEBUG: Info dialog found on attempt {attempt+1}: '{dlg.window_text()}'")
+
+            ok_button = dlg.child_window(title="OK", class_name="Button")
+            if ok_button.exists():
+                ok_button.click()
+            else:
+                # Fall back to sending Enter, which activates the default OK button.
+                dlg.set_focus()
+                dlg.type_keys("{ENTER}")
+            print("DEBUG: Completion dialog accepted via PyWinAuto")
+            return True
+        except Exception as e:
+            # Dialog not up yet (or transient connect race) — keep polling.
+            if attempt % 10 == 0:
+                print(f"DEBUG: Info dialog not found yet (attempt {attempt+1}/300): {e}")
+            time.sleep(1)
+
+    # Fallback: pixel image match of the OK button (fragile; environment-dependent).
+    print("DEBUG: PyWinAuto path exhausted — falling back to image matching")
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    image_path = os.path.join(script_dir, 'images', 'ok_button_powershell.png')
+    if not os.path.exists(image_path):
+        print(f"ERROR: Fallback image file does not exist at {os.path.abspath(image_path)}")
+        return False
+
+    for attempt in range(30):
         try:
             button_location = pyautogui.locateOnScreen(image_path, grayscale=False, confidence=.7)
             if button_location is not None:
-                print(f"DEBUG: OK button found at {button_location} on attempt {attempt+1}")
-                break
-        except Exception as e:
-            print(f"DEBUG: Error during search: {str(e)}")
-        
-        time.sleep(1)  # Wait for 1 second
-
-    # If the button is found, click it
-    if button_location is not None:
-        try:
-            print(f"DEBUG: Clicking PowerShell OK button at position {button_location}")
-            pyautogui.click(button_location)
-            print("DEBUG: Click successful")
-            return True
-        except Exception as e:
-            print(f"DEBUG: Failed to click PowerShell OK button: {e}")
-            return False
-    else:
-        print("DEBUG: PowerShell OK button not found after 100 attempts")
-        
-        # Try to find and click a button with "OK" text using PyWinAuto
-        try:
-            print("DEBUG: Attempting to click OK button using PyWinAuto with title regex '.*PowerShell.*'")
-            app = Application().connect(title_re=".*PowerShell.*")
-            main_window = app.top_window()
-            print(f"DEBUG: Window found: {main_window.window_text()}")
-            ok_button = main_window.child_window(title="OK", class_name="Button")
-            if ok_button.exists():
-                print("DEBUG: OK button found with PyWinAuto, clicking...")
-                ok_button.click()
-                print("DEBUG: OK button clicked using PyWinAuto")
+                pyautogui.click(button_location)
+                print("DEBUG: Completion dialog accepted via image-match fallback")
                 return True
-            else:
-                print("DEBUG: OK button not found with PyWinAuto")
-                return False
         except Exception as e:
-            print(f"DEBUG: PyWinAuto fallback failed: {e}")
-            return False
+            print(f"DEBUG: Image-match error: {e}")
+        time.sleep(1)
+
+    print("ERROR: Could not find/accept the completion dialog by any method")
+    return False
 
 def kill_DataPallas_exe_process(let_me_update=False):
-    
+    # Terminating only the single -DELECTRON_PID from electron.log is not enough: Electron
+    # spawns a process tree (main + renderers + GPU) and a Java backend (rb-server.jar), and
+    # the logged PID can be stale after an in-place re-init. Any survivor keeps the remote
+    # debugging port (9222) bound and the DataPallas.exe / rb-server.jar files locked, which
+    # makes the next "Open Electron" reconnect to the stale window and the next run's cleanup
+    # fail with WinError 32. So kill the whole family by image name + child trees.
     log_file_path = os.path.join(os.path.dirname(DataPallas_exe_path), 'logs', 'electron.log')
-    
     if let_me_update:
         log_file_path = os.path.join(os.path.dirname(DataPallas_exe_path_let_me_update), 'logs', 'electron.log')
-    
     print(f'Log file path: {log_file_path}')
-    
-    if not os.path.exists(log_file_path):
-        return
-    
-    with open(log_file_path, 'r') as log_file:
-        log_content = log_file.read()
-        match = re.search(r'-DELECTRON_PID=(\d+)', log_content)
+
+    # 1) Kill the logged Electron PID and its descendants, if present.
+    if os.path.exists(log_file_path):
+        with open(log_file_path, 'r') as log_file:
+            match = re.search(r'-DELECTRON_PID=(\d+)', log_file.read())
         if match:
-            pid = match.group(1)
-            try:
-                process = psutil.Process(int(pid))
-                process.kill()
-            except psutil.NoSuchProcess:
-                print(f"No process found with PID: {pid}")
+            _kill_pid_tree(int(match.group(1)))
+
+    # 2) Sweep every DataPallas/Electron process and its children, plus the rb-server.jar
+    #    Java backend, regardless of what electron.log says.
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            name = (proc.info['name'] or '').lower()
+            cmdline = ' '.join(proc.info['cmdline'] or []).lower()
+            if name in ('datapallas.exe', 'electron.exe') or 'rb-server.jar' in cmdline:
+                _kill_pid_tree(proc.info['pid'])
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+def _kill_pid_tree(pid):
+    """Kill a process and all of its descendants. Safe to call on a dead PID."""
+    try:
+        parent = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        print(f"No process found with PID: {pid}")
+        return
+    procs = parent.children(recursive=True)
+    procs.append(parent)
+    for p in procs:
+        try:
+            p.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    psutil.wait_procs(procs, timeout=5)
 
 def empty_folder(folder_path):
     for filename in os.listdir(folder_path):
@@ -218,17 +235,54 @@ def ensure_java_is_not_installed():
                 print(f"Uninstalling {product_name} with Chocolatey...")
                 subprocess.check_call(f'choco uninstall {product_name} -y', shell=True)
         
-        # Use WMIC to uninstall any remaining Java installations
-        # output = subprocess.check_output('wmic product where "name like \'%%java%%\' or name like \'%%jdk%%\'" get name', shell=True).decode('utf-8')
-        # java_or_jdk_products = [line.strip() for line in output.split('\n') if line.strip() != '' and line.strip() != 'Name']
+        # Chocolatey only knows about Java it currently tracks as a package. An
+        # interrupted `choco uninstall` (e.g. a Ctrl+C'd run) can deregister the
+        # package from choco's ledger while leaving the actual Adoptium/Temurin
+        # JDK installed and on PATH. In that state `choco list` reports nothing,
+        # the loop above is a no-op, yet `java -version` still resolves and the
+        # DataPallas UI never shows the Install Java screen. Sweep those orphans
+        # by MSI product code as a fallback.
+        if java_still_resolves():
+            print("Java still resolves after the Chocolatey pass — removing untracked JDK(s) by MSI...")
+            force_remove_untracked_java()
 
-        # for product in java_or_jdk_products:
-        #     print(f"Uninstalling {product} with WMIC...")
-        #     subprocess.check_call(f'wmic product where "name=\'{product}\'" call uninstall', shell=True)
-
-        print("Java is not installed on this computer.")
+        if java_still_resolves():
+            print("WARNING: Java is STILL resolvable after MSI removal — manual cleanup may be required.")
+        else:
+            print("Java is not installed on this computer.")
     except subprocess.CalledProcessError:
         print("An error occurred while uninstalling Java.")
+
+def java_still_resolves():
+    """Returns True if `java -version` succeeds (i.e. Java is on PATH)."""
+    try:
+        subprocess.check_output('java -version', shell=True, stderr=subprocess.STDOUT)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def force_remove_untracked_java():
+    """Silently uninstall any Adoptium/Temurin/JDK MSI products that Chocolatey
+    is no longer tracking, by enumerating the Windows uninstall registry and
+    running `msiexec /x {ProductCode} /qn`."""
+    ps_script = (
+        "$keys = 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
+        "'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*';"
+        "Get-ItemProperty $keys -ErrorAction SilentlyContinue |"
+        " Where-Object { $_.DisplayName -match 'Temurin|Adoptium|JDK' -and $_.PSChildName -match '^{.*}$' } |"
+        " ForEach-Object { Write-Output $_.PSChildName }"
+    )
+    try:
+        output = subprocess.check_output(['powershell', '-NoProfile', '-Command', ps_script]).decode('utf-8')
+    except subprocess.CalledProcessError as e:
+        print(f"Could not enumerate installed JDK products: {e}")
+        return
+
+    product_codes = [line.strip() for line in output.splitlines() if line.strip().startswith('{')]
+    for code in product_codes:
+        print(f"Uninstalling JDK MSI product {code} ...")
+        # /x = uninstall, /qn = silent, /norestart = don't reboot
+        subprocess.call(f'msiexec /x {code} /qn /norestart', shell=True)
 
 def ensure_java_is_installed(version="17"):
     output = ""
@@ -343,6 +397,10 @@ def clean_and_extract_zip_files():
         "../../dist/DataPallas.zip",
         "../../dist/DataPallas-server.zip"
     ]
+
+    # A DataPallas.exe / rb-server.jar left running by a previous run locks files under
+    # target/uat and makes the deletion below fail with WinError 32. Kill any survivor first.
+    kill_DataPallas_exe_process()
 
     for path, zip_file in zip(paths, zips):
         # Clean the path if it exists

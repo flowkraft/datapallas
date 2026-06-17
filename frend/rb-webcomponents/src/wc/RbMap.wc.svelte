@@ -2,8 +2,7 @@
 
 <!--
   rb-map — Leaflet-backed geographic visualization.
-  Mirrors Metabase's three map modes (pin / choropleth region / grid heatmap).
-
+  
   ── How it picks a mode ─────────────────────────────────────────────────────
   mapType="auto" (default) inspects the data + options:
     - latField + lonField present AND both numeric → "pin"
@@ -313,7 +312,6 @@
 
   // ──────────────────────────────────────────────────────────────────────────
   // Color scale — quantile bucketing over non-zero metric values.
-  // Mirrors Metabase's heatmapColors approach at a fraction of the code.
   // ──────────────────────────────────────────────────────────────────────────
 
   function buildQuantileScale(values: number[], palette: string[]): (v: number) => string {

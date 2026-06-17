@@ -2,7 +2,7 @@
 
 <!--
   rb-progress — value vs goal as a horizontal bar with overflow handling.
-  Pure SVG/CSS, zero deps. Mirrors Metabase's progress visualization.
+  Pure SVG/CSS, zero deps.
 
   Consumer modes:
   1. Self-contained: report-id + api-base-url; fetches { progressOptions } + data.

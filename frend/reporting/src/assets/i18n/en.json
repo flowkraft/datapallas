@@ -826,6 +826,10 @@
             "INSTALL": "Install Command",
             "UNINSTALL": "Uninstall Command",
             "GET-INFO": "Get Info Command"
+          },
+          "ACTIONS": {
+            "INSTALL-NOW": "Install Now",
+            "UNINSTALL-NOW": "Uninstall Now"
           }
         }
       }

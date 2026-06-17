@@ -447,7 +447,6 @@ const ALL_BRANCHES: Branch[] = [
     defaultConfig: { chartType: 'bar' },
   },
 
-  // ── 0 dims + 2 measures — tabulator+detail shows all metrics (Metabase parity) ──
   {
     name: 'Freight vs Count — 0 dims + 2 measures',
     rule: 'Rule 1', shape: 'K1-multi',

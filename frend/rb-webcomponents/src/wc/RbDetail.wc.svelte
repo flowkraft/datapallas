@@ -2,7 +2,7 @@
 
 <!--
   rb-detail — single-row record viewer. Renders all columns of the first row
-  as a key/value list. Mirrors Metabase's Detail (object) visualization.
+  as a key/value list.
 
   Pure DOM, zero deps.
 

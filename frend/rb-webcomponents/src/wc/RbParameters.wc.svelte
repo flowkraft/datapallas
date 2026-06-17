@@ -891,13 +891,13 @@
     </form>
     {#if showReload}
       {#if !showConfirm}
-        <button id="btnReloadDashboard" type="button" style="display:block;width:100%;margin-top:12px;padding:10px 20px;background:var(--rb-accent, var(--color-primary, currentColor));color:var(--rb-accent-text, var(--color-primary-content, #fff));border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;" on:click={handleReloadClick}>
+        <button id="btnReloadDashboard" type="button" style="display:block;width:100%;margin-top:12px;padding:10px 20px;background:var(--rb-accent, var(--color-primary, #2171b5));color:var(--rb-accent-text, var(--color-primary-content, #fff));border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;" on:click={handleReloadClick}>
           Reload
         </button>
       {:else}
         <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 16px;background:var(--color-base-200, color-mix(in srgb, currentColor 6%, transparent));border:1px solid var(--rb-border, color-mix(in srgb, currentColor 18%, transparent));border-radius:6px;">
           <span style="flex:1;font-size:13px;color:inherit;">Reload dashboard with current parameters?</span>
-          <button id="btnConfirmReload" type="button" style="padding:6px 16px;background:var(--rb-accent, var(--color-primary, currentColor));color:var(--rb-accent-text, var(--color-primary-content, #fff));border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;" on:click={confirmReload}>Yes</button>
+          <button id="btnConfirmReload" type="button" style="padding:6px 16px;background:var(--rb-accent, var(--color-primary, #2171b5));color:var(--rb-accent-text, var(--color-primary-content, #fff));border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;" on:click={confirmReload}>Yes</button>
           <button id="btnCancelReload" type="button" style="padding:6px 16px;background:color-mix(in srgb, currentColor 12%, transparent);color:inherit;border:1px solid var(--rb-border, color-mix(in srgb, currentColor 18%, transparent));border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;" on:click={cancelReload}>No</button>
         </div>
       {/if}
@@ -955,8 +955,8 @@
 
   .form-control:focus {
     outline: none;
-    border-color: var(--rb-accent, var(--color-primary, currentColor));
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-accent, var(--color-primary, currentColor)) 25%, transparent);
+    border-color: var(--rb-accent, var(--color-primary, #2171b5));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-accent, var(--color-primary, #2171b5)) 25%, transparent);
   }
   
   .text-danger {
@@ -975,7 +975,7 @@
     width: 100%;
     margin-top: 12px;
     padding: 10px 20px;
-    background: var(--rb-accent, var(--color-primary, currentColor));
+    background: var(--rb-accent, var(--color-primary, #2171b5));
     color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
     border-radius: 6px;
@@ -1048,9 +1048,9 @@
     border-top: 1px solid var(--rb-border, color-mix(in srgb, currentColor 22%, transparent));
   }
   .rb-multi-ok {
-    background: var(--rb-accent, var(--color-primary, currentColor));
+    background: var(--rb-accent, var(--color-primary, #2171b5));
     color: var(--rb-accent-text, var(--color-primary-content, #fff));
-    border: 1px solid var(--rb-accent, var(--color-primary, currentColor));
+    border: 1px solid var(--rb-accent, var(--color-primary, #2171b5));
     padding: 4px 16px;
     border-radius: 3px;
     font-size: 0.85rem;

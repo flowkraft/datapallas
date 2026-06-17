@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.3.1 - 2026-06-17
+
+### Fixed
+
+- **The "Reload" button on published dashboards is now visible** — On dashboards opened in a plain web page, the button you press to apply a filter (such as picking a different country) could appear blank and invisible, making it look like changing the filter did nothing. The button now shows up clearly, so you can pick a value, press **Reload**, confirm with **Yes**, and see the dashboard update.
+
+- **Confirmed the Java & Chocolatey setup works end to end** — Our automated checks for the "Install Java" and "Install Chocolatey" steps now pass, confirming the guided setup runs smoothly from start to finish.
+
+### Added
+
+- **Install and uninstall extra utilities with one click** — On the **Docker / Extra Utilities** screen, each tool (Docker Desktop, Visual Studio Code, Apache Maven, WinMerge, Notepad++) now has an **Install Now** button when it isn't installed and an **Uninstall Now** button when it is. Pressing one asks for confirmation and then runs the installation (or removal) for you.
+
 ## 16.3.0 - 2026-06-09
 
 ### Fixed

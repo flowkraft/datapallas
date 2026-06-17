@@ -1,7 +1,7 @@
 <svelte:options customElement={{ tag: "rb-trend", shadow: "none" }} />
 
 <!--
-  rb-trend — KPI + Δ-vs-prior + sparkline. Mirrors Metabase's "Trend" (smartscalar) viz.
+  rb-trend — KPI + Δ-vs-prior + sparkline.
   Pure SVG sparkline, zero deps.
 
   Consumer modes:

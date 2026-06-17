@@ -414,7 +414,7 @@
   }
 
   // Waterfall — single-series cumulative deltas as stacked bar:
-  //   floor (invisible) + delta (visible). Same approach Metabase uses.
+  //   floor (invisible) + delta (visible).
   function buildWaterfallConfig(normalizedData: any, mergedOptions: any) {
     const labels: any[] = normalizedData?.labels ?? [];
     const ds0 = normalizedData?.datasets?.[0] ?? { data: [] };
