@@ -26,7 +26,7 @@
 //
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { test, Page } from '@playwright/test';
+import { test, Page, Browser } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as jetpack from 'fs-jetpack';
@@ -37,6 +37,9 @@ import { electronBeforeAfterAllTest } from '../../../utils/common-setup';
 import { Constants } from '../../../utils/constants';
 import { Helpers } from '../../../utils/helpers';
 import { FluentTester } from '../../../helpers/fluent-tester';
+import { ConnectionsTestHelper } from '../../../helpers/areas/connections-test-helper';
+import { DockerTestHelper } from '../../../helpers/docker-test-helper';
+import { SelfServicePortalsTestHelper } from '../../../helpers/areas/self-service-portals-test-helper';
 import {
   DOCS_IMAGES_DIR,
   captureDocsScreenshot,
@@ -444,5 +447,522 @@ electronBeforeAfterAllTest(
       '#btnStartStop_flowkraft-grails',
     ]);
     await ft.gotoBurstScreen();
+  },
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUICKSTART2 — the data & dashboards quickstart (feeds the 0000-quickstart2
+// Remotion video + docs/quickstart.mdx + docs/advanced/work-well-apps.mdx)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Two blocks, both titled "Quickstart2 — …" so a single grep targets ONLY these
+// (without dragging in the "Quickstart — …" bursting blocks above):
+//
+//   E2E_GREP="Quickstart2"
+//
+//   BLOCK D — Docker, Apps & DB Server Packs   (cheap: navigation-only captures)
+//   BLOCK E — PostgreSQL start & connection     (heavy: really starts Postgres,
+//                                                creates + tests a live connection,
+//                                                nuclear `docker compose down -v`
+//                                                in finally)
+//
+// Output dir: DOCS_IMAGES_DIR, `q2_*-dp.png` naming — same home + `-dp` convention
+// as every other quickstart shot, so the PNGs serve the two docs pages AND get
+// copied into the video's asset folder (…/cli-remotion/public/assets/rb/
+// 0000-quickstart2/) the same way the 000_*/005_*/020-023 shots feed 0000-quickstart.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// PostgreSQL Northwind starter pack (starter-packs.service.ts): id
+// 'db-northwind-postgres' → card #starterPack_db-northwind-postgres, Start/Stop
+// button #btnStartStop_db-northwind-postgres.
+const PG_PACK_CARD = '#starterPack_db-northwind-postgres';
+const PG_PACK_BTN = '#btnStartStop_db-northwind-postgres';
+
+// Live connection the video creates against the running Postgres pack. kebabCase
+// ("Northwind") + "-postgres" → db-northwind-postgres (matches connections.spec.ts
+// + learn.screens.ts BLOCK 2). The Connections-list row id appends `.xml`.
+const PG_CONN_NAME = 'Northwind';
+const PG_CONN_CODE = 'db-northwind-postgres';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK D — Docker, Apps & DB Server Packs (navigation-only, nothing started)
+// ─────────────────────────────────────────────────────────────────────────────
+electronBeforeAfterAllTest(
+  'Quickstart2 — Docker, Apps & DB Server Packs',
+  async ({ beforeAfterEach: _firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    // The Extra Utilities (extraPackagesTab) content is gated on
+    // `chocolatey.isChocoOk` (extra-packages.template.ts). Boot with Java+Choco
+    // present — the file's own faked-log idiom — so the Docker package card
+    // renders deterministically regardless of the machine's real choco state.
+    const page = await bootWithPrereqState({ java: true, choco: true });
+    const ft = new FluentTester(page);
+
+    // ── q2_021 — Processing ▸ the "Explore Data & Build Dashboards" tab open, with
+    // the "Explore More Apps That Go Well Together with DataPallas" button. Ring the
+    // active tab title + that button (the entry point to Apps / Starter Packs / Docker).
+    await ft
+      .gotoBurstScreen()
+      .waitOnElementToBecomeVisible('#tab-btn-cmsWebPortalTab')
+      .click('#tab-btn-cmsWebPortalTab')
+      .waitOnElementToBecomeVisible('#btnExploreCmsWebPortalApps');
+    await hideToastsForScreenshots(page);
+    await captureDocsScreenshotWithHighlights(page, dp('q2_021_explore-more-apps-button'), [
+      { selector: '#tab-btn-cmsWebPortalTab', inset: true },   // active Explore Data tab title
+      '#btnExploreCmsWebPortalApps',
+    ]);
+
+    // ── q2_023 — Start the dashboard app. Still on the Explore Data tab; ring the
+    // tab title, the app title, the "Our App" badge, and the Start button so the
+    // reader sees exactly where it lives and how to launch it.
+    await ft.waitOnElementToBecomeVisible('#appName_flowkraft-data-canvas');
+    await hideToastsForScreenshots(page);
+    await captureDocsScreenshotWithHighlights(page, dp('q2_023_start-explore-data-app'), [
+      { selector: '#tab-btn-cmsWebPortalTab', inset: true },   // tab flush under the sticky header → inset ring
+      '#appName_flowkraft-data-canvas',
+      '#appSourceBadge_flowkraft-data-canvas',
+      '#btnStartStop_flowkraft-data-canvas',
+    ]);
+
+    // ── q2_022 — the Apps / Starter Packs / Docker · Extra Utilities tabs (reached
+    // by that button). Click it, then ring all three sub-tabs so the reader sees
+    // everything lives in one place.
+    await ft
+      .click('#btnExploreCmsWebPortalApps')
+      .waitOnElementToBecomeVisible('#tab-btn-appsTab');
+    await hideToastsForScreenshots(page);
+    await captureDocsScreenshotWithHighlights(page, dp('q2_022_apps-starter-packs-docker-tabs'), [
+      { selector: '#tab-btn-appsTab', inset: true },
+      { selector: '#tab-btn-starterPacksTab', inset: true },
+      { selector: '#tab-btn-extraPackagesTab', inset: true },
+    ]);
+
+    // ── q2_031 — Apps ▸ an "Our App" card (the badge reads "Our App"). Surface a
+    // single DataPallas-built app by searching, then ring its card so the reader
+    // sees which tab Apps live in + a representative Our-App entry. Athena's
+    // narration enumerates the rest (Explore Data, Grails, Backend, Next.js, WebPortal).
+    await ft
+      .gotoApps()
+      .waitOnElementToBecomeVisible('#appSearch')
+      .setValue('#appSearch', 'Explore Data')
+      .sleep(600)
+      .waitOnElementToBecomeVisible('#appName_flowkraft-data-canvas')
+      .elementShouldContainText('#appName_flowkraft-data-canvas', 'Explore Data');
+    await hideToastsForScreenshots(page);
+    await captureDocsScreenshotWithHighlights(page, dp('q2_031_apps-our-app'), [
+      '#tab-btn-appsTab',                                          // active Help-area tab: outer ring (has headroom above)
+      '#appSearch',
+      { selector: '#appPanel_flowkraft-data-canvas', inset: true }, // full-width card → inset so all four sides survive the crop
+    ]);
+
+    // ── q2_032 — Apps ▸ a "3rd Party" card. Search for Rundeck — a DIFFERENT 3rd-party
+    // app than the CloudBeaver demo that follows — then ring the full card + the
+    // "3rd Party" badge so viewers learn to spot 3rd-party apps.
+    await ft
+      .setValue('#appSearch', 'Rundeck')
+      .sleep(600)
+      .waitOnElementToBecomeVisible('#appName_rundeck')
+      .elementShouldContainText('#appName_rundeck', 'Rundeck');
+    await hideToastsForScreenshots(page);
+    await captureDocsScreenshotWithHighlights(page, dp('q2_032_apps-third-party'), [
+      '#tab-btn-appsTab',
+      '#appSearch',
+      { selector: '#appPanel_rundeck', inset: true },
+      '#appSourceBadge_rundeck',   // the "3rd Party" badge — so viewers learn to spot 3rd-party apps
+    ]);
+    // Clear the search so it doesn't bleed into the next tab's state.
+    await ft.setValue('#appSearch', '').sleep(400);
+
+    // ── q2_030 — Docker / Extra Utilities ("how to install Docker"). This frame
+    // must show the NOT-INSTALLED state (the "Install Now" button), but the e2e
+    // machine normally has Docker installed/running (Block E needs it), so the
+    // card would otherwise render "already installed ✓ / Uninstall Now". Rather
+    // than actually uninstall Docker (slow, reboot-prone, destructive), we present
+    // the not-installed card with a NON-DESTRUCTIVE DOM swap — the docs-screenshot
+    // injection technique used elsewhere (cubes.screens.ts). The card-body (name,
+    // website, `choco install docker-desktop --yes`) is identical in both states,
+    // so we only rebuild the card-title header to the template's not-installed
+    // branch (website link · "not installed" · primary "Install Now" button —
+    // verbatim from extra-packages.template.ts + en.json). Real Docker is untouched.
+    await ft
+      .click('#tab-btn-extraPackagesTab')
+      .waitOnElementToBecomeVisible('#package-docker-desktop');
+    await page.evaluate(() => {
+      // ID-only selection (semantic IDs added to extra-packages.template.ts).
+      // We own both the app and the test, so these IDs are guaranteed — `!` asserts
+      // that; a missing one throws loudly instead of faking a bad screenshot.
+      const card = document.getElementById('extraPackageCard-docker-desktop')!;
+      const h3 = document.getElementById('extraPackageHeader-docker-desktop')!;
+      // If Docker really is not installed, the Install button is already there.
+      if (document.getElementById('btnInstallPackage-docker-desktop')) return;
+      h3.innerHTML =
+        '<a href="https://www.docker.com/products/docker-desktop/" target="_blank">https://www.docker.com/products/docker-desktop/</a>' +
+        '      ' +
+        '<em id="extraPackageStatus-docker-desktop">not installed</em>  ' +
+        '<button id="btnInstallPackage-docker-desktop" type="button" ' +
+        'class="btn btn-outline btn-primary btn-xs align-middle">Install Now</button>';
+      // Not-installed cards use the plain border, not the primary one.
+      card.classList.remove('border-primary');
+      card.classList.add('card-border');
+    });
+    await hideToastsForScreenshots(page);
+    await captureDocsScreenshotWithHighlights(page, dp('q2_030_docker-extra-utilities'), [
+      { selector: '#tab-btn-extraPackagesTab', inset: true },   // the Docker / Extra Utilities sub-tab title
+      { selector: '#package-docker-desktop', inset: true },
+      '#btnInstallPackage-docker-desktop',   // present after the not-installed DOM swap
+    ]);
+
+    // ── q2_033 — DB Server Packs grid. Switch to the Starter Packs tab and capture
+    // the full list (all 10 Northwind/Redis/TimescaleDB packs + their tags) — the
+    // "enumerate the other available DB starter packs" frame. No search, so every
+    // pack shows; ring the tab + search box for orientation.
+    await ft
+      .click('#tab-btn-starterPacksTab')
+      .waitOnElementToBecomeVisible('#packSearch');
+    await hideToastsForScreenshots(page);
+    await captureDocsScreenshotWithHighlights(page, dp('q2_033_db-starter-packs'), [
+      '#tab-btn-starterPacksTab',
+      '#packSearch',
+    ]);
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK E — PostgreSQL start & connection (REALLY starts Postgres — needs Docker)
+// ─────────────────────────────────────────────────────────────────────────────
+// Mirrors learn.screens.ts BLOCK 2 (the proven postgres flow) but captures the
+// transient "Starting" pack state mid-flight (algo-trading.screens.ts pattern)
+// and targets the 0000-quickstart2 frames. The connection is created, tested
+// (real schema auto-discovery), then deleted; `docker compose down -v` in the
+// finally guarantees Postgres can never be left running after this spec.
+electronBeforeAfterAllTest(
+  'Quickstart2 — PostgreSQL start & connection',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    let ft = new FluentTester(firstPage);
+
+    try {
+      // Block E really starts a Postgres container — fail fast + loud if Docker is
+      // down instead of hanging until the multi-thousand-second timeout.
+      DockerTestHelper.assertDockerRunning('Quickstart2 — PostgreSQL start & connection');
+
+      // ── Navigate to Starter Packs ONCE and filter to the Postgres pack. (Doing
+      // a second gotoStarterPacks() later would wait on #appSearch — the Apps-tab
+      // input, which is hidden once the Starter Packs tab is active — so we keep a
+      // single navigation and operate on the visible pack button directly.)
+      await ft
+        .gotoStarterPacks()
+        .setValue('#packSearch', 'postgres')
+        .sleep(400)
+        .waitOnElementToBecomeVisible(PG_PACK_BTN)
+        .waitOnElementToBecomeEnabled(PG_PACK_BTN);
+
+      // ── Baseline: if a prior interrupted run left Postgres running, stop it
+      // first — by clicking the visible button (no re-navigation) — so the
+      // Start→Starting→running capture below is deterministic. Clean state means
+      // this is usually a no-op (button already reads "Start").
+      const pgBtnText = (
+        (await firstPage.locator(PG_PACK_BTN).textContent({ timeout: 5_000 }).catch(() => '')) || ''
+      )
+        .toLowerCase()
+        .trim();
+      if (pgBtnText.includes('stop') && !pgBtnText.includes('start')) {
+        await ft
+          .click(PG_PACK_BTN)
+          .confirmDialogShouldBeVisible()
+          .clickYesDoThis()
+          .waitOnElementToHaveText(PG_PACK_BTN, 'Start', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+          .waitOnElementToBecomeEnabled(PG_PACK_BTN, Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+      }
+
+      // ── q2_035 — Start Postgres and capture it once RUNNING. Click Start, confirm,
+      // wait through the transient "Starting" state until the pack is running (button
+      // re-enables and reads "Stop"), then capture the started card.
+      await ft
+        .elementShouldContainText(PG_PACK_BTN, 'Start')
+        .click(PG_PACK_BTN)
+        .confirmDialogShouldBeVisible()
+        .clickYesDoThis()
+        .waitOnElementToHaveText(PG_PACK_BTN, 'Starting', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToBecomeEnabled(PG_PACK_BTN, Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToHaveText(PG_PACK_BTN, 'Stop', Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('q2_035_postgres-pack-running'), [
+        { selector: PG_PACK_CARD, inset: true },
+      ]);
+
+      // ── Open New Database Connection and fill Postgres/"Northwind" details (modal
+      // stays open, not yet saved) — exactly the connections.spec / learn.screens flow.
+      await ft
+        .gotoConnections()
+        .waitOnElementToBecomeEnabled('#btnNewDropdown')
+        .click('#btnNewDropdown')
+        .waitOnElementToBecomeVisible('#btnNewDatabase')
+        .click('#btnNewDatabase')
+        .waitOnElementToBecomeVisible('#modalDbConnection')
+        .waitOnElementToBecomeEnabled('#dbConnectionName');
+      ft = ConnectionsTestHelper.fillNewDatabaseConnectionDetails(ft, PG_CONN_NAME, 'postgres');
+      await ft.waitOnElementToBecomeEnabled('#btnTestDbConnection');
+      await hideToastsForScreenshots(firstPage);
+
+      // ── q2_036 — Connection Details filled, Test Connection ringed — the
+      // "making a real connection to Postgres" frame.
+      await captureDocsScreenshotWithHighlights(firstPage, dp('q2_036_postgres-connection-details'), [
+        '#btnTestDbConnection',
+      ]);
+
+      // ── Test Connection → schema auto-discovery. Server-vendor dance mirrors
+      // connections.spec.ts / learn.screens.ts: starting Postgres produced log
+      // output, so the first Test click pops the info dialog + clear-logs step; a
+      // second click then asks to save (which runs the test against the live DB).
+      await ft
+        .click('#btnTestDbConnection')
+        .infoDialogShouldBeVisible()
+        .clickYesDoThis()
+        .click('#btnClearLogsDbConnection')
+        .confirmDialogShouldBeVisible()
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnClearLogsDbConnection')
+        .waitOnElementToBecomeVisible('#btnGreatNoErrorsNoWarnings')
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .click('#btnTestDbConnection')
+        .waitOnElementToContainText(
+          '#confirmDialog .modal-box',
+          'The connection must be saved before being able to test it. Save now?',
+        )
+        .clickYesDoThis()
+        .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
+        .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'animate-spin');
+
+      // ── q2_037 — Database Schema tab: the Northwind tables DataPallas
+      // auto-discovered from the live Postgres connection (proves it's real).
+      await ft
+        .click('#tab-btn-databaseSchemaTab')
+        .waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer');
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('q2_037_postgres-schema-discovered'), [
+        { selector: '#tab-btn-databaseSchemaTab', inset: true },
+      ]);
+
+      // Close the Create Database Connection modal BEFORE the graceful stop. The
+      // stop navigates to Starter Packs, and an OPEN modal's overlay blocks that
+      // navigation — leaving the test hung (and flickering) on the schema tab.
+      await ft
+        .click('#btnCloseDbConnectionModal')
+        .waitOnElementToBecomeInvisible('#btnCloseDbConnectionModal');
+
+      // ── Teardown (happy path): stop the Postgres pack the user way — its Stop
+      // button — so nothing is left running. The nuclear `docker compose down -v`
+      // in the finally below ALWAYS runs too, as the guaranteed safety net (the
+      // same belt-and-suspenders pattern as connections.spec.ts).
+      ft = ConnectionsTestHelper.setStarterPackStateForVendor(ft, 'postgres', 'stop');
+      await ft;
+    } finally {
+      // ── CLEANUP: close the modal, delete the connection, then nuke the Postgres
+      // container + volumes so the next run starts clean (same guaranteed teardown
+      // learn.screens.ts BLOCK 2 uses for server-based vendors).
+      try {
+        const modalCloseBtn = firstPage.locator('#btnCloseDbConnectionModal');
+        if (await modalCloseBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await modalCloseBtn.click();
+          await firstPage
+            .locator('#btnCloseDbConnectionModal')
+            .waitFor({ state: 'hidden', timeout: 5_000 })
+            .catch(() => {});
+        }
+      } catch (e) {
+        console.error('[CLEANUP] Failed to close modal:', e);
+      }
+
+      try {
+        await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+          new FluentTester(firstPage),
+          `${PG_CONN_CODE}\\.xml`,
+          'postgres',
+        );
+      } catch (e) {
+        console.error('[CLEANUP] Failed to delete connection:', e);
+      }
+
+      // NUCLEAR STOP — runs on the happy path OR any exception above. `docker
+      // compose down -v` in the db/ folder force-removes the Postgres container +
+      // volumes, so Postgres can never be left running after this spec. Synchronous.
+      try {
+        ConnectionsTestHelper.dockerComposeDownInDbFolder();
+      } catch (e) {
+        console.error('[CLEANUP] Nuclear docker compose down failed:', e);
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK F — Customer Portal (Grails app): start it, then the live portal + admin
+// ─────────────────────────────────────────────────────────────────────────────
+// REALLY starts the flowkraft-grails app (needs Docker). Shows how to reach + start
+// it in the Electron UI, then captures the live portal (/portal/invoices) and admin
+// (/admin/invoices) pages in an external Edge browser. Leak-safe: graceful stopApp
+// on the happy path + nuclear `docker compose down -v` (KEEPING the image, so a
+// re-run doesn't rebuild) in finally — same belt-and-suspenders as Block E.
+electronBeforeAfterAllTest(
+  'Quickstart2 — Customer Portal (Grails app)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const ft = new FluentTester(firstPage);
+    const GRAILS_APP = 'flowkraft-grails';
+    const GRAILS_STACK = 'flowkraft/grails-playground';
+    const PORTAL = SelfServicePortalsTestHelper.GRAILS_BASE_URL; // http://localhost:8400
+    let browser: Browser | undefined;
+
+    try {
+      // Really boots the Grails container — fail fast + loud if Docker is down.
+      DockerTestHelper.assertDockerRunning('Quickstart2 — Customer Portal (Grails app)');
+
+      // ── q2_050 — Customer Portal tab (app STOPPED). Ring the tab title, the app
+      // title, the "Our App" badge, and the Start button.
+      await ft
+        .gotoBurstScreen()
+        .waitOnElementToBecomeVisible('#tab-btn-customerPortalTab')
+        .click('#tab-btn-customerPortalTab')
+        .waitOnElementToBecomeVisible('#appName_flowkraft-grails');
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('q2_050_customer-portal-tab'), [
+        { selector: '#tab-btn-customerPortalTab', inset: true },   // tab flush under the sticky header → inset ring
+        '#appName_flowkraft-grails',
+        '#appSourceBadge_flowkraft-grails',
+        '#btnStartStop_flowkraft-grails',
+      ]);
+
+      // ── Start the Grails app the user way (leak-safe; really boots the container).
+      await SelfServicePortalsTestHelper.startApp(ft, GRAILS_APP);
+
+      // ── q2_051 — app RUNNING. Open the Launch dropdown, ring the Launch button +
+      // the "Customer Portal Area" link (the way to open the live portal).
+      await ft
+        .click('#btnLaunch_flowkraft-grails')
+        .waitOnElementToBecomeVisible('#launchLink_flowkraft-grails_0');
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('q2_051_launch-customer-portal'), [
+        { selector: '#btnLaunch_flowkraft-grails', inset: true },   // ring inset so the open dropdown (z-index 9999) can't hide its top edge
+        '#launchLink_flowkraft-grails_0',
+      ]);
+
+      // ── External Edge browser: wait for the live portal HTTP server to be ready
+      // (the app reports "running" before Grails has finished booting).
+      const ext = await SelfServicePortalsTestHelper.createExternalBrowser(false, {
+        viewport: { width: 1500, height: 1000 },
+      });
+      browser = ext.browser;
+      const web = ext.page;
+      await SelfServicePortalsTestHelper.waitForServerReady(web, `${PORTAL}/portal/invoices`);
+
+      // ── q2_052 — /portal/invoices: ring ONLY the Admin menu link (how to reach admin).
+      await web.goto(`${PORTAL}/portal/invoices`, { waitUntil: 'networkidle' });
+      await web.waitForSelector('#portalNavAdmin', { timeout: 15_000 });
+      await captureDocsScreenshotWithHighlights(web, dp('q2_052_portal-invoices-admin-link'), [
+        '#portalNavAdmin',
+      ]);
+
+      // ── q2_053 — /admin/invoices: open the theme switcher + HOVER the Corporate
+      // theme (do NOT click it), and ring the "New" button, the theme toggle, and
+      // the Corporate option (shows people themes + manual invoice creation).
+      await web.goto(`${PORTAL}/admin/invoices`, { waitUntil: 'networkidle' });
+      await web.waitForSelector('#btn-new-invoice', { timeout: 15_000 });
+      await web.click('#btnChangeSkin');                                   // open the theme dropdown
+      await web.waitForSelector('#theme-corporate', { state: 'visible', timeout: 5_000 });
+      await web.hover('#theme-corporate');                                 // hover only — no click
+      await captureDocsScreenshotWithHighlights(web, dp('q2_053_admin-invoices-new-and-theme'), [
+        '#btn-new-invoice',
+        '#btnChangeSkin',
+        '#theme-corporate',
+      ]);
+
+      await SelfServicePortalsTestHelper.closeExternalBrowser(browser);
+      browser = undefined;
+
+      // ── Teardown (happy path): stop the Grails app the user way (its Stop button).
+      await SelfServicePortalsTestHelper.stopApp(ft, GRAILS_APP);
+    } finally {
+      // Close the external browser if an error left it open.
+      if (browser) {
+        try {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(browser);
+        } catch (e) {
+          console.error('[CLEANUP] Failed to close external browser:', e);
+        }
+      }
+      // NUCLEAR STOP — ALWAYS runs, the guaranteed safety net: force-remove the
+      // Grails container + volumes (keeping the image so re-runs don't rebuild).
+      try {
+        SelfServicePortalsTestHelper.dockerComposeDownKeepImage(GRAILS_STACK);
+      } catch (e) {
+        console.error('[CLEANUP] Nuclear grails docker compose down failed:', e);
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK G — CloudBeaver (3rd-party app): the single "starting" frame
+// ─────────────────────────────────────────────────────────────────────────────
+// REALLY starts the cloudbeaver app (needs Docker; the dbeaver/cloudbeaver image is
+// pre-pulled) and captures ONE frame in the "starting" state — ringing the
+// "3rd Party" badge (so viewers learn how to spot a 3rd-party app), the app title,
+// and Launch. Leak-safe: waits for running, graceful stopApp, then nuclear
+// `docker compose down -v` (keeping the image) in finally.
+electronBeforeAfterAllTest(
+  'Quickstart2 — CloudBeaver (3rd-party app)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    let ft = new FluentTester(firstPage);
+    const CB_APP = 'cloudbeaver';
+    const cbBtn = '#btnStartStop_cloudbeaver';
+    const cbState = '#appState_cloudbeaver';
+
+    try {
+      // Really boots the CloudBeaver container — fail fast + loud if Docker is down.
+      DockerTestHelper.assertDockerRunning('Quickstart2 — CloudBeaver (3rd-party app)');
+
+      // Find CloudBeaver in the Apps list, press Start, and let it enter the
+      // "starting" state — that transient frame is exactly what we capture.
+      await ft
+        .gotoApps()
+        .waitOnElementToBecomeVisible('#appSearch')
+        .setValue('#appSearch', 'CloudBeaver')
+        .sleep(600)
+        .waitOnElementToBecomeVisible('#appName_cloudbeaver')
+        .elementShouldContainText('#appName_cloudbeaver', 'CloudBeaver')
+        .waitOnElementToBecomeEnabled(cbBtn)
+        .click(cbBtn)
+        .confirmDialogShouldBeVisible()
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled(cbBtn)
+        .waitOnElementToContainText(cbState, 'starting', Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      // ── q2_038 — CloudBeaver "starting". Ring the app title, the "3rd Party" badge
+      // (how to identify a 3rd-party app), and Launch.
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('q2_038_cloudbeaver-starting'), [
+        '#appName_cloudbeaver',
+        '#appSourceBadge_cloudbeaver',
+        '#btnLaunch_cloudbeaver',
+      ]);
+
+      // Let CloudBeaver finish starting, then stop it the user way (its Stop button).
+      await ft
+        .waitOnElementToBecomeEnabled(cbBtn, Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToContainText(cbState, 'running', Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+      ft = SelfServicePortalsTestHelper.stopApp(ft, CB_APP);
+      await ft;
+    } finally {
+      // NUCLEAR STOP — ALWAYS runs, the guaranteed safety net: force-remove the
+      // CloudBeaver container + volumes (keeping the image so re-runs don't rebuild).
+      try {
+        SelfServicePortalsTestHelper.dockerComposeDownKeepImage(CB_APP);
+      } catch (e) {
+        console.error('[CLEANUP] Nuclear cloudbeaver docker compose down failed:', e);
+      }
+    }
   },
 );

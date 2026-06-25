@@ -68,10 +68,10 @@
 
     <!-- Right: Analytics + Admin links + support email + theme picker -->
     <div class="flex items-center gap-1">
-      <a href="${createLink(uri: '/')}" class="btn btn-ghost btn-sm normal-case">
+      <a id="portalNavAnalytics" href="${createLink(uri: '/')}" class="btn btn-ghost btn-sm normal-case">
         <dp:icon name="analytics"/> Analytics
       </a>
-      <a href="${createLink(uri: '/admin')}" class="btn btn-ghost btn-sm normal-case">
+      <a id="portalNavAdmin" href="${createLink(uri: '/admin')}" class="btn btn-ghost btn-sm normal-case">
         <dp:icon name="admin"/> Admin
       </a>
       <a href="mailto:support@datapallas.com" class="btn btn-ghost btn-sm normal-case gap-1">

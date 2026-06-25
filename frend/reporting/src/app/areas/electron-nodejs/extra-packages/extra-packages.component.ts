@@ -103,6 +103,20 @@ export class ExtraPackagesComponent implements OnInit {
       cmdUnInstall: 'choco uninstall maven --yes',
       cmdGetInfo: 'choco info maven',
     }
+    ,
+    {
+      id: 'duckdb',
+      name: 'DuckDB CLI',
+      icon: 'duckdb.svg',
+      website: 'https://duckdb.org/docs/lts/clients/cli/overview',
+      description: ` is a single, dependency-free executable that lets you run SQL queries and manage DuckDB database files directly from the terminal.`,
+      status: 'not-installed',
+      packageManager: 'choco',
+      dependsOn: '',
+      cmdInstall: 'choco install duckdb --yes',
+      cmdUnInstall: 'choco uninstall duckdb --yes',
+      cmdGetInfo: 'choco info duckdb',
+    }
   ];
 
   constructor(

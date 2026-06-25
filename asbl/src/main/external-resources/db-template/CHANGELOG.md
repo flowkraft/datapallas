@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.3.2 - 2026-06-29
+
+### Added
+
+- **DuckDB is now available as a one-click extra utility** — On the **Docker / Extra Utilities** screen you'll find a new entry for **DuckDB**, alongside the other tools. Press **Install Now** to add it and **Uninstall Now** to remove it, the same easy way as the rest. DuckDB is a small, fast tool for querying and crunching data files (such as spreadsheets and exported data) right from your computer, without needing to set up a database server first.
+
 ## 16.3.1 - 2026-06-17
 
 ### Fixed

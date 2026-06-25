@@ -87,6 +87,7 @@ export class TerminalComponent implements AfterViewInit {
         case 'choco info winmerge':
         case 'choco info notepadplusplus':
         case 'choco info maven':
+        case 'choco info duckdb':
           try {
             const { stdout } = await UtilitiesElectron.childProcessExec(command);
             response = stdout;
@@ -129,6 +130,7 @@ export class TerminalComponent implements AfterViewInit {
         case 'choco install winmerge --yes':
         case 'choco install docker-desktop --yes':
         case 'choco install vscode --yes':
+        case 'choco install duckdb --yes':
         case 'choco uninstall openjdk --yes':
         case 'choco uninstall temurin --yes':
         case 'choco uninstall temurin17 --yes':
@@ -137,6 +139,7 @@ export class TerminalComponent implements AfterViewInit {
         case 'choco uninstall winmerge --yes':
         case 'choco uninstall docker-desktop --yes':
         case 'choco uninstall vscode --yes':
+        case 'choco uninstall duckdb --yes':
           try {
             const testCommand = 'choco --version';
             await this.electronService.getCommandReadyToBeRunAsAdministratorUsingPowerShell(

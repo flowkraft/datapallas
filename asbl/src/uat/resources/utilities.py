@@ -214,57 +214,133 @@ def clean_output_folders_and_log_files(product="exe"):
 def ensure_java_prerequisite():
     ensure_java_is_installed("17")
 
-def ensure_java_is_not_installed():
+# ─────────────────────────────────────────────────────────────────────────────
+# Bullet-proof Java state management.
+#
+# Hard lesson: detecting Java by whether `java -version` EXITS 0 is wrong — a
+# broken/partial JDK (launcher present, lib\modules runtime removed) ALSO fails
+# -version, so it looks identical to "absent". That false signal made the old
+# cleanup skip the leftover dir and the reinstall no-op over a corrupt install,
+# leaving the machine permanently broken ("Failed setting boot class path").
+#
+# Fix: detect by PRESENCE (java.exe on PATH / known install dir on disk) AND,
+# separately, by HEALTH (java -version exits 0 AND the lib\modules runtime image
+# exists) -> three honest states: working / broken / absent. Each ensure_* runs
+# the normal action, then VERIFIES the promised end state and escalates + retries
+# until it holds, or raises. It never falsely reports success.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Roots where Temurin/Adoptium/other JDKs install — used for presence + leftover nuke.
+_JAVA_INSTALL_GLOBS = [
+    r'C:\Program Files\Eclipse Adoptium\*',
+    r'C:\Program Files\Java\*',
+    r'C:\Program Files\AdoptOpenJDK\*',
+    r'C:\Program Files\Temurin\*',
+    r'C:\Program Files\Zulu\*',
+    r'C:\Program Files\Microsoft\jdk*',
+]
+
+
+def _java_install_dirs():
+    """Every known JDK install directory currently on disk."""
+    dirs = []
+    for pattern in _JAVA_INSTALL_GLOBS:
+        dirs.extend(d for d in glob.glob(pattern) if os.path.isdir(d))
+    return dirs
+
+
+def _refresh_java_env():
+    """Re-read the live Machine+User PATH and JAVA_HOME from the registry into THIS
+    process, so checks right after a choco install/uninstall see reality (a fresh
+    subprocess otherwise inherits our stale environment)."""
+    ps = (
+        "[Environment]::GetEnvironmentVariable('Path','Machine') + ';' + "
+        "[Environment]::GetEnvironmentVariable('Path','User'); "
+        "[Environment]::GetEnvironmentVariable('JAVA_HOME','Machine'); "
+        "[Environment]::GetEnvironmentVariable('JAVA_HOME','User')"
+    )
     try:
-        # Check if Chocolatey is installed
-        try:
-            subprocess.check_output('choco -v', shell=True)
-            choco_installed = True
-            print("Chocolatey is installed. (ensure_java_is_not_installed)")
-        except subprocess.CalledProcessError:
-            choco_installed = False
-            print("Chocolatey is not installed. (ensure_java_is_not_installed)")
-    
-        # Use Chocolatey to uninstall Java, if it's installed
-        if choco_installed:
-            output = subprocess.check_output('choco list', shell=True).decode('utf-8')
-            java_or_jdk_products = [line.strip() for line in output.split('\n') if 'java' in line.lower() or 'jdk' in line.lower() or 'temurin' in line.lower() or 'maven' in line.lower()]
+        lines = subprocess.check_output(
+            ['powershell', '-NoProfile', '-Command', ps]
+        ).decode('utf-8', 'ignore').splitlines()
+    except subprocess.CalledProcessError as e:
+        print(f"_refresh_java_env: could not read environment ({e})")
+        return
+    if lines:
+        os.environ['PATH'] = lines[0].strip()
+    java_home = next((l.strip() for l in lines[1:] if l.strip()), '')
+    if java_home:
+        os.environ['JAVA_HOME'] = java_home
+    elif 'JAVA_HOME' in os.environ:
+        del os.environ['JAVA_HOME']
 
-            for product in java_or_jdk_products:
-                product_name = product.split(' ')[0]  # get the product name from the line
-                print(f"Uninstalling {product_name} with Chocolatey...")
-                subprocess.check_call(f'choco uninstall {product_name} -y', shell=True)
-        
-        # Chocolatey only knows about Java it currently tracks as a package. An
-        # interrupted `choco uninstall` (e.g. a Ctrl+C'd run) can deregister the
-        # package from choco's ledger while leaving the actual Adoptium/Temurin
-        # JDK installed and on PATH. In that state `choco list` reports nothing,
-        # the loop above is a no-op, yet `java -version` still resolves and the
-        # DataPallas UI never shows the Install Java screen. Sweep those orphans
-        # by MSI product code as a fallback.
-        if java_still_resolves():
-            print("Java still resolves after the Chocolatey pass — removing untracked JDK(s) by MSI...")
-            force_remove_untracked_java()
 
-        if java_still_resolves():
-            print("WARNING: Java is STILL resolvable after MSI removal — manual cleanup may be required.")
-        else:
-            print("Java is not installed on this computer.")
-    except subprocess.CalledProcessError:
-        print("An error occurred while uninstalling Java.")
+def _java_runs(version=None):
+    """HEALTH check (never a presence check): True iff `java -version` actually
+    boots (exit 0), optionally requiring major `version` in the banner."""
+    try:
+        result = subprocess.run(['java', '-version'], capture_output=True, text=True)
+    except (OSError, ValueError):
+        return False
+    if result.returncode != 0:
+        return False
+    if version is None:
+        return True
+    banner = (result.stderr or '') + (result.stdout or '')
+    return re.search(r'version "%s[.\"]' % re.escape(str(version)), banner) is not None
+
+
+def _runtime_image_present():
+    """A bootable Java 9+ install has <home>\\lib\\modules. Its absence is exactly
+    what 'Failed setting boot class path' means."""
+    java_exe = shutil.which('java')
+    if not java_exe:
+        return False
+    java_home = os.path.dirname(os.path.dirname(java_exe))
+    return os.path.isfile(os.path.join(java_home, 'lib', 'modules'))
+
+
+def detect_java_state(version=None):
+    """Honest three-way Java state, PRESENCE-based so a broken JDK is never
+    mistaken for an absent one:
+        'absent'  - no java.exe on PATH AND no known JDK install dir on disk.
+        'working' - java.exe resolves, `java -version` exits 0, AND the lib\\modules
+                    runtime image exists (and matches `version` if given).
+        'broken'  - present on PATH/disk but NOT working (fails -version, or the
+                    runtime image is missing).
+    """
+    _refresh_java_env()
+    present = bool(shutil.which('java')) or bool(_java_install_dirs())
+    if not present:
+        return 'absent'
+    return 'working' if (_java_runs(version) and _runtime_image_present()) else 'broken'
+
 
 def java_still_resolves():
-    """Returns True if `java -version` succeeds (i.e. Java is on PATH)."""
+    """Back-compat: True iff Java is present in ANY form (working OR broken).
+    Presence-based on purpose — a broken JDK still resolves and must be cleaned."""
+    return detect_java_state() != 'absent'
+
+
+def _choco_uninstall_java_packages():
+    """Uninstall every choco-tracked java/jdk/temurin/adoptium package (forced)."""
     try:
-        subprocess.check_output('java -version', shell=True, stderr=subprocess.STDOUT)
-        return True
+        out = subprocess.check_output('choco list', shell=True).decode('utf-8', 'ignore')
     except subprocess.CalledProcessError:
-        return False
+        out = ''
+    for line in out.splitlines():
+        low = line.lower()
+        if any(k in low for k in ('java', 'jdk', 'temurin', 'adoptium')):
+            pkg = line.split(' ')[0].strip()
+            if pkg:
+                print(f"Uninstalling {pkg} with Chocolatey...")
+                subprocess.call(f'choco uninstall {pkg} -y --force', shell=True)
+
 
 def force_remove_untracked_java():
-    """Silently uninstall any Adoptium/Temurin/JDK MSI products that Chocolatey
-    is no longer tracking, by enumerating the Windows uninstall registry and
-    running `msiexec /x {ProductCode} /qn`."""
+    """MSI sweep — silently uninstall any Adoptium/Temurin/JDK MSI products that
+    Chocolatey is no longer tracking, by enumerating the Windows uninstall registry
+    and running `msiexec /x {ProductCode} /qn`."""
     ps_script = (
         "$keys = 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',"
         "'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*';"
@@ -277,49 +353,79 @@ def force_remove_untracked_java():
     except subprocess.CalledProcessError as e:
         print(f"Could not enumerate installed JDK products: {e}")
         return
-
-    product_codes = [line.strip() for line in output.splitlines() if line.strip().startswith('{')]
-    for code in product_codes:
+    for code in [l.strip() for l in output.splitlines() if l.strip().startswith('{')]:
         print(f"Uninstalling JDK MSI product {code} ...")
         # /x = uninstall, /qn = silent, /norestart = don't reboot
         subprocess.call(f'msiexec /x {code} /qn /norestart', shell=True)
 
+
+def _force_remove_java_dirs():
+    """Force-delete any leftover JDK directory on disk — the half-removed dir whose
+    launcher remains but whose runtime was deleted (the broken-boot footgun)."""
+    dirs = _java_install_dirs()
+    if dirs:
+        # A running java.exe locks its own directory; we're removing Java, so end it.
+        subprocess.call('taskkill /f /im java.exe', shell=True,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for d in dirs:
+        print(f"Force-removing leftover JDK directory: {d}")
+        subprocess.call(['cmd', '/c', 'rmdir', '/s', '/q', d])
+        if os.path.isdir(d):
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def ensure_java_is_not_installed():
+    """Leave the system with NO Java — and VERIFY it. Normal path: choco uninstall +
+    MSI sweep + force-remove leftover dirs. Then PROVE (presence-based) that Java no
+    longer resolves and no install dir lingers; escalate + retry if anything remains.
+    Raises if it cannot reach a verified 'absent' state — never falsely reports success."""
+    attempts = 3
+    for attempt in range(1, attempts + 1):
+        if detect_java_state() == 'absent':
+            print(f"Java is not installed (verified, attempt {attempt}).")
+            return
+        print(f"[ensure_java_is_not_installed] attempt {attempt}: Java still present -> removing")
+        if shutil.which('choco'):
+            _choco_uninstall_java_packages()
+        force_remove_untracked_java()   # untracked Adoptium/Temurin/JDK MSIs
+        _force_remove_java_dirs()        # half-removed leftover dirs (the broken-boot case)
+        _refresh_java_env()
+    raise RuntimeError(
+        "ensure_java_is_not_installed: Java is STILL present after "
+        f"{attempts} attempts (state={detect_java_state()}). Refusing to report "
+        "success — manual cleanup required."
+    )
+
+
 def ensure_java_is_installed(version="17"):
-    output = ""
-    try:
-        output = subprocess.check_output('java -version', shell=True, stderr=subprocess.STDOUT)
-        if version in output.decode('utf-8'):
-            print(f"Java {version} is already installed.")
-        else:
-            print(f"Java is installed but not version {version}. Installing now...")
-            ensure_chocolatey_is_installed()
+    """Leave the system with a WORKING Java <version> — and VERIFY it. Normal path:
+    a clean choco install. Then PROVE the JVM actually boots (and matches the
+    version). A broken/partial install (launcher present, runtime missing) is nuked
+    and reinstalled with --force so choco can't no-op over a corrupt dir. Escalates +
+    retries; raises if it cannot reach a verified 'working' state — never falsely
+    reports success."""
+    ensure_chocolatey_is_installed()
+    pkg = {'17': 'temurin17', '11': 'temurin11', '8': 'temurin8'}.get(str(version), 'temurin')
+    attempts = 3
+    for attempt in range(1, attempts + 1):
+        state = detect_java_state(version)
+        if state == 'working':
+            print(f"Java {version} is installed and working (verified, attempt {attempt}).")
+            return
+        print(f"[ensure_java_is_installed] attempt {attempt}: state={state} -> (re)installing")
+        if state == 'broken':
+            # A broken/partial install must be fully removed first, or choco no-ops
+            # over it and lib\modules is never rewritten.
             ensure_java_is_not_installed()
-            if version == '17':
-                subprocess.check_call(f'choco install temurin17 -y', shell=True)
-                subprocess.check_call(f'choco install maven -y', shell=True)
-            if version == '11':
-                subprocess.check_call(f'choco install temurin11 -y', shell=True)
-            elif version == '8':
-                subprocess.check_call(f'choco install temurin8 -y', shell=True)
-            elif version == 'latest':
-                subprocess.check_call(f'choco install temurin -y', shell=True)
-            else:
-                subprocess.check_call(f'choco install temurin -y', shell=True)
-                
-    except subprocess.CalledProcessError:
-        print("Java is not installed. Installing now...")
-        ensure_chocolatey_is_installed()
-        if version == '17':
-            subprocess.check_call(f'choco install temurin17 -y', shell=True)
-            subprocess.check_call(f'choco install maven -y', shell=True)
-        elif version == '11':
-            subprocess.check_call(f'choco install temurin11 -y', shell=True)
-        elif version == '8':
-                subprocess.check_call(f'choco install temurin8 -y', shell=True)
-        else:
-            subprocess.check_call(f'choco install temurin -y', shell=True)
-    finally:
-        print(f"Java {version} has been installed.")
+        subprocess.call(f'choco install {pkg} -y --force', shell=True)
+        if str(version) == '17':
+            subprocess.call('choco install maven -y --force', shell=True)
+        _refresh_java_env()
+    raise RuntimeError(
+        f"ensure_java_is_installed: could NOT leave a working Java {version} after "
+        f"{attempts} attempts (state={detect_java_state(version)}). Refusing to "
+        "report success — manual intervention required."
+    )
 
 def ensure_chocolatey_is_installed():
     try:

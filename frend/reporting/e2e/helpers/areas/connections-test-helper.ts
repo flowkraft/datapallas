@@ -4,6 +4,7 @@ import { FluentTester } from '../fluent-tester';
 import * as PATHS from '../../utils/paths';
 import { Constants } from '../../utils/constants';
 import { ConfigurationTestHelper } from './configuration-test-helper';
+import { DockerTestHelper } from '../docker-test-helper';
 
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
@@ -1001,6 +1002,11 @@ export class ConnectionsTestHelper {
     action: 'start' | 'stop',
     fullTimeout: number = Constants.DELAY_FIVE_THOUSANDS_SECONDS,
   ): FluentTester {
+    // Starting a pack really boots a container — fail fast + loud if Docker is down,
+    // instead of hanging on the long Start→running wait below.
+    if (action === 'start') {
+      DockerTestHelper.assertDockerRunning(`starter pack start: ${dbVendor}`);
+    }
 
     const packId = vendorToPackId(dbVendor);
     const btnSel = `#btnStartStop_${packId}`;

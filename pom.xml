@@ -20,7 +20,7 @@
 
 	<properties>
 
-		<revision>16.3.1</revision>
+		<revision>16.3.2</revision>
 
 		<!-- upgraded -->
 		<commons.beanutils.version>1.9.4</commons.beanutils.version>

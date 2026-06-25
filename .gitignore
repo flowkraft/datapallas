@@ -133,6 +133,11 @@ bkend/reporting/temp/
 frend/reporting/test-results/**/trace.zip
 frend/reporting/trace_*/
 
+# e2e debug traces (CloudBeaver / Playwright dumps) — generated, never committed
+frend/reporting/e2e/cb-debug/
+**/cb-debug/
+**/cloudbeaver-trace*.zip
+
 frend/reporting/documentation.json
 
 log.txt

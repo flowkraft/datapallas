@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 import { FluentTester } from '../fluent-tester';
 import { AppsTestHelper } from '../apps-test-helper';
 import { Constants } from '../../utils/constants';
+import { DockerTestHelper } from '../docker-test-helper';
 
 import { spawnSync } from 'child_process';
 import * as path from 'path';
@@ -51,6 +52,19 @@ export class SelfServicePortalsTestHelper {
   }
 
   /**
+   * Nuclear stop that force-removes the app's container + volumes but KEEPS the
+   * built image (so a re-run doesn't have to rebuild — important offline). Safe to
+   * call in a `finally` as the guaranteed no-leak safety net.
+   * @param stack relative path under _apps (e.g. 'flowkraft/grails-playground').
+   */
+  static dockerComposeDownKeepImage(stack: string): void {
+    spawnSync('docker', ['compose', 'down', '-v'], {
+      cwd: `${path.join(process.env.PORTABLE_EXECUTABLE_DIR)}/_apps/${stack}`,
+      shell: true,
+    });
+  }
+
+  /**
    * Start an app and wait for it to be running (returns FluentTester for chaining).
    *
    * Idempotent against leftover state: if a prior test run was interrupted and
@@ -66,6 +80,8 @@ export class SelfServicePortalsTestHelper {
     appId: string,
     timeout: number = Constants.DELAY_FIVE_THOUSANDS_SECONDS,
   ): FluentTester {
+    // Starting an app really boots a container — fail fast + loud if Docker is down.
+    DockerTestHelper.assertDockerRunning(`app start: ${appId}`);
     const btnSel = `#btnStartStop_${appId}`;
     const stateSel = `#appState_${appId}`;
     const spinnerSel = `#appSpinner_${appId}`;
