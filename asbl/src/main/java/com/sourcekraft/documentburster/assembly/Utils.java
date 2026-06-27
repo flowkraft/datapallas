@@ -1,11 +1,19 @@
 package com.sourcekraft.documentburster.assembly;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -28,6 +36,49 @@ import org.zeroturnaround.exec.stream.LogOutputStream;
 public class Utils {
 
 	private static String PRODUCT_NAME = "DataPallas";
+
+	/**
+	 * Unzip {@code zipFile} into {@code destDir}, stripping the single top-level
+	 * wrapper directory that GitHub "archive" zips add (e.g. {@code datazeus-main/}),
+	 * so the repo contents land directly under {@code destDir}. Includes a zip-slip
+	 * guard. Used at package time to bundle the self-contained DataZeus koans.
+	 */
+	public static void unzipFlatten(File zipFile, String destDir) throws IOException {
+		File dest = new File(destDir);
+		FileUtils.forceMkdir(dest);
+		Path destPath = dest.toPath().toAbsolutePath().normalize();
+		try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFile)))) {
+			ZipEntry entry;
+			while ((entry = zis.getNextEntry()) != null) {
+				String name = entry.getName();
+				int slash = name.indexOf('/');
+				if (slash < 0) {
+					// a top-level entry with no wrapper segment — skip bare dirs, keep files as-is
+					if (entry.isDirectory())
+						continue;
+				} else {
+					name = name.substring(slash + 1); // strip "datazeus-main/"
+				}
+				if (name.isEmpty())
+					continue;
+				File out = new File(dest, name);
+				Path outPath = out.toPath().toAbsolutePath().normalize();
+				if (!outPath.startsWith(destPath))
+					throw new IOException("Refusing to extract outside target dir: " + entry.getName());
+				if (entry.isDirectory()) {
+					FileUtils.forceMkdir(out);
+				} else {
+					FileUtils.forceMkdir(out.getParentFile());
+					try (OutputStream os = new BufferedOutputStream(new FileOutputStream(out))) {
+						byte[] buf = new byte[8192];
+						int n;
+						while ((n = zis.read(buf)) > 0)
+							os.write(buf, 0, n);
+					}
+				}
+			}
+		}
+	}
 
 	public static boolean dir1ContainsAllDir2Files(File dir1, File dir2) throws Exception {
 		return dir1ContainsAllDir2Files(dir1, dir2, null);

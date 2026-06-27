@@ -69,6 +69,22 @@ public class NoExeAssembler extends AbstractAssembler {
 		FileUtils.copyDirectory(new File("src/main/external-resources/db-template"),
 				new File(packageDirPath + "/" + topFolderName), createDotAppslSelectiveFilter());
 
+		// Bundle the self-contained DataZeus learning content (the koans + the
+		// pre-built datasets/northwind/northwind.duckdb) into db/datazeus, fetched
+		// fresh from the public repo at package time. Kept OUT of the committed
+		// db-template so the two repos stay decoupled. Users refresh in place with
+		// "zeus update" (no git required).
+		String datazeusDest = packageDirPath + "/" + topFolderName + "/db/datazeus";
+		File datazeusZip = new File(packageDirPath + "/datazeus.zip");
+		FileUtils.copyURLToFile(
+				new java.net.URI("https://github.com/flowkraft/datazeus/archive/refs/heads/main.zip").toURL(),
+				datazeusZip);
+		Utils.unzipFlatten(datazeusZip, datazeusDest);
+		FileUtils.deleteQuietly(datazeusZip);
+
+		System.out.println(
+				"------------------------------------- DONE_02b:NoExeAssembler bundled DataZeus koans into db/datazeus ... -------------------------------------");
+
 		// copy log4j2.xml from server resources (single source of truth)
 		FileUtils.copyFile(
 				new File(Utils.getTopProjectFolderPath() + "/bkend/server/src/main/resources/log4j2.xml"),
