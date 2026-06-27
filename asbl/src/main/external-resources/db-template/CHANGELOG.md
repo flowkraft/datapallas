@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Learn data hands-on with the built-in DataZeus lessons** — DataPallas now comes with **DataZeus**, a friendly way to *learn data skills like SQL by actually doing them*, not just reading about them. You work through small "fill-in-the-blank" exercises on a ready-made sample database and get instant feedback as each one goes from red to green — so the ideas really stick. Fresh lessons are added over time, and you can pull the latest ones whenever you like.
+
 - **DuckDB is now available as a one-click extra utility** — On the **Docker / Extra Utilities** screen you'll find a new entry for **DuckDB**, alongside the other tools. Press **Install Now** to add it and **Uninstall Now** to remove it, the same easy way as the rest. DuckDB is a small, fast tool for querying and crunching data files (such as spreadsheets and exported data) right from your computer, without needing to set up a database server first.
 
 ## 16.3.1 - 2026-06-17
