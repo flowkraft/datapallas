@@ -82,6 +82,10 @@ public class NoExeAssembler extends AbstractAssembler {
 		Utils.unzipFlatten(datazeusZip, datazeusDest);
 		FileUtils.deleteQuietly(datazeusZip);
 
+		// Seed .zeus-baseline/ with a pristine snapshot of every editable workspace, so the
+		// user's FIRST "zeus update" can already tell edited exercises from untouched ones.
+		Utils.seedZeusBaseline(new File(datazeusDest));
+
 		System.out.println(
 				"------------------------------------- DONE_02b:NoExeAssembler bundled DataZeus koans into db/datazeus ... -------------------------------------");
 

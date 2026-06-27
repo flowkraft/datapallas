@@ -25,6 +25,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOCase;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.commons.io.filefilter.NameFileFilter;
 import org.apache.commons.io.filefilter.NotFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
@@ -77,6 +78,28 @@ public class Utils {
 					}
 				}
 			}
+		}
+	}
+
+	/**
+	 * Seed {@code .zeus-baseline/} inside the bundled DataZeus folder with a pristine
+	 * snapshot of every editable workspace — any folder carrying a {@code .zeus-keep}
+	 * marker (koans today, katas tomorrow). This is the reference {@code zeus update}
+	 * compares against, so a user's FIRST update can already distinguish exercises they
+	 * edited (preserve) from ones they never touched (refresh). Marker-driven, so new
+	 * exercise types need no change here. No-op when there are no markers.
+	 */
+	public static void seedZeusBaseline(File datazeusDir) throws IOException {
+		File baseline = new File(datazeusDir, ".zeus-baseline");
+		Collection<File> markers = FileUtils.listFiles(datazeusDir, new NameFileFilter(".zeus-keep"),
+				TrueFileFilter.TRUE);
+		for (File marker : markers) {
+			File workspace = marker.getParentFile();
+			// idempotent: never snapshot the baseline into itself
+			if (workspace.toPath().toAbsolutePath().startsWith(baseline.toPath().toAbsolutePath()))
+				continue;
+			String rel = datazeusDir.toPath().relativize(workspace.toPath()).toString();
+			FileUtils.copyDirectory(workspace, new File(baseline, rel));
 		}
 	}
 
