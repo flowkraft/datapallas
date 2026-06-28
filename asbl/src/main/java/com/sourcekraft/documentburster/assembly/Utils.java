@@ -82,7 +82,7 @@ public class Utils {
 	}
 
 	/**
-	 * Seed {@code .zeus-baseline/} inside the bundled DataZeus folder with a pristine
+	 * Seed {@code .internal-donttouch/} inside the bundled DataZeus folder with a pristine
 	 * snapshot of every editable workspace — any folder carrying a {@code .zeus-keep}
 	 * marker (koans today, katas tomorrow). This is the reference {@code zeus update}
 	 * compares against, so a user's FIRST update can already distinguish exercises they
@@ -90,7 +90,7 @@ public class Utils {
 	 * exercise types need no change here. No-op when there are no markers.
 	 */
 	public static void seedZeusBaseline(File datazeusDir) throws IOException {
-		File baseline = new File(datazeusDir, ".zeus-baseline");
+		File baseline = new File(datazeusDir, ".internal-donttouch");
 		Collection<File> markers = FileUtils.listFiles(datazeusDir, new NameFileFilter(".zeus-keep"),
 				TrueFileFilter.TRUE);
 		for (File marker : markers) {
