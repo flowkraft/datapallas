@@ -107,13 +107,13 @@ Full documentation is available at **[datapallas.com/docs](https://datapallas.co
 
 Everything above is the doing side — install DataPallas and build the real dashboards, reports, customer portals and automations your business needs. But here's what sets DataPallas apart: it's also one of the best places to learn and master data itself — SQL, data modeling, ETL/ELT — on real, production-like data, with AI to guide you and your data never leaving your machine. So it isn't "powerful BI or learning platform" — it's both at once: ship production work today, and become a sharper data professional while you do it.
 
-<a href="https://datapallas.com/docs/quickstart#find-mnemosyne" target="_blank">Find Mnemosyne →</a>
+<a href="https://datapallas.com/docs/quickstart#find-mnemosyne" target="_blank" rel="noopener noreferrer">Find Mnemosyne →</a>
 
 ### Learn Data
 
 How to use DataPallas to learn everything data — SQL, data modeling, ETL/ELT, warehousing, BI and more, told as a Greek-myth dialogue.
 
-<a href="https://datapallas.com/docs/learn-data" target="_blank">Learn Data →</a>
+<a href="https://datapallas.com/learn-data" target="_blank" rel="noopener noreferrer">Learn Data →</a>
 
 <a href="https://datapallas.com/learn-data" target="_blank">
   <img src=".github/0020-datapallas-learn-gif-600x380-3fps.gif" alt="DataPallas — Learn SQL, Data Modelling, ETL, Data Warehouses">
