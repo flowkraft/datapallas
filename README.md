@@ -115,9 +115,7 @@ How to use DataPallas to learn everything data — SQL, data modeling, ETL/ELT, 
 
 <a href="https://datapallas.com/docs/learn-data" target="_blank">Learn Data →</a>
 
-**[DataPallas in 5 Minutes →](https://datapallas.com/docs/quickstart)**
-
-<a href="https://datapallas.com" target="_blank">
+<a href="https://datapallas.com/learn-data" target="_blank">
   <img src=".github/0020-datapallas-learn-gif-600x380-3fps.gif" alt="DataPallas — Learn SQL, Data Modelling, ETL, Data Warehouses">
 </a>
 
