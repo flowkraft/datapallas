@@ -6,11 +6,13 @@ All SQL execution and visualization rendering happens here (Python + JDBC).
 The Next.js frontend calls these endpoints and renders results natively.
 """
 
+import json
 import math
 from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from chat2db import Chat2DB
@@ -42,6 +44,10 @@ app = FastAPI(title="Chat2DB Fast", lifespan=lifespan)
 
 class ConnectRequest(BaseModel):
     connection_code: str
+    connection_name: Optional[str] = None
+    # Full `dbserver` block from the DataPallas REST API, forwarded by the browser
+    # (type, database, host, port, userid, userpassword, url, driver, ...).
+    dbserver: Optional[dict] = None
 
 
 class AskRequest(BaseModel):
@@ -87,39 +93,28 @@ def health():
     }
 
 
-@app.get("/api/connections")
-def list_connections():
-    connections = chat.list_connections()
-    return [
-        {
-            "code": c.code,
-            "name": c.name,
-            "db_type": c.db_type,
-            "is_default": c.default_connection,
-        }
-        for c in connections
-    ]
-
-
 @app.post("/api/connect")
 def connect(req: ConnectRequest):
+    """Open a JDBC connection using the details the browser read from the DataPallas
+    REST API (the same source /explore-data lists from). Connection listing lives in
+    the Java backend now — there is no /api/connections here on purpose."""
+    if not req.dbserver:
+        raise HTTPException(status_code=400, detail="Missing connection details (dbserver).")
     try:
-        chat.connect(req.connection_code)
+        chat.connect_details(req.connection_code, req.connection_name, req.dbserver)
         return {
             "connected": True,
             "connection_code": req.connection_code,
             "schema": chat.schema(),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/ask")
-def ask(req: AskRequest):
-    if not chat._connection:
-        raise HTTPException(status_code=400, detail="Not connected to a database. Call /api/connect first.")
-
-    result = chat.ask(req.question, send_schema=req.send_schema)
+def _result_to_dict(result):
+    """Map a QueryResult to the JSON shape the frontend expects."""
     return {
         "question": result.question,
         "sql": result.sql or None,
@@ -135,6 +130,50 @@ def ask(req: AskRequest):
         "error": result.error,
         "raw_content": result.raw_content,
     }
+
+
+def _sse(obj: dict) -> str:
+    """Serialize an event dict as one SSE `data:` frame."""
+    return f"data: {json.dumps(obj)}\n\n"
+
+
+@app.post("/api/ask")
+def ask(req: AskRequest):
+    # No connection guard on purpose: with no DB connected the question is a pure
+    # DataPallas product question, which the engine routes to Athena accordingly.
+    result = chat.ask(req.question, send_schema=req.send_schema)
+    return _result_to_dict(result)
+
+
+@app.post("/api/ask/stream")
+def ask_stream(req: AskRequest):
+    """Streaming version of /api/ask (Server-Sent Events).
+
+    Emits {type:"delta",text} tokens as Athena types, then one
+    {type:"done", ...full result...}, or {type:"error",detail}. Athena's narrative
+    streams live; the table + chart are Python post-steps sent in the "done" frame.
+    """
+    # No connection guard on purpose: with no DB connected the question is a pure
+    # DataPallas product question, which the engine routes to Athena accordingly.
+    def event_stream():
+        try:
+            for ev in chat.ask_stream(req.question, send_schema=req.send_schema):
+                kind = ev.get("type")
+                if kind == "delta":
+                    yield _sse({"type": "delta", "text": ev.get("text", "")})
+                elif kind == "result":
+                    yield _sse({"type": "done", **_result_to_dict(ev["result"])})
+                elif kind == "error":
+                    yield _sse({"type": "error", "detail": ev.get("detail", "error")})
+        except Exception as e:  # pragma: no cover - defensive
+            yield _sse({"type": "error", "detail": str(e)})
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/sql")

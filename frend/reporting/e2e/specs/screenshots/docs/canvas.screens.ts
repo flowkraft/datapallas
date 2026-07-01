@@ -275,25 +275,28 @@ electronBeforeAfterAllTest(
       await captureDocsScreenshot(page, '300_00_explore-data-canvas-overview.png');
 
       console.log('[DONE] All Canvas screenshots captured.');
+
+      // ── Teardown (happy path): stop the AI Hub the user way + close the browser.
+      //    The NUCLEAR docker down in `finally` ALWAYS runs too (the leak guarantee) —
+      //    doing the graceful stop here means a hang-prone UI stop is only attempted
+      //    when things went well. Same pattern as samples.screens.ts.
+      await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
+      externalBrowser = null;
+      await SelfServicePortalsTestHelper.stopApp(
+        new FluentTester(firstPage).gotoDataCanvas(),
+        AI_HUB_APP_ID,
+      );
     } finally {
-      // ── CLEANUP — close external browser, stop AI Hub, take docker down ────
-      // Each step wrapped in its own try/catch so a failure in one doesn't
-      // skip the others. No DB connection cleanup needed — we used the
-      // pre-existing bundled Northwind SQLite connection.
+      // ── CLEANUP ────────────────────────────────────────────────────────────
+      // Close the external browser if an error above left it open (no-op on happy path).
       if (externalBrowser) {
         try {
           await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
         } catch (e) { console.error('Failed to close external browser:', e); }
       }
-
-      try {
-        console.log('[CLEANUP] Stopping AI Hub');
-        await SelfServicePortalsTestHelper.stopApp(
-          new FluentTester(firstPage).gotoDataCanvas(),
-          AI_HUB_APP_ID,
-        );
-      } catch (e) { console.error('Failed to stop AI Hub:', e); }
-
+      // NUCLEAR + ALWAYS: synchronous `docker compose down` force-removes the AI Hub
+      // stack, so it can NEVER be left running — on the happy path OR any thrown/hung
+      // error above. No DB-connection cleanup needed (bundled Northwind SQLite).
       try {
         console.log('[CLEANUP] docker compose down — flowkraft/_ai-hub');
         SelfServicePortalsTestHelper.dockerComposeDownRmi('flowkraft/_ai-hub');

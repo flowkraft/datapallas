@@ -11,13 +11,10 @@ export async function GET(request: Request) {
     const key = searchParams.get("key");
 
     if (key) {
+      // An unset key is a normal "no value yet" state, not an error. Return 200
+      // with a null value so callers fall back to their default without a
+      // spurious 404 in the browser console. (getConfig returns null if unset.)
       const value = getConfig(key);
-      if (value === null) {
-        return NextResponse.json(
-          { success: false, error: `Config key '${key}' not found` },
-          { status: 404 }
-        );
-      }
       return NextResponse.json({ success: true, config: { key, value } });
     }
 

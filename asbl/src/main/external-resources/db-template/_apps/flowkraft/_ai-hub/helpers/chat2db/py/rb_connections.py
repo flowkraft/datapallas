@@ -16,7 +16,6 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 
 import jaydebeapi
-from defusedxml import ElementTree as ET
 
 
 @dataclass
@@ -112,20 +111,14 @@ class DataPallasConnections:
     """
 
     def __init__(self,
-                 connections_path: Optional[str] = None,
                  jdbc_drivers_path: Optional[str] = None):
         """
         Initialize the connection manager.
 
         Args:
-            connections_path: Path to DataPallas's config/connections folder.
-                            Defaults to DATAPALLAS_CONNECTIONS_PATH env var.
             jdbc_drivers_path: Path to JDBC driver JARs.
                              Defaults to JDBC_DRIVERS_PATH env var.
         """
-        self.connections_path = connections_path or os.environ.get(
-            'DATAPALLAS_CONNECTIONS_PATH', '/datapallas/config/connections'
-        )
         self.jdbc_drivers_path = jdbc_drivers_path or os.environ.get(
             'JDBC_DRIVERS_PATH', '/datapallas/lib'
         )
@@ -133,168 +126,6 @@ class DataPallasConnections:
         self._active_connection: Optional[jaydebeapi.Connection] = None
         self._all_jars: Optional[List[str]] = None
         
-    def list_connections(self) -> List[DatabaseConnection]:
-        """
-        List all available database connections from DataPallas config.
-        
-        Returns:
-            List of DatabaseConnection objects.
-        """
-        self._connections.clear()
-        connections = []
-        
-        # DataPallas stores database connections in folders like db-*/
-        if not os.path.exists(self.connections_path):
-            print(f"⚠️ Connections path not found: {self.connections_path}")
-            return connections
-        
-        # Look for db-* folders
-        for folder_name in os.listdir(self.connections_path):
-            if not folder_name.lower().startswith('db-'):
-                continue
-            
-            folder_path = os.path.join(self.connections_path, folder_name)
-            if not os.path.isdir(folder_path):
-                continue
-            
-            # Look for the main XML file inside the folder
-            xml_file = os.path.join(folder_path, f"{folder_name}.xml")
-            if not os.path.exists(xml_file):
-                continue
-            
-            try:
-                conn = self._parse_connection_xml(xml_file)
-                if conn:
-                    connections.append(conn)
-                    self._connections[conn.code] = conn
-            except Exception as e:
-                print(f"⚠️ Error parsing {xml_file}: {e}")
-        
-        return connections
-    
-    def _parse_connection_xml(self, xml_path: str) -> Optional[DatabaseConnection]:
-        """
-        Parse a DataPallas database connection XML file.
-        
-        XML Structure:
-        <documentburster>
-          <connection>
-            <code>db-xxx</code>
-            <name>Connection Name</name>
-            <default>false</default>
-            <databaseserver>
-              <type>postgresql</type>
-              <host>localhost</host>
-              <port>5432</port>
-              <database>mydb</database>
-              <userid>user</userid>
-              <userpassword>pass</userpassword>
-              <usessl>false</usessl>
-              <defaultquery></defaultquery>
-              <driver></driver>
-              <url></url>
-            </databaseserver>
-          </connection>
-        </documentburster>
-        """
-        try:
-            tree = ET.parse(xml_path)
-            root = tree.getroot()
-            
-            connection = root.find('connection')
-            if connection is None:
-                return None
-            
-            databaseserver = connection.find('databaseserver')
-            if databaseserver is None:
-                return None
-            
-            def get_text(element, tag: str, default: str = '') -> str:
-                el = element.find(tag)
-                return el.text if el is not None and el.text else default
-            
-            def get_bool(element, tag: str, default: bool = False) -> bool:
-                val = get_text(element, tag, str(default)).lower()
-                return val in ('true', '1', 'yes')
-            
-            db_value = get_text(databaseserver, 'database') or None
-            db_type_value = get_text(databaseserver, 'type')
-
-            # For file-based DBs (SQLite, DuckDB), the XML has the Windows host path
-            # (e.g. "C:/Projects/.../db/sample-northwind-sqlite/northwind.db").
-            # Inside Docker the same file lives under /datapallas/db/...,
-            # so remap the host path to the container mount path.
-            if db_value and db_type_value and db_type_value.lower() in ('sqlite', 'duckdb'):
-                if not os.path.exists(db_value):
-                    db_mount = os.environ.get('DATAPALLAS_DB_PATH', '/datapallas/db')
-                    normalized = db_value.replace('\\', '/')
-                    idx = normalized.rfind('/db/')
-                    if idx >= 0:
-                        relative = normalized[idx + len('/db/'):]
-                        candidate = os.path.join(db_mount, relative)
-                        if os.path.exists(candidate):
-                            db_value = candidate
-
-            # For network-based DBs, the XML typically has "localhost" as the host.
-            # Inside Docker, localhost refers to the container itself, not the host
-            # machine. Remap to host.docker.internal so the container can reach
-            # databases running on the host OS (Docker Desktop provides this DNS).
-            host_value = get_text(databaseserver, 'host') or None
-            if host_value and host_value.lower() in ('localhost', '127.0.0.1'):
-                if os.path.exists('/.dockerenv'):
-                    host_value = 'host.docker.internal'
-
-            return DatabaseConnection(
-                code=get_text(connection, 'code'),
-                name=get_text(connection, 'name'),
-                default_connection=get_bool(connection, 'default'),
-                db_type=db_type_value,
-                host=host_value,
-                port=get_text(databaseserver, 'port') or None,
-                database=db_value,
-                userid=get_text(databaseserver, 'userid') or None,
-                userpassword=get_text(databaseserver, 'userpassword') or None,
-                usessl=get_bool(databaseserver, 'usessl'),
-                default_query=get_text(databaseserver, 'defaultquery') or None,
-                driver=get_text(databaseserver, 'driver') or None,
-                url=get_text(databaseserver, 'url') or None,
-                file_path=xml_path
-            )
-        except Exception as e:
-            print(f"Error parsing XML: {e}")
-            return None
-    
-    def get_connection(self, connection_code: str) -> Optional[DatabaseConnection]:
-        """Get a specific connection by its code."""
-        if not self._connections:
-            self.list_connections()
-        return self._connections.get(connection_code)
-    
-    def get_default_connection(self) -> Optional[DatabaseConnection]:
-        """Get the default database connection."""
-        if not self._connections:
-            self.list_connections()
-        for conn in self._connections.values():
-            if conn.default_connection:
-                return conn
-        return None
-    
-    def connect(self, connection_code: str) -> jaydebeapi.Connection:
-        """
-        Create a JDBC connection to the specified database.
-        
-        Args:
-            connection_code: The DataPallas connection code (e.g., 'db-northwind-postgres')
-        
-        Returns:
-            A JayDeBeApi Connection object.
-        """
-        conn_config = self.get_connection(connection_code)
-        if not conn_config:
-            raise ValueError(f"Connection not found: {connection_code}")
-        
-        return self.connect_with_config(conn_config)
-    
     def _get_all_jdbc_jars(self) -> List[str]:
         """
         Collect JDBC driver JARs from the lib directory.
@@ -327,6 +158,54 @@ class DataPallasConnections:
             print(f"⚠️ No JDBC JARs found in {self.jdbc_drivers_path}")
 
         return self._all_jars
+
+    def _remap_db_path(self, db_value: str) -> str:
+        """Remap a Windows host DB-file path (from the Java API) to the container's
+        /datapallas/db mount, for file-based engines (SQLite, DuckDB)."""
+        if not db_value or os.path.exists(db_value):
+            return db_value
+        db_mount = os.environ.get('DATAPALLAS_DB_PATH', '/datapallas/db')
+        normalized = db_value.replace('\\', '/')
+        idx = normalized.rfind('/db/')
+        if idx >= 0:
+            candidate = os.path.join(db_mount, normalized[idx + len('/db/'):])
+            if os.path.exists(candidate):
+                return candidate
+        return db_value
+
+    def _remap_host(self, host_value):
+        """Remap a 'localhost' DB host to host.docker.internal so the container can
+        reach a network database running on the host OS. (Network engines only — this
+        is the DB host, unrelated to the DataPallas API URL.)"""
+        if host_value and str(host_value).lower() in ('localhost', '127.0.0.1'):
+            if os.path.exists('/.dockerenv'):
+                return 'host.docker.internal'
+        return host_value
+
+    def connection_from_dbserver(self, code: str, name: Optional[str], dbserver: dict) -> DatabaseConnection:
+        """Build a DatabaseConnection from the `dbserver` block the DataPallas Java
+        REST API returns (passed through by the browser — the SAME source /explore-data
+        lists from). File paths are remapped to the container mount; driver and JDBC URL
+        are auto-derived from db_type + the remapped path/host in __post_init__."""
+        db_type = (dbserver.get('type') or '').strip()
+        database = dbserver.get('database')
+        if database and db_type.lower() in ('sqlite', 'duckdb'):
+            database = self._remap_db_path(database)
+        port = dbserver.get('port')
+        return DatabaseConnection(
+            code=code,
+            name=name or code,
+            db_type=db_type,
+            host=self._remap_host(dbserver.get('host')),
+            port=str(port) if port is not None else None,
+            database=database,
+            userid=dbserver.get('userid'),
+            userpassword=dbserver.get('userpassword'),
+            usessl=bool(dbserver.get('usessl')),
+            default_query=dbserver.get('defaultquery'),
+            driver=None,  # derived in __post_init__ from the remapped path/host
+            url=None,
+        )
 
     def connect_with_config(self, conn_config: DatabaseConnection) -> jaydebeapi.Connection:
         """
@@ -396,35 +275,3 @@ class DataPallasConnections:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-
-def print_connections():
-    """Utility function to print all available connections."""
-    manager = DataPallasConnections()
-    connections = manager.list_connections()
-    
-    if not connections:
-        print("No database connections found.")
-        print(f"Looking in: {manager.connections_path}")
-        return
-    
-    print("\n📁 Available DataPallas Database Connections:\n")
-    print("-" * 70)
-    
-    for conn in connections:
-        default_marker = " ⭐ (default)" if conn.default_connection else ""
-        print(f"  {conn.code}{default_marker}")
-        print(f"    Name: {conn.name}")
-        print(f"    Type: {conn.db_type}")
-        if conn.host:
-            print(f"    Host: {conn.host}:{conn.port}")
-        if conn.database:
-            print(f"    Database: {conn.database}")
-        print()
-    
-    print("-" * 70)
-    print(f"Total: {len(connections)} connection(s)")
-
-
-if __name__ == "__main__":
-    print_connections()

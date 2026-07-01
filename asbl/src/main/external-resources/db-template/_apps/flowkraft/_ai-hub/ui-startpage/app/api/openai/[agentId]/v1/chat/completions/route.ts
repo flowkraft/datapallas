@@ -253,13 +253,16 @@ export async function POST(
       try {
         const s = streamText({
           model: lettaModel,
-          providerOptions: { 
-            letta: { 
-              agent: { id: agentId }, 
-              ...modelParams 
-            } 
+          providerOptions: {
+            letta: {
+              agent: { id: agentId },
+              ...modelParams
+            }
           },
-          messages: convertToModelMessages(sdkMessages as any)
+          messages: convertToModelMessages(sdkMessages as any),
+          // Forward the caller's abort (Chat2DB Stop button → disconnect) so the
+          // Letta turn is best-effort halted instead of running to completion.
+          abortSignal: request.signal
         });
         uiStream = s.toUIMessageStream();
       } catch (e: any) {

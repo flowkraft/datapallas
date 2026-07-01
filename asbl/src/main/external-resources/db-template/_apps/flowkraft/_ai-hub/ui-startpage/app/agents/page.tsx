@@ -111,6 +111,23 @@ export default function AgentsPage() {
     return () => window.removeEventListener('trigger-update-agents', handler);
   }, []);
 
+  // Auto-open the provisioning dialog when the navbar sends us here from
+  // another page (AINavbar navigates to /agents?action=update-agents when the
+  // gear is clicked off the /agents route).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') !== 'update-agents') return;
+    setForceUpdate(false);
+    setGiveDbQueryToolToAthena(false);
+    setSettingsTab('update');
+    setShowUpdateConfirm(true);
+    // Strip the flag so a refresh or back-nav doesn't reopen the dialog.
+    params.delete('action');
+    const qs = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }, []);
+
   // Load LLM provider config when the settings dialog opens
   useEffect(() => {
     if (showUpdateConfirm && !llmConfigLoaded) {
@@ -435,12 +452,139 @@ export default function AgentsPage() {
     );
   };
 
+  // The settings dialog (Update Agents + API Provider tabs) is rendered in
+  // every branch below, so the navbar "Update Agents" opens it whether or not
+  // a crew has been provisioned yet. With an empty crew the page renders the
+  // "Provision" empty state, and previously the dialog only lived in the
+  // agents-exist branch — so it could never mount there.
+  const renderSettingsDialog = () => (
+      <Dialog open={showUpdateConfirm} onOpenChange={setShowUpdateConfirm}>
+        <DialogContent id="dialog-update-confirm" className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+            <DialogDescription className="sr-only">
+              Configure agent updates and LLM API provider settings
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Tab bar */}
+          <div className="flex border-b border-base-300 -mx-6 px-6">
+            <button
+              type="button"
+              onClick={() => setSettingsTab('update')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                settingsTab === 'update'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-base-content/60 hover:text-base-content'
+              }`}
+            >
+              Update Agents
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsTab('provider')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                settingsTab === 'provider'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-base-content/60 hover:text-base-content'
+              }`}
+            >
+              API Provider
+            </button>
+          </div>
+
+          {/* Tab: Update Agents */}
+          {settingsTab === 'update' && (
+            <div>
+              <p className="text-sm text-base-content/60 mb-4">
+                This will re-provision your AI crew agents. Existing agent configurations
+                and memory blocks will be updated to match the latest definitions.
+              </p>
+
+              {/* Give db_query tool to Athena checkbox */}
+              <label className="flex items-start gap-3 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={giveDbQueryToolToAthena}
+                  onChange={(e) => setGiveDbQueryToolToAthena(e.target.checked)}
+                  className="mt-0.5 rounded border-base-300 text-primary focus:ring-primary cursor-pointer"
+                />
+                <div>
+                  <span className="text-sm font-medium text-base-content">Give db_query tool to Athena</span>
+                  <p className="text-xs text-base-content/60 mt-0.5">
+                    When checked, Athena gets READ-ONLY access to query your
+                    DataPallas database connections.{' '}
+                    <strong className="text-base-content">When unchecked, no AI agent
+                    has any database access whatsoever.</strong>
+                  </p>
+                </div>
+              </label>
+
+              {/* Force checkbox */}
+              <label className="flex items-start gap-3 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={forceUpdate}
+                  onChange={(e) => setForceUpdate(e.target.checked)}
+                  className="mt-0.5 rounded border-base-300 text-primary focus:ring-primary cursor-pointer"
+                />
+                <div>
+                  <span className="text-sm font-medium text-base-content">Force recreate</span>
+                  <p className="text-xs text-base-content/60 mt-0.5">
+                    Delete and recreate all agents from scratch. Use this if agents are
+                    in a broken state. All conversation history will be lost.
+                  </p>
+                </div>
+              </label>
+
+              <div className="flex justify-end gap-3 mt-4">
+                <Button
+                  id="btn-update-confirm-yes"
+                  onClick={() => {
+                    setShowUpdateConfirm(false);
+                    handleProvisionAgents(forceUpdate, giveDbQueryToolToAthena);
+                  }}
+                  disabled={provisioning}
+                  className="bg-primary hover:bg-primary/90 text-primary-content"
+                >
+                  Yes, Update Agents
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowUpdateConfirm(false)}
+                  disabled={provisioning}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: API Provider */}
+          {settingsTab === 'provider' && (
+            <LLMProviderForm
+              fullConfig={llmConfig}
+              onSave={async (newFullConfig) => {
+                await setSetting(
+                  SETTING_KEYS.LLM_PROVIDER,
+                  JSON.stringify(newFullConfig),
+                  'LLM API provider configuration'
+                );
+                setLlmConfig(newFullConfig);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+  );
+
   if (loading) {
     return (
       <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center py-12">
           <p className="text-base-content/60">Loading agents...</p>
         </div>
+        {renderSettingsDialog()}
         {renderLogPanel()}
       </div>
     );
@@ -550,6 +694,7 @@ export default function AgentsPage() {
           </DialogContent>
         </Dialog>
 
+        {renderSettingsDialog()}
         {renderLogPanel()}
       </div>
     );
@@ -815,125 +960,7 @@ export default function AgentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Settings Dialog (Update Agents + API Provider tabs) */}
-      <Dialog open={showUpdateConfirm} onOpenChange={setShowUpdateConfirm}>
-        <DialogContent id="dialog-update-confirm" className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Settings</DialogTitle>
-            <DialogDescription className="sr-only">
-              Configure agent updates and LLM API provider settings
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Tab bar */}
-          <div className="flex border-b border-base-300 -mx-6 px-6">
-            <button
-              type="button"
-              onClick={() => setSettingsTab('update')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                settingsTab === 'update'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-base-content/60 hover:text-base-content'
-              }`}
-            >
-              Update Agents
-            </button>
-            <button
-              type="button"
-              onClick={() => setSettingsTab('provider')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                settingsTab === 'provider'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-base-content/60 hover:text-base-content'
-              }`}
-            >
-              API Provider
-            </button>
-          </div>
-
-          {/* Tab: Update Agents */}
-          {settingsTab === 'update' && (
-            <div>
-              <p className="text-sm text-base-content/60 mb-4">
-                This will re-provision your AI crew agents. Existing agent configurations
-                and memory blocks will be updated to match the latest definitions.
-              </p>
-
-              {/* Give db_query tool to Athena checkbox */}
-              <label className="flex items-start gap-3 mt-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={giveDbQueryToolToAthena}
-                  onChange={(e) => setGiveDbQueryToolToAthena(e.target.checked)}
-                  className="mt-0.5 rounded border-base-300 text-primary focus:ring-primary cursor-pointer"
-                />
-                <div>
-                  <span className="text-sm font-medium text-base-content">Give db_query tool to Athena</span>
-                  <p className="text-xs text-base-content/60 mt-0.5">
-                    When checked, Athena gets READ-ONLY access to query your
-                    DataPallas database connections.{' '}
-                    <strong className="text-base-content">When unchecked, no AI agent
-                    has any database access whatsoever.</strong>
-                  </p>
-                </div>
-              </label>
-
-              {/* Force checkbox */}
-              <label className="flex items-start gap-3 mt-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={forceUpdate}
-                  onChange={(e) => setForceUpdate(e.target.checked)}
-                  className="mt-0.5 rounded border-base-300 text-primary focus:ring-primary cursor-pointer"
-                />
-                <div>
-                  <span className="text-sm font-medium text-base-content">Force recreate</span>
-                  <p className="text-xs text-base-content/60 mt-0.5">
-                    Delete and recreate all agents from scratch. Use this if agents are
-                    in a broken state. All conversation history will be lost.
-                  </p>
-                </div>
-              </label>
-
-              <div className="flex justify-end gap-3 mt-4">
-                <Button
-                  id="btn-update-confirm-yes"
-                  onClick={() => {
-                    setShowUpdateConfirm(false);
-                    handleProvisionAgents(forceUpdate, giveDbQueryToolToAthena);
-                  }}
-                  disabled={provisioning}
-                  className="bg-primary hover:bg-primary/90 text-primary-content"
-                >
-                  Yes, Update Agents
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowUpdateConfirm(false)}
-                  disabled={provisioning}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Tab: API Provider */}
-          {settingsTab === 'provider' && (
-            <LLMProviderForm
-              fullConfig={llmConfig}
-              onSave={async (newFullConfig) => {
-                await setSetting(
-                  SETTING_KEYS.LLM_PROVIDER,
-                  JSON.stringify(newFullConfig),
-                  'LLM API provider configuration'
-                );
-                setLlmConfig(newFullConfig);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {renderSettingsDialog()}
 
       {renderLogPanel()}
     </div>

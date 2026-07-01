@@ -33,26 +33,50 @@ ARG LETTA_VERSION=0.16.4
 RUN git clone --depth 1 --branch ${LETTA_VERSION} https://github.com/letta-ai/letta.git /app && \
     rm -rf /app/.git
 
-# Commented out patches - testing if new Letta works without them
-# COPY ./.patches/server.patched /app/letta/server/server.py
-# COPY ./.patches/constants.patched /app/letta/constants.py
+# ===== Letta 0.16.4 source patches (each documents WHY + labels NEEDED / OPTIONAL) =====
 
-# Patch zai.py: add glm-5 to context windows + default fallback for future models
-RUN sed -i '/"glm-4.7": 200000,/a\    "glm-5": 200000,' /app/letta/schemas/providers/zai.py && \
-    sed -i '/Couldn.t find context window size/{n;s/continue/context_window_size = 200000/}' /app/letta/schemas/providers/zai.py
+# [OPTIONAL — context-window polish; pairs with the openai.py basename backport below]
+# Real context windows for Z.ai's glm-* models in LLM_MAX_CONTEXT_WINDOW. On its own this
+# dict is INERT on the openai-proxy path (0.16.4 does not read it there — glm-4.5 is
+# already present yet still reports Letta's 30K default); the backport below is what makes
+# 0.16.4 consult it. glm-4.6 and glm-4.5 already ship in stock 0.16.4 — do NOT re-add them
+# (duplicate key). Values match Z.ai's published windows (glm-5.2 usable window = 200K here).
+RUN sed -i '/"glm-4.5": 128000,/a\    "glm-4.7": 200000,\n    "glm-4.5-air": 128000,\n    "glm-5": 200000,\n    "glm-5-turbo": 200000,\n    "glm-5.1": 200000,\n    "glm-5.2": 200000,' /app/letta/constants.py
 
-# Patch constants.py: add missing Z.ai models to LLM_MAX_CONTEXT_WINDOW so
-# openai-proxy (used by Z.ai Coding Plan) assigns correct context windows
-# instead of the 30K default.
-RUN sed -i '/"glm-4.5": 128000,/a\    "glm-4.7": 200000,\n    "glm-4.5-air": 128000,\n    "glm-5": 200000,' /app/letta/constants.py
-
-# Patch provider_manager.py: Ollama embedding endpoint needs /v1 suffix.
+# [KEEP — embeddings, unrelated to the glm/LLM issue] provider_manager.py: Ollama
+# embedding endpoint needs the /v1 suffix.
 # Letta bug: OllamaProvider.list_embedding_models_async() uses openai_compat_base_url
 # (with /v1), but get_embedding_config_from_handle() uses raw provider.base_url.
 # The OpenAI Python client appends /embeddings, so without /v1 we get 404.
 RUN sed -i 's|embedding_endpoint=provider.base_url|embedding_endpoint=provider.base_url.rstrip("/") + "/v1" if provider.provider_type.value == "ollama" else provider.base_url|' /app/letta/services/provider_manager.py
 
 RUN uv sync --frozen --no-dev --all-extras --python 3.11
+
+# [NEEDED — THE fix for "must be one of []"] openai.py: make OpenAI-provider model
+# enumeration resilient to a transient failure of the upstream /models endpoint. The
+# Z.ai Coding Plan is consumed via
+# OPENAI_API_BASE; Letta lists models by GET-ing {base}/models and calling
+# response.raise_for_status() with NO retry. That /models endpoint intermittently
+# answers 401 (chat and normal fetches keep working), and a single transient 401 raises
+# straight out of list_llm_models_async — the openai-proxy provider then contributes
+# zero models and agent creation dies with:
+#   NOT_FOUND: Handle openai-proxy/glm-5.2 not found, must be one of []
+# Model availability comes entirely from the LIVE /models list (glm-5.x is declared
+# nowhere in Letta), so the fix is not a declaration but resilience: retry the
+# enumeration a few times so a normal 200 is used instead of aborting on one blip.
+RUN python -c "p='/app/letta/schemas/providers/openai.py'; s=open(p).read(); old='        data = await self._get_models_async()'+chr(10)+'        return await self._list_llm_models(data)'; new=chr(10).join(['        import asyncio as _aio','        _err=None','        for _i in range(6):','            try:','                data = await self._get_models_async()','                return await self._list_llm_models(data)','            except Exception as _e:','                _err=_e','                await _aio.sleep(1.5)','        raise _err']); assert old in s,'PATCH DRIFT: list_llm_models_async body not found in openai.py'; open(p,'w').write(s.replace(old,new,1)); print('openai.py /models retry patch applied')"
+# Fail the build loudly if the retry patch did not take (Letta source drift).
+RUN grep -q "for _i in range(6):" /app/letta/schemas/providers/openai.py \
+ || (echo "PATCH FAILED: openai-proxy /models retry did not apply to openai.py" && exit 1)
+
+# [OPTIONAL — context-window polish] openai.py: backport 0.16.8's basename lookup so the
+# openai-proxy path consults LLM_MAX_CONTEXT_WINDOW (the constants.py values above) when
+# litellm does not recognise the model. Without this, every glm-* uses Letta's 30K default
+# regardless of the constants.py dict. Python one-liner (not sed): the anchor is a 4-line
+# block that sed's a\ / {n;...} handles poorly, and the assert fails the build on drift.
+RUN python -c "p='/app/letta/schemas/providers/openai.py'; s=open(p).read(); old=chr(10).join(['        if context_window is not None:','            return context_window','','        # Simple fallback']); new=chr(10).join(['        if context_window is not None:','            return context_window','','        _bn = model_name.lower()','        if _bn in LLM_MAX_CONTEXT_WINDOW:','            return LLM_MAX_CONTEXT_WINDOW[_bn]','','        # Simple fallback']); assert old in s,'PATCH DRIFT: context-window anchor not found in openai.py'; open(p,'w').write(s.replace(old,new,1)); print('openai.py context-window backport applied')"
+RUN grep -q "LLM_MAX_CONTEXT_WINDOW\[_bn\]" /app/letta/schemas/providers/openai.py \
+ || (echo "PATCH FAILED: context-window backport did not apply to openai.py" && exit 1)
 
 # Runtime stage
 FROM ankane/pgvector:v0.5.1 AS runtime

@@ -51,7 +51,7 @@ export const extraPackagesTemplate = `<!-- <ng-template #extraPackagesTemplate> 
           <div id="package-{{extraPackage.id}}" class="card-body">
             <a href="{{extraPackage.website}}" target="_blank">
               @if (extraPackage.icon && extraPackage.icon.length > 0) {
-                <img src="assets/images/{{extraPackage.icon}}" class="h-12 w-12 object-contain" />
+                <img src="assets/images/{{extraPackage.icon}}" class="inline-block align-middle object-contain" style="height:2rem; width:2rem; margin-right:0.5rem;" />
               }
               {{extraPackage.name}}
             </a>

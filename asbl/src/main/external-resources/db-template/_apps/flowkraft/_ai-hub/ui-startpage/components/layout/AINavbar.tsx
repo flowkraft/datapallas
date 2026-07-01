@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { DAISY_THEMES, setTheme } from "@/lib/daisy-themes"
 import { BrandLogo } from "@/components/shared/BrandLogo"
@@ -9,6 +9,7 @@ import { IconXMark, IconHamburger, IconSettings, IconRocketLaunch, IconEmail } f
 
 export function AINavbar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
@@ -27,7 +28,14 @@ export function AINavbar() {
 
   const handleUpdateAgents = () => {
     setShowSettings(false)
-    window.dispatchEvent(new Event('trigger-update-agents'))
+    // The provisioning dialog and its listener live inside the /agents page.
+    // On /agents, fire the in-page event; from anywhere else, navigate there
+    // and let the page auto-open the dialog from the ?action flag.
+    if (pathname?.startsWith('/agents')) {
+      window.dispatchEvent(new Event('trigger-update-agents'))
+    } else {
+      router.push('/agents?action=update-agents')
+    }
   }
 
   const navLinks = [
@@ -47,8 +55,8 @@ export function AINavbar() {
           <Link href="/" className="flex items-center gap-2 shrink-0 no-underline text-base-content">
             <span className="logo-lg flex items-center gap-1">
               <span
-              className="text-2xl tracking-tight"
-              style={{ fontFamily: "var(--font-brand), 'Cormorant Garamond', ui-serif, Georgia, 'Times New Roman', serif", fontWeight: 700 }}
+              className="text-3xl tracking-tight"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 700, lineHeight: 1 }}
             >
               <span style={{ fontStyle: "italic", color: "currentColor" }}>Data</span>
               <span style={{ fontStyle: "normal", color: "#d18361" }}>Pallas</span>

@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -120 400 700">
+  <!-- _ai-hub only: horizontal 1.15x widen so Athena reads fuller (not thin) in both
+       the head-only crop (AthenaAvatar) and full-body (AthenaFull). viewBox is unchanged,
+       so the crop math in AthenaAvatar.tsx stays valid. -->
+  <g transform="translate(200,270) scale(1.15,1)">
+
+    <!-- ===== HEAD ENLARGED ~1.4x (uniform, anchored at the neck) so it is no
+         longer a small narrow oval on a tall body. Hair, face and helmet share
+         the SAME transform so they stay aligned; eyes stay round (uniform). ===== -->
+
+    <!-- ===== HAIR (short, framing the face) — cool blue-black ===== -->
+    <g transform="translate(0,-50) scale(1.4) translate(0,50)">
+    <!-- crown under helmet -->
+    <path d="M-40 -132 Q-42 -158 -34 -176 Q-18 -200 0 -202 Q18 -200 34 -176 Q42 -158 40 -132 Q20 -126 0 -123 Q-20 -126 -40 -132 Z" fill="#26262e"/>
+    <!-- left framing locks (temple to jaw) -->
+    <path d="M-33 -150 Q-46 -120 -45 -86 Q-45 -56 -38 -30 Q-35 -20 -29 -16" fill="none" stroke="#26262e" stroke-width="14" stroke-linecap="round"/>
+    <path d="M-27 -150 Q-38 -120 -37 -88 Q-37 -60 -32 -38" fill="none" stroke="#26262e" stroke-width="7" stroke-linecap="round"/>
+    <!-- right framing locks -->
+    <path d="M33 -150 Q46 -120 45 -86 Q45 -56 38 -30 Q35 -20 29 -16" fill="none" stroke="#26262e" stroke-width="14" stroke-linecap="round"/>
+    <path d="M27 -150 Q38 -120 37 -88 Q37 -60 32 -38" fill="none" stroke="#26262e" stroke-width="7" stroke-linecap="round"/>
+    <!-- soft end curls -->
+    <path d="M-29 -16 Q-33 -8 -27 -4" fill="none" stroke="#26262e" stroke-width="6" stroke-linecap="round"/>
+    <path d="M29 -16 Q33 -8 27 -4" fill="none" stroke="#26262e" stroke-width="6" stroke-linecap="round"/>
+    <!-- highlights -->
+    <path d="M-41 -120 Q-44 -86 -40 -52" fill="none" stroke="#46465a" stroke-width="1.3" opacity="0.8" stroke-linecap="round"/>
+    <path d="M41 -120 Q44 -86 40 -52" fill="none" stroke="#46465a" stroke-width="1.3" opacity="0.8" stroke-linecap="round"/>
+    <!-- deep shadow -->
+    <path d="M-36 -118 Q-38 -86 -34 -54" fill="none" stroke="#14141a" stroke-width="1.2" opacity="0.6" stroke-linecap="round"/>
+    <path d="M36 -118 Q38 -86 34 -54" fill="none" stroke="#14141a" stroke-width="1.2" opacity="0.6" stroke-linecap="round"/>
+    </g>
+
+    <!-- ===== ROBE + SHOULDERS (connected to neck — no gap) ===== -->
+    <path d="M-13 -33 Q-34 -30 -48 -6 Q-56 75 -56 175 Q-58 248 -52 300 L58 300 Q64 248 62 175 Q60 75 50 -6 Q36 -30 13 -33 Q0 -24 -13 -33 Z" fill="#ece4d2"/>
+    <!-- himation drape over left shoulder/side -->
+    <path d="M-48 -6 Q-62 40 -64 110 Q-62 175 -54 230 L-50 300 L-44 300 Q-46 235 -50 215 Q-60 165 -60 100 Q-58 40 -44 -4 Z" fill="#dcd4c0"/>
+    <!-- belt -->
+    <path d="M-52 70 Q0 60 54 70 Q54 82 47 86 Q0 78 -47 86 Q-54 82 -52 70 Z" fill="#c8a850"/>
+
+    <!-- ROBE outlines -->
+    <path d="M-13 -33 Q-34 -30 -48 -6 Q-56 75 -56 175 Q-58 248 -52 300 L58 300 Q64 248 62 175 Q60 75 50 -6 Q36 -30 13 -33" fill="none" stroke="#1a1408" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- neckline scoop -->
+    <path d="M-13 -33 Q0 -24 13 -33" fill="none" stroke="#1a1408" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- himation edge -->
+    <path d="M-48 -6 Q-62 40 -64 110 Q-62 175 -54 230 Q-52 265 -50 300" fill="none" stroke="#1a1408" stroke-width="1.1" stroke-linecap="round"/>
+    <!-- soft folds -->
+    <path d="M-8 4 Q-8 80 -6 160" fill="none" stroke="#1a1408" stroke-width="1" opacity="0.7" stroke-linecap="round"/>
+    <path d="M16 6 Q18 88 16 165" fill="none" stroke="#1a1408" stroke-width="0.7" opacity="0.6" stroke-linecap="round"/>
+    <path d="M34 10 Q40 95 40 175" fill="none" stroke="#1a1408" stroke-width="0.7" opacity="0.5" stroke-linecap="round"/>
+    <!-- belt outline -->
+    <path d="M-52 70 Q0 60 54 70 Q54 82 47 86 Q0 78 -47 86 Q-54 82 -52 70 Z" fill="none" stroke="#1a1408" stroke-width="1.1"/>
+
+    <!-- ===== NECK ===== -->
+    <path d="M-13 -58 L-13 -36 Q0 -28 13 -36 L13 -58 Z" fill="#fce8d4"/>
+    <path d="M-13 -58 Q-11 -44 -8 -36 Q0 -29 8 -36 Q11 -44 13 -58" fill="none" stroke="#1a1408" stroke-width="1.1" stroke-linecap="round"/>
+    <!-- soft neck shadow -->
+    <path d="M-9 -38 Q0 -32 9 -38" fill="none" stroke="#e8c8a8" stroke-width="1.4" opacity="0.4" stroke-linecap="round"/>
+
+    <!-- ===== FACE ===== -->
+    <g transform="translate(0,-50) scale(1.4) translate(0,50)">
+    <path d="M-28 -90 Q-34 -115 -28 -140 Q-22 -160 -12 -172 Q0 -180 12 -172 Q22 -160 28 -140 Q34 -115 28 -90 Q22 -72 14 -64 Q8 -58 0 -56 Q-8 -58 -14 -64 Q-22 -72 -28 -90 Z" fill="#fce8d4"/>
+    <path d="M-27 -92 Q-29 -106 -27 -118" fill="none" stroke="#e8c8a8" stroke-width="1" opacity="0.35" stroke-linecap="round"/>
+    <path d="M27 -92 Q29 -106 27 -118" fill="none" stroke="#e8c8a8" stroke-width="1" opacity="0.35" stroke-linecap="round"/>
+    <path d="M-26 -84 Q-30 -102 -28 -126" fill="none" stroke="#e8c8a8" stroke-width="1" opacity="0.35" stroke-linecap="round"/>
+    <path d="M26 -84 Q30 -102 28 -126" fill="none" stroke="#e8c8a8" stroke-width="1" opacity="0.35" stroke-linecap="round"/>
+    <path d="M-28 -90 Q-34 -115 -28 -140 Q-22 -160 -12 -172 Q0 -180 12 -172 Q22 -160 28 -140 Q34 -115 28 -90 Q22 -72 14 -64 Q8 -58 0 -56 Q-8 -58 -14 -64 Q-22 -72 -28 -90 Z" fill="none" stroke="#1a1408" stroke-width="1.6"/>
+    <path d="M-10 -60 Q0 -52 10 -60" fill="none" stroke="#1a1408" stroke-width="1.1" stroke-linecap="round"/>
+
+    <!-- EYES — grey-olive iris, straight gaze -->
+    <circle cx="-11" cy="-116" r="5.5" fill="#7a8a72"/>
+    <circle cx="-11" cy="-116" r="3" fill="#1a0a02"/>
+    <circle cx="-9.3" cy="-117.5" r="1.1" fill="white"/>
+    <path d="M-23 -116 Q-11 -128 0 -116" fill="none" stroke="#1a1408" stroke-width="2" stroke-linecap="round"/>
+    <path d="M-23 -116 Q-11 -108 0 -116" fill="none" stroke="#1a1408" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M0 -116 Q3 -119 2 -124" fill="none" stroke="#1a1408" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M-23 -116 Q-27 -119 -26 -123" fill="none" stroke="#1a1408" stroke-width="0.7" stroke-linecap="round"/>
+    <path d="M-20 -113 Q-11 -109 -2 -113" fill="none" stroke="#1a1408" stroke-width="0.5" opacity="0.4" stroke-linecap="round"/>
+    <circle cx="12" cy="-116" r="5.5" fill="#7a8a72"/>
+    <circle cx="12" cy="-116" r="3" fill="#1a0a02"/>
+    <circle cx="13.7" cy="-117.5" r="1.1" fill="white"/>
+    <path d="M2 -116 Q12 -128 23 -116" fill="none" stroke="#1a1408" stroke-width="2" stroke-linecap="round"/>
+    <path d="M2 -116 Q12 -108 23 -116" fill="none" stroke="#1a1408" stroke-width="0.9" stroke-linecap="round"/>
+    <path d="M23 -116 Q27 -119 26 -123" fill="none" stroke="#1a1408" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M2 -116 Q-1 -119 0 -124" fill="none" stroke="#1a1408" stroke-width="0.7" stroke-linecap="round"/>
+    <path d="M4 -113 Q12 -109 21 -113" fill="none" stroke="#1a1408" stroke-width="0.5" opacity="0.4" stroke-linecap="round"/>
+
+    <!-- BROWS — raised -->
+    <path d="M-24 -135 Q-12 -143 -1 -138" fill="none" stroke="#2a2832" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M3 -138 Q14 -143 24 -135" fill="none" stroke="#2a2832" stroke-width="1.8" stroke-linecap="round"/>
+
+    </g>
+
+    <!-- ===== NOSE + MOUTH — kept at ~original size (scale 1.1, not the head's
+         1.4) so the enlarged face doesn't thicken these delicate strokes into a
+         "mustache". Positioned to sit correctly on the bigger face. ===== -->
+    <g transform="translate(0,-3.1) scale(1.1)">
+    <!-- NOSE — original form from the video (curved bridge + subtle nostril). -->
+    <path d="M1 -110 Q4 -102 2 -94 Q0 -91 -2 -94" fill="none" stroke="#1a1408" stroke-width="0.7" stroke-linecap="round"/>
+    <path d="M-3 -93 Q-1 -95 1 -93" fill="none" stroke="#1a1408" stroke-width="0.6" opacity="0.35" stroke-linecap="round"/>
+    <!-- MOUTH — a natural open mouth: a soft lens (wider than tall, not a
+         perfect circle) with a near-skin interior + thin dark outline.
+         No upper-lip stroke, no teeth line. -->
+    <path d="M-7 -77 Q0 -83.5 7 -77 Q0 -70.5 -7 -77 Z" fill="#f4d8c4" stroke="#1a1408" stroke-width="1.3"/>
+    </g>
+
+    <!-- ===== RIGHT ARM (bent open gesture — talking) ===== -->
+    <path d="M50 -6 Q60 18 60 38 Q74 44 88 46" fill="none" stroke="#fce8d4" stroke-width="13" stroke-linecap="round"/>
+    <path d="M50 -6 Q60 18 60 38 Q74 44 88 46" fill="none" stroke="#1a1408" stroke-width="1.2" stroke-linecap="round"/>
+    <ellipse cx="92" cy="47" rx="9" ry="7.5" fill="#fce8d4"/>
+    <ellipse cx="92" cy="47" rx="9" ry="7.5" fill="none" stroke="#1a1408" stroke-width="1.1"/>
+    <line x1="99" y1="44" x2="103" y2="43" stroke="#1a1408" stroke-width="0.8"/>
+    <line x1="100" y1="48" x2="104" y2="48" stroke="#1a1408" stroke-width="0.8"/>
+    <line x1="99" y1="52" x2="103" y2="53" stroke="#1a1408" stroke-width="0.8"/>
+
+    <!-- ===== LEFT ARM (bent falconer pose holding owl) ===== -->
+    <!-- upper arm hangs from shoulder, elbow bends, forearm reaches out flat -->
+    <path d="M-46 -4 Q-57 22 -58 46 Q-78 38 -96 30" fill="none" stroke="#fce8d4" stroke-width="13" stroke-linecap="round"/>
+    <path d="M-46 -4 Q-57 22 -58 46 Q-78 38 -96 30" fill="none" stroke="#1a1408" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- fist at the end where owl stands -->
+    <ellipse cx="-98" cy="30" rx="8" ry="7" fill="#fce8d4"/>
+    <ellipse cx="-98" cy="30" rx="8" ry="7" fill="none" stroke="#1a1408" stroke-width="1.1"/>
+
+    <!-- ===== OWL (perched, gripping the forearm) ===== -->
+    <g transform="translate(-80,-34)">
+      <!-- body -->
+      <ellipse cx="0" cy="30" rx="26" ry="36" fill="#c8b888"/>
+      <ellipse cx="0" cy="28" rx="16" ry="25" fill="#e4d8b8"/>
+      <!-- wings -->
+      <path d="M-24 12 Q-40 20 -40 42 Q-36 54 -27 50 Q-21 42 -19 30" fill="#b8a878"/>
+      <path d="M24 12 Q40 20 40 42 Q36 54 27 50 Q21 42 19 30" fill="#b8a878"/>
+      <!-- facial disc -->
+      <ellipse cx="0" cy="6" rx="19" ry="17" fill="#d4c8a0"/>
+      <!-- eyes -->
+      <circle cx="-7" cy="2" r="7.5" fill="#f8f8f0"/>
+      <circle cx="7" cy="2" r="7.5" fill="#f8f8f0"/>
+      <circle cx="-7" cy="2" r="2.8" fill="#1a0a00"/>
+      <circle cx="7" cy="2" r="2.8" fill="#1a0a00"/>
+      <circle cx="-5.5" cy="0.5" r="1.1" fill="white"/>
+      <circle cx="8.5" cy="0.5" r="1.1" fill="white"/>
+      <!-- outlines -->
+      <ellipse cx="0" cy="30" rx="26" ry="36" fill="none" stroke="#1a1408" stroke-width="1.6"/>
+      <ellipse cx="0" cy="6" rx="19" ry="17" fill="none" stroke="#1a1408" stroke-width="1.3"/>
+      <path d="M-24 12 Q-40 20 -40 42 Q-36 54 -27 50 Q-21 42 -19 30" fill="none" stroke="#1a1408" stroke-width="1.3"/>
+      <path d="M24 12 Q40 20 40 42 Q36 54 27 50 Q21 42 19 30" fill="none" stroke="#1a1408" stroke-width="1.3"/>
+      <path d="M-23 22 Q-32 26 -36 34" fill="none" stroke="#1a1408" stroke-width="0.9"/>
+      <path d="M23 22 Q32 26 36 34" fill="none" stroke="#1a1408" stroke-width="0.9"/>
+      <circle cx="-7" cy="2" r="7.5" fill="none" stroke="#1a1408" stroke-width="1.6"/>
+      <circle cx="7" cy="2" r="7.5" fill="none" stroke="#1a1408" stroke-width="1.6"/>
+      <circle cx="-7" cy="2" r="5" fill="none" stroke="#1a1408" stroke-width="0.9"/>
+      <circle cx="7" cy="2" r="5" fill="none" stroke="#1a1408" stroke-width="0.9"/>
+      <!-- ear tufts -->
+      <path d="M-8 -10 Q-10 -18 -6 -22" fill="none" stroke="#1a1408" stroke-width="1.3"/>
+      <path d="M8 -10 Q10 -18 6 -22" fill="none" stroke="#1a1408" stroke-width="1.3"/>
+      <!-- beak -->
+      <path d="M-3 8 Q0 12 3 8 Q0 14 -3 8 Z" fill="#c8a850" stroke="#1a1408" stroke-width="1.1"/>
+      <!-- talons gripping the forearm -->
+      <path d="M-9 64 Q-12 70 -16 72" fill="none" stroke="#1a1408" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M-3 66 Q-3 72 -5 76" fill="none" stroke="#1a1408" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M3 66 Q3 72 5 76" fill="none" stroke="#1a1408" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M9 64 Q12 70 16 72" fill="none" stroke="#1a1408" stroke-width="1.2" stroke-linecap="round"/>
+    </g>
+
+    <!-- ===== HELMET (Corinthian, no crest) — polished bronze-gold ===== -->
+    <g transform="translate(0,-50) scale(1.4) translate(0,50)">
+    <path d="M-32 -148 Q-38 -175 -28 -200 Q-18 -225 0 -232 Q18 -225 28 -200 Q38 -175 32 -148 Z" fill="#c89a3c"/>
+    <path d="M-32 -148 Q-40 -135 -41 -120 Q-39 -110 -34 -114 Q-30 -126 -28 -142 Z" fill="#a87f2c"/>
+    <path d="M32 -148 Q40 -135 41 -120 Q39 -110 34 -114 Q30 -126 28 -142 Z" fill="#a87f2c"/>
+    <path d="M-2.5 -152 Q-4 -140 -3 -129 Q0 -125 3 -129 Q4 -140 2.5 -152 Z" fill="#a87f2c"/>
+    <!-- dome shading -->
+    <path d="M-20 -178 Q-24 -198 -22 -218" fill="none" stroke="#8a6410" stroke-width="1.4" opacity="0.6" stroke-linecap="round"/>
+    <path d="M20 -178 Q24 -198 22 -218" fill="none" stroke="#8a6410" stroke-width="1.4" opacity="0.6" stroke-linecap="round"/>
+    <!-- bright highlight -->
+    <path d="M-14 -188 Q-16 -206 -12 -222" fill="none" stroke="#e8c45a" stroke-width="1.4" opacity="0.7" stroke-linecap="round"/>
+    <!-- gold band -->
+    <path d="M-30 -168 Q-15 -172 0 -170 Q15 -172 30 -168" fill="none" stroke="#ecc55a" stroke-width="2" stroke-linecap="round"/>
+    <!-- brow ridge -->
+    <path d="M-34 -148 Q-15 -156 0 -154 Q15 -156 34 -148" fill="none" stroke="#1a1408" stroke-width="2.2" stroke-linecap="round"/>
+    <!-- helmet outlines -->
+    <path d="M-32 -148 Q-38 -175 -28 -200 Q-18 -225 0 -232 Q18 -225 28 -200 Q38 -175 32 -148 Z" fill="none" stroke="#1a1408" stroke-width="2.2"/>
+    <path d="M-32 -148 Q-40 -135 -41 -120 Q-39 -110 -34 -114 Q-30 -126 -28 -142 Z" fill="none" stroke="#1a1408" stroke-width="1.1"/>
+    <path d="M32 -148 Q40 -135 41 -120 Q39 -110 34 -114 Q30 -126 28 -142 Z" fill="none" stroke="#1a1408" stroke-width="1.1"/>
+    <path d="M-2.5 -152 Q-4 -140 -3 -129 Q0 -125 3 -129 Q4 -140 2.5 -152 Z" fill="none" stroke="#1a1408" stroke-width="1.1"/>
+
+    <!-- ===== OLIVE WREATH ===== -->
+    <path d="M-24 -172 Q-30 -166 -28 -160" fill="none" stroke="#1a1408" stroke-width="0.7" stroke-linecap="round"/>
+    <path d="M-18 -176 Q-24 -170 -20 -164" fill="none" stroke="#1a1408" stroke-width="0.7" stroke-linecap="round"/>
+    <path d="M20 -176 Q24 -170 20 -164" fill="none" stroke="#1a1408" stroke-width="0.7" stroke-linecap="round"/>
+    <path d="M24 -172 Q30 -166 28 -160" fill="none" stroke="#1a1408" stroke-width="0.7" stroke-linecap="round"/>
+    <ellipse cx="-30" cy="-164" rx="4" ry="1.5" transform="rotate(-30 -30 -164)" fill="#5a7a22" stroke="#1a1408" stroke-width="0.7"/>
+    <ellipse cx="-22" cy="-168" rx="4" ry="1.5" transform="rotate(-15 -22 -168)" fill="#5a7a22" stroke="#1a1408" stroke-width="0.7"/>
+    <ellipse cx="30" cy="-164" rx="4" ry="1.5" transform="rotate(30 30 -164)" fill="#5a7a22" stroke="#1a1408" stroke-width="0.7"/>
+    <ellipse cx="22" cy="-168" rx="4" ry="1.5" transform="rotate(15 22 -168)" fill="#5a7a22" stroke="#1a1408" stroke-width="0.7"/>
+    <circle cx="-26" cy="-162" r="1" fill="#1a1408"/>
+    <circle cx="26" cy="-162" r="1" fill="#1a1408"/>
+    </g>
+
+  </g>
+</svg>

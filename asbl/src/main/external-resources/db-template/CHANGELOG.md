@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.3.3 - 2026-07-06
+
+### Added
+
+- **Ask Athena about DataPallas itself — no database needed** — In Chat2DB you can now chat with Athena about how to use DataPallas — setting up and delivering reports, building dashboards, web portals, automation, troubleshooting, and more — without connecting a database first. Connect one and she'll answer questions about your data too, writing the query, running it, and explaining the results. She always knows which kind of question you're asking, so she won't try to run a database query when you're simply asking how something works.
+
+### Fixed
+
+- **The AI agents now set up reliably** — Setting up the Data Greeks (Athena and the rest of your AI crew) could previously fail for all of them at once. It now completes dependably and works with the latest AI models.
+
+- **Athena's directions now match what you actually see** — Her guidance occasionally mentioned a screen or step that doesn't exist (such as a "Save" step, when DataPallas saves your changes automatically). She now uses the real screen and menu names and the correct steps, so you can follow along without getting lost.
+
+- **Chat2DB shows all your databases, samples included** — The database picker in Chat2DB now lists every connection you have, including the ready-made sample databases, all ready to query.
+
+- **"Update Agents" works from any screen** — You can start updating the agents from anywhere in the AI Hub, not only from the Agents page.
+
+### Changed
+
+- **A cleaner, clearer Chat2DB** — A refreshed look, with the "Chat2DB" and "Athena" labels in the DataPallas brand colour and Athena's portrait redrawn with nicer proportions. The welcome message now describes honestly everything DataPallas can do — reports, delivery and web portals, dashboards, and automation — and reassures you that Athena only ever sees your table and column names, never your actual data.
+
 ## 16.3.2 - 2026-06-29
 
 ### Added

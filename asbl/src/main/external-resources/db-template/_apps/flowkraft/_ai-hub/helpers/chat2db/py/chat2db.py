@@ -103,50 +103,15 @@ class Chat2DB:
         # Last query result (for follow-up viz requests like "show me a chart")
         self._last_df: Optional[pd.DataFrame] = None
         
-        # Connect if connection provided
-        if connection_code:
-            self.connect(connection_code)
-        elif connection_config:
+        # Connect if a config was provided. Connect-by-code is retired: the browser
+        # now supplies full connection details via connect_details(), because virtual
+        # "sample" connections don't exist as files to look up on disk.
+        if connection_config:
             self.connect_with_config(connection_config)
     
     # -------------------------------------------------------------------------
     # Connection Management
     # -------------------------------------------------------------------------
-    
-    def list_connections(self) -> List[DatabaseConnection]:
-        """List all available DataPallas database connections."""
-        connections = self._conn_manager.list_connections()
-        
-        print("\n📁 Available Database Connections:\n")
-        for conn in connections:
-            marker = " ⭐" if conn.default_connection else ""
-            print(f"  • {conn.code}{marker}")
-            print(f"    {conn.name} ({conn.db_type})")
-        
-        return connections
-    
-    def connect(self, connection_code: str) -> 'Chat2DB':
-        """
-        Connect to a database using a DataPallas connection code.
-        
-        Args:
-            connection_code: The connection code (e.g., 'db-northwind-postgres')
-        
-        Returns:
-            Self for chaining.
-        """
-        self._close_connection()
-        
-        config = self._conn_manager.get_connection(connection_code)
-        if not config:
-            # Try listing connections first
-            self._conn_manager.list_connections()
-            config = self._conn_manager.get_connection(connection_code)
-        
-        if not config:
-            raise ValueError(f"Connection not found: {connection_code}\nUse list_connections() to see available connections.")
-        
-        return self.connect_with_config(config)
     
     def connect_with_config(self, config: DatabaseConnection) -> 'Chat2DB':
         """Connect using a DatabaseConnection config."""
@@ -156,9 +121,17 @@ class Chat2DB:
         
         # Fetch and cache schema
         self._fetch_schema()
-        
+
         return self
-    
+
+    def connect_details(self, code: str, name, dbserver: dict) -> 'Chat2DB':
+        """Connect using the connection details supplied by the browser, which read
+        them from the DataPallas REST API — the same source /explore-data lists from.
+        (Sample connections are virtual/in-memory and never exist as files, so the
+        browser-provided details are the only reliable source.)"""
+        config = self._conn_manager.connection_from_dbserver(code, name, dbserver)
+        return self.connect_with_config(config)
+
     def _close_connection(self):
         """Close existing connection if any."""
         if self._connection:
@@ -385,13 +358,54 @@ class Chat2DB:
             result.df  # View the data
             result.sql  # See the generated SQL
         """
-        if not self._connection:
-            raise RuntimeError("Not connected to a database. Use connect() first.")
+        connected = self._connection is not None
+        # The table index only makes sense with a live connection AND Send Tables on.
+        # With no connection this is a pure DataPallas product question (no schema).
+        schema_to_send = self._schema if (send_schema and connected) else None
+        response = self._letta.generate_sql(question, schema_to_send, db_connected=connected)
+        return self._finish(question, response)
 
-        # Generate SQL using Athena (optionally include schema)
-        schema_to_send = self._schema if send_schema else None
-        response = self._letta.generate_sql(question, schema_to_send)
+    def ask_stream(self, question: str, send_schema: bool = True):
+        """Streaming counterpart of ask(). Yields event dicts:
+
+          {"type": "delta",  "text": str}                Athena's reply, token by token
+          {"type": "result", "result": QueryResult}      final structured result
+          {"type": "error",  "detail": str}
+
+        Athena's narrative streams live; the SQL is executed and the chart rendered
+        only after she finishes (they are Python post-steps), then emitted in "result".
+        """
+        connected = self._connection is not None
+        # The table index only makes sense with a live connection AND Send Tables on.
+        # With no connection this is a pure DataPallas product question (no SQL).
+        schema_to_send = self._schema if (send_schema and connected) else None
+        full = ""
+        try:
+            for delta in self._letta.stream_generate(question, schema_to_send, db_connected=connected):
+                full += delta
+                yield {"type": "delta", "text": delta}
+        except Exception as e:
+            yield {"type": "error", "detail": f"Athena stream failed: {e}"}
+            return
+
+        response = self._letta.enrich_response(full)
+        try:
+            result = self._finish(question, response)
+        except Exception as e:
+            yield {"type": "error", "detail": str(e)}
+            return
+        yield {"type": "result", "result": result}
+
+    def _finish(self, question: str, response) -> QueryResult:
+        """Post-Athena processing shared by ask() and ask_stream(): decide whether the
+        reply is conversational / viz-only / a SQL query, run the SQL, render the chart.
+        """
         sql = response.sql
+
+        # No live DB connection → product-question mode: never execute SQL even if
+        # Athena included a snippet. Fall through to the conversational branch below.
+        if sql and not self._connection:
+            sql = None
 
         # No SQL extracted - this could be:
         # 1. Conversational response ("Hello!", "How are you?")

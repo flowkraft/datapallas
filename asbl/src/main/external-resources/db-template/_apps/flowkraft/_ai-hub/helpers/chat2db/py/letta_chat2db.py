@@ -130,7 +130,7 @@ class LettaChat2DB:
         """
         self._schema_context = schema
 
-    def _build_user_prompt(self, question: str) -> str:
+    def _build_user_prompt(self, question: str, db_connected: bool = True) -> str:
         """
         Build the user prompt with optional database context.
 
@@ -149,6 +149,31 @@ class LettaChat2DB:
 
         # User's question comes FIRST - this is what Athena should answer
         parts.append(f"USER QUERY: {question}")
+
+        # Connection-awareness hint — steers Athena's intent BEFORE the question is read.
+        parts.append("")
+        if db_connected:
+            parts.append("--- A DATABASE IS CONNECTED ---")
+            parts.append(
+                "A database is connected, so the user may be asking EITHER a data/SQL "
+                "question about their tables OR a DataPallas product question (setup, "
+                "configuration, distribution/delivery, troubleshooting, how-to). Read "
+                "their intent and answer accordingly — write SQL only for genuine data "
+                "questions."
+            )
+        else:
+            parts.append("--- NO DATABASE IS CONNECTED (IMPORTANT) ---")
+            parts.append(
+                "No database connection was provided, so the user CANNOT be asking a "
+                "data/SQL question about their own tables. Treat this with 100% confidence "
+                "as a DataPallas PRODUCT question — installation, setup, configuration, "
+                "report bursting, distribution/delivery, variables, scripting, the server, "
+                "licensing, troubleshooting, \"how does X work\", or \"where do I find Y\". "
+                "Do NOT write SQL and do NOT ask them to pick a database. Answer from your "
+                "DataPallas product knowledge and skills. Only if they clearly want to query "
+                "their own data, briefly remind them to connect a database first using the "
+                "selector at the top."
+            )
 
         # Database context comes AFTER (if provided)
         if self._schema_context:
@@ -186,7 +211,7 @@ class LettaChat2DB:
             print(prompt)
             print("=" * 60 + "\n")
 
-    def generate_sql(self, question: str, schema: Optional[str] = None) -> LettaResponse:
+    def generate_sql(self, question: str, schema: Optional[str] = None, db_connected: bool = True) -> LettaResponse:
         """
         Ask Athena a question, optionally with table index context.
 
@@ -206,24 +231,74 @@ class LettaChat2DB:
         # Update schema context
         self._schema_context = schema
 
-        prompt = self._build_user_prompt(question)
+        prompt = self._build_user_prompt(question, db_connected=db_connected)
         self._debug_prompt(prompt)
 
         response = self.send_message(prompt, include_context_tag=True)
+        enriched = self.enrich_response(response.content)
+        enriched.raw_response = response.raw_response
+        return enriched
 
+    def enrich_response(self, content: str) -> LettaResponse:
+        """Extract SQL / viz / diagram / narrative / segments from a completed reply.
+
+        Shared by the blocking (generate_sql) and streaming (stream_generate) paths
+        so both parse Athena's output identically.
+        """
+        response = LettaResponse(content=content)
         # Try to extract SQL if present (Athena may or may not generate SQL)
-        response.sql = self._extract_sql(response.content)
+        response.sql = self._extract_sql(content)
         # Try to extract visualization code if present
-        response.viz_code = self._extract_viz_code(response.content)
+        response.viz_code = self._extract_viz_code(content)
         # Extract diagram and HTML content if present
-        response.plantuml_code = self._extract_plantuml(response.content)
-        response.html_content = self._extract_html(response.content)
+        response.plantuml_code = self._extract_plantuml(content)
+        response.html_content = self._extract_html(content)
         # Extract Athena's inline narrative (text around specifically-rendered blocks)
-        response.narrative = self._extract_narrative(response.content)
+        response.narrative = self._extract_narrative(content)
         # Parse ordered content segments to preserve Athena's rendering order
-        response.content_segments = self._extract_content_segments(response.content)
-
+        response.content_segments = self._extract_content_segments(content)
         return response
+
+    def stream_generate(self, question: str, schema: Optional[str] = None, db_connected: bool = True):
+        """Streaming counterpart of generate_sql — yields Athena's reply as text
+        deltas (str) as they arrive. The caller accumulates the full text and then
+        calls enrich_response() on it to extract SQL / viz / segments.
+        """
+        self._schema_context = schema
+        prompt = self._build_user_prompt(question, db_connected=db_connected)
+        self._debug_prompt(prompt)
+        yield from self.stream_message(prompt, include_context_tag=True)
+
+    def stream_message(self, message: str, include_context_tag: bool = True):
+        """POST to the OpenAI-compatible adapter with stream=True and yield the
+        assistant's text deltas, parsing OpenAI `chat.completion.chunk` SSE lines.
+        """
+        url = f"{self.base_url}/chat/completions"
+        payload = {
+            "model": self.model,
+            "messages": self._build_messages(message, include_context_tag=include_context_tag),
+            "stream": True,
+        }
+        with self._client.stream(
+            "POST", url, json=payload, headers={"Content-Type": "application/json"}
+        ) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                data = line[5:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(data)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                choices = obj.get("choices") or []
+                if not choices:
+                    continue
+                delta = (choices[0].get("delta") or {}).get("content")
+                if delta:
+                    yield delta
 
     def send_message(self, message: str, include_context_tag: bool = True) -> LettaResponse:
         """

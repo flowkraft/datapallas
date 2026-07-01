@@ -25,7 +25,7 @@ TOP NAVIGATION BAR
            /docs/bi-analytics/dashboards
 
 ─── 2. CONFIGURATION ▾ ────────────────────────────────────────────────────────
-     Lean dropdown — only two entries by default:
+     Lean dropdown — the current template plus two management links:
 
      ├── Bursting
      │   The fallback configuration template (loaded automatically when
@@ -33,12 +33,15 @@ TOP NAVIGATION BAR
      │   in the per-template Configuration area.
      │   Docs: /docs/configuration
      │
-     └── Reports, Connections & Cubes
-         Single link that opens the management area with three sub-pages
-         (Reports, Connections, Cubes / Semantic Layer) — see below.
-         Reports are NOT enumerated in this dropdown anymore — they live
-         in a paginated table inside the Reports page.
-         Docs: /docs/configuration
+     ├── Reports, Connections & Cubes
+     │   Single link that opens the management area with three sub-pages
+     │   (Reports, Connections, Cubes / Semantic Layer) — see below.
+     │   Reports are NOT enumerated in this dropdown anymore — they live
+     │   in a paginated table inside the Reports page.
+     │   Docs: /docs/configuration
+     │
+     └── More Settings
+         Opens a modal of app-wide / global settings (not per-report).
 
 ─── 3. HELP & SUPPORT ▾ ──────────────────────────────────────────────────────
 
@@ -68,7 +71,7 @@ TOP NAVIGATION BAR
      ├── DataPallas Blog
      │   Latest blog posts, features, best practices.
      │
-     ├── Install/Setup        [Electron desktop app only]
+     ├── System Diagnostics / Update    [Electron desktop app only]
      │   Java/system check and update flow.
      │   Docs: /docs/server/installation
      │
@@ -93,7 +96,7 @@ When you enter an area, the left sidebar shows its dedicated menu.
 ━━━ PROCESSING (left menu) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Header: "ACTIONS"
 
-     ├── Processing                       [route: /processing/burstMenuSelected]
+     ├── Processing
      │   The default landing item. Selecting it shows a TAB STRIP in the
      │   main pane (see Processing Tabs below).
      │   Docs: /docs/report-bursting
@@ -103,7 +106,7 @@ Header: "ACTIONS"
      │   burst the result. Drag to reorder before merging.
      │   Docs: /docs/report-bursting
      │
-     ├── Quality Assurance                [route: /processingQa/qualityMenuSelected]
+     ├── Quality Assurance
      │   Test the configuration before going live: test all tokens,
      │   random tokens, or specific values. Built-in test email server
      │   captures outgoing email safely.
@@ -126,10 +129,8 @@ Header: "ACTIONS"
 When Processing (Burst) is selected in the left menu, the main pane shows
 a tab strip. The visible tabs are:
 
-     ┌────────────┬─────────────────┬──────────────────────────────┬──────────────────┬─────────┐
-     │ Burst      │ Generate        │ Explore Data &               │ Logging and      │ License │
-     │ Reports    │ Reports         │ Build Dashboards             │ Tracing          │         │
-     └────────────┴─────────────────┴──────────────────────────────┴──────────────────┴─────────┘
+     Tabs, left to right:
+       Burst Reports · Generate Reports · Explore Data & Build Dashboards · Customer Portal · Logging and Tracing · License
 
      ├── Burst Reports
      │   Pick a PDF/Excel input file and click Burst — splits the input
@@ -151,6 +152,11 @@ a tab strip. The visible tabs are:
      │         /docs/data-exploration/canvas
      │         /docs/bi-analytics/dashboards
      │
+     ├── Customer Portal
+     │   Start / launch the bundled self-service document & BI web-portal
+     │   apps (Grails, Next.js, WordPress).
+     │   Docs: /docs/document-portal
+     │
      ├── Logging and Tracing
      │   View logs from running and completed jobs.
      │   Docs: /docs/troubleshooting
@@ -167,14 +173,14 @@ are shown.
 Header: "Reports, Connections & Cubes"
 Reached via: Top menu → Configuration → Reports, Connections & Cubes
 
-     ├── Reports                          [route: /configuration-crud/reports]
+     ├── Reports
      │   Paginated table of every configured report. Browse, create,
      │   duplicate, edit name/capabilities, toggle visibility, restore
      │   defaults, delete. The default fallback template (Bursting) is
      │   always present.
      │   Docs: /docs/configuration
      │
-     ├── Connections                      [route: /configuration-crud/connections]
+     ├── Connections
      │   Manage reusable email-server and database connection profiles.
      │   Create, edit, test, set default, duplicate, delete. Templates
      │   reference connections by name so credentials are configured
@@ -182,7 +188,7 @@ Reached via: Top menu → Configuration → Reports, Connections & Cubes
      │   Docs: /docs/data-exploration/database-connections
      │         /docs/report-distribution-email
      │
-     └── Cubes / Semantic Layer           [route: /configuration-crud/cubes]
+     └── Cubes / Semantic Layer
          ★ NEW IN 15.2.0
          Define reusable Cube definitions over your database tables —
          dimensions, measures, joins, segments, hierarchies — in business
@@ -263,8 +269,10 @@ Reached via: Top menu → Configuration → <template name>
      │       delays and max attempts.
      │       Docs: /docs/advanced
      │
-     └── Reports                          [styled link, jumps to Reports list]
-         Quick navigation back to the Reports table.
+     ── "Switch Configuration" (section header) ──
+     └── All Reports
+         Styled link that jumps to the Reports table to switch to a
+         different configuration.
 
 
 ━━━ HELP (left menu, mirrors top dropdown) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -286,8 +294,8 @@ clicks-and-words a user would experience:
   >  click **Start**, wait for the container, then click **Launch**."
 
   > "Open **Configuration → Bursting** in the top menu.
-  >  In the left menu, click **Email**, then enable
-  >  **Send documents by Email**."
+  >  In the left menu, click **Enable / Disable Delivery**, then tick
+  >  **Send documents by Email**. That's it — changes save automatically, there is no Save button."
 
 I walk through each click so the user learns the software, not just gets
 the answer.

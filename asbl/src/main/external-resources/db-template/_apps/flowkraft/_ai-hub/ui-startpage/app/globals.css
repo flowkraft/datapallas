@@ -17,7 +17,6 @@
   --chat-user-fg: var(--color-primary-content);
   --chat-assistant-bg: var(--color-base-200);
   --chat-assistant-fg: var(--color-base-content);
-  --chat-avatar-bg: var(--color-secondary);
 
   --code-bg: var(--color-base-300);
   --code-fg: var(--color-base-content);
@@ -26,7 +25,8 @@
   --tag-fg: var(--color-primary);
   --tag-border: color-mix(in oklab, var(--color-primary) 30%, transparent);
 
-  --athena-accent: var(--color-secondary);
+  /* Pallas orange — the exact hue of "Pallas" in the DataPallas brand wordmark. */
+  --athena-accent: #d18361;
 }
 
 /* Per-theme dark overrides removed — the tokens above now derive from the active
@@ -37,7 +37,6 @@
   --color-chat-user-fg: var(--chat-user-fg);
   --color-chat-assistant-bg: var(--chat-assistant-bg);
   --color-chat-assistant-fg: var(--chat-assistant-fg);
-  --color-chat-avatar-bg: var(--chat-avatar-bg);
   --color-code-bg: var(--code-bg);
   --color-code-fg: var(--code-fg);
   --color-tag-bg: var(--tag-bg);

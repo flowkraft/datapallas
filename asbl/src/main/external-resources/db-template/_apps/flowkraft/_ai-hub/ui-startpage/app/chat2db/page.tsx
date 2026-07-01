@@ -64,6 +64,8 @@ import {
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
+import { AthenaAvatar, AthenaFull } from "@/components/shared/AthenaAvatar";
+import { fetchConnections } from "@/lib/explore-data/rb-api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +76,8 @@ interface DbConnection {
   name: string;
   db_type: string;
   is_default: boolean;
+  /** Full `dbserver` block from the Java API — forwarded to the backend on connect. */
+  dbserver?: Record<string, any>;
 }
 
 interface Chat2DBResponse {
@@ -245,6 +249,8 @@ interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   response?: Chat2DBResponse;
+  /** Assistant turn lifecycle: queued → streaming → done | stopped | error. */
+  status?: "queued" | "streaming" | "done" | "stopped" | "error";
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +269,9 @@ export default function Chat2DBPage() {
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  // A turn is streaming right now (drives the Stop button). The input is NEVER
+  // disabled by this — follow-up questions can be typed and queued anytime.
+  const [busy, setBusy] = useState(false);
 
   // Message history (Up/Down arrow)
   const [history, setHistory] = useState<string[]>([]);
@@ -276,19 +284,32 @@ export default function Chat2DBPage() {
 
   const nextId = () => `msg-${++msgIdCounter.current}`;
 
+  // Client-side FIFO queue + one in-flight turn. Athena is a single stateful
+  // Letta agent, so turns are serialized here; the input never blocks.
+  const queueRef = useRef<{ assistantId: string; question: string }[]>([]);
+  const activeAbortRef = useRef<AbortController | null>(null);
+  const pumpingRef = useRef(false);
+
   // ---------------------------------------------------------------------------
   // Load connections on mount
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    fetch("/api/chat2db/connections")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setConnections(data);
-          const def = data.find((c: DbConnection) => c.is_default);
-          if (def) setSelectedCode(def.code);
-        }
+    // Same source as /explore-data: the DataPallas Java REST API. Includes both
+    // on-disk connections AND virtual (in-memory) "sample" connections, which
+    // never exist as files and so can only come from this API.
+    fetchConnections()
+      .then((list) => {
+        const mapped: DbConnection[] = (list || []).map((c: any) => ({
+          code: c.connectionCode,
+          name: c.connectionName,
+          db_type: c.dbserver?.type || "",
+          is_default: !!c.defaultConnection,
+          dbserver: c.dbserver,
+        }));
+        setConnections(mapped);
+        const def = mapped.find((c) => c.is_default);
+        if (def) setSelectedCode(def.code);
       })
       .catch(() => {});
   }, []);
@@ -303,10 +324,15 @@ export default function Chat2DBPage() {
     setConnError("");
 
     try {
+      const conn = connections.find((c) => c.code === selectedCode);
       const res = await fetch("/api/chat2db/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connection_code: selectedCode }),
+        body: JSON.stringify({
+          connection_code: selectedCode,
+          connection_name: conn?.name,
+          dbserver: conn?.dbserver,
+        }),
       });
       const data = await res.json();
 
@@ -318,7 +344,6 @@ export default function Chat2DBPage() {
 
       setConnStatus("connected");
       setConnectedCode(selectedCode);
-      const conn = connections.find((c) => c.code === selectedCode);
       setMessages((prev) => [
         ...prev,
         {
@@ -337,10 +362,114 @@ export default function Chat2DBPage() {
   // Ask
   // ---------------------------------------------------------------------------
 
+  // Stream one queued turn over SSE: append Athena's tokens live, then set the
+  // final structured result (SQL / table / chart) when the "done" frame arrives.
+  // Abort (Stop) → keep whatever streamed so far and tag the turn "stopped".
+  const streamOne = useCallback(
+    async (assistantId: string, question: string, signal: AbortSignal) => {
+      let acc = "";
+      try {
+        const res = await fetch("/api/chat2db", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, send_schema: sendSchema }),
+          signal,
+        });
+
+        if (!res.ok || !res.body) {
+          const err = await res.json().catch(() => ({ detail: res.statusText }));
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, status: "error", response: { error: err.detail || err.error || "Request failed" } }
+                : m,
+            ),
+          );
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let sep: number;
+          while ((sep = buffer.indexOf("\n\n")) !== -1) {
+            const frame = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
+            if (!dataLine) continue;
+            const payload = dataLine.slice(5).trim();
+            if (payload === "[DONE]") continue;
+            let ev: any;
+            try {
+              ev = JSON.parse(payload);
+            } catch {
+              continue;
+            }
+            if (ev.type === "delta") {
+              acc += ev.text || "";
+              setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: acc } : m)));
+            } else if (ev.type === "done") {
+              const { type: _t, ...result } = ev;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantId ? { ...m, status: "done", response: result } : m)),
+              );
+            } else if (ev.type === "error") {
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantId ? { ...m, status: "error", response: { error: ev.detail || "error" } } : m)),
+              );
+            }
+          }
+        }
+      } catch (e: any) {
+        if (signal.aborted || e?.name === "AbortError") {
+          setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, status: "stopped" } : m)));
+        } else {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, status: "error", response: { error: String(e?.message || e) } } : m)),
+          );
+        }
+      }
+    },
+    [sendSchema],
+  );
+
+  // Drain the queue one turn at a time (Athena serializes). Re-entrant-safe: a
+  // second call while pumping just lets the running loop pick up the new item.
+  const pump = useCallback(async () => {
+    if (pumpingRef.current) return;
+    pumpingRef.current = true;
+    try {
+      while (queueRef.current.length > 0) {
+        const next = queueRef.current.shift()!;
+        const abort = new AbortController();
+        activeAbortRef.current = abort;
+        setBusy(true);
+        setMessages((prev) => prev.map((m) => (m.id === next.assistantId ? { ...m, status: "streaming" } : m)));
+        await streamOne(next.assistantId, next.question, abort.signal);
+        activeAbortRef.current = null;
+        setBusy(false);
+      }
+    } finally {
+      pumpingRef.current = false;
+    }
+  }, [streamOne]);
+
+  // Stop the current turn. Queued follow-ups keep going (they were already asked).
+  const handleStop = useCallback(() => {
+    activeAbortRef.current?.abort();
+  }, []);
+
   const handleSubmit = useCallback(
-    async (msg: { text: string }) => {
+    (msg: { text: string }) => {
       const question = msg.text.trim();
-      if (!question || isLoading) return;
+      // No DB required — questions are allowed with no connection. Those are pure
+      // DataPallas product questions (setup, config, troubleshooting, how-to); the
+      // backend detects the missing connection and routes them to Athena as such.
+      if (!question) return;
 
       // Add to history
       setHistory((prev) => {
@@ -349,53 +478,25 @@ export default function Chat2DBPage() {
       });
       setHistoryIdx(-1);
 
-      // Add user message
+      // Show the user bubble + a queued assistant placeholder immediately.
       const userId = nextId();
       const assistantId = nextId();
       setMessages((prev) => [
         ...prev,
         { id: userId, role: "user", content: question },
+        { id: assistantId, role: "assistant", content: "", status: "queued" },
       ]);
+
+      // Clear the box (but keep it enabled) and queue the turn.
       setInput("");
-      // Reset textarea to 1 row after sending
       if (inputRef.current) {
         inputRef.current.style.height = "auto";
       }
-      setIsLoading(true);
-
-      try {
-        const res = await fetch("/api/chat2db", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, send_schema: sendSchema }),
-        });
-        const data: Chat2DBResponse = await res.json();
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: assistantId,
-            role: "assistant",
-            content: data.text_response || data.explanation || "",
-            response: data,
-          },
-        ]);
-      } catch (e: any) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: assistantId,
-            role: "assistant",
-            content: "",
-            response: { error: e.message || "Request failed" },
-          },
-        ]);
-      } finally {
-        setIsLoading(false);
-        inputRef.current?.focus();
-      }
+      queueRef.current.push({ assistantId, question });
+      pump();
+      inputRef.current?.focus();
     },
-    [isLoading, sendSchema],
+    [pump],
   );
 
   // ---------------------------------------------------------------------------
@@ -475,7 +576,7 @@ export default function Chat2DBPage() {
       <div className="flex-shrink-0 border-b bg-base-100 px-4 py-2 space-y-1.5">
         {/* Line 1: Brand */}
         <div className="flex items-center gap-2">
-          <span className="text-lg">🦉</span>
+          <AthenaAvatar size={32} />
           <span className="text-sm font-semibold text-athena-accent">Chat2DB</span>
           <span className="text-xs text-base-content/60">
             powered by Athena — ask in plain English, get SQL + results + charts. Refine, drill deeper, visualize.
@@ -594,9 +695,9 @@ export default function Chat2DBPage() {
         <ConversationContent>
           {messages.length === 0 ? (
             <ConversationEmptyState
-              icon="🦉"
-              title="Chat2DB"
-              description="Select a database above, then ask questions in plain English. Athena will generate SQL, run it, and explain the results."
+              icon={<AthenaFull height={160} />}
+              title="Chat with Athena"
+              description="Ask me anything about DataPallas — report generation and bursting, document delivery (email, upload, customer web portals), dashboards, and automation. Connect a database above to explore your data too — I write the SQL, run it locally, explain the results, and only ever see table and column names, never your rows."
             />
           ) : (
             messages.map((msg) => {
@@ -624,9 +725,50 @@ export default function Chat2DBPage() {
               const r = msg.response;
               return (
                 <Message key={msg.id} from="assistant">
-                  <MessageAvatar className="bg-chat-avatar-bg text-primary-content" fallback="🦉" />
+                  <MessageAvatar className="h-9 w-9"><AthenaAvatar size={36} /></MessageAvatar>
                   <MessageContent>
                     <span className="text-xs font-semibold text-athena-accent">Athena</span>
+
+                    {/* Queued (waiting its turn behind an earlier question) */}
+                    {msg.status === "queued" && (
+                      <div className="rounded-2xl px-4 py-2 text-xs italic bg-chat-assistant-bg text-base-content/50">
+                        Queued…
+                      </div>
+                    )}
+
+                    {/* Live streaming turn — keep #chat-thinking-indicator present the whole time */}
+                    {msg.status === "streaming" && (
+                      <div id="chat-thinking-indicator">
+                        {msg.content ? (
+                          <MessageResponse className="bg-chat-assistant-bg text-chat-assistant-fg">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
+                            <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-base-content/40 align-baseline" />
+                          </MessageResponse>
+                        ) : (
+                          <div className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm bg-chat-assistant-bg text-base-content/60">
+                            <span className="animate-pulse">Thinking</span>
+                            <span className="flex gap-0.5">
+                              <span className="animate-bounce [animation-delay:0ms]">.</span>
+                              <span className="animate-bounce [animation-delay:150ms]">.</span>
+                              <span className="animate-bounce [animation-delay:300ms]">.</span>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Stopped mid-turn — show whatever streamed, tagged */}
+                    {msg.status === "stopped" && (
+                      <>
+                        {msg.content && (
+                          <MessageResponse className="bg-chat-assistant-bg text-chat-assistant-fg">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
+                          </MessageResponse>
+                        )}
+                        <div className="text-xs italic text-base-content/50">Stopped</div>
+                      </>
+                    )}
+
                     {/* Error */}
                     {r?.error && (
                       <div id="chat-error-response" className="rounded-2xl px-4 py-3 text-sm bg-red-50 text-red-700">
@@ -767,23 +909,8 @@ export default function Chat2DBPage() {
             })
           )}
 
-          {/* Thinking indicator */}
-          {isLoading && (
-            <Message from="assistant">
-              <MessageAvatar className="bg-chat-avatar-bg text-primary-content" fallback="🦉" />
-              <MessageContent>
-                <span className="text-xs font-semibold text-athena-accent">Athena</span>
-                <div id="chat-thinking-indicator" className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm bg-chat-assistant-bg text-base-content/60">
-                  <span className="animate-pulse">Thinking</span>
-                  <span className="flex gap-0.5">
-                    <span className="animate-bounce [animation-delay:0ms]">.</span>
-                    <span className="animate-bounce [animation-delay:150ms]">.</span>
-                    <span className="animate-bounce [animation-delay:300ms]">.</span>
-                  </span>
-                </div>
-              </MessageContent>
-            </Message>
-          )}
+          {/* Per-message streaming indicator now lives inside each assistant bubble
+              (see status === "streaming" above), so no global indicator here. */}
         </ConversationContent>
       </Conversation>
 
@@ -804,17 +931,33 @@ export default function Chat2DBPage() {
             }}
             onKeyDown={handleKeyDown}
             placeholder={
-              isConnected
-                ? "Ask a question about your data..."
-                : "Connect to a database first..."
+              busy
+                ? "Queue another question…"
+                : isConnected
+                  ? "Ask about your data — or anything about DataPallas…"
+                  : "Ask about DataPallas — reports, dashboards, delivery, portals, automation…"
             }
-            disabled={!isConnected || isLoading}
           />
-          <PromptInputSubmit
-            id="btn-submit-chat"
-            status={isLoading ? "streaming" : "ready"}
-            disabled={!isConnected || !input.trim()}
-          />
+          {busy && !input.trim() ? (
+            <button
+              id="btn-stop-chat"
+              type="button"
+              onClick={handleStop}
+              aria-label="Stop generating"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-error text-error-content transition-colors hover:bg-error/90"
+            >
+              {/* Heroicon: stop (filled square) */}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <rect x="6" y="6" width="12" height="12" rx="1.5" />
+              </svg>
+            </button>
+          ) : (
+            <PromptInputSubmit
+              id="btn-submit-chat"
+              status="ready"
+              disabled={!input.trim()}
+            />
+          )}
         </PromptInput>
       </div>
     </div>
