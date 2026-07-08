@@ -31,6 +31,12 @@
 //     bi-analytics/040-rb-report-parameters-dp.png /report-parameters → Parameter Form card
 //     bi-analytics/045-rb-report-dp.png           /reports       → the payslip card
 //
+//   BLOCK 3 — Data-warehouse OLAP (data-warehouse-olap.mdx) — needs Docker +
+//   ClickHouse; DuckDB/ClickHouse pivots are FULL-VIEWPORT (nav + engine card):
+//     bi-analytics/038-rb-clickhouse-dp.png                 ClickHouse starter-pack card (Electron crop)
+//     bi-analytics/037-rb-pivottable-duckdb-warehouse-dp.png  /data-warehouse DuckDB engine
+//     bi-analytics/039-rb-pivottable-clickhouse-dp.png        /data-warehouse ClickHouse engine
+//
 // The 040/045 crops target NEW wrapper ids added to the Grails GSPs
 // (#parameterFormCard, #reportDemoCard). Because the grails-playground image
 // BAKES its GSPs at build time (build: dockerfile), those ids only exist in a
@@ -55,6 +61,7 @@ import { electronBeforeAfterAllTest } from '../../../utils/common-setup';
 import { Constants } from '../../../utils/constants';
 import { FluentTester } from '../../../helpers/fluent-tester';
 import { SelfServicePortalsTestHelper } from '../../../helpers/areas/self-service-portals-test-helper';
+import { ConnectionsTestHelper } from '../../../helpers/areas/connections-test-helper';
 import {
   DOCS_IMAGES_DIR,
   captureDocsScreenshot,
@@ -97,7 +104,6 @@ electronBeforeAfterAllTest(
   async ({ beforeAfterEach: firstPage }) => {
     test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
-    let started = false;
     let bodySucceeded = false;
 
     try {
@@ -131,10 +137,9 @@ electronBeforeAfterAllTest(
       console.log(`[capture] bi-analytics/${dp('005-bi-analytics-app-start-confirmation')}`);
 
       // ── Confirm Yes → the card flips to "starting" (spinner + progress log) ──
-      // From here the container is booting — `started=true` so the finally
-      // ALWAYS composes it down, even if the "starting" crop below throws.
+      // From here the container is booting; the finally ALWAYS composes it down,
+      // even if the "starting" crop below throws.
       await new FluentTester(firstPage).clickYesDoThis();
-      started = true;
       await firstPage
         .locator(`#appState_${BI_APP_ID}`)
         .filter({ hasText: /starting/i })
@@ -159,20 +164,10 @@ electronBeforeAfterAllTest(
       // ── CLEANUP — the app must NEVER be left running. Scream on failure. ─────
       const cleanupErrors: string[] = [];
 
-      // Graceful UI stop first (best-effort) — but only meaningful once the app
-      // actually began starting; if it never started there's nothing to stop.
-      if (started) {
-        try {
-          await SelfServicePortalsTestHelper.stopApp(
-            new FluentTester(firstPage).gotoBurstScreen(),
-            BI_APP_ID,
-          );
-        } catch (e) {
-          cleanupErrors.push(`graceful stopApp: ${e}`);
-        }
-      }
-      // Nuclear down — ALWAYS runs, removes the container + volumes even if the
-      // graceful stop above failed or the renderer died mid-start.
+      // No graceful UI stop: the nuclear `docker compose down` below removes the
+      // grails container directly (raw docker, exactly like analytics-olap.spec.ts).
+      // The UI stop path (gotoApps → Apps tab) is flaky here and a screenshot
+      // spec doesn't need it — the compose-down alone guarantees no leak.
       try {
         SelfServicePortalsTestHelper.dockerComposeDownKeepImage('flowkraft/grails-playground');
       } catch (e) {
@@ -203,7 +198,6 @@ electronBeforeAfterAllTest(
     test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
     let externalBrowser: Browser | null = null;
-    let started = false;
     let bodySucceeded = false;
 
     try {
@@ -214,7 +208,6 @@ electronBeforeAfterAllTest(
         .click('#tab-btn-customerPortalTab')
         .waitOnElementToBecomeVisible(`#appName_${BI_APP_ID}`);
       await SelfServicePortalsTestHelper.startApp(new FluentTester(firstPage), BI_APP_ID);
-      started = true;
       await new FluentTester(firstPage).waitOnElementToBecomeVisible(`#btnLaunch_${BI_APP_ID}`);
 
       // ── Open external browser + wait for the Grails server to answer ─────────
@@ -281,14 +274,144 @@ electronBeforeAfterAllTest(
           cleanupErrors.push(`close external browser: ${e}`);
         }
       }
-      if (started) {
-        try {
-          await SelfServicePortalsTestHelper.stopApp(
-            new FluentTester(firstPage).gotoBurstScreen(),
-            BI_APP_ID,
+      // No graceful UI stop — the nuclear compose-down below removes the grails
+      // container directly (raw docker, like analytics-olap.spec.ts).
+      try {
+        SelfServicePortalsTestHelper.dockerComposeDownKeepImage('flowkraft/grails-playground');
+      } catch (e) {
+        cleanupErrors.push(`docker compose down grails-playground: ${e}`);
+      }
+
+      if (cleanupErrors.length > 0) {
+        console.error('[CLEANUP] FAILED:\n' + cleanupErrors.join('\n'));
+        if (bodySucceeded) {
+          throw new Error(
+            `Cleanup failed — the Grails app may still be running:\n${cleanupErrors.join('\n')}`,
           );
+        }
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK 3 — Data-warehouse OLAP: DuckDB + ClickHouse engines (data-warehouse-olap.mdx)
+// ─────────────────────────────────────────────────────────────────────────────
+// Starts the Grails app AND the ClickHouse starter pack (needs Docker), then:
+//   - 038 — the ClickHouse starter-pack CARD in the DataPallas Electron UI
+//           (card-only crop; setStarterPackStateForVendor leaves us on the
+//           Starter Packs tab with the card in its running state).
+//   - 037 — the Grails /data-warehouse DuckDB Engine section, FULL-VIEWPORT
+//           (nav + engine card): the page nav is sticky (main.gsp `sticky top-0`)
+//           and each `.engine-section` has `scroll-margin-top: 80px`, so scrolling
+//           #engine-duckdb into view lands the card just below the sticky nav.
+//   - 039 — same, the ClickHouse Engine section (#engine-clickhouse). Only has
+//           data because ClickHouse was started + its warehouse initialized.
+//
+// The DuckDB shot is written under a DISTINCT name
+// (037-rb-pivottable-duckdb-warehouse-dp.png) so it never collides with
+// samples.screens.ts BLOCK 3, which writes 037-rb-pivottable-duckdb-dp.png from
+// the standalone g-pivottable sample (a different page).
+//
+// ClickHouse lifecycle mirrors analytics-olap.spec.ts TEST 5:
+//   start → ConnectionsTestHelper.setStarterPackStateForVendor(ft,'clickhouse','start')
+//           (boots the container, waits for health, INITIALIZES the warehouse —
+//            a raw `docker compose up` would leave an empty container with no data)
+//   stop  → ConnectionsTestHelper.dockerComposeDownInDbFolder()  (MANDATORY)
+electronBeforeAfterAllTest(
+  'BI Analytics — data warehouse OLAP (data-warehouse-olap.mdx)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    let externalBrowser: Browser | null = null;
+    let clickhouseStarted = false;
+    let bodySucceeded = false;
+
+    try {
+      // ── SETUP: start the Grails app ─────────────────────────────────────────
+      await new FluentTester(firstPage)
+        .gotoBurstScreen()
+        .waitOnElementToBecomeVisible('#tab-btn-customerPortalTab')
+        .click('#tab-btn-customerPortalTab')
+        .waitOnElementToBecomeVisible(`#appName_${BI_APP_ID}`);
+      await SelfServicePortalsTestHelper.startApp(new FluentTester(firstPage), BI_APP_ID);
+      await new FluentTester(firstPage).waitOnElementToBecomeVisible(`#btnLaunch_${BI_APP_ID}`);
+
+      // ── Start ClickHouse (container + warehouse init) — required for 039 data ─
+      await ConnectionsTestHelper.setStarterPackStateForVendor(
+        new FluentTester(firstPage), 'clickhouse', 'start',
+      );
+      clickhouseStarted = true;
+
+      // ── 038 — the ClickHouse starter-pack card (Electron, card-only crop) ────
+      // setStarterPackStateForVendor left us on the Starter Packs tab with the
+      // search filtered to "clickhouse", so only this card is on screen.
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshotOfElement(
+        firstPage,
+        dp('038-rb-clickhouse'),
+        '#starterPack_db-northwind-clickhouse',
+        { outDir: BI_DIR },
+      );
+      console.log(`[capture] bi-analytics/${dp('038-rb-clickhouse')}`);
+
+      // ── Open external browser at /data-warehouse ────────────────────────────
+      const ext = await SelfServicePortalsTestHelper.createExternalBrowser(false, {
+        viewport: EXT_VIEWPORT,
+      });
+      externalBrowser = ext.browser;
+      const page: Page = ext.page;
+      await SelfServicePortalsTestHelper.waitForServerReady(page, BI_APP_BASE_URL);
+      await page.goto(`${BI_APP_BASE_URL}/data-warehouse`, { timeout: 30_000, waitUntil: 'networkidle' });
+
+      // ── 037 — DuckDB Engine section, FULL-VIEWPORT (nav + card) ──────────────
+      // Align the SECTION TOP to the top (not scrollIntoViewIfNeeded, which does
+      // the minimum scroll and — because the engine section is taller than the
+      // viewport — lands on the BOTTOM of the pivot, hiding the "DuckDB Engine"
+      // header + "Server-side processing (duckdb)" banner that distinguishes this
+      // shot from the ClickHouse one). scroll-margin-top:80px on .engine-section
+      // (dataWarehouse GSP) parks the header just below the sticky nav.
+      await SelfServicePortalsTestHelper.waitForPivotTableRender(page, 'warehousePivotDuckdb');
+      await page.evaluate(() =>
+        document.getElementById('engine-duckdb')?.scrollIntoView({ block: 'start' }),
+      );
+      await page.waitForTimeout(800); // settle scroll + sticky-nav repaint
+      await captureDocsScreenshot(page, dp('037-rb-pivottable-duckdb-warehouse'), BI_DIR);
+      console.log(`[capture] bi-analytics/${dp('037-rb-pivottable-duckdb-warehouse')}`);
+
+      // ── 039 — ClickHouse Engine section, FULL-VIEWPORT (nav + card) ──────────
+      await SelfServicePortalsTestHelper.waitForPivotTableRender(page, 'warehousePivotClickhouse');
+      await page.evaluate(() =>
+        document.getElementById('engine-clickhouse')?.scrollIntoView({ block: 'start' }),
+      );
+      await page.waitForTimeout(800);
+      await captureDocsScreenshot(page, dp('039-rb-pivottable-clickhouse'), BI_DIR);
+      console.log(`[capture] bi-analytics/${dp('039-rb-pivottable-clickhouse')}`);
+
+      console.log('[DONE] Data-warehouse OLAP screenshots captured.');
+      bodySucceeded = true;
+    } finally {
+      // ── CLEANUP — close browser, stop Grails, STOP CLICKHOUSE, nuclear down. ─
+      // Scream on failure so a left-running ClickHouse/Grails fails the run RED.
+      const cleanupErrors: string[] = [];
+
+      if (externalBrowser) {
+        try {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
         } catch (e) {
-          cleanupErrors.push(`graceful stopApp: ${e}`);
+          cleanupErrors.push(`close external browser: ${e}`);
+        }
+      }
+      // No graceful UI stop — the nuclear compose-downs below remove the grails
+      // + ClickHouse containers directly (raw docker, like analytics-olap.spec.ts
+      // TEST 5, which also skips the UI stop after starting ClickHouse).
+      if (clickhouseStarted) {
+        // Nuclear ClickHouse down — `docker compose down -v` in the db/ folder,
+        // the same teardown analytics-olap.spec.ts TEST 5 relies on.
+        try {
+          ConnectionsTestHelper.dockerComposeDownInDbFolder();
+        } catch (e) {
+          cleanupErrors.push(`docker compose down (ClickHouse, db folder): ${e}`);
         }
       }
       try {
@@ -301,7 +424,7 @@ electronBeforeAfterAllTest(
         console.error('[CLEANUP] FAILED:\n' + cleanupErrors.join('\n'));
         if (bodySucceeded) {
           throw new Error(
-            `Cleanup failed — the Grails app may still be running:\n${cleanupErrors.join('\n')}`,
+            `Cleanup failed — Grails and/or ClickHouse may still be running:\n${cleanupErrors.join('\n')}`,
           );
         }
       }
