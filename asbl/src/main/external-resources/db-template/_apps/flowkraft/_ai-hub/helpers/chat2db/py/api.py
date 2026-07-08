@@ -64,10 +64,30 @@ class SqlRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _sanitize_for_json(value):
-    """Replace NaN/Infinity with None for JSON serialization."""
-    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-        return None
-    return value
+    """Make a value JSON-serializable: drop NaN/Inf floats, and coerce non-native
+    scalars — JDBC Java BigInteger/BigDecimal (via JayDeBeApi, common on DuckDB
+    SUM/COUNT), numpy numbers, Decimal, dates — to native Python numbers or strings
+    so json.dumps never fails on a query result."""
+    if value is None or isinstance(value, (str, bool)):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return None if (math.isnan(value) or math.isinf(value)) else value
+    if isinstance(value, (list, dict)):
+        return value
+    # Non-native (Java BigInteger/BigDecimal, numpy, Decimal, datetime, bytes, ...):
+    # the string form carries the numeric/text value — parse to int/float, else keep string.
+    s = str(value)
+    try:
+        return int(s)
+    except (ValueError, TypeError):
+        pass
+    try:
+        f = float(s)
+        return None if (math.isnan(f) or math.isinf(f)) else f
+    except (ValueError, TypeError):
+        return s
 
 
 def _df_to_records(df):

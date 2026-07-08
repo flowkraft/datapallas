@@ -16,7 +16,7 @@ A Cube sits **between** the raw database and everything that consumes data:
                 │  • Explore Data Canvas (drop a cube → widget)  │
                 │  • Dashboards & reports (cube as data source)  │
                 │  • AI chat / Athena (cubes as grammar)         │
-                │  • Embedded cube widgets (`<rb-cube>`)         │
+                │  • Embedded cube preview (`<rb-cube-renderer>`)│
                 │  • Copy-paste Generated SQL into anywhere      │
                 └────────────────────────────────────────────────┘
                                      ▲
@@ -47,7 +47,7 @@ The cube owns *what the metrics mean*. Connections own credentials. Reports own 
 
 Top menu → **Configuration** → **Reports, Connections & Cubes** → left menu → **Cubes / Semantic Layer**.
 
-Five Northwind sample cubes ship bundled — visible whenever the **Show sample connections & cubes** checkbox is ticked. All five sit on top of the **Northwind SQLite sample database** that ships with DataPallas (no Docker, no external setup):
+Five Northwind sample cubes ship bundled — each shown in the list with a **sample** badge. They sit on the **Northwind SQLite sample database** that ships with DataPallas (no Docker, no external setup). **Sample cubes are read-only**; to change one, click **Duplicate** to create an editable copy (it lands in `config/cubes/`):
 
 | Sample cube                   | On-disk folder                                |
 | ----------------------------- | --------------------------------------------- |
@@ -63,6 +63,8 @@ Each folder contains two files:
 - `<cube-name>-cube-config.groovy` — the actual Cube DSL (dimensions, measures, joins, segments, hierarchies)
 
 These are great starting points: open one in the UI, OR read the `*-cube-config.groovy` directly on disk to study the DSL, then adapt the pattern to your own database.
+
+**Where your own cubes are saved:** cubes the user creates land in `/datapallas/config/cubes/<cube-id>/` — the same two files (`cube.xml` + `<cube-id>-cube-config.groovy`). DataPallas resolves cubes from `config/cubes/` first (user-owned), then falls back to the read-only `config/samples-cubes/`. I read either the same way.
 
 ---
 
@@ -103,15 +105,15 @@ The DSL is Groovy — but I never expect users to write it from scratch.
 
 ## How Users Actually Build Cubes (Three Easy Paths)
 
-When a user creates a new cube via the **+ New** button, they fill three top fields (Name, Description, Database Connection), then choose one of three paths to populate the body:
+When a user creates a new cube (the **Create Cube** button), they fill its **Name**, **Description**, and **Database Connection** — this becomes the `cube.xml` metadata — then populate the DSL body one of three ways:
 
 1. **Click `Hey AI, Help Me…`** — describes what they want in plain English; the AI drafts the cube against the live schema. This is what most users do.
 2. **Open the `Example (Cube Options)` tab** — fully-annotated copyable example.
 3. **Paste a starter from the docs** and tweak it.
 
-Live preview pane on the right validates the DSL against the real database as the user types. If something is wrong, a red error message appears; fixing the cube definition re-validates instantly.
+A **preview pane** (toggle **Show/Hide preview**) renders the cube live via `<rb-cube-renderer>` against the real database; DSL errors surface right there, so fixing the definition re-validates instantly.
 
-**Show SQL** at the bottom reveals exactly what query the cube generated for the current selection — invaluable for debugging and for handing off to a DBA.
+**Show SQL** opens a **Generated SQL** modal with exactly the query the cube produced for the current selection — invaluable for debugging and for handing off to a DBA.
 
 ---
 
@@ -168,7 +170,7 @@ When I provide a Cube DSL snippet, I:
 
 1. Explain what the cube exposes (dimensions, measures, joins) and why
 2. Give the complete DSL block to paste into the editor
-3. Tell the user to click **Run / preview** and inspect the live preview pane
+3. Tell the user to toggle **Show preview** (renders via `<rb-cube-renderer>`) and click **Show SQL** to inspect the generated query
 4. Mention **Hey AI, Help Me…** as the easier alternative if they'd rather describe in plain English
 
 ---

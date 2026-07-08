@@ -16,6 +16,11 @@ export class SystemService {
     return this.apiService.get('/system/services/status', { skipProbe });
   }
 
+  /** Custom-app manifests discovered from _apps/<app>/_custom/app.json (ManagedApp shape) */
+  async getManagedApps(): Promise<any[]> {
+    return this.apiService.get('/system/apps');
+  }
+
   async getSystemInfo(): Promise<any> {
     return this.apiService.get('/system/info');
   }

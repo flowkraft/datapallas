@@ -1,7 +1,7 @@
-export function BrandLogo({ width = 28, height = 28 }: { width?: number; height?: number }) {
+export function BrandLogo({ width = 34, height = 34 }: { width?: number; height?: number }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width={width} height={height}
-         style={{display:'inline-block',verticalAlign:'-6px',marginLeft:'3px',flexShrink:0,filter:'drop-shadow(0px 1px 3px rgba(0,0,0,0.7))'}}>
+         style={{flexShrink:0, filter:'drop-shadow(0px 1px 3px rgba(0,0,0,0.7))', transform:'translateY(-3px)', marginLeft:'3px'}}>
       <rect x="32" y="56" width="192" height="14" fill="#f0e2c0"/>
       <rect x="32" y="70" width="192" height="22" fill="#c9603a"/>
       <rect x="32" y="92" width="192" height="8" fill="#e8d4a8"/>

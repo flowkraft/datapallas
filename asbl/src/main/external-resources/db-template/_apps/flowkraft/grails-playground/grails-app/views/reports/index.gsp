@@ -67,7 +67,7 @@
                     </div>
 
                     <!-- Payslip Display -->
-                    <div class="card bg-base-100 border border-base-300">
+                    <div class="card bg-base-100 border border-base-300" id="reportDemoCard">
                         <div class="card-body">
                             <div class="flex justify-between items-center mb-2">
                                 <h2 class="card-title text-base">Employee Payslip</h2>

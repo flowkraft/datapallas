@@ -60,8 +60,10 @@ This is NON-NEGOTIABLE. The system parser expects pure JSON. Any XML or malforme
 // ============================================================================
 
 // Tools for the PRIMARY agent (when sleeptime is enabled)
-// These are READ-ONLY memory tools + custom action tools
-// The primary agent does NOT edit its own memory - that's the sleeptime agent's job
+// The primary edits its core blocks itself via the unified `memory` tool (as the
+// memory_management block instructs) and searches recall/archival read-only.
+// The granular consolidation tools (memory_insert/replace/rethink/finish_edits)
+// and archival_memory_insert belong to the sleeptime agent.
 export const PRIMARY_AGENT_TOOLS: ToolDef[] = [
     // Memory Block Editing - unified memory tool described in memory_management block
     { name: 'memory', description: 'Unified memory tool (create, edit, delete, rename blocks)' },
@@ -233,9 +235,9 @@ function getSkill(name: string): { name: string; description: string } {
         'datapallas-quality-assurance': 'QA before going live: the Test Email Server (localhost:8025) that captures test emails, distribution testing (all / specific / random tokens), error handling (stop-vs-continue, retry with backoff), quarantine review, and logging/tracing. Key docs: https://datapallas.com/docs/report-distribution-qa',
         'datapallas-database-connections': 'Set up report/data DB connections (PostgreSQL, MySQL, SQL Server, Oracle, any JDBC) via top menu Configuration → Reports, Connections & Cubes → Connections; schema is auto-fetched. For my own grounding I read the per-connection files in config/connections/<slug>/ (XML, *-information-schema.json, *-domain-grouped-schema.json, optional *.puml / glossary) — but these can be huge, so I grep for specific tables rather than reading whole files. Key docs: https://datapallas.com/docs/data-exploration/database-connections',
         'datapallas-semantic-layer-cubes': 'The Semantic Layer — reusable Cube definitions (dimensions, measures, pre-wired joins) so users get business-named results with no hand-written JOINs; one cube powers Canvas, dashboards, and reports. Navigate via top menu Configuration → Reports, Connections & Cubes → Cubes / Semantic Layer. Key docs: https://datapallas.com/docs/semantic-layer',
-        'datapallas-data-exploration': 'The Explore Data Canvas — a drag-and-drop workspace for ad-hoc analysis, at top menu Processing → Explore Data & Build Dashboards tab. Pick a connection, drag a cube/table, tick fields, choose a visualization, refine (filter/group/summarize/sort). Visual mode needs no SQL; Finetune mode drops to SQL/Groovy with a "Hey AI, Help Me…" assist. A canvas can be published as a dashboard Report. AI sees schema/metadata only, never data rows. Key docs: https://datapallas.com/docs/data-exploration | https://datapallas.com/docs/data-exploration/canvas',
+        'datapallas-data-exploration': 'Explore your data by chatting with me (Athena) in Chat2DB — ask in plain English, get SQL + results + the right chart, then refine, drill deeper, visualize. I keep it engaging, choose the best visualization, draw an ERD when it helps you see how tables relate, and teach you to explore as we go. Chat is linear (one question/result at a time); when you want related views side-by-side, organized, or kept/shared, I graduate you to the Data Canvas — a published Canvas IS a dashboard (the spectrum: free-form Chat2DB → structured Canvas → curated, durable, shareable Dashboard) → see datapallas-dashboards. I only ever see schema/metadata, never your rows. Key docs: https://datapallas.com/docs/data-exploration/chat2db-ai',
         'datapallas-report-generation': 'Generate reports from data: data sources (SQL, Groovy, or files — CSV/TSV/Excel/fixed-width), output formats (PDF, Excel, HTML, Word, XML/JSON), templates (HTML/CSS, gallery, or custom), plus runtime parameters and Groovy transforms. Configure it from a report configuration\'s Reporting screen. Key docs: https://datapallas.com/docs/report-generation',
-        'datapallas-dashboards': 'Build BI dashboards (charts, pivots, tables, KPIs) two equivalent ways: (1) visually on the Data Canvas (Processing → Explore Data & Build Dashboards → publish); or (2) fully configured — a Groovy data script (ctx.dbSql.rows / ctx.reportData) plus an HTML template using <rb-value>/<rb-chart>/<rb-tabulator>/<rb-pivot-table>/<rb-parameters>. Both produce identical files. Working sample: /datapallas/config/samples/_frend/dashboard-cfo/. Full scripting patterns in SKILL.md. Key docs: https://datapallas.com/docs/bi-analytics/dashboards',
+        'datapallas-dashboards': 'Build BI dashboards — the curated/durable end of the spectrum (free-form Chat2DB → structured Canvas → shareable Dashboard). Build on the Data Canvas FIRST (Processing → Explore Data & Build Dashboards): connection → drop cube/table → tick fields → pick a widget (Number/Chart/Trend/Tabulator/Pivot/Map/Gauge/Sankey…) → arrange → Publish; visual, fun, I guide it step by step. Every canvas dashboard is saved as code (Groovy data script with componentId guards + ctx.reportData + an HTML template of <rb-value>/<rb-chart>/<rb-tabulator>/<rb-pivot-table>/<rb-parameters>) — dropping to that code is the UPGRADE for tuning when the Canvas hits a wall (or ultimate power-user control), not a co-equal start. I own the Canvas flow, parameters (dashboard-wide filters), the rb-* components, publishing/embedding, and I always steer users to the "Hey AI, Help Me…" buttons. Working sample: /datapallas/config/samples/_frend/dashboard-cfo/. Key docs: https://datapallas.com/docs/bi-analytics/dashboards',
         'datapallas-scripting': 'DataPallas scripting/integration, three areas: (1) Groovy lifecycle hooks on burst events (startBursting … endBursting) with a burst ctx — samples at scripts/burst/samples/; (2) CLI for every core operation (burst, generate, merge, jasper, service, …) for schedulers; (3) REST API for the same operations (interactive docs at http://localhost:9090/swagger-ui.html when the server runs). Full hook/CLI/API reference in SKILL.md. Key docs: https://datapallas.com/docs/advanced/scripting | https://datapallas.com/docs/advanced/cli | https://datapallas.com/docs/advanced/api',
         'datapallas-self-service-document-web-portal': 'Custom web portals for (1) self-service document access (payslips, invoices, statements) and (2) OLAP analytics dashboards. Stacks: WordPress+PODS (bundled), Grails (recommended), or Next.js/React/Tailwind. Publishing via the endExtractDocument hook + REST API; features include user management, auto-provisioning, and SMS/email notifications. Boilerplates under _apps/ (cms-webportal-playground, flowkraft/grails-playground, flowkraft/next-playground). Key docs: https://datapallas.com/docs/document-portal | https://datapallas.com/docs/document-portal/development-stacks',
         'datapallas-server': 'DataPallas Server — unattended, centralized report processing for enterprises: runs as a Windows service (web UI at http://machine-name:9090), automatic poll-folder processing, scheduling (Task Scheduler / enterprise), and management via startServer.bat / shutServer.bat / service.bat. Same configuration as the desktop, built for 24/7. Key docs: https://datapallas.com/docs/server | https://datapallas.com/docs/server/installation | https://datapallas.com/docs/server/scheduling',
@@ -243,6 +245,10 @@ function getSkill(name: string): { name: string; description: string } {
         'datapallas-cookbook': 'The gold mine of working examples and AI prompt templates. Most bursting needs no scripting — assume none unless the requirements demand it. Use when building reports, email templates, dashboards, charts, pivots, or Groovy scripts: study an existing sample first, then adapt. Covers samples in /datapallas/config/samples/ and BI configs in /datapallas/config/samples/_frend/, plus a prompt library. Full catalog in SKILL.md.',
         'datapallas-troubleshooting': 'DataPallas troubleshooting. Diagnostic order: /logs/errors.log (Java stacktraces) → /logs/info.log and /logs/rbsj-exe.log (runtime/command context) → compare against /config/_defaults/settings.xml → check /config/samples for a working example; startup issues → readme-Prerequisites.txt. Reflexes: "emails not sending" = 90% the Send documents by Email checkbox is off (off by default) — tick it on the Enable / Disable Delivery screen of the report configuration (exact label; there is NO "Distribution"/"Delivery" screen, and settings auto-save so there is no Save step); "bursting not working" = 90% missing/misconfigured burst tokens. Java stacktraces almost never mean a DataPallas bug — they mean misconfiguration, bad input, or a changed default. Key docs: https://datapallas.com/docs/troubleshooting',
         
+        // Learning-tutor skills (Mnemosyne)
+        'datazeus-tutor': 'How I teach data by doing — the DataZeus hands-on learning program bundled at /datapallas/db/datazeus/. Practice-first pedagogy (you write the queries, guess the answer, then run), the fill-in-the-blank koans (red→green on DuckDB/Northwind), run with `zeus.bat`/`zeus.sh koans <course> <series> <lesson>` (e.g. `./zeus.sh koans learnsql series1 _00`; short: `koans sql S1 _00`; all: `koans`), two-engines-one-Northwind (DuckDB to practice, PostgreSQL to explore), and portable ANSI SQL. Courses today: learnsql; more (modeling, ETL, warehousing) as they ship. Online: https://datapallas.com/learn-data | https://github.com/flowkraft/datazeus. Full method in SKILL.md.',
+        'building-data-apps': 'My teaching aid for data modeling: after a learner designs a schema, I scaffold a tiny working DataPallas app around it so they SEE their model come alive. The _custom app convention (_apps/<id>/_custom/{app.json, app-seed.groovy, overrides/}); the seed script shows in the Seed Data tab, scaffolds a blueprint, applies overrides, and DROP-then-CREATE seeds the model with DataFaker. Worked example ships at /datapallas/_apps/billing-portal/_custom/ (I read its README first). Disposable practice apps, not production. Full workflow in SKILL.md.',
+
         // Data modeling skills (Athena)
         'sql-queries-plain-english-queries-expert': 'SQL expert: build SQL from requirements, translate plain English to SQL, optimize slow queries, fix syntax. Dialects differ (Oracle ≠ SQL Server ≠ MySQL ≠ PostgreSQL ≠ DuckDB), so I discover the vendor with `cat /datapallas/config/connections/<slug>/<slug>.xml` (look for <type>) and never guess it; if unsure I ask. Key docs: https://datapallas.com/docs/data-exploration/database-connections | https://datapallas.com/docs/data-exploration/chat2db-ai',
         'olap-data-warehouse-analytics': 'OLAP + data-warehouse architecture: (1) embeddable analytics via five web components (<rb-report>, <rb-tabulator>, <rb-chart>, <rb-pivottable>, <rb-parameters>) configured with Groovy DSL; (2) warehouse strategy "start simple, scale as needed" — DuckDB multi-source → DuckDB sync (byte-copy or star schema) → ClickHouse at massive scale. I design star schemas and ETL sync jobs. Key docs: https://datapallas.com/docs/bi-analytics/web-components | https://datapallas.com/docs/bi-analytics/data-warehouse-olap',
@@ -1338,24 +1344,45 @@ export function getDefaultMemoryBlocks(name: string = "Co", enableSleeptime: boo
     return memoryBlocks;
 }
 
-export function getSleepTimeMemoryBlocks() {
+// Concrete label-addressing note appended to instruction blocks (primary's memory_management
+// and the sleeptime procedures): block bodies reference plain names (human, you,
+// archival_context, …) but every attached block label is namespaced per agent. Spelling out
+// the exact prefix lets the agent pass the full label to memory tools on the first call
+// instead of failing on the plain name and retrying.
+export function labelAddressingNote(labelPrefix: string): string {
+    return `\n\n---\n**Block addressing**: every memory block label is namespaced with the prefix \`${labelPrefix}__\` (e.g. \`${labelPrefix}__archival_context\`). Whenever these instructions name a block, call the memory tools with the FULL prefixed label exactly as it appears in your memory view.`;
+}
+
+export function getSleepTimeMemoryBlocks(agentName: string = 'Co', labelPrefix?: string): MemoryBlockDef[] {
     // Find the blocks we need from SLEEPING_MEMORY_BLOCKS
     const archivalContextPolicy = SLEEPING_MEMORY_BLOCKS.find(block => block.label === 'archival_context_policy');
     const sleeptimeIdentityBlock = SLEEPING_MEMORY_BLOCKS.find(block => block.label === 'sleeptime_identity');
     const sleeptimeProceduresBlock = SLEEPING_MEMORY_BLOCKS.find(block => block.label === 'sleeptime_procedures');
 
+    const labelNote = labelPrefix ? labelAddressingNote(labelPrefix) : '';
+
     return [
         {
             label: archivalContextPolicy?.label || 'archival_context_policy',
+            description: archivalContextPolicy?.description || '',
             value: archivalContextPolicy?.value || '',
+            limit: archivalContextPolicy?.limit,
         },
         {
             label: sleeptimeIdentityBlock?.label || 'sleeptime_identity',
-            value: sleeptimeIdentityBlock?.value || '',
+            description: sleeptimeIdentityBlock?.description || '',
+            // The canonical identity text names "Co"; address the actual agent instead
+            value: (sleeptimeIdentityBlock?.value || '').replace(
+                'the sleeptime variant of Co.',
+                `the sleeptime variant of ${agentName}.`,
+            ),
+            limit: sleeptimeIdentityBlock?.limit,
         },
         {
             label: sleeptimeProceduresBlock?.label || 'sleeptime_procedures',
-            value: sleeptimeProceduresBlock?.value || '',
+            description: sleeptimeProceduresBlock?.description || '',
+            value: (sleeptimeProceduresBlock?.value || '') + labelNote,
+            limit: sleeptimeProceduresBlock?.limit,
         }
     ];
 }

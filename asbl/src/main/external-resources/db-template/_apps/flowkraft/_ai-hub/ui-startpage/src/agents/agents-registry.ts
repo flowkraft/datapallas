@@ -7,6 +7,9 @@ import hermesAgent from './hermes/config';
 import pythiaAgent from './pythia/config';
 import apolloAgent from './apollo/config';
 
+// Standalone learning tutor (NOT part of the AI Crew — teaches, does not build)
+import mnemosyneAgent from './mnemosyne/config';
+
 // Other agents (examples from reference project - commented out)
 // import adaAgent from './ada-assistant/config';
 // import carolineAgent from './caroline-ceo/config';
@@ -31,6 +34,9 @@ export const AGENTS: AgentConfig[] = [
   hermesAgent,
   pythiaAgent,   // WordPress/PHP portal advisor
   apolloAgent,   // Next.js/React/TypeScript advisor
+
+  // Standalone learning tutor (not an AI Crew advisor — teaches data by doing)
+  mnemosyneAgent,
 
   // Other agents (examples from reference project)
   // adaAgent, carolineAgent, jimmyAgent, mariaAgent, kateAgent

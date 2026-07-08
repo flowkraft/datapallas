@@ -176,16 +176,24 @@ RUN cp /app/init.sql /docker-entrypoint-initdb.d/
 # Copy uv from official image for installing additional packages into the venv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/
 
-# Install native Python database drivers for the db_query custom tool.
-# These allow Athena to query any DataPallas-configured database directly.
+# db_query no longer holds DB drivers here — it calls the chat2db service (which owns
+# JDBC + the live connection) over HTTP. Keeping native DB drivers OUT of this image is
+# what PHYSICALLY enforces the read contract: Athena's execute_shell_command cannot
+# `import duckdb`/`psycopg2`/etc., so she cannot read a database from the shell — the
+# only path to data is db_query → chat2db (gated by the toggle). Only `tabulate` (result
+# formatting) remains. Letta's OWN Postgres layer uses pg8000 + asyncpg (from uv sync,
+# untouched here); its psycopg2 references are a non-importing pgcode check + a
+# remote-sandbox package string, and clickhouse_connect is a lazy import behind optional
+# telemetry — so removing these does not affect Letta startup or its database.
 RUN uv pip install --python /app/.venv/bin/python --no-cache-dir \
-    duckdb \
-    psycopg2-binary \
-    mysql-connector-python \
-    pyodbc \
-    oracledb \
-    clickhouse-connect \
     tabulate
+
+# Also strip the DB drivers that Letta's `uv sync --all-extras` pulls in but does NOT
+# hard-import (psycopg2 = a pgcode hasattr check + a remote-sandbox package string;
+# clickhouse_connect = lazy import behind optional telemetry, off by default). Removing
+# them extends the shell-read block to Postgres + ClickHouse. Letta's own DB layer
+# (pg8000 + asyncpg) is unaffected — verified `import letta` still succeeds without them.
+RUN uv pip uninstall --python /app/.venv/bin/python psycopg2-binary clickhouse-connect
 
 # Normalize startup script line endings (CRLF -> LF) and ensure executable
 RUN if [ -f /app/letta/server/startup.sh ]; then \

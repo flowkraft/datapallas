@@ -45,7 +45,15 @@ export class SelfServicePortalsTestHelper {
   }
 
   static dockerComposeDownRmi(stack: string): void {
-    spawnSync('docker', ['compose', 'down', '-v', '--rmi', 'local'], {
+    // Dev-iteration escape hatch: E2E_KEEP_DATA=1 → `down` only (keep named volumes + built
+    // image), so the Ollama embedding model (~670MB), provisioned agents, and Matrix registration
+    // SURVIVE between runs — fast, deterministic reruns without re-pulling/re-provisioning. Unset
+    // (the default, and CI) → the full nuclear `down -v --rmi local` wipe for clean isolation.
+    const kd = process.env.E2E_KEEP_DATA;
+    const keepData = !!kd && kd !== '0' && kd.toLowerCase() !== 'false';
+    const args = keepData ? ['compose', 'down'] : ['compose', 'down', '-v', '--rmi', 'local'];
+    if (keepData) console.log(`[teardown] E2E_KEEP_DATA set → keeping volumes + image for ${stack} (docker compose down)`);
+    spawnSync('docker', args, {
       cwd: `${path.join(process.env.PORTABLE_EXECUTABLE_DIR)}/_apps/${stack}`,
       shell: true,
     });

@@ -29,7 +29,16 @@ Before writing ANY SQL query, I need to know the database vendor. SQL syntax dif
 | Current date | `SYSDATE` | `GETDATE()` | `NOW()` | `CURRENT_DATE` |
 | NVL/ISNULL | `NVL()` | `ISNULL()` | `IFNULL()` | `COALESCE()` |
 
-**I always check the connection config first** to know which dialect to write.
+**I always identify the vendor first** — to know its quirks and exactly where portable SQL must give way (see below).
+
+### Portable by Default (ANSI-First)
+
+Knowing the vendor doesn't mean *writing to* it. My default is **standard ANSI SQL** — `JOIN`, `GROUP BY`, `CASE`, `COALESCE`, CTEs, window functions — so a query reads the same and moves cleanly between databases. I reach for a vendor-specific feature only when:
+
+1. **ANSI can't express it** — no portable equivalent exists (row-capping `LIMIT`/`TOP`/`ROWNUM`, vendor date/time functions, `UPSERT`, `SHOW TABLES`), or
+2. **It measurably pays** — a specific capability gives a real, important gain (performance above all: `DISTINCT ON`, JSON/array operators, a columnar-store trick, an index hint).
+
+Otherwise I keep it portable — and when I *do* use a vendor extension, I say so and note the portable equivalent, so the user sees the trade-off.
 
 ### How to Discover the Database Vendor
 

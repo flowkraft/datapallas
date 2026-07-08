@@ -45,7 +45,7 @@ export function AINavbar() {
   ]
 
   return (
-    <header className="bg-base-100/90 text-base-content fixed top-0 left-0 right-0 z-30 flex h-16 w-full backdrop-blur border-b border-base-300">
+    <header id="app-navbar" className="bg-base-100/90 text-base-content fixed top-0 left-0 right-0 z-30 flex h-16 w-full backdrop-blur border-b border-base-300">
       <nav className="navbar w-full py-0 px-4">
 
         {/* Left: brand + nav links */}

@@ -98,6 +98,7 @@ export function TrendConfig({ config, columns, shape, onChange }: TrendConfigPro
       <div>
         <span className="text-xs text-base-content/60">Label</span>
         <input
+          id="inputTrendLabel"
           value={label}
           onChange={(e) => onChange({ ...config, label: e.target.value })}
           placeholder="Auto from field name"

@@ -52,7 +52,7 @@
       <!-- Brand -->
       <a href="${createLink(uri: '/')}" class="flex items-center gap-2 shrink-0 no-underline">
         <span class="logo-lg flex items-center gap-1">
-          <span class="brand-wordmark text-2xl tracking-tight"><span class="brand-data">Data</span><span class="brand-pallas">Pallas</span></span>
+          <span class="brand-wordmark text-3xl tracking-tight"><span class="brand-data">Data</span><span class="brand-pallas">Pallas</span></span>
           <dp:brandLogo/>
         </span>
       </a>
@@ -62,19 +62,19 @@
         <li><a href="${createLink(uri: '/')}"               class="${(controllerName == 'home' || !controllerName) ? 'menu-active' : ''}">Analytics (Home)</a></li>
         <li><a href="${createLink(uri: '/tabulator')}"      class="${controllerName == 'tabulator'       ? 'menu-active' : ''}">Tabulator</a></li>
         <li><a href="${createLink(uri: '/charts')}"         class="${controllerName == 'charts'          ? 'menu-active' : ''}">Charts</a></li>
-        <li><a href="${createLink(uri: '/pivot-tables')}"   class="${controllerName == 'pivotTables'     ? 'menu-active' : ''}">Pivot Tables</a></li>
-        <li><a href="${createLink(uri: '/report-parameters')}" class="${controllerName == 'reportParameters' ? 'menu-active' : ''}">Parameters</a></li>
+        <li><a href="${createLink(uri: '/pivot-tables')}"   class="${controllerName == 'pivotTables'     ? 'menu-active' : ''}">Pivots</a></li>
+        <li><a href="${createLink(uri: '/report-parameters')}" class="${controllerName == 'reportParameters' ? 'menu-active' : ''}">Params</a></li>
         <li><a href="${createLink(uri: '/reports')}"        class="${controllerName == 'reports'         ? 'menu-active' : ''}">Reports</a></li>
         <li><a href="${createLink(uri: '/data-warehouse')}" class="${controllerName == 'dataWarehouse'   ? 'menu-active' : ''}">Data Warehouse</a></li>
         <li><a href="${createLink(uri: '/dashboards')}"     class="${controllerName == 'dashboards'      ? 'menu-active' : ''}">Dashboards</a></li>
-        <li><a href="${createLink(uri: '/your-canvas')}"    class="${controllerName == 'yourCanvas'      ? 'menu-active' : ''}">Your Canvas</a></li>
+        <li><a href="${createLink(uri: '/your-canvas')}"    class="${controllerName == 'yourCanvas'      ? 'menu-active' : ''}">Canvas</a></li>
       </ul>
     </div>
 
     <!-- Right: Document Portal + Admin links + 35-theme picker -->
     <div class="flex items-center gap-1">
       <a href="${createLink(uri: '/portal')}" class="btn btn-ghost btn-sm normal-case">
-        <dp:icon name="portal"/> Self-Service Portal
+        <dp:icon name="portal"/> Portal
       </a>
       <a href="${createLink(uri: '/admin')}" class="btn btn-ghost btn-sm normal-case">
         <dp:icon name="admin"/> Admin

@@ -85,7 +85,7 @@ export function TrendWidget({ widgetId }: TrendWidgetProps) {
   }
   if (error) {
     return (
-      <div className="text-xs text-error p-2 overflow-hidden">
+      <div id={`widgetError-${widgetId}`} className="text-xs text-error p-2 overflow-hidden">
         Query error: {error.split("\n")[0].slice(0, 200)}
       </div>
     );
@@ -107,6 +107,6 @@ export function TrendWidget({ widgetId }: TrendWidgetProps) {
 
   return (
     // @ts-expect-error — custom element
-    <rb-trend ref={ref} style={{ display: "block", width: "100%", height: "100%", minHeight: "80px" }} />
+    <rb-trend ref={ref} id={`widgetViz-${widgetId}`} style={{ display: "block", width: "100%", height: "100%", minHeight: "80px" }} />
   );
 }

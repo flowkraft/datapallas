@@ -43,7 +43,7 @@ export function AdminHeader() {
 
           <Link href="/portal" className="btn btn-ghost btn-sm normal-case gap-1">
             <IconPortal />
-            Self-Service Portal
+            Portal
           </Link>
 
           <a href="mailto:support@datapallas.com" className="btn btn-ghost btn-sm normal-case gap-1">

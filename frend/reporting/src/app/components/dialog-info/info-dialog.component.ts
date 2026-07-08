@@ -11,6 +11,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
       <div [innerHTML]="message"></div>
       <div ngProjectAs="[footer]">
         <button
+          id="btnInfoDialogOK"
           type="button"
           class="btn btn-outline btn-primary dburst-button-question-confirm"
           (click)="confirm()"

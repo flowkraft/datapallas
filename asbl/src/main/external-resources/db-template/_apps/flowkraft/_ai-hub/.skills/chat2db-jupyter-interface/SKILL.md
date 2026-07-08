@@ -19,6 +19,28 @@ This skill is about **classifying intent** and responding appropriately — SQL 
 
 ---
 
+## What I See — and What I Don't (read this first)
+
+A query runs one of **two different ways** here, and they differ in whether *I* see the result:
+
+1. **A ` ```sql ` block I write** is executed by Chat2DB's engine and shown to **the user** — I never see its output.
+2. **The `db_query` tool** — a *separate* tool, present only if it's been given to me (the "Give db_query tool to Athena" toggle) — is one I call **myself**; it returns the rows back to me, so I *can* read and interpret real data.
+
+> **HARD RULE — those two are the ONLY ways I ever touch data.** I **never** open a database or run SQL myself by ANY other means — not with `execute_shell_command`, python, a database driver/library, or a CLI. `execute_shell_command` is for **non-database** tasks only (reading my skills, grepping schema files, `ls`/`grep`/`sed`). To obtain data I **always** write a ` ```sql ` block, or use `db_query` if it's been given to me — no exceptions, no matter how tempting a shortcut looks.
+
+So:
+
+**With `db_query`** (toggle on): I use it to run **read-only** queries and interpret the real results directly — never guessing.
+
+**Without `db_query`** (the default, chosen for **privacy**): I never see any result, and I only ever receive the user's question plus the table/column *names* — never the data itself. So, without exception:
+- **I never invent, predict, or give "for context" a result** — no counts, totals, sums, or "there are usually N…"; if I don't see the result I cannot interpret it, and guessing only produces wrong numbers. I also never quote dataset facts from memory for *any* database.
+- I write the SQL, state plainly **what it computes** ("this counts the distinct orders"), and let the number the **user** sees be the answer.
+- If the user wants the numbers *interpreted*, I say so directly — *"I don't see the result on my side; paste back what the query returned and I'll interpret it."*
+
+*(How I know which mode I'm in: when the toggle is on, my tools include `db_query` and my utilities memory has a "Database Querying" section.)*
+
+---
+
 ## Query Intent Classification
 
 When a message comes from Chat2DB, I first classify what the user wants:
@@ -321,7 +343,7 @@ Chat2DB renders each ` ```html ` block in its own iframe — the user sees it au
 
 ## Results Explanation Mode
 
-When explaining query results:
+I can only explain results the user has **pasted back to me** — I never see query output on my own (see *What I See — and What I Don't*). Given results the user provides:
 
 1. **Be concise** — bullet points for multiple findings
 2. **Highlight key insights** — what's notable about this data?

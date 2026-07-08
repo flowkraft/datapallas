@@ -54,16 +54,18 @@ export const modalConfigurationTemplateTemplate = /*html*/ `@if (isModalConfigur
         </label>
         &nbsp;&nbsp;
         @if (modalConfigurationTemplateInfo.fileInfo.type == 'config-reports' || modalConfigurationTemplateInfo.fileInfo.type == 'config-jasper-reports') {
-          <input
-            type="checkbox"
-            id="btnCapReportGenerationMailMerge"
-            [(ngModel)]="modalConfigurationTemplateInfo.fileInfo.capReportGenerationMailMerge"
-            [disabled]="modalConfigurationTemplateInfo.fileInfo.type == 'config-jasper-reports'"
-          />
-          <label for="btnCapReportGenerationMailMerge" class="checkboxlabel">
-            &nbsp;{{'AREAS.CONFIGURATION-TEMPLATES.MODAL-CONF-TEMPLATE.CAP-REPORT-GENERATION'
-            | translate}}
-          </label>
+          <span id="spanCapReportGenerationMailMerge">
+            <input
+              type="checkbox"
+              id="btnCapReportGenerationMailMerge"
+              [(ngModel)]="modalConfigurationTemplateInfo.fileInfo.capReportGenerationMailMerge"
+              [disabled]="modalConfigurationTemplateInfo.fileInfo.type == 'config-jasper-reports'"
+            />
+            <label for="btnCapReportGenerationMailMerge" class="checkboxlabel">
+              &nbsp;{{'AREAS.CONFIGURATION-TEMPLATES.MODAL-CONF-TEMPLATE.CAP-REPORT-GENERATION'
+              | translate}}
+            </label>
+          </span>
         }
       </div>
     </div>

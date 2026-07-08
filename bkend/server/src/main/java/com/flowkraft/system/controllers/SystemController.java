@@ -147,6 +147,15 @@ public class SystemController {
 		return Mono.just(statuses);
 	}
 
+	/**
+	 * Custom-app discovery for the Apps Manager: every _apps/<app>/_custom/app.json
+	 * manifest, in ManagedApp shape, with a guaranteed "custom" tag.
+	 */
+	@GetMapping("/apps")
+	public Mono<List<Map<String, Object>>> getCustomApps() {
+		return Mono.fromCallable(() -> systemService.listCustomAppManifests());
+	}
+
 	// ============================================================
 	//  Application Lifecycle — self-update + feedback
 	// ============================================================

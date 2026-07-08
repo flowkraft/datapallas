@@ -20,7 +20,7 @@ export function Conversation({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("relative flex flex-1 flex-col overflow-hidden", className)} {...props}>
+    <div className={cn("relative flex flex-1 flex-col overflow-hidden min-h-0", className)} {...props}>
       {children}
     </div>
   );
@@ -49,7 +49,7 @@ export const ConversationContent = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4",
+        "flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 min-h-0",
         className,
       )}
       {...props}

@@ -88,7 +88,20 @@ public class ScriptedReporter extends AbstractReporter {
 					log.warn("Failed to decrypt database password for scripted reporter: {}", ex.getMessage());
 				}
 
-				dbSql = Sql.newInstance(dbs.url, dbs.userid, decryptedPassword, dbs.driver);
+				if ("duckdb".equalsIgnoreCase(dbs.type)) {
+					// DuckDB requires EVERY connection to a file (in-process and across
+					// processes) to share IDENTICAL config — read-only, no credentials — or
+					// it rejects the shared file ("... already open in another process" /
+					// "already attached by database"). Open read-only with the exact minimal
+					// config the schema fetcher, the query pool, and chat2db use so all four
+					// share one read-only instance. Sql.newInstance(url, props, driver) loads
+					// the driver but sends ONLY duckdb.read_only to DriverManager.
+					java.util.Properties duckProps = new java.util.Properties();
+					duckProps.setProperty("duckdb.read_only", "true");
+					dbSql = Sql.newInstance(dbs.url, duckProps, dbs.driver);
+				} else {
+					dbSql = Sql.newInstance(dbs.url, dbs.userid, decryptedPassword, dbs.driver);
+				}
 				ctx.dbSql = dbSql;
 				log.debug("Created and provided dbSql for connection code: {}", connectionCode);
 			}

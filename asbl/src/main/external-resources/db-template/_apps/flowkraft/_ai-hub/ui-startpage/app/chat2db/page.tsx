@@ -244,6 +244,43 @@ const markdownComponents = {
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => <>{children}</>,
 };
 
+/** Turn a raw error into a friendly headline by grepping the status / keywords.
+ *  Errors come from two very different places: the AI provider (rate limits, auth,
+ *  outages) OR the chat2db engine / database (a failed query, a serialization issue).
+ *  We classify accordingly and only blame the AI provider when it's actually an AI
+ *  provider error. The raw text is still shown under "technical details". */
+function friendlyError(raw: string): string {
+  const s = (raw || "").toLowerCase();
+  // ── Data / query / serialization — the chat2db engine or the database, NOT the AI ──
+  if (s.includes("serializable"))
+    return "The query ran, but its result couldn't be formatted for display (an unsupported data type). This looks like a DataPallas bug — please report it.";
+  if (s.includes("not connected to a database") || s.includes("no database is connected"))
+    return "No database is connected. Click Connect at the top, then try again.";
+  if (s.includes("syntax error") || s.includes("no such table") || s.includes("no such column") ||
+      s.includes("does not exist") || s.includes("sqlexception") || s.includes("jdbc") ||
+      s.includes("binder error") || s.includes("catalog error") || s.includes("parser error"))
+    return "The query failed against the database — a table/column name or the SQL may be off. Try rephrasing your question.";
+  // ── AI-provider transport errors (genuine provider issues) ──
+  if (/\b429\b/.test(s) || s.includes("rate limit") || s.includes("rate_limit") || s.includes("too many requests"))
+    return "The AI provider is rate-limited (HTTP 429). Please wait a few seconds and try again.";
+  if (/\b401\b/.test(s) || s.includes("unauthorized") || s.includes("invalid api key") || s.includes("api key"))
+    return "The AI provider rejected the request — check the API key / provider settings.";
+  if (/\b402\b/.test(s) || s.includes("insufficient") || s.includes("quota") || s.includes("balance") || s.includes("billing"))
+    return "The AI provider reports a quota or billing limit. Check your plan / balance.";
+  if (/\b5\d\d\b/.test(s) || s.includes("overloaded") || s.includes("unavailable") || s.includes("connection error") || s.includes("timeout") || s.includes("timed out"))
+    return "The AI provider is temporarily unavailable. Please try again in a moment.";
+  // ── Neutral fallback — don't blame the AI provider for an unknown error ──
+  return "Something went wrong processing your request. Please try again.";
+}
+
+/** True when the error is the adapter's "0 agents provisioned" signal — the AI Crew was never
+ *  created. Chat2DB turns this into a "Provision Agents" call-to-action linking to /agents,
+ *  instead of the generic red error box. */
+function isNoAgentsError(raw: string): boolean {
+  const s = (raw || "").toUpperCase();
+  return s.includes("AGENTS_NOT_PROVISIONED") || s.includes("NO AI AGENTS ARE PROVISIONED");
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -625,6 +662,7 @@ export default function Chat2DBPage() {
           {/* Send Tables checkbox */}
           <label className="flex items-center gap-1.5 text-sm text-base-content/60">
             <input
+              id="chat-send-tables"
               type="checkbox"
               checked={sendSchema}
               onChange={(e) => setSendSchema(e.target.checked)}
@@ -676,15 +714,15 @@ export default function Chat2DBPage() {
             {showClearConfirm ? (
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-red-500">Clear all messages?</span>
-                <Button size="sm" variant="destructive" onClick={handleClear}>
+                <Button id="btn-chat-clear-confirm" size="sm" variant="destructive" onClick={handleClear}>
                   Yes, clear
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setShowClearConfirm(false)}>
+                <Button id="btn-chat-clear-cancel" size="sm" variant="outline" onClick={() => setShowClearConfirm(false)}>
                   Cancel
                 </Button>
               </div>
             ) : (
-              <Button size="sm" variant="ghost" onClick={() => setShowClearConfirm(true)}>
+              <Button id="btn-chat-clear" size="sm" variant="ghost" onClick={() => setShowClearConfirm(true)}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-1 h-3.5 w-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
                 Clear
               </Button>
@@ -710,8 +748,11 @@ export default function Chat2DBPage() {
               }
 
               if (msg.role === "user") {
+                // The latest user question carries #chat-user-last so e2e can frame /
+                // screenshot the last Q + A pair (scroll #chat-user-last to the top).
+                const isLastUser = msg.id === messages.filter((m) => m.role === "user").at(-1)?.id;
                 return (
-                  <Message key={msg.id} from="user">
+                  <Message key={msg.id} from="user" id={isLastUser ? "chat-user-last" : undefined}>
                     <MessageContent className="ml-auto">
                       <div className="rounded-2xl px-4 py-2.5 text-sm bg-chat-user-bg text-chat-user-fg">
                         {msg.content}
@@ -723,8 +764,11 @@ export default function Chat2DBPage() {
 
               // Assistant message
               const r = msg.response;
+              // Only the latest assistant turn carries the stable "last" IDs, so e2e can
+              // target the current reply (and its diagram/chart/table) by a unique #id.
+              const isLastAssistant = messages[messages.length - 1]?.id === msg.id;
               return (
-                <Message key={msg.id} from="assistant">
+                <Message key={msg.id} from="assistant" id={isLastAssistant ? "chat-assistant-last" : undefined}>
                   <MessageAvatar className="h-9 w-9"><AthenaAvatar size={36} /></MessageAvatar>
                   <MessageContent>
                     <span className="text-xs font-semibold text-athena-accent">Athena</span>
@@ -736,24 +780,29 @@ export default function Chat2DBPage() {
                       </div>
                     )}
 
-                    {/* Live streaming turn — keep #chat-thinking-indicator present the whole time */}
+                    {/* Live streaming turn — #chat-thinking-indicator stays present the
+                        whole turn, and now ALWAYS shows a clearly-visible "still working"
+                        cue (not a dim caret) so the wait signal never disappears during
+                        Athena's long silent reasoning / visualization phases. */}
                     {msg.status === "streaming" && (
                       <div id="chat-thinking-indicator">
-                        {msg.content ? (
+                        {msg.content && (
                           <MessageResponse className="bg-chat-assistant-bg text-chat-assistant-fg">
                             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
-                            <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-base-content/40 align-baseline" />
                           </MessageResponse>
-                        ) : (
-                          <div className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm bg-chat-assistant-bg text-base-content/60">
-                            <span className="animate-pulse">Thinking</span>
-                            <span className="flex gap-0.5">
-                              <span className="animate-bounce [animation-delay:0ms]">.</span>
-                              <span className="animate-bounce [animation-delay:150ms]">.</span>
-                              <span className="animate-bounce [animation-delay:300ms]">.</span>
-                            </span>
-                          </div>
                         )}
+                        <div className={`${msg.content ? "mt-1.5 " : ""}flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm bg-chat-assistant-bg text-base-content/70`}>
+                          <span className="animate-pulse font-medium">
+                            {(msg.content?.includes("```") || /diagram|chart|visuali[sz]|\bplot\b|\bgraph\b/i.test(msg.content ?? ""))
+                              ? "Crunching the visualization"
+                              : "Thinking"}
+                          </span>
+                          <span className="flex gap-0.5">
+                            <span className="animate-bounce [animation-delay:0ms]">.</span>
+                            <span className="animate-bounce [animation-delay:150ms]">.</span>
+                            <span className="animate-bounce [animation-delay:300ms]">.</span>
+                          </span>
+                        </div>
                       </div>
                     )}
 
@@ -771,10 +820,33 @@ export default function Chat2DBPage() {
 
                     {/* Error */}
                     {r?.error && (
+                      isNoAgentsError(r.error) ? (
+                        /* The AI Crew was never provisioned → an actionable CTA, not a red error box */
+                        <div id="chat-error-response" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                          <div className="text-base font-semibold">Athena&apos;s agents aren&apos;t provisioned yet</div>
+                          <div className="mt-1 text-amber-800">
+                            To start chatting, provision the DataPallas AI Crew. If you haven&apos;t added your LLM API key
+                            yet, open <span className="font-medium">Settings</span> (the gear, top-right) → <span className="font-medium">API Provider</span> first.
+                          </div>
+                          <a
+                            id="btn-provision-agents"
+                            href="/agents"
+                            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+                          >
+                            Provision Agents
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+                          </a>
+                        </div>
+                      ) : (
                       <div id="chat-error-response" className="rounded-2xl px-4 py-3 text-sm bg-red-50 text-red-700">
-                        {r.error}
+                        <div className="font-medium">{friendlyError(r.error)}</div>
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-xs opacity-70">Show technical details</summary>
+                          <div className="mt-1 text-xs whitespace-pre-wrap break-words">{r.error}</div>
+                        </details>
                         <div className="flex justify-end mt-2">
                           <button
+                            id={isLastAssistant ? "btn-chat-copy-error" : undefined}
                             onClick={() => copyToClipboard(r.error!, msg.id)}
                             className="inline-flex items-center gap-1 rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-600 transition-colors hover:bg-red-100"
                           >
@@ -783,6 +855,7 @@ export default function Chat2DBPage() {
                           </button>
                         </div>
                       </div>
+                      )
                     )}
 
                     {/* Content segments — rendered in Athena's original order */}
@@ -797,18 +870,18 @@ export default function Chat2DBPage() {
                           {seg.type === "sql_results" && (
                             <>
                               {r.sql && (
-                                <details className="rounded-xl bg-base-200 text-sm overflow-hidden">
+                                <details id={isLastAssistant ? "chat-last-sql" : undefined} className="rounded-xl bg-base-200 text-sm overflow-hidden">
                                   <summary className="cursor-pointer px-4 py-2 text-xs text-base-content/60 hover:bg-base-200">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mr-1 inline h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                                     Show SQL
                                   </summary>
                                   <pre className="overflow-x-auto px-4 py-3 text-xs bg-code-bg text-code-fg" style={{ margin: 0 }}>
-                                    <code dangerouslySetInnerHTML={{ __html: highlightSQL(r.sql) }} />
+                                    <code id={isLastAssistant ? "chat-last-sql-code" : undefined} dangerouslySetInnerHTML={{ __html: highlightSQL(r.sql) }} />
                                   </pre>
                                 </details>
                               )}
                               {r.data && r.data.length > 0 && (
-                                <div className="overflow-x-auto rounded-xl border text-sm">
+                                <div id={isLastAssistant ? "chat-last-table" : undefined} className="overflow-x-auto rounded-xl border text-sm">
                                   <div className="px-3 py-1.5 text-xs text-base-content/60 border-b bg-base-200/50">
                                     {r.row_count} row{r.row_count !== 1 ? "s" : ""}
                                     {r.execution_time_ms ? ` · ${r.execution_time_ms.toFixed(0)} ms` : ""}
@@ -843,15 +916,16 @@ export default function Chat2DBPage() {
                             </>
                           )}
                           {seg.type === "viz" && r.viz_image && (
-                            <div className="overflow-hidden rounded-xl border">
+                            <div id={isLastAssistant ? "chat-last-viz" : undefined} className="overflow-hidden rounded-xl border">
                               <img src={`data:image/png;base64,${r.viz_image}`} alt="Visualization" className="max-w-full" />
                             </div>
                           )}
                           {seg.type === "plantuml" && (
-                            <div className="overflow-hidden rounded-xl border">
+                            <div id={isLastAssistant ? "chat-last-plantuml" : undefined} className="overflow-hidden rounded-xl border">
                               <div className="flex justify-between items-center px-3 py-1.5 text-xs text-base-content/60 border-b bg-base-200/50">
                                 <span>PlantUML Diagram</span>
                                 <button
+                                  id={isLastAssistant ? "btn-chat-plantuml-fullscreen" : undefined}
                                   onClick={() => window.open(krokiUrl("plantuml", seg.content), "_blank")}
                                   className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors hover:bg-base-200"
                                 >
@@ -864,11 +938,13 @@ export default function Chat2DBPage() {
                             </div>
                           )}
                           {seg.type === "html" && (
-                            <HtmlIframe
-                              content={seg.content}
-                              label="HTML Preview"
-                              onFullScreen={() => openHtmlInBrowser(seg.content)}
-                            />
+                            <div id={isLastAssistant ? "chat-last-html" : undefined}>
+                              <HtmlIframe
+                                content={seg.content}
+                                label="HTML Preview"
+                                onFullScreen={() => openHtmlInBrowser(seg.content)}
+                              />
+                            </div>
                           )}
                         </React.Fragment>
                       ))
@@ -891,6 +967,7 @@ export default function Chat2DBPage() {
                     {r?.raw_content && (
                       <div className="flex justify-end">
                         <button
+                          id={isLastAssistant ? "btn-chat-copy-answer" : undefined}
                           onClick={() => copyToClipboard(r.raw_content!, msg.id)}
                           className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-base-content/60 transition-colors hover:bg-base-200"
                           title="Copy Athena's response"

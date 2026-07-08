@@ -93,12 +93,21 @@ services:
     environment:
       # LLM provider API keys (each activates its native Letta provider)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      # Default MUST be the real OpenAI URL, not empty: pydantic takes an empty env var over
+      # its default, and Letta flips the handle prefix to "openai-proxy" (and GETs ""/models,
+      # which fails) whenever base_url != "https://api.openai.com/v1" — so an empty value
+      # kills the plain-OpenAI provider entirely. ":-" also covers the set-but-empty case.
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://api.openai.com/v1}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - ZAI_API_KEY=${ZAI_API_KEY:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OLLAMA_BASE_URL=http://flowkraft-ai-hub-ollama:11434
+      # Letta clamps every agent's context window to this ceiling at creation
+      # (ModelSettings.global_max_context_window_limit — no env_prefix, so the field
+      # name is the env var verbatim). Set to glm-5.2's real 200K window; Letta's
+      # built-in 32000 default would otherwise cap both the main and sleeptime agents.
+      - GLOBAL_MAX_CONTEXT_WINDOW_LIMIT=200000
       - AUTO_APPROVE_SHELL_COMMANDS=false
       - POSTGRES_USER=letta
       - POSTGRES_PASSWORD=${LETTA_DB_PASSWORD:-letta}
@@ -174,12 +183,19 @@ services:
         echo "Ollama container ready"
         wait $OLLAMA_PID
     restart: unless-stopped
+    # Gate health on the EMBEDDING MODEL being pulled, not just the server answering. `ollama
+    # list` succeeds the moment the server is up (with an empty list), so the old check reported
+    # "healthy" while the 670MB pull was still running — and Letta (depends_on: service_healthy)
+    # would boot, sync an EMPTY ollama model list, register 0 embedding models, and every agent
+    # provision then failed "Embedding model ollama/mxbai-embed-large:latest not found". Grepping
+    # for the model makes "healthy" mean "model is actually ready", so Letta only syncs once it's
+    # present. start_period covers the pull on a fresh (wiped) volume before it counts as failed.
     healthcheck:
-      test: ["CMD", "/bin/ollama", "list"]
+      test: ["CMD-SHELL", "/bin/ollama list | grep -q mxbai-embed-large"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 300s
     networks:
       - ai-hub-network
 

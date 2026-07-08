@@ -47,6 +47,10 @@ export class AppsManagerService {
   // Simulated last output for each app
   private appLastOutputs: { [id: string]: string } = {};
 
+  // Ids of apps merged from backend discovery (_apps/<app>/_custom/app.json) —
+  // tracked so re-syncs can update or remove them without touching built-ins
+  private dynamicAppIds = new Set<string>();
+
   // Simulated "backend" data (replace with REST call in future)
   private allAppsData: { apps: ManagedApp[] } = {
     apps: [
@@ -334,9 +338,47 @@ export class AppsManagerService {
     }
   }
 
+  /**
+   * Sync custom-app manifests discovered by the backend (_apps/<app>/_custom/app.json)
+   * into the built-in list — runs on every getAllApps/refreshAllStatuses cycle so a new
+   * folder, an edited manifest (e.g. the seeder flipping visible:true) or a deleted app
+   * surfaces without reloading the frontend. Built-in apps win on id conflicts; only
+   * entries this sync created are ever updated or removed. Never throws — the Apps page
+   * must keep working when the backend is down (e.g. Java missing).
+   */
+  private async loadDynamicApps(): Promise<void> {
+    try {
+      const manifests = await this.systemService.getManagedApps();
+      if (!Array.isArray(manifests)) return;
+      const discoveredIds = new Set<string>();
+      for (const manifest of manifests) {
+        if (!manifest?.id) continue;
+        discoveredIds.add(manifest.id);
+        const existing = this.allAppsData.apps.find(app => app.id === manifest.id);
+        if (existing) {
+          if (this.dynamicAppIds.has(manifest.id)) Object.assign(existing, manifest);
+          continue;
+        }
+        this.allAppsData.apps.push(manifest as ManagedApp);
+        this.dynamicAppIds.add(manifest.id);
+      }
+      // Drop discovered apps whose _custom/app.json disappeared from disk
+      for (const id of [...this.dynamicAppIds]) {
+        if (discoveredIds.has(id)) continue;
+        this.dynamicAppIds.delete(id);
+        const index = this.allAppsData.apps.findIndex(app => app.id === id);
+        if (index >= 0) this.allAppsData.apps.splice(index, 1);
+      }
+    } catch (e) {
+      console.debug('[AppsManager] Custom app manifests not available yet:', e);
+    }
+  }
+
   // Add method to fetch statuses from API
   public async refreshAllStatuses(skipProbe: boolean = false): Promise<void> {
     try {
+      // Pick up newly discovered custom apps so their statuses are polled too
+      await this.loadDynamicApps();
       // Refresh system info (docker status) along with service statuses
       await this.dockerLifecycle.refreshSystemInfo();
 
@@ -429,6 +471,7 @@ export class AppsManagerService {
   }
 
   public async getAllApps(): Promise<ManagedApp[]> {
+    await this.loadDynamicApps();
     const appsToReturn = this.allAppsData.apps.filter(app => app.visible === true);
     return appsToReturn.map(app => {
       const state = this.appStates[app.id] ?? 'stopped';

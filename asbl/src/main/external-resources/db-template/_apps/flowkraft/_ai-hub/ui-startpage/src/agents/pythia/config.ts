@@ -236,8 +236,9 @@ I maintain organized WordPress patterns, theme examples, and self-service portal
 `),
   ],
 
-  // When enableSleeptime: true, the PRIMARY agent uses read-only memory tools
-  // Memory editing is delegated to the sleeptime agent (per Letta sleeptime architecture)
+  // Primary toolset: unified `memory` block editor + recall/archival search + action
+  // tools. Granular consolidation (memory_insert/replace/rethink) and
+  // archival_memory_insert belong to the sleeptime agent (Letta sleeptime architecture).
   tools: PRIMARY_AGENT_TOOLS,
 
   options: {

@@ -19,6 +19,7 @@ import { iconSvg } from '../../shared/icon-svgs';
     imports: [CommonModule], // Import itself for recursion if needed, but handled by parent loop here
     template: `
     <div
+      [attr.id]="nodeSlug() ? 'treenode-' + nodeSlug() : null"
       class="p-treenode-content {{ node().styleClass || '' }}"
       [style.padding-left]="level() * indentation() + 'rem'"
       [ngClass]="{
@@ -36,6 +37,7 @@ import { iconSvg } from '../../shared/icon-svgs';
            element in the codebase emits icons post-refactor. -->
       @if (!isNodeLeaf()) {
         <button
+          [attr.id]="nodeSlug() ? 'treenode-toggle-' + nodeSlug() : null"
           type="button"
           class="p-tree-node-toggle-button p-link"
           [attr.aria-expanded]="isExpanded()"
@@ -384,6 +386,15 @@ export class TreeNodeComponent {
 
   // Basic trackBy for children loop
   trackByChild = (index: number, node: TreeNode) => node.key || node;
+
+  // Stable, DOM-safe id fragment from the node's label (used for e2e/docs
+  // targeting, e.g. #treenode-toggle-Categories). Empty when unlabeled.
+  nodeSlug(): string {
+    return (this.node()?.label ?? this.node()?.key ?? '')
+      .toString()
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
 
   onNodeClick(event: MouseEvent) {
     // Prevent selection logic when clicking on toggler or checkbox directly

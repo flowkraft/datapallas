@@ -285,6 +285,20 @@ public class DatabaseSchemaFetcher {
 
         try {
             log.debug("Attempting to connect using JDBC URL: {}", settings.url);
+            // DuckDB takes an EXCLUSIVE file lock when opened read-write, which fails if
+            // another process (e.g. the AI Hub's chat2db) already holds the same .duckdb
+            // file open. Schema introspection only reads, so open read-only — DuckDB allows
+            // many concurrent read-only openers across processes. Mirrors chat2db's
+            // duckdb.read_only=true.
+            if ("duckdb".equalsIgnoreCase(settings.type)) {
+                java.util.Properties props = new java.util.Properties();
+                if (StringUtils.isNotBlank(settings.userid))
+                    props.setProperty("user", settings.userid);
+                if (StringUtils.isNotBlank(decryptedPassword))
+                    props.setProperty("password", decryptedPassword);
+                props.setProperty("duckdb.read_only", "true");
+                return DriverManager.getConnection(settings.url, props);
+            }
             return DriverManager.getConnection(settings.url, settings.userid, decryptedPassword);
         } catch (SQLException e) {
             log.error("SQL error during connection attempt: {} (SQLState: {}, ErrorCode: {})", e.getMessage(),

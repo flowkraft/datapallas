@@ -24,6 +24,7 @@
 //     003_00_samples-try-it.png         The "Try It" confirmation dialog
 //
 //   BLOCK 2 — Sales Dashboard, sample #18 (external browser; needs the RB backend)
+//     bi-analytics/047-rb-dash-samples.png                The Samples list, Sales Dashboard row selected
 //     bi-analytics/093-rb-dash-northwind-try-it.png       The sample's table row (cropped)
 //     bi-analytics/095-rb-dash-northwind-final-browser.png The live dashboard, Country=Germany
 //
@@ -219,15 +220,36 @@ electronBeforeAfterAllTest(
     let externalBrowser: Browser | null = null;
 
     try {
-      // ── Navigate to Samples and bring the Dashboard sample row into view ──────
+      // ── Navigate to Samples, bring the Dashboard sample row into view and
+      //    SELECT it (bg-primary/10 highlight) — same framing as BLOCK 1.
       await ft
         .gotoBurstScreen()
         .waitOnElementToBecomeVisible('#btnBurstSamples')
         .click('#btnBurstSamples')
         .waitOnElementToBecomeVisible('#samplesTable')
         .scrollIntoViewIfNeeded(`#tr${SAMPLE_DASHBOARD}`)
-        .waitOnElementToContainText(`#td${SAMPLE_DASHBOARD}`, 'Sales Dashboard');
+        .waitOnElementToContainText(`#td${SAMPLE_DASHBOARD}`, 'Sales Dashboard')
+        .click(`#tr${SAMPLE_DASHBOARD}`);
       await hideToastsForScreenshots(firstPage);
+
+      // Scroll the selected row to just below the sticky column header (same
+      // trick as BLOCK 1) so the row leads the frame with the header pinned.
+      await firstPage.evaluate((sel) => {
+        const row = document.querySelector(sel) as HTMLElement | null;
+        const table = document.getElementById('samplesTable');
+        const scroller = table?.parentElement as HTMLElement | null;
+        const thead = table?.querySelector('thead') as HTMLElement | null;
+        if (!row || !scroller) return;
+        const headH = thead ? thead.getBoundingClientRect().height : 40;
+        scroller.scrollTop +=
+          row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - headH - 6;
+      }, `#tr${SAMPLE_DASHBOARD}`);
+      await firstPage.waitForTimeout(400);
+
+      // ── 047 — the Samples list with the Sales Dashboard entry selected; the
+      //    "Want to see it before you build it?" shot in dashboards.mdx.
+      await captureDocsScreenshot(firstPage, dp('047-rb-dash-samples'), BI_DIR);
+      console.log(`[capture] bi-analytics/${dp('047-rb-dash-samples')}`);
 
       // ── 093 — the sample's table row, cropped (shows badge, input, output, Try It).
       await captureDocsScreenshotOfElement(
@@ -239,10 +261,8 @@ electronBeforeAfterAllTest(
       console.log(`[capture] bi-analytics/${dp('093-rb-dash-northwind-try-it')}`);
 
       // ── Try It → provisions + opens the dashboard (no burst/confirm flow for
-      //    dashboards; matches samples.spec.ts test 18).
-      await ft
-        .click(`#tr${SAMPLE_DASHBOARD}`)
-        .click(`#btnSampleTryIt${SAMPLE_DASHBOARD}`);
+      //    dashboards; matches samples.spec.ts test 18). Row already selected above.
+      await ft.click(`#btnSampleTryIt${SAMPLE_DASHBOARD}`);
 
       // ── Open our own browser at the live dashboard URL ────────────────────────
       const ext = await SelfServicePortalsTestHelper.createExternalBrowser(false, {

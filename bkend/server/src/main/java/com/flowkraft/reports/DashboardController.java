@@ -24,6 +24,7 @@ public class DashboardController {
 				+ "</head>\n"
 				+ "<body>\n"
 				+ "  <rb-dashboard\n"
+				+ "    id=\"publishedDashboard\"\n"
 				+ "    report-id=\"" + escapeHtml(reportCode) + "\"\n"
 				+ "    api-base-url=\"/api\">\n"
 				+ "  </rb-dashboard>\n"

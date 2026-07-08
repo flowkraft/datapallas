@@ -135,7 +135,7 @@ export function NumberWidget({ widgetId }: NumberWidgetProps) {
   }
 
   if (loading) return <div className="flex items-center justify-center h-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 animate-spin text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></div>;
-  if (error) return <div className="text-xs text-error p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
+  if (error) return <div id={`widgetError-${widgetId}`} className="text-xs text-error p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
   if (!result || result.data.length === 0) return null;
   if (!ready) return <div className="flex items-center justify-center h-full text-xs text-base-content/60">Loading components...</div>;
 
@@ -143,7 +143,7 @@ export function NumberWidget({ widgetId }: NumberWidgetProps) {
     <div className="flex flex-col items-center justify-center h-full">
       <div className="text-3xl font-bold text-base-content tabular-nums">
         {/* @ts-expect-error - Web component custom element */}
-        <rb-value ref={ref} />
+        <rb-value ref={ref} id={`widgetViz-${widgetId}`} />
       </div>
       <div className="text-xs text-base-content/60 mt-1">{effectiveLabel}</div>
     </div>

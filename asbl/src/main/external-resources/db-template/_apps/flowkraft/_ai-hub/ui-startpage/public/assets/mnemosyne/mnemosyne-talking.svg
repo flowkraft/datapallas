@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 540">
+  <rect x="280" y="305" width="5" height="215" fill="#8b6235"/>
+  <circle cx="282.5" cy="300" r="9" fill="#d4af37"/>
+  <path d="M 277 280 Q 282 262 287 280 Q 290 292 282 295 Q 275 292 277 280 Z" fill="#e89055"/>
+  <path d="M 280 286 Q 282 276 285 286 Q 285 290 282 290 Q 280 290 280 286 Z" fill="#f5e060"/>
+  <path d="M 148 100 Q 138 200 145 295 L 168 295 Q 162 200 158 110 Z" fill="#b86b35"/>
+  <path d="M 252 100 Q 262 200 255 295 L 232 295 Q 238 200 242 110 Z" fill="#b86b35"/>
+  <path d="M 148 100 Q 148 78 200 72 Q 252 78 252 100 Q 252 130 200 132 Q 148 130 148 100 Z" fill="#b86b35"/>
+  <path d="M 168 90 Q 165 105 168 125" stroke="#d4a075" stroke-width="2" fill="none" stroke-opacity="0.7"/>
+  <path d="M 232 90 Q 235 105 232 125" stroke="#d4a075" stroke-width="2" fill="none" stroke-opacity="0.7"/>
+  <line x1="200" y1="78" x2="200" y2="130" stroke="#7a3a18" stroke-width="2"/>
+  <ellipse cx="200" cy="172" rx="55" ry="72" fill="#fce8d4"/>
+  <path d="M 158 122 Q 200 100 242 122" stroke="#d4af37" stroke-width="3" fill="none"/>
+  <ellipse cx="172" cy="115" rx="9" ry="4" fill="#d4af37" transform="rotate(-30 172 115)"/>
+  <ellipse cx="190" cy="105" rx="9" ry="4" fill="#d4af37" transform="rotate(-12 190 105)"/>
+  <ellipse cx="210" cy="105" rx="9" ry="4" fill="#d4af37" transform="rotate(12 210 105)"/>
+  <ellipse cx="228" cy="115" rx="9" ry="4" fill="#d4af37" transform="rotate(30 228 115)"/>
+  <path d="M 184 240 L 184 290 L 216 290 L 216 240 Z" fill="#fce8d4"/>
+  <path d="M 158 290 Q 200 285 242 290 L 248 380 L 152 380 Z" fill="#88a888"/>
+  <path d="M 152 380 Q 132 450 122 515 L 278 515 Q 268 450 248 380 Z" fill="#88a888"/>
+  <rect x="152" y="372" width="96" height="9" fill="#d4af37" fill-opacity="0.85"/>
+  <rect x="196" y="380" width="8" height="135" fill="#d4af37" fill-opacity="0.55"/>
+  <path d="M 122 505 Q 200 508 278 505 L 278 515 L 122 515 Z" fill="#d4af37" fill-opacity="0.7"/>
+  <ellipse cx="180" cy="525" rx="13" ry="6" fill="#fce8d4"/>
+  <ellipse cx="220" cy="525" rx="13" ry="6" fill="#fce8d4"/>
+  <ellipse cx="180" cy="528" rx="14" ry="5" fill="#a87c52"/>
+  <ellipse cx="220" cy="528" rx="14" ry="5" fill="#a87c52"/>
+  <ellipse cx="160" cy="200" rx="10" ry="5" fill="#e89080" fill-opacity="0.4"/>
+  <ellipse cx="240" cy="200" rx="10" ry="5" fill="#e89080" fill-opacity="0.4"/>
+
+  <g stroke="#2a1a10" stroke-width="2" fill="none" stroke-linecap="round">
+    <ellipse cx="200" cy="172" rx="55" ry="72"/>
+    <path d="M 148 100 Q 148 78 200 72 Q 252 78 252 100"/>
+    <path d="M 148 100 Q 138 200 145 295"/>
+    <path d="M 252 100 Q 262 200 255 295"/>
+    <line x1="200" y1="78" x2="200" y2="130" stroke-width="1.5" stroke-opacity="0.6"/>
+    <path d="M 158 122 Q 200 100 242 122" stroke="#d4af37" stroke-width="3"/>
+    <ellipse cx="172" cy="115" rx="9" ry="4" stroke="#d4af37" transform="rotate(-30 172 115)"/>
+    <ellipse cx="190" cy="105" rx="9" ry="4" stroke="#d4af37" transform="rotate(-12 190 105)"/>
+    <ellipse cx="210" cy="105" rx="9" ry="4" stroke="#d4af37" transform="rotate(12 210 105)"/>
+    <ellipse cx="228" cy="115" rx="9" ry="4" stroke="#d4af37" transform="rotate(30 228 115)"/>
+    <path d="M 184 240 Q 184 275 175 290"/>
+    <path d="M 216 240 Q 216 275 225 290"/>
+    <path d="M 175 290 Q 158 295 145 300 L 125 318"/>
+    <path d="M 225 290 Q 242 295 255 300 L 275 318"/>
+    <circle cx="165" cy="295" r="4" fill="#d4af37"/>
+    <circle cx="235" cy="295" r="4" fill="#d4af37"/>
+    <path d="M 152 300 L 152 380"/>
+    <path d="M 248 300 L 248 380"/>
+    <line x1="152" y1="372" x2="248" y2="372"/>
+    <line x1="152" y1="381" x2="248" y2="381"/>
+    <path d="M 152 381 Q 132 450 122 515"/>
+    <path d="M 248 381 Q 268 450 278 515"/>
+    <line x1="122" y1="505" x2="278" y2="505"/>
+    <path d="M 175 381 Q 168 450 160 515" stroke-opacity="0.45" stroke-width="1.5"/>
+    <path d="M 225 381 Q 232 450 240 515" stroke-opacity="0.45" stroke-width="1.5"/>
+    <line x1="196" y1="381" x2="196" y2="515" stroke="#a07820" stroke-width="1"/>
+    <line x1="204" y1="381" x2="204" y2="515" stroke="#a07820" stroke-width="1"/>
+    <ellipse cx="180" cy="525" rx="13" ry="6"/>
+    <ellipse cx="220" cy="525" rx="13" ry="6"/>
+    <ellipse cx="180" cy="528" rx="14" ry="5"/>
+    <ellipse cx="220" cy="528" rx="14" ry="5"/>
+    <rect x="280" y="305" width="5" height="215"/>
+    <circle cx="282.5" cy="300" r="9"/>
+    <path d="M 277 280 Q 282 262 287 280 Q 290 292 282 295 Q 275 292 277 280 Z"/>
+    <!-- Left arm gesturing out (talking) -->
+    <path d="M 152 305 Q 115 340 100 395" stroke="#fce8d4" stroke-width="14"/>
+    <path d="M 152 305 Q 115 340 100 395"/>
+    <ellipse cx="98" cy="405" rx="11" ry="9" fill="#fce8d4"/>
+    <ellipse cx="98" cy="405" rx="11" ry="9"/>
+    <line x1="92" y1="403" x2="89" y2="398"/>
+    <line x1="98" y1="400" x2="98" y2="394"/>
+    <line x1="104" y1="403" x2="107" y2="398"/>
+    <!-- Right arm gripping sceptre -->
+    <path d="M 248 305 Q 270 360 280 410" stroke="#fce8d4" stroke-width="14"/>
+    <path d="M 248 305 Q 270 360 280 410"/>
+    <ellipse cx="282" cy="420" rx="11" ry="9" fill="#fce8d4"/>
+    <ellipse cx="282" cy="420" rx="11" ry="9"/>
+    <line x1="276" y1="418" x2="274" y2="413"/>
+    <line x1="288" y1="418" x2="290" y2="413"/>
+    <!-- Eyes: open engaged almond -->
+    <path d="M 165 168 Q 180 160 197 168 Q 192 180 180 180 Q 170 178 165 168 Z" fill="#fff"/>
+    <ellipse cx="181" cy="172" rx="7" ry="7" fill="#5a3825" stroke="none"/>
+    <circle cx="183" cy="170" r="3" fill="#1a0a05" stroke="none"/>
+    <circle cx="185" cy="168" r="1.2" fill="#fff" stroke="none"/>
+    <path d="M 203 168 Q 220 160 235 168 Q 230 180 220 180 Q 208 178 203 168 Z" fill="#fff"/>
+    <ellipse cx="219" cy="172" rx="7" ry="7" fill="#5a3825" stroke="none"/>
+    <circle cx="221" cy="170" r="3" fill="#1a0a05" stroke="none"/>
+    <circle cx="223" cy="168" r="1.2" fill="#fff" stroke="none"/>
+    <line x1="166" y1="166" x2="168" y2="162"/>
+    <line x1="232" y1="162" x2="234" y2="166"/>
+    <path d="M 162 152 Q 180 144 198 150" stroke-width="2.5"/>
+    <path d="M 202 150 Q 220 144 238 152" stroke-width="2.5"/>
+    <path d="M 200 180 Q 198 200 202 208 Q 205 210 207 207"/>
+    <ellipse cx="196" cy="207" rx="1.5" ry="1" fill="#2a1a10" fill-opacity="0.5"/>
+    <ellipse cx="204" cy="207" rx="1.5" ry="1" fill="#2a1a10" fill-opacity="0.5"/>
+    <!-- Mouth: open talking -->
+    <ellipse cx="200" cy="222" rx="9" ry="5" fill="#a04050"/>
+    <ellipse cx="200" cy="222" rx="9" ry="5"/>
+    <line x1="192" y1="222" x2="208" y2="222" stroke-opacity="0.5"/>
+  </g>
+</svg>

@@ -36,8 +36,7 @@ import { ConnectionsTestHelper } from '../../../helpers/areas/connections-test-h
 import { toConnectionCode } from '../../../helpers/explore-data-test-helper';
 import {
   captureDocsScreenshot,
-  captureDocsScreenshotWithOverlay,
-  captureDocsScreenshotWithHighlight,
+  captureDocsScreenshotWithHighlights,
 } from '../../../utils/docs-screenshot-helper';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
@@ -113,13 +112,10 @@ electronBeforeAfterAllTest(
         new FluentTester(firstPage), CONNECTION_NAME, DB_VENDOR,
       );
 
-      // ── CAPTURE 1: cubes list — overlay with fake gear + arrow + callout ────
-      // The Skin Options panel + its gear toggle button are hidden in e2e mode
-      // (RUNNING_IN_E2E guard at top-menu-header.template.html:248). We inject:
-      //   1. A lookalike gear icon at the top-right (where the real one lives)
-      //   2. A dashed arrow connecting gear → callout to make the workflow
-      //      obvious: "click the gear to reveal this checkbox"
-      //   3. A more prominent checkbox callout near the bottom-right
+      // ── CAPTURE 1: cubes list (plain — current UI) ──────────────────────────
+      // No annotation overlay: the show/hide-samples control has moved (it now
+      // lives under Configuration → More Settings), so the docs page carries
+      // that as a Note beside the image rather than a baked-in gear/arrow.
       await ft
         .gotoCubeDefinitions()
         .waitOnElementToBecomeVisible('#northwind-customers')
@@ -138,52 +134,7 @@ electronBeforeAfterAllTest(
 
       // Brief settle so any tooltip/spinner from navigation has cleared.
       await firstPage.waitForTimeout(800);
-      await captureDocsScreenshotWithOverlay(firstPage, '200_00_cubes-left-menu.png', {
-        cssText: `top:0; left:0; right:0; bottom:0;`,
-        html: `
-          <!-- 1. Fake gear icon at top-right (mimics the hidden #btnChangeSkin) -->
-          <div style="position:fixed; top:14px; right:18px;
-                      width:36px; height:36px; border-radius:50%;
-                      background:#3c8dbc; color:#fff;
-                      display:flex; align-items:center; justify-content:center;
-                      font-size:20px; font-weight:bold;
-                      box-shadow:0 0 0 4px rgba(60,141,188,0.35),
-                                 0 4px 12px rgba(0,0,0,0.25);">
-            &#9881;
-          </div>
-
-          <!-- 2. Dashed arrow shaft (vertical) from gear → callout -->
-          <div style="position:fixed; top:55px; right:34px;
-                      width:0; height:480px;
-                      border-left:3px dashed #3c8dbc;"></div>
-
-          <!-- 2b. Arrowhead at the bottom of the shaft, pointing into the callout -->
-          <div style="position:fixed; top:530px; right:27px;
-                      width:0; height:0;
-                      border-left:9px solid transparent;
-                      border-right:9px solid transparent;
-                      border-top:14px solid #3c8dbc;"></div>
-
-          <!-- 3. Enhanced checkbox callout (bigger, brighter, with hint text) -->
-          <div style="position:fixed; right:18px; bottom:80px; width:300px;
-                      background:#ffffff; border:3px solid #3c8dbc;
-                      border-radius:6px; padding:14px 16px;
-                      font-family:'Source Sans Pro', sans-serif; color:#222;
-                      box-shadow:0 8px 28px rgba(60,141,188,0.45);">
-            <label style="display:flex; align-items:center; gap:10px;
-                          font-weight:700; font-size:15px;">
-              <input type="checkbox" checked disabled
-                     style="width:18px; height:18px; accent-color:#3c8dbc;"/>
-              Show sample connections &amp; cubes
-            </label>
-            <div style="font-size:12px; color:#555; margin-top:8px; line-height:1.45;">
-              Click the <strong style="color:#3c8dbc;">&#9881; gear</strong>
-              at the top-right to open the Skin Options panel,
-              then toggle this checkbox.
-            </div>
-          </div>
-        `,
-      });
+      await captureDocsScreenshot(firstPage, '200_00_cubes-left-menu-dp.png');
 
       // ── CAPTURE 2: Create-Cube modal with name + description + connection ────
       // This is the FIRST moment the user sees the empty cube editor — the
@@ -201,9 +152,16 @@ electronBeforeAfterAllTest(
       // wrap selectOption).
       await firstPage.selectOption('#cubeConnectionId', connectionCode);
       await firstPage.waitForTimeout(500);
-      await captureDocsScreenshotWithHighlight(firstPage, '200_10_cube-create-modal.png', {
-        target: firstPage.locator('#btnAiHelpCubeDsl'),
-      });
+      // Ring the "Hey AI, Help Me..." button. It sits flush against the modal's
+      // left edge and the adjacent "Expand Code Editor" button, so an OUTSIDE
+      // ring gets clipped/overpainted — the INSET ring is painted just inside the
+      // button's edges instead, so all four sides stay visible (same approach as
+      // the 200_15 capture below).
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        '200_10_cube-create-modal-dp.png',
+        [{ selector: '#btnAiHelpCubeDsl', inset: true }],
+      );
 
       // ── CAPTURE 3: same modal, DSL pasted in → preview tree renders ──────────
       // The DSL produces 7 dimensions: order_id (PK), status, created_at, then
@@ -223,14 +181,16 @@ electronBeforeAfterAllTest(
         .waitOnElementToBecomeVisible('#dim-country');
       await firstPage.waitForTimeout(800);
 
-      // Sharp-based highlight (replaces the previous DOM-injection approach
-      // which silently failed when stacked above Bootstrap modal backdrops).
-      // The duplicate #btnAiHelpCubeDsl source bug is now fixed (the
-      // preview-hidden layout uses #btnAiHelpCubeDslFullEditor) so this
-      // selector resolves to exactly one element.
-      await captureDocsScreenshotWithHighlight(firstPage, '200_15_cube-dsl-editor.png', {
-        target: firstPage.locator('#btnAiHelpCubeDsl'),
-      });
+      // Ring the "Hey AI, Help Me..." button. It sits flush against the adjacent
+      // "Expand Code Editor" button and the modal footer, so an OUTSIDE ring gets
+      // overpainted on those two sides. The INSET ring is painted just inside the
+      // button's edges instead, so all four sides are always fully visible (the
+      // same trick the connections docs use for flush-against-boundary targets).
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        '200_15_cube-dsl-editor-dp.png',
+        [{ selector: '#btnAiHelpCubeDsl', inset: true }],
+      );
 
       // ── CAPTURE 4: same modal — tick 4 fields, click Show SQL, REPOSITION ────
       // Replicates the exact selection from the manual 200_20:

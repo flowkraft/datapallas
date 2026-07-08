@@ -95,6 +95,14 @@ agents:
         text_generation:
           model_id: "letta:pythia"
 
+    - id: mnemosyne
+      provider: openai
+      config:
+        base_url: "http://flowkraft-ai-hub-frend:3000/api/openai/mnemosyne/v1"
+        api_key: ""
+        text_generation:
+          model_id: "letta:mnemosyne"
+
     # Additional agents can be added here:
 
 # Initial global configuration. This only affects the first run of the bot.

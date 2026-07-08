@@ -55,7 +55,7 @@
       </button>
       <a href="${createLink(uri: '/admin')}" class="flex items-center gap-2 shrink-0 no-underline">
         <span class="logo-lg flex items-center gap-1">
-          <span class="brand-wordmark text-2xl tracking-tight"><span class="brand-data">Data</span><span class="brand-pallas">Pallas</span></span>
+          <span class="brand-wordmark text-3xl tracking-tight"><span class="brand-data">Data</span><span class="brand-pallas">Pallas</span></span>
           <dp:brandLogo/>
         </span>
       </a>
@@ -67,7 +67,7 @@
         <dp:icon name="analytics"/> Analytics
       </a>
       <a href="${createLink(uri: '/portal')}" class="btn btn-ghost btn-sm normal-case">
-        <dp:icon name="portal"/> Self-Service Portal
+        <dp:icon name="portal"/> Portal
       </a>
       <a href="mailto:support@datapallas.com" class="btn btn-ghost btn-sm normal-case gap-1">
         <dp:icon name="email"/>

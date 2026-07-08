@@ -121,6 +121,7 @@ export function WidgetShell({ widgetId, type }: WidgetShellProps) {
       onMouseDown={handlePress}
       onClick={(e) => e.stopPropagation()}
     >
+      {isSelected && <span id="widgetActive" data-widget-id={widgetId} className="hidden" aria-hidden="true" />}
       {/* Header bar */}
       <div
         id={`widgetHeader-${widgetId}`}

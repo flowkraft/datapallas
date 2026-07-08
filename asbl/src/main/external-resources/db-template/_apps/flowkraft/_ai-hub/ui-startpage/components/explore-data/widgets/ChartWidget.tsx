@@ -583,7 +583,7 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 animate-spin text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
     </div>
   );
-  if (error) return <div className="text-xs text-error p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
+  if (error) return <div id={`widgetError-${widgetId}`} className="text-xs text-error p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
   if (!result) return null;
   if (!ready) return (
     <div className="flex items-center justify-center h-full text-xs text-base-content/60">
@@ -596,7 +596,7 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 relative">
         {/* @ts-expect-error - Web component custom element */}
-        <rb-chart ref={ref} style={{ position: "absolute", inset: 0, display: "block" }} />
+        <rb-chart ref={ref} id={`widgetViz-${widgetId}`} style={{ position: "absolute", inset: 0, display: "block" }} />
       </div>
       {hiddenCount > 0 && widget && (
         <div className="shrink-0 px-2 py-0.5 text-[10px] text-base-content/60 bg-base-200/40 border-t border-base-300/50 flex items-center justify-between gap-2">

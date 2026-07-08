@@ -10,7 +10,7 @@
 
 import getLettaClient from './client';
 import { AGENTS } from '../../agents';
-import { DB_QUERY_MEMORY_SECTION, TOOL_CALLING_PROTOCOL_BLOCK } from '../../agents/sharedMemory';
+import { DB_QUERY_MEMORY_SECTION, TOOL_CALLING_PROTOCOL_BLOCK, getSleepTimeMemoryBlocks, labelAddressingNote } from '../../agents/sharedMemory';
 import { Constants } from '../../utils/constants';
 import type { AgentState, AgentCreateParams } from '@letta-ai/letta-client/resources/agents';
 import type { Tool } from '@letta-ai/letta-client/resources/tools';
@@ -33,6 +33,20 @@ interface ProvisionResult {
   status: ProvisionStatus;
   message?: string;
 }
+
+// Block labels whose content is LEARNED by the agents at runtime (as opposed to config-owned
+// instruction blocks, which are regenerated from templates on every provision). A force
+// recreate captures these values from the outgoing agents and seeds the replacement agents'
+// blocks with them, so rebuilding the machinery does not erase the crew's knowledge.
+const LEARNED_BLOCK_LABELS = new Set([
+  'human',
+  'you',
+  'tasks',
+  'interaction_log',
+  'knowledge_structure',
+  'subconscious_channel',
+  'archival_context',
+]);
 
 function normalizeList<T>(resp: unknown): T[] {
   if (!resp) return [];
@@ -359,6 +373,12 @@ export async function provisionAllAgents(opts: { force?: boolean; giveDbQueryToo
       let agentId: string | undefined;
       let agent: AgentState | null = null;
 
+      // Knowledge carried across a force recreate: learned block values keyed by their plain
+      // (de-namespaced) label, and the outgoing crew's archive id. Captured from the old
+      // agents before deletion, re-applied to the replacement agent further below.
+      const preservedBlockValues = new Map<string, string>();
+      let preservedArchiveId: string | undefined;
+
       // Try to find by tag (may return multiple). If force is set, delete all matching agents first.
       try {
         // Find existing agents by metadata.agentKey (do not rely on tag-based lookups)
@@ -368,41 +388,89 @@ export async function provisionAllAgents(opts: { force?: boolean; giveDbQueryToo
         const agents = allAgents.filter((a) => String((a as any)?.metadata?.agentKey) === String(cfg.key));
         if (agents.length > 0) {
           if (force) {
-            // When forcing, delete all matching agents AND any agents that share their primary
-            // memory block (this finds associated "sleeptime" agents that share blocks).
+            // Force recreate rebuilds the MACHINERY (fresh history, config, instruction blocks,
+            // tool wiring) but preserves the KNOWLEDGE: learned block values and the archive are
+            // captured here and re-applied to the replacement agent below. The old agents' block
+            // rows are then deleted so nothing lingers unreachable in Letta's Postgres.
             const toDelete = new Set<string>();
+            const blocksToDelete = new Set<string>();
+
+            const retrieveSafe = async (id: string): Promise<any | null> => {
+              try {
+                return await client.agents.retrieve(id) as any;
+              } catch (err) {
+                console.warn('Failed to retrieve agent before force delete:', id, formatError(err));
+                return null;
+              }
+            };
+
+            // Collect the agent's block rows for cleanup, its learned values for carry-over,
+            // and its recorded archive id (first agent found wins on conflicts).
+            const captureFrom = (full: any) => {
+              if (!full) return;
+              for (const b of (full?.memory?.blocks || []) as Array<any>) {
+                if (b?.id) blocksToDelete.add(String(b.id));
+                const label = String(b?.label || '');
+                const sep = label.indexOf('__');
+                const plain = sep >= 0 ? label.slice(sep + 2) : label;
+                if (LEARNED_BLOCK_LABELS.has(plain) && !preservedBlockValues.has(plain)) {
+                  const v = typeof b?.value === 'string' ? b.value : '';
+                  if (v.trim()) preservedBlockValues.set(plain, v);
+                }
+              }
+              if (!preservedArchiveId && full?.metadata?.archiveId) {
+                preservedArchiveId = String(full.metadata.archiveId);
+              }
+            };
 
             for (const a of agents) {
               toDelete.add(a.id);
+              const full = await retrieveSafe(a.id);
+              captureFrom(full);
 
+              // Discover the linked sleeptime twin: direct properties first, any agent
+              // sharing the first memory block as fallback.
+              const twinIds = new Set<string>();
+              if (full?.sleeptime_agent_id) twinIds.add(String(full.sleeptime_agent_id));
+              const groupIds: string[] = (full?.multi_agent_group as any)?.agent_ids || (full?.managed_group as any)?.agent_ids || [];
+              for (const gid of groupIds) if (String(gid) !== String(a.id)) twinIds.add(String(gid));
+              const blockId: string | undefined = full?.memory?.blocks?.[0]?.id;
+              if (twinIds.size === 0 && blockId) {
+                try {
+                  const blockAgentsResp = await client.blocks.agents.list(blockId as string);
+                  const blockAgents = normalizeList<any>(blockAgentsResp as unknown);
+                  for (const ba of blockAgents) {
+                    if (ba && ba.id && String(ba.id) !== String(a.id)) twinIds.add(String(ba.id));
+                  }
+                } catch (err) {
+                  console.warn('Failed to list agents for block', blockId, formatError(err));
+                }
+              }
+
+              for (const tid of Array.from(twinIds)) {
+                if (!toDelete.has(tid)) {
+                  toDelete.add(tid);
+                  console.log('Found linked sleeptime agent (will delete):', tid);
+                  captureFrom(await retrieveSafe(tid));
+                }
+              }
+            }
+
+            // Fallback archive discovery by the OLD agent ids (only possible before deletion)
+            if (!preservedArchiveId) {
               try {
-                // Try to discover primary block id from the agent object; fall back to retrieve
-                let blockId: string | undefined = (a as any)?.memory?.blocks?.[0]?.id;
-                if (!blockId) {
-                  try {
-                    const full = await client.agents.retrieve(a.id) as any;
-                    blockId = full?.memory?.blocks?.[0]?.id;
-                  } catch (retrieveErr) {
-                    console.warn('Failed to retrieve agent to inspect blocks for', a.id, formatError(retrieveErr));
-                  }
-                }
-
-                if (blockId) {
-                  try {
-                    const blockAgentsResp = await client.blocks.agents.list(blockId as string);
-                    const blockAgents = normalizeList<any>(blockAgentsResp as unknown);
-                    for (const ba of blockAgents) {
-                      if (ba && ba.id && ba.id !== a.id) {
-                        toDelete.add(ba.id);
-                        console.log('Found linked agent sharing memory block (will delete):', ba.id);
-                      }
-                    }
-                  } catch (err) {
-                    console.warn('Failed to list agents for block', blockId, formatError(err));
-                  }
-                }
+                const all = normalizeList<Archive>(await client.archives.list() as unknown);
+                const oldIds = agents.map((a) => String(a.id));
+                const found = all.find((ar) =>
+                  oldIds.some(
+                    (oid) =>
+                      String((ar as any)?.metadata?.fullAgentKey) === `${cfg.key}-${oid}` ||
+                      String(ar?.name) === `Agent Archive - ${cfg.key}-${oid}`
+                  )
+                );
+                if (found) preservedArchiveId = String((found as any).id);
               } catch (err) {
-                console.warn('Failed to inspect linked agents for', a.id, formatError(err));
+                console.warn('Archive fallback lookup failed (force):', formatError(err));
               }
             }
 
@@ -414,6 +482,21 @@ export async function provisionAllAgents(opts: { force?: boolean; giveDbQueryToo
                 console.warn('Failed to delete existing agent (force):', id, formatError(err));
               }
             }
+
+            // Zombie cleanup: namespaced blocks are independent resources that survive agent
+            // deletion. Their learned values are captured above, so the rows themselves can go.
+            // The archive is deliberately NOT deleted — it is re-attached to the replacement
+            // agent below, preserving all archival passages.
+            for (const bId of Array.from(blocksToDelete)) {
+              try {
+                await (client.blocks as any).delete(bId);
+              } catch (err) {
+                console.warn('Failed to delete old block (force cleanup):', bId, formatError(err));
+              }
+            }
+            if (blocksToDelete.size > 0) console.log(`Force cleanup: deleted ${blocksToDelete.size} old block row(s)`);
+            if (preservedBlockValues.size > 0) console.log('Preserved learned block values:', Array.from(preservedBlockValues.keys()).join(', '));
+            if (preservedArchiveId) console.log('Preserved archive for re-attachment:', preservedArchiveId);
 
             // Deleted existing agents; ensure we create a new one below
             agent = null;
@@ -562,7 +645,21 @@ export async function provisionAllAgents(opts: { force?: boolean; giveDbQueryToo
       const shortAgent = String(agentId).slice(0, Constants.SHORT_AGENT_ID_LEN);
       const labelPrefix = `${cfg.key}-${shortAgent}`; // used for block labels (keeps labels <= Constants.BLOCK_LABEL_MAX)
 
-      for (const mb of cfg.memoryBlocks || []) {
+      // memory_management instructs the primary agent to edit blocks by plain name (human,
+      // you, tasks, …) while the attached labels are namespaced — append this agent's concrete
+      // prefix so memory-tool calls use the full label on the first try. Deterministic per
+      // agent, so the reconcile below stays stable across re-provisions.
+      // Learned values captured from force-deleted predecessors (preservedBlockValues) seed
+      // the replacement's blocks, so the crew keeps what it knew across a force recreate.
+      const memoryBlocks = (cfg.memoryBlocks || []).map((mb) => {
+        if (mb.label === 'memory_management') {
+          return { ...mb, value: (mb.value || '') + labelAddressingNote(labelPrefix) };
+        }
+        const preserved = preservedBlockValues.get(String(mb.label));
+        return preserved !== undefined ? { ...mb, value: preserved } : mb;
+      });
+
+      for (const mb of memoryBlocks) {
         try {
           // Refresh agent state to check current attachments
           try {
@@ -841,13 +938,25 @@ export async function provisionAllAgents(opts: { force?: boolean; giveDbQueryToo
       const archiveName = `Agent Archive - ${cfg.key}-${agentId}`;
 
       let archive: Archive | undefined;
-      try {
-        const list = await client.archives.list();
-        const archives = normalizeList<Archive>(list as unknown);
-        // Prefer archives with explicit metadata.fullAgentKey, otherwise fall back to name
-        archive = archives.find(a => String((a as any)?.metadata?.fullAgentKey) === archiveFullKey) || archives.find(a => a.name === archiveName);
-      } catch (err) {
-        // ignore list failures; we'll try to create
+      // A force recreate carries the outgoing crew's archive across: re-attach it to the
+      // replacement agent instead of creating a fresh one, so all archival passages survive.
+      if (preservedArchiveId) {
+        try {
+          archive = await client.archives.retrieve(preservedArchiveId) as Archive;
+          console.log('Re-using preserved archive:', preservedArchiveId);
+        } catch (err) {
+          console.warn('Preserved archive not retrievable, falling back to lookup/create:', preservedArchiveId, formatError(err));
+        }
+      }
+      if (!archive) {
+        try {
+          const list = await client.archives.list();
+          const archives = normalizeList<Archive>(list as unknown);
+          // Prefer archives with explicit metadata.fullAgentKey, otherwise fall back to name
+          archive = archives.find(a => String((a as any)?.metadata?.fullAgentKey) === archiveFullKey) || archives.find(a => a.name === archiveName);
+        } catch (err) {
+          // ignore list failures; we'll try to create
+        }
       }
 
       if (!archive) {
@@ -1009,12 +1118,13 @@ export async function provisionAllAgents(opts: { force?: boolean; giveDbQueryToo
 
               // Ensure namespaced sleeptime-only blocks exist on the sleeptime agent
               // Note: subconscious_channel and archival_context are SHARED (attached via main agent)
-              // These are sleeptime-ONLY blocks (NO sharedOwners - they belong only to sleeptime agent):
-              const requiredSleeptimeBlocks = [
-                { label: 'sleeptime_identity', description: 'Sleeptime agent identity', value: 'Background synthesizer. Do NOT message users directly.', limit: 1500 },
-                { label: 'sleeptime_procedures', description: 'Procedures for sleeptime processing', value: '1. Process NOTES, 2. Synthesize, 3. Update subconscious_channel', limit: 2000 },
-                { label: 'archival_context_policy', description: 'Operational instructions for sleeptime agent on memory management', value: '## Core Memory Management\n\nBegin with archival_memory_search, update archival_context, insert memories continuously.', limit: 5000 },
-              ];
+              // These are sleeptime-ONLY blocks (NO sharedOwners - they belong only to sleeptime agent).
+              // Full protocol definitions (identity / procedures / archival policy) come from
+              // sharedMemory, addressed to this agent by name and carrying this agent's concrete
+              // block-label prefix (so memory-tool calls use the full namespaced labels on the
+              // first try). The reconcile below keeps existing blocks in sync with these
+              // definitions, so a plain (non-force) re-provision also updates provisioned crews.
+              const requiredSleeptimeBlocks = getSleepTimeMemoryBlocks(cfg.displayName, labelPrefix);
 
               // Define keys for metadata
               const primaryFullAgentKey = `${cfg.key}-${agentId}`;
@@ -1111,7 +1221,7 @@ export async function provisionAllAgents(opts: { force?: boolean; giveDbQueryToo
                 if (!sb) {
                   try {
                     // Sleeptime-only blocks: no sharedOwners since they're not shared with main agent
-                    sb = await client.blocks.create({ label: targetLabel, value: b.value, description: b.description, limit: b.limit, metadata: { ownerFullAgentKey: baseKey } }) as BlockResponse;
+                    sb = await client.blocks.create({ label: targetLabel, value: b.value || '', description: b.description || '', limit: b.limit, metadata: { ownerFullAgentKey: baseKey } }) as BlockResponse;
                     console.log('Created sleeptime-only block', targetLabel);
                   } catch (createErr) {
                     console.warn('Failed to create sleeptime block', targetLabel, formatError(createErr));

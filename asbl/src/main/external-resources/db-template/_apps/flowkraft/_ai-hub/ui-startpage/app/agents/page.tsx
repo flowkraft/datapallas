@@ -14,6 +14,7 @@ import {
 import { LLMProviderForm } from '@/components/llm/LLMProviderForm';
 import { getSetting, setSetting, SETTING_KEYS } from '@/lib/settings';
 import { DEFAULT_LLM_FULL_CONFIG, type LLMFullConfig } from '@/lib/llm-providers';
+import { MnemosyneFull } from '@/components/shared/MnemosyneAvatar';
 
 // Short descriptions for display (avoids importing heavy agent configs into client bundle)
 const AGENT_DESCRIPTIONS: Record<string, string> = {
@@ -22,6 +23,7 @@ const AGENT_DESCRIPTIONS: Record<string, string> = {
   'Hermes': 'Grails Guru & Web Portal Expert',
   'Pythia': 'WordPress CMS Web Portal Expert',
   'Apollo': 'Next.js Guru & Modern Web Expert',
+  'Mnemosyne': 'Data Learning Tutor — learn data by doing, via the DataZeus koans',
 };
 
 // Tag prefixes that identify alternative stack agents (hidden by default)
@@ -202,6 +204,99 @@ export default function AgentsPage() {
     }
   };
 
+  // Apply a just-SAVED provider config to Letta. Letta reads its provider key/model ONLY at
+  // container boot, so a changed key takes effect only after a restart. update-env writes the
+  // .env and reports `lettaStale` = whether what Letta must boot with actually changed (a new
+  // key/model/base URL, or empty→set) OR a previously signalled restart never completed (the
+  // persisted `letta.needsRestart` latch). If so, we bounce letta + baibot and wait for a full
+  // DOWN → UP cycle — a plain ready-poll is not proof, because for a key-only change the old
+  // container keeps serving the same model handle until compose replaces it. Only after the
+  // cycle completes is the latch released via /api/llm/restart-complete, so a failed restart
+  // is retried on the next save or provisioning run instead of being lost.
+  // Unchanged config → no-op (the running key is already proven good; no needless restart).
+  //
+  // fromProvision: the provision flow runs this as its safety net with the log panel already
+  // open and provisioning continuing afterwards — keep the header spinner ('running') instead
+  // of finalizing the status; the provision outcome sets the final color.
+  const applyKeyToLetta = async (opts: { fromProvision?: boolean } = {}): Promise<void> => {
+    let lettaStale = false;
+    try {
+      const envRes = await fetch('/api/llm/update-env', { method: 'POST' });
+      const envData = await envRes.json();
+      if (envData?.success) lettaStale = !!envData.lettaStale;
+      else return; // nothing to apply yet (no provider/key configured)
+    } catch {
+      return; // update-env unreachable — provisioning will surface any real error later
+    }
+
+    if (!lettaStale) return; // key/model unchanged — Letta already runs it, nothing to do
+
+    const logLine = (type: LogLine['type'], message: string) =>
+      setLogLines(prev => [{ type, message, ts: new Date().toISOString() }, ...prev]);
+
+    logLine('log', 'Applying your API key — restarting Letta and the chat bot (the app stays open; this takes ~60–90s)…');
+    setLogStatus('running');
+    setShowLogModal(true);
+
+    const RB_BASE = process.env.NEXT_PUBLIC_RB_API_URL || 'http://localhost:9090/api';
+    try {
+      // Restart letta AND baibot together (no --no-deps): compose honors depends_on, so baibot
+      // re-starts only AFTER letta is healthy and re-couples to it. Matrix + UI stay up.
+      const execRes = await fetch(`${RB_BASE}/system/services/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: 'system service app restart letta baibot' }),
+      });
+      if (!execRes.ok) {
+        logLine('warn', `Could not trigger the Letta restart automatically (HTTP ${execRes.status}). Stop and start the AI Hub app once to apply the new key.`);
+      }
+    } catch (e: any) {
+      logLine('warn', `Could not trigger the Letta restart automatically (${e?.message || 'unknown'}). Stop and start the AI Hub app once to apply the new key.`);
+    }
+
+    const isLettaReady = async (): Promise<boolean> => {
+      try {
+        const r = await fetch('/api/agents/provider-ready', { cache: 'no-store' });
+        return !!(await r.json())?.ready;
+      } catch { return false; }
+    };
+    const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+    // Phase 1 — wait until Letta actually goes DOWN (not-ready). Proves the restart started.
+    let sawDown = false;
+    const downDeadline = Date.now() + 45_000;
+    while (Date.now() < downDeadline) {
+      if (!(await isLettaReady())) { sawDown = true; break; }
+      await sleep(4000);
+    }
+
+    // Phase 2 — wait until Letta is back and serving the expected model handle.
+    let ready = false;
+    const upDeadline = Date.now() + 180_000;
+    while (Date.now() < upDeadline) {
+      await sleep(4000);
+      if (await isLettaReady()) { ready = true; break; }
+    }
+
+    const restartConfirmed = sawDown && ready;
+    if (restartConfirmed) {
+      // Full down→up cycle observed: the new key is live — release the needs-restart latch.
+      try { await fetch('/api/llm/restart-complete', { method: 'POST' }); } catch { /* latch stays set; retried on next save */ }
+    }
+
+    logLine(
+      restartConfirmed ? 'log' : 'warn',
+      restartConfirmed
+        ? 'Letta is back and serving your new key.'
+        : ready
+          ? 'Letta kept running and never restarted — the new key may not be applied yet. It will be retried on the next save or provisioning run; if chat fails, stop and start the AI Hub app.'
+          : 'Letta did not report the model in time — if chat fails, stop and start the AI Hub app.',
+    );
+    if (!opts.fromProvision) {
+      setLogStatus(restartConfirmed ? 'success' : 'error');
+    }
+  };
+
   const handleProvisionAgents = async (force: boolean = true, giveDbQuery: boolean = false) => {
     try {
       setProvisioning(true);
@@ -209,7 +304,14 @@ export default function AgentsPage() {
       setLogStatus('running');
       setShowLogModal(true);
 
-      // Update .env file with saved LLM provider config before provisioning
+      // Safety net: if a saved key/model change never got applied (the restart failed or was
+      // interrupted — persisted as the letta.needsRestart latch), run the same restart+wait
+      // the save flow uses BEFORE touching any agents. No-op when Letta is already fresh.
+      await applyKeyToLetta({ fromProvision: true });
+
+      // Update .env from the saved config (writes .env + syncs process.env for agent creation).
+      // Letta itself is restarted at SAVE time now (see applyKeyToLetta), the moment the key
+      // changes — NOT here — so by this point Letta already serves the current key.
       try {
         const envRes = await fetch('/api/llm/update-env', { method: 'POST' });
         const envData = await envRes.json();
@@ -237,6 +339,9 @@ export default function AgentsPage() {
           ...prev,
         ]);
       }
+
+      // Letta is restarted at SAVE time (applyKeyToLetta) the moment the key/model changes,
+      // so provisioning no longer bounces Letta here — by now it already serves the current key.
 
       const response = await fetch('/api/agents/provision', {
         method: 'POST',
@@ -334,6 +439,63 @@ export default function AgentsPage() {
     window.open(elementUrl, '_blank', 'noopener,noreferrer');
   };
 
+  // Mnemosyne is a standalone learning tutor (NOT part of the AI Crew) — no database
+  // connection by design: her practice loop is the hands-on koans (you write the SQL), not
+  // a chat that writes queries for you. Primary chat is the inline /chat2mnemo page (same
+  // experience as /chat2db); Element/Matrix is offered as a secondary surface.
+  const handleChatWithMnemosyne = () => {
+    router.push('/chat2mnemo');
+  };
+  const handleChatWithMnemosyneInElement = () => {
+    const elementUrl = `http://localhost:8441/#/room/${encodeURIComponent('#mnemosyne:localhost')}`;
+    window.open(elementUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  // Rendered at the top of the Agents page (above the AI Crew), separated by an <hr/>.
+  const renderMnemosyneSection = () => (
+    <>
+      <div id="mnemosyne-hero" className="max-w-3xl mx-auto text-center mb-8">
+        <div className="flex justify-center mb-3">
+          <MnemosyneFull height={160} />
+        </div>
+        <h2 className="text-2xl font-bold text-base-content mb-2">Chat with Mnemosyne</h2>
+        <p className="text-base-content/60 max-w-2xl mx-auto mb-5">
+          Learn data by <em>doing</em> it — not by watching. I&apos;m your DataZeus tutor:
+          ask me to walk you through a lesson, review a query you wrote, or explain a
+          concept — then practice with the hands-on koans until it sticks. SQL first, data
+          modeling next. <strong>I don&apos;t run your queries for you</strong> — you write
+          them, and that&apos;s how it becomes yours.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button
+            id="btn-chat-mnemosyne"
+            onClick={handleChatWithMnemosyne}
+            className="bg-primary hover:bg-primary/90 text-primary-content"
+          >
+            {/* Heroicon: chat-bubble-left-right */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+            </svg>
+            Chat with Mnemosyne
+          </Button>
+          <Button
+            id="btn-chat-mnemosyne-element"
+            variant="outline"
+            onClick={handleChatWithMnemosyneInElement}
+            className="border-primary text-primary hover:bg-primary hover:text-primary-content"
+          >
+            {/* Heroicon: arrow-top-right-on-square */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+            Chat in Element (Matrix)
+          </Button>
+        </div>
+      </div>
+      <hr className="max-w-7xl mx-auto border-base-300 mb-10" />
+    </>
+  );
+
   const handleShowInfo = (agent: Agent) => {
     setSelectedAgent(agent);
     setIsModalOpen(true);
@@ -390,6 +552,9 @@ export default function AgentsPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" id={`provision-status-${logStatus}`} className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
+              )}
+              {logStatus !== 'running' && (
+                <span id="provision-status" data-status={logStatus} className="sr-only">{logStatus}</span>
               )}
               <span className="font-semibold">Provisioning Logs</span>
             </div>
@@ -470,6 +635,7 @@ export default function AgentsPage() {
           {/* Tab bar */}
           <div className="flex border-b border-base-300 -mx-6 px-6">
             <button
+              id="tab-update-agents"
               type="button"
               onClick={() => setSettingsTab('update')}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -481,6 +647,7 @@ export default function AgentsPage() {
               Update Agents
             </button>
             <button
+              id="tab-api-provider"
               type="button"
               onClick={() => setSettingsTab('provider')}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -504,6 +671,7 @@ export default function AgentsPage() {
               {/* Give db_query tool to Athena checkbox */}
               <label className="flex items-start gap-3 mt-2 cursor-pointer">
                 <input
+                  id="checkbox-give-db-query"
                   type="checkbox"
                   checked={giveDbQueryToolToAthena}
                   onChange={(e) => setGiveDbQueryToolToAthena(e.target.checked)}
@@ -523,6 +691,7 @@ export default function AgentsPage() {
               {/* Force checkbox */}
               <label className="flex items-start gap-3 mt-2 cursor-pointer">
                 <input
+                  id="checkbox-force-recreate"
                   type="checkbox"
                   checked={forceUpdate}
                   onChange={(e) => setForceUpdate(e.target.checked)}
@@ -531,8 +700,10 @@ export default function AgentsPage() {
                 <div>
                   <span className="text-sm font-medium text-base-content">Force recreate</span>
                   <p className="text-xs text-base-content/60 mt-0.5">
-                    Delete and recreate all agents from scratch. Use this if agents are
-                    in a broken state. All conversation history will be lost.
+                    Delete and recreate all agents. Use this if agents are in a broken
+                    state. Conversation history will be lost, but the agents&apos; learned
+                    memories (about you, your work, and past research) are preserved and
+                    carried over to the new agents.
                   </p>
                 </div>
               </label>
@@ -571,6 +742,17 @@ export default function AgentsPage() {
                   'LLM API provider configuration'
                 );
                 setLlmConfig(newFullConfig);
+                // Apply the saved key to Letta immediately — bounces letta + baibot ONLY if
+                // the key/model/base URL actually changed (update-env → lettaStale). While
+                // the restart is in flight, provisioning=true disables every provision
+                // button and pins the log panel open — provisioning against a mid-restart
+                // Letta half-fails (and with Force can delete agents without recreating).
+                setProvisioning(true);
+                try {
+                  await applyKeyToLetta();
+                } finally {
+                  setProvisioning(false);
+                }
               }}
             />
           )}
@@ -594,6 +776,7 @@ export default function AgentsPage() {
   if (agents.length === 0) {
     return (
       <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
+        {renderMnemosyneSection()}
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div id="agents-empty-state" className="text-center mb-12">
@@ -702,6 +885,7 @@ export default function AgentsPage() {
 
   return (
     <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
+      {renderMnemosyneSection()}
       {/* Header */}
       <div className="mb-8 max-w-7xl mx-auto">
         <div className="flex items-start justify-between">

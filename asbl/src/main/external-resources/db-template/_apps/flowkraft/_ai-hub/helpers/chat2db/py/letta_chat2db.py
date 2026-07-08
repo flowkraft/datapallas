@@ -58,6 +58,11 @@ class LettaChat2DB:
     # for reliable extraction by _extract_sql() and _extract_viz_code()
     CHAT2DB_CONTEXT = (
         "[Chat2DB/Jupyter Interface] "
+        "RESULTS & DATA ACCESS: A query runs one of two different ways here, and they differ in whether I see the result. "
+        "(1) A ```sql block I write is executed by Chat2DB's engine and shown to the USER — I never see its output. "
+        "(2) `db_query` (a separate tool, present only if it has been given to me) is one I call MYSELF; it returns the rows back to me, so I can read and interpret real data. "
+        "So: WITH `db_query` I use it to fetch and interpret real answers (never guessing). WITHOUT it — the default, chosen for privacy — I never see any result and only ever see table and column names, never the data itself; so I never state, guess, or give 'for context' a count/total/value, never quote dataset numbers from memory, and instead I explain what the query computes, let the shown result be the answer, and ask the user to paste it back if they want it interpreted. "
+        "HARD RULE — those two are the ONLY ways I ever touch data. I NEVER open a database or run SQL myself by ANY other means — not with execute_shell_command, python, a database driver/library, or a CLI. execute_shell_command is for NON-database tasks only (reading my skills, grepping schema files, ls/grep/sed). To obtain data I ALWAYS write a ```sql block (or use `db_query` if it's been given to me) — no exceptions, no matter how tempting a shortcut looks. "
         "When responding with SQL, wrap it in a ```sql code block. "
         "VISUALIZATION: There are NO chart buttons or menus in this interface. "
         "YOU are the chart engine. When a visualization would help, YOU MUST write "
@@ -117,6 +122,8 @@ class LettaChat2DB:
         # Use a generous timeout - 10 minutes
         self._client = httpx.Client(timeout=600.0)
         self._schema_context: Optional[str] = None
+        self._connection_code: Optional[str] = None
+        self._db_type: Optional[str] = None
 
     def set_schema_context(self, schema: str):
         """
@@ -175,6 +182,27 @@ class LettaChat2DB:
                 "selector at the top."
             )
 
+        # Connection code — always present when connected (independent of Send Tables).
+        # She may need it to locate the connection's on-disk config/schema files.
+        if self._connection_code:
+            parts.append("")
+            parts.append(f"CONNECTION CODE: {self._connection_code}")
+            parts.append(
+                "(lowercase DataPallas connection code for the connected database. For a "
+                "real DB-server connection its config/schema files live on disk under "
+                "config/connections/<CONNECTION CODE>/ — use this code to find them.)"
+            )
+
+        # Database engine/vendor — always present when connected (independent of Send
+        # Tables), so Athena always knows which SQL dialect to write, even with the table
+        # index turned off.
+        if self._db_type:
+            parts.append("")
+            parts.append(f"DATABASE TYPE: {self._db_type.upper()}")
+            parts.append(
+                "(the connected database's engine — write SQL in this dialect.)"
+            )
+
         # Database context comes AFTER (if provided)
         if self._schema_context:
             parts.append("")
@@ -211,7 +239,7 @@ class LettaChat2DB:
             print(prompt)
             print("=" * 60 + "\n")
 
-    def generate_sql(self, question: str, schema: Optional[str] = None, db_connected: bool = True) -> LettaResponse:
+    def generate_sql(self, question: str, schema: Optional[str] = None, db_connected: bool = True, connection_code: Optional[str] = None, db_type: Optional[str] = None) -> LettaResponse:
         """
         Ask Athena a question, optionally with table index context.
 
@@ -230,6 +258,8 @@ class LettaChat2DB:
         """
         # Update schema context
         self._schema_context = schema
+        self._connection_code = connection_code
+        self._db_type = db_type
 
         prompt = self._build_user_prompt(question, db_connected=db_connected)
         self._debug_prompt(prompt)
@@ -259,15 +289,39 @@ class LettaChat2DB:
         response.content_segments = self._extract_content_segments(content)
         return response
 
-    def stream_generate(self, question: str, schema: Optional[str] = None, db_connected: bool = True):
+    def stream_generate(self, question: str, schema: Optional[str] = None, db_connected: bool = True, connection_code: Optional[str] = None, db_type: Optional[str] = None):
         """Streaming counterpart of generate_sql — yields Athena's reply as text
         deltas (str) as they arrive. The caller accumulates the full text and then
         calls enrich_response() on it to extract SQL / viz / segments.
         """
         self._schema_context = schema
+        self._connection_code = connection_code
+        self._db_type = db_type
         prompt = self._build_user_prompt(question, db_connected=db_connected)
         self._debug_prompt(prompt)
         yield from self.stream_message(prompt, include_context_tag=True)
+
+    @staticmethod
+    def _extract_adapter_error(response) -> str:
+        """Pull the adapter's structured ``{"error": {"message", "code"}}`` body out of a
+        4xx/5xx so a specific, actionable cause (e.g. ``AGENTS_NOT_PROVISIONED`` — the AI Crew
+        was never provisioned) reaches the user instead of a bare "400 Bad Request". Falls back
+        to the status line if the body isn't the expected shape. Prefixes the code so the UI can
+        detect the case reliably."""
+        try:
+            body = response.read()  # streaming responses aren't read until asked
+            text = body.decode("utf-8", "replace") if isinstance(body, (bytes, bytearray)) else str(body)
+            obj = json.loads(text)
+            err = obj.get("error") if isinstance(obj, dict) else None
+            if isinstance(err, dict):
+                code = err.get("code")
+                msg = err.get("message") or ""
+                return f"{code}: {msg}" if code else (msg or f"HTTP {response.status_code}")
+            if isinstance(err, str) and err:
+                return err
+        except Exception:
+            pass
+        return f"Adapter returned HTTP {response.status_code}"
 
     def stream_message(self, message: str, include_context_tag: bool = True):
         """POST to the OpenAI-compatible adapter with stream=True and yield the
@@ -282,7 +336,10 @@ class LettaChat2DB:
         with self._client.stream(
             "POST", url, json=payload, headers={"Content-Type": "application/json"}
         ) as response:
-            response.raise_for_status()
+            if response.status_code >= 400:
+                # Surface the adapter's structured error (e.g. no agents provisioned) rather than
+                # a bare 400, so Chat2DB can render a helpful "Provision Agents" call-to-action.
+                raise ConnectionError(self._extract_adapter_error(response))
             for line in response.iter_lines():
                 if not line or not line.startswith("data:"):
                     continue
@@ -293,6 +350,11 @@ class LettaChat2DB:
                     obj = json.loads(data)
                 except (json.JSONDecodeError, ValueError):
                     continue
+                # An upstream/adapter error frame ({"error": {...}}) — propagate it (unwrapped)
+                # so the caller surfaces it to the user instead of the stream ending silently.
+                if isinstance(obj, dict) and obj.get("error"):
+                    err = obj["error"]
+                    raise ConnectionError(err.get("message") if isinstance(err, dict) else str(err))
                 choices = obj.get("choices") or []
                 if not choices:
                     continue
@@ -325,7 +387,8 @@ class LettaChat2DB:
                 json=payload,
                 headers={"Content-Type": "application/json"},
             )
-            response.raise_for_status()
+            if response.status_code >= 400:
+                raise ConnectionError(self._extract_adapter_error(response))
             data = response.json()
 
             # Standard OpenAI response format: choices[0].message.content

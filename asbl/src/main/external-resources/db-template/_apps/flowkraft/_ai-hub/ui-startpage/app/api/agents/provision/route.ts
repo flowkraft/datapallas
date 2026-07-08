@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getConfig } from '@/lib/db';
 import { getActiveProviderConfig, type LLMFullConfig } from '@/lib/llm-providers';
+import { checkProviderReady } from '@/lib/letta-ready';
 import provisionAll, { provisionAllAgents } from '../../../../src/services/letta/agentProvisioner';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,24 @@ export async function POST(request: Request) {
           message: 'Go to Settings → API Provider to enter your API key.',
         },
         { status: 400 }
+      );
+    }
+
+    // Refuse to provision against a down or booting Letta (e.g. mid key-change restart).
+    // Provisioning half-succeeds against a Letta that dies or comes up mid-run — with
+    // force=true it can even delete agents and fail to recreate them — so a clean 503
+    // beats a partial run. The UI renders this message in the log panel and a toast.
+    const readiness = await checkProviderReady();
+    if (!readiness.ready) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'letta-not-ready',
+          message:
+            'Letta is starting or restarting (e.g. applying a new API key) — wait about 60-90 seconds and try again.' +
+            (readiness.reason ? ` (${readiness.reason})` : ''),
+        },
+        { status: 503 }
       );
     }
 

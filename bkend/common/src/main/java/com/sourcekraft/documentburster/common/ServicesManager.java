@@ -58,6 +58,7 @@ public class ServicesManager {
 	// Command constants
 	private static final String CMD_START = "start";
 	private static final String CMD_STOP = "stop";
+	private static final String CMD_RESTART = "restart";
 	private static final String CMD_LIST = "list";
 	private static final String CMD_INFO = "info";
 	private static final String CMD_QUERY = "query"; // Keep Northwind query capability
@@ -173,6 +174,11 @@ public class ServicesManager {
 				case CMD_STOP: {
 					String out = captureOutput(() -> handleAppStop(serviceName, args));
 					return new Result("stopped", out);
+				}
+				case CMD_RESTART: {
+					String out = captureOutput(() -> handleAppRestart(serviceName, args));
+					String status = out.contains("✓") ? "running" : (out.contains("✗") ? "error" : "running");
+					return new Result(status, out);
 				}
 				default:
 					return new Result("error", "Unknown app command: " + subCmd);
@@ -910,6 +916,64 @@ public class ServicesManager {
 		}
 	}
 
+	/**
+	 * Handle 'app restart <serviceName> [moreServices...]' — recreate one or more compose
+	 * services so they pick up a freshly written .env. 'docker compose restart' reuses the
+	 * existing container (stale env); 'up -d --force-recreate <services>' replaces them and
+	 * re-reads .env.
+	 *
+	 * We deliberately do NOT pass --no-deps: docker compose then honors depends_on, so a
+	 * dependent (e.g. baibot) is only (re)started AFTER its dependency (letta) is healthy
+	 * again — exactly like a manual whole-app restart, which is why the bot rejoins its
+	 * Matrix rooms cleanly. --force-recreate replaces ONLY the listed containers; already
+	 * healthy dependencies (ollama, matrix-synapse, matrix-db) are left running because we
+	 * do not pass --always-recreate-deps. So the UI (ai-hub-frend), the Matrix server and
+	 * Element all keep running — only the named services cycle, in dependency order.
+	 *
+	 * Used by the AI Hub provisioning flow as 'app restart letta baibot' after the provider
+	 * API key is saved: letta re-reads .env and enumerates the models, then baibot re-couples
+	 * to the fresh letta so kraftbot can join the oracle rooms.
+	 */
+	private static void handleAppRestart(String serviceName, String args) throws Exception {
+		String composePath = getComposePath(serviceName);
+		log.info("handleAppRestart: composePath='{}' | jvm.cwd='{}'", composePath, System.getProperty("user.dir"));
+
+		Path composeFilePath = Paths.get(composePath);
+		Path workingDir = composeFilePath.getParent();
+		String composeFileName = composeFilePath.getFileName().toString();
+
+		// Services to recreate: the primary one + any extra names in args (e.g. 'letta baibot').
+		List<String> services = new ArrayList<>();
+		services.add(serviceName);
+		if (args != null && !args.isBlank()) {
+			for (String extra : args.trim().split("\\s+")) {
+				if (!extra.isBlank() && !extra.startsWith("-")) services.add(extra);
+			}
+		}
+
+		List<String> command = new ArrayList<>();
+		command.add("docker");
+		command.add("compose");
+		command.add("-f");
+		command.add(composeFileName);
+		command.add("up");
+		command.add("-d");
+		command.add("--force-recreate");
+		command.addAll(services);
+
+		ProcessResult result = new ProcessExecutor().command(command).directory(workingDir.toFile())
+				.redirectOutput(Slf4jStream.of(log).asInfo()).redirectError(Slf4jStream.of(log).asInfo())
+				.timeout(300, TimeUnit.SECONDS).execute();
+
+		log.info("handleAppRestart exit code: {}", result.getExitValue());
+		String svcList = String.join(", ", services);
+		if (result.getExitValue() == 0) {
+			System.out.println("✓ Service(s) '" + svcList + "' recreated (re-read .env, depends_on order honored).");
+		} else {
+			System.out.println("✗ Failed to recreate service(s) '" + svcList + "'. Exit code: " + result.getExitValue());
+		}
+	}
+
 	/** Get the docker-compose.yml path for the service */
 	private static String getComposePath(String serviceName) {
 		String appsFolderPath = Utils.getAppsFolderPath();
@@ -927,6 +991,12 @@ public class ServicesManager {
 		}
 		// AI Hub frontend lives in flowkraft/_ai-hub subdirectory
 		if ("ai-hub-frend".equals(serviceName)) {
+			return appsFolderPath + "flowkraft/_ai-hub/docker-compose.yml";
+		}
+		// AI Hub internal services (letta, chat2db, ...) share the _ai-hub compose — used by
+		// 'app restart letta' to bounce Letta so it re-reads .env after a provider key change.
+		if ("letta".equals(serviceName) || "ai-hub-letta".equals(serviceName)
+				|| "chat2db".equals(serviceName) || "ai-hub-chat2db".equals(serviceName)) {
 			return appsFolderPath + "flowkraft/_ai-hub/docker-compose.yml";
 		}
 		return appsFolderPath + serviceName + "/docker-compose.yml";

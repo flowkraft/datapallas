@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { RbWebComponentsLoader } from "@/components/RbWebComponentsLoader";
@@ -9,18 +8,6 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
-});
-
-// Brand wordmark serif — Cormorant Garamond, self-hosted from vendored woff2
-// files so the build never reaches out to Google Fonts. The "DataPallas"
-// wordmark needs italic ("Data") + normal ("Pallas"), weight 700.
-const cormorantGaramond = localFont({
-  src: [
-    { path: "../assets/fonts/cormorant-garamond-latin-700-normal.woff2", weight: "700", style: "normal" },
-    { path: "../assets/fonts/cormorant-garamond-latin-700-italic.woff2", weight: "700", style: "italic" },
-  ],
-  display: "swap",
-  variable: "--font-brand",
 });
 
 export const metadata: Metadata = {
@@ -64,7 +51,7 @@ export default function RootLayout({
 })();`;
 
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${cormorantGaramond.variable}`}>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="font-sans antialiased min-h-screen flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: noFlashScript }} />
         <RbWebComponentsLoader />

@@ -158,14 +158,23 @@ class Chat2DB:
         try:
             schema_parts = []
             db_type = ''
+            # Sample connections are virtual (no on-disk schema files); detect them the
+            # same way Java does (Settings.java) — by the connection-code prefix.
+            conn_code = (self._connection_config.code if self._connection_config else '') or ''
+            is_sample = 'rbt-sample' in conn_code.lower()
 
-            # Include database type so Athena generates correct SQL dialect
+            # DATABASE TYPE (vendor) is emitted unconditionally in _build_user_prompt,
+            # next to CONNECTION CODE — so it reaches Athena even with Send Tables off and
+            # need not be repeated here. db_type still drives the dialect branches below.
             if self._connection_config:
                 db_type = self._connection_config.db_type.upper()
-                schema_parts.append(f"DATABASE TYPE: {db_type}")
-                schema_parts.append("")
-                schema_parts.append("TABLE INDEX: Only table names listed (not columns) to keep context minimal.")
-                schema_parts.append("For additional schema details, including columns, grep schema files using table names as search terms.")
+                if is_sample:
+                    schema_parts.append("SCHEMA: sample database — table names WITH their columns are listed below,")
+                    schema_parts.append("everything needed to write SQL directly. Write a ```sql block; the engine runs it.")
+                else:
+                    schema_parts.append("TABLE INDEX: Only table names listed (not columns) to keep context minimal.")
+                    schema_parts.append("For column details, this connection's config/schema files are on disk under")
+                    schema_parts.append("config/connections/<CONNECTION CODE>/ — grep them using the connection code above.")
                 schema_parts.append("")
 
             tables = []
@@ -251,12 +260,44 @@ class Chat2DB:
 
             cursor.close()
 
+            # Columns ONLY for sample DBs (small + no on-disk schema files to grep). Fetched
+            # once here at connect and cached in self._schema — NOT per request. Real
+            # DB-server connections stay names-only (scale) and grep on-disk files instead.
+            cols_by_table = {}
+            if tables and is_sample:
+                try:
+                    ccur = self._connection.cursor()
+                    if db_type == 'SQLITE':
+                        for t in tables:
+                            try:
+                                ccur.execute("SELECT name, type FROM pragma_table_info(?)", (t,))
+                                cols_by_table[t] = [(r[0], r[1]) for r in ccur.fetchall()]
+                            except Exception:
+                                pass
+                    else:
+                        # information_schema covers DuckDB (and PostgreSQL/MySQL/… if ever sampled)
+                        col_filter = "table_schema = 'main'" if db_type == 'DUCKDB' else "table_schema NOT IN ('information_schema', 'pg_catalog')"
+                        ccur.execute(
+                            "SELECT table_name, column_name, data_type FROM information_schema.columns "
+                            f"WHERE {col_filter} ORDER BY table_name, ordinal_position"
+                        )
+                        for tn, cn, dt in ccur.fetchall():
+                            cols_by_table.setdefault(tn, []).append((cn, dt))
+                    ccur.close()
+                except Exception as e:
+                    print(f"⚠️ sample column fetch failed: {e}")
+
             if tables:
                 schema_parts.append(f"TABLES ({len(tables)}):")
                 for table in tables:
                     # Quote tables with spaces
                     display = f'"{table}"' if ' ' in table else table
-                    schema_parts.append(f"  - {display}")
+                    cols = cols_by_table.get(table)
+                    if cols:
+                        col_str = ", ".join(f"{c} {t}" for c, t in cols)
+                        schema_parts.append(f"  - {display}({col_str})")
+                    else:
+                        schema_parts.append(f"  - {display}")
             else:
                 schema_parts.append(f"Connected to: {self._connection_config.name}")
                 schema_parts.append("(Table list could not be fetched automatically)")
@@ -362,7 +403,9 @@ class Chat2DB:
         # The table index only makes sense with a live connection AND Send Tables on.
         # With no connection this is a pure DataPallas product question (no schema).
         schema_to_send = self._schema if (send_schema and connected) else None
-        response = self._letta.generate_sql(question, schema_to_send, db_connected=connected)
+        conn_code = self._connection_config.code.lower() if (connected and self._connection_config) else None
+        db_type = self._connection_config.db_type if (connected and self._connection_config) else None
+        response = self._letta.generate_sql(question, schema_to_send, db_connected=connected, connection_code=conn_code, db_type=db_type)
         return self._finish(question, response)
 
     def ask_stream(self, question: str, send_schema: bool = True):
@@ -379,9 +422,11 @@ class Chat2DB:
         # The table index only makes sense with a live connection AND Send Tables on.
         # With no connection this is a pure DataPallas product question (no SQL).
         schema_to_send = self._schema if (send_schema and connected) else None
+        conn_code = self._connection_config.code.lower() if (connected and self._connection_config) else None
+        db_type = self._connection_config.db_type if (connected and self._connection_config) else None
         full = ""
         try:
-            for delta in self._letta.stream_generate(question, schema_to_send, db_connected=connected):
+            for delta in self._letta.stream_generate(question, schema_to_send, db_connected=connected, connection_code=conn_code, db_type=db_type):
                 full += delta
                 yield {"type": "delta", "text": delta}
         except Exception as e:

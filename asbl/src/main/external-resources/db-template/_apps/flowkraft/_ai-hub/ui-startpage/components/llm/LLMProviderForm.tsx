@@ -285,6 +285,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
       <div>
         <label className={labelCls}>API Provider</label>
         <select
+          id="llm-provider-select"
           value={providerId}
           onChange={(e) => handleProviderChange(e.target.value)}
           className={inputCls + " cursor-pointer"}
@@ -346,6 +347,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
       <label className={labelCls}>API Key</label>
       <div className="relative">
         <input
+          id="llm-api-key-input"
           type={showApiKey ? "text" : "password"}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
@@ -467,6 +469,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
         <div>
           <label className={labelCls}>Model ID</label>
           <input
+            id="llm-model-input"
             type="text"
             value={model}
             onChange={(e) => setModel(e.target.value)}
@@ -486,6 +489,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
         <div className="flex gap-2">
           <div className="relative flex-1">
             <input
+              id="llm-model-input"
               ref={modelInputRef}
               type="text"
               value={showModelDropdown ? modelSearch : model}
@@ -528,6 +532,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
                   filteredModels.map((m) => (
                     <button
                       key={m.id}
+                      id={`llm-model-option-${m.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`}
                       type="button"
                       onClick={() => selectModel(m)}
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-base-200 transition-colors ${
@@ -557,6 +562,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
 
           {/* Fetch Models button */}
           <Button
+            id="btn-fetch-models"
             type="button"
             variant="outline"
             size="sm"
@@ -600,8 +606,8 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
           <div className="flex gap-2 items-start">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
             <p className="text-xs text-amber-800 dark:text-amber-200">
-              Switching providers requires a restart to apply new API keys.
-              After saving, stop and start your FlowKraft&apos;s AI Hub application again before provisioning agents.
+              Saving applies your new key automatically — the AI briefly restarts (~60–90&nbsp;seconds).
+              Wait for it to finish before provisioning agents.
             </p>
           </div>
         </div>
@@ -615,6 +621,7 @@ export function LLMProviderForm({ fullConfig, onSave }: LLMProviderFormProps) {
       {/* Save button */}
       <div className="flex justify-end pt-2">
         <Button
+          id="btn-save-llm-provider"
           onClick={handleSave}
           disabled={!isDirty || saving}
           className="bg-primary hover:bg-primary/90 text-primary-content disabled:opacity-50"

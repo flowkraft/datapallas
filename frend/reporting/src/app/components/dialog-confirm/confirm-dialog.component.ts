@@ -19,6 +19,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
       }
       <div ngProjectAs="[footer]">
         <button
+          id="btnConfirmDialogYes"
           type="button"
           class="btn btn-outline btn-primary dburst-button-question-confirm"
           (click)="confirm()"
@@ -26,6 +27,7 @@ import { DpDialogComponent } from '../dp/dialog/dp-dialog.component';
           [disabled]="!!(confirmationText && confirmInput !== confirmationText)"
         ></button>
         <button
+          id="btnConfirmDialogNo"
           type="button"
           class="btn btn-outline ml-2 dburst-button-question-decline"
           (click)="decline()"

@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,11 +14,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -37,11 +42,51 @@ import reactor.core.publisher.Mono;
 @Service
 public class SystemService {
 
+	private static final Logger log = LoggerFactory.getLogger(SystemService.class);
+
 	@Autowired
 	private FileSystemService fileSystemService;
 
 	@Autowired
 	private DockerService dockerService;
+
+	/**
+	 * Custom-app discovery: list every _apps/<app>/_custom/app.json manifest.
+	 * The manifest shape mirrors the frontend ManagedApp interface and is returned
+	 * verbatim, except that a "custom-app" tag is guaranteed on every app so the
+	 * Apps Manager tag filter (and the "View Custom Apps" link + Custom App badge)
+	 * can group them.
+	 */
+	public List<Map<String, Object>> listCustomAppManifests() {
+		List<Map<String, Object>> manifests = new ArrayList<>();
+		File appsRoot = new File(Utils.getAppsFolderPath());
+		File[] appDirs = appsRoot.isDirectory() ? appsRoot.listFiles(File::isDirectory) : null;
+		if (appDirs == null)
+			return manifests;
+
+		Arrays.sort(appDirs, Comparator.comparing(File::getName));
+		ObjectMapper mapper = new ObjectMapper();
+		for (File appDir : appDirs) {
+			File manifestFile = new File(new File(appDir, "_custom"), "app.json");
+			if (!manifestFile.isFile())
+				continue;
+			try {
+				Map<String, Object> manifest = mapper.readValue(manifestFile,
+						new TypeReference<Map<String, Object>>() {
+						});
+				List<Object> tags = new ArrayList<>();
+				if (manifest.get("tags") instanceof List)
+					tags.addAll((List<?>) manifest.get("tags"));
+				if (!tags.contains("custom-app"))
+					tags.add("custom-app");
+				manifest.put("tags", tags);
+				manifests.add(manifest);
+			} catch (Exception e) {
+				log.warn("Skipping unparseable custom app manifest {}: {}", manifestFile, e.getMessage());
+			}
+		}
+		return manifests;
+	}
 
 	public SystemInfo getSystemInfo() throws Exception {
 		// Ensure Docker cache is fresh before returning status to the caller.

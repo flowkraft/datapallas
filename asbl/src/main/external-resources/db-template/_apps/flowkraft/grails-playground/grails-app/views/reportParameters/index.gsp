@@ -54,7 +54,7 @@
                 <div role="tabpanel" class="tab-content border border-base-300 rounded-b p-3" id="component-pane">
                     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
                         <div style="grid-column:span 6">
-                            <div class="card bg-base-100 border border-base-300 mb-3">
+                            <div class="card bg-base-100 border border-base-300 mb-3" id="parameterFormCard">
                                 <div class="card-body">
                                     <div class="flex justify-between items-center mb-2">
                                         <h2 class="card-title text-base">Parameter Form</h2>

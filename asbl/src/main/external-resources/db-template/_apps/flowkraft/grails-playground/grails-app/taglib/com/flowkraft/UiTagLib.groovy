@@ -27,9 +27,9 @@ class UiTagLib {
 
     // Usage: <dp:brandLogo/>
     def brandLogo = { attrs ->
-        def w = attrs.width ?: '28'
-        def h = attrs.height ?: '28'
-        out << """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="${w}" height="${h}" style="flex-shrink:0;filter:drop-shadow(0px 1px 3px rgba(0,0,0,0.7))">
+        def w = attrs.width ?: '34'
+        def h = attrs.height ?: '34'
+        out << """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="${w}" height="${h}" style="flex-shrink:0;filter:drop-shadow(0px 1px 3px rgba(0,0,0,0.7));transform:translateY(-3px);margin-left:3px">
   <rect x="32" y="56" width="192" height="14" fill="#f0e2c0"/>
   <rect x="32" y="70" width="192" height="22" fill="#c9603a"/>
   <rect x="32" y="92" width="192" height="8" fill="#e8d4a8"/>

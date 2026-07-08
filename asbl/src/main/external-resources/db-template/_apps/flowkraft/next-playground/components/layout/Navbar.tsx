@@ -11,12 +11,12 @@ const navLinks = [
   { href: "/", label: "Analytics (Home)" },
   { href: "/tabulator", label: "Tabulator" },
   { href: "/charts", label: "Charts" },
-  { href: "/pivot-tables", label: "Pivot Tables" },
-  { href: "/report-parameters", label: "Parameters" },
+  { href: "/pivot-tables", label: "Pivots" },
+  { href: "/report-parameters", label: "Params" },
   { href: "/reports", label: "Reports" },
   { href: "/data-warehouse", label: "Data Warehouse" },
   { href: "/dashboards", label: "Dashboards" },
-  { href: "/your-canvas", label: "Your Canvas" },
+  { href: "/your-canvas", label: "Canvas" },
 ]
 
 export function Navbar() {
@@ -57,7 +57,7 @@ export function Navbar() {
         {/* Right: cross-area links + support email + theme picker */}
         <div className="flex items-center gap-1">
           <Link href="/portal" className="btn btn-ghost btn-sm normal-case gap-1">
-            <IconPortal />{" "}Self-Service Portal
+            <IconPortal />{" "}Portal
           </Link>
           <Link href="/admin" className="btn btn-ghost btn-sm normal-case">
             <IconAdmin />{" "}Admin

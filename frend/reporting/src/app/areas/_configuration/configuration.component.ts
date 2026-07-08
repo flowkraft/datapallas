@@ -3214,6 +3214,10 @@ pivotTable {
   }
 
   getUsageScriptNumber(): number {
+    // Dashboard mode renders only two sections before the script tag:
+    // 1. rb-dashboard, 2. shareable URL — the component-based numbering
+    // below counts sections that dashboard mode never shows.
+    if (this.isDashboardOutputType()) return 3;
     return this.getUsageRbReportNumber() + 1;
   }
 

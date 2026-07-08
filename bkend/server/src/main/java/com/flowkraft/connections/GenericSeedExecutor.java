@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.jobs.services.JobExecutionService;
 import com.flowkraft.queries.ConnectionFactory;
@@ -138,31 +140,56 @@ public class GenericSeedExecutor {
     }
 
     /**
-     * List all bundled .groovy templates from db/scripts/.
+     * List Groovy seed templates: bundled ones from db/scripts/ plus custom-app
+     * seeders from _apps/<app>/_custom/app-seed.groovy (scaffold + seed scripts
+     * authored next to each custom app's manifest).
      * Returns [{ id, displayName, description, source }].
      */
     public List<Map<String, Object>> listTemplates() throws Exception {
+        List<Map<String, Object>> templates = new ArrayList<>();
+
         String scriptsDir = Utils.resolvePathAgainstPortableDir("db/scripts");
         File dir = new File(scriptsDir);
-        List<Map<String, Object>> templates = new ArrayList<>();
         if (!dir.isDirectory()) {
             log.warn("db/scripts/ directory not found at {}", scriptsDir);
-            return templates;
+        } else {
+            File[] groovyFiles = dir.listFiles((d, name) -> name.endsWith(".groovy"));
+            if (groovyFiles != null) {
+                Arrays.sort(groovyFiles, (a, b) -> a.getName().compareTo(b.getName()));
+                for (File f : groovyFiles) {
+                    String source      = Files.readString(f.toPath());
+                    String id          = f.getName().replace(".groovy", "");
+                    String displayName = toDisplayName(id);
+                    String description = extractDescription(source);
+
+                    Map<String, Object> t = new LinkedHashMap<>();
+                    t.put("id",          id);
+                    t.put("displayName", displayName);
+                    t.put("description", description);
+                    t.put("source",      source);
+                    templates.add(t);
+                }
+            }
         }
 
-        File[] groovyFiles = dir.listFiles((d, name) -> name.endsWith(".groovy"));
-        if (groovyFiles != null) {
-            Arrays.sort(groovyFiles, (a, b) -> a.getName().compareTo(b.getName()));
-            for (File f : groovyFiles) {
-                String source      = Files.readString(f.toPath());
-                String id          = f.getName().replace(".groovy", "");
-                String displayName = toDisplayName(id);
-                String description = extractDescription(source);
+        // Custom-app seeders — listed after the bundled templates, sorted by app folder.
+        // Display name comes from the sibling app.json manifest's "name" when available.
+        File appsRoot = new File(Utils.getAppsFolderPath());
+        File[] appDirs = appsRoot.isDirectory() ? appsRoot.listFiles(File::isDirectory) : null;
+        if (appDirs != null) {
+            Arrays.sort(appDirs, (a, b) -> a.getName().compareTo(b.getName()));
+            for (File appDir : appDirs) {
+                File seedFile = new File(new File(appDir, "_custom"), "app-seed.groovy");
+                if (!seedFile.isFile()) continue;
+
+                String source      = Files.readString(seedFile.toPath());
+                String displayName = readAppJsonName(new File(new File(appDir, "_custom"), "app.json"));
+                if (displayName == null || displayName.isBlank()) displayName = toDisplayName(appDir.getName());
 
                 Map<String, Object> t = new LinkedHashMap<>();
-                t.put("id",          id);
+                t.put("id",          "app-" + appDir.getName());
                 t.put("displayName", displayName);
-                t.put("description", description);
+                t.put("description", extractDescription(source));
                 t.put("source",      source);
                 templates.add(t);
             }
@@ -231,6 +258,18 @@ public class GenericSeedExecutor {
             }
         }
         return "";
+    }
+
+    /** Read the "name" field from an app.json manifest; null when missing or unparseable. */
+    private String readAppJsonName(File appJson) {
+        if (!appJson.isFile()) return null;
+        try {
+            JsonNode node = new ObjectMapper().readTree(appJson);
+            return node.hasNonNull("name") ? node.get("name").asText() : null;
+        } catch (Exception e) {
+            log.warn("Could not parse {}: {}", appJson, e.getMessage());
+            return null;
+        }
     }
 
 }

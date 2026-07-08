@@ -777,6 +777,13 @@ export const ORACLE_ROOMS = [
     topic: 'Chat with Apollo - Next.js Guru & Modern Web Advisor',
     staticHandler: 'static/apollo',
   },
+  {
+    agentKey: 'mnemosyne',
+    name: 'Mnemosyne (Data Learning Tutor)',
+    alias: 'mnemosyne',
+    topic: 'Learn data by doing with Mnemosyne - SQL, data modeling & the DataZeus koans',
+    staticHandler: 'static/mnemosyne',
+  },
 ] as const;
 
 // The sentinel room used to check if Matrix is already provisioned
@@ -1213,9 +1220,12 @@ export async function provisionMatrixRooms(options?: {
       continue;
     }
 
-    // Step 4: Wait for bot to join, then verify membership
+    // Step 4: Wait for bot to join, then verify membership. The provisioning flow may have
+    // just recreated the baibot container (to re-couple it to a freshly-restarted letta), so
+    // kraftbot can still be completing its initial Matrix sync when the first invites go out —
+    // give it a generous window (breaks early as soon as the join is verified).
     console.log(`   ⏳ Waiting for bot to join...`);
-    const maxJoinChecks = 3;
+    const maxJoinChecks = 8;
     const joinCheckIntervalMs = botJoinDelayMs;
     for (let check = 1; check <= maxJoinChecks; check++) {
       await sleep(joinCheckIntervalMs);
@@ -1254,6 +1264,54 @@ export async function provisionMatrixRooms(options?: {
     }
 
     result.rooms.push(roomResult);
+  }
+
+  // -------------------------------------------------------------------------
+  // Retry pass (safety net): retry ONCE any room whose bot didn't join or whose handler wasn't
+  // set. By now the whole loop has run so kraftbot is definitely warm — a first-room cold-start
+  // miss (or a transient Synapse blip) self-heals here. Errors for fully-recovered rooms are
+  // dropped so the run reports SUCCESS.
+  // -------------------------------------------------------------------------
+  const incomplete = result.rooms.filter(r => r.roomId && (!r.botJoined || !r.handlerSet));
+  if (incomplete.length > 0) {
+    console.log(`\n🔁 Retrying ${incomplete.length} room(s) that didn't fully provision (kraftbot is warm now)...`);
+    for (const roomResult of incomplete) {
+      const oracleRoom = ORACLE_ROOMS.find(o => o.agentKey === roomResult.agentKey);
+      if (!oracleRoom) continue;
+      console.log(`   🔁 Retry #${oracleRoom.alias}...`);
+
+      if (!roomResult.botJoined) {
+        try { await inviteBotToRoom(kraftbotUsername, roomResult.roomId); } catch { /* likely already invited */ }
+        for (let check = 1; check <= 8; check++) {
+          await sleep(botJoinDelayMs);
+          if (await isUserInRoom(kraftbotUsername, roomResult.roomId)) { roomResult.botJoined = true; break; }
+        }
+      }
+
+      if (roomResult.botJoined && !roomResult.handlerSet) {
+        try {
+          await sendCommandMessageToRoom(
+            `!kraft config room set-handler text-generation ${oracleRoom.staticHandler}`,
+            roomResult.roomId,
+          );
+          roomResult.handlerSet = true;
+          await sleep(commandDelayMs);
+        } catch { /* leave handlerSet false */ }
+      }
+
+      console.log(`   ${roomResult.botJoined && roomResult.handlerSet ? '✅ Recovered' : '❌ Still failing'}: #${oracleRoom.alias}`);
+    }
+
+    // Drop the earlier errors for rooms the retry fully recovered, so result.success is accurate.
+    const recoveredAliases: string[] = [];
+    for (const r of incomplete) {
+      if (!r.botJoined || !r.handlerSet) continue;
+      const alias = ORACLE_ROOMS.find(o => o.agentKey === r.agentKey)?.alias;
+      if (alias) recoveredAliases.push(alias);
+    }
+    if (recoveredAliases.length > 0) {
+      result.errors = result.errors.filter(err => !recoveredAliases.some(alias => err.includes(alias)));
+    }
   }
 
   // -------------------------------------------------------------------------

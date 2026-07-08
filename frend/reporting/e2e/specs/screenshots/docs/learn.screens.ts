@@ -329,7 +329,8 @@ electronBeforeAfterAllTest(
       await captureDocsScreenshotWithHighlights(
         firstPage,
         'db-conn-01-connection-details.png',
-        ['#btnTestDbConnection'],
+        // w-full button → inset so all four ring sides survive the container edges
+        [{ selector: '#btnTestDbConnection', inset: true }],
         VIDEO_ASSETS_DIR,
       );
 
@@ -378,7 +379,8 @@ electronBeforeAfterAllTest(
         'db-conn-03-domain-grouped-ai-cta.png',
         [
           { selector: '#tab-btn-domainGroupedDatabaseSchemaTab', inset: true },
-          '#btnGenerateWithAIDomainGroupedSchema',
+          // w-full CTA → inset so all four ring sides survive the container edges
+          { selector: '#btnGenerateWithAIDomainGroupedSchema', inset: true },
         ],
         VIDEO_ASSETS_DIR,
       );
@@ -448,7 +450,8 @@ electronBeforeAfterAllTest(
         'db-conn-05-er-diagram-ai-cta.png',
         [
           { selector: '#tab-btn-databaseDiagramTab', inset: true },
-          '#btnGenerateWithAIErDiagram',
+          // w-full CTA → inset so all four ring sides survive the container edges
+          { selector: '#btnGenerateWithAIErDiagram', inset: true },
         ],
         VIDEO_ASSETS_DIR,
       );

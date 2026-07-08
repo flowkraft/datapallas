@@ -102,6 +102,18 @@ public class DatabaseConnectionManager implements AutoCloseable {
 		} catch (Exception e) {
 			log.warn("Failed to decrypt database password for JDBC connection: {}", e.getMessage());
 		}
+		// DuckDB: open read-only so we don't take an exclusive file lock that blocks other
+		// processes (e.g. the AI Hub's chat2db) already holding the same .duckdb file open.
+		// Read-only is safe here (query/schema reads) and DuckDB shares read-only openers.
+		if ("duckdb".equalsIgnoreCase(settings.databaseserver.type)) {
+			java.util.Properties props = new java.util.Properties();
+			if (StringUtils.isNotBlank(settings.databaseserver.userid))
+				props.setProperty("user", settings.databaseserver.userid);
+			if (StringUtils.isNotBlank(decryptedPassword))
+				props.setProperty("password", decryptedPassword);
+			props.setProperty("duckdb.read_only", "true");
+			return DriverManager.getConnection(settings.databaseserver.url, props);
+		}
 		return DriverManager.getConnection(settings.databaseserver.url, settings.databaseserver.userid,
 				decryptedPassword);
 	}
@@ -214,6 +226,26 @@ public class DatabaseConnectionManager implements AutoCloseable {
 			config.addDataSourceProperty("cachePrepStmts", "true");
 			config.addDataSourceProperty("prepStmtCacheSize", "250");
 			config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+		}
+		// DuckDB: open the pool read-only so it doesn't take an exclusive file lock that
+		// blocks other processes (chat2db) already holding the same .duckdb file open.
+		// HikariCP forwards dataSource properties to DriverManager.getConnection(url, props).
+		if ("duckdb".equals(dbType)) {
+			config.addDataSourceProperty("duckdb.read_only", "true");
+			// The connection opens read-only (property above). Mark the Hikari pool
+			// read-only too, otherwise Hikari's connection setup calls setReadOnly(false)
+			// to normalize state and DuckDB rejects it ("Can't change read-only status on
+			// connection level" — DuckDB fixes read-only at open time). Matching the value
+			// makes Hikari's call a no-op instead of a failed state change.
+			config.setReadOnly(true);
+			// DuckDB requires EVERY connection to a given file (in-process AND across
+			// processes) to share IDENTICAL config. The schema fetcher and chat2db open with
+			// ONLY duckdb.read_only and no credentials; if Hikari also sends username/password
+			// (even ""), DuckDB rejects the shared file with "Can't open a connection to same
+			// database file with a different configuration than existing connections". Null
+			// the credentials so DriverDataSource omits them and the config matches exactly.
+			config.setUsername(null);
+			config.setPassword(null);
 		}
 		log.trace("Hikari pool properties set for code: {}", connectionCode);
 

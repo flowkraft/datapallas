@@ -709,7 +709,8 @@ electronBeforeAfterAllTest(
       // ── q2_036 — Connection Details filled, Test Connection ringed — the
       // "making a real connection to Postgres" frame.
       await captureDocsScreenshotWithHighlights(firstPage, dp('q2_036_postgres-connection-details'), [
-        '#btnTestDbConnection',
+        // w-full button → inset so all four ring sides survive the container edges
+        { selector: '#btnTestDbConnection', inset: true },
       ]);
 
       // ── Test Connection → schema auto-discovery. Server-vendor dance mirrors

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getConfig } from "@/lib/db";
+import { getConfig, setConfig } from "@/lib/db";
 import { getActiveProviderConfig, type LLMFullConfig } from "@/lib/llm-providers";
 import path from "path";
 import fs from "fs";
@@ -50,16 +50,33 @@ export async function POST() {
       );
     }
 
-    // Detect provider change by reading the existing .env (if any)
+    // Detect provider change AND active key/model change by reading the existing .env (if
+    // any). Letta reads its provider key + model ONLY at container boot, so when what it
+    // should boot with changes we must tell the caller to restart it (see `lettaStale`
+    // below) — otherwise it keeps serving with a stale/empty key and every chat 401s.
     let previousProvider = "";
+    let oldActiveKey = "";
+    let oldModelId = "";
+    let oldOpenAiBase = "";
     if (fs.existsSync(envPath)) {
       const existing = fs.readFileSync(envPath, "utf-8");
       const m = existing.match(/^LLM_MODEL_ID=(\S+)/m);
-      if (m) previousProvider = m[1].split("/")[0]; // e.g., "zai" from "zai/glm-5"
+      if (m) { oldModelId = m[1]; previousProvider = m[1].split("/")[0]; } // e.g., "zai" from "zai/glm-5"
+      const keyVar = ACTIVE_KEY_VAR[active.providerId] ?? "OPENAI_API_KEY";
+      const km = existing.match(new RegExp(`^${keyVar}=(.*)$`, "m")); // UNCOMMENTED only (commented keys start with #)
+      if (km) oldActiveKey = km[1].trim();
+      const bm = existing.match(/^OPENAI_API_BASE=(.*)$/m); // UNCOMMENTED only
+      if (bm) oldOpenAiBase = bm[1].trim();
     }
 
     // Always start from the immutable template
     let content = fs.readFileSync(templatePath, "utf-8");
+    // Normalize line endings to LF up front. If the template (or a prior Windows/PowerShell
+    // edit) carries CRLF/CR, a stray \r can survive the regex replaces below and land BETWEEN
+    // a comment and the next var (e.g. "# …settings)\rLLM_MODEL_ID=…"). That whole run then
+    // reads as one comment line, so LLM_MODEL_ID is silently commented out and Letta boots
+    // with no model handle. Normalizing here guarantees a clean, LF-only generated .env.
+    content = content.replace(/\r\n?/g, "\n");
 
     // 1. Populate ALL stored providers' sections with their API keys
     //    Inactive providers stay commented (e.g., #GEMINI_API_KEY=AIza...)
@@ -95,11 +112,34 @@ export async function POST() {
     const newProvider = prefix;
     const providerChanged = previousProvider !== "" && previousProvider !== newProvider;
 
+    // Letta must be re-booted to pick up a changed key/model/base URL. TRUE whenever the
+    // active key, the effective model, or (for providers routed through OPENAI_API_BASE)
+    // the base URL differs from what the .env held before this write (which is what the
+    // running Letta booted with) — including the empty → set (fresh / keyless-boot) case.
+    // The /agents save flow uses this to decide whether to bounce Letta, instead of relying
+    // on a model-list probe that can report "ready" even when the key doesn't work.
+    const newActiveKey = active.apiKey || "";
+    const usesOpenAiBase = active.providerId === "zai" || active.providerId === "other";
+    const newOpenAiBase = usesOpenAiBase ? (active.baseUrl || "").trim() : oldOpenAiBase;
+    const staleNow =
+      oldActiveKey !== newActiveKey ||
+      oldModelId !== effectiveModel ||
+      oldOpenAiBase !== newOpenAiBase;
+
+    // The .env diff is edge-triggered: after this write, a re-run compares new-vs-new and
+    // reports clean — so if the restart that should follow never happens (backend down,
+    // docker error), the signal would be lost forever. Persist it as a latch instead:
+    // set on any stale diff, reported until the save flow confirms a completed restart
+    // (POST /api/llm/restart-complete clears it).
+    if (staleNow) setConfig("letta.needsRestart", "1", "Letta must be restarted to apply the saved LLM provider config");
+    const lettaStale = staleNow || getConfig("letta.needsRestart") === "1";
+
     return NextResponse.json({
       success: true,
       provider: active.providerId,
       model: active.model,
       providerChanged,
+      lettaStale,
     });
   } catch (error: any) {
     console.error("Error updating .env:", error);
@@ -134,6 +174,16 @@ const LETTA_PREFIX: Record<string, string> = {
   "zai-credits":  "zai",            // API Credits → native ZAI provider
   openrouter:     "openrouter",     // native OpenRouter provider
   other:          "openai-proxy",   // custom OPENAI_API_BASE in Letta 0.16.4
+};
+
+// ── Which UNCOMMENTED .env var holds each provider's active key (mirrors syncProcessEnv) ──
+// Used to read the OLD active key back out of the existing .env for change detection.
+const ACTIVE_KEY_VAR: Record<string, string> = {
+  anthropic:     "ANTHROPIC_API_KEY",
+  google:        "GEMINI_API_KEY",
+  "zai-credits": "ZAI_API_KEY",
+  openrouter:    "OPENROUTER_API_KEY",
+  // openai, other, zai → OPENAI_API_KEY (zai Coding Plan routes through OPENAI_API_BASE)
 };
 
 // ── Env var patterns that can appear in provider sections ─────────
