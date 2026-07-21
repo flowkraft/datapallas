@@ -55,11 +55,11 @@
                class="${controllerName == 'portalHome' ? 'menu-active' : ''}">
           <dp:icon name="home"/> Portal (Home)
         </a></li>
-        <li><a href="${createLink(uri: '/portal/payslips')}"
+        <li><a id="portalNavPayslips" href="${createLink(uri: '/portal/payslips')}"
                class="${controllerName == 'portalPayslip' ? 'menu-active' : ''}">
           <dp:icon name="payslip"/> Payslips
         </a></li>
-        <li><a href="${createLink(uri: '/portal/invoices')}"
+        <li><a id="portalNavInvoices" href="${createLink(uri: '/portal/invoices')}"
                class="${controllerName == 'portalInvoice' ? 'menu-active' : ''}">
           <dp:icon name="invoice"/> Invoices
         </a></li>

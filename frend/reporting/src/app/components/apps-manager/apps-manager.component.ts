@@ -109,6 +109,13 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
     return this.matchesByIdOrSiblingService(app, AppsManagerComponent.FLOWKRAFT_IDS);
   }
 
+  // Custom apps (scaffolded from a blueprint via _custom/) are Docker apps the user rebuilds after
+  // editing code — so they get the same --build/--no-cache/--full flags as the first-party apps.
+  // They carry the 'custom-app' tag (which also drives the "Custom App" source badge).
+  isCustomApp(app: ManagedApp | undefined): boolean {
+    return !!app?.tags?.includes('custom-app');
+  }
+
   // Match an app by direct id OR by shared `service_name` with any app in the id list.
   // Lets sibling cards that alias the same Docker service (e.g. data-canvas ↔ flowkraft-ai-hub
   // both on `ai-hub-frend`) share flag visibility without a maintenance burden on the allowlist.
@@ -574,7 +581,7 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
     if (this.askAiForHelpOutputTypeCode() === 'cms.webportal') {
       const launchConfig: AiManagerLaunchConfig = {
         initialActiveTabKey: 'PROMPTS',
-        initialSelectedCategory: 'Web Portal / CMS',
+        initialSelectedCategory: 'Web Portal / CMS (WordPress)',
       };
       this.aiManagerInstance()!.launchWithConfiguration(launchConfig);
     }

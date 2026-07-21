@@ -42,6 +42,9 @@ export function AINavbar() {
     { href: "/explore-data", label: "Explore Data" },
     { href: "/chat2db", label: "Chat2DB" },
     { href: "/agents", label: "Data Greeks (AI Crew)" },
+    // Mnemosyne's home — the standalone Data Learning Tutor gets her own front door
+    // (exactly like /chat2db is Athena's), instead of a hero on the /agents page.
+    { href: "/chat2mnemo", label: "Finding Mnemo" },
   ]
 
   return (

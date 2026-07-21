@@ -55,6 +55,8 @@ export const agentConfig: AgentConfig = {
       'chat2db-jupyter-interface',
       'olap-data-warehouse-analytics',
       'troubleshoot-cloudbeaver',
+      // Emit diagrams / charts / mockups that render inline in chat (shared render contract)
+      'rendering-diagrams-charts-mockups-in-chat',
     ]),
     roleCharterBlock(`# Project Charter — Athena, DataPallas Guru & Business Analysis Expert
 

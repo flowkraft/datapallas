@@ -19,6 +19,30 @@ export const tabWebUploadDocumentBursterWebTemplate = `<ng-template #tabWebUploa
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
 
+      <div style="grid-column:span 2">{{ 'AREAS.CONFIGURATION.TAB-UPLOAD-HTTP.COMMAND' | translate }}</div>
+      <div style="grid-column:span 7">
+        <input id="documentBursterWebCommand" [ngModel]="xmlSettings?.documentburster?.settings?.webuploadsettings?.documentbursterwebcommand"
+          (ngModelChange)="setXmlPath('documentburster.settings.webuploadsettings.documentbursterwebcommand', $event)" class="input" />
+      </div>
+      <div style="grid-column:span 3">
+        <dburst-button-variables id="btnDocumentBursterWebVariables"
+          (sendSelectedVariable)="updateFormControlWithSelectedVariable('documentBursterWebCommand',$event)">
+        </dburst-button-variables>
+      </div>
+
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <div style="grid-column:span 2"></div>
+      <div style="grid-column:span 9">
+        <em>cURL command that publishes each burst report to your own DataPallas Document Portal (e.g. a billing portal). Use the variables button to insert values such as the extracted file path.</em>
+      </div>
+    </div>
+
+    <br>
+
+    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+
       <div style="grid-column:span 2">{{'AREAS.CONFIGURATION.TAB-WEB-UPLOAD-DOCUMENTBURSTER.EXAMPLES' | translate }}</div>
       <div style="grid-column:span 7">
         <a href="https://datapallas.com/docs/document-portal/payments" target="_blank">

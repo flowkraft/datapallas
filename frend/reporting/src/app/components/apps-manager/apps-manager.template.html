@@ -186,7 +186,7 @@
         @if (showDevButtons() && app.type === 'docker' && isAppStopped(app)) {
           <div
             style="margin-top: 5px; margin-bottom: 10px;">
-            @if (isFlowkraftApp(app)) {
+            @if (isFlowkraftApp(app) || isCustomApp(app)) {
               <label class="checkbox-inline" style="font-size: 0.85em; cursor: pointer;"
                 title="Rebuild image using cache. Use when source code changed (*.groovy, *.java, *.gsp, views, assets)">
                 <input type="checkbox"
@@ -197,7 +197,7 @@
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
                 </label>
               }
-              @if (isFlowkraftApp(app)) {
+              @if (isFlowkraftApp(app) || isCustomApp(app)) {
                 <label class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
                   title="Full rebuild without cache. Use when Dockerfile or dependencies changed (build.gradle, pom.xml) — slower">
                   <input type="checkbox"
@@ -230,7 +230,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-base-content/60" style="margin-left: 3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
                       </label>
                     }
-                    @if (app.tags?.includes('DataPallas\'s App')) {
+                    @if (app.tags?.includes('DataPallas\'s App') || isCustomApp(app)) {
                       <label class="checkbox-inline" style="font-size: 0.85em; margin-left: 15px; cursor: pointer;"
                         title="Full rebuild without cache and remove local images first. Heaviest operation — slower.">
                         <input type="checkbox"

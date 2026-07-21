@@ -323,12 +323,16 @@ a[target="_blank"]:not(.btn):has(svg) > span {
 /* Soften the daisyUI `.btn-outline` border. The stock border uses currentColor
    which feels too strident in calm tabular UIs (Reports/Connections/Cubes
    action columns). Use a quiet base-300 token by default; on hover the
-   default daisyUI behaviour (filled background, inverted text) kicks back in. */
-.btn-outline:not(.btn-primary):not(.btn-secondary):not(.btn-accent):not(.btn-info):not(.btn-success):not(.btn-warning):not(.btn-error):not(.btn-neutral) {
+   default daisyUI behaviour (filled background, inverted text) kicks back in.
+   The `:not(.btn-active, :hover, :active:focus, :focus-visible)` guard mirrors
+   daisyUI's own .btn-outline rule — without it these overrides keep forcing the
+   resting text color WHILE the hover fill paints, producing primary-on-primary
+   (unreadable) hover text. */
+.btn-outline:not(.btn-primary):not(.btn-secondary):not(.btn-accent):not(.btn-info):not(.btn-success):not(.btn-warning):not(.btn-error):not(.btn-neutral):not(.btn-active, :hover, :active:focus, :focus-visible) {
   border-color: var(--color-base-300);
   color: var(--color-base-content);
 }
-.btn-outline.btn-primary {
+.btn-outline.btn-primary:not(.btn-active, :hover, :active:focus, :focus-visible) {
   border-color: color-mix(in oklab, var(--color-primary) 35%, transparent);
   color: var(--color-primary);
 }

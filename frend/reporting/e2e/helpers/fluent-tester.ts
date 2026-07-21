@@ -1,6 +1,7 @@
 import { Locator, Page } from 'playwright';
 import { takeScreenshotIfRequested } from '../utils/helpers';
-import { expect } from '@playwright/test';
+import { expect, chromium } from '@playwright/test';
+import { pathToFileURL } from 'url';
 
 const slash = require('slash');
 import * as path from 'path';
@@ -1452,6 +1453,32 @@ export class FluentTester implements PromiseLike<void> {
     return this;
   }
 
+  /**
+   * Screenshot ONE generated PDF — the visual payoff of a report run.
+   *
+   * The Electron app can never show you this: the documents only exist on disk
+   * once processing ends. So we open the file in a browser that renders PDFs and
+   * shoot that instead.
+   *
+   * Picks the newest `output/**\/*.pdf` (the same place
+   * doVerifyNumberOfOutputFilesHavingSuffix looks), and inside that run prefers
+   * `1.pdf` so the shot is deterministic rather than "whatever the OS listed
+   * first". ONE file — a run makes hundreds and they only differ by data.
+   *
+   * @param outputFilePath absolute path of the PNG to write
+   * @param waitMs         time to let the PDF viewer paint (no DOM event to await)
+   */
+  public screenshotOneGeneratedPdf(
+    outputFilePath: string,
+    waitMs: number = 4000,
+  ): FluentTester {
+    const action = (): Promise<void> =>
+      this.doScreenshotOneGeneratedPdf(outputFilePath, waitMs);
+
+    this.actions.push(action);
+    return this;
+  }
+
   public appShouldHaveNoActiveJob(): FluentTester {
     const action = (): Promise<void> => this.doVerifyTempFolderIsClean();
 
@@ -1901,6 +1928,62 @@ export class FluentTester implements PromiseLike<void> {
     should.exist(outputFilePaths);
 
     expect(outputFilePaths.length).toBeGreaterThan(0);
+  }
+
+  private async doScreenshotOneGeneratedPdf(
+    outputFilePath: string,
+    waitMs: number,
+  ): Promise<void> {
+    const pdfPaths = await jetpack.findAsync(
+      process.env.PORTABLE_EXECUTABLE_DIR,
+      { matching: 'output/**/*.pdf' },
+    );
+    should.exist(pdfPaths);
+    expect(pdfPaths.length).toBeGreaterThan(0);
+
+    // Newest run wins; inside it prefer 1.pdf — ScriptedReporter names burst
+    // files by 1-based row index when `idcolumn` is `notused` (the default).
+    const newest = pdfPaths
+      .map((p) => ({
+        p,
+        t: jetpack.inspect(p, { times: true })?.modifyTime?.getTime() ?? 0,
+      }))
+      .sort((a, b) => b.t - a.t)[0].p;
+    const preferred = path.join(path.dirname(newest), '1.pdf');
+    const target = jetpack.exists(preferred) === 'file' ? preferred : newest;
+
+    // HEADED system Edge, and both parts are load-bearing:
+    //  - headless:false — Chromium's PDF viewer is a PLUGIN that headless does
+    //    not load. Headless yields a BLANK page, not an error, so this would
+    //    fail silently and ship an empty frame.
+    //  - channel:'msedge' — same reason createExternalBrowser uses it: the
+    //    bundled Chromium is old. (We cannot call that helper: it imports
+    //    FluentTester, so using it here would be a circular import.)
+    const browser = await chromium.launch({ headless: false, channel: 'msedge' });
+    try {
+      // A4 aspect (210:297). With `view=Fit` below, the page then fills the frame
+      // instead of floating in a slab of the viewer's grey background.
+      const context = await browser.newContext({
+        viewport: { width: 900, height: 1273 },
+      });
+      const page = await context.newPage();
+      // pathToFileURL, NOT a hand-built 'file:///' string: the output folder is
+      // named after the report's DISPLAY name (e.g. "output/Customer Invoices/"),
+      // and an unencoded space silently fails to navigate.
+      //
+      // The #-params are PDF Open Parameters, honoured by Chromium's viewer:
+      // toolbar=0 + navpanes=0 remove the viewer's own chrome, view=Fit sizes the
+      // page to the window. The result is the DOCUMENT, not a screenshot of a PDF
+      // reader — which is what the video is actually about.
+      await page.goto(`${pathToFileURL(target).href}#toolbar=0&navpanes=0&view=Fit`);
+      // The viewer paints inside the plugin — there is no DOM event to await.
+      await page.waitForTimeout(waitMs);
+      await jetpack.dirAsync(path.dirname(outputFilePath));
+      await page.screenshot({ path: outputFilePath });
+      console.log(`[pdf-shot] ${target} -> ${outputFilePath}`);
+    } finally {
+      await browser.close();
+    }
   }
 
   private async doVerifyOutputFiles(

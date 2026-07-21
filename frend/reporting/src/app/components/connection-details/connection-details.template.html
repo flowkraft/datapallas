@@ -281,19 +281,19 @@
                             STEP 1 — On the provider's side (one-time, outside DataPallas)
                             ═══════════════════════════════════════════════════════════════ -->
                             <div style="margin-top: 10px; margin-bottom: 6px;">
-                              <span style="display: inline-block; min-width: 22px; height: 22px; border-radius: 50%; background: #337ab7; color: white; text-align: center; line-height: 22px; font-weight: bold; font-size: 12px; padding: 0 6px;">1</span>
+                              <span style="display: inline-block; min-width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary); color: var(--color-primary-content); text-align: center; line-height: 22px; font-weight: bold; font-size: 12px; padding: 0 6px;">1</span>
                               &nbsp;<strong style="font-size: 13px;">
                               {{ modalConnectionInfo.email.documentburster.connection.emailserver.oauth2provider === 'MICROSOFT' ? "On Microsoft's side" :
                               modalConnectionInfo.email.documentburster.connection.emailserver.oauth2provider === 'GOOGLE' ? "On Google's side" :
                               "On your identity provider's side" }}
                             </strong>
-                            <span style="font-size: 12px; color: #888;">— one-time setup, outside DataPallas</span>
+                            <span style="font-size: 12px; color: color-mix(in oklch, var(--color-base-content) 55%, transparent);">— one-time setup, outside DataPallas</span>
                           </div>
                           <!-- Step 1 body: Microsoft -->
                           @if (modalConnectionInfo.email.documentburster.connection.emailserver.oauth2provider === 'MICROSOFT') {
                             <div
                               id="oauth2NoteMicrosoft"
-                              style="padding: 10px 12px; margin-bottom: 18px; background: #f5f5f5; border-left: 3px solid #999; border-radius: 3px; font-size: 12px; color: #555; word-wrap: break-word;">
+                              style="padding: 10px 12px; margin-bottom: 18px; background: var(--color-base-200); border-left: 3px solid color-mix(in oklch, var(--color-base-content) 35%, transparent); border-radius: 3px; font-size: 12px; color: var(--color-base-content); word-wrap: break-word;">
                               Your Microsoft 365 admin must register an app in Microsoft Entra ID (Azure AD), grant it
                               the <code>SMTP.Send</code> delegated permission, and enable "Allow public client flows".
                               The <strong>Tenant ID</strong> and <strong>Client ID</strong> for Step 2 come from that app registration.
@@ -307,7 +307,7 @@
                             @if (modalConnectionInfo.email.documentburster.connection.emailserver.oauth2provider === 'GOOGLE') {
                               <div
                                 id="oauth2NoteGoogle"
-                                style="padding: 10px 12px; margin-bottom: 18px; background: #f5f5f5; border-left: 3px solid #999; border-radius: 3px; font-size: 12px; color: #555; word-wrap: break-word;">
+                                style="padding: 10px 12px; margin-bottom: 18px; background: var(--color-base-200); border-left: 3px solid color-mix(in oklch, var(--color-base-content) 35%, transparent); border-radius: 3px; font-size: 12px; color: var(--color-base-content); word-wrap: break-word;">
                                 Create an OAuth 2.0 Client ID in Google Cloud Console (Application type: Desktop app),
                                 then enable the Gmail API for that project. The <strong>Client ID</strong> for Step 2 is the
                                 one Google issues for that credential.
@@ -321,7 +321,7 @@
                               @if (modalConnectionInfo.email.documentburster.connection.emailserver.oauth2provider === 'GENERIC') {
                                 <div
                                   id="oauth2NoteGeneric"
-                                  style="padding: 10px 12px; margin-bottom: 18px; background: #f5f5f5; border-left: 3px solid #999; border-radius: 3px; font-size: 12px; color: #555; word-wrap: break-word;">
+                                  style="padding: 10px 12px; margin-bottom: 18px; background: var(--color-base-200); border-left: 3px solid color-mix(in oklch, var(--color-base-content) 35%, transparent); border-radius: 3px; font-size: 12px; color: var(--color-base-content); word-wrap: break-word;">
                                   Register an OAuth 2.0 client (with PKCE) with your identity provider and grant it permission
                                   to send mail via SMTP. Use a loopback redirect URI like <code>http://localhost</code>
                                   (DataPallas picks a random port). Copy the Client ID, Authorize URL, Token URL, and Scope
@@ -332,9 +332,9 @@
                               STEP 2 — In DataPallas (paste the values from Step 1)
                               ═══════════════════════════════════════════════════════════════ -->
                               <div style="margin-top: 10px; margin-bottom: 8px;">
-                                <span style="display: inline-block; min-width: 22px; height: 22px; border-radius: 50%; background: #337ab7; color: white; text-align: center; line-height: 22px; font-weight: bold; font-size: 12px; padding: 0 6px;">2</span>
+                                <span style="display: inline-block; min-width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary); color: var(--color-primary-content); text-align: center; line-height: 22px; font-weight: bold; font-size: 12px; padding: 0 6px;">2</span>
                                 &nbsp;<strong style="font-size: 13px;">In DataPallas</strong>
-                                <span style="font-size: 12px; color: #888;">— paste the values from Step 1</span>
+                                <span style="font-size: 12px; color: color-mix(in oklch, var(--color-base-content) 55%, transparent);">— paste the values from Step 1</span>
                               </div>
                               <!-- Microsoft only: Tenant ID -->
                               @if (modalConnectionInfo.email.documentburster.connection.emailserver.oauth2provider === 'MICROSOFT') {
@@ -400,9 +400,9 @@
                                         STEP 3 — Sign in (mailbox owner authorizes DataPallas)
                                         ═══════════════════════════════════════════════════════════════ -->
                                         <div style="margin-top: 10px; margin-bottom: 8px;">
-                                          <span style="display: inline-block; min-width: 22px; height: 22px; border-radius: 50%; background: #337ab7; color: white; text-align: center; line-height: 22px; font-weight: bold; font-size: 12px; padding: 0 6px;">3</span>
+                                          <span style="display: inline-block; min-width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary); color: var(--color-primary-content); text-align: center; line-height: 22px; font-weight: bold; font-size: 12px; padding: 0 6px;">3</span>
                                           &nbsp;<strong style="font-size: 13px;">Sign in</strong>
-                                          <span style="font-size: 12px; color: #888;">— the mailbox owner authorizes DataPallas (re-do every ~90 days)</span>
+                                          <span style="font-size: 12px; color: color-mix(in oklch, var(--color-base-content) 55%, transparent);">— the mailbox owner authorizes DataPallas (re-do every ~90 days)</span>
                                         </div>
                                         <!-- Sign-in button (not yet connected) -->
                                         @if (!modalConnectionInfo.email.documentburster.connection.emailserver.oauth2useremail) {
@@ -1158,7 +1158,7 @@
                     onDomainGroupedSchemaJsonTextContentChanged($event)
                   " [highlightMethod]="highlightJsonMethod" [highlighter]="'prism'" [showLineNumbers]="true" style="
                     height: 420px;
-                    border: 1px solid #ccc;
+                    border: 1px solid var(--color-base-300);
                     border-radius: 4px;
                     overflow-y: auto;
                   "></ngx-codejar>
@@ -1220,7 +1220,7 @@
                                                                           never modified. -->
                                                                           @if (domainGroupedSchemaExists && availableBusinessDomains.length > 0) {
                                                                             <div
-                                                                              style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 10px; background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px;">
+                                                                              style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 10px; background: var(--color-base-200); border: 1px solid var(--color-base-300); border-radius: 4px;">
                                                                               <label for="erDiagramDomainFilter" style="margin: 0; font-weight: 600; white-space: nowrap;">
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12.0001 3C14.7548 3 17.4552 3.23205 20.0831 3.67767C20.6159 3.76803 21 4.23355 21 4.77402V5.81802C21 6.41476 20.7629 6.98705 20.341 7.40901L14.909 12.841C14.4871 13.2629 14.25 13.8352 14.25 14.432V17.3594C14.25 18.2117 13.7685 18.9908 13.0062 19.3719L9.75 21V14.432C9.75 13.8352 9.51295 13.2629 9.09099 12.841L3.65901 7.40901C3.23705 6.98705 3 6.41476 3 5.81802V4.77404C3 4.23357 3.38408 3.76805 3.91694 3.67769C6.54479 3.23206 9.24533 3 12.0001 3Z"/></svg>&nbsp;Business Domain:
                                                                               </label>
@@ -1235,7 +1235,7 @@
                                                                                   </option>
                                                                                 }
                                                                               </select>
-                                                                              <span style="margin-left: auto; font-size: 0.85em; color: #555; white-space: nowrap;">
+                                                                              <span style="margin-left: auto; font-size: 0.85em; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); white-space: nowrap;">
                                                                                 Showing <strong>{{ filteredEntitiesInPuml }}</strong> of <strong>{{ totalEntitiesInPuml }}</strong> tables
                                                                               </span>
                                                                             </div>
@@ -1247,7 +1247,7 @@
                   'https://kroki.io/plantuml/svg/' + encodedPlantUmlDiagram
                     | safe
                 " width="100%" style="
-                  border: 1px solid #ccc;
+                  border: 1px solid var(--color-base-300);
                   border-radius: 4px;
                   min-height: 400px;
                   background-color: white;
@@ -1379,7 +1379,7 @@
                                                                           <ngx-codejar id="plantUmlEditor" [(code)]="plantUmlCode" (update)="onPlantUmlCodeChanged($event)"
                 [highlightMethod]="highlightPlantUmlMethod" [highlighter]="'prism'" [showLineNumbers]="true" style="
                   height: 400px;
-                  border: 1px solid #ccc;
+                  border: 1px solid var(--color-base-300);
                   border-radius: 4px;
                   overflow-y: auto;
                   width: 100%;
@@ -1485,7 +1485,7 @@
                                                                           (update)="onUbiquitousLanguageChanged($event)" [highlightMethod]="highlightMarkdownMethod"
                 [highlighter]="'prism'" [showLineNumbers]="true" style="
                   height: 400px;
-                  border: 1px solid #ccc;
+                  border: 1px solid var(--color-base-300);
                   border-radius: 4px;
                   overflow-y: auto;
                   width: 100%;
@@ -1616,7 +1616,7 @@
                                                                     </dburst-apps-manager>
                                                                     <div style="margin-top: 10px; line-height: 1.4;">
                                                                       <span style="font-size: 13px; font-weight: 600;">Chat2DB</span>
-                                                                      <span style="font-size: 11px; color: #6b7280; margin-left: 6px;">powered by Athena — ask in plain English, get SQL + results + charts. Refine, drill deeper, visualize.</span>
+                                                                      <span style="font-size: 11px; color: color-mix(in oklch, var(--color-base-content) 55%, transparent); margin-left: 6px;">powered by Athena — ask in plain English, get SQL + results + charts. Refine, drill deeper, visualize.</span>
                                                                     </div>
                                                                   </div>
                                                                 </div>
@@ -1627,7 +1627,7 @@
                                                             @if (context() !== 'sqlQuery' && context() !== 'scriptQuery' && context() !== 'dashboardScript' && context() !== 'cubeDsl') {
                                                               <dp-tab id="seedDataTab">
                                                                 <ng-template dpTabHeading>
-                                                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg> &nbsp;Seed Data
+                                                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg> &nbsp;Seed Data / Apps
                                                                 </ng-template>
                                                                 <!-- Not yet tested placeholder -->
                                                                 @if (!showSchemaTreeSelect) {
@@ -1671,7 +1671,7 @@
                                                                               [highlighter]="'prism'"
                                                                               [showLineNumbers]="true"
                                                                               [readonly]="mode() === 'viewMode'"
-                                                                              style="height: 360px; width: 100%; max-width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; overflow: auto; display: block; font-family: 'Courier New', monospace; margin-top: 10px;"
+                                                                              style="height: 360px; width: 100%; max-width: 100%; box-sizing: border-box; border: 1px solid var(--color-base-300); border-radius: 4px; overflow: auto; display: block; font-family: 'Courier New', monospace; margin-top: 10px;"
                                                                             ></ngx-codejar>
                                                                             <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
                                                                               <div style="grid-column:span 4">
@@ -1694,7 +1694,7 @@
                                                                               </div>
                                                                             </div>
                                                                           </dp-tab>
-                                                                          <dp-tab id="seedTabExample" heading="Example">
+                                                                          <dp-tab id="seedTabExample" heading="Examples">
                                                                             <ngx-codejar
                                                                               [id]="'seedExampleEditor'"
                                                                               [code]="exampleEditorScript"
@@ -1702,7 +1702,7 @@
                                                                               [highlighter]="'prism'"
                                                                               [showLineNumbers]="true"
                                                                               [readonly]="true"
-                                                                              style="height: 360px; width: 100%; max-width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; overflow: auto; display: block; font-family: 'Courier New', monospace; background-color: #f8f8f8; margin-top: 10px;"
+                                                                              style="height: 360px; width: 100%; max-width: 100%; box-sizing: border-box; border: 1px solid var(--color-base-300); border-radius: 4px; overflow: auto; display: block; font-family: 'Courier New', monospace; background-color: var(--color-base-200); margin-top: 10px;"
                                                                             ></ngx-codejar>
                                                                             <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px;">
                                                                               <div style="grid-column:span 4">
@@ -1723,9 +1723,18 @@
                                                                                   name="seedTemplateSelect"
                                                                                   [disabled]="mode() === 'viewMode'">
                                                                                   <option value="__EXAMPLE_DEFAULT__">Example (default)</option>
-                                                                                  @for (t of seedTemplates; track t) {
+                                                                                  @if (seedTemplates.length > 0) {
+                                                                                    <option disabled>──────────────────────────────</option>
+                                                                                  }
+                                                                                  @for (t of seedTemplates; track t.id; let i = $index) {
+                                                                                    @if (i > 0 && isCustomAppTemplate(t) && !isCustomAppTemplate(seedTemplates[i - 1])) {
+                                                                                      <option disabled>──────────────────────────────</option>
+                                                                                    }
+                                                                                    @if (i > 0 && isUserAppTemplate(t) && !isUserAppTemplate(seedTemplates[i - 1]) && isCustomAppTemplate(seedTemplates[i - 1])) {
+                                                                                      <option disabled>──────────────────────────────</option>
+                                                                                    }
                                                                                     <option [value]="t.id">
-                                                                                      {{t.displayName}}{{t.description ? ' — ' + t.description : ''}}
+                                                                                      {{isUserAppTemplate(t) ? '👤 ' : ''}}{{t.displayName}}{{t.description ? ' — ' + t.description : ''}}
                                                                                     </option>
                                                                                   }
                                                                                 </select>
@@ -1734,7 +1743,7 @@
                                                                             <div style="margin-top: 12px; text-align: left;">
                                                                               <a href="https://www.datafaker.net/documentation/getting-started/#usage"
                                                                                 target="_blank" rel="noopener noreferrer"
-                                                                                style="text-decoration: underline; color: #31708f; font-size: 14px; font-weight: 500;">
+                                                                                style="text-decoration: underline; color: var(--color-primary); font-size: 14px; font-weight: 500;">
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>&nbsp;DataFaker Documentation
                                                                               </a>
                                                                             </div>

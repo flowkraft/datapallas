@@ -1,0 +1,18 @@
+{
+  "id": "billing-portal-bkend",
+  "name": "Billing Portal Backend (crons, etc.)",
+  "icon": "cog",
+  "category": "Examples",
+  "type": "docker",
+  "description": "Example headless backend for the Billing Portal (Spring Boot + Groovy) — a simple way to add your own backend to a document portal, with scheduled jobs that do useful background processing. Its sample job runs automatically on a schedule to flag invoices that are past due. Use it as a starting point for building your own backend.",
+  "url": "http://localhost:8502",
+  "service_name": "billing-portal-bkend",
+  "entrypoint": "flowkraft/xx-custom/_examples/billing-portal-bkend/docker-compose.yml",
+  "startCmd": "system service app start billing-portal-bkend 8502",
+  "stopCmd": "system service app stop billing-portal-bkend",
+  "tags": ["backend", "cron", "billing", "example"],
+  "visible": false,
+  "launch": false,
+  "blueprint": "flowkraft/bkend-boot-groovy-playground",
+  "apiKey": "bp-demo-key-CHANGE-ME"
+}

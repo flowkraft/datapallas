@@ -610,6 +610,8 @@
       },
       "TAB-REPORTING-MAILMERGE-CLASSICREPORTS": {
         "CHOOSE-REPORT": "Report",
+        "DID-YOU-RUN-QA-REPORT": "Did you run Quality Assurance for the report",
+        "FOR-THE-REPORT": "for the report",
         "SHOW-ME-HOW-TO": "see how to build reports"
       },
       "TAB-MERGE-BURST": {
@@ -629,6 +631,7 @@
       },
       "TAB-QUALITY-ASSURANCE": {
         "FILE": "File",
+        "REPORT": "Report",
         "INNER-HTML": {
           "TEST-SERVER-CATCH": "<em>Test Email Server</em> will \"catch\" emails locally and will not deliver the received messages. The emails\n        can\n        be quickly\n        viewed and inspected locally.",
           "VIEW-EMAILS": "View Emails (<em>Test Email Server</em> should be started)"

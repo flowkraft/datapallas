@@ -579,6 +579,9 @@ export class ProcessingComponent implements OnInit {
     this.processingService.procQualityAssuranceInfo.inputFileName =
       this.processingService.procBurstInfo.inputFileName;
     this.processingService.procQualityAssuranceInfo.prefilledInputFilePath = '';
+    // Bursting a file is never about a report — drop any name a previous report selection left, or
+    // the QA tab would label this file's test run with that stale report.
+    this.processingService.procQualityAssuranceInfo.reportName = '';
     this.processingService.procQualityAssuranceInfo.whichAction = 'burst';
   }
 
@@ -593,6 +596,7 @@ export class ProcessingComponent implements OnInit {
 
     this.processingService.procQualityAssuranceInfo.inputFile = null;
     this.processingService.procQualityAssuranceInfo.inputFileName = '';
+    this.processingService.procQualityAssuranceInfo.reportName = '';
     this.processingService.procQualityAssuranceInfo.prefilledInputFilePath = '';
 
     this.processingService.procMergeBurstInfo.inputFiles = [];
@@ -985,7 +989,19 @@ export class ProcessingComponent implements OnInit {
         );
     }
 
-    const dialogQuestion = `Test file ${this.processingService.procQualityAssuranceInfo.inputFileName}?`;
+    // A report with no input file (ds.scriptfile / ds.sqlquery / ds.jasper) is tested as itself, so
+    // name the report rather than a file that does not exist. Mirrors doGenerateReports, which
+    // already asks "Burst report X?" instead of "Burst file X?" for exactly these report types.
+    const qaReportId = Utilities.basename(
+      Utilities.dirname(
+        this.processingService.procQualityAssuranceInfo
+          .prefilledConfigurationFilePath,
+      ),
+    );
+    const dialogQuestion = this.processingService.procQualityAssuranceInfo
+      .inputFileName
+      ? `Test file ${this.processingService.procQualityAssuranceInfo.inputFileName}?`
+      : `Test report ${qaReportId}?`;
 
     this.confirmService.askConfirmation({
       message: dialogQuestion,
@@ -997,8 +1013,12 @@ export class ProcessingComponent implements OnInit {
           this.processingService.procQualityAssuranceInfo
             .prefilledConfigurationFilePath;
 
-        // Handle file upload if needed
-        if (!this.processingService.procBurstInfo.isSample) {
+        // Handle file upload if needed — only when there IS a file. A report that takes no input
+        // file has nothing to upload, and uploading `undefined` would fail the whole QA run.
+        if (
+          !this.processingService.procBurstInfo.isSample &&
+          this.processingService.procQualityAssuranceInfo.inputFile
+        ) {
           const uploaded = await this.uploadInputFile(
             this.processingService.procQualityAssuranceInfo.inputFile,
             this.processingService.procQualityAssuranceInfo.inputFileName,
@@ -1029,7 +1049,9 @@ export class ProcessingComponent implements OnInit {
         }
 
         this.messagesService.showInfo(
-          'Working on ' + Utilities.basename(inputFilePath) + '. Please wait.',
+          'Working on ' +
+            (inputFilePath ? Utilities.basename(inputFilePath) : qaReportId) +
+            '. Please wait.',
           '', { messageClass: 'java-started' },
         );
 
@@ -1070,16 +1092,21 @@ export class ProcessingComponent implements OnInit {
   runTestShouldBeDisabled() {
     let disableRunTest = true;
 
-    let isInputFileSelected = false;
+    // Is there anything to test? An input file — or, for a report that takes none (ds.scriptfile /
+    // ds.sqlquery / ds.jasper), the report itself. Demanding a file here is what left Run Test dead
+    // for those reports: they never have one, so the mode switch below never ran and the button
+    // stayed disabled no matter what the user picked.
+    let hasSubjectToTest = false;
     if (
       this.processingService.procQualityAssuranceInfo.inputFile ||
       (this.processingService.procBurstInfo.isSample &&
-        this.processingService.procQualityAssuranceInfo.prefilledInputFilePath)
+        this.processingService.procQualityAssuranceInfo.prefilledInputFilePath) ||
+      this.qaIsReportOnly()
     ) {
-      isInputFileSelected = true;
+      hasSubjectToTest = true;
     }
 
-    if (isInputFileSelected) {
+    if (hasSubjectToTest) {
       switch (this.processingService.procQualityAssuranceInfo.mode) {
         case 'ta':
           disableRunTest = false;
@@ -1496,6 +1523,34 @@ export class ProcessingComponent implements OnInit {
     this.showViewDataTabulator = false;
     this.viewDataResult = null;
 
+    // Arm Quality Assurance for the selected report. onMailMergeClassicReportFileSelected does this
+    // too, but only fires once an input FILE is picked — ds.scriptfile / ds.sqlquery / ds.jasper
+    // reports have no file input at all (allowedInputFileTypes() === 'notused'), so for them it
+    // never fires and QA stays unarmed: doRunTest would submit a generate job with no reportId,
+    // which JobsController rejects with 400. QA belongs to the report, not to the file.
+    if ($event?.filePath) {
+      this.processingService.procReportingMailMergeInfo.prefilledConfigurationFilePath =
+        Utilities.slash($event.filePath);
+      this.processingService.procQualityAssuranceInfo.prefilledConfigurationFilePath =
+        this.processingService.procReportingMailMergeInfo.prefilledConfigurationFilePath;
+      this.processingService.procQualityAssuranceInfo.whichAction =
+        'csv-generate-reports';
+
+      // Reports that take no input file carry no file to test with — clear any file left behind by
+      // a previously selected report, or QA would test that stale file against this report. The
+      // report's name then becomes the only thing identifying the QA run, so carry it across.
+      // Asked of $event, not of the bound model: ng-select's (change) and [(ngModel)] write order is
+      // not guaranteed, and $event IS the newly selected report.
+      if (!this.reportsService.requiresInputFile($event)) {
+        this.processingService.procQualityAssuranceInfo.inputFile = null;
+        this.processingService.procQualityAssuranceInfo.inputFileName = '';
+        this.processingService.procQualityAssuranceInfo.reportName =
+          $event.templateName ?? '';
+      } else {
+        this.processingService.procQualityAssuranceInfo.reportName = '';
+      }
+    }
+
     // Lazy load DSL details for the selected report (including JasperReports .jrxml parameters)
     if ($event && (
       $event.type === 'config-reports' ||
@@ -1509,6 +1564,32 @@ export class ProcessingComponent implements OnInit {
   allowedInputFileTypes(): string {
     return this.reportsService.allowedInputFileTypes(
       this.processingService.procReportingMailMergeInfo?.selectedMailMergeClassicReport,
+    );
+  }
+
+  /**
+   * What the Generate-Reports QA reminder is talking about: the input file when the selected report
+   * takes one, otherwise the report itself — ds.scriptfile / ds.sqlquery / ds.jasper reports have no
+   * input file at all, and QA on them tests the report's own tokens.
+   */
+  qaReminderSubject(): string {
+    const info = this.processingService.procReportingMailMergeInfo;
+    if (!this.requiresInputFile())
+      return info.selectedMailMergeClassicReport?.templateName ?? '';
+    return info.isSample ? info.prefilledInputFilePath : info.inputFileName;
+  }
+
+  /**
+   * True when Quality Assurance is testing a REPORT rather than an input file — the report was
+   * armed from Generate Reports and takes no input file, so there is no PDF/Excel to name or pick.
+   * The QA tab then labels its field "Report" and shows the report's name read-only.
+   */
+  qaIsReportOnly(): boolean {
+    const qa = this.processingService.procQualityAssuranceInfo;
+    return (
+      qa.whichAction === 'csv-generate-reports' &&
+      !!qa.reportName &&
+      !qa.inputFileName
     );
   }
 
@@ -1657,7 +1738,7 @@ export class ProcessingComponent implements OnInit {
     if (outputTypeCode === 'cms.webportal') {
       const launchConfig: AiManagerLaunchConfig = {
         initialActiveTabKey: 'PROMPTS',
-        initialSelectedCategory: 'Web Portal / CMS',
+        initialSelectedCategory: 'Web Portal / CMS (WordPress)',
       };
 
       if (this.aiManagerInstance) {

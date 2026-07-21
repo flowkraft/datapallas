@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Hephaestus — god of the forge (jobs / ETL / automation). Full dark beard, craftsman's
+       headband, bare-shouldered exomis with one strap, ember sparks.
+       Same flat outlined style as athena/mnemosyne-talking.svg:
+       skin #fce8d4, ink #2a1a10 w2, blush #e89080, gold #d4af37. -->
+  <defs>
+    <clipPath id="hephaestus-disc"><circle cx="100" cy="100" r="96"/></clipPath>
+  </defs>
+
+  <circle cx="100" cy="100" r="96" fill="#fdeee0"/>
+
+  <g clip-path="url(#hephaestus-disc)">
+    <!-- Ember sparks drifting up -->
+    <g opacity="0.85">
+      <path d="M 48 46 L 50.4 50 L 48 54 L 45.6 50 Z" fill="#f5a04a"/>
+      <path d="M 156 58 L 158.2 61.6 L 156 65.2 L 153.8 61.6 Z" fill="#e8843c"/>
+      <circle cx="164" cy="104" r="2.2" fill="#f5c060"/>
+      <circle cx="38" cy="92" r="1.8" fill="#f5c060"/>
+    </g>
+    <!-- Bare shoulders (brawny) -->
+    <path d="M 28 200 Q 34 158 74 146 Q 100 140 126 146 Q 166 158 172 200 Z" fill="#fce8d4"/>
+    <!-- Exomis: single diagonal strap over the left shoulder (viewer's left) -->
+    <path d="M 90 144 L 56 158 L 66 190 L 102 172 Z" fill="#5a5a64"/>
+    <path d="M 30 196 Q 60 184 100 176 L 104 200 L 28 200 Z" fill="#5a5a64"/>
+    <!-- Thick neck -->
+    <path d="M 85 128 L 85 150 Q 100 158 115 150 L 115 128 Z" fill="#fce8d4"/>
+    <ellipse cx="100" cy="133" rx="15" ry="5" fill="#f4d8c4"/>
+    <!-- Ears -->
+    <ellipse cx="58" cy="94" rx="5.5" ry="9" fill="#fce8d4"/>
+    <ellipse cx="142" cy="94" rx="5.5" ry="9" fill="#fce8d4"/>
+    <!-- Face (broader) -->
+    <ellipse cx="100" cy="92" rx="41" ry="46" fill="#fce8d4"/>
+    <!-- Short rough dark hair -->
+    <path d="M 59 70 Q 56 36 100 30 Q 144 36 141 70 Q 128 58 100 56 Q 72 58 59 70 Z" fill="#2a1a10"/>
+    <!-- Craftsman's headband -->
+    <path d="M 61 66 Q 100 52 139 66 L 139 74 Q 100 60 61 74 Z" fill="#c0522c"/>
+    <!-- Full beard around the jaw -->
+    <path d="M 61 94 Q 56 142 80 156 Q 100 165 120 156 Q 144 142 139 94 Q 132 112 119 118 Q 100 126 81 118 Q 68 112 61 94 Z" fill="#3a2415"/>
+    <!-- Mouth gap + smile inside the beard -->
+    <ellipse cx="100" cy="123" rx="8" ry="3.6" fill="#e8a58c"/>
+    <!-- Mustache over the mouth -->
+    <path d="M 82 115 Q 91 108 100 112 Q 109 108 118 115 Q 110 121 100 119 Q 90 121 82 115 Z" fill="#3a2415"/>
+    <!-- Ruddy cheeks (works at the forge) -->
+    <ellipse cx="70" cy="102" rx="7.5" ry="4" fill="#e89080" fill-opacity="0.5"/>
+    <ellipse cx="130" cy="102" rx="7.5" ry="4" fill="#e89080" fill-opacity="0.5"/>
+  </g>
+
+  <!-- Ink outline pass -->
+  <g clip-path="url(#hephaestus-disc)" stroke="#2a1a10" stroke-width="2" fill="none" stroke-linecap="round">
+    <path d="M 28 200 Q 34 158 74 146 Q 100 140 126 146 Q 166 158 172 200"/>
+    <path d="M 90 144 L 56 158 L 66 190 L 102 172 Z"/>
+    <path d="M 30 196 Q 60 184 100 176"/>
+    <path d="M 85 128 L 85 150 Q 100 158 115 150 L 115 128"/>
+    <ellipse cx="58" cy="94" rx="5.5" ry="9"/>
+    <path d="M 57 91 Q 59 94 58 98" stroke-width="1.3" stroke-opacity="0.6"/>
+    <ellipse cx="142" cy="94" rx="5.5" ry="9"/>
+    <path d="M 143 91 Q 141 94 142 98" stroke-width="1.3" stroke-opacity="0.6"/>
+    <ellipse cx="100" cy="92" rx="41" ry="46"/>
+    <path d="M 59 70 Q 56 36 100 30 Q 144 36 141 70"/>
+    <path d="M 61 66 Q 100 52 139 66 L 139 74 Q 100 60 61 74 Z"/>
+    <line x1="74" y1="65" x2="74" y2="71" stroke-width="1.3" stroke-opacity="0.6"/>
+    <line x1="100" y1="58" x2="100" y2="64" stroke-width="1.3" stroke-opacity="0.6"/>
+    <line x1="126" y1="65" x2="126" y2="71" stroke-width="1.3" stroke-opacity="0.6"/>
+    <path d="M 61 94 Q 56 142 80 156 Q 100 165 120 156 Q 144 142 139 94"/>
+    <path d="M 61 94 Q 68 112 81 118 Q 100 126 119 118 Q 132 112 139 94" stroke-width="1.6" stroke-opacity="0.8"/>
+    <path d="M 82 115 Q 91 108 100 112 Q 109 108 118 115 Q 110 121 100 119 Q 90 121 82 115 Z" stroke-width="1.6"/>
+    <path d="M 93 124 Q 100 128 107 124" stroke-width="2"/>
+    <!-- Beard texture strokes -->
+    <path d="M 78 136 Q 82 144 80 150" stroke="#5a3825" stroke-width="1.4" stroke-opacity="0.7"/>
+    <path d="M 100 140 Q 100 148 100 154" stroke="#5a3825" stroke-width="1.4" stroke-opacity="0.7"/>
+    <path d="M 122 136 Q 118 144 120 150" stroke="#5a3825" stroke-width="1.4" stroke-opacity="0.7"/>
+    <!-- Eyes: dark iris, warm -->
+    <path d="M 72 86 Q 83 80 94 86 Q 90 94 82 94 Q 75 92 72 86 Z" fill="#ffffff"/>
+    <ellipse cx="84" cy="88" rx="4.8" ry="4.8" fill="#3a2415" stroke="none"/>
+    <circle cx="85.5" cy="86.8" r="2.2" fill="#1a0a05" stroke="none"/>
+    <circle cx="86.6" cy="85.6" r="0.9" fill="#ffffff" stroke="none"/>
+    <path d="M 106 86 Q 117 80 128 86 Q 125 94 117 94 Q 110 92 106 86 Z" fill="#ffffff"/>
+    <ellipse cx="116" cy="88" rx="4.8" ry="4.8" fill="#3a2415" stroke="none"/>
+    <circle cx="117.5" cy="86.8" r="2.2" fill="#1a0a05" stroke="none"/>
+    <circle cx="118.6" cy="85.6" r="0.9" fill="#ffffff" stroke="none"/>
+    <!-- Heavy brows -->
+    <path d="M 69 77 Q 83 70 96 76" stroke-width="3.2"/>
+    <path d="M 104 76 Q 117 70 131 77" stroke-width="3.2"/>
+    <!-- Strong nose -->
+    <path d="M 100 94 Q 98 106 100 111 Q 103 114 106 111"/>
+    <ellipse cx="96.5" cy="111" rx="1.4" ry="1" fill="#2a1a10" fill-opacity="0.45" stroke="none"/>
+    <ellipse cx="104" cy="111.5" rx="1.4" ry="1" fill="#2a1a10" fill-opacity="0.45" stroke="none"/>
+  </g>
+
+  <circle cx="100" cy="100" r="96" fill="none" stroke="#ecc39a" stroke-width="3.5"/>
+</svg>

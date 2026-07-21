@@ -49,7 +49,7 @@ import { electronBeforeAfterAllTest } from '../../../utils/common-setup';
 import { Constants } from '../../../utils/constants';
 import { FluentTester } from '../../../helpers/fluent-tester';
 import { ConnectionsTestHelper } from '../../../helpers/areas/connections-test-helper';
-import { captureDocsScreenshot, captureDocsScreenshotWithHighlights, captureDocsScreenshotOfElement } from '../../../utils/docs-screenshot-helper';
+import { captureDocsScreenshot, captureDocsScreenshotWithHighlights, captureDocsScreenshotOfElement, hideToastsForScreenshots } from '../../../utils/docs-screenshot-helper';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 //
@@ -825,9 +825,46 @@ electronBeforeAfterAllTest(
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BLOCK 3 — (placeholder for future Connections-area docs targets)
+// BLOCK 3 — oauth2.mdx (Email connection → OAuth2 / Advanced tab, Microsoft)
 // ─────────────────────────────────────────────────────────────────────────────
-//
-// Append another `electronBeforeAfterAllTest('Connections — docs screenshots —
-// <name>', …)` block here, reusing the SETUP / CLEANUP pattern above so blocks
-// remain independently runnable and don't share state.
+// The one email-connection shot the report-distribution-email block skipped: the "Create
+// Email Connection" modal's OAuth2 (Advanced) tab with Microsoft Office 365 selected — 010_12.
+// No report/template needed — open a fresh email connection from Connections, switch to the
+// OAuth2 tab, pick Microsoft (reveals the 3-step guide + Tenant/Client fields + "Sign in with
+// Microsoft"), shoot, then Cancel (nothing is persisted). Independently runnable.
+electronBeforeAfterAllTest(
+  'Connections — docs screenshots — oauth2.mdx email OAuth2 tab',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    // Open a fresh "Create Email Connection" modal (Connections → New ▾ → Email) — the SAME
+    // opener ConnectionsTestHelper.createAndAssertNewEmailConnection drives (#btnNewDropdown → #btnNewEmail).
+    await new FluentTester(firstPage)
+      .gotoConnections()
+      .waitOnElementToBecomeEnabled('#btnNewDropdown')
+      .click('#btnNewDropdown')
+      .waitOnElementToBecomeVisible('#btnNewEmail')
+      .click('#btnNewEmail')
+      .waitOnElementToBecomeVisible('#connectionName')
+      // Switch to the OAuth2 (Advanced) tab and select Microsoft Office 365.
+      .click('#tab-btn-oauth2Tab')
+      .waitOnElementToBecomeVisible('#oauth2Provider')
+      .dropDownSelectOptionHavingValue('#oauth2Provider', 'MICROSOFT')
+      .waitOnElementToBecomeVisible('#oauth2NoteMicrosoft')
+      .waitOnElementToBecomeVisible('#oauth2TenantId')
+      .sleep(Constants.DELAY_ONE_SECOND);
+    await hideToastsForScreenshots(firstPage);
+    await firstPage.waitForTimeout(400);
+    await captureDocsScreenshot(firstPage, '010_12_email-connection-oauth2-dp.png');
+
+    // Cancel — no connection is saved.
+    await new FluentTester(firstPage)
+      .click('#btnCloseConnectionModal')
+      .waitOnElementToBecomeInvisible('#btnCloseConnectionModal');
+
+    console.log('[DONE] oauth2.mdx email OAuth2 tab captured.');
+  },
+);
+
+// Append further `electronBeforeAfterAllTest('Connections — docs screenshots — <name>', …)`
+// blocks below, reusing the SETUP / CLEANUP pattern so blocks stay independently runnable.

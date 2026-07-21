@@ -1,0 +1,34 @@
+services:
+  billing-portal-next:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: billing-portal-next
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_RB_API_BASE_URL=${NEXT_PUBLIC_RB_API_BASE_URL:-http://host.docker.internal:9090}
+      - BP_API_KEY=${BP_API_KEY:-bp-demo-key-CHANGE-ME}
+      # Signs the session cookie (lib/session.ts). MUST be set here rather than defaulted in code:
+      # the cookie is signed by a Node route handler and verified by the EDGE middleware, which are
+      # separate module instances — a per-process default would give them different secrets and no
+      # session would ever verify. Set BP_SESSION_SECRET to a real random value in any deployment
+      # that matters; changing it simply signs everyone out.
+      - BP_SESSION_SECRET=${BP_SESSION_SECRET:-bp-demo-session-secret-CHANGE-ME}
+    ports:
+      - "${HOST_PORT:-8501}:3000"
+    volumes:
+      # SQLite DB file (app.db) lives in the shared dir so billing-portal-bkend can maintain it directly.
+      - ../_shared-db:/app/data
+    restart: unless-stopped
+    networks:
+      - frend-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+networks:
+  frend-network:
+    driver: bridge

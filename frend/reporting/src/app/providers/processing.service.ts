@@ -33,6 +33,10 @@ export class ProcessingService {
   procQualityAssuranceInfo = {
     inputFile: null,
     inputFileName: '',
+    // Set when QA is armed from a report that takes NO input file (ds.scriptfile / ds.sqlquery /
+    // ds.jasper). It is then the only thing identifying what is being tested, since there is no
+    // file name to show — the QA tab labels itself off this.
+    reportName: '',
     prefilledInputFilePath: '',
     prefilledConfigurationFilePath: '',
     whichAction: 'burst',

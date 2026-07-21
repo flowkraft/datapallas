@@ -352,6 +352,53 @@ export class TemplatesGalleryModalComponent {
     window.open(url, '_blank');
   }
 
+  /**
+   * Render the template AI prompt for DISPLAY (copy-to-clipboard still uses the raw text),
+   * highlighting the parts the user provides/updates: the "Customization Instructions" and the
+   * "Reference HTML Template" sections (and any `[...…...]` placeholders). A theme-aware warning
+   * tint keeps the highlighted text readable in any daisyUI theme.
+   */
+  renderTemplateAiPromptHtml(prompt: string): SafeHtml {
+    const esc = (s: string) =>
+      (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const box = (inner: string) =>
+      `<span style="background-color: color-mix(in oklab, var(--color-warning) 18%, transparent); ` +
+      `box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-warning) 45%, transparent); ` +
+      `border-radius: 4px; padding: 2px 4px;">${inner}</span>`;
+
+    const text = prompt || '';
+    // Match the two section headers as a standalone header LINE — tolerant of the exact format the
+    // backend emits (**bold**, ## heading, and/or a trailing colon), so it works across templates.
+    // Requiring a line start skips the inline mentions in the intro paragraph.
+    const headerRe = (label: string) =>
+      new RegExp(`(?:^|\\n)[ \\t]*(?:#{1,6}[ \\t]*)?(?:\\*\\*)?${label}(?:\\*\\*)?[ \\t]*:?[ \\t]*(?:\\*\\*)?(?=\\n|$)`, 'i');
+    const ciM = headerRe('Customization Instructions').exec(text);
+    const rhM = headerRe('Reference HTML Template').exec(text);
+
+    let out: string;
+    if (this.selectedPromptType === 'rebuild') {
+      // Prompt 2 (build from scratch): there are no "provide these" sub-sections — the ENTIRE
+      // prompt is the guide the user adapts, so highlight all of it.
+      out = box(esc(text.trim()));
+    } else if (ciM && rhM && rhM.index > ciM.index) {
+      const ciEnd = ciM.index + ciM[0].length;
+      const rhEnd = rhM.index + rhM[0].length;
+      out =
+        esc(text.slice(0, ciEnd)) +
+        '\n\n' + box(esc(text.slice(ciEnd, rhM.index).trim())) + '\n\n' +
+        esc(text.slice(rhM.index, rhEnd)) +
+        '\n\n' + box(esc(text.slice(rhEnd).trim()));
+    } else {
+      out = esc(text).replace(/\[\.\.\.[^\]]*\]/g, (m) => box(m));
+    }
+    // light markdown: strip code fences, render **bold**
+    out = out
+      .replace(/```html\n?/g, '')
+      .replace(/```/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    return this.sanitizer.bypassSecurityTrustHtml(out);
+  }
+
   sanitizeHtmlForIframe(html: string, assetBaseDir?: string): SafeHtml {
     if (!html) {
       return this.sanitizer.bypassSecurityTrustHtml('');

@@ -1315,18 +1315,65 @@ export class ConnectionsTestHelper {
     return ConnectionsTestHelper.closeConnectionDetailsModal(ft);
   }
 
+  /**
+   * Seeds the source `seed_inv_*` tables via the bundled `invoice-seeder` template — SEED ONLY
+   * (no wipe). Used as the DataPallas report INPUT for the custom billing-portal push: the
+   * `app-seed.groovy` writes a `ds.sqlquery` report over these tables, so they must exist before
+   * the Generate-Reports Burst runs. Idempotent — the seeder upserts, so re-running is safe.
+   */
+  static seedInvoicesViaConnectionDetails(
+    ft: FluentTester,
+    connectionCode: string,
+    dbVendor: string,
+    fullTimeout: number = Constants.DELAY_FIVE_THOUSANDS_SECONDS,
+  ): FluentTester {
+    ft = ConnectionsTestHelper.openSeedDataTabAndTestConnection(ft, connectionCode, dbVendor, fullTimeout);
+    ft = ConnectionsTestHelper.loadExampleAndPasteIntoMyScript(ft, 'invoice-seeder', 'seed_inv_');
+    ft = ConnectionsTestHelper.runMyScriptAndWait(ft, 'invoice-seeder', fullTimeout);
+    ft = ConnectionsTestHelper.verifySchemaTablesPresent(ft, INVOICE_SEEDER_TABLES, fullTimeout);
+    return ConnectionsTestHelper.closeConnectionDetailsModal(ft);
+  }
+
+  /**
+   * Runs a custom app's `_custom/app-seed.groovy` from the Seed Data tab, exactly as a user would:
+   * open the sample connection's Seed Data tab → pick the app template in `#seedTemplateSelect`
+   * (value = GenericSeedExecutor id, e.g. `app-billing-portal-grails`) → Copy → paste into My
+   * Script → Run → wait. The seed scaffolds the app from its playground blueprint, applies
+   * `_custom/overrides`, writes the DataPallas push report (bound to `connectionCode`) and flips
+   * `app.json` `visible:false→true`. Idempotent — safe to re-run.
+   *
+   * `marker` is a stable substring of the app-seed source (asserted in the Example + My Script
+   * codejars) — the app folder name works well (it appears in the seed's `APP_ID`).
+   */
+  static scaffoldCustomAppViaConnectionDetails(
+    ft: FluentTester,
+    connectionCode: string,
+    dbVendor: string,
+    seedTemplateId: string,
+    marker: string,
+    fullTimeout: number = Constants.DELAY_FIVE_THOUSANDS_SECONDS,
+  ): FluentTester {
+    ft = ConnectionsTestHelper.openSeedDataTabAndTestConnection(ft, connectionCode, dbVendor, fullTimeout);
+    ft = ConnectionsTestHelper.loadExampleAndPasteIntoMyScript(ft, seedTemplateId, marker);
+    ft = ConnectionsTestHelper.runMyScriptAndWait(ft, seedTemplateId, fullTimeout);
+    return ConnectionsTestHelper.closeConnectionDetailsModal(ft);
+  }
+
   // ============================================================================
   // Shared Seed Data sub-flows (used by both seed-wipe public helpers above)
   // ============================================================================
 
   /**
-   * Opens the Connection Details modal for `connectionCode`, navigates to the
-   * Seed Data tab, uses the placeholder button to route to Connection Details,
-   * tests the connection (confirming the "Save first?" dialog), then returns to
-   * Seed Data — at which point `showSchemaTreeSelect` is true and the panel
-   * (My Script / Example / Templates dropdown / Run / Copy buttons) is rendered.
+   * Opens the Connection Details modal for `connectionCode`, tests the connection
+   * (confirming the "Save first?" dialog), then goes to Seed Data — at which point
+   * `showSchemaTreeSelect` is true and the panel (My Script / Example / Templates
+   * dropdown / Run / Copy buttons) is rendered.
+   *
+   * IDEMPOTENT: safe to call repeatedly in one app session. It never touches the
+   * `#btnTestDbConnectionSeedData` placeholder, which only exists until the first
+   * successful test (see the comment on the tab-header click below).
    */
-  private static openSeedDataTabAndTestConnection(
+  static openSeedDataTabAndTestConnection(
     ft: FluentTester,
     connectionCode: string,
     dbVendor: string,
@@ -1344,13 +1391,21 @@ export class ConnectionsTestHelper {
       .waitOnElementToBecomeVisible('#modalDbConnection')
       .consoleLog(`[SeedWipe] Opened modal for ${connectionCode}`);
 
+    // Route to Connection Details via the TAB HEADER, not the Seed Data placeholder
+    // button. `#btnTestDbConnectionSeedData` only exists while `!showSchemaTreeSelect`
+    // — i.e. ONLY until this connection is first tested. That flag is never reset by
+    // closing/reopening the modal (`resetSchemaStateOnConnectionChange()` is bound
+    // solely to (ngModelChange) on the connection fields, and the host renders
+    // <dburst-connection-details> unconditionally, so the component is never
+    // destroyed). Waiting for the placeholder therefore hangs 100s on EVERY call
+    // after the first — which is why callers that seed twice (seedInvoices then
+    // scaffoldCustomApp) died on the second one.
+    // The tab header is present in both states and its (activeTabChange) →
+    // onDbTabChange() sets isConnectionDetailsTabActive/isSeedDataTabActive exactly
+    // like the placeholder's inline click handler does.
     ft = ft
-      .waitOnElementToBecomeVisible('#tab-btn-seedDataTab')
-      .click('#tab-btn-seedDataTab');
-
-    ft = ft
-      .waitOnElementToBecomeVisible('#btnTestDbConnectionSeedData')
-      .click('#btnTestDbConnectionSeedData')
+      .waitOnElementToBecomeVisible('#tab-btn-connectionDetailsTab')
+      .click('#tab-btn-connectionDetailsTab')
       .waitOnElementToBecomeVisible('#btnTestDbConnection')
       .waitOnElementToBecomeEnabled('#btnTestDbConnection')
       .click('#btnTestDbConnection');
@@ -1405,7 +1460,7 @@ export class ConnectionsTestHelper {
    * (note "Db" in the middle); `#btnCloseConnectionModal` belongs to the
    * email-connection modal and does not exist in this context.
    */
-  private static closeConnectionDetailsModal(ft: FluentTester): FluentTester {
+  static closeConnectionDetailsModal(ft: FluentTester): FluentTester {
     return ft
       .click('#btnCloseDbConnectionModal')
       .waitOnElementToBecomeInvisible('#btnCloseDbConnectionModal')
@@ -1424,7 +1479,7 @@ export class ConnectionsTestHelper {
    * `exampleMarker` is asserted in both the Example codejar (after load) and the
    * My Script codejar (after paste), and on the OS clipboard (after Copy).
    */
-  private static loadExampleAndPasteIntoMyScript(
+  static loadExampleAndPasteIntoMyScript(
     ft: FluentTester,
     templateId: string | null,
     exampleMarker: string,
@@ -1511,7 +1566,7 @@ export class ConnectionsTestHelper {
    *
    * `label` is purely for log output to disambiguate seed/wipe phases.
    */
-  private static runMyScriptAndWait(
+  static runMyScriptAndWait(
     ft: FluentTester,
     label: string,
     fullTimeout: number,

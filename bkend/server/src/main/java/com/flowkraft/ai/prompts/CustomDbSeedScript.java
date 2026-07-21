@@ -12,18 +12,21 @@ public final class CustomDbSeedScript {
             "Write a Custom Database Seed Script",
             "Generate a Groovy script that creates custom tables and populates them with sample data alongside the existing Northwind schema",
             List.of("database", "groovy", "seed", "custom-schema"),
-            "Database Schema",
+            "Seed Data / Apps",
             """
 Write a Groovy database seed script for **[VENDOR]** that creates custom tables and populates them with realistic sample data.
 
 **YOUR SCHEMA & DATA REQUIREMENTS:**
 
 <REQUIREMENT>
+[USER: DESCRIBE THE TABLES AND SAMPLE DATA YOU WANT HERE — every table name prefixed my_*, with its columns (mark PK/FK), the row count, and which values are fixed vs DataFaker-generated.]
+</REQUIREMENT>
+
+*Example of a well-formed requirement (replace the placeholder above with your own):*
 - Table: my_departments (dept_id PK, dept_name, location) — 6 rows with fixed names: Engineering, Marketing, Sales, HR, Finance, Operations
 - Table: my_employees (emp_id PK, first_name, last_name, email, salary, dept_id FK→my_departments) — 20 rows
 - Use DataFaker for realistic first/last names, email addresses, salaries between 45000–150000
 - Each employee assigned to a random department
-</REQUIREMENT>
 
 **Pre-configured variables (DO NOT create them yourself):**
 - `dbSql` — a `groovy.sql.Sql` instance already connected to the [VENDOR] database
@@ -86,13 +89,13 @@ faker.number().numberBetween(45000, 150000)
    - Date:      `DATE`
    - ClickHouse tables additionally need `ENGINE = MergeTree() ORDER BY <pk>`.
 
-6. **Touch ONLY tables prefixed `my_*`. NEVER read, write, or drop any Northwind tables (customer, product, employee, orders, etc.).**
+6. **Touch ONLY tables prefixed `my_*`. NEVER read, write, or drop the Northwind tables (customer, product, employee, orders, etc.) OR the sample `seed_inv_*` invoice tables — both are existing data. Your tables are NEW, named from the requirement above and prefixed `my_*`.**
 
 7. **Use DataFaker with a fixed seed (e.g. `new Random(42)`)** so re-runs produce identical data.
 
 8. **Wrap inserts in `dbSql.withTransaction`** (except for ClickHouse). Do NOT call any FK-disabling commands (e.g. `SET session_replication_role`, `ALTER TABLE NOCHECK CONSTRAINT`) — they either need elevated privileges (Postgres/Supabase) or auto-commit (Oracle/DB2). Inserts in parents-first order satisfy FKs without disabling them.
 
-**Working reference for [VENDOR]** — your generated script should follow this exact structure (DROP+CREATE outside, INSERTs inside `withTransaction`, explicit IDs, fixed-seed DataFaker, only `my_*` tables):
+**Working reference for [VENDOR]** — the ACTUAL, vendor-tested seed script DataPallas ships (it seeds the sample `seed_inv_*` tables). COPY its structure and vendor handling exactly — DROP+CREATE outside the transaction, INSERTs inside `withTransaction`, explicit IDs, fixed-seed DataFaker — but emit YOUR `my_*` tables from the requirement above. Do NOT reproduce its `seed_inv_*` names; those are its data, not yours:
 
 ```groovy
 [VENDOR_EXAMPLE_SCRIPT]

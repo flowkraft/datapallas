@@ -96,8 +96,9 @@
 //
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { test, Browser } from '@playwright/test';
+import { test, Browser, Page } from '@playwright/test';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as _ from 'lodash';
 
 import { electronBeforeAfterAllTest } from '../../../utils/common-setup';
@@ -106,12 +107,15 @@ import { FluentTester } from '../../../helpers/fluent-tester';
 import { ConnectionsTestHelper } from '../../../helpers/areas/connections-test-helper';
 import { ConfTemplatesTestHelper } from '../../../helpers/areas/conf-templates-test-helper';
 import { ConfigurationTestHelper } from '../../../helpers/areas/configuration-test-helper';
+import * as PATHS from '../../../utils/paths';
 import { SelfServicePortalsTestHelper } from '../../../helpers/areas/self-service-portals-test-helper';
 import {
   DOCS_IMAGES_DIR,
   captureDocsScreenshot,
+  captureDocsScreenshotOfElement,
   captureDocsScreenshotWithHighlights,
   hideToastsForScreenshots,
+  clearErrorLogsForScreenshots,
 } from '../../../utils/docs-screenshot-helper';
 
 // ── OUTPUT SUB-DIR ────────────────────────────────────────────────────────────
@@ -122,6 +126,20 @@ const BI_DIR = path.join(DOCS_IMAGES_DIR, 'bi-analytics');
 // show the old/new pair side by side; drop the `-dp` once approved (same
 // convention as quickstart.screens.ts / samples.screens.ts).
 const dp = (base: string) => `${base}-dp.png`;
+
+// Scroll the expanded AI-Copilot prompt so its first highlighted `[ ... ]` placeholder is
+// centered in the prompt's own scroll box — the customizable section is often below the fold
+// (the prompt `<pre>` is `overflow-y: auto`). No-op when there is no prompt / no placeholder.
+async function scrollPromptPlaceholderIntoView(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const pre = document.getElementById('aiPromptExpandedText');
+    const mark = pre?.querySelector('mark.ai-prompt-placeholder') as HTMLElement | null;
+    if (!pre || !mark) return;
+    const p = pre.getBoundingClientRect();
+    const m = mark.getBoundingClientRect();
+    pre.scrollTop += (m.top - p.top) - pre.clientHeight / 2 + m.height / 2;
+  });
+}
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 //
@@ -612,6 +630,7 @@ electronBeforeAfterAllTest(
       // it gets seen and fixed, never masked. The collapse-before-paste flow in
       // the template step below prevents the known benign trigger at its root.
       await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
 
       // ── CAPTURE 060: Create Report modal, name + Report Generation checked ──
       // Same flow as ConfTemplatesTestHelper.createNewTemplate, inlined so the
@@ -1053,13 +1072,2316 @@ electronBeforeAfterAllTest(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BLOCK 3 — (placeholder for the next Reporting-area docs targets)
+// BLOCK 3 — report-generation.mdx  ("Employee Hires" walkthrough)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// report-generation.mdx, report-bursting.mdx, report-distribution-email.mdx,
-// report-distribution-qa.mdx and report-distribution-upload.mdx walk the SAME
-// surface captured above (create report → DataSource → Parameters → Output
-// Template) plus their page-specific tabs (Generate/Burst screens, Email
-// Settings, QA, Upload). Append one `electronBeforeAfterAllTest('Reporting —
-// docs screenshots — <page>', …)` block per docs page, reusing the SETUP /
-// CLEANUP pattern above so blocks remain independently runnable.
+// Re-captures the CURRENT-look app screenshots on
+//   content/docs/report-generation.mdx
+// as `<orig>-dp.png` written next to the manual originals in the docs ROOT images
+// dir, so the page can show old/new side by side (same `-dp` swap convention as
+// BLOCK 1 and connections.screens.ts). Built on the SAME proven flow as
+// reporting.spec.ts `configureAndRunReportGeneration2` — one "Employee Hires"
+// report against the bundled SQLite Northwind DB (no Docker), driven across every
+// surface the page documents, capturing along the way.
+//
+// APP SCREENS ONLY. The page's non-app images are deliberately NOT reproduced
+// here (there is no app screen to capture): the Microsoft Create gallery
+// (045_47), Adobe Color (045_55), the Template Gallery shots (045_45/50) and the
+// pure AI-prompt-TEXT panels (045_00/31/37/39/60/70, 045_29; 043_20 + 044_05 are
+// captured in BLOCK 3b instead).
+// 042_15 already has a -dp from connections.screens.ts and is reused as-is.
+//
+// Shot → state mapping (all written to the docs ROOT images dir):
+//   045_05_create-report-generation-template-dp   Create Report modal, name typed,
+//                                                  Report Generation capability ringed
+//   045_10_reporting-configuration-dp             Reporting Settings landing (DataSource
+//                                                  + Output/Template tabs)
+//   045_15_reporting-datasource-csv-file-dp        CSV data-source options panel
+//   045_20_reporting-datasource-fixed-width-file-dp Fixed-Width options panel
+//   045_25_reporting-datasource-excel-file-dp       Excel options panel
+//   043_07_ai-driven-fetch-data-script-datasource-dp Script data source, Groovy in editor
+//                                                     + "Hey AI, Help Me…" script button ringed
+//   043_17_ai-driven-fetch-data-generate-script-dp   AI copilot modal — generate script
+//                                                     from the domain-grouped schema
+//   043_05_ai-driven-fetch-data-sql-query-dp        SQL Query data source, SQL in editor
+//                                                     + "Hey AI, Help Me…" SQL button ringed
+//   043_25_ai-driven-fetch-data-report-parameters-dp Report Parameters sub-tab DSL editor
+//   045_28_reporting-datasource-more-options-data-transformations-dp
+//                                                    "Show More Options" → Additional
+//                                                    Data Transformation editor
+//   043_10_ai-driven-fetch-data-generate-sql-using-domain-grouped-schema-dp
+//                                                    Domain-grouped schema picklist + the
+//                                                    "Generate SQL Query with Help From AI"
+//                                                    button (entry point, BEFORE the copilot)
+//   045_30_reporting-output-pdf-html-dp            Output = PDF (HTML→PDF), HTML template
+//   045_35_reporting-output-xlsx-dp                Output = Excel (xlsx)
+//   045_40_reporting-output-html-dp                Output = HTML
+//   045_42_reporting-output-docx-dp                Output = Word (docx) template selector
+//   045_43_reporting-output-any-format-dp          Output = XML/JSON/any text format
+//   045_32_reporting-output-pdf-fop-dp             Output = PDF via XSL-FO, FOP template
+//   045_65_reporting-generate-reports-dp           Generate Reports screen, report picked
+//   043_35_ai-driven-fetch-data-report-params-dp   Runtime Report Parameters form (element)
+//
+// Capture order differs from doc order on purpose: the file-based data-source
+// panels (CSV/Fixed-Width/Excel) and the Script data source are captured BEFORE
+// the SQL Query data source, so the report ends configured as SQL-with-parameters
+// — the state the Generate screen + runtime-parameters form (045_65 / 043_35)
+// need. The Output-format shots settle LAST on FOP2PDF with a template pasted, so
+// the report is left generate-ready.
+//
+// HOW TO RUN (only this block): set E2E_SPEC="reporting.screens.ts" and
+// E2E_GREP="Reporting — docs screenshots — report-generation.mdx" in
+// custom:start-server-and-e2e-electron-screens-grep, then run it.
+
+const RG_CONNECTION_NAME = 'Northwind';
+const RG_DB_VENDOR = 'sqlite';
+const RG_CONNECTION_CODE = `db-${_.kebabCase(RG_CONNECTION_NAME)}-${RG_DB_VENDOR}`; // db-northwind-sqlite
+const RG_REPORT_NAME = 'Employee Hires';
+const RG_REPORT_CODE = _.kebabCase(RG_REPORT_NAME); // employee-hires
+
+// Domain-grouped schema seed (Northwind Sales / Products / Customers) — copied
+// from reporting.spec.ts `createDbConnection` so the "Generate … with AI
+// (domain-grouped schema)" copilot shots (043_10 / 043_17) have real business
+// domains to generate from.
+const RG_DOMAIN_GROUPED_JSON = JSON.stringify(
+  {
+    domainGroups: [
+      {
+        // First + used by the AI shots (043_10/043_17) — matches the "Employee Hires" report.
+        label: 'Human Resources',
+        tables: [
+          { tableName: 'Employees', columns: [{ name: 'EmployeeID' }, { name: 'FirstName' }, { name: 'LastName' }, { name: 'Title' }, { name: 'HireDate' }] },
+        ],
+      },
+      {
+        label: 'Sales',
+        tables: [
+          { tableName: 'Orders', columns: [{ name: 'OrderID' }, { name: 'CustomerID' }, { name: 'OrderDate' }] },
+          { tableName: 'Order Details', columns: [{ name: 'OrderID' }, { name: 'ProductID' }, { name: 'Quantity' }] },
+        ],
+      },
+      {
+        label: 'Products',
+        tables: [
+          { tableName: 'Products', columns: [{ name: 'ProductID' }, { name: 'ProductName' }, { name: 'SupplierID' }, { name: 'CategoryID' }] },
+          { tableName: 'Categories', columns: [{ name: 'CategoryID' }, { name: 'CategoryName' }] },
+        ],
+      },
+      {
+        label: 'Customers',
+        tables: [{ tableName: 'Customers', columns: [{ name: 'CustomerID' }, { name: 'CompanyName' }, { name: 'ContactName' }] }],
+      },
+    ],
+  },
+  null,
+  2,
+);
+
+// "Employee Hires" SQL — bundled SQLite Northwind, parametrised on hire date.
+const RG_EMPLOYEE_HIRES_SQL = `SELECT
+    "EmployeeID",
+    "FirstName",
+    "LastName",
+    date("HireDate"/1000, 'unixepoch', 'localtime') AS "HireDate"
+FROM "Employees"
+WHERE date("HireDate"/1000, 'unixepoch', 'localtime') BETWEEN :startDate AND :endDate
+ORDER BY "HireDate"
+`;
+
+// Report Parameters DSL — a start/end date pair (drives the runtime form shot).
+const RG_PARAMS_SPEC = `import java.time.LocalDate
+
+reportParameters {
+  parameter(
+    id:           'startDate',
+    type:         LocalDate,
+    label:        'Start Date',
+    description:  'Report start date',
+    defaultValue: LocalDate.now().minusDays(30)
+  ) {
+    constraints(required: true, min: LocalDate.now().minusDays(36500), max: endDate)
+    ui(control: 'date', format: 'yyyy-MM-dd')
+  }
+
+  parameter(
+    id:           'endDate',
+    type:         LocalDate,
+    label:        'End Date',
+    defaultValue: LocalDate.now()
+  ) {
+    constraints(required: true, min: startDate, max: LocalDate.now())
+    ui(control: 'date', format: 'yyyy-MM-dd')
+  }
+}
+`;
+
+// Additional data transformation — keep only employees hired after mid-1992.
+const RG_TRANSFORM = `import java.util.stream.Collectors
+
+log.info("Filtering for HireDate after June 1992...")
+
+def filteredData = ctx.reportData.stream()
+    .filter { row ->
+        def hireDate = row['HireDate']?.toString()
+        hireDate && hireDate > '1992-06-30'
+    }
+    .collect(Collectors.toList())
+
+ctx.reportData = filteredData
+if (!filteredData.isEmpty()) {
+    ctx.reportColumnNames = new ArrayList<>(filteredData.get(0).keySet())
+}
+`;
+
+// Groovy script data source — same Employees data via a script (for the 043_07
+// "Script data source" shot).
+const RG_GROOVY_SCRIPT = `import groovy.sql.Sql
+import java.util.LinkedHashMap
+
+def dbSql = ctx.dbSql
+
+def sql = """
+    SELECT
+        "EmployeeID",
+        "FirstName",
+        "LastName",
+        date("HireDate"/1000, 'unixepoch', 'localtime') AS "HireDate"
+    FROM "Employees"
+    ORDER BY "HireDate"
+"""
+def rows = dbSql.rows(sql)
+
+def result = []
+rows.each { row ->
+  def m = new LinkedHashMap<String, Object>()
+  m.putAll(row)
+  result.add(m)
+}
+ctx.reportData = result
+ctx.reportColumnNames = result.isEmpty() ? [] : new ArrayList<>(result[0].keySet())
+`;
+
+// Simple HTML template — used for the PDF(HTML)/XLSX/HTML output shots.
+const RG_HTML_TEMPLATE = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Employee Hires</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #000; padding: 4px; text-align: center; }
+    th { background: #f2f2f2; }
+    .report-title { font-size: 16pt; font-weight: bold; text-align: center; margin: 15pt 0; }
+  </style>
+</head>
+<body>
+  <div class="report-title">Employee Hires</div>
+  <table>
+    <tr><th>Employee ID</th><th>First Name</th><th>Last Name</th><th>Hire Date</th></tr>
+    <tr>
+      <td>\${EmployeeID!}</td>
+      <td>\${FirstName!}</td>
+      <td>\${LastName!}</td>
+      <td>\${HireDate!}</td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+// XSL-FO template — used for the FOP2PDF output shot (045_32).
+const RG_FOP_TEMPLATE = `<fo:root xmlns:fo="http://www.w3.org/1999/XSL/Format">
+  <fo:layout-master-set>
+    <fo:simple-page-master master-name="A4"
+      page-height="29.7cm" page-width="21cm"
+      margin-top="1cm" margin-bottom="1cm" margin-left="1.5cm" margin-right="1.5cm">
+      <fo:region-body/>
+    </fo:simple-page-master>
+  </fo:layout-master-set>
+  <fo:page-sequence master-reference="A4">
+    <fo:flow flow-name="xsl-region-body">
+      <fo:block font-size="16pt" font-weight="bold" text-align="center" space-after="15pt">
+        Employee Hires
+      </fo:block>
+      <fo:table table-layout="fixed" width="100%" font-size="10pt">
+        <fo:table-column column-width="4cm"/>
+        <fo:table-column column-width="5cm"/>
+        <fo:table-column column-width="5cm"/>
+        <fo:table-column column-width="4cm"/>
+        <fo:table-body>
+          <fo:table-row background-color="#f2f2f2">
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block font-weight="bold" text-align="center">Employee ID</fo:block></fo:table-cell>
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block font-weight="bold" text-align="center">First Name</fo:block></fo:table-cell>
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block font-weight="bold" text-align="center">Last Name</fo:block></fo:table-cell>
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block font-weight="bold" text-align="center">Hire Date</fo:block></fo:table-cell>
+          </fo:table-row>
+          <fo:table-row>
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block text-align="center">\${EmployeeID!}</fo:block></fo:table-cell>
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block>\${FirstName!}</fo:block></fo:table-cell>
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block>\${LastName!}</fo:block></fo:table-cell>
+            <fo:table-cell border="1pt solid black" padding="4pt"><fo:block>\${HireDate!}</fo:block></fo:table-cell>
+          </fo:table-row>
+        </fo:table-body>
+      </fo:table>
+    </fo:flow>
+  </fo:page-sequence>
+</fo:root>
+`;
+
+// FreeMarker → XML/any-text template for the output.any shot (045_43), so the editor
+// shows a real template instead of the empty placeholder comment.
+const RG_ANY_TEMPLATE = `<#-- FreeMarker template — XML output for the Employee Hires report -->
+<Employee>
+  <EmployeeID>\${EmployeeID!}</EmployeeID>
+  <FirstName>\${FirstName!}</FirstName>
+  <LastName>\${LastName!}</LastName>
+  <Title>\${Title!}</Title>
+  <HireDate>\${HireDate!}</HireDate>
+</Employee>
+`;
+
+electronBeforeAfterAllTest(
+  'Reporting — docs screenshots — report-generation.mdx (Employee Hires)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    let connectionCreated = false;
+    let reportCreated = false;
+    let bodySucceeded = false;
+    // A DOCX template we drop into the report's own folder just for the docx shot (045_42),
+    // then remove in cleanup. DOCX templates are matched only from config/templates/reports/
+    // <folder>/, so a fresh report has none; this gives the picker a real, correctly-named one.
+    let injectedDocxPath: string | null = null;
+
+    try {
+      // ── SETUP: create a domain-grouped SQLite Northwind connection ───────────
+      // (domain-grouped seed → the AI copilot "generate from domain-grouped
+      // schema" shots have real Sales/Products/Customers domains). Mirrors
+      // reporting.spec.ts createDbConnection('dbcon-domaingrouped-schema').
+      console.log(`[SETUP] Creating ${RG_DB_VENDOR} connection "${RG_CONNECTION_NAME}" (domain-grouped)`);
+      await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+        new FluentTester(firstPage),
+        RG_CONNECTION_NAME,
+        RG_DB_VENDOR,
+      );
+      connectionCreated = true;
+
+      await new FluentTester(firstPage)
+        .clickAndSelectTableRow(`#${RG_CONNECTION_CODE}\\.xml`)
+        .waitOnElementToBecomeEnabled('#btnEdit')
+        .click('#btnEdit')
+        .waitOnElementToBecomeEnabled('#btnTestDbConnection')
+        .click('#btnTestDbConnection')
+        .confirmDialogShouldBeVisible()
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnTestDbConnection', Constants.DELAY_HUNDRED_SECONDS)
+        .waitOnElementToBecomeEnabled('#btnTestDbConnection', Constants.DELAY_HUNDRED_SECONDS)
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .waitOnElementToBecomeVisible('#tab-btn-domainGroupedDatabaseSchemaTab')
+        .click('#tab-btn-domainGroupedDatabaseSchemaTab')
+        .waitOnElementToBecomeInvisible(
+          'span:has-text("To load the schema, please ensure your connection details are configured")',
+        )
+        .waitOnElementToBecomeVisible('#btnToggleDomainGroupedCodeView')
+        .click('#btnToggleDomainGroupedCodeView')
+        .waitOnElementToBecomeVisible('#domainGroupedCodeEditor')
+        .setCodeJarContentSingleShot('#domainGroupedCodeEditor', RG_DOMAIN_GROUPED_JSON)
+        .click('#btnToggleDomainGroupedCodeView')
+        .waitOnElementToBecomeVisible('#domainGroupedSchemaPicklist')
+        .click('#btnOKConfirmationDbConnectionModal')
+        .waitOnElementToBecomeInvisible('#btnOKConfirmationDbConnectionModal');
+
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      // ── CAPTURE 045_05: Create Report modal, Report Generation capability ────
+      await new FluentTester(firstPage)
+        .gotoConfigurationReports()
+        .click('#btnNew')
+        .waitOnElementToBecomeVisible('#templateHowTo')
+        .waitOnInputValueToContainText('#templateHowTo', 'folder-name')
+        .click('#btnCapReportGenerationMailMerge')
+        .waitOnElementToBecomeInvisible('#templateHowTo')
+        .waitOnElementToBecomeInvisible('#templateHowToSnipped')
+        .click('#templateName')
+        .typeText(RG_REPORT_NAME);
+      await firstPage.waitForTimeout(300);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('045_05_create-report-generation-template'),
+        ['#spanCapReportGenerationMailMerge'],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('045_05_create-report-generation-template')}`);
+
+      await new FluentTester(firstPage)
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#burstFileName');
+      reportCreated = true;
+
+      // Drop a DOCX template into the report's OWN folder (real-life convention:
+      // <report-folder>-template.docx, mirroring payslips/payslips-template.docx) BEFORE the
+      // config loads, so the docx picker (045_42) finds + lists it naturally. Removed in cleanup.
+      {
+        const portableDir = process.env.PORTABLE_EXECUTABLE_DIR as string;
+        const srcDocx = path.join(portableDir, 'samples', 'reports', 'payslips', 'payslips-template.docx');
+        const destDir = path.join(portableDir, 'templates', 'reports', RG_REPORT_CODE);
+        const destDocx = path.join(destDir, `${RG_REPORT_CODE}-template.docx`);
+        try {
+          fs.mkdirSync(destDir, { recursive: true });
+          fs.copyFileSync(srcDocx, destDocx);
+          injectedDocxPath = destDocx;
+          console.log(`[SETUP] injected docx template for the docx shot: ${destDocx}`);
+        } catch (e) {
+          console.warn('[SETUP] could not inject docx template (045_42 may show "no templates"):', e);
+        }
+      }
+
+      // ── Load the report, open Reporting Settings ─────────────────────────────
+      await ConfigurationTestHelper.loadConfiguration(new FluentTester(firstPage), RG_REPORT_CODE)
+        .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
+        .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
+        .sleep(3 * Constants.DELAY_ONE_SECOND)
+        .click('#leftMenuReportingSettings')
+        .waitOnElementToBecomeVisible('#dsTypes')
+        .waitOnElementToBecomeEnabled('#dsTypes');
+
+      // ── CAPTURE 045_10: Reporting Settings landing — ring the top Configuration
+      // menu + the left Reporting menu (matches the original's point). The top one is
+      // inset (it sits flush against the sticky header edge, which clips an outer ring).
+      await firstPage.waitForTimeout(500);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('045_10_reporting-configuration'),
+        [{ selector: '#topMenuConfiguration', inset: true }, '#leftMenuReportingSettings'],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('045_10_reporting-configuration')}`);
+
+      // ── CAPTURE 045_15 / 045_20 / 045_25: file-based data-source panels ──────
+      // Done BEFORE SQL so the report ends configured as SQL-with-parameters.
+      // CSV: expand "Show More CSV Options" so the extra options (Quotation/Escape
+      // Char, Strict/Ignore Quotations, Trim Whitespaces) are visible — matches the
+      // original's point.
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.csvfile')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .click('#lblShowMoreCsvOptions')
+        .waitOnElementToBecomeVisible('#quotationChar')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_15_reporting-datasource-csv-file'));
+      console.log(`[capture] ${dp('045_15_reporting-datasource-csv-file')}`);
+
+      // Fixed-Width: expand "Show More Fixed Width Options" (ID Column, Trim Whitespaces).
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.fixedwidthfile')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .click('#lblShowMoreFixedWidthOptions')
+        .waitOnElementToBecomeVisible('#fixedWidthIdColumn')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_20_reporting-datasource-fixed-width-file'));
+      console.log(`[capture] ${dp('045_20_reporting-datasource-fixed-width-file')}`);
+
+      // Excel: expand "Show More Excel Options" (ID Column, Trim Whitespaces, Use Formula Results).
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.excelfile')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .click('#lblShowMoreExcelOptions')
+        .waitOnElementToBecomeVisible('#excelIdColumn')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_25_reporting-datasource-excel-file'));
+      console.log(`[capture] ${dp('045_25_reporting-datasource-excel-file')}`);
+
+      // ── CAPTURE 043_07: Script data source + "Hey AI" script button ──────────
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.scriptfile')
+        .waitOnElementToBecomeVisible('#groovyScriptEditor')
+        .waitOnElementToContainText('#databaseConnection', RG_CONNECTION_NAME)
+        .setCodeJarContentSingleShot('#groovyScriptEditor', RG_GROOVY_SCRIPT)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('043_07_ai-driven-fetch-data-script-datasource'),
+        [{ selector: '#btnHelpWithScriptAI', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('043_07_ai-driven-fetch-data-script-datasource')}`);
+
+      // ── CAPTURE 043_17: AI copilot — generate script from domain-grouped ─────
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#btnHelpWithScriptAI')
+        .click('#btnHelpWithScriptAI')
+        .waitOnElementToBecomeVisible('#modalDbConnection')
+        .click('#tab-btn-domainGroupedDatabaseSchemaTab')
+        .waitOnElementToBecomeVisible('#domainGroupedSchemaPicklist')
+        .waitOnElementToBecomeVisible('#chooseTableLabelDomainGroupedSchema')
+        .click('#treeNodedomain_human_resourcessourceTreedomainGroupedSchemaPicklist')
+        .click('#btnMoveToTargetdomainGroupedSchemaPicklist')
+        .waitOnElementToBecomeInvisible('#chooseTableLabelDomainGroupedSchema')
+        .waitOnElementToBecomeEnabled('#btnGenerateSqlQueryWithAIDomainGroupedSchema')
+        .click('#btnGenerateSqlQueryWithAIDomainGroupedSchema')
+        .waitOnElementToBecomeVisible('#btnCopyPromptText')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await scrollPromptPlaceholderIntoView(firstPage);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('043_17_ai-driven-fetch-data-generate-script'));
+      console.log(`[capture] ${dp('043_17_ai-driven-fetch-data-generate-script')}`);
+      await new FluentTester(firstPage)
+        .click('#btnCloseAiCopilotModal')
+        .waitOnElementToBecomeInvisible('#btnCopyPromptText')
+        .click('#btnCloseDbConnectionModal')
+        .waitOnElementToBecomeInvisible('#btnCloseDbConnectionModal');
+
+      // ── CAPTURE 043_05: SQL Query data source + "Hey AI" SQL button ──────────
+      // SQL is set LAST among data sources so the report is left as SQL-with-params.
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.sqlquery')
+        .waitOnElementToBecomeVisible('#sqlQueryEditor')
+        .waitOnElementToContainText('#databaseConnection', RG_CONNECTION_NAME)
+        .setCodeJarContentSingleShot('#sqlQueryEditor', RG_EMPLOYEE_HIRES_SQL)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('043_05_ai-driven-fetch-data-sql-query'),
+        [{ selector: '#btnHelpWithSqlQueryAI', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('043_05_ai-driven-fetch-data-sql-query')}`);
+
+      // ── CAPTURE 043_25: Report Parameters sub-tab ────────────────────────────
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#tab-btn-tabSqlReportParameters')
+        .click('#tab-btn-tabSqlReportParameters')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .waitOnElementToBecomeVisible('#paramsSpecEditor')
+        .setCodeJarContentSingleShot('#paramsSpecEditor', RG_PARAMS_SPEC)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('043_25_ai-driven-fetch-data-report-parameters'),
+        [{ selector: '#btnAiHelpParamsSpecSqlInTab', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('043_25_ai-driven-fetch-data-report-parameters')}`);
+      await new FluentTester(firstPage)
+        .click('#tab-btn-tabSqlCode')
+        .waitOnElementToBecomeVisible('#sqlQueryEditor')
+        .sleep(Constants.DELAY_ONE_SECOND);
+
+      // ── CAPTURE 045_28: BOTH "Show More SQL Options" AND "Additional Data
+      // Transformation" expanded — the shot's point is "advanced options &
+      // transformations", so both panels must be open. ────────────────────────
+      await new FluentTester(firstPage)
+        .click('#lblShowMoreSqlOptions')
+        .waitOnElementToBecomeVisible('#sqlIdColumn')
+        .click('#lblShowAdditionalTransformation')
+        .waitOnElementToBecomeVisible('#transformationCodeEditor')
+        .setCodeJarContentSingleShot('#transformationCodeEditor', RG_TRANSFORM)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_28_reporting-datasource-more-options-data-transformations'));
+      console.log(`[capture] ${dp('045_28_reporting-datasource-more-options-data-transformations')}`);
+
+      // ── CAPTURE 045_29: the AI Copilot prompt for "Additional Data Transformation"
+      // (Script Writing Assistance → the Groovy transformation prompt, expanded). ──
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#btnHelpWithTransformationAI')
+        .click('#btnHelpWithTransformationAI')
+        .waitOnElementToBecomeVisible('#btnCopyPromptText')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await scrollPromptPlaceholderIntoView(firstPage);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_29_reporting-datasource-data-transformations-ai-prompt'));
+      console.log(`[capture] ${dp('045_29_reporting-datasource-data-transformations-ai-prompt')}`);
+      await new FluentTester(firstPage)
+        .click('#btnCloseAiCopilotModal')
+        .waitOnElementToBecomeInvisible('#btnCopyPromptText');
+
+      // ── CAPTURE 043_10: domain-grouped schema picklist + "Generate SQL Query
+      // with Help From AI" button (the entry point — BEFORE the copilot opens; the
+      // copilot prompt modal itself is 043_17). Matches the original's point. ─────
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#btnHelpWithSqlQueryAI')
+        .click('#btnHelpWithSqlQueryAI')
+        .waitOnElementToBecomeVisible('#modalDbConnection')
+        .click('#tab-btn-domainGroupedDatabaseSchemaTab')
+        .waitOnElementToBecomeVisible('#domainGroupedSchemaPicklist')
+        .waitOnElementToBecomeVisible('#chooseTableLabelDomainGroupedSchema')
+        .click('#treeNodedomain_human_resourcessourceTreedomainGroupedSchemaPicklist')
+        .click('#btnMoveToTargetdomainGroupedSchemaPicklist')
+        .waitOnElementToBecomeInvisible('#chooseTableLabelDomainGroupedSchema')
+        .waitOnElementToBecomeEnabled('#btnGenerateSqlQueryWithAIDomainGroupedSchema')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('043_10_ai-driven-fetch-data-generate-sql-using-domain-grouped-schema'),
+        [{ selector: '#btnGenerateSqlQueryWithAIDomainGroupedSchema', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('043_10_ai-driven-fetch-data-generate-sql-using-domain-grouped-schema')}`);
+      await new FluentTester(firstPage)
+        .click('#btnCloseDbConnectionModal')
+        .waitOnElementToBecomeInvisible('#btnCloseDbConnectionModal');
+
+      // ── Output Template tab — capture every output format ────────────────────
+      await new FluentTester(firstPage)
+        .click('#tab-btn-reportingTemplateOutputTab')
+        .waitOnElementToBecomeVisible('#reportOutputType')
+        .sleep(Constants.DELAY_ONE_SECOND);
+
+      // 045_30 — PDF (HTML → PDF); paste an HTML template so the editor isn't empty
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.pdf')
+        .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
+        .setCodeJarContentSingleShot('#codeJarHtmlTemplateEditor', RG_HTML_TEMPLATE)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('045_30_reporting-output-pdf-html'), [{ selector: '#btnAskAiForHelpOutput', inset: true }], DOCS_IMAGES_DIR);
+      console.log(`[capture] ${dp('045_30_reporting-output-pdf-html')}`);
+
+      // 045_31 — the AI Copilot prompt gallery for PDF (opened via "Hey AI, Help Me
+      // Build This..." on the PDF output; lands on "PDF Generation (from HTML)"). ──
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#btnAskAiForHelpOutput')
+        .click('#btnAskAiForHelpOutput')
+        .waitOnElementToBecomeVisible('#btnCopyPromptText')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await scrollPromptPlaceholderIntoView(firstPage);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_31_reporting-output-pdf-ai-prompts'));
+      console.log(`[capture] ${dp('045_31_reporting-output-pdf-ai-prompts')}`);
+      await new FluentTester(firstPage)
+        .click('#btnCloseAiCopilotModal')
+        .waitOnElementToBecomeInvisible('#btnCopyPromptText');
+
+      // 045_35 — Excel (xlsx)
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.xlsx')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('045_35_reporting-output-xlsx'), [{ selector: '#btnAskAiForHelpOutput', inset: true }], DOCS_IMAGES_DIR);
+      console.log(`[capture] ${dp('045_35_reporting-output-xlsx')}`);
+
+      // 045_37 — the Excel AI prompt, expanded, with its [ ... ] customization
+      // placeholders auto-highlighted in-app (a single shot that replaces the old
+      // orig+custom pair 045_37/045_39 — no manual Notepad++ marking needed).
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#btnAskAiForHelpOutput')
+        .click('#btnAskAiForHelpOutput')
+        .waitOnElementToBecomeVisible('#btnCopyPromptText')
+        .waitOnElementToBecomeVisible('#aiPromptExpandedText')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await scrollPromptPlaceholderIntoView(firstPage);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_37_reporting-output-xlsx-ai-prompt'));
+      console.log(`[capture] ${dp('045_37_reporting-output-xlsx-ai-prompt')}`);
+      await new FluentTester(firstPage)
+        .click('#btnCloseAiCopilotModal')
+        .waitOnElementToBecomeInvisible('#btnCopyPromptText');
+
+      // 045_40 — HTML
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.html')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('045_40_reporting-output-html'), [{ selector: '#btnAskAiForHelpOutput', inset: true }], DOCS_IMAGES_DIR);
+      console.log(`[capture] ${dp('045_40_reporting-output-html')}`);
+
+      // 045_42 — Word (docx): select the real DOCX template we dropped into the report
+      // folder at setup, so the selector + its theme-styled path render as a configured
+      // docx report (the earlier white-on-white path is fixed by theme-aware styling).
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.docx')
+        .waitOnElementToBecomeVisible('#selectTemplateFile')
+        .click('#selectTemplateFile')
+        .waitOnElementToBecomeVisible(`span.ng-option-label:has-text("${RG_REPORT_CODE}-template.docx")`)
+        .click(`span.ng-option-label:has-text("${RG_REPORT_CODE}-template.docx")`)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('045_42_reporting-output-docx'), [{ selector: '#btnAskAiForHelpOutput', inset: true }], DOCS_IMAGES_DIR);
+      console.log(`[capture] ${dp('045_42_reporting-output-docx')}`);
+
+      // 045_43 — XML / JSON / any text format: paste a real FreeMarker template so the
+      // editor shows content (not just the empty placeholder comment).
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.any')
+        .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
+        .setCodeJarContentSingleShot('#codeJarHtmlTemplateEditor', RG_ANY_TEMPLATE)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('045_43_reporting-output-any-format'), [{ selector: '#btnAskAiForHelpOutput', inset: true }], DOCS_IMAGES_DIR);
+      console.log(`[capture] ${dp('045_43_reporting-output-any-format')}`);
+
+      // 045_32 — PDF via XSL-FO (settle here so the report is left generate-ready)
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.fop2pdf')
+        .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
+        .sleep(2 * Constants.DELAY_ONE_SECOND)
+        .setCodeJarContentSingleShot('#codeJarHtmlTemplateEditor', RG_FOP_TEMPLATE)
+        .sleep(2 * Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(firstPage, dp('045_32_reporting-output-pdf-fop'), [{ selector: '#btnAskAiForHelpOutput', inset: true }], DOCS_IMAGES_DIR);
+      console.log(`[capture] ${dp('045_32_reporting-output-pdf-fop')}`);
+
+      // ── CAPTURE 045_65 / 043_35: Generate Reports screen + runtime params ────
+      await new FluentTester(firstPage)
+        .sleep(3 * Constants.DELAY_ONE_SECOND)
+        .gotoReportGenerationScreen()
+        .click('#selectMailMergeClassicReport')
+        .waitOnElementToBecomeVisible(`span.ng-option-label:has-text("${RG_REPORT_NAME} (input SQL Query)")`)
+        .click(`span.ng-option-label:has-text("${RG_REPORT_NAME} (input SQL Query)")`)
+        .waitOnElementToBecomeVisible('#formReportParameters')
+        .waitOnElementToBecomeEnabled('#startDate')
+        .setValue('#startDate', '1991-01-01')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        // Clear the leftover setup logs (connection test / schema fetch) so the Info Log
+        // Preview is clean in the shot.
+        .click('#btnClearLogs')
+        .confirmDialogShouldBeVisible()
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('045_65_reporting-generate-reports'));
+      console.log(`[capture] ${dp('045_65_reporting-generate-reports')}`);
+
+      await captureDocsScreenshotOfElement(
+        firstPage,
+        dp('043_35_ai-driven-fetch-data-report-params'),
+        '#formReportParameters',
+        { targetWidth: 900 },
+      );
+      console.log(`[capture] ${dp('043_35_ai-driven-fetch-data-report-params')}`);
+
+      console.log('[DONE] All report-generation.mdx screenshots captured.');
+      bodySucceeded = true;
+    } finally {
+      // ── CLEANUP — mirror BLOCK 1: neutral nav, delete report + connection,
+      // rethrow only when the body succeeded so a real failure stays reported.
+      const cleanupErrors: string[] = [];
+
+      // Remove the DOCX template we dropped in for the docx shot (deleteTemplate below
+      // removes the whole report folder anyway, but unlink first so it's gone even if
+      // report deletion is skipped).
+      if (injectedDocxPath) {
+        try { fs.unlinkSync(injectedDocxPath); } catch (e) { /* already gone / folder removed */ }
+      }
+
+      try {
+        const modalCloseBtn = firstPage.locator('#btnClose');
+        if (await modalCloseBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await modalCloseBtn.click();
+          await modalCloseBtn.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+        }
+      } catch (e) {
+        cleanupErrors.push(`close open modal: ${e}`);
+      }
+
+      if (reportCreated || connectionCreated) {
+        try {
+          await firstPage.evaluate(() =>
+            (document.activeElement as HTMLElement | null)?.blur(),
+          );
+          await new FluentTester(firstPage).gotoBurstScreen();
+        } catch (e) {
+          cleanupErrors.push(`neutral navigation before cleanup: ${e}`);
+        }
+      }
+
+      if (reportCreated) {
+        try {
+          await ConfTemplatesTestHelper.deleteTemplate(new FluentTester(firstPage), RG_REPORT_CODE);
+        } catch (e) {
+          cleanupErrors.push(`delete report ${RG_REPORT_CODE}: ${e}`);
+        }
+      }
+
+      if (connectionCreated) {
+        try {
+          await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+            new FluentTester(firstPage),
+            `${RG_CONNECTION_CODE}\\.xml`,
+            RG_DB_VENDOR,
+          );
+        } catch (e) {
+          cleanupErrors.push(`delete connection ${RG_CONNECTION_CODE}: ${e}`);
+        }
+      }
+
+      if (cleanupErrors.length > 0) {
+        console.error('[CLEANUP] FAILED:\n' + cleanupErrors.join('\n'));
+        if (bodySucceeded) {
+          throw new Error(`Cleanup failed — resources may be leaked:\n${cleanupErrors.join('\n')}`);
+        }
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK 3b — ai-powered-reporting.mdx  ("Employee Hires" AI walkthrough)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Re-captures the app screenshots UNIQUE to
+//   content/docs/report-generation/ai-powered-reporting.mdx
+// that BLOCK 3 does not already produce. This page tells the same Employee Hires
+// story but ACTUALLY RUNS the report, so this block drives the full SQL flow
+// (test query → Tabulator results → generate → output files) exactly like
+// reporting.spec.ts `configureAndRunReportGeneration2` and captures along the way.
+//
+// Shared with BLOCK 3 (NOT re-captured here — the page reuses those -dp files):
+//   043_05 (SQL data source), 043_10 (AI generate SQL / domain-grouped),
+//   043_25 (Report Parameters), 043_35 (runtime parameters form).
+// The "Hey AI, Help Me..." button (041_00) is now the reusable dark-theme SVG
+//   /images/common/hey-ai-button.svg — no screenshot needed.
+// Shot → state mapping (docs ROOT images dir):
+//   043_00_ai-driven-fetch-data-report-new-dp        Create Report modal (capability ringed)
+//   043_15_ai-driven-fetch-data-generate-sql-dp      AI copilot modal — generate SQL from the
+//                                                    (plain) database schema
+//   043_20_ai-driven-fetch-data-generate-sql-ai-prompt-custom-dp
+//                                                    Same prompt, scrolled to its editable placeholder
+//   043_30_ai-driven-fetch-data-test-sql-query-dp    "Test SQL Query" confirmation dialog
+//   043_40_ai-driven-fetch-data-tabulator-query-results-dp
+//                                                    Tabulator tab — the parametrised query rows
+//   044_00_ai-driven-template-dp                     Output Template tab — output type + template
+//   044_05_ai-driven-template-ai-prompt-template-generation-dp
+//                                                    Output-template AI prompt (auto-expanded)
+//   044_10_ai-driven-report-execution-dp             Generate Reports — Burst run + View Data
+//                                                    (the fetched-rows grid + the run's logs)
+//
+// HOW TO RUN (only this block): set E2E_SPEC="reporting.screens.ts" and
+// E2E_GREP="Reporting — docs screenshots — ai-powered-reporting.mdx".
+
+electronBeforeAfterAllTest(
+  'Reporting — docs screenshots — ai-powered-reporting.mdx (Employee Hires)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    let connectionCreated = false;
+    let reportCreated = false;
+    let bodySucceeded = false;
+
+    try {
+      // ── SETUP: domain-grouped SQLite Northwind connection (same as BLOCK 3) ──
+      console.log(`[SETUP] Creating ${RG_DB_VENDOR} connection "${RG_CONNECTION_NAME}" (domain-grouped)`);
+      await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+        new FluentTester(firstPage),
+        RG_CONNECTION_NAME,
+        RG_DB_VENDOR,
+      );
+      connectionCreated = true;
+
+      await new FluentTester(firstPage)
+        .clickAndSelectTableRow(`#${RG_CONNECTION_CODE}\\.xml`)
+        .waitOnElementToBecomeEnabled('#btnEdit')
+        .click('#btnEdit')
+        .waitOnElementToBecomeEnabled('#btnTestDbConnection')
+        .click('#btnTestDbConnection')
+        .confirmDialogShouldBeVisible()
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnTestDbConnection', Constants.DELAY_HUNDRED_SECONDS)
+        .waitOnElementToBecomeEnabled('#btnTestDbConnection', Constants.DELAY_HUNDRED_SECONDS)
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .waitOnElementToBecomeVisible('#tab-btn-domainGroupedDatabaseSchemaTab')
+        .click('#tab-btn-domainGroupedDatabaseSchemaTab')
+        .waitOnElementToBecomeInvisible(
+          'span:has-text("To load the schema, please ensure your connection details are configured")',
+        )
+        .waitOnElementToBecomeVisible('#btnToggleDomainGroupedCodeView')
+        .click('#btnToggleDomainGroupedCodeView')
+        .waitOnElementToBecomeVisible('#domainGroupedCodeEditor')
+        .setCodeJarContentSingleShot('#domainGroupedCodeEditor', RG_DOMAIN_GROUPED_JSON)
+        .click('#btnToggleDomainGroupedCodeView')
+        .waitOnElementToBecomeVisible('#domainGroupedSchemaPicklist')
+        .click('#btnOKConfirmationDbConnectionModal')
+        .waitOnElementToBecomeInvisible('#btnOKConfirmationDbConnectionModal');
+
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      // ── CAPTURE 043_00: Create Report modal ──────────────────────────────────
+      await new FluentTester(firstPage)
+        .gotoConfigurationReports()
+        .click('#btnNew')
+        .waitOnElementToBecomeVisible('#templateHowTo')
+        .waitOnInputValueToContainText('#templateHowTo', 'folder-name')
+        .click('#btnCapReportGenerationMailMerge')
+        .waitOnElementToBecomeInvisible('#templateHowTo')
+        .waitOnElementToBecomeInvisible('#templateHowToSnipped')
+        .click('#templateName')
+        .typeText(RG_REPORT_NAME);
+      await firstPage.waitForTimeout(300);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('043_00_ai-driven-fetch-data-report-new'),
+        ['#spanCapReportGenerationMailMerge'],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('043_00_ai-driven-fetch-data-report-new')}`);
+
+      await new FluentTester(firstPage)
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#burstFileName');
+      reportCreated = true;
+
+      // ── Load report, Reporting Settings, SQL data source + parameters ────────
+      await ConfigurationTestHelper.loadConfiguration(new FluentTester(firstPage), RG_REPORT_CODE)
+        .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
+        .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
+        .sleep(3 * Constants.DELAY_ONE_SECOND)
+        .click('#leftMenuReportingSettings')
+        .waitOnElementToBecomeVisible('#dsTypes')
+        .waitOnElementToBecomeEnabled('#dsTypes')
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.sqlquery')
+        .waitOnElementToBecomeVisible('#sqlQueryEditor')
+        .waitOnElementToContainText('#databaseConnection', RG_CONNECTION_NAME)
+        .setCodeJarContentSingleShot('#sqlQueryEditor', RG_EMPLOYEE_HIRES_SQL)
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .waitOnElementToBecomeEnabled('#tab-btn-tabSqlReportParameters')
+        .click('#tab-btn-tabSqlReportParameters')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .waitOnElementToBecomeVisible('#paramsSpecEditor')
+        .setCodeJarContentSingleShot('#paramsSpecEditor', RG_PARAMS_SPEC)
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .click('#tab-btn-tabSqlCode')
+        .waitOnElementToBecomeVisible('#sqlQueryEditor')
+        .sleep(Constants.DELAY_ONE_SECOND);
+
+      // ── CAPTURE 043_15: AI copilot — generate SQL from the database schema ───
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#btnHelpWithSqlQueryAI')
+        .click('#btnHelpWithSqlQueryAI')
+        .waitOnElementToBecomeVisible('#modalDbConnection')
+        .click('#tab-btn-databaseSchemaTab')
+        .waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer')
+        .waitOnElementToBecomeVisible('#btnGenerateWithAIDbSchema')
+        .elementShouldBeDisabled('#btnGenerateWithAIDbSchema')
+        .click('#treeNodecategoriessourceTreedatabaseSchemaPicklist')
+        .click('#treeNodeproductssourceTreedatabaseSchemaPicklist')
+        .click('#btnMoveToTargetdatabaseSchemaPicklist')
+        .waitOnElementToBecomeInvisible('#chooseTableLabelDbSchema')
+        .waitOnElementToBecomeEnabled('#btnGenerateWithAIDbSchema')
+        .click('#btnGenerateWithAIDbSchema')
+        .waitOnElementToBecomeVisible('#btnCopyPromptText')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      // Scroll the generated prompt so its amber [ ... ] placeholder is in view —
+      // the customizable part the legacy shot boxed by hand. Without this the
+      // capture lands on the prompt's top and the placeholder sits below the fold.
+      await scrollPromptPlaceholderIntoView(firstPage);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('043_15_ai-driven-fetch-data-generate-sql'));
+      console.log(`[capture] ${dp('043_15_ai-driven-fetch-data-generate-sql')}`);
+
+      // ── CAPTURE 043_20: same copilot, scrolled to the customizable [ ... ] ───
+      // placeholder — the new UI auto-highlights it in amber (mark.ai-prompt-
+      // placeholder), the latest-UI equivalent of the legacy shot's hand-drawn box
+      // around the business requirement. Full-window, like 043_15 / 043_17.
+      await scrollPromptPlaceholderIntoView(firstPage);
+      await firstPage.waitForTimeout(300);
+      await captureDocsScreenshot(firstPage, dp('043_20_ai-driven-fetch-data-generate-sql-ai-prompt-custom'));
+      console.log(`[capture] ${dp('043_20_ai-driven-fetch-data-generate-sql-ai-prompt-custom')}`);
+
+      await new FluentTester(firstPage)
+        .click('#btnCloseAiCopilotModal')
+        .waitOnElementToBecomeInvisible('#btnCopyPromptText')
+        .click('#btnCloseDbConnectionModal')
+        .waitOnElementToBecomeInvisible('#btnCloseDbConnectionModal');
+
+      // ── CAPTURE 043_30: "Test SQL Query" confirmation dialog ─────────────────
+      // The FIRST Test click only raises the "Log files are not empty — press
+      // Clear Logs first" info dialog, so dismiss it, clear the logs, then click
+      // Test AGAIN — THAT raises the real "test the SQL query?" confirmation,
+      // which is the shot the doc wants (not the clear-logs notice).
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeVisible('#btnTestSqlQuery')
+        .click('#btnTestSqlQuery')
+        .infoDialogShouldBeVisible()
+        .clickYesDoThis()
+        .click('#btnClearLogs')
+        .confirmDialogShouldBeVisible()
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .waitOnElementToBecomeVisible('#btnGreatNoErrorsNoWarnings')
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .click('#btnTestSqlQuery')
+        .confirmDialogShouldBeVisible();
+      await firstPage.waitForTimeout(300);
+      await captureDocsScreenshot(firstPage, dp('043_30_ai-driven-fetch-data-test-sql-query'));
+      console.log(`[capture] ${dp('043_30_ai-driven-fetch-data-test-sql-query')}`);
+
+      await new FluentTester(firstPage)
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#formReportParameters')
+        .waitOnElementToBecomeVisible('#btnTestQueryRun')
+        .waitOnElementToBecomeEnabled('#startDate')
+        .setValue('#startDate', '1991-01-01')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .waitOnElementToBecomeEnabled('#btnTestQueryRun')
+        .click('#btnTestQueryRun');
+
+      // ── CAPTURE 043_40: Tabulator tab — parametrised query results ───────────
+      await new FluentTester(firstPage)
+        .click('#tab-btn-reportingTabulatorTab')
+        .waitOnTabulatorToBecomeVisible()
+        .waitOnTabulatorToHaveData()
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, dp('043_40_ai-driven-fetch-data-tabulator-query-results'));
+      console.log(`[capture] ${dp('043_40_ai-driven-fetch-data-tabulator-query-results')}`);
+
+      // ── CAPTURE 044_00: Output Template tab — output type + template ─────────
+      await new FluentTester(firstPage)
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .click('#tab-btn-reportingTemplateOutputTab')
+        .waitOnElementToBecomeVisible('#reportOutputType')
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.fop2pdf')
+        .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
+        .sleep(2 * Constants.DELAY_ONE_SECOND)
+        .setCodeJarContentSingleShot('#codeJarHtmlTemplateEditor', RG_FOP_TEMPLATE)
+        .sleep(2 * Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('044_00_ai-driven-template'),
+        // Ring the "Hey AI, Help Me Build This FOP2PDF Template!" button — inset
+        // because it sits flush at the top-right of the tab (an outside ring clips).
+        [{ selector: '#btnAskAiForHelpOutput', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('044_00_ai-driven-template')}`);
+
+      // ── CAPTURE 044_05: the output-template AI prompt ────────────────────────
+      // "Hey AI, Help Me..." on the Output Template tab launches the AI Copilot
+      // with the PDF (XSL-FO) "Sample A4 Payslip" template prompt auto-expanded
+      // (askAiForHelp → launchWithConfiguration sets isModalVisible +
+      // initialExpandedPromptId=PDF_SAMPLE_A4_PAYSLIP_XSLFO). Scroll the amber
+      // placeholder into view, capture the full copilot view (title + prompt), close.
+      await new FluentTester(firstPage)
+        .click('#btnAskAiForHelpOutput')
+        .waitOnElementToBecomeVisible('#aiPromptExpandedText')
+        .waitOnElementToBecomeVisible('#btnCopyPromptText')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await scrollPromptPlaceholderIntoView(firstPage);
+      await firstPage.waitForTimeout(300);
+      await captureDocsScreenshot(firstPage, dp('044_05_ai-driven-template-ai-prompt-template-generation'));
+      console.log(`[capture] ${dp('044_05_ai-driven-template-ai-prompt-template-generation')}`);
+      await new FluentTester(firstPage)
+        .click('#btnCloseAiCopilotModal')
+        .waitOnElementToBecomeInvisible('#btnCopyPromptText');
+
+      // ── CAPTURE 044_10: Generate Reports — View Data (rows grid + logs) ───────
+      // Match the legacy shot (the fetched rows + the Info Log Preview). View Data
+      // refuses to run while the log file is non-empty: the FIRST click raises a
+      // "clear the logs first" notice, so dismiss it, Clear Logs, then View Data
+      // again — now the rows fill the grid and the query-run logs fill the preview.
+      // Proven flow, lifted verbatim from reporting.spec.ts `testViewData`.
+      // (NOTE: because View Data insists on an empty log, a data grid and PRIOR
+      // burst logs can't share one shot — these are View Data's own run logs. The
+      // old 044_15 "output files" shot is dropped: it's a static file list.)
+      await new FluentTester(firstPage)
+        .sleep(3 * Constants.DELAY_ONE_SECOND)
+        .gotoReportGenerationScreen()
+        .click('#selectMailMergeClassicReport')
+        .waitOnElementToBecomeVisible(`span.ng-option-label:has-text("${RG_REPORT_NAME} (input SQL Query)")`)
+        .click(`span.ng-option-label:has-text("${RG_REPORT_NAME} (input SQL Query)")`)
+        .waitOnElementToBecomeEnabled('#startDate')
+        .setValue('#startDate', '1991-01-01')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .waitOnElementToBecomeEnabled('#btnViewData')
+        .click('#btnViewData')
+        .clickYesDoThis()
+        .click('#btnClearLogs')
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .click('#btnViewData')
+        .clickYesDoThis()
+        .waitOnTabulatorToBecomeVisible()
+        .waitOnTabulatorToHaveData()
+        .sleep(2 * Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(600);
+      await captureDocsScreenshot(firstPage, dp('044_10_ai-driven-report-execution'));
+      console.log(`[capture] ${dp('044_10_ai-driven-report-execution')}`);
+
+      console.log('[DONE] All ai-powered-reporting.mdx screenshots captured.');
+      bodySucceeded = true;
+    } finally {
+      const cleanupErrors: string[] = [];
+
+      try {
+        const modalCloseBtn = firstPage.locator('#btnClose');
+        if (await modalCloseBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await modalCloseBtn.click();
+          await modalCloseBtn.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+        }
+      } catch (e) {
+        cleanupErrors.push(`close open modal: ${e}`);
+      }
+
+      if (reportCreated || connectionCreated) {
+        try {
+          await firstPage.evaluate(() =>
+            (document.activeElement as HTMLElement | null)?.blur(),
+          );
+          await new FluentTester(firstPage).gotoBurstScreen();
+        } catch (e) {
+          cleanupErrors.push(`neutral navigation before cleanup: ${e}`);
+        }
+      }
+
+      if (reportCreated) {
+        try {
+          await ConfTemplatesTestHelper.deleteTemplate(new FluentTester(firstPage), RG_REPORT_CODE);
+        } catch (e) {
+          cleanupErrors.push(`delete report ${RG_REPORT_CODE}: ${e}`);
+        }
+      }
+
+      if (connectionCreated) {
+        try {
+          await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+            new FluentTester(firstPage),
+            `${RG_CONNECTION_CODE}\\.xml`,
+            RG_DB_VENDOR,
+          );
+        } catch (e) {
+          cleanupErrors.push(`delete connection ${RG_CONNECTION_CODE}: ${e}`);
+        }
+      }
+
+      if (cleanupErrors.length > 0) {
+        console.error('[CLEANUP] FAILED:\n' + cleanupErrors.join('\n'));
+        if (bodySucceeded) {
+          throw new Error(`Cleanup failed — resources may be leaked:\n${cleanupErrors.join('\n')}`);
+        }
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK 5 — VIDEO frames for the 0010-report-generation video (Customer Invoices → PDF)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Feeds the `0010-report-generation` Remotion video (Zeus teaches Leo to
+// configure & generate a report). Unlike the docs -dp shots above, these are
+// NEAR-FULL-FRAME captures with NO annotation rings — in the video the character
+// heads + camera zoom do the pointing. They are written into the cli-remotion
+// assets folder, not the docs repo.
+//
+// Story payoff = the bundled "Customer Invoices" sample (Northwind Orders for the two
+// sample customers ALFKI + ANATR — no seeding, runs against the bundled Northwind DB)
+// but with a professional Apache FOP PDF output (output.fop2pdf) instead of the plain
+// HTML template. The script maps Northwind into the field shape the large-scale
+// "Northwind Traders" invoice design expects, so that polished design renders on our
+// own data. Shipped sources:
+//   e2e/_resources/screenshots/docs/invoice-report-script.groovy  (Northwind → invoice fields)
+//   e2e/_resources/screenshots/docs/invoice-fop-template.xsl      (large-scale FOP design)
+//
+// Frame → state mapping (written to cli-remotion/.../0010-report-generation/):
+//   rg_10_create-invoice-report.png     Create Report modal, "Customer Invoices"
+//   rg_18_datasource-tab.png            The DataSource TAB button itself, ringed
+//   rg_20_invoice-script-datasource.png Script data source with the invoice master-details Groovy
+//   rg_21_datasource-inputtype-expanded.png  Input Type (#dsTypes) list OPEN — every supported source
+//   rg_22_datasource-inputtype-database.png  Datasource tab — Input Type (#dsTypes) + Database (#databaseConnection) ringed
+//   rg_24_datasource-hey-ai.png         Datasource tab — "Hey AI, Help Me With This Groovy Script" ringed
+//   rg_26_datasource-run-test-script.png  Datasource tab — "Run / Test Script" (#btnTestScript) ringed
+//   rg_28_output-type-expanded.png      Output Type (#reportOutputType) list OPEN — every supported output
+//   rg_30_invoice-output-pdf.png        Output Template tab — output = PDF (Apache FOP), XSL-FO template
+//   rg_32_output-fop-hey-ai.png         Output Template tab — "Hey AI, Help Me …" ringed
+//   rg_35_invoice-template-preview.png  Output Template tab, editor scrolled to the invoice table/totals
+//   rg_40_invoice-generate.png          Generate Reports screen, report picked, ready
+//   rg_50_invoice-viewdata.png          View Data — the invoice rows in the grid
+//   rg_60_invoice-output-files.png      The Generate screen right after the run — the LOGS pane, populated.
+//                                       (Historic name: it does NOT show the output files. The video uses it
+//                                        as the "logs stream live" beat, which is what it actually shows.)
+//
+// The video ALSO needs frames this block does not produce yet: rg_64 (a real
+// generated invoice PDF, opened) and the Samples set rg_70/72/74/76/78/80.
+// Until they exist the video draws a labelled placeholder naming each file.
+//
+// HOW TO RUN (only this block): set E2E_SPEC="reporting.screens.ts" and
+// E2E_GREP="Reporting — video frames — report-generation".
+
+// cli-remotion assets dir for the 0010 video. DOCS_IMAGES_DIR is
+// …/reportburster.com/public/images/docs → 4 hops up land on …/www, then across
+// into cli-remotion.
+const VIDEO_ASSETS_DIR = path.resolve(
+  DOCS_IMAGES_DIR, '..', '..', '..', '..',
+  'cli-remotion', 'public', 'assets', 'rb', '0010-report-generation',
+);
+
+const RG_INVOICE_REPORT_NAME = 'Customer Invoices';
+const RG_INVOICE_REPORT_CODE = _.kebabCase(RG_INVOICE_REPORT_NAME); // customer-invoices
+
+// Resource files carrying the verbatim large-scale invoice assets from
+// blog/mysql-large-scale-report-generation.mdx. Kept as files (not TS literals) so
+// their FreeMarker ${…} needs no escaping and they can't silently drift from the doc.
+const RG_RES_DIR = path.resolve(__dirname, '..', '..', '..', '_resources', 'screenshots', 'docs');
+
+// The invoice report's Groovy data script — reads Northwind Orders/Customers/Order
+// Details for the two sample customers (ALFKI + ANATR), nests each order's line items,
+// and emits the field names the professional Apache FOP invoice template expects. No
+// seeding needed: it runs against the bundled Northwind sample DB. See the resource file.
+const RG_INVOICE_SCRIPT = fs.readFileSync(
+  path.join(RG_RES_DIR, 'invoice-report-script.groovy'),
+  'utf8',
+);
+
+// The invoice OUTPUT template — Apache FOP (XSL-FO), the output.fop2pdf path.
+// The professional "Northwind Traders" invoice design from the large-scale blog
+// (SVG logo, Bill To, striped line-item table, totals + TOTAL DUE, payment info),
+// fed by RG_INVOICE_SCRIPT above which supplies exactly these fields from Northwind.
+// FreeMarker runs first (${…}/<#…> per invoice token), then Apache FOP renders to PDF.
+const RG_INVOICE_TEMPLATE = fs.readFileSync(
+  path.join(RG_RES_DIR, 'invoice-fop-template.xsl'),
+  'utf8',
+);
+
+/* Expand a NATIVE <select> INLINE so a screenshot can actually see its options.
+
+   A native <select>'s dropdown is painted by the OS, outside the page — no
+   screenshot can ever capture it. The fix (lifted from connections.screens.ts,
+   which solved this for #dbType) is to turn the control into an inline listbox
+   via `size`, and defeat the two daisyUI rules that would clip that to ~1 row:
+   `.select` pins a fixed height and `appearance:none`. The options are painted
+   with the theme tokens so the listbox matches the dark app, and it is floated
+   over the fields below so it still reads as a popup.
+
+   Only the injected <style> and the `size` attribute are touched — always pair
+   this with restoreNativeSelectAfterShot so later frames see a normal control. */
+async function expandNativeSelectForShot(page: Page, id: string) {
+  await page.evaluate((selId) => {
+    const sel = document.getElementById(selId) as HTMLSelectElement | null;
+    if (!sel) return;
+    const width = Math.round(sel.getBoundingClientRect().width);
+    sel.dataset.prevSize = String(sel.size ?? 0);
+    sel.size = sel.options.length; // expand every option inline
+    const style = document.createElement('style');
+    style.id = `__${selId}_open_hl`;
+    style.textContent =
+      `#${selId}{` +
+        'appearance:auto !important;-webkit-appearance:auto !important;' +
+        'height:auto !important;min-height:0 !important;max-height:none !important;' +
+        'overflow:visible !important;background-image:none !important;' +
+        'position:absolute !important;z-index:50 !important;' +
+        `width:${width}px !important;` +
+        'box-shadow:0 10px 26px rgba(0,0,0,0.6) !important;' +
+      '}' +
+      `#${selId} option{background-color:var(--color-base-100,#1d232a);` +
+        'color:var(--color-base-content,#a6adbb);padding:3px 10px}' +
+      `#${selId} option:checked{background:#0f6cbd !important;color:#fff !important}`;
+    document.head.appendChild(style);
+  }, id);
+}
+
+/* Undo expandNativeSelectForShot — restores the original `size` and drops the
+   injected rule, so the control behaves normally for every later interaction. */
+async function restoreNativeSelectAfterShot(page: Page, id: string) {
+  await page.evaluate((selId) => {
+    const sel = document.getElementById(selId) as HTMLSelectElement | null;
+    if (sel) {
+      sel.size = Number(sel.dataset.prevSize ?? '0') || 0;
+      delete sel.dataset.prevSize;
+    }
+    document.getElementById(`__${selId}_open_hl`)?.remove();
+  }, id);
+}
+
+electronBeforeAfterAllTest(
+  'Reporting — video frames — report-generation (Customer Invoices → PDF Apache FOP)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    let connectionCreated = false;
+    let reportCreated = false;
+    let bodySucceeded = false;
+
+    try {
+      // ── SETUP: plain SQLite Northwind connection (the script uses ctx.dbSql
+      // directly, so no cached schema / domain groups are needed) ──────────────
+      console.log(`[SETUP] Creating ${RG_DB_VENDOR} connection "${RG_CONNECTION_NAME}"`);
+      await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+        new FluentTester(firstPage),
+        RG_CONNECTION_NAME,
+        RG_DB_VENDOR,
+      );
+      connectionCreated = true;
+
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      // ── FRAME rg_10: Create Report modal ─────────────────────────────────────
+      await new FluentTester(firstPage)
+        .gotoConfigurationReports()
+        .click('#btnNew')
+        .waitOnElementToBecomeVisible('#templateHowTo')
+        .waitOnInputValueToContainText('#templateHowTo', 'folder-name')
+        .click('#btnCapReportGenerationMailMerge')
+        .waitOnElementToBecomeInvisible('#templateHowTo')
+        .waitOnElementToBecomeInvisible('#templateHowToSnipped')
+        .click('#templateName')
+        .typeText(RG_INVOICE_REPORT_NAME);
+      await firstPage.waitForTimeout(300);
+      // Ring the Report Generation capability — the one step people miss, and the
+      // one that decides whether this is a report at all. The ring goes on the
+      // WRAPPER SPAN, not #btnCapReportGenerationMailMerge: the id is on the bare
+      // <input>, so ringing it would draw a ring around a 13px box and leave the
+      // "Report Generation & Dashboards" label outside it. The span holds both.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_10_create-invoice-report.png',
+        [{ selector: '#spanCapReportGenerationMailMerge' }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_10_create-invoice-report.png');
+
+      await new FluentTester(firstPage)
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#burstFileName');
+      reportCreated = true;
+
+      // ── Load the report — STEP BY STEP, because the video teaches it that way ─
+      // This mirrors ConfigurationTestHelper.loadConfiguration's non-'burst'
+      // branch EXACTLY (row → Load invite → Yes), guard for guard. It is spelled
+      // out rather than called because the video needs a frame BETWEEN the
+      // confirm appearing and the Yes being pressed, which the helper's single
+      // chain gives no seam for. If that helper's flow ever changes, this must
+      // change with it.
+      const RG_ROW = `#${RG_INVOICE_REPORT_CODE}_${PATHS.SETTINGS_CONFIG_FILE}`;
+      const RG_LOAD_INVITE = `#btnLoadInvite_${RG_INVOICE_REPORT_CODE}_${PATHS.SETTINGS_CONFIG_FILE}`;
+      const RG_LOAD_YES = `#btnLoadConfirmYes_${RG_INVOICE_REPORT_CODE}_${PATHS.SETTINGS_CONFIG_FILE}`;
+
+      await new FluentTester(firstPage)
+        .gotoConfigurationReports()
+        .click(RG_ROW)
+        .waitOnElementToBecomeVisible(RG_LOAD_INVITE)
+        .click(RG_LOAD_INVITE)
+        .waitOnElementToBecomeVisible(RG_LOAD_YES);
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+      await firstPage.waitForTimeout(300);
+
+      // ── FRAME rg_14: the reports list, our report picked, "Load? Yes/No" up ──
+      // Zeus tells Leo which menu got him here and to press Yes.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_14_load-report-confirm.png',
+        [{ selector: RG_LOAD_YES }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_14_load-report-confirm.png');
+
+      await new FluentTester(firstPage)
+        .click(RG_LOAD_YES)
+        .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
+        .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
+        .sleep(3 * Constants.DELAY_ONE_SECOND);
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      await new FluentTester(firstPage)
+        .click('#leftMenuReportingSettings')
+        .waitOnElementToBecomeVisible('#dsTypes')
+        .waitOnElementToBecomeEnabled('#dsTypes');
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+      await firstPage.waitForTimeout(400);
+
+      // ── FRAME rg_16: the left "Reporting" entry, ALREADY OPEN ───────────────
+      // The payoff of ticking Report Generation in the Create modal: this entry
+      // only exists because of it. Shot AFTER the click, so the frame shows the
+      // settings it opens rather than whatever screen preceded it.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_16_reporting-left-menu.png',
+        [{ selector: '#leftMenuReportingSettings' }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_16_reporting-left-menu.png');
+
+      // ── FRAME rg_19: the Input Type field, ringed and still CLOSED ──────────
+      // Zeus names the field before opening it — the progression skips no step.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_19_datasource-inputtype-closed.png',
+        [{ selector: '#dsTypes' }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_19_datasource-inputtype-closed.png');
+
+      // ── FRAME rg_18: the DataSource TAB, on the DEFAULT screen ──────────────
+      // Captured BEFORE anything is configured: the video introduces the tab
+      // before its contents, so the frame must show what DataPallas shows on
+      // first open — not a finished screen.
+      // INSET ring, not the outer one: the outer ring gets CLIPPED here — the
+      // sticky top-menu header overpaints its top edge and only 2 of the 4 sides
+      // survive. docs-screenshot-helper documents the tab buttons as exactly this
+      // case ("targets flush against a clipping boundary the outside ring can't
+      // escape"), and inset is always fully visible.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_18_datasource-tab.png',
+        [{ selector: '#tab-btn-reportingDataSourceDataTablesTab', inset: true }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_18_datasource-tab.png');
+
+      // ── Pick Script FIRST, so the open list highlights OUR value ─────────────
+      // The expanded <select> paints its currently-SELECTED option blue. If we
+      // expand while the default (CSV) is selected, the video zooms onto a choice
+      // we never make. So we choose Script now: the list still shows every source
+      // (the "everything you would expect" line holds), but the highlighted row is
+      // Script — the one we are actually configuring.
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.scriptfile')
+        .waitOnElementToBecomeVisible('#groovyScriptEditor')
+        .waitOnElementToContainText('#databaseConnection', RG_CONNECTION_NAME);
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      // ── FRAME rg_21: the Input Type list OPEN — Script highlighted, all sources
+      // still visible. #dsTypes is a NATIVE <select> whose dropdown the OS paints
+      // (a screenshot can never see it), so we expand the listbox INLINE via
+      // `size` (the connections.screens.ts trick), then undo it.
+      await expandNativeSelectForShot(firstPage, 'dsTypes');
+      await firstPage.waitForTimeout(250);
+      await captureDocsScreenshot(firstPage, 'rg_21_datasource-inputtype-expanded.png', VIDEO_ASSETS_DIR);
+      await restoreNativeSelectAfterShot(firstPage, 'dsTypes');
+      console.log('[frame] rg_21_datasource-inputtype-expanded.png');
+      await firstPage.waitForTimeout(400);
+
+      // ── FRAME rg_22: Input Type ALONE ───────────────────────────────────────
+      // Split from the old combined shot: one ring per idea, so the camera can
+      // land on the thing being talked about instead of on a frame wearing two
+      // rings while only one is being discussed. Editor still empty on purpose —
+      // this beat is "we pick Script", the script itself is the NEXT beat.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_22_datasource-inputtype.png',
+        [{ selector: '#dsTypes' }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_22_datasource-inputtype.png');
+
+      // ── Paste the invoice script ────────────────────────────────────────────
+      await new FluentTester(firstPage)
+        .setCodeJarContentSingleShot('#groovyScriptEditor', RG_INVOICE_SCRIPT)
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, 'rg_20_invoice-script-datasource.png', VIDEO_ASSETS_DIR);
+      console.log('[frame] rg_20_invoice-script-datasource.png');
+
+      // ── FRAME rg_24: datasource tab, "Hey AI, Help Me With This Groovy Script" ──
+      // ringed on its own (inset — the button is wide, an outside ring would clip).
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_24_datasource-hey-ai.png',
+        [{ selector: '#btnHelpWithScriptAI', inset: true }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_24_datasource-hey-ai.png');
+
+      // ── FRAME rg_26: "Run / Test Script" ringed ──────────────────────────────
+      // Zeus's point: you can prove the script works before generating anything,
+      // and pressing it is safe because a report only reads.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_26_datasource-run-test-script.png',
+        [{ selector: '#btnTestScript', inset: true }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_26_datasource-run-test-script.png');
+
+      // ── FRAME rg_23: the Database Connection ALONE ──────────────────────────
+      // The other half of the old combined rg_22. Captured LAST of the datasource
+      // set so the script is already filled in: this beat plays after the script
+      // beats, and a frame with an empty editor here would read as going backwards.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_23_datasource-database.png',
+        [{ selector: '#databaseConnection' }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_23_datasource-database.png');
+
+      // ── FRAME rg_30: Output Template tab — output = PDF (Apache FOP) + the pro
+      // "Northwind Traders" XSL-FO invoice template (verbatim from the large-scale
+      // blog). This matches large-scale.mdx, whose output is Apache FOP PDF.
+      // ── The Output Template tab — same progressive teach as the DataSource:
+      //    the tab as it opens → the field, untouched → the field, open → the
+      //    choice. Nothing is configured until the video has said why.
+      await new FluentTester(firstPage)
+        .click('#tab-btn-reportingTemplateOutputTab')
+        .waitOnElementToBecomeVisible('#reportOutputType');
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+      await firstPage.waitForTimeout(400);
+
+      // ── FRAME rg_27: the Output / Template tab, exactly as it opens ──────────
+      // INSET ring for the same reason as rg_18: the sticky header clips an
+      // outer ring on the tab strip.
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_27_output-tab.png',
+        [{ selector: '#tab-btn-reportingTemplateOutputTab', inset: true }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_27_output-tab.png');
+
+      // (No separate "Output Type untouched" capture — rg_27 already shows the tab
+      // with Output Type = None, so a second ringed-but-untouched frame said the
+      // same thing. The video dropped that beat; we no longer shoot it.)
+
+      // ── Pick Apache FOP FIRST, so the open list highlights OUR value ─────────
+      // Same reasoning as rg_21: the expanded <select> paints its SELECTED option
+      // blue, so we choose FOP before opening the list. Every output type still
+      // shows (the "everything you would expect" line holds), but the highlighted
+      // row is PDF FOP Docs — the one we are configuring.
+      await new FluentTester(firstPage)
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.fop2pdf')
+        .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor');
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      // ── FRAME rg_29: the Output Type list OPEN — PDF FOP highlighted, all types
+      // still visible. Same native-<select> inline-expand trick as rg_21.
+      await expandNativeSelectForShot(firstPage, 'reportOutputType');
+      await firstPage.waitForTimeout(250);
+      await captureDocsScreenshot(firstPage, 'rg_29_output-type-expanded.png', VIDEO_ASSETS_DIR);
+      await restoreNativeSelectAfterShot(firstPage, 'reportOutputType');
+      console.log('[frame] rg_29_output-type-expanded.png');
+
+      await new FluentTester(firstPage)
+        .sleep(2 * Constants.DELAY_ONE_SECOND)
+        .setCodeJarContentSingleShot('#codeJarHtmlTemplateEditor', RG_INVOICE_TEMPLATE)
+        .sleep(2 * Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      // Ring the Output Type: this beat IS about that choice ("we choose Apache FOP").
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_30_invoice-output-pdf.png',
+        [{ selector: '#reportOutputType' }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_30_invoice-output-pdf.png');
+
+      // ── FRAME rg_32: Output Template tab (Apache FOP filled) with "Hey AI, Help
+      // Me …" ringed on its own (inset — the button is full-width).
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        'rg_32_output-fop-hey-ai.png',
+        [{ selector: '#btnAskAiForHelpOutput', inset: true }],
+        VIDEO_ASSETS_DIR,
+      );
+      console.log('[frame] rg_32_output-fop-hey-ai.png');
+
+      // ── FRAME rg_35: a second look at the Apache FOP invoice template — the editor
+      // scrolled to the line-item table / totals. output.fop2pdf has no in-app live
+      // preview (FOP renders only at generation time), so the rendered invoice PDF
+      // itself is the generation payoff — see rg_60 / the output folder.
+      await firstPage.evaluate(() => {
+        const ed = document.getElementById('codeJarHtmlTemplateEditor');
+        if (ed) ed.scrollTop = Math.floor(ed.scrollHeight * 0.55);
+      });
+      await firstPage.waitForTimeout(500);
+      await captureDocsScreenshot(firstPage, 'rg_35_invoice-template-preview.png', VIDEO_ASSETS_DIR);
+      console.log('[frame] rg_35_invoice-template-preview.png');
+
+      // ── FRAME rg_40: Generate Reports screen, report picked ──────────────────
+      await new FluentTester(firstPage)
+        .sleep(3 * Constants.DELAY_ONE_SECOND)
+        .gotoReportGenerationScreen()
+        .click('#selectMailMergeClassicReport')
+        .waitOnElementToBecomeVisible(`span.ng-option-label:has-text("${RG_INVOICE_REPORT_NAME} (input Script File)")`)
+        .click(`span.ng-option-label:has-text("${RG_INVOICE_REPORT_NAME} (input Script File)")`)
+        .waitOnElementToBecomeEnabled('#btnViewData')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports');
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, 'rg_40_invoice-generate.png', VIDEO_ASSETS_DIR);
+      console.log('[frame] rg_40_invoice-generate.png');
+
+      // ── FRAME rg_50: View Data — the invoice rows ────────────────────────────
+      await new FluentTester(firstPage)
+        .click('#btnViewData')
+        .clickYesDoThis()
+        .click('#btnClearLogs')
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .click('#btnViewData')
+        .clickYesDoThis()
+        .waitOnTabulatorToBecomeVisible()
+        .waitOnTabulatorToHaveData()
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(firstPage, 'rg_50_invoice-viewdata.png', VIDEO_ASSETS_DIR);
+      console.log('[frame] rg_50_invoice-viewdata.png');
+
+      // ── FRAME rg_60: generate the invoice PDFs, capture the output ───────────
+      // Both processing gates are file-based (CHECK_PROCESSING_LOGS) rather than the
+      // UI-banner CHECK_PROCESSING_JAVA: Clear Logs truncates info.log on disk
+      // (LogsService.emptyFile), so the start gate waits for THIS run's "Program
+      // Started" and the finish gate for its "Execution Ended". This in-process
+      // SQLite→FOP run is fast enough that the `.java-started` banner can appear and
+      // vanish before Playwright catches it visible — which would hang the start gate.
+      await new FluentTester(firstPage)
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .click('#btnClearLogs')
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_LOGS)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+      await firstPage.waitForTimeout(600);
+      await captureDocsScreenshot(firstPage, 'rg_60_invoice-output-files.png', VIDEO_ASSETS_DIR);
+      console.log('[frame] rg_60_invoice-output-files.png');
+
+      // ── FRAME rg_64: one of the invoices we just made, actually opened ──────
+      // The payoff of the whole video. Note rg_60 above is the app screen with the
+      // logs — it shows no document; this is the first frame in which the viewer
+      // sees an invoice. ONE file is the beat: the run makes many and they differ
+      // only by data. See FluentTester.screenshotOneGeneratedPdf for why this
+      // needs a headed browser.
+      await new FluentTester(firstPage).screenshotOneGeneratedPdf(
+        path.join(VIDEO_ASSETS_DIR, 'rg_64_invoice-pdf-opened.png'),
+      );
+      console.log('[frame] rg_64_invoice-pdf-opened.png');
+
+      console.log('[DONE] All 0010-report-generation video frames captured.');
+      bodySucceeded = true;
+    } finally {
+      const cleanupErrors: string[] = [];
+
+      try {
+        const modalCloseBtn = firstPage.locator('#btnClose');
+        if (await modalCloseBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await modalCloseBtn.click();
+          await modalCloseBtn.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+        }
+      } catch (e) {
+        cleanupErrors.push(`close open modal: ${e}`);
+      }
+
+      if (reportCreated || connectionCreated) {
+        try {
+          await firstPage.evaluate(() =>
+            (document.activeElement as HTMLElement | null)?.blur(),
+          );
+          await new FluentTester(firstPage).gotoBurstScreen();
+        } catch (e) {
+          cleanupErrors.push(`neutral navigation before cleanup: ${e}`);
+        }
+      }
+
+      if (reportCreated) {
+        try {
+          await ConfTemplatesTestHelper.deleteTemplate(new FluentTester(firstPage), RG_INVOICE_REPORT_CODE);
+        } catch (e) {
+          cleanupErrors.push(`delete report ${RG_INVOICE_REPORT_CODE}: ${e}`);
+        }
+      }
+
+      if (connectionCreated) {
+        try {
+          await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+            new FluentTester(firstPage),
+            `${RG_CONNECTION_CODE}\\.xml`,
+            RG_DB_VENDOR,
+          );
+        } catch (e) {
+          cleanupErrors.push(`delete connection ${RG_CONNECTION_CODE}: ${e}`);
+        }
+      }
+
+      if (cleanupErrors.length > 0) {
+        console.error('[CLEANUP] FAILED:\n' + cleanupErrors.join('\n'));
+        if (bodySucceeded) {
+          throw new Error(`Cleanup failed — resources may be leaked:\n${cleanupErrors.join('\n')}`);
+        }
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK 5b — VIDEO frames for 0010: the Samples shelf (Category-Region Crosstab)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The last act of the 0010 video: Leo asks "invoices are one thing — what about
+// Excel, Cross Tab, HTML?", and Zeus walks him along the bundled Samples shelf.
+// The featured sample is #15 Category-Region Crosstab (script → HTML) — literally
+// the Cross Tab report Leo asks for. Flow + selectors mirror samples.spec.ts
+// "(15_generate_category_region_crosstab_script2html)"; the capture pattern
+// mirrors samples.screens.ts BLOCK 1.
+//
+// Pure Electron UI — no backend, no Docker, and nothing is created, so there is
+// nothing to clean up (same as samples.screens.ts BLOCK 1).
+//
+// A SEPARATE test from BLOCK 5 on purpose: it shares none of the invoice report's
+// setup, and bolting it on would couple two unrelated flows. Both titles start
+// "Reporting — video frames — ", so ONE grep still regenerates every frame:
+//   E2E_SPEC="reporting.screens.ts"  E2E_GREP="Reporting — video frames"
+//
+//   rg_70_samples-button.png             Burst screen — "Samples" (#btnBurstSamples) ringed
+//   rg_72_samples-crosstab-selected.png  Samples table — the Crosstab row selected
+//   rg_74_samples-learn-more-button.png  That row's "Learn More" ringed
+//   rg_76_samples-view-configuration-button.png  Learn More modal — "View Configuration" ringed ALONE
+//   rg_80_samples-try-it.png             That row's "Try It" ringed
+//   rg_78_samples-configuration-open.png The sample's OWN config, on Reporting Settings
+//
+// ORDER NOTE: rg_78 is captured LAST although the video plays it before rg_80.
+// "View Configuration" ROUTES AWAY to /configuration (processing.component.ts
+// doSampleViewConfigurationFile), so everything still needed on the Samples page
+// must be shot before it.
+
+const RG_CROSSTAB_SAMPLE = 'GENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML'; // #15
+const RG_CROSSTAB_SAMPLE_NAME = 'Category-Region Crosstab';
+
+electronBeforeAfterAllTest(
+  'Reporting — video frames — samples shelf (Category-Region Crosstab)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const ft = new FluentTester(firstPage);
+
+    // ── FRAME rg_70: the "Samples" button, before we press it ────────────────
+    // Reached the screenshot-mode-safe way: the Samples button on the Burst
+    // Reports toolbar, NOT #leftMenuSamples — the left menu is zero-size while
+    // the Processing sidebar stays collapsed in screenshot mode.
+    await ft.gotoBurstScreen().waitOnElementToBecomeVisible('#btnBurstSamples');
+    await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+    await captureDocsScreenshotWithHighlights(
+      firstPage,
+      'rg_70_samples-button.png',
+      [{ selector: '#btnBurstSamples' }],
+      VIDEO_ASSETS_DIR,
+    );
+    console.log('[frame] rg_70_samples-button.png');
+
+    // ── Open the shelf and select the Crosstab sample ────────────────────────
+    await ft
+      .click('#btnBurstSamples')
+      .waitOnElementToBecomeVisible('#samplesTable')
+      .scrollIntoViewIfNeeded(`#tr${RG_CROSSTAB_SAMPLE}`)
+      .waitOnElementToContainText(`#td${RG_CROSSTAB_SAMPLE}`, RG_CROSSTAB_SAMPLE_NAME)
+      .click(`#tr${RG_CROSSTAB_SAMPLE}`);
+    await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+    // Park the selected row just under the sticky thead (#samplesTable thead is
+    // position:sticky) so the row leads the frame with the header pinned above.
+    await firstPage.evaluate((sel) => {
+      const row = document.querySelector(sel) as HTMLElement | null;
+      const table = document.getElementById('samplesTable');
+      const scroller = table?.parentElement as HTMLElement | null;
+      const thead = table?.querySelector('thead') as HTMLElement | null;
+      if (!row || !scroller) return;
+      const headH = thead ? thead.getBoundingClientRect().height : 40;
+      scroller.scrollTop +=
+        row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - headH - 6;
+    }, `#tr${RG_CROSSTAB_SAMPLE}`);
+    await firstPage.waitForTimeout(400);
+
+    // ── FRAME rg_72: the shelf, with the Cross Tab sample selected ───────────
+    await captureDocsScreenshot(firstPage, 'rg_72_samples-crosstab-selected.png', VIDEO_ASSETS_DIR);
+    console.log('[frame] rg_72_samples-crosstab-selected.png');
+
+    // ── FRAME rg_74: that row's "Learn More" ────────────────────────────────
+    await captureDocsScreenshotWithHighlights(
+      firstPage,
+      'rg_74_samples-learn-more-button.png',
+      [{ selector: `#btnSamplesLearnMode${RG_CROSSTAB_SAMPLE}` }],
+      VIDEO_ASSETS_DIR,
+    );
+    console.log('[frame] rg_74_samples-learn-more-button.png');
+
+    // ── FRAME rg_76: the Learn More modal, "View Configuration" ringed ALONE ─
+    // (samples.screens.ts rings Notes + this button together for the docs; the
+    // video's line is only about View Configuration, so only it is ringed.)
+    await ft
+      .click(`#btnSamplesLearnMode${RG_CROSSTAB_SAMPLE}`)
+      .waitOnElementToBecomeVisible('dp-dialog')
+      .waitOnElementToBecomeVisible('#modalInputDetails')
+      .waitOnElementToBecomeVisible('#modalOutputDetails')
+      .waitOnElementToBecomeVisible(`#div${RG_CROSSTAB_SAMPLE}`)
+      .waitOnElementToBecomeVisible(`#btnViewConfigurationFile${RG_CROSSTAB_SAMPLE}`);
+    await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+    await firstPage.waitForTimeout(400); // let the modal finish painting
+    await captureDocsScreenshotWithHighlights(
+      firstPage,
+      'rg_76_samples-view-configuration-button.png',
+      [{ selector: `#btnViewConfigurationFile${RG_CROSSTAB_SAMPLE}` }],
+      VIDEO_ASSETS_DIR,
+    );
+    console.log('[frame] rg_76_samples-view-configuration-button.png');
+
+    // ── FRAME rg_80: "Try It" on the shelf ──────────────────────────────────
+    // Captured BEFORE View Configuration, because that one routes away.
+    await ft
+      .click('#btnCloseSamplesLearnMoreModal')
+      .waitOnElementToBecomeInvisible('#btnCloseSamplesLearnMoreModal');
+    await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+    await captureDocsScreenshotWithHighlights(
+      firstPage,
+      'rg_80_samples-try-it.png',
+      [{ selector: `#btnSampleTryIt${RG_CROSSTAB_SAMPLE}` }],
+      VIDEO_ASSETS_DIR,
+    );
+    console.log('[frame] rg_80_samples-try-it.png');
+
+    // ── FRAME rg_78: the sample's OWN configuration, opened ──────────────────
+    // View Configuration routes to /configuration/generalSettingsMenuSelected/…,
+    // which lands on GENERAL. The video's line is "you see exactly how the sample
+    // was built — its data source, its template", so we step on to Reporting
+    // Settings, where those actually live. Otherwise the frame would show a
+    // General tab while Zeus talks about data sources.
+    await ft
+      .click(`#btnSamplesLearnMode${RG_CROSSTAB_SAMPLE}`)
+      .waitOnElementToBecomeVisible(`#btnViewConfigurationFile${RG_CROSSTAB_SAMPLE}`)
+      .click(`#btnViewConfigurationFile${RG_CROSSTAB_SAMPLE}`)
+      .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
+      .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
+      .sleep(2 * Constants.DELAY_ONE_SECOND)
+      .click('#leftMenuReportingSettings')
+      .waitOnElementToBecomeVisible('#dsTypes')
+      .sleep(Constants.DELAY_ONE_SECOND);
+    await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+    await firstPage.waitForTimeout(400);
+    await captureDocsScreenshot(firstPage, 'rg_78_samples-configuration-open.png', VIDEO_ASSETS_DIR);
+    console.log('[frame] rg_78_samples-configuration-open.png');
+
+    console.log('[DONE] 0010 samples-shelf video frames captured.');
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK 6 — template-gallery.mdx  (Template Examples Gallery, code-highlighted)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Re-captures the Template Gallery screenshots on
+//   content/docs/report-generation/template-gallery.mdx
+// as `<orig>-dp.png`, replacing the OLD hand-drawn-in-Paint highlight boxes with
+// crisp code-driven rings on real semantic IDs (the DataPallas-orange ring recipe
+// from captureDocsScreenshotWithHighlights). The gallery modal + output tab are
+// already richly instrumented; the only new IDs this needed were the footer
+// action-bar container (#templateGalleryFooter) and the tags row
+// (#templateGalleryTags), added in templates-gallery-modal.template.html.
+//
+// Non-app images on the page are NOT reproduced (external sites): Microsoft
+// Create gallery (045_47) and Adobe Color (045_55).
+//
+// Shot → state / ring mapping (docs ROOT images dir):
+//   045_45_reporting-template-gallery-dp        Output tab HTML Template row —
+//                                               rings #btnAskAiForHelpOutput + #btnOpenTemplateGallery
+//   045_50_reporting-template-ai-prompts-dp      Gallery modal (a template previewed) —
+//                                               rings the whole action bar #templateGalleryFooter
+//   045_00_generate-reports-ai-prompts-dp        Element-scoped crop of #templateGalleryFooter
+//   045_70_reporting-ai-templates-approaches-prompt1-dp
+//                                               "Get AI Prompt → modify" view, rings #aiPromptContent
+//   045_60_reporting-template-ai-prompt-create-html-scratch-prompt2-dp
+//                                               "Get AI Prompt → rebuild (from scratch)", rings #aiPromptContent
+//
+// HOW TO RUN (only this block): set E2E_SPEC="reporting.screens.ts" and
+// E2E_GREP="Reporting — docs screenshots — template-gallery.mdx".
+
+electronBeforeAfterAllTest(
+  'Reporting — docs screenshots — template-gallery.mdx (Template Examples Gallery)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    let connectionCreated = false;
+    let reportCreated = false;
+    let bodySucceeded = false;
+
+    try {
+      // ── SETUP: plain SQLite Northwind connection + a report ──────────────────
+      // The gallery + template editor render off the OUTPUT type alone (no data
+      // source needed), so a plain connection + report is enough.
+      console.log(`[SETUP] Creating ${RG_DB_VENDOR} connection "${RG_CONNECTION_NAME}"`);
+      await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+        new FluentTester(firstPage),
+        RG_CONNECTION_NAME,
+        RG_DB_VENDOR,
+      );
+      connectionCreated = true;
+
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      const GALLERY_REPORT_NAME = 'Template Gallery';
+      const GALLERY_REPORT_CODE = _.kebabCase(GALLERY_REPORT_NAME); // template-gallery
+
+      await new FluentTester(firstPage)
+        .gotoConfigurationReports()
+        .click('#btnNew')
+        .waitOnElementToBecomeVisible('#templateHowTo')
+        .waitOnInputValueToContainText('#templateHowTo', 'folder-name')
+        .click('#btnCapReportGenerationMailMerge')
+        .waitOnElementToBecomeInvisible('#templateHowTo')
+        .waitOnElementToBecomeInvisible('#templateHowToSnipped')
+        .click('#templateName')
+        .typeText(GALLERY_REPORT_NAME)
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#burstFileName');
+      reportCreated = true;
+
+      // ── Output Template tab, PDF output (HTML-based → gallery + AI help show) ─
+      await ConfigurationTestHelper.loadConfiguration(new FluentTester(firstPage), GALLERY_REPORT_CODE)
+        .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
+        .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
+        .sleep(3 * Constants.DELAY_ONE_SECOND)
+        .click('#leftMenuReportingSettings')
+        .waitOnElementToBecomeVisible('#dsTypes')
+        .click('#tab-btn-reportingTemplateOutputTab')
+        .waitOnElementToBecomeVisible('#reportOutputType')
+        .dropDownSelectOptionHavingValue('#reportOutputType', 'output.pdf')
+        .waitOnElementToBecomeVisible('#reportTemplateContainer')
+        .waitOnElementToBecomeVisible('#btnAskAiForHelpOutput')
+        .waitOnElementToBecomeVisible('#btnOpenTemplateGallery')
+        .sleep(Constants.DELAY_ONE_SECOND);
+
+      // ── CAPTURE 045_45: HTML Template row — ring ONLY "Examples (Gallery)".
+      // inset ring: the button sits flush against the left panel edge, so an outer
+      // ring's left side gets clipped — inset paints the ring inside the edges.
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('045_45_reporting-template-gallery'),
+        [{ selector: '#btnOpenTemplateGallery', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('045_45_reporting-template-gallery')}`);
+
+      // ── Open the gallery modal, land on a previewed template ─────────────────
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled('#btnOpenTemplateGallery')
+        .click('#btnOpenTemplateGallery');
+      // Some output types show a one-time AI-instructions splash first — confirm it
+      // if present, then wait for the carousel.
+      const confirmInstructions = firstPage.locator('#btnConfirmAiGalleryInstructions');
+      if (await confirmInstructions.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await confirmInstructions.click();
+      }
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeVisible('.dp-carousel-next')
+        .waitOnElementToBecomeEnabled('.dp-carousel-next')
+        .waitOnElementToBecomeVisible('#templateGalleryFooter')
+        .sleep(2 * Constants.DELAY_ONE_SECOND); // let the iframe preview paint
+
+      // ── CAPTURE 045_50: gallery modal, ring the whole action bar ─────────────
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('045_50_reporting-template-ai-prompts'),
+        [{ selector: '#templateGalleryFooter', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('045_50_reporting-template-ai-prompts')}`);
+
+      // ── CAPTURE 045_00: open the "Get AI Prompt To…" dropdown (click the ▲ toggle)
+      // so both approaches show, and ring "prompt 1" (modify). ────────────────────
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeVisible('#btnAiPromptDropdownToggle')
+        .click('#btnAiPromptDropdownToggle')
+        .waitOnElementToBecomeVisible('#btnAiPromptModify')
+        .waitOnElementToBecomeVisible('#btnAiPromptRebuild')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('045_00_generate-reports-ai-prompts'),
+        [{ selector: '#btnAiPromptModify', inset: true }],
+        DOCS_IMAGES_DIR,
+      );
+      console.log(`[capture] ${dp('045_00_generate-reports-ai-prompts')}`);
+      // close the dropdown so it doesn't linger over the next capture
+      await firstPage.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
+      // ── CAPTURE 045_70: "Get AI Prompt → modify" view. Mirrors the proven
+      // configuration.spec.ts flow (changeSaveLoadAssertSavedConfiguration): after the
+      // view opens, wait for #aiPromptSteps to contain its rendered text — this confirms
+      // the markdown view fully painted, avoiding the faded mid-render capture. Scroll
+      // the prompt to the top so it reads from the start.
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeVisible('#btnGetAiPrompt')
+        .click('#btnGetAiPrompt')
+        .waitOnElementToBecomeVisible('#aiPromptContainer')
+        .waitOnElementToBecomeVisible('#aiPromptContent')
+        .waitOnElementToContainText('#aiPromptSteps', 'Tailor Customization Instructions')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.evaluate(() => { const c = document.getElementById('aiPromptContainer'); if (c) c.scrollTop = 0; });
+      await firstPage.waitForTimeout(400);
+      // Capture the element itself (element.screenshot) — NOT a WithHighlights full-viewport shot.
+      // This dialog is a native <dialog showModal> (top layer + ::backdrop); the highlight helper's
+      // z-index:20 pulls only the ringed element above the backdrop and leaves the rest dimmed.
+      // element.screenshot renders the element's own pixels, bypassing the backdrop entirely.
+      await captureDocsScreenshotOfElement(
+        firstPage,
+        dp('045_70_reporting-ai-templates-approaches-prompt1'),
+        '#aiPromptContainer',
+        { targetWidth: 1200 },
+      );
+      console.log(`[capture] ${dp('045_70_reporting-ai-templates-approaches-prompt1')}`);
+
+      // ── CAPTURE 045_60: "Get AI Prompt → rebuild (from scratch)" view. Same as the
+      // helper: Back lands on the carousel, then dropdown → Rebuild → wait for the
+      // rebuild steps text to render before capturing.
+      await new FluentTester(firstPage)
+        .click('#btnBackToTemplate')
+        .waitOnElementToBecomeVisible('#galleryTemplateCarousel')
+        .waitOnElementToBecomeVisible('#btnAiPromptDropdownToggle')
+        .click('#btnAiPromptDropdownToggle')
+        .waitOnElementToBecomeVisible('#btnAiPromptRebuild')
+        .click('#btnAiPromptRebuild')
+        .waitOnElementToBecomeVisible('#aiPromptContainer')
+        .waitOnElementToBecomeVisible('#aiPromptContent')
+        .waitOnElementToContainText('#aiPromptSteps', 'tailor the prompt')
+        .sleep(Constants.DELAY_ONE_SECOND);
+      await firstPage.evaluate(() => { const c = document.getElementById('aiPromptContainer'); if (c) c.scrollTop = 0; });
+      await firstPage.waitForTimeout(400);
+      // Element screenshot (see 045_70 note) — clean, no backdrop dimming.
+      await captureDocsScreenshotOfElement(
+        firstPage,
+        dp('045_60_reporting-template-ai-prompt-create-html-scratch-prompt2'),
+        '#aiPromptContainer',
+        { targetWidth: 1200 },
+      );
+      console.log(`[capture] ${dp('045_60_reporting-template-ai-prompt-create-html-scratch-prompt2')}`);
+
+      // Close the gallery.
+      await new FluentTester(firstPage)
+        .click('#btnBackToTemplate')
+        .waitOnElementToBecomeVisible('#btnCloseTemplateGallery')
+        .click('#btnCloseTemplateGallery')
+        .waitOnElementToBecomeInvisible('#templateGalleryModal');
+
+      console.log('[DONE] All template-gallery.mdx screenshots captured.');
+      bodySucceeded = true;
+    } finally {
+      const cleanupErrors: string[] = [];
+
+      try {
+        const galleryClose = firstPage.locator('#btnCloseTemplateGallery');
+        if (await galleryClose.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await galleryClose.click().catch(() => {});
+        }
+        const modalCloseBtn = firstPage.locator('#btnClose');
+        if (await modalCloseBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await modalCloseBtn.click();
+          await modalCloseBtn.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+        }
+      } catch (e) {
+        cleanupErrors.push(`close open modal: ${e}`);
+      }
+
+      if (reportCreated || connectionCreated) {
+        try {
+          await firstPage.evaluate(() =>
+            (document.activeElement as HTMLElement | null)?.blur(),
+          );
+          await new FluentTester(firstPage).gotoBurstScreen();
+        } catch (e) {
+          cleanupErrors.push(`neutral navigation before cleanup: ${e}`);
+        }
+      }
+
+      if (reportCreated) {
+        try {
+          await ConfTemplatesTestHelper.deleteTemplate(new FluentTester(firstPage), _.kebabCase('Template Gallery'));
+        } catch (e) {
+          cleanupErrors.push(`delete report template-gallery: ${e}`);
+        }
+      }
+
+      if (connectionCreated) {
+        try {
+          await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+            new FluentTester(firstPage),
+            `${RG_CONNECTION_CODE}\\.xml`,
+            RG_DB_VENDOR,
+          );
+        } catch (e) {
+          cleanupErrors.push(`delete connection ${RG_CONNECTION_CODE}: ${e}`);
+        }
+      }
+
+      if (cleanupErrors.length > 0) {
+        console.error('[CLEANUP] FAILED:\n' + cleanupErrors.join('\n'));
+        if (bodySucceeded) {
+          throw new Error(`Cleanup failed — resources may be leaked:\n${cleanupErrors.join('\n')}`);
+        }
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK 3d — large-scale.mdx  (Step 5: Generate Your Reports — 10,000 seeded invoices)
+//
+// Re-captures the one screenshot large-scale.mdx still shows in the OLD light UI:
+//   25-large-scale-invoices-generate-dp   Processing → Generate Reports → View Data,
+//                                         the data grid of 10,000 seeded invoices.
+//
+// Flow — mirrors exactly what the doc's own Steps 2–5 tell the reader to do:
+//   1. Create a plain SQLite Northwind connection (file-based, no Docker, fastest).
+//   2. Seed 10,000 invoices with the built-in **Invoice Seeder** — the exact Seed-Data
+//      tab flow from Steps 2–4, via ConnectionsTestHelper.seedInvoicesViaConnectionDetails
+//      (opens the connection's Seed Data tab → Test Connection → picks the "Invoice
+//      Seeder" template → pastes into My Script → Run Script → waits for the run to
+//      finish → verifies seed_inv_* appear → closes the modal). The seeder hard-codes
+//      N=10000, so the grid shows "Total Rows: 10000".
+//   3. Create the report "LargeScaleInvReport" (Report Generation capability) →
+//      Reporting Settings → Script (Groovy) datasource → the blog's master query over
+//      seed_inv_invoice JOIN seed_inv_customer. The grid's first visible columns match
+//      the legacy shot (invoice_id, invoice_date, due_date, status, freight, notes,
+//      customer_id, company_name), the rest reachable via the horizontal scroll.
+//   4. Processing → Generate Reports → View Data → capture the grid.
+//
+// The -dp lands NEXT TO the legacy blog image (…/public/images/blog/database-connections/
+// mysql-large-scale/), so the docs can show old/new side by side. Once approved, swap the
+// <img src> in large-scale.mdx from 25-large-scale-invoices-generate.png → …-dp.png
+// (and ideally switch <img> → <Image>).
+//
+// HOW TO RUN (only this block): set E2E_SPEC="reporting.screens.ts" and
+// E2E_GREP="Reporting — docs screenshots — large-scale.mdx".
+// ─────────────────────────────────────────────────────────────────────────────
+
+// The -dp saves next to the legacy blog asset, not in public/images/docs/.
+const LARGE_SCALE_BLOG_DIR = path.resolve(
+  DOCS_IMAGES_DIR,
+  '..',
+  'blog',
+  'database-connections',
+  'mysql-large-scale',
+);
+
+// A flat report over the seeded invoices — no master/detail, just the rows the
+// Generate-Reports "View Data" grid shows. The SELECT + emitted columns match the
+// legacy screenshot exactly. Reuses RG_CONNECTION_* (the SQLite Northwind connection
+// the seeder ran against) — `ctx.dbSql` is that same connection, so seed_inv_* is there.
+const LS_REPORT_NAME = 'LargeScaleInvReport'; // matches the blog's report name → the picker reads "LargeScaleInvReport (input Script File)"
+const LS_REPORT_CODE = _.kebabCase(LS_REPORT_NAME); // large-scale-inv-report
+const LS_INVOICE_SCRIPT = `
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+def dbSql = ctx.dbSql
+def DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+// SQLite returns DATE columns as epoch-millis Longs; format them to yyyy-MM-dd so the grid
+// reads like the legacy MySQL shot (MySQL returned java.sql.Date, which the grid formats
+// automatically). Handles Number (epoch) / Date / already-a-date-string defensively so the
+// same script works if this is ever pointed at another vendor.
+def toDateStr = { v ->
+    if (v == null) return ""
+    if (v instanceof Number)         return Instant.ofEpochMilli(((Number) v).longValue()).atZone(ZoneId.systemDefault()).toLocalDate().format(DATE_FMT)
+    if (v instanceof java.sql.Date)  return ((java.sql.Date) v).toLocalDate().format(DATE_FMT)
+    if (v instanceof java.util.Date) return ((java.util.Date) v).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().format(DATE_FMT)
+    def s = v.toString()
+    return s.length() >= 10 ? s.substring(0, 10) : s
+}
+
+log.info("Large-scale report: reading seeded seed_inv_invoice rows...")
+
+// The master query straight from the MySQL large-scale blog — the flat invoice + bill-to
+// columns the Generate-Reports "View Data" grid shows, in the SAME order (so the grid's
+// first visible columns are invoice_id … company_name, with the rest behind a horizontal
+// scroll, exactly like the legacy shot). The blog's full script also loops line items to
+// add Subtotal/Tax/GrandTotal, but those feed the Apache FOP PDF template — NOT this grid
+// — so they're omitted here, keeping the 10k-row fetch to a single fast query.
+def rows = dbSql.rows("""
+    SELECT i.invoice_id, i.invoice_date, i.due_date, i.status, i.freight, i.notes,
+           c.customer_id, c.company_name, c.contact_name, c.address, c.city, c.country, c.email
+    FROM seed_inv_invoice i
+    JOIN seed_inv_customer c ON i.customer_id = c.customer_id
+    ORDER BY i.invoice_id
+""")
+
+def data = rows.collect { r ->
+    def m = new LinkedHashMap<String, Object>(r)
+    m.put("invoice_date", toDateStr(m.get("invoice_date")))
+    m.put("due_date",     toDateStr(m.get("due_date")))
+    m
+}
+ctx.reportData = data
+ctx.reportColumnNames = data ? new ArrayList<>(data[0].keySet()) : []
+log.info("Prepared {} invoice rows for the Generate-Reports grid.", data.size())
+`;
+
+electronBeforeAfterAllTest(
+  'Reporting — docs screenshots — large-scale.mdx (Step 5: 10k invoices)',
+  async ({ beforeAfterEach: firstPage }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    let connectionCreated = false;
+    let reportCreated = false;
+    let bodySucceeded = false;
+
+    try {
+      // ── SETUP: plain SQLite Northwind connection ─────────────────────────────
+      console.log(`[SETUP] Creating ${RG_DB_VENDOR} connection "${RG_CONNECTION_NAME}"`);
+      await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+        new FluentTester(firstPage),
+        RG_CONNECTION_NAME,
+        RG_DB_VENDOR,
+      );
+      connectionCreated = true;
+
+      // ── SEED 10,000 invoices via the built-in Invoice Seeder ─────────────────
+      // Self-contained: opens the connection's Seed Data tab, Tests it, picks the
+      // "Invoice Seeder" template, pastes into My Script, Runs it, waits for the run
+      // to finish (Run-Script button re-enable), verifies seed_inv_* appear in the
+      // schema tree, closes the modal. N=10000 is hard-coded in invoice-seeder.groovy.
+      console.log('[SEED] Seeding 10,000 invoices (invoice-seeder, N=10000)…');
+      await ConnectionsTestHelper.seedInvoicesViaConnectionDetails(
+        new FluentTester(firstPage),
+        RG_CONNECTION_CODE,
+        RG_DB_VENDOR,
+        Constants.DELAY_FIVE_THOUSANDS_SECONDS,
+      );
+
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      // ── Create the report (Report Generation capability) ─────────────────────
+      await new FluentTester(firstPage)
+        .gotoConfigurationReports()
+        .click('#btnNew')
+        .waitOnElementToBecomeVisible('#templateHowTo')
+        .waitOnInputValueToContainText('#templateHowTo', 'folder-name')
+        .click('#btnCapReportGenerationMailMerge')
+        .waitOnElementToBecomeInvisible('#templateHowTo')
+        .waitOnElementToBecomeInvisible('#templateHowToSnipped')
+        .click('#templateName')
+        .typeText(LS_REPORT_NAME)
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#burstFileName');
+      reportCreated = true;
+
+      // ── Reporting Settings → Script (Groovy) datasource over seed_inv_invoice ─
+      await ConfigurationTestHelper.loadConfiguration(new FluentTester(firstPage), LS_REPORT_CODE)
+        .waitOnElementToBecomeVisible('#leftMenuReportingSettings')
+        .waitOnElementToBecomeEnabled('#leftMenuReportingSettings')
+        .sleep(3 * Constants.DELAY_ONE_SECOND)
+        .click('#leftMenuReportingSettings')
+        .waitOnElementToBecomeVisible('#dsTypes')
+        .waitOnElementToBecomeEnabled('#dsTypes')
+        .dropDownSelectOptionHavingValue('#dsTypes', 'ds.scriptfile')
+        .waitOnElementToBecomeVisible('#groovyScriptEditor')
+        .waitOnElementToContainText('#databaseConnection', RG_CONNECTION_NAME)
+        .setCodeJarContentSingleShot('#groovyScriptEditor', LS_INVOICE_SCRIPT)
+        .sleep(Constants.DELAY_ONE_SECOND);
+
+      await hideToastsForScreenshots(firstPage);
+      await clearErrorLogsForScreenshots(firstPage);
+
+      // ── CAPTURE: Generate Reports → View Data — the 10k-invoice grid ─────────
+      // Proven View-Data flow (verbatim from 044_10 / rg_50): the double View-Data
+      // with a Clear-Logs in between forces the grid to (re)render its rows.
+      await new FluentTester(firstPage)
+        .gotoReportGenerationScreen()
+        .click('#selectMailMergeClassicReport')
+        .waitOnElementToBecomeVisible(`span.ng-option-label:has-text("${LS_REPORT_NAME} (input Script File)")`)
+        .click(`span.ng-option-label:has-text("${LS_REPORT_NAME} (input Script File)")`)
+        .waitOnElementToBecomeEnabled('#btnViewData')
+        .click('#btnViewData')
+        .clickYesDoThis()
+        .click('#btnClearLogs')
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .click('#btnViewData')
+        .clickYesDoThis()
+        .waitOnTabulatorToBecomeVisible()
+        .waitOnTabulatorToHaveData()
+        .sleep(Constants.DELAY_ONE_SECOND);
+
+      await firstPage.waitForTimeout(400);
+      await captureDocsScreenshot(
+        firstPage,
+        dp('25-large-scale-invoices-generate'),
+        LARGE_SCALE_BLOG_DIR,
+      );
+      console.log(`[capture] ${dp('25-large-scale-invoices-generate')} → ${LARGE_SCALE_BLOG_DIR}`);
+
+      bodySucceeded = true;
+      console.log('[DONE] large-scale.mdx Step 5 screenshot captured.');
+    } finally {
+      const cleanupErrors: string[] = [];
+
+      try {
+        const modalCloseBtn = firstPage.locator('#btnClose');
+        if (await modalCloseBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await modalCloseBtn.click();
+          await modalCloseBtn.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+        }
+      } catch (e) {
+        cleanupErrors.push(`close open modal: ${e}`);
+      }
+
+      if (reportCreated || connectionCreated) {
+        try {
+          await firstPage.evaluate(() =>
+            (document.activeElement as HTMLElement | null)?.blur(),
+          );
+          await new FluentTester(firstPage).gotoBurstScreen();
+        } catch (e) {
+          cleanupErrors.push(`neutral navigation before cleanup: ${e}`);
+        }
+      }
+
+      if (reportCreated) {
+        try {
+          await ConfTemplatesTestHelper.deleteTemplate(new FluentTester(firstPage), LS_REPORT_CODE);
+        } catch (e) {
+          cleanupErrors.push(`delete report ${LS_REPORT_CODE}: ${e}`);
+        }
+      }
+
+      if (connectionCreated) {
+        try {
+          await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+            new FluentTester(firstPage),
+            `${RG_CONNECTION_CODE}\\.xml`,
+            RG_DB_VENDOR,
+          );
+        } catch (e) {
+          cleanupErrors.push(`delete connection ${RG_CONNECTION_CODE}: ${e}`);
+        }
+      }
+
+      if (cleanupErrors.length > 0) {
+        console.error('[CLEANUP] FAILED:\n' + cleanupErrors.join('\n'));
+        if (bodySucceeded) {
+          throw new Error(`Cleanup failed — resources may be leaked:\n${cleanupErrors.join('\n')}`);
+        }
+      }
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOCK 4 — (placeholder for the remaining Reporting-area docs targets)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// report-bursting.mdx, report-distribution-email.mdx, report-distribution-qa.mdx
+// and report-distribution-upload.mdx walk the SAME surface plus their
+// page-specific tabs (Burst screen, Email Settings, QA, Upload). Append one
+// `electronBeforeAfterAllTest('Reporting — docs screenshots — <page>', …)` block
+// per docs page, reusing the SETUP / CLEANUP pattern above.

@@ -1,14 +1,26 @@
 export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTemplate>
   <div class="space-y-4">
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
+      <!-- Reports with no input file (ds.scriptfile / ds.sqlquery / ds.jasper) are tested as
+           themselves: there is no PDF/Excel to name, so say what IS being tested — the report —
+           rather than showing an empty "PDF / Excel File" box and a Select that cannot help. -->
       <div style="grid-column:span 2">
-        PDF / Excel
-        {{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.FILE' | translate }}
+        @if (qaIsReportOnly()) {
+          {{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.REPORT' | translate }}
+        } @else {
+          PDF / Excel
+          {{ 'AREAS.PROCESSING.TAB-QUALITY-ASSURANCE.FILE' | translate }}
+        }
       </div>
-      <div style="grid-column:span 8">
-        <input id="qaBurstFile" [ngModel]="processingService.procBurstInfo.isSample ? processingService.procQualityAssuranceInfo.prefilledInputFilePath : processingService.procQualityAssuranceInfo.inputFileName" (ngModelChange)="processingService.procQualityAssuranceInfo.inputFileName = $event" class="input" required />
+      <div [style]="qaIsReportOnly() ? 'grid-column:span 10' : 'grid-column:span 8'">
+        @if (qaIsReportOnly()) {
+          <input id="qaBurstFile" [value]="processingService.procQualityAssuranceInfo.reportName" class="input w-full" readonly />
+        } @else {
+          <input id="qaBurstFile" [ngModel]="processingService.procBurstInfo.isSample ? processingService.procQualityAssuranceInfo.prefilledInputFilePath : processingService.procQualityAssuranceInfo.inputFileName" (ngModelChange)="processingService.procQualityAssuranceInfo.inputFileName = $event" class="input" required />
+        }
       </div>
 
+      @if (!qaIsReportOnly()) {
       <div style="grid-column:span 2">
       <label for="qaFileUploadInput" class="btn btn-outline w-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg>&nbsp;Select</label>
       <input type="file" id="qaFileUploadInput" (change)="onQAFileSelected($event)" accept=".pdf" #qaFileUploadInput style="display: none;"/>
@@ -19,6 +31,7 @@ export const tabQualityAssuranceTemplate = `<ng-template #tabQualityAssuranceTem
           }}" dialogType="file" (pathsSelected)="onQAFileSelected($event)"></dburst-button-native-system-dialog>-->
 
       </div>
+      }
     </div>
 
 

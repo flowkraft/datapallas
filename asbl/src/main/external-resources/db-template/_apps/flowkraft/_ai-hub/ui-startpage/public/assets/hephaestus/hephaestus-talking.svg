@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 540">
+  <!-- Hephaestus, talking — standing god of the forge (jobs / ETL / automation).
+       Same 400x540 skeleton + flat outlined style as mnemosyne-talking.svg
+       (skin #fce8d4, ink #2a1a10 w2, gold #d4af37).
+       The HEAD (face shape, hair, headband, beard, mustache, mouth, brows, nose) is the
+       hephaestus-head.svg medallion geometry scaled onto this skeleton (x1.512 / y1.457,
+       centered on the face) so both postures show the SAME face. No floating sparks. -->
+
+  <!-- The hammer (right side): handle + iron head -->
+  <rect x="283" y="302" width="7" height="118" fill="#8b6235"/>
+  <rect x="258" y="282" width="56" height="24" fill="#6e6e78"/>
+  <line x1="258" y1="290" x2="314" y2="290" stroke="#8e8e9a" stroke-width="2.5"/>
+
+  <!-- Thick neck (drawn BEFORE the face/beard so the beard covers its top) -->
+  <path d="M 180 244 L 180 292 Q 200 300 220 292 L 220 244 Z" fill="#fce8d4"/>
+
+  <!-- Bare chest + one-shouldered charcoal exomis (viewer-left shoulder bare) -->
+  <path d="M 145 292 Q 200 284 255 292 L 262 386 L 138 386 Z" fill="#fce8d4"/>
+  <path d="M 145 318 Q 172 300 200 298 L 255 292 L 262 386 L 138 386 Z" fill="#5a5a64"/>
+  <!-- Leather belt + gold buckle -->
+  <rect x="138" y="378" width="124" height="10" fill="#8b6235"/>
+  <rect x="194" y="377" width="12" height="12" fill="#d4af37"/>
+
+  <!-- Short exomis skirt with darker hem -->
+  <path d="M 138 388 Q 132 418 130 444 L 270 444 Q 268 418 262 388 Z" fill="#5a5a64"/>
+  <path d="M 130 436 Q 200 440 270 436 L 270 444 L 130 444 Z" fill="#46464e"/>
+
+  <!-- Strong legs -->
+  <path d="M 158 444 L 186 444 L 183 514 L 161 514 Z" fill="#fce8d4"/>
+  <path d="M 214 444 L 242 444 L 239 514 L 217 514 Z" fill="#fce8d4"/>
+
+  <!-- Feet + sturdy sandals -->
+  <ellipse cx="172" cy="521" rx="14" ry="6" fill="#fce8d4"/>
+  <ellipse cx="228" cy="521" rx="14" ry="6" fill="#fce8d4"/>
+  <ellipse cx="172" cy="525" rx="15" ry="5" fill="#6b4a2a"/>
+  <ellipse cx="228" cy="525" rx="15" ry="5" fill="#6b4a2a"/>
+
+  <!-- Head: broad round face (medallion proportions), scaled medallion hair + headband -->
+  <ellipse cx="200" cy="174" rx="62" ry="67" fill="#fce8d4"/>
+  <path d="M 138 142 Q 133 92 200 84 Q 267 92 262 142 Q 242 124 200 122 Q 158 124 138 142 Z" fill="#2a1a10"/>
+  <path d="M 141 136 Q 200 116 259 136 L 259 148 Q 200 127 141 148 Z" fill="#c0522c"/>
+
+  <!-- Full beard + mouth + mustache (scaled 1:1 from the medallion) -->
+  <path d="M 141 177 Q 133 247 170 267 Q 200 280 230 267 Q 267 247 259 177 Q 248 203 229 212 Q 200 224 171 212 Q 152 203 141 177 Z" fill="#3a2415"/>
+  <ellipse cx="200" cy="219" rx="12" ry="5.2" fill="#e8a58c"/>
+  <ellipse cx="200" cy="220" rx="7" ry="4" fill="#7a3030"/>
+  <path d="M 173 208 Q 186 197 200 203 Q 214 197 227 208 Q 215 216 200 213 Q 185 216 173 208 Z" fill="#3a2415"/>
+
+  <!-- Ruddy cheeks (works at the forge) -->
+  <ellipse cx="155" cy="189" rx="11" ry="5.5" fill="#e89080" fill-opacity="0.5"/>
+  <ellipse cx="245" cy="189" rx="11" ry="5.5" fill="#e89080" fill-opacity="0.5"/>
+
+  <g stroke="#2a1a10" stroke-width="2" fill="none" stroke-linecap="round">
+    <ellipse cx="200" cy="174" rx="62" ry="67"/>
+    <path d="M 138 142 Q 133 92 200 84 Q 267 92 262 142"/>
+    <path d="M 141 136 Q 200 116 259 136 L 259 148 Q 200 127 141 148 Z"/>
+    <line x1="161" y1="135" x2="161" y2="143" stroke-width="1.3" stroke-opacity="0.6"/>
+    <line x1="200" y1="125" x2="200" y2="134" stroke-width="1.3" stroke-opacity="0.6"/>
+    <line x1="239" y1="135" x2="239" y2="143" stroke-width="1.3" stroke-opacity="0.6"/>
+    <path d="M 141 177 Q 133 247 170 267 Q 200 280 230 267 Q 267 247 259 177"/>
+    <path d="M 141 177 Q 152 203 171 212 Q 200 224 229 212 Q 248 203 259 177" stroke-width="1.6" stroke-opacity="0.8"/>
+    <path d="M 173 208 Q 186 197 200 203 Q 214 197 227 208 Q 215 216 200 213 Q 185 216 173 208 Z" stroke-width="1.6"/>
+    <path d="M 172 240 Q 176 248 174 254" stroke="#5a3825" stroke-width="1.4" stroke-opacity="0.7"/>
+    <path d="M 200 248 Q 200 256 200 262" stroke="#5a3825" stroke-width="1.4" stroke-opacity="0.7"/>
+    <path d="M 228 240 Q 224 248 226 254" stroke="#5a3825" stroke-width="1.4" stroke-opacity="0.7"/>
+    <path d="M 180 244 L 180 292"/>
+    <path d="M 220 244 L 220 292"/>
+    <path d="M 145 292 Q 200 284 255 292"/>
+    <path d="M 145 318 Q 172 300 200 298 L 255 292" stroke-width="1.8"/>
+    <path d="M 145 292 L 138 386"/>
+    <path d="M 255 292 L 262 386"/>
+    <line x1="138" y1="378" x2="262" y2="378"/>
+    <line x1="138" y1="388" x2="262" y2="388"/>
+    <rect x="194" y="377" width="12" height="12"/>
+    <path d="M 138 388 Q 132 418 130 444"/>
+    <path d="M 262 388 Q 268 418 270 444"/>
+    <line x1="130" y1="436" x2="270" y2="436"/>
+    <line x1="130" y1="444" x2="270" y2="444"/>
+    <path d="M 158 444 L 186 444 L 183 514 L 161 514 Z" stroke-width="1.8"/>
+    <path d="M 214 444 L 242 444 L 239 514 L 217 514 Z" stroke-width="1.8"/>
+    <line x1="163" y1="482" x2="182" y2="482" stroke-opacity="0.35" stroke-width="1.3"/>
+    <line x1="164" y1="494" x2="181" y2="494" stroke-opacity="0.35" stroke-width="1.3"/>
+    <line x1="218" y1="482" x2="237" y2="482" stroke-opacity="0.35" stroke-width="1.3"/>
+    <line x1="219" y1="494" x2="236" y2="494" stroke-opacity="0.35" stroke-width="1.3"/>
+    <ellipse cx="172" cy="521" rx="14" ry="6"/>
+    <ellipse cx="228" cy="521" rx="14" ry="6"/>
+    <ellipse cx="172" cy="525" rx="15" ry="5"/>
+    <ellipse cx="228" cy="525" rx="15" ry="5"/>
+    <!-- Hammer outline -->
+    <rect x="283" y="302" width="7" height="118"/>
+    <rect x="258" y="282" width="56" height="24"/>
+    <!-- Left arm gesturing out (talking) — brawnier -->
+    <path d="M 145 308 Q 106 342 92 396" stroke="#fce8d4" stroke-width="18"/>
+    <path d="M 145 308 Q 106 342 92 396"/>
+    <ellipse cx="90" cy="406" rx="12" ry="10" fill="#fce8d4"/>
+    <ellipse cx="90" cy="406" rx="12" ry="10"/>
+    <line x1="84" y1="404" x2="81" y2="399"/>
+    <line x1="90" y1="401" x2="90" y2="395"/>
+    <line x1="96" y1="404" x2="99" y2="399"/>
+    <!-- Right arm gripping the hammer -->
+    <path d="M 255 308 Q 276 356 284 405" stroke="#fce8d4" stroke-width="18"/>
+    <path d="M 255 308 Q 276 356 284 405"/>
+    <ellipse cx="286" cy="416" rx="12" ry="10" fill="#fce8d4"/>
+    <ellipse cx="286" cy="416" rx="12" ry="10"/>
+    <line x1="280" y1="414" x2="278" y2="409"/>
+    <line x1="292" y1="414" x2="294" y2="409"/>
+    <!-- Eyes: open engaged almond (dark iris), heavy brows — medallion look -->
+    <path d="M 165 168 Q 180 160 197 168 Q 192 180 180 180 Q 170 178 165 168 Z" fill="#fff"/>
+    <ellipse cx="181" cy="172" rx="7" ry="7" fill="#3a2415" stroke="none"/>
+    <circle cx="183" cy="170" r="3" fill="#1a0a05" stroke="none"/>
+    <circle cx="185" cy="168" r="1.2" fill="#fff" stroke="none"/>
+    <path d="M 203 168 Q 220 160 235 168 Q 230 180 220 180 Q 208 178 203 168 Z" fill="#fff"/>
+    <ellipse cx="219" cy="172" rx="7" ry="7" fill="#3a2415" stroke="none"/>
+    <circle cx="221" cy="170" r="3" fill="#1a0a05" stroke="none"/>
+    <circle cx="223" cy="168" r="1.2" fill="#fff" stroke="none"/>
+    <path d="M 148 152 Q 174 142 194 151" stroke-width="4"/>
+    <path d="M 206 151 Q 226 142 252 152" stroke-width="4"/>
+    <!-- Strong nose, resting on the mustache (medallion placement) -->
+    <path d="M 200 177 Q 197 194 201 202 Q 204 205 207 202"/>
+    <ellipse cx="195" cy="202" rx="1.6" ry="1" fill="#2a1a10" fill-opacity="0.45" stroke="none"/>
+    <ellipse cx="206" cy="202.5" rx="1.6" ry="1" fill="#2a1a10" fill-opacity="0.45" stroke="none"/>
+    <!-- Mouth: open talking, inside the beard -->
+    <ellipse cx="200" cy="220" rx="7" ry="4"/>
+  </g>
+</svg>

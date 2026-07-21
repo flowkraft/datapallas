@@ -1,0 +1,80 @@
+info:
+  app:
+    name: '@info.app.name@'
+    version: '@info.app.version@'
+    grailsVersion: '@info.app.grailsVersion@'
+grails:
+  codegen:
+    defaultPackage: com.flowkraft
+  profile: web
+  mime:
+    disable:
+      accept:
+        header:
+          userAgents:
+          - Gecko
+          - WebKit
+          - Presto
+          - Trident
+    types:
+      json:
+      - application/json
+      - text/json
+      hal:
+      - application/hal+json
+      - application/hal+xml
+      xml:
+      - text/xml
+      - application/xml
+      atom: application/atom+xml
+      css: text/css
+      csv: text/csv
+      js: text/javascript
+      rss: application/rss+xml
+      text: text/plain
+      all: '*/*'
+      form: application/x-www-form-urlencoded
+      html:
+      - text/html
+      - application/xhtml+xml
+      multipartForm: multipart/form-data
+      pdf: application/pdf
+  views:
+    default:
+      codec: html
+    gsp:
+      encoding: UTF-8
+      htmlcodec: xml
+      codecs:
+        expression: html
+        scriptlet: html
+        taglib: none
+        staticparts: none
+quartz.autoStartup: true
+dataSource:
+  driverClassName: org.sqlite.JDBC
+  dialect: org.hibernate.community.dialect.SQLiteDialect
+  username: sa
+  password: ''
+  pooled: true
+  jmxExport: true
+environments:
+  development:
+    dataSource:
+      dbCreate: update
+      url: jdbc:sqlite:./data/grails-portal-dev.db
+  test:
+    dataSource:
+      dbCreate: update
+      url: jdbc:sqlite:./data/grails-portal-test.db
+  production:
+    dataSource:
+      dbCreate: update
+      # Billing portal DB — clear name, lives in the shared dir (_shared-db) so the bkend can
+      # maintain it. Honors DB_PATH from the compose; defaults to grails-portal.db.
+      url: jdbc:sqlite:${DB_PATH:/app/data/grails-portal.db}
+hibernate:
+  cache:
+    queries: false
+    use_second_level_cache: false
+    use_query_cache: false

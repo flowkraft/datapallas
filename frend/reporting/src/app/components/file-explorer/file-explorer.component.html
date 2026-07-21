@@ -167,6 +167,7 @@
                 <!-- Files -->
                 @for (file of fileTree?.files; track file) {
                   <tr
+                    class="file-row"
                     [class.selected-file]="selectedFile === file.fullName"
                     (click)="selectFile(file)"
                     (dblclick)="selectAndConfirmFile(file)"

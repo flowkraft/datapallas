@@ -197,28 +197,32 @@
                     <dp-tabs style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden;">
                       <dp-tab heading="Categories" style="flex: 1 1 auto; min-height: 0;">
                         <ul
-                          class="list-group list-group-flush"
+                          class="flex flex-col gap-1"
                           style="height: 100%; min-height: 0; overflow-y: auto"
                           >
                           @for (cat of categoriesWithCounts; track cat) {
                             <li
-                              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                              [class.active]="selectedCategory === cat.name"
+                              class="flex items-center justify-between"
                               (click)="filterByCategory(cat.name)"
+                              [style.background-color]="selectedCategory === cat.name ? 'color-mix(in oklab, var(--color-primary) 18%, transparent)' : 'transparent'"
+                              [style.border-left]="'3px solid ' + (selectedCategory === cat.name ? 'var(--color-primary)' : 'transparent')"
+                              [style.color]="selectedCategory === cat.name ? 'var(--color-base-content)' : ''"
+                              [style.font-weight]="selectedCategory === cat.name ? '600' : '400'"
                     style="
                       cursor: pointer;
                       padding: 0.5rem 0.75rem;
                       white-space: nowrap;
                       overflow: hidden;
                       text-overflow: ellipsis;
+                      border-radius: 4px;
                     "
                               >
                               {{ cat.name }}
                               <span
-                                class="badge badge-secondary badge-pill"
+                                class="badge badge-secondary"
                                 [style.background-color]="'transparent'"
-                                [style.color]="selectedCategory === cat.name ? 'white' : '#6c757d'"
-                                [style.border]="'1px solid ' + (selectedCategory === cat.name ? 'white' : '#6c757d')"
+                                [style.color]="selectedCategory === cat.name ? 'var(--color-base-content)' : '#6c757d'"
+                                [style.border]="'1px solid ' + (selectedCategory === cat.name ? 'var(--color-base-content)' : '#6c757d')"
                                 >{{ cat.count }}</span
                                 >
                               </li>
@@ -237,6 +241,10 @@
                                 (click)="filterByTag(tag)"
                                 class="tag-label"
                                 [ngClass]="{'tag-selected': selectedTag === tag}"
+                                [style.background-color]="selectedTag === tag ? 'color-mix(in oklab, var(--color-primary) 18%, transparent)' : 'transparent'"
+                                [style.border-color]="selectedTag === tag ? 'var(--color-primary)' : 'var(--color-base-300)'"
+                                [style.color]="selectedTag === tag ? 'var(--color-base-content)' : ''"
+                                [style.font-weight]="selectedTag === tag ? '600' : '400'"
                     style="
                       margin-right: 5px;
                       margin-bottom: 5px;
@@ -296,10 +304,10 @@
                               </button>
                             </div>
                             <div
-                              class="d-flex justify-content-between align-items-center mb-2"
+                              class="flex justify-between items-center mb-2"
                               style="max-width: 100%"
                               >
-                              <h4 style="word-break: break-word; max-width: 100%">
+                              <h4 style="word-break: break-word; max-width: 100%; color: #0066cc; font-weight: bold">
                                 {{ expandedPrompt.title }}
                               </h4>
                             </div>
@@ -339,6 +347,7 @@
                                 </div>
                                 <!-- CHANGED: Removed scrollbar by adjusting overflow property -->
                                 <pre
+                                  id="aiPromptExpandedText"
                       style="
                         white-space: pre-wrap;
                         word-wrap: break-word;
@@ -356,9 +365,7 @@
                         display: block;
                         word-break: break-word;
                       "
-                                  >
-                                  {{ expandedPrompt.promptText }}</pre
-                                  >
+                                  [innerHTML]="renderPromptTextHtml(expandedPrompt.promptText)"></pre>
                                 </div>
                               </div>
                             </div>
@@ -380,7 +387,7 @@
                                   <div class="card-body">
                                     <!-- Title with category badge moved up -->
                                     <div
-                                      class="d-flex justify-content-between align-items-start mb-2"
+                                      class="flex justify-between items-start mb-2"
                                       >
                                       <a
                                         href="javascript:void(0)"

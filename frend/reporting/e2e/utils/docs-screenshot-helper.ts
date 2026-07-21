@@ -47,15 +47,71 @@ export const DOCS_IMAGES_DIR = path.resolve(
  * toast-free without needing per-shot setup/teardown.
  *
  * Idempotent: re-calling doesn't stack multiple style tags (we look up by id).
+ *
+ * EXEMPTION — the '.java-started' "Working on… Please wait." banner is ALSO a toast
+ * (toastr-messages.service.ts appends messageClass to the inner `.alert`), but
+ * FluentTester.waitOnProcessingToStart(CHECK_PROCESSING_JAVA) polls it to know a Burst/job
+ * actually began. A blanket `.toast { display:none }` hides it too, so that wait then hangs
+ * forever on a banner it can see but that never turns visible. So we hide every OTHER toast's
+ * `.alert` and leave '.java-started' alone; the emptied `.toast` wrapper is styleless (fixed
+ * position only), so nothing renders for the hidden ones anyway.
  */
 export async function hideToastsForScreenshots(page: Page): Promise<void> {
   await page.evaluate(() => {
     if (document.getElementById('__hide_toasts_for_screenshots')) return;
     const style = document.createElement('style');
     style.id = '__hide_toasts_for_screenshots';
-    style.textContent = `.toast { display: none !important; }`;
+    style.textContent = `.toast .alert:not(.java-started) { display: none !important; }`;
     document.head.appendChild(style);
   });
+}
+
+/**
+ * Empty the log files, so an unrelated error does not paint the status bar red
+ * in a frame that is about to be published.
+ *
+ * THIS IS NOT "HIDING ERRORS". The status bar shows "Ups... View Error(s)" when
+ * `logStats.errorsLogFileSize > 0` (status-bar.template.html) — i.e. it is driven
+ * by a real file on disk, not a UI flag. What lands in that file during a
+ * screenshot run is a DNS timeout for an external host:
+ *
+ *   io.netty.resolver.dns.DnsNameResolverTimeoutException:
+ *   DefaultDnsQuestion(www.pdfburst.com. IN AAAA) query timed out after 5000ms
+ *
+ * — an outbound lookup that has nothing to do with the report being demonstrated,
+ * but which reddens the status bar on every later frame and floods the Generate
+ * screen's Errors Log Preview with a Java stack trace.
+ *
+ * The rule is that errors must scream, so this does NOT hide the badge with CSS
+ * and does NOT touch #btnErrors. It empties the CAUSE, and PRINTS whatever it
+ * emptied to the run output first — so a genuine error still screams, in the
+ * console where a human will see it, instead of silently into a marketing frame.
+ * If a run starts spewing something that is not the pdfburst lookup, it will be
+ * right there in the log output.
+ *
+ * The size is pushed back to the UI by the backend's log watcher, hence the wait.
+ */
+export async function clearErrorLogsForScreenshots(page: Page): Promise<void> {
+  const logsDir = path.join(process.env.PORTABLE_EXECUTABLE_DIR || '', 'logs');
+  let emptiedSomething = false;
+
+  for (const name of ['errors.log', 'warnings.log']) {
+    const file = path.join(logsDir, name);
+    if (jetpack.exists(file) !== 'file') continue;
+    const content = (jetpack.read(file) as string) || '';
+    if (!content.trim()) continue;
+    console.log(
+      `[screens] ${name} was NOT empty — emptying it so it does not land in a frame.\n` +
+        `[screens] --- ${name} contents follow (nothing is being swallowed) ---\n` +
+        content.slice(0, 4000) +
+        (content.length > 4000 ? `\n[screens] ...(${content.length - 4000} more chars)` : ''),
+    );
+    jetpack.write(file, '');
+    emptiedSomething = true;
+  }
+
+  // Let the backend's log watcher push the new (zero) size so the badge clears.
+  if (emptiedSomething) await page.waitForTimeout(1200);
 }
 
 /** Take a viewport screenshot and save it directly into the docs repo. */

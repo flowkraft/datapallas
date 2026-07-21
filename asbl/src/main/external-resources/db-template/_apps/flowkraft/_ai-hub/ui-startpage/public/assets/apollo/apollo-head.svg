@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Apollo — sun god (modern web). MALE, youthful (kouros): SHORT golden curls with
+       visible ears + sideburns (no long side locks), gold laurel wreath, faint sun rays.
+       Same flat outlined style as athena/mnemosyne-talking.svg:
+       skin #fce8d4, ink #2a1a10 w2, blush #e89080, gold #d4af37. -->
+  <defs>
+    <clipPath id="apollo-disc"><circle cx="100" cy="100" r="96"/></clipPath>
+  </defs>
+
+  <circle cx="100" cy="100" r="96" fill="#fdf3da"/>
+
+  <g clip-path="url(#apollo-disc)">
+    <!-- Faint sun rays peeking around the head -->
+    <g stroke="#f0d898" stroke-width="3.5" stroke-linecap="round" opacity="0.75">
+      <line x1="100" y1="26" x2="100" y2="10"/>
+      <line x1="63" y1="36" x2="55" y2="22"/>
+      <line x1="137" y1="36" x2="145" y2="22"/>
+      <line x1="36" y1="63" x2="22" y2="55"/>
+      <line x1="164" y1="63" x2="178" y2="55"/>
+    </g>
+    <!-- Shoulders / white chiton, gold trim + fibula -->
+    <path d="M 32 200 Q 38 160 76 148 Q 100 142 124 148 Q 162 160 168 200 Z" fill="#f8f8f0"/>
+    <path d="M 76 148 Q 100 158 124 148 L 121 156 Q 100 165 79 156 Z" fill="#d4af37" fill-opacity="0.85"/>
+    <circle cx="127" cy="153" r="4.5" fill="#d4af37"/>
+    <!-- Neck -->
+    <path d="M 88 126 L 88 150 Q 100 157 112 150 L 112 126 Z" fill="#fce8d4"/>
+    <ellipse cx="100" cy="131" rx="13" ry="5" fill="#f4d8c4"/>
+    <!-- Ears (visible — short masculine cut) -->
+    <ellipse cx="61" cy="95" rx="5.5" ry="9" fill="#fce8d4"/>
+    <ellipse cx="139" cy="95" rx="5.5" ry="9" fill="#fce8d4"/>
+    <!-- Face -->
+    <ellipse cx="100" cy="92" rx="38" ry="46" fill="#fce8d4"/>
+    <!-- SHORT golden curls: wavy cropped fringe, ends above the ears -->
+    <path d="M 58 72 Q 54 34 100 28 Q 146 34 142 72 Q 138 58 126 54 Q 130 64 118 60 Q 104 48 86 58 Q 74 52 79 64 Q 66 60 58 72 Z" fill="#e2b84e"/>
+    <path d="M 100 28 Q 146 34 142 72 Q 138 58 126 54 Q 136 40 100 28 Z" fill="#c89a3c" fill-opacity="0.55"/>
+    <!-- Short sideburns in front of the ears -->
+    <circle cx="61" cy="79" r="4.5" fill="#e2b84e"/>
+    <circle cx="139" cy="79" r="4.5" fill="#e2b84e"/>
+    <!-- Gold laurel wreath -->
+    <path d="M 62 62 Q 100 42 138 62" stroke="#d4af37" stroke-width="3" fill="none"/>
+    <ellipse cx="72" cy="55" rx="8" ry="3.4" fill="#d4af37" transform="rotate(-34 72 55)"/>
+    <ellipse cx="87" cy="47" rx="8" ry="3.4" fill="#d4af37" transform="rotate(-14 87 47)"/>
+    <ellipse cx="113" cy="47" rx="8" ry="3.4" fill="#d4af37" transform="rotate(14 113 47)"/>
+    <ellipse cx="128" cy="55" rx="8" ry="3.4" fill="#d4af37" transform="rotate(34 128 55)"/>
+    <!-- Blush -->
+    <ellipse cx="72" cy="104" rx="7" ry="3.5" fill="#e89080" fill-opacity="0.4"/>
+    <ellipse cx="128" cy="104" rx="7" ry="3.5" fill="#e89080" fill-opacity="0.4"/>
+  </g>
+
+  <!-- Ink outline pass -->
+  <g clip-path="url(#apollo-disc)" stroke="#2a1a10" stroke-width="2" fill="none" stroke-linecap="round">
+    <path d="M 32 200 Q 38 160 76 148 Q 100 142 124 148 Q 162 160 168 200"/>
+    <path d="M 76 148 Q 100 158 124 148 L 121 156 Q 100 165 79 156 Z"/>
+    <circle cx="127" cy="153" r="4.5"/>
+    <path d="M 88 126 L 88 150 Q 100 157 112 150 L 112 126"/>
+    <ellipse cx="61" cy="95" rx="5.5" ry="9"/>
+    <path d="M 60 92 Q 62 95 61 99" stroke-width="1.3" stroke-opacity="0.6"/>
+    <ellipse cx="139" cy="95" rx="5.5" ry="9"/>
+    <path d="M 140 92 Q 138 95 139 99" stroke-width="1.3" stroke-opacity="0.6"/>
+    <ellipse cx="100" cy="92" rx="38" ry="46"/>
+    <path d="M 58 72 Q 54 34 100 28 Q 146 34 142 72"/>
+    <path d="M 58 72 Q 66 60 79 64 Q 74 52 86 58 Q 104 48 118 60 Q 130 64 126 54 Q 138 58 142 72" stroke-width="1.6" stroke-opacity="0.75"/>
+    <circle cx="61" cy="79" r="4.5" stroke-width="1.4" stroke-opacity="0.7"/>
+    <circle cx="139" cy="79" r="4.5" stroke-width="1.4" stroke-opacity="0.7"/>
+    <path d="M 62 62 Q 100 42 138 62" stroke="#d4af37" stroke-width="3"/>
+    <ellipse cx="72" cy="55" rx="8" ry="3.4" stroke="#a8842a" transform="rotate(-34 72 55)" stroke-width="1.4"/>
+    <ellipse cx="87" cy="47" rx="8" ry="3.4" stroke="#a8842a" transform="rotate(-14 87 47)" stroke-width="1.4"/>
+    <ellipse cx="113" cy="47" rx="8" ry="3.4" stroke="#a8842a" transform="rotate(14 113 47)" stroke-width="1.4"/>
+    <ellipse cx="128" cy="55" rx="8" ry="3.4" stroke="#a8842a" transform="rotate(34 128 55)" stroke-width="1.4"/>
+    <!-- Eyes: golden-brown iris -->
+    <path d="M 74 88 Q 84 82 95 88 Q 91 96 83 96 Q 77 94 74 88 Z" fill="#ffffff"/>
+    <ellipse cx="85" cy="90" rx="4.8" ry="4.8" fill="#8a6420" stroke="none"/>
+    <circle cx="86.5" cy="88.8" r="2.2" fill="#1a0a05" stroke="none"/>
+    <circle cx="87.6" cy="87.6" r="0.9" fill="#ffffff" stroke="none"/>
+    <path d="M 105 88 Q 116 82 126 88 Q 123 96 115 96 Q 109 94 105 88 Z" fill="#ffffff"/>
+    <ellipse cx="115" cy="90" rx="4.8" ry="4.8" fill="#8a6420" stroke="none"/>
+    <circle cx="116.5" cy="88.8" r="2.2" fill="#1a0a05" stroke="none"/>
+    <circle cx="117.6" cy="87.6" r="0.9" fill="#ffffff" stroke="none"/>
+    <line x1="74.5" y1="86.5" x2="76" y2="84"/>
+    <line x1="124" y1="84" x2="125.5" y2="86.5"/>
+    <!-- Straighter masculine brows -->
+    <path d="M 71 78 Q 84 73 96 77" stroke-width="2.5"/>
+    <path d="M 104 77 Q 116 73 129 78" stroke-width="2.5"/>
+    <!-- Nose -->
+    <path d="M 100 96 Q 99 107 101 111 Q 103 113 105 111"/>
+    <ellipse cx="97" cy="111" rx="1.3" ry="0.9" fill="#2a1a10" fill-opacity="0.45" stroke="none"/>
+    <ellipse cx="103.5" cy="111.5" rx="1.3" ry="0.9" fill="#2a1a10" fill-opacity="0.45" stroke="none"/>
+    <!-- Confident smile -->
+    <path d="M 89 120 Q 100 129 111 120" stroke-width="2.2"/>
+    <!-- Chiton fold hints -->
+    <path d="M 66 168 Q 68 184 66 198" stroke-opacity="0.4" stroke-width="1.5"/>
+    <path d="M 134 168 Q 132 184 134 198" stroke-opacity="0.4" stroke-width="1.5"/>
+  </g>
+
+  <circle cx="100" cy="100" r="96" fill="none" stroke="#e8cf96" stroke-width="3.5"/>
+</svg>

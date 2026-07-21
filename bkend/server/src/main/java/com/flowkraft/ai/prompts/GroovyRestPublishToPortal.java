@@ -11,8 +11,8 @@ public final class GroovyRestPublishToPortal {
             "GROOVY-REST-PUBLISH-TO-PORTAL",
             "Generate Groovy Script to Publish Documents to DataPallas Portal via REST API",
             "Generate a Groovy script for DataPallas that publishes documents to the web portal using the WordPress/Pods REST API, including authentication. The script must also check for the existence of the target WordPress user and create the user if not already present.",
-            List.of("curl_(content-type)2portal.groovy", "webportal"),
-            "Web Portal / CMS",
+            List.of("curl_(content-type)2portal.groovy", "webportal", "wordpress"),
+            "Web Portal / CMS (WordPress)",
             """
 You are an experienced Groovy developer with deep knowledge of DataPallas, WordPress REST API, and Pods Framework integration. Your task is to generate a complete, robust Groovy script that publishes documents to the \
 DataPallas Portal via WordPress / Pods REST API, adapting an existing example script.

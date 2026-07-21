@@ -11,8 +11,8 @@ public final class SingleModelTemplateFromFields {
             "SINGLE-MODEL-TEMPLATE-FROM-FIELDS",
             "Generate Single Document Template (single-[model].php)",
             "Generate a secure, user-restricted PHP template for displaying a single document of a custom Pods type. Use the provided model fields and optionally an example template.",
-            List.of("single-(content-type).php", "webportal"),
-            "Web Portal / CMS",
+            List.of("single-(content-type).php", "webportal", "wordpress"),
+            "Web Portal / CMS (WordPress)",
             """
 You are an experienced WordPress developer with deep knowledge of the Pods Framework API and Tailwind CSS. Your task is to generate a complete, secure PHP single template for a new custom Pods content type, adapting an existing example template.
 

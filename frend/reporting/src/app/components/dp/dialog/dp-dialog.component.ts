@@ -207,6 +207,13 @@ export class DpDialogComponent implements AfterViewInit {
 
   private openDialog() {
     const el = this.dlg().nativeElement;
+    // Native <dialog> renders in the browser TOP LAYER. daisyUI's theme variables live on
+    // [data-theme] on <html>; they're inherited when the dialog is displayed live, but the
+    // top-layer paint path used by page.screenshot() can drop that inheritance — the vars fall
+    // back and the modal captures as un-themed/white even though it looks correct on screen.
+    // Mirror the document theme ONTO the dialog so the variables are defined locally on it.
+    const theme = document.documentElement.getAttribute('data-theme');
+    if (theme) el.setAttribute('data-theme', theme);
     if (!el.open) {
       el.showModal();
       this.onShow.emit();

@@ -51,7 +51,11 @@ export const tabUploadCloudTemplate = `<ng-template #tabUploadCloudTemplate>
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 12">
-        <img src="assets/images/remote-backup-services.png" />
+        <!-- Brand logos are made for a light background; give them a light card so they
+             stay crisp in dark themes instead of reading as a jarring white block. -->
+        <div style="display:inline-block;max-width:100%;background:#ffffff;border-radius:10px;padding:18px 22px">
+          <img src="assets/images/remote-backup-services.png" style="max-width:100%;height:auto;display:block" />
+        </div>
       </div>
     </div>
   </div>

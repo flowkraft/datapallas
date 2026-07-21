@@ -1,6 +1,23 @@
 # FlowKraft Unified App - Grails 7 Application
 # Multi-stage build for smaller final image
 
+# ===== Stage 0: Tailwind CSS =====
+# Rebuild grails-app/assets/stylesheets/tailwind.css against THIS app's views — the blueprint PLUS any
+# _custom overrides applied at scaffold time — so a utility class an override introduces (e.g. the
+# md:inline-flex / sm:inline / md:flex on the portal + admin nav) is actually compiled into the CSS.
+# The tailwind.css shipped in the blueprint is built from the blueprint's OWN views only, and the
+# Gradle stage below never regenerates it; without this stage an override's new class silently never
+# reaches the stylesheet and the element it styles stays permanently hidden. (Next.js gets this for
+# free — `next build` recompiles Tailwind over the whole app, overrides included; this is the Grails
+# equivalent.) css:build reads src/tailwind.source.css, whose @source glob scans grails-app/views/**.
+FROM node:20-alpine AS css
+WORKDIR /build
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY src ./src
+COPY grails-app ./grails-app
+RUN npm run css:build
+
 # ===== Stage 1: Build =====
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
@@ -25,6 +42,10 @@ RUN gradle dependencies --no-daemon || true
 # Copy source code
 COPY grails-app ./grails-app
 COPY src ./src
+
+# Overwrite the shipped stylesheet with the one Stage 0 rebuilt over this app's views + overrides,
+# so the classes those overrides use are present before the asset pipeline bundles it into the WAR.
+COPY --from=css /build/grails-app/assets/stylesheets/tailwind.css ./grails-app/assets/stylesheets/tailwind.css
 
 # Build the application and prepare the executable WAR
 RUN gradle assemble --no-daemon && \

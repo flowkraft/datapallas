@@ -233,111 +233,17 @@ plt.show()
 
 ---
 
-## Diagram Guidelines
+## Rendering Diagrams, Charts & Mockups
 
-**ALWAYS prefer PlantUML over Mermaid.** PlantUML has dedicated diagram types for nearly everything:
+For diagrams, ERDs, charts, mockups and Mermaid, I follow the shared
+**`rendering-diagrams-charts-mockups-in-chat`** skill: a ` ```plantuml ` block for
+diagrams/ERDs (rendered as SVG), and a **self-contained** ` ```html ` page for Mermaid,
+Chart.js/D3 charts, and mockups/dashboards (rendered in a sandboxed iframe — a bare
+` ```mermaid ` block will NOT render). See that skill for the full contract + the PlantUML
+ER-diagram syntax rules.
 
-| Diagram Type | PlantUML | Reference |
-|-------------|----------|-----------|
-| ER Diagram | `@startuml` with entity syntax | plantuml.com/er-diagram |
-| Sequence | `@startuml` | plantuml.com/sequence-diagram |
-| Class | `@startuml` | plantuml.com/class-diagram |
-| Activity | `@startuml` | plantuml.com/activity-diagram-beta |
-| Component | `@startuml` | plantuml.com/component-diagram |
-| State | `@startuml` | plantuml.com/state-diagram |
-| WBS | `@startwbs` | plantuml.com/wbs-diagram |
-| Mind Map | `@startmindmap` | plantuml.com/mindmap-diagram |
-| Gantt | `@startgantt` | plantuml.com/gantt-diagram |
-| Network | `@startuml` with nwdiag | plantuml.com/nwdiag |
-| Wireframe | `@startsalt` | plantuml.com/salt |
-| JSON/YAML | `@startjson` / `@startyaml` | plantuml.com/json |
-
-### PlantUML ER Diagram Example (MUST follow this syntax)
-
-```plantuml
-@startuml
-entity "Customer" as customer {
-  *customer_id : INT <<PK>>
-  --
-  name : VARCHAR
-  email : VARCHAR
-  phone : VARCHAR
-}
-
-entity "Order" as order {
-  *order_id : INT <<PK>>
-  --
-  *customer_id : INT <<FK>>
-  order_date : DATE
-  total : DECIMAL
-}
-
-entity "Order Details" as order_details {
-  *detail_id : INT <<PK>>
-  --
-  *order_id : INT <<FK>>
-  *product_id : INT <<FK>>
-  quantity : INT
-  unit_price : DECIMAL
-}
-
-customer ||--o{ order : places
-order ||--|{ order_details : contains
-@enduml
-```
-
-**ER Diagram Syntax Rules:**
-- Use `entity "Display Name" as alias { ... }` — for tables with spaces, the quoted name is the display label, the alias is used in relationships
-- Mark primary keys with `*` prefix and `<<PK>>` annotation
-- Mark foreign keys with `*` prefix and `<<FK>>` annotation
-- Use `--` separator between PK columns and other columns
-- Relationships: `||--o{` (one-to-many), `||--||` (one-to-one), `}o--o{` (many-to-many), `||--|{` (one-to-many mandatory)
-- **NEVER** use `!define TABLE(name)` macros with `%%` placeholders — that is INVALID PlantUML syntax
-- **NEVER** reference aliases that don't exist — every alias in a relationship MUST have a matching `entity` definition above
-- Keep diagrams focused — show the most important 5-15 entities, not every table in the database
-
-**Only use Mermaid** when:
-1. PlantUML has NO dedicated diagram type (e.g., git graph, sankey, XY chart)
-2. The user explicitly asks for Mermaid
-
-When using Mermaid, generate a **complete self-contained HTML page** in a ` ```html ` block
-(NOT a ` ```mermaid ` block). Include the Mermaid CDN script so the diagram renders standalone:
-
-```html
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"/>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
-</head><body>
-<div class="mermaid">
-flowchart TD
-  A[Start] --> B{Decision}
-  B -->|Yes| C[OK]
-</div>
-</body></html>
-```
-
-When writing PlantUML diagrams, wrap in: ` ```plantuml ... ``` `
-
-Chat2DB renders PlantUML as SVG and HTML/Mermaid in iframes — the user sees diagrams automatically.
-
----
-
-## HTML Content Guidelines
-
-ALL ` ```html ` blocks MUST be **fully self-contained HTML pages**:
-
-- Include `<!DOCTYPE html>` and proper `<html><head><body>` structure
-- Load ALL external CSS/JS from CDN (the HTML runs in an isolated iframe with NO parent resources)
-- Choose the most appropriate CDN for each library:
-  - **CSS frameworks**: Bootstrap, Tailwind (via CDN play script), etc.
-  - **JS libraries**: Chart.js, D3.js, Mermaid, etc.
-  - **Icons**: Font Awesome, Lucide, etc.
-- Inline small CSS/JS directly when no external library is needed
-- Use `https://cdn.jsdelivr.net/npm/` or `https://unpkg.com/` as preferred CDN sources
-
-This applies to ALL HTML content: dashboards, mockups, Mermaid diagrams, interactive widgets, etc.
-Chat2DB renders each ` ```html ` block in its own iframe — the user sees it automatically.
+> This is separate from the Python **Visualization Guidelines** above (`df` → seaborn /
+> matplotlib / plotly), which are Chat2DB's own executed-code charts, not fenced blocks.
 
 ---
 

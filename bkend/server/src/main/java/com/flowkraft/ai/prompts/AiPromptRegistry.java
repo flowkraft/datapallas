@@ -14,6 +14,13 @@ public final class AiPromptRegistry {
             DbSchemaDomainGrouped.create(),
             DbSchemaErDiagramPlantuml.create(),
             CustomDbSeedScript.create(),
+            CustomDbWipeScript.create(),
+            BuildBillingPortalGrails.create(),
+            BuildHrPortalGrails.create(),
+            BuildBillingPortalNext.create(),
+            BuildHrPortalNext.create(),
+            BuildBillingPortalBackend.create(),
+            BuildHrPortalBackend.create(),
             BuildTemplateFromScratch.create(),
             CreateSalesReportHtml.create(),
             ModifyExistingHtml.create(),
@@ -43,7 +50,21 @@ public final class AiPromptRegistry {
             JasperJrxmlTemplateGenerator.create(),
             PdfHtmlTemplateGenerator.create(),
             PdfSampleA4PayslipXslfo.create(),
-            FilterPaneDslConfigure.create()
+            FilterPaneDslConfigure.create(),
+            // Ask Athena — Athena's data & analytics flows
+            AskAthenaAboutDataPallas.create(),
+            ExploreMyData.create(),
+            DiagramMyData.create(),
+            MockupScreenOrDashboard.create(),
+            WriteCustomProcessingScript.create(),
+            SetupDocumentDistribution.create(),
+            BuildPdfReport.create(),
+            BuildPivotReport.create(),
+            WriteRequirementsDoc.create(),
+            ReplicateDataToWarehouse.create(),
+            ShapeDataStarSchema.create(),
+            SetupCloudBeaver.create(),
+            BuildPublishDashboard.create()
         );
     }
 }

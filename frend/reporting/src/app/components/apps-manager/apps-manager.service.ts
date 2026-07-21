@@ -134,7 +134,7 @@ export class AppsManagerService {
       },
       {
         id: 'cms-webportal',
-        name: 'WebPortal / Customer Portal',
+        name: 'WebPortal / Customer Portal (WordPress)',
         icon: 'users',
         category: 'Web Portal',
         type: 'docker',

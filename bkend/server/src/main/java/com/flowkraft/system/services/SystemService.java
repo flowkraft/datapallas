@@ -59,14 +59,9 @@ public class SystemService {
 	 */
 	public List<Map<String, Object>> listCustomAppManifests() {
 		List<Map<String, Object>> manifests = new ArrayList<>();
-		File appsRoot = new File(Utils.getAppsFolderPath());
-		File[] appDirs = appsRoot.isDirectory() ? appsRoot.listFiles(File::isDirectory) : null;
-		if (appDirs == null)
-			return manifests;
-
-		Arrays.sort(appDirs, Comparator.comparing(File::getName));
+		// Direct children of _apps/ (user apps) + FlowKraft example apps under _apps/flowkraft/_examples/.
 		ObjectMapper mapper = new ObjectMapper();
-		for (File appDir : appDirs) {
+		for (File appDir : Utils.getCustomAppDirs()) {
 			File manifestFile = new File(new File(appDir, "_custom"), "app.json");
 			if (!manifestFile.isFile())
 				continue;

@@ -52,7 +52,6 @@
 
 import { test, expect, Browser, BrowserContext, Page } from '@playwright/test';
 import * as path from 'path';
-import * as fs from 'fs';
 
 import { electronBeforeAfterAllTest } from '../../../utils/common-setup';
 import { Constants } from '../../../utils/constants';
@@ -72,35 +71,32 @@ import {
   runSqlQuery,
   type WidgetType,
 } from '../../../helpers/explore-data-test-helper';
+// Shared AI-Hub / chat machinery (also used by chat2agents.screens.ts). The
+// divergent captureQAPair (justQAPair full-app branch), connectChat2db (pickerShot)
+// and askAthena stay LOCAL below.
+import {
+  AI_HUB_APP_ID,
+  AI_HUB_BASE_URL,
+  CHAT2DB_URL,
+  AGENTS_URL,
+  VIEWPORT,
+  ZAI_API_KEY,
+  dp,
+  clearAiHubEnv,
+  openSettingsDialog,
+  configureZaiProvider,
+  ensureDbQueryOff,
+  type Settle,
+} from '../../../helpers/chat-capture-helper';
 
-// ── AI HUB ──────────────────────────────────────────────────────────────────────
-const AI_HUB_APP_ID = 'flowkraft-data-canvas';
-const AI_HUB_BASE_URL = 'http://localhost:8440';
-const CHAT2DB_URL = `${AI_HUB_BASE_URL}/chat2db`;
-const AGENTS_URL = `${AI_HUB_BASE_URL}/agents`;
+// AI-Hub constants (AI_HUB_APP_ID, AI_HUB_BASE_URL, CHAT2DB_URL, AGENTS_URL,
+// VIEWPORT), the z.ai provider config (ZAI_PROVIDER_ID/MODEL/API_KEY) and dp() are
+// imported from chat-capture-helper above (shared with chat2agents.screens.ts).
 
 // ── OUTPUT DIRS ───────────────────────────────────────────────────────────────
 // 000_* live under public/images/docs/artificial-intelligence/, the 250_* under
 // public/images/docs/ (root).
 const AI_DIR = path.join(DOCS_IMAGES_DIR, 'artificial-intelligence');
-
-// ── z.ai PROVIDER (Athena's LLM) ────────────────────────────────────────────────
-// Provider ids (lib/llm-providers.ts): 'zai' = Coding Plan (base
-// https://api.z.ai/api/coding/paas/v4), 'zai-credits' = API Credits (base
-// https://api.z.ai/api/paas/v4). The doc + these tests drive the Coding Plan
-// subscription, so the key supplied via ZAI_API_KEY must be a Coding Plan key. Base
-// URL is pre-filled+locked by the form, so we only choose the provider, paste the
-// key, and pick the model.
-const ZAI_PROVIDER_ID = process.env.ZAI_PROVIDER_ID || 'zai';
-const ZAI_MODEL = process.env.ZAI_MODEL || 'glm-5.2';
-const ZAI_API_KEY = process.env.ZAI_API_KEY || ''; // ← supply at run time; empty = skip Block B
-
-
-const VIEWPORT = { width: 1500, height: 980 };
-
-// Every shot is written next to its original as `<name>-dp.png` for review; drop the
-// suffix once approved (samples.screens.ts / quickstart.screens.ts convention).
-const dp = (base: string) => `${base}-dp.png`;
 
 // ── Canvas (Act 2 of the two-act video) constants ──────────────────────────────
 const DATA_CANVAS_URL = `${AI_HUB_BASE_URL}/explore-data`;
@@ -995,45 +991,8 @@ electronBeforeAfterAllTest(
 // helpers in learn.screens.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Open the Settings dialog (#dialog-update-confirm) and report whether it opened.
- * MUST be called on /agents — agents/page.tsx listens for a `trigger-update-agents`
- * window event (which the navbar gear's "Update Agents" item dispatches via
- * `handleUpdateAgents` → `window.dispatchEvent`). We dispatch it DIRECTLY: clicking
- * the gear dropdown is flaky because its full-screen click-outside overlay races the
- * item click (that's why the dialog "didn't open"). The dialog lands on the Update
- * Agents tab by default.
- */
-async function openSettingsDialog(page: Page): Promise<boolean> {
-  await page.evaluate(() => window.dispatchEvent(new Event('trigger-update-agents')));
-  return page
-    .locator('#dialog-update-confirm')
-    .waitFor({ state: 'visible', timeout: 10_000 })
-    .then(() => true)
-    .catch(() => {
-      console.warn('[cfg] Settings dialog did not open (is the page on /agents?)');
-      return false;
-    });
-}
-
-/**
- * Ensure the AI Hub starts like a FRESH install — remove any persisted `.env` — so the
- * Letta container boots WITHOUT a provider key and its model list is empty. This forces
- * the provisioning flow's Fix B path (bounce letta AFTER the key is saved, then wait for
- * it to serve the model) to actually run. Necessary because clean-testground preserves
- * testground/e2e/_apps, so a `.env` written by a previous run's provisioning would
- * otherwise let Letta boot already-ready and silently skip Fix B.
- * MUST be called before SelfServicePortalsTestHelper.startApp.
- */
-function clearAiHubEnv(): void {
-  const envPath = path.resolve(process.env.PORTABLE_EXECUTABLE_DIR || '.', '_apps', 'flowkraft', '_ai-hub', '.env');
-  if (fs.existsSync(envPath)) {
-    fs.rmSync(envPath, { force: true });
-    console.log(`[clean] removed stale .env so Letta boots keyless (Fix B must restart it) @ ${envPath}`);
-  } else {
-    console.log('[clean] no stale .env — Letta will boot keyless (fresh-install state)');
-  }
-}
+// openSettingsDialog, clearAiHubEnv, configureZaiProvider and ensureDbQueryOff are
+// imported from chat-capture-helper (shared with chat2agents.screens.ts).
 
 /**
  * Docs helper — expand the provider <select> into a visible listbox so a screenshot shows
@@ -1068,113 +1027,7 @@ async function collapseLlmProviders(page: Page): Promise<void> {
   await page.waitForTimeout(200);
 }
 
-/**
- * With the Settings dialog open, switch to the "API Provider" tab, select the z.ai
- * provider (ZAI_PROVIDER_ID), paste ZAI_API_KEY, fetch + pick ZAI_MODEL, then Save
- * (persists to the AI Hub's SQLite so provisioning reads it). Every step is verified
- * against a stable id and its elapsed time is logged, so a slow step shows up in the
- * console instead of looking frozen. With a real key it THROWS on any step that doesn't
- * take — so a force-recreate never runs against a half-configured provider; with an
- * empty key it selects the provider for the 000_03 form capture and returns without
- * saving. Leaves the dialog open on the API Provider tab.
- */
-async function configureZaiProvider(page: Page, model: string = ZAI_MODEL): Promise<void> {
-  const strict = !!ZAI_API_KEY;
-  const t0 = Date.now();
-  const mark = (label: string) => console.log(`[cfg +${((Date.now() - t0) / 1000).toFixed(1)}s] ${label}`);
-
-  // 1 · Switch to the API Provider tab — proven by the provider <select> appearing
-  //     (the switch is a pure state toggle; if it takes >8s something is wrong).
-  await page.locator('#tab-api-provider').click({ timeout: 8000 });
-  await page.locator('#llm-provider-select').waitFor({ state: 'visible', timeout: 8000 });
-  mark('API Provider tab active');
-
-  // 2 · Select the provider by option value; verify it stuck (wrong provider = wrong
-  //     base URL = the key silently fails at inference time).
-  await page.locator('#llm-provider-select').selectOption(ZAI_PROVIDER_ID, { timeout: 6000 });
-  const got = await page.locator('#llm-provider-select').inputValue().catch(() => '');
-  if (got !== ZAI_PROVIDER_ID) {
-    const msg = `provider not selected — wanted "${ZAI_PROVIDER_ID}", select shows "${got}"`;
-    if (strict) throw new Error(`[cfg] ${msg}`);
-    console.warn(`[cfg] ${msg} (no key — continuing for the form capture)`);
-  }
-  mark(`provider = ${got || ZAI_PROVIDER_ID}`);
-
-  if (!strict) {
-    console.warn('[cfg] ZAI_API_KEY empty — captured the provider form; skipping key/model/save.');
-    return;
-  }
-
-  // 3 · API key.
-  const keyInput = page.locator('#llm-api-key-input');
-  await keyInput.waitFor({ state: 'visible', timeout: 6000 });
-  await keyInput.fill(ZAI_API_KEY);
-  if (!(await keyInput.inputValue())) throw new Error('[cfg] API key field did not populate');
-  mark('API key filled');
-
-  // 4 · Fetch models — done when the input placeholder flips to "Search models…" (the
-  //     form sets that only once fetchedModels > 0). Then pick the model by its id.
-  await page.locator('#btn-fetch-models').click({ timeout: 6000 });
-  await page
-    .waitForFunction(
-      () => document.querySelector('#llm-model-input')?.getAttribute('placeholder') === 'Search models...',
-      undefined,
-      { timeout: 45_000 },
-    )
-    .catch(() => {
-      throw new Error('[cfg] "Fetch Models" returned no models — check the z.ai key / that the provider matches the key (Coding Plan vs API Credits use different endpoints).');
-    });
-  mark('models fetched');
-
-  const modelInput = page.locator('#llm-model-input');
-  await modelInput.click();      // focus opens the dropdown (fetchedModels > 0)
-  await modelInput.fill(model);  // type to filter
-  const optionId = `#llm-model-option-${model.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-  await page.locator(optionId).waitFor({ state: 'visible', timeout: 15_000 })
-    .catch(() => { throw new Error(`[cfg] model "${model}" not in the fetched list — is it available on this z.ai plan?`); });
-  await page.locator(optionId).click({ timeout: 4000 });
-  const chosen = await modelInput.inputValue().catch(() => '');
-  if (!chosen.includes(model)) throw new Error(`[cfg] model not selected — input shows "${chosen}", wanted "${model}"`);
-  mark(`model = ${chosen}`);
-
-  // 5 · Save — but ONLY if the form is dirty. When the exact provider+key+model is
-  //     already persisted (a prior run saved it to the AI Hub's settings store, which
-  //     survives clean-testground), the form is clean and Save stays disabled — that's a
-  //     valid already-configured state (provider + model were verified above), so we
-  //     proceed. If dirty, click Save and wait until it settles back to
-  //     disabled-and-not-"Saving…" (the form clears its dirty flag only after a
-  //     successful persist).
-  await page.waitForTimeout(500); // let the async config-load settle before reading dirty state
-  if (await page.locator('#btn-save-llm-provider').isEnabled().catch(() => false)) {
-    await page.locator('#btn-save-llm-provider').click({ timeout: 6000 });
-    await page
-      .waitForFunction(() => {
-        const b = document.querySelector('#btn-save-llm-provider') as HTMLButtonElement | null;
-        return !!b && b.disabled && !(b.textContent || '').includes('Saving');
-      }, undefined, { timeout: 20_000 })
-      .catch(() => { throw new Error('[cfg] Save did not complete — provider settings were not persisted (still dirty after 20s).'); });
-    mark('saved (provider config persisted)');
-  } else {
-    // Not dirty → already saved. Confirm the persisted values are the ones we want.
-    const p = await page.locator('#llm-provider-select').inputValue().catch(() => '');
-    const m = await page.locator('#llm-model-input').inputValue().catch(() => '');
-    if (p !== ZAI_PROVIDER_ID || !m.includes(model)) {
-      throw new Error(`[cfg] Save is disabled but the persisted config differs — provider="${p}", model="${m}" (wanted "${ZAI_PROVIDER_ID}"/"${model}").`);
-    }
-    mark('provider already configured (form clean) — Save skipped');
-  }
-}
-
-/** Uncheck "Give db_query tool to Athena" if checked (the doc keeps it OFF). */
-async function ensureDbQueryOff(page: Page): Promise<void> {
-  const dbQuery = page.locator('#checkbox-give-db-query');
-  if (await dbQuery.isVisible({ timeout: 1500 }).catch(() => false)) {
-    if (await dbQuery.isChecked().catch(() => false)) {
-      await dbQuery.uncheck().catch(() => {});
-    }
-  }
-  await page.waitForTimeout(300);
-}
+// configureZaiProvider + ensureDbQueryOff are imported from chat-capture-helper.
 
 /** Chat2DB: select the DB connection (by code when known), ensure Send Tables ON, Connect. */
 /**
@@ -1534,7 +1387,7 @@ async function unredactApiKey(page: Page): Promise<void> {
 // Two-act helpers — Chat2DB ask + Canvas build (build helpers lifted verbatim from
 // the proven canvas-dashboard.screens.ts)
 // ─────────────────────────────────────────────────────────────────────────────
-type Settle = 'text' | 'diagram' | 'chart' | 'table';
+// Settle is imported from chat-capture-helper.
 
 /** Send a prompt, wait for the reply + its rendered visual, return her text. */
 async function askAthena(page: Page, prompt: string, settle: Settle): Promise<string> {

@@ -2,7 +2,7 @@
 <documentburster>
 	<settings>
 		<!-- DocumentBurster version -->
-		<version>16.3.3</version>
+		<version>16.4.0</version>
 		<!-- template name -->
 		<template>Bursting</template>
 		<!-- file name for the burst files -->

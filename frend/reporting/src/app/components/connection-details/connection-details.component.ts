@@ -143,7 +143,7 @@ export class ConnectionDetailsComponent implements OnInit {
   loadedSeedTemplateId = '__EXAMPLE_DEFAULT__';
   // Two-way bound to the dropdown; may diverge from loadedSeedTemplateId while confirmation is pending
   selectedSeedTemplateId = '__EXAMPLE_DEFAULT__';
-  seedTemplates: Array<{ id: string; displayName: string; description: string; source: string }> = [];
+  seedTemplates: Array<{ id: string; displayName: string; description: string; source: string; isExample?: boolean }> = [];
 
   /**
    * Content shown in the Example tab editor: the loaded template's source,
@@ -3127,6 +3127,21 @@ export class ConnectionDetailsComponent implements OnInit {
     }
   }
 
+  // Custom-app seed scripts (flowkraft/xx-custom/**/_custom/app-seed.groovy) get an "app-" id prefix;
+  // the bundled db/scripts data seeders do not. Used to draw the group separator in the dropdown
+  // between the data seeders (Invoice Seeder, Wipe Invoices) and the custom apps (Billing Portal…).
+  isCustomAppTemplate(t: { id?: string } | undefined): boolean {
+    return !!t?.id && t.id.startsWith('app-');
+  }
+
+  // A custom app the USER created (copied into flowkraft/xx-custom/<id>), as opposed to a
+  // FlowKraft-shipped example (in _examples/). The backend flags examples with isExample, so a
+  // custom-app template that is NOT an example is one of the user's own. Used to draw the second
+  // group separator and mark the user's own apps in the dropdown.
+  isUserAppTemplate(t: { id?: string; isExample?: boolean } | undefined): boolean {
+    return this.isCustomAppTemplate(t) && !t?.isExample;
+  }
+
   async onSeedTemplateSelected(newId: string): Promise<void> {
     if (!newId || newId === this.loadedSeedTemplateId) return;
 
@@ -3194,16 +3209,25 @@ export class ConnectionDetailsComponent implements OnInit {
       });
   }
 
-  askAiForSeedHelp(): void {
+  async askAiForSeedHelp(): Promise<void> {
     if (!this.aiManagerInstance()) return;
     const vendor = (this.modalConnectionInfo?.database?.documentburster?.connection?.databaseserver?.type || 'postgres').toUpperCase();
+    // Open the whole **Seed Data / Apps** category (its full prompt list) rather than jumping straight
+    // into the seed script — the user picks seed, wipe, or a build-an-app prompt. We still pre-load the
+    // seed + wipe prompts' worked examples with the ACTUAL bundled, vendor-tested scripts (Invoice Seeder
+    // / Wipe Invoices) — a single source of truth that never drifts — so they substitute the moment the
+    // user opens them. The button can fire before the Examples tab has loaded them, so ensure they're
+    // here; fall back to the built-in sample only if a template is somehow missing.
+    if (this.seedTemplates.length === 0) await this.loadSeedTemplates();
+    const seedExample = this.seedTemplates.find(t => t.id === 'invoice-seeder')?.source || this.getExampleCustomSeedScript();
+    const wipeExample = this.seedTemplates.find(t => t.id === 'wipe-invoices')?.source || '';
     const launchConfig: AiManagerLaunchConfig = {
       initialActiveTabKey: 'PROMPTS',
-      initialSelectedCategory: 'Database Schema',
-      initialExpandedPromptId: 'CUSTOM_DB_SEED_SCRIPT',
+      initialSelectedCategory: 'Seed Data / Apps',
       promptVariables: {
         '[VENDOR]': vendor,
-        '[VENDOR_EXAMPLE_SCRIPT]': this.getExampleCustomSeedScript(),
+        '[VENDOR_EXAMPLE_SCRIPT]': seedExample,
+        '[VENDOR_EXAMPLE_WIPE_SCRIPT]': wipeExample,
       },
     };
     this.aiManagerInstance().launchWithConfiguration(launchConfig);

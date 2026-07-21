@@ -14,7 +14,17 @@ import {
 import { LLMProviderForm } from '@/components/llm/LLMProviderForm';
 import { getSetting, setSetting, SETTING_KEYS } from '@/lib/settings';
 import { DEFAULT_LLM_FULL_CONFIG, type LLMFullConfig } from '@/lib/llm-providers';
-import { MnemosyneFull } from '@/components/shared/MnemosyneAvatar';
+import { CHAT_AGENTS } from '@/lib/chat/agents';
+
+/** The agent's circular head avatar — the SAME art the chat pages use (Athena/Mnemosyne
+ *  head-crops, the four Crew head-medallions), looked up by name via CHAT_AGENTS. Renders
+ *  nothing for a name with no chat config, so the table never breaks on an unknown agent. */
+function AgentHead({ name, size = 28 }: { name: string; size?: number }) {
+  const cfg = CHAT_AGENTS[name.toLowerCase()];
+  if (!cfg) return null;
+  const Avatar = cfg.Avatar;
+  return <Avatar size={size} />;
+}
 
 // Short descriptions for display (avoids importing heavy agent configs into client bundle)
 const AGENT_DESCRIPTIONS: Record<string, string> = {
@@ -24,6 +34,18 @@ const AGENT_DESCRIPTIONS: Record<string, string> = {
   'Pythia': 'WordPress CMS Web Portal Expert',
   'Apollo': 'Next.js Guru & Modern Web Expert',
   'Mnemosyne': 'Data Learning Tutor — learn data by doing, via the DataZeus koans',
+};
+
+// Inline chat pages (the shared ChatAgentPage) per agent — the primary way to chat with each
+// oracle in-app. Athena's lives at /chat2db (the DB agent); the rest are agent-named. Agents
+// not listed here fall back to the Element/Matrix room.
+const INLINE_CHAT_ROUTES: Record<string, string> = {
+  athena: '/chat2db',
+  mnemosyne: '/chat2mnemo', // her home — also reachable from the "Finding Mnemo" top menu
+  hermes: '/chat2hermes',
+  apollo: '/chat2apollo',
+  pythia: '/chat2pythia',
+  hephaestus: '/chat2hephaestus',
 };
 
 // Tag prefixes that identify alternative stack agents (hidden by default)
@@ -433,68 +455,25 @@ export default function AgentsPage() {
     ? agents
     : agents.filter(agent => !isAlternativeOracle(agent));
 
+  // The agent's own inline chat page (the shared ChatAgentPage), if one exists.
+  const inlineChatRoute = (agent: Agent): string | undefined => INLINE_CHAT_ROUTES[agent.name.toLowerCase()];
+
+  // Two ways to chat with an agent, both offered (inline first, Element second):
+  //   handleChatWithAgent          → the in-app inline chat page
+  //   handleChatWithAgentInElement → the Element/Matrix room, new tab
   const handleChatWithAgent = (agent: Agent) => {
-    // Open Element Matrix with the agent's room
+    const route = inlineChatRoute(agent);
+    if (route) router.push(route);
+  };
+
+  const handleChatWithAgentInElement = (agent: Agent) => {
     const elementUrl = `http://localhost:8441/#/room/${encodeURIComponent(agent.matrixRoom)}`;
     window.open(elementUrl, '_blank', 'noopener,noreferrer');
   };
 
-  // Mnemosyne is a standalone learning tutor (NOT part of the AI Crew) — no database
-  // connection by design: her practice loop is the hands-on koans (you write the SQL), not
-  // a chat that writes queries for you. Primary chat is the inline /chat2mnemo page (same
-  // experience as /chat2db); Element/Matrix is offered as a secondary surface.
-  const handleChatWithMnemosyne = () => {
-    router.push('/chat2mnemo');
-  };
-  const handleChatWithMnemosyneInElement = () => {
-    const elementUrl = `http://localhost:8441/#/room/${encodeURIComponent('#mnemosyne:localhost')}`;
-    window.open(elementUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  // Rendered at the top of the Agents page (above the AI Crew), separated by an <hr/>.
-  const renderMnemosyneSection = () => (
-    <>
-      <div id="mnemosyne-hero" className="max-w-3xl mx-auto text-center mb-8">
-        <div className="flex justify-center mb-3">
-          <MnemosyneFull height={160} />
-        </div>
-        <h2 className="text-2xl font-bold text-base-content mb-2">Chat with Mnemosyne</h2>
-        <p className="text-base-content/60 max-w-2xl mx-auto mb-5">
-          Learn data by <em>doing</em> it — not by watching. I&apos;m your DataZeus tutor:
-          ask me to walk you through a lesson, review a query you wrote, or explain a
-          concept — then practice with the hands-on koans until it sticks. SQL first, data
-          modeling next. <strong>I don&apos;t run your queries for you</strong> — you write
-          them, and that&apos;s how it becomes yours.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button
-            id="btn-chat-mnemosyne"
-            onClick={handleChatWithMnemosyne}
-            className="bg-primary hover:bg-primary/90 text-primary-content"
-          >
-            {/* Heroicon: chat-bubble-left-right */}
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
-            </svg>
-            Chat with Mnemosyne
-          </Button>
-          <Button
-            id="btn-chat-mnemosyne-element"
-            variant="outline"
-            onClick={handleChatWithMnemosyneInElement}
-            className="border-primary text-primary hover:bg-primary hover:text-primary-content"
-          >
-            {/* Heroicon: arrow-top-right-on-square */}
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-            </svg>
-            Chat in Element (Matrix)
-          </Button>
-        </div>
-      </div>
-      <hr className="max-w-7xl mx-auto border-base-300 mb-10" />
-    </>
-  );
+  // Mnemosyne no longer gets a hero section here — she has her own front door (the
+  // "Finding Mnemo" top menu → /chat2mnemo) and appears in the agents table below like
+  // every other oracle, with the same inline-Chat + Element buttons.
 
   const handleShowInfo = (agent: Agent) => {
     setSelectedAgent(agent);
@@ -776,7 +755,6 @@ export default function AgentsPage() {
   if (agents.length === 0) {
     return (
       <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
-        {renderMnemosyneSection()}
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div id="agents-empty-state" className="text-center mb-12">
@@ -885,14 +863,13 @@ export default function AgentsPage() {
 
   return (
     <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
-      {renderMnemosyneSection()}
       {/* Header */}
       <div className="mb-8 max-w-7xl mx-auto">
         <div className="flex items-start justify-between">
           <div>
             <h1 id="agents-page-heading" className="text-3xl font-bold text-base-content mb-2">The Oracles of Ancient Greece</h1>
             <p className="text-base-content/60">
-              FlowKraft&apos;s council of AI oracles, each a master of their domain. Seek their counsel or explore their workspace.
+              DataPallas council of AI oracles, each a master of their domain. Seek their counsel or explore their workspace.
             </p>
           </div>
           <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap mt-2">
@@ -946,6 +923,7 @@ export default function AgentsPage() {
                       >
                         {agent.name}
                       </span>
+                      <AgentHead name={agent.name} />
                       {alternative && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-base-200 text-base-content/60">
                           alt
@@ -991,17 +969,34 @@ export default function AgentsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
                       </svg>
                     </Button>
+                    {inlineChatRoute(agent) && (
+                      <Button
+                        id={`btn-chat-${agent.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleChatWithAgent(agent)}
+                        className="bg-primary hover:bg-primary/90 text-primary-content"
+                      >
+                        {/* Heroicon: chat-bubble-left-right */}
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                        </svg>
+                        Chat
+                      </Button>
+                    )}
                     <Button
-                      variant="default"
+                      id={`btn-chat-element-${agent.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleChatWithAgent(agent)}
-                      className="bg-primary hover:bg-primary/90 text-primary-content"
+                      onClick={() => handleChatWithAgentInElement(agent)}
+                      className="border-primary text-primary hover:bg-primary hover:text-primary-content"
+                      title="Chat in Element (Matrix)"
                     >
-                      {/* Heroicon: chat-bubble-left-right */}
+                      {/* Heroicon: arrow-top-right-on-square */}
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                       </svg>
-                      Chat
+                      Element
                     </Button>
                   </div>
                 </div>
@@ -1123,20 +1118,36 @@ export default function AgentsPage() {
                 </code>
               </div>
 
-              {/* Action Button */}
-              <div className="pt-4 flex justify-end">
+              {/* Action Buttons — inline chat page first, Element/Matrix second */}
+              <div className="pt-4 flex justify-end gap-2">
+                {inlineChatRoute(selectedAgent) && (
+                  <Button
+                    onClick={() => {
+                      handleChatWithAgent(selectedAgent);
+                      setIsModalOpen(false);
+                    }}
+                    className="bg-primary hover:bg-primary/90 text-primary-content"
+                  >
+                    {/* Heroicon: chat-bubble-left-right */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                    </svg>
+                    Chat with {selectedAgent.name}
+                  </Button>
+                )}
                 <Button
+                  variant="outline"
                   onClick={() => {
-                    handleChatWithAgent(selectedAgent);
+                    handleChatWithAgentInElement(selectedAgent);
                     setIsModalOpen(false);
                   }}
-                  className="bg-primary hover:bg-primary/90 text-primary-content"
+                  className="border-primary text-primary hover:bg-primary hover:text-primary-content"
                 >
-                  {/* Heroicon: chat-bubble-left-right */}
+                  {/* Heroicon: arrow-top-right-on-square */}
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                   </svg>
-                  Chat with {selectedAgent.name}
+                  Chat in Element (Matrix)
                 </Button>
               </div>
             </div>

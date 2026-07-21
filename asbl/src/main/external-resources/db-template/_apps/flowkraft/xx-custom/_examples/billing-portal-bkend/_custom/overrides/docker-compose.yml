@@ -1,0 +1,28 @@
+services:
+  billing-portal-bkend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: billing-portal-bkend:latest
+    container_name: billing-portal-bkend
+    ports:
+      - "${HOST_PORT:-8502}:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - ENABLE_LIQUIBASE_GROOVY_MIGRATIONS=${ENABLE_LIQUIBASE_GROOVY_MIGRATIONS:-false}
+      - DDL_AUTO=${DDL_AUTO:-update}
+      - DB_PATH=/app/db/sample-northwind-sqlite/northwind.db
+      # Mark-overdue schedule (Spring cron). Default hourly; it also runs once on startup.
+      - BP_CRON_MARK_OVERDUE=${BP_CRON_MARK_OVERDUE:-0 0 * * * *}
+    volumes:
+      # Blueprint's shared northwind db (foundation — kept as-is; this app sits one level deeper).
+      - ../../../../../db:/app/db
+      # The billing portals' SQLite DB files — the cron opens them directly to mark invoices overdue.
+      - ../_shared-db:/app/shared
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s

@@ -11,8 +11,8 @@ public final class MyDocumentsListTemplateFromFields {
             "MY-DOCUMENTS-LIST-TEMPLATE-FROM-FIELDS",
             "Generate My Documents List Template (page-my-documents.php)",
             "Generate a PHP template for listing all documents of a custom Pods type for the logged-in user, with search and pagination. Use the provided model fields and optionally an example template.",
-            List.of("page-my-documents.php", "webportal"),
-            "Web Portal / CMS",
+            List.of("page-my-documents.php", "webportal", "wordpress"),
+            "Web Portal / CMS (WordPress)",
             """
 You are an experienced WordPress developer with deep knowledge of the Pods Framework API and Tailwind CSS. Your task is to generate a complete, secure PHP single template for a new custom Pods content type, adapting an existing example template.
 

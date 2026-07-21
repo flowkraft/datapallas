@@ -142,7 +142,10 @@ export const tabBurstTemplate = `<ng-template #tabBurstTemplate>
 
       <div style="grid-column:span 11">
         <details>
-        <summary id="qaReminderLink" style="cursor:pointer;list-style:none"
+        <!-- list-style:none strips the disclosure triangle, so without link styling this reads as
+             plain text and nothing tells the user it opens. Styled as the link it behaves like.
+             Kept identical to the Generate Reports twin. -->
+        <summary id="qaReminderLink" class="link link-primary" style="cursor:pointer;list-style:none"
           >{{ 'AREAS.PROCESSING.TAB-BURST.DID-YOU-RUN-QA' | translate }}
           <em>{{processingService.procBurstInfo.isSample ? processingService.procBurstInfo.prefilledInputFilePath : processingService.procBurstInfo.inputFileName}}</em>?</summary
         >

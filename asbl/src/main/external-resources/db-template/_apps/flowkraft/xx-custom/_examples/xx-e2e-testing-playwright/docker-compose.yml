@@ -1,0 +1,71 @@
+# Run Playwright with ONLY Docker installed — no local Node/Playwright.
+#
+#   Build once:            docker compose build
+#   Run every spec:        docker compose run --rm e2e
+#   Run ONE spec file:     docker compose run --rm e2e npx playwright test tests/example.spec.ts
+#   Run one test by name:  docker compose run --rm e2e npx playwright test -g "has title"
+#   View the HTML report:  docker compose up report   ->  http://localhost:9323
+#
+# ── Testing a RUNNING app — THE PATTERN ───────────────────────────────────────────────────────
+# The spec is shared. WHICH app it tests is decided ENTIRELY by BASE_URL:
+#
+#   BASE_URL=<app-url> docker compose run --rm e2e npx playwright test tests/<spec>.spec.ts --project=chromium
+#
+# The app runs on YOUR MACHINE (in its own container, with its port published), so from INSIDE this
+# container reach it as `host.docker.internal` — `localhost` in here is this container, not your
+# machine.
+#
+#   Billing portal — Grails:
+#     BASE_URL=http://host.docker.internal:8500 docker compose run --rm e2e npx playwright test tests/billing-portal.spec.ts --project=chromium
+#
+#   Billing portal — Next.js   (the SAME spec, the same assertions — only the port differs):
+#     BASE_URL=http://host.docker.internal:8501 docker compose run --rm e2e npx playwright test tests/billing-portal.spec.ts --project=chromium
+#
+# Why --project=chromium: app specs mutate the app's DATABASE (they pay invoices, delete
+# customers). Running the same body across chromium+firefox+webkit would have the 2nd browser
+# fail on data the 1st already moved. One browser, one pass.
+#
+# Add another app or spec = add ONE line above; nothing else changes:
+#     BASE_URL=http://host.docker.internal:<port> docker compose run --rm e2e npx playwright test tests/<your>.spec.ts --project=chromium
+#
+# ── Screenshots — OFF by default ──────────────────────────────────────────────────────────────
+# Add TAKE_SCREENSHOT=true to any run above and the spec also captures annotated PNGs (see
+# tests/helpers/screenshots.ts — it rings a DOM element and adds a callout):
+#
+#     TAKE_SCREENSHOT=true BASE_URL=http://host.docker.internal:8500 \
+#       docker compose run --rm e2e npx playwright test tests/billing-portal.spec.ts --project=chromium
+#
+# They land on YOUR machine (this project is bind-mounted) under:
+#
+#     screenshots/<spec-file>/<yyyy.MM.dd_HH.mm.ss.SSS>/
+#
+# — one folder per run, so a re-run never overwrites the last one. Without the flag every capture
+# is a no-op and costs nothing.
+#
+services:
+  e2e:
+    build: .
+    working_dir: /work
+    ipc: host          # stops Chromium crashing on memory-heavy pages in Docker (Playwright's advice)
+    environment:
+      - BASE_URL=${BASE_URL:-}
+      - TAKE_SCREENSHOT=${TAKE_SCREENSHOT:-}
+    extra_hosts:
+      # makes `host.docker.internal` resolve to your machine on Linux too
+      # (Docker Desktop on Windows/macOS already provides it)
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./:/work            # your project — edit *.spec.ts on the host, run them here
+      - /work/node_modules  # keep the image's node_modules (don't let the host dir shadow it)
+    command: npx playwright test
+
+  # Serve the last HTML report at http://localhost:9323
+  report:
+    build: .
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - /work/node_modules
+    command: npx playwright show-report --host 0.0.0.0
+    ports:
+      - "9323:9323"

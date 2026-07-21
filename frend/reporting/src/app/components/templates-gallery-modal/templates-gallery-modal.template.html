@@ -14,7 +14,7 @@ id="templateGalleryModal"
   <!-- General AI Instructions (shown when first opening in AI mode) -->
   @if (templateGalleryState === 'examples-gallery' || templateGalleryState === 'hey-ai') {
     <div id="aiInstructionsContainer" class="ai-instructions-container"
-      style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
+      style="padding: 20px; height: 100%; overflow: auto; background-color: var(--color-base-100); color: var(--color-base-content);">
       <!-- Render the markdown instructions -->
       <markdown id="aiInstructionsContent" [data]="galleryAiInstructions"></markdown>
       <br/><br/><br/>
@@ -76,8 +76,8 @@ id="templateGalleryModal"
 
   <!-- README viewer (show when README is visible) -->
   @if (templateGalleryState === 'readme') {
-    <div id="readmeDialogContainer" class="readme-container" style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
-      <div style="position: sticky; top: 0; background-color: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+    <div id="readmeDialogContainer" class="readme-container" style="padding: 20px; height: 100%; overflow: auto; background-color: var(--color-base-100); color: var(--color-base-content);">
+      <div style="position: sticky; top: 0; background-color: var(--color-base-200); padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0;">{{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.DIALOG.README-TITLE' | translate }}</h3>
         <button type="button" id="btnBackToTemplate" class="btn btn-sm btn-ghost" (click)="closeTemplateReadme()">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.BACK-TO-TEMPLATE' | translate }}
@@ -90,8 +90,8 @@ id="templateGalleryModal"
 
   <!-- AI Prompt viewer (show when AI prompt is visible) -->
   @if (templateGalleryState === 'ai-prompt') {
-    <div id="aiPromptContainer" class="ai-prompt-container" style="padding: 20px; height: 100%; overflow: auto; background-color: white;">
-      <div style="position: sticky; top: 0; background-color: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+    <div id="aiPromptContainer" class="ai-prompt-container" style="padding: 20px; height: 100%; overflow: auto; background-color: var(--color-base-100); color: var(--color-base-content);">
+      <div style="position: sticky; top: 0; background-color: var(--color-base-200); padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
         <h5 id="aiPromptSteps" style="margin: 0;">
           <span [innerHTML]="'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.AI-INSTRUCTIONS.STEP1' | translate"></span><br/>
           @if (!selectedTemplateAiPrompt || !selectedTemplateAiPrompt.includes('Customization Instructions')) {
@@ -126,7 +126,7 @@ id="templateGalleryModal"
           </button>
         </div>
         <!-- Use ngx-markdown to render the Markdown content -->
-        <markdown id="aiPromptContent" [data]="selectedTemplateAiPrompt || ''" style="display: block; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background-color: #f9f9f9;"></markdown>
+        <div id="aiPromptContent" [innerHTML]="renderTemplateAiPromptHtml(selectedTemplateAiPrompt)" style="display: block; white-space: pre-wrap; word-wrap: break-word; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; line-height: 1.5; border: 1px solid var(--color-base-300); border-radius: 4px; padding: 15px; background-color: var(--color-base-200); color: var(--color-base-content);"></div>
         <!-- Replace the Copilot button with Copy to Clipboard -->
         <div style="margin-top: 20px; text-align: center;">
           <button type="button" id="btnCopyTemplatePromptToClipboardBottom" style="width: 250px"
@@ -149,14 +149,14 @@ id="templateGalleryModal"
 
     </div>
 
-    <div class="template-footer" style="display: flex; align-items: center; justify-content: space-between; width: 100%; border-top: 1px solid #e9e9e9; padding: 10px; margin-top: auto;">
+    <div id="templateGalleryFooter" class="template-footer" style="display: flex; align-items: center; justify-content: space-between; width: 100%; border-top: 1px solid var(--color-base-300); padding: 10px; margin-top: auto;">
       @if (templateGalleryState === 'templates' || templateGalleryState === 'readme' || templateGalleryState === 'ai-prompt') {
         <div class="template-info" style="text-align: left; flex: 3; padding-right: 10px; overflow: hidden;">
           @if (getSelectedGalleryTemplate()?.tags) {
-            <div class="template-tags">
+            <div id="templateGalleryTags" class="template-tags">
               @for (tag of getSelectedGalleryTemplate()?.tags; track tag) {
                 <span class="badge badge-info tag-badge"
-                  style="display: inline-block; margin-right: 5px; margin-bottom: 3px; padding: 3px 6px; background-color: #f8f9fa; color: #495057; border-radius: 4px; font-size: 90%;">
+                  style="display: inline-block; margin-right: 5px; margin-bottom: 3px; padding: 3px 6px; background-color: var(--color-base-200); color: var(--color-base-content); border-radius: 4px; font-size: 90%;">
                   {{tag}}
                 </span>
               }
@@ -181,8 +181,8 @@ id="templateGalleryModal"
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg> {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.BUTTONS.VIEW-IN-BROWSER' | translate }}
           </button>
           @if (templateGalleryState === 'templates') {
-            <div class="dropdown dropdown-top dropdown-end" style="margin-left: 5px;">
-              <div class="join">
+            <div id="aiPromptDropdown" class="dropdown dropdown-top dropdown-end" style="margin-left: 5px;">
+              <div id="aiPromptButtonGroup" class="join">
                 <button type="button" id="btnGetAiPrompt" class="btn btn-sm btn-outline btn-primary join-item"
                   (mousedown)="$event.preventDefault()"
                   (click)="showCurrentTemplateAiPrompt('modify')">
@@ -192,7 +192,7 @@ id="templateGalleryModal"
                   tabindex="0" role="button"
                   class="btn btn-sm btn-outline btn-primary btn-square join-item">&#9650;</button>
               </div>
-              <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
+              <ul id="aiPromptOptionsMenu" tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow z-[1050] min-w-max p-2">
                 <li>
                   <a href="javascript:void(0)" id="btnAiPromptModify"
                      (click)="$any($event.currentTarget).blur(); showCurrentTemplateAiPrompt('modify')">

@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  billing-portal-grails:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: billing-portal-grails
+    ports:
+      - "${HOST_PORT:-8500}:8080"
+    environment:
+      - SERVER_PORT=8080
+      - GRAILS_ENV=production
+      - DB_PATH=/app/data/grails-portal.db
+      - DB_CREATE=update
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    volumes:
+      # The SQLite DB file lives in the shared dir so billing-portal-bkend can maintain it directly.
+      - ../_shared-db:/app/data
+      - billing-portal-grails-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  billing-portal-grails-logs:
+
+networks:
+  default:
+    name: flowkraft-network

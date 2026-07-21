@@ -858,11 +858,12 @@ electronBeforeAfterAllTest(
       const web = ext.page;
       await SelfServicePortalsTestHelper.waitForServerReady(web, `${PORTAL}/portal/invoices`);
 
-      // ── q2_052 — /portal/invoices: ring ONLY the Admin menu link (how to reach admin).
+      // ── q2_052 — /portal/invoices: ring the INVOICES menu item (this frame is the 0015
+      // video's demo Invoices content — the customer's invoice cards with Pay Now). Was Admin.
       await web.goto(`${PORTAL}/portal/invoices`, { waitUntil: 'networkidle' });
-      await web.waitForSelector('#portalNavAdmin', { timeout: 15_000 });
+      await web.waitForSelector('#portalNavInvoices', { timeout: 15_000 });
       await captureDocsScreenshotWithHighlights(web, dp('q2_052_portal-invoices-admin-link'), [
-        '#portalNavAdmin',
+        '#portalNavInvoices',
       ]);
 
       // ── q2_053 — /admin/invoices: open the theme switcher + HOVER the Corporate

@@ -8,9 +8,22 @@ import { FileExplorerService } from './file-explorer.service';
     // Enhanced styles to enforce column widths and prevent overflow
     styles: [
         `
+      /* Selectable file rows show a hand cursor to signal they're clickable. */
+      tr.file-row {
+        cursor: pointer;
+      }
+      tr.file-row:hover td {
+        background-color: var(--color-base-200);
+      }
+
       .selected-file {
-        background-color: #d9edf7 !important; /* Light blue background */
+        background-color: var(--color-primary) !important;
+        color: var(--color-primary-content) !important;
         font-weight: bold;
+      }
+      .selected-file a,
+      .selected-file .glyphicon {
+        color: var(--color-primary-content) !important;
       }
 
       /* Table layout control - adjusted column widths */

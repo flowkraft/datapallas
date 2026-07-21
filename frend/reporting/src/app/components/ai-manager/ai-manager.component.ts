@@ -7,6 +7,7 @@ import {
   ChangeDetectorRef,
   OnDestroy,
 } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
@@ -95,7 +96,33 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
     protected appsManagerService: AppsManagerService,
     private settingsService: ConfigurationRepository,
     private confirmService: ConfirmService,
+    private sanitizer: DomSanitizer,
   ) {
+  }
+
+  /**
+   * Render a prompt's text with its customization placeholders highlighted. Prompts mark the
+   * sections a user must replace with `[ ... ]` tokens (e.g. `[INSERT USER'S NATURAL LANGUAGE
+   * DESCRIPTION OF THE REPORT HERE]`); we HTML-escape the raw text (prompts contain HTML/code
+   * examples) and wrap each such token in a `<mark class="ai-prompt-placeholder">` so the reader
+   * instantly sees what to customize — no more copying into an editor to find the blanks.
+   */
+  renderPromptTextHtml(text: string | undefined): SafeHtml {
+    const escaped = (text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    // Placeholder tokens: [ + starts with an uppercase letter + ... + ] (matches the [INSERT ...
+    // HERE] convention while skipping markdown links `[text](url)` and array indices like `[0]`).
+    // Inline the style (Angular view-encapsulation does not reach [innerHTML] content), amber
+    // highlight readable on both light and dark themes.
+    const markStyle =
+      'background-color:#fde68a;color:#7c2d12;border-radius:3px;padding:0 3px;font-weight:600;';
+    const highlighted = escaped.replace(
+      /\[[A-Z][^\]]*\]/g,
+      (token) => `<mark class="ai-prompt-placeholder" style="${markStyle}">${token}</mark>`,
+    );
+    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
   }
 
   async ngOnInit(): Promise<void> {
@@ -173,24 +200,6 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
         this.cdRef.detectChanges();
       },
     });
-  }
-
-  private expandPromptWithVariables(promptDef: PromptInfo): void {
-    if (!promptDef.promptText) {
-      // Fetch full prompt first, then apply variables
-      this.aiManagerService.getPromptById(promptDef.id).subscribe({
-        next: (full) => {
-          this._applyVariablesAndExpand(full);
-          this.cdRef.detectChanges();
-        },
-        error: () => {
-          this.expandedPrompt = { ...promptDef, promptText: '' };
-          this.cdRef.detectChanges();
-        },
-      });
-      return;
-    }
-    this._applyVariablesAndExpand(promptDef);
   }
 
   private _applyVariablesAndExpand(promptDef: PromptInfo): void {
@@ -304,14 +313,20 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
   // --- End Prompt Loading and Filtering ---
 
   // --- Prompt Display ---
+  // The single expand path. It substitutes any launch-config promptVariables (e.g. [VENDOR],
+  // [VENDOR_EXAMPLE_SCRIPT]) into the text via _applyVariablesAndExpand, which is a no-op when no
+  // variables are set — so plain browsing still shows raw text. This MUST apply substitution: a
+  // prompt reopened from the list after "Back to List" has to render exactly as the initial launch
+  // did, otherwise a value the system already knows (like [VENDOR]) wrongly reappears as a
+  // fill-me-in placeholder.
   expandPrompt(prompt: PromptInfo): void {
     if (prompt.promptText) {
-      this.expandedPrompt = prompt;
+      this._applyVariablesAndExpand(prompt);
     } else {
       // promptText is absent from list-endpoint results — fetch the full prompt on demand
       this.aiManagerService.getPromptById(prompt.id).subscribe({
         next: (full) => {
-          this.expandedPrompt = full;
+          this._applyVariablesAndExpand(full);
           this.cdRef.detectChanges();
         },
         error: () => {
@@ -427,12 +442,9 @@ export class AiManagerComponent implements OnInit, AfterViewChecked, OnDestroy {
       if (expandedId) {
         const p = this.allPrompts.find((x) => x.id === expandedId);
         if (p) {
-          const vars = this.promptVariables();
-          if (vars && Object.keys(vars).length > 0) {
-            this.expandPromptWithVariables(p);
-          } else {
-            this.expandPrompt(p);
-          }
+          // expandPrompt substitutes promptVariables when present (no-op otherwise) — one path for
+          // the initial launch and every later list selection, so substitution never diverges.
+          this.expandPrompt(p);
         }
       }
     } catch (error) {

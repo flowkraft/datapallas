@@ -1,0 +1,22 @@
+{
+  "id": "billing-portal-grails",
+  "name": "Billing Portal (Grails)",
+  "icon": "cube",
+  "category": "Examples",
+  "type": "docker",
+  "description": "Example customer billing portal built with Grails. Customers log in to view their account and pay their invoices, with an admin area to manage invoices and customers. Run the <strong>Billing Portal (Grails)</strong> script from any database connection's <strong>Seed Data</strong> tab to set it up, then fill it with invoices from the <strong>Generate Reports</strong> tab. Use it as a starting point for building your own document portal.",
+  "url": "http://localhost:8500",
+  "launchLinks": [
+    { "label": "Customer Portal /portal", "url": "http://localhost:8500/portal", "icon": "globe" },
+    { "label": "Admin Area /admin", "url": "http://localhost:8500/admin", "icon": "cog" }
+  ],
+  "service_name": "billing-portal-grails",
+  "entrypoint": "flowkraft/xx-custom/_examples/billing-portal-grails/docker-compose.yml",
+  "startCmd": "system service app start billing-portal-grails 8500",
+  "stopCmd": "system service app stop billing-portal-grails",
+  "tags": ["grails", "portal", "billing", "example"],
+  "visible": false,
+  "blueprint": "flowkraft/grails-playground",
+  "tablePrefix": "bp_",
+  "apiKey": "bp-demo-key-CHANGE-ME"
+}

@@ -25,7 +25,7 @@ export interface PromptInfo {
     | 'Script Writing Assistance'
     | 'Dashboard Creation'
     | 'DSL Configuration'
-    | 'Web Portal / CMS';
+    | 'Web Portal / CMS (WordPress)';
 }
 
 @Injectable({

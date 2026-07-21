@@ -182,7 +182,13 @@ export const tabGenerateReportsTemplate = `<ng-template
       >
     </div>
     }
-    @if (processingService.procReportingMailMergeInfo.inputFileName && !executionStatsService.logStats.foundDirtyLogFiles && executionStatsService.jobStats.numberOfActiveJobs === 0 && executionStatsService.jobStats.jobsToResume.length === 0) {
+    <!-- Remind about QA exactly when the Burst button is armed — that is the whole point of the
+         reminder, and it is the same readiness test, so the two can never disagree. Keying off
+         inputFileName instead (as this did) silently hid the reminder for every report that takes
+         no input file — ds.scriptfile / ds.sqlquery / ds.jasper never render a file picker, so that
+         name stays empty forever — and for samples, which set only prefilledInputFilePath.
+         Those are the runs that most need QA: they email real people straight from a live query. -->
+    @if (!shouldBeDisabledGenerateReportsButton() && !executionStatsService.logStats.foundDirtyLogFiles && executionStatsService.jobStats.numberOfActiveJobs === 0 && executionStatsService.jobStats.jobsToResume.length === 0) {
     <div
       style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem"
     >
@@ -192,11 +198,14 @@ export const tabGenerateReportsTemplate = `<ng-template
 
       <div style="grid-column:span 11">
         <details>
+        <!-- list-style:none strips the disclosure triangle, so without link styling this reads as
+             plain text and nothing tells the user it opens. Styled as the link it behaves like. -->
         <summary
           id="qaReminderLink"
+          class="link link-primary"
           style="cursor:pointer;list-style:none"
-          >{{ 'AREAS.PROCESSING.TAB-BURST.DID-YOU-RUN-QA' | translate }}
-          <em>{{processingService.procReportingMailMergeInfo.isSample ? processingService.procReportingMailMergeInfo.prefilledInputFilePath : processingService.procReportingMailMergeInfo.inputFileName}}</em>?</summary
+          >{{ (requiresInputFile() ? 'AREAS.PROCESSING.TAB-BURST.DID-YOU-RUN-QA' : 'AREAS.PROCESSING.TAB-REPORTING-MAILMERGE-CLASSICREPORTS.DID-YOU-RUN-QA-REPORT') | translate }}
+          <em>{{ qaReminderSubject() }}</em>?</summary
         >
         <div id="qaReminder">
           {{ 'AREAS.PROCESSING.TAB-BURST.BEFORE-EMAILING' | translate }}
@@ -205,8 +214,8 @@ export const tabGenerateReportsTemplate = `<ng-template
             [routerLink]="['/processingQa','qualityMenuSelected',processingService.procReportingMailMergeInfo.prefilledInputFilePath, processingService.procReportingMailMergeInfo.prefilledConfigurationFilePath, 'csv-generate-reports']"
             skipLocationChange="true">Quality Assurance</a
           >
-          {{ 'AREAS.PROCESSING.TAB-BURST.FOR-THE-FILE' | translate }}
-          <em>{{processingService.procReportingMailMergeInfo.isSample ? processingService.procReportingMailMergeInfo.prefilledInputFilePath : processingService.procReportingMailMergeInfo.inputFileName}}</em>&nbsp;&nbsp;
+          {{ (requiresInputFile() ? 'AREAS.PROCESSING.TAB-BURST.FOR-THE-FILE' : 'AREAS.PROCESSING.TAB-REPORTING-MAILMERGE-CLASSICREPORTS.FOR-THE-REPORT') | translate }}
+          <em>{{ qaReminderSubject() }}</em>&nbsp;&nbsp;
           <button
             id="goToQa"
             type="button"

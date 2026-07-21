@@ -10,7 +10,7 @@ export const tabCustomerPortalTemplate = `<ng-template
           href="#"
           [routerLink]="['/help','appsMenuSelected']"
           skipLocationChange="true"
-          class="btn btn-outline"
+          class="btn btn-outline btn-primary"
         >
           Explore More Apps That Go Well Together with DataPallas
         </a>

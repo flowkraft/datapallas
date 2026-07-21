@@ -145,6 +145,50 @@ public class Utils {
 		return resolvePathAgainstPortableDir("_apps") + "/";
 	}
 
+	/**
+	 * Every directory that holds a <code>_custom</code> app definition (app.json + app-seed.groovy).
+	 * A directory qualifies ONLY if it contains a <code>_custom/</code> folder — so <code>_examples</code>
+	 * itself (a container, not an app) is never mistaken for one. Custom apps live under a single home,
+	 * <code>_apps/flowkraft/xx-custom/</code>, scanned one level deep at two roots:
+	 * <ul>
+	 *   <li><code>_apps/flowkraft/xx-custom/&lt;id&gt;</code> — a user's own apps</li>
+	 *   <li><code>_apps/flowkraft/xx-custom/_examples/&lt;id&gt;</code> — the FlowKraft-shipped examples</li>
+	 * </ul>
+	 * The examples sit one level deeper than user apps, so the two roots are scanned separately; one
+	 * does not subsume the other. Order is meaningful and deliberate: the FlowKraft-shipped examples
+	 * come first, the user's own apps last, each group sorted by folder name — the Seed-Data dropdown
+	 * lists examples above a separator and the user's own apps below it. The discovery scans
+	 * (SystemService manifests, GenericSeedExecutor Seed-Data templates) key off this list.
+	 */
+	public static java.util.List<File> getCustomAppDirs() {
+		File customHome = new File(getAppsFolderPath(), "flowkraft/xx-custom");
+		java.util.List<File> examples = new java.util.ArrayList<>();
+		addCustomAppDirs(examples, new File(customHome, "_examples")); // the FlowKraft-shipped examples
+		examples.sort(java.util.Comparator.comparing(File::getName));
+		java.util.List<File> userApps = new java.util.ArrayList<>();
+		addCustomAppDirs(userApps, customHome);                        // the user's own custom apps
+		userApps.sort(java.util.Comparator.comparing(File::getName));
+		java.util.List<File> dirs = new java.util.ArrayList<>(examples);
+		dirs.addAll(userApps);
+		return dirs;
+	}
+
+	/** True if {@code appDir} is a FlowKraft-shipped example (lives in the {@code _examples/} folder). */
+	public static boolean isExampleAppDir(File appDir) {
+		File parent = appDir == null ? null : appDir.getParentFile();
+		return parent != null && "_examples".equals(parent.getName());
+	}
+
+	/** Add each direct child of {@code parent} that is a custom app (i.e. has a {@code _custom/} folder). */
+	private static void addCustomAppDirs(java.util.List<File> dirs, File parent) {
+		File[] children = parent.isDirectory() ? parent.listFiles(File::isDirectory) : null;
+		if (children == null)
+			return;
+		for (File child : children)
+			if (new File(child, "_custom").isDirectory())
+				dirs.add(child);
+	}
+
 	public static String getConfigurationFolderPath(String configurationFilePath) {
 
 		if (StringUtils.isBlank(configurationFilePath))

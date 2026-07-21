@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.4.0 - 2026-07-22
+
+### Added
+
+- **A ready-made Billing Portal example to build on** — DataPallas now comes with a complete **Billing Portal** example: a self-service website where your customers sign in to see their invoices — paid, due, or overdue — and settle the ones they owe, with those invoices arriving automatically from DataPallas. It's provided in two ready-to-use flavours — a **Grails** version and a **Next.js** version (plus a companion for scheduled background jobs, such as flagging overdue invoices) — so you can start from whichever suits you and shape it into your own customer portal.
+
+- **Chat with your whole AI crew right in the web app** — Previously only **Athena** could be chatted with inside the web app; the rest of the crew could only be reached through the separate chat app on your phone. Now **every** member of the AI crew — Athena, Hephaestus, Hermes, Apollo and Pythia — has their own chat page in the web app as well, so each one is available in both places: in the web app and on your phone.
+
+- **Mnemosyne, your data tutor, joins the web app too** — **Mnemosyne**, the friendly guide who helps you learn data skills, can now be chatted with directly in the web app as well as on your phone — so you can pick up new skills wherever you prefer to work.
+
+- **Ready-to-use prompts for every agent, a click away** — Each agent's chat page now has its own **"…'s Prompts"** panel. Open it and you'll find a tidy, made-for-that-agent list of ready-written prompts, each with a short description and a **Copy** button. Instead of facing an empty chat box wondering what to ask, just pick one, copy it, fill in the highlighted blanks, and send.
+
 ## 16.3.3 - 2026-07-09
 
 ### Added

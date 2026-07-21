@@ -37,8 +37,15 @@
 //     100_10_web-components-dashboard-example.png         The CFO dashboard (rb-* web components)
 //
 //   BLOCK 5 — Document Portal (Docker: cms-webportal / WordPress)
-//     webportal/010-quickstart-tab-webportal-2.png        The WebPortal app card (cropped)
+//     webportal/015-quickstart-portal-start.png           Start CMS? confirm dialog
+//     webportal/020-quickstart-portal-start-running.png   The app card mid-start ("Starting")
+//     webportal/010-quickstart-tab-webportal-2.png        The WebPortal app card, running (cropped)
+//     webportal/025-quickstart-portal-launch.png          Running card, Launch action ringed
 //     webportal/045-quickstart-portal-my-documents-paystubs.png  Employee "My Documents" page
+//   (015/020/025 are DataPallas.exe desktop-app shots refreshed to the new card UI;
+//    045 is the WordPress portal frontend. The other document-portal images are
+//    WordPress/OS screenshots — deliberately NOT retaken. The Generate-Reports
+//    "…2Portal Burst" shots need those sample reports to exist first — see NOTE below.)
 //
 // NOTE — shared assets. BLOCKS 4 & 5 (and the dashboard/pivot browser frames in
 // BLOCKS 2 & 3) regenerate images that ALSO appear in the bi-analytics and
@@ -74,6 +81,7 @@ import {
   DOCS_IMAGES_DIR,
   captureDocsScreenshot,
   captureDocsScreenshotOfElement,
+  captureDocsScreenshotOfElementWithHighlight,
   captureDocsScreenshotWithHighlights,
   waitForRbChartsRendered,
   hideToastsForScreenshots,
@@ -468,22 +476,102 @@ electronBeforeAfterAllTest(
     let externalBrowser: Browser | null = null;
 
     try {
-      // ── Reach the CMS Web Portal tab and start WordPress (boots the container;
-      //    waits for "running"). We capture the card AFTER it's running so the shot
-      //    shows the Stop button + the "Try the demo logins" panel — exactly the
-      //    running-state card the docs image shows.
-      await SelfServicePortalsTestHelper.startApp(
-        new FluentTester(firstPage).gotoCmsWebPortal(),
-        WP_APP_ID,
+      // ── Reach the CMS Web Portal tab, then drive the start lifecycle BY HAND —
+      //    inlining SelfServicePortalsTestHelper.startApp's exact chain — so we can
+      //    grab a shot at each documented stage the quickstart doc shows:
+      //      015 the Start confirm dialog · 020 the "Starting" card · 010 the running
+      //      card · 025 the running card + Launch.
+      //    The spec's nuclear teardown guarantees the container is DOWN before this
+      //    runs, so the card starts 'stopped' (no need for startApp's already-running
+      //    pre-flight stop). Docker must be up — the waits below fail loud if it isn't.
+      const btnSel = `#btnStartStop_${WP_APP_ID}`;
+      const stateSel = `#appState_${WP_APP_ID}`;
+      const spinnerSel = `#appSpinner_${WP_APP_ID}`;
+      const panelSel = `#appPanel_${WP_APP_ID}`;
+
+      // ── 005 — HOW TO REACH IT (the portal MOVED): it is no longer a Processing tab —
+      //    it now lives under Help & Support → "Apps / Starter Packs". Show the Help menu
+      //    open with that entry ringed. (Same nav gotoApps()/gotoCmsWebPortal() drives.)
+      await new FluentTester(firstPage)
+        .click('#topMenuHelp')
+        .waitOnElementToBecomeVisible('#topMenuStarterPacks');
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshotWithHighlights(
+        firstPage,
+        dp('005-quickstart-nav-help-apps'),
+        [{ selector: '#topMenuStarterPacks' }],
+        WEBPORTAL_DIR,
       );
-      await new FluentTester(firstPage).waitOnElementToBecomeVisible(`#appPanel_${WP_APP_ID}`);
+      console.log(`[capture] webportal/${dp('005-quickstart-nav-help-apps')}`);
+
+      // ── 007 — the Apps tab: type "WebPortal" into the search box → the
+      //    "WebPortal / Customer Portal" card shows up (stopped), ready to Start.
+      await new FluentTester(firstPage)
+        .click('#topMenuStarterPacks')
+        .waitOnElementToBecomeVisible('#appSearch')
+        .setValue('#appSearch', 'WebPortal')
+        .sleep(Constants.DELAY_ONE_SECOND)
+        .waitOnElementToBecomeVisible(panelSel);
+      await hideToastsForScreenshots(firstPage);
+      await captureDocsScreenshot(
+        firstPage,
+        dp('007-quickstart-apps-search-webportal'),
+        WEBPORTAL_DIR,
+      );
+      console.log(`[capture] webportal/${dp('007-quickstart-apps-search-webportal')}`);
+
+      // Click Start → the shared confirm dialog appears.
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeVisible(btnSel)
+        .waitOnElementToBecomeEnabled(btnSel)
+        .click(btnSel)
+        .confirmDialogShouldBeVisible();
       await hideToastsForScreenshots(firstPage);
 
-      // ── 010 — the WebPortal / Customer Portal app card, running (cropped).
+      // ── 015 — the "Start WebPortal / Content Management CMS?" confirm dialog.
+      await captureDocsScreenshot(firstPage, dp('015-quickstart-portal-start'), WEBPORTAL_DIR);
+      console.log(`[capture] webportal/${dp('015-quickstart-portal-start')}`);
+
+      // Confirm → the container boots; the card shows the spinner + "Starting".
+      await new FluentTester(firstPage)
+        .clickYesDoThis()
+        .waitOnElementToBecomeDisabled(btnSel)
+        .waitOnElementToBecomeVisible(spinnerSel)
+        .waitOnElementToContainText(stateSel, 'starting');
+      await hideToastsForScreenshots(firstPage);
+
+      // ── 020 — the WebPortal card mid-start ("Starting", spinner).
       await captureDocsScreenshotOfElement(
         firstPage,
+        dp('020-quickstart-portal-start-running'),
+        panelSel,
+        { outDir: WEBPORTAL_DIR },
+      );
+      console.log(`[capture] webportal/${dp('020-quickstart-portal-start-running')}`);
+
+      // Wait for "running" (Stop button back + Launch enabled), then let it settle.
+      // MUST pass startApp's own long timeout. The teardown below does `down -v`, so EVERY
+      // run is a COLD provision — WordPress install + plugins + Pods + the built theme take
+      // MINUTES. waitOnElementToBecomeEnabled defaults to DELAY_HUNDRED_SECONDS (100s), which
+      // expires mid-provision; the nuclear teardown then SIGKILLs the still-running CLI
+      // container and compose reports "cms-webportal-playground-cli … exit 137" — an
+      // exit-137 that looks like an OOM but is really just this wait being too short.
+      await new FluentTester(firstPage)
+        .waitOnElementToBecomeEnabled(btnSel, Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToContainText(stateSel, 'running', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToContainText(btnSel, 'Stop', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .sleep(5000); // mirrors startApp's "give the app time to fully initialize"
+      await hideToastsForScreenshots(firstPage);
+
+      // ── 010 — the running WebPortal / Customer Portal app card (cropped), with the
+      //    Launch action ringed. ONE shot covers both "it's running" and "click Launch":
+      //    the old separate 025 "Launch" shot was the very same card + the same ring, so
+      //    the docs merged them and dropped their "3. Launch the Portal" section.
+      await captureDocsScreenshotOfElementWithHighlight(
+        firstPage,
         dp('010-quickstart-tab-webportal-2'),
-        `#appPanel_${WP_APP_ID}`,
+        panelSel,
+        `#btnLaunch_${WP_APP_ID}`,
         { outDir: WEBPORTAL_DIR },
       );
       console.log(`[capture] webportal/${dp('010-quickstart-tab-webportal-2')}`);

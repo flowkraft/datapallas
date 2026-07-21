@@ -1,0 +1,22 @@
+{
+  "id": "billing-portal-next",
+  "name": "Billing Portal (Next.js)",
+  "icon": "cube",
+  "category": "Examples",
+  "type": "docker",
+  "description": "Example customer billing portal built with Next.js — the same portal as Billing Portal (Grails), just built with a different technology so you can pick whichever you prefer. Customers log in to view their account and pay their invoices, with an admin area to manage invoices and customers. Run the <strong>Billing Portal (Next.js)</strong> script from any database connection's <strong>Seed Data</strong> tab to set it up. Use it as a starting point for building your own document portal.",
+  "url": "http://localhost:8501",
+  "launchLinks": [
+    { "label": "Customer Portal /portal", "url": "http://localhost:8501/portal", "icon": "globe" },
+    { "label": "Admin Area /admin", "url": "http://localhost:8501/admin", "icon": "cog" }
+  ],
+  "service_name": "billing-portal-next",
+  "entrypoint": "flowkraft/xx-custom/_examples/billing-portal-next/docker-compose.yml",
+  "startCmd": "system service app start billing-portal-next 8501",
+  "stopCmd": "system service app stop billing-portal-next",
+  "tags": ["nextjs", "portal", "billing", "example"],
+  "visible": false,
+  "blueprint": "flowkraft/next-playground",
+  "tablePrefix": "bp_",
+  "apiKey": "bp-demo-key-CHANGE-ME"
+}

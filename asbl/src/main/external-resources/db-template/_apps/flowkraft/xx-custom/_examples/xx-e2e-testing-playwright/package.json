@@ -1,0 +1,18 @@
+{
+  "name": "xx-e2e-testing-playwright",
+  "version": "1.0.0",
+  "description": "Classic Playwright end-to-end project, runnable entirely via Docker (no local Node/Playwright required).",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:chromium": "playwright test --project=chromium",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1",
+    "@types/node": "^22.10.0",
+    "sharp": "^0.33.5"
+  }
+}

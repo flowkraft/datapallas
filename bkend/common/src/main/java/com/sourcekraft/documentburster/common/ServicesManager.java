@@ -999,7 +999,17 @@ public class ServicesManager {
 				|| "chat2db".equals(serviceName) || "ai-hub-chat2db".equals(serviceName)) {
 			return appsFolderPath + "flowkraft/_ai-hub/docker-compose.yml";
 		}
-		return appsFolderPath + serviceName + "/docker-compose.yml";
+		// Custom apps live under a single home, _apps/flowkraft/xx-custom/: a user's own apps directly
+		// under it, the FlowKraft-shipped examples one level deeper in _examples/. Checked in that order
+		// — the same two roots Utils.getCustomAppDirs() discovers, so an app's compose is resolvable
+		// wherever it was found.
+		String custom = appsFolderPath + "flowkraft/xx-custom/" + serviceName + "/docker-compose.yml";
+		if (java.nio.file.Files.isRegularFile(java.nio.file.Paths.get(custom)))
+			return custom;
+		String example = appsFolderPath + "flowkraft/xx-custom/_examples/" + serviceName + "/docker-compose.yml";
+		if (java.nio.file.Files.isRegularFile(java.nio.file.Paths.get(example)))
+			return example;
+		return custom;
 	}
 	
 

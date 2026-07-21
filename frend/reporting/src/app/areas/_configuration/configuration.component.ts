@@ -955,11 +955,28 @@ export class ConfigurationComponent implements OnInit {
   }
 
   private adjustBurstFilenameExtension(outputType: string) {
-    if (outputType === 'fop2pdf' || outputType === 'any') {
+    // fop2pdf always renders a PDF, so its burst files are always .pdf.
+    if (outputType === 'fop2pdf') {
       const prevValue = this.xmlSettings?.documentburster?.settings?.burstfilename || '';
       const baseName = prevValue.replace(/\.[^\.]+$/, '');
-      if (outputType === 'fop2pdf') this.xmlSettings.documentburster.settings.burstfilename = baseName + '.pdf';
-      if (outputType === 'any') this.xmlSettings.documentburster.settings.burstfilename = baseName + '.xml';
+      this.xmlSettings.documentburster.settings.burstfilename = baseName + '.pdf';
+    }
+    // output.any is the raw / any-format type, and .xml is a deliberate, helpful DEFAULT: most Any
+    // templates are XML, so a user who writes the template but forgets to set the Burst File Name
+    // still gets a correct extension for free. It is only a DEFAULT, though — apply it solely when the
+    // report has NOT already chosen a concrete extension. A name still on the unconfigured
+    // ${output_type_extension} placeholder (or with no extension at all) is defaulted to .xml; one
+    // that deliberately set .json (a JSON push payload), .csv, … is left untouched. The guard matters
+    // because initReportingSettings() calls onReportOutputTypeChanged() on every config OPEN, not only
+    // when the user changes the dropdown — without it the default fired every time the config was
+    // viewed and silently reset a report whose settings.xml said ${burst_token}.json back to .xml.
+    if (outputType === 'any') {
+      const prevValue = this.xmlSettings?.documentburster?.settings?.burstfilename || '';
+      const hasConcreteExtension = /\.[a-zA-Z0-9]+$/.test(prevValue);
+      if (!hasConcreteExtension) {
+        const baseName = prevValue.replace(/\.[^\.]+$/, '') || '${burst_token}';
+        this.xmlSettings.documentburster.settings.burstfilename = baseName + '.xml';
+      }
     }
   }
 
@@ -2407,7 +2424,7 @@ export class ConfigurationComponent implements OnInit {
       'script.additionaltransformation': { category: 'Script Writing Assistance', promptId: 'GROOVY_SCRIPT_ADDITIONAL_TRANSFORMATION', enrich: 'none' },
       'script.ds':        { category: 'Script Writing Assistance',     promptId: 'GROOVY_SCRIPT_INPUT_SOURCE',                enrich: 'script' },
       'script.ds.dashboard': { category: 'Dashboard Creation',        promptId: 'DASHBOARD_BUILD_STEP_BY_STEP_INSTRUCTIONS', enrich: 'scriptDashboard' },
-      'cms.webportal':    { category: 'Web Portal / CMS',                                                                    enrich: 'none' },
+      'cms.webportal':    { category: 'Web Portal / CMS (WordPress)',                                                                    enrich: 'none' },
       'dsl.reportparams': { category: 'DSL Configuration',            promptId: 'REPORT_PARAMS_DSL_CONFIGURE',               enrich: 'reportParams' },
       'dsl.tabulator':    { category: 'DSL Configuration',            promptId: 'TABULATOR_DSL_CONFIGURE',                   enrich: 'dsl' },
       'dsl.chart':        { category: 'DSL Configuration',            promptId: 'CHART_DSL_CONFIGURE',                       enrich: 'dsl' },

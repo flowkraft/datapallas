@@ -169,7 +169,7 @@
                 <div id="noDocxTemplatesFound" class="ng-option disabled">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4 text-warning"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
                   {{ 'AREAS.CONFIGURATION.TAB-REPORT-TEMPLATE-OUTPUT.NO-TEMPLATES-FOUND' | translate }}<br>
-                  <code id="noDocxTemplatesFoundCode" style="background-color: #f8f8f8; padding: 4px; display: block; word-break: break-all;">
+                  <code id="noDocxTemplatesFoundCode" style="background-color: var(--color-base-200); color: var(--color-base-content); padding: 4px; display: block; word-break: break-all;">
                     {{absoluteTemplateFolderPath ? absoluteTemplateFolderPath : 
                       (appPathsService.CONFIGURATION_TEMPLATES_FOLDER_PATH + '/reports/' + 
                       settingsService.currentConfigurationTemplate?.folderName)}}
@@ -204,7 +204,7 @@
             @if (xmlReporting?.documentburster.report.template.outputtype == 'output.docx') {
             <div style="display: flex; align-items: center; overflow: hidden; flex: 1; margin-left: auto;">
               <div id="divTruncatedAbsoluteTemplateFolderPath" class="truncated-path" 
-                  style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-color: #f8f8f8; padding: 4px 8px; border-radius: 3px; border: 1px solid #e0e0e0; margin-right: 5px; width: 100%;"
+                  style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-color: var(--color-base-200); color: var(--color-base-content); padding: 4px 8px; border-radius: 3px; border: 1px solid var(--color-base-300); margin-right: 5px; width: 100%;"
                   [title]="absoluteTemplateFolderPath || getTemplateRelativeFolderPath()">
                 {{absoluteTemplateFolderPath || getTemplateRelativeFolderPath()}}
               </div>

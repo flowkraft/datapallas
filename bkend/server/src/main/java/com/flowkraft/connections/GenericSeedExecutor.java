@@ -65,6 +65,14 @@ public class GenericSeedExecutor {
         // before the CLI command tries to load the connection by id.
         connectionsService.prepareConnectionFilePath(connectionCode);
 
+        // Make the source connection code available to the seed script as params.connectionCode.
+        // Seed scripts only get dbSql/vendor/log/params bindings — no connection code — yet some
+        // (e.g. the billing-portal app-seed writing a DataPallas report) need to know which
+        // connection they were launched from to bind a report's <conncode> to it. Don't overwrite
+        // a caller-supplied value.
+        if (params == null) params = new LinkedHashMap<>();
+        params.putIfAbsent("connectionCode", connectionCode);
+
         // Write script to a temp file — CliJob.doRunSeedScript() reads it by path
         new File(AppPaths.JOBS_DIR_PATH).mkdirs();
         File tempScript = File.createTempFile("seed-", ".groovy", new File(AppPaths.JOBS_DIR_PATH));
@@ -172,27 +180,25 @@ public class GenericSeedExecutor {
             }
         }
 
-        // Custom-app seeders — listed after the bundled templates, sorted by app folder.
-        // Display name comes from the sibling app.json manifest's "name" when available.
-        File appsRoot = new File(Utils.getAppsFolderPath());
-        File[] appDirs = appsRoot.isDirectory() ? appsRoot.listFiles(File::isDirectory) : null;
-        if (appDirs != null) {
-            Arrays.sort(appDirs, (a, b) -> a.getName().compareTo(b.getName()));
-            for (File appDir : appDirs) {
-                File seedFile = new File(new File(appDir, "_custom"), "app-seed.groovy");
-                if (!seedFile.isFile()) continue;
+        // Custom-app seeders — the FlowKraft-shipped examples first, then the user's own apps, in the
+        // order Utils.getCustomAppDirs() returns them. Each carries isExample so the Seed-Data dropdown
+        // can group them (examples above a separator, the user's own apps below). Display name comes
+        // from the sibling app.json manifest's "name" when available.
+        for (File appDir : Utils.getCustomAppDirs()) {
+            File seedFile = new File(new File(appDir, "_custom"), "app-seed.groovy");
+            if (!seedFile.isFile()) continue;
 
-                String source      = Files.readString(seedFile.toPath());
-                String displayName = readAppJsonName(new File(new File(appDir, "_custom"), "app.json"));
-                if (displayName == null || displayName.isBlank()) displayName = toDisplayName(appDir.getName());
+            String source      = Files.readString(seedFile.toPath());
+            String displayName = readAppJsonName(new File(new File(appDir, "_custom"), "app.json"));
+            if (displayName == null || displayName.isBlank()) displayName = toDisplayName(appDir.getName());
 
-                Map<String, Object> t = new LinkedHashMap<>();
-                t.put("id",          "app-" + appDir.getName());
-                t.put("displayName", displayName);
-                t.put("description", extractDescription(source));
-                t.put("source",      source);
-                templates.add(t);
-            }
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("id",          "app-" + appDir.getName());
+            t.put("displayName", displayName);
+            t.put("description", extractDescription(source));
+            t.put("source",      source);
+            t.put("isExample",   Utils.isExampleAppDir(appDir));
+            templates.add(t);
         }
         return templates;
     }

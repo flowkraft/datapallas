@@ -58,7 +58,7 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
 
       // Style the iframe initially
       iframe.style.width = '100%';
-      iframe.style.border = '1px solid #ddd';
+      iframe.style.border = '1px solid var(--color-base-300)';
       iframe.style.position = 'absolute';
       iframe.style.transformOrigin = 'center';
 
@@ -146,18 +146,17 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
         const el = arrow as HTMLElement;
         // Already max boldness
         el.style.fontWeight = '900';
-        el.style.color = 'black';
+        el.style.color = 'var(--color-base-content)';
         // Add text shadow for perceived boldness
-        el.style.textShadow = '0 0 1px black';
         // Add stroke outline
-        el.style.webkitTextStroke = '0.5px black';
         el.style.boxShadow = '0 0 4px rgba(0,0,0,0.2)';
         // Move additional 10px inward (total 20px)
         el.style.marginLeft = '20px';
         // Make slightly bigger
         el.style.fontSize = '1.8rem';
         // Optional: add background for more emphasis
-        el.style.backgroundColor = 'rgba(255,255,255,0.7)';
+        el.style.backgroundColor = 'var(--color-base-100)';
+        el.style.border = '1px solid var(--color-base-300)';
         el.style.borderRadius = '50%';
         el.style.width = '40px';
         el.style.height = '40px';
@@ -170,13 +169,12 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
       nextArrows.forEach((arrow) => {
         const el = arrow as HTMLElement;
         el.style.fontWeight = '900';
-        el.style.color = 'black';
-        el.style.textShadow = '0 0 1px black';
-        el.style.webkitTextStroke = '0.5px black';
+        el.style.color = 'var(--color-base-content)';
         el.style.boxShadow = '0 0 4px rgba(0,0,0,0.2)';
         el.style.marginRight = '20px';
         el.style.fontSize = '1.8rem';
-        el.style.backgroundColor = 'rgba(255,255,255,0.7)';
+        el.style.backgroundColor = 'var(--color-base-100)';
+        el.style.border = '1px solid var(--color-base-300)';
         el.style.borderRadius = '50%';
         el.style.width = '40px';
         el.style.height = '40px';
@@ -367,7 +365,8 @@ export class ScaleIframeDirective implements AfterViewInit, OnDestroy {
     controls.style.display = 'flex';
     controls.style.alignItems = 'center';
     controls.style.padding = '5px';
-    controls.style.background = 'rgba(255,255,255,0.8)';
+    controls.style.background = 'var(--color-base-100)';
+    controls.style.border = '1px solid var(--color-base-300)';
     controls.style.borderRadius = '4px';
     controls.style.marginBottom = '5px';
 
