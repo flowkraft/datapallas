@@ -796,6 +796,12 @@ public class ServicesManager {
 		if (result.getExitValue() == 0) {
 			System.out.println("✓ App '" + serviceName + "' started successfully.");
 		} else {
+			// Confirmed failure: escalate to ERROR with context so it surfaces in errors.log
+			// and the Errors/Warnings indicator. The Docker output itself already streamed to
+			// the INFO log above; we only raise severity here, on a known non-zero exit — stderr
+			// stays at INFO so normal progress/warning chatter (npm, browserslist, ...) never cries wolf.
+			log.error("Failed to start app '{}' (exit code {}). Compose: {}, workingDir: {}", serviceName,
+					result.getExitValue(), composePath, workingDir);
 			System.out.println("✗ Failed to start app '" + serviceName + "'. Exit code: " + result.getExitValue());
 		}
 	}
@@ -912,6 +918,9 @@ public class ServicesManager {
 		if (result.getExitValue() == 0) {
 			System.out.println("✓ App '" + serviceName + "' stopped successfully.");
 		} else {
+			// Confirmed failure: escalate to ERROR with context (see handleAppStart for rationale).
+			log.error("Failed to stop app '{}' (exit code {}). Compose: {}, workingDir: {}", serviceName,
+					result.getExitValue(), composePath, workingDir);
 			System.out.println("✗ Failed to stop app '" + serviceName + "'. Exit code: " + result.getExitValue());
 		}
 	}
@@ -970,6 +979,9 @@ public class ServicesManager {
 		if (result.getExitValue() == 0) {
 			System.out.println("✓ Service(s) '" + svcList + "' recreated (re-read .env, depends_on order honored).");
 		} else {
+			// Confirmed failure: escalate to ERROR with context (see handleAppStart for rationale).
+			log.error("Failed to recreate service(s) '{}' (exit code {}). Compose: {}, workingDir: {}", svcList,
+					result.getExitValue(), composePath, workingDir);
 			System.out.println("✗ Failed to recreate service(s) '" + svcList + "'. Exit code: " + result.getExitValue());
 		}
 	}
@@ -999,6 +1011,11 @@ public class ServicesManager {
 				|| "chat2db".equals(serviceName) || "ai-hub-chat2db".equals(serviceName)) {
 			return appsFolderPath + "flowkraft/_ai-hub/docker-compose.yml";
 		}
+		// Built-in apps (matomo, rundeck, metabase, cloudbeaver, docuseal, cms-webportal-playground, ...)
+		// live directly under _apps/. That's where they've always lived, so probe it first.
+		String builtin = appsFolderPath + serviceName + "/docker-compose.yml";
+		if (java.nio.file.Files.isRegularFile(java.nio.file.Paths.get(builtin)))
+			return builtin;
 		// Custom apps live under a single home, _apps/flowkraft/xx-custom/: a user's own apps directly
 		// under it, the FlowKraft-shipped examples one level deeper in _examples/. Checked in that order
 		// — the same two roots Utils.getCustomAppDirs() discovers, so an app's compose is resolvable
@@ -1009,7 +1026,9 @@ public class ServicesManager {
 		String example = appsFolderPath + "flowkraft/xx-custom/_examples/" + serviceName + "/docker-compose.yml";
 		if (java.nio.file.Files.isRegularFile(java.nio.file.Paths.get(example)))
 			return example;
-		return custom;
+		// Nothing matched — return the built-in location so the error/log names the
+		// place these apps actually live.
+		return builtin;
 	}
 	
 
