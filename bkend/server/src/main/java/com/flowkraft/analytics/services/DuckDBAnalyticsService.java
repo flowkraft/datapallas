@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -142,6 +143,24 @@ public class DuckDBAnalyticsService {
         String sql = "SELECT * FROM \"" + tableName.replace("\"", "\"\"") + "\" LIMIT 0";
         try (Connection conn = connectionManager.getJdbcConnection(connectionCode);
              Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            ResultSetMetaData metaData = rs.getMetaData();
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                columns.add(metaData.getColumnName(i));
+            }
+        }
+        return columns;
+    }
+
+    /**
+     * Get all column names for a table/view using an already-open connection (does not close it).
+     * Used by the script-data path, where the scratch table lives only in the in-memory
+     * connection and cannot be re-read from a separate one.
+     */
+    private List<String> getColumnsOnConnection(Connection conn, String tableName) throws Exception {
+        List<String> columns = new ArrayList<>();
+        String sql = "SELECT * FROM \"" + tableName.replace("\"", "\"\"") + "\" LIMIT 0";
+        try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             ResultSetMetaData metaData = rs.getMetaData();
             for (int i = 1; i <= metaData.getColumnCount(); i++) {
@@ -285,8 +304,14 @@ public class DuckDBAnalyticsService {
         // Use reportCode as stable table name
         String tableName = sanitizeTableName(reportCode);
 
-        // Step 1: Auto-plumb with DuckDB (check table existence BEFORE executing script)
-        try (Connection conn = connectionManager.getJdbcConnection(request.getConnectionCode())) {
+        // Step 1: Auto-plumb with DuckDB (check table existence BEFORE executing script).
+        // Script data is self-contained (script → CSV → CREATE TABLE → pivot) and never joins
+        // any real table, so it needs its own WRITABLE, throwaway DuckDB — NOT the resolved
+        // connection, which for this path is the shared sample .duckdb file opened read-only
+        // (exclusive-lock avoidance). Writing the scratch table there fails with
+        // "Cannot execute statement of type CREATE ... read-only". An in-memory DuckDB is
+        // writable, isolated, and auto-dropped when the connection closes.
+        try (Connection conn = openWritableInMemoryDuckDb()) {
 
             // Optimization: Check if table already exists (skip script execution for subsequent requests)
             if (!tableExists(conn, tableName)) {
@@ -328,9 +353,25 @@ public class DuckDBAnalyticsService {
             metadata.setAggregatorUsed(request.getAggregatorName());
             metadata.setCached(false);
 
+            // Populate availableColumns here while the in-memory scratch table still exists —
+            // the connection (and the table) are gone once we return, so the controller must
+            // NOT try to re-read them from a separate connection.
+            metadata.setAvailableColumns(getColumnsOnConnection(conn, tableName));
+
             log.info("Auto-plumbed pivot complete: {} result rows in {}ms", results.size(), metadata.getExecutionTimeMs());
             return response;
         }
+    }
+
+    /**
+     * Open a fresh, writable, in-memory DuckDB connection for materializing script-generated
+     * data. An empty JDBC url ("jdbc:duckdb:") means an in-memory database — no file, no lock,
+     * discarded when the connection closes. Used only by the script-data auto-plumb path, which
+     * must CREATE its scratch table and therefore cannot use the read-only sample connection.
+     */
+    private Connection openWritableInMemoryDuckDb() throws Exception {
+        Class.forName("org.duckdb.DuckDBDriver");
+        return DriverManager.getConnection("jdbc:duckdb:");
     }
 
     /**

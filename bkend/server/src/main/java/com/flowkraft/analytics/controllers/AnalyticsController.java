@@ -241,23 +241,29 @@ public class AnalyticsController {
             }
 
             PivotResponse response;
-            java.util.List<String> availableColumns = null;
             switch (engine) {
                 case "clickhouse":
                     log.debug("Routing to ClickHouse analytics service");
                     response = clickHouseService.executePivot(request);
-                    availableColumns = clickHouseService.getTableColumns(request.getConnectionCode(), request.getTableName());
                     break;
                 case "duckdb":
                 default:
                     log.debug("Routing to DuckDB analytics service");
                     response = duckDBService.executePivot(request);
-                    availableColumns = duckDBService.getTableColumns(request.getConnectionCode(), request.getTableName());
                     break;
             }
 
-            if (availableColumns != null) {
-                response.getMetadata().setAvailableColumns(availableColumns);
+            // The service may already have populated availableColumns (e.g. the DuckDB script-data
+            // path, whose scratch table lives only in a throwaway in-memory connection). Only query
+            // them separately when it hasn't — that requires a real, persistent table to read from.
+            if (response.getMetadata().getAvailableColumns() == null
+                    || response.getMetadata().getAvailableColumns().isEmpty()) {
+                java.util.List<String> availableColumns = "clickhouse".equals(engine)
+                        ? clickHouseService.getTableColumns(request.getConnectionCode(), request.getTableName())
+                        : duckDBService.getTableColumns(request.getConnectionCode(), request.getTableName());
+                if (availableColumns != null) {
+                    response.getMetadata().setAvailableColumns(availableColumns);
+                }
             }
 
             return ResponseEntity.ok(response);
