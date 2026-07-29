@@ -7,7 +7,7 @@
   },
   "license": "SSPL-1.0",
   "description": "Server Side Public License (SSPL) - Desktop and Server versions. SSPL terms apply upon distribution or service provision.",
-  "version": "16.4.0",
+  "version": "16.4.1",
   "copyright": "2026, FlowKraft Systems & Consulting Ltd.",
   "homepage": "https://datapallas.com",
   "author": {
@@ -44,7 +44,7 @@
     "custom:start-server-and-ui-web": "npx gulp utils:start-server-and-ui-web",
     "custom:start-server-and-ui-both": "npx gulp utils:start-server-and-ui-both",
     "custom:start-server-and-e2e-electron": "npm run custom:clean-testground && npx gulp utils:start-server-and-e2e-electron",
-    "custom:start-server-and-e2e-electron-grep": "npm run custom:clean-testground && cross-env \"E2E_SPEC=explore-data-visualizations.spec.ts\" \"E2E_GREP=Visualizations — all 10 widget types, areas A–F, SQLite\" npx gulp utils:start-server-and-e2e-electron",
+    "custom:start-server-and-e2e-electron-grep": "npm run custom:clean-testground && cross-env \"E2E_SPEC=explore-data-smart-defaults.spec.ts\" \"E2E_GREP=postgres. Smart defaults — palette\" npx gulp utils:start-server-and-e2e-electron",
     "custom:start-server-and-e2e-electron-screens": "npm run custom:clean-testground && cross-env E2E_SCREENSHOTS=1 npx gulp utils:start-server-and-e2e-electron",
     "custom:start-server-and-e2e-electron-screens-grep": "npm run custom:clean-testground && cross-env E2E_SCREENSHOTS=1 \"E2E_SPEC=connections.screens.ts\" \"E2E_GREP=Connections — docs screenshots — oauth2.mdx email OAuth2 tab\" npx gulp utils:start-server-and-e2e-electron",
     "custom:start-server-and-e2e-electron-screens-grep-keepdata": "npm run custom:clean-testground && cross-env OPENAI_API_KEY=$ZAI_API_KEY OPENAI_API_BASE=https://api.z.ai/api/coding/paas/v4 E2E_SCREENSHOTS=1 E2E_KEEP_DATA=1 \"E2E_SPEC=chat2db.screens.ts\" \"E2E_GREP=Leo adaptive exploration|Northwind two-act\" npx gulp utils:start-server-and-e2e-electron",

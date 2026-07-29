@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.4.1 - 2026-07-29
+
+### Fixed
+
+- **The ready-made apps start and stop again** — The apps that come with DataPallas — Matomo, Rundeck, Metabase, CloudBeaver, DocuSeal and the CMS Web Portal Playground — could refuse to start or stop, failing straight away with nothing useful to explain why. They now start and stop as expected, and if one ever does fail, the error log clearly names the app and the reason.
+
+- **Script-fed dashboards running on DuckDB work again** — A dashboard whose data comes from a script (rather than straight from a database table) failed to build whenever DuckDB was the engine crunching it — including the ready-made demo dashboard. DuckDB databases are now opened read-only so they never lock anyone else out, which left the script's data with nowhere to go. Script data is now prepared in its own private, temporary workspace, so these dashboards load and display correctly again. Dashboards drawing straight from a database table were never affected.
+
 ## 16.4.0 - 2026-07-22
 
 ### Added
