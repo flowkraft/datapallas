@@ -17,6 +17,7 @@ package com.sourcekraft.documentburster.utils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -96,6 +97,9 @@ public class LicenseUtils {
 
 	/** Remembers the curl that worked, or "JAXRS" once curl has been given up on. */
 	private volatile String cachedCurlPath = null;
+
+	/** What curl last complained about, so a warning can say why, not just that. */
+	private volatile String lastCurlError = "";
 
 	// seconds timeout for curl; can be overridden with env
 	// LICENSE_CURL_TIMEOUT_SECS
@@ -356,8 +360,8 @@ public class LicenseUtils {
 	 * — and the log — that this was our problem and not the customer's.
 	 */
 	private void serverUnreachable(String action, Exception e) {
-		log.warn("Could not reach the licence server for '{}' ({}: {}). The licence cannot be confirmed right now; "
-				+ "DataPallas continues to run.", action, e.getClass().getSimpleName(), e.getMessage());
+		log.warn("Could not reach the licence server for '{}' ({}: {}). The licence cannot be confirmed right now.",
+				action, e.getClass().getSimpleName(), e.getMessage());
 		license.setStatus(License.STATUS_SERVER_DOWN);
 	}
 
@@ -520,8 +524,13 @@ public class LicenseUtils {
 					cand, CURL_ATTEMPTS);
 			return;
 		}
+		// curl's own complaint, not just the fact that it failed. It was already
+		// captured and then dropped at debug level, so the warning said a
+		// candidate was "exhausted" while throwing away the one line that
+		// explained why — which turned a quoting bug into an afternoon.
 		log.warn("[{}] url={} curl candidate {} exhausted after {} attempts and did not return a valid "
-				+ "license payload", reqId, url, cand, CURL_ATTEMPTS);
+				+ "license payload{}", reqId, url, cand, CURL_ATTEMPTS,
+				StringUtils.isEmpty(lastCurlError) ? "" : " — curl said: " + lastCurlError);
 	}
 
 	/** A null body means GET — the release lookup takes no payload. */
@@ -608,8 +617,23 @@ public class LicenseUtils {
 			cmd.add("POST");
 			cmd.add("-H");
 			cmd.add("Content-Type: application/json");
-			cmd.add("-d");
-			cmd.add(jsonBody);
+
+			// The body goes in on STDIN, not as an argument.
+			//
+			// Java's ProcessBuilder on Windows wraps an argument containing
+			// spaces in double quotes and does NOT escape the double quotes
+			// already inside it — and a JSON body is nothing but double quotes.
+			// So `{"key":"..."}` survived (no spaces) while
+			// `{...,"osInfo":"Windows 11 10.0"}` arrived at curl mangled: the
+			// activation POST failed on every curl candidate, and a check could
+			// reach the server with a broken body and be answered with a 500,
+			// which the client then reported as an unreachable licence server on
+			// a licence that is perfectly valid.
+			//
+			// @- reads the body from stdin, so no quoting rules apply to it on
+			// any platform.
+			cmd.add("--data-binary");
+			cmd.add("@-");
 		}
 
 		cmd.add(url);
@@ -627,6 +651,15 @@ public class LicenseUtils {
 
 		try {
 			p = pb.start();
+
+			// Feed the body and close stdin, so curl sees EOF and does not wait.
+			// Closed even for a GET: an open stdin on `curl @-` would hang until
+			// the timeout.
+			try (OutputStream stdin = p.getOutputStream()) {
+				if (jsonBody != null) {
+					stdin.write(jsonBody.getBytes(StandardCharsets.UTF_8));
+				}
+			}
 
 			// start threads that continuously drain stdout/stderr into buffers
 			final InputStream pis = p.getInputStream();
@@ -662,6 +695,7 @@ public class LicenseUtils {
 			boolean finished = p.waitFor(CURL_TIMEOUT_SECS, TimeUnit.SECONDS);
 			if (!finished) {
 				p.destroyForcibly();
+				lastCurlError = "timed out after " + CURL_TIMEOUT_SECS + "s";
 				log.debug("[{}] curl timeout for: {}", reqId, curlPath);
 				// give readers a moment to collect partial output
 				try {
@@ -690,6 +724,8 @@ public class LicenseUtils {
 						stderrPreview.isEmpty() ? "none" : stderrPreview.replaceAll("\\r?\\n", " | "));
 				return out;
 			} else {
+				lastCurlError = "exit " + exit
+						+ (stderrPreview.isEmpty() ? "" : ": " + stderrPreview.replaceAll("\\r?\\n", " | ").trim());
 				log.debug("[{}] curl failed (path={}, exit={}) stderrPreview={}", reqId, curlPath, exit,
 						stderrPreview.isEmpty() ? "none" : stderrPreview.replaceAll("\\r?\\n", " | "));
 				return null;
