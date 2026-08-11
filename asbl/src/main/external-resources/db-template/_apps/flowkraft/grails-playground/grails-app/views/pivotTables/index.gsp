@@ -152,7 +152,7 @@
                                         report-id="piv-examples"
                                         component-id="salesOverview"
                                         api-base-url="${RbUtils.apiBaseUrl}"
-                                        api-key="${RbUtils.apiKey}"
+                                        embed-token="${RbUtils.embedToken('piv-examples')}"
                                     ></rb-pivot-table>
 
                                     <!-- How to Use narrative -->
@@ -254,7 +254,7 @@ FROM sales GROUP BY Product;
                                         report-id="piv-examples"
                                         component-id="salesOverview"
                                         api-base-url="${RbUtils.apiBaseUrl}"
-                                        api-key="${RbUtils.apiKey}"
+                                        embed-token="${RbUtils.embedToken('piv-examples')}"
                                     ></rb-tabulator>
                                 </div>
 
@@ -281,7 +281,7 @@ FROM sales GROUP BY Product;
     report-id="piv-examples"
     component-id="salesOverview"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('piv-examples')}"
 &gt;&lt;/rb-pivot-table&gt;</code></pre>
                                 </div>
                             </div>
@@ -314,7 +314,7 @@ FROM sales GROUP BY Product;
     report-id="your-report-id"
     component-id="yourComponentId"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('your-report-id')}"
 &gt;&lt;/rb-pivot-table&gt;</code></pre>
                     </div>
                 </div>

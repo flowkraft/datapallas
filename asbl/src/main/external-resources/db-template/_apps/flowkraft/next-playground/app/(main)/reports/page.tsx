@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { rbConfig } from "@/lib/rb-config"
+import { useEmbedToken } from "@/lib/use-embed-token"
 import { CodeBlock } from "@/components/CodeBlock"
 
 interface RbReportElement extends HTMLElement {
@@ -26,6 +27,7 @@ const employees: Employee[] = [
 ]
 
 export default function ReportsPage() {
+  const embedToken = useEmbedToken("rep-employee-payslip")
   const reportRef = useRef<RbReportElement>(null)
   const [isReady, setIsReady] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>("component")
@@ -120,7 +122,7 @@ export default function ReportsPage() {
   report-id="rep-employee-payslip"
   entity-code="EMP001"
   api-base-url="${rbConfig.apiBaseUrl}"
-  api-key="${rbConfig.apiKey}"
+  embed-token="${embedToken}"
 ></rb-report>
 
 <!-- The entity-code attribute specifies which
@@ -238,7 +240,7 @@ export default function ReportsPage() {
                     id="demoReport"
                     report-id="rep-employee-payslip"
                     api-base-url={rbConfig.apiBaseUrl}
-                    api-key={rbConfig.apiKey}
+                    embed-token={embedToken}
                     show-print-button
                     print-button-label="Print / Save PDF"
                     style={{ display: showPlaceholder ? "none" : "block" }}

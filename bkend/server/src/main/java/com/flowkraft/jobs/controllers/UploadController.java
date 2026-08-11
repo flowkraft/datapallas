@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -24,6 +25,7 @@ import reactor.core.publisher.Flux;
 @RestController
 @RequestMapping(value = "/api/jobs", produces = MediaType.APPLICATION_JSON_VALUE, consumes = {
 		MediaType.MULTIPART_FORM_DATA_VALUE })
+@PreAuthorize("hasRole('JOB_OPERATOR')")
 public class UploadController {
 
 	@PostMapping("/upload-and-burst-many")

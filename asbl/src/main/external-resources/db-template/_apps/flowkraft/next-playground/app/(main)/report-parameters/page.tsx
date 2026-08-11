@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { rbConfig } from "@/lib/rb-config"
+import { useEmbedToken } from "@/lib/use-embed-token"
 import { CodeBlock } from "@/components/CodeBlock"
 
 interface RbParametersElement extends HTMLElement {
@@ -18,6 +19,7 @@ interface RbTabulatorElement extends HTMLElement {
 type TabType = "component" | "config" | "usage"
 
 export default function ReportParametersPage() {
+  const embedToken = useEmbedToken("par-employee-hire-dates")
   const paramsRef = useRef<RbParametersElement>(null)
   const dataTableRef = useRef<RbTabulatorElement>(null)
   const [configDsl, setConfigDsl] = useState("")
@@ -179,7 +181,7 @@ export default function ReportParametersPage() {
   const usageCode = `<rb-parameters
   report-id="par-employee-hire-dates"
   api-base-url="${rbConfig.apiBaseUrl}"
-  api-key="${rbConfig.apiKey}"
+  embed-token="${embedToken}"
 ></rb-parameters>`
 
   const tabClass = (tab: TabType) =>
@@ -261,7 +263,7 @@ export default function ReportParametersPage() {
                       id="demoParams"
                       report-id="par-employee-hire-dates"
                       api-base-url={rbConfig.apiBaseUrl}
-                      api-key={rbConfig.apiKey}
+                      embed-token={embedToken}
                     />
                     <hr className="my-4" />
                     <button id="submitBtn" onClick={handleRunReport} disabled={isSubmitting} className="btn btn-primary w-full">
@@ -322,7 +324,7 @@ export default function ReportParametersPage() {
                     id="dataTable"
                     report-id="par-employee-hire-dates"
                     api-base-url={rbConfig.apiBaseUrl}
-                    api-key={rbConfig.apiKey}
+                    embed-token={embedToken}
                     style={{ display: "block", width: "100%" }}
                   />
                 </div>

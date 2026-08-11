@@ -5,8 +5,13 @@ import org.slf4j.LoggerFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import com.sourcekraft.documentburster.utils.PathOutsidePortableDirException;
 
 import java.util.Map;
 
@@ -70,6 +75,54 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * A path parameter that resolves outside the installation directory is a bad request,
+     * not a server failure — answer 400 without echoing whether the target exists.
+     */
+    @ExceptionHandler(PathOutsidePortableDirException.class)
+    public ResponseEntity<Map<String, String>> handlePathOutsidePortableDir(
+            PathOutsidePortableDirException ex, HttpServletRequest request) {
+        log.warn("Rejected path outside the installation directory [{} {}]: {}",
+                request.getMethod(), request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    /**
+     * Authorization decisions belong to Spring Security, not here.
+     *
+     * <p>Without this, the catch-all below swallows {@code AccessDeniedException} and answers 500 —
+     * so a refusal is indistinguishable from a crash. The caller cannot react to it (the frontend
+     * routes to the login screen on 401 and shows "you do not have permission" on 403, and gets
+     * neither), and errors.log fills with stack traces for what is simply the rules working. Letting
+     * it propagate hands it back to {@code ExceptionTranslationFilter}, which answers 403 for a
+     * signed-in user and 401 for an anonymous one.
+     */
+    @ExceptionHandler({ AccessDeniedException.class, AuthenticationException.class })
+    public void handleAuthorization(RuntimeException ex) throws RuntimeException {
+        throw ex;
+    }
+
+    /**
+     * A static file that does not exist is a 404, and Spring already knew that.
+     *
+     * <p>{@code ExceptionHandlerExceptionResolver} runs ahead of Spring's own
+     * {@code DefaultHandlerExceptionResolver}, so without this the catch-all below intercepts
+     * {@link NoResourceFoundException} — an exception the framework raises to MEAN "404" — and
+     * turns it into a 500 with a seventy-line stack trace in errors.log.
+     *
+     * <p>The one that shows up constantly is {@code GET /favicon.ico}: a published dashboard page
+     * declares no icon, so every browser asks for it, and a desktop install has no {@code lib/frend}
+     * to answer from (that is the web bundle, shipped with Server). Logging it as an error puts a
+     * red badge in the UI for a browser doing something entirely routine, and buries the failures
+     * that are real.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNoResourceFound(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
+    }
 
     @ExceptionHandler(Throwable.class)
     public ResponseEntity<Map<String, String>> handleAll(Throwable ex, HttpServletRequest request) {

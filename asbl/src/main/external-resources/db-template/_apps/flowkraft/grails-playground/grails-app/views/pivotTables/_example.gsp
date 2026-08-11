@@ -7,6 +7,6 @@
         report-id="piv-examples"
         component-id="${id}"
         api-base-url="${RbUtils.apiBaseUrl}"
-        api-key="${RbUtils.apiKey}"
+        embed-token="${RbUtils.embedToken('piv-examples')}"
     ></rb-pivot-table>
 </div>

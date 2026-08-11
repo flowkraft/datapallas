@@ -66,7 +66,7 @@
                                         id="demoParams"
                                         report-id="par-employee-hire-dates"
                                         api-base-url="${RbUtils.apiBaseUrl}"
-                                        api-key="${RbUtils.apiKey}"
+                                        embed-token="${RbUtils.embedToken('par-employee-hire-dates')}"
                                     ></rb-parameters>
                                     <hr>
                                     <button id="submitBtn" class="btn btn-primary">Run Report</button>
@@ -108,7 +108,7 @@
                                             id="dataTable"
                                             report-id="par-employee-hire-dates"
                                             api-base-url="${RbUtils.apiBaseUrl}"
-                                            api-key="${RbUtils.apiKey}"
+                                            embed-token="${RbUtils.embedToken('par-employee-hire-dates')}"
                                         ></rb-tabulator>
                                     </div>
                                     <div class="text-base-content/60 text-sm mt-2" id="filterStatus">
@@ -141,7 +141,7 @@
                     <pre id="usageCode" class="code-block"><code class="language-markup">&lt;rb-parameters
     report-id="par-employee-hire-dates"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('par-employee-hire-dates')}"
 &gt;&lt;/rb-parameters&gt;</code></pre>
                 </div>
             </div>
@@ -279,12 +279,15 @@
 
                     // Fetch filtered data from backend
                     const apiBaseUrl = '${RbUtils.apiBaseUrl}';
-                    const apiKey = '${RbUtils.apiKey}';
                     const reportId = 'par-employee-hire-dates';
 
+                    // Short-lived, minted server-side by Grails, scoped to this one report. The API
+                    // key stays on the server: it authenticates as an administrator and would be
+                    // readable by every visitor if it were interpolated here.
+                    const embedToken = '${RbUtils.embedToken('par-employee-hire-dates')}';
+
                     const headers = { 'Content-Type': 'application/json' };
-                    // TEMP: API key disabled for rollback
-                    // if (apiKey) headers['X-API-Key'] = apiKey;
+                    if (embedToken) headers['X-Embed-Token'] = embedToken;
 
                     const dataUrl = apiBaseUrl + '/reports/' + reportId + '/data?' + queryParams.toString();
                     console.log('[reportParameters GSP] Fetching filtered data from:', dataUrl);

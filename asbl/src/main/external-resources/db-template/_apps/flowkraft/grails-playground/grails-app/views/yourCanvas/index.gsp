@@ -227,7 +227,7 @@
 <span class="tag">&lt;rb-chart</span>
     <span class="attr">report-id</span>=<span class="value">"sales-by-region"</span>
     <span class="attr">api-base-url</span>=<span class="value">"${RbUtils.apiBaseUrl}"</span>
-    <span class="attr">api-key</span>=<span class="value">"${RbUtils.apiKey}"</span>
+    <span class="attr">embed-token</span>=<span class="value">"${RbUtils.embedToken('your-report-id')}"</span>
 <span class="tag">&gt;&lt;/rb-chart&gt;</span>
                     </div>
                     <p class="text-base-content/60 text-sm">That's it. The component fetches data, reads your chart config, and renders.</p>

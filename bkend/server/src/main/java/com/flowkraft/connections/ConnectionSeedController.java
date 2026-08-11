@@ -6,6 +6,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,9 +22,14 @@ import reactor.core.publisher.Mono;
  * POST /api/connections/{connectionCode}/run-seed     — execute a Groovy seed script
  * GET  /api/connections/{connectionCode}/seed-status  — check seed_inv_* table state
  * GET  /api/connections/seed-templates                — list bundled .groovy templates
+ *
+ * <p>{@code ADMIN} throughout. The tab lives inside the Connection Details modal, which is an
+ * administrator's screen, and every endpoint here either runs Groovy against a connection or reports
+ * on the data it wrote.
  */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+@PreAuthorize("hasRole('ADMIN')")
 public class ConnectionSeedController {
 
     private static final Logger log = LoggerFactory.getLogger(ConnectionSeedController.class);
@@ -40,6 +46,7 @@ public class ConnectionSeedController {
      * Body: { "script": "...", "params": { "N": 10000, ... } }
      * Response: { "ok": bool, "durationMs": long, "rowCounts": { table: count }, "error"?: string }
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping(value = "/api/connections/{connectionCode}/run-seed",
                  consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> runCustomSeed(

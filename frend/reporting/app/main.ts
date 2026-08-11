@@ -158,6 +158,24 @@ function sendSplashProgress(payload: { text?: string; progress?: number }) {
   } catch { }
 }
 
+const SERVER_PORT = 9090;
+
+/**
+ * Is this the DataPallas Server package rather than the desktop one?
+ *
+ * <p>Decided by what is on disk — startServer.bat ships in the Server zip and never in the desktop
+ * one — deliberately the same test the backend's DeploymentMode uses. Two processes agreeing on the
+ * edition by reading the same file cannot drift; two processes each carrying their own flag can.
+ */
+function isServerEdition(): boolean {
+  const installDir = process.env.PORTABLE_EXECUTABLE_DIR;
+  if (!installDir) return false;
+  return (
+    fs.existsSync(path.join(installDir, 'startServer.bat')) ||
+    fs.existsSync(path.join(installDir, 'startServer.sh'))
+  );
+}
+
 // wait for a TCP connection to a port (returns true if connected within timeout)
 async function waitForServerPort(port = 9090, timeoutMs = 120000): Promise<boolean> {
   const start = Date.now();
@@ -269,12 +287,32 @@ function createWindow(): BrowserWindow {
   electronRemote.initialize();
   electronRemote.enable(win.webContents);
 
+  // The packaged window has no developer tools, so anything the Angular app reports about itself
+  // would otherwise be invisible. Mirroring it into electron.log means a user can send one log file
+  // and it carries what the UI actually saw, not just what the backend did.
+  win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    const origin = sourceId ? ` (${sourceId}:${line})` : '';
+    if (level >= 2) log.warn(`[renderer] ${message}${origin}`);
+    else log.info(`[renderer] ${message}`);
+  });
+
   // load URL / dev mode behavior remains identical
   if (serve) {
     const debug = require('electron-debug');
     debug();
     require('electron-reloader')(module, { watchRenderer: false });
     win.loadURL('http://localhost:4200');
+  } else if (isServerEdition()) {
+    // DataPallas Server signs people in, and signing in means cookies: the session and the CSRF
+    // token both live in them. A file:// page can hold neither — it is a different origin from the
+    // API, so the browser will not send the session back and `document.cookie` cannot even see the
+    // CSRF token to echo it. Every login would be rejected before it reached the login controller.
+    //
+    // So the Server's window is exactly what a browser would be: the app loaded FROM the server it
+    // talks to. Same origin, cookies work, and the desktop shell stops being a special case. The
+    // renderer keeps nodeIntegration, so window.require and every IPC call behave as before — the
+    // --serve branch above has always loaded over http for the same reason.
+    win.loadURL(`http://localhost:${SERVER_PORT}/`);
   } else {
     let pathIndex = './index.html';
     if (fs.existsSync(path.join(__dirname, '../dist/index.html'))) {

@@ -1,11 +1,7 @@
 package com.flowkraft.license;
 
 import java.io.File;
-import java.security.cert.X509Certificate;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
@@ -17,18 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.reports.ReportsService;
-import com.flowkraft.common.Constants;
 import com.flowkraft.common.Utils;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.jobs.services.JobExecutionService;
 import com.flowkraft.license.model.LicenseDetails;
-import de.ailis.pherialize.Pherialize;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import com.sourcekraft.documentburster.utils.LicenseUtils;
 
 @Service
 public class LicenseService {
@@ -41,7 +31,9 @@ public class LicenseService {
 	@Autowired
 	private JobExecutionService jobExecutionService;
 
-	private String licenseFilePath = AppPaths.WORKSPACE_DIR_PATH + "config/burst/internal/license.xml";
+	// WORKSPACE_DIR_PATH already ends in "config/", and the licence has always lived in _internal —
+	// the same file bkend/common's License and the updater read.
+	private String licenseFilePath = AppPaths.WORKSPACE_DIR_PATH + "_internal/license.xml";
 
 	public void activateLicense() throws Throwable {
 		jobExecutionService.executeSync(new String[] { "system", "license", "activate" });
@@ -83,66 +75,38 @@ public class LicenseService {
 		//DocumentBursterSettings defaultSettings = this.settingsService.loadSettings("settings.xml");
 		//productInfo.version = defaultSettings.settings.version;
 
-		String url = Constants.LICENSING_SERVER_URL + "/?edd_action=get_version&item_name=" + Utils.getProductName();
-
-		Client client = _newClient();
-
+		// Through LicenseUtils, which is the one place that talks to datapallas.com.
+		//
+		// It tries the bundled curl before the in-JVM client, because the JVM's own TLS stack is what
+		// failed against that host in the field while curl kept working. A second HTTP client here —
+		// JAX-RS, WebClient, anything — would quietly reintroduce the failure this product already
+		// paid to discover, for the sake of a version number.
 		try {
 
-			Response response = client.target(url).request(MediaType.TEXT_PLAIN_TYPE).get();
+			JsonNode jsonNodeResult = new LicenseUtils().fetchLatestRelease();
 
-			JsonNode jsonNodeResult = (new ObjectMapper()).readTree(response.readEntity(String.class));
+			productInfo.latestversion = jsonNodeResult.path("version").asText(StringUtils.EMPTY);
 
-			productInfo.latestversion = jsonNodeResult.get("new_version").asText();
+			// Markdown now, not PHP-serialized HTML. The old store returned the
+			// changelog inside a Pherialize blob because it was WordPress; the new
+			// one just returns the text, so there is nothing to unpack and no <p>
+			// tags to strip back out.
+			productInfo.changelog = jsonNodeResult.path("changelog").asText(StringUtils.EMPTY);
 
-			productInfo.changelog = Pherialize.unserialize(jsonNodeResult.get("sections").asText()).toArray()
-					.getString("changelog");
 		} catch (Exception e) {
-			log.warn("Failed to fetch latest version/changelog from licensing server", e);
+			// The products server being unreachable must not break the About screen — it only means
+			// there is nothing to say about a newer version.
+			log.warn("Failed to fetch latest version/changelog from the products server", e);
 			productInfo.changelog = StringUtils.EMPTY;
 			productInfo.latestversion = StringUtils.EMPTY;
-
-		} finally {
-			client.close();
-
-			if (StringUtils.isNotEmpty(productInfo.changelog)) {
-
-				productInfo.changelog = StringUtils.replace(productInfo.changelog, "<p>", "\n");
-				productInfo.changelog = StringUtils.replace(productInfo.changelog, "</p>", "\n");
-				productInfo.changelog = StringUtils.replace(productInfo.changelog, "<br />", StringUtils.EMPTY);
-				productInfo.changelog = StringUtils.replace(productInfo.changelog, "<br/>", StringUtils.EMPTY);
-
-			}
 		}
 
 		return productInfo;
 
 	}
 
-	private Client _newClient() throws Exception {
-		TrustManager[] trustManager = new X509TrustManager[] { new X509TrustManager() {
-
-			@Override
-			public X509Certificate[] getAcceptedIssuers() {
-				return null;
-			}
-
-			@Override
-			public void checkClientTrusted(X509Certificate[] certs, String authType) {
-
-			}
-
-			@Override
-			public void checkServerTrusted(X509Certificate[] certs, String authType) {
-
-			}
-		} };
-
-		SSLContext sslContext = SSLContext.getInstance("SSL");
-		sslContext.init(null, trustManager, null);
-
-		return ClientBuilder.newBuilder().sslContext(sslContext).hostnameVerifier((s1, s2) -> true).build();
-
-	}
+	// A trust-everything HTTPS client used to live here, to work around a broken
+	// certificate on the old pdfburst.com host. It is gone with the host: the
+	// default trust store is used, so this call can no longer be intercepted.
 
 }

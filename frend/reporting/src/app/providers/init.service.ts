@@ -1,11 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { StateStoreService } from './state-store.service';
 import { RbElectronService } from '../areas/electron-nodejs/electron.service';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { ConfigurationRepository } from './configuration-repository.service';
 import { WebSocketService } from './websocket.service';
-import { firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -15,9 +14,9 @@ export class InitService {
     private stateStore: StateStoreService,
     private electronService: RbElectronService,
     private apiService: ApiService,
+    private authService: AuthService,
     private settingsService: ConfigurationRepository,
     private webSocketService: WebSocketService,
-    private http: HttpClient,
   ) { }
 
   async initialize(): Promise<void> {
@@ -26,13 +25,6 @@ export class InitService {
       this.stateStore.configSys.sysInfo.setup.BACKEND_URL = backendUrl;
       // Set API service URL after initialization
       this.apiService.BACKEND_URL = backendUrl;
-
-      // Read API key from file system (secure - no HTTP endpoint exposed)
-      const apiKey = await this.electronService.getApiKey();
-      if (apiKey) {
-        // TEMP: API key disabled during rollback - not setting on ApiService
-        // this.apiService.setApiKey(apiKey);
-      }
 
       const systemInfo = await this.electronService.getSystemInfo();
       this.stateStore.configSys.sysInfo.setup.chocolatey = {
@@ -53,27 +45,29 @@ export class InitService {
       } catch (e) {
         console.warn('[InitService] Failed to load preferences at bootstrap:', e);
       }
-    } else {
-      // TEMP (2025-12-19): API key handling is present below but intentionally skipped in web mode during rollback.
-      // We return early to avoid accidentally setting an API key in normal web usage until a proper reimplementation is scheduled.
-      return;
+    }
 
-      try {
-        const config = await firstValueFrom(
-          this.http.get<{ apiKey?: string }>('/assets/config.json')
-        );
+    // Resolve the identity before the first navigation. withDisabledInitialNavigation() means the
+    // router has not run yet, so the guard and every screen see a settled mode and never flash a
+    // login screen at a desktop user. It answers without a credential — that is the point: the
+    // deployment mode is what decides which credential is allowed to be used at all.
+    const identity = await this.authService.loadIdentity();
 
-        if (config?.apiKey) {
-          // API key present: would set if rollback was not active
-          this.apiService.setApiKey(config.apiKey);
-        } else {
-          //console.warn('No API key found in config.json');
-        }
-      } catch (error) {
-          // Fallback API key (dev): would set if rollback not active
-          this.apiService.setApiKey("123");
+    // The installation API key is a MACHINE credential: presenting it means "I hold this
+    // installation's filesystem". That is exactly DataPallas Desktop's trust model — the person at
+    // the keyboard already owns the folder, so asking them to log in protects nothing.
+    //
+    // It is exactly NOT DataPallas Server's. A server must ask the person in front of it to sign in
+    // even when the app is opened through DataPallas.exe on the server machine itself, so the key is
+    // never presented there — otherwise every desktop shell would silently be an administrator and
+    // the login screen would never appear.
+    //
+    // Web mode never gets a key in either edition: anything a page can read, any visitor can read.
+    if (this.electronService.isElectron && identity?.mode === 'standalone') {
+      const apiKey = await this.electronService.getApiKey();
+      if (apiKey) {
+        this.apiService.setApiKey(apiKey);
       }
-
     }
   }
 

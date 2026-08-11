@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { rbConfig } from "@/lib/rb-config"
+import { useEmbedToken } from "@/lib/use-embed-token"
 import { CodeBlock } from "@/components/CodeBlock"
 
 type PageTab = "examples" | "configuration" | "usage"
@@ -64,7 +65,7 @@ const usageCode = `<rb-pivot-table
   report-id="your-report-id"
   component-id="yourComponentId"
   api-base-url="\${apiBaseUrl}"
-  api-key="\${apiKey}"
+  embed-token="\${embedToken}"
 ></rb-pivot-table>`
 
 type SoTab = "pivot" | "rawdata" | "config" | "usage"
@@ -73,7 +74,7 @@ const soUsageCode = `<rb-pivot-table
   report-id="piv-examples"
   component-id="salesOverview"
   api-base-url="\${apiBaseUrl}"
-  api-key="\${apiKey}"
+  embed-token="\${embedToken}"
 ></rb-pivot-table>`
 
 function SalesOverviewSection({ copyFn, copiedKey }: { copyFn: (text: string, key: string) => void; copiedKey: string | null }) {
@@ -134,7 +135,7 @@ function SalesOverviewSection({ copyFn, copiedKey }: { copyFn: (text: string, ke
               report-id="piv-examples"
               component-id="salesOverview"
               api-base-url={rbConfig.apiBaseUrl}
-              api-key={rbConfig.apiKey}
+              embed-token={embedToken}
               style={{ display: "block", width: "100%" }}
             />
 
@@ -244,7 +245,7 @@ FROM sales GROUP BY Product;
               report-id="piv-examples"
               component-id="salesOverview"
               api-base-url={rbConfig.apiBaseUrl}
-              api-key={rbConfig.apiKey}
+              embed-token={embedToken}
               style={{ display: "block", width: "100%", minHeight: "300px" }}
             />
           </div>
@@ -293,6 +294,7 @@ FROM sales GROUP BY Product;
 }
 
 export default function PivotTablesPage() {
+  const embedToken = useEmbedToken("piv-examples")
   const [isReady, setIsReady] = useState(false)
   const [activeTab, setActiveTab] = useState<PageTab>("examples")
   const [configDsl, setConfigDsl] = useState("")
@@ -375,7 +377,7 @@ export default function PivotTablesPage() {
                         report-id="piv-examples"
                         component-id={example.id}
                         api-base-url={rbConfig.apiBaseUrl}
-                        api-key={rbConfig.apiKey}
+                        embed-token={embedToken}
                         style={{ display: "block", width: "100%" }}
                       />
                     </div>

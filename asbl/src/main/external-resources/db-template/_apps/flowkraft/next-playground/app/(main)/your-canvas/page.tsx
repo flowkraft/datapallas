@@ -127,7 +127,7 @@ export default function YourCanvasPage() {
                 {"\n    "}
                 <span className="text-cyan-300">api-base-url</span>=<span className="text-orange-300">&quot;{rbConfig.apiBaseUrl}&quot;</span>
                 {"\n    "}
-                <span className="text-cyan-300">api-key</span>=<span className="text-orange-300">&quot;{rbConfig.apiKey}&quot;</span>
+                <span className="text-cyan-300">embed-token</span>=<span className="text-orange-300">&quot;{"{embedToken}"}&quot;</span>
                 {"\n"}
                 <span className="text-blue-400">&gt;&lt;/rb-chart&gt;</span>
               </div>

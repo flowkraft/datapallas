@@ -17,7 +17,7 @@ export const tabAboutTemplate = `<ng-template #tabAboutTemplate>
     <ol>
       <li>{{
         'AREAS.HELP.TAB-ABOUT.PURCHASE-COMMERCIAL-LICENSE' | translate }}&nbsp;
-        <a href="https://www.pdfburst.com/store" target="_blank">
+        <a href="https://www.datapallas.com/store" target="_blank">
           <button class="btn btn-outline btn-primary btn-xs" type="button">{{
             'AREAS.HELP.TAB-ABOUT.BUY-NOW' | translate }}</button>
         </a>

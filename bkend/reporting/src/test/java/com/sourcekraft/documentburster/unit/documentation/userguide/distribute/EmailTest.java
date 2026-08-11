@@ -369,7 +369,8 @@ public class EmailTest {
 
 		class LicenseUtilsSSLExceptionMock extends LicenseUtils {
 
-			protected Object makeRequest(Client client, String url, String action) throws Exception {
+			@Override
+			protected Object makeRequest(Client client, String url, String action, String jsonBody) throws Exception {
 
 				throw new SSLHandshakeException(
 						"PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target\r\n"
@@ -400,10 +401,12 @@ public class EmailTest {
 
 		licenseUtilsSSLExceptionMock.getLicense().loadLicense();
 
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isValid());
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerName()
-				.equalsIgnoreCase("license exception (most probably ssl exception)"));
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerEmail().equalsIgnoreCase("license@exception"));
+		// Unreachable, so nothing was confirmed and the licence reads as such — but
+		// the customer was confirmed before the certificate broke, so the emails go
+		// out and the run is not capped.
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isServerDown());
+		assertFalse(licenseUtilsSSLExceptionMock.getLicense().isValid());
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().itWasPaid());
 
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getKey().equals("1234567890"));
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getProduct().equals("DocumentBurster"));

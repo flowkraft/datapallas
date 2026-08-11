@@ -7,6 +7,6 @@
         report-id="charts-examples"
         component-id="${id}"
         api-base-url="${RbUtils.apiBaseUrl}"
-        api-key="${RbUtils.apiKey}"
+        embed-token="${RbUtils.embedToken('charts-examples')}"
     ></rb-chart>
 </div>

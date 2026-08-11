@@ -15,7 +15,7 @@
 
 	<properties>
         <!-- Define revision here since this module doesn't inherit from your parent -->
-        <revision>16.4.1</revision>
+        <revision>16.5.0</revision>
     </properties>
 
 	<groupId>com.flowkraft</groupId>
@@ -170,6 +170,37 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<!-- LDAP / Active Directory authentication.
+		     Inert unless datapallas.ldap.enabled=true — the provider bean is @ConditionalOnProperty,
+		     so a default install never touches these classes and keeps authenticating against its own
+		     SQLite store. Two small jars, no transitive weight. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-ldap</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.ldap</groupId>
+			<artifactId>spring-ldap-core</artifactId>
+		</dependency>
+
+		<!-- OIDC / OAuth2 login — Entra ID, Okta, Auth0, Google Workspace, Keycloak, and ADFS 2016+.
+
+		     LATENT on the classpath. Spring Boot creates a ClientRegistrationRepository only when a
+		     spring.security.oauth2.client.registration.* exists, and FederatedLoginConfig wires the
+		     login only when that bean is present, so a downloaded DataPallas authenticates against its
+		     own SQLite store and never touches any of this. Enabling it is a properties change with no
+		     rebuild.
+
+		     SAML 2.0 is deliberately NOT here. It would need OpenSAML, which Maven Central stopped
+		     mirroring at 4.0.1 — so it costs either a Shibboleth repository entry or 13 vendored jars
+		     plus their parent-POM chain, for a protocol that OIDC has replaced almost everywhere. The
+		     seam it would plug into exists (FederatedLoginCustomizer) and .docs/auth-authorization-design.md
+		     records exactly what adding it takes. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-client</artifactId>
 		</dependency>
 
 		<!-- Jersey 2.x client for LicenseUtils (javax.ws.rs namespace).

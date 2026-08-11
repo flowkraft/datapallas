@@ -45,6 +45,8 @@
   export let reportId: string = '';
   export let apiBaseUrl: string = '';
   export let apiKey: string = '';
+  /** Short-lived token minted by the embedding page's server; unlocks only this report. */
+  export let embedToken: string = '';
   export let componentId: string = '';
   export let connectionId: string = '';
   export let tableName: string = '';
@@ -116,7 +118,10 @@
   // Build headers for API requests
   function buildHeaders(): Record<string, string> {
     const h: Record<string, string> = { 'Content-Type': 'application/json' };
-    // if (apiKey) h['X-Api-Key'] = apiKey;
+    // The embed token is the only credential an embedded page can safely carry: it is short-lived
+    // and unlocks one report. It works for report mode only — direct mode (connection-id +
+    // table-name) goes through run-sql, which stays an authoring capability.
+    if (embedToken) h['X-Embed-Token'] = embedToken;
     return h;
   }
 
@@ -128,6 +133,7 @@
       if (!label) label = hostEl.getAttribute('label') || '';
       if (!reportId) reportId = hostEl.getAttribute('report-id') || '';
       if (!apiBaseUrl) apiBaseUrl = hostEl.getAttribute('api-base-url') || '';
+      if (!embedToken) embedToken = hostEl.getAttribute('embed-token') || '';
       if (!componentId) componentId = hostEl.getAttribute('component-id') || '';
       if (!connectionId) connectionId = hostEl.getAttribute('connection-id') || '';
       if (!tableName) tableName = hostEl.getAttribute('table-name') || '';

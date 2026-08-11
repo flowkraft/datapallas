@@ -2,10 +2,16 @@
 <license>
     <key>1234567890</key>
     <product>DocumentBurster</product>
-    <status>valid</status>
+    <status>licensing-server-down</status>
     <expires></expires>
-    <customername>License Exception (most probably SSL Exception)</customername>
-    <customeremail>license@exception</customeremail>
+    <customername></customername>
+    <customeremail></customeremail>
     <latestversion></latestversion>
     <changelog></changelog>
+    <instanceid>1448c1a3-fd4f-4e08-961a-180f0d7f4927</instanceid>
+    <licenseid></licenseid>
+    <licensetype></licensetype>
+    <seats></seats>
+    <maintenanceuntil></maintenanceuntil>
+    <lastverdict>valid</lastverdict>
 </license>

@@ -144,9 +144,13 @@ export const modalSamplesLearnMoreTemplate = `@if (isModalSamplesLearnMoreVisibl
 
     </div>
 
+    <!-- Samples are a Processing screen, but this button leaves it for the Configuration editor —
+         REPORT_AUTHOR and above. Without the guard an operator lands on a screen that refuses to save. -->
+    @if (authService.canViewConfiguration()) {
     <div style="grid-column:span 10">
       <button type="button" id="btnViewConfigurationFile{{modalSampleInfo.id}}" class="btn btn-outline btn-primary btn-xs" (click)="doSampleViewConfigurationFile(modalSampleInfo.configurationFilePath, modalSampleInfo.configurationFileName)">&nbsp;&nbsp;&nbsp;&nbsp;View Configuration&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button>
     </div>
+    }
 
    </div>
 

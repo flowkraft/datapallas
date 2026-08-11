@@ -23,6 +23,12 @@ services:
         condition: service_started
       code-server:
         condition: service_started
+    # The AI Hub now reaches the DataPallas backend from its own server side (the /api/dp proxy)
+    # instead of from the user's browser, so the CONTAINER has to be able to resolve the host.
+    # Docker Desktop provides host.docker.internal automatically; plain Linux Docker does not, and
+    # without this line Explore Data would simply stop loading there.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - NODE_ENV=production
       - LETTA_BASE_URL=http://flowkraft-ai-hub-letta:8283
@@ -31,6 +37,10 @@ services:
       - ELEMENT_URL=http://flowkraft-ai-hub-element-web:80
       - CODE_SERVER_URL=http://localhost:8442
       - CHAT2DB_URL=http://flowkraft-ai-hub-chat2db:8888
+      # Where the DataPallas backend is, AS SEEN FROM THIS CONTAINER — a container's own localhost
+      # is the container, not the host. This is the only DataPallas setting the AI Hub needs: it
+      # holds no credential of its own and forwards the caller's session instead.
+      - DP_API_URL=${DP_API_URL:-http://host.docker.internal:9090/api}
       # LLM provider config (needed by provision route env check)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_API_BASE=${OPENAI_API_BASE:-}

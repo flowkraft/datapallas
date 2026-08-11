@@ -3,56 +3,75 @@ import { ConfigurationComponent } from './areas/_configuration/configuration.com
 import { ConfigurationCrudComponent } from './areas/_configuration-crud/configuration-crud.component';
 import { HelpComponent } from './areas/_help/help.component';
 import { ProcessingComponent } from './areas/_processing/processing.component';
+import { LoginComponent } from './areas/_login/login.component';
 import { NoJavaGuard } from './app-nojava-route-guard';
+import { AuthGuard } from './app-auth-route-guard';
+import { CapabilityGuard } from './app-capability-route-guard';
 
 export const routes: Routes = [
   {
+    // No NoJavaGuard here, matching the pre-auth behaviour: the landing route must render even when
+    // Java is missing, so Help can explain how to install it. ProcessingComponent handles that state
+    // itself.
+    //
+    // AuthGuard, however, belongs on the very first screen more than on any other. Without it a
+    // server opens straight into Processing and fires every backend call it makes as an anonymous
+    // caller — which is not a login screen, it is a working screen full of empty lists. The guard
+    // costs the desktop nothing: it passes through whenever the mode is not a server, including
+    // while the identity is still unknown.
     path: '',
+    canActivate: [AuthGuard],
     component: ProcessingComponent,
   },
   {
+    path: 'login',
+    component: LoginComponent,
+  },
+  {
     path: 'processing/:leftMenu',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard],
     component: ProcessingComponent,
   },
   {
     path: 'processingSampleBurst/:leftMenu/:prefilledInputFilePath/:prefilledConfigurationFilePath',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard],
     component: ProcessingComponent,
   },
   {
     path: 'processingSampleGenerate/:leftMenu/:prefilledSelectedMailMergeClassicReport/:prefilledInputFilePath',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard],
     component: ProcessingComponent,
   },
   {
     path: 'processingQa/:leftMenu',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard],
     component: ProcessingComponent,
   },
   {
     path: 'processingQa/:leftMenu/:prefilledInputFilePath',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard],
     component: ProcessingComponent,
   },
   {
     path: 'processingQa/:leftMenu/:prefilledInputFilePath/:prefilledConfigurationFilePath',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard],
     component: ProcessingComponent,
   },
   {
     path: 'processingQa/:leftMenu/:prefilledInputFilePath/:prefilledConfigurationFilePath/:whichAction',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard],
     component: ProcessingComponent,
   },
   {
     path: 'configuration/:leftMenu/:configurationFilePath/:configurationFileName/:reloadConfiguration',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard, CapabilityGuard],
+    data: { capability: 'viewConfiguration' },
     component: ConfigurationComponent,
   },
   {
     path: 'configuration/:leftMenu/:configurationFilePath/:configurationFileName',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard, CapabilityGuard],
+    data: { capability: 'viewConfiguration' },
     component: ConfigurationComponent,
   },
   {
@@ -62,7 +81,8 @@ export const routes: Routes = [
   },
   {
     path: 'configuration-crud/:section',
-    canActivate: [NoJavaGuard],
+    canActivate: [NoJavaGuard, AuthGuard, CapabilityGuard],
+    data: { capability: 'viewConfiguration' },
     component: ConfigurationCrudComponent,
   },
   {

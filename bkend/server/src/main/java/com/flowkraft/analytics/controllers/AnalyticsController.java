@@ -14,6 +14,7 @@ import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSetti
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Paths;
@@ -35,7 +36,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/analytics")
-@CrossOrigin(origins = "*")
+@PreAuthorize("hasRole('REPORT_AUTHOR')")
 public class AnalyticsController {
 
     private static final Logger log = LoggerFactory.getLogger(AnalyticsController.class);
@@ -401,6 +402,8 @@ public class AnalyticsController {
         return ResponseEntity.ok(stats);
     }
 
+    /** {@code ADMIN} — the cache is installation-wide, so clearing it slows the next query for everyone. */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/cache")
     public ResponseEntity<Map<String, Object>> clearCache(
             @RequestParam(defaultValue = "duckdb") String engine) {

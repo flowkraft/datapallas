@@ -27,7 +27,8 @@ const CodeMirror = dynamic(
   { ssr: false },
 );
 
-const RB_BASE = process.env.NEXT_PUBLIC_RB_API_URL || "http://localhost:9090/api";
+// Same-origin proxy — see app/api/dp/[...path]/route.ts.
+const RB_BASE = "/api/dp";
 
 const PARAM_TYPES = ["String", "Integer", "Double", "Boolean", "Date"];
 const UI_WIDGETS  = ["text", "select", "multiselect", "datepicker", "checkbox", "radio"];

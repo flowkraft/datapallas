@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -66,6 +67,7 @@ import groovy.lang.Script;
  */
 @RestController
 @RequestMapping(value = "/api/dsl", produces = MediaType.APPLICATION_JSON_VALUE)
+@PreAuthorize("hasRole('REPORT_AUTHOR')")
 public class DslController {
 
     static { DSLPrinciplesReadme.iAmImportantReadme(); }
@@ -75,6 +77,12 @@ public class DslController {
     @Autowired
     private ReportingService reportingService;
 
+    /**
+     * Parses a widget DSL — which means compiling and RUNNING the supplied Groovy. A script base class
+     * constrains nothing, so "parse" here is indistinguishable from arbitrary code execution and is
+     * gated as an authoring capability, exactly like {@code /api/queries/run-script}.
+     */
+    @PreAuthorize("hasRole('REPORT_AUTHOR')")
     @PostMapping(value = "/{type}/parse", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> parse(
             @PathVariable String type,

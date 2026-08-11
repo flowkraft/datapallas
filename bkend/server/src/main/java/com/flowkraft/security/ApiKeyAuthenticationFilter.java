@@ -57,40 +57,33 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
         
         try {
-            // TEMP (2025-12-19): API key authentication disabled for rollback.
-            // Original implementation preserved below for easy re-enabling.
-            // ----------------------------------------------------------------
-            // String apiKey = request.getHeader(API_KEY_HEADER);
-            // 
-            // // If no header, check for access_token query parameter (used by SockJS/WebSocket)
-            // if ((apiKey == null || apiKey.isEmpty()) && request.getRequestURI().contains("/ws")) {
-            //     apiKey = request.getParameter(ACCESS_TOKEN_PARAM);
-            // }
-            // 
-            // // If API key is present (from header or query param), validate it
-            // if (apiKey != null && !apiKey.isEmpty()) {
-            //     if (apiKeyManager.isValidApiKey(apiKey)) {
-            //         // Create authentication token
-            //         UsernamePasswordAuthenticationToken authentication = 
-            //             new UsernamePasswordAuthenticationToken(
-            //                 "api-key-user",
-            //                 null,
-            //                 List.of(new SimpleGrantedAuthority("ROLE_API"))
-            //             );
-            //         
-            //         // Set in security context - request is now authenticated
-            //         SecurityContextHolder.getContext().setAuthentication(authentication);
-            //     }
-            //     // If API key is invalid, don't set authentication
-            //     // The request will continue and Spring Security will deny it
-            // }
-            // ----------------------------------------------------------------
+            String apiKey = request.getHeader(API_KEY_HEADER);
 
-            // Runtime behavior: no-op filter (continues the chain). Keeps requests working without API key.
+            // SockJS cannot set headers on its handshake, so the WebSocket endpoint accepts the key as
+            // a query parameter instead.
+            if ((apiKey == null || apiKey.isEmpty()) && request.getRequestURI().contains("/ws")) {
+                apiKey = request.getParameter(ACCESS_TOKEN_PARAM);
+            }
+
+            if (apiKey != null && !apiKey.isEmpty() && apiKeyManager.isValidApiKey(apiKey)) {
+                // A valid installation key identifies a machine caller, not a person. It is granted
+                // ADMIN because that is what the callers holding it need — the AI Hub proxy and
+                // the embedding apps read and write configuration. A per-user token is the finer-grained
+                // alternative, issued from the api_token table.
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        "api-key-user", null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"),
+                                new SimpleGrantedAuthority("ROLE_REPORT_AUTHOR"),
+                                new SimpleGrantedAuthority("ROLE_JOB_OPERATOR")));
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+            // An absent or invalid key is not an error here — the request simply continues
+            // unauthenticated and the filter chain refuses it if the endpoint needs a principal.
+
             filterChain.doFilter(request, response);
         } catch (Exception ex) {
-            // Log and return a clean 500 so client sees consistent error (and static files won't fail)
-            logger.error("JobManFilter failed for request " + path, ex);
+            logger.error("API key authentication failed for request " + path, ex);
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }

@@ -13,6 +13,7 @@ import { Router } from '@angular/router';
 import { AiManagerComponent, AiManagerLaunchConfig } from '../ai-manager/ai-manager.component';
 import { PollingHelper } from '../../providers/polling.helper';
 import { iconSvg } from '../../shared/icon-svgs';
+import { AuthService } from '../../providers/auth.service';
 
 // This interface should be defined in a shared models file
 
@@ -72,6 +73,7 @@ export class AppsManagerComponent implements OnInit, OnChanges, OnDestroy {
     protected cdRef: ChangeDetectorRef,
     protected sanitizer: DomSanitizer,
     protected messagesService: ToastrMessagesService,
+    protected authService: AuthService,
   ) { }
 
   /**

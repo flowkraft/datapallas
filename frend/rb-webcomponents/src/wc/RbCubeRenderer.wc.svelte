@@ -8,6 +8,8 @@
   export let connectionId: string = '';
   export let apiBaseUrl: string = '';
   export let apiKey: string = '';
+  /** Short-lived token minted by the embedding page's server; unlocks only this report. */
+  export let embedToken: string = '';
 
   const dispatch = createEventDispatcher();
 
@@ -277,6 +279,7 @@
       if (!connectionId) connectionId = hostEl.getAttribute('connection-id') || '';
       if (!apiBaseUrl) apiBaseUrl = hostEl.getAttribute('api-base-url') || '';
       if (!apiKey) apiKey = hostEl.getAttribute('api-key') || '';
+      if (!embedToken) embedToken = hostEl.getAttribute('embed-token') || '';
       const cd = hostEl.getAttribute('cube-config');
       if (cd && !cubeConfig) {
         try { cubeConfig = JSON.parse(cd); } catch(e) {}

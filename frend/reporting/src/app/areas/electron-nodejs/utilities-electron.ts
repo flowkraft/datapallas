@@ -66,10 +66,14 @@ export default class UtilitiesElectron {
     }
   }
 
+  /**
+   * The installation API key, read off the filesystem by the main process. Null outside Electron —
+   * a browser has no filesystem to read it from, and must never be handed one.
+   */
   static async getApiKey(): Promise<string | null> {
-    // TEMP (2025-12-19): API key retrieval disabled during rollback.
-    // This function intentionally performs NO IPC calls and returns null.
-    // Keep this minimal to avoid any side-effects while rollback is active.
+    if (UtilitiesElectron.isIpcRendererAvailable()) {
+      return ipcRenderer.invoke('getApiKey');
+    }
     return null;
   }
 

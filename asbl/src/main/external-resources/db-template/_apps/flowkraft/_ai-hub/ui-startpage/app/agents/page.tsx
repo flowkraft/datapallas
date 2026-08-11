@@ -260,7 +260,8 @@ export default function AgentsPage() {
     setLogStatus('running');
     setShowLogModal(true);
 
-    const RB_BASE = process.env.NEXT_PUBLIC_RB_API_URL || 'http://localhost:9090/api';
+    // Same-origin proxy — see app/api/dp/[...path]/route.ts.
+    const RB_BASE = '/api/dp';
     try {
       // Restart letta AND baibot together (no --no-deps): compose honors depends_on, so baibot
       // re-starts only AFTER letta is healthy and re-couples to it. Matrix + UI stay up.

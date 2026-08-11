@@ -69,5 +69,10 @@
     "postcss": "^8",
     "tailwindcss": "4.1.8",
     "typescript": "^5"
+  },
+  "overrides": {
+    "eslint-config-next": {
+      "globals": "16.5.0"
+    }
   }
 }

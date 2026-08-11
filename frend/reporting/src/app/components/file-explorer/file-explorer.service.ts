@@ -123,11 +123,7 @@ export class FileExplorerService {
     }
   }
 
-  /**
-   * Get file content as text
-   * @param path Full path to the file
-   */
-  async getFileContent(path: string): Promise<string> {
-    return this.apiService.get(`/system/fs/content`, { path }, undefined, 'text');
-  }
+  // Deliberately no getFileContent(): nothing called it, and it read an arbitrary path through the
+  // administrator-only filesystem endpoint. Viewing a file in the explorer goes through
+  // /api/system/fs/explorer/file-viewer, which is scoped to the explorer's own base directory.
 }

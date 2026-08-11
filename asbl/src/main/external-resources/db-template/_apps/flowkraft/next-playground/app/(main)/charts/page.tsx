@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { rbConfig } from "@/lib/rb-config"
+import { useEmbedToken } from "@/lib/use-embed-token"
 import { CodeBlock } from "@/components/CodeBlock"
 
 type PageTab = "examples" | "configuration" | "usage"
@@ -40,10 +41,11 @@ const usageCode = `<rb-chart
   report-id="your-report-id"
   component-id="yourComponentId"
   api-base-url="\${apiBaseUrl}"
-  api-key="\${apiKey}"
+  embed-token="\${embedToken}"
 ></rb-chart>`
 
 export default function ChartsPage() {
+  const embedToken = useEmbedToken("charts-examples")
   const [isReady, setIsReady] = useState(false)
   const [activeTab, setActiveTab] = useState<PageTab>("examples")
   const [configDsl, setConfigDsl] = useState("")
@@ -126,7 +128,7 @@ export default function ChartsPage() {
                           report-id="charts-examples"
                           component-id={example.id}
                           api-base-url={rbConfig.apiBaseUrl}
-                          api-key={rbConfig.apiKey}
+                          embed-token={embedToken}
                           style={{ display: "block", width: "100%", height: "100%" }}
                         />
                       </div>

@@ -68,12 +68,31 @@ public class Utils {
 
 	}
 
+	/**
+	 * The product's key in the products catalogue at datapallas.com — what
+	 * {@code GET /api/products/version?product=...} is asked about.
+	 *
+	 * <p>
+	 * These are {@code datapallas} and {@code datapallas-server} because that is
+	 * what the rows in the catalogue are called. They used to say
+	 * {@code documentburster}, which matched nothing: the endpoint answers an
+	 * unknown product with an empty version rather than an error, so the release
+	 * lookup succeeded, returned nothing, and the What's New panel and the
+	 * update-available badge stayed silently blank with nothing in the log to
+	 * explain it.
+	 *
+	 * <p>
+	 * The server still recognises the old names, so installations already in the
+	 * field keep being told about new releases — which matters more here than
+	 * anywhere else, since the release announcement is the very thing that would
+	 * tell them to upgrade.
+	 */
 	public static String getProductPermalink() {
 
 		if ((new File("startServer.bat").exists()) || (new File("startServer.sh").exists()))
-			return "documentburster-server";
+			return "datapallas-server";
 		else
-			return "documentburster";
+			return "datapallas";
 
 	}
 
@@ -107,6 +126,56 @@ public class Utils {
 			return new File(homeDir, relativePath).toPath().normalize().toAbsolutePath().toString();
 		}
 		return relativePath;
+	}
+
+	/**
+	 * Resolve a path that arrived from the outside (an HTTP parameter) and confine it
+	 * to PORTABLE_EXECUTABLE_DIR.
+	 *
+	 * <p>Use this instead of {@link #resolvePathAgainstPortableDir(String)} for anything
+	 * a remote caller controls. {@code resolvePathAgainstPortableDir} hands absolute paths
+	 * straight back and never re-checks a relative path after resolving it, so
+	 * {@code C:/Windows/win.ini} and {@code ../../elsewhere} both sail through — fine for
+	 * internal callers that already know where they are, not fine for a REST parameter.
+	 *
+	 * <p>Absolute paths are accepted only when they already point inside the installation
+	 * directory (the frontend legitimately round-trips absolute paths it received earlier).
+	 * Anything else — a blank path, an absolute path elsewhere on the machine, or a
+	 * relative path that climbs out with {@code ..} — is rejected.
+	 *
+	 * @return the normalized absolute path, guaranteed to sit inside PORTABLE_EXECUTABLE_DIR
+	 * @throws PathOutsidePortableDirException when the path escapes or is blank
+	 */
+	public static String resolveWithinPortableDir(String requestedPath) {
+
+		if (StringUtils.isBlank(requestedPath))
+			throw new PathOutsidePortableDirException("Path is required");
+
+		Path baseDir = Paths.get(getPortableDirOrCurrentDir()).toAbsolutePath().normalize();
+
+		Path candidate = Paths.get(requestedPath.replace("\\", "/"));
+		Path resolved = (candidate.isAbsolute() ? candidate : baseDir.resolve(candidate)).normalize();
+
+		if (!resolved.startsWith(baseDir))
+			throw new PathOutsidePortableDirException(
+					"Path '" + requestedPath + "' resolves outside the installation directory");
+
+		return resolved.toString();
+	}
+
+	/**
+	 * PORTABLE_EXECUTABLE_DIR, then DOCUMENTBURSTER_HOME, then the working directory —
+	 * the same lookup order as everywhere else, with a final fallback so the confinement
+	 * check still has a base to work against when neither property is set.
+	 */
+	private static String getPortableDirOrCurrentDir() {
+		String portableDir = System.getProperty("PORTABLE_EXECUTABLE_DIR");
+		if (StringUtils.isNotBlank(portableDir))
+			return portableDir;
+		String homeDir = System.getProperty("DOCUMENTBURSTER_HOME");
+		if (StringUtils.isNotBlank(homeDir))
+			return homeDir;
+		return System.getProperty("user.dir");
 	}
 
 	public static String getTempFolder() {

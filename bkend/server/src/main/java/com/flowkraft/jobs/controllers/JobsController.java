@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -39,8 +40,16 @@ import com.flowkraft.jobs.services.JobsService;
 
 import reactor.core.publisher.Mono;
 
+/**
+ * Running work and looking at what it produced — the whole of a {@code JOB_OPERATOR}'s job.
+ *
+ * <p>Stated once for the class rather than per method. Cancelling a job, clearing quarantine and
+ * deleting a resume file are as much a part of operating as submitting one, and annotating only the
+ * submit left every one of them open to anyone who could sign in.
+ */
 @RestController
 @RequestMapping(value = "/api/jobs", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+@PreAuthorize("hasRole('JOB_OPERATOR')")
 public class JobsController {
 
 	private static final Logger log = LoggerFactory.getLogger(JobsController.class);
@@ -61,6 +70,7 @@ public class JobsController {
 	 * Body: { type: "burst"|"generate"|"merge", ...type-specific params }
 	 * Returns 202 Accepted + Location: /api/jobs/{id} + body { jobId, status }.
 	 */
+	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Map<String, Object>> submitJob(@RequestBody Map<String, Object> request) {
 		String type = (String) request.get("type");

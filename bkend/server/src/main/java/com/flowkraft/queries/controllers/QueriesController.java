@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -18,10 +19,14 @@ import java.util.Map;
  *
  * <p>All endpoints deliberately catch and return {@code {error: "..."}} with
  * HTTP 200 — exploration errors are expected and the UI renders them inline.
+ *
+ * <p>{@code REPORT_AUTHOR} for the whole controller: running arbitrary SQL through someone else's
+ * stored connection is an authoring capability whichever endpoint it arrives at, and a
+ * {@code JOB_OPERATOR} — who may run reports but never write them — has no business here.
  */
 @RestController
 @RequestMapping("/api/queries")
-@CrossOrigin
+@PreAuthorize("hasRole('REPORT_AUTHOR')")
 public class QueriesController {
 
     private static final Logger log = LoggerFactory.getLogger(QueriesController.class);
@@ -60,7 +65,15 @@ public class QueriesController {
         return Mono.just(queriesService.getSchema(connectionId));
     }
 
-    /** POST /api/queries/run-script — execute an inline Groovy script. */
+    /**
+     * POST /api/queries/run-script — execute an inline Groovy script.
+     *
+     * <p>Reaching this endpoint IS code execution: the body is handed to a GroovyShell. It is therefore
+     * an authoring capability, not a reading one — a JOB_OPERATOR must never get here. Stated on the
+     * method as well as the class because this is the one endpoint where relaxing the class-level rule
+     * would hand out a shell.
+     */
+    @PreAuthorize("hasRole('REPORT_AUTHOR')")
     @PostMapping("/run-script")
     public Mono<Map<String, Object>> executeScript(@RequestBody Map<String, Object> request) {
         String connectionId = (String) request.get("connectionId");

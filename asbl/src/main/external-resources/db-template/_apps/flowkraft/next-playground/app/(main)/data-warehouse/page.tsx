@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { rbConfig } from "@/lib/rb-config"
+import { useEmbedToken } from "@/lib/use-embed-token"
 import { CodeBlock } from "@/components/CodeBlock"
 
 interface RbPivotTableElement extends HTMLElement {
@@ -14,6 +15,11 @@ interface RbPivotTableElement extends HTMLElement {
 type TabType = "warehouse" | "rawdata" | "config" | "usage"
 
 export default function DataWarehousePage() {
+  // One token per report: a token unlocks exactly the report it names, so the three pivots
+  // on this page each need their own.
+  const browserToken = useEmbedToken("piv-northwind-warehouse-browser")
+  const duckdbToken = useEmbedToken("piv-northwind-warehouse-duckdb")
+  const clickhouseToken = useEmbedToken("piv-northwind-warehouse-clickhouse")
   const warehouseBrowserRef = useRef<RbPivotTableElement>(null)
   const warehouseDuckdbRef = useRef<RbPivotTableElement>(null)
   const warehouseClickhouseRef = useRef<RbPivotTableElement>(null)
@@ -222,19 +228,19 @@ export default function DataWarehousePage() {
   const usageBrowser = `<rb-pivot-table
   report-id="piv-northwind-warehouse-browser"
   api-base-url="\${RbUtils.apiBaseUrl}"
-  api-key="\${RbUtils.apiKey}"
+  embed-token="\${RbUtils.embedToken('your-report-id')}"
 ></rb-pivot-table>`
 
   const usageDuckdb = `<rb-pivot-table
   report-id="piv-northwind-warehouse-duckdb"
   api-base-url="\${RbUtils.apiBaseUrl}"
-  api-key="\${RbUtils.apiKey}"
+  embed-token="\${RbUtils.embedToken('your-report-id')}"
 ></rb-pivot-table>`
 
   const usageClickhouse = `<rb-pivot-table
   report-id="piv-northwind-warehouse-clickhouse"
   api-base-url="\${RbUtils.apiBaseUrl}"
-  api-key="\${RbUtils.apiKey}"
+  embed-token="\${RbUtils.embedToken('your-report-id')}"
 ></rb-pivot-table>`
 
   const tabs: { id: string; label: string; icon: React.ReactNode; value: TabType }[] = [
@@ -378,7 +384,7 @@ export default function DataWarehousePage() {
                 id="warehousePivotBrowser"
                 report-id="piv-northwind-warehouse-browser"
                 api-base-url={rbConfig.apiBaseUrl}
-                api-key={rbConfig.apiKey}
+                embed-token={browserToken}
               />
             </div>
 
@@ -398,7 +404,7 @@ export default function DataWarehousePage() {
                 id="warehousePivotDuckdb"
                 report-id="piv-northwind-warehouse-duckdb"
                 api-base-url={rbConfig.apiBaseUrl}
-                api-key={rbConfig.apiKey}
+                embed-token={duckdbToken}
               />
             </div>
 
@@ -426,7 +432,7 @@ export default function DataWarehousePage() {
                 id="warehousePivotClickhouse"
                 report-id="piv-northwind-warehouse-clickhouse"
                 api-base-url={rbConfig.apiBaseUrl}
-                api-key={rbConfig.apiKey}
+                embed-token={clickhouseToken}
               />
             </div>
 

@@ -48,16 +48,7 @@ export class LicenseService {
 
     const builder = new xml2js.Builder();
 
-    const licenseDetailsAsString = builder.buildObject(this.licenseDetails);
-
-    //console.log(
-    //  `saveLicenseFileAsync - licenseDetailsAsString = ${licenseDetailsAsString}`
-    //);
-
-    return this.fsService.writeAsync(
-      this.licenseFilePath,
-      licenseDetailsAsString,
-    );
+    return this.apiService.put('/system/license/', this.licenseDetails.license);
   }
 
   async loadLicense() {
@@ -67,14 +58,15 @@ export class LicenseService {
 
     //console.log(`license.service.loadLicenseFileAsync()`);
 
-    const content = await this.fsService.readAsync(this.licenseFilePath);
-
-    //console.log(`license.service.content = ${JSON.stringify(content)}`);
-
-    this.licenseDetails = await Utilities.parseStringPromise(content, {
-      trim: true,
-      explicitArray: false,
-    });
+    // Through the licence API rather than by reading config/_internal/license.xml directly.
+    // The licence is shown on every screen that has a License tab, so every role needs it — and the
+    // generic filesystem API is administrator-only, because anything that can read an arbitrary path
+    // inside the installation can read config/_internal/api-key.txt and become an administrator.
+    // The endpoint answers the same fields; wrapping them under `license` keeps the shape the
+    // templates have always bound to.
+    this.licenseDetails = {
+      license: await this.apiService.get('/system/license/'),
+    };
 
     // console.log(
     //   `loadLicenseFileAsync - this.licenseDetails = ${JSON.stringify(

@@ -20,8 +20,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
           <div class="well well-sm" style="background-color: var(--color-base-200); color: var(--color-base-content); font-family: monospace; white-space: pre-wrap; word-break: break-all;">
 &lt;rb-dashboard
   report-id="{{ getCurrentReportCode() }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-dashboard&gt;
           </div>
           <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 15px;" (click)="copyUsageRbDashboard()">
@@ -63,8 +62,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
 &lt;rb-tabulator
   report-id="{{ getCurrentReportCode() }}"
   component-id="{{ cid }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-tabulator&gt;
             </div>
             <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 10px;" (click)="copyUsageRbTabulatorNamed(cid)">
@@ -81,8 +79,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
           <div class="well well-sm" style="background-color: var(--color-base-200); color: var(--color-base-content); font-family: monospace; white-space: pre-wrap; word-break: break-all;">
 &lt;rb-tabulator
   report-id="{{ getCurrentReportCode() }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-tabulator&gt;
           </div>
           <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 15px;" (click)="copyUsageRbTabulator()">
@@ -100,8 +97,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
           <div class="well well-sm" style="background-color: var(--color-base-200); color: var(--color-base-content); font-family: monospace; white-space: pre-wrap; word-break: break-all;">
 &lt;rb-parameters
   report-id="{{ getCurrentReportCode() }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-parameters&gt;
           </div>
           <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 15px;" (click)="copyUsageRbParameters()">
@@ -122,8 +118,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
 &lt;rb-chart
   report-id="{{ getCurrentReportCode() }}"
   component-id="{{ cid }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-chart&gt;
             </div>
             <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 10px;" (click)="copyUsageRbChartNamed(cid)">
@@ -141,8 +136,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
           <div class="well well-sm" style="background-color: var(--color-base-200); color: var(--color-base-content); font-family: monospace; white-space: pre-wrap; word-break: break-all;">
 &lt;rb-chart
   report-id="{{ getCurrentReportCode() }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-chart&gt;
           </div>
           <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 15px;" (click)="copyUsageRbChart()">
@@ -163,8 +157,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
 &lt;rb-pivottable
   report-id="{{ getCurrentReportCode() }}"
   component-id="{{ cid }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-pivottable&gt;
             </div>
             <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 10px;" (click)="copyUsageRbPivotTableNamed(cid)">
@@ -182,8 +175,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
           <div class="well well-sm" style="background-color: var(--color-base-200); color: var(--color-base-content); font-family: monospace; white-space: pre-wrap; word-break: break-all;">
 &lt;rb-pivottable
   report-id="{{ getCurrentReportCode() }}"
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-pivottable&gt;
           </div>
           <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 15px;" (click)="copyUsageRbPivotTable()">
@@ -205,8 +197,7 @@ export const tabReportingUsageTemplate = `<ng-template #tabReportingUsageTemplat
         <div class="well well-sm" style="background-color: var(--color-base-200); color: var(--color-base-content); font-family: monospace; white-space: pre-wrap; word-break: break-all;">
 &lt;rb-report
   report-id="{{ getCurrentReportCode() }}"{{ getEntityCodeAttribute() }}
-  api-base-url="{{ getApiBaseUrl() }}"
-  api-key="{{ getApiKeyForUsage() }}"&gt;
+  api-base-url="{{ getApiBaseUrl() }}"&gt;
 &lt;/rb-report&gt;
         </div>
         <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom: 15px;" (click)="copyUsageRbReport()">

@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,6 +39,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping(value = "/api/system/fs/explorer")
+@PreAuthorize("hasRole('JOB_OPERATOR')")
 public class FileExplorerController {
 
 	@Autowired
@@ -217,8 +219,10 @@ public class FileExplorerController {
 		}
 
 		// If the path is relative (doesn't start with a drive letter on Windows or / on Unix)
+		// resolve it against the base dir — it still has to pass the containment check below,
+		// otherwise a relative "../../config/_internal" would climb straight out.
 		if (!path.matches("^[A-Za-z]:.*") && !path.startsWith("/")) {
-			return fileExplorerConfig.getBaseDirPath() + "/" + path;
+			path = fileExplorerConfig.getBaseDirPath() + "/" + path;
 		}
 
 		// Check if we need to restrict to base directory

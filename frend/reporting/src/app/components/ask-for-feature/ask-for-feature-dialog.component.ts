@@ -42,28 +42,13 @@ export class AskForFeatureDialogComponent implements OnInit {
       this.confirmService.askConfirmation({
         message: `Send email inquiry to ${this.msgTo}?`,
         confirmAction: async () => {
-          let xmlAskForFeatureFilePath = `${
-            this.appPathsService.JOBS_FOLDER_PATH
-          }/${Utilities.getRandomFileName('xml')}`;
-
-          xmlAskForFeatureFilePath = Utilities.slash(xmlAskForFeatureFilePath);
-
-          const xmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<documentburster>
-    <featurerequest>
-        <subject>${this.msgSubject}</subject>
-        <message>${this.msgMessage}</message>
-    </featurerequest>
-</documentburster>`;
-
-          await this.apiService.put(
-            `/system/fs/content?path=${encodeURIComponent(xmlAskForFeatureFilePath)}`,
-            xmlContent,
-            new Headers({ 'Content-Type': 'text/plain' }),
-          );
-
+          // The request IS the subject and the message. Composing the XML here and writing it
+          // through the filesystem endpoint made a support link require write access to the
+          // installation — which is an administrator's right, and nothing to do with asking for a
+          // feature. The backend writes its own job file now.
           this.apiService.post('/system/feedback/feature-request', {
-            jobFilePath: xmlAskForFeatureFilePath,
+            subject: this.msgSubject,
+            message: this.msgMessage,
           });
 
           this._close(true);

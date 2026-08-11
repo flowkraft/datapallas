@@ -56,6 +56,7 @@ import { SystemService } from '../../providers/system.service';
 import { ProcessingService } from '../../providers/processing.service';
 import { StateStoreService } from '../../providers/state-store.service';
 import { ReportsService } from '../../providers/reports.service';
+import { AuthService } from '../../providers/auth.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import {
   DslService,
@@ -333,6 +334,7 @@ export class ProcessingComponent implements OnInit {
   protected samplesService        = inject(SamplesService);
   protected sanitizer             = inject(DomSanitizer);
   protected reportsService        = inject(ReportsService);
+  protected authService           = inject(AuthService);
 
   ngOnDestroy() {
     this.reportDataResult = null;
@@ -394,7 +396,11 @@ export class ProcessingComponent implements OnInit {
     this.settingsService.currentConfigurationTemplatePath = '';
     delete this.processingService.procReportingMailMergeInfo.selectedMailMergeClassicReport;
 
-    await safe('loadAllConnections', () => this.settingsService.loadAllConnections());
+    // Connections are REPORT_AUTHOR. Nothing an operator can see on this screen uses them, so asking
+    // would only produce a refusal for a request they never made.
+    if (this.authService.canEditReports()) {
+      await safe('loadAllConnections', () => this.settingsService.loadAllConnections());
+    }
     this.settingsService.configurationFiles =
       (await safe('loadAllReports', () => this.settingsService.loadAllReports({ forceReload: true }))) ?? [];
     // Dashboard search debounce
@@ -551,6 +557,16 @@ export class ProcessingComponent implements OnInit {
 
     this.numberOfGenerateReportsConfigured =
       mailMergeConfigurations?.length || 0;
+
+    // Explore Data & Build Dashboards and Customer Portal are authoring screens that happen to live
+    // under Processing — the dashboards they list are served by /api/explorations, which is
+    // REPORT_AUTHOR. An operator would see two tabs whose every panel came back empty or refused, so
+    // they do not get the tabs at all.
+    if (!this.authService.canEditReports()) {
+      visibleTabsIds = visibleTabsIds.filter(
+        (id) => id !== 'cmsWebPortalTab' && id !== 'customerPortalTab',
+      );
+    }
 
     this.visibleTabs = this.ALL_TABS.filter((item) =>
       visibleTabsIds.includes(item.id),
@@ -959,6 +975,12 @@ export class ProcessingComponent implements OnInit {
   }
 
   async saveMergedFileSetting() {
+    // Remembering the name for next time is a settings write, and settings are REPORT_AUTHOR. The
+    // merge itself is unaffected — the name travels with the job (`outputName`), so an operator types
+    // it, runs it, and gets exactly the file they asked for. Only the "remember it" part is skipped,
+    // silently, because there is nothing here for them to be told.
+    if (!this.authService.canEditReports()) return;
+
     const xmlSettings = await this.reportsService.loadReportSettings('burst');
 
     xmlSettings.documentburster.settings.mergefilename =

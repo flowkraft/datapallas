@@ -38,7 +38,8 @@ import {
  * when the editor opens (or on toggle between Visual/Code panes).
  */
 
-const RB_BASE = process.env.NEXT_PUBLIC_RB_API_URL || "http://localhost:9090/api";
+// Same-origin proxy — see app/api/dp/[...path]/route.ts.
+const RB_BASE = "/api/dp";
 
 export interface UseDslConfigResult<T> {
   /** Current canonical DSL Map for this widget. */

@@ -319,7 +319,7 @@ public abstract class AbstractBurster {
 						log.warn(
 								"DEMO version limit - " + "DocumentBurster DEMO version can burst and distribute up to "
 										+ licenseLimit + " reports. If you need more please "
-										+ "license DocumentBurster from https://www.pdfburst.com/store/ ");
+										+ "license DataPallas from https://www.datapallas.com/store ");
 
 				}
 
@@ -928,7 +928,7 @@ public abstract class AbstractBurster {
 			licenseLimit = Integer.MAX_VALUE;
 
 		if (licenseUtils.getLicense().isExpired())
-			log.warn("License expired - Please renew license - https://www.pdfburst.com/renew.html");
+			log.warn("License expired - Please renew license - https://www.datapallas.com/renew");
 
 	}
 

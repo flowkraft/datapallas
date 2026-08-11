@@ -40,6 +40,20 @@ public class License {
 	public static String STATUS_VALID = "VALID";
 	public static String STATUS_EXPIRED = "EXPIRED";
 
+	/**
+	 * The licence server could not be reached, so the licence could not be
+	 * confirmed either way.
+	 *
+	 * <p>
+	 * Deliberately its own value rather than plain "invalid". The key may be
+	 * perfectly good and we simply could not ask, and knowing that is the
+	 * difference between a support call about a broken licence and one about a
+	 * blocked port. It still <em>counts</em> as invalid — see {@link #isInvalid()}
+	 * — because an unconfirmed licence must not look active, and the licence screen
+	 * shows it as such without needing to know this value exists.
+	 */
+	public static String STATUS_SERVER_DOWN = "licensing-server-down";
+
 	public String getLicenseFilePath() {
 		return this.licenseFilePath;
 	}
@@ -132,6 +146,48 @@ public class License {
 		licenseDetails.latestversion = latestVersion;
 	};
 
+	// --- Licence server accessors ---
+
+	public String getInstanceId() {
+		return licenseDetails.instanceid;
+	};
+
+	public void setInstanceId(String instanceId) {
+		licenseDetails.instanceid = instanceId;
+	};
+
+	public String getLicenseId() {
+		return licenseDetails.licenseid;
+	};
+
+	public void setLicenseId(String licenseId) {
+		licenseDetails.licenseid = licenseId;
+	};
+
+	public String getLicenseType() {
+		return licenseDetails.licensetype;
+	};
+
+	public void setLicenseType(String licenseType) {
+		licenseDetails.licensetype = licenseType;
+	};
+
+	public String getSeats() {
+		return licenseDetails.seats;
+	};
+
+	public void setSeats(String seats) {
+		licenseDetails.seats = seats;
+	};
+
+	public String getMaintenanceUntil() {
+		return licenseDetails.maintenanceuntil;
+	};
+
+	public void setMaintenanceUntil(String maintenanceUntil) {
+		licenseDetails.maintenanceuntil = maintenanceUntil;
+	};
+
 	public boolean isValid() {
 		return getStatus().equalsIgnoreCase("valid");
 	}
@@ -140,12 +196,57 @@ public class License {
 		return getStatus().equalsIgnoreCase("expired");
 	}
 
+	/**
+	 * May this installation use the features it paid for?
+	 *
+	 * <p>
+	 * When the licence server cannot be reached this falls back to the last verdict
+	 * it gave. That is the difference between an outage being our problem and it
+	 * being the customer's: someone confirmed valid yesterday keeps working today,
+	 * while their licence screen honestly says we could not confirm it. An
+	 * installation that has never been confirmed gets nothing from an outage, so
+	 * blocking the licence server is not a way in.
+	 */
 	public boolean itWasPaid() {
-		return (isValid() || isExpired() || mockPaid);
+
+		if (mockPaid)
+			return true;
+
+		if (isServerDown())
+			return lastVerdictWasPaid();
+
+		return (isValid() || isExpired());
 	}
 
+	/** Whether the last answer we actually received was one that grants features. */
+	private boolean lastVerdictWasPaid() {
+		String verdict = StringUtils.trimToEmpty(licenseDetails.lastverdict);
+		return verdict.equalsIgnoreCase("valid") || verdict.equalsIgnoreCase("expired");
+	}
+
+	public String getLastVerdict() {
+		return licenseDetails.lastverdict;
+	};
+
+	public void setLastVerdict(String lastVerdict) {
+		licenseDetails.lastverdict = lastVerdict;
+	};
+
 	public boolean isInvalid() {
-		return getStatus().equalsIgnoreCase("invalid");
+		return getStatus().equalsIgnoreCase("invalid") || isServerDown();
+	}
+
+	/**
+	 * True when the last answer was "we could not ask", rather than "no".
+	 *
+	 * <p>
+	 * Note what this does NOT do: it does not stop anything. The software keeps
+	 * running while the server is unreachable — a run is capped the way an
+	 * unlicensed one is, but no job is refused and nothing throws. Our outage is
+	 * not the customer's problem.
+	 */
+	public boolean isServerDown() {
+		return getStatus().equalsIgnoreCase(STATUS_SERVER_DOWN);
 	}
 
 	public boolean isDemo() {

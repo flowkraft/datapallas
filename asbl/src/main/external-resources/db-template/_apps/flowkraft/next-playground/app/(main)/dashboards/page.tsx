@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { rbConfig } from "@/lib/rb-config"
+import { useEmbedToken } from "@/lib/use-embed-token"
 
 export default function DashboardsPage() {
+  const embedToken = useEmbedToken("dashboard-cfo")
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function DashboardsPage() {
                     report-id="dashboard-cfo"
                     component-id="revenueTrend"
                     api-base-url={rbConfig.apiBaseUrl}
-                    api-key={rbConfig.apiKey}
+                    embed-token={embedToken}
                     style={{ display: "block", width: "100%", height: "100%" }}
                   />
                 </div>
@@ -136,7 +138,7 @@ export default function DashboardsPage() {
                     report-id="dashboard-cfo"
                     component-id="revenueByCategory"
                     api-base-url={rbConfig.apiBaseUrl}
-                    api-key={rbConfig.apiKey}
+                    embed-token={embedToken}
                     style={{ display: "block", width: "100%", height: "100%" }}
                   />
                 </div>
@@ -156,7 +158,7 @@ export default function DashboardsPage() {
                   report-id="dashboard-cfo"
                   component-id="topCustomers"
                   api-base-url={rbConfig.apiBaseUrl}
-                  api-key={rbConfig.apiKey}
+                  embed-token={embedToken}
                   style={{ display: "block", width: "100%" }}
                 />
               </DashPanel>
@@ -172,7 +174,7 @@ export default function DashboardsPage() {
                     report-id="dashboard-cfo"
                     component-id="arAging"
                     api-base-url={rbConfig.apiBaseUrl}
-                    api-key={rbConfig.apiKey}
+                    embed-token={embedToken}
                     style={{ display: "block", width: "100%", height: "100%" }}
                   />
                 </div>
@@ -189,7 +191,7 @@ export default function DashboardsPage() {
                     report-id="dashboard-cfo"
                     component-id="revenueByCountry"
                     api-base-url={rbConfig.apiBaseUrl}
-                    api-key={rbConfig.apiKey}
+                    embed-token={embedToken}
                     style={{ display: "block", width: "100%", height: "100%" }}
                   />
                 </div>

@@ -71,6 +71,24 @@ public class Utils {
 
 	}
 
+	/**
+	 * The product's key on the products server — the same value the licence client
+	 * sends, so both halves ask about the same thing.
+	 *
+	 * <p>
+	 * Kept identical to {@code documentburster.utils.Utils.getProductPermalink()};
+	 * see that one for why these are {@code datapallas*} and not
+	 * {@code documentburster*}.
+	 */
+	public static String getProductPermalink() {
+
+		if ((new File("startServer.bat").exists()) || (new File("startServer.sh").exists()))
+			return "datapallas-server";
+		else
+			return "datapallas";
+
+	}
+
 	public static List<FileInfo> getFilesToProcess(String transactionId, String folderPath) {
 
 		FileSet fs = new FileSet();

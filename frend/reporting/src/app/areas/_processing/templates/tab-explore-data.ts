@@ -3,6 +3,8 @@ export const tabExploreDataTemplate = `<ng-template
 >
   <div class="space-y-4 pb-0">
 
+    <!-- Leads to Help > Apps / Starter Packs, which is ADMIN. -->
+    @if (authService.canManageApps()) {
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 14px">
       <div class="text-center" style="grid-column:span 12">
         <a
@@ -16,6 +18,7 @@ export const tabExploreDataTemplate = `<ng-template
         </a>
       </div>
     </div>
+    }
 
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top: 10px">
       <div style="grid-column:span 12">

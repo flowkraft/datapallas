@@ -4,6 +4,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AINavbar } from "@/components/layout/AINavbar";
 import { RbWebComponentsLoader } from "@/components/layout/RbWebComponentsLoader";
+import { SignInGate } from "@/components/layout/SignInNotice";
+import { DpSessionProvider } from "@/components/layout/DpSession";
 import { Toaster } from "sonner";
 
 const inter = Inter({
@@ -65,12 +67,14 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-screen flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: noFlashScript }} />
         <RbWebComponentsLoader />
-        <AINavbar />
-        <main className="flex-1 pt-16 w-full">
-          <div className="w-full">
-            {children}
-          </div>
-        </main>
+        <DpSessionProvider>
+          <AINavbar />
+          <main className="flex-1 pt-16 w-full">
+            <div className="w-full">
+              <SignInGate>{children}</SignInGate>
+            </div>
+          </main>
+        </DpSessionProvider>
         <div id="app-toaster"><Toaster position="top-right" richColors /></div>
       </body>
     </html>

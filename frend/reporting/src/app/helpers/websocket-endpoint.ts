@@ -139,15 +139,21 @@ export class WebSocketEndpoint {
     // For Web: session cookie is sent automatically by SockJS
     const headers: { [key: string]: string } = {};
 
-    let socketUrl = this.BACKEND_URL + this.socketUrl;
-    
-    // TEMP: API key / access_token disabled during rollback
-    // if (this.accessToken) {
-    //   socketUrl += `?access_token=${encodeURIComponent(this.accessToken)}`;
-    //   headers['X-API-Key'] = this.accessToken;
-    // }
-    // For Web mode: SockJS automatically includes cookies (JSESSIONID)
-    // No additional headers needed - session authentication is automatic
+    const socketUrl = this.BACKEND_URL + this.socketUrl;
+
+    // The handshake needs no credential of its own:
+    //  - standalone (Electron, dev, single-operator server) authenticates the loopback caller in the
+    //    backend, before any filter that would ask for one;
+    //  - web mode is same-origin, so SockJS sends the JSESSIONID cookie automatically.
+    //
+    // The token goes on the STOMP CONNECT frame only. It must NOT be appended to socketUrl as a
+    // query string: SockJS treats this value as a base and appends `/{server}/{session}/{transport}`
+    // to it, so `?access_token=X` would end up in the middle of the transport URL and every
+    // connection would fail. ApiKeyAuthenticationFilter does read an `access_token` parameter for
+    // /ws paths, but that is for callers that build the URL themselves — not for SockJS.
+    if (this.accessToken) {
+      headers['X-API-Key'] = this.accessToken;
+    }
 
     this._socket.client = new SockJS(socketUrl);
 

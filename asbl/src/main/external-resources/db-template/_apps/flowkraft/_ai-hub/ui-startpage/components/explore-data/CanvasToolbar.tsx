@@ -7,6 +7,7 @@ import { useSaveStatusStore, type SaveStatus } from "@/lib/stores/save-status-st
 import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
 // lucide-react removed — icons replaced with inline heroicons below
 import { ExportDialog } from "./export/ExportDialog";
+import { ShareDialog } from "./export/ShareDialog";
 
 interface CanvasToolbarProps {
   canvasId: string;
@@ -73,8 +74,11 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
   const widgetCount = useCanvasStore((s) => s.widgets.length);
   const publishDirty = usePublishStatusStore((s) => s.dirty);
   const saveStatus = useSaveStatusStore((s) => s.status);
+  // Set by Publish. Its presence is what makes sharing possible at all.
+  const exportedReportCode = useCanvasStore((s) => s.exportedReportCode);
   const [editing, setEditing] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const router = useRouter();
 
   const saving = saveStatus === "saving";
@@ -188,9 +192,32 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
           Publish Dashboard
         </button>
+
+        {/* Share — only once the dashboard exists.
+            A share link points at /dashboard/{reportId}, and that reportId is created by Publish,
+            so sharing before publishing has nothing to point at. */}
+        {exportedReportCode && (
+          <button
+            id="btnShareDashboard"
+            onClick={() => setShowShare(true)}
+            title="Let people without an account open this dashboard"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-base-300 hover:bg-base-200 transition-colors"
+          >
+            {/* Heroicon: share */}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" /></svg>
+            Share
+          </button>
+        )}
       </div>
 
       <ExportDialog open={showExport} onClose={() => setShowExport(false)} />
+      {exportedReportCode && (
+        <ShareDialog
+          open={showShare}
+          onClose={() => setShowShare(false)}
+          reportId={exportedReportCode}
+        />
+      )}
     </div>
   );
 }

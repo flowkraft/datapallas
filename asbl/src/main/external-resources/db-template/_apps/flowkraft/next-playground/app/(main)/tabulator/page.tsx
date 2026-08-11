@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { rbConfig } from "@/lib/rb-config"
+import { useEmbedToken } from "@/lib/use-embed-token"
 import { CodeBlock } from "@/components/CodeBlock"
 
 type PageTab = "examples" | "configuration" | "usage"
@@ -76,10 +77,11 @@ const usageCode = `<rb-tabulator
   report-id="your-report-id"
   component-id="yourComponentId"
   api-base-url="\${apiBaseUrl}"
-  api-key="\${apiKey}"
+  embed-token="\${embedToken}"
 ></rb-tabulator>`
 
 export default function TabulatorPage() {
+  const embedToken = useEmbedToken("tab-examples")
   const [isReady, setIsReady] = useState(false)
   const [activeTab, setActiveTab] = useState<PageTab>("examples")
   const [configDsl, setConfigDsl] = useState("")
@@ -164,7 +166,7 @@ export default function TabulatorPage() {
                         report-id="tab-examples"
                         component-id={example.id}
                         api-base-url={rbConfig.apiBaseUrl}
-                        api-key={rbConfig.apiKey}
+                        embed-token={embedToken}
                         {...(example.theme ? { theme: example.theme } : {})}
                       />
                     </div>

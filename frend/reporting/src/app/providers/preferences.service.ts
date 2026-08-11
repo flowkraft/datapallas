@@ -11,7 +11,12 @@ export class PreferencesService {
     documentburster: {
       settings: {
         theme: DP_DEFAULT_THEME,
-        backendurl: 'http://localhost:9090',
+        // Must match config/_internal/settings.xml, '/api' included. The packaged desktop app reads
+        // backendurl from that file to find its own backend, and this default is what gets marshalled
+        // back into it when a preferences load failed — dropping the suffix here sends every request
+        // to a path that does not exist, which answers 401 for the entire application and leaves no
+        // login screen to recover through.
+        backendurl: 'http://localhost:9090/api',
         copiloturl: 'https://chatgpt.com/',
         showsamples: false,
       },

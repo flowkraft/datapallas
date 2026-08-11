@@ -6,8 +6,13 @@ import { useState, useEffect } from "react"
 import { DAISY_THEMES, setTheme } from "@/lib/daisy-themes"
 import { BrandLogo } from "@/components/shared/BrandLogo"
 import { IconXMark, IconHamburger, IconSettings, IconRocketLaunch, IconEmail } from "@/components/shared/Icons"
+import { useDpSession } from "@/components/layout/DpSession"
 
 export function AINavbar() {
+  // Same rule as the main application: the navigation disappears while a server waits for a sign-in,
+  // because every destination in it needs one. The brand, the support link and the theme picker stay
+  // — they are not navigation into the app.
+  const { needsSignIn, username, roleLabel } = useDpSession()
   const pathname = usePathname()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -69,6 +74,7 @@ export function AINavbar() {
           </Link>
 
           {/* Desktop nav links */}
+          {!needsSignIn && (
           <ul className="menu menu-horizontal px-1 hidden md:flex">
             {navLinks.map((link) => (
               <li key={link.href}>
@@ -81,6 +87,7 @@ export function AINavbar() {
               </li>
             ))}
           </ul>
+          )}
         </div>
 
         {/* Right: support email + settings gear + 35-theme picker */}
@@ -92,7 +99,8 @@ export function AINavbar() {
             support@datapallas.com
           </a>
 
-          {/* Settings gear */}
+          {/* Settings gear — administration, so it goes with the navigation. */}
+          {!needsSignIn && (
           <div className="relative">
             <button
               id="navbar-settings-button"
@@ -128,6 +136,38 @@ export function AINavbar() {
               </>
             )}
           </div>
+          )}
+
+          {/* Signed-in user + sign out. Absent on the desktop, where the identity is empty because
+              there is nobody to name and nothing to sign out of — exactly as in the main app. */}
+          {username && (
+            <div className="dropdown dropdown-end">
+              <div id="userMenu" tabIndex={0} role="button" className="btn btn-ghost btn-sm gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                     fill="currentColor" className="h-4 w-4 shrink-0">
+                  <path d="M12 2a5 5 0 100 10 5 5 0 000-10zm0 12c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z" />
+                </svg>
+                <span className="truncate max-w-32">{username}</span>
+              </div>
+              <ul tabIndex={0}
+                  className="dropdown-content menu bg-base-300 rounded-box w-56 p-2 shadow z-[1031]">
+                {roleLabel && (
+                  <li className="menu-title"><span id="userMenuRoles">{roleLabel}</span></li>
+                )}
+                <li>
+                  <button id="btnLogout" type="button" className="cursor-pointer"
+                          onClick={async () => {
+                            // Through the proxy, so the backend clears the very session the browser
+                            // holds — the same one DataPallas itself uses.
+                            await fetch('/api/dp/auth/logout', { method: 'POST' }).catch(() => {})
+                            window.location.reload()
+                          }}>
+                    Sign Out
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
 
           {/* 35-theme daisyUI picker */}
           <div className="dropdown dropdown-end" id="daisyThemePicker">

@@ -64,7 +64,7 @@ export class WhatsNewComponent {
       this.changeLogMarkdown =
         this.licenseService.licenseDetails.license.changelog;
     } else {
-      // if the latest changelog cannot be retrieved from https://www.pdfburst.com/store
+      // if the latest changelog cannot be retrieved from datapallas.com
       // load the changelog from local CHANGELOG.MD file
 
       try {
@@ -72,10 +72,15 @@ export class WhatsNewComponent {
         //  `${this.settingsService.PORTABLE_EXECUTABLE_DIR}/CHANGELOG.md`,
         //);
 
-        const localKeepAChangelogContentPath = Utilities.slash(`CHANGELOG.md`);
-
-        this.changeLogMarkdown = await this.fsService.readAsync(
-          localKeepAChangelogContentPath,
+        // Its own endpoint rather than a filesystem read: What's New is shown to everyone, and the
+        // filesystem API is administrator-only because it takes a path.
+        this.changeLogMarkdown = await this.apiService.get(
+          '/system/info/release-notes',
+          undefined,
+          new Headers({
+            Accept: 'text/plain',
+            'Content-Type': 'application/json',
+          }),
         );
 
         this.changeLog = parser(this.changeLogMarkdown);

@@ -15,6 +15,8 @@
   
   /** API key for authentication (passed from host app) */
   export let apiKey: string = '';
+  /** Short-lived token minted by the embedding page's server; unlocks only this report. */
+  export let embedToken: string = '';
   
   /** Optional: Entity code for single-entity HTML document rendering */
   export let entityCode: string = '';
@@ -75,6 +77,7 @@
       if (!reportId) reportId = hostElement.getAttribute('report-id') || '';
       if (!apiBaseUrl) apiBaseUrl = hostElement.getAttribute('api-base-url') || '';
       if (!apiKey) apiKey = hostElement.getAttribute('api-key') || '';
+      if (!embedToken) embedToken = hostElement.getAttribute('embed-token') || '';
       if (!entityCode) entityCode = hostElement.getAttribute('entity-code') || '';
       if (hostElement.hasAttribute('show-print-button')) {
         const printAttr = hostElement.getAttribute('show-print-button');

@@ -46,5 +46,34 @@ public class WebComponentsResourceConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/geojson/**")
                 .addResourceLocations("file:" + geojsonPath)
                 .setCachePeriod(3600);
+
+        // The Angular application itself, from lib/frend.
+        //
+        // DataPallas Server is reached with a browser, and its desktop window is a browser too — both
+        // load the app from here, which is what puts the UI on the same origin as the API. That is not
+        // a convenience: the session and CSRF cookies only exist for callers on this origin, so an app
+        // served from anywhere else cannot sign anyone in.
+        //
+        // No SPA fallback is needed. The app routes with a hash, so every deep link is still a request
+        // for "/" as far as this server is concerned.
+        // A pattern's location is resolved against whatever follows the pattern, so each folder needs
+        // its own registration: under "/assets/**" the request "/assets/i18n/en.json" resolves the
+        // path "i18n/en.json", which only lands on the right file when the location is the assets
+        // folder itself.
+        String frontendPath = Utils.resolvePathAgainstPortableDir("lib/frend/");
+
+        registry.addResourceHandler("/index.html", "/*.js", "/*.css", "/*.ico", "/*.txt", "/*.json")
+                .addResourceLocations("file:" + frontendPath)
+                .setCachePeriod(0);
+
+        // Each folder is resolved in full rather than appended to frontendPath: the resolver returns a
+        // path with no trailing separator, so concatenating would silently produce "lib/frendassets".
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("file:" + Utils.resolvePathAgainstPortableDir("lib/frend/assets/"))
+                .setCachePeriod(0);
+
+        registry.addResourceHandler("/media/**")
+                .addResourceLocations("file:" + Utils.resolvePathAgainstPortableDir("lib/frend/media/"))
+                .setCachePeriod(0);
     }
 }

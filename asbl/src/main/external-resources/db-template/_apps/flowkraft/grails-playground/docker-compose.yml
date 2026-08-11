@@ -25,6 +25,14 @@ services:
       - flowkraft-data:/app/data
       # Persist logs
       - flowkraft-logs:/app/logs
+      # DataPallas config, read-only — this is how RbUtils reads config/_internal/api-key.txt.
+      # Without it the app silently falls back to the dev key "123", which a real server rejects,
+      # and every embedded component on every page renders empty.
+      #
+      # Read from disk rather than copied into an environment variable on purpose: the app runs on
+      # the same machine as DataPallas, so the file is the single source of truth and there is
+      # nothing for an administrator to keep in sync.
+      - ../../../config:/app/config:ro
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]

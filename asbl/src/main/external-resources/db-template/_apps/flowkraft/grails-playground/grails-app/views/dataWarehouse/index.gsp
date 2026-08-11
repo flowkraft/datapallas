@@ -205,7 +205,7 @@
                             id="warehousePivotBrowser"
                             report-id="piv-northwind-warehouse-browser"
                             api-base-url="${RbUtils.apiBaseUrl}"
-                            api-key="${RbUtils.apiKey}"
+                            embed-token="${RbUtils.embedToken('piv-northwind-warehouse-browser')}"
                         ></rb-pivot-table>
                     </div>
 
@@ -222,7 +222,7 @@
                             id="warehousePivotDuckdb"
                             report-id="piv-northwind-warehouse-duckdb"
                             api-base-url="${RbUtils.apiBaseUrl}"
-                            api-key="${RbUtils.apiKey}"
+                            embed-token="${RbUtils.embedToken('piv-northwind-warehouse-duckdb')}"
                         ></rb-pivot-table>
                     </div>
 
@@ -242,7 +242,7 @@
                             id="warehousePivotClickhouse"
                             report-id="piv-northwind-warehouse-clickhouse"
                             api-base-url="${RbUtils.apiBaseUrl}"
-                            api-key="${RbUtils.apiKey}"
+                            embed-token="${RbUtils.embedToken('piv-northwind-warehouse-clickhouse')}"
                         ></rb-pivot-table>
                     </div>
 
@@ -462,7 +462,7 @@
                         <pre id="usageCodeBrowser" class="code-block mt-2"><code class="language-markup">&lt;rb-pivot-table
     report-id="piv-northwind-warehouse-browser"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('piv-northwind-warehouse-browser')}"
 &gt;&lt;/rb-pivot-table&gt;</code></pre>
                     </div>
                     <div class="engine-section mb-3">
@@ -475,7 +475,7 @@
                         <pre id="usageCodeDuckdb" class="code-block mt-2"><code class="language-markup">&lt;rb-pivot-table
     report-id="piv-northwind-warehouse-duckdb"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('piv-northwind-warehouse-duckdb')}"
 &gt;&lt;/rb-pivot-table&gt;</code></pre>
                     </div>
                     <div class="engine-section mb-3">
@@ -488,7 +488,7 @@
                         <pre id="usageCodeClickhouse" class="code-block mt-2"><code class="language-markup">&lt;rb-pivot-table
     report-id="piv-northwind-warehouse-clickhouse"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('piv-northwind-warehouse-clickhouse')}"
 &gt;&lt;/rb-pivot-table&gt;</code></pre>
                     </div>
                 </div>

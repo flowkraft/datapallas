@@ -109,16 +109,6 @@ echo } >> "%TEE_PS1%"
 if "%RB_SERVER_MODE%"=="true" (
   
   echo Starting Java in server mode...
-  
-  REM ========================================================================
-  REM Read API key from api-key.txt and write it to FRONTEND_PATH/assets/config.json
-  REM ========================================================================
-  REM powershell -Command ^
-  REM   "$apiKey = Get-Content '%API_KEY_FILE%' -Raw; ^
-  REM    $config = @{ apiKey = $apiKey } | ConvertTo-Json; ^
-  REM    $assetsPath = '%FRONTEND_PATH%\assets'; ^
-  REM    if (-not (Test-Path $assetsPath)) { New-Item -ItemType Directory -Path $assetsPath -Force | Out-Null }; ^
-  REM    Set-Content -Path (Join-Path $assetsPath 'config.json') -Value $config -Encoding ASCII"
 
   REM Run Java with our PowerShell tee script
   java %JAVA_CMD% 2>&1 | powershell -NoProfile -ExecutionPolicy Bypass -File "%TEE_PS1%" "%PORTABLE_EXECUTABLE_DIR_PATH%\logs\rbsj-server.log"

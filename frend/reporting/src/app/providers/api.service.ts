@@ -46,13 +46,11 @@ export class ApiService {
   }
 
   /**
-   * Set the API key (read from file system via Electron IPC).
-   * This is called during app initialization for Electron mode only.
+   * Set the installation API key (read from the file system via Electron IPC).
+   * Only ever called for a standalone deployment — see InitService for why a server never gets one.
    */
   setApiKey(key: string): void {
-    // TEMP: API key usage disabled for rollback
-    // this.apiKey = key;
-    this.apiKey = '';
+    this.apiKey = key || '';
   }
 
   /**
@@ -104,9 +102,22 @@ export class ApiService {
    * Returns the API key if set, otherwise null.
    */
   public getApiKey(): string | null {
-    // TEMP: API key disabled during rollback
-    return null;
+    return this.apiKey ? this.apiKey : null;
   }
+
+  /**
+   * Called when the backend answers 401. Set by AuthService during bootstrap so this service can
+   * signal "you are logged out" without importing AuthService and creating a DI cycle — AuthService
+   * needs ApiService to perform the login call itself.
+   */
+  public onUnauthorized: (() => void) | null = null;
+
+  /**
+   * Called when the backend answers 403. Set by AuthService alongside {@link onUnauthorized}, and for
+   * the same reason — this service cannot import a toast without dragging half the app into its
+   * dependency graph.
+   */
+  public onForbidden: (() => void) | null = null;
 
   private async request(
     path: string,
@@ -133,23 +144,28 @@ export class ApiService {
     const url = `${this.BACKEND_URL}${path}`;
 
     const headers = new Headers(customHeaders || this.headers);
-    
-    // Authentication: Add appropriate header based on mode
-    if (false) {
-      // TEMP: API key header disabled during rollback
-      // Electron/Grails/WordPress: Use API key from file system
-      // headers.set('X-API-Key', this.apiKey);
-    } else {
-      // TEMP (2025-12-19): XSRF header injection disabled for rollback/testing.
-      // Original XSRF header logic preserved below for easy re-enable.
-      // Web mode: Use CSRF token (Spring Security standard pattern)
-      // Spring sets XSRF-TOKEN cookie, we send it as X-XSRF-TOKEN header
-      // const xsrfToken = this.getXsrfToken();
-      // if (xsrfToken) {
-      //   headers.set('X-XSRF-TOKEN', xsrfToken);
-      // }
+
+    // Authentication.
+    //
+    // This is the ONE place it can go: this service talks to the backend with raw fetch(), not
+    // Angular's HttpClient, so an HttpInterceptor would never see any of this traffic.
+    //
+    // Two mechanisms, not alternatives — both are set when available:
+    //  - X-API-Key identifies a machine caller holding the installation. It is set only in a
+    //    standalone deployment; a server deliberately has none, so that its login is the way in.
+    //  - X-XSRF-TOKEN accompanies a browser session. Spring Security puts the token in the
+    //    XSRF-TOKEN cookie and expects it echoed back in this header; without it every POST/PUT/DELETE
+    //    from web mode is rejected.
+    if (this.apiKey) {
+      headers.set('X-API-Key', this.apiKey);
     }
-    
+
+    const xsrfToken = this.getXsrfToken();
+    if (xsrfToken) {
+      headers.set('X-XSRF-TOKEN', xsrfToken);
+    }
+
+
     const options: RequestInit = {
       method,
       headers,
@@ -182,7 +198,7 @@ export class ApiService {
 
     if (!response.ok) {
       //this.stateStore.configSys.sysInfo.setup.java.isJavaOk = false;
-      this.checkError(response.status);
+      this.checkError(response.status, method);
       throw new Error(`Request failed with status ${response.status}`);
     }
 
@@ -252,9 +268,40 @@ export class ApiService {
     return this.request(path, RequestMethod.delete, body);
   }
 
-  // Display error if logged in, otherwise redirect to IDP
-  private checkError(error: any): any {
-    // this.displayError(error);
-    throw error;
+  /**
+   * A 401 means the session is gone — expired, logged out in another tab, or the server restarted.
+   * Tell AuthService so it can clear the identity and route to the login screen.
+   *
+   * In standalone mode that never fires: the backend authenticates the loopback caller itself, so
+   * there is nothing to expire and the desktop never sees a login screen.
+   *
+   * A 403 means the rules worked. It is announced here, centrally, because the alternative is what
+   * this codebase used to do: rethrow a bare status, let each screen's `catch` swallow it, and leave
+   * the user watching a Save button do nothing at all. A refusal that looks identical to a broken
+   * feature is worse than the refusal — nobody can tell which one they are looking at, and the honest
+   * reading is "the app is broken". Saying it once, here, means every screen reports it whether or not
+   * anyone remembered to handle it.
+   *
+   * The status still propagates afterwards, so a screen that wants to say something better (the Users
+   * screen names the license limit, for instance) is free to.
+   *
+   * <p><b>Only writes announce a refusal.</b> A GET that comes back 403 is almost never something the
+   * user asked for — it is a screen loading a list it should not have asked for in the first place, and
+   * announcing it means someone signs in and is told, out of nowhere, that they lack permission for
+   * something they never touched. That is worse than silence: it looks like the application is broken.
+   * The right repair for a 403 on a GET is to stop making the call, which is why they are still
+   * rethrown and logged for whoever is reading the console.
+   *
+   * <p>A POST, PUT, PATCH or DELETE is different — somebody pressed something. That is when a refusal
+   * needs saying out loud, and that is the case this exists for.
+   */
+  private checkError(status: any, method?: RequestMethod): any {
+    if (status === 401 && this.onUnauthorized) {
+      this.onUnauthorized();
+    }
+    if (status === 403 && this.onForbidden && method && method !== RequestMethod.get) {
+      this.onForbidden();
+    }
+    throw status;
   }
 }

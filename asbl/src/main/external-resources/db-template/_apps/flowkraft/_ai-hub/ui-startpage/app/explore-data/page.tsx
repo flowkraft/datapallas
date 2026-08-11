@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 // lucide-react removed — icons replaced with inline heroicons below
 import type { Canvas } from "@/lib/db/schema";
 import { listCanvases, createCanvas as apiCreateCanvas, deleteCanvas as apiDeleteCanvas } from "@/lib/explore-data/rb-api";
+import { ShareDialog } from "@/components/explore-data/export/ShareDialog";
 
 export default function DataCanvasListPage() {
   const router = useRouter();
   const [canvases, setCanvases] = useState<Canvas[]>([]);
   const [loading, setLoading] = useState(true);
   const [toDelete, setToDelete] = useState<Canvas | null>(null);
+  // The published report code to manage links for; null closes the dialog.
+  const [toShare, setToShare] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const fetchCanvases = async () => {
@@ -112,6 +115,22 @@ export default function DataCanvasListPage() {
                   <h3 className="font-medium text-base-content text-sm truncate pr-6">
                     {canvas.name}
                   </h3>
+                  {/* Share — only for canvases that have actually been published, since a share
+                      link points at /dashboard/{reportId} and that only exists after Publish. */}
+                  {state.exportedReportCode && (
+                    <button
+                      id={`btnShareCanvas-${canvas.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setToShare(state.exportedReportCode as string);
+                      }}
+                      aria-label={`Share dashboard ${canvas.name}`}
+                      title="Let people without an account open this dashboard"
+                      className="absolute top-4 right-11 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-primary/10 text-base-content/60 hover:text-primary transition-all"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" /></svg>
+                    </button>
+                  )}
                   <button
                     onClick={(e) => handleDeleteClick(canvas, e)}
                     aria-label={`Delete canvas ${canvas.name}`}
@@ -180,6 +199,10 @@ export default function DataCanvasListPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {toShare && (
+        <ShareDialog open onClose={() => setToShare(null)} reportId={toShare} />
       )}
     </div>
   );

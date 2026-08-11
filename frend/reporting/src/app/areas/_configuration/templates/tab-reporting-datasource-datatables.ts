@@ -83,9 +83,16 @@
                 xmlReporting?.documentburster.report.datasource.type === 'ds.dashboard') && getDatabaseConnectionFilesForUI().length === 0) {
             <div id="noDbConnectionsMessageSql" style="padding-top: 6px;">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>&nbsp;No database connections defined&nbsp;
-              <a id="createDbConnectionLinkSql" [routerLink]="['/configuration-connections']" skipLocationChange="true" class="btn btn-outline btn-primary btn-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>&nbsp;Create Database Connection
-              </a>
+              <!-- Creating one is ADMIN — a connection stores a credential. An author who cannot make
+                   one is not stuck, they are waiting on somebody: say that instead of offering a
+                   button that walks them to a screen they cannot use. -->
+              @if (authService.canManageConnections()) {
+                <a id="createDbConnectionLinkSql" [routerLink]="['/configuration-connections']" skipLocationChange="true" class="btn btn-outline btn-primary btn-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>&nbsp;Create Database Connection
+                </a>
+              } @else {
+                <span id="noDbConnectionsAskAdmin" class="opacity-70">— ask an administrator to add one.</span>
+              }
             </div>
           }
 

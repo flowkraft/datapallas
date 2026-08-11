@@ -32,6 +32,7 @@ package com.sourcekraft.documentburster.issues;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -97,7 +98,8 @@ public class IssuesTest {
 
 		class LicenseUtilsSSLExceptionMock extends LicenseUtils {
 
-			protected Object makeRequest(Client client, String url, String action) throws Exception {
+			@Override
+			protected Object makeRequest(Client client, String url, String action, String jsonBody) throws Exception {
 
 				throw new SSLHandshakeException(
 						"PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target\r\n"
@@ -113,20 +115,32 @@ public class IssuesTest {
 
 		licenseUtilsSSLExceptionMock.checkLicense();
 
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isValid());
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerName()
-				.equalsIgnoreCase("license exception (most probably ssl exception)"));
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerEmail().equalsIgnoreCase("license@exception"));
+		// The server could not be reached, so nothing was confirmed and the licence
+		// screen says so. What must NOT happen is the old behaviour, where an SSL
+		// problem was reported back as a good licence.
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isServerDown());
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isInvalid());
+		assertFalse(licenseUtilsSSLExceptionMock.getLicense().isValid());
+
+		// ...and the customer, who WAS confirmed before the certificate broke, keeps
+		// everything they paid for. Our outage is not their problem.
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().itWasPaid());
 
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getKey().equals("1234567890"));
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getProduct().equals("DocumentBurster"));
 
 		licenseUtilsSSLExceptionMock.getLicense().loadLicense();
 
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isValid());
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerName()
-				.equalsIgnoreCase("license exception (most probably ssl exception)"));
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerEmail().equalsIgnoreCase("license@exception"));
+		// The server could not be reached, so nothing was confirmed and the licence
+		// screen says so. What must NOT happen is the old behaviour, where an SSL
+		// problem was reported back as a good licence.
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isServerDown());
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isInvalid());
+		assertFalse(licenseUtilsSSLExceptionMock.getLicense().isValid());
+
+		// ...and the customer, who WAS confirmed before the certificate broke, keeps
+		// everything they paid for. Our outage is not their problem.
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().itWasPaid());
 
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getKey().equals("1234567890"));
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getProduct().equals("DocumentBurster"));
@@ -146,10 +160,16 @@ public class IssuesTest {
 
 		licenseUtilsSSLExceptionMock.getLicense().loadLicense();
 
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isValid());
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerName()
-				.equalsIgnoreCase("license exception (most probably ssl exception)"));
-		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getCustomerEmail().equalsIgnoreCase("license@exception"));
+		// The server could not be reached, so nothing was confirmed and the licence
+		// screen says so. What must NOT happen is the old behaviour, where an SSL
+		// problem was reported back as a good licence.
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isServerDown());
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().isInvalid());
+		assertFalse(licenseUtilsSSLExceptionMock.getLicense().isValid());
+
+		// ...and the customer, who WAS confirmed before the certificate broke, keeps
+		// everything they paid for. Our outage is not their problem.
+		assertTrue(licenseUtilsSSLExceptionMock.getLicense().itWasPaid());
 
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getKey().equals("1234567890"));
 		assertTrue(licenseUtilsSSLExceptionMock.getLicense().getProduct().equals("DocumentBurster"));

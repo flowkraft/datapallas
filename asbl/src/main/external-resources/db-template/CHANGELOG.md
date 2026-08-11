@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.5.0 - 2026-08-11
+
+### Added
+
+- **A new, enterprise-grade sign-in and permissions system** — DataPallas Server now has full multi-user access control built in. Everyone gets their own account, and what each person can do follows their role: **administrators** look after connections, users and system settings; **authors** build reports and dashboards; **operators** run jobs and read the results; **viewers** see the finished work. Accounts are managed on the new **Users** screen, reached from your own name in the top right, so a whole team can share one DataPallas Server with each person able to do exactly as much as their job needs. **The desktop app stays as simple as ever** — DataPallas.exe is still one person on one computer, with no sign-in, no accounts to create and nothing new to configure.
+
+- **Working within seconds of starting it** — A brand-new Server arrives ready to go with an administrator account, **burst / burst**, shown right on the sign-in page: download, start, sign in and you're building — no setup ritual, no configuration files, no first-run tokens to hunt for. When you're ready to make the Server your own, change the password or add your own accounts on the **Users** screen, and the reminder on the sign-in page disappears by itself.
+
+- **Sign in with the work account you already have** — If your organisation already runs a directory or a single sign-on service, DataPallas can use it instead of keeping a second list of people: **Active Directory**, **LDAP** (OpenLDAP, lldap and friends), **Microsoft Entra ID**, **Okta**, **Auth0**, **Google Workspace**, **Keycloak** and others. People sign in with their usual account, and the groups they're already in decide what they can do here — take someone out of a group and their access in DataPallas follows on their next sign-in, with nobody having to remember to mirror the change. There's no special edition to buy or install: it's a settings change and a restart. A DataPallas account always keeps working alongside it, so a problem with your directory can never lock you out of your own server. Step-by-step instructions for each provider are in **CONFIGURE_AUTH.md**.
+
+- **Send a dashboard to someone who doesn't have an account** — Publish a dashboard from Explore Data and a new **Share** button appears. It gives you a link you can email to a colleague, a manager or a customer: they open it, see the dashboard, and never have to sign in or be given an account. Change your mind and you can withdraw the link — it stops working straight away. The button only shows up once a dashboard has been published, because until then there's nothing for a link to point at.
+
+- **Secure embedding in your own website** — Dashboards, tables and charts placed inside your own web pages now come with protection built in: your site vouches for each visitor behind the scenes, and nothing sensitive ever reaches the browser — what a page receives opens just the one report it was meant to show, and only for about an hour. Your visitors notice none of it, and your pages look and behave exactly as they always have. The bundled Grails and Next.js example portals stay open to everyone, as demonstrations should be.
+
+### Changed
+
+- **Licensing has moved to datapallas.com** — Licences are now issued and checked by **datapallas.com** rather than the old pdfburst.com store, over a properly secured connection.
+
 ## 16.4.1 - 2026-07-29
 
 ### Fixed

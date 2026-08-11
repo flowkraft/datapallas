@@ -46,6 +46,7 @@ import { tabLicenseTemplate } from './templates/tab-license';
 import { ConfigurationRepository } from '../../providers/configuration-repository.service';
 import Utilities from '../../helpers/utilities';
 import { StateStoreService } from '../../providers/state-store.service';
+import { AuthService } from '../../providers/auth.service';
 //import { ElectronService } from '../../core/services/electron/electron.service';
 
 @Component({
@@ -287,6 +288,7 @@ export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
     protected changeDetectorRef: ChangeDetectorRef,
     protected settingsService: ConfigurationRepository,
     protected storeService: StateStoreService,
+    protected authService: AuthService,
     //protected electronService: ElectronService,
   ) {}
 
@@ -298,6 +300,19 @@ export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
       if (params.leftMenu) {
         this.currentLeftMenu = params.leftMenu;
       } else {
+        this.currentLeftMenu = 'supportMenuSelected';
+      }
+
+      // Both of these have their left-menu entry hidden already, so arriving here means a bookmark or
+      // a deep link from another screen. Send them to the help screen everyone can use rather than to
+      // a page of buttons that would all fail.
+      //
+      //   Apps / Starter Packs — REPORT_AUTHOR: Start runs a shell command on the server.
+      //   Install & Setup      — ADMIN: installs software on the host and replaces the application.
+      if (this.currentLeftMenu === 'appsMenuSelected' && !this.authService.canManageApps()) {
+        this.currentLeftMenu = 'supportMenuSelected';
+      }
+      if (this.currentLeftMenu === 'installSetupMenuSelected' && !this.authService.canManageSystem()) {
         this.currentLeftMenu = 'supportMenuSelected';
       }
 

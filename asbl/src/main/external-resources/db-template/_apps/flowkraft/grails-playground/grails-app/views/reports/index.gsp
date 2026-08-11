@@ -84,7 +84,7 @@
                                     id="demoReport"
                                     report-id="rep-employee-payslip"
                                     api-base-url="${RbUtils.apiBaseUrl}"
-                                    api-key="${RbUtils.apiKey}"
+                                    embed-token="${RbUtils.embedToken('rep-employee-payslip')}"
                                     style="display: none;"
                                     show-print-button
                                     print-button-label="Print / Save PDF"
@@ -106,7 +106,7 @@
     report-id="rep-employee-payslip"
     entity-code="EMP001"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('rep-employee-payslip')}"
 &gt;&lt;/rb-report&gt;
 
 &lt;!-- The entity-code attribute specifies which

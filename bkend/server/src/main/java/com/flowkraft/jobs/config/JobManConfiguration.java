@@ -45,13 +45,17 @@ public class JobManConfiguration {
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
 		CorsConfiguration config = new CorsConfiguration().applyPermitDefaultValues();
+		// Credentials are allowed, so the origin list has to be a real list — see
+		// Constants.ALLOWED_ORIGIN_PATTERNS for why a wildcard is not an option here.
 		config.setAllowCredentials(true);
-		// Allow the packaged frontend via file:// and allow localhost dev ports (4200, 4201)
-		// setAllowedOriginPatterns permits host:port wildcard patterns which is helpful for dev
-		config.setAllowedOriginPatterns(Arrays.asList("http://localhost:*", "file://"));
+		config.setAllowedOriginPatterns(Constants.ALLOWED_ORIGIN_PATTERNS);
 		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-		// Allow all headers during local development so XSRF and X-API-Key are accepted.
-		// For production tighten this to explicit headers.
+		// Headers stay open deliberately. CORS allowed-headers only constrains what a BROWSER will
+		// send cross-origin — it protects nothing on the server, since any non-browser client sends
+		// whatever it likes. The controls that actually matter here are the origin list above,
+		// allowCredentials, and authentication. Enumerating headers instead would add a way for an
+		// embedding page to break (rb-webcomponents in Grails/WordPress send their own) in exchange
+		// for no security.
 		config.setAllowedHeaders(Arrays.asList("*"));
 		source.registerCorsConfiguration("/**", config);
 		return source;

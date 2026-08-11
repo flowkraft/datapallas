@@ -7,7 +7,7 @@
         report-id="tab-examples"
         component-id="${id}"
         api-base-url="${RbUtils.apiBaseUrl}"
-        api-key="${RbUtils.apiKey}"
+        embed-token="${RbUtils.embedToken('tab-examples')}"
         ${theme ? 'theme="' + theme + '"' : ''}
     ></rb-tabulator>
 </div>

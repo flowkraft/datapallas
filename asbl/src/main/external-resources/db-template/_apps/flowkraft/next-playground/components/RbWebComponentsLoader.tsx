@@ -21,14 +21,14 @@ export function RbWebComponentsLoader() {
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    // Set up the rbConfig object that web components need
-    const apiBaseUrl = process.env.NEXT_PUBLIC_RB_API_BASE_URL || "http://localhost:9090"
-    const apiKey = process.env.NEXT_PUBLIC_RB_API_KEY || "123"
-    
+    // apiBaseUrl only — it is just a URL.
+    //
+    // No apiKey: that value authenticates as an administrator, and a NEXT_PUBLIC_ variable is
+    // inlined into the browser bundle, so publishing it here would hand it to every visitor.
+    // Components receive a short-lived, single-report embed-token attribute instead.
     // @ts-expect-error - Global window extension
     window.rbConfig = {
-      apiBaseUrl,
-      apiKey,
+      apiBaseUrl: process.env.NEXT_PUBLIC_RB_API_BASE_URL || "http://localhost:9090",
     }
   }, [])
 

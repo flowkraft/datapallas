@@ -12,7 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,9 +37,9 @@ import com.flowkraft.system.dtos.FindCriteriaDto;
 import com.flowkraft.system.models.SystemInfo;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettingsInternal;
+import com.sourcekraft.documentburster.utils.LicenseUtils;
 import com.sourcekraft.documentburster.utils.Utils;
 
-import de.ailis.pherialize.Pherialize;
 
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
@@ -132,8 +139,40 @@ public class SystemService {
 		}
 	}
 
+	/**
+	 * Saves the preferences a user can actually change — and keeps {@code backendurl} out of their
+	 * reach.
+	 *
+	 * <p>{@code backendurl} is not a preference. The packaged desktop app reads it straight out of this
+	 * file to learn where its own backend lives, so a wrong value there is not a wrong setting: every
+	 * request goes to a path that does not exist, the whole application answers 401, and the login
+	 * screen never appears because the identity probe fails along with everything else. The app cannot
+	 * repair it either — fixing it needs the backend it can no longer reach.
+	 *
+	 * <p>It reached this method at all because the frontend ships a default preferences object that
+	 * carries its own copy of the field. When a load fails, that default survives, and the next theme
+	 * change marshals it back over the real one. Rather than trusting every caller to send the field
+	 * back untouched, the stored value simply wins: a client that omits it, or invents one, changes
+	 * nothing.
+	 */
 	public void saveInternalSettings(DocumentBursterSettingsInternal settings) throws Exception {
 		String path = Utils.resolvePathAgainstPortableDir("config/_internal/settings.xml");
+
+		if (settings != null && settings.settings != null) {
+			try {
+				DocumentBursterSettingsInternal stored = loadInternalSettings();
+				if (stored != null && stored.settings != null
+						&& StringUtils.isNotBlank(stored.settings.backendurl)) {
+					settings.settings.backendurl = stored.settings.backendurl;
+				}
+			} catch (Exception e) {
+				// No readable file yet (first run) — nothing to preserve, and refusing to save the
+				// user's theme because of it would be worse than the thing being guarded against.
+				log.debug("Could not read the stored internal settings to preserve backendurl: {}",
+						e.getMessage());
+			}
+		}
+
 		File f = new File(path);
 		f.getParentFile().mkdirs();
 		JAXBContext jc = JAXBContext.newInstance(DocumentBursterSettingsInternal.class);
@@ -143,6 +182,52 @@ public class SystemService {
 			m.marshal(settings, os);
 		}
 		Settings.invalidateShowSamplesCache();
+	}
+
+	/**
+	 * Writes the XML job file the {@code system feature-request} CLI command reads, and answers where
+	 * it put it.
+	 *
+	 * <p>Here rather than in the browser. The frontend used to compose this XML itself, PUT it through
+	 * the generic filesystem endpoint, and then hand the backend the path to send — which meant the
+	 * "Request a feature" link in the top bar could only work for someone allowed to write arbitrary
+	 * files inside the installation, and meant a caller got to nominate which file the mailer read.
+	 * Neither is anything to do with asking for a feature. The subject and the message are the whole
+	 * request; the file is an implementation detail of the CLI and belongs on this side of the wire.
+	 *
+	 * <p>The name is generated here too, so no caller can choose or predict it.
+	 */
+	public String writeFeatureRequestJobFile(String subject, String message) throws Exception {
+
+		Path jobsDir = Paths.get(Utils.resolvePathAgainstPortableDir("temp"));
+		Files.createDirectories(jobsDir);
+
+		Path jobFile = jobsDir.resolve("feature-request-" + UUID.randomUUID() + ".xml");
+
+		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+				+ "<documentburster>\n"
+				+ "    <featurerequest>\n"
+				+ "        <subject>" + escapeXml(subject) + "</subject>\n"
+				+ "        <message>" + escapeXml(message) + "</message>\n"
+				+ "    </featurerequest>\n"
+				+ "</documentburster>";
+
+		Files.write(jobFile, xml.getBytes(StandardCharsets.UTF_8));
+
+		return jobFile.toString();
+	}
+
+	/**
+	 * The five predefined XML entities, applied to text that a user typed.
+	 *
+	 * <p>Without this an ampersand in a message produces a file the CLI cannot parse, and a
+	 * {@code </featurerequest>} typed into the box would end the element early.
+	 */
+	private static String escapeXml(String value) {
+		if (value == null)
+			return "";
+		return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+				.replace("\"", "&quot;").replace("'", "&apos;");
 	}
 
 	public Mono<Boolean> checkUrl(String decodedUrl) {
@@ -156,48 +241,61 @@ public class SystemService {
 		}).onErrorResume(e -> Mono.just(false));
 	}
 
-	public Mono<Map<String, String>> getChangelog(String itemNameDecoded) {
-		String url = "https://www.pdfburst.com/store?edd_action=get_version&item_name=" + itemNameDecoded;
-		WebClient webClient = WebClient.create();
-		return webClient.get().uri(url).exchangeToMono(response -> {
-			if (response.statusCode().is3xxRedirection()) {
-				String redirectUrl = response.headers().asHttpHeaders().getLocation().toString();
-				return webClient.get().uri(redirectUrl).retrieve().bodyToMono(String.class);
-			} else {
-				return response.bodyToMono(String.class);
-			}
-		}).map(this::parseChangelogResponse);
+	/**
+	 * CHANGELOG.md as it shipped, from the installation directory.
+	 *
+	 * <p>Takes no path: there is one changelog and it is the same for every caller, which is exactly
+	 * what lets this be readable by anyone while the path-taking filesystem API stays administrator-only.
+	 *
+	 * <p>An unreadable or absent file answers empty. Users do delete it, and the What's New panel
+	 * already treats empty as "nothing to show" — failing here would break every screen that hosts it.
+	 */
+	public String readReleaseNotes() {
+
+		File changelog = new File(Utils.resolvePathAgainstPortableDir("CHANGELOG.md"));
+
+		try {
+			return changelog.isFile() ? FileUtils.readFileToString(changelog, StandardCharsets.UTF_8)
+					: StringUtils.EMPTY;
+		} catch (Exception e) {
+			log.warn("Could not read CHANGELOG.md", e);
+			return StringUtils.EMPTY;
+		}
 	}
 
-	// The licensing server (EDD) returns the changelog inside a PHP-serialized
-	// "sections" field. Decode it here and hand the caller plain text so the
-	// frontend never has to deal with the PHP-serialize format.
-	private Map<String, String> parseChangelogResponse(String rawBody) {
+	/**
+	 * The latest release and its notes — what the What's New panel and the update-available badge read.
+	 *
+	 * <p>Keyless, so a demo installation with no licence is told about a new version too. That is the
+	 * person most worth reaching.
+	 */
+	public Mono<Map<String, String>> getChangelog(String itemNameDecoded) {
+
+		// Through LicenseUtils, the one place that talks to datapallas.com. Its transport tries the
+		// bundled curl before the in-JVM client, because the JVM's own TLS stack is what failed
+		// against that host in the field. A second HTTP client here would reintroduce that failure.
+		//
+		// The product is no longer named by the caller: LicenseUtils derives it from the installation,
+		// which is the only answer that can be right — an installation knows which edition it is far
+		// better than a query string does.
 		Map<String, String> result = new HashMap<>();
 		result.put("new_version", StringUtils.EMPTY);
 		result.put("changelog", StringUtils.EMPTY);
 
 		try {
-			JsonNode json = new ObjectMapper().readTree(rawBody);
+			JsonNode release = new LicenseUtils().fetchLatestRelease();
+			result.put("new_version", release.path("version").asText(StringUtils.EMPTY));
+			result.put("changelog", release.path("changelog").asText(StringUtils.EMPTY));
 
-			if (json.hasNonNull("new_version"))
-				result.put("new_version", json.get("new_version").asText());
-
-			if (json.hasNonNull("sections")) {
-				String changelog = Pherialize.unserialize(json.get("sections").asText()).toArray()
-						.getString("changelog");
-				// Flatten the HTML wrapping into plain newlines.
-				changelog = changelog.replace("<p>", "\n").replace("</p>", "\n").replace("<br />", "")
-						.replace("<br/>", "");
-				result.put("changelog", changelog);
-			}
 		} catch (Exception e) {
-			// Leave the empty defaults when the licensing server is unreachable or
-			// returns an unexpected payload (expected for demo/offline installations).
+			// Expected on a machine with no connectivity. The badge simply says nothing.
+			log.debug("Could not read the latest release information: {}", e.getMessage());
 		}
 
-		return result;
+		return Mono.just(result);
 	}
+
+
 
 	public Mono<String> getBlogPosts() {
 		String url = "https://www.pdfburst.com/blog/feed/";

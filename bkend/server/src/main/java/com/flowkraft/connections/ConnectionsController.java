@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,9 +41,23 @@ import reactor.core.publisher.Mono;
 
 /**
  * REST API for managing database and email connections.
+ *
+ * <p>Connections are tenant-shared assets, not per-user ones, because they hold credentials: an
+ * email password, a database password, an OAuth refresh token.
+ *
+ * <p>Two levels, and the split is between naming a connection and owning it. {@code REPORT_AUTHOR} may
+ * <em>list and read</em> connections, because that is how a report, a cube or an exploration picks the
+ * datasource it runs through — the responses are masked, so what an author sees is a name and a shape,
+ * never a secret. Everything that creates, edits, deletes, tests or decrypts one is {@code ADMIN}:
+ * those are the operations that hand a credential to somebody, use it to reach a remote system, or
+ * quietly repoint an existing connection at a different one.
+ *
+ * <p>A {@code JOB_OPERATOR} reaches none of this. They run jobs that use connections; they never see
+ * the connections themselves.
  */
 @RestController
 @RequestMapping(value = "/api/connections", produces = MediaType.APPLICATION_JSON_VALUE)
+@PreAuthorize("hasRole('REPORT_AUTHOR')")
 public class ConnectionsController {
 
 	private static final Logger log = LoggerFactory.getLogger(ConnectionsController.class);
@@ -123,6 +138,8 @@ public class ConnectionsController {
 
 	// ========== SAVE CONNECTION (V3.2) ==========
 
+	/** Creates or overwrites a connection, credentials included — {@code ADMIN}. */
+	@PreAuthorize("hasRole('ADMIN')")
 	@PutMapping(value = "/{connectionId}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<Void>> saveConnection(
 			@PathVariable String connectionId,
@@ -171,6 +188,11 @@ public class ConnectionsController {
 
 	// ========== TEST CONNECTIONS (V3.3) ==========
 
+	/**
+	 * {@code ADMIN}. A test is not a read — it decrypts the stored credential and opens a real
+	 * connection to a real remote system, and in the email case it sends a real message.
+	 */
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping(value = "/{connectionId}/test-email",
 	             consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.ALL_VALUE })
 	public Mono<ResponseEntity<Map<String, Object>>> testEmailConnection(
@@ -188,6 +210,7 @@ public class ConnectionsController {
 				"message", "Email connection test passed")));
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping(value = "/{connectionId}/test-database",
 	             consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.ALL_VALUE })
 	public Mono<ResponseEntity<Map<String, Object>>> testDatabaseConnection(
@@ -202,6 +225,7 @@ public class ConnectionsController {
 
 	// ========== TEST SMS (V3.4 — {id} added) ==========
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping(value = "/{connectionId}/test-sms", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<Map<String, Object>>> testSms(
 			@PathVariable String connectionId,
@@ -218,6 +242,8 @@ public class ConnectionsController {
 
 	// ========== OAUTH FLOW (V3.6 — moved from /api/oauth/email/*) ==========
 
+	/** The whole OAuth round trip is {@code ADMIN} — it ends with a refresh token stored on the connection. */
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping(value = "/{connectionId}/oauth-sign-in",
 	             consumes = MediaType.APPLICATION_JSON_VALUE,
 	             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -261,6 +287,7 @@ public class ConnectionsController {
 		return ResponseEntity.ok(new OAuthStartResponse(flowId));
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@GetMapping(value = "/{connectionId}/oauth-flow/{flowId}/events",
 	            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public SseEmitter oauthEvents(@PathVariable String connectionId, @PathVariable String flowId) {
@@ -278,6 +305,7 @@ public class ConnectionsController {
 		return dead;
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping("/{connectionId}/oauth-flow/{flowId}/cancel")
 	public ResponseEntity<Void> cancelOAuth(@PathVariable String connectionId, @PathVariable String flowId) {
 		SseEmitter emitter = flows.remove(flowId);
@@ -294,6 +322,7 @@ public class ConnectionsController {
 
 	// ========== DELETE / METADATA / REVEAL-PASSWORD (unchanged) ==========
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@DeleteMapping("/{connectionId}")
 	public Mono<ResponseEntity<Void>> deleteConnection(@PathVariable String connectionId) throws Exception {
 		log.info("Deleting connection: {}", connectionId);
@@ -316,6 +345,7 @@ public class ConnectionsController {
 		return Mono.just(ResponseEntity.ok(Map.of("exists", "true", "content", content)));
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PutMapping(value = "/{connectionId}/metadata/{type}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<Void>> saveMetadata(
 			@PathVariable String connectionId,
@@ -326,6 +356,11 @@ public class ConnectionsController {
 		return Mono.just(ResponseEntity.ok().<Void>build());
 	}
 
+	/**
+	 * Decrypts a stored secret and returns it in clear text. The single most sensitive endpoint in the
+	 * API — an REPORT_AUTHOR who could call this would hold every credential in the tenant.
+	 */
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping(value = "/{connectionId}/reveal-password")
 	public Mono<ResponseEntity<Map<String, String>>> revealPassword(
 			@PathVariable String connectionId,

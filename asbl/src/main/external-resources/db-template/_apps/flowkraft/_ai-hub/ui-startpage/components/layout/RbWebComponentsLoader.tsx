@@ -21,14 +21,19 @@ export function RbWebComponentsLoader() {
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    // Set up the rbConfig object that web components need
-    const apiBaseUrl = process.env.NEXT_PUBLIC_RB_API_BASE_URL || "http://localhost:9090"
-    const apiKey = process.env.NEXT_PUBLIC_RB_API_KEY || "123"
-
+    // Data fetched BY the web components goes through this app's server-side proxy, like every
+    // other backend call here — see app/api/dp/[...path]/route.ts.
+    //
+    // Note this also corrects a real bug: the components build URLs as `${apiBaseUrl}/cubes/...`,
+    // so the base has to include the `/api` segment. The previous value was
+    // "http://localhost:9090" without it, which produced /cubes/... and a 404.
+    //
+    // No apiKey: the browser has no business holding one. The proxy attaches the real credential
+    // server-side, where a page script cannot read it.
     // @ts-expect-error - Global window extension
     window.rbConfig = {
-      apiBaseUrl,
-      apiKey,
+      apiBaseUrl: "/api/dp",
+      apiKey: "",
     }
   }, [])
 

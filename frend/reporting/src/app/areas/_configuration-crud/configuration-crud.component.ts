@@ -3,6 +3,8 @@ import { SHARED_IMPORTS } from '../../shared/shared-imports';
 import { ConfigurationReportsComponent } from './configuration-reports.component';
 import { ConnectionListComponent } from './configuration-connections.component';
 import { CubeListComponent } from './configuration-cubes.component';
+import { ConfigurationUsersComponent } from './configuration-users.component';
+import { AuthService } from '../../providers/auth.service';
 import { ActivatedRoute } from '@angular/router';
 
 import { leftMenuTemplate } from './templates/_left-menu';
@@ -26,24 +28,37 @@ import { leftMenuTemplate } from './templates/_left-menu';
           @case ('cubes') {
             <dburst-cube-list></dburst-cube-list>
           }
+          @case ('users') {
+            <dburst-configuration-users></dburst-configuration-users>
+          }
         }
       </section>
     </div>
   `,
     standalone: true,
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
-    imports: [...SHARED_IMPORTS, ConfigurationReportsComponent, ConnectionListComponent, CubeListComponent],
+    imports: [...SHARED_IMPORTS, ConfigurationReportsComponent, ConnectionListComponent, CubeListComponent, ConfigurationUsersComponent],
 })
 export class ConfigurationCrudComponent implements OnInit {
   activeSection = 'reports';
 
   private route = inject(ActivatedRoute);
+  protected authService = inject(AuthService);
 
   ngOnInit() {
     this.route.params.subscribe((params) => {
       if (params.section) {
         this.activeSection = params.section;
       } else {
+        this.activeSection = 'reports';
+      }
+
+      // Connections and Users are ADMIN. Their sidebar entries are already hidden, so arriving here
+      // means a bookmark or an old link — show Reports rather than a screen where nothing works.
+      if (this.activeSection === 'connections' && !this.authService.canManageConnections()) {
+        this.activeSection = 'reports';
+      }
+      if (this.activeSection === 'users' && !this.authService.showUserAdministration()) {
         this.activeSection = 'reports';
       }
     });

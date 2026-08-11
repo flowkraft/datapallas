@@ -15,9 +15,11 @@
     <!-- DataPallas runtime config (Groovy interpolation — do NOT remove) -->
     <%@ page import="flowkraft.frend.RbUtils" %>
     <script>
+        // apiBaseUrl only. The API key is this application's server-side credential and
+        // authenticates as an administrator — publishing it to window would hand it to every
+        // visitor. Embedded components carry a short-lived embed-token attribute instead.
         window.rbConfig = {
-            apiBaseUrl: '${RbUtils.apiBaseUrl}',
-            apiKey: '${RbUtils.apiKey}'
+            apiBaseUrl: '${RbUtils.apiBaseUrl}'
         };
     </script>
 

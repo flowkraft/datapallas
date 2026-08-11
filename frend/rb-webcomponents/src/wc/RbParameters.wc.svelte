@@ -29,6 +29,8 @@
   export let reportId: string = '';
   export let apiBaseUrl: string = '';
   export let apiKey: string = '';
+  /** Short-lived token minted by the embedding page's server; unlocks only this report. */
+  export let embedToken: string = '';
 
   // ============================================================================
   // Props Mode - traditional props-based usage (e.g., from Angular)
@@ -93,6 +95,7 @@
       if (!reportId) reportId = hostElement.getAttribute('report-id') || '';
       if (!apiBaseUrl) apiBaseUrl = hostElement.getAttribute('api-base-url') || '';
       if (!apiKey) apiKey = hostElement.getAttribute('api-key') || '';
+      if (!embedToken) embedToken = hostElement.getAttribute('embed-token') || '';
       if (hostElement.hasAttribute('show-reload')) {
         const reloadAttr = hostElement.getAttribute('show-reload');
         showReload = reloadAttr === '' || reloadAttr === 'true';

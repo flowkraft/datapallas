@@ -88,7 +88,7 @@
     report-id="your-report-id"
     component-id="yourComponentId"
     api-base-url="&#36;{RbUtils.apiBaseUrl}"
-    api-key="&#36;{RbUtils.apiKey}"
+    embed-token="&#36;{RbUtils.embedToken('your-report-id')}"
 &gt;&lt;/rb-chart&gt;</code></pre>
                     </div>
                 </div>

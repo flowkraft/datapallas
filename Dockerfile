@@ -244,12 +244,24 @@ PORTABLE_EXECUTABLE_DIR_PATH=/app
 FRONTEND_PATH=/app/lib/frend
 POLLING_PATH=/app/poll
 API_KEY_FILE=/app/config/_internal/api-key.txt
-CONFIG_JSON_FILE=/app/lib/frend/assets/config.json
 SERVER_PORT=${SERVER_PORT:-9090}
 
 # -----------------------------------------------------------------------------
-# Function: Generate or load API key
-# Mirrors the behavior of startRbsjServer.bat on Windows
+# Function: Generate or load the API key used by machine callers
+#
+# The key identifies non-browser clients — the AI Hub proxy, an embedding host
+# app, a scheduler hitting the REST API. It is read from
+# config/_internal/api-key.txt, which is inside the mounted config volume, so it
+# survives restarts and can be read by an administrator who needs to hand it to
+# an integration.
+#
+# The key must never be written anywhere under lib/frend/assets/. Everything
+# there is served publicly — the Angular bundle has to load before anyone can
+# log in — so a key placed there would let any visitor fetch an
+# admin-equivalent credential and skip authentication entirely.
+#
+# The browser does not need a key: the web UI is same-origin with the backend
+# and authenticates with a session cookie plus CSRF.
 # -----------------------------------------------------------------------------
 setup_api_key() {
     # Check if API_KEY is provided via environment variable
@@ -265,22 +277,15 @@ setup_api_key() {
         CURRENT_API_KEY=$(head -c 32 /dev/urandom | base64 | tr -d '=+/' | head -c 43)
         echo "Generated new API key"
     fi
-    
+
     # Ensure config directory exists
     mkdir -p "$(dirname "$API_KEY_FILE")"
-    mkdir -p "$(dirname "$CONFIG_JSON_FILE")"
-    
-    # Write API key to file for backend to read
+
+    # Write API key to file for the backend to read
     echo -n "$CURRENT_API_KEY" > "$API_KEY_FILE"
-    
-    # Write config.json for Angular frontend (matches startRbsjServer.bat behavior)
-    cat > "$CONFIG_JSON_FILE" << EOF
-{
-  "apiKey": "$CURRENT_API_KEY"
-}
-EOF
-    
-    echo "API key configured for both backend and frontend"
+    chmod 600 "$API_KEY_FILE" 2>/dev/null || true
+
+    echo "API key available to machine callers at $API_KEY_FILE"
 }
 
 # -----------------------------------------------------------------------------
@@ -297,8 +302,8 @@ else
     # No automatic initial-folder extraction is performed here; ensure host mounts
     # are populated externally when needed
     
-    # Setup API key authentication (TEMPORARILY DISABLED for rollback)
-    # setup_api_key
+    # Generate/load the API key that machine callers use
+    setup_api_key
     
     # Export environment variables
     export PORTABLE_EXECUTABLE_DIR_PATH

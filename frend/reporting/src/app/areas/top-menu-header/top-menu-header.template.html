@@ -21,6 +21,11 @@
         <rb-brand></rb-brand>
       </a>
 
+      <!-- The navigation itself is hidden while a server waits for a sign-in: every destination in it
+           is guarded, so offering them would only bounce the visitor back to this same screen. The
+           brand, the theme picker and the support link stay — they are not navigation into the app.
+           On the desktop, and once signed in, this is always shown. -->
+      @if (authService.showAppChrome()) {
       <ul id="topMenu" class="menu menu-horizontal px-1 hidden md:flex">
 
         <li>
@@ -32,6 +37,9 @@
           </a>
         </li>
 
+        <!-- Every entry under here edits configuration, which is REPORT_AUTHOR and above. An
+             operator who opened it would find screens that refuse every save. -->
+        @if (authService.canViewConfiguration()) {
         <li tabindex="0" role="button" class="dropdown">
           <div class="flex items-center cursor-pointer">
             <span id="topMenuConfiguration">{{ ('AREAS.TOP-MENU-HEADER.CONFIGURATION' | translate) + (settingsService.currentConfigurationTemplateName ? ' (' + settingsService.currentConfigurationTemplateName + ') ' : ' ') }}</span>▾
@@ -60,6 +68,7 @@
             </li>
           </ul>
         </li>
+        }
 
         <li id="topMenuHelp" tabindex="0" role="button" class="dropdown">
           <div class="flex items-center cursor-pointer">
@@ -69,8 +78,11 @@
             (click)="closeDropdown()">
             <li><a id="topMenuHelpSupport" [routerLink]="['/help', 'supportMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.GET-SOFTWARE-SUPPORT' | translate }}</a></li>
             <li><a id="topMenuHelpServices" [routerLink]="['/help', 'servicesMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-SERVICES' | translate }}</a></li>
-            <li><hr class="my-1 border-base-300"/></li>
-            <li><a id="topMenuStarterPacks" [routerLink]="['/help','appsMenuSelected']" skipLocationChange="true">Apps / Starter Packs / Extra Utils</a></li>
+            <!-- Authors start the AI Hub and the starter packs themselves; operators do not. -->
+            @if (authService.canManageApps()) {
+              <li><hr class="my-1 border-base-300"/></li>
+              <li><a id="topMenuStarterPacks" [routerLink]="['/help','appsMenuSelected']" skipLocationChange="true">Apps / Starter Packs / Extra Utils</a></li>
+            }
             <li><hr class="my-1 border-base-300"/></li>
             <li><a id="topMenuHelpDocumentation" [routerLink]="['/help', 'docsMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTATION' | translate }}</a></li>
             <li><a id="topMenuHelpExamples" [routerLink]="['/help', 'useCasesMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.EXAMPLES' | translate }}</a></li>
@@ -78,7 +90,7 @@
             <li><a id="topMenuHelpCustomerReviews" [routerLink]="['/help', 'reviewsMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.CUSTOMER-REVIEWS' | translate }}</a></li>
             <li><a id="topMenuHelpBlog" [routerLink]="['/help', 'blogMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.DOCUMENTBURSTER-BLOG' | translate }}</a></li>
             <li><hr class="my-1 border-base-300"/></li>
-            @if (isRunningInsideElectron()) {
+            @if (isRunningInsideElectron() && authService.canManageSystem()) {
               <li><a id="topMenuHelpJava" [routerLink]="['/help', 'installSetupMenuSelected']" skipLocationChange="true">{{ 'AREAS.TOP-MENU-HEADER.INSTALL-SETUP' | translate }}</a></li>
               <li><hr class="my-1 border-base-300"/></li>
             }
@@ -88,15 +100,18 @@
         </li>
 
       </ul>
+      }
     </div>
 
     <!-- Right: actions + theme picker -->
     <div class="flex items-center gap-1">
+      @if (authService.showAppChrome()) {
       <a id="askForFeature" href="#"
         class="btn btn-ghost btn-sm normal-case"
         (click)="onAskForFeatureModalShow(); false">
         Request <span class="badge badge-sm">New</span> Feature
       </a>
+      }
       <a id="supportEmail"
         class="btn btn-ghost btn-sm normal-case"
         [routerLink]="['/help', 'supportMenuSelected']"
@@ -142,6 +157,51 @@
             }
           </ul>
         </div>
+
+        <!-- Signed-in user + logout.
+             Absent entirely in single-user mode (the Electron desktop), where there is no user to
+             show and nothing to sign out of. -->
+        @if (authService.isDataPallasServer() && authService.isAuthenticated()) {
+          <div class="dropdown dropdown-end">
+            <div id="userMenu" tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                   fill="currentColor" class="h-4 w-4 shrink-0">
+                <path d="M12 2a5 5 0 100 10 5 5 0 000-10zm0 12c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"></path>
+              </svg>
+              <span class="truncate max-w-32">{{ authService.username() }}</span>
+            </div>
+            <ul tabindex="0"
+              class="dropdown-content menu bg-base-300 rounded-box w-56 p-2 shadow z-[1031]">
+              <li class="menu-title">
+                <span id="userMenuRoles">{{ authService.roleLabel() }}</span>
+                @if (authService.tenantName()) {
+                  <span id="userMenuTenant"> · {{ authService.tenantName() }}</span>
+                }
+              </li>
+              @if (authService.showUserAdministration()) {
+                <li>
+                  <a id="btnNavSectionUsers"
+                     [routerLink]="['/configuration-crud', 'users']"
+                     skipLocationChange="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                         stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+                    </svg>
+                    Users
+                  </a>
+                </li>
+                <li><hr class="my-1 border-base-100"/></li>
+              }
+              <li>
+                <button id="btnLogout" type="button" class="cursor-pointer"
+                        (click)="signOut()">
+                  {{ 'AREAS.LOGIN.SIGN-OUT' | translate }}
+                </button>
+              </li>
+            </ul>
+          </div>
+        }
     </div>
   </nav>
 </header>

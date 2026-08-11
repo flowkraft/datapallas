@@ -1,8 +1,13 @@
-// Client for DataPallas Java backend (port 9090)
+// Client for the DataPallas Java backend.
+//
+// Calls go through this app's own server-side proxy (app/api/dp/[...path]/route.ts) rather than
+// straight to port 9090. Two reasons: it is same-origin, so no CORS is involved and the browser sends
+// the session cookie normally; and the backend credential stays on the server instead of being handed
+// to every script on the page. Never point this at :9090 again.
 
 import type { SchemaInfo, ConnectionInfo, QueryResult } from "./types";
 
-const RB_BASE = process.env.NEXT_PUBLIC_RB_API_URL || "http://localhost:9090/api";
+const RB_BASE = "/api/dp";
 
 // Module-level singleton: fires once per app load, shared by all callers.
 // Multiple AiHelpDialog mounts all await the same promise instead of each

@@ -580,6 +580,13 @@
         "SUPPORT": "Get Software Support"
       }
     },
+    "LOGIN": {
+      "PASSWORD": "Password",
+      "SIGN-IN": "Sign In",
+      "SIGN-IN-HINT": "Sign in with your DataPallas account",
+      "SIGN-OUT": "Sign Out",
+      "USERNAME": "Username"
+    },
     "PROCESSING": {
       "LEFT-MENU": {
         "ACTIONS": "ACTIONS",

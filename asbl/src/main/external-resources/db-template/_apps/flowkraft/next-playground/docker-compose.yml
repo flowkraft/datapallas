@@ -19,6 +19,13 @@ services:
     volumes:
       # Persist SQLite database across container restarts
       - next-playground-data:/app/data
+      # DataPallas config, read-only — where lib/rb-config.ts reads config/_internal/api-key.txt.
+      # Without it the app falls back to the dev key "123", which a real server rejects, and every
+      # embedded component renders empty.
+      #
+      # Read from disk rather than copied into an environment variable on purpose: the app runs on
+      # the same machine as DataPallas, so the file is the single source of truth.
+      - ../../../config:/app/config:ro
     restart: unless-stopped
     networks:
       - frend-network

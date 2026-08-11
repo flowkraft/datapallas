@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -211,6 +212,12 @@ public class ReportsController {
 
 	// ── V4: Collection list (replaces /load-all, /load-all-minimal, /load-templates-all) ──
 
+	/**
+	 * {@code JOB_OPERATOR} — the list is how Processing offers a report to run, so an operator needs it.
+	 * Reading a report's <em>contents</em> (templates, scripts, datasource) is {@code REPORT_AUTHOR}
+	 * below: those are the files that can hold a query, a path or a credential.
+	 */
+	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@GetMapping(consumes = MediaType.ALL_VALUE)
 	public Flux<ConfigurationFileInfo> listReports(
 			@RequestParam(required = false) Boolean withDetails,
@@ -226,6 +233,7 @@ public class ReportsController {
 
 	// ── V4: Single report detail by ID (replaces /load-config-details?path=...) ──
 
+	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@GetMapping(value = "/{id}", consumes = MediaType.ALL_VALUE)
 	public Mono<ConfigurationFileInfo> getReportDetails(@PathVariable String id) throws Exception {
 		String path = resolveSettingsPath(id);
@@ -284,6 +292,7 @@ public class ReportsController {
 		return objectMapper.writeValueAsString(new ArrayList<>(indexed.values()));
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/serve-asset", produces = MediaType.ALL_VALUE)
 	public Mono<ResponseEntity<?>> serveAsset(@RequestParam String path) throws Exception {
 		// System.out.println("========== SERVE ASSET ENDPOINT CALLED ==========");
@@ -324,6 +333,7 @@ public class ReportsController {
 		}
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/preview-template", produces = MediaType.TEXT_HTML_VALUE)
 	public Mono<ResponseEntity<String>> viewTemplate(@RequestParam String path) throws Exception {
 		String fullPath = resolvePathAgainstPortableDir(
@@ -445,6 +455,7 @@ public class ReportsController {
 
 	// ── Phase 2: High-level atomic configuration endpoints ──
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<ConfigurationFileInfo>> createConfiguration(@RequestBody Map<String, Object> request)
 			throws Exception {
@@ -461,6 +472,7 @@ public class ReportsController {
 		return Mono.just(ResponseEntity.status(HttpStatus.CREATED).body(result));
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PostMapping(value = "/{reportId}/duplicate", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<ConfigurationFileInfo>> duplicateConfiguration(@PathVariable String reportId,
 			@RequestBody Map<String, Object> request) throws Exception {
@@ -476,12 +488,14 @@ public class ReportsController {
 		return Mono.just(ResponseEntity.status(HttpStatus.CREATED).body(result));
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PostMapping(value = "/{reportId}/restore-defaults", consumes = MediaType.ALL_VALUE)
 	public Mono<ResponseEntity<Void>> restoreDefaults(@PathVariable String reportId) throws Exception {
 		rbSettingsService.restoreDefaults(reportId);
 		return Mono.just(ResponseEntity.ok().build());
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@DeleteMapping(value = "/{reportId}")
 	public Mono<ResponseEntity<Void>> deleteConfiguration(@PathVariable String reportId) throws Exception {
 		rbSettingsService.deleteConfiguration(reportId);
@@ -491,6 +505,7 @@ public class ReportsController {
 	// ── Phase 3: ID-based REST endpoints ──
 
 	@Operation(summary = "Raw settings XML as stored on disk — the source of truth before path resolution or defaults are applied")
+	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@GetMapping(value = "/{reportId}/settings", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<DocumentBursterSettings> loadReportSettings(@PathVariable String reportId) throws Exception {
 		String fullPath = resolveSettingsPath(reportId);
@@ -512,6 +527,7 @@ public class ReportsController {
 	 * load is NOT the default settings.xml — e.g. migrated configs named
 	 * {something}/15-settings-6.2-custom.xml.
 	 */
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/load-by-path", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<DocumentBursterSettings> loadSettingsByPath(@RequestParam String path) throws Exception {
 		String fullPath = resolvePathAgainstPortableDir(path);
@@ -522,6 +538,7 @@ public class ReportsController {
 		return Mono.just(dbSettings);
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PutMapping(value = "/{reportId}/settings")
 	public void saveReportSettings(@PathVariable String reportId, @RequestBody DocumentBursterSettings settings)
 			throws Exception {
@@ -533,12 +550,14 @@ public class ReportsController {
 	}
 
 	@Operation(summary = "Data-source section from a separate datasource XML file on disk — distinct from the main settings.xml")
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/{reportId}/datasource", consumes = MediaType.ALL_VALUE)
 	public Mono<ReportingSettings> loadReportDataSource(@PathVariable String reportId) throws Exception {
 		String fullPath = resolveSettingsPath(reportId);
 		return Mono.just(rbSettingsService.loadSettingsReporting(fullPath));
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PutMapping(value = "/{reportId}/datasource")
 	public void saveReportDataSource(@PathVariable String reportId, @RequestBody ReportingSettings settings)
 			throws Exception {
@@ -546,6 +565,7 @@ public class ReportsController {
 		rbSettingsService.saveSettingsReporting(settings, fullPath);
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/{reportId}/template/{type}", produces = MediaType.TEXT_PLAIN_VALUE, consumes = MediaType.ALL_VALUE)
 	public Mono<String> loadReportTemplate(@PathVariable String reportId, @PathVariable String type) throws Exception {
 		String templatePath = resolveTemplatePath(reportId, type);
@@ -553,6 +573,7 @@ public class ReportsController {
 		return Mono.just(content != null ? content : "");
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PutMapping(value = "/{reportId}/template/{type}", consumes = "text/plain",
 			produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<java.util.Map<String, String>>> saveReportTemplate(@PathVariable String reportId,
@@ -595,6 +616,7 @@ public class ReportsController {
 	 * GET /api/reports/{id}/preview — return the saved HTML dashboard template fragment
 	 * (moved from ExploreDataController GET /api/explorations/template/{reportId}).
 	 */
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/{id}/preview", produces = MediaType.TEXT_HTML_VALUE, consumes = MediaType.ALL_VALUE)
 	public ResponseEntity<String> getDashboardPreview(@PathVariable String id) throws Exception {
 		String html = canvasExportService.getTemplateHtml(id);
@@ -602,6 +624,7 @@ public class ReportsController {
 		return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
 	}
 
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/{reportId}/template", produces = MediaType.TEXT_PLAIN_VALUE, consumes = MediaType.ALL_VALUE)
 	public Mono<String> loadReportTemplateAuto(@PathVariable String reportId) throws Exception {
 		String templatePath = resolveTemplatePathFromConfig(reportId);
@@ -618,6 +641,11 @@ public class ReportsController {
 		return Mono.just(content != null ? content : "");
 	}
 
+	/**
+	 * A report template is FreeMarker, so saving one is authoring executable content — not the same
+	 * capability as viewing a report.
+	 */
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PutMapping(value = "/{reportId}/template", consumes = "text/plain")
 	public Mono<ResponseEntity<Void>> saveReportTemplateAuto(@PathVariable String reportId,
 			@RequestBody Optional<String> content) throws Exception {
@@ -636,6 +664,7 @@ public class ReportsController {
 	 * Load a Groovy DSL script for a report by type.
 	 * Scripts live in the report's config folder: config/reports/{reportId}/{reportId}-{suffix}.groovy
 	 */
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@GetMapping(value = "/{reportId}/script/{scriptType}", produces = MediaType.TEXT_PLAIN_VALUE, consumes = MediaType.ALL_VALUE)
 	public Mono<String> loadReportScript(@PathVariable String reportId, @PathVariable String scriptType)
 			throws Exception {
@@ -657,6 +686,7 @@ public class ReportsController {
 	/**
 	 * Save a Groovy DSL script for a report by type.
 	 */
+	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PutMapping(value = "/{reportId}/script/{scriptType}", consumes = "text/plain")
 	public Mono<ResponseEntity<Void>> saveReportScript(@PathVariable String reportId,
 			@PathVariable String scriptType, @RequestBody Optional<String> content) throws Exception {

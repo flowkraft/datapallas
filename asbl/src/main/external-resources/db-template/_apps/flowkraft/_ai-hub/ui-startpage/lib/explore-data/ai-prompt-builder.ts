@@ -18,7 +18,8 @@ import type { SchemaInfo, ColumnSchema } from "./types";
 export type AiMode = "sql" | "script";
 export type AiKind = "table" | "cube";
 
-const RB_BASE = process.env.NEXT_PUBLIC_RB_API_URL || "http://localhost:9090/api";
+// Same-origin proxy — see app/api/dp/[...path]/route.ts.
+const RB_BASE = "/api/dp";
 
 // ── Prompt ID selection ───────────────────────────────────────────────────────
 

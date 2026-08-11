@@ -4,6 +4,7 @@ import { SystemService } from '../../providers/system.service';
 import { StateStoreService } from '../../providers/state-store.service';
 import { PollingHelper } from '../../providers/polling.helper';
 import { DockerLifecycleService } from '../../providers/docker-lifecycle.service';
+import { AuthService } from '../../providers/auth.service';
 
 export interface ManagedApp {
   id: string;
@@ -316,6 +317,7 @@ export class AppsManagerService {
     private systemService: SystemService,
     private stateStore: StateStoreService,
     private dockerLifecycle: DockerLifecycleService,
+    private authService: AuthService,
   ) { }
 
   private clearTransitionalState(appId: string): void {
@@ -347,6 +349,11 @@ export class AppsManagerService {
    * must keep working when the backend is down (e.g. Java missing).
    */
   private async loadDynamicApps(): Promise<void> {
+    // Custom-app manifests are ADMIN, like everything else that can start an app. Asking anyway would
+    // answer 403 and pop "You do not have permission" on a screen the user never asked anything of —
+    // so don't ask. The built-in cards are listed client-side and still render, Launch and all.
+    if (!this.authService.canManageApps()) return;
+
     try {
       const manifests = await this.systemService.getManagedApps();
       if (!Array.isArray(manifests)) return;

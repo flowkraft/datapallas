@@ -29,6 +29,8 @@
   export let reportId: string = '';
   export let apiBaseUrl: string = '';
   export let apiKey: string = '';
+  /** Short-lived token minted by the embedding page's server; unlocks only this report. */
+  export let embedToken: string = '';
   export let componentId: string = '';
   export let reportParams: Record<string, string> = {};
   export let testMode: boolean = false;
@@ -649,6 +651,7 @@
       if (!reportId) reportId = hostEl.getAttribute('report-id') || '';
       if (!apiBaseUrl) apiBaseUrl = hostEl.getAttribute('api-base-url') || '';
       if (!apiKey) apiKey = hostEl.getAttribute('api-key') || '';
+      if (!embedToken) embedToken = hostEl.getAttribute('embed-token') || '';
       if (!componentId) componentId = hostEl.getAttribute('component-id') || '';
       if (!Object.keys(reportParams).length) {
         const rp = hostEl.getAttribute('report-params');
@@ -673,6 +676,7 @@
       error = null;
       
       const headers: Record<string, string> = {};
+      if (embedToken) headers['X-Embed-Token'] = embedToken;
       // TEMP: API key disabled for rollback
       // if (apiKey) headers['X-API-Key'] = apiKey;
       
@@ -801,6 +805,7 @@
     
     selfFetchLoading = true;
     const headers: Record<string, string> = {};
+      if (embedToken) headers['X-Embed-Token'] = embedToken;
     // TEMP: API key disabled for rollback
     // if (apiKey) headers['X-API-Key'] = apiKey;
     

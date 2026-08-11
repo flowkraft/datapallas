@@ -115,6 +115,7 @@ import { ApiService } from '../../providers/api.service';
 import { ReportsService } from '../../providers/reports.service';
 import { CubesService, CubeDefinition } from '../../providers/cubes.service';
 import { DashboardService } from '../../providers/dashboard.service';
+import { AuthService } from '../../providers/auth.service';
 import { modalTemplatesGalleryTemplate } from './templates/modal-gallery';
 
 @Component({
@@ -627,6 +628,7 @@ export class ConfigurationComponent implements OnInit {
     protected sanitizer: DomSanitizer,
     public cubesService: CubesService,
     protected dashboardService: DashboardService,
+    protected authService: AuthService,
   ) { }
 
   private get currentReportId(): string {
@@ -2552,7 +2554,6 @@ export class ConfigurationComponent implements OnInit {
   private _generateDashboardComponentsMarkup(): string {
     const reportId = this.getCurrentReportCode();
     const apiBaseUrl = this.getApiBaseUrl();
-    const apiKey = this.getApiKeyForUsage();
     const parts: string[] = [];
 
     // Data Tables
@@ -2560,10 +2561,10 @@ export class ConfigurationComponent implements OnInit {
     if (namedTabIds.length > 0) {
       parts.push(`## Data Tables (${namedTabIds.length} named components)\n`);
       for (const cid of namedTabIds) {
-        parts.push(`\`\`\`html\n<rb-tabulator\n  report-id="${reportId}"\n  component-id="${cid}"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-tabulator>\n\`\`\`\n`);
+        parts.push(`\`\`\`html\n<rb-tabulator\n  report-id="${reportId}"\n  component-id="${cid}"\n  api-base-url="${apiBaseUrl}">\n</rb-tabulator>\n\`\`\`\n`);
       }
     } else if (this.activeTabulatorConfigScriptGroovy?.trim()) {
-      parts.push(`## Data Table\n\n\`\`\`html\n<rb-tabulator\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-tabulator>\n\`\`\`\n`);
+      parts.push(`## Data Table\n\n\`\`\`html\n<rb-tabulator\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}">\n</rb-tabulator>\n\`\`\`\n`);
     }
 
     // Charts
@@ -2571,10 +2572,10 @@ export class ConfigurationComponent implements OnInit {
     if (namedChartIds.length > 0) {
       parts.push(`## Charts (${namedChartIds.length} named components)\n`);
       for (const cid of namedChartIds) {
-        parts.push(`\`\`\`html\n<rb-chart\n  report-id="${reportId}"\n  component-id="${cid}"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-chart>\n\`\`\`\n`);
+        parts.push(`\`\`\`html\n<rb-chart\n  report-id="${reportId}"\n  component-id="${cid}"\n  api-base-url="${apiBaseUrl}">\n</rb-chart>\n\`\`\`\n`);
       }
     } else if (this.activeChartConfigScriptGroovy?.trim()) {
-      parts.push(`## Chart\n\n\`\`\`html\n<rb-chart\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-chart>\n\`\`\`\n`);
+      parts.push(`## Chart\n\n\`\`\`html\n<rb-chart\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}">\n</rb-chart>\n\`\`\`\n`);
     }
 
     // Pivot Tables
@@ -2582,19 +2583,19 @@ export class ConfigurationComponent implements OnInit {
     if (namedPivotIds.length > 0) {
       parts.push(`## Pivot Tables (${namedPivotIds.length} named components)\n`);
       for (const cid of namedPivotIds) {
-        parts.push(`\`\`\`html\n<rb-pivot-table\n  report-id="${reportId}"\n  component-id="${cid}"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-pivot-table>\n\`\`\`\n`);
+        parts.push(`\`\`\`html\n<rb-pivot-table\n  report-id="${reportId}"\n  component-id="${cid}"\n  api-base-url="${apiBaseUrl}">\n</rb-pivot-table>\n\`\`\`\n`);
       }
     } else if (this.activePivotTableConfigScriptGroovy?.trim()) {
-      parts.push(`## Pivot Table\n\n\`\`\`html\n<rb-pivot-table\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-pivot-table>\n\`\`\`\n`);
+      parts.push(`## Pivot Table\n\n\`\`\`html\n<rb-pivot-table\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}">\n</rb-pivot-table>\n\`\`\`\n`);
     }
 
     // Parameters
     if (this.activeParamsSpecScriptGroovy?.trim()) {
-      parts.push(`## Parameters Form\n\nPlace this once in the dashboard. When the user submits, all visualization components automatically refresh with the new parameter values.\n\n\`\`\`html\n<rb-parameters\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-parameters>\n\`\`\`\n`);
+      parts.push(`## Parameters Form\n\nPlace this once in the dashboard. When the user submits, all visualization components automatically refresh with the new parameter values.\n\n\`\`\`html\n<rb-parameters\n  report-id="${reportId}"\n  api-base-url="${apiBaseUrl}">\n</rb-parameters>\n\`\`\`\n`);
     }
 
     // Atomic Values (always available for dashboards)
-    parts.push(`## Atomic Values\n\nFor single values (totals, counts, averages), use \`<rb-value>\` instead of a full data table. Multiple elements with the same \`component-id\` share one cached HTTP request — each picks its column via \`field\`.\n\n\`\`\`html\n<rb-value\n  report-id="${reportId}"\n  component-id="atomicValues"\n  field="revenue"\n  format="currency"\n  api-base-url="${apiBaseUrl}"\n  api-key="${apiKey}">\n</rb-value>\n\`\`\`\n\nSupported \`format\` values: \`currency\`, \`number\`, \`percent\`, \`date\`, or omit for raw value.\n`);
+    parts.push(`## Atomic Values\n\nFor single values (totals, counts, averages), use \`<rb-value>\` instead of a full data table. Multiple elements with the same \`component-id\` share one cached HTTP request — each picks its column via \`field\`.\n\n\`\`\`html\n<rb-value\n  report-id="${reportId}"\n  component-id="atomicValues"\n  field="revenue"\n  format="currency"\n  api-base-url="${apiBaseUrl}">\n</rb-value>\n\`\`\`\n\nSupported \`format\` values: \`currency\`, \`number\`, \`percent\`, \`date\`, or omit for raw value.\n`);
 
     if (parts.length === 0) {
       return `No visualization components are configured yet. Configure at least one data table, chart, or pivot table in the DSL tabs first, then come back here.`;
@@ -2625,8 +2626,15 @@ export class ConfigurationComponent implements OnInit {
       return;
     }
 
-    this.absoluteTemplateFolderPath =
-      await this.fsService.resolveAbsolutePath(relativePath);
+    // Resolving a path goes through the filesystem API, which is administrator-only. This is a
+    // display convenience — the folder shown beside the template — so an author who may edit the
+    // template but not browse the installation sees the relative path instead of a broken screen.
+    try {
+      this.absoluteTemplateFolderPath =
+        await this.fsService.resolveAbsolutePath(relativePath);
+    } catch {
+      this.absoluteTemplateFolderPath = relativePath;
+    }
 
     this.absoluteTemplateFolderPath = Utilities.slash(
       this.absoluteTemplateFolderPath,
@@ -3193,9 +3201,14 @@ pivotTable {
     return serverBaseUrl + '/rb-webcomponents';
   }
 
-  getApiKeyForUsage(): string {
-    return this.apiService.getApiKey() || '';
-  }
+  // getApiKeyForUsage() removed deliberately.
+  //
+  // The Usage tab used to paste the installation API key into every embed snippet it told users to
+  // copy into their own pages. That key authenticates as an administrator, and anything in a page is
+  // readable by every visitor — so the snippets were a credential-publishing feature.
+  //
+  // Embeds now carry no credential. On DataPallas Desktop they work as before; on DataPallas Server
+  // the report itself is what grants access (see .docs/auth-authorization-design.md §6b).
 
   /**
    * Convert index to letter suffix for sub-numbering: 0→'a', 1→'b', 2→'c', etc.
@@ -3272,7 +3285,6 @@ pivotTable {
   getCompleteUsageExample(): string {
     const reportId = this.getCurrentReportCode();
     const apiBaseUrl = this.getApiBaseUrl();
-    const apiKey = this.getApiKeyForUsage();
     const webComponentsBaseUrl = this.getWebComponentsBaseUrl();
     const entityCodeAttr = this.getEntityCodeAttribute();
 
@@ -3292,8 +3304,7 @@ pivotTable {
   <!-- Dashboard -->
   <rb-dashboard
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-dashboard>
 
 </body>
@@ -3318,8 +3329,7 @@ pivotTable {
   <!-- Full Report -->
   <rb-report
     report-id="${reportId}"${entityCodeAttr}
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-report>`;
 
     // Data Table(s)
@@ -3331,8 +3341,7 @@ pivotTable {
   <rb-tabulator
     report-id="${reportId}"
     component-id="${cid}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-tabulator>`;
       }
     } else {
@@ -3341,8 +3350,7 @@ pivotTable {
   <!-- Data Table -->
   <rb-tabulator
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-tabulator>`;
     }
 
@@ -3352,8 +3360,7 @@ pivotTable {
   <!-- Report Parameters -->
   <rb-parameters
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-parameters>`;
     }
 
@@ -3366,8 +3373,7 @@ pivotTable {
   <rb-chart
     report-id="${reportId}"
     component-id="${cid}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-chart>`;
       }
     } else if (this.activeChartConfigScriptGroovy?.trim()) {
@@ -3376,8 +3382,7 @@ pivotTable {
   <!-- Chart -->
   <rb-chart
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-chart>`;
     }
 
@@ -3390,8 +3395,7 @@ pivotTable {
   <rb-pivottable
     report-id="${reportId}"
     component-id="${cid}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-pivottable>`;
       }
     } else if (this.activePivotTableConfigScriptGroovy?.trim()) {
@@ -3400,8 +3404,7 @@ pivotTable {
   <!-- Pivot Table -->
   <rb-pivottable
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}"
-    api-key="${apiKey}">
+    api-base-url="${apiBaseUrl}">
   </rb-pivottable>`;
     }
 
@@ -3420,12 +3423,12 @@ pivotTable {
 
   copyUsageRbReport() {
     const entityCodeAttr = this.getEntityCodeAttribute();
-    const html = `<rb-report\n  report-id="${this.getCurrentReportCode()}"${entityCodeAttr}\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-report>`;
+    const html = `<rb-report\n  report-id="${this.getCurrentReportCode()}"${entityCodeAttr}\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-report>`;
     this._copyToClipboard(html, 'rb-report snippet');
   }
 
   copyUsageRbDashboard() {
-    const html = `<rb-dashboard\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-dashboard>`;
+    const html = `<rb-dashboard\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-dashboard>`;
     this._copyToClipboard(html, 'rb-dashboard snippet');
   }
 
@@ -3438,37 +3441,37 @@ pivotTable {
   }
 
   copyUsageRbTabulator() {
-    const html = `<rb-tabulator\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-tabulator>`;
+    const html = `<rb-tabulator\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-tabulator>`;
     this._copyToClipboard(html, 'rb-tabulator snippet');
   }
 
   copyUsageRbParameters() {
-    const html = `<rb-parameters\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-parameters>`;
+    const html = `<rb-parameters\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-parameters>`;
     this._copyToClipboard(html, 'rb-parameters snippet');
   }
 
   copyUsageRbChart() {
-    const html = `<rb-chart\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-chart>`;
+    const html = `<rb-chart\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-chart>`;
     this._copyToClipboard(html, 'rb-chart snippet');
   }
 
   copyUsageRbPivotTable() {
-    const html = `<rb-pivottable\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-pivottable>`;
+    const html = `<rb-pivottable\n  report-id="${this.getCurrentReportCode()}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-pivottable>`;
     this._copyToClipboard(html, 'rb-pivottable snippet');
   }
 
   copyUsageRbTabulatorNamed(componentId: string) {
-    const html = `<rb-tabulator\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-tabulator>`;
+    const html = `<rb-tabulator\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-tabulator>`;
     this._copyToClipboard(html, `rb-tabulator (${componentId})`);
   }
 
   copyUsageRbChartNamed(componentId: string) {
-    const html = `<rb-chart\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-chart>`;
+    const html = `<rb-chart\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-chart>`;
     this._copyToClipboard(html, `rb-chart (${componentId})`);
   }
 
   copyUsageRbPivotTableNamed(componentId: string) {
-    const html = `<rb-pivottable\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}"\n  api-key="${this.getApiKeyForUsage()}">\n</rb-pivottable>`;
+    const html = `<rb-pivottable\n  report-id="${this.getCurrentReportCode()}"\n  component-id="${componentId}"\n  api-base-url="${this.getApiBaseUrl()}">\n</rb-pivottable>`;
     this._copyToClipboard(html, `rb-pivottable (${componentId})`);
   }
 

@@ -161,7 +161,7 @@
                                     report-id="dashboard-cfo"
                                     component-id="revenueTrend"
                                     api-base-url="${RbUtils.apiBaseUrl}"
-                                    api-key="${RbUtils.apiKey}"
+                                    embed-token="${RbUtils.embedToken('dashboard-cfo')}"
                                 ></rb-chart>
                             </div>
                         </div>
@@ -175,7 +175,7 @@
                                     report-id="dashboard-cfo"
                                     component-id="revenueByCategory"
                                     api-base-url="${RbUtils.apiBaseUrl}"
-                                    api-key="${RbUtils.apiKey}"
+                                    embed-token="${RbUtils.embedToken('dashboard-cfo')}"
                                 ></rb-chart>
                             </div>
                         </div>
@@ -192,7 +192,7 @@
                                 report-id="dashboard-cfo"
                                 component-id="topCustomers"
                                 api-base-url="${RbUtils.apiBaseUrl}"
-                                api-key="${RbUtils.apiKey}"
+                                embed-token="${RbUtils.embedToken('dashboard-cfo')}"
                             ></rb-tabulator>
                         </div>
                     </div>
@@ -205,7 +205,7 @@
                                     report-id="dashboard-cfo"
                                     component-id="arAging"
                                     api-base-url="${RbUtils.apiBaseUrl}"
-                                    api-key="${RbUtils.apiKey}"
+                                    embed-token="${RbUtils.embedToken('dashboard-cfo')}"
                                 ></rb-chart>
                             </div>
                         </div>
@@ -219,7 +219,7 @@
                                     report-id="dashboard-cfo"
                                     component-id="revenueByCountry"
                                     api-base-url="${RbUtils.apiBaseUrl}"
-                                    api-key="${RbUtils.apiKey}"
+                                    embed-token="${RbUtils.embedToken('dashboard-cfo')}"
                                 ></rb-chart>
                             </div>
                         </div>

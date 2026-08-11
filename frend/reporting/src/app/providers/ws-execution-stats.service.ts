@@ -42,7 +42,8 @@ export class WebSocketExecutionStatsService extends WebSocketEndpoint {
     // Set WebSocket endpoint and authentication
     this.socketUrl = Constants.WS_ENDPOINT;
     
-    // TEMP: API key disabled for rollback - do not set access token
+    // No token on the WebSocket: standalone authenticates the loopback caller in the backend, and
+    // web mode is same-origin so SockJS carries the session cookie by itself.
     this.accessToken = null;
 
     await this.makeWSConnection([sOptions]);

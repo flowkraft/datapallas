@@ -11,6 +11,7 @@ import { ConfigurationRepository } from '../../providers/configuration-repositor
 import { MoreSettingsComponent } from '../../components/more-settings/more-settings.component';
 import Utilities from '../../helpers/utilities';
 import { StateStoreService } from '../../providers/state-store.service';
+import { AuthService } from '../../providers/auth.service';
 import { DP_THEME_KEY, DP_DEFAULT_THEME } from '../../shared/theme-defaults';
 
 @Component({
@@ -47,6 +48,7 @@ export class TopMenuHeaderComponent implements OnInit {
     protected askForFeatureService: AskForFeatureService,
     protected samplesService: SamplesService,
     protected storeService: StateStoreService,
+    protected authService: AuthService,
     private router: Router,
   ) {}
 
@@ -78,6 +80,11 @@ export class TopMenuHeaderComponent implements OnInit {
     await this.settingsService.loadAllConnections();
 
     await this.samplesService.fillSamplesNotes();
+  }
+
+  /** Ends the session and returns to the login screen. Never reachable in desktop mode. */
+  async signOut(): Promise<void> {
+    await this.authService.logout();
   }
 
   private isProcessingRoute(url: string): boolean {

@@ -7,6 +7,7 @@ import fr.opensagres.xdocreport.document.discovery.ITemplateEngineInitializerDis
 import fr.opensagres.xdocreport.template.ITemplateEngine;
 import fr.opensagres.xdocreport.template.TemplateEngineKind;
 import fr.opensagres.xdocreport.template.freemarker.FreemarkerTemplateEngine;
+import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
 import freemarker.template.TemplateExceptionHandler;
 
@@ -28,6 +29,22 @@ public class DocumentBursterFreemarkerInitializer implements ITemplateEngineInit
 
     // single shared Configuration used by your app and copied into XDocReport when needed
     public static final Configuration FREE_MARKER_CFG = new Configuration(Configuration.VERSION_2_3_29);
+
+    static {
+        harden(FREE_MARKER_CFG);
+    }
+
+    /**
+     * Report templates are authored by users, so a template is executable content, not data.
+     * Without a class resolver FreeMarker's default one lets a template instantiate any class
+     * on the classpath — {@code ${"freemarker.template.utility.Execute"?new()("...")}} is a
+     * shell out of a .ftl. SAFER_RESOLVER blocks exactly the three classes that turn template
+     * rendering into code execution (Execute, ObjectConstructor, JythonRuntime) and leaves
+     * everything a real template needs untouched.
+     */
+    private static void harden(Configuration cfg) {
+        cfg.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
+    }
 
     // conservative defaults used if XDocReport initializes before your settings are loaded
     private static final Locale DEFAULT_LOCALE = Locale.US;
@@ -135,6 +152,8 @@ public class DocumentBursterFreemarkerInitializer implements ITemplateEngineInit
             FreemarkerTemplateEngine fmEngine = (FreemarkerTemplateEngine) templateEngine;
             Configuration cfg = fmEngine.getFreemarkerConfiguration();
 
+            harden(cfg);
+
             // apply conservative defaults so XDocReport behaves reasonably if it initializes early
             cfg.setDefaultEncoding("UTF-8");
             cfg.setOutputEncoding("UTF-8"); 
@@ -158,6 +177,8 @@ public class DocumentBursterFreemarkerInitializer implements ITemplateEngineInit
         try {
             FreemarkerTemplateEngine fmEngine = (FreemarkerTemplateEngine) templateEngine;
             Configuration cfg = fmEngine.getFreemarkerConfiguration();
+
+            harden(cfg);
 
             // copy values from shared FREE_MARKER_CFG into the XDocReport engine
             if (FREE_MARKER_CFG.getLocale() != null) cfg.setLocale(FREE_MARKER_CFG.getLocale());
