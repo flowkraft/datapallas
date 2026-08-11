@@ -9,7 +9,6 @@ import { ConfigurationRepository } from './configuration-repository.service';
 import { AppPathsService } from './app-paths.service';
 import { FsService } from './fs.service';
 import { ApiService } from './api.service';
-import { ToastrMessagesService } from './toastr-messages.service';
 import { ReportsService } from './reports.service';
 
 @Injectable({
@@ -43,7 +42,6 @@ export class LicenseService {
     protected reportsService: ReportsService,
     protected fsService: FsService,
     protected apiService: ApiService,
-    protected messagesService: ToastrMessagesService,
   ) {
     this.licenseFilePath = Utilities.slash(
       `${this.appPathsService.CONFIGURATION_FOLDER_PATH}/_internal/license.xml`,
@@ -53,16 +51,15 @@ export class LicenseService {
   /**
    * Persist the licence.
    *
-   * The failure MUST be shown. This used to write the file directly, so it
-   * could not really fail; it now goes through the licence API, which can — and
-   * because the caller fired it on every keystroke and nobody caught the
-   * rejection, a rejected save looked exactly like a successful one. The key
-   * stayed on screen because it lives in this object, never reached
-   * license.xml, and the failure only surfaced later as Activate complaining
-   * that no key was defined, which reads as an unrelated bug.
+   * This used to write the file directly, so it could not really fail. It now
+   * goes through the licence API, which can — and the licence key input calls
+   * it on every keystroke without awaiting, so a rejected save was
+   * indistinguishable from a successful one: the key stayed on screen because
+   * it lives in this object, never reached license.xml, and the first visible
+   * symptom was Activate complaining that no key was defined.
    *
-   * Whatever goes wrong next, it says so here instead of hiding until something
-   * downstream trips over it.
+   * The report belongs in errors.log, which the server already writes for a
+   * failed PUT — see the catch.
    */
   async saveLicense() {
     try {
@@ -70,26 +67,18 @@ export class LicenseService {
         '/system/license/',
         this.licenseDetails.license,
       );
-    } catch (error: any) {
-      const detail = error?.error?.message ?? error?.message ?? '';
+    } catch (error) {
+      // No toast. The server already logs a failed PUT to errors.log, which the
+      // Errors Log Preview shows and the "Ups… View Error(s)" bar lights up for
+      // — that is where a fault belongs, and duplicating it in a popup only
+      // teaches people to dismiss popups. A failure here is never something the
+      // user can correct anyway: the key is not validated on save, so this is a
+      // defect or a server that is not running.
+      //
+      // The catch exists so the rejection is handled rather than surfacing as
+      // an unhandled promise per keystroke, and so DevTools carries the detail
+      // while you are working on it.
       console.error('Could not save the licence', error);
-
-      // Worded as a FAULT, not as bad input. Nothing the user types makes this
-      // succeed — the key is not validated on save, so a failure here is always
-      // a defect in the application or a server that is not running. Telling
-      // someone to check their data and try again would be a lie, and would
-      // teach them to ignore it.
-      this.messagesService.showError(
-        detail
-          ? `The licence could not be saved — ${detail}`
-          : 'The licence could not be saved. Nothing was written.',
-        'Internal error — please report this',
-      );
-      // Deliberately not rethrown. The only caller is the licence key input,
-      // which fires this on every keystroke and does not await it — rethrowing
-      // would turn each failed keystroke into an unhandled rejection. The toast
-      // and the console line are the report; swallowing SILENTLY is what this
-      // change exists to stop.
       return undefined;
     }
   }
