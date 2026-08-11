@@ -81,4 +81,23 @@ public class LicenseDetails extends DumpToString {
 	 */
 	public String lastverdict = StringUtils.EMPTY;
 
+	// --- Seat entitlements, owned by the server-side model ---
+	//
+	// Not read here. They exist so this class marshals the SAME element set as
+	// com.flowkraft.license.model.LicenseDetails, because both classes are
+	// marshalled over the whole of license.xml — and JAXB writes only what the
+	// class declares. Without these, every `system license check` (which runs on
+	// every job) silently deleted the tenant and user limits the portal had
+	// issued, and the server model returning the favour deleted instanceid and
+	// licenseid on every save from the UI.
+	//
+	// Whichever side writes last must not destroy what the other side owns. Any
+	// field added to either class belongs in both.
+
+	/** Tenant limit issued by the portal. Blank means unlimited. */
+	public String maxtenants = StringUtils.EMPTY;
+
+	/** User limit issued by the portal. Blank means unlimited. */
+	public String maxusers = StringUtils.EMPTY;
+
 }
