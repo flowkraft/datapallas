@@ -27,6 +27,17 @@ export class LicenseService {
   latestVersion: semver.SemVer;
   isNewerVersionAvailable: boolean = false;
 
+  // Whether the release announcement has already been asked for in this
+  // session. loadLicense() runs in ngOnInit of <dburst-whats-new>, which is
+  // mounted on both the License tab and the Processing area, so without this
+  // every re-creation of that component fired another call to datapallas.com —
+  // a lookup that costs a curl process and answers the same thing all day.
+  //
+  // Set BEFORE the await, so two components mounting together cannot both get
+  // past it. The service is providedIn:'root', so this is once per run of the
+  // application, which is the right frequency for "is there a new version".
+  private changeLogRequested = false;
+
   constructor(
     protected settingsService: ConfigurationRepository,
     protected appPathsService: AppPathsService,
@@ -78,7 +89,16 @@ export class LicenseService {
       this.latestVersion = this.licenseDetails.license.latestversion;
       this.changeLogStr = this.licenseDetails.license.changelog;
     } // if it is a demo installation
-    else {
+    //
+    // NOT `if (this.latestVersion) return;` at the top of this method, which is
+    // what the commented-out line there would have done: loadLicense() also
+    // re-reads the licence itself, and license.component calls it straight after
+    // activate/deactivate precisely to refresh that. Skipping the whole method
+    // would leave the License tab showing the old status. Only the announcement
+    // lookup is skipped, because only that one goes to datapallas.com.
+    else if (!this.changeLogRequested) {
+      this.changeLogRequested = true;
+
       let changeLogResponseAsJson: any;
 
       try {

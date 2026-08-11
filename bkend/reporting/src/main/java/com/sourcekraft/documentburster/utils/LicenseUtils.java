@@ -386,11 +386,18 @@ public class LicenseUtils {
 		if (cachedCurlPath != null && !"JAXRS".equals(cachedCurlPath)) {
 			for (int a = 1; a <= CURL_ATTEMPTS; a++) {
 				String out = tryCurlAndReturnString(cachedCurlPath, url, jsonBody, reqId);
-				if (out != null && isValidResponse(out, action)) {
-					log.debug("[{}] cached candidate {} produced valid response", reqId, cachedCurlPath);
-					return out;
+				if (out != null) {
+					if (isValidResponse(out, action)) {
+						log.debug("[{}] cached candidate {} produced valid response", reqId, cachedCurlPath);
+						return out;
+					}
+					// Answered, just not with anything of ours. Retrying cannot change
+					// what the server sends back — see the candidate loop below.
+					log.debug("[{}] cached curl {} reached the server, which answered with something else", reqId,
+							cachedCurlPath);
+					break;
 				}
-				log.debug("[{}] cached curl {} attempt {}/{} failed/invalid", reqId, cachedCurlPath, a, CURL_ATTEMPTS);
+				log.debug("[{}] cached curl {} attempt {}/{} failed", reqId, cachedCurlPath, a, CURL_ATTEMPTS);
 				try {
 					Thread.sleep(150);
 				} catch (InterruptedException ie) {
@@ -424,6 +431,11 @@ public class LicenseUtils {
 
 		LinkedHashSet<String> uniq = new LinkedHashSet<>(candidates);
 
+		// Set when curl reached the server and the server answered with something
+		// that is not a licensing response. Stops the walk: the remaining binaries
+		// would ask the same server the same question and get the same answer.
+		boolean serverAnsweredSomethingElse = false;
+
 		for (String cand : uniq) {
 			Path p = Paths.get(cand);
 			boolean allowPathLookup = "curl.exe".equalsIgnoreCase(cand) || "curl".equalsIgnoreCase(cand);
@@ -440,13 +452,20 @@ public class LicenseUtils {
 						cachedCurlPath = cand;
 						log.debug("[{}] candidate {} produced valid response and is cached", reqId, cand);
 						return out;
-					} else {
-						log.debug("[{}] curl (candidate {}) returned invalid payload attempt {}/{}", reqId, cand, a,
-								CURL_ATTEMPTS);
 					}
-				} else {
-					log.debug("[{}] curl (candidate {}) failed attempt {}/{}", reqId, cand, a, CURL_ATTEMPTS);
+					// curl RAN and the server ANSWERED — the answer simply is not ours
+					// (a 404 page, a proxy notice). Neither another attempt nor another
+					// curl binary can change what the server chose to send, so stop
+					// here instead of asking the same question nine times.
+					//
+					// This is the difference between "we could not ask" and "we asked
+					// and got something else", and it is worth the extra branch: when
+					// the products endpoint was missing, every single lookup spawned
+					// nine curl processes to be told the same thing nine times.
+					serverAnsweredSomethingElse = true;
+					break;
 				}
+				log.debug("[{}] curl (candidate {}) failed attempt {}/{}", reqId, cand, a, CURL_ATTEMPTS);
 				try {
 					Thread.sleep(150);
 				} catch (InterruptedException ie) {
@@ -454,9 +473,14 @@ public class LicenseUtils {
 					break;
 				}
 			}
+
+			if (serverAnsweredSomethingElse) {
+				logNotALicensingAnswer(action, reqId, url, cand);
+				break;
+			}
+
 			// emit a single warn for this candidate exhaustion
-			log.warn("[{}] url={} curl candidate {} exhausted after {} attempts and did not return a valid "
-					+ "license payload", reqId, url, cand, CURL_ATTEMPTS);
+			logCurlExhausted(action, reqId, url, cand);
 		}
 
 		// none of the curl candidates produced a validated response -> fallback to
@@ -464,6 +488,40 @@ public class LicenseUtils {
 		cachedCurlPath = "JAXRS";
 		log.debug("[{}] falling back to JAX-RS for url={}", reqId, url);
 		return jaxrsPost(client, url, jsonBody);
+	}
+
+	/**
+	 * curl reached the server and the server answered with something that is not a
+	 * licensing response.
+	 *
+	 * <p>
+	 * A licence answer that is not a licence answer is worth saying out loud. A
+	 * release announcement that does not arrive is worth nothing to the person
+	 * using the software — they did not ask for it, it changes nothing about their
+	 * run, and a warning in their log only makes a working installation look
+	 * broken. This is the same distinction {@link #isReleaseAnnouncement} already
+	 * draws for the body of the response; it was simply never applied to the
+	 * transport's own warnings, which is why a missing products endpoint filled the
+	 * warnings panel with lines about licence payloads.
+	 */
+	private void logNotALicensingAnswer(String action, String reqId, String url, String cand) {
+		if (isReleaseAnnouncement(action)) {
+			log.debug("[{}] url={} answered, but not with a release announcement (via {})", reqId, url, cand);
+			return;
+		}
+		log.warn("[{}] url={} answered, but not with a licensing response (via {}) — most likely a proxy or an "
+				+ "error page rather than the API", reqId, url, cand);
+	}
+
+	/** curl could not get an answer at all: it failed to run, or the call failed. */
+	private void logCurlExhausted(String action, String reqId, String url, String cand) {
+		if (isReleaseAnnouncement(action)) {
+			log.debug("[{}] url={} curl candidate {} exhausted after {} attempts (release announcement)", reqId, url,
+					cand, CURL_ATTEMPTS);
+			return;
+		}
+		log.warn("[{}] url={} curl candidate {} exhausted after {} attempts and did not return a valid "
+				+ "license payload", reqId, url, cand, CURL_ATTEMPTS);
 	}
 
 	/** A null body means GET — the release lookup takes no payload. */
