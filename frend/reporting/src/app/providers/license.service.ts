@@ -1,7 +1,5 @@
 ﻿import { Injectable } from '@angular/core';
 
-import * as xml2js from 'xml2js';
-
 import { Changelog, parser } from 'keep-a-changelog';
 
 import * as semver from 'semver';
@@ -11,6 +9,7 @@ import { ConfigurationRepository } from './configuration-repository.service';
 import { AppPathsService } from './app-paths.service';
 import { FsService } from './fs.service';
 import { ApiService } from './api.service';
+import { ToastrMessagesService } from './toastr-messages.service';
 import { ReportsService } from './reports.service';
 
 @Injectable({
@@ -44,22 +43,55 @@ export class LicenseService {
     protected reportsService: ReportsService,
     protected fsService: FsService,
     protected apiService: ApiService,
+    protected messagesService: ToastrMessagesService,
   ) {
     this.licenseFilePath = Utilities.slash(
       `${this.appPathsService.CONFIGURATION_FOLDER_PATH}/_internal/license.xml`,
     );
   }
 
+  /**
+   * Persist the licence.
+   *
+   * The failure MUST be shown. This used to write the file directly, so it
+   * could not really fail; it now goes through the licence API, which can — and
+   * because the caller fired it on every keystroke and nobody caught the
+   * rejection, a rejected save looked exactly like a successful one. The key
+   * stayed on screen because it lives in this object, never reached
+   * license.xml, and the failure only surfaced later as Activate complaining
+   * that no key was defined, which reads as an unrelated bug.
+   *
+   * Whatever goes wrong next, it says so here instead of hiding until something
+   * downstream trips over it.
+   */
   async saveLicense() {
-    //console.log(
-    //  `saveLicenseFileAsync - this.licenseDetails = ${JSON.stringify(
-    //    this.licenseDetails,
-    //  )}`,
-    //);
+    try {
+      return await this.apiService.put(
+        '/system/license/',
+        this.licenseDetails.license,
+      );
+    } catch (error: any) {
+      const detail = error?.error?.message ?? error?.message ?? '';
+      console.error('Could not save the licence', error);
 
-    const builder = new xml2js.Builder();
-
-    return this.apiService.put('/system/license/', this.licenseDetails.license);
+      // Worded as a FAULT, not as bad input. Nothing the user types makes this
+      // succeed — the key is not validated on save, so a failure here is always
+      // a defect in the application or a server that is not running. Telling
+      // someone to check their data and try again would be a lie, and would
+      // teach them to ignore it.
+      this.messagesService.showError(
+        detail
+          ? `The licence could not be saved — ${detail}`
+          : 'The licence could not be saved. Nothing was written.',
+        'Internal error — please report this',
+      );
+      // Deliberately not rethrown. The only caller is the licence key input,
+      // which fires this on every keystroke and does not await it — rethrowing
+      // would turn each failed keystroke into an unhandled rejection. The toast
+      // and the console line are the report; swallowing SILENTLY is what this
+      // change exists to stop.
+      return undefined;
+    }
   }
 
   async loadLicense() {
