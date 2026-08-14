@@ -18,7 +18,10 @@ import com.flowkraft.common.Utils;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.jobs.services.JobExecutionService;
 import com.flowkraft.license.model.LicenseDetails;
+import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettings;
 import com.sourcekraft.documentburster.utils.LicenseUtils;
+
+import static com.sourcekraft.documentburster.utils.Utils.resolvePathAgainstPortableDir;
 
 @Service
 public class LicenseService {
@@ -72,8 +75,19 @@ public class LicenseService {
 
 		productInfo.product = Utils.getProductName();
 
-		//DocumentBursterSettings defaultSettings = this.settingsService.loadSettings("settings.xml");
-		//productInfo.version = defaultSettings.settings.version;
+		// The version that is installed, read from the same settings.xml the About screen binds to so
+		// the API and the UI can never disagree about which version this is. It is deliberately local:
+		// only the installation knows what it is running. The lookup below answers the other half —
+		// what the newest release is — and comparing the two is what offers an update.
+		try {
+			DocumentBursterSettings installedSettings = this.settingsService
+					.loadSettings(resolveDefaultSettingsPath());
+			productInfo.version = installedSettings.settings.version;
+		} catch (Exception e) {
+			// An unreadable settings.xml must not break the About screen, for the same reason an
+			// unreachable products server must not: neither is something the reader can act on.
+			log.warn("Failed to read the installed version from settings.xml", e);
+		}
 
 		// Through LicenseUtils, which is the one place that talks to datapallas.com.
 		//
@@ -103,6 +117,21 @@ public class LicenseService {
 
 		return productInfo;
 
+	}
+
+	/**
+	 * The settings file the About screen reads — {@code config/_defaults/settings.xml}, the same one
+	 * {@code GET /api/reports/_defaults/settings} serves the UI — falling back to the burst
+	 * configuration on an installation that has no defaults file.
+	 */
+	private String resolveDefaultSettingsPath() {
+
+		String defaultsPath = resolvePathAgainstPortableDir("config/_defaults/settings.xml");
+
+		if (new File(defaultsPath).exists())
+			return defaultsPath;
+
+		return resolvePathAgainstPortableDir("config/burst/settings.xml");
 	}
 
 	// A trust-everything HTTPS client used to live here, to work around a broken

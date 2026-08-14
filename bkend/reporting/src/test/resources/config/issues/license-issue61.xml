@@ -14,4 +14,6 @@
     <seats></seats>
     <maintenanceuntil></maintenanceuntil>
     <lastverdict>valid</lastverdict>
+    <maxtenants></maxtenants>
+    <maxusers></maxusers>
 </license>
