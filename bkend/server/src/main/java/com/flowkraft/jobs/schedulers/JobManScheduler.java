@@ -1,8 +1,5 @@
 package com.flowkraft.jobs.schedulers;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-
 import jakarta.annotation.PostConstruct;
 
 import org.apache.commons.lang3.StringUtils;
@@ -41,33 +38,36 @@ public class JobManScheduler {
 		this.context = context;
 	}
 
+	/**
+	 * Stop the server once the DataPallas.exe (Electron) that started it is gone.
+	 *
+	 * <p>This is the only thing that ends the server process, so it is deliberately the cheapest and
+	 * most reliable check available: {@link ProcessHandle} asks the operating system directly, with no
+	 * child process to spawn, no streams to drain and nothing that can block. A watchdog that shells
+	 * out several times a second is a watchdog that eventually hangs — and a hung one leaves an
+	 * orphaned server holding the installation's files and its port for as long as the machine stays
+	 * on.
+	 *
+	 * <p>It runs on its own schedule rather than alongside the statistics push so that a slow push can
+	 * never delay shutdown.
+	 */
+	@Scheduled(fixedRate = 1000)
+	public void stopServerWhenTheDesktopIsClosed() {
+
+		if (StringUtils.isBlank(parentElectronPid))
+			return;
+
+		long pid = Long.parseLong(parentElectronPid);
+
+		if (ProcessHandle.of(pid).filter(ProcessHandle::isAlive).isPresent())
+			return;
+
+		int exitCode = SpringApplication.exit(this.context, (ExitCodeGenerator) () -> 0);
+		System.exit(exitCode);
+	}
+
 	@Scheduled(fixedRate = 250)
 	public void publishExecutionStatsDetailsToWebSocket() throws Exception {
-
-		// stop the server if the user closed the "parent" DataPallas.exe (Electron)
-		// which initiated the
-		// server
-		if (StringUtils.isNotBlank(parentElectronPid)) {
-			long pid = Long.parseLong(parentElectronPid);
-			// Execute a command to check if the process is running
-			Process process = Runtime.getRuntime().exec("tasklist /FI \"PID eq " + pid + "\"");
-			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			String line;
-			boolean isRunning = false;
-			while ((line = reader.readLine()) != null && !isRunning) {
-				if (line.contains(String.valueOf(pid))) {
-					isRunning = true;
-				}
-			}
-			if (!isRunning) {
-				// Electron process is not running, stop the Spring Boot application
-				//System.out.println("rbsj.JobManScheduler - DataPallas.exe (Electron) process having PID " + pid
-				//		+ " was closed => stop its corresponding SpringBoot server application");
-
-				int exitCode = SpringApplication.exit(this.context, (ExitCodeGenerator) () -> 0);
-				System.exit(exitCode);
-			}
-		}
 
 		WebSocketJobsExecutionStatsInfo execStatsMessageInfo = new WebSocketJobsExecutionStatsInfo("stats.jobs",
 				jobsService.fetchStats());

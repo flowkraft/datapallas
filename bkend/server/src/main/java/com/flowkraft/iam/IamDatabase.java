@@ -14,6 +14,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.sqlite.SQLiteConfig;
+import org.sqlite.SQLiteDataSource;
 
 import com.flowkraft.common.AppPaths;
 import com.zaxxer.hikari.HikariConfig;
@@ -53,18 +55,51 @@ public class IamDatabase {
 		Files.createDirectories(dbPath.getParent());
 
 		HikariConfig config = new HikariConfig();
-		config.setJdbcUrl("jdbc:sqlite:" + dbPath.toString().replace("\\", "/"));
+		config.setDataSource(sqliteDataSource(dbPath));
 		config.setPoolName("iam-pool");
 		// IAM is a login and a handful of role lookups per request — a large pool would only add
 		// contention on a database that serialises writers anyway.
 		config.setMaximumPoolSize(4);
 		config.setConnectionTimeout(10_000);
+		// An open connection is an open file handle on the installation folder, and DataPallas is a
+		// portable application people copy, zip, back up and upgrade in place. Letting the pool drain
+		// to nothing means the store is locked only while somebody is actually signing in.
+		config.setMinimumIdle(0);
+		config.setIdleTimeout(30_000);
 
 		dataSource = new HikariDataSource(config);
 
 		createSchema();
 
 		log.info("IAM store ready at {}", dbPath);
+	}
+
+	/**
+	 * SQLite settings belong to a <em>connection</em>, not to the database file, so they are declared
+	 * here — where the driver applies them to every connection the pool opens — rather than executed
+	 * once against whichever connection happened to create the schema.
+	 *
+	 * <ul>
+	 *   <li>{@code foreign_keys} is off by default in SQLite. Without it on every connection, the
+	 *       {@code ON DELETE CASCADE} clauses in the schema are decorative and deleting a user leaves
+	 *       their memberships behind.</li>
+	 *   <li>{@code busy_timeout} decides how long a second writer waits before giving up with
+	 *       SQLITE_BUSY — which reaches the user as a failed login or a failed user edit. Stated here
+	 *       rather than inherited from whatever the driver happens to default to, because HikariCP's
+	 *       connection timeout does not cover it: that one governs waiting for a pool slot, not waiting
+	 *       for the database lock.</li>
+	 *   <li>{@code journal_mode=WAL} lets readers proceed during a write.</li>
+	 * </ul>
+	 */
+	private SQLiteDataSource sqliteDataSource(Path dbPath) {
+		SQLiteConfig sqlite = new SQLiteConfig();
+		sqlite.enforceForeignKeys(true);
+		sqlite.setBusyTimeout(5_000);
+		sqlite.setJournalMode(SQLiteConfig.JournalMode.WAL);
+
+		SQLiteDataSource ds = new SQLiteDataSource(sqlite);
+		ds.setUrl("jdbc:sqlite:" + dbPath.toString().replace("\\", "/"));
+		return ds;
 	}
 
 	@PreDestroy
@@ -99,9 +134,6 @@ public class IamDatabase {
 	 */
 	private void createSchema() throws SQLException {
 		try (Connection conn = getConnection(); Statement st = conn.createStatement()) {
-
-			st.execute("PRAGMA journal_mode=WAL");
-			st.execute("PRAGMA foreign_keys=ON");
 
 			st.execute("""
 					CREATE TABLE IF NOT EXISTS schema_version (
