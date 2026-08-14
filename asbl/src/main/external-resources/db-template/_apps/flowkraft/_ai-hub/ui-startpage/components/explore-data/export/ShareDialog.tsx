@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   ShareLink,
@@ -9,6 +10,27 @@ import {
   listShareLinks,
   revokeShareLink,
 } from "@/lib/explore-data/share-api";
+
+/**
+ * A date a person can read, from what SQLite actually stores.
+ *
+ * `datetime('now')` writes UTC with no timezone marker — "2026-08-14 17:38:37" — and a browser
+ * reading that string treats it as LOCAL time, so simply formatting it lands hours out with nothing
+ * on screen to say why. Parsed as UTC explicitly, then shown as a plain date in the reader's own
+ * locale: a share link is measured in days, and the second it was minted at helps nobody.
+ */
+function formatWhen(sqliteUtc: string | null): string {
+  if (!sqliteUtc) return "Never";
+
+  const parsed = new Date(`${sqliteUtc.replace(" ", "T")}Z`);
+  if (Number.isNaN(parsed.getTime())) return sqliteUtc;
+
+  return parsed.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 interface ShareDialogProps {
   open: boolean;
@@ -88,7 +110,13 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
     setCopied(true);
   };
 
-  return (
+  // Through a portal, exactly like ExportDialog next door — and for a reason that is visible the
+  // moment it is missing. The canvas positions its widgets with `transform: translate(...)`, and a
+  // transformed ancestor becomes the containing block for `position: fixed` children AND starts its
+  // own stacking context. Rendered inline, this dialog was therefore centred on the toolbar's box
+  // rather than the viewport (clipped off the top) while canvas widgets painted straight over it —
+  // taking the Close button with them.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         id="shareDialog"
@@ -165,8 +193,8 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
           <tbody>
             {links.map((link) => (
               <tr key={link.id} id={`shareLink-${link.id}`}>
-                <td className="text-xs">{link.createdAt}</td>
-                <td className="text-xs">{link.expiresAt ?? "Never"}</td>
+                <td className="text-xs">{formatWhen(link.createdAt)}</td>
+                <td className="text-xs">{formatWhen(link.expiresAt)}</td>
                 <td className="text-right">
                   <button
                     id={`btnRevokeShareLink-${link.id}`}
@@ -195,6 +223,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
