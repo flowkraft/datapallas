@@ -263,6 +263,54 @@ export class Helpers {
     this.firstPage = null;
   }
 
+  /**
+   * Empties `/config` the way `jetpack.dirAsync({empty:true})` would, except it leaves the IAM
+   * SQLite store alone. The backend opens `config/_internal/iam.db` at boot and holds it (plus its
+   * WAL sidecars) open for the whole worker, so on Windows unlinking it fails with EBUSY and the
+   * clean-state loop never terminates. IAM state is auto-provisioned at boot, not fixture config,
+   * so keeping the file across tests costs nothing.
+   */
+  static emptyConfigFolderKeepingIamStore = async (configPath: string) => {
+    const keptInInternal = (name: string) => name.startsWith('iam.db');
+
+    const entries = (await jetpack.listAsync(configPath)) || [];
+
+    for (const entry of entries) {
+      if (entry !== '_internal') {
+        await jetpack.removeAsync(`${configPath}/${entry}`);
+        continue;
+      }
+
+      const internalEntries =
+        (await jetpack.listAsync(`${configPath}/_internal`)) || [];
+
+      for (const internalEntry of internalEntries) {
+        if (keptInInternal(internalEntry)) continue;
+        await jetpack.removeAsync(`${configPath}/_internal/${internalEntry}`);
+      }
+    }
+
+    // Nothing but the IAM store may survive - anything else means the wipe silently failed.
+    const leftovers = (await jetpack.listAsync(configPath)) || [];
+    const unexpected = leftovers.filter((entry) => entry !== '_internal');
+
+    if (unexpected.length > 0)
+      throw new Error(
+        `restoreDocumentBursterCleanState /config folder not empty: ${unexpected.join(', ')}`,
+      );
+
+    const internalLeftovers =
+      (await jetpack.listAsync(`${configPath}/_internal`)) || [];
+    const unexpectedInternal = internalLeftovers.filter(
+      (entry) => !keptInInternal(entry),
+    );
+
+    if (unexpectedInternal.length > 0)
+      throw new Error(
+        `restoreDocumentBursterCleanState /config/_internal folder not empty: ${unexpectedInternal.join(', ')}`,
+      );
+  };
+
   static restoreDocumentBursterCleanState = async (
     shouldDeactivateLicense: boolean,
   ) => {
@@ -327,20 +375,11 @@ export class Helpers {
       try {
         //console.log('restoreDocumentBursterCleanState /config folder emptying');
 
-        await jetpack.dirAsync(
-          `${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.CONFIG_PATH}`,
-          { empty: true },
-        );
-
-        let configFiles = await jetpack.listAsync(
+        await this.emptyConfigFolderKeepingIamStore(
           `${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.CONFIG_PATH}`,
         );
 
-        if (configFiles && configFiles.length > 0) {
-          throw new Error(
-            `restoreDocumentBursterCleanState /config folder not empty`,
-          );
-        }
+        let configFiles: string[];
 
         await jetpack.copyAsync(
           verifiedDbFolder[0] + '/config',

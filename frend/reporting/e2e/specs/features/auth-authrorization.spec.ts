@@ -16,16 +16,16 @@ import { FluentTester } from '../../helpers/fluent-tester';
  * DataPallas ships as one codebase in three shapes — Electron desktop
  * (DataPallas.exe), Spring Boot + Angular on a native JDK, and the same stack in
  * Docker. Authentication must behave differently in each WITHOUT the code
- * forking, so this file is organised by the three claims that matter:
+ * forking, so this file is organised by the three claims that matter HERE:
  *
  *   1. DESKTOP IS INVISIBLE. In Electron (RB_ROLE=standalone) the user is never
  *      asked to log in, never asked to configure anything auth-related, and
  *      never shown a users/roles/tenants screen — even though the IAM code is
  *      present and a DEFAULT tenant + DEFAULT admin exist behind the scenes.
  *
- *   2. MULTI-USER ACTUALLY SEPARATES. With RB_ROLE set to a multi-user mode,
- *      login is required, roles are enforced per endpoint, and a VIEWER cannot
- *      reach what an AUTHOR or TENANT_ADMIN can.
+ *   2. AN EMBED TOKEN GRANTS EXACTLY ONE REPORT. Pure REST, so it holds in every
+ *      mode — in standalone the local caller is already an administrator, which
+ *      makes minting allowed and the scoping the only thing under test.
  *
  *   3. THE TRUST BOUNDARY HOLDS IN EVERY MODE. Groovy, FreeMarker and Jasper are
  *      the product and cannot be sandboxed, so the boundary is the installation
@@ -33,15 +33,26 @@ import { FluentTester } from '../../helpers/fluent-tester';
  *      the desktop too, and it does today.
  *
  * ---------------------------------------------------------------------------
+ * WHAT IS NOT HERE
+ * ---------------------------------------------------------------------------
+ *
+ * The opposite claim — login required, roles enforced — is DataPallas Server
+ * only, and needs a backend started in a multi-user RB_ROLE. It lives in
+ * auth-authorization-server.spec.ts and runs under its own script:
+ *
+ *   npm run custom:start-server-and-e2e-server-auth
+ *
+ * It cannot be checked here: Electron is always standalone, and a run that
+ * creates real accounts escalates the installation to GATEWAY permanently
+ * (IamService.resolveEffectiveMode), which would break every test in this file.
+ *
+ * ---------------------------------------------------------------------------
  * HOW TO RUN
  * ---------------------------------------------------------------------------
  *
- * Groups 1 and 3 run as part of the normal suite, in BOTH Electron and Web:
+ * Part of the normal suite, in BOTH Electron and Web:
  *   npm run custom:start-server-and-e2e-electron
  *   npm run custom:start-server-and-e2e-web
- *
- * Group 2 needs a backend started in multi-user mode, so it is opt-in:
- *   RB_AUTH_MULTIUSER=true npm run custom:start-server-and-e2e-web
  *
  * Every group self-skips with an explicit message while Phase 1 of
  * .docs/auth-authorization-design.md is unimplemented — GET /api/auth/me
@@ -52,15 +63,6 @@ import { FluentTester } from '../../helpers/fluent-tester';
 
 const BASE_URL = 'http://localhost:9090';
 const PORTABLE_DIR = process.env.PORTABLE_EXECUTABLE_DIR!;
-
-const IS_ELECTRON = process.env.TEST_ENV === 'electron';
-const MULTIUSER_RUN = process.env.RB_AUTH_MULTIUSER === 'true';
-
-// Credentials the multi-user group provisions for itself. The desktop never has
-// credentials at all — that is the point of group 1.
-const ADMIN = { username: 'e2e-admin', password: 'E2eAdminPassword123!' };
-const AUTHOR = { username: 'e2e-author', password: 'E2eAuthorPassword123!' };
-const VIEWER = { username: 'e2e-viewer', password: 'E2eViewerPassword123!' };
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -101,36 +103,6 @@ async function skipUnlessAuthImplemented() {
   );
 }
 
-/** Log in and return the Set-Cookie value to reuse as a session. */
-async function login(username: string, password: string): Promise<string> {
-  const res = await fetch(`${BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
-  expect(res.status, `login as ${username} should succeed`).toBe(200);
-  const cookie = res.headers.get('set-cookie');
-  expect(cookie, `login as ${username} should return a session cookie`).toBeTruthy();
-  return cookie!.split(';')[0];
-}
-
-/** Call an endpoint as a given session and return the status only. */
-async function statusAs(
-  cookie: string,
-  method: string,
-  urlPath: string,
-  body?: unknown,
-): Promise<number> {
-  const res = await fetch(`${BASE_URL}${urlPath}`, {
-    method,
-    headers: {
-      Cookie: cookie,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  return res.status;
-}
 
 // ===========================================================================
 // GROUP 1 — DESKTOP (standalone): the user must never see authentication
@@ -152,7 +124,9 @@ test.describe('Auth — Desktop / standalone mode is invisible', () => {
     const me = (await res.json()) as Identity;
     expect(me.mode).toBe('standalone');
     expect(me.tenant.code).toBe('default');
-    expect(me.roles).toContain('TENANT_ADMIN');
+    // ADMIN, not TENANT_ADMIN: the rung was renamed and Role.parse keeps accepting the old name on
+    // the way IN, for stores written before the rename. What comes OUT is always the current name.
+    expect(me.roles).toContain('ADMIN');
   });
 
   test('(standalone-api) no credentials are written anywhere the user could stumble over them', async () => {
@@ -196,7 +170,8 @@ test.describe('Auth — Desktop / standalone mode is invisible', () => {
         .elementShouldNotBeVisible('#btnLogin')
         .elementShouldNotBeVisible('#btnLogout')
         .elementShouldNotBeVisible('#userMenu')
-        .pageShouldNotContainText('Sign in')
+        // The burst/burst reminder belongs to a server's login page and must never reach a desktop.
+        .elementShouldNotBeVisible('#defaultCredentialsNotice')
         .appStatusShouldBeGreatNoErrorsNoWarnings();
     },
   );
@@ -214,8 +189,9 @@ test.describe('Auth — Desktop / standalone mode is invisible', () => {
       await ft
         .gotoConfigurationReports()
         .elementShouldNotBeVisible('#btnNavSectionUsers')
-        .pageShouldNotContainText('Users & Tenants')
-        .pageShouldNotContainText('Administration')
+        // Not only the menu entry — the screen behind it must not be reachable either.
+        .elementShouldNotBeVisible('#tableUsers')
+        .elementShouldNotBeVisible('#btnNewUser')
         .appStatusShouldBeGreatNoErrorsNoWarnings();
     },
   );
@@ -240,321 +216,7 @@ test.describe('Auth — Desktop / standalone mode is invisible', () => {
 });
 
 // ===========================================================================
-// GROUP 2 — MULTI-USER: login required, roles enforced
-// ===========================================================================
-
-test.describe('Auth — Multi-user mode enforces users and roles', () => {
-  test.skip(
-    !MULTIUSER_RUN,
-    'set RB_AUTH_MULTIUSER=true and start the backend in a multi-user RB_ROLE to run this group',
-  );
-
-  // Provision the two non-admin roles this group needs. Idempotent, so a second
-  // run against the same install must not fail on "already exists".
-  //
-  // NOTE: this cannot be a test.beforeAll that calls test.skip() — Playwright only
-  // allows test.skip() from a test body or beforeEach. So the hook bails out
-  // quietly and every test does its own skip check.
-  test.beforeAll(async () => {
-    if (!(await authApiIsImplemented())) return;
-
-    const adminCookie = await login(ADMIN.username, ADMIN.password);
-
-    for (const [user, role] of [
-      [AUTHOR, 'AUTHOR'],
-      [VIEWER, 'VIEWER'],
-    ] as const) {
-      const status = await statusAs(adminCookie, 'POST', '/api/iam/users', {
-        username: user.username,
-        password: user.password,
-        role,
-      });
-      expect([200, 201, 409]).toContain(status);
-    }
-  });
-
-  test.beforeEach(async () => {
-    await skipUnlessAuthImplemented();
-  });
-
-  //
-  // -- Authentication ------------------------------------------------------
-  //
-
-  test('(multiuser-login) an unauthenticated caller is refused, not served', async () => {
-    expect((await getMe()).status).toBe(401);
-    expect(
-      await fetch(`${BASE_URL}/api/reports`).then((r) => r.status),
-      'listing reports must require a session',
-    ).toBe(401);
-  });
-
-  test('(multiuser-login) wrong credentials do not create a session', async () => {
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: ADMIN.username, password: 'not-the-password' }),
-    });
-    expect(res.status).toBe(401);
-  });
-
-  test('(multiuser-login) logout invalidates the session', async () => {
-    const cookie = await login(VIEWER.username, VIEWER.password);
-    expect(await statusAs(cookie, 'POST', '/api/auth/logout')).toBe(200);
-    expect(
-      (await getMe(cookie)).status,
-      'the cookie must be dead after logout',
-    ).toBe(401);
-  });
-
-  test('(multiuser-login) mode and roles are reported accurately per user', async () => {
-    const me = (await getMe(await login(AUTHOR.username, AUTHOR.password)).then((r) =>
-      r.json(),
-    )) as Identity;
-    expect(me.mode).not.toBe('standalone');
-    expect(me.roles).toContain('AUTHOR');
-    expect(me.roles).not.toContain('TENANT_ADMIN');
-  });
-
-  //
-  // -- Authorization: the code-execution endpoints -------------------------
-  //
-  // These are the endpoints that matter most. run-script and /dsl/parse
-  // evaluate Groovy from the request body, so reaching them IS code execution.
-  //
-
-  test('(multiuser-authz) a VIEWER cannot execute Groovy', async () => {
-    const cookie = await login(VIEWER.username, VIEWER.password);
-
-    expect(
-      await statusAs(cookie, 'POST', '/api/queries/run-script', {
-        connectionId: 'db-sample-northwind-sqlite',
-        script: 'return []',
-      }),
-      'run-script must be closed to VIEWER',
-    ).toBe(403);
-
-    expect(
-      await statusAs(cookie, 'POST', '/api/dsl/chart/parse', { dslCode: 'chart {}' }),
-      'dsl parse compiles and runs Groovy — must be closed to VIEWER',
-    ).toBe(403);
-  });
-
-  test('(multiuser-authz) an AUTHOR can execute Groovy and edit report scripts', async () => {
-    const cookie = await login(AUTHOR.username, AUTHOR.password);
-
-    expect(
-      await statusAs(cookie, 'POST', '/api/dsl/chart/parse', { dslCode: 'chart {}' }),
-      'authoring a chart DSL is an AUTHOR capability',
-    ).toBe(200);
-  });
-
-  //
-  // -- Authorization: secrets and the filesystem --------------------------
-  //
-
-  test('(multiuser-authz) only a TENANT_ADMIN can reveal a stored password', async () => {
-    const viewer = await login(VIEWER.username, VIEWER.password);
-    const author = await login(AUTHOR.username, AUTHOR.password);
-
-    for (const [label, cookie] of [
-      ['VIEWER', viewer],
-      ['AUTHOR', author],
-    ] as const) {
-      expect(
-        await statusAs(cookie, 'POST', '/api/connections/eml-contact/reveal-password'),
-        `${label} must not be able to decrypt a stored secret`,
-      ).toBe(403);
-    }
-  });
-
-  test('(multiuser-authz) only a TENANT_ADMIN can reach the filesystem API', async () => {
-    const cookie = await login(AUTHOR.username, AUTHOR.password);
-
-    expect(
-      await statusAs(cookie, 'GET', '/api/system/fs/content?path=config/_internal/settings.xml'),
-    ).toBe(403);
-    expect(await statusAs(cookie, 'DELETE', '/api/system/fs?path=logs/info.log')).toBe(403);
-  });
-
-  test('(multiuser-authz) only a TENANT_ADMIN can manage users', async () => {
-    const cookie = await login(AUTHOR.username, AUTHOR.password);
-
-    expect(
-      await statusAs(cookie, 'POST', '/api/iam/users', {
-        username: 'smuggled-in',
-        password: 'Whatever123!',
-        role: 'TENANT_ADMIN',
-      }),
-      'privilege escalation via user creation must be closed',
-    ).toBe(403);
-
-    expect(await statusAs(cookie, 'GET', '/api/iam/users')).toBe(403);
-    expect(await statusAs(cookie, 'GET', '/api/iam/tenants')).toBe(403);
-  });
-
-  test('(multiuser-authz) PLATFORM_ADMIN cannot be granted through the tenant API', async () => {
-    const admin = await login(ADMIN.username, ADMIN.password);
-
-    // PLATFORM_ADMIN is not a tenant role. Allowing it here would let a tenant administrator
-    // promote someone above their own tenant.
-    expect(
-      await statusAs(admin, 'POST', '/api/iam/users', {
-        username: 'would-be-platform-admin',
-        password: 'Whatever123!',
-        role: 'PLATFORM_ADMIN',
-      }),
-    ).toBe(400);
-  });
-
-  test('(multiuser-admin) an admin can create a user, change their role and delete them', async () => {
-    const admin = await login(ADMIN.username, ADMIN.password);
-    const username = 'e2e-lifecycle-user';
-
-    // Delete first so a re-run starts clean, then walk the whole lifecycle.
-    await statusAs(admin, 'DELETE', `/api/iam/users/${username}`);
-
-    expect(
-      await statusAs(admin, 'POST', '/api/iam/users', {
-        username,
-        password: 'LifecyclePassword123!',
-        role: 'VIEWER',
-      }),
-    ).toBe(201);
-
-    // The listing carries the role, which is what the admin screen renders in its picker.
-    const users = await fetch(`${BASE_URL}/api/iam/users`, { headers: { Cookie: admin } }).then((r) =>
-      r.json(),
-    );
-    expect(users.find((u: { username: string }) => u.username === username)?.role).toBe('VIEWER');
-
-    expect(
-      await statusAs(admin, 'PUT', `/api/iam/users/${username}/role`, { role: 'AUTHOR' }),
-    ).toBe(200);
-
-    expect(await statusAs(admin, 'DELETE', `/api/iam/users/${username}`)).toBe(200);
-  });
-
-  test('(multiuser-admin) a duplicate username is a 409, so provisioning can be re-run', async () => {
-    const admin = await login(ADMIN.username, ADMIN.password);
-
-    expect(
-      await statusAs(admin, 'POST', '/api/iam/users', {
-        username: AUTHOR.username,
-        password: AUTHOR.password,
-        role: 'AUTHOR',
-      }),
-    ).toBe(409);
-  });
-
-  //
-  // -- Per-user separation of config and runtime -------------------------
-  //
-
-  test('(multiuser-ownership) a private report is invisible to another user', async () => {
-    const author = await login(AUTHOR.username, AUTHOR.password);
-    const viewer = await login(VIEWER.username, VIEWER.password);
-
-    const reportId = 'e2e-private-report';
-    const created = await statusAs(author, 'POST', '/api/reports', {
-      reportId,
-      visibility: 'private',
-    });
-    expect([200, 201, 409]).toContain(created);
-
-    const visibleToViewer = await fetch(`${BASE_URL}/api/reports`, {
-      headers: { Cookie: viewer },
-    }).then((r) => r.json());
-
-    expect(
-      JSON.stringify(visibleToViewer),
-      "another user's private report must not appear in the list",
-    ).not.toContain(reportId);
-  });
-
-  test('(multiuser-ownership) job history is attributed to the user who ran it', async () => {
-    const cookie = await login(AUTHOR.username, AUTHOR.password);
-
-    const jobs = await fetch(`${BASE_URL}/api/jobs`, { headers: { Cookie: cookie } }).then((r) =>
-      r.json(),
-    );
-
-    // Every job the API hands back must carry an owner, so logs and output can be
-    // filtered per user rather than pooled per installation.
-    for (const job of Array.isArray(jobs) ? jobs : []) {
-      expect(job.owner, 'every job record must name its owner').toBeTruthy();
-    }
-  });
-
-  //
-  // -- The login UI, in web mode only ------------------------------------
-  //
-
-  electronBeforeAfterAllTest(
-    '(multiuser-ui) the web app presents a login screen and a working logout',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
-      test.skip(IS_ELECTRON, 'Electron always runs standalone — covered by group 1');
-
-      const ft = new FluentTester(firstPage);
-
-      await ft
-        .waitOnElementToBecomeVisible('#loginUsername')
-        .click('#loginUsername')
-        .typeText(VIEWER.username)
-        .click('#loginPassword')
-        .typeText(VIEWER.password)
-        .click('#btnLogin')
-        .waitOnElementToBecomeVisible('#userMenu')
-        .elementShouldHaveText('#userMenu', VIEWER.username)
-        // A VIEWER sees no administration and no authoring entry points at all.
-        .elementShouldNotBeVisible('#btnNavSectionUsers')
-        .elementShouldNotBeVisible('#btnNewDropdown')
-        // Logging out returns to the login screen, not to a half-authenticated app.
-        .click('#userMenu')
-        .click('#btnLogout')
-        .waitOnElementToBecomeVisible('#loginUsername');
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    '(multiuser-ui) an admin can reach Users & Tenants and create a user from the UI',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
-      test.skip(IS_ELECTRON, 'Electron always runs standalone — covered by group 1');
-
-      const ft = new FluentTester(firstPage);
-      const username = 'e2e-ui-created-user';
-
-      await ft
-        .waitOnElementToBecomeVisible('#loginUsername')
-        .click('#loginUsername')
-        .typeText(ADMIN.username)
-        .click('#loginPassword')
-        .typeText(ADMIN.password)
-        .click('#btnLogin')
-        .waitOnElementToBecomeVisible('#userMenu')
-        // The administration entry exists for an admin, and only for an admin.
-        .waitOnElementToBecomeVisible('#btnNavSectionUsers')
-        .click('#btnNavSectionUsers')
-        .waitOnElementToBecomeVisible('#tableUsers')
-        .click('#btnNewUser')
-        .waitOnElementToBecomeVisible('#newUserUsername')
-        .click('#newUserUsername')
-        .typeText(username)
-        .click('#newUserPassword')
-        .typeText('UiCreatedPassword123!')
-        .click('#btnSaveNewUser')
-        .waitOnElementToBecomeVisible(`#user-${username}`)
-        // Roles are edited inline on the row — there is no separate Roles screen.
-        .elementShouldBeVisible(`#roleOf-${username}`)
-        .elementShouldBeVisible('#tableTenants');
-    },
-  );
-});
-
-// ===========================================================================
-// GROUP 4 — EMBEDDING: tokens for components, links for people
+// GROUP 2 — EMBEDDING: tokens for components, links for people
 // ===========================================================================
 //
 // Two credentials that are easy to confuse:

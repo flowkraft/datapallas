@@ -63,7 +63,9 @@ export const tabUsersTemplate = `
               }
             </select>
           </td>
-          <td>
+          <!-- The id sits on the cell rather than on either badge: only one of them is ever
+               rendered, so one id names "this person's status" whichever way it reads. -->
+          <td [id]="'statusOf-' + user.username">
             @if (user.status === 'ACTIVE') {
               <span class="badge badge-success badge-sm">Active</span>
             } @else {

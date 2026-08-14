@@ -2309,7 +2309,10 @@ export class FluentTester implements PromiseLike<void> {
   }
 
   private async doCheckPageNotToContainText(text: string): Promise<void> {
-    return expect(this.window.getByText(text) !== undefined).toBeFalsy();
+    // Against the locator, not against `locator !== undefined` — getByText always returns a
+    // Locator, so comparing it to undefined asks whether an object exists rather than whether the
+    // text does, and answers "yes" on an empty page as readily as on a full one.
+    return expect(this.window.getByText(text)).toHaveCount(0);
   }
 
   private async doWaitOnElementToHaveCount(
