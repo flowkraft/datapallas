@@ -84,6 +84,14 @@ log.transports.file.resolvePath = () => {
 
 log.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}] [{level}] - {text}';
 
+// electron-log echoes main-process messages into the renderer console whenever the app runs
+// unpackaged (dev and e2e). That closes a loop with the console-message mirror further down, which
+// logs renderer output from main: the echo arrives as a renderer message, gets logged, gets echoed
+// again, and each pass carries the whole previous message plus another source-location suffix. One
+// Angular warning is enough to grow a single line into megabytes. Main's log belongs in the file and
+// in main's own console; the renderer never needs to be told what main just wrote.
+log.transports.ipc.level = false;
+
 //console.log(
 //  `process.env.PORTABLE_EXECUTABLE_DIR: ${process.env.PORTABLE_EXECUTABLE_DIR}`,
 //);

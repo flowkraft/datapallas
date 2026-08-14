@@ -7,8 +7,6 @@
   viewChild,
 } from '@angular/core';
 import { SHARED_IMPORTS } from '../../shared/shared-imports';
-import { TreeComponent } from '../prime/tree.component';
-import { FileExplorerComponent } from '../file-explorer/file-explorer.component';
 import { FileExplorerDialogComponent } from '../file-explorer/file-explorer-dialog.component';
 import { MarkdownModule } from 'ngx-markdown';
 
@@ -64,7 +62,7 @@ const PACK_DEFAULTS: Record<string, { host: string; port: string; database: stri
     selector: 'dburst-connection-details',
     templateUrl: './connection-details.template.html',
     standalone: true,
-    imports: [...SHARED_IMPORTS, TreeComponent, PicklistComponent, FileExplorerComponent, FileExplorerDialogComponent, MarkdownModule],
+    imports: [...SHARED_IMPORTS, PicklistComponent, FileExplorerDialogComponent, MarkdownModule],
 })
 export class ConnectionDetailsComponent implements OnInit {
   readonly iconSvg = iconSvg;

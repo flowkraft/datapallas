@@ -16,7 +16,6 @@ import {
   ExtraPackagesComponent,
   TerminalComponent,
   SystemDiagnosticsComponent,
-  ButtonNativeSystemDialogComponent,
   UpdateComponent,
 } from '../electron-nodejs/electron-nodejs.barrel';
 import { ActivatedRoute } from '@angular/router';
@@ -69,7 +68,7 @@ import { AuthService } from '../../providers/auth.service';
     standalone: true,
     imports: [...SHARED_IMPORTS, LogFileViewerComponent, LicenseComponent, StarterPacksComponent,
                JavaComponent, ExtraPackagesComponent, TerminalComponent, SystemDiagnosticsComponent,
-               ButtonNativeSystemDialogComponent, UpdateComponent],
+               UpdateComponent],
 })
 export class HelpComponent implements OnInit, AfterViewChecked, AfterViewInit {
   @ViewChild('tabSupportTemplate', { static: true })

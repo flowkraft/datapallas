@@ -17,7 +17,7 @@ import { DpTabComponent } from './dp-tab.component';
 @Component({
     selector: 'dp-tabs',
     standalone: true,
-    imports: [NgTemplateOutlet, DpTabComponent],
+    imports: [NgTemplateOutlet],
     styles: [`:host { display: block; }`],
     template: `
     <div
