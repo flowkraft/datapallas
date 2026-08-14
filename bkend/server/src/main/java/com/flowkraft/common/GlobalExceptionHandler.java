@@ -2,7 +2,12 @@ package com.flowkraft.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -125,17 +130,99 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Throwable.class)
-    public ResponseEntity<Map<String, String>> handleAll(Throwable ex, HttpServletRequest request) {
-        if (!isExpectedNetworkNoise(ex)) {
+    public ResponseEntity<Map<String, String>> handleAll(Throwable ex, HttpServletRequest request,
+            HttpServletResponse response) {
+
+        Throwable original = originalFailure(request);
+        Throwable reportable = original != null ? original : ex;
+
+        if (clientWentAway(original, response) || isExpectedNetworkNoise(reportable)) {
+            // Known-benign, but never silent: one line naming what ended, so "the stream keeps
+            // dying" is a question that can still be answered without turning the stack traces
+            // back on. No stack — the whole point of these two rules is that this one is understood.
+            log.info("Response for [{} {}] ended early: {}",
+                    request.getMethod(), request.getRequestURI(), reportable.getClass().getName());
+        } else {
             log.error("Exception [{} {}]",
                     request.getMethod(),
-                    request.getRequestURI(), ex);
+                    request.getRequestURI(), reportable);
         }
+
+        // Nothing can be written onto a response that has already gone out, and ATTEMPTING it is what
+        // manufactures a second exception: no converter can render this JSON body onto, say, a
+        // committed text/event-stream response, so the container reports the converter's complaint
+        // instead of the failure that mattered. An empty body invokes no converter.
+        if (response.isCommitted())
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+
         // Console appender on com.flowkraft logger = already on stdout.
         // Return HTTP 500 so server stays up (unlike DocumentBurster which rethrows and exits JVM).
         String message = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", message));
+    }
+
+    /**
+     * The reader on the other end hung up while a response was still being written.
+     *
+     * <p>Both halves are load-bearing, and neither is enough alone.
+     *
+     * <ul>
+     *   <li>{@code original != null} means the container recovered this from
+     *       {@link RequestDispatcher#ERROR_EXCEPTION} — the failure happened in the response itself,
+     *       not in a handler that was about to answer.</li>
+     *   <li>{@code response.isCommitted()} means bytes were already on the wire. The handler had
+     *       therefore already done its job and begun replying; an {@link IOException} <em>after</em>
+     *       that point is a broken pipe, not a server that failed to do something.</li>
+     * </ul>
+     *
+     * <p>Without the committed check, {@code IOException} would be far too broad — a disk or network
+     * failure inside a handler is an {@code IOException} too, and demoting those to a single INFO line
+     * would hide exactly the kind of fault this class exists to shout about.
+     *
+     * <p>Deliberately no message matching. The observation that prompted this arrived as
+     * {@code "Eine bestehende Verbindung wurde softwaregesteuert durch den Hostcomputer abgebrochen"}
+     * — the operating system's own wording for a dropped connection, in the machine's locale. A rule
+     * keyed on English text would have passed every test written for it and then failed silently on a
+     * customer's machine.
+     */
+    private static boolean clientWentAway(Throwable original, HttpServletResponse response) {
+        return original instanceof IOException && response.isCommitted();
+    }
+
+    /**
+     * The exception that actually failed, or {@code null} when this is an ordinary request and the one
+     * handed to the handler is already the right one.
+     *
+     * <p>When a response dies mid-flight — an async or streaming response whose client has gone, most
+     * visibly SockJS's {@code text/event-stream} transport — the container puts the request into an
+     * error state and re-dispatches it to the error page. That second pass runs a fresh handler, and
+     * whatever <em>it</em> trips over is what arrives here. For a committed
+     * {@code text/event-stream} response that is invariably "no converter for
+     * {@code java.util.LinkedHashMap}", because no converter can render an error body onto an event
+     * stream.
+     *
+     * <p>So the exception this class was built to report is replaced, before ever being logged, by a
+     * complaint about content negotiation — and the real failure is never written down at all. The
+     * container did keep it: {@code StandardHostValve.throwable} sets
+     * {@link RequestDispatcher#ERROR_EXCEPTION} before handing over to the error page. This reads it
+     * back, so that both the log line and the {@link #isExpectedNetworkNoise} decision are made about
+     * the failure that happened rather than about its shadow.
+     *
+     * <p>The presence of the attribute is the whole test — deliberately NOT
+     * {@code getDispatcherType() == ERROR}. When the response is already committed, Tomcat cannot
+     * forward to the error page and <em>includes</em> it instead
+     * ({@code StandardHostValve.custom} → {@code ApplicationDispatcher.doInclude}), which reports a
+     * dispatcher type of {@code INCLUDE}. A committed response is precisely the case this method
+     * exists for, so gating on {@code ERROR} would skip every occurrence it was written to catch.
+     */
+    private static Throwable originalFailure(HttpServletRequest request) {
+
+        if (request.getDispatcherType() == DispatcherType.REQUEST)
+            return null;
+
+        Object original = request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
+        return original instanceof Throwable ? (Throwable) original : null;
     }
 
     /**
