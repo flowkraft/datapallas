@@ -94,7 +94,7 @@ export class AppsManagerService {
         stopCmd: 'system service app stop grails-playground',
         tags: ['flowkraft', 'admin-panel', 'grails', 'front-facing' , 'customer-portal', 'payments', 'bi', 'charts', 'analytics', 'olap', 'visualization', 'data-warehouse', 'DataPallas\'s App'],
         visible: true,
-        tutorialLink: { label: 'Want to get your own self-service document web portal? See a real walkthrough →', url: 'https://datapallas.com/docs/ai-crew/athena#athena---new-billing-portal' },
+        tutorialLink: { label: 'Want to get your own self-service document web portal? See a real walkthrough →', url: 'https://datapallas.com/docs/document-portal' },
       },
       {
         id: 'flowkraft-bkend-boot-groovy',
@@ -131,7 +131,7 @@ export class AppsManagerService {
         stopCmd: 'system service app stop next-playground',
         tags: ['flowkraft', 'admin-panel', 'front-facing', 'dashboards', 'customer-portal', 'payments', 'next.js', 'react', 'bi', 'charts', 'analytics', 'olap', 'visualization', 'data-warehouse', 'DataPallas\'s App'],
         visible: true,
-        tutorialLink: { label: 'Want to get your own self-service document web portal? See a real walkthrough →', url: 'https://datapallas.com/docs/ai-crew/athena#athena---new-billing-portal' },
+        tutorialLink: { label: 'Want to get your own self-service document web portal? See a real walkthrough →', url: 'https://datapallas.com/docs/document-portal' },
       },
       {
         id: 'cms-webportal',
@@ -177,7 +177,7 @@ export class AppsManagerService {
         stopCmd: 'system service app stop cms-webportal-playground',
         tags: ['flowkraft', 'cms', 'admin-panel', 'front-facing', 'customer-portal', 'cms', 'wordpress', 'DataPallas\'s App'],
         visible: true,
-        tutorialLink: { label: 'Want to get your own CMS document web portal? See a real walkthrough →', url: 'https://datapallas.com/docs/ai-crew/athena#athena---new-billing-portal' },
+        tutorialLink: { label: 'Want to get your own CMS document web portal? See a real walkthrough →', url: 'https://datapallas.com/docs/document-portal' },
       },
       {
         id: 'cloudbeaver',
