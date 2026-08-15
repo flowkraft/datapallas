@@ -59,7 +59,16 @@ asbl/**/*.duckdb
 asbl/**/bones
 asbl/**/.bones_renamed
 
-asbl/docker
+# asbl/docker holds build inputs the assembler reads, next to local scratch.
+# Ignore the CONTENTS rather than the directory itself: git cannot re-include a
+# file whose parent directory is excluded, so `asbl/docker` made every negation
+# below unreachable and silently swallowed new files.
+asbl/docker/*
+!asbl/docker/docker-compose.yml
+!asbl/docker/README.md
+!asbl/docker/README-dockerhub.md
+!asbl/docker/push-dockerhub-readme.ps1
+!asbl/docker/datapallas.sh
 
 #################
 ## CMS Webportal Playground - selective inclusion
@@ -68,10 +77,6 @@ asbl/docker
 asbl/src/main/external-resources/db-template/_apps/cms-webportal-playground/*
 
 # Unignore specific files
-asbl/docker/docker-compose.yml
-asbl/docker/README.md
-asbl/docker/datapallas.sh
-
 !asbl/src/main/external-resources/db-template/_apps/cms-webportal-playground/.env
 !asbl/src/main/external-resources/db-template/_apps/cms-webportal-playground/docker-compose.yml
 !asbl/src/main/external-resources/db-template/_apps/cms-webportal-playground/README.md

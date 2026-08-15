@@ -96,8 +96,17 @@ public class DockerAssembler extends AbstractAssembler {
                 "$1image: flowkraft/datapallas-server:" + this.version + "\n$1# unpinned: image: flowkraft/datapallas-server:latest");
 
         // Write the compose file at the root of the assembled DataPallas bundle
-        File outCompose = new File(packageDirPath + "/" + this.topFolderName, "docker-compose.yml");
+        File bundleRoot = new File(packageDirPath + "/" + this.topFolderName);
+        File outCompose = new File(bundleRoot, "docker-compose.yml");
         FileUtils.writeStringToFile(outCompose, composeContent, "UTF-8");
+
+        // Ship the operator README next to the compose file. Without it the bundle
+        // extracts to thirteen data folders and a compose file with no instructions -
+        // not even the credentials needed to get past the login screen.
+        File dockerSourceDir = new File(Utils.getTopProjectFolderPath() + "/asbl/docker");
+        FileUtils.copyFile(new File(dockerSourceDir, "README.md"), new File(bundleRoot, "README.md"));
+
+        System.out.println("Copied README.md into the bundle root");
 
         // Copy initial directories from the verified NoExe package into the assembled package directory
         // DIRECTORIES = ("_apps", "backup", "config", "db", "input-files", "logs", "output", "poll", "quarantine", "samples", "scripts", "temp", "templates")
@@ -229,6 +238,16 @@ public class DockerAssembler extends AbstractAssembler {
         assertThat(hostBurstContent).as("Expected burst settings to reference mailhog weburl").contains("http://mailhog:8025");
         assertThat(hostInternalContent).as("Expected runtime to be docker in %s", hostInternalSettings.getPath()).contains("<runtime>docker</runtime>");
 
+        // ---------------------------------------------------------------------
+        // Verify the bundle is usable, not merely present: a user who extracts the
+        // zip must find instructions, including the default sign-in credentials.
+        // ---------------------------------------------------------------------
+        File bundleReadme = new File(hostVerifiedRoot, "README.md");
+        assertThat(bundleReadme.exists()).as("Expected %s to exist", bundleReadme.getPath()).isTrue();
+        assertThat(FileUtils.readFileToString(bundleReadme, "UTF-8"))
+                .as("Bundle README must state the default credentials, or the login screen is a dead end")
+                .contains("burst");
+
         String hostDefaultsVersion = null;
         String hostBurstVersion = null;
 
@@ -293,9 +312,15 @@ public class DockerAssembler extends AbstractAssembler {
     private void _preprocessDockerfile(File src, File dst, String version) {
         try {
             String content = FileUtils.readFileToString(src, "UTF-8");
-            content = content.replaceAll("(?m)^\\s*version\\s*=\\s*\"[^\"]*\"", "version=\"" + version + "\"");
-            // Also try to replace LABEL version line specifically
-            content = content.replaceAll("(?m)version=\"[^\"]*\"", "version=\"" + version + "\"");
+
+            // Anchored to a LABEL continuation line, so it patches the version labels and
+            // nothing else. Also matches org.opencontainers.image.version, which carries
+            // the same placeholder. An unanchored version="..." replace would silently
+            // rewrite every other occurrence that ever lands in this file.
+            content = content.replaceAll(
+                    "(?m)^([ \\t]*)((?:org\\.opencontainers\\.image\\.)?version)[ \\t]*=[ \\t]*\"[^\"]*\"",
+                    "$1$2=\"" + version + "\"");
+
             FileUtils.writeStringToFile(dst, content, "UTF-8");
         } catch (Exception ex) {
             System.out.println("Failed to preprocess Dockerfile: " + ex.getMessage());

@@ -96,3 +96,13 @@ REM the version manually here, let docker inspect discover it from the image.
 
 REM CMD:        docker login -u flowkraft && docker push flowkraft/datapallas-server:latest && for /f "tokens=*" %v in ('docker inspect --format "{{ index .Config.Labels \"version\" }}" flowkraft/datapallas-server:latest') do docker push flowkraft/datapallas-server:%v
 REM PowerShell: docker login -u flowkraft; docker push flowkraft/datapallas-server:latest; $v = docker inspect --format '{{ .Config.Labels.version }}' flowkraft/datapallas-server:latest; docker push flowkraft/datapallas-server:$v
+
+REM Publish the Docker Hub overview and short description (docker/README-dockerhub.md).
+REM `docker push` uploads layers and the manifest only - the description lives on the
+REM Hub repository record and needs the Hub API, so it is a separate call. Independent
+REM of the image, so it can also be re-run on its own whenever the overview text changes.
+REM Needs a Docker Hub Personal Access Token (read/write); the script prompts if
+REM DOCKERHUB_PAT is unset. The `docker login` credentials above do NOT work here.
+REM Categories are UI-only: set them under Repository -> Settings on hub.docker.com.
+
+REM PowerShell: .\docker\push-dockerhub-readme.ps1

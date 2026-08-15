@@ -9,10 +9,18 @@
 #   Shell:  docker-compose exec datapallas-server bash
 #
 # FIRST RUN:
-#   The container entrypoint will extract default config files from the image
-#   into host bind-mounts (if directories are missing or empty) before starting the services.
+#   Sign in at http://localhost:9090 with burst / burst, then change that password.
+#
+# THE BIND MOUNTS BELOW ARE NOT OPTIONAL:
+#   Run this compose file from the extracted bundle, which ships ./config, ./db,
+#   ./templates and the rest already populated. The entrypoint does NOT seed empty
+#   host folders - an empty ./config mounted over /app/config hides the configuration
+#   baked into the image and the server comes up broken. To run without the bundle,
+#   drop the bind mounts entirely (the image is self-contained) or use named volumes,
+#   which Docker does seed from the image on first use.
 #
 # API KEY:
+#   - For machine callers only; the browser UI signs in with a session cookie
 #   - Auto-generated on first start, persisted in ./config/_internal/api-key.txt
 #   - Or set API_KEY environment variable to use a specific key
 #
