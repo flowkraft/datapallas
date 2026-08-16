@@ -27,13 +27,11 @@ docker run --rm -p 9090:9090 flowkraft/datapallas-server:latest
 
 Open **http://localhost:9090** and sign in with **`burst` / `burst`**.
 
-The image ships with a complete default configuration baked in, so this just works — no setup files, no Java install, no volumes to prepare. Everything is discarded when the container stops, which is what you want for a first look.
-
-> **Change that password before anyone else can reach the server.** `burst` / `burst` is a default administrator account that exists so you can evaluate the product without a setup ritual. It is fine on your laptop and dangerous anywhere else — until you change it, anyone who can reach this server can sign in as an administrator.
+The image carries its own configuration, sample data, and report templates, so this just works — nothing to set up, no Java to install, no volumes to prepare. Everything is discarded when the container stops, which is what you want for a first look.
 
 ## Run it with persistence
 
-Use **named volumes**. Docker seeds a fresh named volume from the image's own contents on first use, so the shipped defaults land in the volume and then survive restarts:
+Use **named volumes**. Docker fills them from the image the first time you start, so your settings, samples, and templates are there from the outset and stay put across restarts:
 
 ```bash
 docker run -d --name datapallas-server \
@@ -49,13 +47,13 @@ docker run -d --name datapallas-server \
   flowkraft/datapallas-server:latest
 ```
 
-That covers the common case. If you use watched-folder processing or want failed deliveries kept across restarts, add `/app/poll`, `/app/input-files`, `/app/quarantine` and `/app/backup` from the table below — anything not mounted lives only inside the container and is lost when it is recreated.
+That covers the common case. Add `/app/poll`, `/app/input-files`, `/app/quarantine` and `/app/backup` from the table below if you use watched-folder processing or want undelivered items kept across restarts — anything not mounted lives inside the container and starts fresh when it is recreated.
 
-> **Do not bind-mount empty host directories here.** A bind mount does *not* seed itself from the image — an empty `./config` on the host will shadow the baked-in configuration and the server will come up misconfigured. Bind mounts are for the full bundle below, which ships those directories already populated.
+Named volumes are the thing to use here. Folders on your own machine are for the full bundle below, which ships them already filled in.
 
 ## Full deployment (recommended)
 
-The full bundle adds a MailHog test mail server, Docker-in-Docker access for StarterPacks and Apps, and the complete set of pre-populated host folders you will actually want to edit.
+The full bundle adds a MailHog test mail server for checking email delivery, lets DataPallas start portals and Apps for you from the web UI, and keeps your work in folders on your own machine where they are easy to back up.
 
 1. Download **[datapallas-server-docker.zip](https://downloads.datapallas.com/file/datapallas/newest/datapallas-server-docker.zip)**
 2. Extract it, then:
@@ -71,9 +69,9 @@ Full instructions: **https://datapallas.com/docs/server/self-host**
 
 ## First login
 
-DataPallas Server starts with one administrator account, **`burst` / `burst`**, so that a fresh install is usable the moment it boots rather than sending you to hunt for a token on the filesystem.
+DataPallas Server comes with one account ready to go, **`burst` / `burst`**, so you can sign in the moment it starts.
 
-Change it before the server is reachable by anyone else: open your own name in the top right, then **Users**. On a laptop evaluation it costs you nothing to leave it; on anything with a route to it, it is an administrator account with a published password.
+**Set your own password** when you have a minute: open your name in the top right, then **Users**. Worth doing early, especially if colleagues will be using this server too.
 
 Roles, creating accounts for colleagues, and signing in with existing Microsoft / Okta / Google Workspace accounts: **https://datapallas.com/docs/server/users-roles**
 
@@ -100,31 +98,35 @@ Change the published port with `-p 8080:9090`. With plain `docker run`, `SERVER_
 
 ### Volumes
 
-| Path | Contents |
-|---|---|
-| `/app/config` | Server, burst, and email settings — the main thing you will edit |
-| `/app/db` | Embedded databases and sample data |
-| `/app/templates` | Report templates |
-| `/app/samples` | Sample reports and configurations |
-| `/app/input-files`, `/app/poll` | Input documents; `poll` is watched for automated processing |
-| `/app/output`, `/app/quarantine`, `/app/backup` | Generated documents, failed deliveries, backups |
-| `/app/logs` | Application logs |
-| `/app/_apps` | Portals, StarterPacks, and custom apps |
-| `/app/scripts`, `/app/temp` | Custom scripts; scratch space |
+Mount these to keep your work across restarts and upgrades. The web UI manages everything in them, so there is no need to open them day to day.
 
-Mounting `/var/run/docker.sock` lets DataPallas launch StarterPacks and containerized Apps on your Docker host. The full bundle does this; it is optional otherwise, and grants the container control of your Docker daemon — mount it only if you want those features.
+| Path | What is in it |
+|---|---|
+| `/app/config` | Your settings — connections, email, report configuration |
+| `/app/templates` | Report templates |
+| `/app/samples` | Sample reports and configurations to start from |
+| `/app/db` | Databases and sample data |
+| `/app/output`, `/app/quarantine`, `/app/backup` | Generated documents, anything that could not be delivered, backups |
+| `/app/input-files`, `/app/poll` | Input documents — files dropped into `poll` are picked up and processed automatically |
+| `/app/_apps` | Portals, StarterPacks, and custom apps |
+| `/app/logs` | Log files, if you ever need to look |
+| `/app/scripts`, `/app/temp` | Custom scripts and working space |
+
+### StarterPacks and Apps
+
+Mounting `/var/run/docker.sock` lets DataPallas start portals, StarterPacks, and other containerized Apps for you, straight from the web UI. The full bundle does this already; add it to a `docker run` if you want those features.
 
 ### API key
 
-The browser UI does not need a key — it is same-origin with the backend and uses a session cookie plus CSRF. The API key is for *machine* callers: the AI Hub proxy, a scheduler, an embedding host app.
+For integrations rather than people — a scheduler, an embedding host app, the AI Hub proxy. The browser UI signs in with a session cookie and needs no key.
 
-It is generated on first start and written to `/app/config/_internal/api-key.txt`, so it persists with the config volume. Read it back with:
+It is generated on first start at `/app/config/_internal/api-key.txt`, so it persists with the config volume:
 
 ```bash
 docker exec datapallas-server cat /app/config/_internal/api-key.txt
 ```
 
-Or pin your own with `-e API_KEY=...`.
+Or set your own with `-e API_KEY=...`.
 
 ---
 
