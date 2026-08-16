@@ -66,7 +66,13 @@ Keep the folder together, and move it as a whole if you relocate it later.
 
 **Upgrading.** `docker-compose.yml` names an exact version, so you upgrade when you choose to. Edit the `image:` line — or uncomment the `latest` line next to it — then `docker compose pull` and `docker compose up -d`. Your folders carry over as they are.
 
-**Sharing it with your team.** DataPallas Server is built for several people at once. Give everyone their own account under **Users**, and when you move it off your laptop, put it behind your usual HTTPS address.
+**Sharing it with your team.** DataPallas Server is built for several people at once — give everyone their own account under **Users**.
+
+On a trusted network, plain `http://` works fine. Worth knowing: browsers allow copy-to-clipboard only over `https://` or on `localhost`, so the **Copy** buttons go quiet for colleagues who reach the server by hostname over plain HTTP.
+
+**On the Internet.** Publishing DataPallas Server to the Internet is a normal way to run it. The self-service document portals are meant to be reached over the Internet — that is the whole point of them: your customers, employees, or partners sign in and collect their own invoices or payslips from wherever they are.
+
+Serve it over HTTPS when you do: on plain HTTP, sign-ins and sessions travel in the clear. Most people use the reverse proxy they already run.
 
 **Running a job from the command line — most people never need this.** Reports, bursting, and scheduling all live in the web UI. Reach for the command line only when an external tool must trigger a run: cron, Windows Task Scheduler, a CI job, or your own script.
 

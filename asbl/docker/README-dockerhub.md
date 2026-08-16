@@ -75,6 +75,10 @@ DataPallas Server comes with one account ready to go, **`burst` / `burst`**, so 
 
 Roles, creating accounts for colleagues, and signing in with existing Microsoft / Okta / Google Workspace accounts: **https://datapallas.com/docs/server/users-roles**
 
+Running it for a team? On a trusted network plain `http://` works fine — though browsers allow copy-to-clipboard only over `https://` or on `localhost`, so the **Copy** buttons go quiet for colleagues reaching the server by hostname.
+
+Publishing DataPallas Server to the **Internet** is a normal way to run it — the self-service document portals are meant to be reached that way, so your customers, employees, or partners can sign in and collect their own invoices or payslips from wherever they are. Serve it over HTTPS when you do: on plain HTTP, sign-ins and sessions travel in the clear.
+
 ---
 
 ## Configuration
