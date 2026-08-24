@@ -1,0 +1,48 @@
+services:
+  jupyter:
+    # Jupyter Docker Stacks moved to quay.io. The Docker Hub mirror (docker.io/jupyter/*) has
+    # not been rebuilt since October 2023, so pulling from there gets you a three-year-old
+    # Python — check quay.io/repository/jupyter/scipy-notebook?tab=tags when bumping this.
+    #
+    # scipy-notebook, not minimal: pandas, numpy, matplotlib and scipy are already in it,
+    # which is everything Python for Data Series 1 needs on the first run. Verified against
+    # this exact tag on 2026-08-24 — pandas 3.0.5, numpy 2.5.2, matplotlib 3.11.1, scipy
+    # 1.18.0, plus scikit-learn, seaborn, statsmodels, SQLAlchemy and openpyxl.
+    # datascience-notebook would add R and Julia for nothing.
+    #
+    # NOT in the image, and deliberately not baked in: duckdb, polars, psycopg. See work/
+    # README.md — they are one `%pip install` cell away, which is what you would do at work,
+    # and a build step between a learner and their first cell is what this setup avoids.
+    #
+    # Pinned to a DATED tag rather than :latest, the same way CloudBeaver pins a version — a
+    # learner who follows a lesson six months from now gets the image the lesson was written
+    # against. Tag verified live on quay.io.
+    image: quay.io/jupyter/scipy-notebook:2026-08-23
+    container_name: rb-jupyter
+    volumes:
+      # Notebooks the learner writes live here, beside the app, and survive a container
+      # rebuild. jovyan is the fixed non-root user in every Jupyter Docker Stacks image.
+      - ./work:/home/jovyan/work
+    environment:
+      # No token and no password: this is a local learning sandbox bound to your own machine,
+      # and a login prompt between a learner and their first cell is friction with no benefit.
+      # It is NOT hardened for a shared or public host — see the note in the docs.
+      - JUPYTER_ENABLE_LAB=yes
+      - DOCKER_STACKS_JUPYTER_CMD=lab
+      - RESTARTABLE=yes
+    command: >
+      start-notebook.py
+      --IdentityProvider.token=''
+      --ServerApp.password=''
+      --ServerApp.root_dir=/home/jovyan/work
+    ports:
+      - "${HOST_PORT:-8888}:8888"
+    restart: unless-stopped
+    healthcheck:
+      # /api is the lightest endpoint that proves the server is actually serving, not just
+      # that the port is open. Same shape as the CloudBeaver check next door.
+      test: ["CMD-SHELL", "curl -f http://localhost:8888/api || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
