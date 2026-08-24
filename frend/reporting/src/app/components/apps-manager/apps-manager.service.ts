@@ -259,6 +259,23 @@ export class AppsManagerService {
         visible: true,
         website: 'https://www.metabase.com/',
       },
+      {
+        id: 'jupyter',
+        name: 'Jupyter (Notebooks for Python)',
+        icon: 'code',
+        category: 'Data Analysis',
+        type: 'docker',
+        description:
+          'JupyterLab, with pandas, numpy, matplotlib and scipy already installed. Explore a dataset a cell at a time — load it, look at it, change one thing, look again — then turn what works into a script you can schedule.',
+        url: 'http://localhost:8888',
+        entrypoint: 'jupyter/docker-compose.yml',
+        service_name: 'jupyter',
+        startCmd: 'system service app start jupyter 8888',
+        stopCmd: 'system service app stop jupyter',
+        tags: ['python', 'notebooks', 'data-analysis'],
+        visible: true,
+        website: 'https://jupyter.org/',
+      },
       // ClickHouse moved to Starter Packs (Databases) - see starter-packs.service.ts
       {
         id: 'redash',
@@ -306,23 +323,7 @@ export class AppsManagerService {
         command: 'notepad++',
         state: 'stopped' as ManagedApp['state'],
       },
-      {
-        id: 'jupyter',
-        name: 'Jupyter (Notebooks for Python)',
-        icon: 'code',
-        category: 'Data Analysis',
-        type: 'docker',
-        description:
-          'JupyterLab, with pandas, numpy, matplotlib and scipy already installed. Explore a dataset a cell at a time — load it, look at it, change one thing, look again — then turn what works into a script you can schedule.',
-        url: 'http://localhost:8888',
-        entrypoint: 'jupyter/docker-compose.yml',
-        service_name: 'jupyter',
-        startCmd: 'system service app start jupyter 8888',
-        stopCmd: 'system service app stop jupyter',
-        tags: ['python', 'notebooks', 'data-analysis'],
-        visible: true,
-        website: 'https://jupyter.org/',
-      },
+
     ],
   };
 
