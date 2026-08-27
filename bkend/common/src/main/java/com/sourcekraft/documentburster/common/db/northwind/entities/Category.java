@@ -13,6 +13,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 
 /**
@@ -31,7 +33,7 @@ public class Category {
 	@Column(name = "\"CategoryName\"", length = 15, nullable = false)
 	private String categoryName;
 
-	@Lob
+	@JdbcTypeCode(SqlTypes.LONGVARCHAR)
 	@Column(name = "\"Description\"")
 	private String description;
 

@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -125,14 +126,89 @@ public class DuckDBDataWarehouseCreator {
             log.info("=== DuckDB Data Warehouse created successfully! ===");
             log.info("OLAP data is IDENTICAL to ClickHouse and Browser mock (NorthwindOlapDataGenerator, seed={})", NorthwindOlapDataGenerator.SEED);
         }
+
+        // Step 4: verify what we just wrote, OUTSIDE the try-with-resources above — the verifiers
+        // open their own connections and DuckDB will not hand out a second writer while ours is
+        // still held.
+        verifyGeneratedFile(duckdbPath, sqlitePath);
+    }
+
+    /**
+     * Check the file we just produced, and refuse to hand back a bad one.
+     *
+     * WHY THIS RUNS EVERY TIME, AND IS NOT A TEST YOU HAVE TO REMEMBER. The DDL in this class is
+     * hand-written and never asks the JPA entities what the schema is. Between 2025-07 and 2026-08 it
+     * drifted from them — five columns missing, three wrong types — and every build in that year was
+     * green, because nothing compared the two. The Learn SQL lessons are authored against this file,
+     * so the drift was taught to students before anyone noticed. A check that must be remembered is a
+     * check that will be forgotten; this one is on the only path that can produce the file.
+     *
+     * Two verifiers, deliberately: {@link DuckDBSchemaVerifier} compares the SHAPE against the
+     * entities, {@link DuckDBDataVerifier} compares the ROWS against the SQLite source. Neither can
+     * see what the other looks at.
+     *
+     * Problems THROW — a wrong sample database is worse than no sample database, because it is
+     * believed. Notes (a legitimately empty column, the timezone finding) are logged and allowed.
+     * Set -Dnorthwind.skipVerify=true to force a build past this; it logs loudly, and the only good
+     * reason is that the verifier itself is broken.
+     */
+    private static void verifyGeneratedFile(String duckdbPath, String sqlitePath) throws Exception {
+        if (Boolean.getBoolean("northwind.skipVerify")) {
+            log.warn("Step 4: VERIFICATION SKIPPED (-Dnorthwind.skipVerify=true). The generated "
+                   + "DuckDB has NOT been checked against the JPA entities or the SQLite source.");
+            return;
+        }
+
+        log.info("Step 4: Verifying the generated file...");
+        List<String> problems = new ArrayList<>();
+
+        List<String> schemaProblems = DuckDBSchemaVerifier.verify(duckdbPath, false);
+        if (schemaProblems.isEmpty()) {
+            log.info("  schema: OK — agrees with the JPA entities");
+        } else {
+            problems.addAll(schemaProblems);
+            for (String p : schemaProblems) log.error("  schema: {}", p);
+        }
+        for (String n : DuckDBSchemaVerifier.lastPrecisionNotes()) log.info("  note: {}", n);
+
+        DuckDBDataVerifier.Result data = DuckDBDataVerifier.verify(duckdbPath, sqlitePath, false);
+        if (data.ok()) {
+            log.info("  data: OK — a faithful copy of the SQLite source");
+        } else {
+            problems.addAll(data.problems);
+            for (String p : data.problems) log.error("  data: {}", p);
+        }
+        for (String n : data.notes) log.info("  note: {}", n);
+
+        if (!problems.isEmpty()) {
+            // Also to stderr, NOT only to the log. This class runs in contexts with no SLF4J binding
+            // on the classpath (the standalone main, some packager steps), where every log call above
+            // is silently discarded. A gate whose reason cannot be read is a gate nobody can fix.
+            System.err.println("DuckDB Northwind FAILED verification — " + problems.size() + " problem(s):");
+            for (String p : problems) System.err.println("  - " + p);
+
+            throw new IllegalStateException(
+                "The generated DuckDB Northwind failed verification with " + problems.size()
+              + " problem(s) — see the list above. Fix DuckDBDataWarehouseCreator (the DDL AND the "
+              + "matching SELECT/INSERT/arity, which are three separate places), then re-run. "
+              + "First problem: " + problems.get(0));
+        }
+        log.info("  verification passed");
     }
 
     private static void createOLTPTables(Statement stmt) throws Exception {
         // Categories Table
+        // The four columns below were MISSING until 2026-08-26. This DDL is hand-written and
+        // never asked the JPA entities what the schema is, so while SQLite (generated from the
+        // entities) gained Picture/Email/Mobile, DuckDB silently did not — and the Learn SQL
+        // lessons, written against this file, taught column counts that were wrong on every
+        // other engine. Appended at the END so the canonical Northwind ordering of the
+        // existing columns is preserved and Employees' date-column indices {6,7} stay valid.
         stmt.execute("CREATE OR REPLACE TABLE Categories (" +
             "CategoryID INTEGER, " +
             "CategoryName VARCHAR, " +
-            "Description VARCHAR)");
+            "Description VARCHAR, " +
+            "Picture BLOB)");
 
         // Suppliers Table
         stmt.execute("CREATE OR REPLACE TABLE Suppliers (" +
@@ -147,7 +223,8 @@ public class DuckDBDataWarehouseCreator {
             "Country VARCHAR, " +
             "Phone VARCHAR, " +
             "Fax VARCHAR, " +
-            "HomePage VARCHAR)");
+            "HomePage VARCHAR, " +
+            "Email VARCHAR)");
 
         // Products Table
         stmt.execute("CREATE OR REPLACE TABLE Products (" +
@@ -156,11 +233,11 @@ public class DuckDBDataWarehouseCreator {
             "SupplierID INTEGER, " +
             "CategoryID INTEGER, " +
             "QuantityPerUnit VARCHAR, " +
-            "UnitPrice DECIMAL(10,4), " +
+            "UnitPrice DECIMAL(19,4), " +
             "UnitsInStock SMALLINT, " +
             "UnitsOnOrder SMALLINT, " +
             "ReorderLevel SMALLINT, " +
-            "Discontinued SMALLINT DEFAULT 0)");
+            "Discontinued BOOLEAN DEFAULT false)");
 
         // Customers Table
         stmt.execute("CREATE OR REPLACE TABLE Customers (" +
@@ -174,7 +251,8 @@ public class DuckDBDataWarehouseCreator {
             "PostalCode VARCHAR, " +
             "Country VARCHAR, " +
             "Phone VARCHAR, " +
-            "Fax VARCHAR)");
+            "Fax VARCHAR, " +
+            "Email VARCHAR)");
 
         // Employees Table
         stmt.execute("CREATE OR REPLACE TABLE Employees (" +
@@ -192,10 +270,12 @@ public class DuckDBDataWarehouseCreator {
             "Country VARCHAR, " +
             "HomePhone VARCHAR, " +
             "Extension VARCHAR, " +
-            "Photo VARCHAR, " +
+            "Photo BLOB, " +
             "Notes VARCHAR, " +
             "ReportsTo INTEGER, " +
-            "PhotoPath VARCHAR)");
+            "PhotoPath VARCHAR, " +
+            "Mobile VARCHAR, " +
+            "Email VARCHAR)");
 
         // Shippers Table
         stmt.execute("CREATE OR REPLACE TABLE Shippers (" +
@@ -212,7 +292,7 @@ public class DuckDBDataWarehouseCreator {
             "RequiredDate TIMESTAMP, " +
             "ShippedDate TIMESTAMP, " +
             "ShipVia INTEGER, " +
-            "Freight DECIMAL(10,4), " +
+            "Freight DECIMAL(19,4), " +
             "ShipName VARCHAR, " +
             "ShipAddress VARCHAR, " +
             "ShipCity VARCHAR, " +
@@ -224,9 +304,9 @@ public class DuckDBDataWarehouseCreator {
         stmt.execute("CREATE OR REPLACE TABLE \"Order Details\" (" +
             "OrderID INTEGER, " +
             "ProductID INTEGER, " +
-            "UnitPrice DECIMAL(10,4), " +
+            "UnitPrice DECIMAL(19,4), " +
             "Quantity SMALLINT, " +
-            "Discount FLOAT DEFAULT 0)");
+            "Discount DECIMAL(8,4) DEFAULT 0)");
 
         // Region Table
         stmt.execute("CREATE OR REPLACE TABLE Region (" +
@@ -260,33 +340,37 @@ public class DuckDBDataWarehouseCreator {
     private static void copyOLTPData(Connection duckConn, Connection sqliteConn) throws Exception {
         // Copy Categories
         copyTable(duckConn, sqliteConn, "Categories",
-            "SELECT CategoryID, CategoryName, Description FROM Categories",
-            "INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (?, ?, ?)",
-            3);
+            "SELECT CategoryID, CategoryName, Description, Picture FROM Categories",
+            "INSERT INTO Categories (CategoryID, CategoryName, Description, Picture) VALUES (?, ?, ?, ?)",
+            4);
 
         // Copy Suppliers
         copyTable(duckConn, sqliteConn, "Suppliers",
-            "SELECT SupplierID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax, HomePage FROM Suppliers",
-            "INSERT INTO Suppliers (SupplierID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax, HomePage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            12);
+            "SELECT SupplierID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax, HomePage, Email FROM Suppliers",
+            "INSERT INTO Suppliers (SupplierID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax, HomePage, Email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            13);
 
         // Copy Products
         copyTable(duckConn, sqliteConn, "Products",
-            "SELECT ProductID, ProductName, SupplierID, CategoryID, QuantityPerUnit, UnitPrice, UnitsInStock, UnitsOnOrder, ReorderLevel, Discontinued FROM Products",
+            "SELECT ProductID, ProductName, SupplierID, CategoryID, QuantityPerUnit, UnitPrice, UnitsInStock, UnitsOnOrder, ReorderLevel, CAST(Discontinued AS BOOLEAN) AS Discontinued FROM Products",
+            // The CAST is about SQLITE STORAGE, not about the schema. JPA declares this column
+            // "boolean" on every vendor, SQLite included — but SQLite has no boolean type and
+            // its type affinity physically stores 0/1 as INTEGER. DuckDB is strict, so the
+            // integer has to be cast on the way in. Same schema, different storage.
             "INSERT INTO Products (ProductID, ProductName, SupplierID, CategoryID, QuantityPerUnit, UnitPrice, UnitsInStock, UnitsOnOrder, ReorderLevel, Discontinued) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             10);
 
         // Copy Customers
         copyTable(duckConn, sqliteConn, "Customers",
-            "SELECT CustomerID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax FROM Customers",
-            "INSERT INTO Customers (CustomerID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            11);
+            "SELECT CustomerID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax, Email FROM Customers",
+            "INSERT INTO Customers (CustomerID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, Country, Phone, Fax, Email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            12);
 
         // Copy Employees (BirthDate=col6, HireDate=col7 are DATE columns stored as epoch_ms in SQLite)
         copyTable(duckConn, sqliteConn, "Employees",
-            "SELECT EmployeeID, LastName, FirstName, Title, TitleOfCourtesy, BirthDate, HireDate, Address, City, Region, PostalCode, Country, HomePhone, Extension, Photo, Notes, ReportsTo, PhotoPath FROM Employees",
-            "INSERT INTO Employees (EmployeeID, LastName, FirstName, Title, TitleOfCourtesy, BirthDate, HireDate, Address, City, Region, PostalCode, Country, HomePhone, Extension, Photo, Notes, ReportsTo, PhotoPath) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            18, new int[]{6, 7}, null);
+            "SELECT EmployeeID, LastName, FirstName, Title, TitleOfCourtesy, BirthDate, HireDate, Address, City, Region, PostalCode, Country, HomePhone, Extension, Photo, Notes, ReportsTo, PhotoPath, Mobile, Email FROM Employees",
+            "INSERT INTO Employees (EmployeeID, LastName, FirstName, Title, TitleOfCourtesy, BirthDate, HireDate, Address, City, Region, PostalCode, Country, HomePhone, Extension, Photo, Notes, ReportsTo, PhotoPath, Mobile, Email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            20, new int[]{6, 7}, null);
 
         // Copy Shippers
         copyTable(duckConn, sqliteConn, "Shippers",

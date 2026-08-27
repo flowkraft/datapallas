@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 
 /**
@@ -25,7 +27,7 @@ public class CustomerDemographics {
     @Column(name = "\"CustomerTypeID\"", length = 10)
     private String customerTypeId;
     
-    @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(name = "\"CustomerDesc\"")
     private String customerDesc;
 
