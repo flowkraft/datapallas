@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -404,17 +405,29 @@ public class MainProgram implements Callable<Integer> {
 					System.out.println("No connections directory found.");
 					return 0;
 				}
-				File[] dirs = connectionsDir.listFiles(File::isDirectory);
-				if (dirs == null || dirs.length == 0) {
-					System.out.println("No connections configured.");
-					return 0;
-				}
+				// Database connections are folders (config/connections/{id}/{id}.xml),
+				// email connections are single files (config/connections/{id}.xml) —
+				// same layout ConnectionsService resolves against.
+				File[] entries = connectionsDir.listFiles();
 				List<String> ids = new java.util.ArrayList<>();
-				for (File d : dirs) {
-					String id = d.getName();
+				if (entries != null) for (File entry : entries) {
+					String id;
+					if (entry.isDirectory())
+						id = entry.getName();
+					else if (entry.getName().toLowerCase().endsWith(".xml"))
+						id = FilenameUtils.getBaseName(entry.getName());
+					else
+						continue;
 					if ("email".equals(type) && !id.startsWith("eml-")) continue;
 					if ("database".equals(type) && !id.startsWith("db-")) continue;
 					ids.add(id);
+				}
+				if (ids.isEmpty()) {
+					if ("json".equals(format))
+						System.out.println("[]");
+					else
+						System.out.println("No connections configured.");
+					return 0;
 				}
 				java.util.Collections.sort(ids);
 				if ("json".equals(format)) {
