@@ -69,7 +69,10 @@
     </path>
 
     <target name="documentburster">
-        <java classname="com.sourcekraft.documentburster.DocumentBurster" fork="true" dir="${DOCUMENTBURSTER_HOME}">
+        <!-- resultproperty (not failonerror) so Ant still logs "Java Result: <N>"
+             and the <fail> below can exit with the CLI's own code - 2 for a bad
+             command line, 1 for a failed run - instead of collapsing both to 1. -->
+        <java classname="com.sourcekraft.documentburster.DocumentBurster" fork="true" dir="${DOCUMENTBURSTER_HOME}" resultproperty="documentburster.exit.code">
             <jvmarg line="${CLIENT_JVM_OPTS}" />
 
             <arg value="${arg1}" />
@@ -125,6 +128,15 @@
 
             <classpath refid="class.path" />
         </java>
+
+        <fail status="${documentburster.exit.code}"
+              message="DataPallas exited with code ${documentburster.exit.code} - see logs/errors.log">
+            <condition>
+                <not>
+                    <equals arg1="${documentburster.exit.code}" arg2="0" />
+                </not>
+            </condition>
+        </fail>
     </target>
 
     <target name="hprof-profile">

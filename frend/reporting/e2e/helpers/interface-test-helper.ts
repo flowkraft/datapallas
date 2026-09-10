@@ -164,10 +164,9 @@ export class InterfaceTestHelper {
     const fullCommand = `cd "${absoluteDir}" && set "PORTABLE_EXECUTABLE_DIR=" && ${cmd} ${args.join(' ')}`;
 
     // spawnSync (not execSync) — execSync returns *only* stdout and reveals
-    // stderr only when the child throws. datapallas.bat launches Ant with
-    // <java failonerror="false"/>, which prints "Java Result: <N>" to stderr
-    // when the CLI returns non-zero but lets Ant (and the bat) still exit 0.
-    // So the success path needs stderr too — spawnSync gives us both streams
+    // stderr only when the child throws. datapallas.bat launches Ant, which
+    // prints "Java Result: <N>" to stderr whenever the CLI returns non-zero,
+    // so the success path needs stderr too — spawnSync gives us both streams
     // unconditionally.
     const result = spawnSync(fullCommand, {
       shell: true,
@@ -178,7 +177,8 @@ export class InterfaceTestHelper {
     const stderr: string = result.stderr ?? '';
     let exitCode: number = result.status ?? 1;
 
-    // Recover Java's real exit code from the Ant-printed line.
+    // Prefer the code Ant printed for the forked JVM — it is the CLI's own
+    // exit code, straight from the process that produced it.
     const javaResultMatch = stderr.match(/Java Result:\s*(\d+)/);
     if (javaResultMatch) {
       exitCode = parseInt(javaResultMatch[1], 10);
