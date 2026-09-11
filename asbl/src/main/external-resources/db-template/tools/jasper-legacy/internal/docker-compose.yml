@@ -1,0 +1,55 @@
+# DataPallas — JasperReports 6 legacy renderer
+#
+# One image, two faces. `render` is the command-line renderer, run once and
+# gone; `api` is the same engine kept warm behind HTTP. They share the image,
+# the mounts and the code, so a report behaves identically either way.
+#
+# Started through startJasperLegacyServer.bat / .sh — you should not need to
+# run compose by hand.
+
+services:
+
+  # Long-running REST service:  POST http://localhost:9095/api/reports/render
+  api:
+    image: flowkraft/datapallas-jasper-legacy:6.21.5
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: datapallas-jasper-legacy-api
+    entrypoint:
+      - java
+      - -Djava.awt.headless=true
+      - -cp
+      - /opt/jr/userlib/*:/opt/jr/lib/*
+      - com.flowkraft.jasperlegacy.JasperLegacyServer
+    environment:
+      # Override with JASPER_LEGACY_PORT if 9095 is taken.
+      SERVER_PORT: "${JASPER_LEGACY_PORT:-9095}"
+    ports:
+      - "${JASPER_LEGACY_PORT:-9095}:${JASPER_LEGACY_PORT:-9095}"
+    volumes:
+      # Point JASPER_LEGACY_REPORTS at the folder holding your classic reports;
+      # the service then addresses them as /work/report/<name>.
+      - "${JASPER_LEGACY_REPORTS:-../../../config/reports-jasper-legacy}:/work/report:ro"
+      - "../lib:/opt/jr/userlib:ro"
+    extra_hosts:
+      # So a jdbcUrl of host.docker.internal reaches databases on this machine,
+      # including the ones DataPallas starts for you.
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # One-shot CLI, for `docker compose run --rm render --jrxml ... --format pdf`.
+  # jr.bat / jr.sh are the friendlier way in; this exists so the compose file
+  # describes the whole tool rather than half of it.
+  render:
+    image: flowkraft/datapallas-jasper-legacy:6.21.5
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["cli"]
+    volumes:
+      - "${JASPER_LEGACY_REPORTS:-../../../config/reports-jasper-legacy}:/work/report:ro"
+      - "${JASPER_LEGACY_OUTPUT:-../../../output}:/work/out"
+      - "../lib:/opt/jr/userlib:ro"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
