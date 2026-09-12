@@ -46,6 +46,11 @@ public class CsvUtils {
 	
 	public static final String OUTPUT_TYPE_EXCEL = "output.xlsx";
 	public static final String OUTPUT_TYPE_JASPER = "output.jasper";
+	// Classic JRXML (JasperReports 1.x - 6.21), rendered by the container under
+	// tools/jasper-legacy. Single dot on purpose: the export format is derived with
+	// FilenameUtils.getExtension() on this value, so "output.jasper.legacy" would
+	// read as an extension of "legacy" and silently skip the format handling.
+	public static final String OUTPUT_TYPE_JASPER_LEGACY = "output.jasperlegacy";
 
 	public static final String HEADER_NOHEADER = "noheader";
 	public static final String HEADER_FIRSTLINE = "firstline";

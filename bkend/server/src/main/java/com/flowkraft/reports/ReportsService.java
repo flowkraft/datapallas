@@ -8,10 +8,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -193,8 +199,11 @@ public class ReportsService {
 			}
 		}
 
-		// Scan for JasperReports in config/reports-jasper/
-		scanJasperReports(configurationFiles);
+		// Two deliberate scans, one per engine. They are separate folders rather than
+		// one folder with a marker inside each report, so a template can never be
+		// handed to the wrong JasperReports engine by accident.
+		scanJasperReports(configurationFiles, JASPER_ROOT, "ds.jasper", TYPE_JASPER_REPORTS);
+		scanJasperReports(configurationFiles, JASPER_LEGACY_ROOT, "ds.jasperlegacy", TYPE_JASPER_LEGACY_REPORTS);
 
 		return configurationFiles.stream();
 	}
@@ -204,8 +213,17 @@ public class ReportsService {
 	private static final Pattern JRXML_NAME_PATTERN = Pattern
 			.compile("<jasperReport[^>]*\\sname=\"([^\"]+)\"", Pattern.DOTALL);
 
-	private void scanJasperReports(List<ConfigurationFileInfo> configurationFiles) throws Exception {
-		String jasperReportsDir = Utils.resolvePathAgainstPortableDir("config/reports-jasper");
+	/** JasperReports 7 templates, rendered by the embedded library. */
+	static final String JASPER_ROOT = "config/reports-jasper";
+	static final String TYPE_JASPER_REPORTS = "config-jasper-reports";
+
+	/** Classic JRXML (1.x - 6.21), rendered by the tools/jasper-legacy container. */
+	static final String JASPER_LEGACY_ROOT = "config/reports-jasper-legacy";
+	static final String TYPE_JASPER_LEGACY_REPORTS = "config-jasper-legacy-reports";
+
+	private void scanJasperReports(List<ConfigurationFileInfo> configurationFiles, String rootFolder,
+			String dataSourceType, String configType) throws Exception {
+		String jasperReportsDir = Utils.resolvePathAgainstPortableDir(rootFolder);
 			File jasperDir = new File(jasperReportsDir);
 			if (!jasperDir.exists() || !jasperDir.isDirectory()) {
 				return;
@@ -214,7 +232,7 @@ public class ReportsService {
 			// Find the default DB connection code
 			String defaultDbConnectionCode = findDefaultDbConnectionCode();
 
-			// Check for global datasource.properties in config/reports-jasper/
+			// Check for a global datasource.properties in this reports folder
 			String globalJasperConnectionCode = null;
 			File globalDsProps = new File(jasperDir, "datasource.properties");
 			if (globalDsProps.exists()) {
@@ -238,8 +256,7 @@ public class ReportsService {
 				if (jrxmlFiles == null || jrxmlFiles.length == 0)
 					continue;
 
-				// Use the first .jrxml as the main report
-				File mainJrxml = jrxmlFiles[0];
+				File mainJrxml = selectMainJrxml(reportFolder, jrxmlFiles);
 				String jrxmlContent = Files.readString(mainJrxml.toPath());
 
 				// Extract report name
@@ -247,16 +264,16 @@ public class ReportsService {
 
 				// Parameters are loaded on-demand via loadConfigDetails(), not at scan time
 
-				// DB connection resolution for standalone JasperReports (pure .jrxml in
-				// config/reports-jasper/) — highest priority wins:
+				// DB connection resolution for standalone JasperReports (a pure .jrxml
+				// in this reports folder) — highest priority wins:
 				//   1. Per-report override — {report-folder}/datasource.properties
-				//   2. Global JasperReports override — config/reports-jasper/datasource.properties
+				//   2. Global override — this reports folder's datasource.properties
 				//   3. DataPallas's default DB connection (marked "default" in Connections)
 				// This is for UI display (ConfigurationFileInfo.dbConnectionCode).
 				// The same 3-tier logic runs again at generation time in
 				// Settings.loadSettingsReporting() to dynamically resolve the connection.
-				// Does NOT apply to inline/wrapper .jrxml templates (output type = jasper)
-				// which always use the parent report's DB connection.
+				// Does NOT apply to inline/wrapper .jrxml templates (output type = jasper
+				// or jasperlegacy) which always use the parent report's DB connection.
 				String connectionCode = defaultDbConnectionCode;
 				if (globalJasperConnectionCode != null) {
 					connectionCode = globalJasperConnectionCode;
@@ -274,24 +291,24 @@ public class ReportsService {
 				}
 
 				// Auto-generate settings.xml and reporting.xml from defaults if missing
-				ensureJasperConfigFiles(reportFolder, mainJrxml.getName(), reportName);
+				ensureJasperConfigFiles(reportFolder, mainJrxml.getName(), reportName, dataSourceType);
 
 				ConfigurationFileInfo configFile = new ConfigurationFileInfo();
 				configFile.fileName = "settings.xml";
-				configFile.filePath = ("config/reports-jasper/" + reportFolder.getName() + "/settings.xml")
+				configFile.filePath = (rootFolder + "/" + reportFolder.getName() + "/settings.xml")
 						.replace("\\", "/");
-				configFile.relativeFilePath = "./config/reports-jasper/" + reportFolder.getName() + "/settings.xml";
+				configFile.relativeFilePath = "./" + rootFolder + "/" + reportFolder.getName() + "/settings.xml";
 				configFile.templateName = reportName;
 				configFile.isFallback = false;
 				configFile.capReportDistribution = false;
 				configFile.capReportGenerationMailMerge = true;
-				configFile.dsInputType = "ds.jasper";
+				configFile.dsInputType = dataSourceType;
 				configFile.notes = StringUtils.EMPTY;
 				configFile.folderName = reportFolder.getName();
-				configFile.type = "config-jasper-reports";
+				configFile.type = configType;
 				configFile.activeClicked = false;
 				configFile.dbConnectionCode = connectionCode;
-				configFile.jrxmlFilePath = ("/config/reports-jasper/" + reportFolder.getName() + "/" + mainJrxml.getName())
+				configFile.jrxmlFilePath = ("/" + rootFolder + "/" + reportFolder.getName() + "/" + mainJrxml.getName())
 						.replace("\\", "/");
 
 				configurationFiles.add(configFile);
@@ -304,11 +321,122 @@ public class ReportsService {
 	}
 
 	/**
+	 * Any quoted .jasper or .jrxml filename. Subreports are referenced through an
+	 * expression — {@code $P{SUBREPORT_DIR} + "department_subreport.jasper"} —
+	 * and both JRXML formats write that expression as a quoted string, so one
+	 * pattern serves the JasperReports 7 and the classic syntax alike.
+	 */
+	private static final Pattern JRXML_TEMPLATE_REFERENCE = Pattern
+			.compile("\"([^\"]+\\.(?:jasper|jrxml))\"", Pattern.CASE_INSENSITIVE);
+
+	/**
+	 * Picks the main report out of a folder that may also hold subreports.
+	 *
+	 * A subreport is not a kind of file, it is a file some other template points
+	 * at — so the reliable test is structural: read every template in the folder
+	 * and eliminate the ones that are referenced. Whatever nothing points at is
+	 * the report. Name conventions only break ties after that.
+	 *
+	 * Note that File.listFiles() returns filesystem order, not alphabetical, so
+	 * every step here works on a sorted list: an unstable tie-break would let the
+	 * same folder resolve to different reports on Windows and on Linux.
+	 */
+	File selectMainJrxml(File reportFolder, File[] jrxmlFiles) throws Exception {
+		if (jrxmlFiles.length == 1) {
+			return jrxmlFiles[0];
+		}
+
+		List<File> candidates = new ArrayList<>(Arrays.asList(jrxmlFiles));
+		candidates.sort(Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER));
+
+		// 1. An explicit main.jrxml settles it. Inference is wrong eventually, and
+		// usually on the one report someone cares most about, so the override is
+		// documented rather than left to be discovered.
+		for (File candidate : candidates) {
+			if ("main.jrxml".equalsIgnoreCase(candidate.getName())) {
+				return candidate;
+			}
+		}
+
+		// 2. Eliminate everything another template references. Subreports are
+		// referenced as compiled .jasper, so compare on the base name.
+		Map<File, String> contents = new LinkedHashMap<>();
+		for (File candidate : candidates) {
+			contents.put(candidate, Files.readString(candidate.toPath()));
+		}
+
+		Set<String> referenced = new HashSet<>();
+		for (Map.Entry<File, String> entry : contents.entrySet()) {
+			Matcher matcher = JRXML_TEMPLATE_REFERENCE.matcher(entry.getValue());
+			while (matcher.find()) {
+				String fileName = new File(matcher.group(1).replace('\\', '/')).getName();
+				String baseName = baseNameOf(fileName);
+				// A template naming itself is not a subreport reference.
+				if (!baseName.equalsIgnoreCase(baseNameOf(entry.getKey().getName()))) {
+					referenced.add(baseName.toLowerCase());
+				}
+			}
+		}
+
+		List<File> unreferenced = new ArrayList<>();
+		for (File candidate : candidates) {
+			if (!referenced.contains(baseNameOf(candidate.getName()).toLowerCase())) {
+				unreferenced.add(candidate);
+			}
+		}
+		if (unreferenced.size() == 1) {
+			return unreferenced.get(0);
+		}
+		// Everything referenced everything, or nothing referenced anything —
+		// carry on with whatever the elimination left rather than nothing at all.
+		List<File> remaining = unreferenced.isEmpty() ? candidates : unreferenced;
+
+		// 3. A file named after its folder — what Jaspersoft Studio produces when
+		// the report is saved into a folder of its own. Separators are normalised
+		// because "monthly-payslip/monthly_payslip.jrxml" is the usual shape.
+		String folderKey = normalizeName(reportFolder.getName());
+		for (File candidate : remaining) {
+			if (normalizeName(baseNameOf(candidate.getName())).equals(folderKey)) {
+				return candidate;
+			}
+		}
+
+		// 4. The report's declared name matching its folder, same idea one level in.
+		for (File candidate : remaining) {
+			Matcher matcher = JRXML_NAME_PATTERN.matcher(contents.get(candidate));
+			if (matcher.find() && normalizeName(matcher.group(1)).equals(folderKey)) {
+				return candidate;
+			}
+		}
+
+		// 5. The largest template. A main report carries the page furniture and its
+		// subreports carry fragments, so this is right far more often than not.
+		File largest = remaining.get(0);
+		for (File candidate : remaining) {
+			if (candidate.length() > largest.length()) {
+				largest = candidate;
+			}
+		}
+		return largest;
+	}
+
+	private String baseNameOf(String fileName) {
+		int dot = fileName.lastIndexOf('.');
+		return dot > 0 ? fileName.substring(0, dot) : fileName;
+	}
+
+	/** Compares report and folder names without caring about - _ or spaces. */
+	private String normalizeName(String name) {
+		return name.replaceAll("[\\s_-]", "").toLowerCase();
+	}
+
+	/**
 	 * Auto-generates settings.xml and reporting.xml in a jasper report folder
 	 * from the defaults, with correct overrides for JasperReports output.
 	 * Only creates files that don't already exist (user customizations are preserved).
 	 */
-	private void ensureJasperConfigFiles(File reportFolder, String jrxmlFileName, String reportName) {
+	private void ensureJasperConfigFiles(File reportFolder, String jrxmlFileName, String reportName,
+			String dataSourceType) {
 		try {
 			String burstDir = Utils.resolvePathAgainstPortableDir("config/burst");
 			String defaultsDir = Utils.resolvePathAgainstPortableDir("config/_defaults");
@@ -343,12 +471,15 @@ public class ReportsService {
 			if (!reportingFile.exists()) {
 				String content = Files.readString(Paths.get(defaultsDir, "reporting.xml"));
 
-				// datasource type -> ds.jasper
+				// datasource type -> ds.jasper or ds.jasperlegacy, matching the folder
+				// this report was found in
 				content = content.replaceAll("(?si)<type\\s*>\\s*ds\\.csvfile\\s*</type>",
-						"<type>ds.jasper</type>");
+						"<type>" + dataSourceType + "</type>");
 
-				// output type -> output.jasper
-				content = content.replaceAll("(?s)output\\.none", "output.jasper");
+				// output type -> the engine that matches the datasource type
+				String outputType = "ds.jasperlegacy".equals(dataSourceType) ? "output.jasperlegacy"
+						: "output.jasper";
+				content = content.replaceAll("(?s)output\\.none", outputType);
 
 				// document path -> full relative path from app root
 				// e.g. config/reports-jasper/employee-detail/employee_detail.jrxml
@@ -425,10 +556,15 @@ public class ReportsService {
 		String normalizedPath = settingsFilePath.replace("\\", "/");
 		configDetails.filePath = normalizedPath;
 
-		// Determine type based on path
-		if (normalizedPath.contains("/config/reports-jasper/")) {
-			configDetails.type = "config-jasper-reports";
-			// Find the .jrxml in the same folder and parse parameters from it
+		// Determine type based on path. The legacy folder is tested first: its name
+		// starts with the JasperReports 7 folder's name, so the broader check would
+		// swallow it.
+		boolean isJasperLegacy = normalizedPath.contains("/" + JASPER_LEGACY_ROOT + "/");
+		if (isJasperLegacy || normalizedPath.contains("/" + JASPER_ROOT + "/")) {
+			configDetails.type = isJasperLegacy ? TYPE_JASPER_LEGACY_REPORTS : TYPE_JASPER_REPORTS;
+			// Find the .jrxml in the same folder and parse parameters from it.
+			// Both JRXML formats declare <parameter name=... class=.../> the same way,
+			// so one parser serves both engines.
 			File[] jrxmlFiles = itemDir.toFile().listFiles(
 					(dir, name) -> name.toLowerCase().endsWith(".jrxml"));
 			if (jrxmlFiles != null && jrxmlFiles.length > 0) {

@@ -755,6 +755,11 @@ public class ReportsController {
 		if (new File(jasperPath).exists())
 			return jasperPath;
 
+		String jasperLegacyPath = resolvePathAgainstPortableDir(
+				"config/reports-jasper-legacy/" + reportId + "/settings.xml");
+		if (new File(jasperLegacyPath).exists())
+			return jasperLegacyPath;
+
 		String burstPath = resolvePathAgainstPortableDir("config/burst/settings.xml");
 		if ("burst".equals(reportId) && new File(burstPath).exists())
 			return burstPath;

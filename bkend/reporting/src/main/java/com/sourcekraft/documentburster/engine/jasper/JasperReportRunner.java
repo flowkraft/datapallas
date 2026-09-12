@@ -4,6 +4,7 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.sf.jasperreports.engine.DefaultJasperReportsContext;
 import net.sf.jasperreports.engine.JREmptyDataSource;
 import net.sf.jasperreports.engine.data.JRMapCollectionDataSource;
 import net.sf.jasperreports.engine.JRParameter;
@@ -19,6 +21,8 @@ import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.SimpleJasperReportsContext;
+import net.sf.jasperreports.repo.RepositoryService;
 import net.sf.jasperreports.engine.export.HtmlExporter;
 import net.sf.jasperreports.engine.export.JRCsvExporter;
 import net.sf.jasperreports.engine.export.ooxml.JRXlsxExporter;
@@ -28,10 +32,35 @@ import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import net.sf.jasperreports.export.SimpleWriterExporterOutput;
 import net.sf.jasperreports.pdf.JRPdfExporter;
 
-public class JasperReportRunner {
+/**
+ * Renders JasperReports 7 templates with the embedded JasperReports library.
+ * Classic JRXML (1.x - 6.21) is a different format and goes through
+ * {@link JasperLegacyRestRenderer} instead.
+ */
+public class JasperReportRunner implements JasperRenderer {
 
 	private static final Logger log = LoggerFactory.getLogger(JasperReportRunner.class);
 
+	/**
+	 * The engine's own context, carrying one extra repository so that a sub-report
+	 * which exists only as .jrxml still renders. It inherits from the default
+	 * context, so every extension found on the classpath — fonts, charts, barcodes
+	 * — is still in play.
+	 *
+	 * Static because the repository caches what it compiles, and a wrapper report
+	 * builds a new runner for every row it renders.
+	 */
+	private static final SimpleJasperReportsContext CONTEXT = createContext();
+
+	private static SimpleJasperReportsContext createContext() {
+		SimpleJasperReportsContext context = new SimpleJasperReportsContext(
+				DefaultJasperReportsContext.getInstance());
+		context.setExtensions(RepositoryService.class,
+				Collections.singletonList(new CompilingReportRepository()));
+		return context;
+	}
+
+	@Override
 	public File generate(File reportDir, String jrxmlFileName, String format, File outputFile,
 			String jdbcUrl, String jdbcUser, String jdbcPass, Map<String, String> params) throws Exception {
 
@@ -42,7 +71,7 @@ public class JasperReportRunner {
 
 		// 1. Compile .jrxml -> JasperReport
 		log.info("Compiling {} ...", jrxmlFile.getName());
-		JasperReport report = JasperCompileManager.compileReport(jrxmlFile.getAbsolutePath());
+		JasperReport report = JasperCompileManager.getInstance(CONTEXT).compile(jrxmlFile.getAbsolutePath());
 
 		// 2. Build parameters map
 		Map<String, Object> jasperParams = new HashMap<>();
@@ -59,9 +88,9 @@ public class JasperReportRunner {
 			if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
 				log.info("Connecting to database ...");
 				conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass != null ? jdbcPass : "");
-				print = JasperFillManager.fillReport(report, jasperParams, conn);
+				print = JasperFillManager.getInstance(CONTEXT).fill(report, jasperParams, conn);
 			} else {
-				print = JasperFillManager.fillReport(report, jasperParams, new JREmptyDataSource());
+				print = JasperFillManager.getInstance(CONTEXT).fill(report, jasperParams, new JREmptyDataSource());
 			}
 			log.info("Report filled: {} page(s)", print.getPages().size());
 
@@ -92,6 +121,7 @@ public class JasperReportRunner {
 	 * The report data feeds the main dataset, while the connection is passed as REPORT_CONNECTION
 	 * so that internal queries (e.g., sub-reports) inside the .jrxml still work.
 	 */
+	@Override
 	public File generate(File reportDir, String jrxmlFileName, String format, File outputFile,
 			List<LinkedHashMap<String, Object>> reportData, Map<String, String> params,
 			String jdbcUrl, String jdbcUser, String jdbcPass) throws Exception {
@@ -102,7 +132,7 @@ public class JasperReportRunner {
 		}
 
 		log.info("Compiling {} ...", jrxmlFile.getName());
-		JasperReport report = JasperCompileManager.compileReport(jrxmlFile.getAbsolutePath());
+		JasperReport report = JasperCompileManager.getInstance(CONTEXT).compile(jrxmlFile.getAbsolutePath());
 
 		Map<String, Object> jasperParams = new HashMap<>();
 		jasperParams.put("SUBREPORT_DIR", reportDir.getAbsolutePath() + File.separator);
@@ -129,9 +159,9 @@ public class JasperReportRunner {
 			JasperPrint print;
 			if (report.getQuery() != null && conn != null) {
 				log.info("Template has queryString — filling with DB connection");
-				print = JasperFillManager.fillReport(report, jasperParams, conn);
+				print = JasperFillManager.getInstance(CONTEXT).fill(report, jasperParams, conn);
 			} else {
-				print = JasperFillManager.fillReport(report, jasperParams, dataSource);
+				print = JasperFillManager.getInstance(CONTEXT).fill(report, jasperParams, dataSource);
 			}
 			log.info("Report filled: {} page(s)", print.getPages().size());
 

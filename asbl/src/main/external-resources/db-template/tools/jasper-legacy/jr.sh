@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-#  jr.sh — render a classic .jrxml through the JasperReports 6 container.
+#  jr.sh — the JasperReports Legacy command.
 #
-#  Same options as `datapallas.sh jasper`, so a report moves between the two
-#  engines by changing the command name and nothing else:
+#  Render a classic .jrxml through the JasperReports 6 container, using the same
+#  options as `datapallas.sh jasper` — so a report moves between the two engines
+#  by changing the command name and nothing else:
 #
 #    ./jr.sh --report-dir <dir> --jrxml <file> --format <fmt> --out <file> \
 #            [--jdbc-url <url>] [--jdbc-user <u>] [--jdbc-pass <p>] \
 #            [-p KEY=VALUE]...
+#
+#  Or find out what a pile of reports needs before running any of them. This
+#  reads the files as text and needs no Docker:
+#
+#    ./jr.sh analyze <folder> [--fix]
 #
 #  Exit codes match the rest of the CLI: 0 ok, 1 job failed, 2 bad command line.
 #  Output is also appended to logs/jr.sh.log.
@@ -43,6 +49,28 @@ host_path() {
 		printf '%s' "$1"
 	fi
 }
+
+# The analyzer only reads .jrxml files as text, so it deliberately returns
+# before everything below — no Docker, no image, no running service. That is the
+# point: it answers "will my reports run" before anything is set up.
+if [ "${1-}" = "analyze" ]; then
+	shift
+	if ! command -v java >/dev/null 2>&1; then
+		echo "ERROR - Java was not found on the PATH." >&2
+		echo "DataPallas requires Java 17; see readme-Prerequisites.txt in the installation folder." >&2
+		exit 2
+	fi
+	if [ $# -lt 1 ]; then
+		cat >&2 <<'EOF'
+Usage: jr.sh analyze <folder> [--fix]
+
+  <folder>  a folder of .jrxml files, searched recursively
+  --fix     rewrite Server repo: paths, keeping a .bak of every change
+EOF
+		exit 2
+	fi
+	exec java "-Djr.command=./jr.sh analyze" "$TOOLDIR/internal/analyze/JasperMigrationAnalyzer.java" "$@"
+fi
 
 ARGS=()
 REPORT_DIR=""

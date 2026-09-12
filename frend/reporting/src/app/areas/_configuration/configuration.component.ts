@@ -894,6 +894,8 @@ export class ConfigurationComponent implements OnInit {
         this.xmlReporting.documentburster.report.template.documentpath = '';
       } else if (outputType === 'output.jasper') {
         await this.handleJasperOutputType(currentPath);
+      } else if (outputType === 'output.jasperlegacy') {
+        await this.handleJasperOutputType(currentPath, true);
       } else if (outputType === 'output.docx') {
         await this.handleDocxOutputType(currentPath);
       } else if (['output.pdf', 'output.xlsx', 'output.html', 'output.dashboard'].includes(outputType)) {
@@ -982,11 +984,21 @@ export class ConfigurationComponent implements OnInit {
     }
   }
 
-  private async handleJasperOutputType(currentPath: string) {
+  /**
+   * Restores the editor state for a JasperReports output type. Both engines
+   * behave identically here — only the folder the pre-built templates come from
+   * differs, so the folder is passed in rather than hard-coded.
+   *
+   * The trailing slash matters: 'reports-jasper-legacy' starts with
+   * 'reports-jasper', so a bare substring test would claim legacy templates for
+   * the JasperReports 7 engine.
+   */
+  private async handleJasperOutputType(currentPath: string, legacy = false) {
     this.reportPreviewVisible = false;
     const savedPath = currentPath;
+    const reportsFolder = legacy ? 'reports-jasper-legacy/' : 'reports-jasper/';
 
-    if (savedPath && savedPath.endsWith('.jrxml') && !savedPath.includes('reports-jasper')) {
+    if (savedPath && savedPath.endsWith('.jrxml') && !savedPath.includes(reportsFolder)) {
       // Inline .jrxml mode — restore editor content
       this.selectedJasperReport = this.inlineJrxmlOption;
       try {
@@ -998,8 +1010,10 @@ export class ConfigurationComponent implements OnInit {
         console.error('Error loading inline .jrxml template:', error);
       }
       this.autosaveEnabled = true;
-    } else if (savedPath && savedPath.includes('reports-jasper')) {
-      const jasperConfigs = this.settingsService.getJasperReportConfigurations();
+    } else if (savedPath && savedPath.includes(reportsFolder)) {
+      const jasperConfigs = legacy
+        ? this.settingsService.getJasperLegacyReportConfigurations()
+        : this.settingsService.getJasperReportConfigurations();
       this.selectedJasperReport = jasperConfigs.find(
         (r: any) => r.filePath === savedPath,
       ) || null;
@@ -2333,8 +2347,11 @@ export class ConfigurationComponent implements OnInit {
 
     if (isSamplePath) return;
 
-    // Wrapped JasperReports (from reports-jasper/) — editor is read-only, nothing to save
-    if (outputType === 'jasper' && currentPath && currentPath.includes('reports-jasper')) return;
+    // Wrapped JasperReports (a pre-built template from either reports folder) —
+    // the editor is read-only, so there is nothing to save. Both folder names are
+    // matched with the trailing slash so neither claims the other's templates.
+    if ((outputType === 'jasper' || outputType === 'jasperlegacy') && currentPath
+      && (currentPath.includes('reports-jasper/') || currentPath.includes('reports-jasper-legacy/'))) return;
 
     try {
       // Save template content — backend resolves the per-output-type path
@@ -2417,6 +2434,7 @@ export class ConfigurationComponent implements OnInit {
       'output.pdf':       { category: 'PDF Generation (from HTML)',     promptId: 'PDF_HTML_TEMPLATE_GENERATOR',               enrich: 'columnData' },
       'output.xlsx':      { category: 'Excel Report Generation',       promptId: 'EXCEL_TEMPLATE_GENERATOR',                  enrich: 'columnData' },
       'output.jasper':    { category: 'JasperReports (.jrxml) Generation', promptId: 'JASPER_JRXML_TEMPLATE_GENERATOR',        enrich: 'columnData' },
+      'output.jasperlegacy': { category: 'JasperReports Legacy (.jrxml) Generation', promptId: 'JASPER_LEGACY_JRXML_TEMPLATE_GENERATOR', enrich: 'columnData' },
       'output.fop2pdf':   { category: 'PDF Generation (from XSL-FO)',  promptId: 'PDF_SAMPLE_A4_PAYSLIP_XSLFO',              enrich: 'columnData' },
       'output.html':      { category: 'Template Creation/Modification', promptId: 'BUILD_TEMPLATE_FROM_SCRATCH',              enrich: 'none' },
       'output.dashboard': { category: 'Dashboard Creation',            promptId: 'DASHBOARD_BUILD_LAYOUT',                    enrich: 'dashboard' },
@@ -2742,9 +2760,33 @@ export class ConfigurationComponent implements OnInit {
     return this.xmlReporting?.documentburster?.report?.datasource?.type === 'ds.dashboard';
   }
 
+  /** True for either JasperReports engine — they share the whole Output tab. */
+  get isJasperOutput(): boolean {
+    const outputType = this.xmlReporting?.documentburster?.report?.template?.outputtype;
+    return outputType === 'output.jasper' || outputType === 'output.jasperlegacy';
+  }
+
+  get isJasperLegacyOutput(): boolean {
+    return this.xmlReporting?.documentburster?.report?.template?.outputtype === 'output.jasperlegacy';
+  }
+
+  /**
+   * Pre-built templates for the engine currently selected. The two lists are kept
+   * apart because a classic template cannot be rendered by JasperReports 7, nor a
+   * JasperReports 7 template by the legacy engine.
+   */
+  get jasperReportOptions(): any[] {
+    return this.isJasperLegacyOutput
+      ? this.settingsService.getJasperLegacyReportConfigurations()
+      : this.settingsService.getJasperReportConfigurations();
+  }
+
   getAiHelpButtonLabel(outputType: string): string {
     if (outputType === 'output.jasper') {
       return 'Hey AI, Help Me Build This Jasper Template!';
+    }
+    if (outputType === 'output.jasperlegacy') {
+      return 'Hey AI, Help Me Build This Legacy Jasper Template!';
     }
     return `Hey AI, Help Me Build This ${outputType.replace('output.', '').toUpperCase()} Template!`;
   }

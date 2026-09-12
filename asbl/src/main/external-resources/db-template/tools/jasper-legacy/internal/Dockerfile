@@ -44,7 +44,7 @@ COPY --from=build /build/target/lib/ /opt/jr/lib/
 # Mount point for the customer's own jars — scriptlets, custom data sources,
 # custom functions, corporate font extensions, licence-restricted JDBC drivers.
 # Created empty so the classpath entry is valid even when nothing is mounted.
-RUN mkdir -p /opt/jr/userlib /work/report /work/out
+RUN mkdir -p /opt/jr/userlib /work/report /work/templates /work/out
 
 # The customer's jars come first: a report that was built against their version
 # of a library should get their version of it.

@@ -391,6 +391,9 @@ public class JobsController {
 		String jasperPath = Utils.resolvePathAgainstPortableDir("config/reports-jasper/" + reportId + "/settings.xml");
 		if (new File(jasperPath).exists()) return jasperPath;
 
+		String jasperLegacyPath = Utils.resolvePathAgainstPortableDir("config/reports-jasper-legacy/" + reportId + "/settings.xml");
+		if (new File(jasperLegacyPath).exists()) return jasperLegacyPath;
+
 		String burstPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
 		if ("burst".equals(reportId) && new File(burstPath).exists()) return burstPath;
 

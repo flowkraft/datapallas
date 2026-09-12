@@ -17,6 +17,60 @@ written in.
 | `<staticText><reportElement/>` — Studio 6.x and earlier, Server exports | ❌ | ✅ |
 | `<!DOCTYPE jasperReport ... jasperreport.dtd>` — circa 2005 | ❌ | ✅ |
 
+## Coming from JasperReports Server? Start here
+
+Point `jr.bat analyze` at your reports and it will tell you which engine each one
+needs, what it reaches for outside itself, and what each fix costs:
+
+```bash
+jr.bat analyze C:\exported-reports          # ./jr.sh analyze on Linux/macOS
+```
+
+It reads the `.jrxml` files as text — **no Docker, no services, nothing
+installed**, just the Java DataPallas already requires — so you can run it before
+committing to anything. It changes nothing unless you ask.
+
+```
+WHICH ENGINE
+  2    classic JRXML (1.x - 6.21)   -> config/reports-jasper-legacy/
+  1    JasperReports 7              -> config/reports-jasper/
+
+READINESS
+  1    run as they are
+  2    need something first
+
+WHAT EACH REPORT NEEDS
+
+  payslips\payslip.jrxml
+    repo: file             repo:/images/company_logo.png
+                           -> rewrite the path and copy the file next to the report
+    scriptlet              com.acme.payroll.PayslipScriptlet
+                           -> copy the jar holding this class into tools/jasper-legacy/lib/
+    font                   Acme Sans
+                           -> copy the font-extension jar into tools/jasper-legacy/lib/
+```
+
+It finds `repo:` paths, scriptlet and custom classes, fonts the renderer does not
+have, query languages that need their own library, and sub-reports that are
+missing or referenced as `.jrxml` instead of compiled `.jasper`.
+
+Then it offers to do the mechanical part:
+
+```bash
+jr.bat analyze C:\exported-reports --fix
+```
+
+`--fix` rewrites `repo:/images/logo.png` into `$P{SUBREPORT_DIR} + "images/logo.png"`,
+declares `SUBREPORT_DIR` where the template does not already (referencing an
+undeclared parameter is a compile error, not a warning), and keeps a `.bak` beside
+every file it touches. It changes nothing else — the jars and the Server objects
+are yours to move, and it says so.
+
+What remains after that is the honest list: copy the jars you already own into
+[`lib/`](lib/README.md), and recreate anything that was a Server object rather
+than a file — data adapters, input controls, Domains. Scope those before you
+promise anyone a date.
+
 ## Why a container
 
 JasperReports 6 pins `openpdf 1.3.32` and `jfreechart 1.0.19`. DataPallas runs
@@ -31,18 +85,18 @@ which JDK DataPallas is using.
 
 ## Build
 
-There is nothing to do. The first `jr.bat` / `jr.sh` run builds the image from
-the `Dockerfile` in this folder — a few minutes, and it needs internet access
-that once. Every run after that starts immediately.
+There is nothing to do. The first render builds the image from `internal/Dockerfile`
+— a few minutes, and it needs internet access that once. Every run after that
+starts immediately. `jr.bat analyze` needs none of this.
 
 The image is **not** pulled from a registry. It is built on your machine from
-sources you can read, which is also why `pom.xml` and `Dockerfile` live here
-rather than being hidden inside a published image.
+sources you can read, which is also why `internal/pom.xml` and `internal/Dockerfile`
+ship here rather than being hidden inside a published image.
 
-To build it yourself ahead of time, or to rebuild after editing `pom.xml`:
+To build it yourself ahead of time, or to rebuild after editing the pom:
 
 ```bash
-cd tools/jasper-legacy
+cd tools/jasper-legacy/internal
 docker build -t flowkraft/datapallas-jasper-legacy:6.21.5 .
 ```
 
@@ -159,11 +213,37 @@ Two consequences worth knowing:
   a jar added after it started is picked up on the next
   `startJasperLegacyServer` — not mid-flight.
 
+## Using classic reports inside DataPallas
+
+You do not have to use this tool by hand. DataPallas treats classic templates as
+first-class reports:
+
+1. Start the renderer once — `startJasperLegacyServer.bat`.
+2. Drop your report folder into `config/reports-jasper-legacy/` (the same shape
+   as `config/reports-jasper/`: the `.jrxml` plus its images and resources).
+3. It appears in the Reports screen marked **(legacy)**, with its parameter form,
+   its own database connection, scheduling, bursting and distribution — the same
+   as any other report.
+
+The marker is deliberate. The two engines read different file formats, so which
+one a report uses is a real property of that report, not an implementation
+detail, and it is shown wherever a report is listed or selected.
+
+In the Output tab of a report configuration you can also pick **JasperReports
+Legacy (.jrxml)** as the output type, which renders a normal DataPallas report —
+SQL, CSV, Excel, Groovy — through a classic template. One template, one document
+per row, exactly as the JasperReports 7 output type behaves.
+
+DataPallas talks to the service over HTTP, never through `jr.bat`: a container
+start per report would make bursting unusable. If the service is not running, the
+generation fails with a message telling you to start it.
+
 ## The REST service
 
 The CLI starts a container per report, about 2–4 seconds. When something else
-needs to render classic reports over HTTP, or you are rendering enough of them
-that the container start hurts, run the same engine as a service instead:
+needs to render classic reports over HTTP — DataPallas itself included — or you
+are rendering enough of them that the container start hurts, run the same engine
+as a service instead:
 
 ```bash
 startJasperLegacyServer.bat      # startJasperLegacyServer.sh on Linux/macOS
@@ -270,29 +350,30 @@ file. Read it if you want to know exactly what is in the image; you never have
 to touch it to use the tool.
 
 ```
-README.md                      this file
-jr.bat  jr.sh                  render one report
+README.md                         this file
+jr.bat  jr.sh                     analyze reports, or render one
 startJasperLegacyServer.bat/.sh   start the REST service
 shutJasperLegacyServer.bat/.sh    stop it
-lib/                           drop your own jars here
-internal/                      Dockerfile, pom.xml, sources, compose
+lib/                              drop your own jars here
+internal/                         Dockerfile, pom.xml, sources, compose, analyzer
 ```
+
+`jr.bat analyze` is the only subcommand that needs no Docker.
 
 ## What this is not
 
-**It is not part of the bursting pipeline.** Each CLI run starts a container and
-a JVM, roughly 2–4 seconds. That is fine for rendering a report, and far too slow
-for splitting one template into a thousand personalised documents. Use it to
-render and to prove your templates work; use DataPallas's own reporting for
-volume. (The REST service removes the per-report container start, which is the
-route to take if you ever do need throughput.)
+**`jr.bat` is not the way to render at volume.** Each CLI run starts a container
+and a JVM, roughly 2–4 seconds. That is fine for rendering one report and for
+proving a template works, and far too slow for splitting one template into a
+thousand personalised documents. Bursting and scheduling go through the REST
+service instead, which is why DataPallas asks you to start it.
 
-**It does not make old templates part of DataPallas.** The report list, the
-parameter form, scheduling, distribution and the portal all work against
-JasperReports 7 templates under `config/reports-jasper/`. This renders classic
-files from any folder, on demand.
+**Classic templates stay classic.** Nothing here converts a template to the
+JasperReports 7 format, and the two formats never mix: a report in
+`config/reports-jasper-legacy/` is always rendered by this engine, a report in
+`config/reports-jasper/` always by the embedded one.
 
-The intended path is: render your existing reports here to confirm they are
-intact, convert the ones you want to keep to JRXML 7 (Jaspersoft Studio opens
-classic files and saves the new format), and move those into
-`config/reports-jasper/` where the rest of the platform can reach them.
+So you have two routes, and both are legitimate. Keep your classic templates and
+run them here indefinitely, or convert the ones worth keeping to JRXML 7
+(Jaspersoft Studio opens classic files and saves the new format) and move them
+into `config/reports-jasper/`, where they need no container at all.

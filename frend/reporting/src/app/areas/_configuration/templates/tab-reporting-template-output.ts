@@ -44,7 +44,21 @@
           <option value="output.jasper">
             JasperReports (.jrxml)
           </option>
+          <option value="output.jasperlegacy">
+            JasperReports Legacy (.jrxml)
+          </option>
         </select>
+        @if (xmlReporting?.documentburster.report.template.outputtype === 'output.jasper') {
+        <small class="text-base-content/60" style="display: block; margin-top: 5px;">
+          For JasperReports 7 templates — the format written by Jaspersoft Studio 7.
+        </small>
+        }
+        @if (xmlReporting?.documentburster.report.template.outputtype === 'output.jasperlegacy') {
+        <small class="text-base-content/60" style="display: block; margin-top: 5px;">
+          For JasperReports 6 and below — templates from Jaspersoft Studio 6.x or exported from JasperReports Server.
+          Rendered by the JasperReports Legacy service (tools/jasper-legacy), which must be running.
+        </small>
+        }
         @if (isOutputTypeLocked) {
         <small class="text-base-content/60" style="display: block; margin-top: 5px;">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg> Output type locked to Dashboard (set by input type)
@@ -52,7 +66,7 @@
         }
       </div>
       <div style="grid-column:span 5">
-        @if (xmlReporting?.documentburster.report.template.outputtype !== 'output.none' && (xmlReporting?.documentburster.report.template.outputtype !== 'output.jasper' || selectedJasperReport?.filePath === '__inline__')) {
+        @if (xmlReporting?.documentburster.report.template.outputtype !== 'output.none' && ((xmlReporting?.documentburster.report.template.outputtype !== 'output.jasper' && xmlReporting?.documentburster.report.template.outputtype !== 'output.jasperlegacy') || selectedJasperReport?.filePath === '__inline__')) {
         <button id="btnAskAiForHelpOutput" type="button" class="btn btn-outline w-full" (click)="askAiForHelp((xmlReporting?.documentburster.report.template.outputtype))">
               <strong>{{ getAiHelpButtonLabel(xmlReporting?.documentburster.report.template.outputtype) }}</strong>
         </button>
@@ -73,8 +87,8 @@
     </div>
     }
 
-    <!-- JasperReport picker when output.jasper is selected (hidden for standalone jasper from config/reports-jasper/) -->
-    @if (xmlReporting?.documentburster.report.template.outputtype === 'output.jasper') {
+    <!-- JasperReport picker, one engine at a time (hidden for standalone jasper reports, which already are the template) -->
+    @if (isJasperOutput) {
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         JasperReports
@@ -91,7 +105,7 @@
           <ng-option [value]="inlineJrxmlOption">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg>&nbsp;Write .jrxml code inline
           </ng-option>
-          @for (report of this.settingsService.getJasperReportConfigurations(); track $index) {
+          @for (report of jasperReportOptions; track $index) {
           <ng-option
             [value]="report"
           >
@@ -106,7 +120,7 @@
 
     <!-- .jrxml code editor (editable for inline, read-only for reports-jasper/) -->
     <p></p>
-    @if (xmlReporting?.documentburster.report.template.outputtype === 'output.jasper' && selectedJasperReport) {
+    @if (isJasperOutput && selectedJasperReport) {
     <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem">
       <div style="grid-column:span 2">
         Template
@@ -131,7 +145,7 @@
 
     @if (askForFeatureService.alreadyImplementedFeatures.includes(xmlReporting?.documentburster.report.template.outputtype)) {
     <div>
-      @if (xmlReporting?.documentburster.report.template.outputtype != 'output.none' && xmlReporting?.documentburster.report.template.outputtype != 'output.jasper') {
+      @if (xmlReporting?.documentburster.report.template.outputtype != 'output.none' && !isJasperOutput) {
       <div
         style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem"
         id="reportTemplateContainer"

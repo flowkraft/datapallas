@@ -48,6 +48,7 @@ public final class AiPromptRegistry {
             EmailBoxed3columnResponsive.create(),
             ExcelTemplateGenerator.create(),
             JasperJrxmlTemplateGenerator.create(),
+            JasperLegacyJrxmlTemplateGenerator.create(),
             PdfHtmlTemplateGenerator.create(),
             PdfSampleA4PayslipXslfo.create(),
             FilterPaneDslConfigure.create(),

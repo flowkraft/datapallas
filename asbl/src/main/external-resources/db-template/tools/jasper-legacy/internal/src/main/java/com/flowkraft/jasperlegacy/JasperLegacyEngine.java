@@ -3,15 +3,23 @@ package com.flowkraft.jasperlegacy;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
+import net.sf.jasperreports.engine.DefaultJasperReportsContext;
 import net.sf.jasperreports.engine.JREmptyDataSource;
 import net.sf.jasperreports.engine.JRParameter;
+import net.sf.jasperreports.engine.data.JRMapCollectionDataSource;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.SimpleJasperReportsContext;
+import net.sf.jasperreports.repo.RepositoryService;
 import net.sf.jasperreports.engine.export.HtmlExporter;
 import net.sf.jasperreports.engine.export.JRCsvExporter;
 import net.sf.jasperreports.engine.export.JRPdfExporter;
@@ -37,12 +45,38 @@ public class JasperLegacyEngine {
 
 	private final Listener listener;
 
+	/**
+	 * The engine's own context, carrying one extra repository so that a
+	 * sub-report which exists only as .jrxml still renders. It inherits from the
+	 * default context, so every extension found on the classpath — fonts, charts,
+	 * barcodes — is still in play.
+	 *
+	 * Built once: the repository caches what it compiles, and that cache is only
+	 * worth having if the context outlives a single render.
+	 */
+	private final SimpleJasperReportsContext context;
+
 	public JasperLegacyEngine(Listener listener) {
 		this.listener = listener;
+		this.context = new SimpleJasperReportsContext(DefaultJasperReportsContext.getInstance());
+		this.context.setExtensions(RepositoryService.class,
+				Collections.singletonList(new CompilingReportRepository()));
 	}
 
 	public File render(File reportDir, String jrxmlFileName, String format, File outputFile,
 			String jdbcUrl, String jdbcUser, String jdbcPass, Map<String, String> params) throws Exception {
+		return render(reportDir, jrxmlFileName, format, outputFile, jdbcUrl, jdbcUser, jdbcPass, params, null);
+	}
+
+	/**
+	 * @param reportData rows from DataPallas's own data pipeline, read by the
+	 *                   template as fields. Null or empty means the template
+	 *                   supplies its own rows, from its embedded query or from
+	 *                   parameters.
+	 */
+	public File render(File reportDir, String jrxmlFileName, String format, File outputFile,
+			String jdbcUrl, String jdbcUser, String jdbcPass, Map<String, String> params,
+			List<Map<String, Object>> reportData) throws Exception {
 
 		File jrxmlFile = new File(reportDir, jrxmlFileName);
 		if (!jrxmlFile.exists()) {
@@ -50,7 +84,7 @@ public class JasperLegacyEngine {
 		}
 
 		log("Compiling " + jrxmlFile.getName() + " ...");
-		JasperReport report = JasperCompileManager.compileReport(jrxmlFile.getAbsolutePath());
+		JasperReport report = JasperCompileManager.getInstance(context).compile(jrxmlFile.getAbsolutePath());
 
 		Map<String, Object> jasperParams = new HashMap<>();
 		// Studio bakes the author's own machine into SUBREPORT_DIR's default value.
@@ -63,13 +97,24 @@ public class JasperLegacyEngine {
 
 		Connection conn = null;
 		try {
-			JasperPrint print;
 			if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
 				log("Connecting to database ...");
 				conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass != null ? jdbcPass : "");
-				print = JasperFillManager.fillReport(report, jasperParams, conn);
+				jasperParams.put(JRParameter.REPORT_CONNECTION, conn);
+			}
+
+			// Same precedence as the JasperReports 7 path: a template carrying its own
+			// query wins when a connection is available, otherwise the rows handed in
+			// by DataPallas feed the fields, otherwise there is nothing to iterate.
+			JasperPrint print;
+			if (report.getQuery() != null && conn != null) {
+				log("Template has queryString — filling with DB connection");
+				print = JasperFillManager.getInstance(context).fill(report, jasperParams, conn);
+			} else if (reportData != null && !reportData.isEmpty()) {
+				print = JasperFillManager.getInstance(context).fill(report, jasperParams,
+						new JRMapCollectionDataSource(flattenNestedData(reportData)));
 			} else {
-				print = JasperFillManager.fillReport(report, jasperParams, new JREmptyDataSource());
+				print = JasperFillManager.getInstance(context).fill(report, jasperParams, new JREmptyDataSource());
 			}
 			log("Report filled: " + print.getPages().size() + " page(s)");
 
@@ -90,6 +135,51 @@ public class JasperLegacyEngine {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Flattens nested master-detail rows for JasperReports grouping: when a row
+	 * holds a List&lt;Map&gt; (e.g. "details"), the master fields are repeated for
+	 * each child row. Rows without nested lists pass through unchanged. Mirrors
+	 * the JasperReports 7 path so the same data produces the same document.
+	 */
+	@SuppressWarnings("unchecked")
+	private List<Map<String, ?>> flattenNestedData(List<Map<String, Object>> reportData) {
+		List<Map<String, ?>> result = new ArrayList<>();
+
+		for (Map<String, Object> row : reportData) {
+			String nestedKey = null;
+			List<Map<String, Object>> nestedList = null;
+
+			for (Map.Entry<String, Object> entry : row.entrySet()) {
+				if (entry.getValue() instanceof List) {
+					List<?> candidate = (List<?>) entry.getValue();
+					if (!candidate.isEmpty() && candidate.get(0) instanceof Map) {
+						nestedKey = entry.getKey();
+						nestedList = (List<Map<String, Object>>) entry.getValue();
+						break;
+					}
+				}
+			}
+
+			if (nestedList == null) {
+				result.add(row);
+				continue;
+			}
+
+			for (Map<String, Object> childRow : nestedList) {
+				LinkedHashMap<String, Object> flatRow = new LinkedHashMap<>();
+				for (Map.Entry<String, Object> entry : row.entrySet()) {
+					if (!entry.getKey().equals(nestedKey)) {
+						flatRow.put(entry.getKey(), entry.getValue());
+					}
+				}
+				flatRow.putAll(childRow);
+				result.add(flatRow);
+			}
+		}
+
+		return result;
 	}
 
 	public static String contentTypeFor(String format) {

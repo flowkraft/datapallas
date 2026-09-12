@@ -14,6 +14,9 @@ public final class JasperJrxmlTemplateGenerator {
             List.of("jasper", "jrxml", "template"),
             "JasperReports (.jrxml) Generation",
             """
+THIS IS FOR THE NEW JASPERREPORTS FORMAT, INTRODUCED IN VERSION 7.0 AND USED BY EVERY RELEASE FROM 7.0 ONWARDS.
+JasperReports 7.0 replaced the .jrxml file format outright. Templates in this format are rejected by JasperReports 6.21 and earlier, and templates in the older format are rejected by the engine this one targets. If the request is about a template written for JasperReports 6.21 or earlier, stop and say the Legacy JasperReports generator is the right tool.
+
 Write a JasperReports 7.0+ .jrxml (Jackson-based XML format). Return only the complete .jrxml code — no partial snippets or explanations.
 
 <REQUIREMENT>

@@ -400,7 +400,8 @@ export class ReportsService {
    */
   async loadReportDetails(configFile: CfgTmplFileInfo): Promise<CfgTmplFileInfo> {
     // Only reports, samples, and jasper reports have details to load
-    if (configFile.type !== 'config-reports' && configFile.type !== 'config-samples' && configFile.type !== 'config-jasper-reports') {
+    if (configFile.type !== 'config-reports' && configFile.type !== 'config-samples'
+      && configFile.type !== 'config-jasper-reports' && configFile.type !== 'config-jasper-legacy-reports') {
       return configFile;
     }
 
@@ -493,10 +494,21 @@ export class ReportsService {
     }
   }
 
+  /** JasperReports 7 templates, from config/reports-jasper/. */
   getJasperReportConfigurations() {
     if (this.configurationFiles && this.configurationFiles.length > 0) {
       return this.configurationFiles.filter(
         (configuration) => configuration.type === 'config-jasper-reports',
+      );
+    }
+    return [];
+  }
+
+  /** Classic JRXML templates (JasperReports 1.x - 6.21), from config/reports-jasper-legacy/. */
+  getJasperLegacyReportConfigurations() {
+    if (this.configurationFiles && this.configurationFiles.length > 0) {
+      return this.configurationFiles.filter(
+        (configuration) => configuration.type === 'config-jasper-legacy-reports',
       );
     }
     return [];
@@ -597,7 +609,7 @@ export class ReportsService {
 
   requiresInputFile(report: CfgTmplFileInfo): boolean {
     if (!report) return true;
-    if (report.dsInputType === 'ds.jasper') return false;
+    if (report.dsInputType === 'ds.jasper' || report.dsInputType === 'ds.jasperlegacy') return false;
     if (report.dsInputType === 'ds.sqlquery') return false;
     if (report.dsInputType === 'ds.scriptfile') {
       const sel = (report.scriptOptionsSelectFileExplorer ?? 'notused');

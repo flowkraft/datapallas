@@ -31,6 +31,9 @@ services:
       # Point JASPER_LEGACY_REPORTS at the folder holding your classic reports;
       # the service then addresses them as /work/report/<name>.
       - "${JASPER_LEGACY_REPORTS:-../../../config/reports-jasper-legacy}:/work/report:ro"
+      # DataPallas also renders inline .jrxml written in a report's Output tab,
+      # which lives here rather than in the reports folder.
+      - "${JASPER_LEGACY_TEMPLATES:-../../../templates}:/work/templates:ro"
       - "../lib:/opt/jr/userlib:ro"
     extra_hosts:
       # So a jdbcUrl of host.docker.internal reaches databases on this machine,

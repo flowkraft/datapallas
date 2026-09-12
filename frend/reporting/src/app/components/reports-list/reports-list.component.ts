@@ -53,9 +53,9 @@ import { PAGE_WINDOW_MAX, buildPageWindow } from '../../helpers/pagination';
               >
                 <td>
                   {{ configurationFile.templateName }}
-                  @if (configurationFile.type=='config-jasper-reports') {
+                  @if (configurationFile.type=='config-jasper-reports' || configurationFile.type=='config-jasper-legacy-reports') {
                   <span class="label" style="margin-left: 5px; background-color: #8fbcd4; color: #fff;">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg> Jasper
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline-block w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg> Jasper@if (configurationFile.type=='config-jasper-legacy-reports') {&nbsp;legacy}
                   </span>
                   }
                   @if (configurationFile.filePath === settingsService.currentConfigurationTemplatePath) {
@@ -289,6 +289,16 @@ export class ReportsListComponent implements OnInit {
   /** True only when fileInfo differs from the snapshot taken on modal open. */
   isModalDirty(): boolean {
     return JSON.stringify(this.modalConfigurationTemplateInfo?.fileInfo) !== this.modalSnapshot;
+  }
+
+  /**
+   * True for a report defined by a .jrxml, on either JasperReports engine. Both
+   * are read-only here for the same reason: the layout lives in the template
+   * file, not in this configuration.
+   */
+  isJasperFileInfo(fileInfo: any): boolean {
+    return fileInfo?.type === 'config-jasper-reports'
+      || fileInfo?.type === 'config-jasper-legacy-reports';
   }
 
   searchTerm = '';

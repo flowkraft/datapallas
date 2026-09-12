@@ -335,15 +335,18 @@ public class Settings extends DumpToString {
 			reportingSettings = (ReportingSettings) ur.unmarshal(fis);
 		}
 
-		// For standalone JasperReports (pure .jrxml dropped into config/reports-jasper/):
-		// if conncode is empty, resolve the DB connection dynamically using the
-		// 3-tier datasource.properties priority:
-		//   1. Per-report override — config/reports-jasper/{report-folder}/datasource.properties
-		//   2. Global JasperReports override — config/reports-jasper/datasource.properties
+		// For standalone JasperReports (a pure .jrxml dropped into
+		// config/reports-jasper/ or config/reports-jasper-legacy/): if conncode is
+		// empty, resolve the DB connection dynamically using the 3-tier
+		// datasource.properties priority:
+		//   1. Per-report override — {report-folder}/datasource.properties
+		//   2. Global override — the reports folder's own datasource.properties
 		//   3. ReportBurster's default DB connection (marked as "default" in Connections settings)
-		// This does NOT apply to inline/wrapper .jrxml templates (output type = jasper)
-		// which always use the parent report's DB connection from its own conncode.
-		if ("ds.jasper".equals(reportingSettings.report.datasource.type)
+		// This does NOT apply to inline/wrapper .jrxml templates (output type =
+		// jasper or jasperlegacy) which always use the parent report's DB connection
+		// from its own conncode.
+		if (("ds.jasper".equals(reportingSettings.report.datasource.type)
+				|| "ds.jasperlegacy".equals(reportingSettings.report.datasource.type))
 				&& (Objects.isNull(reportingSettings.report.datasource.sqloptions)
 						|| Objects.isNull(reportingSettings.report.datasource.sqloptions.conncode)
 						|| StringUtils.isBlank(reportingSettings.report.datasource.sqloptions.conncode))) {
@@ -354,7 +357,8 @@ public class Settings extends DumpToString {
 					reportingSettings.report.datasource.sqloptions = new ReportSettings.DataSource.SQLOptions();
 				}
 				reportingSettings.report.datasource.sqloptions.conncode = resolvedConnCode;
-				log.debug("Dynamically resolved DB connection for ds.jasper: {}", resolvedConnCode);
+				log.debug("Dynamically resolved DB connection for {}: {}",
+						reportingSettings.report.datasource.type, resolvedConnCode);
 			}
 		}
 
@@ -477,13 +481,15 @@ public class Settings extends DumpToString {
 	}
 
 	/**
-	 * Resolves DB connection code for standalone JasperReports (pure .jrxml in
-	 * config/reports-jasper/) using 3-tier priority:
+	 * Resolves DB connection code for standalone JasperReports (a pure .jrxml in
+	 * config/reports-jasper/ or config/reports-jasper-legacy/) using 3-tier
+	 * priority:
 	 *   1. Per-report override — {report-folder}/datasource.properties
-	 *   2. Global JasperReports override — config/reports-jasper/datasource.properties
+	 *   2. Global override — the reports folder's own datasource.properties
 	 *   3. ReportBurster's default DB connection (first db-* with default=true)
-	 * Does NOT apply to inline/wrapper .jrxml templates (output type = jasper)
-	 * which always use the parent report's DB connection.
+	 * Resolution is relative to the report folder, so it serves either root.
+	 * Does NOT apply to inline/wrapper .jrxml templates (output type = jasper or
+	 * jasperlegacy) which always use the parent report's DB connection.
 	 */
 	private String resolveJasperConnectionCode(String reportConfigFolderPath) {
 		try {

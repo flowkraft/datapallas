@@ -51,6 +51,8 @@ import com.sourcekraft.documentburster.common.security.SecretsCipher;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.common.settings.model.ReportSettings;
 import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
+import com.sourcekraft.documentburster.engine.jasper.JasperLegacyRestRenderer;
+import com.sourcekraft.documentburster.engine.jasper.JasperRenderer;
 import com.sourcekraft.documentburster.engine.jasper.JasperReportRunner;
 import com.sourcekraft.documentburster.context.BurstingContext;
 import com.sourcekraft.documentburster.utils.CsvUtils;
@@ -171,7 +173,7 @@ public abstract class AbstractReporter extends AbstractBurster {
 		}
 		String outputExt = FilenameUtils.getExtension(ctx.settings.getReportTemplate().outputtype);
 		// output.jasper doesn't encode the export format — derive it from burstfilename
-		if ("jasper".equals(outputExt)) {
+		if ("jasper".equals(outputExt) || "jasperlegacy".equals(outputExt)) {
 			String burstFn = ctx.settings.getBurstFileName();
 			String fnExt = FilenameUtils.getExtension(burstFn);
 			// Use the literal extension if set (e.g. ".pdf", ".xlsx"), default to pdf
@@ -349,7 +351,7 @@ public abstract class AbstractReporter extends AbstractBurster {
 			return dataSource.exceloptions.idcolumn;
 		} else if (typeString.equalsIgnoreCase("ds.scriptfile") || typeString.equalsIgnoreCase("ds.dashboard")) {
 			return dataSource.scriptoptions.idcolumn;
-		} else if (typeString.equalsIgnoreCase("ds.jasper")) {
+		} else if (typeString.equalsIgnoreCase("ds.jasper") || typeString.equalsIgnoreCase("ds.jasperlegacy")) {
 			// Standalone JasperReports have no external data — single token, no idcolumn
 			return null;
 		} else if (typeString.equalsIgnoreCase("ds.gsheet") || typeString.equalsIgnoreCase("ds.o365sheet")) {
@@ -392,7 +394,8 @@ public abstract class AbstractReporter extends AbstractBurster {
 		} else if (ctx.settings.getReportTemplate().outputtype.equals(CsvUtils.OUTPUT_TYPE_EXCEL))
 			generateExcelFromHtmlTemplateUsingHtmlExporter(ctx.extractedFilePath, templateFilePath,
 					ctx.variables.getUserVariables(ctx.token));
-		else if (ctx.settings.getReportTemplate().outputtype.equals(CsvUtils.OUTPUT_TYPE_JASPER)) {
+		else if (ctx.settings.getReportTemplate().outputtype.equals(CsvUtils.OUTPUT_TYPE_JASPER)
+				|| ctx.settings.getReportTemplate().outputtype.equals(CsvUtils.OUTPUT_TYPE_JASPER_LEGACY)) {
 			generateFromJasperReport(ctx.extractedFilePath, templateFilePath,
 					ctx.variables.getUserVariables(ctx.token));
 			String ext = FilenameUtils.getExtension(ctx.extractedFilePath);
@@ -448,7 +451,10 @@ public abstract class AbstractReporter extends AbstractBurster {
 			format = "pdf";
 		}
 
-		JasperReportRunner runner = new JasperReportRunner();
+		// The one place the two JasperReports engines diverge. Everything else on
+		// this path — reporters, burst pipeline, connection resolution, formats —
+		// is shared, because only the .jrxml format differs between them.
+		JasperRenderer runner = resolveJasperRenderer();
 
 		// Extract DB connection details (used in both modes).
 		// For standalone JasperReports (pure .jrxml in config/reports-jasper/),
@@ -502,6 +508,25 @@ public abstract class AbstractReporter extends AbstractBurster {
 			// No reportData at all — fallback to JDBC-only path
 			runner.generate(reportDir, jrxmlFileName, format, outputFile, jdbcUrl, jdbcUser, jdbcPass, params);
 		}
+	}
+
+	/**
+	 * Picks the engine for this report. Legacy is chosen on either axis — a bare
+	 * classic .jrxml from config/reports-jasper-legacy/ (ds.jasperlegacy), or a
+	 * report that names classic JRXML as its output template
+	 * (output.jasperlegacy).
+	 */
+	private JasperRenderer resolveJasperRenderer() {
+		if (CsvUtils.OUTPUT_TYPE_JASPER_LEGACY.equals(ctx.settings.getReportTemplate().outputtype)) {
+			return new JasperLegacyRestRenderer();
+		}
+
+		String dsType = ctx.settings.reportingSettings.report.datasource.type;
+		if ("ds.jasperlegacy".equalsIgnoreCase(dsType)) {
+			return new JasperLegacyRestRenderer();
+		}
+
+		return new JasperReportRunner();
 	}
 
 	protected Object toObject(String value) {

@@ -3,6 +3,7 @@ package com.flowkraft.jasperlegacy;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
@@ -28,7 +29,7 @@ import net.sf.jasperreports.engine.JasperReportsContext;
 @RequestMapping("/api")
 public class RenderController {
 
-	/** Mirrors the CLI options field for field. */
+	/** Mirrors the CLI options field for field, plus the rows the CLI cannot carry. */
 	public static class RenderRequest {
 		public String reportDir;
 		public String jrxml;
@@ -37,6 +38,12 @@ public class RenderController {
 		public String jdbcUser;
 		public String jdbcPass;
 		public Map<String, String> params = new LinkedHashMap<>();
+		/**
+		 * Rows from DataPallas's data pipeline, read by the template as fields. This
+		 * is what lets a wrapper report — one template, one document per row — work
+		 * the same on this engine as on the embedded one.
+		 */
+		public List<Map<String, Object>> data;
 	}
 
 	@GetMapping("/health")
@@ -73,7 +80,8 @@ public class RenderController {
 					request.jdbcUrl,
 					request.jdbcUser,
 					request.jdbcPass,
-					request.params);
+					request.params,
+					request.data);
 
 			byte[] bytes = Files.readAllBytes(output.toPath());
 

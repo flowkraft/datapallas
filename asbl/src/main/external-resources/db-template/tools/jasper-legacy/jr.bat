@@ -2,14 +2,20 @@
 setlocal enabledelayedexpansion
 
 rem ---------------------------------------------------------------------------
-rem  jr.bat — render a classic .jrxml through the JasperReports 6 container.
+rem  jr.bat — the JasperReports Legacy command.
 rem
-rem  Same options as `datapallas.bat jasper`, so a report moves between the two
+rem  Render a classic .jrxml through the JasperReports 6 container, using the
+rem  same options as `datapallas.bat jasper` — so a report moves between the two
 rem  engines by changing the command name and nothing else:
 rem
 rem    jr.bat --report-dir <dir> --jrxml <file> --format <fmt> --out <file>
 rem           [--jdbc-url <url>] [--jdbc-user <u>] [--jdbc-pass <p>]
 rem           [-p "KEY=VALUE"]...
+rem
+rem  Or find out what a pile of reports needs before running any of them. This
+rem  reads the files as text and needs no Docker:
+rem
+rem    jr.bat analyze <folder> [--fix]
 rem
 rem  Exit codes match the rest of the CLI: 0 ok, 1 job failed, 2 bad command line.
 rem  Output is also appended to logs\jr.bat.log.
@@ -21,6 +27,11 @@ set "LOGDIR=%~dp0..\..\logs"
 set "LOGFILE=%LOGDIR%\jr.bat.log"
 
 if not exist "%LOGDIR%" mkdir "%LOGDIR%" >nul 2>&1
+
+rem The analyzer only reads .jrxml files as text, so it deliberately skips
+rem everything below — no Docker, no image, no running service. That is the
+rem point: it answers "will my reports run" before anything is set up.
+if /i "%~1"=="analyze" goto :analyze
 
 set "ARGS="
 set "REPORTDIR="
@@ -111,6 +122,24 @@ type "!TMPOUT!" >> "!LOGFILE!"
 del "!TMPOUT!" >nul 2>&1
 
 exit /b !RC!
+
+:analyze
+shift
+where java >nul 2>&1
+if errorlevel 1 (
+    echo ERROR - Java was not found on the PATH.
+    echo DataPallas requires Java 17; see readme-Prerequisites.txt in the installation folder.
+    exit /b 2
+)
+if "%~1"=="" (
+    echo Usage: jr.bat analyze ^<folder^> [--fix]
+    echo.
+    echo   ^<folder^>  a folder of .jrxml files, searched recursively
+    echo   --fix     rewrite Server repo: paths, keeping a .bak of every change
+    exit /b 2
+)
+java "-Djr.command=jr.bat analyze" "%TOOLDIR%internal\analyze\JasperMigrationAnalyzer.java" %1 %2 %3
+exit /b %ERRORLEVEL%
 
 :noReportDir
 call :usage "Missing required option: --report-dir"

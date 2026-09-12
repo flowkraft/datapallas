@@ -67,6 +67,9 @@ public class BursterFactory {
 				reporter = new ScriptedReporter(configurationFilePath);
 				break;
 			case "ds.jasper":
+			case "ds.jasperlegacy":
+				// Both are a bare .jrxml that carries its own data; only the engine
+				// behind the render differs.
 				reporter = new JasperStandaloneReporter(configurationFilePath);
 				break;
 			case "ds.gsheet":

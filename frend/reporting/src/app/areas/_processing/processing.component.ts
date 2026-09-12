@@ -801,7 +801,7 @@ export class ProcessingComponent implements OnInit {
 
         // Determine the input: either a file path (CSV/Excel) or the template name (SQL/Script/Jasper)
         let input = inputFilePath || undefined;
-        if (!input && (selectedReport.dsInputType === 'ds.sqlquery' || selectedReport.dsInputType === 'ds.scriptfile' || selectedReport.dsInputType === 'ds.jasper')) {
+        if (!input && (selectedReport.dsInputType === 'ds.sqlquery' || selectedReport.dsInputType === 'ds.scriptfile' || selectedReport.dsInputType === 'ds.jasper' || selectedReport.dsInputType === 'ds.jasperlegacy')) {
           input = selectedReport.templateName;
         }
 
@@ -1288,6 +1288,7 @@ export class ProcessingComponent implements OnInit {
 
   groupReportsByType(report: any) {
     if (report.type === 'config-jasper-reports') return 'JasperReports';
+    if (report.type === 'config-jasper-legacy-reports') return 'JasperReports (legacy)';
     if (report.type === 'config-reports') return 'Reports';
     return 'Samples';
   }
@@ -1577,7 +1578,8 @@ export class ProcessingComponent implements OnInit {
     if ($event && (
       $event.type === 'config-reports' ||
       $event.type === 'config-samples' ||
-      $event.type === 'config-jasper-reports'
+      $event.type === 'config-jasper-reports' ||
+      $event.type === 'config-jasper-legacy-reports'
     )) {
       await this.settingsService.loadReportDetails($event);
     }

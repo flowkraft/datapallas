@@ -434,9 +434,25 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Both JasperReports folders. A standalone .jrxml carries its query but never
+   * its connection, so each folder's own datasource.properties says which
+   * database its reports run against. The two engines read the same kind of
+   * file from their own folder, and one toggle sets both: people have "a
+   * JasperReports database", not one per engine version.
+   *
+   * A report that needs its own database still overrides this with a
+   * datasource.properties inside its own folder.
+   */
+  private readonly JASPER_DATASOURCE_PATHS = [
+    'config/reports-jasper/datasource.properties',
+    'config/reports-jasper-legacy/datasource.properties',
+  ];
+
   async loadJasperReportsConnectionFlag() {
     try {
-      const dsPropsPath = 'config/reports-jasper/datasource.properties';
+      // Reading the first is enough: the toggle writes and removes both together.
+      const dsPropsPath = this.JASPER_DATASOURCE_PATHS[0];
       const exists = await this.fsService.existsAsync(dsPropsPath);
       if (exists) {
         const content = await this.fsService.readAsync(dsPropsPath);
@@ -459,7 +475,6 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const dsPropsPath = 'config/reports-jasper/datasource.properties';
     const isCurrentlySet = selectedConnection.useForJasperReports;
 
     if (isCurrentlySet) {
@@ -467,12 +482,18 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
         message: `Remove '${selectedConnection.connectionName}' as the JasperReports database connection?`,
         confirmAction: async () => {
           try {
-            await this.fsService.removeAsync(dsPropsPath);
+            // Both, or the flag reads "off" while a stale file still points the
+            // other engine at a connection that may since have been deleted.
+            for (const dsPropsPath of this.JASPER_DATASOURCE_PATHS) {
+              if (await this.fsService.existsAsync(dsPropsPath)) {
+                await this.fsService.removeAsync(dsPropsPath);
+              }
+            }
             for (const conn of this.settingsService.connectionFiles) {
               conn.useForJasperReports = false;
             }
             this.messagesService.showInfo(
-              `Connection '${selectedConnection.connectionName}' is no longer used for JasperReports.`,
+              `Connection '${selectedConnection.connectionName}' is no longer used for JasperReports or JasperReports Legacy reports.`,
             );
           } catch (error) {
             this.messagesService.showError(`Failed to remove JasperReports connection: ${(error as any).message || 'Unknown error'}`);
@@ -483,28 +504,34 @@ export class ConnectionListComponent implements OnInit, OnDestroy {
       const previousJasperConn = this.settingsService.connectionFiles.find(
         (c) => c.useForJasperReports,
       );
+      // Naming both folders matters: this replaces whatever either of them says,
+      // including a connection somebody set there by hand.
+      const scope = 'for JasperReports and JasperReports Legacy reports';
       const replaceMsg = previousJasperConn
-        ? `Replace '${previousJasperConn.connectionName}' with '${selectedConnection.connectionName}' as the database connection for JasperReports?`
-        : `Use '${selectedConnection.connectionName}' as the database connection for JasperReports?`;
+        ? `Replace '${previousJasperConn.connectionName}' with '${selectedConnection.connectionName}' as the database connection ${scope}?`
+        : `Use '${selectedConnection.connectionName}' as the database connection ${scope}?`;
 
       this.confirmService.askConfirmation({
         message: replaceMsg,
         confirmAction: async () => {
           try {
-            // Always remove existing file first, then create new one
-            const exists = await this.fsService.existsAsync(dsPropsPath);
-            if (exists) {
-              await this.fsService.removeAsync(dsPropsPath);
+            // Always remove existing file first, then create new one.
+            // The write creates the folder if it is missing, so this works on an
+            // install where one of the two reports folders was never used.
+            for (const dsPropsPath of this.JASPER_DATASOURCE_PATHS) {
+              if (await this.fsService.existsAsync(dsPropsPath)) {
+                await this.fsService.removeAsync(dsPropsPath);
+              }
+              await this.fsService.writeAsync(
+                dsPropsPath,
+                `connectionCode=${selectedConnection.connectionCode}\n`,
+              );
             }
-            await this.fsService.writeAsync(
-              dsPropsPath,
-              `connectionCode=${selectedConnection.connectionCode}\n`,
-            );
             for (const conn of this.settingsService.connectionFiles) {
               conn.useForJasperReports = conn.filePath === selectedConnection.filePath;
             }
             this.messagesService.showInfo(
-              `Connection '${selectedConnection.connectionName}' is now used for JasperReports.`,
+              `Connection '${selectedConnection.connectionName}' is now used for JasperReports and JasperReports Legacy reports.`,
             );
           } catch (error) {
             this.messagesService.showError(`Failed to set JasperReports connection: ${(error as any).message || 'Unknown error'}`);

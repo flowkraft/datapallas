@@ -9,6 +9,7 @@ import { ConfTemplatesTestHelper } from '../../helpers/areas/conf-templates-test
 import { ConfigurationTestHelper } from '../../helpers/areas/configuration-test-helper';
 import _ from 'lodash';
 import { ConnectionsTestHelper } from '../../helpers/areas/connections-test-helper';
+import { JasperCompileHelper } from '../../helpers/jasper-compile-helper';
 
 /**
  * Copies a JasperReport sample from config/samples-jasper/ to config/reports-jasper/
@@ -859,7 +860,122 @@ log.info("Invoice data ready: {} invoices", ctx.reportData.size())
     },
   );
 
+  // ─── Test 8: A report with a sub-report, shipped compiled ───
+  // Technical: the shape Jaspersoft Studio produces — sub-report referenced as
+  // .jasper with the compiled file beside it. Nothing should compile anything at
+  // render time; this is the path that must keep working untouched.
+  electronBeforeAfterAllTest(
+    'should generate a report whose sub-report was shipped already compiled (.jasper)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+
+      const reportDir = writeJasperReportFolder('subreport-compiled', [
+        ['sub_lines.jrxml', JR7_SUBREPORT],
+        ['main_report.jrxml', jr7MainReferencing('sub_lines.jasper')],
+      ]);
+      // Compile it the way Studio would, then delete the source so the render
+      // can only succeed by loading the compiled file.
+      JasperCompileHelper.compileWithJasper7(
+        path.join(reportDir, 'sub_lines.jrxml'),
+        path.join(reportDir, 'sub_lines.jasper'),
+      );
+      fs.rmSync(path.join(reportDir, 'sub_lines.jrxml'), { force: true });
+
+      let ft = new FluentTester(firstPage);
+      ft = selectJasperReportAndGenerate(ft, 'main_report')
+        .processingShouldHaveGeneratedNFilesHavingSuffix(1, '.pdf')
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .deleteFolder(reportDir);
+
+      return ft;
+    },
+  );
+
+  // ─── Test 9: A report with a sub-report that was never compiled ───
+  // Technical: the shape that arrives when someone copies .jrxml files out of
+  // source control. JasperReports cannot load a sub-report from XML, so
+  // DataPallas compiles it on demand and keeps it in memory — the customer's
+  // folder is not written to.
+  electronBeforeAfterAllTest(
+    'should generate a report whose sub-report exists only as .jrxml source',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+
+      // Both shapes in one folder: the parent asks for "sub_lines.jasper" which
+      // is NOT there, and a second parent asks for the .jrxml by name. Either
+      // way there is nothing compiled on disk.
+      const reportDir = writeJasperReportFolder('subreport-source-only', [
+        ['sub_lines.jrxml', JR7_SUBREPORT],
+        ['main_report.jrxml', jr7MainReferencing('sub_lines.jrxml')],
+      ]);
+
+      let ft = new FluentTester(firstPage);
+      ft = selectJasperReportAndGenerate(ft, 'main_report')
+        .processingShouldHaveGeneratedNFilesHavingSuffix(1, '.pdf')
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        // Nothing was written next to the customer's sources.
+        .fileShouldNotExist(path.join(reportDir, 'sub_lines.jasper'))
+        .deleteFolder(reportDir);
+
+      return ft;
+    },
+  );
+
 });
+
+// ─── Helpers: sub-report fixtures ───
+
+const JR7_SUBREPORT = `<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="sub_lines" pageWidth="400" pageHeight="200" columnWidth="400" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0">
+    <title height="30">
+        <element kind="staticText" x="0" y="0" width="400" height="20"><text><![CDATA[--- sub-report rendered ---]]></text></element>
+    </title>
+</jasperReport>
+`;
+
+function jr7MainReferencing(subreportFileName: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="main_report" pageWidth="595" pageHeight="842" columnWidth="515" leftMargin="40" rightMargin="40" topMargin="40" bottomMargin="40">
+    <parameter name="SUBREPORT_DIR" class="java.lang.String" forPrompting="false">
+        <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+    </parameter>
+    <title height="150">
+        <element kind="staticText" x="0" y="0" width="515" height="24"><text><![CDATA[Main report]]></text></element>
+        <element kind="subreport" x="0" y="40" width="400" height="60">
+            <expression class="java.lang.String"><![CDATA[$P{SUBREPORT_DIR} + "${subreportFileName}"]]></expression>
+        </element>
+    </title>
+</jasperReport>
+`;
+}
+
+/** Writes a report folder under config/reports-jasper/, replacing any earlier run. */
+function writeJasperReportFolder(folderName: string, files: Array<[string, string]>): string {
+  const reportDir = path.resolve(process.env.PORTABLE_EXECUTABLE_DIR as string, 'config', 'reports-jasper', folderName);
+  fs.rmSync(reportDir, { recursive: true, force: true });
+  fs.mkdirSync(reportDir, { recursive: true });
+  for (const [name, content] of files) {
+    fs.writeFileSync(path.join(reportDir, name), content, 'utf-8');
+  }
+  return reportDir;
+}
+
+/** Navigates away and back so the scan runs, then picks the report and generates. */
+function selectJasperReportAndGenerate(ft: FluentTester, reportName: string): FluentTester {
+  return ft
+    .click('#topMenuConfiguration')
+    .click('#topConfigurationCrud')
+    .sleep(Constants.DELAY_ONE_SECOND)
+    .gotoReportGenerationScreen()
+    .click('#selectMailMergeClassicReport')
+    .waitOnElementToBecomeVisible(`span.ng-option-label:has-text("${reportName}")`)
+    .click(`span.ng-option-label:has-text("${reportName}")`)
+    .sleep(Constants.DELAY_ONE_SECOND)
+    .click('#btnGenerateReports')
+    .clickYesDoThis()
+    .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+    .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS);
+}
 
 // ─── Helper: Create DB Connection (same pattern as reporting.spec.ts) ───
 

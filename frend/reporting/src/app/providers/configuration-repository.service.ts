@@ -334,7 +334,8 @@ export class ConfigurationRepository {
    * Merges the loaded details into the existing configurationFiles entry.
    */
   async loadReportDetails(configFile: CfgTmplFileInfo): Promise<CfgTmplFileInfo> {
-    if (configFile.type !== 'config-reports' && configFile.type !== 'config-samples' && configFile.type !== 'config-jasper-reports') {
+    if (configFile.type !== 'config-reports' && configFile.type !== 'config-samples'
+      && configFile.type !== 'config-jasper-reports' && configFile.type !== 'config-jasper-legacy-reports') {
       return configFile;
     }
 
@@ -414,8 +415,14 @@ export class ConfigurationRepository {
     return this.getNonSampleConfigurations();
   }
 
+  /** JasperReports 7 templates, from config/reports-jasper/. */
   getJasperReportConfigurations(): CfgTmplFileInfo[] {
     return this.filterConfigurations(c => c.type === 'config-jasper-reports');
+  }
+
+  /** Classic JRXML templates (JasperReports 1.x - 6.21), from config/reports-jasper-legacy/. */
+  getJasperLegacyReportConfigurations(): CfgTmplFileInfo[] {
+    return this.filterConfigurations(c => c.type === 'config-jasper-legacy-reports');
   }
 
   getSampleConfigurations(): CfgTmplFileInfo[] {
