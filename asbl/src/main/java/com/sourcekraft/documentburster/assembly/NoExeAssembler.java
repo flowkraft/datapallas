@@ -1708,6 +1708,20 @@ public class NoExeAssembler extends AbstractAssembler {
 			// CMS-WEBPORTAL-PLAYGROUND: Additional exclusions
 			// ===========================================
 			if (path.contains("/cms-webportal-playground/")) {
+				// The stack's own runtime state, written into the source tree by the containers:
+				// data-db is a MySQL data directory (older compose files bind-mounted it; today's
+				// uses the wp_db_data volume) and logs-db is still bind-mounted at ./logs-db. Both
+				// are ignored by .gitignore, so they are never part of a clean checkout and
+				// excluding them changes nothing about what ships - but on a developer's machine
+				// that has run the playground once, they are hundreds of MB of a live database
+				// (its TLS private keys included) that would otherwise be copied into the package.
+				// A MySQL data directory also contains its socket, an entry that java.io.File
+				// lists but cannot open, which makes FileUtils.copyDirectory fail outright:
+				// "FileNotFound Source ...\\data-db\\mysql.sock does not exist".
+				if (fileName.equals("data-db") || path.contains("/data-db/")
+						|| fileName.equals("logs-db") || path.contains("/logs-db/")) {
+					return false;
+				}
 				// Exclude PHP vendor folder and public build artifacts
 				return !path.contains("/vendor/") && !path.contains("/public/build/")
 						&& !path.contains("/.cache/")

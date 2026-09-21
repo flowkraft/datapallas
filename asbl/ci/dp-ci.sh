@@ -235,6 +235,7 @@ firewall_close_when_run_ends() {  # $1 = log file
 #         WIN_HOST=...
 #         WIN_USER=...
 #         WIN_SSH_KEY=/root/.ssh/<key>
+#         WIN_REPO=<the VM's checkout path>   (only the Windows lane needs it)
 #         WIN_KNOWN_HOSTS=/root/.ssh/<known_hosts file>
 #
 # The environment overrides the file, so a one-off run can point somewhere else without editing it.
@@ -248,6 +249,9 @@ fi
 WIN_HOST="${WIN_HOST:-}"
 WIN_USER="${WIN_USER:-}"
 WIN_SSH_KEY="${WIN_SSH_KEY:-}"
+# Where the VM's own checkout lives (W5). Kept with the other VM facts in win-ci.env rather than in
+# this file: the repository is public, and a machine's directory layout is nobody else's business.
+WIN_REPO="${WIN_REPO:-}"
 WIN_KNOWN_HOSTS="${WIN_KNOWN_HOSTS:-}"
 WIN_CONNECT_TIMEOUT="${WIN_CONNECT_TIMEOUT:-10}"
 
@@ -412,6 +416,16 @@ win_run_start() {
     echo 'set "JAVA_HOME=C:\ci\tools\jdk-17"'
     echo 'set "JAVAC_COMPILER_PATH=C:\ci\tools\jdk-17\bin\javac.exe"'
     echo 'set "PATH=C:\ci\tools\jdk-17\bin;C:\ci\tools\maven\bin;C:\ci\tools\node;%PATH%"'
+    # Anything else the step needs, one NAME=VALUE per line. It has to be written INTO the file:
+    # environment variables do not survive the SSH boundary, and the scheduled task does not inherit
+    # our environment either - it inherits the console session's. Quoted the `set "N=V"` way, so a
+    # value containing & | < > ^ (the e2e regexes do) is data and not cmd.exe syntax.
+    if [ -n "${WIN_RUN_ENV:-}" ]; then
+      while IFS= read -r kv; do
+        [ -n "$kv" ] || continue
+        echo "set \"$kv\""
+      done <<< "$WIN_RUN_ENV"
+    fi
     echo "cd /d \"$wdir\" || exit /b 90"
     echo "echo ===== step $step on the desktop, %DATE% %TIME% ====="
     echo "call $cmd"
@@ -556,6 +570,99 @@ win_run() {
       win_run_stop "$step"; return 124
     fi
   done
+}
+
+# ---------------------------------------------------------------------------
+# the number from Playwright's summary line "<N> <what>" (e.g. "8 passed (50.6s)"), 0 when absent.
+# Top level, not nested in the Linux task, because the Windows lane exits before that function is ever
+# defined - and both lanes must count a run the same way or their numbers cannot be compared.
+e2e_count() {
+  local n
+  n=$(grep -aE "^(stdout:)? *[0-9]+ $1( \(.*\))? *$" "$2" | tail -1 | grep -oE "[0-9]+" | head -1)
+  echo "${n:-0}"
+}
+
+# W7. The Electron e2e, on the VM's own desktop.
+#
+# Same shape as the Linux lane's e2e_web(): clean the testground, then run the ONE gulp task that
+# `npm run custom:start-server-and-e2e-electron` ends in. We call the gulp task rather than the npm
+# script for exactly the reason the Linux lane does - the npm script also pulls in `precustom:`, the
+# Jasmine updater suite, which is a unit suite and not part of an e2e verdict. Nothing under frend/
+# changes: this only chooses which existing entry point to call.
+#
+# What is deliberately NOT here, compared with Linux: no xvfb (W2 gives a real desktop) and no
+# E2E_CHROMIUM_EXECUTABLE (the target IS Electron, so the engine under test is the product's own).
+# gulp's _refreshEnv() overwrites PATH from the registry before it checks for java and mvn, so the
+# toolchain has to be on the Machine PATH for this to work at all - see plan 6.8/6.8.1.
+win_e2e() {
+  local mode=targeted out code retries spec gexp
+  [ -n "${WIN_REPO:-}" ] || {
+    echo "FAIL  WIN_REPO is not set: add it to $WIN_CI_CONF (the VM's checkout, e.g. C:\\...\\rb)." >&2
+    return 2
+  }
+  spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
+  # On Windows the target is Electron, so BOTH specs the Linux lane excludes belong in the full run:
+  # let-me-update-migrate-configuration is Electron-only (it returns at once on web) and
+  # auth-authorization-server has no target guard at all. 48 files here, 46 there - plan 5.2a.
+  [ -z "$spec" ] && [ -z "$gexp" ] && mode=full
+  # A targeted run shows each failure as it is; a full run retries a failed test once, so one run
+  # still collects every failure instead of stopping at the first flake (plan W7).
+  if [ "$mode" = full ]; then retries="${E2E_RETRIES:-1}"; else retries="${E2E_RETRIES:-0}"; fi
+
+  out="${WIN_E2E_LOG:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/win-e2e-$(date -u +%Y%m%dT%H%M%SZ).log}"
+  mkdir -p "$(dirname "$out")" 2>/dev/null
+
+  # The same caps as the Linux lane, so a stuck test costs minutes and not hours, and so the two
+  # lanes mean the same thing by "passed". Read by playwright.config.ts, fluent-tester.ts and
+  # e2e/utils/helpers.ts - all of them already there, none of them OS-specific.
+  WIN_RUN_ENV=$(printf '%s\n' \
+    "E2E_SPEC=$spec" \
+    "E2E_GREP=$gexp" \
+    "E2E_RETRIES=$retries" \
+    "E2E_REPEAT_EACH=${E2E_REPEAT_EACH:-1}" \
+    "E2E_SLOW_MO=${E2E_SLOW_MO:-0}" \
+    "E2E_MAX_WAIT_MS=${E2E_MAX_WAIT_MS:-900000}" \
+    "E2E_MAX_TEST_MS=${E2E_MAX_TEST_MS:-3600000}" \
+    "E2E_ACTION_TIMEOUT_MS=${E2E_ACTION_TIMEOUT_MS:-300000}" \
+    "E2E_CLEAN_STATE_ATTEMPTS=${E2E_CLEAN_STATE_ATTEMPTS:-60}" \
+    "E2E_FAILFAST=${E2E_FAILFAST:-1}" \
+    "E2E_START_EVIDENCE_MS=${E2E_START_EVIDENCE_MS:-300000}" \
+    "E2E_STALL_MS=${E2E_STALL_MS:-600000}" \
+    "E2E_ROTATION_DATE=${E2E_ROTATION_DATE:-$(date -u +%F)}" \
+    "E2E_LICENSE_INSTANCE_ID=${E2E_LICENSE_INSTANCE_ID:-dp-ci-win-e2e}")
+  export WIN_RUN_ENV
+
+  echo "WIN_E2E_MODE=$mode  spec='$spec'  grep='$gexp'  retries=$retries"
+  echo "WIN_E2E_LOG=$out"
+  # The product's own running log, written throughout every run. While Playwright is between files the
+  # step's stdout can be quiet for minutes, and without a growing file to look at the stall timer
+  # would kill a perfectly healthy run.
+  WIN_RUN_WATCH="${WIN_RUN_WATCH:-$WIN_REPO\\frend\\reporting\\testground\\e2e\\logs\\info.log}"
+  # A full Electron suite is hours; the Linux full run is capped at 72000 s and this matches it.
+  WIN_RUN_TIMEOUT="${WIN_RUN_TIMEOUT:-$([ "$mode" = full ] && echo 72000 || echo 10800)}"
+  export WIN_RUN_WATCH WIN_RUN_TIMEOUT
+
+  win_run e2e "$WIN_REPO\\frend\\reporting" \
+    'npm run custom:clean-testground && call npx gulp utils:start-server-and-e2e-electron' 2>&1 | tee "$out"
+
+  # gulp does not return Playwright's exit code, so the verdict is the line it prints - the same line
+  # the Linux lane parses.
+  code=$(grep -aoE "Main Playwright process exited with code [0-9]+" "$out" | tail -1 | grep -oE "[0-9]+$")
+  echo "--- Playwright result ---"
+  grep -aoE "[0-9]+ (passed|failed|flaky|skipped|did not run|interrupted)( \([^)]*\))?" "$out" | tail -6
+  # The silent-skip branch of gulp's _startServerAndDoX(): no java or no mvn on the REGISTRY PATH and
+  # the suite runs against the Install screen instead of the application, looking green. That is a
+  # failed run, not a passed one (plan 6.8).
+  if grep -aq "Spring Boot server will NOT be started" "$out"; then
+    echo "!!! the chain skipped the server and tested the Install screen - this is NOT a result." >&2
+    echo "    The private toolchain is not on the Machine PATH; see plan 6.8.1." >&2
+    echo "WIN_E2E_RESULT mode=$mode spec='$spec' grep='$gexp' exit=no-server"
+    return 1
+  fi
+  echo "WIN_E2E_RESULT mode=$mode spec='$spec' grep='$gexp'" \
+    "passed=$(e2e_count passed "$out") failed=$(e2e_count failed "$out") flaky=$(e2e_count flaky "$out")" \
+    "skipped=$(e2e_count skipped "$out") didnotrun=$(e2e_count "did not run" "$out") exit=${code:-none}"
+  [ "$code" = "0" ]
 }
 
 # W1 "done when": the VM answers, and no firewall window was needed to make it answer.
@@ -891,13 +998,6 @@ if [ "${1:-}" = "--inside" ]; then
     done
   }
 
-  # the number from Playwright's summary line "<N> <what>" (e.g. "8 passed (50.6s)"), 0 when absent
-  e2e_count() {
-    local n
-    n=$(grep -aE "^(stdout:)? *[0-9]+ $1( \(.*\))? *$" "$2" | tail -1 | grep -oE "[0-9]+" | head -1)
-    echo "${n:-0}"
-  }
-
   # dp-dev: the owner's everyday web dev chain, unchanged (`npm run custom:start-server-and-ui-web`): gulp compiles
   # and starts the Spring Boot server from testground/e2e (9090), then `ng serve` (4201). ng serve listens on
   # localhost only, so a small TCP forwarder makes it reachable for the reverse proxy on $DEV_PORT. The proxy sends
@@ -1100,7 +1200,7 @@ TASK="${1:-}"
 case "$TASK" in
   build|e2e|junit|dev|win|publish-demo-bkstg|publish-demo-datapallas.com) ;;
   # release: reserved for the real software release (plan §3 O7)
-  *) echo "usage: $0 build|e2e|junit|dev|win <check|ssh|ps|run|poll|stop>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
+  *) echo "usage: $0 build|e2e|junit|dev|win <check|ssh|ps|run|poll|stop|e2e>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
 esac
 
 # The Windows lane runs here on the host, before any container exists: it only talks to the VM over
@@ -1114,9 +1214,11 @@ if [ "$TASK" = "win" ]; then
     run)   shift 2; win_run "$@"; exit $? ;;
     poll)  shift 2; win_run_poll "$@"; exit $? ;;
     stop)  shift 2; win_run_stop "$@"; exit $? ;;
+    e2e)   shift 2; win_e2e "$@"; exit $? ;;
     *)     echo "usage: $0 win check | $0 win ssh <words...> | $0 win ps < script.ps1"
            echo "       $0 win run <step> <windows-working-dir> <command...>   (runs on the desktop, waits)"
-           echo "       $0 win poll <step> [offset] | $0 win stop <step>"; exit 2 ;;
+           echo "       $0 win poll <step> [offset] | $0 win stop <step>"
+           echo "       $0 win e2e          (Electron e2e on the desktop; E2E_SPEC/E2E_GREP = targeted)"; exit 2 ;;
   esac
 fi
 PUBLISH_FLAGS=""
