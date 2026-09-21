@@ -34,7 +34,7 @@ cube {
     name 'EmployeeID'
     title 'Employee ID'
     description 'Unique employee identifier'
-    sql 'EmployeeID'
+    sql '${CUBE}.EmployeeID'
     type 'number'
     primary_key true
   }
@@ -112,6 +112,12 @@ cube {
     sql '${CUBE}.EmployeeID'
     type 'count_distinct'
   }
+  // The date arithmetic below is SQLite's, deliberately: this sample is wired to
+  // rbt-sample-northwind-sqlite-4f2, and measure/segment sql is passed through to
+  // the database verbatim - nothing translates it. SQLite has no EXTRACT, so
+  // EXTRACT(YEAR FROM ...) fails here with a syntax error. The academy cubes that
+  // academy-cubes.groovy writes into config/cubes run on DuckDB and PostgreSQL and
+  // use EXTRACT for the same reason; that spelling belongs there, not here.
   measure {
     name 'AvgTenureYears'
     title 'Avg Tenure (years)'

@@ -32,6 +32,20 @@
 			<version>${revision}</version>
 		</dependency>
 
+		<!--
+			rb-common's test-jar carries NorthwindFixture, which generates the sample
+			Northwind DuckDB the same way the packager does. Tests use that instead of
+			any file lying around in db/ - those are gitignored and regenerated at
+			build time, so they drift.
+		-->
+		<dependency>
+			<groupId>com.sourcekraft.documentburster</groupId>
+			<artifactId>rb-common</artifactId>
+			<version>${revision}</version>
+			<type>test-jar</type>
+			<scope>test</scope>
+		</dependency>
+
 		<dependency>
 			<groupId>com.sourcekraft.documentburster</groupId>
 			<artifactId>rb-reporting</artifactId>

@@ -42,7 +42,7 @@ cube {
     name 'CustomerID'
     title 'Customer ID'
     description 'Unique customer identifier (5-character code)'
-    sql 'CustomerID'
+    sql '${CUBE}.CustomerID'
     type 'string'
     primary_key true
   }

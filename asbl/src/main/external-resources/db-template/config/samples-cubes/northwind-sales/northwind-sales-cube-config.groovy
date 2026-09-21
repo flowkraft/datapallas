@@ -39,7 +39,7 @@ cube {
     name 'OrderID'
     title 'Order ID'
     description 'Unique order identifier'
-    sql 'OrderID'
+    sql '${CUBE}.OrderID'
     type 'number'
     primary_key true
   }
