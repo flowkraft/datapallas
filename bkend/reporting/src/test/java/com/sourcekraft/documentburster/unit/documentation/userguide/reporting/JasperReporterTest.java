@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
@@ -16,6 +17,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sourcekraft.documentburster._helpers.JasperOutputTestUtils;
 import com.sourcekraft.documentburster._helpers.NorthwindTestUtils;
 import com.sourcekraft.documentburster._helpers.TestBursterFactory;
 import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
@@ -64,11 +66,11 @@ public class JasperReporterTest {
 
 		TestJasperStandaloneReporter reporter = new TestJasperStandaloneReporter(
 				StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS);
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS);
 
 		// Configure for jasper standalone with DB connection
 		reporter.configureForJasper(JRXML_WITH_SQL, "${burst_token}.xlsx",
-				NorthwindTestUtils.H2_CONN_CODE);
+				NorthwindTestUtils.NORTHWIND_CONN_CODE);
 
 		reporter.burst();
 
@@ -83,18 +85,28 @@ public class JasperReporterTest {
 		assertNotNull("databaseserver should be set", dbServer);
 
 		// Assert: JDBC details are in the exact form JasperReportRunner expects
-		assertEquals("JDBC URL must match", NorthwindTestUtils.H2_URL, dbServer.url);
-		assertEquals("JDBC user must match", NorthwindTestUtils.H2_USER, dbServer.userid);
-		assertEquals("JDBC password must match", NorthwindTestUtils.H2_PASS, dbServer.userpassword);
+		assertEquals("JDBC URL must match", NorthwindTestUtils.NORTHWIND_URL, dbServer.url);
+		assertEquals("JDBC user must match", NorthwindTestUtils.NORTHWIND_USER, dbServer.userid);
+		assertEquals("JDBC password must match", NorthwindTestUtils.NORTHWIND_PASS, dbServer.userpassword);
 
-		// Assert: output file was generated (JR executed the SQL and produced a PDF)
+		// Assert: JR actually ran the embedded SQL and the ROWS reached the workbook.
+		// File existence alone proves nothing here - JasperReports writes a workbook
+		// for an empty result set too, so a broken connection or a dialect mismatch
+		// would have sailed through the old "at least one .xlsx" check.
 		String outputFolder = reporter.getCtx().outputFolder + "/";
-		File[] outputFiles = new File(outputFolder).listFiles(
-				(dir, name) -> name.endsWith(".xlsx"));
-		assertNotNull("Output folder should contain files", outputFiles);
-		assertTrue("At least one PDF should be generated", outputFiles.length >= 1);
+		File output = JasperOutputTestUtils.singleOutputFile(outputFolder, ".xlsx");
 
-		log.info("Test completed successfully: {}", TEST_NAME);
+		// Expected values come from the database, not from a literal - see queryColumn
+		List<String> germanCustomers = NorthwindTestUtils.queryColumn(
+				"SELECT \"CompanyName\" FROM \"Customers\" WHERE \"Country\" = 'Germany' ORDER BY \"CompanyName\"",
+				"CompanyName");
+		JasperOutputTestUtils.assertContainsValues(output, germanCustomers);
+
+		assertEquals("The workbook should have exactly one row per German customer",
+				germanCustomers.size(), JasperOutputTestUtils.dataRowCount(output));
+
+		log.info("Test completed successfully: {} ({} German customers in the workbook)",
+				TEST_NAME, germanCustomers.size());
 	}
 
 	/**
@@ -132,12 +144,13 @@ public class JasperReporterTest {
 		assertEquals("FirstName param should be passed through", "Nancy", userVars.get("FirstName"));
 		assertEquals("City param should be passed through", "Seattle", userVars.get("City"));
 
-		// Assert: PDF was generated
+		// Assert: the workbook was generated AND the parameters were rendered into it.
+		// This is the parameter-only path, so the values must come from $P{...} - if
+		// they did not flow, JR renders blanks and the workbook comes out empty.
 		String outputFolder = reporter.getCtx().outputFolder + "/";
-		File[] outputFiles = new File(outputFolder).listFiles(
-				(dir, name) -> name.endsWith(".xlsx"));
-		assertNotNull("Output folder should contain files", outputFiles);
-		assertTrue("One PDF should be generated", outputFiles.length == 1);
+		File output = JasperOutputTestUtils.singleOutputFile(outputFolder, ".xlsx");
+		JasperOutputTestUtils.assertContainsValues(output,
+				List.of("Nancy Davolio", "Sales Representative", "Seattle, USA"));
 
 		log.info("Test completed successfully: {}", TEST_NAME);
 	}
@@ -193,20 +206,20 @@ public class JasperReporterTest {
 	private static class TestJasperStandaloneReporter extends JasperStandaloneReporter {
 
 		private final String testName;
-		private final String h2Url;
-		private final String h2User;
-		private final String h2Pass;
+		private final String dbUrl;
+		private final String dbUser;
+		private final String dbPass;
 		private String jrxmlPath;
 		private String burstFileName;
 		private String connCode;
 
 		TestJasperStandaloneReporter(String configFilePath, String testName,
-				String h2Url, String h2User, String h2Pass) {
+				String dbUrl, String dbUser, String dbPass) {
 			super(configFilePath);
 			this.testName = testName;
-			this.h2Url = h2Url;
-			this.h2User = h2User;
-			this.h2Pass = h2Pass;
+			this.dbUrl = dbUrl;
+			this.dbUser = dbUser;
+			this.dbPass = dbPass;
 
 			if (StringUtils.isNoneEmpty(configFilePath) && Files.exists(java.nio.file.Paths.get(configFilePath)))
 				this.configurationFilePath = configFilePath;
@@ -251,16 +264,16 @@ public class JasperReporterTest {
 			ctx.settings.setBurstFileName(burstFileName);
 
 			// Load DB connection if configured (matching what Settings.loadSettings does)
-			if (connCode != null && h2Url != null) {
+			if (connCode != null && dbUrl != null) {
 				ctx.settings.connectionDatabaseSettings =
 						new com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionDatabaseSettings();
 				com.sourcekraft.documentburster.common.settings.model.ConnectionDatabaseSettings conn =
 						new com.sourcekraft.documentburster.common.settings.model.ConnectionDatabaseSettings();
 				ServerDatabaseSettings server = new ServerDatabaseSettings();
-				server.url = h2Url;
-				server.userid = h2User;
-				server.userpassword = h2Pass;
-				server.driver = "org.h2.Driver";
+				server.url = dbUrl;
+				server.userid = dbUser;
+				server.userpassword = dbPass;
+				server.driver = NorthwindTestUtils.NORTHWIND_DRIVER;
 				conn.databaseserver = server;
 				ctx.settings.connectionDatabaseSettings.connection = conn;
 			}

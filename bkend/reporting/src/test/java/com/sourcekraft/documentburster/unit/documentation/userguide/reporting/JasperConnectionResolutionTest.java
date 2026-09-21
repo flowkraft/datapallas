@@ -53,10 +53,10 @@ public class JasperConnectionResolutionTest {
 		createReportingXml("test-report", "ds.jasper", "");
 		createReportingXml("test-report-with-conncode", "ds.jasper", "db-explicit-conn");
 		createReportingXml("test-report-non-jasper", "ds.csvfile", "");
-		createConnectionXml("db-default-conn", true, "jdbc:h2:mem:default_test", "sa", "");
-		createConnectionXml("db-global-conn", false, "jdbc:h2:mem:global_test", "sa_global", "pass_global");
-		createConnectionXml("db-perreport-conn", false, "jdbc:h2:mem:perreport_test", "sa_perreport", "pass_perreport");
-		createConnectionXml("db-explicit-conn", false, "jdbc:h2:mem:explicit_test", "sa_explicit", "pass_explicit");
+		createConnectionXml("db-default-conn", true, "jdbc:duckdb:./target/conn-resolution/default_test.duckdb", "user_default", "");
+		createConnectionXml("db-global-conn", false, "jdbc:duckdb:./target/conn-resolution/global_test.duckdb", "user_global", "pass_global");
+		createConnectionXml("db-perreport-conn", false, "jdbc:duckdb:./target/conn-resolution/perreport_test.duckdb", "user_perreport", "pass_perreport");
+		createConnectionXml("db-explicit-conn", false, "jdbc:duckdb:./target/conn-resolution/explicit_test.duckdb", "user_explicit", "pass_explicit");
 	}
 
 	@AfterClass
@@ -83,10 +83,10 @@ public class JasperConnectionResolutionTest {
 				settings.connectionDatabaseSettings);
 		assertNotNull("connection should be set", settings.connectionDatabaseSettings.connection);
 		assertEquals("JDBC URL should match default connection",
-				"jdbc:h2:mem:default_test",
+				"jdbc:duckdb:./target/conn-resolution/default_test.duckdb",
 				settings.connectionDatabaseSettings.connection.databaseserver.url);
 		assertEquals("User should match default connection",
-				"sa", settings.connectionDatabaseSettings.connection.databaseserver.userid);
+				"user_default", settings.connectionDatabaseSettings.connection.databaseserver.userid);
 	}
 
 	/**
@@ -106,10 +106,10 @@ public class JasperConnectionResolutionTest {
 		assertNotNull("connectionDatabaseSettings should be resolved via global datasource.properties",
 				settings.connectionDatabaseSettings);
 		assertEquals("JDBC URL should match global connection",
-				"jdbc:h2:mem:global_test",
+				"jdbc:duckdb:./target/conn-resolution/global_test.duckdb",
 				settings.connectionDatabaseSettings.connection.databaseserver.url);
 		assertEquals("User should match global connection",
-				"sa_global", settings.connectionDatabaseSettings.connection.databaseserver.userid);
+				"user_global", settings.connectionDatabaseSettings.connection.databaseserver.userid);
 
 		// Clean up
 		removeFile("config/reports-jasper/datasource.properties");
@@ -132,10 +132,10 @@ public class JasperConnectionResolutionTest {
 		assertNotNull("connectionDatabaseSettings should be resolved via per-report datasource.properties",
 				settings.connectionDatabaseSettings);
 		assertEquals("JDBC URL should match per-report connection",
-				"jdbc:h2:mem:perreport_test",
+				"jdbc:duckdb:./target/conn-resolution/perreport_test.duckdb",
 				settings.connectionDatabaseSettings.connection.databaseserver.url);
 		assertEquals("User should match per-report connection",
-				"sa_perreport", settings.connectionDatabaseSettings.connection.databaseserver.userid);
+				"user_perreport", settings.connectionDatabaseSettings.connection.databaseserver.userid);
 
 		// Clean up
 		removeFile("config/reports-jasper/datasource.properties");
@@ -162,7 +162,7 @@ public class JasperConnectionResolutionTest {
 		// The explicit conncode in reporting.xml (db-explicit-conn) should win
 		// over the datasource.properties (db-perreport-conn)
 		assertEquals("JDBC URL should match explicit conncode, not datasource.properties",
-				"jdbc:h2:mem:explicit_test",
+				"jdbc:duckdb:./target/conn-resolution/explicit_test.duckdb",
 				settings.connectionDatabaseSettings.connection.databaseserver.url);
 
 		// Clean up
@@ -262,8 +262,8 @@ public class JasperConnectionResolutionTest {
 				+ "    <name>" + connCode + "</name>\n"
 				+ "    <default>" + isDefault + "</default>\n"
 				+ "    <databaseserver>\n"
-				+ "      <type>h2</type>\n"
-				+ "      <driver>org.h2.Driver</driver>\n"
+				+ "      <type>duckdb</type>\n"
+				+ "      <driver>org.duckdb.DuckDBDriver</driver>\n"
 				+ "      <url>" + jdbcUrl + "</url>\n"
 				+ "      <userid>" + user + "</userid>\n"
 				+ "      <userpassword>" + pass + "</userpassword>\n"

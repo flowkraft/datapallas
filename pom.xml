@@ -74,8 +74,6 @@
 		<querydsl.version>5.1.0</querydsl.version>
 		<jdbi3.version>3.49.0</jdbi3.version>
 
-		<h2database.version>2.3.232</h2database.version>
-
 		<sqlite-jdbc.version>3.49.1.0</sqlite-jdbc.version>
 		<duckdb.version>1.4.4.0</duckdb.version>
 		<clickhouse-jdbc.version>0.9.6</clickhouse-jdbc.version>
@@ -847,16 +845,6 @@
 				<artifactId>ecj</artifactId>
 				<version>${ecj.version}</version>
 			</dependency>
-
-			<!--TEST START-->
-			<dependency>
-				<groupId>com.h2database</groupId>
-				<artifactId>h2</artifactId>
-				<version>${h2database.version}</version>
-			</dependency>
-
-			
-			<!--TEST END-->
 
 		</dependencies>
 	</dependencyManagement>

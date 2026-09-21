@@ -24,9 +24,43 @@
 
 	<build>
 		<finalName>${project.artifactId}</finalName>
+		<plugins>
+			<!--
+				Publishes src/test/java as rb-common:test-jar so the other modules can
+				reuse the shared test fixtures (see NorthwindFixture). Without this the
+				fixtures would have to be duplicated per module, which is how the
+				test data drifted apart in the first place.
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.4.2</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>test-jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
 	</build>
 
 	<dependencies>
+
+		<!--
+			TEST ONLY. Everything added here must stay <scope>test</scope>: the
+			assembler copies bkend/reporting/target/dependencies into lib/burst with
+			maven-dependency-plugin's includeScope=runtime, which drops test-scope
+			artifacts. That boundary is the only thing keeping a test-only database
+			engine and its fixtures out of the shipped product.
+		-->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.12.2</version>
+			<scope>test</scope>
+		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>

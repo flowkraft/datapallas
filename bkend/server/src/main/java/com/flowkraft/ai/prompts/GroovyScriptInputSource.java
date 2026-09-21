@@ -51,7 +51,7 @@ not pin a default connection).
 connections can be opened on demand by code:
 
 ```groovy
-def metaDb = ctx.getConnection('customer-meta-h2')   // returns groovy.sql.Sql
+def metaDb = ctx.getConnection('customer-meta-sqlite')   // returns groovy.sql.Sql
 ```
 
 `ctx.getConnection(code)` returns a `groovy.sql.Sql` instance — the same API as `ctx.dbSql`.
@@ -378,7 +378,7 @@ Demonstrates `ctx.getConnection(code)` for the secondary connection.*
 import java.math.BigDecimal
 
 def dbSql  = ctx.dbSql                                 // primary — orders/revenue
-def metaDb = ctx.getConnection('customer-meta-h2')     // secondary — segmentation
+def metaDb = ctx.getConnection('customer-meta-sqlite')     // secondary — segmentation
 
 def revenueRows = dbSql.rows(\"""
     SELECT

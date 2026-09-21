@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com.sourcekraft.documentburster.GlobalContext;
 import com.sourcekraft.documentburster.MainProgram;
+import com.sourcekraft.documentburster._helpers.JasperOutputTestUtils;
 import com.sourcekraft.documentburster._helpers.NorthwindTestUtils;
 import com.sourcekraft.documentburster._helpers.TestsUtils;
 import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
@@ -115,7 +117,7 @@ public class JasperCliFlowTest {
 		// clean it only exists if another test class happened to run first.
 		FileUtils.forceMkdir(new File(TestsUtils.TESTS_OUTPUT_FOLDER + "/temp"));
 
-		// Set up H2 with Northwind data (same DB as all other tests)
+		// Materialize this module's own Northwind DuckDB (same DB as all other tests)
 		NorthwindTestUtils.setupTestDatabase();
 
 		// Create the full app directory structure
@@ -130,7 +132,7 @@ public class JasperCliFlowTest {
 
 	/**
 	 * Tier 3: Default DB connection — no datasource.properties anywhere.
-	 * The 3-tier resolution falls back to the default connection (db-h2-northwind).
+	 * The 3-tier resolution falls back to the default connection (db-duckdb-northwind).
 	 * Proves: JasperReports receives the JDBC connection and executes its embedded SQL.
 	 */
 	@Test
@@ -154,10 +156,10 @@ public class JasperCliFlowTest {
 		ServerDatabaseSettings dbServer =
 				lastReporter.getCtx().settings.connectionDatabaseSettings.connection.databaseserver;
 		assertNotNull("databaseserver must be set", dbServer);
-		assertEquals("JDBC URL must match H2 Northwind",
-				NorthwindTestUtils.H2_URL, dbServer.url);
+		assertEquals("JDBC URL must match the test Northwind DuckDB",
+				NorthwindTestUtils.NORTHWIND_URL, dbServer.url);
 		assertEquals("JDBC user must match",
-				NorthwindTestUtils.H2_USER, dbServer.userid);
+				NorthwindTestUtils.NORTHWIND_USER, dbServer.userid);
 
 		// ASSERT: Output file generated (JR executed SQL and produced output)
 		assertOutputGenerated(lastReporter.getCtx());
@@ -167,7 +169,7 @@ public class JasperCliFlowTest {
 
 	/**
 	 * Tier 2: Global datasource.properties overrides the default.
-	 * config/reports-jasper/datasource.properties → db-h2-northwind
+	 * config/reports-jasper/datasource.properties → db-duckdb-northwind
 	 */
 	@Test
 	public void testGlobalDatasourceProperties_JasperReceivesConnection() throws Throwable {
@@ -176,7 +178,7 @@ public class JasperCliFlowTest {
 
 		// Set up global datasource.properties (tier 2)
 		removeFile("config/reports-jasper/customer-by-country/datasource.properties");
-		writeDatasourceProperties("config/reports-jasper/datasource.properties", "db-h2-northwind");
+		writeDatasourceProperties("config/reports-jasper/datasource.properties", "db-duckdb-northwind");
 
 		String configPath = absPath("config/reports-jasper/customer-by-country/settings.xml");
 
@@ -186,8 +188,8 @@ public class JasperCliFlowTest {
 		// ASSERT: Connection resolved via global datasource.properties
 		assertNotNull("connectionDatabaseSettings must be populated (global override)",
 				lastReporter.getCtx().settings.connectionDatabaseSettings);
-		assertEquals("JDBC URL must match H2 Northwind",
-				NorthwindTestUtils.H2_URL,
+		assertEquals("JDBC URL must match the test Northwind DuckDB",
+				NorthwindTestUtils.NORTHWIND_URL,
 				lastReporter.getCtx().settings.connectionDatabaseSettings.connection.databaseserver.url);
 
 		assertOutputGenerated(lastReporter.getCtx());
@@ -208,7 +210,7 @@ public class JasperCliFlowTest {
 		// Set up both global and per-report — per-report wins
 		writeDatasourceProperties("config/reports-jasper/datasource.properties", "db-nonexistent");
 		writeDatasourceProperties("config/reports-jasper/customer-by-country/datasource.properties",
-				"db-h2-northwind");
+				"db-duckdb-northwind");
 
 		String configPath = absPath("config/reports-jasper/customer-by-country/settings.xml");
 
@@ -218,8 +220,8 @@ public class JasperCliFlowTest {
 		// ASSERT: Per-report override won (not the global db-nonexistent)
 		assertNotNull("connectionDatabaseSettings must be populated (per-report override)",
 				lastReporter.getCtx().settings.connectionDatabaseSettings);
-		assertEquals("JDBC URL must match H2 (per-report won over global)",
-				NorthwindTestUtils.H2_URL,
+		assertEquals("JDBC URL must match Northwind (per-report won over global)",
+				NorthwindTestUtils.NORTHWIND_URL,
 				lastReporter.getCtx().settings.connectionDatabaseSettings.connection.databaseserver.url);
 
 		assertOutputGenerated(lastReporter.getCtx());
@@ -356,16 +358,37 @@ public class JasperCliFlowTest {
 
 	// ─── Assert helpers ───
 
-	private void assertOutputGenerated(BurstingContext ctx) {
+	/**
+	 * Verify the report ran its embedded SQL against the resolved connection — by
+	 * checking what came out, not that something came out.
+	 *
+	 * The previous version asserted "at least one .xlsx exists" and claimed in its
+	 * message that this proved JR executed the SQL. It did not. JasperReports
+	 * writes a workbook for an empty result set just as happily as for a full one,
+	 * so the old check stayed green if the connection resolved to the wrong
+	 * database, if the country parameter never arrived, or if the query matched
+	 * nothing at all — the three failures these three tests exist to catch.
+	 *
+	 * All three callers run the report with country=Germany, so the expectation is
+	 * read from the database rather than hard-coded: every German customer by name,
+	 * one row each.
+	 */
+	private void assertOutputGenerated(BurstingContext ctx) throws Exception {
 		String outputFolder = ctx.outputFolder;
 		assertNotNull("outputFolder must be set", outputFolder);
-		File outDir = new File(outputFolder);
-		assertTrue("Output folder must exist: " + outDir.getAbsolutePath(), outDir.exists());
-		File[] outputFiles = outDir.listFiles((dir, name) -> name.endsWith(".xlsx"));
-		assertNotNull("Output folder should contain files", outputFiles);
-		assertTrue("At least one .xlsx should be generated (proves JR executed SQL)",
-				outputFiles.length >= 1);
-		log.info("Generated {} output file(s) in {}", outputFiles.length, outputFolder);
+
+		File output = JasperOutputTestUtils.singleOutputFile(outputFolder, ".xlsx");
+
+		List<String> germanCustomers = NorthwindTestUtils.queryColumn(
+				"SELECT \"CompanyName\" FROM \"Customers\" WHERE \"Country\" = 'Germany' ORDER BY \"CompanyName\"",
+				"CompanyName");
+		JasperOutputTestUtils.assertContainsValues(output, germanCustomers);
+		assertEquals("The report must have exactly one row per German customer — "
+				+ "fewer means the query or the connection did not do what the test claims",
+				germanCustomers.size(), JasperOutputTestUtils.dataRowCount(output));
+
+		log.info("Verified {} in {} — {} German customers, one row each",
+				output.getName(), outputFolder, germanCustomers.size());
 	}
 
 	// ─── File structure helpers ───
@@ -427,10 +450,10 @@ public class JasperCliFlowTest {
 				new File(TEST_ROOT, "config/reports-jasper/customer-by-country/reporting.xml").toPath(),
 				reportingXml);
 
-		// Connection XML — H2 Northwind (same DB as all other tests)
+		// Connection XML — the test Northwind DuckDB (same DB as all other tests)
 		// This is the default connection (default=true)
-		createConnectionXml("db-h2-northwind", true,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS);
+		createConnectionXml("db-duckdb-northwind", true,
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS);
 
 		// Temp and output dirs
 		new File(TEST_ROOT, "output").mkdirs();
@@ -448,7 +471,7 @@ public class JasperCliFlowTest {
 				+ "    <name>" + connCode + "</name>\n"
 				+ "    <default>" + isDefault + "</default>\n"
 				+ "    <databaseserver>\n"
-				+ "      <driver>org.h2.Driver</driver>\n"
+				+ "      <driver>" + NorthwindTestUtils.NORTHWIND_DRIVER + "</driver>\n"
 				+ "      <url>" + jdbcUrl + "</url>\n"
 				+ "      <userid>" + user + "</userid>\n"
 				+ "      <userpassword>" + pass + "</userpassword>\n"

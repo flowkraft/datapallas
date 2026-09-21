@@ -438,18 +438,19 @@ public class TestBursterFactory {
 
 		protected String testName;
 
-		// Add fields to store H2 connection details
-		private final String h2Url;
-		private final String h2User;
-		private final String h2Pass;
+		// The test database connection, handed in by the test rather than resolved
+		// from a Connections file on disk.
+		private final String dbUrl;
+		private final String dbUser;
+		private final String dbPass;
 
-		public SqlReporter(String configFilePath, String testName, String h2Url, String h2User, String h2Pass) {
+		public SqlReporter(String configFilePath, String testName, String dbUrl, String dbUser, String dbPass) {
 			super(configFilePath);
 			this.testName = testName;
-			// Store H2 details
-			this.h2Url = h2Url;
-			this.h2User = h2User;
-			this.h2Pass = h2Pass;
+			// Store the connection details
+			this.dbUrl = dbUrl;
+			this.dbUser = dbUser;
+			this.dbPass = dbPass;
 
 			// ... config path logic ...
 			if ((StringUtils.isNoneEmpty(configFilePath) && (Files.exists(Paths.get(configFilePath)))))
@@ -498,9 +499,9 @@ public class TestBursterFactory {
 
 		@Override
 		protected Jdbi retrieveJdbiInstance(String connectionCode) throws Exception {
-			// For test H2 connection, create a Jdbi instance directly
-			if (connectionCode.equals(NorthwindTestUtils.H2_CONN_CODE)) {
-				return Jdbi.create(h2Url, h2User, h2Pass);
+			// For the test Northwind connection, create a Jdbi instance directly
+			if (connectionCode.equals(NorthwindTestUtils.NORTHWIND_CONN_CODE)) {
+				return Jdbi.create(dbUrl, dbUser, dbPass);
 			}
 
 			// For other connections, use the default implementation
@@ -524,18 +525,31 @@ public class TestBursterFactory {
 
 		protected String testName;
 
-		// Add fields to store H2 connection details
-		private final String h2Url;
-		private final String h2User;
-		private final String h2Pass;
+		// The test database connection, handed in by the test rather than resolved
+		// from a Connections file on disk.
+		private final String dbUrl;
+		private final String dbUser;
+		private final String dbPass;
+		private final String dbDriver;
 
-		public ScriptedReporter(String configFilePath, String testName, String h2Url, String h2User, String h2Pass) {
+		/** Defaults to the DuckDB Northwind, which is what most scripted tests want. */
+		public ScriptedReporter(String configFilePath, String testName, String dbUrl, String dbUser, String dbPass) {
+			this(configFilePath, testName, dbUrl, dbUser, dbPass, NorthwindTestUtils.NORTHWIND_DRIVER);
+		}
+
+		/**
+		 * The driver is explicit for the scripts that ship as SQLite samples: they
+		 * are authored in SQLite SQL, so they have to be tested on SQLite.
+		 */
+		public ScriptedReporter(String configFilePath, String testName, String dbUrl, String dbUser, String dbPass,
+				String dbDriver) {
 			super(configFilePath);
 			this.testName = testName;
-			// Store H2 details
-			this.h2Url = h2Url;
-			this.h2User = h2User;
-			this.h2Pass = h2Pass;
+			// Store the connection details
+			this.dbUrl = dbUrl;
+			this.dbUser = dbUser;
+			this.dbPass = dbPass;
+			this.dbDriver = dbDriver;
 
 			// ... config path logic ...
 			if ((StringUtils.isNoneEmpty(configFilePath) && (Files.exists(Paths.get(configFilePath)))))
@@ -546,15 +560,14 @@ public class TestBursterFactory {
 
 		@Override
 		protected ServerDatabaseSettings getServerDatabaseSettings(String connectionCode) throws Exception {
-			// For test H2 connection, create ServerDatabaseSettings directly
-			if (connectionCode.equals(NorthwindTestUtils.H2_CONN_CODE)) {
-				ServerDatabaseSettings h2Settings = new ServerDatabaseSettings();
-				h2Settings.url = this.h2Url;
-				h2Settings.userid = this.h2User;
-				h2Settings.userpassword = this.h2Pass;
-				// Assuming H2 driver is standard, or retrieve dynamically if needed
-				h2Settings.driver = "org.h2.Driver";
-				return h2Settings;
+			// For the test Northwind connection, create ServerDatabaseSettings directly
+			if (connectionCode.equals(NorthwindTestUtils.NORTHWIND_CONN_CODE)) {
+				ServerDatabaseSettings dbSettings = new ServerDatabaseSettings();
+				dbSettings.url = this.dbUrl;
+				dbSettings.userid = this.dbUser;
+				dbSettings.userpassword = this.dbPass;
+				dbSettings.driver = this.dbDriver;
+				return dbSettings;
 			}
 			// For other connections, use the default implementation
 			return super.getServerDatabaseSettings(connectionCode);

@@ -1,12 +1,12 @@
 // Test-only Groovy script — proves the multi-database scripting API works.
-// Pulls from the report's default DB (ctx.dbSql = Northwind H2) AND a second
-// DB (ctx.getConnection('customer-meta-h2') = customer-segmentation H2),
+// Pulls from the report's default DB (ctx.dbSql = Northwind DuckDB) AND a second
+// DB (ctx.getConnection('customer-meta-sqlite') = customer segmentation in SQLite),
 // then merges them in Groovy.
 
 import java.math.BigDecimal
 
 def dbSql  = ctx.dbSql                                 // primary — orders/revenue
-def metaDb = ctx.getConnection('customer-meta-h2')     // secondary — segmentation
+def metaDb = ctx.getConnection('customer-meta-sqlite') // secondary — segmentation
 
 log.info("Starting scriptedReport_crossDbCustomerScorecard.groovy...")
 

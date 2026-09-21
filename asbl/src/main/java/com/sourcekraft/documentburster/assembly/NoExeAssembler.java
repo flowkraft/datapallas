@@ -855,19 +855,9 @@ public class NoExeAssembler extends AbstractAssembler {
 				+ "/bkend/reporting/src/test/groovy/reporting/scriptedReport_monthlySalesTrendReport.groovy";
 		File destTrendScript = new File(trendSampleDir + "/g-scr2htm-trend-script.groovy");
 
-		// Read, adapt for SQLite and write
-		content = FileUtils.readFileToString(new File(srcTrendScript), "UTF-8");
-		// Replace H2 FORMATDATETIME(expr, 'yyyy-MM') -> SQLite strftime('%Y-%m', expr)
-		// This covers SELECT and GROUP BY occurrences
-		content = content.replaceAll("(?is)FORMATDATETIME\\s*\\(\\s*([^,]+?)\\s*,\\s*'yyyy-MM'\\s*\\)",
-				"COALESCE(" + "strftime('%Y-%m', $1)," + // ISO-text dates
-						"strftime('%Y-%m', $1/1000, 'unixepoch')," + // epoch milliseconds
-						"strftime('%Y-%m', $1, 'unixepoch')," + // epoch seconds
-						"substr($1,1,7)" + // fallback 'YYYY-MM' prefix
-						")");
-
-		// Write adapted script into package
-		FileUtils.writeStringToFile(destTrendScript, content, "UTF-8");
+		// Copied verbatim: the script is authored in SQLite SQL, which is the
+		// dialect this sample's connection uses, so there is nothing to adapt.
+		FileUtils.copyFile(new File(srcTrendScript), destTrendScript);
 
 		// =========================
 		// 14. Scripted Supplier Scorecard - ScriptedReporter -> per-supplier HTML
@@ -939,45 +929,12 @@ public class NoExeAssembler extends AbstractAssembler {
 				new File(packageDirPath + "/" + topFolderName
 						+ "/samples/reports/northwind/scriptedReport-scorecard-template.html"));
 
-		// copy + adapt supplier scorecard script for SQLite (minimal, reliable)
+		// copy supplier scorecard script (authored in SQLite SQL, shipped verbatim)
 		String srcSupplierScript = Utils.getTopProjectFolderPath()
 				+ "/bkend/reporting/src/test/groovy/reporting/scriptedReport_supplierScorecardReport.groovy";
 		File destSupplierScript = new File(scorecardSampleDir + "/g-scr2htm-supc-script.groovy");
 
-		content = FileUtils.readFileToString(new File(srcSupplierScript), "UTF-8");
-
-		// 1) Replace exact H2 DATEDIFF(...) pattern with SQLite julianday diff (safe fallback for ms/sec/ISO)
-		// Do this first so inserted helper won't be touched by later replacements
-		content = content.replaceAll(
-				"(?is)DATEDIFF\\s*\\(\\s*'DAY'\\s*,\\s*CAST\\s*\\(\\s*:\\s*orderDate\\s+AS\\s+TIMESTAMP\\s*\\)\\s*,\\s*CAST\\s*\\(\\s*:\\s*shippedDate\\s+AS\\s+TIMESTAMP\\s*\\)\\s*\\)",
-				"CAST((" + "COALESCE(julianday(replace(:shippedDate,'T',' ')), julianday(:shippedDate/1000, 'unixepoch'), julianday(:shippedDate, 'unixepoch'))"
-						+ " - "
-						+ "COALESCE(julianday(replace(:orderDate,'T',' ')),   julianday(:orderDate/1000, 'unixepoch'),   julianday(:orderDate, 'unixepoch'))"
-						+ ") AS INTEGER)");
-
-		// 2) Convert .toLocalDateTime() usages to use the helper: order.ShippedDate.toLocalDateTime() -> toLocalDateTime(order.ShippedDate)
-		// Run this BEFORE inserting the helper so the helper source is not rewritten accidentally
-		content = content.replaceAll("(?m)([a-zA-Z_][\\w\\.\\[\\]\\\"']*)\\.toLocalDateTime\\s*\\(\\s*\\)",
-				"toLocalDateTime($1)");
-
-		// 3) Insert small toLocalDateTime helper if not present (insert after rewrites)
-		if (!content.contains("def toLocalDateTime = {")) {
-			String helper = "" + "def toLocalDateTime = { obj ->\n" + "    if (obj == null) return null\n"
-					+ "    if (obj instanceof java.time.LocalDateTime) return obj\n"
-					+ "    if (obj instanceof java.sql.Timestamp) return obj.toLocalDateTime()\n"
-					+ "    if (obj instanceof java.util.Date) return java.time.Instant.ofEpochMilli(obj.time).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()\n"
-					+ "    if (obj instanceof Number) { long v = obj.longValue(); if (v > 9_999_999_999L) return java.time.Instant.ofEpochMilli(v).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime(); else return java.time.Instant.ofEpochSecond(v).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime(); }\n"
-					+ "    if (obj instanceof String) {\n" + "        String s = obj.trim()\n"
-					+ "        try { return java.time.LocalDateTime.parse(s, java.time.format.DateTimeFormatter.ISO_DATE_TIME) } catch(Exception e) {}\n"
-					+ "        try { def fmt = java.time.format.DateTimeFormatter.ofPattern(\"yyyy-MM-dd HH:mm:ss\"); return java.time.LocalDateTime.parse(s.replace('T',' '), fmt) } catch(Exception e) {}\n"
-					+ "        try { return java.time.LocalDate.parse(s).atStartOfDay() } catch(Exception e) {}\n"
-					+ "        return null\n" + "    }\n" + "    return null\n" + "}\n\n";
-			content = content.replaceFirst("(?m)log\\.info\\(",
-					java.util.regex.Matcher.quoteReplacement(helper) + "log.info(");
-		}
-
-		// write adapted script
-		FileUtils.writeStringToFile(destSupplierScript, content, "UTF-8");
+		FileUtils.copyFile(new File(srcSupplierScript), destSupplierScript);
 
 		// =========================
 		// 18. Ad-hoc Employee Profile - ScriptedReporter -> FOP2PDF (no database, user provided data)

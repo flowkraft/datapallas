@@ -1,5 +1,4 @@
 import groovy.sql.Sql
-import java.time.temporal.ChronoUnit
 
 /*
  * Scripted Reporter: Supplier Scorecard Report
@@ -55,37 +54,38 @@ try {
         log.debug("  Product Metrics - Count: {}, AvgPrice: {}, LowStock: {}", metrics.ProductCount, metrics.AvgUnitPrice, metrics.LowStockCount)
 
         // --- Delivery Performance Metrics ---
-        // Query orders involving this supplier's products that have been shipped
-        def deliveryStatsList = dbSql.rows("""
+        // SQLite dialect, deliberately: this script is packaged verbatim as the
+        // g-scr2htm-supc sample and runs against the bundled SQLite Northwind.
+        //
+        // One aggregate query per supplier, rather than one query per shipped
+        // order line as this used to do. The date columns hold epoch
+        // MILLISECONDS in INTEGER columns (Hibernate maps LocalDateTime onto
+        // SQLite's integer affinity), so julianday() needs /1000 and
+        // 'unixepoch' - and "shipped late" is then just a numeric comparison,
+        // with no date parsing left in Groovy at all. A NULL RequiredDate
+        // compares to NULL and falls to ELSE 0, which is the behaviour the
+        // per-order null checks used to give.
+        //
+        // date(...) inside julianday(...) snaps both sides to midnight, so the
+        // subtraction is a whole number of calendar days instead of a float
+        // carrying the time of day.
+        def deliveryStats = dbSql.firstRow("""
             SELECT
-                o.OrderDate,
-                o.RequiredDate,
-                o.ShippedDate
+                COUNT(*) AS ShippedCount,
+                AVG(julianday(date(o.ShippedDate / 1000, 'unixepoch', 'localtime'))
+                  - julianday(date(o.OrderDate / 1000, 'unixepoch', 'localtime'))) AS AvgDeliveryDays,
+                SUM(CASE WHEN o.ShippedDate > o.RequiredDate THEN 1 ELSE 0 END) AS LateCount
             FROM Orders o
             JOIN "Order Details" od ON o.OrderID = od.OrderID
             JOIN Products p ON od.ProductID = p.ProductID
             WHERE p.SupplierID = :supplierId AND o.ShippedDate IS NOT NULL
         """, [supplierId: supplierId])
 
-        def totalDeliveryDays = 0L
-        def shippedOrdersCount = deliveryStatsList.size()
-        def lateOrdersCount = 0
+        def shippedOrdersCount = (deliveryStats?.ShippedCount ?: 0) as int
+        def lateOrdersCount = (deliveryStats?.LateCount ?: 0) as int
 
         if (shippedOrdersCount > 0) {
-            deliveryStatsList.each { order ->
-                // Calculate delivery days (ShippedDate - OrderDate)
-                // H2 DATEDIFF returns integer days
-                def deliveryDays = dbSql.firstRow("SELECT DATEDIFF('DAY', CAST(:orderDate AS TIMESTAMP), CAST(:shippedDate AS TIMESTAMP)) AS days",
-                                               [orderDate: order.OrderDate, shippedDate: order.ShippedDate]).days
-                totalDeliveryDays += (deliveryDays ?: 0) // Add days if calculation was successful
-
-                // Check if late (ShippedDate > RequiredDate)
-                if (order.ShippedDate != null && order.RequiredDate != null && order.ShippedDate.toLocalDateTime().isAfter(order.RequiredDate.toLocalDateTime())) {
-                    lateOrdersCount++
-                }
-            }
-
-            metrics['AvgDeliveryDays'] = (double) totalDeliveryDays / shippedOrdersCount
+            metrics['AvgDeliveryDays'] = ((deliveryStats.AvgDeliveryDays ?: 0) as double)
             metrics['LateDeliveryPercent'] = (double) lateOrdersCount / shippedOrdersCount
         } else {
             // Handle cases with no shipped orders for this supplier

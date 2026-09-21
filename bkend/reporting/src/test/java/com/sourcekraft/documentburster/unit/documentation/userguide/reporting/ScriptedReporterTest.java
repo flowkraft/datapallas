@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.time.Instant; // Add this import
 import java.time.ZoneId; // Add this import
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sourcekraft.documentburster._helpers.NorthwindSqliteTestUtils;
 import com.sourcekraft.documentburster._helpers.NorthwindTestUtils;
 import com.sourcekraft.documentburster._helpers.TestBursterFactory;
 import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
@@ -55,7 +57,7 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindDataGenerato
 public class ScriptedReporterTest {
 
 	private static final Logger log = LoggerFactory.getLogger(ScriptedReporterTest.class);
-	// H2 is managed by NorthwindTestUtils setup in SqlReporterTest @BeforeClass
+	// The Northwind databases are materialized by the setup helpers below.
 
 	@BeforeClass
 	public static void setUpClass() throws Exception { // Add throws Exception, IOException
@@ -69,7 +71,7 @@ public class ScriptedReporterTest {
 		NorthwindTestUtils.setupTestDatabase();
 
 		// Ensure output directory exists and is clean (moved from setUp)
-		log.info("Setup complete. H2 DB is ready and scripts are present.");
+		log.info("Setup complete. Northwind DBs are ready and scripts are present.");
 	}
 
 	@AfterClass
@@ -105,12 +107,12 @@ public class ScriptedReporterTest {
 
 		// 2. Configure Reporter
 		TestBursterFactory.ScriptedReporter reporter = new TestBursterFactory.ScriptedReporter(StringUtils.EMPTY,
-				TEST_NAME, NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				TEST_NAME, NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 				// Configure ScriptedReporter specific settings
-				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 
 				ctx.settings.getReportDataSource().scriptoptions.scriptname = "scriptedReport_invoice.groovy";
 
@@ -231,11 +233,11 @@ public class ScriptedReporterTest {
 
 		// 2. Configure Reporter
 		TestBursterFactory.ScriptedReporter reporter = new TestBursterFactory.ScriptedReporter(StringUtils.EMPTY,
-				TEST_NAME, NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				TEST_NAME, NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
-				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings
 						.getReportDataSource().scriptoptions.scriptname = "scriptedReport_categoryRegionCrosstabReport.groovy";
 
@@ -340,12 +342,20 @@ public class ScriptedReporterTest {
 		// 1. Template Generation handled by @BeforeClass
 
 		// 2. Configure Reporter
+		//
+		// SQLite, not DuckDB. This script is packaged verbatim as the shipped
+		// g-scr2htm-trend sample, which runs against the bundled SQLite
+		// Northwind - so the test has to run it on SQLite, or it proves nothing
+		// about what customers actually execute.
+		NorthwindSqliteTestUtils.setupTestDatabase();
+
 		TestBursterFactory.ScriptedReporter reporter = new TestBursterFactory.ScriptedReporter(StringUtils.EMPTY,
-				TEST_NAME, NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				TEST_NAME, NorthwindSqliteTestUtils.URL, NorthwindSqliteTestUtils.USER, NorthwindSqliteTestUtils.PASS,
+				NorthwindSqliteTestUtils.DRIVER) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
-				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings
 						.getReportDataSource().scriptoptions.scriptname = "scriptedReport_monthlySalesTrendReport.groovy";
 				ctx.settings.getReportTemplate().outputtype = CsvUtils.OUTPUT_TYPE_HTML;
@@ -531,6 +541,59 @@ public class ScriptedReporterTest {
 	private static class MonthlySalesData {
 		double totalSales = 0.0;
 		int orderCount = 0;
+	}
+
+	/**
+	 * Expected {AvgDeliveryDays, LateDeliveryPercent} per SupplierID, computed in
+	 * Java straight from the raw epoch-millisecond columns.
+	 *
+	 * Deliberately NOT the script's own SQL. An expectation built on julianday()
+	 * would agree with the script even if both were wrong, which is how a date
+	 * bug survives a green suite. The rows are joined the same way the script
+	 * joins them, so an order with several line items counts several times -
+	 * matching the metric the report has always published.
+	 */
+	private Map<String, double[]> calculateExpectedDeliveryMetrics() throws Exception {
+
+		// CAST to INTEGER so the driver hands back the stored epoch number
+		// rather than deciding for itself what the "timestamp" DDL meant.
+		List<Map<String, String>> rows = NorthwindSqliteTestUtils
+				.queryRows("SELECT p.SupplierID AS SupplierID, " + "CAST(o.OrderDate AS INTEGER) AS OrderDate, "
+						+ "CAST(o.ShippedDate AS INTEGER) AS ShippedDate, "
+						+ "CAST(o.RequiredDate AS INTEGER) AS RequiredDate " + "FROM Orders o "
+						+ "JOIN \"Order Details\" od ON o.OrderID = od.OrderID "
+						+ "JOIN Products p ON od.ProductID = p.ProductID " + "WHERE o.ShippedDate IS NOT NULL");
+
+		Map<String, List<Long>> daysBySupplier = new LinkedHashMap<>();
+		Map<String, Integer> lateBySupplier = new LinkedHashMap<>();
+
+		for (Map<String, String> row : rows) {
+
+			String supplierId = row.get("SupplierID");
+			long shippedMillis = Long.parseLong(row.get("ShippedDate"));
+
+			daysBySupplier.computeIfAbsent(supplierId, k -> new ArrayList<>())
+					.add(ChronoUnit.DAYS.between(toLocalDate(row.get("OrderDate")), toLocalDate(row.get("ShippedDate"))));
+			lateBySupplier.putIfAbsent(supplierId, 0);
+
+			String requiredDate = row.get("RequiredDate");
+			if (requiredDate != null && !"null".equals(requiredDate) && shippedMillis > Long.parseLong(requiredDate))
+				lateBySupplier.put(supplierId, lateBySupplier.get(supplierId) + 1);
+		}
+
+		Map<String, double[]> expected = new LinkedHashMap<>();
+		for (Map.Entry<String, List<Long>> entry : daysBySupplier.entrySet()) {
+			double averageDays = entry.getValue().stream().mapToLong(Long::longValue).average().orElse(0d);
+			double latePercent = (double) lateBySupplier.get(entry.getKey()) / entry.getValue().size();
+			expected.put(entry.getKey(), new double[] { averageDays, latePercent });
+		}
+
+		return expected;
+	}
+
+	/** The date columns hold epoch milliseconds, written as local wall-clock times. */
+	private static LocalDate toLocalDate(String epochMillis) {
+		return Instant.ofEpochMilli(Long.parseLong(epochMillis)).atZone(ZoneId.systemDefault()).toLocalDate();
 	}
 
 	private Map<YearMonth, MonthlySalesData> calculateExpectedMonthlySales() {
@@ -730,16 +793,20 @@ public class ScriptedReporterTest {
 		final String TEST_NAME = "ScriptedReporterTest-SupplierScorecard";
 		log.info("========== Starting test: {} ==========", TEST_NAME);
 
-		// Create reporter with H2 connection
+		// SQLite, not DuckDB: this script is packaged verbatim as the shipped
+		// g-scr2htm-supc sample, which runs against the bundled SQLite Northwind.
+		NorthwindSqliteTestUtils.setupTestDatabase();
+
 		TestBursterFactory.ScriptedReporter reporter = new TestBursterFactory.ScriptedReporter(StringUtils.EMPTY,
-				TEST_NAME, NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				TEST_NAME, NorthwindSqliteTestUtils.URL, NorthwindSqliteTestUtils.USER, NorthwindSqliteTestUtils.PASS,
+				NorthwindSqliteTestUtils.DRIVER) {
 
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 
 				// Configure the script source and database connection
-				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().scriptoptions.idcolumn = "SupplierID";
 				ctx.settings
 						.getReportDataSource().scriptoptions.scriptname = "scriptedReport_supplierScorecardReport.groovy";
@@ -767,6 +834,11 @@ public class ScriptedReporterTest {
 		assertTrue("All expected suppliers should be present", actualSupplierIds.containsAll(expectedSupplierIds));
 		assertEquals("Number of suppliers should match", expectedSupplierIds.size(), actualSupplierIds.size());
 
+		// The delivery KPIs are the part of this script that does date arithmetic
+		// in SQL, so they are checked against an expectation computed separately
+		// in Java rather than by re-running the script's own query.
+		Map<String, double[]> expectedDelivery = calculateExpectedDeliveryMetrics();
+
 		// Validate metrics for each supplier against pre-calculated values
 		for (String supplierId : actualSupplierIds) {
 			log.info("Validating metrics for Supplier ID: {}", supplierId);
@@ -774,6 +846,13 @@ public class ScriptedReporterTest {
 			Map<String, Object> reportedMetrics = ctx.reportData.stream()
 					.filter(row -> supplierId.equals(String.valueOf(row.get("SupplierID")))).findFirst().orElse(null);
 			assertNotNull("Data row for Supplier " + supplierId + " should exist", reportedMetrics);
+
+			double[] expected = expectedDelivery.get(supplierId);
+			assertNotNull("Supplier " + supplierId + " should have shipped orders to measure", expected);
+			assertEquals("Average delivery days for Supplier " + supplierId, expected[0],
+					((Number) reportedMetrics.get("AvgDeliveryDays")).doubleValue(), 0.001);
+			assertEquals("Late delivery percent for Supplier " + supplierId, expected[1],
+					((Number) reportedMetrics.get("LateDeliveryPercent")).doubleValue(), 0.001);
 
 			String companyName = (String) reportedMetrics.get("CompanyName");
 			log.info("Validating {} ({})", companyName, supplierId);
@@ -1004,8 +1083,9 @@ public class ScriptedReporterTest {
 		final String TEST_NAME = "ScriptedReporterTest-MultiDatabaseCustomerScorecard";
 		log.info("========== Starting test: {} ==========", TEST_NAME);
 
-		// Set up the SECONDARY in-memory H2 (customer_segments table) — distinct
-		// from the primary Northwind H2 owned by NorthwindTestUtils.
+		// Set up the SECONDARY database (customer_segments in SQLite) — a different
+		// engine from the primary Northwind DuckDB owned by NorthwindTestUtils, so
+		// a cross-wired connection cannot pass by accident.
 		com.sourcekraft.documentburster._helpers.MultiDbTestUtils.setupSecondaryCustomerMetaDb();
 
 		// Minimal HTML template referencing the actual scorecard schema (not the
@@ -1025,18 +1105,18 @@ public class ScriptedReporterTest {
 		}
 
 		TestBursterFactory.ScriptedReporter reporter = new TestBursterFactory.ScriptedReporter(StringUtils.EMPTY,
-				TEST_NAME, NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				TEST_NAME, NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 				// Primary connection = Northwind (resolved via TestBursterFactory.ScriptedReporter's
 				// getServerDatabaseSettings() override — no file load needed).
-				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().scriptoptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().scriptoptions.scriptname = "scriptedReport_crossDbCustomerScorecard.groovy";
 				ctx.settings.getReportDataSource().scriptoptions.idcolumn = "CustomerID";
 
 				// Pre-populate ctx.namedDbSql so the script's ctx.getConnection(SECONDARY_CONN_CODE)
-				// returns the secondary H2 instance directly — bypasses the dbManager
+				// returns the secondary SQLite instance directly — bypasses the dbManager
 				// file-loading path that would require a real connection XML on disk.
 				ctx.namedDbSql = new java.util.LinkedHashMap<>();
 				ctx.namedDbSql.put(

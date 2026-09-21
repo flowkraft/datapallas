@@ -58,7 +58,7 @@ public class SqlReporterTest {
 	}
 
 	/**
-	 * Tests basic SQL reporting with H2 database.
+	 * Tests basic SQL reporting against the Northwind DuckDB fixture.
 	 */
 	@Test
 	public void testBasicSqlReporting() throws Exception {
@@ -67,13 +67,13 @@ public class SqlReporterTest {
 
 		// Create reporter
 		TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 
 				// Configure SQL
-				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "CustomerID";
 				ctx.settings
 						.getReportDataSource().sqloptions.query = "SELECT \"CustomerID\", \"CompanyName\", \"Country\" FROM \"Customers\" WHERE \"Country\" = 'Germany'";
@@ -126,8 +126,8 @@ public class SqlReporterTest {
 		assertEquals("col0 should match", "ALFKI", userVars.get("col0"));
 		assertEquals("col1 should match", "Alfreds Futterkiste", userVars.get("col1"));
 		assertEquals("col2 should match", "Germany", userVars.get("col2"));
-		// Verify named variables (case might depend on DB/JDBC driver, H2 seems to
-		// return uppercase)
+		// Verify named variables (column-name case is driver-dependent; DuckDB
+		// returns them spelled as the query wrote them)
 		assertEquals("CustomerID should match", "ALFKI", userVars.get("CustomerID"));
 		assertEquals("CompanyName should match", "Alfreds Futterkiste", userVars.get("CompanyName"));
 		assertEquals("Country should match", "Germany", userVars.get("Country"));
@@ -154,12 +154,12 @@ public class SqlReporterTest {
 	public void testCustomerStatementReport() throws Exception {
 		final String TEST_NAME = "SqlReporterTest-CustomerStatement";
 		TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 				// Configure SQL for single-customer statement
-				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "CustomerID";
 				ctx.settings
 						.getReportDataSource().sqloptions.query = "SELECT c.CustomerID AS CustomerID, c.CompanyName AS CompanyName,"
@@ -271,8 +271,9 @@ public class SqlReporterTest {
 	}
 
 	/**
-	 * Tests DuckDB with JDBC connection by attaching H2 database.
-	 * This demonstrates DuckDB's ability to query other databases.
+	 * Tests the SQL reporter over a plain in-memory DuckDB connection, i.e. a
+	 * database other than the file-backed Northwind fixture the rest of this
+	 * class uses.
 	 */
 	@Test
 	public void testDuckDBQueryOverJDBC() throws Exception {
@@ -295,9 +296,9 @@ public class SqlReporterTest {
 				ctx.settings.getReportDataSource().sqloptions.conncode = DUCKDB_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "CustomerID";
 
-				// Use DuckDB's postgres_scanner to attach H2 database
-				// Note: This is a simple test - just querying DuckDB's information schema
-				// In real usage, you would ATTACH DATABASE or use postgres_scanner
+				// Literal rows, deliberately: what is under test is the connection
+				// and the reporter, not any particular catalog. Reaching a real
+				// external database would be ATTACH or postgres_scanner.
 				ctx.settings.getReportDataSource().sqloptions.query =
 					"SELECT 'DUCK1' AS CustomerID, 'DuckDB Customer 1' AS CompanyName, 'Germany' AS Country " +
 					"UNION ALL " +

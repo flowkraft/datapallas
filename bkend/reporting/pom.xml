@@ -500,9 +500,22 @@
 			<artifactId>xml-apis</artifactId>
 		</dependency>
 		
+		<!--
+			rb-common's test-jar carries NorthwindFixture, which generates the sample
+			Northwind DuckDB through the same code path the packager uses. Test data
+			therefore equals shipped data by construction.
+
+			TEST SCOPE IS LOAD-BEARING. The assembler copies this module's
+			target/dependencies into lib/burst using maven-dependency-plugin with
+			includeScope=runtime, which drops test-scope artifacts. That boundary is
+			the only thing keeping the fixture's database engine out of the shipped
+			product, so this dependency must never lose its test scope.
+		-->
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
+			<groupId>com.sourcekraft.documentburster</groupId>
+			<artifactId>rb-common</artifactId>
+			<version>${revision}</version>
+			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>
 

@@ -17,6 +17,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sourcekraft.documentburster._helpers.JasperOutputTestUtils;
 import com.sourcekraft.documentburster._helpers.NorthwindTestUtils;
 import com.sourcekraft.documentburster._helpers.TestBursterFactory;
 import com.sourcekraft.documentburster.common.settings.model.ConnectionDatabaseSettings;
@@ -76,13 +77,13 @@ public class JasperWrappedAndInlineTest {
 
 		TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(
 				StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 
 				// Parent report fetches German customers from DB
-				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "CustomerID";
 				ctx.settings.getReportDataSource().sqloptions.query =
 						"SELECT \"CustomerID\", \"CompanyName\", \"Country\" "
@@ -95,16 +96,18 @@ public class JasperWrappedAndInlineTest {
 				ctx.settings.setBurstFileName("${burst_token}.xlsx");
 
 				// Wire up the parent's DB connection
-				setH2ConnectionOnCtx(ctx);
+				setNorthwindConnectionOnCtx(ctx);
 			}
 		};
 		reporter.burst();
 
-		// The parent's H2 connection must be what JR sees
-		assertConnectionIsParentH2(reporter);
+		// The parent's Northwind connection must be what JR sees
+		assertConnectionIsParentNorthwind(reporter);
 
-		// One .xlsx per German customer = params flowed correctly
-		assertOutputFilesGenerated(reporter, ".xlsx");
+		// One .xlsx per German customer, each rendering ITS OWN $P{CustomerID} and
+		// $P{CompanyName}. If the params had not flowed, JR would render blanks and
+		// the workbooks would come out empty — which the old file-count check missed.
+		assertBurstedFilesCarryTheirData(reporter, ".xlsx", germanCustomersByToken());
 
 		log.info("PASSED: {}", TEST_NAME);
 	}
@@ -123,13 +126,13 @@ public class JasperWrappedAndInlineTest {
 
 		TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(
 				StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 
 				// Parent fetches data that will become reportData rows
-				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "CustomerID";
 				ctx.settings.getReportDataSource().sqloptions.query =
 						"SELECT \"CustomerID\", \"CompanyName\", \"Country\" "
@@ -141,15 +144,16 @@ public class JasperWrappedAndInlineTest {
 				ctx.settings.getReportTemplate().documentpath = JRXML_WRAPPED_FIELDS;
 				ctx.settings.setBurstFileName("${burst_token}.xlsx");
 
-				setH2ConnectionOnCtx(ctx);
+				setNorthwindConnectionOnCtx(ctx);
 			}
 		};
 		reporter.burst();
 
-		assertConnectionIsParentH2(reporter);
+		assertConnectionIsParentNorthwind(reporter);
 
-		// Output exists = reportData was passed as datasource and $F{...} fields worked
-		assertOutputFilesGenerated(reporter, ".xlsx");
+		// Each workbook holds its own row = reportData was passed as the datasource
+		// and $F{...} resolved. An empty JREmptyDataSource would yield empty files.
+		assertBurstedFilesCarryTheirData(reporter, ".xlsx", germanCustomersByToken());
 
 		log.info("PASSED: {}", TEST_NAME);
 	}
@@ -168,13 +172,13 @@ public class JasperWrappedAndInlineTest {
 
 		TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(
 				StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 
 				// Parent only fetches IDs — JR will do its own lookup
-				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "EmployeeID";
 				ctx.settings.getReportDataSource().sqloptions.query =
 						"SELECT CAST(\"EmployeeID\" AS VARCHAR) AS \"EmployeeID\" "
@@ -184,15 +188,23 @@ public class JasperWrappedAndInlineTest {
 				ctx.settings.getReportTemplate().documentpath = JRXML_WRAPPED_SQL;
 				ctx.settings.setBurstFileName("${burst_token}.xlsx");
 
-				setH2ConnectionOnCtx(ctx);
+				setNorthwindConnectionOnCtx(ctx);
 			}
 		};
 		reporter.burst();
 
-		assertConnectionIsParentH2(reporter);
+		assertConnectionIsParentNorthwind(reporter);
 
-		// Output exists = JR ran its own SQL using the parent's connection successfully
-		assertOutputFilesGenerated(reporter, ".xlsx");
+		// The employee's real name is in the workbook = JR ran its OWN SQL through the
+		// parent's connection. Without that connection JR produces an empty workbook,
+		// so only asserting on content distinguishes the two outcomes.
+		// The .jrxml renders $F{FirstName} + " " + $F{LastName} into a single cell,
+		// so that is what the expectation has to be.
+		assertBurstedFilesCarryTheirData(reporter, ".xlsx", NorthwindTestUtils.queryMap(
+				"SELECT CAST(\"EmployeeID\" AS VARCHAR) AS \"EmployeeID\", "
+						+ "\"FirstName\" || ' ' || \"LastName\" AS \"FullName\" "
+						+ "FROM \"Employees\" ORDER BY \"EmployeeID\"",
+				"EmployeeID", "FullName"));
 
 		log.info("PASSED: {}", TEST_NAME);
 	}
@@ -203,8 +215,8 @@ public class JasperWrappedAndInlineTest {
 	 *
 	 * Setup: create datasource.properties with FAKE DB urls in the JR's folder
 	 * and in the parent reports-jasper/ folder.
-	 * The parent's real H2 connection must be what JR gets — not the fake ones.
-	 * If datasource.properties was mistakenly used, JR would try jdbc:h2:mem:FAKE
+	 * The parent's real Northwind connection must be what JR gets — not the fake ones.
+	 * If datasource.properties was mistakenly used, JR would try one of the bogus URLs below
 	 * which has no tables → would fail → no output.
 	 */
 	@Test
@@ -218,29 +230,30 @@ public class JasperWrappedAndInlineTest {
 		File globalDsProps = new File(jrxmlDir.getParentFile(), "datasource.properties");
 
 		try {
-			// Per-report: fake connection that would fail if used
+			// Per-report: a connection that CANNOT be opened — the folder does not
+			// exist, so DuckDB fails outright rather than quietly creating a file.
 			jrxmlDir.mkdirs();
 			Files.writeString(perReportDsProps.toPath(),
-					"url=jdbc:h2:mem:FAKE_SHOULD_NOT_BE_USED\n"
+					"url=jdbc:duckdb:./target/no-such-folder/FAKE_SHOULD_NOT_BE_USED.duckdb\n"
 					+ "user=fakeuser\n"
 					+ "password=fakepass\n"
-					+ "driver=org.h2.Driver\n");
+					+ "driver=" + NorthwindTestUtils.NORTHWIND_DRIVER + "\n");
 
-			// Global: another fake connection that would also fail if used
+			// Global: a second unopenable connection, so neither tier can win silently.
 			Files.writeString(globalDsProps.toPath(),
-					"url=jdbc:h2:mem:ALSO_FAKE\n"
+					"url=jdbc:duckdb:./target/no-such-folder/ALSO_FAKE.duckdb\n"
 					+ "user=alsofake\n"
 					+ "password=alsofake\n"
-					+ "driver=org.h2.Driver\n");
+					+ "driver=" + NorthwindTestUtils.NORTHWIND_DRIVER + "\n");
 
 			TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(
 					StringUtils.EMPTY, TEST_NAME,
-					NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+					NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 				@Override
 				protected void executeController() throws Exception {
 					super.executeController();
 
-					ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+					ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 					ctx.settings.getReportDataSource().sqloptions.idcolumn = "CustomerID";
 					ctx.settings.getReportDataSource().sqloptions.query =
 							"SELECT \"CustomerID\", \"CompanyName\", \"Country\" "
@@ -252,16 +265,17 @@ public class JasperWrappedAndInlineTest {
 					ctx.settings.setBurstFileName("${burst_token}.xlsx");
 
 					// Parent's REAL connection — must be what JR receives
-					setH2ConnectionOnCtx(ctx);
+					setNorthwindConnectionOnCtx(ctx);
 				}
 			};
 			reporter.burst();
 
-			// Connection on ctx must still be the parent's real H2 — not the fake ones
-			assertConnectionIsParentH2(reporter);
+			// Connection on ctx must still be the parent's real Northwind connection — not the fake ones
+			assertConnectionIsParentNorthwind(reporter);
 
-			// Output generated = real connection was used (fake DB has no tables)
-			assertOutputFilesGenerated(reporter, ".xlsx");
+			// The real connection was used: the fake datasource.properties DBs have no
+			// Customers table, so these company names can only have come from the parent's.
+			assertBurstedFilesCarryTheirData(reporter, ".xlsx", germanCustomersByToken());
 
 			log.info("PASSED: {} (datasource.properties present but correctly ignored)", TEST_NAME);
 		} finally {
@@ -289,12 +303,12 @@ public class JasperWrappedAndInlineTest {
 
 		TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(
 				StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 
-				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "CustomerID";
 				ctx.settings.getReportDataSource().sqloptions.query =
 						"SELECT \"CustomerID\", \"CompanyName\", \"Country\" "
@@ -306,15 +320,16 @@ public class JasperWrappedAndInlineTest {
 				ctx.settings.getReportTemplate().documentpath = JRXML_INLINE_FIELDS;
 				ctx.settings.setBurstFileName("${burst_token}.xlsx");
 
-				setH2ConnectionOnCtx(ctx);
+				setNorthwindConnectionOnCtx(ctx);
 			}
 		};
 		reporter.burst();
 
-		assertConnectionIsParentH2(reporter);
+		assertConnectionIsParentNorthwind(reporter);
 
-		// Output exists = reportData flowed as $F{...} fields to inline JR
-		assertOutputFilesGenerated(reporter, ".xlsx");
+		// Each workbook holds its own customer's name = reportData really flowed
+		// into the inline JR as $F{...} fields, row by row.
+		assertBurstedFilesCarryTheirData(reporter, ".xlsx", germanCustomersByToken());
 
 		log.info("PASSED: {}", TEST_NAME);
 	}
@@ -335,12 +350,12 @@ public class JasperWrappedAndInlineTest {
 
 		TestBursterFactory.SqlReporter reporter = new TestBursterFactory.SqlReporter(
 				StringUtils.EMPTY, TEST_NAME,
-				NorthwindTestUtils.H2_URL, NorthwindTestUtils.H2_USER, NorthwindTestUtils.H2_PASS) {
+				NorthwindTestUtils.NORTHWIND_URL, NorthwindTestUtils.NORTHWIND_USER, NorthwindTestUtils.NORTHWIND_PASS) {
 			@Override
 			protected void executeController() throws Exception {
 				super.executeController();
 
-				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.H2_CONN_CODE;
+				ctx.settings.getReportDataSource().sqloptions.conncode = NorthwindTestUtils.NORTHWIND_CONN_CODE;
 				ctx.settings.getReportDataSource().sqloptions.idcolumn = "OrderID";
 				ctx.settings.getReportDataSource().sqloptions.query = "SELECT 1";
 
@@ -348,7 +363,7 @@ public class JasperWrappedAndInlineTest {
 				ctx.settings.getReportTemplate().documentpath = JRXML_INLINE_MASTER_DETAIL;
 				ctx.settings.setBurstFileName("${burst_token}.xlsx");
 
-				setH2ConnectionOnCtx(ctx);
+				setNorthwindConnectionOnCtx(ctx);
 			}
 
 			@Override
@@ -393,32 +408,46 @@ public class JasperWrappedAndInlineTest {
 		};
 		reporter.burst();
 
-		assertConnectionIsParentH2(reporter);
+		assertConnectionIsParentNorthwind(reporter);
 
-		// Output exists = nested data was flattened and $F{...} fields worked
-		assertOutputFilesGenerated(reporter, ".xlsx");
+		// This is where flattening either happened or did not, and the only way to
+		// tell is to count rows. Order 10248 carried two nested details and must
+		// come out as TWO rows naming both products; order 10249 carried one and
+		// must come out as ONE. A file-exists check cannot distinguish "flattened"
+		// from "master row emitted, details silently dropped" — both write a
+		// workbook.
+		Map<String, List<String>> expected = new LinkedHashMap<>();
+		expected.put("10248", List.of("Queso Cabrales", "Singaporean Hokkien"));
+		expected.put("10249", List.of("Tofu"));
+		assertBurstedFilesCarryTheirValues(reporter, ".xlsx", expected);
+
+		String outputFolder = reporter.getCtx().outputFolder;
+		assertEquals("Order 10248 had 2 nested details, so the flattened report must have 2 rows",
+				2, JasperOutputTestUtils.dataRowCount(new File(outputFolder, "10248.xlsx")));
+		assertEquals("Order 10249 had 1 nested detail, so the flattened report must have 1 row",
+				1, JasperOutputTestUtils.dataRowCount(new File(outputFolder, "10249.xlsx")));
 
 		log.info("PASSED: {}", TEST_NAME);
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────
 
-	/** Set the parent report's DB connection to our test H2 database. */
-	private static void setH2ConnectionOnCtx(
+	/** Set the parent report's DB connection to our test Northwind database. */
+	private static void setNorthwindConnectionOnCtx(
 			com.sourcekraft.documentburster.context.BurstingContext ctx) {
 		ctx.settings.connectionDatabaseSettings = new DocumentBursterConnectionDatabaseSettings();
 		ConnectionDatabaseSettings conn = new ConnectionDatabaseSettings();
 		ServerDatabaseSettings server = new ServerDatabaseSettings();
-		server.url = NorthwindTestUtils.H2_URL;
-		server.userid = NorthwindTestUtils.H2_USER;
-		server.userpassword = NorthwindTestUtils.H2_PASS;
-		server.driver = "org.h2.Driver";
+		server.url = NorthwindTestUtils.NORTHWIND_URL;
+		server.userid = NorthwindTestUtils.NORTHWIND_USER;
+		server.userpassword = NorthwindTestUtils.NORTHWIND_PASS;
+		server.driver = NorthwindTestUtils.NORTHWIND_DRIVER;
 		conn.databaseserver = server;
 		ctx.settings.connectionDatabaseSettings.connection = conn;
 	}
 
-	/** Verify that the connection on ctx is still the parent's real H2 — not overwritten. */
-	private void assertConnectionIsParentH2(AbstractReporter reporter) {
+	/** Verify that the connection on ctx is still the parent's real Northwind connection — not overwritten. */
+	private void assertConnectionIsParentNorthwind(AbstractReporter reporter) {
 		assertNotNull("connectionDatabaseSettings must be set",
 				reporter.getCtx().settings.connectionDatabaseSettings);
 		assertNotNull("connection must be set",
@@ -426,23 +455,64 @@ public class JasperWrappedAndInlineTest {
 		ServerDatabaseSettings dbServer =
 				reporter.getCtx().settings.connectionDatabaseSettings.connection.databaseserver;
 		assertNotNull("databaseserver must be set", dbServer);
-		assertEquals("JDBC URL must be the parent's H2 URL",
-				NorthwindTestUtils.H2_URL, dbServer.url);
-		assertEquals("JDBC user must be the parent's H2 user",
-				NorthwindTestUtils.H2_USER, dbServer.userid);
+		assertEquals("JDBC URL must be the parent's Northwind URL",
+				NorthwindTestUtils.NORTHWIND_URL, dbServer.url);
+		assertEquals("JDBC user must be the parent's Northwind user",
+				NorthwindTestUtils.NORTHWIND_USER, dbServer.userid);
 	}
 
-	/** Verify that at least one output file was generated — proves JR processed data. */
-	private void assertOutputFilesGenerated(AbstractReporter reporter, String extension) {
+	/**
+	 * Verify that the burst produced exactly one file per token AND that each file
+	 * carries the value that only that token's data could have put there.
+	 *
+	 * The old version of this helper asserted "at least one .xlsx exists". That
+	 * passes for a report that fetched zero rows, because JasperReports writes a
+	 * workbook either way — so it certified nothing while looking like coverage.
+	 * Every caller now has to say which tokens it expects and what should be
+	 * inside them, which is the part that actually proves data flowed.
+	 */
+	private void assertBurstedFilesCarryTheirData(AbstractReporter reporter, String extension,
+			Map<String, String> expectedValuePerToken) throws Exception {
+		Map<String, List<String>> oneValueEach = new LinkedHashMap<>();
+		for (Map.Entry<String, String> entry : expectedValuePerToken.entrySet())
+			oneValueEach.put(entry.getKey(), List.of(entry.getValue()));
+
+		assertBurstedFilesCarryTheirValues(reporter, extension, oneValueEach);
+	}
+
+	/**
+	 * Same contract, for the reports where one token legitimately produces several
+	 * values — a master row with its detail lines, say.
+	 *
+	 * Note what is NOT asserted here: the token itself. Whether the token appears
+	 * inside its own workbook is up to the .jrxml (employee_lookup.jrxml renders
+	 * the employee's name, never the EmployeeID it was burst on), so demanding it
+	 * would fail correct reports. The filename carries the token, and
+	 * assertOneFilePerToken already checks that — asserting it twice adds nothing
+	 * and costs portability.
+	 */
+	private void assertBurstedFilesCarryTheirValues(AbstractReporter reporter, String extension,
+			Map<String, List<String>> expectedValuesPerToken) throws Exception {
 		String outputFolder = reporter.getCtx().outputFolder;
 		assertNotNull("outputFolder must be set", outputFolder);
-		File outDir = new File(outputFolder);
-		assertTrue("Output folder must exist: " + outDir.getAbsolutePath(), outDir.exists());
-		File[] outputFiles = outDir.listFiles((dir, name) -> name.endsWith(extension));
-		assertNotNull("Output folder should contain files", outputFiles);
-		assertTrue("Expected at least one " + extension + " file — proves JR received and processed data",
-				outputFiles.length >= 1);
-		log.info("Generated {} output file(s) in {}", outputFiles.length, outputFolder);
+
+		JasperOutputTestUtils.assertOneFilePerToken(outputFolder, extension, expectedValuesPerToken.keySet());
+
+		for (Map.Entry<String, List<String>> entry : expectedValuesPerToken.entrySet()) {
+			File output = new File(outputFolder, entry.getKey() + extension);
+			JasperOutputTestUtils.assertContainsValues(output, entry.getValue());
+		}
+
+		log.info("Verified {} output file(s) in {} — each carries its own token's data",
+				expectedValuesPerToken.size(), outputFolder);
+	}
+
+	/** The German customers this suite bursts on, as token -> CompanyName, read from the DB. */
+	private static Map<String, String> germanCustomersByToken() throws Exception {
+		return NorthwindTestUtils.queryMap(
+				"SELECT \"CustomerID\", \"CompanyName\" FROM \"Customers\" "
+						+ "WHERE \"Country\" = 'Germany' ORDER BY \"CompanyName\"",
+				"CustomerID", "CompanyName");
 	}
 
 	// ─── .jrxml test fixtures ────────────────────────────────────────

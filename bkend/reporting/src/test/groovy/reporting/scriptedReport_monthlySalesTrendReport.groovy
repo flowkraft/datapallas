@@ -10,17 +10,29 @@ log.info("Starting scriptedReport_monthlySalesTrendReport.groovy...")
 // --- 1. Define SQL Query to Aggregate Sales and Orders by Month ---
 
 // This query calculates total sales and counts distinct orders for each month.
-// It uses H2's FORMATDATETIME function to get 'YYYY-MM' format for grouping.
 // LineSalesAmount = UnitPrice * Quantity * (1 - Discount)
+//
+// SQLite dialect, deliberately. This script is packaged verbatim as the
+// g-scr2htm-trend sample, which runs against the bundled SQLite Northwind - so
+// it is authored and tested in the dialect it will actually run in.
+//
+// "OrderDate" holds epoch MILLISECONDS in an INTEGER column (Hibernate maps
+// LocalDateTime onto SQLite's integer affinity, whatever the DDL says), hence
+// the /1000 and 'unixepoch'. Without them strftime returns NULL for every row
+// and the chart silently draws one empty bucket.
+//
+// 'localtime' matters: the dates were written as local wall-clock times, so
+// reading them back in UTC would shift an order placed on the 1st into the
+// previous month.
 def monthlyDataSql = """
 SELECT
-    FORMATDATETIME(O."OrderDate", 'yyyy-MM') AS YearMonth,
+    strftime('%Y-%m', O."OrderDate" / 1000, 'unixepoch', 'localtime') AS YearMonth,
     SUM(OD."UnitPrice" * OD."Quantity" * (1 - OD."Discount")) AS MonthlySales,
     COUNT(DISTINCT O."OrderID") AS OrderCount
 FROM "Orders" O
 JOIN "Order Details" OD ON O."OrderID" = OD."OrderID"
 WHERE O."OrderDate" IS NOT NULL
-GROUP BY FORMATDATETIME(O."OrderDate", 'yyyy-MM')
+GROUP BY strftime('%Y-%m', O."OrderDate" / 1000, 'unixepoch', 'localtime')
 ORDER BY YearMonth ASC -- Ensure chronological order for the chart
 """
 
