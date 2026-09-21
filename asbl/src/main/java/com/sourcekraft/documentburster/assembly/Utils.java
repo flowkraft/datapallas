@@ -187,24 +187,60 @@ public class Utils {
 				: new String[] { "bash", "-c", commandLine };
 	}
 
+	/**
+	 * Which javac the build compiles with. The system property `javac.compiler.path`, or the environment
+	 * variable JAVAC_COMPILER_PATH, names it explicitly: a CI machine keeps its JDK outside Program Files so
+	 * that the UAT, which installs and uninstalls Java on purpose, cannot delete the compiler the build needs.
+	 * Unset, an Adoptium JDK 17 under Program Files is pinned, exactly as before. Where there is neither,
+	 * nothing is pinned and the JDK on the PATH compiles - which is what Linux and macOS have always done.
+	 */
+	private static String javacCompilerPath() throws Exception {
+
+		String configured = System.getProperty("javac.compiler.path");
+
+		if ((configured == null) || configured.trim().isEmpty())
+			configured = System.getenv("JAVAC_COMPILER_PATH");
+
+		if ((configured != null) && !configured.trim().isEmpty()) {
+
+			Path javac = Paths.get(configured.trim());
+
+			if (!Files.isRegularFile(javac))
+				throw new RuntimeException("javac.compiler.path does not point at a javac executable: " + javac);
+
+			return javac.toString();
+
+		}
+
+		String rootPath = "C:/Program Files";
+
+		if (!Files.isDirectory(Paths.get(rootPath)))
+			return null;
+
+		String pattern = ".*Eclipse Adoptium\\\\jdk-17.*-hotspot.*";
+
+		try (Stream<Path> paths = Files.walk(Paths.get(rootPath))) {
+			return paths.filter(Files::isDirectory).map(Path::toString)
+				.filter(Pattern.compile(pattern).asPredicate()).findFirst()
+				.map(folder -> folder + "/bin/javac.exe").orElse(null);
+		}
+
+	}
+
 	public static void runMaven(String pomXmlFolderPath, String mavenCommand) throws Exception {
 
-		// Pin the javac of an Adoptium JDK 17 installed under Program Files. Where there is no such folder
-		// (Linux, macOS) the JDK on the PATH compiles.
-		String rootPath = "C:/Program Files";
-		if (!mavenCommand.contains("-Djavac.compiler.path") && Files.isDirectory(Paths.get(rootPath))) {
-			String pattern = ".*Eclipse Adoptium\\\\jdk-17.*-hotspot.*";
+		if (!mavenCommand.contains("-Djavac.compiler.path")) {
 
-			try (Stream<Path> paths = Files.walk(Paths.get(rootPath))) {
-				String compilerPath = paths.filter(Files::isDirectory).map(Path::toString)
-						.filter(Pattern.compile(pattern).asPredicate()).findFirst()
-						.orElseThrow(() -> new RuntimeException("Directory not found"));
+			String compilerPath = javacCompilerPath();
+
+			if (compilerPath != null) {
 
 				System.out.println("Compiler path: " + compilerPath); // Debug output
 
-				mavenCommand += " -Djavac.compiler.path=\"" + compilerPath + "/bin/javac.exe\"";
+				mavenCommand += " -Djavac.compiler.path=\"" + compilerPath + "\"";
 
 				System.out.println("Maven command: " + mavenCommand); // Debug output
+
 			}
 		}
 
