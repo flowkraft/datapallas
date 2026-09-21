@@ -17,6 +17,14 @@
 		<java.source.version>1.8</java.source.version>
 		<java.target.version>1.8</java.target.version>
 
+		<!-- The sources are UTF-8 (239 .java files carry non-ASCII; the box-drawing comments in the
+		     userguide tests are the loudest). Without this, Maven compiles in the PLATFORM encoding:
+		     UTF-8 on Linux and in the Docker image, but Cp1252 on Windows under a JDK older than 18 -
+		     where javac then fails with "unmappable character (0x90) for encoding windows-1252".
+		     Stating the encoding is the same build everywhere, so no OS switch is needed anywhere. -->
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
 		<!-- Add this new property -->
 		<maven.resolver.transport>wagon</maven.resolver.transport>
 

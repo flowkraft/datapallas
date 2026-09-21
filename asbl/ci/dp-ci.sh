@@ -51,6 +51,7 @@
 #                                   local or an ssh host, TARGET_COMPOSE_DIR, TARGET_DATA_DIR, TARGET_APP, TARGET_URL).
 #                                   --reset wipes the site's data folder and starts it again from the image defaults.
 #   bash asbl/ci/dp-ci.sh win check | win ssh <words...> | win ps < script.ps1
+#   bash asbl/ci/dp-ci.sh win run <step> <windows-working-dir> <command...>   (on the VM's desktop)
 #                                   Windows VM lane (plan §4 Phase W). Runs ON THE HOST, not in a
 #                                   container: it drives the VM win10-dev over SSH with root's key and
 #                                   does not touch the repo, dp-dev or the firewall. `check` is W1's
@@ -328,6 +329,175 @@ win_ps() {   # PowerShell script on stdin -> the VM, nothing interpreted on the 
   fi
   rm -f "$tmp"
   return $rc
+}
+
+# -----------------------------------------------------------------------------
+# W2. Run a step on the VM's DESKTOP, and watch it from Linux.
+#
+# Why this exists: Windows OpenSSH lands every command in session 0, the services session. Nothing
+# with a window can run there - Electron starts and dies, and a GUI test would see nothing. Measured,
+# not assumed: `(Get-Process -Id $PID).SessionId` over win_ssh answers 0, while `query session` shows
+# the CI account's console as session 1.
+#
+# The primitive is a scheduled task created with /it (interactive only), which Windows runs inside
+# that console session. Deliberately WITHOUT /ru and /rp: the task is created by the CI account for
+# the CI account, so Windows asks for no password - and this CI never handles one. (Adding /ru turns
+# the same command into a password prompt, for no gain: /it already pins it to that account's desktop.)
+#
+# The step is a .cmd file on the VM, not a command line: the task's /tr is then just a path, so
+# nothing of the command is ever parsed by schtasks, cmd.exe quoting rules, or the SSH layer.
+#
+#   C:\dp-ci\runs\<step>\step.cmd    what runs
+#   C:\dp-ci\runs\<step>\step.log    everything it printed
+#   C:\dp-ci\runs\<step>\step.exit   EXIT=<code>, written only when it is over
+#
+# Because the task belongs to the scheduler and not to sshd, dropping the SSH connection - or this
+# script being killed - does not kill the step. That is the whole point: a two-hour e2e must not
+# depend on a TCP connection staying up for two hours.
+WIN_RUNS='C:\dp-ci\runs'
+
+# Refuse rather than hang. A task created with /it when nobody is logged on at the console is created
+# happily and then runs nowhere: the step would sit there with an empty log until the timeout, which
+# is the worst failure mode of the lot - it looks exactly like a slow build.
+win_console_ok() {
+  local out
+  out=$(win_ssh query session 2>&1) || { echo "FAIL  could not read the VM's session list" >&2; return 1; }
+  # The account name is never echoed: a CI log gets pasted around, and this repo is public.
+  if printf '%s\n' "$out" | grep -qiE "^[[:space:]>]*console[[:space:]]+${WIN_USER}[[:space:]]+[0-9]+[[:space:]]+Active"; then
+    return 0
+  fi
+  cat >&2 <<'MSG'
+FAIL  the VM has no Active Console session for the CI account, so a desktop step cannot run.
+      Two ways out:
+        (a) log in once on the VM's desktop through Guacamole, or
+        (b) enable auto-logon for that account, so the desktop is there after every reboot.
+MSG
+  return 1
+}
+
+# win_run_start <step> <windows-working-dir> <command...>   - launch, do not wait.
+win_run_start() {
+  local step="$1" wdir="$2"; shift 2
+  local cmd="$*" dir tmp
+  [ -n "$step" ] && [ -n "$wdir" ] && [ -n "$cmd" ] || { echo "FAIL  win_run_start <step> <working-dir> <command...>" >&2; return 2; }
+  case "$step" in *[!A-Za-z0-9_-]*) echo "FAIL  step name may only contain letters, digits, - and _" >&2; return 2 ;; esac
+  win_console_ok || return 1
+  dir="$WIN_RUNS\\$step"
+
+  # Built here and copied over, never interpolated into a command line. CRLF because cmd.exe treats a
+  # lone LF at the end of a line as part of the command.
+  tmp=$(mktemp) || return 1
+  {
+    echo '@echo off'
+    echo "set \"DPDIR=$dir\""
+    echo 'if exist "%DPDIR%\step.exit" del "%DPDIR%\step.exit"'
+    # The private toolchain, same as the Linux image: JDK 17 + Maven 3.9.9 + Node 20. JAVAC_COMPILER_PATH
+    # is what keeps asbl/Utils.java off the broken Temurin that is still installed machine-wide (F-6.8).
+    echo 'set "JAVA_HOME=C:\ci\tools\jdk-17"'
+    echo 'set "JAVAC_COMPILER_PATH=C:\ci\tools\jdk-17\bin\javac.exe"'
+    echo 'set "PATH=C:\ci\tools\jdk-17\bin;C:\ci\tools\maven\bin;C:\ci\tools\node;%PATH%"'
+    echo "cd /d \"$wdir\" || (echo EXIT=90>\"%DPDIR%\\step.exit\" & exit /b 90)"
+    echo "echo ===== step $step on the desktop, %DATE% %TIME% ====="
+    echo "call $cmd"
+    echo 'echo EXIT=%ERRORLEVEL%>"%DPDIR%\step.exit"'
+  } | sed 's/$/\r/' > "$tmp"
+
+  win_ssh "if not exist \"$dir\" md \"$dir\"" >/dev/null 2>&1
+  win_scp "$tmp" "$(printf '%s' "$dir\\step.cmd" | tr '\\' '/')" || { rm -f "$tmp"; echo "FAIL  could not copy the step to the VM" >&2; return 1; }
+  rm -f "$tmp"
+
+  # The task itself redirects into step.log, so /tr stays a bare path with no quoting to get wrong.
+  # /st is in the past on purpose: the trigger never fires by itself, `schtasks /run` is what starts it.
+  win_ps <<PS
+\$ErrorActionPreference = "Continue"
+Remove-Item "$dir\\step.log" -ErrorAction SilentlyContinue
+& schtasks /create /f /tn "dp-ci-$step" /sc once /st 00:00 /it /tr "cmd /c \"\"$dir\\step.cmd\"\" > \"\"$dir\\step.log\"\" 2>&1" | Out-Null
+if (\$LASTEXITCODE -ne 0) { "FAIL  could not create the task"; exit 1 }
+& schtasks /run /tn "dp-ci-$step" | Out-Null
+if (\$LASTEXITCODE -ne 0) { "FAIL  could not start the task"; exit 1 }
+"STARTED $step"
+PS
+}
+
+# win_run_poll <step> <byte-offset>   - print new log bytes, then @@OFF/@@EXIT markers for the caller.
+win_run_poll() {
+  local step="$1" off="${2:-0}" dir="$WIN_RUNS\\$step"
+  win_ps <<PS
+\$ErrorActionPreference = "SilentlyContinue"
+\$log = "$dir\\step.log"; \$off = [int64]$off; \$len = \$off
+if (Test-Path \$log) {
+  # Opened with FileShare ReadWrite: the step is writing to this very file right now.
+  \$fs = [IO.File]::Open(\$log, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+  \$len = \$fs.Length
+  if (\$off -lt \$len) { \$fs.Position = \$off; \$sr = New-Object IO.StreamReader(\$fs); \$sr.ReadToEnd() }
+  \$fs.Close()
+}
+"@@OFF \$len"
+if (Test-Path "$dir\\step.exit") { "@@EXIT " + ((Get-Content "$dir\\step.exit" -Raw).Trim()) } else { "@@EXIT NONE" }
+PS
+}
+
+# win_run_stop <step>   - end the task and everything it started, then forget the task.
+win_run_stop() {
+  local step="$1"
+  win_ps <<PS
+\$ErrorActionPreference = "SilentlyContinue"
+& schtasks /end /tn "dp-ci-$step" 2>&1 | Out-Null
+\$t = Get-ScheduledTask -TaskName "dp-ci-$step" -ErrorAction SilentlyContinue
+if (\$t) {
+  # /end stops the task; the tree it spawned (node, java, electron) outlives it, so kill that too.
+  Get-CimInstance Win32_Process -Filter "Name='cmd.exe'" |
+    Where-Object { \$_.CommandLine -like "*$step\\step.cmd*" } |
+    ForEach-Object { & taskkill /pid \$_.ProcessId /t /f 2>&1 | Out-Null }
+}
+& schtasks /delete /f /tn "dp-ci-$step" 2>&1 | Out-Null
+"STOPPED $step"
+PS
+}
+
+# win_run <step> <windows-working-dir> <command...>   - launch on the desktop and watch to the end.
+# WIN_RUN_TIMEOUT  overall seconds before it is killed (default 3h - an Electron e2e is long).
+# WIN_RUN_STALL    seconds with no new log output before it is called stalled (default 20m; 0 = never).
+# WIN_RUN_EVERY    seconds between polls (default 20).
+win_run() {
+  local step="$1"
+  local timeout="${WIN_RUN_TIMEOUT:-10800}" stall="${WIN_RUN_STALL:-1200}" every="${WIN_RUN_EVERY:-20}"
+  local start now off=0 last_out chunk code line quiet
+
+  win_run_start "$@" || return 1
+  start=$(date +%s); last_out=$start
+  echo ">>> $step started on the VM desktop  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  while :; do
+    sleep "$every"
+    chunk=$(win_run_poll "$step" "$off" 2>&1) || { echo "WARN  could not reach the VM; retrying"; continue; }
+    code=""
+    while IFS= read -r line; do
+      case "$line" in
+        '@@OFF '*)  [ "${line#@@OFF }" -ge 0 ] 2>/dev/null && off="${line#@@OFF }" ;;
+        '@@EXIT NONE') ;;
+        '@@EXIT '*) code="${line#@@EXIT }" ;;
+        *) printf '%s\n' "$line"; last_out=$(date +%s) ;;
+      esac
+    done <<< "$chunk"
+
+    if [ -n "$code" ]; then
+      echo "<<< $step finished  $code  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      win_run_stop "$step" >/dev/null 2>&1
+      case "$code" in EXIT=0) return 0 ;; EXIT=*) return "${code#EXIT=}" ;; *) return 1 ;; esac
+    fi
+
+    now=$(date +%s)
+    quiet=$(( now - last_out ))
+    if [ "$stall" -gt 0 ] && [ "$quiet" -ge "$stall" ]; then
+      echo "!!! $step printed nothing for ${quiet}s - treating it as stalled and killing it"
+      win_run_stop "$step"; return 124
+    fi
+    if [ $(( now - start )) -ge "$timeout" ]; then
+      echo "!!! $step is still going after ${timeout}s - killing it"
+      win_run_stop "$step"; return 124
+    fi
+  done
 }
 
 # W1 "done when": the VM answers, and no firewall window was needed to make it answer.
@@ -872,7 +1042,7 @@ TASK="${1:-}"
 case "$TASK" in
   build|e2e|junit|dev|win|publish-demo-bkstg|publish-demo-datapallas.com) ;;
   # release: reserved for the real software release (plan §3 O7)
-  *) echo "usage: $0 build|e2e|junit|dev|win <check|ssh|ps>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
+  *) echo "usage: $0 build|e2e|junit|dev|win <check|ssh|ps|run|poll|stop>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
 esac
 
 # The Windows lane runs here on the host, before any container exists: it only talks to the VM over
@@ -883,7 +1053,12 @@ if [ "$TASK" = "win" ]; then
     check) win_check; exit $? ;;
     ssh)   shift 2; win_ssh "$@"; exit $? ;;
     ps)    win_ps; exit $? ;;
-    *)     echo "usage: $0 win check | $0 win ssh <words...> | $0 win ps < script.ps1"; exit 2 ;;
+    run)   shift 2; win_run "$@"; exit $? ;;
+    poll)  shift 2; win_run_poll "$@"; exit $? ;;
+    stop)  shift 2; win_run_stop "$@"; exit $? ;;
+    *)     echo "usage: $0 win check | $0 win ssh <words...> | $0 win ps < script.ps1"
+           echo "       $0 win run <step> <windows-working-dir> <command...>   (runs on the desktop, waits)"
+           echo "       $0 win poll <step> [offset] | $0 win stop <step>"; exit 2 ;;
   esac
 fi
 PUBLISH_FLAGS=""
