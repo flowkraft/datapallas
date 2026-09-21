@@ -355,13 +355,17 @@ win_ps() {   # PowerShell script on stdin -> the VM, nothing interpreted on the 
 # script being killed - does not kill the step. That is the whole point: a two-hour e2e must not
 # depend on a TCP connection staying up for two hours.
 WIN_RUNS='C:\dp-ci\runs'
+WIN_RUN_WATCH="${WIN_RUN_WATCH:-}"
 
 # Refuse rather than hang. A task created with /it when nobody is logged on at the console is created
 # happily and then runs nowhere: the step would sit there with an empty log until the timeout, which
 # is the worst failure mode of the lot - it looks exactly like a slow build.
 win_console_ok() {
   local out
-  out=$(win_ssh query session 2>&1) || { echo "FAIL  could not read the VM's session list" >&2; return 1; }
+  # query.exe prints the table and THEN exits 1, because it cannot enumerate the services session.
+  # So its exit code says nothing; only the output does. Emptiness is the real failure.
+  out=$(win_ssh query session 2>&1)
+  [ -n "$out" ] || { echo "FAIL  could not read the VM's session list" >&2; return 1; }
   # The account name is never echoed: a CI log gets pasted around, and this repo is public.
   if printf '%s\n' "$out" | grep -qiE "^[[:space:]>]*console[[:space:]]+${WIN_USER}[[:space:]]+[0-9]+[[:space:]]+Active"; then
     return 0
@@ -377,41 +381,61 @@ MSG
 
 # win_run_start <step> <windows-working-dir> <command...>   - launch, do not wait.
 win_run_start() {
-  local step="$1" wdir="$2"; shift 2
+  local step="${1:-}" wdir="${2:-}"; shift 2 2>/dev/null || true
   local cmd="$*" dir tmp
   [ -n "$step" ] && [ -n "$wdir" ] && [ -n "$cmd" ] || { echo "FAIL  win_run_start <step> <working-dir> <command...>" >&2; return 2; }
   case "$step" in *[!A-Za-z0-9_-]*) echo "FAIL  step name may only contain letters, digits, - and _" >&2; return 2 ;; esac
   win_console_ok || return 1
+
+  # One driver per step name. Two drivers on the same name do not just interleave their logs: when
+  # the first one finishes it calls win_run_stop, which kills the process tree of the step the SECOND
+  # one started, and that step dies with no exit marker and no explanation. Refuse instead.
+  if win_ssh schtasks /query /tn "dp-ci-$step" 2>/dev/null | grep -qi running; then
+    echo "FAIL  a step called '$step' is already running on the VM." >&2
+    echo "      Wait for it, watch it with: $0 win poll $step [offset]" >&2
+    echo "      or stop it with:            $0 win stop $step" >&2
+    return 1
+  fi
   dir="$WIN_RUNS\\$step"
 
   # Built here and copied over, never interpolated into a command line. CRLF because cmd.exe treats a
   # lone LF at the end of a line as part of the command.
+  # Two files, on purpose. run.cmd is what the scheduled task points at, so /tr stays a BARE PATH:
+  # schtasks parses its own /tr argument, and a redirection inside it is rejected outright
+  # ("Invalid argument/option - '>'"). Keeping the redirection in a .cmd sidesteps schtasks quoting,
+  # cmd.exe quoting and SSH quoting all at once. %~dp0 is run.cmd's own folder, trailing slash included.
   tmp=$(mktemp) || return 1
   {
     echo '@echo off'
-    echo "set \"DPDIR=$dir\""
-    echo 'if exist "%DPDIR%\step.exit" del "%DPDIR%\step.exit"'
     # The private toolchain, same as the Linux image: JDK 17 + Maven 3.9.9 + Node 20. JAVAC_COMPILER_PATH
     # is what keeps asbl/Utils.java off the broken Temurin that is still installed machine-wide (F-6.8).
     echo 'set "JAVA_HOME=C:\ci\tools\jdk-17"'
     echo 'set "JAVAC_COMPILER_PATH=C:\ci\tools\jdk-17\bin\javac.exe"'
     echo 'set "PATH=C:\ci\tools\jdk-17\bin;C:\ci\tools\maven\bin;C:\ci\tools\node;%PATH%"'
-    echo "cd /d \"$wdir\" || (echo EXIT=90>\"%DPDIR%\\step.exit\" & exit /b 90)"
+    echo "cd /d \"$wdir\" || exit /b 90"
     echo "echo ===== step $step on the desktop, %DATE% %TIME% ====="
     echo "call $cmd"
-    echo 'echo EXIT=%ERRORLEVEL%>"%DPDIR%\step.exit"'
   } | sed 's/$/\r/' > "$tmp"
-
   win_ssh "if not exist \"$dir\" md \"$dir\"" >/dev/null 2>&1
   win_scp "$tmp" "$(printf '%s' "$dir\\step.cmd" | tr '\\' '/')" || { rm -f "$tmp"; echo "FAIL  could not copy the step to the VM" >&2; return 1; }
+
+  {
+    echo '@echo off'
+    echo 'call "%~dp0step.cmd" > "%~dp0step.log" 2>&1'
+    echo 'echo EXIT=%ERRORLEVEL%>"%~dp0step.exit"'
+  } | sed 's/$/\r/' > "$tmp"
+  win_scp "$tmp" "$(printf '%s' "$dir\\run.cmd" | tr '\\' '/')" || { rm -f "$tmp"; echo "FAIL  could not copy the launcher to the VM" >&2; return 1; }
   rm -f "$tmp"
 
   # The task itself redirects into step.log, so /tr stays a bare path with no quoting to get wrong.
   # /st is in the past on purpose: the trigger never fires by itself, `schtasks /run` is what starts it.
   win_ps <<PS
 \$ErrorActionPreference = "Continue"
+# Both go before the task is created, not inside step.cmd: otherwise the first poll can read the
+# PREVIOUS run's step.exit in the moment before the new step starts, and call it finished.
 Remove-Item "$dir\\step.log" -ErrorAction SilentlyContinue
-& schtasks /create /f /tn "dp-ci-$step" /sc once /st 00:00 /it /tr "cmd /c \"\"$dir\\step.cmd\"\" > \"\"$dir\\step.log\"\" 2>&1" | Out-Null
+Remove-Item "$dir\\step.exit" -ErrorAction SilentlyContinue
+& schtasks /create /f /tn "dp-ci-$step" /sc once /st 00:00 /it /tr "$dir\\run.cmd" | Out-Null
 if (\$LASTEXITCODE -ne 0) { "FAIL  could not create the task"; exit 1 }
 & schtasks /run /tn "dp-ci-$step" | Out-Null
 if (\$LASTEXITCODE -ne 0) { "FAIL  could not start the task"; exit 1 }
@@ -421,7 +445,9 @@ PS
 
 # win_run_poll <step> <byte-offset>   - print new log bytes, then @@OFF/@@EXIT markers for the caller.
 win_run_poll() {
-  local step="$1" off="${2:-0}" dir="$WIN_RUNS\\$step"
+  local step="${1:-}" off="${2:-0}" dir
+  [ -n "$step" ] || { echo "FAIL  win_run_poll <step> [offset]" >&2; return 2; }
+  dir="$WIN_RUNS\\$step"
   win_ps <<PS
 \$ErrorActionPreference = "SilentlyContinue"
 \$log = "$dir\\step.log"; \$off = [int64]$off; \$len = \$off
@@ -433,13 +459,16 @@ if (Test-Path \$log) {
   \$fs.Close()
 }
 "@@OFF \$len"
+\$w = "$WIN_RUN_WATCH"
+if (\$w -and (Test-Path \$w)) { "@@WATCH " + (Get-Item \$w).Length } else { "@@WATCH 0" }
 if (Test-Path "$dir\\step.exit") { "@@EXIT " + ((Get-Content "$dir\\step.exit" -Raw).Trim()) } else { "@@EXIT NONE" }
 PS
 }
 
 # win_run_stop <step>   - end the task and everything it started, then forget the task.
 win_run_stop() {
-  local step="$1"
+  local step="${1:-}"
+  [ -n "$step" ] || { echo "FAIL  win_run_stop <step>" >&2; return 2; }
   win_ps <<PS
 \$ErrorActionPreference = "SilentlyContinue"
 & schtasks /end /tn "dp-ci-$step" 2>&1 | Out-Null
@@ -447,7 +476,7 @@ win_run_stop() {
 if (\$t) {
   # /end stops the task; the tree it spawned (node, java, electron) outlives it, so kill that too.
   Get-CimInstance Win32_Process -Filter "Name='cmd.exe'" |
-    Where-Object { \$_.CommandLine -like "*$step\\step.cmd*" } |
+    Where-Object { \$_.CommandLine -like "*$step\\*.cmd*" } |
     ForEach-Object { & taskkill /pid \$_.ProcessId /t /f 2>&1 | Out-Null }
 }
 & schtasks /delete /f /tn "dp-ci-$step" 2>&1 | Out-Null
@@ -459,10 +488,16 @@ PS
 # WIN_RUN_TIMEOUT  overall seconds before it is killed (default 3h - an Electron e2e is long).
 # WIN_RUN_STALL    seconds with no new log output before it is called stalled (default 20m; 0 = never).
 # WIN_RUN_EVERY    seconds between polls (default 20).
+# WIN_RUN_WATCH    a second file on the VM whose growth also counts as progress. The Windows pack
+#                  scripts redirect Maven into their OWN log (asbl\pack-*.log) and print almost
+#                  nothing themselves, so step.log can sit unchanged for half an hour while the build
+#                  is perfectly healthy - and the stall timer would then kill it. Point this at that
+#                  log. Nothing about the scripts changes; this only teaches the watcher where to look.
 win_run() {
-  local step="$1"
+  local step="${1:-}"
+  [ $# -ge 3 ] || { echo "FAIL  win_run <step> <windows-working-dir> <command...>" >&2; return 2; }
   local timeout="${WIN_RUN_TIMEOUT:-10800}" stall="${WIN_RUN_STALL:-1200}" every="${WIN_RUN_EVERY:-20}"
-  local start now off=0 last_out chunk code line quiet
+  local start now off=0 last_out chunk code line quiet watch=0 watch_prev=0
 
   win_run_start "$@" || return 1
   start=$(date +%s); last_out=$start
@@ -473,8 +508,12 @@ win_run() {
     chunk=$(win_run_poll "$step" "$off" 2>&1) || { echo "WARN  could not reach the VM; retrying"; continue; }
     code=""
     while IFS= read -r line; do
+      # PowerShell sends CRLF. Without stripping the CR, "@@EXIT NONE\r" misses its own case and is
+      # read as a finish code - which ends the watch, and kills a step that is running perfectly well.
+      line="${line%$'\r'}"
       case "$line" in
         '@@OFF '*)  [ "${line#@@OFF }" -ge 0 ] 2>/dev/null && off="${line#@@OFF }" ;;
+        '@@WATCH '*) watch="${line#@@WATCH }" ;;
         '@@EXIT NONE') ;;
         '@@EXIT '*) code="${line#@@EXIT }" ;;
         *) printf '%s\n' "$line"; last_out=$(date +%s) ;;
@@ -486,6 +525,9 @@ win_run() {
       win_run_stop "$step" >/dev/null 2>&1
       case "$code" in EXIT=0) return 0 ;; EXIT=*) return "${code#EXIT=}" ;; *) return 1 ;; esac
     fi
+
+    # A growing watch file is the step working, just not talking.
+    if [ "$watch" -gt "$watch_prev" ] 2>/dev/null; then watch_prev="$watch"; last_out=$(date +%s); fi
 
     now=$(date +%s)
     quiet=$(( now - last_out ))
