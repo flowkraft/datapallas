@@ -65,10 +65,10 @@ if (!composeFile.exists()) {
 
     // container_name is 'flowkraft-next-playground' — rename it first (it contains 'next-playground'),
     // then the service/volume 'next-playground', then parameterize the hardcoded host port.
-    composeFile.text = composeFile.text
+    composeFile.setText(composeFile.getText('UTF-8')
             .replace('flowkraft-next-playground', APP_ID)
             .replace('next-playground', APP_ID)
-            .replace('"8420:3000"', '"${HOST_PORT:-8420}:3000"')
+            .replace('"8420:3000"', '"${HOST_PORT:-8420}:3000"'), 'UTF-8')
 
     File dockerignore = new File(appDir, '.dockerignore')
     if (!dockerignore.exists() || !dockerignore.text.contains('_custom'))
@@ -113,7 +113,7 @@ if (!composeFile.exists()) {
     // uses its seeder. Idempotent — a second run finds nothing to remove.
     File pkgJson = new File(appDir, 'package.json')
     if (pkgJson.exists()) {
-        pkgJson.text = pkgJson.text.replaceAll(/(?m)^[ \t]*"db:seed":[^\n]*\r?\n/, '')
+        pkgJson.setText(pkgJson.getText('UTF-8').replaceAll(/(?m)^[ \t]*"db:seed":[^\n]*\r?\n/, ''), 'UTF-8')
         // `db:push` -> `db:generate`, and the Dockerfile step with it (below).
         //
         // push OPENS a database and mutates it, which is meaningless during an image build: it ran
@@ -124,12 +124,12 @@ if (!composeFile.exists()) {
         // lib/db/schema.ts into ./drizzle, which the Dockerfile already copies into the runtime
         // image and which lib/db/index.ts applies with migrate() at boot. Renamed rather than
         // quietly repointed: a script called db:push that generates would be the next trap.
-        pkgJson.text = pkgJson.text.replace('"db:push": "npx drizzle-kit push"',
-                                            '"db:generate": "npx drizzle-kit generate"')
+        pkgJson.setText(pkgJson.getText('UTF-8').replace('"db:push": "npx drizzle-kit push"',
+                                            '"db:generate": "npx drizzle-kit generate"'), 'UTF-8')
     }
     File dockerfile = new File(appDir, 'Dockerfile')
     if (dockerfile.exists()) {
-        dockerfile.text = dockerfile.text.replace('RUN npm run db:push', 'RUN npm run db:generate')
+        dockerfile.setText(dockerfile.getText('UTF-8').replace('RUN npm run db:push', 'RUN npm run db:generate'), 'UTF-8')
     }
     log.info("Stripped {} of {} sample files/dirs", stripped, strip.size())
 }
@@ -188,8 +188,14 @@ writePushReport(
 
 // ── e) reveal the app card (first run) ───────────────────────────────────────
 File manifest = new File(customDir, 'app.json')
-if (manifest.isFile() && manifest.text.contains('"visible": false')) {
-    manifest.text = manifest.text.replace('"visible": false', '"visible": true')
+// Explicit UTF-8 on both sides, never file.text: the charset-less accessors use the JVM
+// platform default, which is UTF-8 on Linux but windows-1252 on the bundled JDK 17 (JEP 400's
+// UTF-8 default only arrives in JDK 18). Reading and writing this file back through
+// windows-1252 turns the em dash in its description into the single byte 0x97, Jackson then
+// refuses the manifest and SystemService#listCustomAppManifests silently skips the app - the
+// card never appears in the Apps Manager.
+if (manifest.isFile() && manifest.getText('UTF-8').contains('"visible": false')) {
+    manifest.setText(manifest.getText('UTF-8').replace('"visible": false', '"visible": true'), 'UTF-8')
     log.info('app.json: "visible" set to true — the app card appears on the next Apps refresh')
 }
 
