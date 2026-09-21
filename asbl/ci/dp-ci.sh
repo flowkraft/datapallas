@@ -307,6 +307,16 @@ win_scp() {  # win_scp <local-file> <remote-path>   (remote path in C:/forward/s
       "$1" "$WIN_USER@$WIN_HOST:$2"
 }
 
+win_pull() {  # win_pull <remote-path> <local-path>   (remote path in C:/forward/slash form)
+  win_conf_ok || return 1
+  scp -q -i "$WIN_SSH_KEY" \
+      -o BatchMode=yes \
+      -o StrictHostKeyChecking="${WIN_HOST_KEY_CHECKING:-accept-new}" \
+      -o UserKnownHostsFile="$WIN_KNOWN_HOSTS" \
+      -o ConnectTimeout="$WIN_CONNECT_TIMEOUT" \
+      "$WIN_USER@$WIN_HOST:$1" "$2"
+}
+
 win_ps() {   # PowerShell script on stdin -> the VM, nothing interpreted on the way
   # PowerShell emits its progress stream to stderr as CLIXML noise ("#< CLIXML <Objs ...>") around
   # every command that reports progress; silencing it once here keeps every caller's output readable.
@@ -629,7 +639,8 @@ win_e2e() {
     "E2E_START_EVIDENCE_MS=${E2E_START_EVIDENCE_MS:-300000}" \
     "E2E_STALL_MS=${E2E_STALL_MS:-600000}" \
     "E2E_ROTATION_DATE=${E2E_ROTATION_DATE:-$(date -u +%F)}" \
-    "E2E_LICENSE_INSTANCE_ID=${E2E_LICENSE_INSTANCE_ID:-dp-ci-win-e2e}")
+    "E2E_LICENSE_INSTANCE_ID=${E2E_LICENSE_INSTANCE_ID:-dp-ci-win-e2e}" \
+    "E2E_JSON_REPORT=$WIN_RUNS\\e2e\\playwright.json")
   export WIN_RUN_ENV
 
   echo "WIN_E2E_MODE=$mode  spec='$spec'  grep='$gexp'  retries=$retries"
@@ -647,6 +658,14 @@ win_e2e() {
 
   # gulp does not return Playwright's exit code, so the verdict is the line it prints - the same line
   # the Linux lane parses.
+  # W7 wants the evidence on this side, not only on the VM: the machine-readable result of every test
+  # (its errors and attachment paths included) and the product's own running log. Best effort - a run
+  # that died before Playwright wrote its report still has a verdict to print.
+  win_pull "$(printf '%s' "$WIN_RUNS\\e2e\\playwright.json" | tr '\\' '/')" "${out%.log}-playwright.json" \
+    2>/dev/null && echo "WIN_E2E_REPORT=${out%.log}-playwright.json"
+  win_pull "$(printf '%s' "$WIN_REPO\\frend\\reporting\\testground\\e2e\\logs\\info.log" | tr '\\' '/')" \
+    "${out%.log}-info.log" 2>/dev/null && echo "WIN_E2E_INFOLOG=${out%.log}-info.log"
+
   code=$(grep -aoE "Main Playwright process exited with code [0-9]+" "$out" | tail -1 | grep -oE "[0-9]+$")
   echo "--- Playwright result ---"
   grep -aoE "[0-9]+ (passed|failed|flaky|skipped|did not run|interrupted)( \([^)]*\))?" "$out" | tail -6
