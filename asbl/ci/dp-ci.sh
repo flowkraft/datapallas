@@ -422,7 +422,12 @@ win_run_start() {
   {
     echo '@echo off'
     echo 'call "%~dp0step.cmd" > "%~dp0step.log" 2>&1'
-    echo 'echo EXIT=%ERRORLEVEL%>"%~dp0step.exit"'
+    # The redirection goes FIRST, deliberately. Written the natural way round,
+    # `echo EXIT=%ERRORLEVEL%>"...step.exit"`, cmd reads the digit glued to the `>` as a file HANDLE
+    # - `0>` is "redirect stdin" - so on success it redirected handle 0 and wrote an empty file. The
+    # step then had no exit code at all, and every failure came back looking like EXIT=0.
+    echo 'set DPRC=%ERRORLEVEL%'
+    echo '>"%~dp0step.exit" echo EXIT=%DPRC%'
   } | sed 's/$/\r/' > "$tmp"
   win_scp "$tmp" "$(printf '%s' "$dir\\run.cmd" | tr '\\' '/')" || { rm -f "$tmp"; echo "FAIL  could not copy the launcher to the VM" >&2; return 1; }
   rm -f "$tmp"
@@ -461,7 +466,11 @@ if (Test-Path \$log) {
 "@@OFF \$len"
 \$w = "$WIN_RUN_WATCH"
 if (\$w -and (Test-Path \$w)) { "@@WATCH " + (Get-Item \$w).Length } else { "@@WATCH 0" }
-if (Test-Path "$dir\\step.exit") { "@@EXIT " + ((Get-Content "$dir\\step.exit" -Raw).Trim()) } else { "@@EXIT NONE" }
+if (Test-Path "$dir\\step.exit") {
+  \$m = (Get-Content "$dir\\step.exit" -Raw)
+  if (\$m) { \$m = \$m.Trim() }
+  if (\$m) { "@@EXIT " + \$m } else { "@@EXIT EMPTY" }
+} else { "@@EXIT NONE" }
 PS
 }
 
@@ -515,6 +524,7 @@ win_run() {
         '@@OFF '*)  [ "${line#@@OFF }" -ge 0 ] 2>/dev/null && off="${line#@@OFF }" ;;
         '@@WATCH '*) watch="${line#@@WATCH }" ;;
         '@@EXIT NONE') ;;
+        '@@EXIT EMPTY') code=EMPTY ;;
         '@@EXIT '*) code="${line#@@EXIT }" ;;
         *) printf '%s\n' "$line"; last_out=$(date +%s) ;;
       esac
@@ -523,7 +533,13 @@ win_run() {
     if [ -n "$code" ]; then
       echo "<<< $step finished  $code  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
       win_run_stop "$step" >/dev/null 2>&1
-      case "$code" in EXIT=0) return 0 ;; EXIT=*) return "${code#EXIT=}" ;; *) return 1 ;; esac
+      case "$code" in
+        EXIT=0) return 0 ;;
+        EXIT=*) return "${code#EXIT=}" ;;
+        EMPTY)  echo "!!! $step wrote an empty exit marker - it finished, but its exit code is lost." >&2
+                echo "    Read the log; do NOT read this as success." >&2; return 125 ;;
+        *)      return 1 ;;
+      esac
     fi
 
     # A growing watch file is the step working, just not talking.
