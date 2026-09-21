@@ -50,6 +50,14 @@
 #                                   /var/kraft-internalsystems/config/datapallas-ci/demo-datapallas-com.env (TARGET_HOST
 #                                   local or an ssh host, TARGET_COMPOSE_DIR, TARGET_DATA_DIR, TARGET_APP, TARGET_URL).
 #                                   --reset wipes the site's data folder and starts it again from the image defaults.
+#   bash asbl/ci/dp-ci.sh win check | win ssh <words...> | win ps < script.ps1
+#                                   Windows VM lane (plan §4 Phase W). Runs ON THE HOST, not in a
+#                                   container: it drives the VM win10-dev over SSH with root's key and
+#                                   does not touch the repo, dp-dev or the firewall. `check` is W1's
+#                                   "done when" - the VM answers and the PowerShell quoting path is
+#                                   intact. `ssh` goes through cmd.exe (quote-free commands only);
+#                                   `ps` ships a PowerShell script from stdin as -EncodedCommand, so
+#                                   nothing in it ever needs escaping. Use `ps` for anything real.
 #
 # The launcher returns within seconds. The work runs in a detached container named dp-ci, owned by
 # the Docker daemon, so closing SSH / Code Server / the browser has no effect on it. It builds IN
@@ -191,6 +199,163 @@ firewall_close_when_run_ends() {  # $1 = log file
     firewall_close $(printf '%q' "$1")" >/dev/null 2>&1 </dev/null &
 }
 
+# =============================================================================
+# WINDOWS VM LANE (plan §4 Phase W)
+# =============================================================================
+# The Windows half of a release runs on the libvirt VM win10-dev, driven from here and watched here:
+# JUnit (W6), the Electron e2e suite (W7), packaging (W8) and the Robot UAT (W9).
+#
+# Reachability (W1). The VM is on libvirt's NAT network `default` (virbr0, host 192.168.122.1); its
+# IP is pinned by a DHCP reservation on its NIC MAC, so a reboot cannot move it:
+#     virsh net-dumpxml default | grep '<host mac'
+#     -> one <host mac=... name=... ip=.../> line, the VM's own NIC MAC
+# (That reservation named the wrong MAC until 2026-09-21 — virbr0's own — which would have gone live
+# on the next network restart and moved the VM off .215. Check both views agree: --inactive and live.)
+#
+# On the VM: OpenSSH server, service Automatic, key-only (PasswordAuthentication no), the public key
+# in C:\ProgramData\ssh\administrators_authorized_keys (icacls: Administrators + SYSTEM only), and one
+# inbound rule `dp-ci-ssh` scoped to -RemoteAddress 192.168.122.1, so only this host can reach port 22.
+# sshd lives in C:\Program Files\OpenSSH-Win64 — outside Chocolatey, so the baseline's choco removal
+# (W3) cannot take our access with it. Setup script and log on the VM: C:\dp-ci\setup-sshd.ps1 / .log.
+# The private key is root-only here and is never printed.
+#
+# ONE Windows account, the VM's existing local admin (O2: the CI runs on win10-dev itself, no clone).
+# No CI account was created and no auto-logon is configured: Windows 10 allows one active console
+# session, so a separate auto-logon session would be disconnected the moment the owner opens the VM in
+# Guacamole — killing any GUI test running in it. With one account the console the owner watches IS
+# the session the tests run in, which is what W2/W9 need and what makes a run watchable.
+#
+# WHERE THE CONNECTION SETTINGS LIVE. This repository is PUBLIC, so the machine's address, the account
+# name and the key path are not written here: no account name, no host, no key, no credential of any
+# kind belongs in a tracked file. They are read from a root-only file outside the repository, the same
+# way the publish targets are (see load_publish_target above):
+#
+#     /var/kraft-internalsystems/config/datapallas-ci/win-ci.env   (chmod 600, root:root)
+#         WIN_HOST=...
+#         WIN_USER=...
+#         WIN_SSH_KEY=/root/.ssh/<key>
+#         WIN_KNOWN_HOSTS=/root/.ssh/<known_hosts file>
+#
+# The environment overrides the file, so a one-off run can point somewhere else without editing it.
+WIN_CI_CONF="${WIN_CI_CONF:-/var/kraft-internalsystems/config/datapallas-ci/win-ci.env}"
+if [ -r "$WIN_CI_CONF" ]; then
+  case "$(stat -c %a "$WIN_CI_CONF")" in
+    600|400) . "$WIN_CI_CONF" ;;
+    *) echo "FAIL  $WIN_CI_CONF must be readable by root only: chmod 600 $WIN_CI_CONF" >&2; exit 1 ;;
+  esac
+fi
+WIN_HOST="${WIN_HOST:-}"
+WIN_USER="${WIN_USER:-}"
+WIN_SSH_KEY="${WIN_SSH_KEY:-}"
+WIN_KNOWN_HOSTS="${WIN_KNOWN_HOSTS:-}"
+WIN_CONNECT_TIMEOUT="${WIN_CONNECT_TIMEOUT:-10}"
+
+# Every win_* entry point goes through this first, so an unconfigured machine fails with a sentence that
+# says what to do instead of an ssh error that does not.
+win_conf_ok() {
+  local missing=
+  [ -n "$WIN_HOST" ]       || missing="$missing WIN_HOST"
+  [ -n "$WIN_USER" ]       || missing="$missing WIN_USER"
+  [ -n "$WIN_SSH_KEY" ]    || missing="$missing WIN_SSH_KEY"
+  [ -n "$WIN_KNOWN_HOSTS" ] || missing="$missing WIN_KNOWN_HOSTS"
+  [ -z "$missing" ] || { echo "FAIL  not configured:$missing - set them in $WIN_CI_CONF (chmod 600) or in the environment" >&2; return 1; }
+}
+
+# No firewall window, deliberately. W1 asked for a `dp-ci-win` window like the e2e one; it is not
+# needed: the rule that blocks the e2e containers is an INPUT rule, and the host reaching a guest
+# across virbr0 is not INPUT (ufw's routed policy is allow). Proven by `dp-ci.sh win check` answering
+# while `ufw status | grep -c dp-ci-win` is 0 — which is also W1's "done when". A window nothing needs
+# is only a wider surface, so dp-ci-win does not exist. setup-firewall.sh is untouched either way.
+
+# Quoting, decided once (W1) so no caller has to think about it again. Windows OpenSSH hands the
+# command line to cmd.exe, whose quoting rules are not POSIX — and differ again inside PowerShell.
+# Hence exactly two entry points:
+#   win_ssh <words...>   Handed to cmd.exe, which is already sshd's default shell on Windows — so do
+#                        NOT wrap the command in `cmd /c`: that nests a second cmd and the quoting
+#                        collapses (`win_ssh cmd /c ver` -> `'ver"' is not recognized`). Plain
+#                        `win_ssh ver` is right. Short, quote-free commands only.
+#   win_ps  < script     PowerShell, script on stdin, shipped as -EncodedCommand (UTF-16LE base64).
+#                        Nothing is interpreted on the way: quotes, %, &, |, <, >, ^, backslashes and
+#                        newlines arrive byte-for-byte, so nothing ever needs escaping. Use a quoted
+#                        heredoc (<<'PS'). This is the entry point for everything non-trivial, and
+#                        `win check` exercises it against the characters cmd.exe would otherwise eat.
+# Both return the remote command's exit code; 255 is ssh's own "could not connect".
+win_ssh() {  # runs "$@" on the VM through cmd.exe
+  win_conf_ok || return 1
+  local opts=( -i "$WIN_SSH_KEY"
+    -o BatchMode=yes
+    -o StrictHostKeyChecking="${WIN_HOST_KEY_CHECKING:-accept-new}"
+    -o UserKnownHostsFile="$WIN_KNOWN_HOSTS"
+    -o ConnectTimeout="$WIN_CONNECT_TIMEOUT"
+    -o ServerAliveInterval=15       # a step can be silent for minutes; notice a dead VM within ~1 min
+    -o ServerAliveCountMax=4 )
+  ssh "${opts[@]}" "$WIN_USER@$WIN_HOST" "$@"
+}
+
+win_scp() {  # win_scp <local-file> <remote-path>   (remote path in C:/forward/slash form)
+  win_conf_ok || return 1
+  scp -q -i "$WIN_SSH_KEY" \
+      -o BatchMode=yes \
+      -o StrictHostKeyChecking=accept-new \
+      -o UserKnownHostsFile="$WIN_KNOWN_HOSTS" \
+      -o ConnectTimeout="$WIN_CONNECT_TIMEOUT" \
+      "$1" "$WIN_USER@$WIN_HOST:$2"
+}
+
+win_ps() {   # PowerShell script on stdin -> the VM, nothing interpreted on the way
+  # PowerShell emits its progress stream to stderr as CLIXML noise ("#< CLIXML <Objs ...>") around
+  # every command that reports progress; silencing it once here keeps every caller's output readable.
+  local tmp b64 rc remote
+  tmp=$(mktemp) || { echo "FAIL  could not create a temp file"; return 1; }
+  { printf '%s\n' "\$ProgressPreference='SilentlyContinue'"; cat; } > "$tmp"
+
+  # Windows caps a command line at 8191 characters, and -EncodedCommand is UTF-16LE base64, so the
+  # payload is ~2.7x the script. Anything bigger has to travel as a FILE or the command line is
+  # silently truncated ("The command line is too long."). Small scripts still go inline: one round
+  # trip, and nothing is left on the VM's disk.
+  b64=$(iconv -f UTF-8 -t UTF-16LE < "$tmp" | base64 -w0) || {
+    rm -f "$tmp"; echo "FAIL  could not encode the PowerShell script"; return 1; }
+
+  if [ "${#b64}" -lt 6000 ]; then
+    win_ssh powershell -NoProfile -NonInteractive -EncodedCommand "$b64"; rc=$?
+  else
+    remote="C:/dp-ci/tmp/ps-$$-$(date +%s%N).ps1"
+    win_ssh "if not exist C:\\dp-ci\\tmp md C:\\dp-ci\\tmp" >/dev/null 2>&1
+    if ! win_scp "$tmp" "$remote"; then
+      rm -f "$tmp"; echo "FAIL  could not copy the PowerShell script to the VM"; return 1; fi
+    win_ssh powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$remote"; rc=$?
+    win_ssh del "$(printf '%s' "$remote" | tr '/' '\\')" >/dev/null 2>&1
+  fi
+  rm -f "$tmp"
+  return $rc
+}
+
+# W1 "done when": the VM answers, and no firewall window was needed to make it answer.
+win_check() {
+  local rc probe fw ver
+  local expected='a"b%c&d|e<f>g^h\i j'      # every character cmd.exe would mangle on the way
+  win_conf_ok || { echo "WIN_CHECK_RESULT ssh=FAIL reason=not-configured"; return 1; }
+  # deliberately not echoed: the host, the account name and the key path. A CI log is pasted around.
+  echo "target: configured from $WIN_CI_CONF"
+  [ -r "$WIN_SSH_KEY" ] || { echo "WIN_CHECK_RESULT ssh=FAIL reason=no-readable-key"; return 1; }
+  ver=$(win_ssh ver 2>&1); rc=$?          # bare `ver`, not `cmd /c ver` — see the quoting note above
+  if [ $rc != 0 ]; then
+    echo "$ver"
+    echo "WIN_CHECK_RESULT ssh=FAIL exit=$rc  (255 = could not connect: VM off, IP moved, sshd stopped)"
+    return 1
+  fi
+  probe=$(win_ps <<'PS'
+Write-Output 'a"b%c&d|e<f>g^h\i j'
+PS
+)
+  probe=${probe%$'\r'}                       # PowerShell ends lines with CRLF
+  fw=$(ufw status 2>/dev/null | grep -c dp-ci-win)
+  echo "windows: $(printf '%s' "$ver" | tr -d '\r' | tr -s ' ')"
+  [ "$probe" = "$expected" ] || echo "QUOTING_BROKEN sent=[$expected] got=[$probe]"
+  echo "WIN_CHECK_RESULT ssh=OK quoting=$([ "$probe" = "$expected" ] && echo OK || echo BROKEN) dp_ci_win_rules=$fw"
+  [ "$probe" = "$expected" ] && [ "$fw" = 0 ]
+}
+
 # dp-dev runs in its own container on the reverse-proxy network (like www-datapallas-com-dev), NOT on the
 # host network: the reverse proxy cannot reach host-network ports (ufw drops them).
 start_dev_container() {
@@ -200,7 +365,7 @@ start_dev_container() {
   log="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-dev-$sha.log"
   ln -sfn "$log" "$LOG_DIR/dev-latest.log"
   docker rm -f "$DEV_CONTAINER" >/dev/null 2>&1
-  docker run -d --rm --name "$DEV_CONTAINER" --network "$DEV_NETWORK" \
+  docker run -d --rm --name "$DEV_CONTAINER" --network "$DEV_NETWORK" --ulimit core=0 \
     -v "$REPO":"$REPO" -w "$REPO" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v dp-ci-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \
@@ -705,10 +870,22 @@ fi
 # -----------------------------------------------------------------------------
 TASK="${1:-}"
 case "$TASK" in
-  build|e2e|junit|dev|publish-demo-bkstg|publish-demo-datapallas.com) ;;
+  build|e2e|junit|dev|win|publish-demo-bkstg|publish-demo-datapallas.com) ;;
   # release: reserved for the real software release (plan §3 O7)
-  *) echo "usage: $0 build|e2e|junit|dev|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
+  *) echo "usage: $0 build|e2e|junit|dev|win <check|ssh|ps>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
 esac
+
+# The Windows lane runs here on the host, before any container exists: it only talks to the VM over
+# SSH. It deliberately skips the "one dp-ci run at a time" interlock below - reading the VM's state
+# is safe while a Linux run is going, and W6-W9 will take the interlock themselves when they need it.
+if [ "$TASK" = "win" ]; then
+  case "${2:-}" in
+    check) win_check; exit $? ;;
+    ssh)   shift 2; win_ssh "$@"; exit $? ;;
+    ps)    win_ps; exit $? ;;
+    *)     echo "usage: $0 win check | $0 win ssh <words...> | $0 win ps < script.ps1"; exit 2 ;;
+  esac
+fi
 PUBLISH_FLAGS=""
 PUBLISH_TAG=""
 PUBLISH_RESET=0
@@ -782,7 +959,12 @@ if [ "$TASK" = "e2e" ]; then
   firewall_open "$LOG" || { [ "$RESTART_DEV" = 1 ] && start_dev_container; exit 1; }
 fi
 
-docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS \
+# --ulimit core=0: the host's core_pattern is the bare word "core", so a crashing process dumps into
+# its own cwd -- which is this repo. A Chromium renderer segfaulted once (2026-09-15, bundled
+# chromium-1097, gone since the pinned chrome-for-testing) and left 536 MB of browser memory sitting
+# in frend/reporting/, one `git add -A` away from being committed. Crashes still show up as
+# "[RENDERER crash]" in the run log, which is the part worth keeping.
+docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS --ulimit core=0 \
   -v "$REPO":"$REPO" -w "$REPO" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v dp-ci-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \
