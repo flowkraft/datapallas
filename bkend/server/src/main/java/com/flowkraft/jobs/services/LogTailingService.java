@@ -27,8 +27,16 @@ public class LogTailingService {
 
 	// synchronized so a concurrent start/stop for the same file can't pass the
 	// check-then-act below at the same time and spawn two tailer threads.
+	//
+	// A "start" always begins a fresh Tailer that reads the file from the top, even
+	// if one is already running: a Tailer never replays lines it has already read,
+	// and a viewer that goes away without a "stop" (a closed browser tab against the
+	// Server) leaves its Tailer running - a newly opened viewer would then never
+	// receive the file's existing content. Re-sent lines are harmless: the viewers
+	// skip lines they already show.
 	public synchronized void startTailer(String fileName) {
-		if (Objects.isNull(existingTailers.get(fileName))) {
+		stopTailer(fileName);
+		{
 
 			// Poll the log file every 250ms (matches the execution-stats cadence) so new
 			// lines stream to the UI responsively, instead of the 1s Tailer default.
@@ -49,7 +57,6 @@ public class LogTailingService {
 			existingTailers.put(fileName, tailer);
 			new Thread(tailer, "log-tailer-" + fileName).start();
 		}
-		// If already running, desired state is already achieved — idempotent no-op.
 	}
 
 	public synchronized void stopTailer(String fileName) {

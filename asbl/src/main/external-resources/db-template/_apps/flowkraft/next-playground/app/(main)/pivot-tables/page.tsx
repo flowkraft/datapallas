@@ -77,7 +77,10 @@ const soUsageCode = `<rb-pivot-table
   embed-token="\${embedToken}"
 ></rb-pivot-table>`
 
-function SalesOverviewSection({ copyFn, copiedKey }: { copyFn: (text: string, key: string) => void; copiedKey: string | null }) {
+function SalesOverviewSection({ copyFn, copiedKey, embedToken }: { copyFn: (text: string, key: string) => void; copiedKey: string | null; embedToken: string }) {
+  // The page's embed token, passed in: this section renders rb-pivot-table and rb-tabulator for the same
+  // report as the page, and is rendered only once the page's token has arrived — its own useEmbedToken
+  // would start fetching only when the section mounts, after its components (plan §4 D5).
   const [soTab, setSoTab] = useState<SoTab>("pivot")
   const [soConfigDsl, setSoConfigDsl] = useState("")
 
@@ -295,17 +298,19 @@ FROM sales GROUP BY Product;
 
 export default function PivotTablesPage() {
   const embedToken = useEmbedToken("piv-examples")
-  const [isReady, setIsReady] = useState(false)
+  const [componentsLoaded, setComponentsLoaded] = useState(false)
+  // The components read embed-token once, when they mount: render them only after it has arrived.
+  const isReady = componentsLoaded && embedToken !== null
   const [activeTab, setActiveTab] = useState<PageTab>("examples")
   const [configDsl, setConfigDsl] = useState("")
   const [copied, setCopied] = useState<string | null>(null)
 
   useEffect(() => {
     if (customElements.get("rb-pivot-table")) {
-      setIsReady(true)
+      setComponentsLoaded(true)
       return
     }
-    const handleLoaded = () => setIsReady(true)
+    const handleLoaded = () => setComponentsLoaded(true)
     window.addEventListener("rb-components-loaded", handleLoaded)
     return () => window.removeEventListener("rb-components-loaded", handleLoaded)
   }, [])
@@ -384,7 +389,7 @@ export default function PivotTablesPage() {
                   ))}
                 </div>
               ))}
-              <SalesOverviewSection copyFn={copyToClipboard} copiedKey={copied} />
+              <SalesOverviewSection copyFn={copyToClipboard} copiedKey={copied} embedToken={embedToken ?? ""} />
               </>
             ) : (
               <div className="text-center py-12 text-base-content/60">Loading web components...</div>

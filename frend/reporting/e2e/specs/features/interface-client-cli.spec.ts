@@ -211,11 +211,13 @@ test.describe('CLI — Merge (samples.spec.ignore)', () => {
     const absoluteDir = path.resolve(PORTABLE_DIR);
     const tempDir = path.join(absoluteDir, 'temp');
     fs.mkdirSync(tempDir, { recursive: true });
-    const listFile = path.join(tempDir, 'merge-cli-test.txt');
-    fs.writeFileSync(listFile, [
-      path.join(absoluteDir, 'samples/burst/Invoices-Oct.pdf'),
-      path.join(absoluteDir, 'samples/burst/Invoices-Nov.pdf'),
-      path.join(absoluteDir, 'samples/burst/Invoices-Dec.pdf'),
+    // The list file and the paths in it are relative to the installation, where the CLI runs - on the
+    // Docker server that is /app inside the container, so host absolute paths would not exist there.
+    const listFile = 'temp/merge-cli-test.txt';
+    fs.writeFileSync(path.join(absoluteDir, listFile), [
+      'samples/burst/Invoices-Oct.pdf',
+      'samples/burst/Invoices-Nov.pdf',
+      'samples/burst/Invoices-Dec.pdf',
     ].join('\n'));
 
     const result = InterfaceTestHelper.execCli([
@@ -282,15 +284,15 @@ test.describe('CLI — System Commands', () => {
   test('--help shows usage', async () => {
     const result = InterfaceTestHelper.execCli(['--help']);
     expect(result.exitCode).toEqual(0);
-    // DataPallas.bat redirects Java output to logs/DataPallas.bat.log
-    const batLog = fs.readFileSync(path.join(PORTABLE_DIR, 'logs/DataPallas.bat.log'), 'utf-8');
+    // the CLI script redirects Java output to its log (datapallas.bat: logs/datapallas.bat.log)
+    const batLog = fs.readFileSync(path.join(PORTABLE_DIR, InterfaceTestHelper.CLI_LOG), 'utf-8');
     expect(batLog).toContain('DataPallas');
   });
 
   test('--version shows version from settings.xml', async () => {
     const result = InterfaceTestHelper.execCli(['--version']);
     expect(result.exitCode).toEqual(0);
-    const batLog = fs.readFileSync(path.join(PORTABLE_DIR, 'logs/DataPallas.bat.log'), 'utf-8');
+    const batLog = fs.readFileSync(path.join(PORTABLE_DIR, InterfaceTestHelper.CLI_LOG), 'utf-8');
     expect(batLog).toContain('DataPallas');
     // Verify it matches the version in settings.xml
     const settingsXml = fs.readFileSync(path.join(PORTABLE_DIR, 'config/burst/settings.xml'), 'utf-8');

@@ -97,6 +97,30 @@ public class IamRepository {
 		return count("SELECT COUNT(*) FROM app_user WHERE password_hash IS NOT NULL AND password_hash <> ''");
 	}
 
+	/**
+	 * Users somebody can actually sign in as — every account except the password-less {@code admin}
+	 * that desktop mode creates for itself.
+	 *
+	 * <p>Deliberately wider than {@link #countUsersWithPassword()}: a federated user is provisioned
+	 * with no password hash at all (see {@code FederatedUserProvisioner}), so an SSO-only server has
+	 * plenty of people who can sign in and zero passwords stored. Counting passwords there would
+	 * conclude the server is empty.
+	 *
+	 * <p>And it is narrower than {@link #countUsers()}, because the desktop {@code admin} is not an
+	 * account anyone can sign in as — it is created with a null hash purely to own the loopback
+	 * session. Counting it makes an install that has ever been started as a desktop look occupied,
+	 * which is what used to lock out an install converted from desktop to Server: seeding was skipped
+	 * on the strength of an account that cannot log in, and nothing could reach the application.
+	 *
+	 * <p>This is the "is there a real administrator here" question, and it is what decides whether
+	 * {@link IamService} seeds its default administrator at startup.
+	 */
+	public int countSignInCapableUsers() {
+		return count("SELECT COUNT(*) FROM app_user WHERE username <> ?"
+				+ " OR (password_hash IS NOT NULL AND password_hash <> '')", AppUser.DEFAULT_USERNAME);
+	}
+
+
 	public AppUser insertUser(String username, String email, String passwordHash, boolean platformAdmin) {
 		long id = insert(
 				"INSERT INTO app_user (username, email, password_hash, status, platform_admin, created_at) "
@@ -188,8 +212,8 @@ public class IamRepository {
 		return rows;
 	}
 
-	private int count(String sql) {
-		return queryOne(sql, rs -> rs.getInt(1)).orElse(0);
+	private int count(String sql, Object... params) {
+		return queryOne(sql, rs -> rs.getInt(1), params).orElse(0);
 	}
 
 	private void execute(String sql, Object... params) {

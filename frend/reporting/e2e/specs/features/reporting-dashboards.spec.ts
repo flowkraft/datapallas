@@ -2,6 +2,7 @@
 import { electronBeforeAfterAllTest } from '../../utils/common-setup';
 import { Constants } from '../../utils/constants';
 import { FluentTester } from '../../helpers/fluent-tester';
+import { Helpers } from '../../utils/helpers';
 import { ConfTemplatesTestHelper } from '../../helpers/areas/conf-templates-test-helper';
 import _ from 'lodash';
 import { ConnectionsTestHelper } from '../../helpers/areas/connections-test-helper';
@@ -598,7 +599,9 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
 
       // 3a. Assert via Shareable Dashboard URL
       ft.actions.push(async () => {
-        const { browser, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        // A signed-in viewer, as on the Server a dashboard page opens only for a session (or a share link).
+        await Helpers.signInBrowserContext(context);
 
         try {
           await SelfServicePortalsTestHelper.waitForServerReady(
@@ -649,7 +652,9 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
 
       // 3b. Assert via "View in Browser" (template preview URL)
       ft.actions.push(async () => {
-        const { browser, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        // A signed-in viewer, as on the Server a dashboard page opens only for a session (or a share link).
+        await Helpers.signInBrowserContext(context);
 
         try {
           const viewUrl = `${DASHBOARD_BASE_URL}/api/reports/preview-template?path=templates/reports/my-dashboard/my-dashboard-dashboard.html`;

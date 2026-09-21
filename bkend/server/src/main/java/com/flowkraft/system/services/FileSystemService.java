@@ -86,7 +86,39 @@ public class FileSystemService {
 				.map(p -> p.replace("\\", "/")).map(p -> p.replace(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, ""))
 				.collect(Collectors.toList());
 
+		// NTFS lists a directory in name order; ext4 and most other file systems in no particular order.
+		// Every list built from here (reports, connections, cubes, ...) therefore came out shuffled on
+		// Linux — a connection created a moment ago became the first row, and its upward-opening Actions
+		// menu ended up under the tab bar. So the result is always put in the order NTFS lists it, which
+		// changes nothing where the file system already did that.
+		list.sort(FileSystemService::compareLikeNtfs);
+
 		return list;
+	}
+
+	/**
+	 * The order Files.walk returns on NTFS: a depth-first walk with the entries of each folder in NTFS's own
+	 * collation, which upper-cases every character and then compares them by code. (String.CASE_INSENSITIVE_ORDER
+	 * is not the same: it compares lower case, so "_apps" would come before "apps".)
+	 */
+	static int compareLikeNtfs(String a, String b) {
+		String[] segmentsA = a.split("/");
+		String[] segmentsB = b.split("/");
+		for (int i = 0; i < Math.min(segmentsA.length, segmentsB.length); i++) {
+			int bySegment = compareNtfsNames(segmentsA[i], segmentsB[i]);
+			if (bySegment != 0)
+				return bySegment;
+		}
+		return Integer.compare(segmentsA.length, segmentsB.length);
+	}
+
+	private static int compareNtfsNames(String a, String b) {
+		for (int i = 0; i < Math.min(a.length(), b.length()); i++) {
+			int byChar = Character.compare(Character.toUpperCase(a.charAt(i)), Character.toUpperCase(b.charAt(i)));
+			if (byChar != 0)
+				return byChar;
+		}
+		return Integer.compare(a.length(), b.length());
 	}
 
 	public String fsResolvePath(String path) {

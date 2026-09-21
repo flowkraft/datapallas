@@ -13,6 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { expect, type Page, type Browser } from '@playwright/test';
+import { Helpers } from '../../utils/helpers';
 import { electronBeforeAfterAllTest } from '../../utils/common-setup';
 import { Constants } from '../../utils/constants';
 import { FluentTester } from '../../helpers/fluent-tester';
@@ -257,9 +258,11 @@ test.describe('Data Canvas Use Cases', () => {
     electronPage = process.env.TEST_ENV === 'electron'
       ? await app.firstWindow()
       : app.context.pages()[0];
+    // This page is the worker's, opened without signing in; on the Server it still shows the login form.
+    await Helpers.signInIfLoginFormIsShown(electronPage!);
 
     const connectionCode = toConnectionCode(CONNECTION_NAME, DB_VENDOR);
-    const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database');
+    const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database', { headers: Helpers.apiKeyHeader() });
     const existingConns: Array<{ fileName: string }> = await dbConnsResp.json();
     if (!existingConns.some(c => c.fileName === `${connectionCode}.xml`)) {
       await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
@@ -272,6 +275,7 @@ test.describe('Data Canvas Use Cases', () => {
     );
     const result = await SelfServicePortalsTestHelper.createExternalBrowser();
     externalBrowser = result.browser;
+    await Helpers.signInBrowserContext(result.context);
     await SelfServicePortalsTestHelper.waitForServerReady(result.page, AI_HUB_BASE_URL);
     page = result.page;
   });
@@ -2917,7 +2921,8 @@ return ctx.dbSql.rows(sql)`,
     await page.goto(AI_HUB_BASE_URL);
     await page.waitForLoadState('networkidle');
     await page.evaluate(async () => {
-      const res = await fetch('http://localhost:9090/api/system/preferences', {
+      // Through the app's /api/dp proxy, as the app itself does: it carries the session + CSRF token.
+      const res = await fetch('/api/dp/system/preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: { showsamples: true } }),

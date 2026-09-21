@@ -1,4 +1,8 @@
 import groovy.ant.AntBuilder
+// The bundled tools/curl/win/curl.exe is a Windows program (it ships in every package, but runs only there);
+// every other OS uses its own curl (without this the script died with: Cannot run program "tools/curl/win/curl.exe").
+def curlExecutable = System.getProperty('os.name').toLowerCase().contains('win') ? 'tools/curl/win/curl.exe' : 'curl'
+
 
 def curlOptions =  message.uploadCommand
 
@@ -21,6 +25,6 @@ ant.exec(
 	failonerror: "true",
 	failifexecutionfails: "true",
 	output:"logs/cURL.log",
-	executable: 'tools/curl/win/curl.exe') {
+	executable: curlExecutable) {
 				arg(line:"${curlOptions}")
 	}

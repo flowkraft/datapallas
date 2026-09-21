@@ -3,6 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { InterfaceTestHelper } from '../../helpers/interface-test-helper';
 import { Constants } from '../../utils/constants';
+import { Helpers } from '../../utils/helpers';
+
+// Every call here is a machine caller outside the browser session: a DataPallas Server wants the
+// installation's API key, Desktop ignores it (plan §4 F2a G0b).
+const fetchWithApiKey = (url: string, init: RequestInit = {}): Promise<Response> =>
+  fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...Helpers.apiKeyHeader() } });
 
 /**
  * REST Interface Tests — verifies the Jobs REST API produces identical results to CLI.
@@ -187,16 +193,16 @@ test.describe('REST — Merge (samples.spec.ignore)', () => {
   test('05_merge_then_burst_invoices (pdf2pdf)', async () => {
     InterfaceTestHelper.cleanOutputAndLogs();
 
-    const absoluteDir = path.resolve(PORTABLE_DIR);
-
-    const prepareResponse = await fetch(`${BASE_URL}/api/jobs/merge-prepare-list`, {
+    // Installation-relative: the server resolves them against its own install, which in the Docker
+    // server is /app and not the folder these tests see on the host.
+    const prepareResponse = await fetchWithApiKey(`${BASE_URL}/api/jobs/merge-prepare-list`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         filePaths: [
-          path.join(absoluteDir, 'samples/burst/Invoices-Oct.pdf'),
-          path.join(absoluteDir, 'samples/burst/Invoices-Nov.pdf'),
-          path.join(absoluteDir, 'samples/burst/Invoices-Dec.pdf'),
+          'samples/burst/Invoices-Oct.pdf',
+          'samples/burst/Invoices-Nov.pdf',
+          'samples/burst/Invoices-Dec.pdf',
         ],
       }),
     });
@@ -250,7 +256,7 @@ test.describe('REST — QA Testing (processing-qa.spec.ignore)', () => {
 test.describe('REST — System Commands', () => {
 
   test('system info returns SystemInfo with osName, product, userName', async () => {
-    const response = await fetch(`${BASE_URL}/api/system/info`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/info`, {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -263,7 +269,7 @@ test.describe('REST — System Commands', () => {
   });
 
   test('services status returns array of ServiceStatusInfo', async () => {
-    const response = await fetch(`${BASE_URL}/api/system/services/status`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/services/status`, {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -295,7 +301,7 @@ test.describe('REST — System Commands', () => {
 test.describe('REST — Job (additional)', () => {
 
   test('GET /api/jobs/{unknown} returns 404 with empty body', async () => {
-    const response = await fetch(`${BASE_URL}/api/jobs/00000000-0000-0000-0000-000000000000`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/jobs/00000000-0000-0000-0000-000000000000`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.status).toEqual(404);
@@ -305,7 +311,7 @@ test.describe('REST — Job (additional)', () => {
   });
 
   test('DELETE /api/jobs/{unknown} returns 404 with empty body', async () => {
-    const response = await fetch(`${BASE_URL}/api/jobs/00000000-0000-0000-0000-000000000000`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/jobs/00000000-0000-0000-0000-000000000000`, {
       method: 'DELETE',
       headers: { Accept: 'application/json' },
     });
@@ -349,7 +355,7 @@ test.describe('REST — Job (additional)', () => {
 test.describe('REST — Connections', () => {
 
   test('GET /api/connections returns array containing seeded eml-contact', async () => {
-    const response = await fetch(`${BASE_URL}/api/connections`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/connections`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -363,7 +369,7 @@ test.describe('REST — Connections', () => {
   });
 
   test('GET /api/connections?type=database returns array of DB connections', async () => {
-    const response = await fetch(`${BASE_URL}/api/connections?type=database`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/connections?type=database`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -376,7 +382,7 @@ test.describe('REST — Connections', () => {
   });
 
   test('GET /api/connections/eml-contact returns loaded email-server config', async () => {
-    const response = await fetch(`${BASE_URL}/api/connections/eml-contact`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/connections/eml-contact`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -393,7 +399,7 @@ test.describe('REST — Connections', () => {
   test('POST /api/connections/eml-contact/test-email returns failure signal', async () => {
     // Placeholder SMTP host in eml-contact.xml → SMTP attempt fails. The
     // backend conveys this via HTTP non-2xx OR a body with success=false/error.
-    const response = await fetch(`${BASE_URL}/api/connections/eml-contact/test-email`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/connections/eml-contact/test-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -406,7 +412,7 @@ test.describe('REST — Connections', () => {
   });
 
   test('POST /api/connections/{missing}/test-database returns 500 with file-not-found', async () => {
-    const response = await fetch(`${BASE_URL}/api/connections/db-does-not-exist-zzz/test-database`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/connections/db-does-not-exist-zzz/test-database`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -424,7 +430,7 @@ test.describe('REST — Connections', () => {
     // returns { ok: true, submitted: true } immediately. Any later failure
     // (bogus connection, script error) surfaces in logs, not the response.
     // The meaningful contract here is "request accepted + job queued".
-    const response = await fetch(`${BASE_URL}/api/connections/db-does-not-exist-zzz/run-seed`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/connections/db-does-not-exist-zzz/run-seed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ script: 'println "noop"' }),
@@ -439,7 +445,7 @@ test.describe('REST — Connections', () => {
     // The handler validates upfront and returns { ok: false, error: ... }
     // when the request body has no script. This is the SYNCHRONOUS error
     // path — distinct from the async fire-and-forget when a script is given.
-    const response = await fetch(`${BASE_URL}/api/connections/db-anything/run-seed`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/connections/db-anything/run-seed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -460,7 +466,7 @@ test.describe('REST — Connections', () => {
 test.describe('REST — System (additional)', () => {
 
   test('GET /api/system/preferences returns DocumentBursterSettingsInternal', async () => {
-    const response = await fetch(`${BASE_URL}/api/system/preferences`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/preferences`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -474,7 +480,7 @@ test.describe('REST — System (additional)', () => {
 
   test('GET /api/system/info/changelog returns non-empty content', async () => {
     // changelog requires `itemName` query param; returns Mono<String> (text).
-    const response = await fetch(`${BASE_URL}/api/system/info/changelog?itemName=server`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/info/changelog?itemName=server`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -483,7 +489,7 @@ test.describe('REST — System (additional)', () => {
   });
 
   test('POST /api/system/feedback/feature-request handles missing file gracefully', async () => {
-    const response = await fetch(`${BASE_URL}/api/system/feedback/feature-request`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/feedback/feature-request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jobFilePath: 'does-not-exist.xml' }),
@@ -511,7 +517,7 @@ test.describe('REST — License', () => {
   // without a license file installed, which is the e2e default state.
 
   test('GET /api/system/license/ returns LicenseDetails or null', async () => {
-    const response = await fetch(`${BASE_URL}/api/system/license/`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/license/`, {
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     });
     expect(response.status).not.toEqual(404);
@@ -527,7 +533,7 @@ test.describe('REST — License', () => {
   });
 
   test('GET /api/system/license/status returns license check result', async () => {
-    const response = await fetch(`${BASE_URL}/api/system/license/status`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/license/status`, {
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     });
     expect(response.status).not.toEqual(404);
@@ -540,7 +546,7 @@ test.describe('REST — License', () => {
   });
 
   test('GET /api/system/license/about returns AboutInfo with product/version', async () => {
-    const response = await fetch(`${BASE_URL}/api/system/license/about`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/system/license/about`, {
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     });
     expect(response.status).not.toEqual(404);
@@ -558,7 +564,7 @@ test.describe('REST — License', () => {
 test.describe('REST — Reports', () => {
 
   test('GET /api/reports returns array including burst configuration', async () => {
-    const response = await fetch(`${BASE_URL}/api/reports`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/reports`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -572,7 +578,7 @@ test.describe('REST — Reports', () => {
   });
 
   test('GET /api/reports/burst returns ConfigurationFileInfo for burst', async () => {
-    const response = await fetch(`${BASE_URL}/api/reports/burst`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/reports/burst`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -585,7 +591,7 @@ test.describe('REST — Reports', () => {
   });
 
   test('GET /api/reports/burst/settings returns settings JSON with version', async () => {
-    const response = await fetch(`${BASE_URL}/api/reports/burst/settings`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/reports/burst/settings`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -607,7 +613,7 @@ test.describe('REST — Reports', () => {
 test.describe('REST — Queries', () => {
 
   test('POST /api/queries/run-sql with bogus connection returns error in body', async () => {
-    const response = await fetch(`${BASE_URL}/api/queries/run-sql`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/queries/run-sql`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ connectionId: 'db-does-not-exist-zzz', sql: 'SELECT 1' }),
@@ -625,7 +631,7 @@ test.describe('REST — Queries', () => {
   });
 
   test('GET /api/queries/schema/{missing} returns error (4xx or 5xx)', async () => {
-    const response = await fetch(`${BASE_URL}/api/queries/schema/db-does-not-exist-zzz`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/queries/schema/db-does-not-exist-zzz`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeFalsy();
@@ -641,7 +647,7 @@ test.describe('REST — Queries', () => {
 test.describe('REST — Cubes', () => {
 
   test('GET /api/cubes returns array of cube entries', async () => {
-    const response = await fetch(`${BASE_URL}/api/cubes`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -657,7 +663,7 @@ test.describe('REST — Cubes', () => {
     // 'cube "test" {}' parses as cube("test") followed by an orphan closure;
     // Groovy then tries to call test(closure) on Script1 and throws
     // MissingMethodException. Spring resolves to 500.
-    const response = await fetch(`${BASE_URL}/api/cubes/parse-dsl`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/parse-dsl`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dslCode: 'cube "test" {}' }),
@@ -675,7 +681,7 @@ test.describe('REST — Cubes', () => {
 test.describe('REST — Analytics', () => {
 
   test('GET /api/analytics/health returns status UP with engines info', async () => {
-    const response = await fetch(`${BASE_URL}/api/analytics/health`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/analytics/health`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -689,7 +695,7 @@ test.describe('REST — Analytics', () => {
   });
 
   test('GET /api/analytics/aggregators returns list containing count and sum', async () => {
-    const response = await fetch(`${BASE_URL}/api/analytics/aggregators`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/analytics/aggregators`, {
       headers: { Accept: 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -713,7 +719,7 @@ test.describe('REST — Logs (jobs/logs)', () => {
   test('GET /api/jobs/logs returns array of FileInfo entries', async () => {
     // LogsController has class-level consumes=application/json (no method-level
     // override) so the GET also requires the Content-Type header on Spring 6.
-    const response = await fetch(`${BASE_URL}/api/jobs/logs`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/jobs/logs`, {
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     });
     expect(response.ok).toBeTruthy();
@@ -732,7 +738,7 @@ test.describe('REST — Logs (jobs/logs)', () => {
   test('POST /api/jobs/logs/tailer stop returns 200 OK', async () => {
     // TailCommandInfo body { command, fileName }. 'stop' for an unstarted
     // tailer is a no-op that completes successfully.
-    const response = await fetch(`${BASE_URL}/api/jobs/logs/tailer`, {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/jobs/logs/tailer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ command: 'stop', fileName: 'info.log' }),
@@ -750,7 +756,7 @@ test.describe('REST — Gallery', () => {
     // fallback) body rather than 404. The endpoint produces text/plain per
     // the controller, so the response must be a string regardless of whether
     // a readme was found.
-    const response = await fetch(
+    const response = await fetchWithApiKey(
       `${BASE_URL}/api/system/gallery/templates/does-not-exist-zzz/readme`,
       { headers: { Accept: 'text/plain' } },
     );

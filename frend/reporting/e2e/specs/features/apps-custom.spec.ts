@@ -793,8 +793,9 @@ for (const app of APPS) {
         let externalBrowser: Browser | null = null;
 
         try {
-          // Clean slate for the app's container/image.
+          // Clean slate for the app's container/image and the portals' shared database.
           SelfServicePortalsTestHelper.dockerComposeDownRmi(appStack(app.id));
+          SelfServicePortalsTestHelper.removeCustomPortalsSharedDatabase();
 
           // Scaffold the app: run its Custom Seed Script from the Seed Data tab against the
           // sample connection (copies the blueprint, applies overrides, flips visible:true).
@@ -854,6 +855,7 @@ for (const app of APPS) {
         try {
           SelfServicePortalsTestHelper.dockerComposeDownRmi(appStack(app.id));
           SelfServicePortalsTestHelper.dockerComposeDownRmi(appStack('billing-portal-bkend'));
+          SelfServicePortalsTestHelper.removeCustomPortalsSharedDatabase();
 
           // Re-sync with the UI before driving the top nav. dockerComposeDownRmi is spawnSync: it
           // FREEZES this process' event loop for as long as `docker compose down --rmi` takes, and
@@ -949,15 +951,9 @@ for (const app of APPS) {
       .waitOnElementToBecomeVisible(`span.ng-option-label:has-text("${REPORT_LABEL}")`)
       .click(`span.ng-option-label:has-text("${REPORT_LABEL}")`)
       .waitOnElementToBecomeEnabled('#btnGenerateReports')
-      // Clear Logs FIRST: starting the portal above filled the logs with the whole Docker build,
-      // and processing.component.ts blockedByDirtyLogs() refuses EVERY job with an info dialog
-      // until they are cleared — the Burst would never start and '.java-started' never appears.
-      // The first click/Yes pair only dismisses that dialog. reporting.spec.ts:2087-2095 idiom.
-      .click('#btnGenerateReports')
-      .clickYesDoThis()
-      .click('#btnClearLogs')
-      .clickYesDoThis()
-      .waitOnElementToBecomeDisabled('#btnClearLogs')
+      // Clear Logs FIRST: starting the portal above filled the logs with the whole Docker build, and
+      // processing.component.ts blockedByDirtyLogs() refuses every job until they are cleared.
+      .clearLogs()
       .click('#btnGenerateReports')                       // the REAL Burst
       .clickYesDoThis()
       .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -975,6 +971,7 @@ for (const app of APPS) {
         let externalBrowser: Browser | null = null;
         try {
           SelfServicePortalsTestHelper.dockerComposeDownRmi(appStack(app.id));
+          SelfServicePortalsTestHelper.removeCustomPortalsSharedDatabase();
 
           // 1) Scaffold — writes config/reports/<app.id> (push report + its ds.scriptfile data
           //    script, bound to SAMPLE_CONNECTION_CODE) + reveals the card.
@@ -1073,6 +1070,7 @@ for (const app of APPS) {
         let externalBrowser: Browser | null = null;
         try {
           SelfServicePortalsTestHelper.dockerComposeDownRmi(appStack(app.id));
+          SelfServicePortalsTestHelper.removeCustomPortalsSharedDatabase();
 
           await scaffoldCustomApp(firstPage, app.seedTemplateId);
 

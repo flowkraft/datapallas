@@ -562,13 +562,14 @@ public class ReportsService {
 		boolean isJasperLegacy = normalizedPath.contains("/" + JASPER_LEGACY_ROOT + "/");
 		if (isJasperLegacy || normalizedPath.contains("/" + JASPER_ROOT + "/")) {
 			configDetails.type = isJasperLegacy ? TYPE_JASPER_LEGACY_REPORTS : TYPE_JASPER_REPORTS;
-			// Find the .jrxml in the same folder and parse parameters from it.
+			// Parse the parameters of the folder's MAIN report — the one the scan picked —
+			// not of whichever .jrxml the filesystem lists first, which may be a sub-report.
 			// Both JRXML formats declare <parameter name=... class=.../> the same way,
 			// so one parser serves both engines.
 			File[] jrxmlFiles = itemDir.toFile().listFiles(
 					(dir, name) -> name.toLowerCase().endsWith(".jrxml"));
 			if (jrxmlFiles != null && jrxmlFiles.length > 0) {
-				String jrxmlContent = Files.readString(jrxmlFiles[0].toPath());
+				String jrxmlContent = Files.readString(selectMainJrxml(itemDir.toFile(), jrxmlFiles).toPath());
 				configDetails.reportParameters = ReportParametersHelper.parseJrxmlParameters(jrxmlContent);
 			}
 			return configDetails;
@@ -1137,6 +1138,11 @@ public class ReportsService {
 
 		// If the path is relative, resolve it against PORTABLE_EXECUTABLE_DIR
 		if (!connectionFile.isAbsolute()) {
+			connectionFile = new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, filePath);
+		}
+		// Paths listed by FileSystemService.unixCliFind are install-relative with a leading "/" ("/config/...").
+		// On Linux such a path counts as absolute, so also try it under PORTABLE_EXECUTABLE_DIR (Windows unchanged).
+		else if (!connectionFile.exists() && new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, filePath).exists()) {
 			connectionFile = new File(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, filePath);
 		}
 

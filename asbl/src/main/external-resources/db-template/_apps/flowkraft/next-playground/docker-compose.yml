@@ -13,22 +13,26 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_RB_API_BASE_URL=${NEXT_PUBLIC_RB_API_BASE_URL:-http://host.docker.internal:9090}
-      - NEXT_PUBLIC_RB_API_KEY=${NEXT_PUBLIC_RB_API_KEY:-123}
     ports:
       - "8420:3000"  # Next.js Customer Portal UI
     volumes:
       # Persist SQLite database across container restarts
       - next-playground-data:/app/data
       # DataPallas config, read-only — where lib/rb-config.ts reads config/_internal/api-key.txt.
-      # Without it the app falls back to the dev key "123", which a real server rejects, and every
-      # embedded component renders empty.
+      # Without it the app calls DataPallas without an API key, which a DataPallas Server rejects,
+      # and every embedded component renders empty.
       #
       # Read from disk rather than copied into an environment variable on purpose: the app runs on
       # the same machine as DataPallas, so the file is the single source of truth.
       - ../../../config:/app/config:ro
+    # lib/rb-config.ts mint embed tokens server-side; when DataPallas does not run in Docker on
+    # the 'datapallas' network they reach it on the host through this name (Linux needs the mapping).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - frend-network
+      - default
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 5s
@@ -41,5 +45,11 @@ volumes:
     driver: local
 
 networks:
+  # One network for everything DataPallas runs, so the DataPallas server reaches this app by container
+  # name instead of through a published host port, which any host firewall may block (plan §4 F2n). The
+  # app keeps its own network above for its own services. Not 'external': compose creates it when missing.
+  default:
+    name: datapallas
   frend-network:
     driver: bridge
+

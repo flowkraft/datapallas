@@ -92,6 +92,11 @@ RUN mvn clean install -DskipTests -P docker
 # Copy dependencies for burst library
 RUN mvn dependency:copy-dependencies -P docker
 
+# The `jr analyze` tool is launched from its source file, which needs a compiler the runtime image has not
+# got. This stage has one, so it is compiled here and the classes are copied into the image (plan §4 F2a G8).
+COPY ./asbl/src/main/external-resources/db-template/tools/jasper-legacy/internal/analyze ./tools/jasper-legacy/analyze-src
+RUN javac -d /app/tools/jasper-legacy/analyze-classes ./tools/jasper-legacy/analyze-src/JasperMigrationAnalyzer.java
+
 # -----------------------------------------------------------------------------
 # STAGE 3: Build Angular Frontend (parallel with backend in BuildKit)
 # -----------------------------------------------------------------------------
@@ -143,7 +148,8 @@ RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
         sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list; \
     fi
 
-# Install runtime dependencies + Docker CE CLI with compose v2 plugin
+# Install runtime dependencies + Docker CE CLI with compose v2 and buildx plugins
+# (buildx: the app images use BuildKit syntax such as RUN --mount, which the legacy builder rejects)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -155,6 +161,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends \
     docker-ce-cli \
     docker-compose-plugin \
+    docker-buildx-plugin \
     rclone \
     openssh-client \
     rsync \
@@ -164,7 +171,44 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sed \
     jq \
     xmlstarlet \
+    # Tools for BI / reporting work from a shell inside the container (owner decision 2026-09-16):
+    # search and find files, archives, PDFs, the SQLite sample database, CSV/JSON data, and
+    # fonts with the metrics of Arial / Times New Roman / Courier so reports lay out like on the desktop
+    ripgrep \
+    fd-find \
+    zstd \
+    unzip \
+    zip \
+    less \
+    file \
+    sqlite3 \
+    poppler-utils \
+    qpdf \
+    miller \
+    python3 \
+    fonts-liberation \
+    && ln -s /usr/bin/fdfind /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/*
+
+# DuckDB CLI, pinned to the same version as the duckdb_jdbc driver DataPallas uses (duckdb.version in the
+# root pom.xml), so a .duckdb file written by one opens in the other. Change both together, with the
+# checksums from https://github.com/duckdb/duckdb/releases/tag/v<version>.
+ARG DUCKDB_VERSION=1.4.4
+ARG DUCKDB_SHA256_AMD64=58882f65fcde335484857d595a6e7c1836eb2b125f78652fcfc813ad74ee348d
+ARG DUCKDB_SHA256_ARM64=1c381a63d29aebb689ff7d261021a7ff690716316ec8e4f05a8f94edc3d04aba
+RUN arch="$(dpkg --print-architecture)" \
+    && case "$arch" in \
+         amd64) sha="$DUCKDB_SHA256_AMD64" ;; \
+         arm64) sha="$DUCKDB_SHA256_ARM64" ;; \
+         *) echo "No DuckDB CLI pinned for $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL -o /tmp/duckdb.gz \
+         "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/duckdb_cli-linux-${arch}.gz" \
+    && echo "${sha}  /tmp/duckdb.gz" | sha256sum -c - \
+    && gunzip -c /tmp/duckdb.gz > /usr/local/bin/duckdb \
+    && chmod +x /usr/local/bin/duckdb \
+    && rm /tmp/duckdb.gz \
+    && duckdb --version | grep -q "^v${DUCKDB_VERSION} "
 
 # Set working directory
 WORKDIR /app
@@ -195,40 +239,22 @@ COPY --from=backend-build /app/bkend/reporting/target/dependencies /app/lib/burs
 COPY --from=backend-build /app/bkend/reporting/target/rb-reporting.jar /app/lib/burst/rb-reporting.jar
 COPY --from=backend-build /app/bkend/server/target/rb-server.jar /app/lib/server/rb-server.jar
 
-# Generate datapallas.sh script (matches .bat functionality with dynamic args)
-RUN cat > ./datapallas.sh << 'EOF'
-#!/bin/sh
-# DataPallas CLI - matches Windows .bat behavior
-# Passes all arguments dynamically to the Java process
+# `jr analyze` answers "will my reports run" and is launched straight from its source file, which needs a
+# compiler - and this image ships a JRE. The builder stage has a JDK, so the analyzer is compiled there and
+# the classes travel with it; jr.sh prefers them and falls back to the source file everywhere else, so the
+# desktop keeps working exactly as before (plan §3 O19, §4 F2a G8).
+COPY --from=backend-build /app/tools/jasper-legacy/analyze-classes /app/tools/jasper-legacy/internal/analyze/classes
 
-# Build argument string for Ant
-ARGS=""
-COUNT=1
-for ARG in "$@"; do
-    ARGS="$ARGS -Darg$COUNT=\"$ARG\""
-    COUNT=$((COUNT + 1))
-done
+# The entrypoint below starts Java with -Dlog4j.configurationFile=/app/log4j2.xml. Without this copy that
+# file does not exist, log4j falls back to console-only, and /app/logs stays empty: the product's own log
+# viewers show nothing and nothing that reads logs/info.log works (found 2026-09-16 on the shipped server).
+# Same single source of truth the desktop packages use (NoExeAssembler copies it from here too).
+COPY bkend/server/src/main/resources/log4j2.xml /app/log4j2.xml
 
-# Execute with all arguments
-eval java -DDOCUMENTBURSTER_HOME="$(pwd)" \
-    -cp "lib/burst/ant-launcher*.jar" \
-    org.apache.tools.ant.launch.Launcher \
-    -buildfile config/_internal/documentburster.xml \
-    $ARGS \
-    -emacs >> logs/datapallas.sh.log 2>&1
-EOF
-RUN sed -i 's/\r$//' ./datapallas.sh && chmod +x ./datapallas.sh
-
-# Generate test email server scripts
-RUN echo '#!/bin/sh' > ./tools/test-email-server/startTestEmailServer.sh && \
-    echo 'docker start mailhog' >> ./tools/test-email-server/startTestEmailServer.sh && \
-    sed -i 's/\r$//' ./tools/test-email-server/startTestEmailServer.sh && \
-    chmod +x ./tools/test-email-server/startTestEmailServer.sh
-
-RUN echo '#!/bin/sh' > ./tools/test-email-server/shutTestEmailServer.sh && \
-    echo 'docker stop mailhog' >> ./tools/test-email-server/shutTestEmailServer.sh && \
-    sed -i 's/\r$//' ./tools/test-email-server/shutTestEmailServer.sh && \
-    chmod +x ./tools/test-email-server/shutTestEmailServer.sh
+# The shell scripts (datapallas.sh, the test email server's start/stop, ...) come from db-template, like
+# their .bat twins, so every package ships the same ones. A Windows checkout can give them CRLF line
+# endings and no executable bit: normalize both.
+RUN find . -name '*.sh' -not -path './lib/*' -exec sed -i 's/\r$//' {} + -exec chmod +x {} +
 
 # Create the docker-entrypoint.sh script and normalize line endings
 RUN cat > /usr/local/bin/docker-entrypoint.sh << 'ENTRYPOINT_EOF'
@@ -283,7 +309,7 @@ setup_api_key() {
 
     # Write API key to file for the backend to read
     echo -n "$CURRENT_API_KEY" > "$API_KEY_FILE"
-    chmod 600 "$API_KEY_FILE" 2>/dev/null || true
+    chmod 644 "$API_KEY_FILE" 2>/dev/null || true
 
     echo "API key available to machine callers at $API_KEY_FILE"
 }

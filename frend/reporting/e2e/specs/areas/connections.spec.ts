@@ -26,7 +26,7 @@ const DB_VENDORS_SELECTED: string[] = (() => {
   const pool = DB_VENDORS_SUPPORTED.filter(v => !requiredVendors.includes(v));
 
   // Use date-based seed for daily variation but consistent within a run
-  const today = new Date().toISOString().split('T')[0]; // e.g., "2025-12-02"
+  const today = process.env.E2E_ROTATION_DATE || new Date().toISOString().split('T')[0]; // e.g., "2025-12-02"
   const seed = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
 
   // Simple seeded shuffle

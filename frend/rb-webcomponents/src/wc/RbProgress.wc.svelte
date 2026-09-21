@@ -160,7 +160,7 @@
         const dataUrl = qs.toString()
           ? `${apiBaseUrl}/reports/${reportId}/data?${qs.toString()}`
           : `${apiBaseUrl}/reports/${reportId}/data`;
-        const res = await fetch(dataUrl);
+        const res = await fetch(dataUrl, { headers: embedToken ? { 'X-Embed-Token': embedToken } : {} });
         if (!res.ok) throw new Error(`Data fetch failed: ${res.status}`);
         const result = await res.json();
         data = Array.isArray(result) ? result : (result?.data ?? []);
@@ -188,7 +188,7 @@
       const qs = new URLSearchParams({ ...reportParams, ...params } as Record<string, string>);
       if (testMode) qs.set("testMode", "true");
       if (componentId) qs.set("componentId", componentId);
-      const res = await fetch(`${apiBaseUrl}/reports/${reportId}/data?${qs.toString()}`);
+      const res = await fetch(`${apiBaseUrl}/reports/${reportId}/data?${qs.toString()}`, { headers: embedToken ? { 'X-Embed-Token': embedToken } : {} });
       if (!res.ok) throw new Error(`Data fetch failed: ${res.status}`);
       const result = await res.json();
       data = Array.isArray(result) ? result : (result?.data ?? []);

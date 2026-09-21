@@ -26,13 +26,18 @@ services:
       # Persist logs
       - flowkraft-logs:/app/logs
       # DataPallas config, read-only — this is how RbUtils reads config/_internal/api-key.txt.
-      # Without it the app silently falls back to the dev key "123", which a real server rejects,
+      # Without it the app calls DataPallas without an API key, which a DataPallas Server rejects,
       # and every embedded component on every page renders empty.
       #
       # Read from disk rather than copied into an environment variable on purpose: the app runs on
       # the same machine as DataPallas, so the file is the single source of truth and there is
       # nothing for an administrator to keep in sync.
       - ../../../config:/app/config:ro
+
+    # RbUtils mint embed tokens server-side; when DataPallas does not run in Docker on
+    # the 'datapallas' network they reach it on the host through this name (Linux needs the mapping).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
@@ -48,5 +53,8 @@ volumes:
   flowkraft-logs:
 
 networks:
+  # Was 'flowkraft-network', which only these two files ever named. They are on the one network everything
+  # DataPallas runs shares now, so the server reaches them by container name instead of through a published
+  # host port, which any host firewall may block (plan §4 F2n). They still reach each other by name here.
   default:
-    name: flowkraft-network
+    name: datapallas

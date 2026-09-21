@@ -42,6 +42,7 @@
 		<mariadb-jdbc.version>3.5.5</mariadb-jdbc.version>
 		<mssql-jdbc.version>13.2.0.jre11</mssql-jdbc.version>
 		<h2database.version>2.3.232</h2database.version>
+		<sqlite-jdbc.version>3.49.1.0</sqlite-jdbc.version>
 	</properties>
 
 	<dependencies>
@@ -143,6 +144,13 @@
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<version>${h2database.version}</version>
+		</dependency>
+		<!-- SQLite: DataPallas's own sample database and every file-based SQLite
+			connection. The file is reached through the db/ folder mounted at /work/db. -->
+		<dependency>
+			<groupId>org.xerial</groupId>
+			<artifactId>sqlite-jdbc</artifactId>
+			<version>${sqlite-jdbc.version}</version>
 		</dependency>
 
 		<!-- The REST face of the same runner. Plain jars on a classpath, not a

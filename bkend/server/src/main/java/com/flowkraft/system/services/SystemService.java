@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -35,6 +37,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.system.dtos.FindCriteriaDto;
 import com.flowkraft.system.models.SystemInfo;
+import com.sourcekraft.documentburster.common.db.ContainerAddresses;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettingsInternal;
 import com.sourcekraft.documentburster.utils.LicenseUtils;
@@ -232,13 +235,36 @@ public class SystemService {
 
 	public Mono<Boolean> checkUrl(String decodedUrl) {
 		WebClient webClient = WebClient.create();
-		return webClient.get().uri(decodedUrl).exchangeToMono(response -> {
+		return webClient.get().uri(dialledFromHere(decodedUrl)).exchangeToMono(response -> {
 			if (response.statusCode().equals(HttpStatus.OK)) {
 				return Mono.just(true);
 			} else {
 				return Mono.just(false);
 			}
-		}).onErrorResume(e -> Mono.just(false));
+		})
+				// A service that is still starting (the test email server right after its start) can accept the
+				// connection and not answer yet. Without a limit the request hangs until the servlet's async
+				// timeout, which is logged as an ERROR, and a non-empty errors.log blocks the next job. Not
+				// answering in time means "not up yet", like not answering at all; the callers poll again.
+				.timeout(Duration.ofSeconds(5)).onErrorResume(e -> Mono.just(false));
+	}
+
+	/**
+	 * The URL as this server has to dial it. The UI saves URLs for the user's browser (the test email
+	 * server's http://localhost:8025); in the DataPallas Server container localhost is the container itself,
+	 * and ContainerAddresses names the sibling container publishing that port. Unchanged anywhere else.
+	 */
+	static String dialledFromHere(String url) {
+		try {
+			URI uri = URI.create(url);
+			if (uri.getHost() == null || uri.getPort() < 0)
+				return url;
+			String[] address = ContainerAddresses.resolve(uri.getHost(), String.valueOf(uri.getPort()));
+			return new URI(uri.getScheme(), uri.getUserInfo(), address[0], Integer.parseInt(address[1]),
+					uri.getPath(), uri.getQuery(), uri.getFragment()).toString();
+		} catch (Exception e) {
+			return url;
+		}
 	}
 
 	/**

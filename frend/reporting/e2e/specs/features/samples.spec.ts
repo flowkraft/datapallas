@@ -8,6 +8,7 @@ import { FluentTester } from '../../helpers/fluent-tester';
 import { SamplesTestHelper } from '../../helpers/samples-test-helper';
 import { assertDashboardRendersCorrectly } from '../../helpers/dashboard-test-helper';
 import { SelfServicePortalsTestHelper } from '../../helpers/areas/self-service-portals-test-helper';
+import { Helpers } from '../../utils/helpers';
 
 //DONE2
 test.describe('', async () => {
@@ -949,8 +950,15 @@ electronBeforeAfterAllTest(
         .click('#btnSampleTryItNORTHWIND-SALES-DASHBOARD');
 
       try {
-        const { browser, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
+
+        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
+        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
+        // the Angular shell would load instead of the dashboard. Sign it in the way every other
+        // external-browser test does; on a desktop installation the local caller is already an
+        // administrator and this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
 
         const dashboardUrl = 'http://localhost:9090/dashboard/g-dashboard';
 
@@ -1021,8 +1029,15 @@ electronBeforeAfterAllTest(
         .click('#btnSampleTryItNORTHWIND-SALES-PIVOTTABLE');
 
       try {
-        const { browser, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
+
+        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
+        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
+        // the Angular shell would load instead of the dashboard. Sign it in the way every other
+        // external-browser test does; on a desktop installation the local caller is already an
+        // administrator and this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
 
         const dashboardUrl = 'http://localhost:9090/dashboard/g-pivottable';
 

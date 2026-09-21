@@ -1,5 +1,7 @@
+import { Page } from '@playwright/test';
 import { FluentTester } from './fluent-tester';
 import { Constants } from '../utils/constants';
+import { Helpers } from '../utils/helpers';
 
 // List of visible apps in TOP-TO-BOTTOM UI order (must match apps-manager.service.ts)
 // Apps with launch: false have no Launch button (headless/API-only apps)
@@ -56,11 +58,75 @@ export class AppsTestHelper {
     // here then hangs the test for the full `timeout` (5000s) waiting for a
     // string that never appears. Only the final "stopped" state is observable
     // reliably and is what actually proves the app stopped.
-    ft = ft
-      .waitOnElementToContainText(stateSel, 'stopped', timeout)
-      .consoleLog(`App '${appId}' is stopped.`);
+    ft.actions.push(() =>
+      AppsTestHelper.waitUntilStopped(ft.window, appId, btnSel, stateSel, timeout),
+    );
 
-    return ft;
+    return ft.consoleLog(`App '${appId}' is stopped.`);
+  }
+
+  /**
+   * Wait for the app to reach 'stopped' - and survive a session that lapsed while the spec ran.
+   *
+   * A spec that runs for more than half an hour can outlive a DataPallas Server's idle session: the
+   * Apps screen makes no calls of its own while it sits there, so nothing keeps the session warm.
+   * The window still shows the signed-in application - the state element still reads 'running' -
+   * until something calls the backend. The stop command then answers 401, the app goes to its Sign
+   * In screen, 'stopped' never arrives, and the wait burns its whole timeout in front of a login
+   * form. (F2 Linux CI, 2026-09-20: explore-data-use-cases spent 15 minutes exactly there, in its
+   * afterAll, after the 22 tests before it had driven only the external browser for over an hour.)
+   * Signing in and stopping the app again is what the person in front of the screen would do.
+   *
+   * An installation that shows no login form - every Desktop run, Electron and the dev chain - never
+   * reaches the second half: the loop sees 'stopped' and returns, exactly as it always did.
+   */
+  private static async waitUntilStopped(
+    page: Page,
+    appId: string,
+    btnSel: string,
+    stateSel: string,
+    timeout: number,
+  ): Promise<void> {
+    const isStopped = async (): Promise<boolean> =>
+      ((await page.locator(stateSel).first().textContent().catch(() => '')) || '')
+        .toLowerCase()
+        .includes('stopped');
+
+    const waitMs = Constants.capWait(timeout);
+    const deadline = Date.now() + waitMs;
+    let askedToSignIn = false;
+
+    while (Date.now() < deadline) {
+      if (await isStopped()) return;
+      askedToSignIn = await page
+        .locator('#loginUsername')
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (askedToSignIn) break;
+      await page.waitForTimeout(1_000);
+    }
+
+    if (!askedToSignIn)
+      throw new Error(`stopApp: app '${appId}' did not reach 'stopped' within ${waitMs} ms`);
+
+    console.log(
+      `[stopApp] app '${appId}': the server is asking for a sign-in - the session lapsed while the spec ran; signing in and stopping the app again`,
+    );
+    await Helpers.signInIfLoginFormIsShown(page);
+    await new FluentTester(page).gotoApps();
+
+    if (await isStopped()) {
+      console.log(`[stopApp] app '${appId}' is already stopped - the command had gone through`);
+      return;
+    }
+
+    await new FluentTester(page)
+      .scrollIntoViewIfNeeded(btnSel)
+      .click(btnSel)
+      .confirmDialogShouldBeVisible()
+      .clickYesDoThis()
+      .waitOnElementToContainText(stateSel, 'stopped', timeout);
   }
 
   /**

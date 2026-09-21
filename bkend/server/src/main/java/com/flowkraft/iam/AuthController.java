@@ -168,9 +168,10 @@ public class AuthController {
 	 * Answering {@code mode} with {@code authenticated:false} removes the guess, and gives nothing away:
 	 * the login screen already states the default credentials outright.
 	 *
-	 * <p>In {@code STANDALONE} the loopback caller has already been authenticated by the filter chain,
-	 * so this returns a full identity without any login step — which is what lets the desktop show no
-	 * authentication UI at all.
+	 * <p>On the desktop the caller arrives with the installation's API key, so this answers with a
+	 * machine identity and the UI needs no login step — which is what lets the desktop show no
+	 * authentication UI at all. Nothing is authenticated for free: a caller with no credential gets
+	 * the anonymous answer.
 	 */
 	@GetMapping("/me")
 	public ResponseEntity<IdentityDto> me() {
@@ -197,8 +198,7 @@ public class AuthController {
 	 * answer, so a frontend that renders straight from this DTO shows nothing it should not.
 	 */
 	private IdentityDto anonymousIdentity() {
-		return new IdentityDto(iamService.getMode().wireName(), false, null, null, List.of(), noCapabilities(),
-				Map.of());
+		return new IdentityDto(false, false, null, null, List.of(), noCapabilities(), Map.of());
 	}
 
 	/**
@@ -215,7 +215,7 @@ public class AuthController {
 		List<String> roles = rolesOf(authentication.getAuthorities());
 		Tenant tenant = iamService.findTenant(Tenant.DEFAULT_CODE).orElse(null);
 
-		return new IdentityDto(iamService.getMode().wireName(), true,
+		return new IdentityDto(true, true,
 				new IdentityDto.UserDto(authentication.getName(), null, false),
 				tenant == null ? null : new IdentityDto.TenantDto(tenant.code(), tenant.displayName()), roles,
 				capabilitiesOf(roles), Map.of());
@@ -234,8 +234,8 @@ public class AuthController {
 		memberships.forEach((code, role) -> membershipsOnTheWire.put(code, role.name()));
 
 		return new IdentityDto(
-				iamService.getMode().wireName(),
 				true,
+				false,
 				new IdentityDto.UserDto(user.username(), user.email(), user.platformAdmin()),
 				tenant == null ? null : new IdentityDto.TenantDto(tenant.code(), tenant.displayName()),
 				roles,

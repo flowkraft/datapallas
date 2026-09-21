@@ -77,7 +77,6 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { test, Browser, Page } from '@playwright/test';
-import { spawnSync } from 'child_process';
 import * as _ from 'lodash';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -89,6 +88,7 @@ import { FluentTester } from '../../../helpers/fluent-tester';
 import { ConnectionsTestHelper } from '../../../helpers/areas/connections-test-helper';
 import { SelfServicePortalsTestHelper } from '../../../helpers/areas/self-service-portals-test-helper';
 import { AppsTestHelper } from '../../../helpers/apps-test-helper';
+import { DockerTestHelper } from '../../../helpers/docker-test-helper';
 import {
   createFreshCanvas,
   addTableToCanvas,
@@ -1823,10 +1823,12 @@ electronBeforeAfterAllTest(
       // next run. We keep `removeVolumes: false` for TimescaleDB so a grep
       // rerun of a single Dashboard block still has the seeded ~750k bars.
       console.log('[Block 5] Nuclear stop — docker compose down for AI Hub + TimescaleDB');
-      spawnSync('docker', ['compose', 'down'], {
-        cwd: `${process.env.PORTABLE_EXECUTABLE_DIR}/_apps/flowkraft/_ai-hub`,
-        shell: true,
-      });
+      // composeDown, not a bare `docker compose down` in that folder: with no -f compose walks UP to
+      // the first compose file above it, which on the shipped Docker server is the DataPallas server's
+      // own - see DockerTestHelper.composeDown().
+      DockerTestHelper.composeDown(
+        path.join(process.env.PORTABLE_EXECUTABLE_DIR as string, '_apps', 'flowkraft', '_ai-hub'),
+      );
       ConnectionsTestHelper.dockerComposeDownInDbFolder(
         Constants.DELAY_FIVE_THOUSANDS_SECONDS, false,
       );

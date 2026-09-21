@@ -50,7 +50,13 @@ public class ExcelTestUtils {
 		// a "temp" folder is required to be available
 		FileUtils.forceMkdir(new File(TestsUtils.TESTS_OUTPUT_FOLDER + "/temp"));
 
-		burster.burst(filePath, false, StringUtils.EMPTY, -1);
+		// Burst a copy: PoiExcelBurster evaluates the formulas and writes the workbook back to its input
+		// path, which otherwise rewrites the tracked input files under src/ on every test run.
+		File inputCopy = new File(TestsUtils.TESTS_OUTPUT_FOLDER + "/input-copies/" + testName,
+				FilenameUtils.getName(filePath));
+		FileUtils.copyFile(new File(filePath), inputCopy);
+
+		burster.burst(inputCopy.getPath(), false, StringUtils.EMPTY, -1);
 		ExcelTestUtils.assertDefaultDistincValuesResults(burster, tokens);
 
 		return burster;

@@ -159,9 +159,9 @@
         </div>
 
         <!-- Signed-in user + logout.
-             Absent entirely in single-user mode (the Electron desktop), where there is no user to
-             show and nothing to sign out of. -->
-        @if (authService.isDataPallasServer() && authService.isAuthenticated()) {
+             Shown to people only. The desktop is authenticated too, but with the installation's own
+             API key: there is no account to name and nothing to sign out of. -->
+        @if (authService.isPersonSignedIn()) {
           <div class="dropdown dropdown-end">
             <div id="userMenu" tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"

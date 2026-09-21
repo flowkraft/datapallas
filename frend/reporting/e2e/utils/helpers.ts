@@ -1,8 +1,6 @@
 import * as jetpack from 'fs-jetpack';
 import * as path from 'path';
 
-import { spawnSync } from 'child_process';
-
 export async function takeScreenshotIfRequested(
   page: Page,
   screenshotName: string,
@@ -97,10 +95,47 @@ export class Helpers {
     //console.log(`Copying license file from ${src} to ${dest}`);
     await jetpack.copyAsync(src, dest, { overwrite: true });
 
-    spawnSync('datapallas.bat', ['system', 'license', 'deactivate'], {
-      cwd: path.join(process.env.PORTABLE_EXECUTABLE_DIR),
-      shell: true,
-    });
+    await Helpers.setCiLicenseInstanceId(dest);
+
+    // The running DataPallas deactivates it through the endpoint the UI's licence screen calls. That is the
+    // same on Windows, Linux, Electron and the Docker server - where no CLI script sits next to the data
+    // folders on the host.
+    try {
+      const response = await fetch('http://localhost:9090/api/system/license/deactivate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...Helpers.apiKeyHeader() },
+        body: '{}',
+        signal: AbortSignal.timeout(Constants.DELAY_HUNDRED_SECONDS),
+      });
+      if (!response.ok) {
+        console.warn(`deActivateLicenseKey: POST /api/system/license/deactivate answered ${response.status}`);
+      }
+    } catch (err) {
+      console.warn('deActivateLicenseKey: POST /api/system/license/deactivate failed:', err);
+    }
+  };
+
+  /**
+   * Linux CI (plan §4 D2): each run starts from a fresh testground, so the licence got a new random instance id
+   * every time, and every run stopped between activate and deactivate left one activation of the test key on the
+   * licence server (9 of them on 2026-09-15, limit 1 → activating logged a WARN). With E2E_LICENSE_INSTANCE_ID
+   * (set only by asbl/ci/dp-ci.sh) every CI run is the same instance: a deactivation frees whatever an earlier run
+   * left, and the next activation reuses that seat. Written by the clean-state restore, before any page loads the
+   * licence — a page holding the licence without the id writes it back without it on its next save. Without the
+   * variable (every run outside that script) nothing is written.
+   */
+  static setCiLicenseInstanceId = async (licenseXmlPath: string) => {
+    const ciInstanceId = process.env.E2E_LICENSE_INSTANCE_ID;
+    if (!ciInstanceId) return;
+    const licenseXml = (await jetpack.readAsync(licenseXmlPath)) || '';
+    if (!licenseXml.includes('</license>')) return;
+    const element = `<instanceid>${ciInstanceId}</instanceid>`;
+    await jetpack.writeAsync(
+      licenseXmlPath,
+      /<instanceid>[^<]*<\/instanceid>|<instanceid\/>/.test(licenseXml)
+        ? licenseXml.replace(/<instanceid>[^<]*<\/instanceid>|<instanceid\/>/, element)
+        : licenseXml.replace('</license>', `    ${element}\n</license>`),
+    );
   };
 
   static currentElectronApp: ElectronApplication | null = null;
@@ -146,6 +181,9 @@ export class Helpers {
       args: [
         path.join(__dirname, `${relativePath}/app/main.js`),
         path.join(__dirname, `${relativePath}/app/package.json`),
+        // Chromium refuses to start as root without --no-sandbox (the Linux CI runs Electron as root in a
+        // container). Windows has no root user, so there the arguments stay as they are.
+        ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
       ],
       env: env as { [key: string]: string },
     });
@@ -228,7 +266,12 @@ export class Helpers {
     return this.firstPage;
   }
 
-  static async browserLaunch(): Promise<{
+  /**
+   * `signIn: false` opens the app without signing in. The per-test fixture (common-setup.ts) uses it: it signs in
+   * only AFTER restoreDocumentBursterCleanState, because a signed-in app loads the report settings at once, and a
+   * load that lands while the clean state has emptied config/ fails and writes errors.log after it was cleared.
+   */
+  static async browserLaunch({ signIn = true }: { signIn?: boolean } = {}): Promise<{
     browser: Browser;
     context: BrowserContext;
   }> {
@@ -241,11 +284,88 @@ export class Helpers {
     this.firstPage = await this.currentBrowserContext.newPage(); // Create a new page in the context
     await this.firstPage.goto(process.env.E2E_BASE_URL || 'http://localhost:4201'); // Navigate to the URL
     await this.firstPage.waitForLoadState('domcontentloaded'); // Wait for the 'domcontentloaded' event
+    await Helpers.waitForAppToBootstrap(this.firstPage);
+    if (signIn) await Helpers.signInIfLoginFormIsShown(this.firstPage);
 
     const browser = this.currentBrowser;
     const context = this.currentBrowserContext;
 
     return { browser, context };
+  }
+
+  /**
+   * Web target: the dev server serves the UI as hundreds of separate module requests. Once (processing-qa,
+   * 2026-09-15, Linux CI) a few of them never got an answer, Angular never bootstrapped and the page showed
+   * "Loading..." until the test timed out. Wait for the app to replace its "Loading..." placeholder; if it does not
+   * within 90 s, reload the page once. An app that starts normally passes this at once.
+   */
+  static async waitForAppToBootstrap(page: Page): Promise<void> {
+    const bootstrapped = () =>
+      page.waitForFunction(() => (document.querySelector('app-root')?.children.length ?? 0) > 0, null, {
+        timeout: 90_000,
+      });
+    try {
+      await bootstrapped();
+    } catch {
+      console.warn('waitForAppToBootstrap: the app did not start within 90 s, reloading the page once');
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await bootstrapped();
+    }
+  }
+
+  /**
+   * The installation's API key as a request header, for REST calls made outside the browser session.
+   * A DataPallas Server refuses machine callers without it; Desktop ignores the header, so the same call
+   * works on both. ApiKeyManager writes the file at boot; clean state keeps it (plan §4 D5).
+   */
+  static apiKeyHeader(): Record<string, string> {
+    const keyFile = path.resolve(
+      process.env.PORTABLE_EXECUTABLE_DIR || '',
+      'config/_internal/api-key.txt',
+    );
+    const key = (jetpack.read(keyFile) || '').trim();
+    return key ? { 'X-API-Key': key } : {};
+  }
+
+  /**
+   * Signs in when the app asks for it. Every deployment authenticates, so what decides the form is the
+   * CALLER, not the mode: Electron presents the installation's API key and walks in, while a plain
+   * browser — the `web` target, or anyone opening the Docker bundle — holds no credential and meets
+   * the login screen. The shipped administrator is `burst`/`burst`, the account the bundle's own
+   * README tells the customer to use on first start, and it is seeded in every deployment.
+   *
+   * Answers whether it actually signed in, so a caller can tell "there was nothing to do" from "the
+   * session had lapsed and now it is back" and act on the difference.
+   */
+  static async signInIfLoginFormIsShown(page: Page): Promise<boolean> {
+    const username = page.locator('#loginUsername').first();
+    if (!(await username.isVisible({ timeout: 2_000 }).catch(() => false))) return false;
+
+    console.log('signInIfLoginFormIsShown: the app shows the login form — signing in as the shipped admin');
+    await username.fill('burst');
+    await page.locator('#loginPassword').first().fill('burst');
+    await page.locator('#btnLogin').first().click();
+    await page.locator('#userMenu').first().waitFor({ state: 'visible', timeout: 60_000 });
+    return true;
+  }
+
+  /**
+   * Gives a browser context a DataPallas session through the API, as a viewer who signed in has - for
+   * the separate browsers that open dashboards and the AI Hub (cookies ignore the port, so one session
+   * covers :9090 and :8440). Asks the backend first and signs in only when the answer is that nobody
+   * is: a context that already carries a session cookie is left alone.
+   */
+  static async signInBrowserContext(context: BrowserContext, baseUrl = 'http://localhost:9090'): Promise<void> {
+    const me = await context.request.get(`${baseUrl}/api/auth/me`);
+    if (!me.ok() || (await me.json()).authenticated) return;
+
+    // The Server checks CSRF on the login too: echo the XSRF-TOKEN cookie that call just set.
+    const xsrf = (await context.cookies(baseUrl)).find((c) => c.name === 'XSRF-TOKEN')?.value;
+    const res = await context.request.post(`${baseUrl}/api/auth/login`, {
+      data: { username: 'burst', password: 'burst' },
+      headers: xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {},
+    });
+    if (!res.ok()) throw new Error(`signInBrowserContext: login at ${baseUrl} answered ${res.status()}`);
   }
 
   static async browserClose(): Promise<void> {
@@ -269,9 +389,15 @@ export class Helpers {
    * WAL sidecars) open for the whole worker, so on Windows unlinking it fails with EBUSY and the
    * clean-state loop never terminates. IAM state is auto-provisioned at boot, not fixture config,
    * so keeping the file across tests costs nothing.
+   *
+   * `api-key.txt` is kept for the same reason: ApiKeyManager writes it once at boot and the running
+   * server then holds the key in memory, so wiping the file did not affect DataPallas itself — but the
+   * playground apps read exactly this file to call DataPallas (RbUtils, rb-config), and an app started
+   * by a later test got no key, no embed token, and every embedded component rendered empty
+   * (analytics-olap "Demo Pivot [DuckDB]": grand total 0; plan §4 D5).
    */
   static emptyConfigFolderKeepingIamStore = async (configPath: string) => {
-    const keptInInternal = (name: string) => name.startsWith('iam.db');
+    const keptInInternal = (name: string) => name.startsWith('iam.db') || name === 'api-key.txt';
 
     const entries = (await jetpack.listAsync(configPath)) || [];
 
@@ -371,7 +497,12 @@ export class Helpers {
     //);
 
     let allCleared = false;
+    // Linux CI (E2E_CLEAN_STATE_ATTEMPTS, plan §4 D0): give up after that many attempts instead of
+    // retrying forever; unset, the loop retries until it succeeds, as before.
+    const maxCleanStateAttempts = Number(process.env.E2E_CLEAN_STATE_ATTEMPTS) || 0;
+    let cleanStateAttempts = 0;
     do {
+      cleanStateAttempts++;
       try {
         //console.log('restoreDocumentBursterCleanState /config folder emptying');
 
@@ -389,6 +520,10 @@ export class Helpers {
 
         configFiles = await jetpack.listAsync(
           `${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.CONFIG_PATH}`,
+        );
+
+        await Helpers.setCiLicenseInstanceId(
+          path.join(process.env.PORTABLE_EXECUTABLE_DIR, PATHS.CONFIG_PATH.replace(/^[/\\]+/, ''), '_internal', 'license.xml'),
         );
 
         if (!configFiles && configFiles.length == 0) {
@@ -459,18 +594,52 @@ Started ServerApplication with PID 13404`,
       } catch (err) {
         console.error('An error occurred:', err);
         allCleared = false;
+        if (maxCleanStateAttempts > 0 && cleanStateAttempts >= maxCleanStateAttempts) {
+          throw new Error(
+            `restoreDocumentBursterCleanState gave up after ${cleanStateAttempts} attempts; last error: ${err}`,
+          );
+        }
         await this.delay(Constants.DELAY_ONE_SECOND);
       }
     } while (!allCleared);
 
-    // stop Test Email Server
-    spawnSync('shutTestEmailServer.bat', ['/c'], {
-      cwd: path.resolve(
-        process.env.PORTABLE_EXECUTABLE_DIR + '/tools/test-email-server',
-      ),
-      shell: true,
-    });
+    // stop Test Email Server - through DataPallas, like the Stop button on the Quality Assurance tab: it runs
+    // shutTestEmailServer.bat or .sh wherever DataPallas itself runs (on the Docker server: in its container)
+    try {
+      await fetch('http://localhost:9090/api/system/test-email-server/stop', {
+        method: 'POST',
+        headers: Helpers.apiKeyHeader(),
+        signal: AbortSignal.timeout(Constants.DELAY_HUNDRED_SECONDS),
+      });
+    } catch (err) {
+      console.warn('restoreDocumentBursterCleanState: stopping the test email server failed:', err);
+    }
   };
+
+  /**
+   * The installation's scripts ship twice - `<name>.bat` for Windows, `<name>.sh` for every other OS - and this
+   * is the one place the tests choose between them. `scriptPath` is the path without the extension.
+   */
+  static installationScript(scriptPath: string): { file: string; command: string[] } {
+    return process.platform === 'win32'
+      ? { file: `${scriptPath}.bat`, command: ['cmd', '/c', `${scriptPath}.bat`] }
+      : { file: `${scriptPath}.sh`, command: ['bash', `${scriptPath}.sh`] };
+  }
+
+  /**
+   * A Chromium for pages outside the app (portals, PDF viewers): the browser E2E_CHROMIUM_EXECUTABLE names when it
+   * is set (the Linux CI's Chrome for Testing), else the system Edge when there is one, else Playwright's bundled
+   * Chromium - which has rendering regressions on the heavier playground pages, hence the preference.
+   */
+  static async launchChromium(options: Parameters<typeof chromium.launch>[0] = {}): Promise<Browser> {
+    if (process.env.E2E_CHROMIUM_EXECUTABLE)
+      return chromium.launch({ ...options, executablePath: process.env.E2E_CHROMIUM_EXECUTABLE });
+    try {
+      return await chromium.launch({ ...options, channel: 'msedge' });
+    } catch {
+      return chromium.launch(options);
+    }
+  }
 
   static setupConfigurationTemplate = async (
     templateName: string,
@@ -609,5 +778,35 @@ Started ServerApplication with PID 13404`,
     await Promise.all(
       logFiles.map(file => jetpack.writeAsync(`${logsPath}/${file}`, ''))
     );
+  };
+
+  /**
+   * What the app is complaining about, read from the two files its status bar reports on.
+   *
+   * The counterpart of clearLogFiles above, and deliberately the same way of reaching them — the installation
+   * folder. Wherever a test can empty these files it can read them back: Electron, the dev chain, the shipped
+   * Server in Docker, a Server on a host JVM. Nothing here asks which of those it is.
+   *
+   * Empty string when both files are empty, so a caller can tell "the app has nothing to say" from "the app
+   * said this" and keep its own error when there is nothing to add.
+   */
+  static readAppLogComplaints = async (): Promise<string> => {
+    const logsPath = `${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.LOGS_PATH}`;
+    const parts: string[] = [];
+
+    for (const file of ['errors.log', 'warnings.log']) {
+      const content = ((await jetpack.readAsync(`${logsPath}/${file}`)) || '').trim();
+      if (content) {
+        // The first lines, not the last: the earliest complaint is usually the one that explains the rest.
+        const lines = content.split('\n');
+        // A Java stack trace is mostly frames, and the sentence that actually explains it is on the
+        // "Caused by:" lines — which sit well below the fortieth. Keeping those few lines is the difference
+        // between "a query failed" and "nothing is listening on that port".
+        const causes = lines.slice(40).filter((line) => line.includes('Caused by:')).slice(0, 10);
+        parts.push(`--- ${file} ---\n${lines.slice(0, 40).concat(causes).join('\n')}`);
+      }
+    }
+
+    return parts.join('\n\n');
   };
 }

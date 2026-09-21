@@ -212,15 +212,14 @@ _isJavaAvailable = () => {
 };
 
 _isMavenAvailable = () => {
-  // The server chain also runs `mvn` directly. `where mvn` checks PATH presence
-  // WITHOUT invoking mvn (which itself needs JAVA_HOME), so we can report "Maven
-  // missing" independently of the Java check.
-  try {
-    require("child_process").execSync("where mvn", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
+  // The server chain also runs `mvn` directly. Looking for Maven's launcher in the
+  // PATH folders checks its presence WITHOUT invoking mvn (which itself needs
+  // JAVA_HOME), so we can report "Maven missing" independently of the Java check.
+  // mvn.cmd is the Windows launcher, mvn the one for every other OS.
+  const path = require("path");
+  return (process.env.PATH || "")
+    .split(path.delimiter)
+    .some((dir) => dir && ["mvn", "mvn.cmd"].some((launcher) => jetpack.exists(path.join(dir, launcher)) === "file"));
 };
 
 _writePrerequisiteLogs = () => {

@@ -21,6 +21,7 @@ import org.apache.commons.io.FileUtils;
 import com.sourcekraft.documentburster.context.BurstingContext;
 import com.sourcekraft.documentburster.sender.model.UploadMessage;
 import com.sourcekraft.documentburster.common.settings.model.UploadSettings;
+import com.sourcekraft.documentburster.common.db.ContainerAddresses;
 import com.sourcekraft.documentburster.utils.Utils;
 
 public class UploadSender extends AbstractSender {
@@ -95,8 +96,11 @@ public class UploadSender extends AbstractSender {
 					new File(ctx.outputFolder + "/quality-assurance/" + ctx.token + "_" + typeStr + "_upload.txt"),
 					uploadMessage.toString(), "UTF-8");
 
-		if (execute)
+		if (execute) {
+			// dialled from where this JVM runs - in the Docker server a localhost URL is another container
+			uploadMessage.uploadCommand = ContainerAddresses.resolveUrlsIn(uploadMessage.uploadCommand);
 			scripting.executeSenderScript(ctx.scripts.upload, uploadMessage);
+		}
 
 		log.info("Attachments " + ctx.attachments + " uploaded successfully.");
 

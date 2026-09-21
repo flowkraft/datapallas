@@ -620,7 +620,7 @@ const DB_VENDORS_SELECTED: string[] = (() => {
   const alwaysIncluded = ['sqlite', 'duckdb'];
   const pool = DB_VENDORS_SUPPORTED.filter(v => !alwaysIncluded.includes(v));
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = process.env.E2E_ROTATION_DATE || new Date().toISOString().split('T')[0];
   const seed = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
   const seededRandom = (i: number) => {
     const x = Math.sin(seed + i) * 10000;
@@ -645,7 +645,7 @@ const isFileBasedVendor = (vendor: string): boolean =>
 const BRANCHES_SELECTED: Branch[] = (() => {
   if (RUN_ALL_BRANCHES) return ALL_BRANCHES;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = process.env.E2E_ROTATION_DATE || new Date().toISOString().split('T')[0];
   const seed = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
   const seededRandom = (i: number) => {
     const x = Math.sin(seed + i + 7) * 10000;

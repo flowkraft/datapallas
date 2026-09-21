@@ -6,14 +6,16 @@ import { useEmbedToken } from "@/lib/use-embed-token"
 
 export default function DashboardsPage() {
   const embedToken = useEmbedToken("dashboard-cfo")
-  const [isReady, setIsReady] = useState(false)
+  const [componentsLoaded, setComponentsLoaded] = useState(false)
+  // The components read embed-token once, when they mount: render them only after it has arrived.
+  const isReady = componentsLoaded && embedToken !== null
 
   useEffect(() => {
     if (customElements.get("rb-chart") && customElements.get("rb-tabulator")) {
-      setIsReady(true)
+      setComponentsLoaded(true)
       return
     }
-    const handleLoaded = () => setIsReady(true)
+    const handleLoaded = () => setComponentsLoaded(true)
     window.addEventListener("rb-components-loaded", handleLoaded)
     return () => window.removeEventListener("rb-components-loaded", handleLoaded)
   }, [])

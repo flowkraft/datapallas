@@ -171,9 +171,15 @@ const SERVER_PORT = 9090;
 /**
  * Is this the DataPallas Server package rather than the desktop one?
  *
- * <p>Decided by what is on disk — startServer.bat ships in the Server zip and never in the desktop
- * one — deliberately the same test the backend's DeploymentMode uses. Two processes agreeing on the
- * edition by reading the same file cannot drift; two processes each carrying their own flag can.
+ * <p>Decided by what is on disk — startServer.bat/.sh ships in the Server zip and never in the
+ * desktop one. Evidence, not a declaration: nothing is passed in, nothing can be spoofed by an env
+ * var, and a DataPallas.exe dropped into a Server folder answers TRUE, which is the case that matters
+ * (the compose bundle bind-mounts ./config, so that shell can read the server's api-key.txt).
+ *
+ * <p>This is the only thing in the product that asks what KIND of installation this is, and it asks
+ * it of the folder rather than of a flag. It decides one thing: whether this window may sign its own
+ * requests with the installation's credential, or must send the person to the login screen like any
+ * browser would.
  */
 function isServerEdition(): boolean {
   const installDir = process.env.PORTABLE_EXECUTABLE_DIR;
@@ -181,6 +187,68 @@ function isServerEdition(): boolean {
   return (
     fs.existsSync(path.join(installDir, 'startServer.bat')) ||
     fs.existsSync(path.join(installDir, 'startServer.sh'))
+  );
+}
+
+/**
+ * Sign this window in to its own backend — and nothing else.
+ *
+ * DataPallas requires authentication in every deployment: there is no mode left that hands an
+ * identity to whoever turns up. The desktop keeps its no-login experience by presenting the
+ * credential this installation already has — config/_internal/api-key.txt, generated per install by
+ * the server on its first start and readable only by the account that owns the folder. Every request
+ * this window makes to its own backend carries it.
+ *
+ * What this deliberately does NOT do is switch authentication off for the installation. The same
+ * folder can also be a DataPallas Server (the compose bundle bind-mounts ./config, so both read one
+ * iam.db), and launching the desktop shell must not open that server up. It authenticates this
+ * process, the way any other API client would.
+ *
+ * Attached here rather than in the renderer because it has to cover everything the page does — XHR,
+ * fetch, the WebSocket handshake, downloads — not only the calls that go through ApiService. A
+ * header rather than a login because a file:// page is a different origin from the API and can hold
+ * neither the session nor the CSRF cookie.
+ *
+ * Limited to this installation's own backend port on loopback, so the key never travels to the
+ * containers DataPallas starts (AI Hub, the portals) or anywhere off the machine.
+ */
+function attachInstallationCredential(target: BrowserWindow): void {
+  let cachedKey = '';
+
+  const readKey = (): string => {
+    if (cachedKey) return cachedKey;
+    try {
+      const baseDir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd();
+      cachedKey = fs
+        .readFileSync(path.join(baseDir, 'config', '_internal', 'api-key.txt'), 'utf-8')
+        .trim();
+    } catch {
+      // The server writes it on its first start, so it can be missing for a moment: stay empty and
+      // read again on the next request rather than caching the absence.
+      cachedKey = '';
+    }
+    return cachedKey;
+  };
+
+  const ownBackend = [
+    `http://localhost:${SERVER_PORT}/*`,
+    `http://127.0.0.1:${SERVER_PORT}/*`,
+    `ws://localhost:${SERVER_PORT}/*`,
+    `ws://127.0.0.1:${SERVER_PORT}/*`,
+  ];
+
+  target.webContents.session.webRequest.onBeforeSendHeaders(
+    { urls: ownBackend },
+    (details, callback) => {
+      const key = readKey();
+      if (!key) {
+        callback({ requestHeaders: details.requestHeaders });
+        return;
+      }
+      callback({
+        requestHeaders: { ...details.requestHeaders, 'X-API-Key': key },
+      });
+    },
   );
 }
 
@@ -303,6 +371,11 @@ function createWindow(): BrowserWindow {
     if (level >= 2) log.warn(`[renderer] ${message}${origin}`);
     else log.info(`[renderer] ${message}`);
   });
+
+  // The Server edition is the one window that must NOT carry the installation key: it is loaded
+  // from the server, and the person using it signs in as themselves. Everywhere else this window
+  // talks to the backend that lives in its own folder, and authenticates as that installation.
+  if (!isServerEdition()) attachInstallationCredential(win);
 
   // load URL / dev mode behavior remains identical
   if (serve) {
@@ -595,6 +668,11 @@ function handleServerOutput(data: Buffer | string, isError = false) {
 function startBackendServer(): void {
   serverProcess = _spawnSync('startRbsjServer.bat', [], {
     cwd: `${process.env.PORTABLE_EXECUTABLE_DIR}/tools/rbsj`,
+    // Nothing here declares a deployment shape. This JVM is the same Spring Boot backend the Server
+    // zip and the Docker image run, secured the same way, and this window gets in by presenting the
+    // installation's API key (attachInstallationCredential) -- not by having told the backend that it
+    // is a desktop. ELECTRON_PID travels because the backend genuinely needs it: it exits when the
+    // shell that started it dies.
     env: { ...process.env, ELECTRON_PID: process.pid.toString() },
     // shell:true is required on Windows to spawn .bat/.cmd files; the Node
     // bundled with Electron 37 (CVE-2024-27980 fix) throws EINVAL otherwise.
@@ -810,6 +888,13 @@ ipcMain.handle('getBackendUrl', async (event) => {
 });
 
 ipcMain.handle('getApiKey', async (event) => {
+  // The key belongs to the INSTALLATION, and in a Server installation that installation is the
+  // server, not whoever opened this window. The compose bundle bind-mounts ./config, so the file is
+  // sitting right there and readable — handing it to the renderer would make an Electron shell an
+  // administrator of somebody else's server with no login at all. One rule, decided here, where the
+  // evidence is: the same check that stops the main process signing this window's requests.
+  if (isServerEdition()) return '';
+
   try {
     const baseDir = process.env.PORTABLE_EXECUTABLE_DIR;
     const resolvedBase = baseDir || process.cwd();
@@ -818,9 +903,10 @@ ipcMain.handle('getApiKey', async (event) => {
     const apiKey = await fs.promises.readFile(apiKeyFilePath, 'utf-8');
     return apiKey.trim();
   } catch (error) {
-    // API key file may not exist yet (first startup) - this is normal in dev mode
-    log.info('[DEV] api-key.txt not found, using default API_KEY or "123". This is expected during development.');
-    return "123";
+    // The server writes api-key.txt on its first start, so it can be missing for a moment.
+    // Without a key the UI sends none; DataPallas Desktop does not need one.
+    log.info('api-key.txt not found yet; continuing without an API key.');
+    return '';
   }
 });
 

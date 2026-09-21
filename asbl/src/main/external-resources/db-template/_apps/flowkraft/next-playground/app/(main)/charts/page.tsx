@@ -46,17 +46,19 @@ const usageCode = `<rb-chart
 
 export default function ChartsPage() {
   const embedToken = useEmbedToken("charts-examples")
-  const [isReady, setIsReady] = useState(false)
+  const [componentsLoaded, setComponentsLoaded] = useState(false)
+  // The components read embed-token once, when they mount: render them only after it has arrived.
+  const isReady = componentsLoaded && embedToken !== null
   const [activeTab, setActiveTab] = useState<PageTab>("examples")
   const [configDsl, setConfigDsl] = useState("")
   const [copied, setCopied] = useState<string | null>(null)
 
   useEffect(() => {
     if (customElements.get("rb-chart")) {
-      setIsReady(true)
+      setComponentsLoaded(true)
       return
     }
-    const handleLoaded = () => setIsReady(true)
+    const handleLoaded = () => setComponentsLoaded(true)
     window.addEventListener("rb-components-loaded", handleLoaded)
     return () => window.removeEventListener("rb-components-loaded", handleLoaded)
   }, [])

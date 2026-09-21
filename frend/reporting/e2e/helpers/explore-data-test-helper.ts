@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { Helpers } from '../utils/helpers';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,6 +60,7 @@ export async function createFreshCanvas(
   canvasUrl: string,
   name?: string,
 ): Promise<void> {
+  await Helpers.signInBrowserContext(page.context());
   await page.goto(canvasUrl);
   await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
   await page.locator('#btnNewCanvas').waitFor({ state: 'visible', timeout: 15_000 });
@@ -680,9 +682,10 @@ export async function arrangeWidgets(
   // collide with a post-addWidget autosave flush.
   await page.waitForTimeout(1_500);
 
-  // Absolute URL — the canvas API lives on the Java backend (9090), not on
-  // the Next.js app (8440) where the page itself is served.
-  const API = 'http://localhost:9090/api';
+  // The canvas API lives on the Java backend (9090); reach it the way the app
+  // does, through its same-origin /api/dp proxy, which forwards the session
+  // and the CSRF token (required on the Server, a no-op on the desktop).
+  const API = '/api/dp';
   await page.evaluate(async ({ cid, ls, api }) => {
     const getResp = await fetch(`${api}/explorations/${cid}`);
     if (!getResp.ok) throw new Error(`GET canvas ${cid} failed: ${getResp.status}`);

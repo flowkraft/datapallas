@@ -6,8 +6,9 @@ import { ToastrMessagesService } from './toastr-messages.service';
 
 /** Mirrors the backend `IdentityDto`. */
 export interface Identity {
-  mode: 'standalone' | 'tenant' | 'gateway';
   authenticated: boolean;
+  /** The caller is the installation itself — its API key, or an embedding app — not a person. */
+  machine: boolean;
   user: { username: string; email: string; platformAdmin: boolean } | null;
   tenant: { code: string; displayName: string } | null;
   roles: string[];
@@ -32,10 +33,19 @@ export interface FederatedLogin {
 /**
  * Who is using the app, and therefore what the app is allowed to show.
  *
- * The single most important thing this service decides is {@link isDataPallasServer}. When it is
- * false — DataPallas Desktop, which is always the case in Electron — the whole authentication surface
- * must disappear: no login screen, no user menu, no logout, no Users/Tenants screens. Same bundle,
- * same code paths, one flag.
+ * Every deployment authenticates — desktop, server, Docker, Windows, Linux — so the question this
+ * service answers is never "is authentication switched on here", it is {@link isAuthenticated}: is
+ * anybody behind this window, and {@link isPersonSignedIn}: is that somebody a person. The desktop
+ * signs its own requests with the installation's API key, so it answers "yes, a machine" and walks
+ * straight into the app without ever seeing the login screen — not because the screen was disabled
+ * for it, but because it arrived already authenticated.
+ *
+ * <p>There is no deployment mode here any more, deliberately. The shell used to be told which shape
+ * it was running in and to decide from that, which meant the product believed a string it could not
+ * check — and a desktop shell sitting on a server's folder said "standalone" just as convincingly as
+ * a real desktop. Every question the UI actually has (may this person administer users? is there an
+ * account to sign out of?) is answered by who is calling and what the backend says they may do, both
+ * of which are facts rather than declarations.
  *
  * Capabilities here are for rendering only. Every one of them is independently enforced by the
  * backend, so hiding a button is a courtesy to the user, never a security control.
@@ -54,32 +64,34 @@ export class AuthService {
   readonly currentIdentity = computed(() => this.identity());
   readonly isResolved = computed(() => this.resolved());
 
-  /**
-   * Is this DataPallas Server? Everything auth-related in the UI hangs off this.
-   *
-   * `/api/auth/me` always answers, signed in or not, so `mode` is known from the first call — this is
-   * not a guess. It stays FALSE only while the identity is genuinely absent: before bootstrap has run,
-   * or when the backend could not be reached at all. Assuming Desktop there keeps a login screen from
-   * flashing at a desktop user during startup, and costs nothing on a server, where the backend is the
-   * one enforcing access and every call would 401 regardless of what the UI believes.
-   */
-  readonly isDataPallasServer = computed(() => {
-    const current = this.identity();
-    return current ? current.mode !== 'standalone' : false;
-  });
-
   readonly isAuthenticated = computed(() => !!this.identity()?.authenticated);
+
+  /**
+   * Is a PERSON signed in — someone with an account, a name to show and a session to end?
+   *
+   * The desktop is authenticated but is not a person: it presents the installation's API key, which
+   * has no account behind it. Anything that offers to display, switch or sign out of an account asks
+   * this, never {@link isAuthenticated} — "Signed in as api-key-user · Sign out" is an offer the
+   * desktop cannot keep.
+   */
+  readonly isPersonSignedIn = computed(() => {
+    const current = this.identity();
+    return !!current?.authenticated && !current.machine;
+  });
 
   /**
    * Should the application shell — top menu, status bar — render at all?
    *
-   * False only while a server is waiting for someone to sign in. The login screen is not a page
-   * inside the app, it is the door: a menu bar behind it offers navigation that every guard would
-   * refuse anyway, and a status bar that polls the backend only produces 401s. On the desktop this
-   * is always true, because there is no door.
+   * False only while the backend has told us, in so many words, that nobody is signed in. The login
+   * screen is not a page inside the app, it is the door: a menu bar behind it offers navigation that
+   * every guard would refuse anyway, and a status bar that polls the backend only produces 401s.
+   *
+   * A missing identity is not that answer. `/api/auth/me` answers everybody, so the only way to have
+   * none is that nothing was listening — and a desktop whose own backend died should still render
+   * its window and say so, rather than show a login door that leads nowhere.
    */
   readonly showAppChrome = computed(
-    () => !this.isDataPallasServer() || this.isAuthenticated(),
+    () => this.identity() === null || this.isAuthenticated(),
   );
 
   readonly username = computed(() => this.identity()?.user?.username ?? '');
@@ -117,17 +129,16 @@ export class AuthService {
    * Fetch the identity. Called from InitService during bootstrap, before the first navigation.
    *
    * The endpoint answers whether or not anyone is signed in, so the normal "nobody is logged in yet"
-   * case arrives here as a perfectly ordinary body with `authenticated: false` — carrying the one
-   * thing the UI cannot work without, the deployment mode.
+   * case arrives here as a perfectly ordinary body with `authenticated: false`, which is an answer
+   * and not a failure.
    *
    * <p><b>A failure here is "not yet", not "no".</b> `/api/auth/me` is the one endpoint that answers
    * everybody, so the only way the request throws is that nothing is listening — and in Electron that
    * is the normal state for the first few seconds, because the app launches its own Java backend and
-   * the renderer starts asking before it finishes booting. Recording that silence as "no identity" is
-   * what made a secured server look like a desktop: `isDataPallasServer()` reads false without an
-   * answer, so no login screen appears, no 401 redirects anywhere, and the user gets the whole
-   * application with every single call behind it refused. Retrying until the backend answers is the
-   * difference between "we do not know yet" and "there is nobody to sign in as".
+   * the renderer starts asking before it finishes booting. Treating that silence as "nobody is signed
+   * in" would put a login screen in front of a desktop user two seconds before their own backend was
+   * ready to accept the key it is holding. Retrying until the backend answers is the difference
+   * between "we do not know yet" and "there is nobody to sign in as".
    */
   async loadIdentity(): Promise<Identity | null> {
     // ~10s of patience: comfortably longer than a cold JVM start, short enough that a genuinely dead
@@ -207,22 +218,17 @@ export class AuthService {
   }
 
   /**
-   * Forget the person, keep the installation.
+   * Forget the person.
    *
-   * <p>`mode` is a property of what was installed, not of who is signed in, so signing out must not
-   * discard it. Setting the identity to null here instead would make a signed-out server
-   * indistinguishable from a desktop — {@link isDataPallasServer} would read false, the guard would
-   * wave everyone through, and the app would never ask anyone to sign in again for the rest of its
-   * life. Everything except the mode is cleared, which is exactly what the backend reports for a
-   * caller who is not signed in.
+   * <p>Sets the identity to what the backend reports for a caller who is not signed in, rather than
+   * to null: null means "no answer yet" — the state a desktop is in while its own backend boots —
+   * and the app renders through that one, waiting. Having been refused is a different, settled fact,
+   * and the shell reacts to it by showing the door.
    */
   private signOut(): void {
-    const current = this.identity();
-    if (!current) return;
-
     this.identity.set({
-      ...current,
       authenticated: false,
+      machine: false,
       user: null,
       tenant: null,
       roles: [],
@@ -240,23 +246,18 @@ export class AuthService {
    * they can see and understand, while answering false for someone who MAY act silently deletes their
    * application.
    *
-   * <p>There are two states where nothing is known and nothing should be hidden:
-   * <ul>
-   *   <li><b>No identity.</b> The desktop starts its own Java backend, so the first `/api/auth/me` can
-   *       land before the backend is listening. That is a missing answer, not a denial — and a
-   *       fail-closed reading of it takes the Configuration menu away from a desktop user who has no
-   *       roles, no login and no way to get it back short of restarting.</li>
-   *   <li><b>Standalone.</b> One user, who is an administrator, and no authentication UI anywhere. The
-   *       backend does report every capability as true here; not depending on that is what keeps the
-   *       desktop working when the backend has not answered yet.</li>
-   * </ul>
+   * <p>One state answers true for everything: <b>no identity</b>. The desktop starts its own Java
+   * backend, so the first `/api/auth/me` can land before the backend is listening. That is a missing
+   * answer, not a denial — and a fail-closed reading of it takes the Configuration menu away from a
+   * desktop user who has no way to get it back short of restarting.
    *
-   * <p>On a server with a resolved identity — the only place hiding means anything — an unknown
-   * capability name still answers false.
+   * <p>Once an identity exists the backend's own flags are used verbatim, desktop included: the
+   * installation key holds ADMIN, so every capability comes back true there anyway. An unknown
+   * capability name answers false.
    */
   can(capability: string): boolean {
     const current = this.identity();
-    if (!current || current.mode === 'standalone') return true;
+    if (!current) return true;
     return current.capabilities?.[capability] === true;
   }
 
@@ -265,12 +266,16 @@ export class AuthService {
   }
 
   /**
-   * Should the UI render user/role/tenant administration at all? Requires both a multi-user
-   * deployment and the capability — in standalone the screens are hidden even though the DEFAULT
-   * admin technically holds the right.
+   * Should the UI render user/role/tenant administration at all?
+   *
+   * <p>For a signed-in PERSON who may manage users — which is the honest reading of the screen: it
+   * exists to let an administrator add, disable and re-role their colleagues. The desktop, signed in
+   * as the installation itself, is not that person: it holds ADMIN because it owns the folder, and it
+   * has nobody to administer. If its owner does sign in as an administrator the screens appear —
+   * which is exactly how a desktop grows into a shared install.
    */
   readonly showUserAdministration = computed(
-    () => this.isDataPallasServer() && this.can('manageUsers'),
+    () => this.isPersonSignedIn() && this.can('manageUsers'),
   );
 
   /**
@@ -293,10 +298,10 @@ export class AuthService {
   private reprobing = false;
 
   private async handleUnauthorized(): Promise<void> {
-    // A 401 with no identity is the state that must not be guessed at. The desktop never produces one
-    // — the loopback caller is always authenticated — so a 401 here is evidence that this is a server
-    // whose identity probe did not land. Ask once more before deciding: getting it wrong leaves the
-    // user inside an application where every call fails and nothing offers them a way to sign in.
+    // A 401 with no identity is the state that must not be guessed at: it is equally consistent with
+    // "your session ended" and "the probe never landed". Ask once more before deciding — getting it
+    // wrong leaves the user inside an application where every call fails, or at a login screen they
+    // did not need.
     if (!this.identity() && !this.reprobing) {
       this.reprobing = true;
       try {
@@ -306,9 +311,10 @@ export class AuthService {
       }
     }
 
-    // Never bounce the desktop to a login screen it does not have.
-    if (!this.isDataPallasServer()) return;
-
+    // Whoever this is, they are not authenticated, and every deployment has a door — including the
+    // desktop, whose API key is normally the thing that opens it. Offering the login screen is the
+    // only outcome that leaves a way forward; the old shortcut of "the desktop has no login" left a
+    // desktop with an unreadable key inside an application where nothing worked and nothing said so.
     this.signOut();
     void this.router.navigate(['/login']);
   }

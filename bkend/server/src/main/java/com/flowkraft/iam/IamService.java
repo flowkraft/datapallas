@@ -33,13 +33,6 @@ public class IamService {
 	private final PasswordEncoder passwordEncoder;
 	private final LicenseService licenseService;
 
-	/**
-	 * Settled once, in {@link #bootstrap()}, before the security filter chain is built. Not final
-	 * because the decisive input — whether real accounts exist — can only be read after the store is
-	 * open.
-	 */
-	private DeploymentMode mode = DeploymentMode.resolve();
-
 	@Autowired
 	public IamService(IamRepository repository, PasswordEncoder passwordEncoder, LicenseService licenseService) {
 		this.repository = repository;
@@ -48,31 +41,27 @@ public class IamService {
 	}
 
 	/**
-	 * Bring the store to a usable state before the first request.
+	 * Bring the store to a usable state before the first request — the same way in every deployment.
 	 *
-	 * <p>In {@code STANDALONE} that means silently creating the DEFAULT tenant and the DEFAULT admin.
-	 * Deliberately no password is generated, printed or written to disk: a desktop user has filesystem
-	 * access to the installation already, so a credential would add no protection and would create
-	 * exactly the "configure your authentication" experience this design exists to avoid. The account
-	 * has no usable password at all, and {@code STANDALONE} authenticates the loopback caller instead.
+	 * <p>Desktop used to be the exception: it created a password-less {@code admin} and let a filter
+	 * hand that identity to whoever turned up, so nothing had to be typed. That exception is gone.
+	 * One installation folder can be run as a desktop, as a host JVM and as a container — the compose
+	 * bundle bind-mounts {@code ./config}, so all three share one {@code iam.db} — and a mode that
+	 * authenticates callers for free is a mode that can be pointed at someone else's data. So every
+	 * deployment seeds the same working {@code burst}/{@code burst} administrator, loudly flagged until
+	 * the password changes, and every caller proves who it is.
 	 *
-	 * <p>In server modes a working {@code burst}/{@code burst} administrator is created so the product
-	 * can be downloaded, started and used — loudly flagged until the password changes. See
-	 * {@link #ensureDefaultServerAdmin()}.
+	 * <p>Nobody has to type it on the desktop, because the Electron shell signs itself in with this
+	 * installation's API key ({@code config/_internal/api-key.txt}, owner-readable and generated per
+	 * install) rather than with a password. The login screen is simply never reached there — and if it
+	 * ever is, it works.
 	 */
 	@PostConstruct
 	public void bootstrap() {
 
-		mode = resolveEffectiveMode();
-
-		if (!mode.isDataPallasServer()) {
-			ensureDefaultTenantAndAdmin();
-			return;
-		}
-
 		seedFirstAdminFromEnvironmentIfRequested();
 
-		ensureDefaultServerAdmin();
+		ensureDefaultAdmin();
 	}
 
 	// ============================================================
@@ -100,11 +89,22 @@ public class IamService {
 	 * creates their own user and removes this one — every one of those disappears on its own.
 	 *
 	 * <p>Skipped entirely when {@code RB_ADMIN_USERNAME} / {@code RB_ADMIN_PASSWORD} already seeded a
-	 * real administrator, and never created in desktop mode, which has no login at all.
+	 * real administrator, or when any sign-in-capable account already exists.
+	 *
+	 * <h2>Why the guard counts sign-in-capable users, not users</h2>
+	 * The same installation directory can be started as a desktop and later as a Server — that is
+	 * the normal way someone evaluates this: run it, like it, expose it. Desktop mode auto-creates a
+	 * password-less {@code admin} to own its loopback session, so by the time it is started as a
+	 * Server the store is not empty, and a plain {@code countUsers() > 0} concluded an administrator
+	 * already existed. Nothing was seeded, {@link #isUsingDefaultCredentials()} reported false, and
+	 * the only account present could not log in — a server nobody could get into, with no message
+	 * saying why. {@link IamRepository#countSignInCapableUsers()} asks the question this guard always
+	 * meant to ask, and keeps honouring a federated-only store, where real users exist with no
+	 * password hash between them.
 	 */
-	private void ensureDefaultServerAdmin() {
+	private void ensureDefaultAdmin() {
 
-		if (repository.countUsers() > 0)
+		if (repository.countSignInCapableUsers() > 0)
 			return;
 
 		Tenant tenant = ensureDefaultTenant();
@@ -130,9 +130,6 @@ public class IamService {
 	 */
 	public boolean isUsingDefaultCredentials() {
 
-		if (!mode.isDataPallasServer())
-			return false;
-
 		return repository.findUserByUsername(DEFAULT_SERVER_USERNAME)
 				.filter(AppUser::isActive)
 				.filter(user -> StringUtils.isNotBlank(user.passwordHash()))
@@ -140,40 +137,6 @@ public class IamService {
 				.orElse(false);
 	}
 
-	public DeploymentMode getMode() {
-		return mode;
-	}
-
-	/**
-	 * Decide whether authentication is enforced, preferring evidence that cannot be tampered with for
-	 * free.
-	 *
-	 * <ol>
-	 *   <li><b>Real accounts exist ⇒ always enforce.</b> This wins over everything, including an
-	 *       explicit {@code RB_ROLE}. It is the strongest signal available because switching it off
-	 *       means deleting every account that can sign in — which does not quietly weaken the system,
-	 *       it destroys it, and every user notices immediately. Compare a marker file, where deleting
-	 *       one byte silently disables authentication and nothing appears broken.</li>
-	 *   <li>Otherwise an explicit {@code RB_ROLE} decides.</li>
-	 *   <li>Otherwise the installation is probed for the Server launcher scripts.</li>
-	 * </ol>
-	 *
-	 * <p>The consequence worth stating plainly: once a server has one real user, it can never be
-	 * downgraded to open-access by an environment variable, a launch-script edit, or a deleted marker
-	 * file. {@code DataPallas.security.enabled=false} remains as the deliberate, loud emergency switch.
-	 */
-	DeploymentMode resolveEffectiveMode() {
-
-		DeploymentMode detected = DeploymentMode.resolve();
-
-		if (repository.countUsersWithPassword() > 0 && !detected.isDataPallasServer()) {
-			log.warn("Real user accounts exist, so authentication stays enforced — ignoring the "
-					+ "desktop mode that was detected or configured");
-			return DeploymentMode.GATEWAY;
-		}
-
-		return detected;
-	}
 
 	// ============================================================
 	// bootstrap
@@ -185,18 +148,6 @@ public class IamService {
 						StringUtils.defaultIfBlank(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH,
 								System.getProperty("user.dir")),
 						readCustomerRefFromLicense()));
-	}
-
-	private void ensureDefaultTenantAndAdmin() {
-		Tenant tenant = ensureDefaultTenant();
-
-		AppUser admin = repository.findUserByUsername(AppUser.DEFAULT_USERNAME).orElseGet(() -> {
-			log.info("Creating the DEFAULT administrator for desktop mode");
-			// null hash — this account cannot be used to log in, only to own the loopback session.
-			return repository.insertUser(AppUser.DEFAULT_USERNAME, null, null, true);
-		});
-
-		repository.upsertMembership(admin.id(), tenant.id(), Role.ADMIN);
 	}
 
 	/**

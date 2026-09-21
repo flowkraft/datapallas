@@ -21,6 +21,7 @@ import org.apache.commons.io.FileUtils;
 import com.sourcekraft.documentburster.context.BurstingContext;
 import com.sourcekraft.documentburster.sender.model.UploadMessage;
 import com.sourcekraft.documentburster.common.settings.model.WebUploadSettings;
+import com.sourcekraft.documentburster.common.db.ContainerAddresses;
 import com.sourcekraft.documentburster.utils.Utils;
 
 public class WebUploadSender extends AbstractSender {
@@ -93,8 +94,11 @@ public class WebUploadSender extends AbstractSender {
 					ctx.outputFolder + "/quality-assurance/" + ctx.token + "_" + typeStr + "_documents2webupload.txt"),
 					message.toString(), "UTF-8");
 
-		if (execute)
+		if (execute) {
+			// dialled from where this JVM runs - in the Docker server a localhost URL is another container
+			message.uploadCommand = ContainerAddresses.resolveUrlsIn(message.uploadCommand);
 			scripting.executeSenderScript(ctx.scripts.webUpload, message);
+		}
 
 		log.info("Attachments " + ctx.attachments + " web-uploaded successfully.");
 

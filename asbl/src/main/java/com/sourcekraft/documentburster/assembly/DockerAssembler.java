@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 
 import org.zeroturnaround.exec.ProcessExecutor;
+import org.zeroturnaround.exec.ProcessResult;
 import org.zeroturnaround.exec.stream.LogOutputStream;
 import org.zeroturnaround.zip.ZipUtil;
 import org.apache.commons.io.FileUtils;
@@ -110,7 +111,10 @@ public class DockerAssembler extends AbstractAssembler {
 
         // Copy initial directories from the verified NoExe package into the assembled package directory
         // DIRECTORIES = ("_apps", "backup", "config", "db", "input-files", "logs", "output", "poll", "quarantine", "samples", "scripts", "temp", "templates")
-        String[] directories = new String[] {"_apps", "backup", "config", "db", "input-files", "logs", "output", "poll", "quarantine", "samples", "scripts", "temp", "templates"};
+        // tools/jasper-legacy/lib is data too: the JasperReports 6 renderer runs in its own container and mounts
+        // that folder for the JDBC drivers a customer adds, so it has to be a real folder on the host like the
+        // thirteen above (plan §3 O19). Only that one folder - the rest of tools/ is program files the image ships.
+        String[] directories = new String[] {"_apps", "backup", "config", "db", "input-files", "logs", "output", "poll", "quarantine", "samples", "scripts", "temp", "templates", "tools/jasper-legacy/lib"};
         File verifiedRoot = new File(Utils.getTopProjectFolderPath() + "/asbl/target/package/verified-db-noexe/DataPallas");
 
         for (String dir : directories) {
@@ -126,13 +130,9 @@ public class DockerAssembler extends AbstractAssembler {
             }
         }
 
-        // Post-process packaged config to ensure Docker defaults (host/mailhog/runtime) are set
-        File packagedBurst = new File(packageDirPath + "/" + this.topFolderName + "/config/burst/settings.xml");
-        String bc = FileUtils.readFileToString(packagedBurst, "UTF-8");
-        bc = bc.replaceAll("(?is)<host\\b[^>]*>\\s*localhost\\s*</host>", "<host>mailhog</host>");
-        bc = bc.replaceAll("(?is)<weburl\\b[^>]*>\\s*https?://localhost:8025\\s*</weburl>", "<weburl>http://mailhog:8025</weburl>");
-        FileUtils.writeStringToFile(packagedBurst, bc, "UTF-8");
-        System.out.println("Patched packaged burst/settings.xml for docker defaults");
+        // The mail settings stay the desktop's (localhost:1025, http://localhost:8025): the browser opens the
+        // web URL on the user's machine, where MailHog's port is published, and inside the container the server
+        // dials the 'mailhog' container for it through ContainerAddresses (plan §4 F2r CAT-1).
 
         File packagedInternal = new File(packageDirPath + "/" + this.topFolderName + "/config/_internal/settings.xml");
         String ic = FileUtils.readFileToString(packagedInternal, "UTF-8");
@@ -147,11 +147,24 @@ public class DockerAssembler extends AbstractAssembler {
     public void verify() throws Exception {
         // Ensure image exists by checking docker images -q <tag>
         File top = new File(Utils.getTopProjectFolderPath());
-        org.zeroturnaround.exec.ProcessResult pr = new ProcessExecutor().directory(top).command("docker", "images", "-q", imageTag)
+        ProcessResult pr = new ProcessExecutor().directory(top).command("docker", "images", "-q", imageTag)
                 .readOutput(true).execute();
 
         String imageId = pr.getOutput().getString().trim();
         assertThat(imageId).as("Docker image %s should exist", imageTag).isNotEmpty();
+
+        // ---------------------------------------------------------------------
+        // The launcher scripts must have content. A legacy-builder image (seen 2026-09-14) carries them as
+        // 0-byte files: the image builds and starts, and every job then fails at run time. Catch that here,
+        // while the build can still fail, instead of in production.
+        // ---------------------------------------------------------------------
+        for (String launcher : new String[] { "/usr/local/bin/docker-entrypoint.sh", "/app/datapallas.sh" }) {
+            ProcessResult launcherCheck = new ProcessExecutor().directory(top)
+                    .command("docker", "run", "--rm", "--entrypoint", "sh", imageTag, "-c", "test -s " + launcher)
+                    .readOutput(true).execute();
+            assertThat(launcherCheck.getExitValue())
+                    .as("%s in image %s should exist and not be empty", launcher, imageTag).isZero();
+        }
 
         // ---------------------------------------------------------------------
         // Read settings files from the built image and verify versions
@@ -234,8 +247,8 @@ public class DockerAssembler extends AbstractAssembler {
         File hostInternalSettings = new File(hostVerifiedRoot, "config/_internal/settings.xml");
         assertThat(hostInternalSettings.exists()).as("Expected %s to exist", hostInternalSettings.getPath()).isTrue();
         String hostInternalContent = FileUtils.readFileToString(hostInternalSettings, "UTF-8");
-        assertThat(hostBurstContent).as("Expected burst settings to reference mailhog").contains("mailhog");
-        assertThat(hostBurstContent).as("Expected burst settings to reference mailhog weburl").contains("http://mailhog:8025");
+        assertThat(hostBurstContent).as("Expected burst settings to keep the desktop's test email server")
+                .contains("http://localhost:8025");
         assertThat(hostInternalContent).as("Expected runtime to be docker in %s", hostInternalSettings.getPath()).contains("<runtime>docker</runtime>");
 
         // ---------------------------------------------------------------------

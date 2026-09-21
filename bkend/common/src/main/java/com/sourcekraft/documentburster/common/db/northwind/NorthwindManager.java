@@ -19,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
+import com.sourcekraft.documentburster.common.ServicesManager;
+import com.sourcekraft.documentburster.common.db.ContainerAddresses;
 import com.sourcekraft.documentburster.utils.Utils;
 
 import jakarta.persistence.EntityManager;
@@ -26,6 +28,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
 
 /**
  * Manages database containers for the Northwind sample database using a
@@ -219,6 +222,9 @@ public class NorthwindManager implements AutoCloseable {
 		List<String> command = new ArrayList<>();
 		command.add("docker");
 		command.add("compose");
+		// In the Docker server, relative bind mounts (Supabase's ./volumes/...) must resolve on the host, not
+		// as /app/... paths the host daemon would create as empty folders. No-op everywhere else.
+		ServicesManager.addHostProjectDirectory(command, workingDir);
 		command.add("-f");
 		command.add(DOCKER_COMPOSE_FILENAME);
 
@@ -289,6 +295,7 @@ public class NorthwindManager implements AutoCloseable {
 			List<String> command = new ArrayList<>();
 			command.add("docker");
 			command.add("compose");
+			ServicesManager.addHostProjectDirectory(command, workingDir);
 			command.add("-f");
 			command.add(DOCKER_COMPOSE_FILENAME);
 
@@ -316,9 +323,12 @@ public class NorthwindManager implements AutoCloseable {
 	 * a JDBC connection.
 	 */
 	private void waitForDatabaseToBeReady(DatabaseVendor vendor, Integer hostPort) throws Exception {
-		final int port = (hostPort != null) ? hostPort : getDefaultHostPort(vendor);
-		// Get effective host - converts localhost to host.docker.internal when running in Docker
-		final String host = Utils.getEffectiveHost("localhost");
+		final int hostPortToUse = (hostPort != null) ? hostPort : getDefaultHostPort(vendor);
+		// In the Docker server the pack is a sibling container on the shared network, so it is reached by
+		// name and its own port; everywhere else this is localhost and the published port (plan §4 F2n).
+		final String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(hostPortToUse));
+		final String host = reachable[0];
+		final int port = Integer.parseInt(reachable[1]);
 
 		log.info("[" + vendor + "] waitForDatabaseToBeReady: vendor={}, host={}, port={}", vendor, host, port);
 
@@ -376,9 +386,10 @@ public class NorthwindManager implements AutoCloseable {
 	 * Must connect to 'master' first since Northwind doesn't exist yet.
 	 */
 	private void ensureSqlServerDatabaseExists(DatabaseVendor vendor, Integer hostPort) throws Exception {
-		final int port = (hostPort != null) ? hostPort : getDefaultHostPort(vendor);
-		// Get effective host - converts localhost to host.docker.internal when running in Docker
-		final String host = Utils.getEffectiveHost("localhost");
+		final int hostPortToUse = (hostPort != null) ? hostPort : getDefaultHostPort(vendor);
+		final String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(hostPortToUse));
+		final String host = reachable[0];
+		final int port = Integer.parseInt(reachable[1]);
 		final String masterUrl = "jdbc:sqlserver://" + host + ":" + port
 				+ ";databaseName=master;encrypt=false;trustServerCertificate=true";
 		final String dbName = vendor.getDefaultDbName();
@@ -452,10 +463,11 @@ public class NorthwindManager implements AutoCloseable {
 	 */
 	public String getJdbcUrl(DatabaseVendor vendor) {
 
-		int port = activeHostPorts.getOrDefault(vendor, getDefaultHostPort(vendor));
+		int hostPort = activeHostPorts.getOrDefault(vendor, getDefaultHostPort(vendor));
 		String dbName = vendor.getDefaultDbName();
-		// Get effective host - converts localhost to host.docker.internal when running in Docker
-		String host = Utils.getEffectiveHost("localhost");
+		String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(hostPort));
+		String host = reachable[0];
+		int port = Integer.parseInt(reachable[1]);
 
 		switch (vendor) {
 			case POSTGRES:
@@ -477,7 +489,8 @@ public class NorthwindManager implements AutoCloseable {
 			case DB2:
 				return "jdbc:db2://" + host + ":" + port + "/" + dbName;
 			case CLICKHOUSE:
-				return "jdbc:clickhouse://" + host + ":" + port + "/" + dbName;
+				return "jdbc:clickhouse://" + host + ":" + port + "/" + dbName
+						+ ServerDatabaseSettings.CLICKHOUSE_CONNECT_OPTIONS;
 			case SUPABASE:
 				return "jdbc:postgresql://" + host + ":" + port + "/" + dbName + "?currentSchema=public";
 			default:
@@ -536,9 +549,10 @@ public class NorthwindManager implements AutoCloseable {
             log.info("Initializing ClickHouse data warehouse (Star Schema)...");
             
             // Get JDBC URL with proper host/port
-            int port = activeHostPorts.getOrDefault(vendor, getDefaultHostPort(vendor));
-            String host = Utils.getEffectiveHost("localhost");
-            String jdbcUrl = "jdbc:clickhouse://" + host + ":" + port + "/" + vendor.getDefaultDbName();
+            int clickHouseHostPort = activeHostPorts.getOrDefault(vendor, getDefaultHostPort(vendor));
+            String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(clickHouseHostPort));
+            String jdbcUrl = "jdbc:clickhouse://" + reachable[0] + ":" + reachable[1] + "/"
+                    + vendor.getDefaultDbName() + ServerDatabaseSettings.CLICKHOUSE_CONNECT_OPTIONS;
             
             // SQLite path - SQLite and ClickHouse marker folders are siblings under the same parent (db/)
             // Use hostDataPath.getParent() for consistency with DuckDB approach

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.sourcekraft.documentburster.context.BurstingContext;
 import com.sourcekraft.documentburster.sender.model.EmailMessage;
 
+import com.sourcekraft.documentburster.common.db.ContainerAddresses;
 import com.sourcekraft.documentburster.common.settings.EmailConnection;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.common.settings.model.EmailSettings;
@@ -40,6 +41,7 @@ public class EmailMessageFactory {
 		addEmailAddresses("bcc", messageSettings.bcc, (EmailMessage) message, ctx);
 
 		setEmailServerSettings(message, ctx, useTestServer);
+		resolveSmtpServer(message);
 		setSimpleJavaMailSettings(message, ctx);
 
 		return message;
@@ -298,6 +300,8 @@ public class EmailMessageFactory {
 			msg = (new EmailMessageFactory()).createCheckEmailMessageFromConnection(emailConnection);
 		}
 
+		resolveSmtpServer(msg);
+
 		msg.sjm = settings.getSimpleJavaMail();
 
 		// Proxy password stays encrypted — decrypted by EmailSender at point of use.
@@ -353,8 +357,21 @@ public class EmailMessageFactory {
 
 		msg.tos.add(msg.fromAddress);
 
+		resolveSmtpServer(msg);
+
 		return msg;
 
+	}
+
+	/**
+	 * The SMTP server as DataPallas has to dial it. localhost:1025 (the test email server) is the user's own
+	 * machine on the desktop; in the DataPallas Server container it is the sibling container publishing that
+	 * port. ContainerAddresses decides, so the saved settings are the same everywhere (plan §4 F2r CAT-1).
+	 */
+	private static void resolveSmtpServer(EmailMessage msg) {
+		String[] address = ContainerAddresses.resolve(msg.hostName, msg.smtpPort);
+		msg.hostName = address[0];
+		msg.smtpPort = address[1];
 	}
 
 }

@@ -48,22 +48,23 @@ export class InitService {
     }
 
     // Resolve the identity before the first navigation. withDisabledInitialNavigation() means the
-    // router has not run yet, so the guard and every screen see a settled mode and never flash a
-    // login screen at a desktop user. It answers without a credential — that is the point: the
-    // deployment mode is what decides which credential is allowed to be used at all.
+    // router has not run yet, so the guard and every screen see a settled answer and never flash a
+    // login screen at a desktop user. In Electron this call already carries the installation's API
+    // key: the main process signs every request to its own backend, which is what makes the desktop
+    // arrive here authenticated instead of anonymous.
     const identity = await this.authService.loadIdentity();
 
-    // The installation API key is a MACHINE credential: presenting it means "I hold this
-    // installation's filesystem". That is exactly DataPallas Desktop's trust model — the person at
-    // the keyboard already owns the folder, so asking them to log in protects nothing.
+    // The same key, in the renderer, for the requests it builds itself — the main process already
+    // signs everything that goes over HTTP, but ApiService also reaches the backend through paths a
+    // session filter cannot see (the STOMP CONNECT frame).
     //
-    // It is exactly NOT DataPallas Server's. A server must ask the person in front of it to sign in
-    // even when the app is opened through DataPallas.exe on the server machine itself, so the key is
-    // never presented there — otherwise every desktop shell would silently be an administrator and
-    // the login screen would never appear.
-    //
-    // Web mode never gets a key in either edition: anything a page can read, any visitor can read.
-    if (this.electronService.isElectron && identity?.mode === 'standalone') {
+    // The API key is a MACHINE credential: presenting it means "I hold this installation's
+    // filesystem", which is exactly DataPallas Desktop's trust model — the person at the keyboard
+    // already owns the folder. Asking here does not decide anything: the main process answers with
+    // an empty string for a Server installation, where the key belongs to the server and the person
+    // in front of the machine must sign in as themselves. A browser never gets one in any edition:
+    // anything a page can read, any visitor can read.
+    if (this.electronService.isElectron) {
       const apiKey = await this.electronService.getApiKey();
       if (apiKey) {
         this.apiService.setApiKey(apiKey);

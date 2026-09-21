@@ -128,6 +128,7 @@
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       // TEMP: API key disabled for rollback
       // if (apiKey) headers['X-API-Key'] = apiKey;
+      if (embedToken) headers['X-Embed-Token'] = embedToken;
       
       const configUrl = `${apiBaseUrl}/reports/${reportId}/config`;
       //console.log('[rb-parameters] Fetching config from:', configUrl);
@@ -670,6 +671,7 @@
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     // TEMP: API key disabled for rollback
     // if (apiKey) headers['X-API-Key'] = apiKey;
+    if (embedToken) headers['X-Embed-Token'] = embedToken;
     
     try {
       // Fetch config

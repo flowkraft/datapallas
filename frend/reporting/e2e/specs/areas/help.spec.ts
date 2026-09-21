@@ -5,6 +5,7 @@ import { FluentTester } from '../../helpers/fluent-tester';
 electronBeforeAfterAllTest(
   'should correctly display all the screens from the Help area',
   async function ({ beforeAfterEach: firstPage }) {
+    const isElectron = process.env.TEST_ENV === 'electron';
     let ft = new FluentTester(firstPage);
 
     ft = ft
@@ -32,10 +33,16 @@ electronBeforeAfterAllTest(
         'Open Source (Community Support)',
       )
       .click('#leftMenuStarterPacks')
-      .waitOnElementToBecomeVisible('#cmd-db-northwind-postgres')
-      .waitOnElementToBecomeEnabled('#tab-btn-extraPackagesTab')
-      .click('#tab-btn-extraPackagesTab')
-      .waitOnElementToBecomeVisible('#package-notepadplusplus')
+      .waitOnElementToBecomeVisible('#cmd-db-northwind-postgres');
+    // Extra Packages (Chocolatey) is an Electron component: the web build ships an empty stand-in
+    // (electron-nodejs.barrel.empty-web.ts), so the package list exists only in Electron.
+    if (isElectron) {
+      ft = ft
+        .waitOnElementToBecomeEnabled('#tab-btn-extraPackagesTab')
+        .click('#tab-btn-extraPackagesTab')
+        .waitOnElementToBecomeVisible('#package-notepadplusplus');
+    }
+    ft = ft
       .click('#leftMenuHelpDocumentation')
       .elementShouldContainText(
         '#checkPointHelpDocumentation',
@@ -79,8 +86,6 @@ electronBeforeAfterAllTest(
         '#statusDemoLicense',
         'Open Source (Community Support)',
       );
-    const isElectron = process.env.TEST_ENV === 'electron';
-
     if (isElectron) {
       ft = ft
         .click('#leftMenuHelpInstallSetup')
@@ -128,10 +133,14 @@ electronBeforeAfterAllTest(
       .gotoBurstScreen()
       .click('#topMenuHelp')
       .click('#topMenuStarterPacks')
-      .waitOnElementToBecomeVisible('#cmd-db-northwind-postgres')
-      .waitOnElementToBecomeEnabled('#tab-btn-extraPackagesTab')
-      .click('#tab-btn-extraPackagesTab')
-      .waitOnElementToBecomeVisible('#package-notepadplusplus')
+      .waitOnElementToBecomeVisible('#cmd-db-northwind-postgres');
+    if (isElectron) {
+      ft = ft
+        .waitOnElementToBecomeEnabled('#tab-btn-extraPackagesTab')
+        .click('#tab-btn-extraPackagesTab')
+        .waitOnElementToBecomeVisible('#package-notepadplusplus');
+    }
+    ft = ft
       .gotoBurstScreen()
       .click('#topMenuHelp')
       .click('#topMenuHelpDocumentation')

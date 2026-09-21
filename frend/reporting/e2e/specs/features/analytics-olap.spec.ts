@@ -74,7 +74,7 @@ const RUN_ALL_TESTS = true;
 
 // Daily seed for randomizing app assignment.
 // Over 2 consecutive runs, BOTH apps are tested for all features.
-const today = new Date().toISOString().split('T')[0];
+const today = process.env.E2E_ROTATION_DATE || new Date().toISOString().split('T')[0];
 const dailySeed = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
 const isEvenDay = dailySeed % 2 === 0;
 
@@ -106,6 +106,42 @@ async function stopApp(electronPage: any, appName: 'grails' | 'nextjs'): Promise
   await new FluentTester(electronPage)
     .executeCommand(`docker compose stop ${composeService}`, composeDir);
 }
+
+/**
+ * Makes sure the ClickHouse starter pack is running before a test opens /data-warehouse.
+ *
+ * That page is a three-engine comparison: ONE navigation asks the server for the browser, the DuckDB *and*
+ * the ClickHouse pivot, whichever engine the test came to look at. The page states the requirement itself —
+ * "Server-side columnar OLAP database (requires ClickHouse starter pack)" — so every test that opens it has
+ * to satisfy it, not only TEST 5, which is merely the one that reads the ClickHouse result.
+ *
+ * With the pack down each navigation leaves a ClickHouse pivot hanging until it times out ~20 s later, and
+ * the server writes an ERROR when it does. Those land after the test that caused them has finished, and
+ * therefore after the NEXT test's clean state has emptied the logs — which is how TEST 3 and TEST 4 kept
+ * turning the status bar red inside TEST 5's fixture. Being a race between that 20 s tail and the next
+ * test's set-up is exactly why it showed up as flaky rather than as a plain failure.
+ *
+ * Starting a pack that is already running is a no-op (setStarterPackStateForVendor probes the button first),
+ * so the boot is paid once and every later call just looks. The stop lives in the afterAll below rather than
+ * in each test, so one window covers the whole file however many of these tests the rotation runs — while
+ * each test still starts what it needs by itself and so still runs alone under grep.
+ */
+let clickhouseStarted = false;
+
+async function ensureClickHouseStarterPack(electronPage: any): Promise<void> {
+  // Starter pack triggers NorthwindManager.startDatabase(CLICKHOUSE) which:
+  // 1. Starts Docker container  2. Waits for health check  3. Initializes data warehouse
+  // Raw "docker compose up -d" only starts the container — no tables/views are created.
+  console.log('Ensuring the ClickHouse starter pack is running (includes data warehouse init)...');
+  await ConnectionsTestHelper.setStarterPackStateForVendor(
+    new FluentTester(electronPage), 'clickhouse', 'start'
+  );
+  clickhouseStarted = true;
+}
+
+test.afterAll(() => {
+  if (clickhouseStarted) ConnectionsTestHelper.dockerComposeDownInDbFolder();
+});
 
 for (const app of PIVOT_APPS) {
   const baseUrl = app.baseUrl;
@@ -232,6 +268,9 @@ for (const app of PIVOT_APPS) {
           new FluentTester(electronPage).gotoApps(),
           app.appId,
         );
+
+        // This test reads the browser engine, but the page it opens loads all three (see above).
+        await ensureClickHouseStarterPack(electronPage);
         const result = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = result.browser;
         page = result.page;
@@ -274,6 +313,9 @@ for (const app of PIVOT_APPS) {
           new FluentTester(electronPage).gotoApps(),
           app.appId,
         );
+
+        // This test reads the browser engine, but the page it opens loads all three (see above).
+        await ensureClickHouseStarterPack(electronPage);
         const result = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = result.browser;
         page = result.page;
@@ -308,7 +350,6 @@ for (const app of PIVOT_APPS) {
 
       let externalBrowser: any = null;
       let page: any = null;
-      let clickhouseStarted = false;
 
       try {
         console.log(`\n========== [TEST 5] Starting ${app.name} ==========\n`);
@@ -317,14 +358,7 @@ for (const app of PIVOT_APPS) {
           app.appId,
         );
 
-        // Starter pack triggers NorthwindManager.startDatabase(CLICKHOUSE) which:
-        // 1. Starts Docker container  2. Waits for health check  3. Initializes data warehouse
-        // Raw "docker compose up -d" only starts the container — no tables/views are created.
-        console.log('Starting ClickHouse via starter pack (includes data warehouse init)...');
-        await ConnectionsTestHelper.setStarterPackStateForVendor(
-          new FluentTester(electronPage), 'clickhouse', 'start'
-        );
-        clickhouseStarted = true;
+        await ensureClickHouseStarterPack(electronPage);
 
         const result = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = result.browser;
@@ -342,9 +376,8 @@ for (const app of PIVOT_APPS) {
         if (externalBrowser) await externalBrowser.close().catch(() => {});
         await stopApp(electronPage, app.appName).catch((e) =>
           console.error(`ERROR stopping app: ${e.message}`));
-        if (clickhouseStarted) {
-          ConnectionsTestHelper.dockerComposeDownInDbFolder();
-        }
+        // The pack is stopped once, in the afterAll, so the tests that follow this one in the file find it
+        // running instead of paying for the boot again.
         console.log(`[TEST 5] ${app.name} cleanup complete\n`);
       }
     },

@@ -42,13 +42,37 @@ fail2() {
 # Docker wants a path the host's daemon understands. On Linux and macOS that is
 # just the absolute path; under Git Bash or MSYS on Windows the shell's
 # /c/Users/... form is meaningless to Docker Desktop, so translate it back.
+# Where this installation is on the machine that runs Docker. On the desktop, and on a Server on the host
+# JVM, that is this machine and the answer is empty - nothing below changes. In the DataPallas Docker
+# server this script runs inside the container while the daemon is the host's, so a path in here ("/app/db")
+# means nothing to it: it would silently create empty folders and the renderer would start blind. The
+# container's own mounts say where /app came from, which is the answer in the daemon's own form
+# (plan §3 O19, §4 F2n). DATAPALLAS_HOST_DIR overrides it for anyone who mounts things differently.
+host_install_dir() {
+	[ -f /.dockerenv ] || return 0
+	if [ -n "${DATAPALLAS_HOST_DIR:-}" ]; then
+		printf '%s' "$DATAPALLAS_HOST_DIR"
+		return 0
+	fi
+	command -v docker >/dev/null 2>&1 || return 0
+	docker inspect "$(cat /etc/hostname 2>/dev/null)" \
+		--format '{{range .Mounts}}{{.Destination}} {{.Source}}{{"\n"}}{{end}}' 2>/dev/null |
+		awk -v here="$1/config" '$1 == here { sub(/\/config$/, "", $2); print $2; exit }'
+}
+
 host_path() {
 	if command -v cygpath >/dev/null 2>&1; then
 		cygpath -w "$1"
+	elif [ -n "$HOST_INSTALL_DIR" ] && [ "${1#$INSTALL_DIR/}" != "$1" ]; then
+		# inside the DataPallas Docker server: say where the folder is on the host instead
+		printf '%s/%s' "$HOST_INSTALL_DIR" "${1#$INSTALL_DIR/}"
 	else
 		printf '%s' "$1"
 	fi
 }
+
+INSTALL_DIR="$(cd "$TOOLDIR/../.." && pwd)"
+HOST_INSTALL_DIR="$(host_install_dir "$INSTALL_DIR")"
 
 # The analyzer only reads .jrxml files as text, so it deliberately returns
 # before everything below — no Docker, no image, no running service. That is the
@@ -68,6 +92,12 @@ Usage: jr.sh analyze <folder> [--fix]
   --fix     rewrite Server repo: paths, keeping a .bak of every change
 EOF
 		exit 2
+	fi
+	# Normally the analyzer is launched straight from its source file, which is what makes it a tool you can
+	# read and change. That needs a compiler, and the DataPallas Docker image ships a JRE, so the image
+	# brings the same analyzer already compiled and it is used when it is there (plan §4 F2a G8).
+	if [ -f "$TOOLDIR/internal/analyze/classes/JasperMigrationAnalyzer.class" ]; then
+		exec java "-Djr.command=./jr.sh analyze" -cp "$TOOLDIR/internal/analyze/classes" JasperMigrationAnalyzer "$@"
 	fi
 	exec java "-Djr.command=./jr.sh analyze" "$TOOLDIR/internal/analyze/JasperMigrationAnalyzer.java" "$@"
 fi

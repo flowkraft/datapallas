@@ -1,6 +1,6 @@
 import { Locator, Page } from 'playwright';
 import { takeScreenshotIfRequested } from '../utils/helpers';
-import { expect, chromium } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { pathToFileURL } from 'url';
 
 const slash = require('slash');
@@ -74,6 +74,7 @@ export class FluentTester implements PromiseLike<void> {
   private async executeActions(): Promise<void> {
     try {
       this._lastError = undefined;
+      await this.doRecordBusyStates();
       // eslint-disable-next-line no-constant-condition
       let actionIndex = 0;
       while (true) {
@@ -91,7 +92,25 @@ export class FluentTester implements PromiseLike<void> {
           //console.log(`[FluentTester] Executing action #${actionIndex}`);
         }
 
-        await action();
+        try {
+          await action();
+        } catch (error) {
+          // A DataPallas Server can end a session while a test is still running — a long test, a
+          // container that restarted — and the app is bounced to the login screen mid-chain. The
+          // pre-flight in common-setup.ts asks the same question, but only between tests; this asks
+          // it at the only other moment it can be asked. If a login form is what is on screen now,
+          // then the bounce is what discarded this action's effect, so sign in and run it once more.
+          //
+          // This is a state probe, not an environment branch: Electron and Desktop never show a
+          // login form, so the probe answers false there, the original error is rethrown untouched,
+          // and those runs behave exactly as they did before.
+          if (!(await Helpers.signInIfLoginFormIsShown(this.window))) throw error;
+
+          console.log(
+            '[FluentTester] the session had lapsed mid-test; signed in again and retrying this action once',
+          );
+          await action();
+        }
 
         //console.log(`[FluentTester] Action #${actionIndex} completed`);
         actionIndex++;
@@ -307,6 +326,19 @@ export class FluentTester implements PromiseLike<void> {
     return content ? content.trim() : '';
   }
 
+  /**
+   * A browser page asks the user before navigator.clipboard.readText(), and in headed Chromium the read
+   * then waits forever for an answer (configuration.spec.ts sat in it until the test cap, web target).
+   * Grant the permission up front, as SelfServicePortalsTestHelper does; best effort, because an
+   * Electron context has nothing to grant.
+   */
+  private async doAllowClipboardRead(): Promise<void> {
+    await this.window
+      .context()
+      .grantPermissions(['clipboard-read', 'clipboard-write'])
+      .catch(() => {});
+  }
+
   public clipboardShouldContainText(text: string): FluentTester {
     const action = (): Promise<void> => this.doClipboardShouldContainText(text);
     this.actions.push(action);
@@ -315,6 +347,7 @@ export class FluentTester implements PromiseLike<void> {
 
   private async doClipboardShouldContainText(text: string): Promise<void> {
     try {
+      await this.doAllowClipboardRead();
       const clipboardText = await this.window.evaluate(() =>
         navigator.clipboard.readText(),
       );
@@ -339,6 +372,7 @@ export class FluentTester implements PromiseLike<void> {
 
   private async doClipboardShouldNotContainText(text: string): Promise<void> {
     try {
+      await this.doAllowClipboardRead();
       const clipboardText = await this.window.evaluate(() =>
         navigator.clipboard.readText(),
       );
@@ -488,7 +522,7 @@ export class FluentTester implements PromiseLike<void> {
     let delay = Constants.DELAY_HUNDRED_SECONDS;
     if (waitTime) delay = waitTime;
     const action = async (): Promise<void> => {
-      await expect(this.window.locator('div.tabulator-row').first()).toBeVisible({ timeout: delay });
+      await expect(this.window.locator('div.tabulator-row').first()).toBeVisible({ timeout: Constants.capWait(delay) });
     };
     this.actions.push(action);
     return this;
@@ -570,6 +604,20 @@ export class FluentTester implements PromiseLike<void> {
 
     this.actions.push(action);
     return this;
+  }
+
+  /**
+   * Clears the log files the way a user does, before starting a job that refuses to run on non-empty logs.
+   * Waits for Clear Logs to become enabled first: the app learns that the logs are dirty by polling, so
+   * clicking a job button "to get the Clear Logs dialog" can instead start a REAL job when the poll has not
+   * run yet - and every job start empties the Processing form on purpose (no double submissions), which
+   * leaves the job button disabled for the rest of the test.
+   */
+  public clearLogs(): FluentTester {
+    return this.waitOnElementToBecomeEnabled('#btnClearLogs')
+      .click('#btnClearLogs')
+      .clickYesDoThis()
+      .waitOnElementToBecomeDisabled('#btnClearLogs');
   }
 
   public waitOnElementToBecomeDisabled(
@@ -795,7 +843,7 @@ export class FluentTester implements PromiseLike<void> {
     // First wait for any toast of the specified type
     await this.window.waitForSelector(`.${typeClass}`, {
       state: 'visible',
-      timeout: waitTime,
+      timeout: Constants.capWait(waitTime),
     });
 
     // If no specific message checking is needed, return immediately
@@ -1546,6 +1594,15 @@ export class FluentTester implements PromiseLike<void> {
     return this;
   }
 
+  /** Signs in when the app shows the login form (a Server); does nothing on Desktop. */
+  public signInIfLoginFormIsShown(): FluentTester {
+    const action = async (): Promise<void> => {
+      await Helpers.signInIfLoginFormIsShown(this.window);
+    };
+    this.actions.push(action);
+    return this;
+  }
+
   public gotoStartScreen(): FluentTester {
     const action = (): Promise<void> => this.doGotoStart();
 
@@ -1613,6 +1670,11 @@ export class FluentTester implements PromiseLike<void> {
     await this.doWaitOnElementToBecomeVisible('#topMenuStarterPacks');
     await this.doClick('#topMenuStarterPacks');
 
+    // The screen keeps the tab a previous step left active, so "#appSearch" (Apps tab) can be hidden —
+    // a test that started a starter pack first then failed here (explore-data-smart-defaults, supabase).
+    // Activate the Apps tab, the way doGotoStarterPacks activates its own.
+    await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
+    await this.doClick('#tab-btn-appsTab');
     await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
     await this.doWaitOnElementToBecomeVisible('#appSearch');
     await Helpers.delay(Constants.DELAY_HUNDRED_MILISECONDS);
@@ -1956,10 +2018,9 @@ export class FluentTester implements PromiseLike<void> {
     //  - headless:false — Chromium's PDF viewer is a PLUGIN that headless does
     //    not load. Headless yields a BLANK page, not an error, so this would
     //    fail silently and ship an empty frame.
-    //  - channel:'msedge' — same reason createExternalBrowser uses it: the
-    //    bundled Chromium is old. (We cannot call that helper: it imports
-    //    FluentTester, so using it here would be a circular import.)
-    const browser = await chromium.launch({ headless: false, channel: 'msedge' });
+    //  - the system Edge where there is one — same reason createExternalBrowser
+    //    uses it: the bundled Chromium is old (Helpers.launchChromium).
+    const browser = await Helpers.launchChromium({ headless: false });
     try {
       // A4 aspect (210:297). With `view=Fit` below, the page then fills the frame
       // instead of floating in a slab of the viewer's grey background.
@@ -2078,8 +2139,24 @@ export class FluentTester implements PromiseLike<void> {
 
   // ── File Content Assertion Implementations ──
 
+  /**
+   * Runs without slowMo (plan §3 O16): the UI action before a file assertion often has the backend write the file
+   * asynchronously, and without slowMo's 750 ms pause the assertion ran before the write (reporting-jasper
+   * "Use For JasperReports" → datasource.properties). The positive file assertions therefore give the write up to ten
+   * seconds; the negative ones stay immediate. A file that is already there passes at the first check.
+   */
+  private async doFileConditionHoldsWithin(holds: () => Promise<boolean>): Promise<boolean> {
+    const limit = Constants.DELAY_TEN_SECONDS;
+    const began = Date.now();
+    while (!(await holds())) {
+      if (Date.now() - began >= limit) return false;
+      await Helpers.delay(250);
+    }
+    return true;
+  }
+
   private async doFileShouldExist(filePath: string): Promise<void> {
-    const exists = await jetpack.existsAsync(filePath);
+    const exists = await this.doFileConditionHoldsWithin(async () => !!(await jetpack.existsAsync(filePath)));
     if (!exists) {
       throw new Error(`File should exist: ${filePath}`);
     }
@@ -2093,7 +2170,11 @@ export class FluentTester implements PromiseLike<void> {
   }
 
   private async doFileContentShouldContain(filePath: string, text: string): Promise<void> {
-    const content = await jetpack.readAsync(filePath);
+    let content: string | undefined;
+    await this.doFileConditionHoldsWithin(async () => {
+      content = await jetpack.readAsync(filePath);
+      return !!content && content.includes(text);
+    });
     if (!content || !content.includes(text)) {
       throw new Error(`File ${filePath} should contain "${text}" but ${content ? 'does not' : 'file is empty/missing'}`);
     }
@@ -2107,7 +2188,11 @@ export class FluentTester implements PromiseLike<void> {
   }
 
   private async doFileContentShouldMatch(filePath: string, regex: RegExp): Promise<void> {
-    const content = await jetpack.readAsync(filePath);
+    let content: string | undefined;
+    await this.doFileConditionHoldsWithin(async () => {
+      content = await jetpack.readAsync(filePath);
+      return !!content && regex.test(content);
+    });
     if (!content || !regex.test(content)) {
       throw new Error(`File ${filePath} should match ${regex} but ${content ? 'does not' : 'file is empty/missing'}`);
     }
@@ -2121,9 +2206,15 @@ export class FluentTester implements PromiseLike<void> {
   ): Promise<void> {
     const body = await this.window.evaluate(
       async ({ fetchUrl, postBody }: { fetchUrl: string; postBody: any }) => {
+        // Echo the CSRF token as the app does (api.service.ts): the Server rejects a session POST
+        // without it; the desktop sets no XSRF-TOKEN cookie, so nothing is added there.
+        const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
         const res = await fetch(fetchUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}),
+          },
           body: JSON.stringify(postBody),
         });
         if (!res.ok) throw new Error(`API POST ${fetchUrl} failed: ${res.status}`);
@@ -2300,7 +2391,7 @@ export class FluentTester implements PromiseLike<void> {
     waitTime?: number,
   ): Promise<void> {
     return expect(this.window.locator(selector)).toBeVisible({
-      timeout: waitTime,
+      timeout: Constants.capWait(waitTime),
     });
   }
 
@@ -2321,7 +2412,7 @@ export class FluentTester implements PromiseLike<void> {
     waitTime: number,
   ): Promise<void> {
     return expect(this.window.locator(selector)).toHaveCount(count, {
-      timeout: waitTime,
+      timeout: Constants.capWait(waitTime),
     });
   }
 
@@ -2336,7 +2427,7 @@ export class FluentTester implements PromiseLike<void> {
     return expect(this.window.locator(selector)).toHaveValue(
       new RegExp(text, 'i'),
       {
-        timeout: wTime,
+        timeout: Constants.capWait(wTime),
       },
     );
   }
@@ -2350,7 +2441,7 @@ export class FluentTester implements PromiseLike<void> {
     if (waitTime) wTime = waitTime;
 
     return expect(this.window.locator(selector)).toHaveValue(value, {
-      timeout: wTime,
+      timeout: Constants.capWait(wTime),
     });
   }
 
@@ -2361,7 +2452,7 @@ export class FluentTester implements PromiseLike<void> {
   ): Promise<void> {
     return expect(this.window.locator(selector)).toHaveText(
       FluentTester.toLooseTextMatcher(text),
-      { timeout: waitTime },
+      { timeout: Constants.capWait(waitTime) },
     );
   }
 
@@ -2679,15 +2770,32 @@ export class FluentTester implements PromiseLike<void> {
     // emits, the host handler never runs, and the DSL is saved empty.
     //
     // So we finish with a net-zero REAL edit that a human-equivalent input
-    // pipeline drives: re-CLICK the editor to place an actual caret (the
-    // textContent assignment cleared the selection — .focus() alone does NOT
-    // place a caret, so subsequent keystrokes wouldn't edit anything), jump to
+    // pipeline drives: place an actual caret in the editor (the textContent
+    // assignment cleared the selection — .focus() alone does NOT place a caret,
+    // so subsequent keystrokes wouldn't edit anything), jump to
     // End, type one space, then Backspace it. Each real keystroke goes through
     // Electron → Chrome → CodeJar's input listener → onUpdate with the TRUE
     // content, exactly like manual typing — for BOTH visible- and hidden-init
     // editors. Net content is unchanged. (Space+Backspace is safe for the
     // empty-content case too, unlike Tab which leaves a stray indent \t.)
-    await editor.click();
+    //
+    // The caret is placed without a pointer click: after a long script the editor's
+    // own line-number gutter (.codejar-linenumbers) overlays the contenteditable, so
+    // Playwright's click never lands ("subtree intercepts pointer events", retried
+    // until the test timeout). Focus plus a collapsed selection at the end of the
+    // content is a real caret, so the real keystrokes below still drive CodeJar's
+    // onUpdate.
+    await this.window.evaluate((sel) => {
+      const el = document.querySelector(`${sel} [contenteditable]`) as HTMLElement;
+      if (!el) throw new Error('CodeJar editor element not found: ' + sel);
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }, selector);
     await this.window.keyboard.press('End');
     await this.window.keyboard.type(' ');
     await this.window.keyboard.press('Backspace');
@@ -2894,12 +3002,12 @@ export class FluentTester implements PromiseLike<void> {
     if (isReadonly) {
       // Wait for readonly attribute to exist with any value
       return expect(locator).toHaveAttribute('readonly', '', {
-        timeout: waitTime,
+        timeout: Constants.capWait(waitTime),
       });
     } else {
       // Wait for readonly attribute to not exist
       return expect(locator).not.toHaveAttribute('readonly', {
-        timeout: waitTime,
+        timeout: Constants.capWait(waitTime),
       });
     }
   }
@@ -2912,11 +3020,11 @@ export class FluentTester implements PromiseLike<void> {
     //console.log(`waitTime: ${waitTime}`);
     if (visible)
       return expect(this.window.locator(`text=${text}`)).toHaveCount(1, {
-        timeout: waitTime,
+        timeout: Constants.capWait(waitTime),
       });
     else
       return expect(this.window.locator(`text=${text}`)).toHaveCount(0, {
-        timeout: waitTime,
+        timeout: Constants.capWait(waitTime),
       });
   }
 
@@ -2928,12 +3036,105 @@ export class FluentTester implements PromiseLike<void> {
     //console.log(`waitTime: ${waitTime}`);
     if (isEnabled)
       return expect(this.window.locator(selector)).toBeEnabled({
-        timeout: waitTime,
+        timeout: Constants.capWait(waitTime),
       });
     else
-      return expect(this.window.locator(selector)).toBeDisabled({
-        timeout: waitTime,
-      });
+      return this.doWaitOnStateNowOrSinceLastClick(
+        selector,
+        { disabled: true },
+        () => this.window.locator(selector).isDisabled({ timeout: 1_000 }),
+        waitTime,
+      );
+  }
+
+  /**
+   * A busy state — a button disabled, an icon spinning while a request runs — can begin and end between
+   * two polls on a fast machine, so waitOnElementToBecomeDisabled / waitOnElementToHaveClass missed it and
+   * failed although the app did exactly what the test expects (connections "Send Test Email" and "Test
+   * Connection", reporting.spec; plan §4 D2). Installs, once per page, a recorder of every element that was
+   * disabled or carried a class since the user's last click (a capture-phase click listener starts each
+   * observation window before the click's own handlers run).
+   */
+  private async doRecordBusyStates(): Promise<void> {
+    await this.window
+      .evaluate(() => {
+        const w = window as any;
+        if (w.__e2eBusyStates) return;
+        const seen = { disabled: new Set<Element>(), classes: new Map<Element, Set<string>>() };
+        w.__e2eBusyStates = seen;
+        document.addEventListener(
+          'click',
+          () => {
+            seen.disabled.clear();
+            seen.classes.clear();
+          },
+          true,
+        );
+        new MutationObserver((records) => {
+          for (const record of records) {
+            const element = record.target as Element;
+            if (record.attributeName === 'disabled') {
+              if (element.hasAttribute('disabled') || record.oldValue !== null) seen.disabled.add(element);
+            } else {
+              const tokens = seen.classes.get(element) ?? new Set<string>();
+              `${record.oldValue ?? ''} ${element.getAttribute('class') ?? ''}`
+                .split(/\s+/)
+                .filter(Boolean)
+                .forEach((token) => tokens.add(token));
+              seen.classes.set(element, tokens);
+            }
+          }
+        }).observe(document.documentElement, {
+          subtree: true,
+          attributes: true,
+          attributeOldValue: true,
+          attributeFilter: ['disabled', 'class'],
+        });
+      })
+      .catch(() => {});
+  }
+
+  /**
+   * Waits until `isNow` holds or the recorder of doRecordBusyStates saw the state on the element since
+   * the last click. A recorded state is used up by the wait it satisfies, so one busy cycle never answers
+   * two waits.
+   */
+  private async doWaitOnStateNowOrSinceLastClick(
+    selector: string,
+    state: { disabled: true } | { className: string },
+    isNow: () => Promise<boolean>,
+    waitTime: number,
+  ): Promise<void> {
+    const limit = Constants.capWait(waitTime) as number;
+    const began = Date.now();
+    const locator = this.window.locator(selector);
+    while (Date.now() - began < limit) {
+      if (await isNow().catch(() => false)) return;
+      const seenSinceLastClick = await locator
+        .evaluateAll((elements, wanted) => {
+          const seen = (window as any).__e2eBusyStates;
+          if (!seen) return false;
+          for (const element of elements) {
+            if ('disabled' in wanted) {
+              if (seen.disabled.delete(element)) return true;
+            } else {
+              const tokens: Set<string> | undefined = seen.classes.get(element);
+              const matching = [...(tokens ?? [])].filter((token) => new RegExp(wanted.className).test(token));
+              if (matching.length) {
+                matching.forEach((token) => tokens!.delete(token));
+                return true;
+              }
+            }
+          }
+          return false;
+        }, state)
+        .catch(() => false);
+      if (seenSinceLastClick) return;
+      await this.window.waitForTimeout(250);
+    }
+    throw new Error(
+      `${selector} did not become ${'disabled' in state ? 'disabled' : `"${state.className}"`} within ${limit} ms (checked its current state and every state since the last click).`,
+    );
   }
 
   private async doCheckElementToContainText(
@@ -3039,6 +3240,12 @@ export class FluentTester implements PromiseLike<void> {
         throw new Error(
           `File ${filePath} still not containing ${text} after waiting ${Constants.DELAY_FIVE_THOUSANDS_SECONDS} seconds`,
         );
+      // The check above divides by 1000 but compares with milliseconds, so it never fires in practice.
+      // With the Linux CI cap set (E2E_MAX_WAIT_MS) the wait gets a real limit; unset, nothing changes.
+      if (process.env.E2E_MAX_WAIT_MS && endTime - startTime > Constants.capWait(Constants.DELAY_FIVE_THOUSANDS_SECONDS))
+        throw new Error(
+          `File ${filePath} still not containing ${text} after waiting ${Constants.capWait(Constants.DELAY_FIVE_THOUSANDS_SECONDS)} ms`,
+        );
 
       if (content) found = content.includes(text);
       if (!found) await Helpers.delay(Constants.DELAY_ONE_SECOND);
@@ -3054,7 +3261,7 @@ export class FluentTester implements PromiseLike<void> {
     if (waitTime) wTime = waitTime;
 
     return expect(this.window.locator(selector)).toContainText(text, {
-      timeout: wTime,
+      timeout: Constants.capWait(wTime),
     });
   }
 
@@ -3104,12 +3311,15 @@ export class FluentTester implements PromiseLike<void> {
     const expression: RegExp = new RegExp(className);
 
     if (isPresent)
-      return expect(this.window.locator(selector)).toHaveClass(expression, {
-        timeout: wTime,
-      });
+      return this.doWaitOnStateNowOrSinceLastClick(
+        selector,
+        { className },
+        async () => expression.test((await this.window.locator(selector).getAttribute('class', { timeout: 1_000 })) ?? ''),
+        wTime,
+      );
     else
       return expect(this.window.locator(selector)).not.toHaveClass(expression, {
-        timeout: wTime,
+        timeout: Constants.capWait(wTime),
       });
   }
 
@@ -3194,23 +3404,37 @@ export class FluentTester implements PromiseLike<void> {
     // sizes, broadcast over WebSocket. Right after a failed command, the HTTP response comes
     // back before the next poll tick, so a one-shot count() check races the WebSocket update.
     // Use toHaveCount, which auto-retries until the condition holds (or timeout fires).
-    await expect(this.window.locator(selector)).toHaveCount(1, {
-      timeout: Constants.DELAY_TEN_SECONDS,
-    });
+    try {
+      await expect(this.window.locator(selector)).toHaveCount(1, {
+        timeout: Constants.DELAY_TEN_SECONDS,
+      });
+    } catch (notThatStatus) {
+      // Only the missing green button hides a reason worth digging for: it is absent precisely because one of
+      // the two log files has something in it, and that something is the answer. (A missing #btnErrors or
+      // #btnWarnings means the app is fine, which the caller's own message already conveys.) The late arrival
+      // is the case to expect here — a request still in flight when the previous test ended fails seconds
+      // later and turns the bar red in the middle of this one, long after the clean state emptied the files.
+      if (status !== Constants.STATUS_GREAT_NO_ERRORS_NO_WARNINGS) throw notThatStatus;
+
+      const complaints = await Helpers.readAppLogComplaints();
+      // Nothing in either file: then this is something else and the original error is the better one.
+      if (!complaints) throw notThatStatus;
+
+      throw new Error(
+        'The app status bar is not green: it is reporting errors or warnings. What the app logged:\n\n' +
+          complaints,
+      );
+    }
   }
 
   private async doWaitOnProcessingToStart(howToCheck: string): Promise<void> {
     if (howToCheck === Constants.CHECK_PROCESSING_JAVA) {
-      await this.doWaitOnElementToBecomeVisible(
-        '.java-started',
-        Constants.DELAY_FIVE_THOUSANDS_SECONDS,
+      await this.doWaitOnJobToStart(
+        () => this.window.locator('.java-started').first().isVisible().catch(() => false),
+        'the ".java-started" message',
       );
     } else if (howToCheck === Constants.CHECK_PROCESSING_STATUS_BAR) {
-      await this.doWaitOnElementToContainText(
-        '#workingOn',
-        'Working on',
-        Constants.DELAY_FIVE_THOUSANDS_SECONDS,
-      );
+      await this.doWaitOnWorkingOnOrJustStartedJob();
     } else {
       await this.doWaitOnFileToContainText(
         path.resolve(
@@ -3223,7 +3447,150 @@ export class FluentTester implements PromiseLike<void> {
     }
   }
 
+  /**
+   * "Working on" shows in the status bar only while a job runs. Jobs run in-process
+   * since the REST refactor, and on a fast machine a short one (a licence call, a
+   * small burst) starts and finishes between two polls, so the text is never seen and
+   * the wait ran into its 5000 s timeout. The wait therefore also accepts the job's own
+   * "Program Started" line in info.log, written at most 15 seconds before this wait
+   * began — i.e. by the job the preceding click started, not by an older one.
+   */
+  private async doWaitOnWorkingOnOrJustStartedJob(): Promise<void> {
+    const waitBegan = Date.now();
+    const infoLog = path.resolve(
+      slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.LOGS_PATH}/info.log`),
+    );
+    // log4j2 LOG_PATTERN: %d{dd/MM/yyyy HH:mm:ss} %p - %m
+    const startedLine = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2}) \S+ - .*Program Started/;
+
+    await this.doWaitOnJobToStart(async () => {
+      const lines = (jetpack.read(infoLog) || '').split(/\r?\n/);
+      const workingOn = await this.textContentNow('#workingOn');
+      if (workingOn && workingOn.includes('Working on')) {
+        this.jobStartedAtInfoLogLine = lines.map((line) => startedLine.test(line)).lastIndexOf(true);
+        return true;
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const m = startedLine.exec(lines[i]);
+        if (!m) continue;
+        const loggedAt = new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +m[6]).getTime();
+        if (loggedAt >= waitBegan - 15_000) {
+          this.jobStartedAtInfoLogLine = i;
+          return true;
+        }
+      }
+      return false;
+    }, '"Working on" in the status bar or a new "Program Started" in info.log');
+  }
+
+  /**
+   * The info.log line of the "Program Started" that doWaitOnWorkingOnOrJustStartedJob accepted, so the
+   * finish wait can tell this job's "Execution Ended" from an older one. Used up by the finish wait.
+   */
+  private jobStartedAtInfoLogLine?: number;
+
+  /**
+   * Whether info.log has an "Execution Ended" after the job's "Program Started" line (every job logs both). Without a
+   * recorded start line there is nothing to compare with, and the status bar alone decides, as before.
+   */
+  private jobHasEndedInInfoLog(infoLog: string): boolean {
+    if (this.jobStartedAtInfoLogLine === undefined) return true;
+    const lines = (jetpack.read(infoLog) || '').split(/\r?\n/);
+    const after = this.jobStartedAtInfoLogLine < lines.length ? this.jobStartedAtInfoLogLine + 1 : 0;
+    return lines.slice(after).some((line) => line.includes('Execution Ended'));
+  }
+
+  /**
+   * Waits until `isStarted` holds, and — with E2E_FAILFAST=1 (Linux CI, plan §4 D0) —
+   * stops waiting as soon as the app has already answered that no job will start:
+   *  - an information or confirmation dialog stays open (e.g. "Log files are not empty. You need to
+   *    press the Clear Logs button first."): the click that should have started the job did not;
+   *  - no sign of a started job within E2E_START_EVIDENCE_MS (0 = no such limit).
+   * The overall limit is the (capped) five-thousand-seconds delay, as before.
+   */
+  private async doWaitOnJobToStart(
+    isStarted: () => Promise<boolean>,
+    what: string,
+  ): Promise<void> {
+    const waitBegan = Date.now();
+    const limit = Constants.capWait(Constants.DELAY_FIVE_THOUSANDS_SECONDS) as number;
+    const failFast = process.env.E2E_FAILFAST === '1';
+    const evidenceLimit = Number(process.env.E2E_START_EVIDENCE_MS) || 0;
+    let dialogOpenSince = 0;
+
+    while (Date.now() - waitBegan < limit) {
+      if (await isStarted()) return;
+
+      if (failFast) {
+        const dialogText = await this.openDialogText();
+        if (dialogText !== null) {
+          if (!dialogOpenSince) dialogOpenSince = Date.now();
+          if (Date.now() - dialogOpenSince >= 5_000) {
+            throw new Error(
+              `Fail fast: waiting for ${what}, but a dialog is open instead: "${dialogText}". ${await this.appStateForErrorMessage()}`,
+            );
+          }
+        } else {
+          dialogOpenSince = 0;
+        }
+
+        if (evidenceLimit > 0 && Date.now() - waitBegan >= evidenceLimit) {
+          throw new Error(
+            `Fail fast: no sign of a started job (${what}) within ${evidenceLimit} ms. ${await this.appStateForErrorMessage()}`,
+          );
+        }
+      }
+      await this.window.waitForTimeout(500);
+    }
+    throw new Error(
+      `Processing did not start within ${limit} ms (waited for ${what}). ${await this.appStateForErrorMessage()}`,
+    );
+  }
+
+  /**
+   * The element's text as it is right now, or null when the element is not on the page. For polling
+   * loops: locator.textContent() waits for the element to appear, so a poll for "#workingOn" after a job
+   * that already finished (or for "#noJobsRunning" while a job runs) blocked until the test timeout.
+   */
+  private async textContentNow(selector: string): Promise<string | null> {
+    const element = this.window.locator(selector).first();
+    if ((await element.count().catch(() => 0)) === 0) return null;
+    return element.textContent({ timeout: 1_000 }).catch(() => null);
+  }
+
+  /** The text of an open information or confirmation dialog, or null when none is open. */
+  private async openDialogText(): Promise<string | null> {
+    const dialogs: Array<[string, string]> = [
+      ['dburst-info-dialog', '#btnInfoDialogOK'],
+      ['dburst-confirm-dialog', '#btnConfirmDialogYes'],
+    ];
+    for (const [dialog, button] of dialogs) {
+      if (await this.window.locator(button).first().isVisible().catch(() => false)) {
+        return (
+          (await this.textContentNow(dialog)) || ''
+        ).replace(/\s+/g, ' ').trim();
+      }
+    }
+    return null;
+  }
+
+  /** Status bar text and the last lines of errors.log — what a failure message needs to be understood. */
+  private async appStateForErrorMessage(): Promise<string> {
+    const statusBar = (
+      (await this.textContentNow('#workingOn, #noJobsRunning')) || ''
+    ).replace(/\s+/g, ' ').trim();
+    const errorsLog = path.resolve(
+      slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.LOGS_PATH}/errors.log`),
+    );
+    const lastErrors = (jetpack.read(errorsLog) || '').trim().split(/\r?\n/).slice(-5).join(' | ');
+    return `Status bar: "${statusBar}". errors.log: ${lastErrors || '(empty)'}`;
+  }
+
   private async doWaitOnProcessingToFinish(howToCheck: string): Promise<void> {
+    if (process.env.E2E_FAILFAST === '1' && Number(process.env.E2E_STALL_MS) > 0) {
+      return this.doWaitOnJobToFinishOrStall(howToCheck);
+    }
     if (howToCheck === Constants.CHECK_PROCESSING_JAVA) {
       await this.doWaitOnElementToBecomeVisible(
         '.java-exited',
@@ -3245,6 +3612,64 @@ export class FluentTester implements PromiseLike<void> {
         'Execution Ended',
       );
     }
+  }
+
+  /**
+   * With E2E_FAILFAST=1 and E2E_STALL_MS (Linux CI, plan §4 D0): waits for the job to
+   * finish exactly like doWaitOnProcessingToFinish's three checks, but gives up as soon as the job has
+   * stopped doing anything — info.log and the output/ folder unchanged for E2E_STALL_MS — instead of
+   * sitting out the full timeout.
+   */
+  private async doWaitOnJobToFinishOrStall(howToCheck: string): Promise<void> {
+    const portableDir = process.env.PORTABLE_EXECUTABLE_DIR;
+    const infoLog = path.resolve(slash(`${portableDir}/${PATHS.LOGS_PATH}/info.log`));
+    const outputDir = path.resolve(slash(`${portableDir}/output`));
+    const stallMs = Number(process.env.E2E_STALL_MS);
+    const limit = Constants.capWait(Constants.DELAY_FIVE_THOUSANDS_SECONDS) as number;
+
+    const isFinished = async (): Promise<boolean> => {
+      if (howToCheck === Constants.CHECK_PROCESSING_JAVA)
+        return this.window.locator('.java-exited').first().isVisible().catch(() => false);
+      // Right after a job starts, the status bar can still say "No jobs are currently running" (the job has not
+      // reached it yet) — so this job's "Execution Ended" must be in info.log too (processing-qa generate-email tests
+      // checked the output while the third document was still being written).
+      if (howToCheck === Constants.CHECK_PROCESSING_STATUS_BAR)
+        return (
+          ((await this.textContentNow('#noJobsRunning')) || '').includes('No jobs are currently') &&
+          this.jobHasEndedInInfoLog(infoLog)
+        );
+      return (jetpack.read(infoLog) || '').includes('Execution Ended');
+    };
+    // changes whenever the job logs a line or writes/grows an output file
+    const activity = (): string => {
+      const log = jetpack.inspect(infoLog, { times: true });
+      const output = jetpack.inspectTree(outputDir);
+      return `${log ? `${log.size}:${log.modifyTime}` : '-'}|${output ? output.size : '-'}`;
+    };
+
+    const began = Date.now();
+    let lastActivity = began;
+    let lastSeen = activity();
+    while (Date.now() - began < limit) {
+      if (await isFinished()) {
+        this.jobStartedAtInfoLogLine = undefined;
+        return;
+      }
+      const now = activity();
+      if (now !== lastSeen) {
+        lastSeen = now;
+        lastActivity = Date.now();
+      } else if (Date.now() - lastActivity >= stallMs) {
+        const lastLines = (jetpack.read(infoLog) || '').trim().split(/\r?\n/).slice(-5).join(' | ');
+        throw new Error(
+          `Fail fast: the job looks stalled — info.log and output/ unchanged for ${stallMs} ms. info.log: ${lastLines || '(empty)'}. ${await this.appStateForErrorMessage()}`,
+        );
+      }
+      await this.window.waitForTimeout(2_000);
+    }
+    throw new Error(
+      `Processing did not finish within ${limit} ms. ${await this.appStateForErrorMessage()}`,
+    );
   }
 
   private async doGotoProcessingMergeBurstScreen(): Promise<void> {
@@ -3274,12 +3699,43 @@ export class FluentTester implements PromiseLike<void> {
 
     await this.doAppShouldBeReadyToRunNewJobs();
 
-    await this.doWaitOnElementToBecomeVisible(
-      '#btnGreatNoErrorsNoWarnings',
-      Constants.DELAY_FIVE_THOUSANDS_SECONDS,
-    );
+    await this.doWaitOnAppToReportNoErrorsNoWarnings();
 
     await this.doCheckAppStatus(Constants.STATUS_GREAT_NO_ERRORS_NO_WARNINGS);
+  }
+
+  /**
+   * Waits for the status bar to report a clean app before a test starts — and when it will not, says why.
+   *
+   * The bar renders exactly one of #btnGreatNoErrorsNoWarnings, #btnWarnings and #btnErrors, chosen by the
+   * sizes of warnings.log and errors.log (status-bar.template.html). So this is not a wait that a slow app
+   * eventually satisfies: while either file has content the green button does not exist, and nothing empties
+   * those files in the middle of a test. Asking for it with a 5 000 s timeout, as this used to, only made sure
+   * the test timeout got there first and the failure read "expected visible, received hidden" — the symptom,
+   * while the app had already written the reason into the very file the bar was reporting on. F2 run 3 lost
+   * analytics-olap TEST 4 and TEST 5 exactly that way, 180 s each, and neither said anything.
+   *
+   * The wait itself stays, because the sizes reach the bar over the stats websocket and the clean-state
+   * restore has only just truncated the files. What changes is the ending: once the bar has settled on a
+   * non-green state, read those files and fail with what they say.
+   */
+  private async doWaitOnAppToReportNoErrorsNoWarnings(): Promise<void> {
+    try {
+      await expect(this.window.locator('#btnGreatNoErrorsNoWarnings')).toBeVisible({
+        timeout: Constants.capWait(Constants.DELAY_SIXTY_SECONDS),
+      });
+      return;
+    } catch (notGreen) {
+      const complaints = await Helpers.readAppLogComplaints();
+      // Nothing in either file: then this is not the case above and the original error is the better one.
+      if (!complaints) throw notGreen;
+
+      throw new Error(
+        'The app is not ready for a test to start: its status bar is reporting errors or warnings, so ' +
+          '#btnGreatNoErrorsNoWarnings cannot render at all. What the app logged:\n\n' +
+          complaints,
+      );
+    }
   }
 
   private async doGoToBurstScreen(): Promise<void> {
@@ -3288,7 +3744,10 @@ export class FluentTester implements PromiseLike<void> {
     await this.doClick('#topMenuBurst');
     await this.doEnsureSidebarOpen();
 
-    //await this.doClick('#tab-btn-burstTab');
+    // The Burst link targets the route the screen may already be on, and then Angular keeps the
+    // component and whichever sub-tab was active. On the web the page is shared by every test of a
+    // worker, so a previous test's License or Logging tab would still be showing (plan §6 F2r CAT-7).
+    await this.doClick('#tab-btn-burstTab');
   }
 
   private async doGotoProcessingQualityAssuranceScreen(): Promise<void> {

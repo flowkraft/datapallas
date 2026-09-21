@@ -998,6 +998,10 @@ export class ProcessingComponent implements OnInit {
     this.processingService.procQualityAssuranceInfo.inputFile = target.files[0];
     this.processingService.procQualityAssuranceInfo.inputFileName =
       this.processingService.procQualityAssuranceInfo.inputFile.name;
+    // A file picked here is a file to burst, like onBurstFileSelected - drop what a previously selected
+    // report armed, or the test would run generate for that report instead of bursting this file.
+    this.processingService.procQualityAssuranceInfo.reportName = '';
+    this.processingService.procQualityAssuranceInfo.whichAction = 'burst';
   }
 
   doRunTest() {

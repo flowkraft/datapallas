@@ -1,4 +1,5 @@
 import { test } from '@playwright/test';
+import { Helpers } from '../../utils/helpers';
 import { electronBeforeAfterAllTest } from '../../utils/common-setup';
 import { FluentTester } from '../../helpers/fluent-tester';
 import { ConfigurationTestHelper } from '../../helpers/areas/configuration-test-helper';
@@ -239,7 +240,7 @@ test.describe('', async () => {
 
       // When no user-created DB connection exists yet, the first one is
       // automatically made the default — skip makeConnectionAsDefault in that case.
-      const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database');
+      const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database', { headers: Helpers.apiKeyHeader() });
       const dbConns: Array<{ fileName: string; isSample?: boolean }> = await dbConnsResp.json();
       const hasUserDbConn = dbConns.some(c => !c.isSample);
 

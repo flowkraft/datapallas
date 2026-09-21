@@ -67,13 +67,18 @@ export class PivotApiClient {
    *
    * @param request The pivot configuration
    * @param requestId Optional ID for request cancellation
+   * @param embedToken Optional embed token of the host page, for a DataPallas Server
    * @returns Promise<ServerPivotResponse>
    */
   async executePivot(
     request: ServerPivotRequest,
-    requestId?: string
+    requestId?: string,
+    embedToken?: string
   ): Promise<ServerPivotResponse> {
-    const url = `${this.baseUrl}/pivot`;
+    // The report also rides in the URL: that is where the server checks an embed token against it.
+    const url = request.reportId
+      ? `${this.baseUrl}/pivot?reportId=${encodeURIComponent(request.reportId)}`
+      : `${this.baseUrl}/pivot`;
 
     // Create abort controller for this request
     const abortController = new AbortController();
@@ -88,6 +93,7 @@ export class PivotApiClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(embedToken ? { 'X-Embed-Token': embedToken } : {}),
         },
         body: JSON.stringify(request),
         signal: abortController.signal,

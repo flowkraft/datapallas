@@ -49,7 +49,10 @@ public class JobManConfiguration {
 		// Constants.ALLOWED_ORIGIN_PATTERNS for why a wildcard is not an option here.
 		config.setAllowCredentials(true);
 		config.setAllowedOriginPatterns(Constants.ALLOWED_ORIGIN_PATTERNS);
-		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		// Every method the UI's ApiService sends. PATCH is how a running job is paused and resumed
+		// (PATCH /api/jobs/{id}); without it the browser's request is refused with 403 "Invalid CORS
+		// request" before it reaches JobsController, and Pause/Resume silently do nothing.
+		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		// Headers stay open deliberately. CORS allowed-headers only constrains what a BROWSER will
 		// send cross-origin — it protects nothing on the server, since any non-browser client sends
 		// whatever it likes. The controls that actually matter here are the origin list above,

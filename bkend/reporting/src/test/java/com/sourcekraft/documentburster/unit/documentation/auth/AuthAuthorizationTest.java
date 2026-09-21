@@ -113,6 +113,25 @@ public class AuthAuthorizationTest {
 		assertEquals(Paths.get(inside).toString(), Utils.resolveWithinPortableDir(inside));
 	}
 
+	/**
+	 * The reports list gives the UI installation-relative paths with a leading slash and the UI
+	 * sends them back (GET /api/reports/load-by-path). Off Windows such a path looks absolute; it
+	 * must still resolve inside the installation — before, Settings fell back to
+	 * config/burst/settings.xml and the next save overwrote the report with those values.
+	 * A real absolute path is still returned as-is.
+	 */
+	@Test
+	public void leadingSlashInstallationPathResolvesInsideTheInstallation() throws Exception {
+
+		FileUtils.write(new File(root, "config/reports/some-report/settings.xml"), "<documentburster/>", "UTF-8");
+
+		assertEquals(Paths.get(root.getAbsolutePath(), "config/reports/some-report/settings.xml").toString(),
+				Utils.resolvePathAgainstPortableDir("/config/reports/some-report/settings.xml"));
+
+		String absolute = new File(root, "config/reports/some-report/settings.xml").getAbsolutePath();
+		assertEquals(absolute, Utils.resolvePathAgainstPortableDir(absolute));
+	}
+
 	/** Forward and backslashes are both accepted — the frontend sends whatever Windows gave it. */
 	@Test
 	public void windowsSeparatorsAreAccepted() {

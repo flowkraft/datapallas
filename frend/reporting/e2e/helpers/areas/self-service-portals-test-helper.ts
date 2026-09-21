@@ -1,12 +1,13 @@
-import { Browser, BrowserContext, Page, chromium } from '@playwright/test';
+import { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { FluentTester } from '../fluent-tester';
 import { AppsTestHelper } from '../apps-test-helper';
 import { Constants } from '../../utils/constants';
+import { Helpers } from '../../utils/helpers';
 import { DockerTestHelper } from '../docker-test-helper';
 
-import { spawnSync } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * Helper class for Self-Service Portals E2E tests.
@@ -44,6 +45,16 @@ export class SelfServicePortalsTestHelper {
     return employeeName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   }
 
+  /**
+   * The folder an app's compose project lives in. It may legitimately NOT hold a compose file: the
+   * custom portals under _apps/flowkraft/xx-custom/_examples/<id> ship only _custom/ and have their
+   * compose file scaffolded at start time, so a start that failed leaves nothing to tear down.
+   * DockerTestHelper.composeDown() handles that case - see the note there before changing this.
+   */
+  private static appDir(stack: string): string {
+    return path.join(process.env.PORTABLE_EXECUTABLE_DIR as string, '_apps', stack);
+  }
+
   static dockerComposeDownRmi(stack: string): void {
     // Dev-iteration escape hatch: E2E_KEEP_DATA=1 → `down` only (keep named volumes + built
     // image), so the Ollama embedding model (~670MB), provisioned agents, and Matrix registration
@@ -51,12 +62,26 @@ export class SelfServicePortalsTestHelper {
     // (the default, and CI) → the full nuclear `down -v --rmi local` wipe for clean isolation.
     const kd = process.env.E2E_KEEP_DATA;
     const keepData = !!kd && kd !== '0' && kd.toLowerCase() !== 'false';
-    const args = keepData ? ['compose', 'down'] : ['compose', 'down', '-v', '--rmi', 'local'];
+    const args = keepData ? ['down'] : ['down', '-v', '--rmi', 'local'];
     if (keepData) console.log(`[teardown] E2E_KEEP_DATA set → keeping volumes + image for ${stack} (docker compose down)`);
-    spawnSync('docker', args, {
-      cwd: `${path.join(process.env.PORTABLE_EXECUTABLE_DIR)}/_apps/${stack}`,
-      shell: true,
-    });
+    DockerTestHelper.composeDown(SelfServicePortalsTestHelper.appDir(stack), args);
+  }
+
+  /**
+   * The custom billing portals (and their cron backend) share one SQLite database in the bind-mounted
+   * `_apps/flowkraft/xx-custom/_examples/_shared-db` folder. `docker compose down -v` removes named volumes
+   * only, and custom:clean-testground keeps testground/e2e/_apps, so without this a test inherits the
+   * invoices - and the paid/unpaid state - of the tests before it. Removing the database files gives the
+   * next start an empty database, seeded afresh: for this folder, what `down -v` does for named volumes.
+   * E2E_KEEP_DATA keeps it, as it keeps the volumes in dockerComposeDownRmi.
+   */
+  static removeCustomPortalsSharedDatabase(): void {
+    const kd = process.env.E2E_KEEP_DATA;
+    if (!!kd && kd !== '0' && kd.toLowerCase() !== 'false') return;
+    const sharedDb = path.resolve(process.env.PORTABLE_EXECUTABLE_DIR, '_apps/flowkraft/xx-custom/_examples/_shared-db');
+    if (!fs.existsSync(sharedDb)) return;
+    for (const file of fs.readdirSync(sharedDb))
+      if (file.endsWith('.db') || file.includes('.db-')) fs.rmSync(path.join(sharedDb, file), { force: true });
   }
 
   /**
@@ -66,10 +91,7 @@ export class SelfServicePortalsTestHelper {
    * @param stack relative path under _apps (e.g. 'flowkraft/grails-playground').
    */
   static dockerComposeDownKeepImage(stack: string): void {
-    spawnSync('docker', ['compose', 'down', '-v'], {
-      cwd: `${path.join(process.env.PORTABLE_EXECUTABLE_DIR)}/_apps/${stack}`,
-      shell: true,
-    });
+    DockerTestHelper.composeDown(SelfServicePortalsTestHelper.appDir(stack), ['down', '-v']);
   }
 
   /**
@@ -96,7 +118,7 @@ export class SelfServicePortalsTestHelper {
 
     ft.actions.push(async (): Promise<void> => {
       const stateEl = ft.window.locator(stateSel);
-      await stateEl.waitFor({ state: 'visible', timeout });
+      await stateEl.waitFor({ state: 'visible', timeout: Constants.capWait(timeout) });
       let text = ((await stateEl.textContent()) || '').toLowerCase();
 
       // If a transition is already in progress, wait for it to resolve before acting.
@@ -129,7 +151,7 @@ export class SelfServicePortalsTestHelper {
           return !!el && (el.textContent || '').toLowerCase().includes('stopped');
         },
         stateSel,
-        { timeout },
+        { timeout: Constants.capWait(timeout) },
       );
       await ft.window.waitForTimeout(2_000);
       console.log(`[startApp] app '${appId}' stopped — proceeding to start`);
@@ -182,9 +204,20 @@ export class SelfServicePortalsTestHelper {
     // that fire on the heavier playground pages (Demo Pivot's 15-pivot grid,
     // Warehouse OLAP). System Edge has the fixes; tests rendering lighter pages
     // already pass with the bundled Chromium, so this change is downside-free.
-    const browser = await chromium.launch({ headless, args: launchArgs, channel: 'msedge' });
+    // Where there is no Edge, E2E_CHROMIUM_EXECUTABLE names the browser (the Linux CI's Chrome for
+    // Testing 138, the Chromium inside Electron 37): the regressions above showed there as an empty
+    // Demo Pivot [DuckDB] (grand total 0) while the server had already sent the rows.
+    const browser = await Helpers.launchChromium({ headless, args: launchArgs });
     const context = await browser.newContext(contextOptions);
     const page = await context.newPage();
+    // The portal pages run in their own browser: without this their errors are invisible in the run log
+    page.on('pageerror', (error) => console.error(`[EXTERNAL pageerror] ${error.message}`));
+    page.on('requestfailed', (request) =>
+      console.error(`[EXTERNAL requestfailed] ${request.method()} ${request.url()} — ${request.failure()?.errorText}`),
+    );
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') console.error(`[EXTERNAL console error] ${msg.text()}`.slice(0, 300));
+    });
     return { browser, context, page };
   }
 
@@ -871,6 +904,10 @@ export class SelfServicePortalsTestHelper {
    * @param engine - 'browser' (default, PivotTable.js) or 'duckdb' (server-side)
    */
   static async setPivotEngine(page: Page, componentId: string, engine: 'browser' | 'duckdb' | 'clickhouse'): Promise<void> {
+    // Let the component finish its first load first: changing "engine" while its own config request is
+    // still in flight aborts that request (net::ERR_ABORTED) and it never recovers — the table then stays
+    // empty for the rest of the test (analytics-olap "Demo Pivot [DuckDB]", grand total 0; plan §4 D5).
+    await SelfServicePortalsTestHelper.waitForPivotTableRender(page, componentId);
     console.log(`Setting pivot engine to '${engine}' for #${componentId}...`);
     await page.evaluate(({ id, eng }) => {
       const component = document.getElementById(id) as any;
@@ -1016,8 +1053,62 @@ export class SelfServicePortalsTestHelper {
 
     const numericValue = totalText?.replace(/[^0-9.-]/g, '') || '0';
     const result = parseFloat(numericValue);
+
+    // A server-side engine renders the empty table first (grand total 0) and fills it when the data
+    // arrives — the same two phases the previousValue branch above waits out. Reading once caught the
+    // empty phase (analytics-olap TEST 2 [DuckDB] read 0; plan §4 D5), so wait for a real value.
+    if (result === 0) {
+      console.log('[getPivotGrandTotal] Grand total is still 0 — waiting for the data to arrive...');
+      for (let attempt = 1; attempt <= 15; attempt++) {
+        await page.waitForTimeout(1000);
+        const retried = await SelfServicePortalsTestHelper.readPivotGrandTotal(page, componentId);
+        if (retried > 0) {
+          console.log(`[getPivotGrandTotal] Grand total arrived after ${attempt} s: ${retried}`);
+          return retried;
+        }
+      }
+      console.error('[getPivotGrandTotal] Grand total stayed 0 for 15 s');
+      // What the component shows instead — an error, a spinner or an empty table tells the difference
+      const shown = await page.evaluate(
+        ({ id }) => {
+          const component = document.getElementById(id);
+          if (!component) return 'component not found';
+          const root: any = component.shadowRoot || component;
+          const text = (sel: string) =>
+            ((root.querySelector(sel) as HTMLElement)?.innerText || '(none)').replace(/\s+/g, ' ').slice(0, 200);
+          return [
+            `rows: ${text('.pvtRows')}`,
+            `cols: ${text('.pvtCols')}`,
+            `unused: ${text('.pvtUnused')}`,
+            `aggregator: ${text('.pvtAggregator')}`,
+            `table: ${text('.pvtTable')}`,
+            `attrs: ${Array.from(component.attributes).map((a: any) => `${a.name}=${a.value}`).join(' ')}`,
+          ].join(' | ');
+        },
+        { id: componentId }
+      );
+      console.error(`[getPivotGrandTotal] #${componentId} shows: ${shown}`);
+    }
+
     console.log(`[getPivotGrandTotal] Final result: ${result}`);
     return result;
+  }
+
+  /** The grand total as it is right now, without waiting — the retry loops above read through this. */
+  private static async readPivotGrandTotal(page: Page, componentId: string): Promise<number> {
+    const totalText = await page.evaluate(
+      ({ id }) => {
+        const component = document.getElementById(id);
+        if (!component) return '0';
+        const root = component.shadowRoot || component;
+        const table = root.querySelector('.pvtTable');
+        if (!table) return '0';
+        const grandTotalCell = table.querySelector('.pvtGrandTotal') as HTMLElement;
+        return grandTotalCell?.textContent?.trim() || '0';
+      },
+      { id: componentId }
+    );
+    return parseFloat(totalText?.replace(/[^0-9.-]/g, '') || '0');
   }
 
   /**

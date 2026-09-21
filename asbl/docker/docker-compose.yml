@@ -34,6 +34,9 @@ services:
       - "${SERVER_PORT:-9090}:9090"
     environment:
       - SERVER_PORT=9090
+      # Optional: where this bundle lives on the host. The server works this out on its own, from the
+      # mounts of its own container, so set it only if you mount the bundle in some other way.
+      # - DATAPALLAS_HOST_DIR=/path/to/this/folder/on/the/host
       # Optional: Set a specific API key (otherwise auto-generated)
       # - API_KEY=your-secret-api-key-here
     # Enable host.docker.internal on Linux (already available on Docker Desktop for Windows/Mac)
@@ -57,6 +60,9 @@ services:
       - ./scripts:/app/scripts
       - ./temp:/app/temp
       - ./templates:/app/templates
+      # The JasperReports 6 renderer's extra JDBC drivers. Only this one folder of tools/ is mounted:
+      # ./tools:/app/tools would hide the program files the image ships there (plan §3 O19).
+      - ./tools/jasper-legacy/lib:/app/tools/jasper-legacy/lib
     restart: unless-stopped
     #healthcheck:
     #  test: ["CMD", "curl", "-f", "http://localhost:9090/api/jobman/system/version"]
@@ -72,3 +78,11 @@ services:
       - "1025:1025"   # SMTP
       - "8025:8025"   # Web UI
     restart: unless-stopped
+
+# One network for everything DataPallas runs, so the server reaches a database or a tool by its container
+# name instead of going out to the host and back in through a published port - which any host firewall may
+# block (plan §4 F2n). The name is fixed but the network is not 'external': compose creates it when it is
+# missing, so this file still works on its own (desktop, or a Server on the host JVM).
+networks:
+  default:
+    name: datapallas

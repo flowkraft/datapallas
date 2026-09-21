@@ -179,8 +179,11 @@ That same rewrite is what reaches a database **DataPallas started for you**
 (`datapallas.bat system service database start northwind postgresql 5432`),
 because those publish their port on the host like any other local database.
 
-Drivers for PostgreSQL, MySQL, MariaDB, SQL Server and H2 are in the image, at
-the versions DataPallas itself ships. Oracle and DB2 cannot be redistributed —
+Drivers for PostgreSQL, MySQL, MariaDB, SQL Server, H2 and SQLite are in the
+image, at the versions DataPallas itself ships. A SQLite connection is a file, so
+the service mounts DataPallas's `db/` folder (read-only, at `/work/db`) and
+DataPallas translates the connection's path for it: keep SQLite databases used by
+classic reports under `db/`, like the sample Northwind database. Oracle and DB2 cannot be redistributed —
 put those driver jars in [`lib/`](lib/README.md) and they are picked up
 automatically.
 
@@ -281,8 +284,9 @@ the same shape.
 
 `reportDir` is a path **inside the container**. The service mounts one reports
 folder at `/work/report` — by default `config/reports-jasper-legacy`, or set
-`JASPER_LEGACY_REPORTS` to point somewhere else before starting it. Set
-`JASPER_LEGACY_PORT` if 9095 is taken.
+`JASPER_LEGACY_REPORTS` to point somewhere else before starting it. DataPallas's
+`db/` folder is mounted at `/work/db` for SQLite connections (`JASPER_LEGACY_DB` to
+override). Set `JASPER_LEGACY_PORT` if 9095 is taken.
 
 ```bash
 shutJasperLegacyServer.bat       # stops it; jr.bat keeps working without it

@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,7 +20,6 @@ import org.springframework.security.authorization.AuthenticatedAuthorizationMana
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -29,24 +27,26 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import com.flowkraft.embed.EmbedTokenAuthorizationManager;
 import com.flowkraft.embed.EmbedTokenService;
 import com.flowkraft.embed.ShareTokenService;
-import com.flowkraft.iam.DeploymentMode;
-import com.flowkraft.iam.IamService;
 import com.flowkraft.iam.IamUserDetailsService;
 import com.flowkraft.iam.federation.FederatedLoginConfig;
 import com.flowkraft.iam.federation.FederatedLoginCustomizer;
 
 /**
- * The one filter chain, shaped by {@code RB_ROLE}.
+ * The one filter chain, the same in every deployment.
  *
- * <h2>The three shapes</h2>
- * <ul>
- *   <li><b>{@code standalone}</b> (default, and what Electron always runs) — the loopback caller is
- *       authenticated automatically as the DEFAULT administrator. No login endpoint is ever hit, no
- *       credential exists, and the frontend renders no authentication UI. A desktop user cannot tell
- *       that any of this is here.</li>
- *   <li><b>{@code tenant}</b> / <b>{@code gateway}</b> — real authentication: a session for browsers,
- *       an API token for machines, and {@code @PreAuthorize} on everything that matters.</li>
- * </ul>
+ * <h2>There is only one shape</h2>
+ * Desktop, Server on a JDK, Server in Docker, Windows and Linux all run this chain unchanged: a
+ * session for browsers, {@code X-API-Key} for machines, and {@code @PreAuthorize} on everything that
+ * matters. Nothing here asks which deployment it is in, because the answer never changed what is
+ * enforced — only who happens to be calling, and that is a credential, not a configuration.
+ *
+ * <p>The desktop still feels login-free, and that is a property of the SHELL rather than of this
+ * chain: DataPallas.exe holds the installation's API key and signs its own requests with it, so it
+ * arrives already authenticated. A caller who does not hold it is refused here, on the desktop
+ * exactly as on a server — which is what makes it safe for one folder to be both.
+ *
+ * <p>{@code DataPallas.security.enabled} can switch the whole chain off; it defaults to true and is
+ * meant for a developer running against a throwaway store, never for anything reachable.
  *
  * <h2>Why authorization is at the method level</h2>
  * {@code @EnableMethodSecurity} plus {@code @PreAuthorize} on the controllers, rather than a long list
@@ -70,9 +70,6 @@ public class SecurityConfig {
 	private ApiKeyManager apiKeyManager;
 
 	@Autowired
-	private IamService iamService;
-
-	@Autowired
 	private IamUserDetailsService userDetailsService;
 
 	@Autowired
@@ -87,14 +84,6 @@ public class SecurityConfig {
 	 */
 	@Value("${DataPallas.security.enabled:true}")
 	private boolean securityEnabled;
-
-	/**
-	 * Narrows desktop mode to loopback callers. Off by default because DataPallas starts its own
-	 * Docker containers (AI Hub, Grails/WordPress portals) which call back across the Docker bridge
-	 * and would all be refused — see {@link StandaloneLoopbackAuthenticationFilter}.
-	 */
-	@Value("${DataPallas.security.standalone.loopback-only:false}")
-	private boolean standaloneLoopbackOnly;
 
 	/** Declared in {@link PasswordEncoderConfig}, not here — see that class for why it must stay there. */
 	@Autowired
@@ -155,8 +144,6 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http,
 			@Autowired(required = false) List<FederatedLoginCustomizer> federatedLogins) throws Exception {
 
-		DeploymentMode mode = iamService.getMode();
-
 		if (!securityEnabled) {
 			http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 			return http.build();
@@ -165,9 +152,9 @@ public class SecurityConfig {
 		http.cors(cors -> {
 		});
 
-		configureCsrf(http, mode);
-		configureSessions(http, mode);
-		configureFilters(http, mode);
+		configureCsrf(http);
+		configureSessions(http);
+		configureFilters(http);
 		configureAuthorization(http);
 
 		// Redirect-based sign-in (OIDC, SAML) adds its own filters and callback endpoints, which a
@@ -178,8 +165,9 @@ public class SecurityConfig {
 				federatedLogin.apply(http);
 
 		// A browser SPA must get a clean 401 to react to, not a redirect to a login page that does not
-		// exist server-side — the login screen is an Angular route.
-		http.exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
+		// exist server-side — the login screen is an Angular route. The one exception is a person opening
+		// a dashboard link: they are sent to that screen and brought back (SignInRedirectEntryPoint).
+		http.exceptionHandling(ex -> ex.authenticationEntryPoint(new SignInRedirectEntryPoint()));
 
 		return http.build();
 	}
@@ -188,44 +176,57 @@ public class SecurityConfig {
 	// pieces
 	// ============================================================
 
-	private void configureCsrf(HttpSecurity http, DeploymentMode mode) throws Exception {
-
-		if (!mode.isDataPallasServer()) {
-			// Nothing to forge: the only accepted caller is loopback, and there is no credential a
-			// hostile page could ride on. Enabling CSRF here would add a token dance to the desktop
-			// for no gain.
-			http.csrf(csrf -> csrf.disable());
-			return;
-		}
+	/**
+	 * One CSRF posture for every deployment. Desktop used to switch this off on the grounds that it
+	 * had no credential worth forging; it has one now — the installation's API key — so the same
+	 * protection applies. Key and token callers are exempt below because they carry no ambient
+	 * credential a hostile page could borrow.
+	 */
+	private void configureCsrf(HttpSecurity http) throws Exception {
 
 		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
 		requestHandler.setCsrfRequestAttributeName(null);
 
+		EmbedTokenAuthorizationManager embedTokens = embedTokenAuthorization();
+
 		http.csrf(csrf -> csrf
 				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 				.csrfTokenRequestHandler(requestHandler)
-				// Stateless token callers cannot be CSRF'd — no ambient credential to borrow.
+				// Stateless token callers cannot be CSRF'd — no ambient credential to borrow. An embed
+				// token counts only when it is valid for the report the request names.
 				.ignoringRequestMatchers(request -> request.getHeader("X-API-Key") != null
-						|| request.getHeader("Authorization") != null));
+						|| request.getHeader("Authorization") != null
+						|| embedTokens.carriesValidEmbedToken(request)));
 	}
 
-	private void configureSessions(HttpSecurity http, DeploymentMode mode) throws Exception {
-		http.sessionManagement(session -> session.sessionCreationPolicy(
-				!mode.isDataPallasServer() ? SessionCreationPolicy.STATELESS : SessionCreationPolicy.IF_REQUIRED));
+	private EmbedTokenAuthorizationManager embedTokenAuthorization() {
+		return new EmbedTokenAuthorizationManager(embedTokenService, shareTokenService,
+				AuthenticatedAuthorizationManager.authenticated());
 	}
 
-	private void configureFilters(HttpSecurity http, DeploymentMode mode) throws Exception {
+	/**
+	 * IF_REQUIRED everywhere: a session is created when somebody signs in with a password and never
+	 * otherwise. API-key callers — the Electron shell included — authenticate per request and leave
+	 * no session behind, so this costs the desktop nothing while keeping form login working in the
+	 * one binary that serves both.
+	 */
+	private void configureSessions(HttpSecurity http) throws Exception {
+		http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
+	}
 
-		// The API key filter runs in every mode: containerised apps and embedding hosts authenticate
-		// with it, and in desktop mode it also lets a caller identify itself explicitly rather
-		// than relying on the blanket filter below.
+	/**
+	 * Authentication is a must in every deployment, so there is exactly one filter here and no mode
+	 * gets an identity for free.
+	 *
+	 * <p>What this deletes matters more than what it adds. Desktop used to install a filter that
+	 * authenticated whoever turned up as the default administrator; an installation folder shared with
+	 * a DataPallas Server — the compose bundle bind-mounts ./config, so both processes read the same
+	 * iam.db — meant starting the Electron shell could serve that server's data with no credential at
+	 * all. Now every caller proves who it is: people with a password, machines (the Electron shell
+	 * included) with this installation's API key.
+	 */
+	private void configureFilters(HttpSecurity http) throws Exception {
 		http.addFilterBefore(new ApiKeyAuthenticationFilter(apiKeyManager), BasicAuthenticationFilter.class);
-
-		if (!mode.isDataPallasServer())
-			http.addFilterBefore(
-					new StandaloneLoopbackAuthenticationFilter(iamService, userDetailsService,
-							standaloneLoopbackOnly),
-					BasicAuthenticationFilter.class);
 	}
 
 	/**
@@ -242,16 +243,15 @@ public class SecurityConfig {
 				// filter runs on every dispatch type, and on that second pass the SecurityContext is
 				// whatever the configured SecurityContextRepository can reload.
 				//
-				// That is exactly where the two editions part company. DataPallas Server is
-				// IF_REQUIRED, so the context comes back from the session and the second pass is
-				// authenticated — which is why Server never showed this. The desktop is STATELESS:
-				// there is no repository to reload from, and the two filters that authenticate it —
-				// the API key and the loopback administrator — are OncePerRequestFilter and have
-				// already had their one turn. So authorization sees an anonymous caller and answers
-				// 401 AFTER the handler has run: the log really was cleared, the connection really
-				// was saved, and the caller is told it was not. To the person at the keyboard it
-				// reads as "a login I never asked for is breaking my app" — every reactive endpoint
-				// 401s while /api/auth/me cheerfully reports admin.
+				// Somebody who signed in with a password is fine either way: the context comes back
+				// from the session on the second pass. An API-key caller is not — and since the
+				// desktop is an API-key caller, that is every reactive endpoint in DataPallas.exe.
+				// ApiKeyAuthenticationFilter is a OncePerRequestFilter and has already had its one
+				// turn, and there is no session to reload from, so authorization sees an anonymous
+				// caller and answers 401 AFTER the handler has run: the log really was cleared, the
+				// connection really was saved, and the caller is told it was not. To the person at
+				// the keyboard it reads as "a login I never asked for is breaking my app" — every
+				// reactive endpoint 401s while /api/auth/me cheerfully reports an administrator.
 				//
 				// It also puts /error out of reach, turning any handler exception into a 401 instead
 				// of the real status.
@@ -301,11 +301,12 @@ public class SecurityConfig {
 
 				// Embedded web components on a third-party page have no session and cannot hold a
 				// secret. They present a short-lived token, minted server-side by the page's own
-				// backend, that unlocks exactly one report's data. Anything without a valid token for
-				// the report being requested falls through to normal authentication.
-				.requestMatchers("/api/reports/*/config", "/api/reports/*/data", "/dashboard/*")
-				.access(new EmbedTokenAuthorizationManager(embedTokenService, shareTokenService,
-						AuthenticatedAuthorizationManager.authenticated()))
+				// backend, that unlocks exactly one report's data — its config, its data, its dashboard
+				// and its server-side pivot. Anything without a valid token for the report being
+				// requested falls through to normal authentication.
+				.requestMatchers("/api/reports/*/config", "/api/reports/*/data", "/dashboard/*",
+						"/api/analytics/pivot")
+				.access(embedTokenAuthorization())
 
 				.anyRequest().authenticated());
 	}

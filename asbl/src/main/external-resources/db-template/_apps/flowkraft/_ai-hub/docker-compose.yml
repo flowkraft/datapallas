@@ -62,6 +62,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (r) => process.exit(r.statusCode >= 200 && r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 5s
@@ -87,6 +88,7 @@ services:
     stdin_open: true
     networks:
       - ai-hub-network
+      - default
 
   # ============================================
   # AI Backend Services
@@ -145,6 +147,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
     healthcheck:
       # Use /v1/providers/ endpoint since /health doesn't exist in current Letta version
       test: ["CMD-SHELL", "curl -sf http://localhost:8283/v1/providers/ || exit 1"]
@@ -208,6 +211,7 @@ services:
       start_period: 300s
     networks:
       - ai-hub-network
+      - default
 
   # ============================================
   # Chat & Collaboration Services
@@ -233,6 +237,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
 
   matrix-synapse:
     image: ghcr.io/element-hq/synapse:v1.131.0
@@ -242,6 +247,11 @@ services:
         condition: service_healthy
     environment:
       - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
+      # Run as root inside the container: /data is the bind-mounted ./config/synapse, which on Linux belongs to whoever
+      # unpacked DataPallas (not Synapse's default uid 991), so Synapse could not write its log and restarted forever.
+      # Docker Desktop (Windows/macOS) does not enforce bind-mount ownership, so there nothing changes.
+      - UID=0
+      - GID=0
       - DB_USER=${DB_USER:-synapse}
       - DB_PASSWORD=${DB_PASSWORD:-synapse}
     volumes:
@@ -254,6 +264,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8008/health || exit 1"]
       interval: 10s
@@ -274,6 +285,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
 
   # ============================================
   # Database Services
@@ -298,6 +310,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
 
   code-server:
     container_name: flowkraft-ai-hub-code-server
@@ -324,6 +337,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
 
   # ============================================
   # Chat2DB - Data Analysis Lab (Natural Language SQL via FastAPI)
@@ -348,8 +362,14 @@ services:
     restart: unless-stopped
     networks:
       - ai-hub-network
+      - default
 
 networks:
+  # One network for everything DataPallas runs, so the DataPallas server reaches this app by container
+  # name instead of through a published host port, which any host firewall may block (plan §4 F2n). The
+  # app keeps its own network above for its own services. Not 'external': compose creates it when missing.
+  default:
+    name: datapallas
   ai-hub-network:
     driver: bridge
 
@@ -360,3 +380,4 @@ volumes:
   baibot-data:
   synapse-data:
   synapse-db-data:
+

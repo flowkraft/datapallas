@@ -5,9 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParametersHelper;
 
 /**
  * Picking the main report out of a JasperReports folder.
@@ -136,5 +140,77 @@ public class ReportsServiceTest {
 				{ "aaa.jrxml", "<jasperReport name=\"aaa\"/>" },
 				{ "zzz.jrxml", "<jasperReport name=\"zzz\">" + "x".repeat(500) + "</jasperReport>" },
 		})).isEqualTo("zzz.jrxml");
+	}
+
+	// ─── The parameter form of a JasperReports folder ───
+	// Built from the main report's <parameter> declarations, without the ones the
+	// template marks as not for prompting (SUBREPORT_DIR above all: DataPallas sets it
+	// to the report folder, and a value from the form would override that).
+
+	private List<String> parameterFormOf(String folderName, String[][] files) throws Exception {
+		Path folder = root.resolve("config").resolve("reports-jasper").resolve(folderName);
+		Files.createDirectories(folder);
+		Files.writeString(folder.resolve("settings.xml"), "<documentburster/>");
+		for (String[] file : files) {
+			Files.writeString(folder.resolve(file[0]), file[1]);
+		}
+		return reportsService.loadConfigDetails(folder.resolve("settings.xml").toString()).reportParameters
+				.stream().map(p -> p.id).toList();
+	}
+
+	@Test
+	void aJasperReports7ParameterMarkedNotForPromptingIsNotAskedFor() throws Exception {
+		assertThat(parameterFormOf("jr7-subreport-dir", new String[][] {
+				{ "main_report.jrxml", "<jasperReport name=\"main_report\">"
+						+ "<parameter name=\"SUBREPORT_DIR\" class=\"java.lang.String\" forPrompting=\"false\">"
+						+ "<defaultValueExpression><![CDATA[\"\"]]></defaultValueExpression></parameter>"
+						+ "<parameter name=\"Country\" class=\"java.lang.String\"/></jasperReport>" },
+		})).containsExactly("Country");
+	}
+
+	@Test
+	void aClassicParameterMarkedNotForPromptingIsNotAskedForEither() throws Exception {
+		assertThat(parameterFormOf("classic-subreport-dir", new String[][] {
+				{ "main_report.jrxml", "<jasperReport xmlns=\"http://jasperreports.sourceforge.net/jasperreports\" name=\"main_report\">"
+						+ "<parameter name=\"SUBREPORT_DIR\" class=\"java.lang.String\" isForPrompting=\"false\"/>"
+						+ "<parameter name=\"Department\" class=\"java.lang.String\"/></jasperReport>" },
+		})).containsExactly("Department");
+	}
+
+	@Test
+	void theParameterFormComesFromTheMainReportNotFromItsSubReport() throws Exception {
+		// "a_lines" sorts first and declares its own parameter: reading the first file
+		// listed would ask the user for the sub-report's parameter instead of the report's.
+		assertThat(parameterFormOf("orders", new String[][] {
+				{ "a_lines.jrxml", "<jasperReport name=\"a_lines\"><parameter name=\"OrderID\" class=\"java.lang.Integer\"/></jasperReport>" },
+				{ "orders.jrxml", "<jasperReport name=\"orders\"><parameter name=\"Country\" class=\"java.lang.String\"/>"
+						+ "<element kind=\"subreport\"><expression><![CDATA[$P{SUBREPORT_DIR} + \"a_lines.jasper\"]]></expression>"
+						+ "</element></jasperReport>" },
+		})).containsExactly("Country");
+	}
+
+
+	@Test
+	void aClassicTemplateWithTheOldDtdHeaderStillGetsItsParameterForm() throws Exception {
+		// JasperReports 1.x/2.x wrote a DOCTYPE; reports of that era must not lose their form.
+		assertThat(parameterFormOf("order-book", new String[][] {
+				{ "order_book.jrxml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+						+ "<!DOCTYPE jasperReport PUBLIC \"-//JasperReports//DTD Report Design//EN\" \"http://jasperreports.sourceforge.net/dtds/jasperreport.dtd\">\n"
+						+ "<jasperReport name=\"order_book\"><parameter name=\"Country\" class=\"java.lang.String\"/></jasperReport>" },
+		})).containsExactly("Country");
+	}
+
+	@Test
+	void aDoctypeCannotPullFilesFromThisMachineIntoTheForm() throws Exception {
+		Path secret = root.resolve("secret.txt");
+		Files.writeString(secret, "TOP-SECRET-CONTENT");
+		String jrxml = "<?xml version=\"1.0\"?>\n"
+				+ "<!DOCTYPE jasperReport [<!ENTITY leak SYSTEM \"" + secret.toUri() + "\">]>\n"
+				+ "<jasperReport name=\"x\"><parameter name=\"P\" class=\"java.lang.String\">"
+				+ "<defaultValueExpression>&leak;</defaultValueExpression></parameter></jasperReport>";
+		List<ReportParameter> form = ReportParametersHelper.parseJrxmlParameters(jrxml);
+		// the template is still read (the DOCTYPE is accepted), but the external entity is never resolved
+		assertThat(form).extracting(p -> p.id).containsExactly("P");
+		assertThat(form).allSatisfy(p -> assertThat(String.valueOf(p.defaultValue)).doesNotContain("TOP-SECRET"));
 	}
 }

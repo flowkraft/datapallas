@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { AuthService, FederatedLogin } from '../../providers/auth.service';
+import { WebSocketService } from '../../providers/websocket.service';
 import { loginTemplate } from './login.template';
 
 /**
@@ -22,6 +23,7 @@ import { loginTemplate } from './login.template';
 })
 export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
+  private readonly webSocketService = inject(WebSocketService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -43,9 +45,10 @@ export class LoginComponent implements OnInit {
       await this.authService.loadIdentity();
     }
 
-    // Nothing to sign into — either this is the desktop, or a session already exists.
-    if (!this.authService.isDataPallasServer() || this.authService.isAuthenticated()) {
-      await this.router.navigate(['/']);
+    // Nothing to sign into: this caller is already authenticated — a person with a live session, or
+    // the desktop presenting the installation's API key, which never needs the form.
+    if (this.authService.isAuthenticated()) {
+      await this.continueAfterSignIn();
       return;
     }
 
@@ -88,6 +91,21 @@ export class LoginComponent implements OnInit {
     window.location.href = login.loginUrl;
   }
 
+  /**
+   * Where to go once signed in. A dashboard link opened without a session is sent here by the server
+   * with its own address in returnUrl (SignInRedirectEntryPoint). That page is rendered by the server,
+   * not an Angular route, so it needs a full page load. Only a path on this server is followed — never
+   * another site, which would make this screen an open redirect.
+   */
+  private async continueAfterSignIn(): Promise<void> {
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    if (returnUrl && /^\/(?![\/\\])/.test(returnUrl)) {
+      window.location.href = returnUrl;
+      return;
+    }
+    await this.router.navigate(['/']);
+  }
+
   /** One click to get a brand-new evaluator into the product. */
   async fillDefaultCredentials(): Promise<void> {
     this.username = this.defaultUsername;
@@ -101,7 +119,10 @@ export class LoginComponent implements OnInit {
 
     try {
       await this.authService.login(this.username, this.password);
-      await this.router.navigate(['/']);
+      // The live connection was first tried on this screen, before signing in, and refused: open it now,
+      // not at its next scheduled retry, so no job event of the first seconds is missed.
+      this.webSocketService.connectNowIfDisconnected();
+      await this.continueAfterSignIn();
     } catch {
       // Deliberately one message for every failure. Distinguishing "no such user" from "wrong
       // password" would tell an attacker which usernames are real.

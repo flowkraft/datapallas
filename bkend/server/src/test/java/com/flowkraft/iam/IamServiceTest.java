@@ -177,28 +177,32 @@ class IamServiceTest {
 		assertEquals(Tenant.DEFAULT_CODE, tenant.code());
 		assertTrue(tenant.isActive());
 
-		AppUser admin = repository.findUserByUsername(AppUser.DEFAULT_USERNAME).orElseThrow();
+		AppUser admin = repository.findUserByUsername(IamService.DEFAULT_SERVER_USERNAME).orElseThrow();
 		assertTrue(admin.platformAdmin());
 		assertEquals(Role.ADMIN, repository.findRole(admin.id(), tenant.id()).orElseThrow());
 	}
 
 	/**
-	 * The DEFAULT administrator has no password at all — not a generated one, not a well-known one.
-	 * A desktop user has the installation on their own filesystem, so a credential would protect
-	 * nothing while forcing exactly the setup experience this design avoids.
+	 * A desktop install gets a real, usable administrator like every other deployment — it no longer
+	 * gets a password-less {@code admin} that a filter would hand to whoever turned up.
+	 *
+	 * <p>Nobody types it: the Electron shell authenticates with the installation's API key. What this
+	 * asserts is that there is no shape of DataPallas left in which an account exists that cannot be
+	 * signed into but is handed out anyway.
 	 */
 	@Test
-	void theDefaultAdminHasNoUsablePassword() {
+	void theDesktopGetsTheSameUsableAdministratorAsAServer() {
 
 		iamService.bootstrap();
 
-		AppUser admin = repository.findUserByUsername(AppUser.DEFAULT_USERNAME).orElseThrow();
-		assertNull(admin.passwordHash(), "the default admin must not have a password hash");
+		assertTrue(repository.findUserByUsername(AppUser.DEFAULT_USERNAME).isEmpty(),
+				"the password-less desktop admin must not be created any more");
 
-		// And it cannot be logged into, with anything.
-		assertTrue(!signIn(iamService, AppUser.DEFAULT_USERNAME, ""));
-		assertTrue(!signIn(iamService, AppUser.DEFAULT_USERNAME, "admin"));
-		assertTrue(!signIn(iamService, AppUser.DEFAULT_USERNAME, "password"));
+		AppUser admin = repository.findUserByUsername(IamService.DEFAULT_SERVER_USERNAME).orElseThrow();
+		assertNotNull(admin.passwordHash(), "the default administrator must have a usable password");
+		assertTrue(signIn(iamService, IamService.DEFAULT_SERVER_USERNAME, IamService.DEFAULT_SERVER_PASSWORD));
+		assertTrue(iamService.isUsingDefaultCredentials(),
+				"the warning must be truthful on a desktop too — the login screen shows it if it is ever reached");
 	}
 
 	/** Restarting must not pile up duplicate tenants or admins. */
@@ -224,7 +228,7 @@ class IamServiceTest {
 	@Test
 	void aServerBootstrapsWithAWorkingDefaultAccount() {
 
-		IamService server = serverModeService();
+		IamService server = secondProcessOnTheSameStore();
 		server.bootstrap();
 
 		assertTrue(signIn(server, IamService.DEFAULT_SERVER_USERNAME, IamService.DEFAULT_SERVER_PASSWORD),
@@ -236,7 +240,7 @@ class IamServiceTest {
 	@Test
 	void changingTheDefaultPasswordClearsTheWarning() {
 
-		IamService server = serverModeService();
+		IamService server = secondProcessOnTheSameStore();
 		server.bootstrap();
 		assertTrue(server.isUsingDefaultCredentials());
 
@@ -252,7 +256,7 @@ class IamServiceTest {
 	@Test
 	void deletingTheDefaultAccountClearsTheWarning() {
 
-		IamService server = serverModeService();
+		IamService server = secondProcessOnTheSameStore();
 		server.bootstrap();
 		server.createUser("real-admin", null, "RealPassword123!", Role.ADMIN, Tenant.DEFAULT_CODE);
 
@@ -265,7 +269,7 @@ class IamServiceTest {
 	@Test
 	void theDefaultAccountIsNotRecreatedOnRestart() {
 
-		IamService server = serverModeService();
+		IamService server = secondProcessOnTheSameStore();
 		server.bootstrap();
 		server.createUser("real-admin", null, "RealPassword123!", Role.ADMIN, Tenant.DEFAULT_CODE);
 		server.deleteUser(IamService.DEFAULT_SERVER_USERNAME);
@@ -280,7 +284,7 @@ class IamServiceTest {
 	@Test
 	void seedingFromTheEnvironmentSuppressesTheDefaultAccount() {
 
-		IamService server = serverModeService();
+		IamService server = secondProcessOnTheSameStore();
 		// Simulate the seeded case by creating the admin before bootstrap runs its default step.
 		server.ensureDefaultTenant();
 		repository.insertUser("seeded-admin", null, new BCryptPasswordEncoder().encode("Seeded123!"), true);
@@ -291,69 +295,24 @@ class IamServiceTest {
 		assertFalse(server.isUsingDefaultCredentials());
 	}
 
-	/** The desktop has no login, so it must never grow a default password. */
-	@Test
-	void theDesktopNeverGetsTheDefaultAccount() {
-
-		iamService.bootstrap();
-
-		assertTrue(repository.findUserByUsername(IamService.DEFAULT_SERVER_USERNAME).isEmpty());
-		assertFalse(iamService.isUsingDefaultCredentials());
-	}
-
-	// ============================================================
-	// how the enforcement decision is made
-	// ============================================================
-
 	/**
-	 * The anti-tamper property. Once real accounts exist, authentication stays on even if the
-	 * installation now looks like a desktop — because the only way to switch it off is to delete every
-	 * account that can sign in, which does not weaken the system quietly, it breaks it loudly.
+	 * One installation folder can be started as a desktop, as a host JVM and as a container — the
+	 * compose bundle bind-mounts ./config, so all three read one iam.db. Seeding the same account
+	 * unconditionally is what makes those three views of one folder agree about who may get in, and
+	 * what makes converting between them a non-event.
 	 */
 	@Test
-	void realAccountsKeepAuthenticationEnforcedEvenIfTheInstallLooksLikeDesktop() {
+	void everyProcessOnOneFolderSeedsAndSeesTheSameAccount() {
 
 		iamService.bootstrap();
-		assertFalse(iamService.getMode().isDataPallasServer(), "a bare install starts out as desktop");
+		assertTrue(signIn(iamService, IamService.DEFAULT_SERVER_USERNAME, IamService.DEFAULT_SERVER_PASSWORD));
 
-		iamService.createUser("tanya", null, "TanyaPassword123!", Role.ADMIN, Tenant.DEFAULT_CODE);
-
-		assertTrue(iamService.resolveEffectiveMode().isDataPallasServer(),
-				"a real account must pin authentication on");
-	}
-
-	/** An explicit RB_ROLE must not be able to disable authentication on a server that has accounts. */
-	@Test
-	void anExplicitDesktopRoleCannotDisableAuthenticationOnAServerWithAccounts() {
-
-		iamService.bootstrap();
-		iamService.createUser("victor", null, "VictorPassword123!", Role.ADMIN, Tenant.DEFAULT_CODE);
-
-		String previous = System.getProperty("RB_ROLE");
-		System.setProperty("RB_ROLE", "standalone");
-		try {
-			assertTrue(iamService.resolveEffectiveMode().isDataPallasServer(),
-					"RB_ROLE=standalone must not open up a server that has real users");
-		} finally {
-			if (previous != null)
-				System.setProperty("RB_ROLE", previous);
-			else
-				System.clearProperty("RB_ROLE");
-		}
-	}
-
-	/**
-	 * The password-less DEFAULT administrator does NOT count — otherwise every desktop would flip
-	 * itself into multi-user mode on first boot and start demanding a login.
-	 */
-	@Test
-	void theDefaultPasswordlessAdminDoesNotCountAsARealAccount() {
-
-		iamService.bootstrap();
+		// Started again by another process against the same store: nothing is re-seeded, nothing changes.
+		IamService server = secondProcessOnTheSameStore();
+		server.bootstrap();
 
 		assertEquals(1, repository.countUsers());
-		assertEquals(0, repository.countUsersWithPassword());
-		assertFalse(iamService.resolveEffectiveMode().isDataPallasServer());
+		assertTrue(signIn(server, IamService.DEFAULT_SERVER_USERNAME, IamService.DEFAULT_SERVER_PASSWORD));
 	}
 
 	// ============================================================
@@ -526,7 +485,8 @@ class IamServiceTest {
 		List<TenantUserDto> inDefault = iamService.usersInTenant(Tenant.DEFAULT_CODE);
 		List<TenantUserDto> inFinance = iamService.usersInTenant("finance");
 
-		assertEquals(List.of(AppUser.DEFAULT_USERNAME), inDefault.stream().map(TenantUserDto::username).toList());
+		assertEquals(List.of(IamService.DEFAULT_SERVER_USERNAME),
+				inDefault.stream().map(TenantUserDto::username).toList());
 		assertEquals(List.of("karl"), inFinance.stream().map(TenantUserDto::username).toList());
 	}
 
@@ -762,18 +722,13 @@ class IamServiceTest {
 	 * depends on the real type and would fail to compile if the contract changed.
 	 */
 	/**
-	 * An IamService that believes it is DataPallas Server.
+	 * Another IamService over the same store — a second process opening this installation folder.
 	 *
-	 * <p>Achieved by planting {@code startServer.sh} in the temp installation, because that is exactly
-	 * how the real edition is detected — so these tests exercise the same path a packaged server does
-	 * rather than a flag only tests can set.
+	 * <p>It takes no declaration to build, and that is the point: desktop, container and host JVM run
+	 * identical code against one {@code iam.db}, so what any of them does to the store is what all of
+	 * them see. The tests that used to need a "server mode" service need only this.
 	 */
-	private IamService serverModeService() {
-		try {
-			Files.writeString(root.resolve("startServer.sh"), "#!/bin/sh");
-		} catch (Exception e) {
-			throw new IllegalStateException(e);
-		}
+	private IamService secondProcessOnTheSameStore() {
 		return new IamService(repository, new BCryptPasswordEncoder(), fakeLicenseService());
 	}
 

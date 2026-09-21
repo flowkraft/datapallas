@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { Helpers } from '../utils/helpers';
 import * as fs from 'fs';
 import { expect } from '@playwright/test';
 import * as jetpack from 'fs-jetpack';
@@ -12,6 +13,12 @@ import * as jetpack from 'fs-jetpack';
  */
 export class InterfaceTestHelper {
   static readonly PORTABLE_DIR = process.env.PORTABLE_EXECUTABLE_DIR!;
+
+  /** The CLI script of the installation: datapallas.bat on Windows, datapallas.sh everywhere else. */
+  static readonly CLI = Helpers.installationScript('datapallas');
+
+  /** Where the CLI script writes the program's output (logs/datapallas.bat.log, logs/datapallas.sh.log). */
+  static readonly CLI_LOG = `logs/${InterfaceTestHelper.CLI.file}.log`;
 
   /**
    * Assert that burst produced the expected output files.
@@ -130,11 +137,14 @@ export class InterfaceTestHelper {
     const outputDir = path.join(this.PORTABLE_DIR, 'output');
     const logsDir = path.join(this.PORTABLE_DIR, 'logs');
 
-    // Clean output
-    if (fs.existsSync(outputDir)) {
-      fs.rmSync(outputDir, { recursive: true, force: true });
-    }
+    // Clean output by emptying it, never by removing the folder itself. On the shipped Docker server
+    // output/ is bind-mounted into the container: remove it on the host and the container keeps writing
+    // into the deleted inode, so the CLI fails (exit 1) and nothing appears on the host. Emptying the
+    // contents keeps the mount and is the same result on every target.
     fs.mkdirSync(outputDir, { recursive: true });
+    for (const entry of fs.readdirSync(outputDir)) {
+      fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
+    }
 
     // Clean logs
     for (const logFile of ['info.log', 'errors.log', 'warnings.log']) {
@@ -156,12 +166,22 @@ export class InterfaceTestHelper {
     timeoutMs: number = 120000,
   ): { exitCode: number; stdout: string; stderr: string } {
     const { spawnSync } = require('child_process');
-    const os = require('os');
-    const isWindows = os.platform() === 'win32';
 
-    const absoluteDir = path.resolve(this.PORTABLE_DIR);
-    const cmd = isWindows ? 'datapallas.bat' : './datapallas.sh';
-    const fullCommand = `cd "${absoluteDir}" && set "PORTABLE_EXECUTABLE_DIR=" && ${cmd} ${args.join(' ')}`;
+    // On the shipped Docker server the installation is inside the container: the zip unpacks the data
+    // folders only, so there is no CLI script next to them on the host - it is at /app, which is exactly
+    // where a customer runs it. Every argument the tests pass is relative to the installation
+    // ('samples/burst/Payslips.pdf', 'config/samples/.../settings.xml'), so they need no translation, and
+    // the log the script writes (logs/datapallas.sh.log) lands in the bind-mounted logs/ folder as before.
+    // asbl/ci/dp-ci.sh sets E2E_DOCKER_SERVER for that target only.
+    const dockerServer = process.env.E2E_DOCKER_SERVER;
+    const fullCommand = dockerServer
+      ? `docker exec -w /app ${dockerServer} bash datapallas.sh ${args.join(' ')}`
+      : `${this.CLI.command.join(' ')} ${args.join(' ')}`;
+
+    // The script works out its own installation folder; the tests' relative PORTABLE_EXECUTABLE_DIR must
+    // not leak into it.
+    const env = { ...process.env };
+    delete env.PORTABLE_EXECUTABLE_DIR;
 
     // spawnSync (not execSync) — execSync returns *only* stdout and reveals
     // stderr only when the child throws. datapallas.bat launches Ant, which
@@ -170,6 +190,8 @@ export class InterfaceTestHelper {
     // unconditionally.
     const result = spawnSync(fullCommand, {
       shell: true,
+      cwd: path.resolve(this.PORTABLE_DIR),
+      env,
       timeout: timeoutMs,
       encoding: 'utf-8',
     });
@@ -206,7 +228,7 @@ export class InterfaceTestHelper {
   ): Promise<void> {
     const response = await fetch(`${baseUrl}/api/jobs`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...Helpers.apiKeyHeader() },
       body: JSON.stringify({ type, ...payload }),
     });
 

@@ -18,3 +18,11 @@ services:
       timeout: 5s    
       retries: 30      
       start_period: 10s
+
+# One network for everything DataPallas runs, so the server reaches this app by its container name instead
+# of going out to the host and back in through a published port - which any host firewall may block (plan
+# §4 F2n). The name is fixed but the network is not 'external': compose creates it when it is missing, so
+# this file still works on its own.
+networks:
+  default:
+    name: datapallas

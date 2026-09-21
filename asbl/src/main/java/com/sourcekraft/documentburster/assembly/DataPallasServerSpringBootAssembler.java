@@ -30,7 +30,7 @@ public class DataPallasServerSpringBootAssembler extends AbstractAssembler {
 		String npmRunCustomReleaseCommand = "npm run custom:release-web --force";
 
 		new ProcessExecutor().directory(new File(Utils.getTopProjectFolderPath() + "/frend/reporting"))
-				.command("cmd", "/c", npmRunCustomReleaseCommand).redirectOutput(new LogOutputStream() {
+				.command(Utils.shellCommand(npmRunCustomReleaseCommand)).redirectOutput(new LogOutputStream() {
 					@Override
 					protected void processLine(String line) {
 						System.out.println(line);
@@ -71,9 +71,9 @@ public class DataPallasServerSpringBootAssembler extends AbstractAssembler {
 
 		// COMPILE / CHECK the groovy scripts don't give errors
 
-		new ProcessExecutor().command("cmd", "/c", "java -cp " + packageDirPath + "/" + this.topFolderName
+		new ProcessExecutor().command(Utils.shellCommand("java -cp " + packageDirPath + "/" + this.topFolderName
 				+ "/lib/burst/ant-launcher.jar org.apache.tools.ant.launch.Launcher -buildfile bild-groovy.xml -DtopFolderName="
-				+ this.topFolderName).redirectOutput(new LogOutputStream() {
+				+ this.topFolderName)).redirectOutput(new LogOutputStream() {
 					@Override
 					protected void processLine(String line) {
 						System.out.println(line);

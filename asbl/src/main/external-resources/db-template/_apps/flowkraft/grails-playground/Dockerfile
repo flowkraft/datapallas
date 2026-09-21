@@ -12,8 +12,12 @@
 # equivalent.) css:build reads src/tailwind.source.css, whose @source glob scans grails-app/views/**.
 FROM node:20-alpine AS css
 WORKDIR /build
-COPY package.json package-lock.json ./
-RUN npm ci
+# The repo ignores asbl/**/package-lock.json (.gitignore), so a clean checkout has no lock file and
+# `npm ci` cannot run — the image build failed with "/package-lock.json": not found on every machine that
+# had not built this app before (Linux CI, plan §4 D5). Use the lock file when there is one, install from
+# package.json when there is not.
+COPY package.json package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 COPY src ./src
 COPY grails-app ./grails-app
 RUN npm run css:build

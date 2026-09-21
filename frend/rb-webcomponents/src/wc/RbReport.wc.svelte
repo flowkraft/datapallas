@@ -139,6 +139,7 @@
       // if (apiKey) {
       //   headers['X-API-Key'] = apiKey;
       // }
+      if (embedToken) headers['X-Embed-Token'] = embedToken;
       
       const response = await fetch(`${apiBaseUrl}/reports/${reportId}/config`, { headers });
       
@@ -195,6 +196,7 @@
       // if (apiKey) {
       //   headers['X-API-Key'] = apiKey;
       // }
+      if (embedToken) headers['X-Embed-Token'] = embedToken;
       
       // Build query string from parameters
       const params = new URLSearchParams();

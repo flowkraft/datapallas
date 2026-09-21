@@ -111,6 +111,10 @@ public class JasperCliFlowTest {
 		File root = new File(TEST_ROOT);
 		if (root.exists()) FileUtils.deleteDirectory(root);
 
+		// The CLI job writes its .job file into TestCliJob.getTempFolder(). Create it here: after a
+		// clean it only exists if another test class happened to run first.
+		FileUtils.forceMkdir(new File(TestsUtils.TESTS_OUTPUT_FOLDER + "/temp"));
+
 		// Set up H2 with Northwind data (same DB as all other tests)
 		NorthwindTestUtils.setupTestDatabase();
 

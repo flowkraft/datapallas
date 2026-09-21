@@ -418,6 +418,10 @@ export class AppsManagerService {
         // Match by: exact service_name, container name contains service_name, or container name contains app.id
         // Prefer exact/endsWith matches to avoid matching sibling containers like -db or -cli
         const service = statuses.find(s => {
+          // A container of another Compose project on the same machine is not our app, however much its
+          // name looks like one (a machine running its own "ints-cloudbeaver" showed CloudBeaver as running,
+          // and Stop would have stopped that container). The backend flags those.
+          if (s.foreign) return false;
           const name = (s.name || '').toLowerCase();
           const svc = (app.service_name || '').toLowerCase();
           const id = (app.id || '').toLowerCase();

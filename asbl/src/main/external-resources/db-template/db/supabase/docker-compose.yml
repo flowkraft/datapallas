@@ -6,6 +6,12 @@ services:
     image: supabase/postgres:15.8.1.085
     container_name: rb-northwind-supabase
     restart: unless-stopped
+    # Also on the network every DataPallas compose file joins (see db/docker-compose.yml), so the Docker
+    # server reaches the database by name instead of through a published host port, which a host firewall
+    # may block (plan §4 F2n, §6 F2r). The rest of the stack keeps talking to it on its own network.
+    networks:
+      - default
+      - datapallas
     ports:
       - "${SUPABASE_PORT:-5435}:5432"
     volumes:
@@ -347,6 +353,10 @@ services:
       SUPABASE_DB_URL: postgresql://postgres:${SUPABASE_PASSWORD:-postgres}@supabase-db:5432/${SUPABASE_DB:-Northwind}
       VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT:-false}"
     command: ["start", "--main-service", "/home/deno/functions/main"]
+
+networks:
+  datapallas:
+    name: datapallas
 
 volumes:
   supabase_data:

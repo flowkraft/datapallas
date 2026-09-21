@@ -30,7 +30,7 @@ Components
 
 3. frend
 - frend/reporting: main Angular UI webapp (also compiled as an Electron desktop app).
-- frend/rb-tabulator: Svelte project that wraps/deploys the Tabulator JS library (https://tabulator.info) as a web component used by DataPallas.
+- frend/rb-webcomponents: Svelte project that builds the embeddable web components used by DataPallas: rb-tabulator (data tables, wraps https://tabulator.info), rb-chart, rb-pivot-table, rb-report, rb-parameters, rb-filter-pane, rb-cube-renderer, rb-detail, rb-gauge, rb-map, rb-progress, rb-sankey, rb-trend and rb-value.
 - UI communication: Angular app talks to bkend/server over REST and WebSocket.
 - Dual deployment: almost the same source is built and deployed both as an Electron desktop app and as a normal Web App.
 - E2E tests: frend/reporting/e2e contains an exhaustive set of 100+ Playwright end-to-end tests that validate main use cases; the same tests run against both the Electron app and the Web App.
@@ -48,8 +48,8 @@ Package scripts (package.json)
   - Similar helper for Robot Framework UAT scripts to run a subset of UAT tests quickly.
 - custom:compile-and-stage-backend-jars
   - Compiles backend modules and stages the jars used by the frontend/packaging steps.
-- custom:compile-and-stage-tabulator-web-component
-  - Builds and stages the frend/rb-tabulator Svelte web-component for packaging.
+- custom:compile-and-stage-web-components
+  - Builds the frend/rb-webcomponents Svelte web components and stages them for the app, the e2e testground and packaging.
 
 Release verification flow (minimal)
 - Run build:prod and compile-and-stage scripts to produce fresh frontend and backend artifacts.

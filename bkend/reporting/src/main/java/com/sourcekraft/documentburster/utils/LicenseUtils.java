@@ -39,6 +39,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -415,20 +416,25 @@ public class LicenseUtils {
 			log.debug("[{}] cleared cachedCurlPath after failed attempts", reqId);
 		}
 
-		// Build ordered candidate list: bundled (preferred) -> system "curl.exe" ->
-		// located via where/which
+		// Build ordered candidate list: bundled (preferred) -> system "curl" -> located via where/which.
+		// The bundled tools/curl/win/curl.exe ships in every package, but it is a Windows program: anywhere else
+		// it cannot start, and each attempt logged a WARN ("curl candidate ... exhausted") that turned the
+		// status bar to warnings. So it is a candidate on Windows only - a real OS difference, not a guard.
+		// "curl" rather than "curl.exe": Windows starts curl.exe for it all the same.
 		List<String> candidates = new ArrayList<>();
 
-		String portableEnv = System.getenv("PORTABLE_EXECUTABLE_DIR");
-		if (portableEnv != null && !portableEnv.isEmpty()) {
-			candidates.add(Paths.get(portableEnv).resolve("tools").resolve("curl").resolve("win").resolve("curl.exe")
-					.toAbsolutePath().toString());
+		if (SystemUtils.IS_OS_WINDOWS) {
+			String portableEnv = System.getenv("PORTABLE_EXECUTABLE_DIR");
+			if (portableEnv != null && !portableEnv.isEmpty()) {
+				candidates.add(Paths.get(portableEnv).resolve("tools").resolve("curl").resolve("win")
+						.resolve("curl.exe").toAbsolutePath().toString());
+			}
+			candidates.add(Paths.get(System.getProperty("user.dir")).resolve("tools").resolve("curl").resolve("win")
+					.resolve("curl.exe").toAbsolutePath().toString());
+			candidates.add(Paths.get("").toAbsolutePath().resolve("tools").resolve("curl").resolve("win")
+					.resolve("curl.exe").toAbsolutePath().toString());
 		}
-		candidates.add(Paths.get(System.getProperty("user.dir")).resolve("tools").resolve("curl").resolve("win")
-				.resolve("curl.exe").toAbsolutePath().toString());
-		candidates.add(Paths.get("").toAbsolutePath().resolve("tools").resolve("curl").resolve("win")
-				.resolve("curl.exe").toAbsolutePath().toString());
-		candidates.add("curl.exe");
+		candidates.add("curl");
 		String located = findCurlWithWhere();
 		if (located != null && !located.isEmpty())
 			candidates.add(located);

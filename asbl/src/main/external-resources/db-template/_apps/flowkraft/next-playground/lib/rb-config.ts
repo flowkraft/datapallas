@@ -36,20 +36,59 @@ function readApiKey(): string {
   } catch {
     console.warn(
       "[rb-config] No DataPallas API key at /app/config/_internal/api-key.txt — is config/ " +
-        "mounted? Falling back to the dev key, which a real server will reject.",
+        "mounted? Calling DataPallas without an API key, which a DataPallas Server rejects.",
     )
   }
 
-  // Matches the dev server's -DAPI_KEY=123. Useless against a packaged server, which generates a
-  // random key — hence the warning above.
-  return "123"
+  return ""
 }
 
 const RB_API_KEY = readApiKey()
+// Send the header only when there is a key.
+const API_KEY_HEADER: Record<string, string> = RB_API_KEY ? { "X-API-Key": RB_API_KEY } : {}
 
 export const rbConfig = {
   // Safe for the browser: it is only a URL.
   apiBaseUrl: process.env.NEXT_PUBLIC_RB_API_BASE_URL || "http://localhost:9090/api",
+}
+
+// The server-side base URL that last answered, so later calls go straight to it.
+let cachedServerApiBaseUrl: string | undefined
+
+/**
+ * Where THIS APP (not the browser) reaches the DataPallas API, most likely first.
+ *
+ * rbConfig.apiBaseUrl is what the browser uses, and localhost is right there because the browser
+ * runs on the host. Inside this app's container localhost is the container itself, so a server-side
+ * call needs another address: DataPallas by container name when it runs in Docker on the shared
+ * `datapallas` network, otherwise the host through host.docker.internal (docker-compose maps it).
+ * RB_SERVER_API_BASE_URL wins when set.
+ */
+function serverApiBaseUrlCandidates(): string[] {
+  const candidates = [
+    cachedServerApiBaseUrl,
+    process.env.RB_SERVER_API_BASE_URL,
+    "http://datapallas-server:9090/api",
+    "http://host.docker.internal:9090/api",
+    rbConfig.apiBaseUrl,
+  ].filter((url): url is string => !!url)
+  return Array.from(new Set(candidates))
+}
+
+/** fetch() against the first DataPallas address that answers; throws only when none does. */
+async function fetchFromServer(endpoint: string, init: RequestInit): Promise<Response> {
+  let unreachable: unknown
+  for (const baseUrl of serverApiBaseUrlCandidates()) {
+    try {
+      const response = await fetch(`${baseUrl}${endpoint}`, init)
+      cachedServerApiBaseUrl = baseUrl
+      return response
+    } catch (error) {
+      // Nothing listening at this address (or it does not resolve): try the next one.
+      unreachable = error
+    }
+  }
+  throw unreachable ?? new Error("No DataPallas address answered")
 }
 
 /**
@@ -67,9 +106,9 @@ export async function mintEmbedToken(reportId: string): Promise<string> {
   if (cached && cached.expiresAtMs > Date.now()) return cached.token
 
   try {
-    const response = await fetch(`${rbConfig.apiBaseUrl}/embed/token`, {
+    const response = await fetchFromServer("/embed/token", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-API-Key": RB_API_KEY },
+      headers: { "Content-Type": "application/json", ...API_KEY_HEADER },
       body: JSON.stringify({ reportId }),
       cache: "no-store",
     })
@@ -101,14 +140,13 @@ const tokenCache = new Map<string, { token: string; expiresAtMs: number }>()
  * through an embed token or a Route Handler in this app.
  */
 export async function rbFetch(endpoint: string, options?: RequestInit) {
-  const url = `${rbConfig.apiBaseUrl}${endpoint}`
   const headers = {
     "Content-Type": "application/json",
-    "X-API-Key": RB_API_KEY,
+    ...API_KEY_HEADER,
     ...options?.headers,
   }
 
-  const response = await fetch(url, {
+  const response = await fetchFromServer(endpoint, {
     ...options,
     headers,
   })

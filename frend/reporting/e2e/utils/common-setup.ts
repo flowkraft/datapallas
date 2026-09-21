@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, spawnSync } from 'child_process';
 import {
   Browser,
   BrowserContext,
@@ -22,6 +22,37 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 const isElectron = process.env.TEST_ENV === 'electron';
+
+/**
+ * Fails the test IMMEDIATELY, and with the real reason, when the DataPallas Server container this run
+ * tests against is no longer there.
+ *
+ * Without it, a server that goes away mid-run turns every remaining test into ERR_CONNECTION_REFUSED
+ * and "fetch failed" after its own full timeout: F2 run 1 (2026-09-17) spent its last 44 minutes that
+ * way and reported 211 failures that said nothing about the one thing that had happened. A container
+ * that has gone is not a test failure to be analysed one by one - it is the environment, and every
+ * result after it is noise.
+ *
+ * Only runs on the DataPallas Server target (E2E_DOCKER_SERVER names the container, set by
+ * asbl/ci/dp-ci.sh). On Desktop / Electron, and on a plain web run, it is a no-op.
+ */
+function assertDockerServerStillRunning(): void {
+  const container = process.env.E2E_DOCKER_SERVER;
+  if (!container) return;
+
+  const state = spawnSync('docker', ['inspect', '-f', '{{.State.Running}}', container], {
+    encoding: 'utf-8',
+    timeout: 30_000,
+  });
+  if (state.status === 0 && (state.stdout || '').trim() === 'true') return;
+
+  throw new Error(
+    `DATAPALLAS SERVER GONE: the container '${container}' this run tests against is not running ` +
+      `(docker inspect: ${((state.stdout || '') + (state.stderr || '')).trim() || state.error}). ` +
+      `Everything from here on would fail with ERR_CONNECTION_REFUSED for reasons that have nothing ` +
+      `to do with the tests - find what stopped the container, not what this test was doing.`,
+  );
+}
 
 // Surface renderer-side JS errors + console warnings/errors to the e2e stdout
 // where they sit next to the trace. Without this, a renderer crash (signal-
@@ -144,7 +175,8 @@ export const electronBeforeAfterAllTest = isElectron
       skipCleanState: [false, { option: true }],
       beforeAfterAll: [
         async ({}, run) => {
-          const { browser, context } = await Helpers.browserLaunch();
+          // No sign-in here: beforeAfterEach signs in after the clean state is restored (see browserLaunch).
+          const { browser, context } = await Helpers.browserLaunch({ signIn: false });
 
           await run({ browser, context });
 
@@ -154,6 +186,11 @@ export const electronBeforeAfterAllTest = isElectron
       ],
       beforeAfterEach: [
         async ({ beforeAfterAll: { browser, context }, skipCleanState }, run) => {
+          // Before anything else - restoreDocumentBursterCleanState included, it talks to the server
+          // too: is the server this run tests against still there? No-op off the DataPallas Server
+          // target. A container that has gone must read as exactly that, once, not as N timeouts.
+          assertDockerServerStillRunning();
+
           const shouldDeactivateLicenseKey = false;
 
           if (!skipCleanState) {
@@ -168,7 +205,9 @@ export const electronBeforeAfterAllTest = isElectron
 
           const ft = new FluentTester(firstPage);
 
-          await ft.gotoStartScreen();
+          // Cheap check: on a DataPallas Server the session can be gone again (a restarted container, a long
+          // run), and on Desktop there is no login form at all — then this does nothing.
+          await ft.signInIfLoginFormIsShown().gotoStartScreen();
           await run(firstPage);
         },
         { scope: 'test' },

@@ -1,5 +1,10 @@
 services:
   billing-portal-next:
+    # The SQLite file lives in the bind-mounted ../_shared-db, which on Linux belongs to whoever
+    # unpacked DataPallas (root in CI) while the image runs as its own user — the app then died
+    # with SQLITE_CANTOPEN and never became healthy. Docker Desktop (Windows/macOS) does not
+    # enforce bind-mount ownership, so there nothing changes.
+    user: "0:0"
     build:
       context: .
       dockerfile: Dockerfile
@@ -22,6 +27,7 @@ services:
     restart: unless-stopped
     networks:
       - frend-network
+      - default
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 5s
@@ -30,5 +36,11 @@ services:
       start_period: 10s
 
 networks:
+  # One network for everything DataPallas runs, so the DataPallas server reaches this app by container
+  # name instead of through a published host port, which any host firewall may block (plan §4 F2n). The
+  # app keeps its own network above for its own services. Not 'external': compose creates it when missing.
+  default:
+    name: datapallas
   frend-network:
     driver: bridge
+

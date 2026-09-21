@@ -15,7 +15,7 @@ const RUN_ALL_TESTS = true;
 
 // Daily seed for randomizing CRUD/settings assignment across apps.
 // Over 2 consecutive runs, ALL app+capability combinations are covered.
-const today = new Date().toISOString().split('T')[0];
+const today = process.env.E2E_ROTATION_DATE || new Date().toISOString().split('T')[0];
 const dailySeed = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
 const isEvenDay = dailySeed % 2 === 0;
 

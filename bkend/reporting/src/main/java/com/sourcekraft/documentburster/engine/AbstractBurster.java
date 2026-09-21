@@ -717,6 +717,16 @@ public abstract class AbstractBurster {
 
 					attachmentPath = Utils.getStringFromTemplate(attachment.path, ctx.variables, ctx.token);
 
+					// A path that is not found as given is looked for inside the installation: a relative
+					// path means the install folder, whatever folder the JVM was started from (the desktop
+					// runs it from tools/rbsj, the Docker server from /app). A path found as given is used
+					// as given, so nothing that works today changes.
+					if (StringUtils.isNotBlank(attachmentPath) && !new File(attachmentPath).exists()) {
+						String inInstallation = Utils.resolvePathAgainstPortableDir(attachmentPath);
+						if (new File(inInstallation).exists())
+							attachmentPath = inInstallation;
+					}
+
 					// normal attachments, it goes here most of the times
 					ctx.attachments.add(attachmentPath);
 

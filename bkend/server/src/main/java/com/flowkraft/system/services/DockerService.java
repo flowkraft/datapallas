@@ -52,6 +52,41 @@ public class DockerService {
 		public String status;
 		public String ports;
 		public String health;
+		/**
+		 * The container belongs to a Compose project outside this installation, so it is not one of our apps
+		 * even when its name looks like one. Without this, another CloudBeaver on the same machine
+		 * ("ints-cloudbeaver") made the Apps screen show CloudBeaver as running — and Stop would have stopped
+		 * a stranger's container (plan §4 D6).
+		 */
+		public boolean foreign;
+	}
+
+	/**
+	 * Whether a container was started by Compose from somewhere other than this installation's _apps folder.
+	 * Containers with no Compose labels (started by hand) and containers whose project files live under the
+	 * installation are ours; when the installation directory is unknown, nothing is treated as foreign.
+	 */
+	static boolean isForeignComposeContainer(String labels, String installationDir) {
+		if (labels == null || labels.isEmpty() || installationDir == null || installationDir.isEmpty())
+			return false;
+
+		String configFiles = null;
+		for (String label : labels.split(",")) {
+			String[] pair = label.split("=", 2);
+			if (pair.length == 2 && "com.docker.compose.project.config_files".equals(pair[0].trim())) {
+				configFiles = pair[1].trim();
+				break;
+			}
+		}
+		if (configFiles == null || configFiles.isEmpty())
+			return false;
+
+		String appsDir = (installationDir.replace("\\", "/") + "/_apps").toLowerCase();
+		for (String configFile : configFiles.split(",")) {
+			if (configFile.replace("\\", "/").toLowerCase().startsWith(appsDir))
+				return false;
+		}
+		return true;
 	}
 
 	/**
@@ -251,6 +286,8 @@ public class DockerService {
 						info.status = state;
 					}
 					info.ports = service.get("Ports") != null ? service.get("Ports").toString() : "N/A";
+					info.foreign = isForeignComposeContainer((String) service.get("Labels"),
+							AppPaths.PORTABLE_EXECUTABLE_DIR_PATH);
 					statuses.add(info);
 				}
 			} else if (output.startsWith("{")) {
@@ -275,6 +312,8 @@ public class DockerService {
 								info.status = state;
 							}
 							info.ports = service.get("Ports") != null ? service.get("Ports").toString() : "N/A";
+							info.foreign = isForeignComposeContainer((String) service.get("Labels"),
+									AppPaths.PORTABLE_EXECUTABLE_DIR_PATH);
 							statuses.add(info);
 						}
 					} catch (Exception e) {

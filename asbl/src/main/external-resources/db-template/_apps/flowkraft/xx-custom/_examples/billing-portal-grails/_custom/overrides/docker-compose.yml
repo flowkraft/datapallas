@@ -2,6 +2,11 @@ version: '3.8'
 
 services:
   billing-portal-grails:
+    # The SQLite file lives in the bind-mounted ../_shared-db, which on Linux belongs to whoever
+    # unpacked DataPallas (root in CI) while the image runs as its own user — the app then died
+    # with SQLITE_CANTOPEN and never became healthy. Docker Desktop (Windows/macOS) does not
+    # enforce bind-mount ownership, so there nothing changes.
+    user: "0:0"
     build:
       context: .
       dockerfile: Dockerfile
@@ -30,5 +35,8 @@ volumes:
   billing-portal-grails-logs:
 
 networks:
+  # Was 'flowkraft-network', which only these two files ever named. They are on the one network everything
+  # DataPallas runs shares now, so the server reaches them by container name instead of through a published
+  # host port, which any host firewall may block (plan §4 F2n). They still reach each other by name here.
   default:
-    name: flowkraft-network
+    name: datapallas

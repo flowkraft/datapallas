@@ -20,10 +20,12 @@
 //
 //   npm run custom:start-server-and-e2e-server-auth
 //
-// That script starts the backend with RB_ROLE=GATEWAY and runs this file in web
-// mode. It deliberately does NOT seed an administrator: a fresh Server is meant
-// to create `burst` / `burst` by itself, which is the first thing documented and
-// the first thing tested here.
+// That script runs this file in a browser, against a fresh install of its own.
+// The backend is not configured differently from any other run — there is one
+// configuration — but this file CREATES accounts and changes roles, so it must
+// not share a store with the rest of the suite. It also deliberately does NOT
+// seed an administrator: a fresh install is meant to create `burst` / `burst` by
+// itself, which is the first thing documented and the first thing tested here.
 //
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -92,7 +94,6 @@ const EXPLORE_TABLE = 'Orders';
 // ---------------------------------------------------------------------------
 
 type Identity = {
-  mode: 'standalone' | 'tenant' | 'gateway';
   authenticated: boolean;
   user: { username: string };
   tenant: { code: string };
@@ -104,7 +105,7 @@ async function getMe(cookie?: string): Promise<Response> {
 }
 
 /**
- * CSRF is ON in Server mode and OFF on the desktop (SecurityConfig.configureCsrf), so these tests
+ * CSRF is ON for browser sessions and exempt for API-key callers (SecurityConfig.configureCsrf), so these tests
  * have to do what a browser does: read the XSRF-TOKEN cookie and echo it in a header on every
  * state-changing call. Without it Spring answers 403 — including on /api/auth/login, which is where
  * a suite that ignores this fails first and most confusingly.
@@ -283,14 +284,17 @@ async function signInThroughTheUi(ft: FluentTester, user: { username: string; pa
 }
 
 test.beforeAll(async () => {
-  // Fail once with a clear message rather than in every test. The check is the reported MODE, not
-  // the status: /api/auth/me is deliberately public in every edition — it is how the frontend learns
-  // which edition it is talking to — so it answers 200 whether or not anyone is signed in.
+  // Fail once with a clear message rather than in every test. /api/auth/me is deliberately public —
+  // it is how the frontend learns who is calling — so it answers 200 whether or not anyone is signed
+  // in, and what matters is WHO it says that is. Every test below starts from nobody, signs in as one
+  // named account and checks where that account is stopped; a run that began already authenticated
+  // would make the permissive half of every pair pass for the wrong reason.
   const identity = (await getMe().then((r) => r.json())) as Identity;
-  if (identity.mode === 'standalone')
+  if (identity.authenticated)
     throw new Error(
-      `This suite needs a backend in a multi-user mode, but /api/auth/me reports mode ` +
-        `"${identity.mode}". Run it with \`npm run custom:start-server-and-e2e-server-auth\`.`,
+      `This suite must start from an unauthenticated caller, but /api/auth/me already reports ` +
+        `"${(identity.user && identity.user.username) || 'somebody'}". Run it with ` +
+        `\`npm run custom:start-server-and-e2e-server-auth\`, which gives it a fresh install.`,
     );
 
   // Everything below is created BY the shipped administrator, which is itself the first thing the
@@ -1794,15 +1798,25 @@ async function createShareLink(
   return res.json();
 }
 
-/** Open the dashboard page the way a recipient would: no session, nothing but what is in the URL. */
+/**
+ * Open the dashboard page the way a recipient would: no session, nothing but what is in the URL.
+ *
+ * Redirects are deliberately not followed. A caller without a credential is sent to the sign-in
+ * screen (`SignInRedirectEntryPoint`), and following that hop would report the Angular shell's 200
+ * as though the dashboard itself had been served — which is the one answer these tests exist to
+ * tell apart. What is asserted below is the answer the server gave, not where it leads.
+ */
 async function getDashboardAnonymously(
   reportCode: string,
   token?: string,
-): Promise<{ status: number; body: string }> {
+): Promise<{ status: number; body: string; location: string | null }> {
   const query = token ? `?token=${encodeURIComponent(token)}` : '';
-  const res = await fetch(`${BASE_URL}/dashboard/${reportCode}${query}`);
-  return { status: res.status, body: await res.text() };
+  const res = await fetch(`${BASE_URL}/dashboard/${reportCode}${query}`, { redirect: 'manual' });
+  return { status: res.status, body: await res.text(), location: res.headers.get('location') };
 }
+
+/** A token of the right shape that was never issued — what a guess looks like. */
+const NEVER_ISSUED_TOKEN = 'a-share-token-that-was-never-issued';
 
 /** Remove every link for a report, so a re-run starts from nothing being shared. */
 async function revokeAllShareLinks(session: string, reportId: string) {
@@ -1824,7 +1838,17 @@ test.describe('Auth — Server: handing a dashboard to somebody without an accou
 
   test('(share) publishing puts a dashboard on the server, not on the internet', async () => {
     const anonymous = await getDashboardAnonymously(SHARED_REPORT);
-    expect(anonymous.status, 'a published dashboard is private until somebody shares it').toBe(401);
+    expect(anonymous.body, 'a published dashboard is private until somebody shares it').not.toContain(
+      '<rb-dashboard',
+    );
+
+    // Turned away, but not into a dead end: whoever opened the link in a browser is a reader, so they
+    // are sent to the sign-in screen carrying where they were going, and land on the dashboard once
+    // signed in. Only somebody with an account can take that route, which is the point.
+    expect(anonymous.status, 'the page is refused, not served').toBe(302);
+    expect(anonymous.location, 'and the reader is told where to sign in, and what they came for').toContain(
+      `/#/login?returnUrl=${encodeURIComponent(`/dashboard/${SHARED_REPORT}`)}`,
+    );
 
     // And nobody can hand themselves the key. The CSRF token is fetched first so this is refused for
     // being unauthenticated rather than for being a cross-site post — otherwise the 403 would prove
@@ -1857,7 +1881,16 @@ test.describe('Auth — Server: handing a dashboard to somebody without an accou
     const { token } = await createShareLink(author, SHARED_REPORT);
 
     const other = await getDashboardAnonymously(OTHER_REPORT, token);
-    expect(other.status, 'a token for a different dashboard is as good as no token').toBe(401);
+    const neverIssued = await getDashboardAnonymously(OTHER_REPORT, NEVER_ISSUED_TOKEN);
+
+    expect(other.body, 'a token for one dashboard opens no other').not.toContain('<rb-dashboard');
+
+    // The reader of a share link has no account to sign in with, so a link that does not open is a
+    // dead end rather than a detour: the same "no longer available" page a made-up token gets.
+    expect(other.status, 'a token for a different dashboard is as good as one that never existed').toBe(404);
+    expect(other.body, 'answered identically, so a wrong guess cannot be told from a wrong report').toBe(
+      neverIssued.body,
+    );
   });
 
   test('(share) revoking a link closes it', async () => {
@@ -1873,11 +1906,17 @@ test.describe('Auth — Server: handing a dashboard to somebody without an accou
       expect(await statusAs(author, 'DELETE', `/api/embed/share-link/${link.id}`)).toBe(200);
 
     const afterRevoke = await getDashboardAnonymously(SHARED_REPORT, token);
+    const neverIssued = await getDashboardAnonymously(SHARED_REPORT, NEVER_ISSUED_TOKEN);
+
+    expect(afterRevoke.body, 'a revoked link opens nothing').not.toContain('<rb-dashboard');
     expect(
       afterRevoke.status,
-      'revocation is the only protection a link that never expires has — and the answer is the same ' +
-        'one a link that never existed gets, so guessing reveals nothing',
-    ).toBe(401);
+      'revocation is the only protection a link that never expires has',
+    ).toBe(404);
+    expect(
+      afterRevoke.body,
+      'and the answer is the same one a link that never existed gets, so guessing reveals nothing',
+    ).toBe(neverIssued.body);
   });
 
   test('(share) an ADMIN shares too, by inheriting the rung that may', async () => {
@@ -1920,7 +1959,8 @@ test.describe('Auth — Server: signing in and out', () => {
       r.json(),
     )) as Identity;
 
-    expect(me.mode, 'a Server, not a desktop').not.toBe('standalone');
+    expect(me.authenticated, 'a real sign-in, not the answer given to nobody').toBe(true);
+    expect(me.user.username).toBe(ADMIN.username);
     expect(me.roles).toContain('ADMIN');
   });
 

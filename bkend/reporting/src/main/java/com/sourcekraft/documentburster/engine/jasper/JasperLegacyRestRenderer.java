@@ -10,11 +10,15 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sourcekraft.documentburster.common.db.ContainerAddresses;
 
 /**
  * Renders classic JRXML (JasperReports 1.x - 6.21) through the JasperReports 6
@@ -48,6 +52,9 @@ public class JasperLegacyRestRenderer implements JasperRenderer {
 	private static final String CONTAINER_REPORTS_DIR = "/work/report";
 	private static final String HOST_TEMPLATES_DIR = "/templates/";
 	private static final String CONTAINER_TEMPLATES_DIR = "/work/templates";
+	/** SQLite databases are files: the renderer reaches the installation's db/ folder here. */
+	private static final String CONTAINER_DB_DIR = "/work/db";
+	private static final String SQLITE_URL_PREFIX = "jdbc:sqlite:";
 
 	private static final Duration HEALTH_TIMEOUT = Duration.ofSeconds(3);
 	private static final Duration RENDER_TIMEOUT = Duration.ofMinutes(10);
@@ -98,7 +105,7 @@ public class JasperLegacyRestRenderer implements JasperRenderer {
 			request.put("data", reportData);
 		}
 		if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
-			request.put("jdbcUrl", toContainerJdbcUrl(jdbcUrl));
+			request.put("jdbcUrl", toContainerJdbcUrl(jdbcUrl, reportDir));
 			request.put("jdbcUser", jdbcUser);
 			request.put("jdbcPass", jdbcPass != null ? jdbcPass : "");
 		}
@@ -199,10 +206,76 @@ public class JasperLegacyRestRenderer implements JasperRenderer {
 	 * Inside the container "localhost" is the container. Databases reached as
 	 * localhost from DataPallas — including the ones DataPallas starts, which
 	 * publish their port on the host — are reached as host.docker.internal.
+	 *
+	 * A SQLite connection is a file on this machine instead, typically the sample
+	 * Northwind database under db/. The renderer mounts the installation's db/ folder
+	 * at /work/db, so the path is translated like the report folder is; the
+	 * installation folder is the one the report folder lives in.
 	 */
-	private String toContainerJdbcUrl(String jdbcUrl) {
-		return jdbcUrl.replace("localhost", "host.docker.internal").replace("127.0.0.1",
-				"host.docker.internal");
+	static String toContainerJdbcUrl(String jdbcUrl, File reportDir) {
+		if (jdbcUrl.regionMatches(true, 0, SQLITE_URL_PREFIX, 0, SQLITE_URL_PREFIX.length())) {
+			return toContainerSqliteUrl(jdbcUrl, reportDir);
+		}
+		return toRendererReachableUrl(jdbcUrl);
+	}
+
+	/**
+	 * The renderer dials this URL from its own container, so a database saved as localhost has to be named
+	 * the way a container can reach it: by container name on the shared 'datapallas' network when the
+	 * database is one of ours, and through the host gateway when it is a service of the user's machine
+	 * (plan §4 F2n). Ports are not touched when the address is not localhost.
+	 */
+	static String toRendererReachableUrl(String jdbcUrl) {
+		return toRendererReachableUrl(jdbcUrl, ContainerAddresses::resolveForContainer);
+	}
+
+	/** The same, with the lookup handed in - Docker in production, a known answer in the tests. */
+	static String toRendererReachableUrl(String jdbcUrl,
+			BiFunction<String, String, String[]> resolver) {
+		Matcher m = LOCALHOST_WITH_PORT.matcher(jdbcUrl);
+		if (!m.find())
+			return jdbcUrl.replace("localhost", ContainerAddresses.HOST_GATEWAY).replace("127.0.0.1",
+					ContainerAddresses.HOST_GATEWAY);
+		String[] reachable = resolver.apply(m.group(1), m.group(2));
+		return jdbcUrl.replace(m.group(1) + ":" + m.group(2), reachable[0] + ":" + reachable[1]);
+	}
+
+	private static final Pattern LOCALHOST_WITH_PORT = Pattern.compile("(localhost|127\\.0\\.0\\.1):(\\d+)");
+
+	private static String toContainerSqliteUrl(String jdbcUrl, File reportDir) {
+		String location = jdbcUrl.substring(SQLITE_URL_PREFIX.length());
+		String options = "";
+		int query = location.indexOf('?');
+		if (query >= 0) {
+			options = location.substring(query);
+			location = location.substring(0, query);
+		}
+
+		String installDir = installDirOf(reportDir);
+		String dbFile = location.replace('\\', '/');
+		boolean absolute = new File(location).isAbsolute() || dbFile.startsWith("/") || dbFile.matches("[A-Za-z]:/.*");
+		if (installDir != null && !absolute) {
+			dbFile = installDir + "/" + dbFile;   // relative to the installation, like DataPallas resolves it
+		}
+		String dbDir = installDir == null ? null : installDir + "/db/";
+		if (dbDir == null || !dbFile.regionMatches(true, 0, dbDir, 0, dbDir.length())) {
+			throw new IllegalArgumentException("The JasperReports Legacy renderer can only open SQLite databases"
+					+ " inside the db/ folder of the DataPallas installation, because that is the folder it mounts."
+					+ " This connection points at " + location);
+		}
+		return SQLITE_URL_PREFIX + CONTAINER_DB_DIR + "/" + dbFile.substring(dbDir.length()) + options;
+	}
+
+	/** The installation folder a report folder belongs to, or null when it is not in one of the mounted folders. */
+	private static String installDirOf(File reportDir) {
+		String normalized = reportDir.getAbsolutePath().replace('\\', '/');
+		for (String marker : new String[] { HOST_REPORTS_DIR, HOST_TEMPLATES_DIR }) {
+			int at = normalized.indexOf(marker);
+			if (at >= 0) {
+				return normalized.substring(0, at);
+			}
+		}
+		return null;
 	}
 
 	private String baseUrl() {
@@ -211,7 +284,11 @@ public class JasperLegacyRestRenderer implements JasperRenderer {
 			configured = System.getenv(ENV_BASE_URL);
 		}
 		if (configured == null || configured.isBlank()) {
-			return DEFAULT_BASE_URL;
+			// In the Docker server the renderer is a sibling container: reached by name on the shared network,
+			// so no port has to be published and no host firewall is in the way (plan §4 F2n). On the desktop
+			// and on a host-JVM Server this stays http://localhost:9095.
+			String[] reachable = ContainerAddresses.resolve("localhost", "9095");
+			return "http://" + reachable[0] + ":" + reachable[1];
 		}
 		return configured.endsWith("/") ? configured.substring(0, configured.length() - 1) : configured;
 	}

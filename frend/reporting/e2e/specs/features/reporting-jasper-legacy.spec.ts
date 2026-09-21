@@ -5,6 +5,7 @@ import { spawnSync } from 'child_process';
 import { test, expect } from '@playwright/test';
 import { electronBeforeAfterAllTest } from '../../utils/common-setup';
 import { Constants } from '../../utils/constants';
+import { Helpers } from '../../utils/helpers';
 import { FluentTester } from '../../helpers/fluent-tester';
 import { DockerTestHelper } from '../../helpers/docker-test-helper';
 import { ConnectionsTestHelper } from '../../helpers/areas/connections-test-helper';
@@ -97,7 +98,7 @@ const LIBRARY_ERA_ORDER_BOOK = `<?xml version="1.0" encoding="UTF-8"?>
        od."Quantity", od."UnitPrice"
 FROM "Orders" o
 JOIN "Customers" c ON c."CustomerID" = o."CustomerID"
-JOIN "OrderDetails" od ON od."OrderID" = o."OrderID"
+JOIN "Order Details" od ON od."OrderID" = o."OrderID"
 JOIN "Products" p ON p."ProductID" = od."ProductID"
 WHERE c."Country" = $P{Country}
 ORDER BY o."OrderID"]]></queryString>
@@ -250,7 +251,7 @@ const SALES_BY_CATEGORY_CHART = `<?xml version="1.0" encoding="UTF-8"?>
               leftMargin="40" rightMargin="40" topMargin="40" bottomMargin="40">
     <queryString language="SQL"><![CDATA[SELECT c."CategoryName" AS "Category",
        CAST(SUM(od."Quantity" * od."UnitPrice") AS REAL) AS "Revenue"
-FROM "OrderDetails" od
+FROM "Order Details" od
 JOIN "Products" p ON p."ProductID" = od."ProductID"
 JOIN "Categories" c ON c."CategoryID" = p."CategoryID"
 GROUP BY c."CategoryName"
@@ -298,13 +299,41 @@ const LOGO_PNG_BASE64 =
 
 // ── Renderer lifecycle ──────────────────────────────────────────────────────
 
+// On the shipped Docker server the installation lives inside the container: tools/jasper-legacy is there,
+// not next to the bundle on the host — the same place the CLI runs for a customer. asbl/ci/dp-ci.sh sets
+// E2E_DOCKER_SERVER for that target; unset everywhere else, so desktop and the dev chain are unchanged.
+const DOCKER_SERVER = () => process.env.E2E_DOCKER_SERVER;
+const IN_CONTAINER_TOOL_DIR = '/app/tools/jasper-legacy';
+
+/**
+ * The command that runs one of the tool's scripts: jr.bat / jr.sh from the installation, or - on the shipped
+ * Docker server - the .sh inside the server container. It talks to the host's Docker daemon through the socket
+ * the bundle mounts, so the renderer container lands on the host as usual, and the script itself works out
+ * where the installation's folders are on the host (plan §3 O19).
+ */
+function toolCommand(scriptName: string): string[] {
+  return DOCKER_SERVER()
+    ? ['docker', 'exec', '-w', IN_CONTAINER_TOOL_DIR, DOCKER_SERVER() as string, 'bash', `${IN_CONTAINER_TOOL_DIR}/${scriptName}.sh`]
+    : Helpers.installationScript(path.join(TOOL_DIR(), scriptName)).command;
+}
+
+/**
+ * A folder of the installation as jr sees it: the same path on desktop, and on the shipped Docker server the
+ * path inside the container, where the bundle's folders are mounted under /app (temp -> /app/temp) - the path a
+ * customer passes to docker exec.
+ */
+function toolPath(installationPath: string): string {
+  if (!DOCKER_SERVER()) return installationPath;
+  const relative = path.relative(path.resolve(process.env.PORTABLE_EXECUTABLE_DIR as string), installationPath);
+  return path.posix.join('/app', ...relative.split(path.sep));
+}
+
 function runTool(args: string[], label: string): string {
-  const isWindows = process.platform === 'win32';
-  const command = path.join(TOOL_DIR(), isWindows ? 'jr.bat' : 'jr.sh');
-  const result = spawnSync(isWindows ? 'cmd' : 'bash', isWindows ? ['/c', command, ...args] : [command, ...args], {
+  const [command, ...commandArgs] = toolCommand('jr');
+  const result = spawnSync(command, [...commandArgs, ...args], {
     encoding: 'utf-8',
     timeout: 10 * 60_000,
-    cwd: TOOL_DIR(),
+    ...(DOCKER_SERVER() ? {} : { cwd: TOOL_DIR() }),
   });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
   if (result.error) {
@@ -314,19 +343,18 @@ function runTool(args: string[], label: string): string {
 }
 
 function runServiceScript(scriptName: string, label: string): void {
-  const isWindows = process.platform === 'win32';
-  const script = path.join(TOOL_DIR(), `${scriptName}${isWindows ? '.bat' : '.sh'}`);
-  if (!fs.existsSync(script)) {
+  if (!DOCKER_SERVER() && !fs.existsSync(Helpers.installationScript(path.join(TOOL_DIR(), scriptName)).file)) {
     throw new Error(
       `The JasperReports Legacy renderer is not installed at ${TOOL_DIR()} [${label}]. ` +
         `It ships under tools/jasper-legacy.`,
     );
   }
-  spawnSync(isWindows ? 'cmd' : 'bash', isWindows ? ['/c', script] : [script], {
+  const [command, ...args] = toolCommand(scriptName);
+  spawnSync(command, args, {
     encoding: 'utf-8',
     timeout: 15 * 60_000,
-    cwd: TOOL_DIR(),
-    env: { ...process.env, JASPER_LEGACY_REPORTS: LEGACY_REPORTS_DIR() },
+    // In the container the script names the folders itself: a path from here would mean nothing to the daemon.
+    ...(DOCKER_SERVER() ? {} : { cwd: TOOL_DIR(), env: { ...process.env, JASPER_LEGACY_REPORTS: LEGACY_REPORTS_DIR() } }),
   });
 }
 
@@ -360,16 +388,30 @@ function startLegacyRenderer(): void {
 }
 
 /**
+ * Restarts the renderer so that its bind mount sees config/reports-jasper-legacy as
+ * it is NOW. Every test begins with the clean-state fixture, which deletes and
+ * re-copies config/ — this folder included. A bind mount made before that keeps
+ * pointing at the deleted folder (Linux bind mounts follow the directory itself, not
+ * its path), so the renderer would answer "Template not found" for a report that is
+ * right there on disk. The image is kept, so a restart costs seconds.
+ */
+function restartLegacyRendererOnCurrentFolder(): void {
+  runServiceScript('shutJasperLegacyServer', 'stop');
+  startLegacyRenderer();
+}
+
+/**
  * Nuclear stop: force-removes the renderer's container but KEEPS the built
  * image, so a re-run does not spend minutes rebuilding JasperReports 6 (and
  * works offline). Safe to call in a `finally` as the guaranteed no-leak net —
  * it does not care whether the graceful stop worked, or ran at all.
  */
 function dockerComposeDownKeepImage(): void {
-  spawnSync('docker', ['compose', 'down'], {
-    cwd: path.join(TOOL_DIR(), 'internal'),
-    shell: true,
-  });
+  // composeDown, not a bare `docker compose down` in that folder: with no -f compose walks UP to the
+  // first compose file above it, and on the shipped Docker server tools/jasper-legacy/internal sits
+  // inside the installation, whose root holds the DataPallas server's own docker-compose.yml - see
+  // DockerTestHelper.composeDown().
+  DockerTestHelper.composeDown(path.join(TOOL_DIR(), 'internal'));
 }
 
 function stopLegacyRenderer(): void {
@@ -436,6 +478,7 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
     'should migrate a JasperReports Server export with jr analyze --fix and then generate it',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+      restartLegacyRendererOnCurrentFolder();
 
       // The export lands somewhere outside DataPallas, as a download would.
       const exportDir = path.resolve(process.env.PORTABLE_EXECUTABLE_DIR as string, 'temp', 'jasperserver-export');
@@ -445,13 +488,13 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
       fs.writeFileSync(reportJrxml, SERVER_EXPORT_HEADCOUNT, 'utf-8');
 
       // Step 1 — ask what will run. Nothing is installed or started for this.
-      const analysis = runTool(['analyze', exportDir], 'jr analyze');
+      const analysis = runTool(['analyze', toolPath(exportDir)], 'jr analyze');
       expect(analysis).toContain('classic JRXML');
       expect(analysis).toContain('repo:/images/corp_logo.png');
       expect(analysis).toContain('need something first');
 
       // Step 2 — accept the offer. The Server path is rewritten in place.
-      const fixed = runTool(['analyze', exportDir, '--fix'], 'jr analyze --fix');
+      const fixed = runTool(['analyze', toolPath(exportDir), '--fix'], 'jr analyze --fix');
       expect(fixed).toContain('rewritten');
 
       let ft = new FluentTester(firstPage);
@@ -524,6 +567,7 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
     '(sqlite) should print an order book grouped by order, with per-order and grand totals',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+      restartLegacyRendererOnCurrentFolder();
 
       const dbVendor = 'sqlite';
       let ft = new FluentTester(firstPage);
@@ -554,7 +598,11 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
         .setValue('#Country', 'Germany')
         .sleep(Constants.DELAY_ONE_SECOND);
 
+      // Testing the connection wrote to the log files, and Generate refuses to start
+      // on non-empty logs ("You need to press the Clear Logs button first") — the same
+      // Clear Logs step the database tests of reporting-jasper.spec.ts take.
       ft = ft
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -581,6 +629,7 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
     '(sqlite) should export a product price list as Excel (.xlsx) for the buying team',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+      restartLegacyRendererOnCurrentFolder();
 
       const dbVendor = 'sqlite';
       let ft = new FluentTester(firstPage);
@@ -613,7 +662,11 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
           'span.ng-option-label:has-text("price_list")',
         );
 
+      // Testing the connection wrote to the log files, and Generate refuses to start
+      // on non-empty logs ("You need to press the Clear Logs button first") — the same
+      // Clear Logs step the database tests of reporting-jasper.spec.ts take.
       ft = ft
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -641,6 +694,7 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
     '(sqlite) should chart revenue by product category as a pie and a bar chart',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+      restartLegacyRendererOnCurrentFolder();
 
       const dbVendor = 'sqlite';
       let ft = new FluentTester(firstPage);
@@ -665,7 +719,11 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
           'span.ng-option-label:has-text("sales_by_category")',
         );
 
+      // Testing the connection wrote to the log files, and Generate refuses to start
+      // on non-empty logs ("You need to press the Clear Logs button first") — the same
+      // Clear Logs step the database tests of reporting-jasper.spec.ts take.
       ft = ft
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -692,6 +750,7 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
     'should generate a classic report whose sub-report was shipped already compiled (.jasper)',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+      restartLegacyRendererOnCurrentFolder();
 
       const reportDir = placeLegacyReport('subreport-compiled', 'sub_lines.jrxml', LEGACY_SUBREPORT);
       fs.writeFileSync(
@@ -723,6 +782,7 @@ test.describe('DataPallas - JasperReports Legacy Integration', async () => {
     'should generate a classic report whose sub-report exists only as .jrxml source',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+      restartLegacyRendererOnCurrentFolder();
 
       const reportDir = placeLegacyReport('subreport-source-only', 'sub_lines.jrxml', LEGACY_SUBREPORT);
       fs.writeFileSync(
@@ -829,10 +889,21 @@ function createDbConnection(
 
     ft = ft
       .confirmDialogShouldBeVisible()
-      .clickYesDoThis()
-      .waitOnElementToBecomeDisabled('#btnTestDbConnection')
-      .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
-      .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
+      .clickYesDoThis();
+
+    // The busy state (button disabled, icon spinning) is only catchable for server databases: an
+    // in-process SQLite/DuckDB test resolves in microseconds and Playwright's polling misses the
+    // window (same rule as ConnectionsTestHelper.openSeedDataTabAndTestConnection). The success
+    // toast below is what proves the test ran.
+    const isFileBased = dbVendor === 'sqlite' || dbVendor === 'duckdb';
+    if (!isFileBased) {
+      ft = ft
+        .waitOnElementToBecomeDisabled('#btnTestDbConnection')
+        .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
+        .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'animate-spin');
+    }
+
+    ft = ft
       .waitOnToastToBecomeVisible(
         'success',
         'Successfully connected to the database',

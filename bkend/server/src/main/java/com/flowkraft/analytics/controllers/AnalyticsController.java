@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Paths;
@@ -198,11 +199,23 @@ public class AnalyticsController {
      *   "aggregatorName": "Sum"
      * }
      *
+     * A report named in the query string ({@code ?reportId=}) wins over the body. That is the form
+     * rb-pivot-table sends, and the only one an embed token opens: the token was checked against that
+     * report, and the pivot runs on that report's configured source — never on a connection or table
+     * from the body. Pivoting a report is reading it, so it answers to whoever may read the report,
+     * like its config and data. Option 2 (any connection and table) stays with report authors.
+     *
      * @param request The pivot configuration
+     * @param reportId The report to pivot, from the query string
      * @return PivotResponse with aggregated data
      */
     @PostMapping("/pivot")
-    public ResponseEntity<?> executePivot(@RequestBody PivotRequest request) throws Exception {
+    @PreAuthorize("hasRole('REPORT_AUTHOR') or (#reportId != null and !#reportId.isBlank())")
+    public ResponseEntity<?> executePivot(@RequestBody PivotRequest request,
+            @P("reportId") @RequestParam(value = "reportId", required = false) String reportId) throws Exception {
+        if (reportId != null && !reportId.isBlank())
+            request.setReportId(reportId);
+
         try (DatabaseConnectionManager cm = ConnectionFactory.newConnectionManager()) {
             DuckDBAnalyticsService duckDBService = new DuckDBAnalyticsService(cm);
             ClickHouseAnalyticsService clickHouseService = new ClickHouseAnalyticsService(cm);

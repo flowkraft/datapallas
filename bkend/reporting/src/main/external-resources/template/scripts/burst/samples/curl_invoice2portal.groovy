@@ -17,6 +17,10 @@
 
 import groovy.ant.AntBuilder
 import com.sourcekraft.documentburster.variables.Variables
+// The bundled tools/curl/win/curl.exe is a Windows program (it ships in every package, but runs only there);
+// every other OS uses its own curl (without this the script died with: Cannot run program "tools/curl/win/curl.exe").
+def curlExecutable = System.getProperty('os.name').toLowerCase().contains('win') ? 'tools/curl/win/curl.exe' : 'curl'
+
 
 // Inputs
 def apiEndpoint = '[PASTE_API_ENDPOINT_HERE]'
@@ -53,7 +57,7 @@ ant.exec(
     append: true,
     failonerror: false,
     output: "logs/user_check.log",
-    executable: 'tools/curl/win/curl.exe'
+    executable: curlExecutable
 ) {
     arg(line: checkUserCmd)
 }
@@ -69,7 +73,7 @@ if (userCheckLog.contains('"id"')) {
         append: true,
         failonerror: true,
         output: "logs/user_create.log",
-        executable: 'tools/curl/win/curl.exe'
+        executable: curlExecutable
     ) {
         arg(line: createUserCmd)
     }
@@ -104,7 +108,7 @@ ant.exec(
     append: true,
     failonerror: true,
     output: "logs/publish.log",
-    executable: 'tools/curl/win/curl.exe'
+    executable: curlExecutable
 ) {
     arg(line: publishCmd)
 }

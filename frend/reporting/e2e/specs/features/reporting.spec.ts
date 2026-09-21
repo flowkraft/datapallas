@@ -37,7 +37,7 @@ const DB_VENDORS_SELECTED: string[] = (() => {
   //return ['ibmdb2'];
 
   // ── DEV OVERRIDES (uncomment ONE line to limit vendor scope) ──
-  return ['mariadb']; // DEV FOCUS — comment out to restore full rotation
+  //return ['mariadb']; // DEV FOCUS — comment out to restore full rotation
   
   //return ['postgres'];
   //return ['duckdb'];
@@ -49,7 +49,7 @@ const DB_VENDORS_SELECTED: string[] = (() => {
   const pool = DB_VENDORS_SUPPORTED.filter(v => !alwaysIncluded.includes(v));
 
   // Use date-based seed for daily variation but consistent within a run
-  const today = new Date().toISOString().split('T')[0]; // e.g., "2025-12-02"
+  const today = process.env.E2E_ROTATION_DATE || new Date().toISOString().split('T')[0]; // e.g., "2025-12-02"
   const seed = today.split('-').reduce((acc, n) => acc + parseInt(n), 0);
 
   // Simple seeded shuffle
@@ -2072,11 +2072,7 @@ function configureAndRunReportGeneration2(
   if (params.dataSourceConfig?.testViewData) {
     ft = ft
       .waitOnElementToBecomeVisible('#btnViewData')
-      .click('#btnViewData')
-      .clickYesDoThis()
-      .click('#btnClearLogs')
-      .clickYesDoThis()
-      .waitOnElementToBecomeDisabled('#btnClearLogs')
+      .clearLogs()
       .click('#btnViewData')
       .clickYesDoThis()
       .waitOnTabulatorToBecomeVisible()
@@ -2084,11 +2080,7 @@ function configureAndRunReportGeneration2(
   }
 
   ft = ft
-    .click('#btnGenerateReports')
-    .clickYesDoThis()
-    .click('#btnClearLogs')
-    .clickYesDoThis()
-    .waitOnElementToBecomeDisabled('#btnClearLogs')
+    .clearLogs()
     .click('#btnGenerateReports')
     .clickYesDoThis()
     .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)

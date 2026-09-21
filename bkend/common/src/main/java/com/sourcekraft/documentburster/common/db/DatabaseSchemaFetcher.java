@@ -409,7 +409,8 @@ public class DatabaseSchemaFetcher {
             case "clickhouse":
                 // Example: jdbc:clickhouse://<host>:<port>/<database>
                 // ClickHouse uses HTTP interface on port 8123 by default
-                return String.format("jdbc:clickhouse://%s:%s/%s", effectiveHost, settings.port, settings.database);
+                return String.format("jdbc:clickhouse://%s:%s/%s%s", effectiveHost, settings.port,
+                        settings.database, ServerDatabaseSettings.CLICKHOUSE_CONNECT_OPTIONS);
             default:
                 log.warn("Cannot construct JDBC URL for unsupported database type: {}", dbType);
                 return null;

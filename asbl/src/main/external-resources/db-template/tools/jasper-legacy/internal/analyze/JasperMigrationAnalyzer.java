@@ -51,6 +51,14 @@ public class JasperMigrationAnalyzer {
 	private static final Pattern SUBREPORT_DIR_DECLARED = Pattern
 			.compile("<parameter[^>]*name\\s*=\\s*\"SUBREPORT_DIR\"");
 	private static final Pattern JASPER_REPORT_OPEN_TAG = Pattern.compile("(<jasperReport\\b[^>]*>)", Pattern.DOTALL);
+	/**
+	 * The report-level elements the JRXML schema places AFTER the parameters. A new
+	 * parameter has to go in front of the first of them: anything earlier (style,
+	 * subDataset, scriptlet, ...) must precede parameters, or JasperReports rejects the file.
+	 */
+	private static final Pattern AFTER_PARAMETERS = Pattern.compile(
+			"<(parameter|queryString|field|sortField|variable|filterExpression|group|background|title|pageHeader"
+					+ "|columnHeader|detail|columnFooter|pageFooter|lastPageFooter|summary|noData)\\b");
 	/** Classes named in expressions or field/parameter declarations. */
 	private static final Pattern CLASS_ATTRIBUTE = Pattern.compile("class\\s*=\\s*\"([A-Za-z_][\\w.$]*)\"");
 
@@ -250,22 +258,47 @@ public class JasperMigrationAnalyzer {
 		}
 
 		if (!report.subreportDirDeclared) {
-			Matcher openTag = JASPER_REPORT_OPEN_TAG.matcher(updated);
-			if (openTag.find()) {
-				String declaration = System.lineSeparator()
-						+ "\t<parameter name=\"SUBREPORT_DIR\" class=\"java.lang.String\" isForPrompting=\"false\">"
-						+ System.lineSeparator()
-						+ "\t\t<defaultValueExpression><![CDATA[\"\"]]></defaultValueExpression>"
-						+ System.lineSeparator()
-						+ "\t</parameter>";
-				updated = updated.substring(0, openTag.end()) + declaration + updated.substring(openTag.end());
-			}
+			updated = declareSubreportDir(updated);
 		}
 
 		Files.writeString(report.file.resolveSibling(report.file.getFileName() + ".bak"), report.content,
 				StandardCharsets.UTF_8);
 		Files.writeString(report.file, updated, StandardCharsets.UTF_8);
 		report.fixed = true;
+	}
+
+	/**
+	 * Adds the SUBREPORT_DIR parameter where the JRXML schema allows it: in front of the
+	 * first report-level parameter, query, field, ... or band. Sub-datasets carry their own
+	 * queries and fields and all come before the report's parameters, so the search starts
+	 * after the last of them. Placing it straight after the root tag broke every report
+	 * that declares a style ("Invalid content was found starting with element 'style'").
+	 */
+	static String declareSubreportDir(String jrxml) {
+		Matcher openTag = JASPER_REPORT_OPEN_TAG.matcher(jrxml);
+		if (!openTag.find()) {
+			return jrxml;
+		}
+		int searchFrom = Math.max(openTag.end(), jrxml.lastIndexOf("</subDataset>"));
+		Matcher next = AFTER_PARAMETERS.matcher(jrxml);
+		int insertAt = next.find(searchFrom) ? next.start() : jrxml.lastIndexOf("</jasperReport>");
+		if (insertAt < 0) {
+			return jrxml;
+		}
+		// keep the file's own indentation when the element starts its line
+		int lineStart = jrxml.lastIndexOf('\n', insertAt - 1) + 1;
+		String indent = jrxml.substring(lineStart, insertAt);
+		boolean ownLine = indent.isBlank();
+		if (!ownLine) {
+			indent = "\t";
+		}
+		String nl = System.lineSeparator();
+		String declaration = indent + "<parameter name=\"SUBREPORT_DIR\" class=\"java.lang.String\" isForPrompting=\"false\">" + nl
+				+ indent + "\t<defaultValueExpression><![CDATA[\"\"]]></defaultValueExpression>" + nl
+				+ indent + "</parameter>" + nl;
+		return ownLine
+				? jrxml.substring(0, lineStart) + declaration + jrxml.substring(lineStart)
+				: jrxml.substring(0, insertAt) + nl + declaration + indent + jrxml.substring(insertAt);
 	}
 
 	// ------------------------------------------------------------------ output

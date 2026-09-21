@@ -14,6 +14,7 @@
  */
 package com.sourcekraft.documentburster.common.settings.model;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -181,6 +182,11 @@ public class ReportSettings extends DumpToString {
 		public String documentpath;
 
 		public String retrieveTemplateFilePath() {
+			// On Linux a real absolute path also starts with "/" - keep it when it points to an existing
+			// file. On Windows "/templates/..." is never absolute, so the stripping below is unchanged.
+			File templateFile = new File(documentpath);
+			if (templateFile.isAbsolute() && templateFile.exists())
+				return documentpath;
 			if (documentpath.startsWith("/") || documentpath.startsWith("\\"))
 				return documentpath.substring(1);
 			else

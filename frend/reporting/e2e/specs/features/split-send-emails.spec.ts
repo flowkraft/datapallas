@@ -1,5 +1,4 @@
 import * as path from 'path';
-const slash = require('slash');
 
 import { Page, test } from '@playwright/test';
 import { electronBeforeAfterAllTest } from '../../utils/common-setup';
@@ -100,12 +99,9 @@ const _splitSendVerifyEmails = (
       .click('#btnNewAttachment')
       .click('#attachmentPath')
       .typeText(
-        path.resolve(
-          slash(
-            process.env.PORTABLE_EXECUTABLE_DIR +
-              '/samples/burst/Customers-Distinct-Column-Values.xls',
-          ),
-        ),
+        // Installation-relative, which the server resolves in every edition (on the Docker server the
+        // install is /app inside the container, not the folder this test sees on the host).
+        'samples/burst/Customers-Distinct-Column-Values.xls',
       )
       .click(
         '#modalSelectAttachment .dburst-button-question-confirm-attachment',
@@ -118,12 +114,9 @@ const _splitSendVerifyEmails = (
       .click('#btnNewAttachment')
       .click('#attachmentPath')
       .typeText(
-        path.resolve(
-          slash(
-            process.env.PORTABLE_EXECUTABLE_DIR +
-              '/samples/burst/Customers-Distinct-Column-Values.xls',
-          ),
-        ),
+        // Installation-relative, which the server resolves in every edition (on the Docker server the
+        // install is /app inside the container, not the folder this test sees on the host).
+        'samples/burst/Customers-Distinct-Column-Values.xls',
       )
       .click(
         '#modalSelectAttachment .dburst-button-question-confirm-attachment',

@@ -29,6 +29,7 @@ import org.apache.commons.io.filefilter.NameFileFilter;
 import org.apache.commons.io.filefilter.NotFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.zeroturnaround.exec.ProcessExecutor;
@@ -176,10 +177,22 @@ public class Utils {
 
 	}
 
+	/**
+	 * The command line handed to the operating system's command interpreter. This is the one place the build
+	 * has to know the OS: npm and mvn are .cmd files on Windows, which only cmd can start, and there is no cmd
+	 * anywhere else.
+	 */
+	public static String[] shellCommand(String commandLine) {
+		return SystemUtils.IS_OS_WINDOWS ? new String[] { "cmd", "/c", commandLine }
+				: new String[] { "bash", "-c", commandLine };
+	}
+
 	public static void runMaven(String pomXmlFolderPath, String mavenCommand) throws Exception {
 
-		if (!mavenCommand.contains("-Djavac.compiler.path")) {
-			String rootPath = "C:/Program Files";
+		// Pin the javac of an Adoptium JDK 17 installed under Program Files. Where there is no such folder
+		// (Linux, macOS) the JDK on the PATH compiles.
+		String rootPath = "C:/Program Files";
+		if (!mavenCommand.contains("-Djavac.compiler.path") && Files.isDirectory(Paths.get(rootPath))) {
 			String pattern = ".*Eclipse Adoptium\\\\jdk-17.*-hotspot.*";
 
 			try (Stream<Path> paths = Files.walk(Paths.get(rootPath))) {
@@ -195,7 +208,7 @@ public class Utils {
 			}
 		}
 
-		int exitCode = new ProcessExecutor().directory(new File(pomXmlFolderPath)).command("cmd", "/c", mavenCommand)
+		int exitCode = new ProcessExecutor().directory(new File(pomXmlFolderPath)).command(shellCommand(mavenCommand))
 				.redirectOutput(new LogOutputStream() {
 					@Override
 					protected void processLine(String line) {

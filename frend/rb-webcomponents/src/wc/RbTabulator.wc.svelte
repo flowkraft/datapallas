@@ -257,6 +257,9 @@
   let container: HTMLDivElement;
   let table: Tabulator;
   let isReady = false;
+  // See watchForBecomingVisible() below.
+  let sizeObserver: ResizeObserver | null = null;
+  let hadSize = false;
   // keep a resolved columns reference (so we can avoid accidental overrides)
   let resolvedColumns: ColumnDefinition[] | undefined;
 
@@ -356,6 +359,43 @@
       console.error('rb-tabulator update error', err);
       dispatch('tableError', { message: String(err) });
     }
+  }
+
+  /**
+   * Redraw once, the first time the table is actually on screen.
+   *
+   * A Tabulator built inside a hidden container has nothing to measure: every height reads 0,
+   * so its virtual renderer decides that no rows fit and creates no row elements at all. The
+   * table still holds the data — its own footer says "Showing 1-3 of 3 rows" — but the grid is
+   * empty, and nothing inside Tabulator notices when the container is shown later, so it stays
+   * empty for good. This is not an exotic state: tab panels here are hidden with the `hidden`
+   * attribute rather than removed from the DOM, so any preview tab that receives its data before
+   * the user switches to it builds its table this way.
+   *
+   * So watch the container and redraw when it first gains a size. The observer fires on every
+   * size change, but the redraw is limited to the zero -> non-zero edge: `hadSize` is seeded from
+   * the current measurement, so a table that was built on screen never redraws, and an ordinary
+   * resize (which Tabulator already handles) does not trigger one either.
+   */
+  function watchForBecomingVisible() {
+    if (sizeObserver || !container || typeof ResizeObserver === 'undefined') return;
+
+    hadSize = container.offsetWidth > 0 || container.offsetHeight > 0;
+
+    sizeObserver = new ResizeObserver(() => {
+      if (!container) return;
+      const hasSize = container.offsetWidth > 0 || container.offsetHeight > 0;
+      if (hasSize && !hadSize && isReady && table) {
+        try {
+          table.redraw(true);
+        } catch (err) {
+          console.error('rb-tabulator redraw-on-show error', err);
+        }
+      }
+      hadSize = hasSize;
+    });
+
+    sizeObserver.observe(container);
   }
 
   onMount(async () => {
@@ -565,6 +605,8 @@
       table.on('rowClick', (e, row) => dispatch('rowClick', { event: e, row, rowData: row.getData() }));
       table.on('dataLoaded', (d) => dispatch('dataLoaded', { data: d }));
       table.on('dataFiltered', (filters: any[], rows: any[]) => dispatch('dataFiltered', { filters, rowCount: rows.length }));
+
+      watchForBecomingVisible();
     } catch (err) {
       console.error('rb-tabulator init error', err);
       dispatch('initError', { message: String(err) });
@@ -587,6 +629,10 @@
   });
 
   onDestroy(() => {
+    if (sizeObserver) {
+      sizeObserver.disconnect();
+      sizeObserver = null;
+    }
     if (table) {
       try {
         table.destroy();

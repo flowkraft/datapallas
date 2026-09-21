@@ -16,8 +16,8 @@
 //                   controllers, views, auth, REST ingest, rebranded menus, self-seed BootStrap)
 //   d) every run  — write the DataPallas PUSH report (config/reports/billing-portal-grails): the
 //                   SAME "Customer Invoices" report the 0010 report-generation video builds — a
-//                   ds.scriptfile over the bundled Northwind sample DB — whose native <httpcommand>
-//                   curl posts each invoice to the portal over REST
+//                   ds.scriptfile over the bundled Northwind sample DB — whose native Web Upload
+//                   curl (<documentbursterwebcommand>) posts each invoice to the portal over REST
 //   e) first run  — flip "visible": false -> true so the app card shows up in Apps Manager
 //
 // NOTE: NO seeding step is needed. The report runs against the BUNDLED Northwind sample DB
@@ -47,6 +47,9 @@ File customDir = new File(appDir, '_custom')
 def cfg          = new JsonSlurper().parse(new File(customDir, 'app.json'))
 String apiKey    = cfg.apiKey ?: 'bp-demo-key-CHANGE-ME'
 String portalUrl = cfg.url ?: 'http://localhost:8500'
+// portalUrl only seeds DEFAULTS into the report's settings.xml: the push (Web Upload > DataPallas Web
+// command) and the customer email's pay/sign-in links (Email message). In production change both there,
+// in Configuration, to the portal's public URL (see README "Going live").
 
 log.info("=== {}: scaffold + wire starting (vendor {}) ===", APP_ID, vendor)
 
@@ -135,8 +138,8 @@ if (overridesDir.isDirectory()) {
 
 // ── d) write the DataPallas PUSH report (every run) ──────────────────────────
 // The "Customer Invoices" report: a ds.scriptfile over the BUNDLED Northwind sample DB (no
-// seeding). Per invoice, DataPallas's NATIVE HTTP upload (settings.xml <httpcommand> curl, run by
-// the built-in upload.groovy) posts the rendered JSON to <portalUrl>/api/invoices. DataPallas
+// seeding). Per invoice, DataPallas's NATIVE Web Upload (settings.xml <documentbursterwebcommand> curl,
+// run by the built-in web_upload.groovy) posts the rendered JSON to <portalUrl>/api/invoices. DataPallas
 // renders NOTHING customer-facing — the portal renders the invoices, from the very same fields the
 // 0010 video's Apache FOP template renders to PDF. Grails (:8500) / Next (:8501) get separate folders.
 writePushReport(
@@ -218,7 +221,7 @@ def copyE2EProjectIfAbsent(File appsDir, log) {
 //   2) reporting.xml — ds.scriptfile + the source connection.
 //   3) push-payload.json — the FreeMarker JSON body (output.any).
 //   4) settings.xml — COPIED from the default; only the minimum nodes change (curl
-//      <httpcommand>, report label, flags).
+//      <documentbursterwebcommand>, report label, flags).
 // Grails (:8500) and Next (:8501) each get their OWN report folder.
 // ═════════════════════════════════════════════════════════════════════════════
 def writePushReport(Utils, log, String vendor, String reportId, String reportLabel,

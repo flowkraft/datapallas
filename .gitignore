@@ -215,3 +215,8 @@ _ai_crew_chat_with*
 .claude/
 
 Dockerfile.assembled
+
+# Secrets-encryption key for SecretsCipher. Generated per install on first use --
+# shipping one would give every download the same key, so it must never be committed.
+**/config/_internal/.master-key
+**/config/_internal/api-key.txt

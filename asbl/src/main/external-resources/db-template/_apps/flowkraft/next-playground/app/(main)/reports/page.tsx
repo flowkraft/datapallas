@@ -29,7 +29,9 @@ const employees: Employee[] = [
 export default function ReportsPage() {
   const embedToken = useEmbedToken("rep-employee-payslip")
   const reportRef = useRef<RbReportElement>(null)
-  const [isReady, setIsReady] = useState(false)
+  const [componentsLoaded, setComponentsLoaded] = useState(false)
+  // The components read embed-token once, when they mount: render them only after it has arrived.
+  const isReady = componentsLoaded && embedToken !== null
   const [activeTab, setActiveTab] = useState<TabType>("component")
   const [copiedUsage, setCopiedUsage] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
@@ -39,13 +41,13 @@ export default function ReportsPage() {
   useEffect(() => {
     // Check if components are already loaded
     if (customElements.get("rb-report")) {
-      setIsReady(true)
+      setComponentsLoaded(true)
       return
     }
 
     // Listen for the global loader event
     const handleComponentsLoaded = () => {
-      setIsReady(true)
+      setComponentsLoaded(true)
     }
 
     window.addEventListener("rb-components-loaded", handleComponentsLoaded)
@@ -122,7 +124,7 @@ export default function ReportsPage() {
   report-id="rep-employee-payslip"
   entity-code="EMP001"
   api-base-url="${rbConfig.apiBaseUrl}"
-  embed-token="${embedToken}"
+  embed-token="${embedToken ?? ""}"
 ></rb-report>
 
 <!-- The entity-code attribute specifies which
@@ -179,7 +181,7 @@ export default function ReportsPage() {
         </div>
 
         <div className="bg-base-100 border border-base-300 rounded-lg shadow-sm">
-          {activeTab === "component" && (
+          {activeTab === "component" && isReady && (
             <div className="p-6">
               {/* Employee Selection */}
               <div className="mb-4">

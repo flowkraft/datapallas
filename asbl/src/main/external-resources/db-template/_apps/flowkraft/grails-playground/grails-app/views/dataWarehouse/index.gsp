@@ -601,6 +601,8 @@
             (function() {
                 var apiBase = '${RbUtils.apiBaseUrl}';
                 var reportId = 'piv-northwind-warehouse-browser';
+                // Short-lived, minted server-side, scoped to this one report (as on the Report Parameters page).
+                var embedToken = '${RbUtils.embedToken('piv-northwind-warehouse-browser')}';
                 var currentPage = 0;
                 var pageSize = 10;
                 var totalRows = 0;
@@ -611,7 +613,8 @@
                     document.getElementById('rawDataLoading').classList.remove('hidden');
                     document.getElementById('rawDataError').classList.add('hidden');
 
-                    fetch(apiBase + '/reports/' + reportId + '/data?page=' + (currentPage + 1) + '&size=' + pageSize)
+                    fetch(apiBase + '/reports/' + reportId + '/data?page=' + (currentPage + 1) + '&size=' + pageSize,
+                          embedToken ? { headers: { 'X-Embed-Token': embedToken } } : {})
                         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                         .then(function(result) {
                             var data = result.data || [];

@@ -34,7 +34,10 @@ services:
       # DataPallas also renders inline .jrxml written in a report's Output tab,
       # which lives here rather than in the reports folder.
       - "${JASPER_LEGACY_TEMPLATES:-../../../templates}:/work/templates:ro"
-      - "../lib:/opt/jr/userlib:ro"
+      # SQLite connections point at files under DataPallas's db/ folder (the sample
+      # Northwind database included); DataPallas addresses them as /work/db/...
+      - "${JASPER_LEGACY_DB:-../../../db}:/work/db:ro"
+      - "${JASPER_LEGACY_LIB:-../lib}:/opt/jr/userlib:ro"
     extra_hosts:
       # So a jdbcUrl of host.docker.internal reaches databases on this machine,
       # including the ones DataPallas starts for you.
@@ -53,6 +56,14 @@ services:
     volumes:
       - "${JASPER_LEGACY_REPORTS:-../../../config/reports-jasper-legacy}:/work/report:ro"
       - "${JASPER_LEGACY_OUTPUT:-../../../output}:/work/out"
-      - "../lib:/opt/jr/userlib:ro"
+      - "${JASPER_LEGACY_LIB:-../lib}:/opt/jr/userlib:ro"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+# One network for everything DataPallas runs, so the server reaches a database or a tool by its container
+# name instead of going out to the host and back in through a published port - which any host firewall may
+# block (plan §4 F2n). The name is fixed but the network is not 'external': compose creates it when it is
+# missing, so this file still works on its own (desktop, or a Server on the host JVM).
+networks:
+  default:
+    name: datapallas

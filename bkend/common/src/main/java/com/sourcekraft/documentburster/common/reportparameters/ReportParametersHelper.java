@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -36,7 +37,17 @@ public class ReportParametersHelper {
 		try {
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			factory.setNamespaceAware(false);
-			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+			// Classic JRXML of the JasperReports 1.x/2.x era starts with
+			// <!DOCTYPE jasperReport PUBLIC "-//JasperReports//DTD Report Design//EN" "...jasperreport.dtd">.
+			// Rejecting every DOCTYPE left those reports without a parameter form. The DOCTYPE is
+			// accepted, but nothing is ever loaded from outside the file (no DTD download, no
+			// external entities, no XInclude) and the JDK's secure-processing limits apply.
+			factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+			factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+			factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+			factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+			factory.setXIncludeAware(false);
+			factory.setExpandEntityReferences(false);
 			DocumentBuilder builder = factory.newDocumentBuilder();
 			Document doc = builder.parse(new ByteArrayInputStream(jrxmlContent.getBytes(StandardCharsets.UTF_8)));
 
@@ -55,9 +66,12 @@ public class ReportParametersHelper {
 					continue;
 				}
 
-				// Skip parameters marked as not for prompting (isForPrompting defaults to true)
-				String isForPrompting = paramEl.getAttribute("isForPrompting");
-				if ("false".equalsIgnoreCase(isForPrompting)) {
+				// Skip parameters marked as not for prompting (prompting is the default). Classic
+				// JRXML (JasperReports 6 and earlier) writes isForPrompting="false"; JasperReports 7
+				// renamed the attribute to forPrompting="false". Missing the new name put
+				// SUBREPORT_DIR into the form, and its default text then overrode the report folder.
+				if ("false".equalsIgnoreCase(paramEl.getAttribute("isForPrompting"))
+						|| "false".equalsIgnoreCase(paramEl.getAttribute("forPrompting"))) {
 					continue;
 				}
 

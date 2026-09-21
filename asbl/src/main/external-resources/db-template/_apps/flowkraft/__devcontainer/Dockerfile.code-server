@@ -51,25 +51,35 @@ RUN npm install -g \
 
 # Install VS Code extensions
 # https://open-vsx.org (only extensions available here work)
+#
+# Through install-ext, which retries: open-vsx answers 503 now and then, and one such blip used to fail
+# the whole image build (plan §6 F2r CAT-6). After the last try it still fails the build.
+RUN printf '%s\n' '#!/bin/sh' \
+    'for try in 1 2 3 4 5; do' \
+    '  code-server --install-extension "$1" && exit 0' \
+    '  echo "install-ext: $1 failed (try $try of 5)" >&2; sleep $((try * 10))' \
+    'done' \
+    'exit 1' > /usr/local/bin/install-ext \
+    && chmod +x /usr/local/bin/install-ext
 
 # Claude Code
-RUN code-server --install-extension Anthropic.claude-code
+RUN install-ext Anthropic.claude-code
 
 # General
-RUN code-server --install-extension dbaeumer.vscode-eslint
-RUN code-server --install-extension humao.rest-client
-RUN code-server --install-extension emmanuelbeziat.vscode-great-icons
+RUN install-ext dbaeumer.vscode-eslint
+RUN install-ext humao.rest-client
+RUN install-ext emmanuelbeziat.vscode-great-icons
 
 # Java/Maven/Python development
-RUN code-server --install-extension vscjava.vscode-java-pack
+RUN install-ext vscjava.vscode-java-pack
 #RUN code-server --install-extension ms-python.python
 
-RUN code-server --install-extension jebbs.plantuml
+RUN install-ext jebbs.plantuml
 
 # Org Mode
-RUN code-server --install-extension realDestroyer.org-vscode
+RUN install-ext realDestroyer.org-vscode
 
-RUN code-server --install-extension RooVeterinaryInc.roo-cline
+RUN install-ext RooVeterinaryInc.roo-cline
 
 # Commented out (uncomment if needed)
 # RUN code-server --install-extension Gruntfuggly.todo-tree

@@ -1,12 +1,16 @@
 import { test } from '@playwright/test';
 import { electronBeforeAfterAllTest } from '../../utils/common-setup';
 import { FluentTester } from '../../helpers/fluent-tester';
+import { Constants } from '../../utils/constants';
 
 //DONE2
 test.describe('', async () => {
   electronBeforeAfterAllTest(
     'should correctly handle all Variables buttons (My Report)',
     async ({ beforeAfterEach: firstPage }) => {
+      // About 290 UI steps: 2.1 minutes on the Linux CI without slowMo, too close to the 180 s default on a
+      // slower machine or with E2E_SLOW_MO set (the steps keep progressing, nothing hangs).
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
       const ft = new FluentTester(firstPage);
       await ft
         .gotoConfigurationGeneralSettings()

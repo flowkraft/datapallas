@@ -126,6 +126,22 @@ strips samples, applies `overrides/**`, writes the DataPallas report config, and
 
 ---
 
+## Going live: the portal URL
+
+The seed writes `http://localhost:8500` into this app's report (`config/reports/billing-portal-grails/settings.xml`)
+as a **default**, right only for a demo on your own machine. The URL is in two places. Before emailing real
+customers, open the report in **Configuration** and change both to the portal's public address
+(e.g. `https://billing.example.com`):
+
+- **Web Upload → DataPallas Web**: the curl command that pushes each invoice (`…/api/invoices`).
+- **Email** message: the one-click pay link and the sign-in link the customer receives.
+
+Alternatively, set `"url"` in `_custom/app.json` and re-run the seed script, which rewrites both. Re-seeding
+resets the report's other settings too. In the DataPallas Docker server the default `localhost` push
+works as is: DataPallas re-addresses it to the portal's container.
+
+---
+
 ## Maintenance & discovery
 
 - **Re-apply / re-scaffold:** just run the seed script again — every run already wipes the app folder to

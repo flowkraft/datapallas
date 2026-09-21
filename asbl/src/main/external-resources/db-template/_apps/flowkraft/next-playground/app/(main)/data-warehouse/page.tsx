@@ -24,7 +24,9 @@ export default function DataWarehousePage() {
   const warehouseDuckdbRef = useRef<RbPivotTableElement>(null)
   const warehouseClickhouseRef = useRef<RbPivotTableElement>(null)
 
-  const [isReady, setIsReady] = useState(false)
+  const [componentsLoaded, setComponentsLoaded] = useState(false)
+  // The components read embed-token once, when they mount: render them only after it has arrived.
+  const isReady = componentsLoaded && browserToken !== null && duckdbToken !== null && clickhouseToken !== null
   const [activeTab, setActiveTab] = useState<TabType>("warehouse")
   const [clickhouseWarningVisible, setClickhouseWarningVisible] = useState(true)
   const { toast } = useToast()
@@ -50,10 +52,10 @@ export default function DataWarehousePage() {
   // Web component readiness
   useEffect(() => {
     if (customElements.get("rb-pivot-table")) {
-      setIsReady(true)
+      setComponentsLoaded(true)
       return
     }
-    const handleComponentsLoaded = () => setIsReady(true)
+    const handleComponentsLoaded = () => setComponentsLoaded(true)
     window.addEventListener("rb-components-loaded", handleComponentsLoaded)
     return () => window.removeEventListener("rb-components-loaded", handleComponentsLoaded)
   }, [])
@@ -117,7 +119,8 @@ export default function DataWarehousePage() {
     setRawLoading(true)
     setRawError("")
     try {
-      const res = await fetch(`${rbConfig.apiBaseUrl}/reports/piv-northwind-warehouse-browser/data?page=${page + 1}&size=${size}`)
+      const res = await fetch(`${rbConfig.apiBaseUrl}/reports/piv-northwind-warehouse-browser/data?page=${page + 1}&size=${size}`,
+        browserToken ? { headers: { "X-Embed-Token": browserToken } } : undefined)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const result = await res.json()
       const data: Record<string, unknown>[] = Array.isArray(result) ? result : (result?.data || [])
@@ -135,7 +138,7 @@ export default function DataWarehousePage() {
     } finally {
       setRawLoading(false)
     }
-  }, [rawColumns.length])
+  }, [rawColumns.length, browserToken])
 
   // Load raw data on tab activation
   useEffect(() => {
@@ -378,14 +381,18 @@ export default function DataWarehousePage() {
                 Client-side pivot &mdash; all processing in the browser. Great for quick exploration and datasets up to ~100K rows.
                 Zero infrastructure needed, works offline once data is loaded.
               </p>
-              {/* @ts-expect-error - Web component custom element */}
-              <rb-pivot-table
-                ref={warehouseBrowserRef}
-                id="warehousePivotBrowser"
-                report-id="piv-northwind-warehouse-browser"
-                api-base-url={rbConfig.apiBaseUrl}
-                embed-token={browserToken}
-              />
+              {isReady && (
+                <>
+                  {/* @ts-expect-error - Web component custom element */}
+                  <rb-pivot-table
+                    ref={warehouseBrowserRef}
+                    id="warehousePivotBrowser"
+                    report-id="piv-northwind-warehouse-browser"
+                    api-base-url={rbConfig.apiBaseUrl}
+                    embed-token={browserToken}
+                  />
+                </>
+              )}
             </div>
 
             {/* DuckDB Engine */}
@@ -398,14 +405,18 @@ export default function DataWarehousePage() {
                 Handles <strong>medium to large volumes</strong> with fast columnar queries.
                 Think of it as SQLite for analytics &mdash; <strong>100K&ndash;100M rows</strong> is comfortable territory.
               </p>
-              {/* @ts-expect-error - Web component custom element */}
-              <rb-pivot-table
-                ref={warehouseDuckdbRef}
-                id="warehousePivotDuckdb"
-                report-id="piv-northwind-warehouse-duckdb"
-                api-base-url={rbConfig.apiBaseUrl}
-                embed-token={duckdbToken}
-              />
+              {isReady && (
+                <>
+                  {/* @ts-expect-error - Web component custom element */}
+                  <rb-pivot-table
+                    ref={warehouseDuckdbRef}
+                    id="warehousePivotDuckdb"
+                    report-id="piv-northwind-warehouse-duckdb"
+                    api-base-url={rbConfig.apiBaseUrl}
+                    embed-token={duckdbToken}
+                  />
+                </>
+              )}
             </div>
 
             {/* ClickHouse Engine */}
@@ -426,14 +437,18 @@ export default function DataWarehousePage() {
                   </span>
                 </div>
               )}
-              {/* @ts-expect-error - Web component custom element */}
-              <rb-pivot-table
-                ref={warehouseClickhouseRef}
-                id="warehousePivotClickhouse"
-                report-id="piv-northwind-warehouse-clickhouse"
-                api-base-url={rbConfig.apiBaseUrl}
-                embed-token={clickhouseToken}
-              />
+              {isReady && (
+                <>
+                  {/* @ts-expect-error - Web component custom element */}
+                  <rb-pivot-table
+                    ref={warehouseClickhouseRef}
+                    id="warehousePivotClickhouse"
+                    report-id="piv-northwind-warehouse-clickhouse"
+                    api-base-url={rbConfig.apiBaseUrl}
+                    embed-token={clickhouseToken}
+                  />
+                </>
+              )}
             </div>
 
             {/* How to Use Section */}

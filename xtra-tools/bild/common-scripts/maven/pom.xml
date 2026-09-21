@@ -21,7 +21,7 @@
 		<maven.resolver.transport>wagon</maven.resolver.transport>
 
 		<slf4j.version>2.0.17</slf4j.version>
-		<log4j.version>2.25.0</log4j.version>
+		<log4j.version>2.26.1</log4j.version>
 		<junit.version>4.13</junit.version>
 		<jpdfunit.version>1.1</jpdfunit.version>
 
@@ -60,6 +60,8 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>${maven.surefire.plugin.version}</version>
 				<configuration>
+					<!-- same order as on Windows (NTFS lists classes alphabetically); some tests share static config -->
+					<runOrder>alphabetical</runOrder>
 					<argLine>-Duser.language=en -Duser.country=US
 					    --add-opens java.base/java.util=ALL-UNNAMED
 						--add-opens java.base/java.text=ALL-UNNAMED --add-opens java.desktop/java.awt.font=ALL-UNNAMED</argLine>

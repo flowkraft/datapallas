@@ -1,14 +1,33 @@
 export class Constants {
+  // Linux CI caps (plan §4 D0). Only asbl/ci/dp-ci.sh sets these variables; unset (Windows, Electron,
+  // local runs) every delay below keeps its own value.
+  //   E2E_MAX_TEST_MS — ceiling for the long whole-test budgets and the helper defaults built on them
+  //   E2E_MAX_WAIT_MS — ceiling for each single wait FluentTester hands to Playwright
+  static capLong(ms: number): number {
+    const max = Number(process.env.E2E_MAX_TEST_MS);
+    return max > 0 ? Math.min(ms, max) : ms;
+  }
+
+  static capWait(ms?: number): number | undefined {
+    const max = Number(process.env.E2E_MAX_WAIT_MS);
+    return ms !== undefined && max > 0 ? Math.min(ms, max) : ms;
+  }
+
   static DELAY_ONE_SECOND = 1000;
   static DELAY_HALF_SECOND = Constants.DELAY_ONE_SECOND / 2;
 
   static DELAY_TEN_SECONDS = 10 * Constants.DELAY_ONE_SECOND;
+  // How long the per-test fixture waits for the status bar to report a clean app before it stops waiting and
+  // reads the logs instead. The log sizes reach the bar over the stats websocket, so a second or two is the
+  // normal case and a minute is far past it. Waiting longer cannot help: while either log file has content the
+  // green button does not render at all, so more time only turns a readable failure into a test timeout.
+  static DELAY_SIXTY_SECONDS = 60 * Constants.DELAY_ONE_SECOND;
   static DELAY_HUNDRED_MILISECONDS = 100;
   static DELAY_HUNDRED_SECONDS = 100 * Constants.DELAY_ONE_SECOND;
 
-  static DELAY_FIVE_THOUSANDS_SECONDS = 5000 * Constants.DELAY_ONE_SECOND;
+  static DELAY_FIVE_THOUSANDS_SECONDS = Constants.capLong(5000 * Constants.DELAY_ONE_SECOND);
   static DELAY_FIVE_HUNDRED_SECONDS = 500 * Constants.DELAY_ONE_SECOND;
-  static DELAY_THOUSAND_SECONDS = 1000 * Constants.DELAY_ONE_SECOND;
+  static DELAY_THOUSAND_SECONDS = Constants.capLong(1000 * Constants.DELAY_ONE_SECOND);
 
   static STATUS_GREAT_NO_ERRORS_NO_WARNINGS = 'great-no-errors-no-warning';
   static STATUS_WARNINGS = 'warnings';

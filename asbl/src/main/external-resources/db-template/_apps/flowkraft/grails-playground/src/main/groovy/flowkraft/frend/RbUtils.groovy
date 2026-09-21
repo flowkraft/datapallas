@@ -34,6 +34,26 @@ class RbUtils {
         return "${baseUrl}/api"
     }
 
+    /** The server-side base URL that last answered, so later calls go straight to it. */
+    private static volatile String cachedServerApiBaseUrl = null
+
+    /**
+     * Where THIS APP (not the browser) reaches the DataPallas API, most likely first.
+     *
+     * <p>{@link #getApiBaseUrl()} is what the browser uses, and {@code localhost} is right there because
+     * the browser runs on the host. Inside this app's container {@code localhost} is the container
+     * itself, so a server-side call needs another address: DataPallas by container name when it runs
+     * in Docker on the shared {@code datapallas} network, otherwise the host through
+     * {@code host.docker.internal} (docker-compose maps it). RB_SERVER_API_BASE_URL wins when set.
+     */
+    private static List<String> serverApiBaseUrlCandidates() {
+        return [cachedServerApiBaseUrl,
+                System.getenv('RB_SERVER_API_BASE_URL'),
+                'http://datapallas-server:9090/api',
+                'http://host.docker.internal:9090/api',
+                apiBaseUrl].findAll { it }.unique()
+    }
+
     /**
      * This application's own long-lived credential for talking to DataPallas.
      *
@@ -58,15 +78,13 @@ class RbUtils {
                 return cachedApiKey
             }
             log.warn("No DataPallas API key at ${apiKeyPath} — is config/ mounted? " +
-                     "Falling back to the dev key, which a real server will reject.")
+                     "Calling DataPallas without an API key, which a DataPallas Server rejects.")
         } catch (Exception e) {
             log.warn("Could not read the DataPallas API key: ${e.message}")
         }
 
-        // Matches the dev server's -DAPI_KEY=123. Useless against a packaged server, which
-        // generates a random key — hence the warning above.
-        cachedApiKey = '123'
-        return cachedApiKey
+        // Not cached: the key is picked up as soon as the file appears.
+        return null
     }
 
     /**
@@ -100,15 +118,31 @@ class RbUtils {
         }
 
         try {
-            def connection = new URL("${apiBaseUrl}/embed/token").openConnection()
-            connection.requestMethod = 'POST'
-            connection.doOutput = true
-            connection.setRequestProperty('Content-Type', 'application/json')
-            connection.setRequestProperty('X-API-Key', getApiKey())
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
+            HttpURLConnection connection = null
+            IOException unreachable = null
+            for (String baseUrl : serverApiBaseUrlCandidates()) {
+                try {
+                    connection = (HttpURLConnection) new URL("${baseUrl}/embed/token").openConnection()
+                    connection.requestMethod = 'POST'
+                    connection.doOutput = true
+                    connection.setRequestProperty('Content-Type', 'application/json')
+                    String apiKey = getApiKey()
+                    if (apiKey) connection.setRequestProperty('X-API-Key', apiKey)
+                    connection.connectTimeout = 3000
+                    connection.readTimeout = 5000
 
-            connection.outputStream.withWriter('UTF-8') { it << "{\"reportId\":\"${reportId}\"}" }
+                    connection.outputStream.withWriter('UTF-8') { it << "{\"reportId\":\"${reportId}\"}" }
+                    connection.responseCode // answered: this is where DataPallas is
+                    cachedServerApiBaseUrl = baseUrl
+                    unreachable = null
+                    break
+                } catch (IOException e) {
+                    // Nothing listening at this address (or it does not resolve): try the next one.
+                    unreachable = e
+                    connection = null
+                }
+            }
+            if (connection == null) throw (unreachable ?: new IOException('no DataPallas address'))
 
             if (connection.responseCode != 200) {
                 log.warn("Could not mint an embed token for '${reportId}': HTTP ${connection.responseCode}")

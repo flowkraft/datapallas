@@ -10,7 +10,8 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+# A clean checkout has no lock file (the repo ignores asbl/**/package-lock.json), and `npm ci` needs one.
+RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder

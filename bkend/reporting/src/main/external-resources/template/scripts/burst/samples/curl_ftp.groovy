@@ -37,6 +37,10 @@
 import groovy.ant.AntBuilder
 
 import com.sourcekraft.documentburster.variables.Variables
+// The bundled tools/curl/win/curl.exe is a Windows program (it ships in every package, but runs only there);
+// every other OS uses its own curl (without this the script died with: Cannot run program "tools/curl/win/curl.exe").
+def curlExecutable = System.getProperty('os.name').toLowerCase().contains('win') ? 'tools/curl/win/curl.exe' : 'curl'
+
 
 /*
  *
@@ -177,6 +181,6 @@ ant.exec(
 		append: "true",
 		failonerror: "true",
 		output:"logs/cURL.log",
-		executable: 'tools/curl/win/curl.exe') {
+		executable: curlExecutable) {
 			arg(line:"${execOptions}")
 		}

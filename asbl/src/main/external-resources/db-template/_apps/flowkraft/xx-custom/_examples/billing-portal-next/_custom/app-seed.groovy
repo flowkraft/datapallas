@@ -7,8 +7,8 @@
 //   c) every run  — copy _custom/overrides/** on top (bp_* drizzle schema, cookie auth, ingest, portal + admin pages, self-seed)
 //   d) every run  — write the DataPallas PUSH report (config/reports/billing-portal-next): the
 //                   SAME "Customer Invoices" report the 0010 report-generation video builds — a
-//                   ds.scriptfile over the bundled Northwind sample DB — whose native <httpcommand>
-//                   curl posts each invoice to the Next portal over REST
+//                   ds.scriptfile over the bundled Northwind sample DB — whose native Web Upload
+//                   curl (<documentbursterwebcommand>) posts each invoice to the Next portal over REST
 //   e) first run  — flip "visible": false -> true
 //
 // NOTE: NO seeding step is needed. The report runs against the BUNDLED Northwind sample DB
@@ -36,6 +36,9 @@ File customDir = new File(appDir, '_custom')
 def cfg          = new JsonSlurper().parse(new File(customDir, 'app.json'))
 String apiKey    = cfg.apiKey ?: 'bp-demo-key-CHANGE-ME'
 String portalUrl = cfg.url ?: 'http://localhost:8501'
+// portalUrl only seeds DEFAULTS into the report's settings.xml: the push (Web Upload > DataPallas Web
+// command) and the customer email's pay/sign-in links (Email message). In production change both there,
+// in Configuration, to the portal's public URL (see README "Going live").
 
 log.info("=== {}: scaffold + wire starting (vendor {}) ===", APP_ID, vendor)
 
@@ -174,7 +177,7 @@ if (overridesDir.isDirectory()) {
 
 // ── d) write the DataPallas PUSH report (every run) ──────────────────────────
 // Same mechanism as the Grails example but a SEPARATE report in its OWN config folder, whose native
-// <httpcommand> curl targets the Next portal (:8501). DataPallas's built-in HTTP upload posts the
+// <documentbursterwebcommand> curl targets the Next portal (:8501). DataPallas's built-in Web Upload posts the
 // rendered per-invoice JSON; no custom script. That is how Grails (:8500) and Next (:8501) stay separate.
 writePushReport(
     Utils, log, vendor,
@@ -255,7 +258,7 @@ def copyE2EProjectIfAbsent(File appsDir, log) {
 //   2) reporting.xml — ds.scriptfile + the source connection.
 //   3) push-payload.json — the FreeMarker JSON body (output.any).
 //   4) settings.xml — COPIED from the default; only the minimum nodes change (curl
-//      <httpcommand>, report label, flags).
+//      <documentbursterwebcommand>, report label, flags).
 // Grails (:8500) and Next (:8501) each get their OWN report folder.
 // ═════════════════════════════════════════════════════════════════════════════
 def writePushReport(Utils, log, String vendor, String reportId, String reportLabel,

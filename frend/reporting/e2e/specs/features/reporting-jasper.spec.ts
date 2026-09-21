@@ -201,11 +201,7 @@ test.describe('DataPallas - JasperReports Integration', async () => {
 
       // Generate the customer list — expect 1 PDF with all German customers
       ft = ft
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .click('#btnClearLogs')
-        .clickYesDoThis()
-        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -330,11 +326,7 @@ ORDER BY "EmployeeID"
         );
 
       ft = ft
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .click('#btnClearLogs')
-        .clickYesDoThis()
-        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -483,11 +475,7 @@ ORDER BY "EmployeeID"
         );
 
       ft = ft
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .click('#btnClearLogs')
-        .clickYesDoThis()
-        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -640,11 +628,7 @@ LIMIT 5]]></query>
         );
 
       ft = ft
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .click('#btnClearLogs')
-        .clickYesDoThis()
-        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -754,6 +738,19 @@ log.info("Invoice data ready: {} invoices", ctx.reportData.size())
         .click('#btnTestScript')
         .confirmDialogShouldBeVisible()
         .clickYesDoThis()
+        // Wait for the preview component to be rendered BEFORE switching to its tab.
+        //
+        // `rb-tabulator` is in the template only once the run has come back with rows, so this
+        // waits for the data. It also fixes the order of the two things that used to race: the
+        // response arriving (~150 ms) and this tab being clicked (~200 ms). Whoever won decided
+        // whether the table was built on screen or inside the still-hidden panel — and a table
+        // built hidden has no height to measure, so it used to render no rows at all and this
+        // test then sat out its full 100 s waiting for three of them.
+        //
+        // Pinned this way round, the test always builds the table in the hidden panel and then
+        // reveals it, which is the case that was broken and is exactly what a user does: the
+        // answer lands long before they get round to looking at the preview.
+        .waitOnElementToBecomeVisible('rb-tabulator')
         .click('#tab-btn-reportingTabulatorTab')
         .waitOnTabulatorToBecomeVisible()
         .waitOnTabulatorToHaveRowCount(3);
@@ -836,11 +833,7 @@ log.info("Invoice data ready: {} invoices", ctx.reportData.size())
         );
 
       ft = ft
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .click('#btnClearLogs')
-        .clickYesDoThis()
-        .waitOnElementToBecomeDisabled('#btnClearLogs')
+        .clearLogs()
         .click('#btnGenerateReports')
         .clickYesDoThis()
         .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
@@ -1016,10 +1009,21 @@ function createDbConnection(
 
     ft = ft
       .confirmDialogShouldBeVisible()
-      .clickYesDoThis()
-      .waitOnElementToBecomeDisabled('#btnTestDbConnection')
-      .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
-      .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
+      .clickYesDoThis();
+
+    // The busy state (button disabled, icon spinning) is only catchable for server databases: an
+    // in-process SQLite/DuckDB test resolves in microseconds and Playwright's polling misses the
+    // window (same rule as ConnectionsTestHelper.openSeedDataTabAndTestConnection). The success
+    // toast below is what proves the test ran.
+    const isFileBased = dbVendor === 'sqlite' || dbVendor === 'duckdb';
+    if (!isFileBased) {
+      ft = ft
+        .waitOnElementToBecomeDisabled('#btnTestDbConnection')
+        .waitOnElementToHaveClass('#btnTestDbConnectionIcon', 'animate-spin')
+        .waitOnElementNotToHaveClass('#btnTestDbConnectionIcon', 'animate-spin');
+    }
+
+    ft = ft
       .waitOnToastToBecomeVisible(
         'success',
         'Successfully connected to the database',

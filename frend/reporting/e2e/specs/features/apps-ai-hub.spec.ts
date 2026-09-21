@@ -65,6 +65,10 @@ test.describe('AI Hub Tests', () => {
         const { browser, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
 
+        // The AI Hub reaches DataPallas through its /api/dp proxy, which forwards the user's own
+        // DataPallas session cookie. A DataPallas Server needs that session; Desktop ignores it.
+        await page.context().addCookies(await firstPage.context().cookies());
+
         // Wait for AI Hub to be ready
         await SelfServicePortalsTestHelper.waitForServerReady(page, AI_HUB_BASE_URL);
 

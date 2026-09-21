@@ -24,7 +24,9 @@ export default function ReportParametersPage() {
   const dataTableRef = useRef<RbTabulatorElement>(null)
   const [configDsl, setConfigDsl] = useState("")
   const [paramValues, setParamValues] = useState<Record<string, unknown>>({})
-  const [isReady, setIsReady] = useState(false)
+  const [componentsLoaded, setComponentsLoaded] = useState(false)
+  // The components read embed-token once, when they mount: render them only after it has arrived.
+  const isReady = componentsLoaded && embedToken !== null
   const [activeTab, setActiveTab] = useState<TabType>("component")
   const [copiedConfig, setCopiedConfig] = useState(false)
   const [copiedUsage, setCopiedUsage] = useState(false)
@@ -35,12 +37,12 @@ export default function ReportParametersPage() {
 
   useEffect(() => {
     if (customElements.get("rb-parameters")) {
-      setIsReady(true)
+      setComponentsLoaded(true)
       return
     }
 
     const handleComponentsLoaded = () => {
-      setIsReady(true)
+      setComponentsLoaded(true)
     }
 
     window.addEventListener("rb-components-loaded", handleComponentsLoaded)
@@ -143,9 +145,10 @@ export default function ReportParametersPage() {
       const dataUrl = `${rbConfig.apiBaseUrl}/reports/par-employee-hire-dates/data?${queryParams.toString()}`
       console.log("Fetching filtered data from:", dataUrl)
 
-      const response = await fetch(dataUrl, {
-        headers: { "Content-Type": "application/json" },
-      })
+      // The embed token authorizes this call where DataPallas requires sign-in (the Server), as on the Grails page.
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (embedToken) headers["X-Embed-Token"] = embedToken
+      const response = await fetch(dataUrl, { headers })
 
       if (!response.ok) throw new Error(`Data fetch failed: ${response.status}`)
 
@@ -181,7 +184,7 @@ export default function ReportParametersPage() {
   const usageCode = `<rb-parameters
   report-id="par-employee-hire-dates"
   api-base-url="${rbConfig.apiBaseUrl}"
-  embed-token="${embedToken}"
+  embed-token="${embedToken ?? ""}"
 ></rb-parameters>`
 
   const tabClass = (tab: TabType) =>
@@ -238,7 +241,7 @@ export default function ReportParametersPage() {
         </div>
 
         <div className="bg-base-100 border border-base-300 rounded-lg shadow-sm">
-          {activeTab === "component" && (
+          {activeTab === "component" && isReady && (
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="border border-base-300 rounded-lg">

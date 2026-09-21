@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
@@ -80,8 +81,23 @@ public class ProcessService {
 				reader -> Flux.fromStream(reader.lines()), Utils.uncheckedConsumer(BufferedReader::close));
 
 		return Flux.merge(stdoutFlux, stderrFlux).collectList()
-				.map(outputLines -> new ProcessOutputResultDto(process.exitValue() == 0, outputLines))
+				.map(outputLines -> new ProcessOutputResultDto(exitCodeOf(process) == 0, outputLines))
 				.doOnTerminate(process::destroy);
+	}
+
+	/**
+	 * The output streams can reach their end a moment before the process has exited, and exitValue() then throws
+	 * "process hasn't exited" (seen with the short startTestEmailServer.sh: the Start Test Email Server button
+	 * answered 500). So the exit is awaited, for at most 30 seconds; a process that has already exited returns at
+	 * once.
+	 */
+	private static int exitCodeOf(Process process) {
+		try {
+			return process.waitFor(30, TimeUnit.SECONDS) ? process.exitValue() : -1;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return -1;
+		}
 	}
 
 	public ProcessOutput execProcess(String command) throws Exception {

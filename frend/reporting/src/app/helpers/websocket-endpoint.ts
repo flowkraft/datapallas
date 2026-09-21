@@ -23,6 +23,10 @@ export class WebSocketEndpoint {
 
   reconnectionPromise: any;
 
+  // Bumped by every connect(): callbacks of a socket that has since been replaced are ignored, so an old
+  // socket closing late cannot schedule a second, duplicate connection.
+  private connectionGeneration = 0;
+
   constructor() {}
 
   async makeWSConnection(topicsOptions: TopicOptions[]) {
@@ -117,6 +121,8 @@ export class WebSocketEndpoint {
       clearTimeout(this.reconnectionPromise);
     }
     this.reconnectionPromise = setTimeout(() => {
+      this.reconnectionPromise = null;
+      if (this._socket.stomp && this._socket.stomp.connected) return;
       //console.log(
       //  'Socket reconnecting... (if it fails, next attempt in ' +
       //    this.reconnectionTimeout +
@@ -128,12 +134,34 @@ export class WebSocketEndpoint {
 
   reconnectNow = function (this: WebSocketEndpoint) {
     this._socket.stomp.disconnect();
-    if (this.reconnectionPromise && this.reconnectionPromise.cancel)
-      this.reconnectionPromise.cancel();
+    if (this.reconnectionPromise) {
+      clearTimeout(this.reconnectionPromise);
+      this.reconnectionPromise = null;
+    }
     this.connect();
   };
 
+  /**
+   * Connect at once instead of at the next scheduled retry, when the connection was started before and
+   * is not up now. On a DataPallas Server the first attempt happens on the login screen and is refused
+   * (401); without this the UI stayed deaf to job events for up to reconnectionTimeout ms after signing
+   * in, and a job finishing in that window was never reported as done. Does nothing when connected, or
+   * when the connection was never started (whoever starts it connects then).
+   */
+  connectNowIfDisconnected = () => {
+    if (!this._topicsOptions) return;
+    if (this._socket.stomp && this._socket.stomp.connected) return;
+    if (this.reconnectionPromise) {
+      clearTimeout(this.reconnectionPromise);
+      this.reconnectionPromise = null;
+    }
+    return this.connect().catch(() => this.scheduleReconnection());
+  };
+
   connect = async () => {
+    const generation = ++this.connectionGeneration;
+    const isCurrent = () => generation === this.connectionGeneration;
+
     // Build connection headers for STOMP
     // For Electron: include API key in headers
     // For Web: session cookie is sent automatically by SockJS
@@ -141,9 +169,10 @@ export class WebSocketEndpoint {
 
     const socketUrl = this.BACKEND_URL + this.socketUrl;
 
-    // The handshake needs no credential of its own:
-    //  - standalone (Electron, dev, single-operator server) authenticates the loopback caller in the
-    //    backend, before any filter that would ask for one;
+    // The handshake needs no credential of its own, because something outside this file already
+    // put one on the wire:
+    //  - in Electron the main process signs every request to its own backend with the installation
+    //    API key, and the SockJS handshake is an ordinary HTTP request like any other;
     //  - web mode is same-origin, so SockJS sends the JSESSIONID cookie automatically.
     //
     // The token goes on the STOMP CONNECT frame only. It must NOT be appended to socketUrl as a
@@ -167,12 +196,18 @@ export class WebSocketEndpoint {
 
     //disable logging
     this._socket.stomp.debug = () => {};
-    this._socket.stomp.onclose = this.scheduleReconnection;
+    this._socket.stomp.onclose = () => {
+      if (isCurrent()) this.scheduleReconnection();
+    };
 
     return this._socket.stomp.connect(
       headers,
-      this._socketListener,
-      this._onSocketError,
+      () => {
+        if (isCurrent()) this._socketListener();
+      },
+      (errorMsg: any) => {
+        if (isCurrent()) this._onSocketError(errorMsg);
+      },
     );
   };
 }

@@ -276,7 +276,7 @@
       }
 
       // console.log('[rb-pivot-table] Executing server-side pivot:', request);
-      const response = await pivotApi.executePivot(request, `pivot-${reportId}`);
+      const response = await pivotApi.executePivot(request, `pivot-${reportId}`, embedToken);
 
       // Check if backend returned 'browser' engine (non-OLAP connection)
       if ((response as any).engine === 'browser') {

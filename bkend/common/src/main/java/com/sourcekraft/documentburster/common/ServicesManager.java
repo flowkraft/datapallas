@@ -3,6 +3,7 @@ package com.sourcekraft.documentburster.common;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -292,6 +293,156 @@ public class ServicesManager {
 		} else {
 			System.out.println("✗ Failed to start cache service '" + serviceName + "'. Exit code: " + result.getExitValue());
 		}
+	}
+
+	/**
+	 * The HOST path of a folder inside this installation, or null when DataPallas does not run inside the
+	 * shipped Docker server. There the compose commands below run in here while the daemon is the host's,
+	 * so an app's relative bind mounts ("./config/synapse") would be resolved against /app/... — a path
+	 * that exists only in this container. Docker then creates empty folders and the app starts broken
+	 * (AI Hub's matrix-synapse: "homeserver.yaml does not exist").
+	 *
+	 * The mapping comes from this container's own mounts (its id is /etc/hostname), so it is the path in
+	 * the daemon's own form and needs nothing from the user. DATAPALLAS_HOST_DIR is an optional override
+	 * for anyone who mounts the installation differently.
+	 *
+	 * That host path is then made to exist in here too, as a symlink to the folder it stands for, because compose
+	 * reads .env, env_file and the build context itself, all relative to the project directory (matomo and
+	 * cms-webportal-playground have env_file entries — without the symlink compose stops with "env file
+	 * ... not found"). With the symlink one path works for both sides: the client reads the files through
+	 * it, and the daemon gets a string that is real on the host.
+	 *
+	 * VERIFIED ON LINUX ONLY (2026-09-16). On Docker Desktop for Windows a mount's Source comes back in
+	 * the host's own form (C:\\...), which is not an absolute path for this Linux JVM, so the symlink step
+	 * declines and everything falls back to the behaviour that shipped before — to be revisited when a
+	 * Windows Docker Desktop run can confirm what compose accepts there.
+	 *
+	 * The other three environments never get here at all: Electron, and a Server started directly on the
+	 * host JVM on Windows or Linux, run compose exactly as before, because only the Docker server image
+	 * exports RUNNING_IN_DOCKER. Nothing below runs, no docker process is spawned, on a host without
+	 * Docker installed included.
+	 */
+	private static String hostPathOf(Path folder) {
+		if (!Utils.isRunningInDocker())
+			return null;
+
+		Path wanted = folder.toAbsolutePath().normalize();
+
+		String[] roots = rootsFor(wanted);
+		if (roots == null) {
+			warnOnceAboutHostPath("none of this container's mounts says where " + wanted + " is on the host");
+			return null;
+		}
+
+		Path inHere = Paths.get(roots[0]), onHost = Paths.get(roots[1]);
+		if (!onHost.isAbsolute() || !makeVisibleInHere(onHost, inHere)) {
+			warnOnceAboutHostPath("the host path " + onHost + " cannot be made visible inside this container");
+			return null;
+		}
+
+		return onHost.resolve(inHere.relativize(wanted)).toString();
+	}
+
+	/**
+	 * { the path in this container, the path on the host } of the closest thing that covers this folder,
+	 * or null if nothing does. DATAPALLAS_HOST_DIR wins when it is set; otherwise the answer comes from
+	 * this container's own mounts. The shipped bundle mounts its 13 data folders one by one and not the
+	 * installation itself, so the match has to be per folder: /app/_apps is a mount, /app is not, and
+	 * /app/tools (which the image ships and the host does not have) is deliberately no match at all.
+	 */
+	private static String[] rootsFor(Path wanted) {
+		Path installation = Paths.get(Utils.getPortableExecutableDir()).toAbsolutePath().normalize();
+
+		String configured = System.getenv("DATAPALLAS_HOST_DIR");
+		if (configured != null && !configured.isEmpty() && wanted.startsWith(installation))
+			return new String[] { installation.toString(), configured };
+
+		try {
+			Path hostname = Paths.get("/etc/hostname");
+			if (!Files.exists(hostname))
+				return null;
+			String containerId = new String(Files.readAllBytes(hostname)).trim();
+			if (containerId.isEmpty())
+				return null;
+
+			ProcessResult inspect = new ProcessExecutor()
+					.command("docker", "inspect", containerId, "--format",
+							"{{range .Mounts}}{{.Destination}}\t{{.Source}}\n{{end}}")
+					.readOutput(true).execute();
+			if (inspect.getExitValue() != 0) {
+				log.warn("docker inspect {} failed (exit code {}): {}", containerId, inspect.getExitValue(),
+						inspect.getOutput().getString().trim());
+				return null;
+			}
+
+			String bestDestination = null, bestSource = null;
+			for (String line : inspect.getOutput().getString().split("\\R")) {
+				String[] parts = line.split("\t");
+				if (parts.length != 2 || parts[0].isEmpty() || parts[1].isEmpty())
+					continue;
+				if (wanted.startsWith(Paths.get(parts[0]))
+						&& (bestDestination == null || parts[0].length() > bestDestination.length())) {
+					bestDestination = parts[0];
+					bestSource = parts[1];
+				}
+			}
+			if (bestDestination == null)
+				return null;
+
+			return new String[] { bestDestination, bestSource };
+		} catch (Exception e) {
+			log.warn("Could not read this container's mounts: {}", e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * Makes the host path resolve in here as well, by pointing it at the folder it stands for. Nothing
+	 * that is already there is ever replaced: when the two are the same folder already (the bundle sits
+	 * at the same path on both sides) there is nothing to do, and when something else occupies the path
+	 * the caller falls back rather than write over it.
+	 */
+	private static boolean makeVisibleInHere(Path onHost, Path inHere) {
+		try {
+			if (Files.exists(onHost, LinkOption.NOFOLLOW_LINKS)) {
+				if (Files.isSymbolicLink(onHost) && !Files.readSymbolicLink(onHost).equals(inHere))
+					Files.delete(onHost); // ours, from an installation that has moved since
+				else
+					return Files.isSameFile(onHost, inHere);
+			}
+			Files.createDirectories(onHost.getParent());
+			Files.createSymbolicLink(onHost, inHere);
+			log.info("{} is {} on the host; linked it in here so compose reads the same files", inHere, onHost);
+			return true;
+		} catch (Exception e) {
+			log.warn("Could not link {} to {} in this container: {}", onHost, inHere, e.getMessage());
+			return false;
+		}
+	}
+
+	private static boolean hostPathWarned = false;
+
+	private static void warnOnceAboutHostPath(String because) {
+		if (hostPathWarned)
+			return;
+		hostPathWarned = true;
+		log.warn("Apps will be started with their bind mounts resolved against this container instead of the "
+				+ "host, which leaves them empty and can break the app: {}. Set DATAPALLAS_HOST_DIR to the "
+				+ "folder this installation is in on the host to fix it.", because);
+	}
+
+	/**
+	 * Tells compose where the app folder is on the host, so relative bind mounts land on the real files.
+	 * The same path resolves in here too (see hostPathOf), so .env, env_file and build contexts keep
+	 * working. Also used by NorthwindManager for the database starter packs.
+	 */
+	public static void addHostProjectDirectory(List<String> command, Path workingDir) {
+		String onHost = hostPathOf(workingDir);
+		if (onHost == null)
+			return;
+		command.add("--project-directory");
+		command.add(onHost);
+		log.info("Compose project directory on the host: {}", onHost);
 	}
 
 	/**
@@ -638,6 +789,7 @@ public class ServicesManager {
 		List<String> command = new ArrayList<>();
 		command.add("docker");
 		command.add("compose");
+		addHostProjectDirectory(command, workingDir);
 		command.add("-f");
 		command.add(composeFileName); // Relative to workingDir
 		command.add("up");
@@ -898,6 +1050,7 @@ public class ServicesManager {
 		List<String> command = new ArrayList<>();
 		command.add("docker");
 		command.add("compose");
+		addHostProjectDirectory(command, workingDir);
 		command.add("-f");
 		command.add(composeFileName);
 		command.add("down");
@@ -963,6 +1116,7 @@ public class ServicesManager {
 		List<String> command = new ArrayList<>();
 		command.add("docker");
 		command.add("compose");
+		addHostProjectDirectory(command, workingDir);
 		command.add("-f");
 		command.add(composeFileName);
 		command.add("up");

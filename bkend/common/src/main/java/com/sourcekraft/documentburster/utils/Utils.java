@@ -116,7 +116,27 @@ public class Utils {
 	public static String resolvePathAgainstPortableDir(String relativePath) {
 		if (relativePath == null || relativePath.isEmpty()) return relativePath;
 		File f = new File(relativePath);
-		if (f.isAbsolute()) return relativePath;
+		if (f.isAbsolute()) {
+			// The reports list gives the UI installation-relative paths with a leading slash
+			// ("/config/reports/payslips/settings.xml") and the UI sends them back. Windows reads
+			// such a path as relative (it never gets here); Linux and macOS read it as absolute, the
+			// file is not there, and Settings silently loaded config/burst/settings.xml instead (the
+			// next auto-save then overwrote the report). So a leading-slash path that does not exist
+			// resolves inside the installation when it exists there. Real absolute paths are returned
+			// as-is, as before.
+			if (relativePath.startsWith("/") && !f.exists()) {
+				String baseDir = System.getProperty("PORTABLE_EXECUTABLE_DIR");
+				if (StringUtils.isBlank(baseDir))
+					baseDir = System.getProperty("DOCUMENTBURSTER_HOME");
+				if (StringUtils.isNotBlank(baseDir)) {
+					Path base = Paths.get(baseDir).toAbsolutePath().normalize();
+					Path inside = base.resolve(relativePath.substring(1)).normalize();
+					if (inside.startsWith(base) && Files.exists(inside))
+						return inside.toString();
+				}
+			}
+			return relativePath;
+		}
 		String portableDir = System.getProperty("PORTABLE_EXECUTABLE_DIR");
 		if (StringUtils.isNotBlank(portableDir)) {
 			return new File(portableDir, relativePath).toPath().normalize().toAbsolutePath().toString();

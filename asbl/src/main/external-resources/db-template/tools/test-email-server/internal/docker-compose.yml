@@ -1,0 +1,30 @@
+# DataPallas - test email server (MailHog)
+#
+# Started through startTestEmailServer.sh - you should not need to run compose by hand. Windows does not
+# use this file at all: startTestEmailServer.bat runs the bundled MailHog_windows_386.exe next to it.
+#
+# The inbox lives in memory, so every start after a stop begins empty, as on Windows.
+
+services:
+
+  mailhog:
+    image: mailhog/mailhog
+    # The DataPallas Server bundle declares a service with this same container name, so when the bundle's
+    # own MailHog exists the start script reuses it and this file is never reached.
+    container_name: ${DATAPALLAS_TEST_EMAIL_SERVER_CONTAINER:-mailhog}
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI
+    restart: unless-stopped
+
+# Named, because the project name would otherwise default to this folder - "internal", which is also the
+# folder of tools/jasper-legacy/internal: one tool's compose down would then reach the other's containers.
+name: datapallas-test-email-server
+
+# One network for everything DataPallas runs, so the server reaches this tool by its container name instead
+# of going out to the host and back in through a published port - which any host firewall may block
+# (plan §4 F2n). The name is fixed but the network is not 'external': compose creates it when it is missing,
+# so this file still works on its own (desktop, or a Server on the host JVM).
+networks:
+  default:
+    name: datapallas
