@@ -220,3 +220,61 @@ Dockerfile.assembled
 # shipping one would give every download the same key, so it must never be committed.
 **/config/_internal/.master-key
 **/config/_internal/api-key.txt
+
+# ---------------------------------------------------------------------------
+# Secrets. This repository is PUBLIC: a credential committed here is published
+# the moment it is pushed, and rewriting history does not un-publish it. These
+# rules are the last line of defence behind "never `git add -A` blindly".
+#
+# Already-tracked files are NOT affected by these rules (git only ignores
+# untracked paths), so the shipped db-template samples keep working; what this
+# stops is a NEW credential file being swept in by an unreviewed `git add -A`.
+# ---------------------------------------------------------------------------
+
+# CI connection / release settings - these live outside the repo, root-only
+win-ci.env
+release.env
+*.release.env
+demo-datapallas-com.env
+
+# SSH and other private keys
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ppk
+*_rsa
+*_ed25519
+!*.pub
+*.pem
+*.key
+!**/i18n/*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.asc
+*.gpg
+.netrc
+_netrc
+
+# Cloud / registry / package-manager credentials
+rclone.conf
+!asbl/src/main/external-resources/db-template/tools/rclone/rclone.conf
+.npmrc
+!asbl/src/main/external-resources/db-template/_apps/**/.npmrc
+!frend/reporting/.npmrc
+.pypirc
+docker-config.json
+.docker/config.json
+
+# Generic credential files
+secrets
+secrets.*
+*.secret
+*.secrets
+credentials
+credentials.*
+api-key.txt
+.master-key
+.embed-key
