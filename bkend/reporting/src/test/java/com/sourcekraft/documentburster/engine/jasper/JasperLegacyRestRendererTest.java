@@ -15,7 +15,31 @@ import org.junit.Test;
  */
 public class JasperLegacyRestRendererTest {
 
-	private static final File REPORT = new File("/opt/DataPallas/config/reports-jasper-legacy/order-book");
+	private static final File REPORT = at("/opt/DataPallas/config/reports-jasper-legacy/order-book");
+
+	/**
+	 * A report folder that keeps the path it was given, on any OS. These tests are about paths
+	 * DataPallas hands the renderer, not about the machine running the test: plain
+	 * <code>new File("/opt/DataPallas/...")</code> is NOT that path on Windows, where java.io.File
+	 * makes it absolute against the current drive and returns C:\opt\DataPallas\... So the test
+	 * would describe one installation and the JDBC URL another, and the translation would rightly
+	 * refuse them. Fixing the fixture keeps one expectation for every OS.
+	 */
+	private static File at(final String path) {
+		return new File(path) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public String getAbsolutePath() {
+				return path;
+			}
+
+			@Override
+			public String getPath() {
+				return path;
+			}
+		};
+	}
 
 	@Test
 	public void aSqliteDatabaseUnderDbIsReachedThroughTheMountedDbFolder() {
@@ -26,14 +50,7 @@ public class JasperLegacyRestRendererTest {
 
 	@Test
 	public void aWindowsPathToTheSameDatabaseIsTranslatedToo() {
-		File windowsReport = new File("C:\\DataPallas\\config\\reports-jasper-legacy\\order-book") {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public String getAbsolutePath() {
-				return getPath();
-			}
-		};
+		File windowsReport = at("C:\\DataPallas\\config\\reports-jasper-legacy\\order-book");
 		assertEquals("jdbc:sqlite:/work/db/sample-northwind-sqlite/northwind.db",
 				JasperLegacyRestRenderer.toContainerJdbcUrl(
 						"jdbc:sqlite:C:\\DataPallas\\db\\sample-northwind-sqlite\\northwind.db", windowsReport));
