@@ -180,11 +180,11 @@ services:
       - |
         # Start Ollama server in background
         /bin/ollama serve &
-        OLLAMA_PID=$!
+        OLLAMA_PID=$$!
 
         # Wait for Ollama API to be ready (max 30 seconds)
         echo "Waiting for Ollama to start..."
-        for i in $(seq 1 30); do
+        for i in $$(seq 1 30); do
           if /bin/ollama list >/dev/null 2>&1; then
             echo "Ollama is ready!"
             break
@@ -208,7 +208,7 @@ services:
 
         # Keep container running and wait for Ollama process
         echo "Ollama container ready"
-        wait $OLLAMA_PID
+        wait $$OLLAMA_PID
     restart: unless-stopped
     # Gate health on the EMBEDDING MODEL being pulled, not just the server answering. `ollama
     # list` succeeds the moment the server is up (with an empty list), so the old check reported

@@ -35,6 +35,15 @@ asbl/**/package-lock.json
 asbl/**/yarn.lock
 asbl/**/pnpm-lock.yaml
 
+# ...except these two. They are not build artifacts of THIS repo - they are part of the shipped
+# app sources under db-template, and what they pin is literally what ends up in the customer's
+# container image. Without them `wpbones/wpbones: dev-master` and 31 floating npm ranges resolve
+# afresh on every build, so an upstream push can change what we ship with no commit here.
+# (`wp-themes/datapallas-theme/package-lock.json` has been tracked since 44629297 for the same
+# reason; these two just make that deliberate rather than accidental.)
+!asbl/**/wp-plugins/datapallas-portal/composer.lock
+!asbl/**/next-playground/package-lock.json
+
 # IDE/tool cache files
 asbl/**/.php-cs-fixer.cache
 asbl/**/.eslintcache

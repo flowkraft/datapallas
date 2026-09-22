@@ -121,9 +121,12 @@ if (!composeFile.exists()) {
     //              running it by hand fails loudly on the missing file instead of corrupting data.
     //   "db:push"  inert for the same reason. The trap worth guarding against was the DOCKERFILE
     //              running push at build time, and that is exactly what the replacement below removes.
-    // @faker-js/faker likewise stays in dependencies even though nothing imports it any more, because
-    // package.json and package-lock.json have to agree or the `npm ci` fails outright, and the lock
-    // file is the blueprint's.
+    // @faker-js/faker likewise stays in dependencies even though nothing imports it any more. Removing
+    // it would mean rewriting package.json again - which is the exact cache-busting edit this change
+    // just removed - to save one unused package in a 35-package install. Note the build does NOT run
+    // `npm ci` here: the repo ignores asbl/**/package-lock.json, so a clean checkout has no lock and
+    // the Dockerfile's deps stage falls back to `npm install`. That also means package.json is the
+    // ENTIRE cache key for that stage, which is why leaving its bytes alone matters so much.
 
     // `RUN npm run db:push` -> `RUN npm run db:generate`. Idempotent - a rerun finds nothing to replace.
     //

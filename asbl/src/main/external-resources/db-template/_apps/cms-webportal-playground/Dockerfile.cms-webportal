@@ -8,7 +8,7 @@
 # here and the real dump after the copy: the hook still fires exactly where it did before.
 FROM composer:2.5 AS composer
 WORKDIR /app/datapallas-portal
-COPY ./wp-plugins/datapallas-portal/composer.json ./
+COPY ./wp-plugins/datapallas-portal/composer.json ./wp-plugins/datapallas-portal/composer.lock ./
 RUN composer install --no-interaction --prefer-dist --no-progress --no-dev --no-scripts --no-autoloader
 COPY ./wp-plugins/datapallas-portal /app/datapallas-portal
 RUN composer dump-autoload --no-interaction --no-dev --optimize
