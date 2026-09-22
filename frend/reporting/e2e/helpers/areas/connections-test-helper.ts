@@ -1440,8 +1440,14 @@ export class ConnectionsTestHelper {
 
     ft = ft
       .click('#tab-btn-databaseSchemaTab')
+      // fullTimeout, not the 100 s default: this placeholder only goes once the BACKEND has run the
+      // connection test, and the backend is single-threaded against a `docker compose up` that is
+      // building a portal image. On 2026-09-22 that gap was ~2 min and the default 100 s budget failed
+      // the run (apps-custom.spec.ts:849, "Expected: 0 Received: 1" on this very span). The caller
+      // already hands us fullTimeout for exactly this kind of wait.
       .waitOnElementToBecomeInvisible(
         'span:has-text("To load the schema, please ensure your connection details are configured")',
+        fullTimeout,
       );
     ft = ft.waitOnElementToBecomeVisible('#databaseSchemaPicklistContainer');
     ft = ft

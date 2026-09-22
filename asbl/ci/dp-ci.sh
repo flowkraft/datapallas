@@ -643,14 +643,25 @@ win_e2e() {
   # The same caps as the Linux lane, so a stuck test costs minutes and not hours, and so the two
   # lanes mean the same thing by "passed". Read by playwright.config.ts, fluent-tester.ts and
   # e2e/utils/helpers.ts - all of them already there, none of them OS-specific.
+  # Raised from 900000/3600000 on 2026-09-22. These ceilings are the ONLY thing that made
+  # apps-custom fail here and pass on the owner's laptop: unset, a startApp wait is 5000 s, so the
+  # laptop never noticed that starting an app BUILDS its image on first use. Measured cold on the
+  # CI VM: npm install 959 s + next build 157 s = ~19 min, well past the old 15 min wait ceiling.
+  # A seeded app cannot be pre-warmed the way plan .docs/linux-cicd-plan.md R1 suggests for the
+  # blueprint apps (AI Hub, CloudBeaver, BI, WordPress): docker compose names the image after the
+  # project DIRECTORY, and a scaffolded copy's directory does not exist until the test creates it,
+  # so its build cannot happen before the run. 40 min clears the measured build twice over and
+  # still bounds a hung wait; the 90 min test ceiling leaves room for the one test that starts two
+  # apps cold. The real runaway guards are unchanged and much tighter: WIN_RUN_STALL kills a run
+  # with no info.log growth for 30 min, WIN_RUN_TIMEOUT caps the whole run.
   WIN_RUN_ENV=$(printf '%s\n' \
     "E2E_SPEC=$spec" \
     "E2E_GREP=$gexp" \
     "E2E_RETRIES=$retries" \
     "E2E_REPEAT_EACH=${E2E_REPEAT_EACH:-1}" \
     "E2E_SLOW_MO=${E2E_SLOW_MO:-0}" \
-    "E2E_MAX_WAIT_MS=${E2E_MAX_WAIT_MS:-900000}" \
-    "E2E_MAX_TEST_MS=${E2E_MAX_TEST_MS:-3600000}" \
+    "E2E_MAX_WAIT_MS=${E2E_MAX_WAIT_MS:-2400000}" \
+    "E2E_MAX_TEST_MS=${E2E_MAX_TEST_MS:-5400000}" \
     "E2E_ACTION_TIMEOUT_MS=${E2E_ACTION_TIMEOUT_MS:-300000}" \
     "E2E_CLEAN_STATE_ATTEMPTS=${E2E_CLEAN_STATE_ATTEMPTS:-60}" \
     "E2E_FAILFAST=${E2E_FAILFAST:-1}" \
@@ -669,12 +680,16 @@ win_e2e() {
   WIN_RUN_WATCH="${WIN_RUN_WATCH:-$WIN_REPO\\frend\\reporting\\testground\\e2e\\logs\\info.log}"
   # A full Electron suite is hours; the Linux full run is capped at 72000 s and this matches it.
   WIN_RUN_TIMEOUT="${WIN_RUN_TIMEOUT:-$([ "$mode" = full ] && echo 72000 || echo 10800)}"
-  # A quiet test is not a stalled run. One wait may block for E2E_MAX_WAIT_MS (15 min) and one whole
-  # test for E2E_MAX_TEST_MS (1 h) without printing a single line, so win_run's 20-minute silence
+  # A quiet test is not a stalled run. One wait may block for E2E_MAX_WAIT_MS (40 min) and one whole
+  # test for E2E_MAX_TEST_MS (90 min) without printing a single line, so win_run's 20-minute silence
   # budget is certain to shoot a healthy suite sooner or later - it killed the 2026-09-21 full run
   # at 8h38m, mid-test, after 1213s of quiet, with 16 spec files still to go (plan 6.23). The budget
-  # has to sit above the longest silence the caps themselves allow.
-  WIN_RUN_STALL="${WIN_RUN_STALL:-$([ "$mode" = full ] && echo 4200 || echo 1800)}"
+  # has to sit above the longest silence the caps themselves allow. Raised with those caps on
+  # 2026-09-22 and in the same proportion as before: targeted = 2x the wait ceiling, full = a little
+  # over the whole-test ceiling. Leaving these at 1800/4200 would have re-created the 2026-09-21 kill
+  # on the very cold image build the new ceilings exist to allow. A dead run is still bounded, and
+  # much sooner, by WIN_RUN_TIMEOUT above.
+  WIN_RUN_STALL="${WIN_RUN_STALL:-$([ "$mode" = full ] && echo 6300 || echo 4800)}"
   export WIN_RUN_WATCH WIN_RUN_TIMEOUT WIN_RUN_STALL
 
   win_run e2e "$WIN_REPO\\frend\\reporting" \
@@ -889,9 +904,11 @@ if [ "${1:-}" = "--inside" ]; then
       export DATAPALLAS_TEST_EMAIL_SERVER_CONTAINER="${DATAPALLAS_TEST_EMAIL_SERVER_CONTAINER:-dp-e2e-mailhog}"
       (cd frend/reporting && npm run custom:clean-testground) || return 1
     fi
-    # stuck tests cost minutes, not hours (plan §4 D0); read by e2e/utils/constants.ts, fluent-tester.ts,
-    # utils/helpers.ts and playwright.config.ts. Unset outside this script, so Windows runs are unchanged.
-    export E2E_MAX_WAIT_MS="${E2E_MAX_WAIT_MS:-900000}" E2E_MAX_TEST_MS="${E2E_MAX_TEST_MS:-3600000}" \
+    # stuck tests cost tens of minutes, not hours (plan §4 D0); read by e2e/utils/constants.ts,
+    # fluent-tester.ts, utils/helpers.ts and playwright.config.ts. Unset outside this script, so
+    # Windows and Electron runs outside CI are unchanged. Same values as the Windows lane above, and
+    # for the same reason: a cold `docker compose up` builds the image, which outlasts a 15 min wait.
+    export E2E_MAX_WAIT_MS="${E2E_MAX_WAIT_MS:-2400000}" E2E_MAX_TEST_MS="${E2E_MAX_TEST_MS:-5400000}" \
       E2E_ACTION_TIMEOUT_MS="${E2E_ACTION_TIMEOUT_MS:-300000}" E2E_CLEAN_STATE_ATTEMPTS="${E2E_CLEAN_STATE_ATTEMPTS:-60}" \
       E2E_FAILFAST="${E2E_FAILFAST:-1}" E2E_START_EVIDENCE_MS="${E2E_START_EVIDENCE_MS:-300000}" \
       E2E_STALL_MS="${E2E_STALL_MS:-600000}" E2E_REPEAT_EACH="${E2E_REPEAT_EACH:-1}" E2E_SLOW_MO="${E2E_SLOW_MO:-0}"

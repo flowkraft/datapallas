@@ -133,9 +133,20 @@ export class SelfServicePortalsTestHelper {
             return !!el && !t.includes('starting') && !t.includes('stopping');
           },
           stateSel,
-          { timeout: 120_000 },
+          { timeout: Constants.capWait(timeout) },
         ).catch(() => {
-          console.log(`[startApp] warning: app '${appId}' still in transition after 2 min — proceeding anyway`);
+          // Was: wait 2 min, then "proceed anyway" — which clicked Start on an app that was still
+          // starting. Starting an app BUILDS its image on first use (a cold Next.js build measured
+          // 19 min on 2026-09-22), so 2 min is nowhere near it, and the second click fired a second
+          // `docker compose up --force-recreate` alongside the one still building: buildkit failed
+          // the loser with `image "...:latest": already exists`, the product logged "Failed to start
+          // app" for an app that then came up healthy, and that stale error sat in errors.log for the
+          // rest of the suite. An app that never leaves its transition is a real failure — say so.
+          throw new Error(
+            `[startApp] app '${appId}' never left '${text.trim()}'. Starting an app builds its ` +
+              `image on first use; this wait has to outlast that build, and clicking Start again ` +
+              `here would race a second 'docker compose up' against the one still running.`,
+          );
         });
         text = ((await stateEl.textContent()) || '').toLowerCase();
       }

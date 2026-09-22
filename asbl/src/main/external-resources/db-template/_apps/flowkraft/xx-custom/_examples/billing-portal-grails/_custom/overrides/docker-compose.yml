@@ -23,6 +23,13 @@ services:
       # The SQLite DB file lives in the shared dir so billing-portal-bkend can maintain it directly.
       - ../_shared-db:/app/data
       - billing-portal-grails-logs:/app/logs
+      # DataPallas config, read-only - this is where the app reads config/_internal/api-key.txt.
+      # Without it the app calls DataPallas with no API key, a DataPallas Server rejects the call and
+      # every embedded component renders empty. The blueprint this app was copied from mounts it; that
+      # line was lost when these overrides replaced the blueprint compose wholesale. Five levels up,
+      # not three, because a scaffolded app sits under xx-custom/_examples/<app>/ - two deeper than
+      # the blueprint (see billing-portal-bkend, which walks the same five for ../../../../../db).
+      - ../../../../../config:/app/config:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 5s
