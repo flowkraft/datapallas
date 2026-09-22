@@ -75,7 +75,7 @@
 		<jdbi3.version>3.49.0</jdbi3.version>
 
 		<sqlite-jdbc.version>3.49.1.0</sqlite-jdbc.version>
-		<duckdb.version>1.4.4.0</duckdb.version>
+		<duckdb.version>1.4.5.0</duckdb.version>
 		<clickhouse-jdbc.version>0.9.6</clickhouse-jdbc.version>
 
 		<mssql-jdbc.version>13.2.0.jre11</mssql-jdbc.version>
