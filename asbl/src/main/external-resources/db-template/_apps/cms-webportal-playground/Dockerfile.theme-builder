@@ -2,5 +2,18 @@
 FROM node:20-alpine
 WORKDIR /theme-src
 
+# Dependencies are baked in, keyed on the two manifests alone.
+#
+# The service built from this image installs at RUNTIME whenever /theme-src/node_modules is missing
+# (see the theme-builder command in docker-compose.yml). This image used to ship the theme source
+# WITHOUT its dependencies, so that install ran on every `up --force-recreate` - minutes of npm work
+# repeated on each start, sitting directly on the critical path to the .provisioned marker that the
+# cms-webportal-playground healthcheck waits for. Installed here it becomes a cached layer that only
+# a manifest change invalidates, and the runtime container goes straight to the build.
+COPY ./wp-themes/datapallas-theme/package.json ./wp-themes/datapallas-theme/package-lock.json ./
+RUN npm ci --no-audit --no-fund --legacy-peer-deps || npm install --no-audit --no-fund --legacy-peer-deps
+
 # Copy theme source into /theme-src
+# node_modules above survives this: .dockerignore excludes **/node_modules/, so the source tree has
+# none of its own and cannot clobber the installed one.
 COPY ./wp-themes/datapallas-theme /theme-src

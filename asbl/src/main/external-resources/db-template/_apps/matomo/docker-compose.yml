@@ -34,6 +34,11 @@ services:
   matomo-db:
     image: mariadb:10.11
     container_name: rb-matomo-db
+    # A database gets a real shutdown window. Compose defaults to 10s and then SIGKILLs, and a
+    # hard-killed server replays its write-ahead log on the NEXT boot - so every rushed stop makes
+    # the following start slower, which makes the next stop more likely to be rushed. The e2e suite
+    # stops and starts these apps repeatedly, so the loop compounds across a run.
+    stop_grace_period: 60s
     command: --max-allowed-packet=64MB
     volumes:
       - matomo_data:/var/lib/mysql

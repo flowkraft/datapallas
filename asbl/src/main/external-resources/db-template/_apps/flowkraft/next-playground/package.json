@@ -8,6 +8,7 @@
     "start": "next start -p 8481",
     "lint": "next lint",
     "db:push": "npx drizzle-kit push",
+    "db:generate": "npx drizzle-kit generate",
     "db:seed": "npx tsx lib/db/seed.ts",
     "db:studio": "npx drizzle-kit studio"
   },

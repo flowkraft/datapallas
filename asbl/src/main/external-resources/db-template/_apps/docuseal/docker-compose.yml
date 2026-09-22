@@ -16,6 +16,11 @@ services:
   postgres:
     image: postgres:15
     container_name: rb-docuseal-db
+    # A database gets a real shutdown window. Compose defaults to 10s and then SIGKILLs, and a
+    # hard-killed server replays its write-ahead log on the NEXT boot - so every rushed stop makes
+    # the following start slower, which makes the next stop more likely to be rushed. The e2e suite
+    # stops and starts these apps repeatedly, so the loop compounds across a run.
+    stop_grace_period: 60s
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

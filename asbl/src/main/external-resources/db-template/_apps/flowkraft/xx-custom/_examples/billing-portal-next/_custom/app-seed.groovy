@@ -105,28 +105,35 @@ if (!composeFile.exists()) {
         else if (f.delete()) { stripped++ }
     }
 
-    // lib/db/seed.ts went with the strip above, so drop the script that called it — the app should
-    // ship no command that cannot run. The SCRIPT LINE ONLY: @faker-js/faker stays in dependencies
-    // even though nothing imports it any more, because package.json and package-lock.json have to
-    // agree or the `npm ci` in the Dockerfile fails outright, and the lock file is the blueprint's.
-    // Patched here rather than in the blueprint: next-playground owns that package.json and still
-    // uses its seeder. Idempotent — a second run finds nothing to remove.
-    File pkgJson = new File(appDir, 'package.json')
-    if (pkgJson.exists()) {
-        pkgJson.setText(pkgJson.getText('UTF-8').replaceAll(/(?m)^[ \t]*"db:seed":[^\n]*\r?\n/, ''), 'UTF-8')
-        // `db:push` -> `db:generate`, and the Dockerfile step with it (below).
-        //
-        // push OPENS a database and mutates it, which is meaningless during an image build: it ran
-        // against a file INSIDE the image that the ../_shared-db bind mount then hides entirely, so
-        // the schema it so carefully built was shadowed and never used, and the app ran on a
-        // hand-written CREATE TABLE block instead — whereupon the two drifted and every customer
-        // insert started throwing (see lib/db/index.ts). generate only EMITS SQL from
-        // lib/db/schema.ts into ./drizzle, which the Dockerfile already copies into the runtime
-        // image and which lib/db/index.ts applies with migrate() at boot. Renamed rather than
-        // quietly repointed: a script called db:push that generates would be the next trap.
-        pkgJson.setText(pkgJson.getText('UTF-8').replace('"db:push": "npx drizzle-kit push"',
-                                            '"db:generate": "npx drizzle-kit generate"'), 'UTF-8')
-    }
+    // package.json is deliberately NOT patched here. That is a performance contract, not an oversight.
+    //
+    // The Dockerfile's `deps` stage is `COPY package.json package-lock.json*` followed by `npm ci`, so
+    // its layer cache key is the BYTES of those two files. Rewriting even one script line made this
+    // app's package.json differ from the blueprint's (sha256 7633a6ef... -> 0589801c...), which missed
+    // the cache and paid a full uncached `npm ci` on EVERY run: 959 s measured on 2026-09-22, the
+    // largest single item in a 15.9 min app start. The blueprint now ships `db:generate` alongside
+    // `db:push`, so the only edit still needed is the Dockerfile one below - and that one lives in the
+    // `builder` stage, AFTER `npm ci`, where it costs nothing.
+    //
+    // Two script lines therefore survive into the derived app, on purpose:
+    //   "db:seed"  dangling, because lib/db/seed.ts was stripped above. Nothing invokes it - the
+    //              Dockerfile does not, and this app declares no compose command or entrypoint - so
+    //              running it by hand fails loudly on the missing file instead of corrupting data.
+    //   "db:push"  inert for the same reason. The trap worth guarding against was the DOCKERFILE
+    //              running push at build time, and that is exactly what the replacement below removes.
+    // @faker-js/faker likewise stays in dependencies even though nothing imports it any more, because
+    // package.json and package-lock.json have to agree or the `npm ci` fails outright, and the lock
+    // file is the blueprint's.
+
+    // `RUN npm run db:push` -> `RUN npm run db:generate`. Idempotent - a rerun finds nothing to replace.
+    //
+    // push OPENS a database and mutates it, which is meaningless during an image build: it ran
+    // against a file INSIDE the image that the ../_shared-db bind mount then hides entirely, so the
+    // schema it so carefully built was shadowed and never used, and the app ran on a hand-written
+    // CREATE TABLE block instead — whereupon the two drifted and every customer insert started
+    // throwing (see lib/db/index.ts). generate only EMITS SQL from lib/db/schema.ts into ./drizzle,
+    // which the Dockerfile already copies into the runtime image and which this app's lib/db/index.ts
+    // applies with migrate() at boot.
     File dockerfile = new File(appDir, 'Dockerfile')
     if (dockerfile.exists()) {
         dockerfile.setText(dockerfile.getText('UTF-8').replace('RUN npm run db:push', 'RUN npm run db:generate'), 'UTF-8')

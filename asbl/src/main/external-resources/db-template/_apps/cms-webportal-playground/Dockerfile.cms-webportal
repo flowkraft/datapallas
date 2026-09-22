@@ -1,15 +1,34 @@
-# Stage 1: Composer
+# Stage 1: Composer  (datapallas-portal is a WP Bones plugin)
+#
+# The manifest goes in on its own first: this RUN downloads the whole wpbones tree, and keying it on
+# composer.json alone means editing plugin PHP no longer re-downloads a thing. The install is split
+# from the autoload dump deliberately - datapallas-portal declares a post-autoload-dump hook that
+# copies the `bones` binary out of vendor/ and then runs `php bones rename --update` against the
+# PLUGIN SOURCE, so it can only run once that source is present. Hence --no-scripts/--no-autoloader
+# here and the real dump after the copy: the hook still fires exactly where it did before.
 FROM composer:2.5 AS composer
 WORKDIR /app/datapallas-portal
+COPY ./wp-plugins/datapallas-portal/composer.json ./
+RUN composer install --no-interaction --prefer-dist --no-progress --no-dev --no-scripts --no-autoloader
 COPY ./wp-plugins/datapallas-portal /app/datapallas-portal
-RUN composer install --no-interaction --prefer-dist --no-progress --no-suggest --no-dev --optimize-autoloader
+RUN composer dump-autoload --no-interaction --no-dev --optimize
 
-# Stage 2: Node
+# Stage 2: Node  (_tw theme: tailwind.css -> theme/style.css, javascript/ -> theme/js/*.min.js)
+#
+# Same shape, with one wrinkle worth knowing before touching the order. tailwind.css line 25 says
+#     @source "/var/www/html/wp-content/plugins/datapallas-portal/**/*.php";
+# an ABSOLUTE path, so the plugin genuinely has to be materialised at that exact location for
+# Tailwind to see the classes the plugin PHP emits - drop that COPY and the portal renders unstyled,
+# silently. It is not redundant, it was just in the wrong place: sitting ABOVE the npm install meant
+# every plugin edit threw away the whole node_modules layer. Between the install and the build it is
+# still there when Tailwind scans, and no longer part of the dependency cache key.
 FROM node:20-alpine AS theme-builder
 WORKDIR /app/datapallas-theme
+COPY ./wp-themes/datapallas-theme/package.json ./wp-themes/datapallas-theme/package-lock.json ./
+RUN npm ci --no-audit --no-fund --legacy-peer-deps || npm install --no-audit --no-fund --legacy-peer-deps
 COPY ./wp-plugins/datapallas-portal /var/www/html/wp-content/plugins/datapallas-portal
 COPY ./wp-themes/datapallas-theme /app/datapallas-theme
-RUN (npm ci --no-audit --no-fund --legacy-peer-deps || npm install --no-audit --no-fund --legacy-peer-deps) && npm run production
+RUN npm run production
 
 # Stage 3: Final
 FROM wordpress:6.8.2-php8.4-apache

@@ -54,15 +54,41 @@ services:
       - .env
     restart: unless-stopped
     healthcheck:
+      # Two different questions, answered by two different knobs.
+      #
+      # "Is WordPress serving?" is the HEALTH question, and it wants three strikes, not three hundred.
+      # "Has the stack finished provisioning?" is a STARTUP question: .provisioned is touched by the
+      # sibling cms-webportal-playground-ready service, once theme-builder AND the wp-cli provisioner
+      # have both completed, so this container is legitimately not ready for minutes on a cold start.
+      # Docker has a knob for precisely that - start_period, during which a failing probe does not
+      # count against retries, and the first success marks the container healthy straight away.
+      #
+      # It used to be spelled `retries: 300`, which conflated the two and cost twice over. The startup
+      # budget became 300 x (interval + timeout) = up to 50 min, overshooting the 40 min e2e ceiling
+      # (E2E_MAX_WAIT_MS in asbl/ci/dp-ci.sh), so the test died before compose would have given up.
+      # And AFTER startup, a genuinely broken WordPress would have needed those same 50 min to be
+      # reported unhealthy - the health signal was effectively switched off for the whole session.
+      #
+      # Nothing inside compose waits on this: the product runs `up -d` without --wait (ServicesManager
+      # .handleAppStart), so the only reader is the app list in the UI, which is what the e2e
+      # startApp() helper watches. 25 min of start_period covers a cold provision - the theme build,
+      # wp core install, and the Pods/Query Monitor downloads from wordpress.org - with room to spare,
+      # and still lands well inside the ceiling. Three strikes afterwards surface a real failure in 45s.
       test: ["CMD-SHELL", "test -f /var/www/html/.provisioned && curl -f http://localhost/ -o /dev/null -s || exit 1"]
       interval: 5s
-      timeout: 5s
-      retries: 300
-      start_period: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 1500s
 
   cms-webportal-playground-db:
     image: mysql:8.0
     container_name: rb-cms-webportal-playground-db
+    # A database gets a real shutdown window. Compose defaults to 10s and then SIGKILLs, and a
+    # hard-killed MySQL replays its redo log on the NEXT boot - so every rushed stop makes the
+    # following start slower, which makes the next stop more likely to be rushed. The e2e suite
+    # stops and starts these apps repeatedly, so that loop compounds across a run. 60s is ample
+    # for InnoDB to flush and shut down cleanly at this data size.
+    stop_grace_period: 60s
     volumes:
       - wp_db_data:/var/lib/mysql
       - ./logs-db:/var/log/mysql
@@ -322,7 +348,12 @@ services:
           fi
         fi
 
-        npm install -g cross-env;
+        # cross-env is a devDependency, and npm puts node_modules/.bin on PATH for every script it
+        # runs, so the copy inside the image is what the production:* scripts resolve. Only reach for
+        # the network when it is genuinely missing (an image built before deps were baked in).
+        if [ ! -x node_modules/.bin/cross-env ] && ! command -v cross-env >/dev/null 2>&1; then
+          npm install -g cross-env;
+        fi
           
         echo "🔨 Running production build (Tailwind & esbuild)...";
         npm run production;

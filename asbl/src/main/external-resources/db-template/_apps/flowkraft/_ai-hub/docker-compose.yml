@@ -12,17 +12,24 @@ services:
     build:
       context: ./ui-startpage
       dockerfile: Dockerfile
+    # Now that element-web, chat2db and code-server report health, wait for the real thing instead
+    # of for a container merely existing: the hub proxies chat2db server-side and links straight into
+    # the other two, so service_started was never the condition it actually needed. These are all
+    # parallel branches of the graph, not extra links in the chain - element-web was already behind
+    # matrix-synapse being healthy, and code-server has no dependencies at all - so this sharpens the
+    # condition without lengthening the critical path. baibot is the deliberate exception; see the
+    # note on its healthcheck.
     depends_on:
       letta:
         condition: service_healthy
       element-web:
-        condition: service_started
+        condition: service_healthy
       chat2db:
-        condition: service_started
+        condition: service_healthy
       baibot:
         condition: service_started
       code-server:
-        condition: service_started
+        condition: service_healthy
     # The AI Hub now reaches the DataPallas backend from its own server side (the /api/dp proxy)
     # instead of from the user's browser, so the CONTAINER has to be able to resolve the host.
     # Docker Desktop provides host.docker.internal automatically; plain Linux Docker does not, and
@@ -84,6 +91,13 @@ services:
       - ./custom-tools:/custom-tools
       - ./agents-output-artifacts:/agent-output-artifacts
     # No entrypoint - for running CLI commands like: docker compose run --rm ai-hub-tools npm run agents:list
+    #
+    # Which is also why this one gets no healthcheck: it is a CLI toolbox, not a service. There is
+    # nothing to probe and nothing depends on it. `profiles` keeps it out of a plain
+    # `docker compose up`, where it only ever sat idle at a node prompt holding a container open,
+    # while `docker compose run --rm ai-hub-tools ...` keeps working unchanged - run enables a
+    # service own profiles automatically.
+    profiles: ["tools"]
     tty: true
     stdin_open: true
     networks:
@@ -238,6 +252,24 @@ services:
     networks:
       - ai-hub-network
       - default
+    # baibot is a Matrix CLIENT: it dials out and listens on nothing, so there is no endpoint to
+    # curl. Two things are still worth asserting, both checked against a live v1.13.0 container on
+    # 2026-09-22.
+    #   1. The process is alive. ENTRYPOINT is ["/bin/sh","-c"] with CMD ["/app/baibot"] and sh does
+    #      NOT exec it - PID 1 is the shell, baibot is a child - so the bot can die while the
+    #      container stays up and "started". Matching on /proc/*/exe rather than /proc/*/cmdline is
+    #      deliberate: cmdline would also match the probe shell running this very string, and pass
+    #      forever.
+    #   2. /data/session.json exists, which baibot writes once it has logged in to the homeserver.
+    # ai-hub-frend still depends on this one with service_started, not service_healthy: the dashboard
+    # renders perfectly well before the bot has logged in, and gating on it would serialise a Matrix
+    # login into the hub start-up for no gain.
+    healthcheck:
+      test: ["CMD-SHELL", "ls -l /proc/*/exe 2>/dev/null | grep -q /app/baibot && test -f /data/session.json"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
 
   matrix-synapse:
     image: ghcr.io/element-hq/synapse:v1.131.0
@@ -286,6 +318,15 @@ services:
     networks:
       - ai-hub-network
       - default
+    # A static nginx bundle: it is either serving config.json or it is broken. wget is what this
+    # image ships (busybox, no curl). This is the same probe the long-running element-web on
+    # internalsystems passes, checked against that container on 2026-09-22.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/config.json"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ============================================
   # Database Services
@@ -294,6 +335,11 @@ services:
   matrix-synapsedb-postgres:
     image: postgres:17-alpine
     container_name: flowkraft-ai-hub-matrix-db
+    # A database gets a real shutdown window. Compose defaults to 10s and then SIGKILLs, and a
+    # hard-killed server replays its write-ahead log on the NEXT boot - so every rushed stop makes
+    # the following start slower, which makes the next stop more likely to be rushed. The e2e suite
+    # stops and starts these apps repeatedly, so the loop compounds across a run.
+    stop_grace_period: 60s
     volumes:
       - synapse-db-data:/var/lib/postgresql/data
     environment:
@@ -339,6 +385,15 @@ services:
     networks:
       - ai-hub-network
       - default
+    # code-server answers /healthz with {"status":"alive",...} and --auth none above means no
+    # credential is involved. The port is the one this service binds, not the published one. curl
+    # comes from the Playwright Noble base image. Endpoint confirmed on 2026-09-22.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8443/healthz -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
 
   # ============================================
   # Chat2DB - Data Analysis Lab (Natural Language SQL via FastAPI)
@@ -364,6 +419,16 @@ services:
     networks:
       - ai-hub-network
       - default
+    # FastAPI on 8888. /api/health is a real route (helpers/chat2db/py/api.py) that answers without
+    # a JDBC connection having been opened first, so it reports "uvicorn is serving" rather than "a
+    # database happens to be attached" - the right question here, since ai-hub-frend proxies its
+    # Athena calls through this service. curl is installed by the image.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8888/api/health -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
 
 networks:
   # One network for everything DataPallas runs, so the DataPallas server reaches this app by container
