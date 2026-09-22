@@ -67,8 +67,8 @@ services:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (r) => process.exit(r.statusCode >= 200 && r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 5s
       timeout: 5s
-      retries: 30
-      start_period: 10s
+      retries: 60
+      start_period: 60s
 
   ai-hub-tools:
     build:
@@ -153,8 +153,8 @@ services:
       test: ["CMD-SHELL", "curl -sf http://localhost:8283/v1/providers/ || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 20
+      start_period: 300s
 
   ollama:
     image: ollama/ollama:0.13.5
@@ -269,8 +269,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:8008/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 20
+      start_period: 240s
 
   element-web:
     image: vectorim/element-web:v1.11.102
@@ -306,7 +306,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-synapse} -d matrix-synapsedb"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 20
+      start_period: 120s
     restart: unless-stopped
     networks:
       - ai-hub-network

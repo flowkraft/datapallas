@@ -520,6 +520,7 @@ PS
 # win_run <step> <windows-working-dir> <command...>   - launch on the desktop and watch to the end.
 # WIN_RUN_TIMEOUT  overall seconds before it is killed (default 3h - an Electron e2e is long).
 # WIN_RUN_STALL    seconds with no new log output before it is called stalled (default 20m; 0 = never).
+#                  Callers whose step can legitimately go quiet for longer must raise it - win_e2e does.
 # WIN_RUN_EVERY    seconds between polls (default 20).
 # WIN_RUN_WATCH    a second file on the VM whose growth also counts as progress. The Windows pack
 #                  scripts redirect Maven into their OWN log (asbl\pack-*.log) and print almost
@@ -605,7 +606,7 @@ e2e_count() {
 # gulp's _refreshEnv() overwrites PATH from the registry before it checks for java and mvn, so the
 # toolchain has to be on the Machine PATH for this to work at all - see plan 6.8/6.8.1.
 win_e2e() {
-  local mode=targeted out code retries spec gexp
+  local mode=targeted out code retries spec gexp dockerv
   [ -n "${WIN_REPO:-}" ] || {
     echo "FAIL  WIN_REPO is not set: add it to $WIN_CI_CONF (the VM's checkout, e.g. C:\\...\\rb)." >&2
     return 2
@@ -618,6 +619,23 @@ win_e2e() {
   # A targeted run shows each failure as it is; a full run retries a failed test once, so one run
   # still collects every failure instead of stopping at the first flake (plan W7).
   if [ "$mode" = full ]; then retries="${E2E_RETRIES:-1}"; else retries="${E2E_RETRIES:-0}"; fi
+
+  # Docker Desktop is a hard prerequisite of this suite, not an optional extra: every containerised
+  # app the specs start (analytics-olap, apps-ai-hub, apps-cms-wordpress, apps-custom and the
+  # grails/nextjs family) goes through e2e/helpers/docker-test-helper.ts. With the daemon down they
+  # do NOT fail fast - each one walks into "Please start Docker before - Docker is NEEDED to run
+  # this", gets retried, and the run carries on for hours collecting failures that mean nothing.
+  # The 2026-09-21 full run lost its first 2h19m and ~20 tests that way (plan 6.18). Five seconds
+  # of asking the VM, before the testground is touched, is the whole fix.
+  dockerv=$(win_ssh 'docker info --format "{{.ServerVersion}}"' 2>&1 | tr -d '\r' | tail -1)
+  case "$dockerv" in
+    ''|*[Ee]rror*|*'cannot connect'*|*'not running'*|*'dockerDesktopLinuxEngine'*)
+      echo "FAIL  Docker Desktop is not running on the VM - the e2e suite needs it." >&2
+      echo "      docker info said: ${dockerv:-<no output>}" >&2
+      echo "      Start it in the VM's desktop session, wait until 'docker info' answers, re-run." >&2
+      return 2 ;;
+  esac
+  echo "WIN_E2E_DOCKER=$dockerv"
 
   out="${WIN_E2E_LOG:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/win-e2e-$(date -u +%Y%m%dT%H%M%SZ).log}"
   mkdir -p "$(dirname "$out")" 2>/dev/null
@@ -651,7 +669,13 @@ win_e2e() {
   WIN_RUN_WATCH="${WIN_RUN_WATCH:-$WIN_REPO\\frend\\reporting\\testground\\e2e\\logs\\info.log}"
   # A full Electron suite is hours; the Linux full run is capped at 72000 s and this matches it.
   WIN_RUN_TIMEOUT="${WIN_RUN_TIMEOUT:-$([ "$mode" = full ] && echo 72000 || echo 10800)}"
-  export WIN_RUN_WATCH WIN_RUN_TIMEOUT
+  # A quiet test is not a stalled run. One wait may block for E2E_MAX_WAIT_MS (15 min) and one whole
+  # test for E2E_MAX_TEST_MS (1 h) without printing a single line, so win_run's 20-minute silence
+  # budget is certain to shoot a healthy suite sooner or later - it killed the 2026-09-21 full run
+  # at 8h38m, mid-test, after 1213s of quiet, with 16 spec files still to go (plan 6.23). The budget
+  # has to sit above the longest silence the caps themselves allow.
+  WIN_RUN_STALL="${WIN_RUN_STALL:-$([ "$mode" = full ] && echo 4200 || echo 1800)}"
+  export WIN_RUN_WATCH WIN_RUN_TIMEOUT WIN_RUN_STALL
 
   win_run e2e "$WIN_REPO\\frend\\reporting" \
     'npm run custom:clean-testground && call npx gulp utils:start-server-and-e2e-electron' 2>&1 | tee "$out"

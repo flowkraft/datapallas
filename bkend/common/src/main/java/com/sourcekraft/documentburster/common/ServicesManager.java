@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
+import org.zeroturnaround.exec.stop.DestroyProcessStopper;
 import org.zeroturnaround.exec.stream.slf4j.Slf4jStream;
 import org.apache.commons.lang3.StringUtils;
 
@@ -277,7 +278,7 @@ public class ServicesManager {
 				.command(command)
 				.directory(workingDir.toFile())
 				.readOutput(true)
-				.timeout(300, TimeUnit.SECONDS);
+				.timeout(300, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE);
 
 		if (customPort != null) {
 			Map<String, String> env = new HashMap<>(System.getenv());
@@ -466,7 +467,7 @@ public class ServicesManager {
 		new ProcessExecutor()
 				.command(command)
 				.directory(workingDir.toFile())
-				.timeout(120, TimeUnit.SECONDS)
+				.timeout(120, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE)
 				.execute();
 
 		System.out.println("✓ Cache service '" + serviceName + "' stopped.");
@@ -498,7 +499,7 @@ public class ServicesManager {
 				.command(command)
 				.directory(workingDir.toFile())
 				.readOutput(true)
-				.timeout(300, TimeUnit.SECONDS);
+				.timeout(300, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE);
 
 		if (customPort != null) {
 			Map<String, String> env = new HashMap<>(System.getenv());
@@ -537,7 +538,7 @@ public class ServicesManager {
 		new ProcessExecutor()
 				.command(command)
 				.directory(workingDir.toFile())
-				.timeout(120, TimeUnit.SECONDS)
+				.timeout(120, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE)
 				.execute();
 
 		System.out.println("✓ Time-series DB '" + serviceName + "' stopped.");
@@ -845,7 +846,7 @@ public class ServicesManager {
 					.directory(workingDir.toFile())
 					.redirectOutput(Slf4jStream.of(log).asInfo())
 					.redirectError(Slf4jStream.of(log).asInfo())
-					.timeout(600, TimeUnit.SECONDS)
+					.timeout(600, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE)
 					.environment(env)
 					.execute();
 
@@ -892,7 +893,7 @@ public class ServicesManager {
 			ProcessExecutor downExecutor = new ProcessExecutor().command(downCmd).directory(workingDir.toFile())
 					.redirectOutput(Slf4jStream.of(log).asInfo())
 					.redirectError(Slf4jStream.of(log).asInfo())
-					.timeout(300, TimeUnit.SECONDS)
+					.timeout(300, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE)
 					.environment(env);
 			log.info("Executing down command (full mode): {} in directory: {}", downCmd, workingDir);
 			ProcessResult downResult = downExecutor.execute();
@@ -920,7 +921,7 @@ public class ServicesManager {
 			ProcessExecutor buildExecutor = new ProcessExecutor().command(buildCommand).directory(workingDir.toFile())
 					.redirectOutput(Slf4jStream.of(log).asInfo())
 					.redirectError(Slf4jStream.of(log).asInfo())
-					.timeout(7200, TimeUnit.SECONDS)
+					.timeout(7200, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE)
 					.environment(env);
 
 			log.info("Executing build command: {} in directory: {}", buildCommand, workingDir);
@@ -938,7 +939,7 @@ public class ServicesManager {
 		ProcessExecutor executor = new ProcessExecutor().command(command).directory(workingDir.toFile())
 				.redirectOutput(Slf4jStream.of(log).asInfo()) // Capture stdout to log
 				.redirectError(Slf4jStream.of(log).asInfo()) // Capture stderr to log
-				.timeout(7200, TimeUnit.SECONDS) // Add timeout to prevent hanging
+				.timeout(7200, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE) // Add timeout to prevent hanging
 				.environment(env); // Pass environment variables including HOST_PORT and
 									// ENABLE_LIQUIBASE_GROOVY_MIGRATIONS
 
@@ -1063,7 +1064,7 @@ public class ServicesManager {
 
 		ProcessExecutor executor = new ProcessExecutor().command(command).directory(workingDir.toFile())
 				.redirectOutput(Slf4jStream.of(log).asInfo()).redirectError(Slf4jStream.of(log).asInfo())
-				.timeout(300, TimeUnit.SECONDS);
+				.timeout(300, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE);
 
 		ProcessResult result = executor.execute();
 
@@ -1126,7 +1127,7 @@ public class ServicesManager {
 
 		ProcessResult result = new ProcessExecutor().command(command).directory(workingDir.toFile())
 				.redirectOutput(Slf4jStream.of(log).asInfo()).redirectError(Slf4jStream.of(log).asInfo())
-				.timeout(300, TimeUnit.SECONDS).execute();
+				.timeout(300, TimeUnit.SECONDS).stopper(DestroyProcessStopper.INSTANCE).execute();
 
 		log.info("handleAppRestart exit code: {}", result.getExitValue());
 		String svcList = String.join(", ", services);
