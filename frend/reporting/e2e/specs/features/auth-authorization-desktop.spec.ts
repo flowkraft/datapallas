@@ -232,7 +232,7 @@ test.describe('Auth — the desktop shell authenticates itself, invisibly', () =
   //
 
   electronBeforeAfterAllTest(
-    '(desktop-ui) the app opens straight into Processing with no login screen',
+    '(desktop-ui, Electron only) the app opens straight into Processing with no login screen',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
       await skipUnlessTheShellSignsItsOwnRequests();
@@ -255,7 +255,7 @@ test.describe('Auth — the desktop shell authenticates itself, invisibly', () =
   );
 
   electronBeforeAfterAllTest(
-    '(desktop-ui) Configuration offers no Users, Roles or Tenants screens',
+    '(desktop-ui, Electron only) Configuration offers no Users, Roles or Tenants screens',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
       await skipUnlessTheShellSignsItsOwnRequests();
@@ -277,7 +277,7 @@ test.describe('Auth — the desktop shell authenticates itself, invisibly', () =
   );
 
   electronBeforeAfterAllTest(
-    '(desktop-ui) everything a desktop user actually does still works with auth code present',
+    '(desktop-ui, Electron only) Connections and Reports configuration open without signing in, with no errors',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
       await skipUnlessTheShellSignsItsOwnRequests();
@@ -355,7 +355,7 @@ test.describe('Auth — Installation directory is the trust boundary', () => {
     expect(await res.text()).toContain('<documentburster>');
   });
 
-  test('(boundary) an inline script cannot shadow the ctx binding', async () => {
+  test("(boundary) a filter value named ctx is refused, so a script's database access cannot be swapped out", async () => {
     // filterValues used to be able to overwrite ctx/log, which let a caller
     // replace the narrow DbSqlProxy with anything it liked.
     const res = await adminFetch(`${BASE_URL}/api/queries/run-script`, {
