@@ -17,7 +17,24 @@ boolean isDb2           = (vendor in ['DB2', 'IBMDB2'])
 boolean isSqlite        = (vendor == 'SQLITE')
 
 // ── 1. Discover existing seed_inv_* tables (vendor-specific catalog) ──────────
-// Children first so DROP can proceed without FK violations
+// The seeder creates these parent-first (customer, product, invoice, invoice_line), so the
+// only safe drop order is its exact reverse. The catalog queries below sort by name purely
+// for stable logs: DROP_ORDER, not the catalog, decides the order the drops run in.
+// Alphabetical DESC was NOT that order — it puts seed_inv_product, a PARENT of
+// seed_inv_invoice_line via fk_sinv_line_prod, first. Vendors that bypass FKs while dropping
+// (MySQL FOREIGN_KEY_CHECKS=0, Postgres/Oracle CASCADE) never noticed; SQL Server has neither
+// — T-SQL has no DROP ... CASCADE and NOCHECK CONSTRAINT does not apply to DDL — so it
+// rejected the first drop with Msg 3726 and silently left the table behind.
+final List<String> DROP_ORDER = [
+    'seed_inv_invoice_line', 'seed_inv_invoice', 'seed_inv_product', 'seed_inv_customer',
+]
+
+// Unknown seed_inv_* tables sort to the front (indexOf returns -1): a table this script has
+// not been taught about can only be a child of the canonical four, never a parent of them.
+// toLowerCase() because Oracle returns its catalog names as SEED_INV_*.
+def childFirst = { List<String> ts -> ts.sort { DROP_ORDER.indexOf(it.toLowerCase()) } }
+
+def discover = { ->
 
 List<String> tables = []
 
@@ -48,8 +65,13 @@ try {
 } catch (Exception e) {
     log.warn("Could not query catalog for {} ({}). Falling back to fixed table list.", vendor, e.getMessage())
     // Fall back to the canonical four tables in child-first order
-    tables = ['seed_inv_invoice_line', 'seed_inv_invoice', 'seed_inv_product', 'seed_inv_customer']
+    tables = new ArrayList<String>(DROP_ORDER)
 }
+
+    return tables
+}
+
+List<String> tables = childFirst(discover())
 
 if (tables.isEmpty()) {
     log.info("No seed_inv_* tables found — nothing to wipe.")
@@ -93,6 +115,26 @@ def doDrop = {
 // in a rollback. Wrapping it in dbSql.withTransaction would be misleading dressing,
 // so we just run the drops directly. Each individual DROP is wrapped in safeDdl to
 // tolerate "table doesn't exist" / FK-blocked / locked-by-other-session conditions.
+int intended = tables.size()
 doDrop()
 
-log.info("=== Wipe Seeded Invoice Data: COMPLETED — dropped {} table(s) for vendor {} ===", tables.size(), vendor)
+// Verify instead of assuming. safeDdl swallows an FK-blocked DROP into debug, so reporting
+// tables.size() here reported INTENT, not fact: a partial wipe logged as a clean success.
+// Re-query, and if anything survived, drop once more — by then every survivor has lost its
+// dependents, so a second pass clears any dependency this script has not been taught.
+List<String> remaining = childFirst(discover())
+if (!remaining.isEmpty()) {
+    tables = remaining
+    doDrop()
+    remaining = discover()
+}
+
+if (remaining.isEmpty()) {
+    log.info("=== Wipe Seeded Invoice Data: COMPLETED — dropped {} table(s) for vendor {} ===", intended, vendor)
+} else {
+    // Loud on purpose: this path leaves the database dirty, and the old code reported it as
+    // a success. Kept OFF the safeDdl path, which swallows the routine "table does not exist"
+    // that Oracle's bare DROP throws on every clean wipe.
+    log.warn("=== Wipe Seeded Invoice Data: INCOMPLETE for {} — {} of {} table(s) survived: {} ===",
+             vendor, remaining.size(), intended, remaining)
+}
