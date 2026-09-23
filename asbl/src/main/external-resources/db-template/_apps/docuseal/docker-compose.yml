@@ -12,6 +12,12 @@ services:
     environment:
       - FORCE_SSL=${HOST}
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/docuseal
+    healthcheck:
+      test: ["CMD", "ruby", "-rnet/http", "-e", "exit Net::HTTP.get_response(URI('http://127.0.0.1:3000/')).code.to_i < 500"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   postgres:
     image: postgres:15

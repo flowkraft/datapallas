@@ -13,12 +13,19 @@ services:
       # Override nginx default.conf with your custom config
       - ./config/matomo.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/index.php"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   matomo-fpm:
     image: matomo:5.6.1-fpm-alpine
     container_name: rb-matomo-fpm
     depends_on:
-      - matomo-db
+      matomo-db:
+        condition: service_healthy
     volumes:
       - matomo_html:/var/www/html
       # Uncomment if you want to persist config/logs on host
@@ -45,6 +52,12 @@ services:
     env_file:
       - ./config/.env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
 volumes:
   matomo_html:
