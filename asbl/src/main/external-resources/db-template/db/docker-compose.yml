@@ -67,16 +67,31 @@ services:
       ACCEPT_EULA: Y
       MSSQL_SA_PASSWORD: ${SQLSERVER_PASSWORD}
       MSSQL_PID: Developer
+      SQLSERVER_DB: ${SQLSERVER_DB:-Northwind}
+    # Unlike POSTGRES_DB / MYSQL_DATABASE / DB2 DBNAME, the SQL Server image cannot create a database by itself,
+    # so this creates Northwind as soon as SQL Server answers. The healthcheck connects to Northwind, so the
+    # container turns healthy only once the database exists - the same as every other vendor.
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /opt/mssql/bin/sqlservr & pid=$$!
+        trap 'kill -TERM $$pid; wait $$pid; exit' TERM INT
+        until /opt/mssql-tools18/bin/sqlcmd -C -l 3 -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -b -Q "IF DB_ID('$$SQLSERVER_DB') IS NULL CREATE DATABASE [$$SQLSERVER_DB]" >/dev/null 2>&1; do
+          kill -0 $$pid 2>/dev/null || exit 1
+          sleep 2
+        done
+        wait $$pid
     ports:
       - "${SQLSERVER_PORT}:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -l 3 -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -l 3 -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -d \"$$SQLSERVER_DB\" -Q 'SELECT 1' >/dev/null 2>&1"]
       interval: 5s
       timeout: 10s
-      retries: 30
+      retries: 60
       start_period: 20s
 
   oracle:

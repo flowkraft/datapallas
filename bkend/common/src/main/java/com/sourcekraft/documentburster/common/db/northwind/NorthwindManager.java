@@ -272,12 +272,6 @@ public class NorthwindManager implements AutoCloseable {
 					+ " for service " + serviceName);
 		}
 
-		// ✅ ADD THIS: For SQL Server, create database before normal wait
-		if (vendor == DatabaseVendor.SQLSERVER) {
-			log.info("[" + vendor + "] SQL Server started, creating Northwind database...");
-			ensureSqlServerDatabaseExists(vendor, hostPort);
-		}
-
 		waitForDatabaseToBeReady(vendor, hostPort);
 	}
 
@@ -379,73 +373,6 @@ public class NorthwindManager implements AutoCloseable {
 		});
 
 		log.info("[" + vendor + "] waitForDatabaseToBeReady completed successfully");
-	}
-
-	/**
-	 * SQL Server-specific: Create Northwind database if it doesn't exist.
-	 * Must connect to 'master' first since Northwind doesn't exist yet.
-	 */
-	private void ensureSqlServerDatabaseExists(DatabaseVendor vendor, Integer hostPort) throws Exception {
-		final int hostPortToUse = (hostPort != null) ? hostPort : getDefaultHostPort(vendor);
-		final String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(hostPortToUse));
-		final String host = reachable[0];
-		final int port = Integer.parseInt(reachable[1]);
-		final String masterUrl = "jdbc:sqlserver://" + host + ":" + port
-				+ ";databaseName=master;encrypt=false;trustServerCertificate=true";
-		final String dbName = vendor.getDefaultDbName();
-
-		log.info("[" + vendor + "] Waiting for SQL Server to accept connections on master DB...");
-
-		// Wait for SQL Server to be ready (connect to master)
-		RetryPolicy<Object> retryPolicy = new RetryPolicy<>()
-				.handle(Throwable.class)
-				.withDelay(Duration.ofSeconds(5))
-				.withMaxDuration(Duration.ofMinutes(5))
-				.withMaxRetries(-1)
-				.onRetry(e -> {
-					Throwable cause = e.getLastFailure();
-					log.debug("[" + vendor + "] Waiting for SQL Server (attempt #{}): {}",
-							e.getAttemptCount(),
-							cause != null ? cause.getMessage() : "unknown");
-				})
-				.onFailure(e -> log.error("[" + vendor + "] Failed to connect to SQL Server master", e.getFailure()));
-
-		Failsafe.with(retryPolicy).run(() -> {
-			if (!Utils.isPortOpen(host, port, 2000)) {
-				throw new IOException("Port " + port + " not open");
-			}
-
-			log.debug("[" + vendor + "] Port {} open, attempting connection to master", port);
-			DriverManager.setLoginTimeout(5);
-
-			try (Connection conn = DriverManager.getConnection(masterUrl, getUsername(vendor), getPassword(vendor))) {
-				if (!conn.isValid(5)) {
-					throw new IOException("Connection to master not valid");
-				}
-
-				log.info("[" + vendor + "] Connected to master DB, checking if {} exists", dbName);
-
-				try (Statement stmt = conn.createStatement()) {
-					// Check if database exists
-					ResultSet rs = stmt.executeQuery(
-							"SELECT database_id FROM sys.databases WHERE name = '" + dbName + "'");
-
-					if (!rs.next()) {
-						log.info("[" + vendor + "] Database {} does not exist, creating it...", dbName);
-						stmt.execute("CREATE DATABASE [" + dbName + "]");
-
-						// Wait a moment for creation to complete
-						Thread.sleep(2000);
-
-						log.info("[" + vendor + "] Database {} created successfully", dbName);
-					} else {
-						log.info("[" + vendor + "] Database {} already exists", dbName);
-					}
-				}
-			}
-		});
-
-		log.info("[" + vendor + "] ensureSqlServerDatabaseExists() completed");
 	}
 
 	/**
