@@ -661,6 +661,41 @@ test.describe('Auth — Server: each role can do its own job', () => {
       'and reads the reports they are asked to run',
     ).toBe(200);
   });
+
+  test('(roles) JOB_OPERATOR — opens a published dashboard, and reads its data', async () => {
+    // There is no read-only role: the operator IS the reader. A dashboard link sent to one must open,
+    // and its widgets must get rows — not just an empty page shell.
+    const operator = await login(OPERATOR.username, OPERATOR.password);
+
+    const page = await fetch(`${BASE_URL}/dashboard/${SAMPLE_DASHBOARD}`, {
+      headers: { Cookie: operator },
+      redirect: 'manual',
+    });
+    expect(page.status, 'a signed-in operator is served the page, not sent to sign in').toBe(200);
+    const html = await page.text();
+    expect(html, 'and it really is the dashboard page').toContain('<rb-dashboard');
+    expect(
+      html,
+      'a session needs no embed token; one here would mean the share path answered instead',
+    ).not.toContain('embed-token=');
+
+    const config = await fetch(`${BASE_URL}/api/reports/${SAMPLE_DASHBOARD}/config`, {
+      headers: { Cookie: operator },
+    });
+    expect(config.status, 'the components read the config first').toBe(200);
+    expect((await config.json()).outputType).toBe('output.dashboard');
+
+    const data = await fetch(
+      `${BASE_URL}/api/reports/${SAMPLE_DASHBOARD}/data?componentId=topCustomers`,
+      { headers: { Cookie: operator } },
+    );
+    expect(data.status, 'then the rows the config describes').toBe(200);
+    const result = await data.json();
+    // A failed fetch still answers 200, with one ERROR_MESSAGE row (CliJob.doFetchData) — so the
+    // status alone would pass while the operator got nothing.
+    expect(result.reportColumnNames, 'the fetch did not fail').not.toContain('ERROR_MESSAGE');
+    expect(result.reportData.length, 'and real rows reach the widget').toBeGreaterThan(0);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1773,6 +1808,14 @@ test.describe('Auth — Server: the AI Hub door', () => {
 const SHARED_REPORT = 'e2e-shared-dashboard';
 const OTHER_REPORT = 'e2e-other-dashboard';
 
+/**
+ * A dashboard that really exists, with real rows behind it. The two above are only codes: the page
+ * shell is served for any code, so they prove who may OPEN a link, never who may READ what it shows.
+ * g-dashboard ships in config/samples and reads the built-in rbt-sample-northwind-sqlite-4f2
+ * connection (db/sample-northwind-sqlite/northwind.db) — no Docker, no starter pack.
+ */
+const SAMPLE_DASHBOARD = 'g-dashboard';
+
 /** Create a share link. Returns the raw token — the only time the server ever discloses it. */
 async function createShareLink(
   session: string,
@@ -1881,6 +1924,60 @@ test.describe('Auth — Server: handing a dashboard to somebody without an accou
       await statusAs(operator, 'GET', `/api/embed/share-link?reportId=${SHARED_REPORT}`),
       'nor may an operator see what has been shared',
     ).toBe(403);
+  });
+
+  test("(share) without a link, nobody reads a dashboard's data — not its config, its rows, or its pivot", async () => {
+    // This block's first test proves the PAGE is refused. The page is only a shell: what
+    // a stranger would actually want is behind the three calls its components make. Each must refuse
+    // on its own, on a dashboard that really has data.
+    const csrf = await newCsrfCookie();
+    const pivotBody = { rows: [], cols: [], vals: [], aggregatorName: 'Count' };
+
+    const page = await getDashboardAnonymously(SAMPLE_DASHBOARD);
+    expect(page.status, 'the page sends a stranger to sign in').toBe(302);
+    expect(page.location).toContain(
+      `/#/login?returnUrl=${encodeURIComponent(`/dashboard/${SAMPLE_DASHBOARD}`)}`,
+    );
+
+    // The CSRF cookie makes the POST fail for having no credential, not for being cross-site —
+    // otherwise a 403 would prove nothing about who may read.
+    expect(await statusAs(csrf, 'GET', `/api/reports/${SAMPLE_DASHBOARD}/config`), 'no config').toBe(401);
+    expect(
+      await statusAs(csrf, 'GET', `/api/reports/${SAMPLE_DASHBOARD}/data?componentId=topCustomers`),
+      'no rows',
+    ).toBe(401);
+    expect(
+      await statusAs(csrf, 'POST', `/api/analytics/pivot?reportId=${SAMPLE_DASHBOARD}`, pivotBody),
+      'no pivot — the one endpoint whose rule turns on the report id',
+    ).toBe(401);
+
+    // A token that opens nothing must fall back to "sign in", never through.
+    const bogus = 'not-a-real-share-token';
+    expect(
+      (await getDashboardAnonymously(SAMPLE_DASHBOARD, bogus)).status,
+      'a dead link says so, and nothing more',
+    ).toBe(404);
+    expect(
+      await statusAs(csrf, 'GET', `/api/reports/${SAMPLE_DASHBOARD}/config?token=${bogus}`),
+      'a bad token earns no config',
+    ).toBe(401);
+    expect(
+      await statusAs(
+        csrf,
+        'GET',
+        `/api/reports/${SAMPLE_DASHBOARD}/data?componentId=topCustomers&token=${bogus}`,
+      ),
+      'nor rows',
+    ).toBe(401);
+    expect(
+      await statusAs(
+        csrf,
+        'POST',
+        `/api/analytics/pivot?reportId=${SAMPLE_DASHBOARD}&token=${bogus}`,
+        pivotBody,
+      ),
+      'nor a pivot',
+    ).toBe(401);
   });
 });
 
