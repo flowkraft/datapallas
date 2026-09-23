@@ -2,7 +2,7 @@
 // DataPallas SERVER ONLY — login is required and roles are enforced
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// The other half of auth-authrorization.spec.ts. That file proves the desktop
+// The other half of auth-authorization-desktop.spec.ts. That file proves the desktop
 // never sees authentication; this one proves the Server does — same codebase,
 // opposite claim, so they can only be checked against different backends.
 //
@@ -1753,32 +1753,22 @@ test.describe('Auth — Server: the AI Hub door', () => {
 // § Handing a dashboard to somebody without an account
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Publishing does not make a dashboard public. /dashboard/{code} falls through to
-// `authenticated()` in SecurityConfig, and an anonymous caller meets a clean 401
-// rather than a redirect, because the entry point is an HttpStatusEntryPoint.
+// Publishing does not make a dashboard public. An anonymous /dashboard/{code} is
+// sent to the sign-in screen (`SignInRedirectEntryPoint`).
 //
 // "How public" is a SECOND, deliberate step: a share link, created in the AI Hub's
 // Share dialog and minted by POST /api/embed/share-link. Anyone holding that URL
 // reads that one dashboard with no account, until it expires or is revoked.
+//
+// Only WHO may share is tested here. How a link behaves once it exists — one link,
+// one dashboard; revoking closes it; a bad token says nothing — is the same on
+// every deployment, so it lives in auth-embed-share.spec.ts and runs everywhere.
 //
 // NO DOCKER, deliberately. DashboardController never checks that the report exists
 // — it validates the token and emits the page, and the data that page then fetches
 // is authorized separately. So none of this needs a canvas or a running AI Hub,
 // which is why it sits outside the block that boots one: these rules stay covered
 // even on a run where Docker never starts.
-//
-// ── WHY A BAD TOKEN IS 401 AND NOT 404 ────────────────────────────────────
-//
-// DashboardController answers 404 for a token that names a different report, and
-// says so in its own comment — deliberately indistinguishable from revoked and from
-// never-existed. That 404 is real, but it is not what an anonymous caller meets,
-// because EmbedTokenAuthorizationManager decides first: a token that is absent,
-// revoked, expired, or minted for another report simply fails to match, and the
-// manager falls through to `authenticated()`. Nobody is signed in, so the answer is
-// 401 and the controller never runs.
-//
-// The property the 404 was written for survives intact — every invalid token gets
-// one answer, so guessing reveals nothing — it is just spelled 401 out here.
 //
 const SHARED_REPORT = 'e2e-shared-dashboard';
 const OTHER_REPORT = 'e2e-other-dashboard';
@@ -1814,9 +1804,6 @@ async function getDashboardAnonymously(
   const res = await fetch(`${BASE_URL}/dashboard/${reportCode}${query}`, { redirect: 'manual' });
   return { status: res.status, body: await res.text(), location: res.headers.get('location') };
 }
-
-/** A token of the right shape that was never issued — what a guess looks like. */
-const NEVER_ISSUED_TOKEN = 'a-share-token-that-was-never-issued';
 
 /** Remove every link for a report, so a re-run starts from nothing being shared. */
 async function revokeAllShareLinks(session: string, reportId: string) {
@@ -1860,7 +1847,7 @@ test.describe('Auth — Server: handing a dashboard to somebody without an accou
     ).toBe(401);
   });
 
-  test('(share) a share link opens the dashboard with no account at all', async () => {
+  test('(share) a REPORT_AUTHOR shares a dashboard, and it opens with no account at all', async () => {
     const author = await login(AUTHOR.username, AUTHOR.password);
     const { token, url } = await createShareLink(author, SHARED_REPORT, 30);
 
@@ -1869,54 +1856,6 @@ test.describe('Auth — Server: handing a dashboard to somebody without an accou
     const shared = await getDashboardAnonymously(SHARED_REPORT, token);
     expect(shared.status, 'the whole point of the feature').toBe(200);
     expect(shared.body, 'and it really is the dashboard page').toContain('<rb-dashboard');
-
-    // The durable secret is validated once, here, and stops. What the page carries onward to the
-    // component is a short-lived embed token instead — so the link cannot leak out of the page it
-    // opened.
-    expect(shared.body, 'the share token itself never reaches the component').not.toContain(token);
-  });
-
-  test('(share) one link opens one dashboard, and no other', async () => {
-    const author = await login(AUTHOR.username, AUTHOR.password);
-    const { token } = await createShareLink(author, SHARED_REPORT);
-
-    const other = await getDashboardAnonymously(OTHER_REPORT, token);
-    const neverIssued = await getDashboardAnonymously(OTHER_REPORT, NEVER_ISSUED_TOKEN);
-
-    expect(other.body, 'a token for one dashboard opens no other').not.toContain('<rb-dashboard');
-
-    // The reader of a share link has no account to sign in with, so a link that does not open is a
-    // dead end rather than a detour: the same "no longer available" page a made-up token gets.
-    expect(other.status, 'a token for a different dashboard is as good as one that never existed').toBe(404);
-    expect(other.body, 'answered identically, so a wrong guess cannot be told from a wrong report').toBe(
-      neverIssued.body,
-    );
-  });
-
-  test('(share) revoking a link closes it', async () => {
-    const author = await login(AUTHOR.username, AUTHOR.password);
-    const { token } = await createShareLink(author, SHARED_REPORT);
-    expect((await getDashboardAnonymously(SHARED_REPORT, token)).status).toBe(200);
-
-    const links = (await jsonAs(author, `/api/embed/share-link?reportId=${SHARED_REPORT}`)) as Array<{
-      id: number;
-    }>;
-    expect(links.length, 'a link that exists is a link that can be found and revoked').toBeGreaterThan(0);
-    for (const link of links)
-      expect(await statusAs(author, 'DELETE', `/api/embed/share-link/${link.id}`)).toBe(200);
-
-    const afterRevoke = await getDashboardAnonymously(SHARED_REPORT, token);
-    const neverIssued = await getDashboardAnonymously(SHARED_REPORT, NEVER_ISSUED_TOKEN);
-
-    expect(afterRevoke.body, 'a revoked link opens nothing').not.toContain('<rb-dashboard');
-    expect(
-      afterRevoke.status,
-      'revocation is the only protection a link that never expires has',
-    ).toBe(404);
-    expect(
-      afterRevoke.body,
-      'and the answer is the same one a link that never existed gets, so guessing reveals nothing',
-    ).toBe(neverIssued.body);
   });
 
   test('(share) an ADMIN shares too, by inheriting the rung that may', async () => {

@@ -47,7 +47,7 @@ import freemarker.template.TemplateException;
  * Authentication and role checks are Spring Security concerns and live in
  * {@code bkend/server}; this module has zero Spring dependencies, so endpoint-level
  * authorization is tested in {@code bkend/server/src/test/.../iam/} and end-to-end in
- * {@code frend/reporting/e2e/specs/features/auth-authrorization.spec.ts}.
+ * {@code frend/reporting/e2e/specs/features/auth-authorization-desktop.spec.ts}.
  */
 public class AuthAuthorizationTest {
 

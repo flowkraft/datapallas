@@ -44,7 +44,7 @@ import com.flowkraft.license.model.LicenseDetails;
  * that the code calls SQL rather than that the SQL is right.
  *
  * <p>Endpoint-level role enforcement is covered end-to-end in
- * {@code frend/reporting/e2e/specs/features/auth-authrorization.spec.ts}; what is tested here is the
+ * {@code frend/reporting/e2e/specs/features/auth-authorization-desktop.spec.ts}; what is tested here is the
  * domain underneath it.
  */
 class IamServiceTest {

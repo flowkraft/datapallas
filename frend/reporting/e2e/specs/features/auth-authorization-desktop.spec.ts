@@ -17,7 +17,7 @@ import { Helpers } from '../../utils/helpers';
  * DataPallas ships as one codebase in three shapes — Electron desktop
  * (DataPallas.exe), Spring Boot + Angular on a native JDK, and the same stack in
  * Docker. Authentication must behave differently in each WITHOUT the code
- * forking, so this file is organised by the three claims that matter HERE:
+ * forking, so this file is organised by the two claims that matter HERE:
  *
  *   1. DESKTOP IS INVISIBLE, NOT OPEN. In DataPallas.exe the user is never asked
  *      to log in, never asked to configure anything auth-related, and never shown
@@ -32,11 +32,7 @@ import { Helpers } from '../../utils/helpers';
  *      deployment it is, and nothing tells the shell either. The difference between
  *      a desktop and a server is which credential arrives with the request.
  *
- *   2. AN EMBED TOKEN GRANTS EXACTLY ONE REPORT. Pure REST, so it holds in every
- *      deployment — here the caller mints with the installation API key, which
- *      makes minting allowed and the scoping the only thing under test.
- *
- *   3. THE TRUST BOUNDARY HOLDS EVERYWHERE. Groovy, FreeMarker and Jasper are
+ *   2. THE TRUST BOUNDARY HOLDS EVERYWHERE. Groovy, FreeMarker and Jasper are
  *      the product and cannot be sandboxed, so the boundary is the installation
  *      directory. Path confinement is not a multi-user feature — it must hold on
  *      the desktop too, and it does today.
@@ -44,6 +40,9 @@ import { Helpers } from '../../utils/helpers';
  * ---------------------------------------------------------------------------
  * WHAT IS NOT HERE
  * ---------------------------------------------------------------------------
+ *
+ * Embed tokens and share links behave the same on every deployment, so they
+ * live in auth-embed-share.spec.ts.
  *
  * The other half — real people signing in, each role stopped at the edge of its
  * own job — lives in auth-authorization-server.spec.ts and runs under its own
@@ -296,230 +295,21 @@ test.describe('Auth — the desktop shell authenticates itself, invisibly', () =
   );
 });
 
-// ===========================================================================
-// GROUP 2 — EMBEDDING: tokens for components, links for people
-// ===========================================================================
-//
-// Two credentials that are easy to confuse:
-//
-//   embed token  — 1 hour, scoped to one report, minted per page render by the host app's SERVER.
-//                  Travels in the X-Embed-Token header. Short life IS its protection, so it is a
-//                  self-verifying HMAC and is never stored.
-//
-//   share link   — lives until revoked, so its protection is unguessability plus revocability.
-//                  Travels as ?token= in the URL, because a browser opening a link cannot set a
-//                  header. Stored hashed, which is what makes revoking possible.
-//
-// These run in the normal suite: they are pure REST and need no packaging. In standalone the local
-// caller is already an administrator, so minting is allowed — what is being tested here is that a
-// token grants exactly ONE report and nothing else.
-//
-
 /**
- * Administrator calls (minting, share-link management, filesystem, scripts). The Server wants a
- * credential for them; the desktop's local caller is already an administrator and ignores the key.
- * Calls that present an embed token or a share link stay plain fetch - the token is what they test.
+ * Administrator calls (filesystem, scripts). The Server wants a credential for them; the desktop's
+ * local caller is already an administrator and ignores the key.
  */
 const adminFetch = (url: string, init: RequestInit = {}): Promise<Response> =>
   fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...Helpers.apiKeyHeader() } });
 
-test.describe('Auth — Embedding: tokens and share links', () => {
-  const REPORT = 'g-dashboard';
-  const OTHER_REPORT = 'g-pivottable';
-
-  test.beforeEach(async () => {
-    const res = await adminFetch(`${BASE_URL}/api/embed/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reportId: REPORT }),
-    });
-    test.skip(res.status === 404, 'embed tokens are not implemented on this build');
-  });
-
-  async function mintEmbedToken(reportId: string): Promise<string> {
-    const res = await adminFetch(`${BASE_URL}/api/embed/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reportId }),
-    });
-    expect(res.status, `minting a token for ${reportId} should succeed`).toBe(200);
-    return (await res.json()).token;
-  }
-
-  //
-  // -- embed tokens --------------------------------------------------------
-  //
-
-  test('(embed) a token reads its own report', async () => {
-    const token = await mintEmbedToken(REPORT);
-
-    const res = await fetch(`${BASE_URL}/api/reports/${REPORT}/data`, {
-      headers: { 'X-Embed-Token': token },
-    });
-
-    expect(res.status).toBe(200);
-  });
-
-  /** The property the whole design rests on: one token, one report. */
-  test('(embed) a token for one report cannot read another', async () => {
-    const token = await mintEmbedToken(REPORT);
-
-    const res = await fetch(`${BASE_URL}/api/reports/${OTHER_REPORT}/data`, {
-      headers: { 'X-Embed-Token': token, Cookie: 'JSESSIONID=none' },
-    });
-
-    // In standalone the local caller is an admin anyway, so this asserts the token did not WIDEN
-    // access — it must never authorise a report it does not name.
-    const tokenReportId = JSON.parse(
-      Buffer.from(token.split('.')[1], 'base64').toString('utf8'),
-    ).rid;
-    expect(tokenReportId).toBe(REPORT);
-    expect(tokenReportId).not.toBe(OTHER_REPORT);
-  });
-
-  test('(embed) a tampered token is refused', async () => {
-    const token = await mintEmbedToken(REPORT);
-    const [header, payload] = token.split('.');
-
-    // Re-point the token at another report and keep the original signature.
-    const forgedPayload = Buffer.from(
-      JSON.stringify({ rid: OTHER_REPORT, exp: Math.floor(Date.now() / 1000) + 9999 }),
-    ).toString('base64url');
-
-    const res = await fetch(`${BASE_URL}/api/reports/${OTHER_REPORT}/data`, {
-      headers: { 'X-Embed-Token': `${header}.${forgedPayload}.${token.split('.')[2]}` },
-    });
-
-    // A forged token must not be what grants access. Standalone still lets the local caller in, so
-    // assert the forgery itself is rejected rather than the status.
-    expect(forgedPayload).not.toBe(payload);
-    expect([200, 401, 403]).toContain(res.status);
-  });
-
-  test('(embed) minting requires a report id', async () => {
-    const res = await adminFetch(`${BASE_URL}/api/embed/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-
-    expect(res.status).toBe(400);
-  });
-
-  //
-  // -- share links ---------------------------------------------------------
-  //
-
-  test('(share) a link opens the dashboard, and revoking it closes it', async () => {
-    const created = await adminFetch(`${BASE_URL}/api/embed/share-link`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reportId: REPORT }),
-    });
-    expect(created.status).toBe(200);
-
-    const { token } = await created.json();
-    expect(token, 'the raw token is returned once, at creation').toBeTruthy();
-
-    // The link renders the dashboard page.
-    const opened = await fetch(`${BASE_URL}/dashboard/${REPORT}?token=${encodeURIComponent(token)}`);
-    expect(opened.status).toBe(200);
-    const html = await opened.text();
-    expect(html).toContain('rb-dashboard');
-    expect(html, 'the page carries a short-lived embed token for the component').toContain(
-      'embed-token=',
-    );
-
-    // Revoke it.
-    const links = await adminFetch(
-      `${BASE_URL}/api/embed/share-link?reportId=${encodeURIComponent(REPORT)}`,
-    ).then((r) => r.json());
-    expect(links.length).toBeGreaterThan(0);
-
-    for (const link of links) {
-      const deleted = await adminFetch(`${BASE_URL}/api/embed/share-link/${link.id}`, {
-        method: 'DELETE',
-      });
-      expect(deleted.status).toBe(200);
-    }
-
-    const afterRevoke = await fetch(
-      `${BASE_URL}/dashboard/${REPORT}?token=${encodeURIComponent(token)}`,
-    );
-    expect(afterRevoke.status, 'a revoked link must stop working').toBe(404);
-  });
-
-  test('(share) a link for one dashboard does not open another', async () => {
-    const { token } = await adminFetch(`${BASE_URL}/api/embed/share-link`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reportId: REPORT }),
-    }).then((r) => r.json());
-
-    const res = await fetch(
-      `${BASE_URL}/dashboard/${OTHER_REPORT}?token=${encodeURIComponent(token)}`,
-    );
-
-    expect(res.status).toBe(404);
-
-    // Clean up so repeated runs do not accumulate links.
-    const links = await adminFetch(
-      `${BASE_URL}/api/embed/share-link?reportId=${encodeURIComponent(REPORT)}`,
-    ).then((r) => r.json());
-    for (const link of links)
-      await adminFetch(`${BASE_URL}/api/embed/share-link/${link.id}`, { method: 'DELETE' });
-  });
-
-  test('(share) an unknown token is refused, and says nothing about why', async () => {
-    const res = await fetch(`${BASE_URL}/dashboard/${REPORT}?token=not-a-real-token`);
-
-    expect(res.status).toBe(404);
-    const body = await res.text();
-    // The same answer for revoked, expired and never-existed — anything else would confirm which
-    // dashboards exist to someone guessing ids.
-    expect(body).toContain('no longer available');
-  });
-
-  test('(share) the listing never exposes the tokens', async () => {
-    const { token } = await adminFetch(`${BASE_URL}/api/embed/share-link`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reportId: REPORT }),
-    }).then((r) => r.json());
-
-    const listing = await adminFetch(
-      `${BASE_URL}/api/embed/share-link?reportId=${encodeURIComponent(REPORT)}`,
-    ).then((r) => r.text());
-
-    expect(listing, 'only hashes are stored, so the raw token can never be listed').not.toContain(
-      token,
-    );
-
-    const links = JSON.parse(listing);
-    for (const link of links)
-      await adminFetch(`${BASE_URL}/api/embed/share-link/${link.id}`, { method: 'DELETE' });
-  });
-
-  test('(share) the dashboard page without a token carries no credential', async () => {
-    const res = await fetch(`${BASE_URL}/dashboard/${REPORT}`);
-
-    expect(res.status).toBe(200);
-    const html = await res.text();
-    // A signed-in viewer is same-origin, so the session cookie is the credential — nothing durable
-    // should be baked into the markup.
-    expect(html).not.toContain('embed-token=');
-    expect(html).not.toContain('api-key=');
-  });
-});
-
 // ===========================================================================
-// GROUP 3 — THE TRUST BOUNDARY, enforced in every mode
+// GROUP 2 — THE TRUST BOUNDARY, enforced in every mode
 // ===========================================================================
 //
 // These hold on the desktop too. Groovy/FreeMarker/Jasper cannot be sandboxed,
 // so the installation directory is the boundary, and it has to be real before
-// multi-tenancy can mean anything. Unlike groups 1 and 2 these are implemented
-// today (Phase 0) and must never regress.
+// multi-tenancy can mean anything. Unlike group 1 these are implemented today
+// (Phase 0) and must never regress.
 //
 
 test.describe('Auth — Installation directory is the trust boundary', () => {
