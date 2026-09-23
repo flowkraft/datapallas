@@ -53,11 +53,12 @@ services:
       - mariadb_data:/var/lib/mysql
     command: --general-log=1 --general-log-file=/var/log/mysql/mariadb-general.log --max_connections=500
     restart: unless-stopped
-    #healthcheck:
-    #  test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$MARIADB_PASSWORD"]
-    #  interval: 10s
-    #  timeout: 5s
-    #  retries: 5
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2019-latest
@@ -71,11 +72,12 @@ services:
     volumes:
       - sqlserver_data:/var/opt/mssql
     restart: unless-stopped
-    #healthcheck:
-    #  test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $SQLSERVER_PASSWORD -Q \"SELECT 1;\""]
-    #  interval: 30s
-    #  timeout: 10s
-    #  retries: 10
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -l 3 -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
 
   oracle:
     image: gvenzl/oracle-xe:21-slim-faststart
