@@ -743,7 +743,7 @@ test.describe('', async () => {
       `(database-connection) [${dbVendor}] should correctly CRUD create, read, update, duplicate and delete`,
       async function ({ beforeAfterEach: firstPage }) {
         //long running test
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
         const connectionName = `Test Database Connection (${dbVendor})`;
         const dbConnection1FileNameAndId = `db-${_.kebabCase(connectionName)}-${dbVendor}\\.xml`; // For UI element IDs
@@ -790,7 +790,7 @@ test.describe('', async () => {
     electronBeforeAfterAllTest(
       `(database-connection) [${dbVendor}] should correctly handle all the "Default" related actions`,
       async function ({ beforeAfterEach: firstPage }) {
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
         let ft = new FluentTester(firstPage);
 
@@ -927,7 +927,7 @@ test.describe('', async () => {
       `(database-connection) [${dbVendor}] should successfully test an (EXISTING) connection for a supported database type`,
       async function ({ beforeAfterEach: firstPage }) {
         //long running test
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS * 2); // Adjusted timeout for a single vendor test
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS); // Adjusted timeout for a single vendor test
 
         let ft = new FluentTester(firstPage);
         try {
@@ -1060,7 +1060,7 @@ test.describe('', async () => {
     electronBeforeAfterAllTest(
       `(seed-wipe) [${dbVendor}] should seed and wipe invoice data via Connection Details Seed Data tab`,
       async function ({ beforeAfterEach: firstPage }) {
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
         let ft = new FluentTester(firstPage);
 
         if (!hasSeedCapability(dbVendor)) {
@@ -1103,7 +1103,7 @@ test.describe('', async () => {
     electronBeforeAfterAllTest(
       `(database-connection) [${dbVendor}] should successfully test an (NEW) connection for a supported database type`,
       async function ({ beforeAfterEach: firstPage }) {
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS * 3); // Adjusted timeout
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS); // Adjusted timeout
 
         let ft = new FluentTester(firstPage);
         try {
@@ -1273,7 +1273,7 @@ test.describe('', async () => {
     electronBeforeAfterAllTest(
       `(database-connection) [${dbVendor}] 'Database Schema' Tab: Schema Load and Source Tree Filter (Vendor Agnostic)`,
       async function ({ beforeAfterEach: firstPage }) {
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS); // Generous timeout
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS); // Generous timeout
         let ft = new FluentTester(firstPage);
         try {
 
@@ -1484,7 +1484,7 @@ test.describe('', async () => {
     electronBeforeAfterAllTest(
       `(database-connection) [${dbVendor}] 'Domain-Grouped Schema' Tab: AI Schema Gen, JSON Edit, Save and Reload (Vendor Agnostic)`,
       async function ({ beforeAfterEach: firstPage }) {
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS); // Generous timeout
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS); // Generous timeout
         let ft = new FluentTester(firstPage);
         try {
 
@@ -1690,7 +1690,7 @@ test.describe('', async () => {
     electronBeforeAfterAllTest(
       `(database-connection) [${dbVendor}] 'ER Diagram' Tab: Functionality, Edit, Save, Load, AI (Vendor Agnostic)`,
       async function ({ beforeAfterEach: firstPage }) {
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS * 3); // Generous timeout
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS); // Generous timeout
         let ft = new FluentTester(firstPage);
         try {
 

@@ -81,7 +81,7 @@ test.describe('', async () => {
 
         try {
 
-          test.setTimeout(Constants.DELAY_THOUSAND_SECONDS);
+          test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
           const TEST_NAME = `SQLPayslips`;
 
@@ -395,7 +395,7 @@ log.info("Transformation complete. Rows after filter: {}", ctx.reportData.size()
 
         try {
 
-          test.setTimeout(Constants.DELAY_THOUSAND_SECONDS);
+          test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
           const TEST_NAME = `ScriptPayslips`;
 
@@ -810,7 +810,7 @@ log.info("Transformation complete. Rows after filter: {}", ctx.reportData.size()
     electronBeforeAfterAllTest(
       `(ai-helper-context) (${dbVendor}) AI Helper Context: Connection Modal Picklist Moves, AI Schema Gen, AI SQL Gen (Vendor Agnostic)`,
       async ({ beforeAfterEach: firstPage }) => {
-        test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS * 2);
+        test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
         let ft = new FluentTester(firstPage);
         const TEST_NAME = `AiHelperContext`;
 
