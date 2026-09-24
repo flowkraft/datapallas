@@ -1,5 +1,6 @@
 package com.flowkraft.embed;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -74,26 +75,50 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 
 		HttpServletRequest request = context.getRequest();
 
-		// An embedded component fetching data: the credential rides in a header.
-		if (carriesValidEmbedToken(request))
-			return new AuthorizationDecision(true);
-
 		Optional<String> requestedReportId = reportIdOf(request);
 
 		if (requestedReportId.isPresent()) {
+
+			// An embedded component fetching data: the credential rides in a header.
+			Optional<EmbedTokenService.Claims> claims = embedClaimsFor(request, requestedReportId.get());
+			if (claims.isPresent()) {
+				TokenRequest.mark(request, requestedReportId.get());
+				attachLocks(request, claims.get().lockedParams());
+				return new AuthorizationDecision(true);
+			}
 
 			// Someone opening a share link. A browser navigating to a URL cannot set a header, so the
 			// credential has to be in the query string — the only place it can be for a link a person
 			// pastes into an email.
 			String shareToken = request.getParameter(SHARE_TOKEN_PARAM);
-			if (shareToken != null && !shareToken.isBlank()
-					&& shareTokenService.resolveReportId(shareToken).filter(requestedReportId.get()::equals)
-							.isPresent())
-				return new AuthorizationDecision(true);
+			if (shareToken != null && !shareToken.isBlank() && shareTokenService != null) {
+
+				Optional<ShareTokenService.SharedReport> shared = shareTokenService.resolve(shareToken)
+						.filter(report -> requestedReportId.get().equals(report.reportId()));
+
+				if (shared.isPresent()) {
+					TokenRequest.mark(request, requestedReportId.get());
+					attachLocks(request, shared.get().lockedParams());
+					return new AuthorizationDecision(true);
+				}
+			}
 		}
 
 		// No token, a bad one, or one for a different report — fall back to being properly signed in.
 		return delegate.check(authentication, context);
+	}
+
+	/**
+	 * Hand the locks the credential carries to whoever serves the request.
+	 *
+	 * <p>This is the only place that holds both the credential and the report it was checked against,
+	 * so it is the only place that can say what the request is allowed to read. A request that nothing
+	 * here authorised never gets the attribute, and a controller that finds no attribute overrides
+	 * nothing — which is the right answer for everyone who is simply signed in.
+	 */
+	private void attachLocks(HttpServletRequest request, Map<String, Object> lockedParams) {
+		if (lockedParams != null && !lockedParams.isEmpty())
+			request.setAttribute(LockedParams.REQUEST_ATTRIBUTE, lockedParams);
 	}
 
 	/**
@@ -105,13 +130,17 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 	public boolean carriesValidEmbedToken(HttpServletRequest request) {
 
 		Optional<String> requestedReportId = reportIdOf(request);
-		if (requestedReportId.isEmpty())
-			return false;
+		return requestedReportId.isPresent() && embedClaimsFor(request, requestedReportId.get()).isPresent();
+	}
+
+	/** @return the claims of a header token that is valid <em>for this report</em>, locks included. */
+	private Optional<EmbedTokenService.Claims> embedClaimsFor(HttpServletRequest request, String reportId) {
 
 		String embedToken = request.getHeader(EMBED_TOKEN_HEADER);
-		return embedToken != null && !embedToken.isBlank()
-				&& embedTokenService.verifyAndGetReportId(embedToken).filter(requestedReportId.get()::equals)
-						.isPresent();
+		if (embedToken == null || embedToken.isBlank())
+			return Optional.empty();
+
+		return embedTokenService.verify(embedToken).filter(claims -> reportId.equals(claims.reportId()));
 	}
 
 	private Optional<String> reportIdOf(HttpServletRequest request) {

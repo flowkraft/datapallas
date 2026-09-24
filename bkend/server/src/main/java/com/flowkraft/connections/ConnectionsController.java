@@ -26,6 +26,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.iam.limits.LimitSettings;
+import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.reports.ReportsService;
 import com.sourcekraft.documentburster.utils.Utils;
 import com.sourcekraft.documentburster.common.oauth.OAuthFlowHelper;
@@ -70,6 +72,9 @@ public class ConnectionsController {
 	@Autowired
 	private ObjectMapper objectMapper;
 
+	@Autowired
+	private LimitsService limitsService;
+
 	/** In-flight OAuth flows: flowId → SSE emitter bound to the waiting Angular client. */
 	private final ConcurrentHashMap<String, SseEmitter> flows = new ConcurrentHashMap<>();
 
@@ -107,7 +112,13 @@ public class ConnectionsController {
 	public Flux<ConnectionFileInfo> listConnections(
 			@RequestParam(required = false, defaultValue = "email") String type) throws Exception {
 		if ("database".equals(type)) {
+			// A limited author sees only the database connections their groups allow, so every picker
+			// built on this list — reports, cubes, the AI Hub — offers only those. Read once: the
+			// limits cannot change half-way down a list. The email list below is untouched, because
+			// the limit is on databases.
+			LimitSettings limits = limitsService.currentLimits();
 			return Flux.fromStream(reportsService.loadSettingsConnectionDatabaseAll()
+					.filter(info -> limits == null || limits.allowsConnection(info.connectionCode))
 					.peek(this::maskConnectionFileInfoPasswords));
 		}
 		return Flux.fromStream(reportsService.loadSettingsConnectionEmailAll()
@@ -118,6 +129,7 @@ public class ConnectionsController {
 
 	@GetMapping(value = "/{connectionId}", consumes = MediaType.ALL_VALUE)
 	public Mono<Object> loadConnection(@PathVariable String connectionId) throws Exception {
+		limitsService.assertDatabaseConnectionAllowed(connectionId);
 		if (connectionId.startsWith("db-")) {
 			String fullPath = connectionsService.resolveDbConnectionPath(connectionId);
 			DocumentBursterConnectionDatabaseSettings result = reportsService.loadSettingsConnectionDatabase(fullPath);
@@ -338,6 +350,10 @@ public class ConnectionsController {
 	public Mono<ResponseEntity<Map<String, String>>> getMetadata(
 			@PathVariable String connectionId,
 			@PathVariable String type) throws Exception {
+		// The information schema, the table names, the ER diagram and the glossary of a connection
+		// are that connection's schema under another name, and GET /api/queries/schema/{id} refuses
+		// a hidden one. Refusing it here too is what keeps "hidden" meaning hidden.
+		limitsService.assertDatabaseConnectionAllowed(connectionId);
 		String content = connectionsService.getMetadata(connectionId, type);
 		if (content == null) {
 			return Mono.just(ResponseEntity.ok(Map.of("exists", "false", "content", "")));

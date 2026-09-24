@@ -1,15 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
+  LockedParams,
+  ReportParameter,
   ShareLink,
   absoluteShareUrl,
   createShareLink,
+  describeLocks,
+  fetchReportParameters,
   listShareLinks,
   revokeShareLink,
 } from "@/lib/explore-data/share-api";
+import { useRbElementReady } from "@/components/explore-data/widgets/useRbElementReady";
 
 /**
  * A date a person can read, from what SQLite actually stores.
@@ -32,6 +37,64 @@ function formatWhen(sqliteUtc: string | null): string {
   });
 }
 
+function paramLabel(parameter: ReportParameter): string {
+  return parameter.label || parameter.id;
+}
+
+/** The multi-select control sends its selection as a CSV string (or '*' for "All"). */
+function isMultiValue(parameter: ReportParameter): boolean {
+  const control = String(
+    parameter.uiHints?.control ?? parameter.uiHints?.widget ?? parameter.type ?? "",
+  ).toLowerCase();
+  return control === "multi-select" || control === "multiselect";
+}
+
+function lockValueOf(parameter: ReportParameter, raw: string): string | string[] {
+  if (!isMultiValue(parameter) || raw === "*") return raw;
+  return raw.split(",").map((v) => v.trim()).filter((v) => v !== "");
+}
+
+/**
+ * The value control for one locked parameter — the SAME control the viewer would get.
+ *
+ * It is the report's own <rb-parameters> component, handed a single-parameter list, so a select
+ * keeps its options (including the SQL-driven ones), a date keeps its picker and a multi-select
+ * keeps its modal. Writing a second renderer here would mean two sets of controls drifting apart,
+ * and a lock chosen with a control the viewer never sees.
+ */
+function LockValueInput({
+  parameter,
+  onChange,
+}: {
+  parameter: ReportParameter;
+  onChange: (name: string, value: string) => void;
+}) {
+  const elRef = useRef<HTMLElement | null>(null);
+  const ready = useRbElementReady("rb-parameters");
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const handler = (e: Event) => {
+      const values = (e as CustomEvent<Record<string, unknown>>).detail ?? {};
+      const value = values[parameter.id];
+      onChange(parameter.id, value == null ? "" : String(value));
+    };
+    el.addEventListener("valueChange", handler);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (el as any).parameters = [parameter];
+    return () => el.removeEventListener("valueChange", handler);
+  }, [parameter, ready, onChange]);
+
+  if (!ready) return null;
+
+  return React.createElement("rb-parameters", {
+    ref: elRef,
+    id: `shareLockValue-${parameter.id}`,
+    style: { display: "block" },
+  });
+}
+
 interface ShareDialogProps {
   open: boolean;
   onClose: () => void;
@@ -49,9 +112,15 @@ interface ShareDialogProps {
  *
  * A newly created URL is shown once. The server stores just a hash, so it genuinely cannot be
  * displayed again later; the answer to a lost link is to create a new one and revoke the old.
+ *
+ * Locks are chosen here and fixed for the life of the link, for the same reason: a link is never
+ * shown or edited again, so there is nowhere to change them afterwards.
  */
 export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
   const [links, setLinks] = useState<ShareLink[]>([]);
+  const [parameters, setParameters] = useState<ReportParameter[]>([]);
+  const [lockedNames, setLockedNames] = useState<string[]>([]);
+  const [lockValues, setLockValues] = useState<{ [name: string]: string }>({});
   const [newUrl, setNewUrl] = useState("");
   const [expiry, setExpiry] = useState<"never" | "7" | "30" | "90">("never");
   const [busy, setBusy] = useState(false);
@@ -68,25 +137,52 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
   }, [reportId]);
 
   useEffect(() => {
-    if (open && reportId) {
-      setNewUrl("");
-      setCopied(false);
-      void reload();
-    }
+    if (!open || !reportId) return;
+    setNewUrl("");
+    setCopied(false);
+    setLockedNames([]);
+    setLockValues({});
+    void reload();
+    // A report with no parameters is normal (canvases published from here usually declare none),
+    // so a failure to read them only means "nothing to lock" — it must not hide the links table.
+    fetchReportParameters(reportId).then(setParameters, () => setParameters([]));
   }, [open, reportId, reload]);
 
+  // Stable across renders so the <rb-parameters> listener is not rebound on every keystroke.
+  const handleLockValue = useCallback((name: string, value: string) => {
+    setLockValues((previous) => (previous[name] === value ? previous : { ...previous, [name]: value }));
+  }, []);
+
   if (!open) return null;
+
+  const toggleLock = (name: string) =>
+    setLockedNames((previous) =>
+      previous.includes(name) ? previous.filter((n) => n !== name) : [...previous, name],
+    );
+
+  const collectLocks = (): LockedParams | undefined => {
+    const locked: LockedParams = {};
+    for (const parameter of parameters) {
+      if (!lockedNames.includes(parameter.id)) continue;
+      locked[parameter.id] = lockValueOf(parameter, lockValues[parameter.id] ?? "");
+    }
+    return Object.keys(locked).length === 0 ? undefined : locked;
+  };
 
   const handleCreate = async () => {
     setBusy(true);
     setError("");
     try {
-      const { url } = await createShareLink(reportId, expiry === "never" ? undefined : Number(expiry));
+      const { url } = await createShareLink(
+        reportId,
+        expiry === "never" ? undefined : Number(expiry),
+        collectLocks(),
+      );
       setNewUrl(absoluteShareUrl(url));
       setCopied(false);
       await reload();
-    } catch {
-      setError("Could not create the link.");
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "Could not create the link.");
     } finally {
       setBusy(false);
     }
@@ -155,6 +251,42 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
           </div>
         )}
 
+        <div id="shareLockParams" className="mb-4 rounded-lg border border-base-300 p-3">
+          <p className="mb-2 text-sm font-medium">Lock parameters</p>
+          {parameters.length === 0 ? (
+            <p className="text-xs text-base-content/60">
+              This dashboard has no parameters, so a link always shows all of its data.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2">
+                {parameters.map((parameter) => (
+                  <div key={parameter.id} className="flex items-start gap-2">
+                    <label className="flex w-48 shrink-0 cursor-pointer items-center gap-2 text-xs">
+                      <input
+                        id={`shareLockParam-${parameter.id}`}
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        checked={lockedNames.includes(parameter.id)}
+                        onChange={() => toggleLock(parameter.id)}
+                      />
+                      <span>{paramLabel(parameter)}</span>
+                    </label>
+                    <div className="grow">
+                      {lockedNames.includes(parameter.id) && (
+                        <LockValueInput parameter={parameter} onChange={handleLockValue} />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-base-content/60">
+                A locked parameter only restricts data if the report&apos;s query uses it.
+              </p>
+            </>
+          )}
+        </div>
+
         <div className="mb-4 flex items-end gap-2">
           <label className="form-control">
             <div className="label">
@@ -187,6 +319,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
             <tr>
               <th>Created</th>
               <th>Expires</th>
+              <th>Locked</th>
               <th className="text-right">Actions</th>
             </tr>
           </thead>
@@ -195,6 +328,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
               <tr key={link.id} id={`shareLink-${link.id}`}>
                 <td className="text-xs">{formatWhen(link.createdAt)}</td>
                 <td className="text-xs">{formatWhen(link.expiresAt)}</td>
+                <td className="text-xs">{describeLocks(link.lockedParams)}</td>
                 <td className="text-right">
                   <button
                     id={`btnRevokeShareLink-${link.id}`}
@@ -209,7 +343,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
             ))}
             {links.length === 0 && (
               <tr>
-                <td colSpan={3} className="text-center text-xs opacity-60">
+                <td colSpan={4} className="text-center text-xs opacity-60">
                   Not shared with anyone yet.
                 </td>
               </tr>

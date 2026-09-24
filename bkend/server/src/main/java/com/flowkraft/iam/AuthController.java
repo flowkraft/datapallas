@@ -274,8 +274,12 @@ public class AuthController {
 	 *   <li>{@code manageUsers} — {@code /api/iam/**}</li>
 	 *   <li>{@code manageConnections} — the writing half of {@code /api/connections/**}, plus
 	 *       {@code run-seed} and {@code reveal-password}</li>
-	 *   <li>{@code manageSystem} — {@code /api/system/fs/**}, {@code PUT /api/system/preferences},
-	 *       {@code /api/system/update/apply}, the Chocolatey and test-email-server endpoints</li>
+	 *   <li>{@code manageSystem} — {@code /api/system/update/apply} and the Chocolatey install and
+	 *       uninstall endpoints: what changes the installation itself. Note what is NOT here, because
+	 *       it reads like it should be: {@code /api/system/fs/**} and {@code PUT /api/system/preferences}
+	 *       are REPORT_AUTHOR — an author edits the files their reports are made of, and the
+	 *       preferences are working preferences — and the test-email-server endpoints are
+	 *       JOB_OPERATOR, with the rest of running things</li>
 	 *   <li>{@code manageApps} — {@code /api/system/services/execute} and {@code /api/system/apps}:
 	 *       starting the AI Hub and the sample-database starter packs is part of authoring, so an author
 	 *       does not have to ask somebody else before they can begin</li>
@@ -284,14 +288,29 @@ public class AuthController {
 	 *       {@code /api/dsl}, {@code /api/analytics}</li>
 	 *   <li>{@code viewConfiguration} — the read side of the same set; this is what shows or hides the
 	 *       Configuration menu and the Samples modal's View Configuration button</li>
-	 *   <li>{@code runJobs} — {@code /api/jobs/**}, {@code /api/system/fs/explorer/**},
-	 *       {@code /api/system/gallery/**}</li>
+	 *   <li>{@code runJobs} — {@code /api/jobs/**}, {@code /api/system/gallery/**} and the
+	 *       test-email-server endpoints; {@code /api/system/fs/explorer/**} is REPORT_AUTHOR with the
+	 *       rest of the filesystem API</li>
+	 *   <li>{@code dashboardsOnly} — no endpoint of its own: it is the one flag that says "this person
+	 *       has the dashboards granted to their groups and nothing else", which is what the AI Hub's
+	 *       door and navbar render from instead of naming the role</li>
 	 * </ul>
+	 *
+	 * <p>Door by door, the whole list is {@code bkend/server/src/test/resources/endpoint-role-matrix.txt},
+	 * which {@code EndpointRoleMatrixTest} derives from the annotations and compares against this table
+	 * — so a bullet above going stale is a failing test rather than a comment nobody re-reads.
+	 *
+	 * <p>Package-private so the tests can pin the table down without a Spring context.
 	 */
-	private Map<String, Boolean> capabilitiesOf(List<String> roles) {
+	Map<String, Boolean> capabilitiesOf(List<String> roles) {
 		boolean admin = roles.contains(Role.ADMIN.name()) || roles.contains(Role.PLATFORM_ADMIN.name());
 		boolean author = admin || roles.contains(Role.REPORT_AUTHOR.name());
 		boolean operator = author || roles.contains(Role.JOB_OPERATOR.name());
+
+		// Every role is granted its own plus every weaker one (IamUserDetailsService.authoritiesOf), so
+		// ROLE_DASHBOARD_VIEWER is held by everybody. What makes someone a viewer is holding it and
+		// nothing above it.
+		boolean dashboardsOnly = roles.contains(Role.DASHBOARD_VIEWER.name()) && !operator;
 
 		Map<String, Boolean> capabilities = new LinkedHashMap<>();
 		capabilities.put("manageUsers", admin);
@@ -303,6 +322,7 @@ public class AuthController {
 		capabilities.put("editReports", author);
 		capabilities.put("viewConfiguration", author);
 		capabilities.put("runJobs", operator);
+		capabilities.put("dashboardsOnly", dashboardsOnly);
 		return capabilities;
 	}
 }

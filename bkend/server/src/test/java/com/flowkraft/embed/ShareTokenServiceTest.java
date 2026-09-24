@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -186,6 +187,54 @@ class ShareTokenServiceTest {
 		String second = shareTokenService.createShareToken("sales-summary", null);
 
 		assertFalse(first.equals(second));
+	}
+
+	// ============================================================
+	// locked parameters
+	// ============================================================
+
+	/**
+	 * The locks belong to the link and are fixed for its life, so they have to come back with the
+	 * report every time it is resolved — a resolve that returned the report alone would open the
+	 * dashboard unrestricted.
+	 */
+	@Test
+	void aLinkResolvesWithTheLocksItWasCreatedWith() {
+
+		String token = shareTokenService.createShareToken("sales-summary", null, Map.of("region", "EU"));
+
+		ShareTokenService.SharedReport shared = shareTokenService.resolve(token).orElseThrow();
+
+		assertEquals("sales-summary", shared.reportId());
+		assertEquals(Map.of("region", "EU"), shared.lockedParams());
+	}
+
+	@Test
+	void aMultiValueLockSurvivesStorage() {
+
+		String token = shareTokenService.createShareToken("sales-summary", null,
+				Map.of("channel", List.of("web", "retail")));
+
+		assertEquals(List.of("web", "retail"),
+				shareTokenService.resolve(token).orElseThrow().lockedParams().get("channel"));
+	}
+
+	/** An unrestricted link is still the common case, and it must stay unrestricted. */
+	@Test
+	void aLinkCreatedWithoutLocksResolvesUnlocked() {
+
+		String token = shareTokenService.createShareToken("sales-summary", null);
+
+		assertTrue(shareTokenService.resolve(token).orElseThrow().lockedParams().isEmpty());
+	}
+
+	/** "Which of these links is wide open" is the question the listing exists to answer. */
+	@Test
+	void theListingShowsWhatEachLinkIsRestrictedTo() {
+
+		shareTokenService.createShareToken("sales-summary", null, Map.of("region", "EU"));
+
+		assertEquals(Map.of("region", "EU"), shareTokenService.listShareLinks("sales-summary").get(0).lockedParams());
 	}
 
 	@Test

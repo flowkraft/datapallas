@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.queries.ConnectionFactory;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.sourcekraft.documentburster.common.db.DatabaseConnectionManager;
@@ -44,6 +45,9 @@ public class CubesController {
 
 	@Autowired
 	private CubesService cubesService;
+
+	@Autowired
+	private LimitsSandbox limitsSandbox;
 
 	// ═══════════════════════════════════════════════════════════════════════════
 	// CRUD
@@ -109,6 +113,7 @@ public class CubesController {
 	@PostMapping(value = "/parse-dsl", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<CubeOptions> parseDsl(@RequestBody Map<String, String> request) throws Exception {
 		String dslCode = request.get("dslCode");
+		limitsSandbox.check(dslCode);
 		return Mono.just(cubesService.parseDsl(dslCode));
 	}
 
@@ -121,6 +126,7 @@ public class CubesController {
 	@PostMapping(value = "/generate-sql", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<Map<String, Object>> generateSqlFromDsl(@RequestBody Map<String, Object> request) throws Exception {
 		String dslCode = (String) request.get("dslCode");
+		limitsSandbox.check(dslCode);
 		CubeOptions cube = cubesService.parseDsl(dslCode);
 		return generateSqlInternal(cube, request);
 	}
@@ -132,6 +138,8 @@ public class CubesController {
 			@RequestBody Map<String, Object> request) throws Exception {
 		Map<String, Object> cubeData = cubesService.load(cubeId);
 		String dslCode = (String) cubeData.get("dslCode");
+		// Checked although it was saved earlier: it is about to be compiled and run for this caller.
+		limitsSandbox.check(dslCode);
 		CubeOptions cube = cubesService.parseDsl(dslCode);
 		return generateSqlInternal(cube, request);
 	}

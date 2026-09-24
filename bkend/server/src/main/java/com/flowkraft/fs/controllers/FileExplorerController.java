@@ -33,13 +33,27 @@ import com.flowkraft.common.MimeTypeUtils;
 import com.flowkraft.fs.config.FileExplorerConfiguration;
 import com.flowkraft.fs.models.FileTreeVO;
 import com.flowkraft.fs.services.FileExplorerService;
+import com.flowkraft.iam.limits.FsLimitsGuard;
 import com.flowkraft.system.services.FileSystemService;
 
 import reactor.core.publisher.Mono;
 
+/**
+ * The file explorer, over the {@code db/} folder.
+ *
+ * <p>REPORT_AUTHOR, like every other {@code /api/system/fs/*} endpoint. It used to be
+ * JOB_OPERATOR, which was a wider door than the rest of the filesystem for no reason anyone asked
+ * for: no operator screen opens the explorer, while {@code db/} holds the SQLite and DuckDB files
+ * that <em>are</em> the database connections, plus the compose file that names and credentials the
+ * containerized ones.
+ *
+ * <p>Every path a caller sends goes through {@link FsLimitsGuard}, the same guard the rest of the
+ * filesystem uses, so a limited author reaches a database file here only through a connection their
+ * groups allow, and an unlimited one keeps the exact path they have today.
+ */
 @RestController
 @RequestMapping(value = "/api/system/fs/explorer")
-@PreAuthorize("hasRole('JOB_OPERATOR')")
+@PreAuthorize("hasRole('REPORT_AUTHOR')")
 public class FileExplorerController {
 
 	@Autowired
@@ -50,6 +64,9 @@ public class FileExplorerController {
 
 	@Autowired
 	private FileExplorerConfiguration fileExplorerConfig;
+
+	@Autowired
+	private FsLimitsGuard fsGuard;
 
 	/**
 	 * Get metadata information about the file explorer
@@ -71,6 +88,7 @@ public class FileExplorerController {
 	public Mono<FileTreeVO> getFileTree(@RequestParam String dir) throws Exception {
 		String decodedPath = URLDecoder.decode(dir, StandardCharsets.UTF_8.toString());
 		String fullPath = resolveFullPath(decodedPath);
+		fsGuard.checkAccess(fullPath);
 		return Mono.just(fileExplorerService.buildFileTree(fullPath));
 	}
 
@@ -81,6 +99,7 @@ public class FileExplorerController {
 	public Mono<ResponseEntity<String>> viewFile(@RequestParam String file) throws Exception {
 		String decodedPath = URLDecoder.decode(file, StandardCharsets.UTF_8.toString());
 		String fullPath = resolveFullPath(decodedPath);
+		fsGuard.checkAccess(fullPath);
 
 		File fileObj = new File(fullPath);
 		if (!fileObj.exists() || !fileObj.isFile() || !fileObj.canRead()) {
@@ -168,6 +187,7 @@ public class FileExplorerController {
 	public Mono<ResponseEntity<FileSystemResource>> downloadFile(@RequestParam String file) throws Exception {
 		String decodedPath = URLDecoder.decode(file, StandardCharsets.UTF_8.toString());
 		String fullPath = resolveFullPath(decodedPath);
+		fsGuard.checkAccess(fullPath);
 
 		File fileObj = new File(fullPath);
 		if (!fileObj.exists() || !fileObj.isFile() || !fileObj.canRead()) {
@@ -192,6 +212,9 @@ public class FileExplorerController {
 	public Mono<Boolean> upload(@RequestPart("file") FilePart filePart, @RequestParam String dir) throws Exception {
 		String decodedDir = URLDecoder.decode(dir, StandardCharsets.UTF_8.toString());
 		String fullDir = resolveFullPath(decodedDir);
+		// The file that is about to be written, not just the folder: overwriting db/hr/hr.db is the
+		// same act as downloading it, backwards.
+		fsGuard.checkWrite(new File(fullDir, filePart.filename()).getPath());
 
 		File targetDir = new File(fullDir);
 		if (!targetDir.exists() || !targetDir.isDirectory() || !targetDir.canWrite()) {

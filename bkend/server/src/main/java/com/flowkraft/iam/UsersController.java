@@ -19,8 +19,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.flowkraft.iam.dashboards.DashboardGrants;
+import com.flowkraft.iam.reports.ReportGrants;
 import com.flowkraft.iam.dtos.CreateUserRequestDto;
+import com.flowkraft.iam.dtos.GroupRefDto;
 import com.flowkraft.iam.dtos.TenantUserDto;
+import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.iam.model.AppUser;
 import com.flowkraft.iam.model.Tenant;
 
@@ -42,13 +46,84 @@ public class UsersController {
 	@Autowired
 	private IamService iamService;
 
+	@Autowired
+	private LimitsService limitsService;
+
+	@Autowired
+	private DashboardGrants dashboardGrants;
+
+	@Autowired
+	private ReportGrants reportGrants;
+
 	// ============================================================
 	// users
 	// ============================================================
 
+	/**
+	 * Every user, each with the groups they are in and the limits that actually apply to them — so the
+	 * admin sees what the server will do, not what the group settings suggest it might.
+	 */
 	@GetMapping("/users")
 	public List<TenantUserDto> listUsers(@RequestParam(required = false) String tenantCode) {
-		return iamService.usersInTenant(resolveTenantCode(tenantCode));
+		return iamService.usersInTenant(resolveTenantCode(tenantCode)).stream().map(this::withGroups).toList();
+	}
+
+	private TenantUserDto withGroups(TenantUserDto user) {
+		List<GroupRefDto> groups = limitsService.groupsOf(user.id()).stream()
+				.map(group -> new GroupRefDto(group.id(), group.name())).toList();
+
+		Role role = user.role() == null ? null : Role.parse(user.role());
+
+		// "Opens on" only means something for a viewer: it is the one role whose whole session is the
+		// dashboard it lands on.
+		String opensOn = role == Role.DASHBOARD_VIEWER ? dashboardGrants.defaultDashboardOf(user.id()) : null;
+
+		// Layer 2, the same way: what the server will actually allow, not what the group rows suggest.
+		// An administrator is subject to neither layer, so they are shown neither.
+		List<String> effectiveReports = role == Role.ADMIN || role == Role.PLATFORM_ADMIN ? null
+				: reportGrants.effectiveReportsOf(user.id());
+
+		return user.withGroups(groups, role == null ? null : limitsService.effectiveLimitsFor(user.id(), role),
+				effectiveReports, opensOn);
+	}
+
+	/**
+	 * Replace a user's groups with exactly the set sent.
+	 *
+	 * <p>204 and not 200: there is nothing to return that the caller does not already have, and the
+	 * Groups column is refreshed from the list endpoint.
+	 */
+	@PutMapping("/users/{username}/groups")
+	public ResponseEntity<?> setUserGroups(@PathVariable String username, @RequestBody Map<String, Object> body) {
+		try {
+			limitsService.setUserGroups(username, groupIdsIn(body.get("groupIds")));
+			return ResponseEntity.noContent().build();
+
+		} catch (LimitsService.UnknownUserException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+		}
+	}
+
+	/**
+	 * JSON numbers arrive as Integer or Long depending on their size, and the Angular client sends
+	 * them either way, so the ids are read through {@link Number} rather than cast.
+	 */
+	private List<Long> groupIdsIn(Object raw) {
+		if (raw == null)
+			return List.of();
+		if (!(raw instanceof List<?> values))
+			throw new IllegalArgumentException("groupIds must be a list of group ids");
+
+		List<Long> groupIds = new java.util.ArrayList<>();
+		for (Object value : values) {
+			if (!(value instanceof Number id))
+				throw new IllegalArgumentException("No such group: " + value);
+			groupIds.add(id.longValue());
+		}
+		return groupIds;
 	}
 
 	/**
@@ -60,8 +135,16 @@ public class UsersController {
 	@PostMapping("/users")
 	public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequestDto request) {
 		try {
+			// Validated first: a request naming a group that does not exist must create nothing at all,
+			// rather than a user the admin then has to find and delete.
+			List<Long> groupIds = limitsService.validated(request.groupIds());
+
 			AppUser created = iamService.createUser(request.username(), request.email(), request.password(),
 					parseRole(request.role()), resolveTenantCode(request.tenantCode()));
+
+			if (!groupIds.isEmpty())
+				limitsService.setUserGroups(created.username(), groupIds);
+
 			return ResponseEntity.status(HttpStatus.CREATED).body(created);
 
 		} catch (IamService.UsernameTakenException e) {

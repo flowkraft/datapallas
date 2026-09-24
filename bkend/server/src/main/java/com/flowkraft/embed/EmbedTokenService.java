@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.crypto.Mac;
@@ -18,6 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flowkraft.common.AppPaths;
 
 import jakarta.annotation.PostConstruct;
@@ -61,6 +65,8 @@ public class EmbedTokenService {
 
 	private static final String HEADER_B64 = base64Url("{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
 
+	private static final ObjectMapper MAPPER = new ObjectMapper();
+
 	private byte[] signingKey;
 
 	@PostConstruct
@@ -95,6 +101,22 @@ public class EmbedTokenService {
 	 *                   {@link #DEFAULT_TTL_SECONDS}
 	 */
 	public String mint(String reportId, long ttlSeconds) {
+		return mint(reportId, ttlSeconds, null);
+	}
+
+	/**
+	 * Mint a token that authorises reading {@code reportId}, with the parameter values the host
+	 * application forces on it.
+	 *
+	 * <p>The locks travel <em>inside</em> the signed payload, as the {@code lp} claim. That is the whole
+	 * mechanism: a viewer who edits the token to widen a lock breaks the signature, and a viewer who
+	 * leaves it alone cannot reach the data by any other route, because the server reads the lock from
+	 * the token rather than from the request.
+	 *
+	 * @param lockedParams parameter names mapped to a value or a list of values; null or empty mints
+	 *                     exactly the token {@link #mint(String, long)} always did
+	 */
+	public String mint(String reportId, long ttlSeconds, Map<String, Object> lockedParams) {
 
 		if (StringUtils.isBlank(reportId))
 			throw new IllegalArgumentException("reportId is required");
@@ -102,9 +124,19 @@ public class EmbedTokenService {
 		long ttl = ttlSeconds <= 0 ? DEFAULT_TTL_SECONDS : Math.min(ttlSeconds, MAX_TTL_SECONDS);
 		long expiresAt = System.currentTimeMillis() / 1000 + ttl;
 
-		// Hand-built rather than serialised: the claim set is two fields and a Jackson round-trip would
-		// only add a way for the shape to drift from what verify() expects.
-		String payload = base64Url("{\"rid\":\"" + escapeJson(reportId) + "\",\"exp\":" + expiresAt + "}");
+		ObjectNode claims = MAPPER.createObjectNode();
+		claims.put("rid", reportId);
+		claims.put("exp", expiresAt);
+		if (lockedParams != null && !lockedParams.isEmpty())
+			claims.set("lp", MAPPER.valueToTree(lockedParams));
+
+		String payload;
+		try {
+			payload = base64Url(MAPPER.writeValueAsString(claims));
+		} catch (Exception e) {
+			throw new IllegalStateException("Could not build the embed token claims", e);
+		}
+
 		String signingInput = HEADER_B64 + "." + payload;
 
 		return signingInput + "." + sign(signingInput);
@@ -116,6 +148,14 @@ public class EmbedTokenService {
 	 *         token failed helps them forge a better one.
 	 */
 	public Optional<String> verifyAndGetReportId(String token) {
+		return verify(token).map(Claims::reportId);
+	}
+
+	/**
+	 * @return everything a valid token says — the report and its locked parameters — or empty on the
+	 *         same terms as {@link #verifyAndGetReportId(String)}.
+	 */
+	public Optional<Claims> verify(String token) {
 
 		if (StringUtils.isBlank(token))
 			return Optional.empty();
@@ -136,14 +176,28 @@ public class EmbedTokenService {
 			return Optional.empty();
 
 		try {
-			String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
+			JsonNode claims = MAPPER
+					.readTree(new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8));
 
-			long expiresAt = Long.parseLong(extractJsonValue(payload, "exp"));
-			if (expiresAt <= System.currentTimeMillis() / 1000)
+			// Mandatory, not optional: a payload with no exp is a token that never dies, and a JSON
+			// parser is perfectly happy to hand one over.
+			JsonNode expiresAt = claims.get("exp");
+			if (expiresAt == null || !expiresAt.canConvertToLong()
+					|| expiresAt.asLong() <= System.currentTimeMillis() / 1000)
 				return Optional.empty();
 
-			String reportId = extractJsonValue(payload, "rid");
-			return StringUtils.isBlank(reportId) ? Optional.empty() : Optional.of(reportId);
+			String reportId = claims.path("rid").asText(null);
+			if (StringUtils.isBlank(reportId))
+				return Optional.empty();
+
+			JsonNode locked = claims.get("lp");
+			Map<String, Object> lockedParams = locked != null && locked.isObject()
+					? MAPPER.convertValue(locked, new com.fasterxml.jackson.core.type.TypeReference<
+							java.util.LinkedHashMap<String, Object>>() {
+					})
+					: Map.of();
+
+			return Optional.of(new Claims(reportId, lockedParams));
 
 		} catch (Exception e) {
 			return Optional.empty();
@@ -175,46 +229,11 @@ public class EmbedTokenService {
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
 	}
 
-	/** Report ids are slugs, but a quote or backslash must never be able to break out of the claim. */
-	private static String escapeJson(String value) {
-		return value.replace("\\", "\\\\").replace("\"", "\\\"");
-	}
-
 	/**
-	 * Two known claims, so a full JSON parse would be more machinery than the job needs.
-	 *
-	 * <p>The string branch walks the value honouring backslash escapes rather than scanning for the
-	 * next quote: mint() escapes a quote inside a report id as {@code \"}, and stopping at that quote
-	 * would truncate the value and resolve the token to the wrong report.
+	 * What a verified token says: the report it opens, and the parameter values that report is read
+	 * with. Locks are empty for a token that carries none, never null, so a caller never has to ask
+	 * twice whether a token locks anything.
 	 */
-	private static String extractJsonValue(String json, String key) {
-		String quoted = "\"" + key + "\":\"";
-		int start = json.indexOf(quoted);
-		if (start >= 0) {
-			start += quoted.length();
-
-			StringBuilder value = new StringBuilder();
-			for (int i = start; i < json.length(); i++) {
-				char c = json.charAt(i);
-				if (c == '\\' && i + 1 < json.length()) {
-					value.append(json.charAt(++i));
-				} else if (c == '"') {
-					return value.toString();
-				} else {
-					value.append(c);
-				}
-			}
-			return null;
-		}
-
-		String bare = "\"" + key + "\":";
-		start = json.indexOf(bare);
-		if (start < 0)
-			return null;
-		start += bare.length();
-		int end = start;
-		while (end < json.length() && (Character.isDigit(json.charAt(end)) || json.charAt(end) == '-'))
-			end++;
-		return json.substring(start, end);
+	public record Claims(String reportId, Map<String, Object> lockedParams) {
 	}
 }

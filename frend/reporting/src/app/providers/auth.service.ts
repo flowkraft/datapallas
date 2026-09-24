@@ -115,6 +115,7 @@ export class AuthService {
     if (roles.includes('PLATFORM_ADMIN') || roles.includes('ADMIN')) return 'Administrator';
     if (roles.includes('REPORT_AUTHOR')) return 'Author';
     if (roles.includes('JOB_OPERATOR')) return 'Operator';
+    if (roles.includes('DASHBOARD_VIEWER')) return 'Viewer';
     return '';
   });
 
@@ -293,6 +294,19 @@ export class AuthService {
   readonly canManageApps = computed(() => this.can('manageApps'));
   readonly canManageSystem = computed(() => this.can('manageSystem'));
   readonly canEditReports = computed(() => this.can('editReports'));
+
+  /**
+   * Does this person only open dashboards, in the AI Hub?
+   *
+   * <p>The one flag here that does NOT go through {@link can}, because it is the one that is read the
+   * other way round: everything above hides a screen when it is false, while this one hides the whole
+   * application when it is true. Failing open would mean that a desktop whose backend has not answered
+   * yet — the very case {@link can} exists for — replaced its own screens with a note about the AI Hub.
+   * So: no identity, no flag, no notice.
+   */
+  readonly opensDashboardsOnly = computed(
+    () => this.identity()?.capabilities?.['dashboardsOnly'] === true,
+  );
 
   /** Re-entrancy guard: `/auth/me` answering 401 would otherwise recurse through this handler. */
   private reprobing = false;

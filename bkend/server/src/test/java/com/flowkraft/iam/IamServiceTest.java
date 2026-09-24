@@ -117,11 +117,18 @@ class IamServiceTest {
 		assertTrue(Role.ADMIN.includes(Role.REPORT_AUTHOR));
 		assertTrue(Role.REPORT_AUTHOR.includes(Role.JOB_OPERATOR));
 		assertTrue(Role.ADMIN.includes(Role.JOB_OPERATOR));
+		assertTrue(Role.JOB_OPERATOR.includes(Role.DASHBOARD_VIEWER));
+		assertTrue(Role.ADMIN.includes(Role.DASHBOARD_VIEWER));
 
 		// ...and not the other way round, which is the half that actually constrains anything.
 		assertFalse(Role.REPORT_AUTHOR.includes(Role.ADMIN));
 		assertFalse(Role.JOB_OPERATOR.includes(Role.REPORT_AUTHOR));
 		assertFalse(Role.JOB_OPERATOR.includes(Role.ADMIN));
+		assertFalse(Role.DASHBOARD_VIEWER.includes(Role.JOB_OPERATOR));
+		assertFalse(Role.DASHBOARD_VIEWER.includes(Role.ADMIN));
+
+		// The weakest role is last, so that a viewer is granted nothing but themselves.
+		assertEquals(Role.DASHBOARD_VIEWER, Role.values()[Role.values().length - 1]);
 
 		// PLATFORM_ADMIN sits outside the tenant chain — it includes everything and nothing includes it.
 		assertTrue(Role.PLATFORM_ADMIN.includes(Role.ADMIN));
@@ -142,15 +149,23 @@ class IamServiceTest {
 
 		assertEquals(Role.ADMIN, Role.parse("ADMIN"));
 		assertEquals(Role.JOB_OPERATOR, Role.parse(" job_operator "));
+		assertEquals(Role.DASHBOARD_VIEWER, Role.parse("DASHBOARD_VIEWER"));
+		assertEquals(Role.DASHBOARD_VIEWER, Role.parse(" dashboard_viewer "));
 	}
 
 	/**
 	 * REPORT_VIEWER was removed, but the rows naming it were not — nobody rewrites an IAM store during
 	 * an upgrade. An unparseable role is not a degraded login, it is no login at all, so both spellings
-	 * resolve to the weakest role that still exists.
+	 * keep resolving to JOB_OPERATOR.
+	 *
+	 * <p>They deliberately do <em>not</em> resolve to DASHBOARD_VIEWER, which is now weaker and reads
+	 * like the better match by name. Those rows belong to people who were running jobs and reading
+	 * output yesterday; mapping them to a role that can open nothing but the dashboards somebody has
+	 * granted it would take that away in an upgrade, which is the one direction this must never be
+	 * wrong in.
 	 */
 	@Test
-	void theRemovedViewerRoleResolvesToTheWeakestRemainingRole() {
+	void theRemovedViewerRoleStillResolvesToJobOperator() {
 
 		assertEquals(Role.JOB_OPERATOR, Role.parse("VIEWER"));
 		assertEquals(Role.JOB_OPERATOR, Role.parse("REPORT_VIEWER"));
@@ -570,10 +585,28 @@ class IamServiceTest {
 
 	/**
 	 * The weakest role must expand to itself and stop. This is the assertion that fails loudly if a new
-	 * constant is ever appended below {@code JOB_OPERATOR} without anyone deciding what it may do.
+	 * constant is ever appended below {@code DASHBOARD_VIEWER} without anyone deciding what it may do.
 	 */
 	@Test
-	void anOperatorGetsNothingButOperator() {
+	void theWeakestRoleGetsNothingButItself() {
+
+		iamService.bootstrap();
+		iamService.createUser("mark", null, "MarkPassword123!", Role.DASHBOARD_VIEWER, Tenant.DEFAULT_CODE);
+
+		IamUserDetailsService userDetails = new IamUserDetailsService(iamService);
+		List<String> authorities = userDetails.authoritiesOf(repository.findUserByUsername("mark").orElseThrow())
+				.stream().map(GrantedAuthority::getAuthority).toList();
+
+		assertEquals(List.of("ROLE_DASHBOARD_VIEWER"), authorities);
+	}
+
+	/**
+	 * And an operator stops one step above it. Everybody holds ROLE_DASHBOARD_VIEWER — that is what
+	 * "own role plus every weaker one" means — which is exactly why nothing may treat that authority
+	 * on its own as "this caller is a dashboard viewer".
+	 */
+	@Test
+	void anOperatorGetsOperatorAndTheViewerBelowIt() {
 
 		iamService.bootstrap();
 		iamService.createUser("oscar", null, "OscarPassword123!", Role.JOB_OPERATOR, Tenant.DEFAULT_CODE);
@@ -582,7 +615,7 @@ class IamServiceTest {
 		List<String> authorities = userDetails.authoritiesOf(repository.findUserByUsername("oscar").orElseThrow())
 				.stream().map(GrantedAuthority::getAuthority).toList();
 
-		assertEquals(List.of("ROLE_JOB_OPERATOR"), authorities);
+		assertEquals(List.of("ROLE_JOB_OPERATOR", "ROLE_DASHBOARD_VIEWER"), authorities);
 	}
 
 	// ============================================================

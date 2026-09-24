@@ -1,7 +1,22 @@
 <div class="bg-base-100 flex flex-col flex-1 min-h-0">
   <dburst-top-menu-header></dburst-top-menu-header>
   <main class="flex-1 overflow-y-auto min-h-0 pt-2">
-    <router-outlet></router-outlet>
+    <!-- A dashboard viewer gets this instead of the application. Not a refusal and not a guard: every
+         route below would load a screen whose every call the backend answers with a 403, so the honest
+         thing is to say once where their dashboards actually are. Driven by the capability, never by
+         the role name. -->
+    @if (authService.opensDashboardsOnly()) {
+      <div id="dashboardsOnlyNotice" class="max-w-xl mx-auto px-6 py-16 text-center">
+        <h1 class="text-2xl font-bold mb-3">Your dashboards are in the AI Hub</h1>
+        <p class="opacity-80">
+          This screen is where reports are built and run, which your account does not do. Open the AI
+          Hub at the address your administrator gave you and sign in there with this same account —
+          the dashboards shared with your groups are waiting on its start page.
+        </p>
+      </div>
+    } @else {
+      <router-outlet></router-outlet>
+    }
   </main>
   <dburst-status-bar class="mt-auto"></dburst-status-bar>
 </div>

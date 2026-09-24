@@ -2,17 +2,20 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { DAISY_THEMES, setTheme } from "@/lib/daisy-themes"
 import { BrandLogo } from "@/components/shared/BrandLogo"
 import { IconXMark, IconHamburger, IconSettings, IconRocketLaunch, IconEmail } from "@/components/shared/Icons"
 import { useDpSession } from "@/components/layout/DpSession"
+import { DashboardSwitcher } from "@/components/layout/DashboardSwitcher"
 
 export function AINavbar() {
   // Same rule as the main application: the navigation disappears while a server waits for a sign-in,
   // because every destination in it needs one. The brand, the support link and the theme picker stay
   // — they are not navigation into the app.
-  const { needsSignIn, username, roleLabel } = useDpSession()
+  // A dashboard viewer is the other case with no navigation: everything in it authors something,
+  // which is the one thing their account does not do. They get the dashboard switcher instead.
+  const { needsSignIn, username, roleLabel, dashboardsOnly } = useDpSession()
   const pathname = usePathname()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -60,7 +63,7 @@ export function AINavbar() {
         <div className="flex flex-1 items-center gap-2">
 
           {/* Brand */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 no-underline text-base-content">
+          <Link href={dashboardsOnly ? "/view" : "/"} className="flex items-center gap-2 shrink-0 no-underline text-base-content">
             <span className="logo-lg flex items-center gap-1">
               <span
               className="text-3xl tracking-tight"
@@ -74,7 +77,7 @@ export function AINavbar() {
           </Link>
 
           {/* Desktop nav links */}
-          {!needsSignIn && (
+          {!needsSignIn && !dashboardsOnly && (
           <ul className="menu menu-horizontal px-1 hidden md:flex">
             {navLinks.map((link) => (
               <li key={link.href}>
@@ -100,7 +103,7 @@ export function AINavbar() {
           </a>
 
           {/* Settings gear — administration, so it goes with the navigation. */}
-          {!needsSignIn && (
+          {!needsSignIn && !dashboardsOnly && (
           <div className="relative">
             <button
               id="navbar-settings-button"
@@ -136,6 +139,15 @@ export function AINavbar() {
               </>
             )}
           </div>
+          )}
+
+          {/* Which dashboard is on screen — the viewer's whole navigation, next to their name.
+              Its own Suspense boundary because it reads the query string, which is what tells it
+              which entry is the current one. */}
+          {dashboardsOnly && (
+            <Suspense fallback={null}>
+              <DashboardSwitcher />
+            </Suspense>
           )}
 
           {/* Signed-in user + sign out. Absent on the desktop, where the identity is empty because
@@ -208,7 +220,8 @@ export function AINavbar() {
             </ul>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile menu button — nothing to open for a viewer, whose menu would be empty. */}
+          {!dashboardsOnly && (
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
@@ -217,11 +230,12 @@ export function AINavbar() {
           >
             {isOpen ? <IconXMark /> : <IconHamburger />}
           </button>
+          )}
         </div>
       </nav>
 
       {/* Mobile Navigation */}
-      {isOpen && (
+      {isOpen && !dashboardsOnly && (
         <div className="md:hidden absolute top-16 left-0 right-0 border-t border-base-300 bg-base-100 z-50">
           <ul className="menu w-full p-2">
             {navLinks.map((link) => (

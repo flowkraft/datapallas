@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.flowkraft.iam.limits.ReportAccess;
+
 /**
  * Mints embed tokens for host applications.
  *
@@ -37,10 +39,26 @@ public class EmbedController {
 	@Autowired
 	private ShareTokenService shareTokenService;
 
+	@Autowired
+	private LockedParamsValidator lockedParamsValidator;
+
 	/**
-	 * {@code POST /api/embed/token} with {@code {"reportId": "...", "ttlSeconds": 3600}}.
+	 * The two layers, asked of the person minting. The class comment above promises that minting takes
+	 * no more privilege than reading the report does; without this it took none at all, and an operator
+	 * could mint themselves a token for a report no screen would offer them and then read it through the
+	 * token door, which is exempt by design. An API-key caller — which is what the portals this
+	 * endpoint exists for authenticate as — is administrative and passes through untouched.
+	 */
+	@Autowired
+	private ReportAccess reportAccess;
+
+	/**
+	 * {@code POST /api/embed/token} with {@code {"reportId": "...", "ttlSeconds": 3600}}, and
+	 * optionally {@code "lockedParams": {"region": "EU"}} — the parameter values the host application
+	 * forces on whoever it renders the page for. This is where a portal turns "the sales dashboard"
+	 * into "this customer's sales dashboard", from its own signed-in user, on every render.
 	 *
-	 * @return {@code {"token": "...", "expiresInSeconds": 3600}}
+	 * @return {@code {"token": "...", "expiresInSeconds": 3600, "lockedParams": {...}}}
 	 */
 	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@PostMapping("/token")
@@ -58,9 +76,17 @@ public class EmbedController {
 			}
 		}
 
+		if (reportId == null || reportId.isBlank())
+			return ResponseEntity.badRequest().body(Map.of("error", "reportId is required"));
+
+		reportAccess.assertReportRunnable(reportId);
+
 		try {
-			String token = embedTokenService.mint(reportId, ttlSeconds);
-			return ResponseEntity.ok(Map.of("token", token, "expiresInSeconds", ttlSeconds));
+			Map<String, Object> lockedParams = lockedParamsValidator.validate(reportId, request.get("lockedParams"));
+
+			String token = embedTokenService.mint(reportId, ttlSeconds, lockedParams);
+			return ResponseEntity
+					.ok(Map.of("token", token, "expiresInSeconds", ttlSeconds, "lockedParams", lockedParams));
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}
@@ -80,6 +106,11 @@ public class EmbedController {
 	 * stored, so a lost link is reissued, never recovered, and any link can be revoked here.
 	 *
 	 * <p>Omit {@code expiresInDays} for a link that never expires on its own and can only be revoked.
+	 *
+	 * <p>Optional {@code lockedParams} — {@code {"region": "EU"}}, or a list of values for a
+	 * multi-value parameter — restricts the link to those parameter values for its whole life. They
+	 * cannot be edited afterwards, for the same reason the link itself cannot be shown again: change
+	 * what a recipient may see by creating a new link and revoking this one.
 	 */
 	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PostMapping("/share-link")
@@ -96,11 +127,24 @@ public class EmbedController {
 			}
 		}
 
+		if (reportId == null || reportId.isBlank())
+			return ResponseEntity.badRequest().body(Map.of("error", "reportId is required"));
+
+		// An author hands out a link to a dashboard they may open themselves — the link cannot be a way
+		// to give away what its author was never allowed to see.
+		reportAccess.assertReportRunnable(reportId);
+
 		try {
-			String token = shareTokenService.createShareToken(reportId, expiresInDays);
+			Map<String, Object> lockedParams = lockedParamsValidator.validate(reportId, request.get("lockedParams"));
+
+			// Validation first, then creation: a link that named a parameter the report does not have
+			// would look restricted in the list and show every row, and nobody ever opens it again to
+			// find out.
+			String token = shareTokenService.createShareToken(reportId, expiresInDays, lockedParams);
 			return ResponseEntity.ok(Map.of(
 					"token", token,
-					"url", "/dashboard/" + reportId + "?token=" + token));
+					"url", "/dashboard/" + reportId + "?token=" + token,
+					"lockedParams", lockedParams));
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}

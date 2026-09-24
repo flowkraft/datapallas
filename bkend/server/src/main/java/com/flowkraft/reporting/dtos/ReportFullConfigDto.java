@@ -112,6 +112,15 @@ public class ReportFullConfigDto {
      */
     public String pivotEngineMode = "browser";  // default
 
+    /**
+     * The parameter values the link or token this config was fetched with forces, if any.
+     * Present only for a request authorised by a locking share link or embed token, so that
+     * &lt;rb-parameters&gt; can show a locked parameter as fixed instead of letting the viewer
+     * change something the server is going to overwrite anyway. Null for a signed-in caller.
+     * The server override on /data is the guard; this is only so the viewer is not misled.
+     */
+    public Map<String, Object> lockedParameters;
+
     /** Output type from reporting.xml (e.g., "output.html", "output.dashboard") */
     public String outputType;
 

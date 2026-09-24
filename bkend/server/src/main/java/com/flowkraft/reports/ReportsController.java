@@ -11,7 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,8 +43,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.common.Utils;
+import com.flowkraft.embed.LockedParams;
+import com.flowkraft.iam.dashboards.DashboardAccess;
+import com.flowkraft.iam.limits.LimitsSandbox;
+import com.flowkraft.iam.limits.LimitsService;
+import com.flowkraft.iam.limits.ReportAccess;
 import static com.sourcekraft.documentburster.utils.Utils.resolvePathAgainstPortableDir;
 import com.flowkraft.reporting.dtos.ReportFullConfigDto;
 import com.flowkraft.reporting.dsl.chart.ChartOptionsParser;
@@ -89,6 +98,19 @@ public class ReportsController {
 
 	@Autowired
 	CanvasExportService canvasExportService;
+
+	@Autowired
+	LimitsService limitsService;
+
+	/** Layer 1: a report whose connection this caller may not use is neither listed nor readable. */
+	@Autowired
+	ReportAccess reportAccess;
+
+	@Autowired
+	LimitsSandbox limitsSandbox;
+
+	@Autowired
+	DashboardAccess dashboardAccess;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -226,16 +248,64 @@ public class ReportsController {
 			return Flux.fromStream(rbSettingsService.loadRbTemplatesAll());
 		}
 		if (Boolean.TRUE.equals(withDetails)) {
-			return Flux.fromStream(rbSettingsService.loadSettingsAll());
+			return Flux.fromStream(visibleToCaller(rbSettingsService.loadSettingsAll()));
 		}
-		return Flux.fromStream(rbSettingsService.loadSettingsAllMinimal());
+		return Flux.fromStream(visibleToCaller(rbSettingsService.loadSettingsAllMinimal()));
+	}
+
+	/**
+	 * Offering a report that would be refused the moment it is submitted is a worse answer than not
+	 * offering it, so the list asks the same question dispatch asks.
+	 *
+	 * <p>The connection codes come out of the scan that has already read every report — the filter
+	 * costs no second pass over {@code config/reports} — and for an unlimited caller, which is every
+	 * administrator and everybody in no limiting group, it costs one null check per report.
+	 */
+	private Stream<ConfigurationFileInfo> visibleToCaller(Stream<ConfigurationFileInfo> reports) {
+
+		// Both questions are asked once here, not once per report: layer 2 is a single query for the
+		// ids the caller's groups name, and layer 1 a single read of their limits.
+		Set<String> grantedIds = reportAccess.reportIdsAllowedByGrants();
+		boolean limited = reportAccess.isLimited();
+
+		if (grantedIds == null && !limited)
+			return reports;
+
+		return reports.filter(report -> visibleToCaller(report, grantedIds, limited));
+	}
+
+	/**
+	 * @param grantedIds the ids layer 2 restricts this caller to, or null when it restricts them to
+	 *                   nothing at all — which is every report, the default decision 7 settled
+	 */
+	private boolean visibleToCaller(ConfigurationFileInfo report, Set<String> grantedIds, boolean limited) {
+
+		if (reportAccess.isGrantedDashboard(report.folderName))
+			return true;
+
+		if (grantedIds != null && !grantedIds.contains(report.folderName))
+			return false;
+
+		if (!limited)
+			return true;
+
+		return reportAccess.allowsDeclaredConnections(
+				Stream.of(report.dbConnCode, report.dbConnectionCode).filter(StringUtils::isNotBlank).toList());
 	}
 
 	// ── V4: Single report detail by ID (replaces /load-config-details?path=...) ──
 
+	/**
+	 * The same question the list asks, asked of one report.
+	 *
+	 * <p>This is where a report id is <em>typed</em> rather than picked: the screens reach it with an
+	 * id they read out of the filtered list, but nothing stops a caller asking for an id that list
+	 * never offered. A filtered list is a courtesy; this is the rule.
+	 */
 	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@GetMapping(value = "/{id}", consumes = MediaType.ALL_VALUE)
 	public Mono<ConfigurationFileInfo> getReportDetails(@PathVariable String id) throws Exception {
+		reportAccess.assertReportRunnable(id);
 		String path = resolveSettingsPath(id);
 		ConfigurationFileInfo details = rbSettingsService.loadConfigDetails(path);
 		// System.out.println("[RB-DIAG] getReportDetails id=" + id + " path=" + path
@@ -249,8 +319,25 @@ public class ReportsController {
 
 	@Operation(summary = "Full wired config (resolved paths + merged defaults) — runtime-assembled; never stored as-is on disk")
 	@GetMapping(value = "/{reportId}/config", consumes = MediaType.ALL_VALUE)
-	public Mono<ReportFullConfigDto> getReportConfig(@PathVariable String reportId) throws Exception {
-		return Mono.just(reportingService.loadReportConfig(reportId));
+	public Mono<ReportFullConfigDto> getReportConfig(@PathVariable String reportId,
+			HttpServletRequest httpRequest) throws Exception {
+
+		// Reading a report's config is half of opening it, so a dashboard viewer may only ask for a
+		// report their groups grant. A token request carries its own, narrower permission and is left
+		// alone; every other role passes through unchanged.
+		dashboardAccess.check(reportId, httpRequest);
+		// Reading a report's config is the other half of opening it, and layer 1 applies to a
+		// signed-in caller here exactly as it does at dispatch. A granted dashboard is the carve-out
+		// and passes through ReportAccess untouched.
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		ReportFullConfigDto config = reportingService.loadReportConfig(reportId);
+
+		Map<String, Object> lockedParams = LockedParams.of(httpRequest);
+		if (!lockedParams.isEmpty())
+			config.lockedParameters = lockedParams;
+
+		return Mono.just(config);
 	}
 
 	// ── V4.1: Report data (moved from ReportingController) ──
@@ -262,10 +349,27 @@ public class ReportsController {
 			@RequestParam(required = false) Integer size,
 			@RequestParam(required = false, defaultValue = "false") Boolean testMode,
 			@RequestParam(required = false) String componentId,
-			@RequestParam Map<String, String> parameters) throws Exception {
+			@RequestParam Map<String, String> parameters,
+			HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		// The data door. Reading C's rows here is the same act as running the report that reads C.
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
 		parameters.remove("page");
 		parameters.remove("size");
 		parameters.remove("testMode");
+
+		// A share link or embed token that locks parameters wins over whatever the viewer put in the
+		// query string — the value is read from the signed token, not from the request, so editing the
+		// URL changes nothing. testMode goes with it: it serves sample rows from a different path, and
+		// a locked view must not have a second, unlocked way to produce data.
+		Map<String, Object> lockedParams = LockedParams.of(httpRequest);
+		if (!lockedParams.isEmpty()) {
+			lockedParams.forEach((name, value) -> parameters.put(name, LockedParams.asQueryValue(value)));
+			testMode = Boolean.FALSE;
+		}
+
 		String sort = extractBracketParams(parameters, "sort");
 		String filter = extractBracketParams(parameters, "filter");
 		ReportDataResult result = reportingService.fetchReportData(reportId, parameters, testMode);
@@ -508,6 +612,15 @@ public class ReportsController {
 	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@GetMapping(value = "/{reportId}/settings", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<DocumentBursterSettings> loadReportSettings(@PathVariable String reportId) throws Exception {
+		// The list already hides a report whose connection the caller may not use; this endpoint takes
+		// the id straight from the caller and answers with the settings, connection code included, so
+		// it asks the same question the list asked before it answers.
+		//
+		// `_defaults` is the exception because it is not a report: it is the product's own defaults
+		// file, which every screen loads before any report is chosen, and which no report list ever
+		// offered. Asking a report question about it would refuse it to everybody who is limited.
+		if (!"_defaults".equals(reportId))
+			reportAccess.assertReportRunnable(reportId);
 		String fullPath = resolveSettingsPath(reportId);
 		// System.out.println("[RB-DIAG] loadReportSettings reportId=" + reportId + " fullPath=" + fullPath);
 		DocumentBursterSettings dbSettings = rbSettingsService.loadSettings(fullPath);
@@ -561,8 +674,26 @@ public class ReportsController {
 	@PutMapping(value = "/{reportId}/datasource")
 	public void saveReportDataSource(@PathVariable String reportId, @RequestBody ReportingSettings settings)
 			throws Exception {
+		assertDataSourceConnectionsAllowed(settings);
 		String fullPath = resolveSettingsPath(reportId);
 		rbSettingsService.saveSettingsReporting(settings, fullPath);
+	}
+
+	/**
+	 * Refuses a datasource save that points the report at a database connection the caller may not
+	 * use. Checked even when the connection is the one already saved: otherwise a limited author
+	 * copies a report that is already on a blocked connection and gives it new SQL.
+	 */
+	private void assertDataSourceConnectionsAllowed(ReportingSettings settings) {
+
+		if (settings == null || settings.report == null || settings.report.datasource == null)
+			return;
+
+		if (settings.report.datasource.sqloptions != null)
+			limitsService.assertConnectionAllowed(settings.report.datasource.sqloptions.conncode);
+
+		if (settings.report.datasource.scriptoptions != null)
+			limitsService.assertConnectionAllowed(settings.report.datasource.scriptoptions.conncode);
 	}
 
 	@PreAuthorize("hasRole('REPORT_AUTHOR')")
@@ -580,6 +711,7 @@ public class ReportsController {
 			@PathVariable String type, @RequestBody Optional<String> content,
 			@RequestParam(required = false) String assetSourceDir) throws Exception {
 		String templatePath = resolveTemplatePath(reportId, type);
+		assertTemplateSaveAllowed(templatePath);
 		String relativeTemplatePath = resolveRelativeTemplatePath(reportId, type);
 		return Mono.fromCallable(() -> {
 			// Save template content
@@ -653,11 +785,21 @@ public class ReportsController {
 		if (templatePath == null || templatePath.isEmpty()) {
 			return Mono.just(new ResponseEntity<>(HttpStatus.NO_CONTENT));
 		}
+		assertTemplateSaveAllowed(templatePath);
 		String fullPath = resolvePathAgainstPortableDir(templatePath);
 		return Mono.fromCallable(() -> {
 			fileSystemService.fsWriteStringToFile(fullPath, content);
 			return new ResponseEntity<Void>(HttpStatus.OK);
 		});
+	}
+
+	/**
+	 * A Jasper template is code: its expressions compile and run inside the report. FreeMarker, HTML,
+	 * XSL and DOCX stay allowed — FreeMarker is already hardened with SAFER_RESOLVER.
+	 */
+	private void assertTemplateSaveAllowed(String templatePath) {
+		if (StringUtils.endsWithIgnoreCase(templatePath, ".jrxml"))
+			limitsService.assertScriptsAllowed("save a Jasper template");
 	}
 
 	/**
@@ -694,6 +836,7 @@ public class ReportsController {
 		if (suffix == null) {
 			return Mono.just(new ResponseEntity<>(HttpStatus.BAD_REQUEST));
 		}
+		assertScriptSaveAllowed(suffix, content);
 		String settingsPath = resolveSettingsPath(reportId);
 		String configDir = new File(settingsPath).getParent();
 		String scriptPath = configDir + "/" + reportId + "-" + suffix + ".groovy";
@@ -701,6 +844,22 @@ public class ReportsController {
 			fileSystemService.fsWriteStringToFile(scriptPath, content);
 			return new ResponseEntity<Void>(HttpStatus.OK);
 		});
+	}
+
+	/**
+	 * Two of the six script types are programs the reporting engine runs as it bursts a report — the
+	 * datasource script and the additional transformation — and a caller who may not run scripts may
+	 * not save one. The other four are widget DSLs: the same authoring a chart needs, so they are
+	 * sandbox-checked and saved, not refused.
+	 */
+	private void assertScriptSaveAllowed(String suffix, Optional<String> content) {
+
+		if ("script".equals(suffix) || "additional-transformation".equals(suffix)) {
+			limitsService.assertScriptsAllowed("save a Groovy script for a report");
+			return;
+		}
+
+		limitsSandbox.check(content.orElse(""));
 	}
 
 	private String resolveScriptSuffix(String scriptType) {

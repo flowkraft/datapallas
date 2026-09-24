@@ -2,6 +2,8 @@ package com.flowkraft.exploredata.export;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.exploredata.ExploreDataService;
+import com.flowkraft.exploredata.ScriptModeWidgets;
+import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.reports.ReportsService;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettings;
 import com.sourcekraft.documentburster.common.settings.model.ReportingSettings;
@@ -63,6 +65,9 @@ public class CanvasExportService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private LimitsService limitsService;
+
     @Value("${rb.api.base-url:http://localhost:9090/api}")
     private String rbApiBaseUrl;
 
@@ -98,6 +103,11 @@ public class CanvasExportService {
         String connectionId = (String) canvas.getOrDefault("connectionId", "");
         if (connectionId == null) connectionId = "";
 
+        // A limited author may not publish a canvas that reads from a connection their groups do not
+        // allow: the exported dashboard would query it on every view. Before Step 1, so a refusal
+        // leaves the existing report and the canvas record exactly as they were.
+        limitsService.assertConnectionAllowed(connectionId);
+
         // Reuse the prior slug on re-export; slugify the name on first export.
         String exportedCode = (String) canvas.get("exportedReportCode");
         String reportId = (exportedCode != null && !exportedCode.isBlank())
@@ -115,6 +125,11 @@ public class CanvasExportService {
                 stateMap.getOrDefault("parametersConfig", Map.of("parameters", List.of()));
         List<Map<String, Object>> parametersList = (List<Map<String, Object>>)
                 parametersConfig.getOrDefault("parameters", List.of());
+
+        // A dashboard built from a script-mode widget runs that Groovy on every view of it, so
+        // publishing one is the same act as running it.
+        if (ScriptModeWidgets.presentIn(stateMap))
+            limitsService.assertScriptsAllowed("publish a canvas that runs a script");
 
         // ── Step 1: Compile check (before touching disk) ──────────────────────
         ScriptAssembler.AssembledScript assembled = ScriptAssembler.assemble(widgets, parametersList);

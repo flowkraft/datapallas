@@ -135,6 +135,77 @@ public class SqlExecutor {
 	}
 
 	/**
+	 * Executes a SELECT query on a specific database connection inside a transaction that is
+	 * always rolled back, with the JDBC connection flagged read-only for the duration.
+	 *
+	 * <p>For ad-hoc SQL that a person or an AI Hub agent typed (see
+	 * {@code QueriesService.executeAdHocQuery}), where the statement is not trusted the way a
+	 * report's own SQL is. The rows are read fully before the rollback, so the caller gets its
+	 * result either way, and anything the statement managed to change is undone.
+	 *
+	 * <p>A driver that refuses transactions or the read-only flag (SQLite once open, ClickHouse)
+	 * is logged at DEBUG and the query runs anyway: the guard in front of this path is what
+	 * refuses writes, and the transaction is the second line of defence, not the only one.
+	 *
+	 * @param connectionCode The code identifying the target database connection.
+	 * @param sql            The SQL query string. Use named parameters like :paramName.
+	 * @param params         A Map containing parameter names and their values (optional).
+	 * @return A List of Maps representing the rows.
+	 * @throws Exception if the connection code is blank, getting the connection fails, or
+	 *                   executing the query fails.
+	 */
+	public List<Map<String, Object>> queryOnReadOnly(String connectionCode, String sql, Map<String, Object> params)
+			throws Exception {
+		log.debug("Executing read-only query on '{}': {}", connectionCode, sql);
+		if (StringUtils.isBlank(connectionCode)) {
+			throw new IllegalArgumentException("Connection code cannot be blank for queryOnReadOnly.");
+		}
+		Jdbi jdbi = dbManager.getJdbi(connectionCode); // Throws Exception if fails
+		return jdbi.withHandle(handle -> {
+
+			boolean readOnlyRestore = false;
+			boolean readOnlyWas = false;
+			boolean inTransaction = false;
+
+			try {
+				// Before begin(): several drivers refuse setReadOnly() once a transaction is open.
+				try {
+					readOnlyWas = handle.getConnection().isReadOnly();
+					handle.getConnection().setReadOnly(true);
+					readOnlyRestore = true;
+				} catch (Exception e) {
+					log.debug("Connection '{}' would not go read-only: {}", connectionCode, e.getMessage());
+				}
+
+				try {
+					handle.begin();
+					inTransaction = true;
+				} catch (Exception e) {
+					log.debug("Connection '{}' would not open a transaction: {}", connectionCode, e.getMessage());
+				}
+
+				return executeQuery(handle, sql, params);
+
+			} finally {
+				if (inTransaction) {
+					try {
+						handle.rollback(); // also restores the handle's autocommit setting
+					} catch (Exception e) {
+						log.debug("Rollback failed on '{}': {}", connectionCode, e.getMessage());
+					}
+				}
+				if (readOnlyRestore) {
+					try {
+						handle.getConnection().setReadOnly(readOnlyWas);
+					} catch (Exception e) {
+						log.debug("Could not restore the read-only flag on '{}': {}", connectionCode, e.getMessage());
+					}
+				}
+			}
+		});
+	}
+
+	/**
 	 * Executes an INSERT, UPDATE, or DELETE statement on a specific database
 	 * connection.
 	 *

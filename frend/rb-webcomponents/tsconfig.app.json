@@ -14,6 +14,10 @@
     "allowJs": true,
     "checkJs": true,
     "isolatedModules": true,
+    // A test beside the module it tests is loaded by Node itself, which resolves ES modules by
+    // file name and therefore needs the .ts spelling in the import.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "moduleDetection": "force",
     "types": ["node", "rollup-plugin-terser"]
   },

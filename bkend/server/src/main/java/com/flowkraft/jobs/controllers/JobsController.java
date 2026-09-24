@@ -32,6 +32,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.iam.limits.ReportAccess;
+import com.sourcekraft.documentburster.job.JobUtils;
+import com.sourcekraft.documentburster.job.model.JobProgressDetails;
 import com.flowkraft.jobs.models.JobRecord;
 import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.jobs.services.JobExecutionService;
@@ -63,6 +66,14 @@ public class JobsController {
 	@Autowired
 	JobStore jobStore;
 
+	/**
+	 * Layer 1, asked here and not in the engine: jobs run in-process on job-executor threads and
+	 * {@code SecurityContextHolder} is thread-local, so this is the last point that still knows who
+	 * asked. It is also the point before a job record, a log file or a partial output exists.
+	 */
+	@Autowired
+	ReportAccess reportAccess;
+
 	// ── Async job dispatch ─────────────────────────────────────────────────────
 
 	/**
@@ -81,23 +92,37 @@ public class JobsController {
 		List<String> args = new ArrayList<>();
 		String jobSignalBaseName;
 
+		// The report this job would run, in both the forms the check accepts: an id when the request
+		// carried one, and the settings file the engine will actually read. burst and merge can both
+		// arrive with no reportId at all, which is why the file is tracked and not only the id.
+		String reportId = null;
+		String settingsPath = null;
+
 		switch (type) {
 			case "burst": {
 				String inputFile = (String) request.get("inputFile");
 				if (inputFile == null || inputFile.isBlank())
 					return ResponseEntity.badRequest().body(Map.of("error", "inputFile is required for burst"));
 				args.add("job"); args.add("burst"); args.add(resolveFilePath(inputFile));
-				String reportId = (String) request.get("reportId");
-				if (reportId != null && !reportId.isBlank()) { args.add("-c"); args.add(resolveSettingsPath(reportId)); }
+				reportId = (String) request.get("reportId");
+				if (reportId != null && !reportId.isBlank()) {
+					settingsPath = resolveSettingsPath(reportId);
+					args.add("-c"); args.add(settingsPath);
+				} else {
+					// No -c: the engine falls back to config/burst/settings.xml, so that is the report
+					// being run and that is the file layer 1 has to look at.
+					settingsPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
+				}
 				addQaArgs(args, request);
 				jobSignalBaseName = FilenameUtils.getBaseName(inputFile);
 				break;
 			}
 			case "generate": {
-				String reportId = (String) request.get("reportId");
+				reportId = (String) request.get("reportId");
 				if (reportId == null || reportId.isBlank())
 					return ResponseEntity.badRequest().body(Map.of("error", "reportId is required for generate"));
-				args.add("job"); args.add("generate"); args.add("-c"); args.add(resolveSettingsPath(reportId));
+				settingsPath = resolveSettingsPath(reportId);
+				args.add("job"); args.add("generate"); args.add("-c"); args.add(settingsPath);
 				String input = (String) request.get("input");
 				if (input != null && !input.isBlank()) {
 					args.add(input.contains("/") || input.contains("\\") ? resolveFilePath(input) : input);
@@ -118,15 +143,27 @@ public class JobsController {
 				if (outputName != null && !outputName.isBlank()) { args.add("-o"); args.add(outputName); }
 				if (Boolean.TRUE.equals(request.get("burst"))) {
 					args.add("-b");
-					String reportId = (String) request.get("reportId");
-					if (reportId != null && !reportId.isBlank()) { args.add("-c"); args.add(resolveSettingsPath(reportId)); }
+					reportId = (String) request.get("reportId");
+					if (reportId != null && !reportId.isBlank()) {
+						settingsPath = resolveSettingsPath(reportId);
+						args.add("-c"); args.add(settingsPath);
+					} else {
+						settingsPath = Utils.resolvePathAgainstPortableDir("config/burst/settings.xml");
+					}
 				}
+				// A merge that does not burst runs no report: there is nothing to check and nothing
+				// to refuse.
 				jobSignalBaseName = FilenameUtils.getBaseName(listFile);
 				break;
 			}
 			default:
 				return ResponseEntity.badRequest().body(Map.of("error", "Unknown job type: " + type));
 		}
+
+		// Before jobStore.create, deliberately: a refusal must leave no job record, no log and no
+		// partial output behind — "it failed in the middle" is what this check exists to prevent.
+		if (settingsPath != null)
+			reportAccess.assertSettingsFileRunnable(reportId, settingsPath);
 
 		JobRecord job = jobStore.create(type, request, jobSignalBaseName);
 		jobExecutionService.executeTracked(args.toArray(new String[0]), job.id, jobStore);
@@ -282,6 +319,15 @@ public class JobsController {
 		if (jobFilePath == null || jobFilePath.isBlank()) {
 			return ResponseEntity.badRequest().build();
 		}
+
+		// Resume is the fourth door that makes the engine run a report, and the only one that names
+		// no report at all. The .progress file knows: AbstractBurster writes the settings file it ran
+		// with into configurationFilePath, and CliJob reads it back on resume. A progress file that
+		// cannot be read, or that names no configuration, is a refusal for a limited caller and is
+		// left exactly as it was for everybody else.
+		if (reportAccess.isLimited())
+			reportAccess.assertSettingsFileRunnable(null, configurationFileOfResumedJob(jobFilePath));
+
 		jobExecutionService.executeAsync(new String[] { "job", "resume", jobFilePath }, () -> {
 			if (cleanupPath != null && !cleanupPath.isBlank()) {
 				try {
@@ -375,6 +421,22 @@ public class JobsController {
 				args.add("-p");
 				args.add(entry.getKey() + "=" + entry.getValue());
 			}
+		}
+	}
+
+	/**
+	 * The settings file a paused job ran with, out of its own {@code .progress} file.
+	 *
+	 * @return {@code null} when the file cannot be read or names no configuration — which the caller
+	 *         turns into a refusal rather than into permission
+	 */
+	private String configurationFileOfResumedJob(String jobFilePath) {
+		try {
+			JobProgressDetails progress = JobUtils.loadJobProgressFile(resolveFilePath(jobFilePath));
+			return progress == null ? null : progress.configurationFilePath;
+		} catch (Exception e) {
+			log.warn("Could not read the resume file {}: {}", jobFilePath, e.getMessage());
+			return null;
 		}
 	}
 

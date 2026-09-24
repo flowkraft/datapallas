@@ -78,7 +78,13 @@ export async function middleware(request: NextRequest) {
       // sign in. Authentication is the first question; the role is only the second.
       if (who && who.authenticated === false) return refuse(request);
 
-      return mayAuthor(who) ? NextResponse.next() : refuseRole(request);
+      if (mayAuthor(who)) return NextResponse.next();
+
+      // Signed in, cannot author — but a dashboard viewer has a home here, so they are shown it
+      // instead of the door.
+      if (viewsDashboards(who)) return allowViewer(request);
+
+      return refuseRole(request);
     }
 
     if (identity.status === 401) return refuse(request);
@@ -117,6 +123,40 @@ function mayAuthor(identity: Identity | null): boolean {
   } catch {
     return true;
   }
+}
+
+/**
+ * Is this caller a dashboard viewer — someone whose whole use of this app is /view?
+ *
+ * <p>Fails CLOSED, unlike {@link mayAuthor}: an unreadable identity has already been let through as
+ * an author above, and answering true here would take the app away from somebody instead of giving
+ * it to them.
+ */
+function viewsDashboards(identity: Identity | null): boolean {
+  return identity?.capabilities?.dashboardsOnly === true;
+}
+
+/**
+ * A dashboard viewer's door: open for their own page and for the backend, shut everywhere else.
+ *
+ * <p>The proxy is allowed wholesale because every call through it is authorised by the backend as
+ * this very person — including the new dashboard rules — so a second, weaker copy of those rules
+ * here could only ever disagree with them. This app's OWN api routes are a different matter: they
+ * are the authoring tool, and they are refused exactly as they are for an operator.
+ *
+ * <p>Any other page is a redirect rather than a refusal. A viewer typing /explore-data has not done
+ * anything wrong; they have simply gone to a part of the product that is not theirs, and landing on
+ * their dashboards says that better than an error page would.
+ */
+function allowViewer(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname === '/view' || pathname.startsWith('/view/') || pathname.startsWith('/api/dp/'))
+    return NextResponse.next();
+
+  if (pathname.startsWith('/api/')) return refuseRole(request);
+
+  return NextResponse.redirect(new URL('/view', request.url));
 }
 
 /**

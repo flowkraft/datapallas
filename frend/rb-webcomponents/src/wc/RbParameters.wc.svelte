@@ -32,6 +32,16 @@
   /** Short-lived token minted by the embedding page's server; unlocks only this report. */
   export let embedToken: string = '';
 
+  /**
+   * Parameters the share link or embed token fixes: { name: value | [values] }.
+   *
+   * A locked parameter is shown with its locked value and disabled — not hidden. The viewer needs
+   * to see WHAT they are looking at ("region = EU"); a control that quietly disappeared would make
+   * a filtered dashboard look like the whole one. The real guard is the server, which overwrites
+   * these values on every data request whatever the browser sends.
+   */
+  export let lockedParameters: { [id: string]: any } = {};
+
   // ============================================================================
   // Props Mode - traditional props-based usage (e.g., from Angular)
   // ============================================================================
@@ -147,6 +157,12 @@
         //  parameters: config.parameters
         //});
         
+        // Locks first: they change how the parameters below are seeded and rendered, and
+        // assigning them after would init the form once unlocked and once locked.
+        if (config.lockedParameters && typeof config.lockedParameters === 'object') {
+          lockedParameters = config.lockedParameters;
+        }
+
         // Apply parameters from config
         if (config.parameters && Array.isArray(config.parameters)) {
           parameters = config.parameters;
@@ -178,7 +194,7 @@
   });
 
   // Initialize form values from parameters
-  $: if (parameters && parameters.length) {
+  $: if (parameters && parameters.length && lockedParameters) {
     //console.log('[rb-parameters] reactive $: parameters changed, count:', parameters.length, 'isMounted:', isMounted);
     //console.log('[rb-parameters] parameters details:', JSON.stringify(parameters, null, 2));
     initForm();
@@ -195,7 +211,7 @@
     multiDraft = {};
 
     parameters.forEach(p => {
-      formValues[p.id] = p.defaultValue ?? getDefaultForType(p.type);
+      formValues[p.id] = isLocked(p) ? lockedValue(p) : (p.defaultValue ?? getDefaultForType(p.type));
       touched[p.id] = false;
       errors[p.id] = [];
       // Seed transient multi-select state. Default-value seeding is automatic:
@@ -214,6 +230,20 @@
     if (showReload && hostElement) {
       applyParamsToSiblings({ ...formValues });
     }
+  }
+
+  /** Is this parameter fixed by the link or token the page was opened with? */
+  function isLocked(p: ParamMeta): boolean {
+    return !!lockedParameters && Object.prototype.hasOwnProperty.call(lockedParameters, p.id);
+  }
+
+  /**
+   * The locked value in the shape the controls use: a multi-value lock is a list on the server and
+   * a comma-separated string here, exactly like a multi-select's own value.
+   */
+  function lockedValue(p: ParamMeta): any {
+    const value = lockedParameters?.[p.id];
+    return Array.isArray(value) ? value.join(',') : value;
   }
 
   function getDefaultForType(type: string): any {
@@ -725,6 +755,7 @@
                 min={resolveMin(p)}
                 max={resolveMax(p)}
                 title={p.description || paramLabel(p)}
+                disabled={isLocked(p)}
                 class="form-control"
                 on:input={(e) => handleChange(p, e)}
                 on:blur={() => handleBlur(p)}
@@ -733,6 +764,7 @@
               <input
                 type="datetime-local"
                 id={p.id}
+                disabled={isLocked(p)}
                 value={formValues[p.id] || ''}
                 min={resolveMin(p)}
                 max={resolveMax(p)}
@@ -747,6 +779,7 @@
               id={p.id}
               value={formValues[p.id] ?? ''}
               step="1"
+              disabled={isLocked(p)}
               min={resolveMin(p)}
               max={resolveMax(p)}
               title={p.description || ''}
@@ -760,6 +793,7 @@
               id={p.id}
               value={formValues[p.id] ?? ''}
               step="any"
+              disabled={isLocked(p)}
               min={resolveMin(p)}
               max={resolveMax(p)}
               title={p.description || ''}
@@ -771,6 +805,7 @@
             <input
               type="checkbox"
               id={p.id}
+              disabled={isLocked(p)}
               checked={formValues[p.id] || false}
               title={p.description || ''}
               on:change={(e) => handleChange(p, e)}
@@ -790,6 +825,7 @@
                    <p.id>_btnCancel        discard draft + close modal
                    <p.id>_modalOverlay     backdrop (also closes modal — acts as Cancel) -->
             <button type="button" id={p.id} class="form-control rb-multi-trigger"
+                    disabled={isLocked(p)}
                     on:click={() => openMulti(p)}>
               <span>Choose {paramLabel(p)}</span>
               <span class="rb-multi-trigger-summary">{triggerLabelFor(p, formValues[p.id])}</span>
@@ -863,6 +899,7 @@
             <select
               id={p.id}
               value={formValues[p.id]}
+              disabled={isLocked(p)}
               title={p.description || ''}
               class="form-control"
               on:change={(e) => handleChange(p, e)}
@@ -876,12 +913,18 @@
             <input
               type="text"
               id={p.id}
+              disabled={isLocked(p)}
               value={formValues[p.id] || ''}
               title={p.description || ''}
               class="form-control"
               on:input={(e) => handleChange(p, e)}
               on:blur={() => handleBlur(p)}
             />
+          {/if}
+
+          {#if isLocked(p)}
+            <!-- Says WHY the control is dead. A disabled box with no explanation reads as a bug. -->
+            <div class="rb-locked-note" id={p.id + '_lockedNote'}>Fixed by this link</div>
           {/if}
 
           {#if touched[p.id] && errors[p.id]?.length > 0}
@@ -964,6 +1007,12 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-accent, var(--color-primary, #2171b5)) 25%, transparent);
   }
   
+  .rb-locked-note {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
+  }
+
   .text-danger {
     color: #dc3545;
     font-size: 0.875rem;

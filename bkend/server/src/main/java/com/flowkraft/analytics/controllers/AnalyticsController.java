@@ -1,6 +1,10 @@
 package com.flowkraft.analytics.controllers;
 
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.embed.LockedParams;
+import com.flowkraft.iam.dashboards.DashboardAccess;
+import com.flowkraft.iam.limits.ReportAccess;
+import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.analytics.services.ClickHouseAnalyticsService;
 import com.flowkraft.analytics.services.DuckDBAnalyticsService;
 import com.flowkraft.analytics.engine.dto.ExploreRequest;
@@ -13,10 +17,14 @@ import com.sourcekraft.documentburster.common.db.DatabaseConnectionManager;
 import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -41,6 +49,15 @@ import java.util.Map;
 public class AnalyticsController {
 
     private static final Logger log = LoggerFactory.getLogger(AnalyticsController.class);
+
+    @Autowired
+    private DashboardAccess dashboardAccess;
+
+    @Autowired
+    private ReportAccess reportAccess;
+
+    @Autowired
+    private LimitsService limitsService;
 
 
     /**
@@ -212,9 +229,41 @@ public class AnalyticsController {
     @PostMapping("/pivot")
     @PreAuthorize("hasRole('REPORT_AUTHOR') or (#reportId != null and !#reportId.isBlank())")
     public ResponseEntity<?> executePivot(@RequestBody PivotRequest request,
-            @P("reportId") @RequestParam(value = "reportId", required = false) String reportId) throws Exception {
+            @P("reportId") @RequestParam(value = "reportId", required = false) String reportId,
+            HttpServletRequest httpRequest) throws Exception {
+
+        // A server-side pivot reads the report's source table and aggregates it; it never goes through
+        // the report's query, so the report parameters — and therefore the locks — play no part in what
+        // it returns. Running it for a locked view would hand back every row the lock exists to hide, so
+        // there is nothing to narrow here and nothing to do but refuse. The browser pivot, which reads
+        // /data, is locked where the data is.
+        if (!LockedParams.of(httpRequest).isEmpty())
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(createErrorResponse("This shared view does not support server-side pivoting"));
+
         if (reportId != null && !reportId.isBlank())
             request.setReportId(reportId);
+
+        // Pivoting a report is reading it, so a dashboard viewer may only pivot a dashboard their
+        // groups grant. Pivoting a table by name is report-author work and never reaches this with a
+        // viewer's session, so a request without a report is left to the annotation above.
+        if (request.getReportId() != null && !request.getReportId().isBlank()) {
+            dashboardAccess.check(request.getReportId(), httpRequest);
+            // A server-side pivot of a report is a way of reading that report's data, so it answers
+            // to layer 1 like /data does. Inside the braces with the check above, and not beside it:
+            // without them this ran for a pivot named by table too, which asks layer 1 about a report
+            // id that is not there — and a limited author, whose report the check cannot read because
+            // there is no report, was refused their own pivot.
+            reportAccess.assertReportReadable(request.getReportId(), httpRequest);
+        }
+
+        // A pivot named by table reads that table out of the connection the caller chose, so it
+        // is that caller's own query and the connection limit applies to it. A pivot named by
+        // report is a report somebody already authored: opening and running one stays allowed
+        // for a limited author, here as everywhere else. Refused before anything is opened, as
+        // the other analytics endpoints refuse.
+        if (request.getReportId() == null || request.getReportId().isBlank())
+            limitsService.assertConnectionAllowed(request.getConnectionCode());
 
         try (DatabaseConnectionManager cm = ConnectionFactory.newConnectionManager()) {
             DuckDBAnalyticsService duckDBService = new DuckDBAnalyticsService(cm);
@@ -323,6 +372,10 @@ public class AnalyticsController {
         if (request.getFields() == null || request.getFields().isEmpty()) {
             return ResponseEntity.badRequest().body(createErrorResponse("fields is required (list of fields to explore)"));
         }
+
+        // Named by table, so the connection is the caller's choice and the limit applies --
+        // the same question POST /api/queries/run-sql answers before it runs anything.
+        limitsService.assertConnectionAllowed(request.getConnectionCode());
 
         log.info("Received explore request for table: {}, selections: {}, fields: {}",
                 request.getTableName(), request.getSelections().size(), request.getFields().size());
@@ -472,6 +525,9 @@ public class AnalyticsController {
             return ResponseEntity.badRequest()
                     .body(createErrorResponse("connectionCode is required"));
         }
+        // The connection supplies the DuckDB session the file is read through, so reading a
+        // file here is reading it through that connection, limit and all.
+        limitsService.assertConnectionAllowed(connectionCode);
         if (filePath == null || filePath.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(createErrorResponse("filePath is required"));
@@ -536,6 +592,9 @@ public class AnalyticsController {
             return ResponseEntity.badRequest()
                     .body(createErrorResponse("connectionCode is required"));
         }
+        // The connection supplies the DuckDB session the file is read through, so reading a
+        // file here is reading it through that connection, limit and all.
+        limitsService.assertConnectionAllowed(connectionCode);
         if (filePath == null || filePath.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(createErrorResponse("filePath is required"));
@@ -593,6 +652,9 @@ public class AnalyticsController {
             return ResponseEntity.badRequest()
                     .body(createErrorResponse("connectionCode is required"));
         }
+        // The connection supplies the DuckDB session the file is read through, so reading a
+        // file here is reading it through that connection, limit and all.
+        limitsService.assertConnectionAllowed(connectionCode);
         if (filePath == null || filePath.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(createErrorResponse("filePath is required"));

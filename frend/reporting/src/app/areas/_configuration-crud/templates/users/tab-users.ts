@@ -38,6 +38,7 @@ export const tabUsersTemplate = `
       <tr>
         <th>User</th>
         <th>Role</th>
+        <th>Groups</th>
         <th>Status</th>
         <th class="text-right">Actions</th>
       </tr>
@@ -63,6 +64,9 @@ export const tabUsersTemplate = `
               }
             </select>
           </td>
+          <td [id]="'groupsOf-' + user.username" class="text-sm">
+            {{ groupNamesOf(user) }}
+          </td>
           <!-- The id sits on the cell rather than on either badge: only one of them is ever
                rendered, so one id names "this person's status" whichever way it reads. -->
           <td [id]="'statusOf-' + user.username">
@@ -73,6 +77,10 @@ export const tabUsersTemplate = `
             }
           </td>
           <td class="text-right">
+            <button [id]="'btnEditUser-' + user.username" type="button"
+                    class="btn btn-ghost btn-xs" (click)="openEditUser(user)">
+              Edit
+            </button>
             <button [id]="'btnResetPassword-' + user.username" type="button"
                     class="btn btn-ghost btn-xs" (click)="openResetPassword(user.username)">
               Reset Password
@@ -100,7 +108,7 @@ export const tabUsersTemplate = `
         </tr>
       } @empty {
         <tr>
-          <td colspan="4" class="text-center opacity-60">
+          <td colspan="5" class="text-center opacity-60">
             @if (searchTerm) {
               No users match '{{ searchTerm }}'.
             } @else {
@@ -191,7 +199,11 @@ export const tabUsersTemplate = `
     </select>
   </label>
 
-  <div class="text-xs opacity-70">{{ roleDescriptions[newUser.role] }}</div>
+  <div class="text-xs opacity-70 mb-2">{{ roleDescriptions[newUser.role] }}</div>
+
+  <dburst-group-picker [groups]="groups" idPrefix="newUserGroup"
+                       [selected]="newUserGroupIds" (selectedChange)="newUserGroupIds = $event">
+  </dburst-group-picker>
 
   <div ngProjectAs="[footer]">
     <button id="btnSaveNewUser" type="button" class="btn btn-outline btn-primary"
@@ -200,6 +212,64 @@ export const tabUsersTemplate = `
     </button>
     <button id="btnCancelNewUser" type="button" class="btn btn-outline"
             (click)="newUserVisible = false">
+      Cancel
+    </button>
+  </div>
+</dp-dialog>
+
+<!-- Edit user: the read-only facts, and the one thing this dialog changes — their groups.
+     The role stays inline on the row, where it has always been changed. -->
+<dp-dialog id="editUserDialog" header="Edit User" [(visible)]="editUserVisible"
+           [style]="{ width: '520px' }">
+
+  @if (editUserError) {
+    <div id="editUserError" role="alert" class="alert alert-error mb-3">
+      <span>{{ editUserError }}</span>
+    </div>
+  }
+
+  <div class="text-sm mb-3">
+    <div><span class="opacity-60">Username:</span> <b id="editUserUsername">{{ editUsername }}</b></div>
+    <div><span class="opacity-60">Email:</span> <span id="editUserEmail">{{ editUserEmail || '—' }}</span></div>
+    <div><span class="opacity-60">Role:</span> <span id="editUserRole">{{ editUserRole }}</span></div>
+    <div><span class="opacity-60">Status:</span> <span id="editUserStatus">{{ editUserStatus }}</span></div>
+  </div>
+
+  <dburst-group-picker [groups]="groups" idPrefix="userGroup"
+                       [selected]="editUserGroupIds" (selectedChange)="editUserGroupIds = $event">
+  </dburst-group-picker>
+
+  @if (editUserRole !== 'ADMIN') {
+    <div class="text-xs opacity-70">
+      <span class="font-semibold">Effective limits:</span>
+      <span id="editUserEffectiveLimits">{{ editUserEffectiveLimits }}</span>
+    </div>
+    <!-- Layer 2, beside layer 1: the reports their groups name. Read-only here for the same reason
+         the limits are — it is decided by the groups, and this is where the groups are chosen. -->
+    <div class="text-xs opacity-70">
+      <span class="font-semibold">Reports:</span>
+      <span id="editUserEffectiveReports">{{ editUserEffectiveReports }}</span>
+    </div>
+  } @else {
+    <div id="editUserLimitsNote" class="text-xs opacity-70">
+      Administrators are never limited by their groups.
+    </div>
+  }
+
+  <!-- Read-only: the dashboard a viewer lands on is decided by their groups, and is shown here so
+       that "why does Mark open this one?" is answered where the groups are chosen. -->
+  @if (editUserRole === 'DASHBOARD_VIEWER') {
+    <div class="text-xs opacity-70 mt-1">
+      <span class="font-semibold">Opens on:</span>
+      <span id="editUserOpensOn">{{ editUserOpensOn }}</span>
+    </div>
+  }
+
+  <div ngProjectAs="[footer]">
+    <button id="btnSaveUser" type="button" class="btn btn-outline btn-primary" (click)="saveUserGroups()">
+      Save
+    </button>
+    <button id="btnCancelUser" type="button" class="btn btn-outline" (click)="editUserVisible = false">
       Cancel
     </button>
   </div>

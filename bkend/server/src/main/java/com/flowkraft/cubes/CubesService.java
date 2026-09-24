@@ -14,9 +14,11 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
@@ -35,6 +37,9 @@ import com.sourcekraft.documentburster.common.settings.Settings;
  */
 @Service
 public class CubesService {
+
+	@Autowired
+	private LimitsSandbox limitsSandbox;
 
 	private static final Logger log = LoggerFactory.getLogger(CubesService.class);
 
@@ -172,6 +177,7 @@ public class CubesService {
 	 */
 	public void save(String cubeId, String name, String description, String connectionId, String dslCode)
 			throws IOException {
+		limitsSandbox.check(dslCode);
 		if (isSampleCube(cubeId) && !new File(getCubeDir(cubeId)).exists()) {
 			throw new IllegalArgumentException("Sample cube '" + cubeId + "' is read-only");
 		}

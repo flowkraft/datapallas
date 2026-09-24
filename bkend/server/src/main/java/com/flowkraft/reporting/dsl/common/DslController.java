@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.flowkraft.iam.limits.LimitsSandbox;
+import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.reporting.services.ReportingService;
 
 import com.flowkraft.reporting.dsl.chart.ChartOptionsScript;
@@ -77,6 +79,12 @@ public class DslController {
     @Autowired
     private ReportingService reportingService;
 
+    @Autowired
+    private LimitsSandbox limitsSandbox;
+
+    @Autowired
+    private LimitsService limitsService;
+
     /**
      * Parses a widget DSL — which means compiling and RUNNING the supplied Groovy. A script base class
      * constrains nothing, so "parse" here is indistinguishable from arbitrary code execution and is
@@ -89,6 +97,19 @@ public class DslController {
             @RequestBody Map<String, Object> body) {
         String dslCode = (String) body.getOrDefault("dslCode", "");
         String connectionCode = (String) body.getOrDefault("connectionCode", null);
+
+        // Before the try: a refusal is 403, not the 400 that a DSL the parser dislikes gets.
+        limitsSandbox.check(dslCode);
+
+        // Same place, same reason. A parameters DSL may carry `options: 'SELECT ...'`, and
+        // resolving it runs that SELECT on this connection (ReportingService#resolveParameterSqlOptions),
+        // which makes this endpoint a way to query a database — so which database the caller may
+        // reach is answered here, before anything is parsed, exactly as run-sql answers it.
+        // Checked in the controller and not in the resolver: the resolver also serves
+        // GET /api/reports/{id}/config, where opening a report someone else pointed at a
+        // connection stays allowed for everyone, limited or not.
+        limitsService.assertConnectionAllowed(connectionCode);
+
         try {
             // reportparameters uses a dedicated parser and returns { parameters: [...] }
             // (flat list) rather than the { options: {...} } envelope used by DSL widgets.

@@ -11,6 +11,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
@@ -62,6 +63,21 @@ public class ShareTokenService {
 	 * @return the raw token — the ONLY time it is ever available, since only its hash is stored
 	 */
 	public String createShareToken(String reportId, Integer expiresInDays) {
+		return createShareToken(reportId, expiresInDays, null);
+	}
+
+	/**
+	 * Create a share link whose data is restricted to the given parameter values.
+	 *
+	 * <p>The locks belong to the link, not to the viewer, and are fixed for its life: there is no way
+	 * to show an existing link again, so there is no way to edit one either. Changing what a recipient
+	 * may see means creating a new link and revoking this one — the same answer the hash-only storage
+	 * already gives for a lost link.
+	 *
+	 * @param lockedParams parameter names mapped to a value or a list of values; null or empty creates
+	 *                     an unrestricted link
+	 */
+	public String createShareToken(String reportId, Integer expiresInDays, Map<String, Object> lockedParams) {
 
 		if (StringUtils.isBlank(reportId))
 			throw new IllegalArgumentException("reportId is required");
@@ -74,14 +90,15 @@ public class ShareTokenService {
 		String expiresAt = (expiresInDays == null || expiresInDays <= 0) ? null
 				: "datetime('now', '+" + expiresInDays + " days')";
 
-		String sql = "INSERT INTO share_token (tenant_id, resource_type, resource_id, token_hash, expires_at, created_at) "
-				+ "VALUES (?, ?, ?, ?, " + (expiresAt == null ? "NULL" : expiresAt) + ", datetime('now'))";
+		String sql = "INSERT INTO share_token (tenant_id, resource_type, resource_id, token_hash, locked_params, expires_at, created_at) "
+				+ "VALUES (?, ?, ?, ?, ?, " + (expiresAt == null ? "NULL" : expiresAt) + ", datetime('now'))";
 
 		try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, tenantId);
 			ps.setString(2, RESOURCE_REPORT);
 			ps.setString(3, reportId);
 			ps.setString(4, hash(token));
+			ps.setString(5, LockedParams.toJson(lockedParams));
 			ps.executeUpdate();
 		} catch (SQLException e) {
 			throw new IllegalStateException("Could not create the share link", e);
@@ -95,18 +112,30 @@ public class ShareTokenService {
 	 * @return the report the token opens, or empty when it is unknown, revoked or expired.
 	 */
 	public Optional<String> resolveReportId(String token) {
+		return resolve(token).map(SharedReport::reportId);
+	}
+
+	/**
+	 * @return the report the token opens <em>and</em> the parameter values it forces, or empty when the
+	 *         link is unknown, revoked or expired. The locks have to come back with the report: a
+	 *         caller that resolved one without the other would open the dashboard unrestricted.
+	 */
+	public Optional<SharedReport> resolve(String token) {
 
 		if (StringUtils.isBlank(token))
 			return Optional.empty();
 
-		String sql = "SELECT resource_id FROM share_token WHERE token_hash = ? AND resource_type = ? "
+		String sql = "SELECT resource_id, locked_params FROM share_token WHERE token_hash = ? AND resource_type = ? "
 				+ "AND (expires_at IS NULL OR expires_at > datetime('now'))";
 
 		try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setString(1, hash(token.trim()));
 			ps.setString(2, RESOURCE_REPORT);
 			try (ResultSet rs = ps.executeQuery()) {
-				return rs.next() ? Optional.of(rs.getString("resource_id")) : Optional.empty();
+				return rs.next()
+						? Optional.of(new SharedReport(rs.getString("resource_id"),
+								LockedParams.fromJson(rs.getString("locked_params"))))
+						: Optional.empty();
 			}
 		} catch (SQLException e) {
 			// A failure to read must never be read as "allowed".
@@ -119,7 +148,7 @@ public class ShareTokenService {
 	public List<ShareLink> listShareLinks(String reportId) {
 
 		List<ShareLink> links = new ArrayList<>();
-		String sql = "SELECT id, resource_id, expires_at, created_at FROM share_token "
+		String sql = "SELECT id, resource_id, locked_params, expires_at, created_at FROM share_token "
 				+ "WHERE resource_type = ? AND resource_id = ? ORDER BY created_at DESC";
 
 		try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -128,6 +157,7 @@ public class ShareTokenService {
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next())
 					links.add(new ShareLink(rs.getLong("id"), rs.getString("resource_id"),
+							LockedParams.fromJson(rs.getString("locked_params")),
 							rs.getString("expires_at"), rs.getString("created_at")));
 			}
 		} catch (SQLException e) {
@@ -170,7 +200,16 @@ public class ShareTokenService {
 		return iamService.findTenant(Tenant.DEFAULT_CODE).map(Tenant::id).orElse(1L);
 	}
 
-	/** A share link as shown to an administrator — never including the token itself. */
-	public record ShareLink(long id, String reportId, String expiresAt, String createdAt) {
+	/**
+	 * A share link as shown to an administrator — never including the token itself, but including what
+	 * it is restricted to, because "which links are wide open" is the question the list exists to
+	 * answer.
+	 */
+	public record ShareLink(long id, String reportId, Map<String, Object> lockedParams, String expiresAt,
+			String createdAt) {
+	}
+
+	/** What a live share token opens. */
+	public record SharedReport(String reportId, Map<String, Object> lockedParams) {
 	}
 }

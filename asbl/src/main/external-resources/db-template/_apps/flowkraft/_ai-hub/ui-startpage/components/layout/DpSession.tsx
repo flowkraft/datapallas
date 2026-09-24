@@ -31,6 +31,15 @@ type DpSession = {
    * <p>Defaults to true so the desktop — and the moment before the answer arrives — shows everything.
    */
   canEditReports: boolean;
+  /**
+   * Does this person only open dashboards?
+   *
+   * <p>`dashboardsOnly`, from the same `capabilitiesOf()` table: true for a DASHBOARD_VIEWER and for
+   * nobody else. Read the other way round from the flag above — it takes the app away rather than a
+   * button — so it defaults to FALSE and an absent capability leaves the app as it was, instead of
+   * reducing an author to a dashboard viewer because an older backend said nothing.
+   */
+  dashboardsOnly: boolean;
 };
 
 /**
@@ -41,6 +50,7 @@ function labelFor(roles: string[]): string {
   if (roles.includes('PLATFORM_ADMIN') || roles.includes('ADMIN')) return 'Administrator';
   if (roles.includes('REPORT_AUTHOR')) return 'Author';
   if (roles.includes('JOB_OPERATOR')) return 'Operator';
+  if (roles.includes('DASHBOARD_VIEWER')) return 'Viewer';
   return '';
 }
 
@@ -50,6 +60,7 @@ const Context = createContext<DpSession>({
   username: '',
   roleLabel: '',
   canEditReports: true,
+  dashboardsOnly: false,
 });
 
 /** Who is using the AI Hub. One probe, read by the navbar and the gate alike. */
@@ -74,6 +85,7 @@ export function DpSessionProvider({ children }: { children: React.ReactNode }) {
     username: '',
     roleLabel: '',
     canEditReports: true,
+    dashboardsOnly: false,
   });
 
   useEffect(() => {
@@ -94,6 +106,7 @@ export function DpSessionProvider({ children }: { children: React.ReactNode }) {
           roleLabel: identity.mode === 'standalone' ? '' : labelFor(identity.roles ?? []),
           // Absent capabilities mean an older backend, not a refusal — keep the app usable.
           canEditReports: identity.capabilities?.editReports !== false,
+          dashboardsOnly: identity.capabilities?.dashboardsOnly === true,
         });
       })
       .catch(() => {

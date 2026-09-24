@@ -1,6 +1,8 @@
 package com.flowkraft.exploredata;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.exploredata.export.CanvasExportService;
+import com.flowkraft.iam.limits.LimitsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,11 @@ public class ExploreDataController {
     @Autowired
     private CanvasExportService exportService;
 
+    @Autowired
+    private LimitsService limitsService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     // ── Canvas CRUD ───────────────────────────────────────────────────────────
 
     /** GET /api/explorations — list all canvases, newest-first. */
@@ -47,6 +54,7 @@ public class ExploreDataController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createCanvas(@RequestBody Map<String, Object> body)
             throws Exception {
+        assertWidgetsAllowed(body);
         return ResponseEntity.status(201).body(service.createCanvas(body));
     }
 
@@ -62,6 +70,7 @@ public class ExploreDataController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateCanvas(
             @PathVariable String id, @RequestBody Map<String, Object> body) throws Exception {
+        assertWidgetsAllowed(body);
         return service.updateCanvas(id, body)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -72,6 +81,15 @@ public class ExploreDataController {
     public ResponseEntity<Map<String, Object>> deleteCanvas(@PathVariable String id) throws Exception {
         service.deleteCanvas(id);
         return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /**
+     * A script-mode widget is Groovy that the server runs, both in the canvas and in the dashboard
+     * it is exported to, so for an author who may not run scripts, saving one is running one.
+     */
+    private void assertWidgetsAllowed(Map<String, Object> body) {
+        if (ScriptModeWidgets.presentIn(body.get("state"), objectMapper))
+            limitsService.assertScriptsAllowed("save a canvas widget that runs a script");
     }
 
     // ── Export ────────────────────────────────────────────────────────────────

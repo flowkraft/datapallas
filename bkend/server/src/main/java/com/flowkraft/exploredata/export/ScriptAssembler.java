@@ -138,12 +138,15 @@ public class ScriptAssembler {
         // coercion mirrors QueriesService so numeric columns get integer binds.
         // Wildcard '*' returns false so the caller skips the IN clause entirely
         // → query runs without that filter → user sees rows for every value.
-        sb.append("def __bindInList = { sb, params, csv, sqlPrefix ->\n");
+        // `before` = the binds of scalar params earlier on the same line; they are
+        // added only when the line is appended, and ahead of the list values.
+        sb.append("def __bindInList = { sb, params, csv, sqlPrefix, before = [] ->\n");
         sb.append("    if (!csv) return false\n");
         sb.append("    if (csv.toString().trim() == '*') return false\n");
         sb.append("    def vals = csv.toString().split(',').collect { it.trim() }.findAll { it }\n");
         sb.append("    if (vals.isEmpty()) return false\n");
         sb.append("    sb.append(sqlPrefix + ' (' + vals.collect { '?' }.join(', ') + ')\\n')\n");
+        sb.append("    params.addAll(before)\n");
         sb.append("    vals.each { v ->\n");
         sb.append("        try { params << Long.parseLong(v) }\n");
         sb.append("        catch (e) { try { params << Double.parseDouble(v) } catch (e2) { params << v } }\n");
@@ -212,19 +215,21 @@ public class ScriptAssembler {
                         if (sl.inListParam() != null) {
                             // IN-list: runtime expansion via __bindInList helper.
                             String p = sl.inListParam();
-                            sb.append("    if (has").append(capitalize(p)).append(") { ")
+                            List<String> used = new ArrayList<>(sl.params());
+                            used.add(p);
+                            sb.append("    if (").append(guard(paramNames, used)).append(") { ")
                               .append("__bindInList(").append(vp).append("_sb, ")
                               .append(vp).append("_params, ").append(p).append(", '")
-                              .append(esc).append("') }\n");
+                              .append(esc).append("'");
+                            if (!sl.params().isEmpty()) {
+                                sb.append(", [").append(String.join(", ", sl.params())).append("]");
+                            }
+                            sb.append(") }\n");
                         } else if (sl.params().isEmpty()) {
                             sb.append("    ").append(vp).append("_sb.append('").append(esc).append("\\n')\n");
                         } else {
-                            StringBuilder cond = new StringBuilder();
-                            for (int ci = 0; ci < sl.params().size(); ci++) {
-                                if (ci > 0) cond.append(" && ");
-                                cond.append("has").append(capitalize(sl.params().get(ci)));
-                            }
-                            sb.append("    if (").append(cond).append(") { ")
+                            // Binds (below): one per `?`, in the order the placeholders appear.
+                            sb.append("    if (").append(guard(paramNames, sl.params())).append(") { ")
                               .append(vp).append("_sb.append('").append(esc).append("\\n')");
                             for (String p : sl.params()) {
                                 sb.append("; ").append(vp).append("_params << ").append(p);
@@ -392,12 +397,15 @@ public class ScriptAssembler {
      * Splits user SQL into per-line records. Any {@code ${paramName}} token —
      * including surrounding single or double quotes, e.g. {@code '${p}'} — is
      * replaced with a JDBC {@code ?} placeholder and the parameter name is
-     * recorded in order. Lines with no parameter references are returned as-is.
+     * recorded once per placeholder, in the order the placeholders appear on
+     * the line (JDBC binds by position). Lines with no parameter references are
+     * returned as-is.
      * Trailing blank lines are stripped so the generated SQL has no redundant
      * trailing newlines.
      */
     private static List<SqlLine> analyzeSqlLines(String sql, List<String> paramNames) {
         List<SqlLine> result = new ArrayList<>();
+        Pattern scalarP = scalarTokenPattern(paramNames);
         for (String rawLine : sql.stripTrailing().split("\n", -1)) {
             // Detect IN-list pattern first: anything ending with `IN (${p})` or
             // `NOT IN (${p})`. The prefix (operator + column, e.g. `WHERE "id"`)
@@ -418,32 +426,56 @@ public class ScriptAssembler {
                     break;
                 }
             }
-            if (inListParam != null) {
-                result.add(new SqlLine(processed, Collections.emptyList(), inListParam));
-                continue;
-            }
-            // Scalar param substitution (existing behavior).
             List<String> lineParams = new ArrayList<>();
-            for (String p : paramNames) {
-                String token = "${" + p + "}";
-                if (processed.contains(token)) {
-                    // Longer-prefix patterns first so the leading `\` is consumed.
-                    // `\${p}` surfaces when SQL is pasted from a TS template-literal
-                    // source where `\$` escapes the interpolation at TS compile time —
-                    // Monaco stores the literal backslash and it has no meaning in SQL.
-                    processed = processed
-                            .replace("'\\" + token + "'", "?")
-                            .replace("\"\\" + token + "\"", "?")
-                            .replace("\\" + token, "?")
-                            .replace("'" + token + "'", "?")
-                            .replace("\"" + token + "\"", "?")
-                            .replace(token, "?");
-                    lineParams.add(p);
-                }
+            processed = substituteScalars(processed, scalarP, lineParams);
+            if (inListParam != null) {
+                // Scalar params before the IN clause (`AND y = ${b} AND id IN (${ids})`)
+                // bind ahead of the list values, via the helper's `before` argument.
+                result.add(new SqlLine(processed, Collections.unmodifiableList(lineParams), inListParam));
+                continue;
             }
             result.add(new SqlLine(processed, Collections.unmodifiableList(lineParams)));
         }
         return result;
+    }
+
+    /**
+     * Scalar param substitution: one left-to-right scan, so a param used twice is
+     * bound twice and params bind in the order they appear, not the order they were
+     * defined ({@code BETWEEN ${to} AND ${from}} must not swap the values). Each
+     * token becomes {@code ?}; its param name is appended to {@code params}.
+     */
+    private static String substituteScalars(String text, Pattern scalarP, List<String> params) {
+        if (scalarP == null) return text;
+        Matcher m = scalarP.matcher(text);
+        StringBuilder out = new StringBuilder();
+        while (m.find()) {
+            params.add(m.group(1) != null ? m.group(1) : m.group(2) != null ? m.group(2) : m.group(3));
+            m.appendReplacement(out, "?");
+        }
+        m.appendTail(out);
+        return out.toString();
+    }
+
+    /** {@code hasA && hasB} — each param the line uses, once, in definition order. */
+    private static String guard(List<String> paramNames, Collection<String> used) {
+        return paramNames.stream().filter(used::contains)
+                .map(p -> "has" + capitalize(p)).collect(Collectors.joining(" && "));
+    }
+
+    /**
+     * Matches one {@code ${p}} token of any declared param, together with what
+     * surrounds it: {@code '${p}'} or {@code "${p}"} (quotes consumed, the value is
+     * bound), and an optional leading backslash — {@code \${p}} surfaces when SQL
+     * is pasted from a TS template-literal source where {@code \$} escapes the
+     * interpolation; Monaco keeps the backslash and it has no meaning in SQL.
+     * Group 1, 2 or 3 holds the param name. Null when there are no params.
+     */
+    private static Pattern scalarTokenPattern(List<String> paramNames) {
+        if (paramNames.isEmpty()) return null;
+        String names = paramNames.stream().map(Pattern::quote).collect(Collectors.joining("|"));
+        String tok = "\\\\?\\$\\{(" + names + ")\\}";
+        return Pattern.compile("'" + tok + "'|\"" + tok + "\"|" + tok);
     }
 
     /** Escapes a string for safe embedding inside a Groovy single-quoted string literal. */

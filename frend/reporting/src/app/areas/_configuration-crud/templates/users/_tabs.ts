@@ -4,6 +4,11 @@ export const tabsTemplate = `<dp-tabs>
     </ng-container>
   </dp-tab>
 
+  <dp-tab heading="Groups">
+    <ng-container [ngTemplateOutlet]="tabGroupsTemplate">
+    </ng-container>
+  </dp-tab>
+
   <!-- No Tenants tab. A tenant's meaning is its own home directory — its own reports, connections
        and output — and nothing outside the IAM store scopes anything to one yet, so a second tenant
        would silently share everything with the first. Until that separation exists, offering the

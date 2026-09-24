@@ -25,7 +25,10 @@
            is guarded, so offering them would only bounce the visitor back to this same screen. The
            brand, the theme picker and the support link stay — they are not navigation into the app.
            On the desktop, and once signed in, this is always shown. -->
-      @if (authService.showAppChrome()) {
+      <!-- A dashboard viewer is offered no navigation either: every screen this menu reaches builds
+           or runs something, which is the one thing their account does not do. They keep the user
+           menu, and the notice in the page says where their dashboards are. -->
+      @if (authService.showAppChrome() && !authService.opensDashboardsOnly()) {
       <ul id="topMenu" class="menu menu-horizontal px-1 hidden md:flex">
 
         <li>
@@ -105,7 +108,7 @@
 
     <!-- Right: actions + theme picker -->
     <div class="flex items-center gap-1">
-      @if (authService.showAppChrome()) {
+      @if (authService.showAppChrome() && !authService.opensDashboardsOnly()) {
       <a id="askForFeature" href="#"
         class="btn btn-ghost btn-sm normal-case"
         (click)="onAskForFeatureModalShow(); false">

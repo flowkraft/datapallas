@@ -20,12 +20,16 @@ package com.flowkraft.iam;
  *       exploration or a dashboard is this role; owning the credential it reads through is not.</li>
  *   <li>{@code JOB_OPERATOR} — the Processing screens only. Runs jobs, reads output and logs, opens the
  *       samples. No configuration, no reports, no connections, no users, no apps or starter packs.</li>
+ *   <li>{@code DASHBOARD_VIEWER} — the dashboards granted to their groups, and nothing else. Signs in,
+ *       opens those dashboards in the AI Hub, switches between them. Runs nothing, authors nothing,
+ *       and cannot even list the reports.</li>
  * </ul>
  *
- * <p>There is deliberately no read-only role below {@code JOB_OPERATOR}. One existed
- * ({@code REPORT_VIEWER}) and was removed: everything it could reach — a dashboard, a report, an output
- * file — is produced by a run, so anyone who needed the read also needed to be an operator, and the
- * extra rung bought nothing but a fourth row in the picker. {@link #parse} still accepts the old name.
+ * <p>{@link #DASHBOARD_VIEWER} is the read-only role. An earlier one ({@code REPORT_VIEWER}) was removed
+ * because it was defined by what it could not do and reached everything a run produced; this one is
+ * defined by what an administrator hands it — the dashboards granted to its groups — so it grants
+ * nothing until someone ticks a box. {@link #parse} still maps the old name to {@link #JOB_OPERATOR},
+ * because an upgraded membership row meant an operator, not a viewer of nothing.
  */
 public enum Role {
 
@@ -62,7 +66,14 @@ public enum Role {
 	 * Runs jobs and reads all output and logs in the tenant. Cannot edit configuration or scripts, and
 	 * cannot see anything outside the Processing screens.
 	 */
-	JOB_OPERATOR;
+	JOB_OPERATOR,
+
+	/**
+	 * Opens the dashboards granted to their groups, in the AI Hub, and nothing else. The weakest role:
+	 * it runs no job, authors no code, reads no report it was not granted, and is refused at the door of
+	 * the main application. Which dashboards it sees is group membership, not this enum.
+	 */
+	DASHBOARD_VIEWER;
 
 	/** Spring Security authority name — {@code ROLE_} prefix, as {@code hasRole()} expects. */
 	public String authority() {
@@ -105,7 +116,8 @@ public enum Role {
 	/**
 	 * True when this role includes everything {@code other} can do.
 	 *
-	 * <p>The tenant roles form a straight line — ADMIN ⊃ REPORT_AUTHOR ⊃ JOB_OPERATOR — so a
+	 * <p>The tenant roles form a straight line — ADMIN ⊃ REPORT_AUTHOR ⊃ JOB_OPERATOR ⊃
+	 * DASHBOARD_VIEWER — so a
 	 * user is granted their own role plus every weaker one. That keeps {@code @PreAuthorize} readable:
 	 * an endpoint asks for the <em>weakest</em> role that may use it and stronger roles pass
 	 * automatically.

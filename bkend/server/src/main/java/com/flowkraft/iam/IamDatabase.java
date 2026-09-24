@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -43,7 +44,7 @@ public class IamDatabase {
 
 	private static final Logger log = LoggerFactory.getLogger(IamDatabase.class);
 
-	static final int SCHEMA_VERSION = 1;
+	static final int SCHEMA_VERSION = 2;
 
 	private static final String DB_FILENAME = "iam.db";
 
@@ -197,14 +198,93 @@ public class IamDatabase {
 					    resource_type  TEXT    NOT NULL,
 					    resource_id    TEXT    NOT NULL,
 					    token_hash     TEXT    NOT NULL UNIQUE,
+					    locked_params  TEXT,
 					    expires_at     TEXT,
 					    created_at     TEXT    NOT NULL
 					)""");
 
+			// Groups say which things a person can reach. A group carries the limits an admin sets for
+			// the report authors in it, as JSON, so a new kind of limit later is one more key rather than a
+			// schema change. Named user_group because "group" is an SQL keyword, and a person's place in a
+			// tenant is already called a membership.
+			st.execute("""
+					CREATE TABLE IF NOT EXISTS user_group (
+					    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+					    tenant_id     INTEGER NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+					    name          TEXT    NOT NULL COLLATE NOCASE,
+					    settings_json TEXT    NOT NULL DEFAULT '{}',
+					    created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+					    UNIQUE (tenant_id, name)
+					)""");
+
+			st.execute("""
+					CREATE TABLE IF NOT EXISTS user_group_member (
+					    group_id INTEGER NOT NULL REFERENCES user_group(id) ON DELETE CASCADE,
+					    user_id  INTEGER NOT NULL REFERENCES app_user(id)   ON DELETE CASCADE,
+					    PRIMARY KEY (group_id, user_id)
+					)""");
+
+			// Which dashboards a group's viewers may open. Rows only ever add access, so a viewer in no
+			// granting group sees nothing, and a report id that no longer exists is simply ignored on read
+			// — there is no foreign key to reports because reports live in files, not in this database.
+			st.execute("""
+					CREATE TABLE IF NOT EXISTS user_group_dashboard (
+					    group_id  INTEGER NOT NULL REFERENCES user_group(id) ON DELETE CASCADE,
+					    report_id TEXT    NOT NULL,
+					    PRIMARY KEY (group_id, report_id)
+					)""");
+
+			// Which reports a group's members may see and run — layer 2. Rows narrow rather than add:
+			// a member no group of whose names a single report may see every report, and as soon as any
+			// of their groups names one they get the union of what their groups name (the owner's
+			// decision 7). The opposite starting point from user_group_dashboard above, deliberately,
+			// and for the reason written out in ReportGrants. No foreign key to reports for the same
+			// reason as there: reports live in files, not in this database.
+			st.execute("""
+					CREATE TABLE IF NOT EXISTS user_group_report (
+					    group_id  INTEGER NOT NULL REFERENCES user_group(id) ON DELETE CASCADE,
+					    report_id TEXT    NOT NULL,
+					    PRIMARY KEY (group_id, report_id)
+					)""");
+
+			// The dashboard a group's viewers land on. Nullable because most groups have no opinion, and
+			// added when missing so a group table created by an earlier build of this release upgrades in
+			// place, the same way locked_params does below.
+			addColumnIfMissing(conn, "user_group", "default_dashboard", "TEXT");
+
+			// Locked parameters arrived after the first share links did. Adding the column when it is
+			// missing keeps every link an installation already handed out working — one that predates
+			// locks simply has no value there, which reads as "locks nothing", exactly what it did.
+			addColumnIfMissing(conn, "share_token", "locked_params", "TEXT");
+
 			st.execute("CREATE INDEX IF NOT EXISTS idx_membership_user ON membership(user_id)");
 			st.execute("CREATE INDEX IF NOT EXISTS idx_share_resource ON share_token(resource_type, resource_id)");
+			st.execute("CREATE INDEX IF NOT EXISTS idx_user_group_member_user ON user_group_member(user_id)");
+			st.execute("CREATE INDEX IF NOT EXISTS idx_user_group_dashboard_group ON user_group_dashboard(group_id)");
+			st.execute("CREATE INDEX IF NOT EXISTS idx_user_group_report_group ON user_group_report(group_id)");
 
 			stampSchemaVersion(conn);
+		}
+	}
+
+	/**
+	 * SQLite has no {@code ADD COLUMN IF NOT EXISTS}, and running the {@code ALTER} regardless would
+	 * fail the boot of every installation that already has the column. Asking the table first is the
+	 * idempotent form, and keeps new columns in the same "created at boot" story as new tables.
+	 */
+	private void addColumnIfMissing(Connection conn, String table, String column, String definition)
+			throws SQLException {
+
+		try (Statement st = conn.createStatement();
+				ResultSet rs = st.executeQuery("PRAGMA table_info(" + table + ")")) {
+			while (rs.next())
+				if (column.equalsIgnoreCase(rs.getString("name")))
+					return;
+		}
+
+		try (Statement st = conn.createStatement()) {
+			st.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+			log.info("Added the {}.{} column to the IAM store", table, column);
 		}
 	}
 

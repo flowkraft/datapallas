@@ -74,6 +74,15 @@ declare namespace JSX {
       },
       HTMLElement
     >
+    /** The same element as rb-report, under the name a published dashboard is read by. */
+    "rb-dashboard": React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        "report-id"?: string
+        "api-base-url"?: string
+        "api-key"?: string
+      },
+      HTMLElement
+    >
   }
 }
 

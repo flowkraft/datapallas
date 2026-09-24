@@ -1,5 +1,7 @@
 package com.flowkraft.queries.controllers;
 
+import com.flowkraft.iam.limits.ConnectionNotAllowedException;
+import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.queries.services.QueriesService;
 import com.flowkraft.scripts.ScriptsService;
 import com.sourcekraft.documentburster.common.db.schema.SchemaInfo;
@@ -37,6 +39,9 @@ public class QueriesController {
     @Autowired
     private ScriptsService scriptsService;
 
+    @Autowired
+    private LimitsService limitsService;
+
     /** POST /api/queries/run-sql — execute an ad-hoc SQL query. */
     @PostMapping("/run-sql")
     public Mono<Map<String, Object>> executeQuery(@RequestBody Map<String, Object> request) {
@@ -50,8 +55,12 @@ public class QueriesController {
                 sql != null && sql.length() > 100 ? sql.substring(0, 100) + "..." : sql);
 
         try {
-            List<Map<String, Object>> rows = queriesService.executeQuery(connectionId, sql, params);
+            List<Map<String, Object>> rows = queriesService.executeAdHocQuery(connectionId, sql, params);
             return Mono.just(Map.of("data", rows, "rowCount", rows.size()));
+        } catch (ConnectionNotAllowedException refused) {
+            // Not an exploration error: a refusal must reach the caller as 403, not as a 200 with an
+            // {error} the UI renders inline beside the SQL like a typo.
+            throw refused;
         } catch (Exception e) {
             log.debug("Ad-hoc query failed on '{}': {}", connectionId, e.getMessage());
             return Mono.just(Map.of("error", e.getMessage() != null ? e.getMessage() : e.toString()));
@@ -83,6 +92,10 @@ public class QueriesController {
         Map<String, Object> filterValues = (Map<String, Object>) request.get("filterValues");
 
         log.info("Executing inline script on connection '{}'", connectionId);
+
+        // Outside the try, so the refusals leave as 403 rather than as a 200 with an {error}.
+        limitsService.assertConnectionAllowed(connectionId);
+        limitsService.assertScriptsAllowed("run a script");
 
         try {
             List<Map<String, Object>> rows = scriptsService.executeScript(connectionId, script, filterValues);

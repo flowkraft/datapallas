@@ -1,0 +1,226 @@
+# Who may open each door of this server: the decision, in one place.
+#
+# Every line is METHOD path -> ROLE, derived from the @PreAuthorize annotations by
+# EndpointRoleMatrixTest and compared against this file. Changing an annotation, adding an
+# endpoint or removing one makes that test fail until somebody decides what this file should say.
+# That is the point: a role is a decision, not whatever the code happened to end up with.
+#
+# IF THE TEST FAILS: do not paste the derived matrix over this file to make it green. Read the lines
+# it names, one at a time, and decide each one - a row here is somebody's access to their own work,
+# and a row that changes without being read is how a door opens quietly. (Same rule, and for the same
+# reason, as the golden lines in NorthwindFrozenTest.)
+#
+# ROLE is the weakest role admitted; every stronger role is admitted too (see Role.includes).
+# "(none)" means no annotation, which is itself a decision - the door is opened by SecurityConfig
+# or narrowed by a data check inside the handler. Each of those carries, on the comment line
+# directly above it, the reason it is open; the test refuses a "(none)" line without one.
+
+DELETE /api/analytics/cache -> ADMIN
+DELETE /api/connections/{connectionId} -> ADMIN
+DELETE /api/cubes/{cubeId} -> REPORT_AUTHOR
+DELETE /api/embed/share-link/{id} -> REPORT_AUTHOR
+DELETE /api/explorations/{id} -> REPORT_AUTHOR
+DELETE /api/iam/groups/{groupId} -> ADMIN
+DELETE /api/iam/users/{username} -> ADMIN
+DELETE /api/jobs/logs/{logFileName} -> JOB_OPERATOR
+DELETE /api/jobs/quarantine -> JOB_OPERATOR
+DELETE /api/jobs/resume-file -> JOB_OPERATOR
+DELETE /api/jobs/temp/{folderName} -> JOB_OPERATOR
+DELETE /api/jobs/{id} -> JOB_OPERATOR
+DELETE /api/reports/{reportId} -> REPORT_AUTHOR
+DELETE /api/system/fs -> REPORT_AUTHOR
+GET /api/analytics/aggregators -> REPORT_AUTHOR
+GET /api/analytics/aggregators/display-names -> REPORT_AUTHOR
+GET /api/analytics/cache/stats -> REPORT_AUTHOR
+GET /api/analytics/health -> REPORT_AUTHOR
+# Public in SecurityConfig: on a fresh server there is nobody who could sign in, and this is the question that asks whether that is the case.
+GET /api/auth/first-run -> (none)
+# Public in SecurityConfig: the identity probe the frontend calls before anybody is signed in. It answers signed in or not, and reveals nothing beyond the deployment mode until somebody is.
+GET /api/auth/me -> (none)
+# Public in SecurityConfig: the sign-in screen has to know which identity providers to offer before there is a caller to authorise.
+GET /api/auth/providers -> (none)
+# and then by data: the database list is filtered to the connections the caller's groups allow
+# (ConnectionsController.listConnections, LimitsService.currentLimits). The email list is not -
+# the limit is on databases.
+GET /api/connections -> REPORT_AUTHOR
+GET /api/connections/seed-templates -> ADMIN
+GET /api/connections/{connectionCode}/seed-status -> ADMIN
+# and then by data: limitsService.assertDatabaseConnectionAllowed - a connection outside the
+# caller's limits is refused by name, not quietly emptied.
+GET /api/connections/{connectionId} -> REPORT_AUTHOR
+GET /api/connections/{connectionId}/metadata/{type} -> REPORT_AUTHOR
+GET /api/connections/{connectionId}/oauth-flow/{flowId}/events -> ADMIN
+GET /api/cubes -> REPORT_AUTHOR
+GET /api/cubes/{cubeId} -> REPORT_AUTHOR
+GET /api/embed/share-link -> REPORT_AUTHOR
+GET /api/explorations -> REPORT_AUTHOR
+GET /api/explorations/{id} -> REPORT_AUTHOR
+GET /api/iam/dashboards -> ADMIN
+GET /api/iam/groups -> ADMIN
+GET /api/iam/reports -> ADMIN
+GET /api/iam/tenants -> ADMIN
+GET /api/iam/users -> ADMIN
+GET /api/jobs -> JOB_OPERATOR
+GET /api/jobs/logs -> JOB_OPERATOR
+GET /api/jobs/{id} -> JOB_OPERATOR
+GET /api/jobs/{id}/logs -> JOB_OPERATOR
+# Signed in is the whole requirement, deliberately: a dashboard viewer is answered with their own groups' grants and nothing else, every other role with the published catalog. The filtering is the authorization, and it lives in the handler because it depends on who is asking.
+GET /api/me/dashboards -> (none)
+GET /api/queries/schema/{connectionId} -> REPORT_AUTHOR
+# and then by data: visibleToCaller filters the list to the reports this caller could actually
+# run - the same question dispatch asks, so nothing is offered that would be refused on submit.
+GET /api/reports -> JOB_OPERATOR
+GET /api/reports/load-by-path -> REPORT_AUTHOR
+GET /api/reports/preview-template -> REPORT_AUTHOR
+GET /api/reports/serve-asset -> REPORT_AUTHOR
+# and then by data: reportAccess.assertReportRunnable (layer 1 the report's connection, layer 2
+# the group's report grants).
+GET /api/reports/{id} -> JOB_OPERATOR
+GET /api/reports/{id}/preview -> REPORT_AUTHOR
+# Not a role but a report: opened either by an embed token for this one report (SecurityConfig) or by a signed-in caller, and then narrowed in the handler by dashboardAccess.check plus reportAccess.assertReportReadable. A role annotation here would be the wrong question.
+GET /api/reports/{reportId}/config -> (none)
+# The data door, guarded the same way as its config: embed token or session to get in, then dashboardAccess.check and reportAccess.assertReportReadable decide whether this caller may read this report's rows.
+GET /api/reports/{reportId}/data -> (none)
+GET /api/reports/{reportId}/datasource -> REPORT_AUTHOR
+GET /api/reports/{reportId}/script/{scriptType} -> REPORT_AUTHOR
+# and then by data: reportAccess.assertReportRunnable - reading a report's settings is how a run
+# starts, so it answers the same question.
+GET /api/reports/{reportId}/settings -> JOB_OPERATOR
+GET /api/reports/{reportId}/template -> REPORT_AUTHOR
+GET /api/reports/{reportId}/template/{type} -> REPORT_AUTHOR
+GET /api/system/ai-prompts -> REPORT_AUTHOR
+GET /api/system/ai-prompts/{id} -> REPORT_AUTHOR
+GET /api/system/apps -> REPORT_AUTHOR
+GET /api/system/fs/content -> REPORT_AUTHOR
+GET /api/system/fs/exists -> REPORT_AUTHOR
+GET /api/system/fs/explorer/file-downloader -> REPORT_AUTHOR
+GET /api/system/fs/explorer/file-tree -> REPORT_AUTHOR
+GET /api/system/fs/explorer/file-viewer -> REPORT_AUTHOR
+GET /api/system/fs/explorer/meta-info -> REPORT_AUTHOR
+GET /api/system/fs/find -> REPORT_AUTHOR
+GET /api/system/fs/inspect -> REPORT_AUTHOR
+GET /api/system/fs/list -> REPORT_AUTHOR
+GET /api/system/fs/resolve -> REPORT_AUTHOR
+GET /api/system/gallery/templates/{templateId}/ai-prompt -> JOB_OPERATOR
+GET /api/system/gallery/templates/{templateId}/content -> JOB_OPERATOR
+GET /api/system/gallery/templates/{templateId}/readme -> JOB_OPERATOR
+GET /api/system/gallery/templates/{templateId}/view -> JOB_OPERATOR
+# Read-only product information about the running installation, shown on screens every signed-in role can open. Authenticated by SecurityConfig's catch-all; no role narrows it.
+GET /api/system/info -> (none)
+# Read-only product information, as above: the changelog of a shipped item, the same text for everybody who is signed in.
+GET /api/system/info/changelog -> (none)
+# Read-only product information, as above: where the Copilot panel points for this installation.
+GET /api/system/info/copilot-url -> (none)
+# Read-only product information, as above: the product blog feed behind the News panel.
+GET /api/system/info/news -> (none)
+# Read-only product information, as above. It deliberately takes no path at all - What's New is shown to everyone, while the filesystem API that could otherwise serve the file is administrator-only.
+GET /api/system/info/release-notes -> (none)
+# Public in SecurityConfig, deliberately and with its consequences written down there: a licence is a property of the installation, the License tab sits on every screen, and the desktop has no sign-in at all. Narrowing this later is one annotation on LicenseController.
+GET /api/system/license -> (none)
+# Public with the rest of /api/system/license/** - see the note on GET /api/system/license.
+GET /api/system/license/about -> (none)
+# Public with the rest of /api/system/license/** - see the note on GET /api/system/license.
+GET /api/system/license/status -> (none)
+# Reading stays open to every signed-in caller because the frontend loads preferences during startup, before it knows the caller's role. Writing them is REPORT_AUTHOR - see PUT /api/system/preferences.
+GET /api/system/preferences -> (none)
+GET /api/system/services/status -> JOB_OPERATOR
+GET /api/system/test-url -> JOB_OPERATOR
+# The shared dashboard page: a share token or an embed token opens it without a session (SecurityConfig), and the handler then runs dashboardAccess.check and reportAccess.assertReportReadable. Report access, not role access.
+GET /dashboard/{reportCode} -> (none)
+PATCH /api/jobs/{id} -> JOB_OPERATOR
+# and then by data: limitsService.assertConnectionAllowed.
+POST /api/analytics/explore -> REPORT_AUTHOR
+# and then by data: limitsService.assertConnectionAllowed.
+POST /api/analytics/file-sample -> REPORT_AUTHOR
+# and then by data: limitsService.assertConnectionAllowed.
+POST /api/analytics/file-schema -> REPORT_AUTHOR
+# The one door whose expression is not a plain role: an author always, anybody else only with a
+# reportId - a pivot over a saved report is a dashboard being read, a pivot over nothing is
+# authoring. And then by data: dashboardAccess.check plus reportAccess.assertReportReadable when
+# a report is named, limitsService.assertConnectionAllowed when a connection is.
+POST /api/analytics/pivot -> REPORT_AUTHOR (or the condition)
+# and then by data: limitsService.assertConnectionAllowed.
+POST /api/analytics/query-file -> REPORT_AUTHOR
+# Public in SecurityConfig: this is where a caller stops being anonymous. Requiring a role to sign in would close the only way to get one.
+POST /api/auth/login -> (none)
+# No role because every role may end its own session, and it is already behind SecurityConfig's catch-all: a caller with no session has nothing to log out of.
+POST /api/auth/logout -> (none)
+POST /api/connections/{connectionCode}/run-seed -> ADMIN
+POST /api/connections/{connectionId}/oauth-flow/{flowId}/cancel -> ADMIN
+POST /api/connections/{connectionId}/oauth-sign-in -> ADMIN
+POST /api/connections/{connectionId}/reveal-password -> ADMIN
+POST /api/connections/{connectionId}/test-database -> ADMIN
+POST /api/connections/{connectionId}/test-email -> ADMIN
+POST /api/connections/{connectionId}/test-sms -> ADMIN
+POST /api/cubes -> REPORT_AUTHOR
+POST /api/cubes/generate-sql -> REPORT_AUTHOR
+POST /api/cubes/parse-dsl -> REPORT_AUTHOR
+POST /api/cubes/{cubeId}/duplicate -> REPORT_AUTHOR
+POST /api/cubes/{cubeId}/generate-sql -> REPORT_AUTHOR
+# and then by data: limitsService.assertConnectionAllowed on the connection the DSL names.
+POST /api/dsl/{type}/parse -> REPORT_AUTHOR
+POST /api/dsl/{type}/serialize -> REPORT_AUTHOR
+# and then by data: reportAccess.assertReportRunnable - the same question, for the link form.
+POST /api/embed/share-link -> REPORT_AUTHOR
+# and then by data: reportAccess.assertReportRunnable - a token may only be minted for a report
+# the person minting it could run.
+POST /api/embed/token -> JOB_OPERATOR
+POST /api/explorations -> REPORT_AUTHOR
+POST /api/explorations/{id}/export -> REPORT_AUTHOR
+POST /api/iam/groups -> ADMIN
+POST /api/iam/tenants -> ADMIN
+POST /api/iam/users -> ADMIN
+POST /api/iam/users/{username}/disable -> ADMIN
+POST /api/iam/users/{username}/enable -> ADMIN
+# and then by data: reportAccess.assertSettingsFileRunnable - dispatch is where layer 1 and layer
+# 2 are enforced, and where the refusal names the connection.
+POST /api/jobs -> JOB_OPERATOR
+POST /api/jobs/logs/tailer -> JOB_OPERATOR
+POST /api/jobs/merge-prepare-list -> JOB_OPERATOR
+# and then by data: reportAccess.assertSettingsFileRunnable on the resumed job's own configuration
+# file - resuming somebody else's job is still running it.
+POST /api/jobs/resume -> JOB_OPERATOR
+POST /api/jobs/upload-and-burst -> JOB_OPERATOR
+POST /api/jobs/upload-and-burst-many -> JOB_OPERATOR
+POST /api/jobs/upload-and-qa -> JOB_OPERATOR
+# and then by data: limitsService.assertConnectionAllowed - the connection the script runs on.
+POST /api/queries/run-script -> REPORT_AUTHOR
+POST /api/queries/run-sql -> REPORT_AUTHOR
+POST /api/reports -> REPORT_AUTHOR
+POST /api/reports/{reportId}/duplicate -> REPORT_AUTHOR
+POST /api/reports/{reportId}/restore-defaults -> REPORT_AUTHOR
+POST /api/system/feedback/feature-request -> JOB_OPERATOR
+POST /api/system/fs/copy -> REPORT_AUTHOR
+POST /api/system/fs/dir -> REPORT_AUTHOR
+POST /api/system/fs/explorer/upload -> REPORT_AUTHOR
+POST /api/system/fs/file -> REPORT_AUTHOR
+POST /api/system/fs/move -> REPORT_AUTHOR
+POST /api/system/install/chocolatey -> ADMIN
+# Public with the rest of /api/system/license/** - see the note on GET /api/system/license. This one mutates the installation's licensed state, and that is accepted there deliberately rather than overlooked.
+POST /api/system/license/activate -> (none)
+# Public with the rest of /api/system/license/** - see the note on POST /api/system/license/activate: it mutates licensed state and is open on purpose.
+POST /api/system/license/deactivate -> (none)
+POST /api/system/services/execute -> REPORT_AUTHOR
+POST /api/system/test-email-server/start -> JOB_OPERATOR
+POST /api/system/test-email-server/stop -> JOB_OPERATOR
+POST /api/system/uninstall/chocolatey -> ADMIN
+POST /api/system/update/apply -> ADMIN
+PUT /api/connections/{connectionId} -> ADMIN
+PUT /api/connections/{connectionId}/metadata/{type} -> ADMIN
+PUT /api/cubes/{cubeId} -> REPORT_AUTHOR
+PUT /api/explorations/{id} -> REPORT_AUTHOR
+PUT /api/iam/groups/{groupId} -> ADMIN
+PUT /api/iam/users/{username}/groups -> ADMIN
+PUT /api/iam/users/{username}/password -> ADMIN
+PUT /api/iam/users/{username}/role -> ADMIN
+# and then by data: limitsService.assertConnectionAllowed on the conncode being saved - an author
+# cannot point a report at a connection they may not use themselves.
+PUT /api/reports/{reportId}/datasource -> REPORT_AUTHOR
+PUT /api/reports/{reportId}/script/{scriptType} -> REPORT_AUTHOR
+PUT /api/reports/{reportId}/settings -> REPORT_AUTHOR
+PUT /api/reports/{reportId}/template -> REPORT_AUTHOR
+PUT /api/reports/{reportId}/template/{type} -> REPORT_AUTHOR
+PUT /api/system/fs/content -> REPORT_AUTHOR
+# Public with the rest of /api/system/license/** - see the note on POST /api/system/license/activate.
+PUT /api/system/license -> (none)
+PUT /api/system/preferences -> REPORT_AUTHOR

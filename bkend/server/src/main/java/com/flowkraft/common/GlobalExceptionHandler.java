@@ -14,6 +14,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.sourcekraft.documentburster.utils.PathOutsidePortableDirException;
@@ -123,6 +124,28 @@ public class GlobalExceptionHandler {
      * red badge in the UI for a browser doing something entirely routine, and buries the failures
      * that are real.
      */
+    /**
+     * A status somebody chose is the answer, not a failure to be reported.
+     *
+     * <p>{@link ResponseStatusException} is how this codebase refuses: the connection limit, the
+     * report grants and layer 1 all throw one, each carrying 403 and a sentence that names what is
+     * missing. Without this method the catch-all below — which matches {@code Throwable} and so
+     * matches these too — answered every one of them with <b>500</b> and the 403 wrapped inside the
+     * error text. The rule worked and the caller could not tell: the Angular app shows "server
+     * error" rather than the refusal, errors.log fills with stack traces for the rules working as
+     * designed, and a monitor counts refusals as outages. Found by driving the limited author's
+     * journey over real HTTP ({@code FullChainAuthorJourneyTest}) — every controller-level test
+     * sees the exception itself and so cannot see this.
+     *
+     * <p>The body keeps the {@code {"error": ...}} shape the rest of this API answers in, with the
+     * exception's own reason, because that sentence is the whole point of these refusals.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException ex) {
+        String message = ex.getReason() != null ? ex.getReason() : ex.getMessage();
+        return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", message));
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, String>> handleNoResourceFound(NoResourceFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

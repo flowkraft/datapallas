@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettingsInternal;
 import com.sourcekraft.documentburster.utils.Utils;
+import com.flowkraft.iam.limits.FsLimitsGuard;
 import com.flowkraft.system.dtos.DirCriteriaDto;
 import com.flowkraft.system.dtos.FileCriteriaDto;
 import com.flowkraft.system.dtos.FindCriteriaDto;
@@ -53,10 +54,17 @@ public class SystemController {
 	@Autowired
 	DockerService dockerService;
 
+	@Autowired
+	FsLimitsGuard fsGuard;
+
 	// ============================================================
 	//  System Info — read-only metadata about the running system
 	// ============================================================
 
+	// The server fetches a URL the caller hands it, so this is not read-only product information like
+	// the /info endpoints around it: the weakest signed-in role that has any business asking is the one
+	// that runs things.
+	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@GetMapping("/test-url")
 	public Mono<Boolean> checkUrl(@RequestParam String url) throws Exception {
 		String decodedUrl = URLDecoder.decode(url, StandardCharsets.UTF_8.toString());
@@ -174,6 +182,7 @@ public class SystemController {
 		);
 	}
 
+	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@GetMapping("/services/status")
 	public Mono<List<DockerService.ServiceStatusInfo>> getServicesStatus(@RequestParam Optional<Boolean> forceProbe, @RequestParam Optional<Boolean> skipProbe) throws Exception {
 		boolean force = forceProbe.orElse(false);
@@ -227,6 +236,7 @@ public class SystemController {
 	 * error status — the CLI is what decides whether an empty request is worth sending, and reporting
 	 * its verdict is this endpoint's whole job.
 	 */
+	@PreAuthorize("hasRole('JOB_OPERATOR')")
 	@PostMapping("/feedback/feature-request")
 	public Mono<ProcessOutputResultDto> featureRequest(@RequestBody Map<String, String> request) throws Exception {
 		String jobFilePath = systemService.writeFeatureRequestJobFile(
@@ -270,6 +280,8 @@ public class SystemController {
 				ignoreCase.orElse(null)
 		);
 
+		fsGuard.checkAccess(fullPath);
+
 		List<String> results = fileSystemService.unixCliFind(fullPath, criteriaDto);
 
 		return Mono.just(results);
@@ -283,6 +295,8 @@ public class SystemController {
 		// paths it received from earlier calls.
 		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
 
+		fsGuard.checkWrite(fullPath);
+
 		return Mono.just(fileSystemService.fsDelete(fullPath));
 	}
 
@@ -291,6 +305,8 @@ public class SystemController {
 	Mono<String> readFileToString(@RequestParam String path) throws Exception {
 
 		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
+
+		fsGuard.checkAccess(fullPath);
 
 		String fileContent = fileSystemService.unixCliCat(fullPath);
 		return Mono.just(fileContent);
@@ -301,6 +317,7 @@ public class SystemController {
 	@GetMapping("/fs/resolve")
 	public Map<String, String> resolveAbsolutePath(@RequestParam("path") String relativePath) {
 		String absolutePath = Utils.resolveWithinPortableDir(relativePath);
+		fsGuard.checkAccess(absolutePath);
 		Map<String, String> result = new HashMap<>();
 		result.put("absolutePath", absolutePath);
 		return result;
@@ -311,6 +328,8 @@ public class SystemController {
 	Mono<Void> writeStringToFile(@RequestParam String path, @RequestBody Optional<String> content) throws Exception {
 
 		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
+
+		fsGuard.checkWrite(fullPath);
 
 		return Mono.fromRunnable(() -> {
 			try {
@@ -330,6 +349,8 @@ public class SystemController {
 		String fullFromPath = Utils.resolveWithinPortableDir(URLDecoder.decode(fromPath, StandardCharsets.UTF_8.toString()));
 		String fullToPath = Utils.resolveWithinPortableDir(URLDecoder.decode(toPath, StandardCharsets.UTF_8.toString()));
 
+		fsGuard.checkCopyOrMove(fullFromPath, fullToPath);
+
 		return Mono.fromRunnable(() -> {
 			try {
 				fileSystemService.fsCopy(fullFromPath, fullToPath, overwrite, matching, ignoreCase);
@@ -347,6 +368,8 @@ public class SystemController {
 		String fullFromPath = Utils.resolveWithinPortableDir(URLDecoder.decode(fromPath, StandardCharsets.UTF_8.toString()));
 		String fullToPath = Utils.resolveWithinPortableDir(URLDecoder.decode(toPath, StandardCharsets.UTF_8.toString()));
 
+		fsGuard.checkCopyOrMove(fullFromPath, fullToPath);
+
 		return Mono.fromRunnable(() -> {
 			try {
 				fileSystemService.fsMove(Paths.get(fullFromPath), Paths.get(fullToPath), overwrite);
@@ -361,6 +384,8 @@ public class SystemController {
 	public Mono<String> exists(@RequestParam String path) throws Exception {
 		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
 
+		fsGuard.checkAccess(fullPath);
+
 		String exists = fileSystemService.fsExists(fullPath);
 		return Mono.just(exists);
 	}
@@ -370,6 +395,8 @@ public class SystemController {
 	public Mono<Void> dir(@RequestParam String path, @RequestBody Optional<DirCriteriaDto> criteria) throws Exception {
 
 		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
+
+		fsGuard.checkWrite(fullPath);
 
 		fileSystemService.fsDir(fullPath, criteria);
 		return Mono.empty();
@@ -381,8 +408,10 @@ public class SystemController {
 	public Mono<String> file(@RequestParam String path, @RequestBody Optional<FileCriteriaDto> criteria)
 			throws Exception {
 
-		String file = fileSystemService.fsFile(
-				Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString())), criteria);
+		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
+		fsGuard.checkWrite(fullPath);
+
+		String file = fileSystemService.fsFile(fullPath, criteria);
 		return Mono.just(file);
 
 	}
@@ -393,8 +422,10 @@ public class SystemController {
 			@RequestParam Optional<Boolean> mode, @RequestParam Optional<Boolean> times,
 			@RequestParam Optional<Boolean> absolutePath, @RequestParam Optional<String> symlinks) throws Exception {
 
-		Optional<InspectResultDto> inspect = fileSystemService.fsInspect(
-				Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString())), checksum,
+		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
+		fsGuard.checkAccess(fullPath);
+
+		Optional<InspectResultDto> inspect = fileSystemService.fsInspect(fullPath, checksum,
 				mode, times, absolutePath, symlinks);
 		return Mono.just(inspect);
 
@@ -404,6 +435,8 @@ public class SystemController {
 	@GetMapping("/fs/list")
 	public Flux<FileInfo> listFiles(@RequestParam String path) throws Exception {
 		String fullPath = Utils.resolveWithinPortableDir(URLDecoder.decode(path, StandardCharsets.UTF_8.toString()));
+
+		fsGuard.checkAccess(fullPath);
 
 		List<FileInfo> files = fileSystemService.fsList(fullPath);
 		return Flux.fromIterable(files);

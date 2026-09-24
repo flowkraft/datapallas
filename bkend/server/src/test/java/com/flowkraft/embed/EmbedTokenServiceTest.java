@@ -10,6 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -221,6 +223,70 @@ class EmbedTokenServiceTest {
 		other.init();
 
 		assertFalse(first.equals(Files.readString(other.signingKeyPath())));
+	}
+
+	// ============================================================
+	// locked parameters
+	// ============================================================
+
+	@Test
+	void aTokenCarriesTheLocksItWasMintedWith() {
+
+		EmbedTokenService.Claims claims = service.verify(service.mint("sales-summary", 600, Map.of("region", "EU")))
+				.orElseThrow();
+
+		assertEquals("sales-summary", claims.reportId());
+		assertEquals(Map.of("region", "EU"), claims.lockedParams());
+	}
+
+	@Test
+	void aMultiValueLockSurvivesTheToken() {
+
+		EmbedTokenService.Claims claims = service
+				.verify(service.mint("sales-summary", 600, Map.of("channel", List.of("web", "retail"))))
+				.orElseThrow();
+
+		assertEquals(List.of("web", "retail"), claims.lockedParams().get("channel"));
+	}
+
+	/** Most tokens lock nothing, and they must stay exactly the tokens they were. */
+	@Test
+	void aTokenThatLocksNothingVerifiesWithNoLocks() {
+
+		EmbedTokenService.Claims claims = service.verify(service.mint("sales-summary", 600)).orElseThrow();
+
+		assertTrue(claims.lockedParams().isEmpty());
+		assertEquals("sales-summary", claims.reportId());
+	}
+
+	/**
+	 * The attack the {@code lp} claim has to survive: take the token out of view-source, widen the
+	 * lock to everything, put it back. Editing the payload is editing what was signed.
+	 */
+	@Test
+	void wideningALockBreaksTheSignature() {
+
+		String[] parts = service.mint("sales-summary", 600, Map.of("region", "EU")).split("\\.");
+		String forged = parts[0] + "."
+				+ base64Url("{\"rid\":\"sales-summary\",\"exp\":" + far() + ",\"lp\":{\"region\":\"*\"}}") + "."
+				+ parts[2];
+
+		assertTrue(service.verify(forged).isEmpty());
+		assertTrue(service.verifyAndGetReportId(forged).isEmpty());
+	}
+
+	/**
+	 * Reading the payload with Jackson must not soften what the hand parser insisted on: a claim set
+	 * with no {@code exp} is a token that never dies, and a JSON parser is happy to hand one over.
+	 */
+	@Test
+	void aCorrectlySignedTokenWithoutAnExpiryIsStillRefused() throws Exception {
+
+		String header = service.mint("sales-summary", 600).split("\\.")[0];
+		String payload = base64Url("{\"rid\":\"sales-summary\",\"lp\":{\"region\":\"EU\"}}");
+		String signed = header + "." + payload;
+
+		assertTrue(service.verify(signed + "." + signWithServiceKey(signed)).isEmpty());
 	}
 
 	// ============================================================

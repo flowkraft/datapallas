@@ -2,6 +2,7 @@
 
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
+  import { prepareDashboardHtml } from '../shared/dashboard-injection';
 
   // ============================================================================
   // Minimal Interface - Only 3 required props!
@@ -357,18 +358,16 @@
     if (!dashboardContainer || !dashboardTemplate) return;
 
     if (fullInject) {
-      let html = dashboardTemplate;
-
-      // Inject report-params attribute on all rb-* visualization components
-      if (Object.keys(currentDashboardParams).length > 0) {
-        const paramsJson = JSON.stringify(currentDashboardParams).replace(/"/g, '&quot;');
-        html = html.replace(
-          /(<rb-(?:tabulator|chart|pivot-table|value)\b)([^>]*>)/gi,
-          `$1 report-params="${paramsJson}"$2`
-        );
-      }
-
-      dashboardContainer.innerHTML = html;
+      // Every rb-* widget inside the template fetches its own config and data on mount, reading
+      // its credential and its API base from its own attributes. Neither inherits from this
+      // element, so both are written onto the widgets here — otherwise a dashboard opened through
+      // a share link renders its frame and nothing else. See ../shared/dashboard-injection.
+      dashboardContainer.innerHTML = prepareDashboardHtml(dashboardTemplate, {
+        reportId,
+        apiBaseUrl,
+        embedToken,
+        reportParams: currentDashboardParams,
+      });
     }
 
     // Listen for parameter events from rb-parameters inside the dashboard.
@@ -400,9 +399,10 @@
   }
 
   $: if (dashboardContainer && dashboardTemplate) {
-    // Single code flow: inject the full dashboard HTML as-is.
-    // All web components (rb-parameters, rb-tabulator, rb-chart, rb-pivot-table)
-    // are self-contained and fetch their own data on mount.
+    // Single code flow: inject the full dashboard HTML, with this element's credential, API base
+    // and parameters written onto the widgets. All web components (rb-parameters, rb-tabulator,
+    // rb-chart, rb-pivot-table) are self-contained and fetch their own data on mount, which is
+    // exactly why they have to be handed what to fetch it with.
     // Listener attachment happens inside injectDashboard() with a
     // remove-before-add guard; no need to add again here.
     injectDashboard();
