@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { refuseUnlessAllowed, usernameOf } from '@/lib/chat2db-access';
 
 const CHAT2DB_URL = process.env.CHAT2DB_URL || 'http://flowkraft-ai-hub-chat2db:8888';
 
@@ -11,15 +12,31 @@ const CHAT2DB_URL = process.env.CHAT2DB_URL || 'http://flowkraft-ai-hub-chat2db:
  * {type:"error"}. The client's abort signal is forwarded upstream so pressing
  * Stop best-effort halts Athena's turn.
  *
- * Body: { question: string, send_schema?: boolean }
+ * Body: { question: string, send_schema?: boolean, connection_code?: string }
+ *
+ * `connection_code` is the database the question is about (empty: a product question). The sidecar
+ * shares one connection per code among everybody, so the caller's right to the code is checked here
+ * on every question, not only at connect. The caller's username goes along so the sidecar keeps
+ * their last result ("now chart that") apart from everybody else's.
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    const connectionCode = typeof body?.connection_code === 'string' ? body.connection_code.trim() : '';
+    if (connectionCode) {
+      const refusal = await refuseUnlessAllowed(request, connectionCode);
+      if (refusal) return refusal;
+    }
+
     const res = await fetch(`${CHAT2DB_URL}/api/ask/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json', 'X-DataPallas-User': await usernameOf(request) },
+      body: JSON.stringify({
+        question: body?.question,
+        send_schema: body?.send_schema,
+        connection_code: connectionCode || null,
+      }),
       signal: request.signal,
     });
 

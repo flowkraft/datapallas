@@ -90,9 +90,9 @@ export function ChatAgentPage({ config: cfg }: { config: ChatAgentConfig }) {
   const streamOne = useCallback<StreamOne>(
     (setMessages, assistantId, question, signal) =>
       cfg.showDbConnection
-        ? chat2dbStreamOne(setMessages, assistantId, question, signal, sendSchema)
+        ? chat2dbStreamOne(setMessages, assistantId, question, signal, sendSchema, connectedCode)
         : openaiStreamOne(setMessages, assistantId, question, signal, cfg.slug),
-    [cfg.showDbConnection, cfg.slug, sendSchema],
+    [cfg.showDbConnection, cfg.slug, sendSchema, connectedCode],
   );
 
   const { messages, setMessages, busy, enqueue, handleStop, nextId } = useChatQueue(streamOne);

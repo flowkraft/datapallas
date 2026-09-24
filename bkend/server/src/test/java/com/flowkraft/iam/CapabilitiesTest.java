@@ -41,6 +41,22 @@ class CapabilitiesTest {
 		assertFalse(capabilities().get("dashboardsOnly"));
 	}
 
+	/**
+	 * The AI Hub's AI (chats, agents, Chat2DB) is for administrators: the agents act with the
+	 * installation's API key whoever talks to them. An author keeps Explore Data, not the AI.
+	 */
+	@Test
+	void onlyAnAdministratorUsesAi() {
+		assertTrue(capabilities(Role.ADMIN.name(), Role.REPORT_AUTHOR.name(), Role.JOB_OPERATOR.name(),
+				Role.DASHBOARD_VIEWER.name()).get("useAi"));
+		assertTrue(capabilities(Role.PLATFORM_ADMIN.name()).get("useAi"));
+		assertFalse(capabilities(Role.REPORT_AUTHOR.name(), Role.JOB_OPERATOR.name(),
+				Role.DASHBOARD_VIEWER.name()).get("useAi"));
+		assertFalse(capabilities(Role.JOB_OPERATOR.name(), Role.DASHBOARD_VIEWER.name()).get("useAi"));
+		assertFalse(capabilities(Role.DASHBOARD_VIEWER.name()).get("useAi"));
+		assertFalse(capabilities().get("useAi"));
+	}
+
 	/** A viewer may render nothing else: no authoring, no configuration, not even a job run. */
 	@Test
 	void aDashboardViewerHasNoOtherCapability() {

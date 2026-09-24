@@ -294,6 +294,10 @@ public class AuthController {
 	 *   <li>{@code dashboardsOnly} — no endpoint of its own: it is the one flag that says "this person
 	 *       has the dashboards granted to their groups and nothing else", which is what the AI Hub's
 	 *       door and navbar render from instead of naming the role</li>
+	 *   <li>{@code useAi} — no DataPallas endpoint either: its doors are the AI Hub's own AI routes
+	 *       (the chats, the agents, Chat2DB, the LLM settings), which the AI Hub's middleware opens to
+	 *       this flag only. Administrators only, because the agents act with the installation's API
+	 *       key, which is ADMIN, whoever talks to them</li>
 	 * </ul>
 	 *
 	 * <p>Door by door, the whole list is {@code bkend/server/src/test/resources/endpoint-role-matrix.txt},
@@ -323,6 +327,7 @@ public class AuthController {
 		capabilities.put("viewConfiguration", author);
 		capabilities.put("runJobs", operator);
 		capabilities.put("dashboardsOnly", dashboardsOnly);
+		capabilities.put("useAi", admin);
 		return capabilities;
 	}
 }

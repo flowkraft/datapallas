@@ -25,6 +25,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * {@code @PreAuthorize("hasRole('REPORT_AUTHOR')")} enforces on /api/explorations and /api/cubes, so
  * the door and the endpoints behind it can never disagree about who may pass.
  *
+ * THE AI IS FOR ADMINISTRATORS
+ *
+ * Inside the app, the AI — the chats, the agents, Chat2DB, the LLM settings — is narrower still:
+ * {@code ADMIN} only. The agents act with the installation's API key, which is ADMIN, whoever is
+ * talking to them, so letting an author talk to them would hand the author an administrator's reach.
+ * The test is the backend's {@code useAi} capability (AuthController.capabilitiesOf), and
+ * {@link AI_ROUTES} is the list of doors it stands for. The navbar hides the same links by the same
+ * flag, but hiding is not the rule: this is. The Matrix bot passes because its key is the ADMIN
+ * machine identity.
+ *
  * WHY THERE IS NOTHING TO CONFIGURE
  *
  * There is no flag, no shared secret and no login URL. On Desktop the backend authenticates the
@@ -32,6 +42,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * to set up. On a Server the backend enforces, /auth/me answers 401, and the user is sent to sign
  * in through this app's own form, which posts to the same backend. The same code produces both
  * behaviours because it asks the backend instead of being told.
+ *
+ * THE MATRIX BOT
+ *
+ * baibot calls the agents at /api/openai/<agent>/v1 as an OpenAI client, so it has no cookie; it
+ * sends the DataPallas installation API key as `Authorization: Bearer <key>` (read from
+ * config/_internal/api-key.txt through api_key_file in config/baibot/config.yml). On those routes the
+ * bearer is passed to /auth/me as X-API-Key and the backend decides, exactly as for the playgrounds:
+ * a valid key is the machine identity, anything else is anonymous and refused. Nothing is compared
+ * here, so this file never needs the key. Other routes ignore the header, so a stray Authorization
+ * header can never stand in for a browser session.
  *
  * WHAT THIS PROTECTS
  *
@@ -51,6 +71,23 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 const ALWAYS_PUBLIC = ['/api/dp/auth', '/api/health', '/_next', '/favicon.ico', '/assets', '/images'];
 
+/**
+ * The AI: open to the {@code useAi} capability only (see THE AI IS FOR ADMINISTRATORS). Each entry is
+ * a path and everything under it; {@code /chat2} is a prefix, for every agent's chat page.
+ */
+const AI_ROUTES = [
+  '/api/chat',
+  '/api/chat2db',
+  '/api/agents',
+  '/api/openai',
+  '/api/tools',
+  '/api/workspace',
+  '/api/llm',
+  '/agents',
+  '/workspaces',
+];
+const AI_PAGE_PREFIX = '/chat2';
+
 /** Server-side only. The container's own localhost is not the host's. */
 const DP_API_URL = process.env.DP_API_URL || 'http://localhost:9090/api';
 
@@ -63,7 +100,7 @@ export async function middleware(request: NextRequest) {
 
   try {
     const identity = await fetch(`${DP_API_URL}/auth/me`, {
-      headers: { Cookie: request.headers.get('cookie') ?? '' },
+      headers: identityHeaders(request),
       cache: 'no-store',
     });
 
@@ -78,7 +115,7 @@ export async function middleware(request: NextRequest) {
       // sign in. Authentication is the first question; the role is only the second.
       if (who && who.authenticated === false) return refuse(request);
 
-      if (mayAuthor(who)) return NextResponse.next();
+      if (mayAuthor(who)) return isAiRoute(pathname) && !mayUseAi(who) ? refuseAi(request) : NextResponse.next();
 
       // Signed in, cannot author — but a dashboard viewer has a home here, so they are shown it
       // instead of the door.
@@ -97,6 +134,21 @@ export async function middleware(request: NextRequest) {
     // state, which is far more useful than an unexplained redirect.
     return NextResponse.next();
   }
+}
+
+/**
+ * What /auth/me is asked with: the browser's cookie, plus, on the bot's /api/openai routes only, its
+ * bearer token as X-API-Key (see THE MATRIX BOT above).
+ */
+function identityHeaders(request: NextRequest): Record<string, string> {
+  const headers: Record<string, string> = { Cookie: request.headers.get('cookie') ?? '' };
+
+  if (request.nextUrl.pathname.startsWith('/api/openai/')) {
+    const bearer = /^Bearer\s+(.+)$/i.exec(request.headers.get('authorization') ?? '')?.[1]?.trim();
+    if (bearer) headers['X-API-Key'] = bearer;
+  }
+
+  return headers;
 }
 
 /** The two fields of the identity this file decides on. Null when the body could not be read. */
@@ -123,6 +175,35 @@ function mayAuthor(identity: Identity | null): boolean {
   } catch {
     return true;
   }
+}
+
+function isAiRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith(AI_PAGE_PREFIX) ||
+    AI_ROUTES.some((route) => pathname === route || pathname.startsWith(route + '/'))
+  );
+}
+
+/**
+ * May this caller use the AI? The backend's {@code useAi}, administrators only.
+ *
+ * <p>Absent answers true, as in {@link mayAuthor}: only a backend too old to send the flag, or an
+ * unreadable identity, leaves it out — an anonymous identity carries every flag, set to false.
+ */
+function mayUseAi(identity: Identity | null): boolean {
+  return identity?.capabilities?.useAi !== false;
+}
+
+/**
+ * An author on one of the AI's doors. API callers get a 403 saying why; pages send them to Explore
+ * Data, the part of the app that is theirs, as a viewer is sent to their dashboards.
+ */
+function refuseAi(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.json({ error: 'The AI features are for administrators (ADMIN).' }, { status: 403 });
+  }
+
+  return NextResponse.redirect(new URL('/explore-data', request.url));
 }
 
 /**

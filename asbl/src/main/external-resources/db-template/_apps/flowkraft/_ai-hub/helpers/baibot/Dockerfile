@@ -42,6 +42,8 @@ COPY patches/src/bot/load_config.patched /app/src/bot/load_config.rs
 COPY patches/src/controller/chat_completion/mod.patched /app/src/controller/chat_completion/mod.rs
 COPY patches/src/conversation/matrix/entity.patched /app/src/conversation/matrix/entity.rs
 COPY patches/src/conversation/matrix_llm_bridge.patched /app/src/conversation/matrix_llm_bridge.rs
+# FlowKraft Patch: api_key_file on static agents (load_config above) + api_key masked in `agent details`
+COPY patches/src/controller/agent/details/mod.patched /app/src/controller/agent/details/mod.rs
 
 ARG RELEASE_BUILD=true
 

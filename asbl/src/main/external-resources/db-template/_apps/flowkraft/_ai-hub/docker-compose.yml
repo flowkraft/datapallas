@@ -54,7 +54,9 @@ services:
       # Matrix provisioner config (for automated room setup)
       - MATRIX_HOMESERVER_URL=http://flowkraft-ai-hub-matrix-synapse:8008
       - MATRIX_SERVER_NAME=localhost
-      - MATRIX_REGISTRATION_SECRET=${MATRIX_REGISTRATION_SECRET:-6180e53cc7b443e691d1bfc93c83bf2d60c8ee90a0db4bb194d74db52dd6f6cd}
+      # Empty by default: the provisioner uses the DataPallas API key file, which Synapse also reads as
+      # its registration_shared_secret. Set it only for an AI Hub that runs without config/_internal.
+      - MATRIX_REGISTRATION_SECRET=${MATRIX_REGISTRATION_SECRET:-}
     ports:
       - "8440:3000"  # AI Hub Dashboard UI
     volumes:
@@ -64,6 +66,9 @@ services:
       - ./custom-tools:/custom-tools:ro
       # Agent output artifacts — browsed by the workspace UI (read-only)
       - ./agents-output-artifacts:/app/workspace/agents-output-artifacts:ro
+      # DataPallas config/_internal, read-only - lib/datapallas-api-key.ts reads api-key.txt from it to
+      # register the Matrix bot account (the same file is Synapse's registration secret).
+      - ../../../config/_internal:/app/config/_internal:ro
       # Mount _ai-hub/ so update-env can read .env.example and write .env to host
       - .:/ai-hub
     restart: unless-stopped
@@ -247,6 +252,11 @@ services:
       - BAIBOT_PERSISTENCE_DATA_DIR_PATH=/data
     volumes:
       - ./config/baibot/config.yml:/app/config.yml:ro
+      # DataPallas config/_internal, read-only — where the agents' api_key_file points
+      # (config/_internal/api-key.txt). Without it baibot calls the AI Hub without the API key and
+      # every agent answers 401. Only _internal, not all of config/: the bot takes input from chat
+      # rooms and has no business seeing the database connections.
+      - ../../../config/_internal:/app/config/_internal:ro
       - baibot-data:/data
     restart: unless-stopped
     networks:
@@ -288,6 +298,9 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-synapse}
     volumes:
       - ./config/synapse:/data
+      # DataPallas config/_internal, read-only - homeserver.yaml takes its registration_shared_secret
+      # from api-key.txt, so every installation has its own and none is published in the repository.
+      - ../../../config/_internal:/datapallas-config/_internal:ro
       - synapse-data:/data/media_store
     # Element Web runs in the browser, so the browser needs to reach Synapse
     # via localhost — this port MUST be exposed for Element Web to work

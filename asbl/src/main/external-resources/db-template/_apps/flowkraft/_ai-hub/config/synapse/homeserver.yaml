@@ -25,10 +25,12 @@ data_dir: "/data"
 media_store_path: "/data/media_store"
 uploads_path: "/data/uploads"
 
-# Secrets (generate fresh 32-byte hex strings for production)
-# These are dev defaults - replace in production with: openssl rand -hex 32
-macaroon_secret_key: "5297f0fb78a2494fb984c513a90ac7606063302b23504b898d0b5d6de8771166"
-registration_shared_secret: "6180e53cc7b443e691d1bfc93c83bf2d60c8ee90a0db4bb194d74db52dd6f6cd"
+# Secrets - none in this file, which is published with DataPallas.
+# The registration secret is the DataPallas installation API key (config/_internal/api-key.txt,
+# mounted read-only in docker-compose.yml), unique per installation. The AI Hub provisioner reads
+# the same file to register the bot account.
+# macaroon_secret_key is left unset on purpose: Synapse then uses the registration secret.
+registration_shared_secret_path: /datapallas-config/_internal/api-key.txt
 
 # Signing key path - Synapse will auto-generate if missing
 signing_key_path: "/data/localhost.signing.key"
@@ -36,10 +38,10 @@ signing_key_path: "/data/localhost.signing.key"
 # Logging
 log_config: "/data/log.config"
 
-# Enable user registration for localhost development
-# Users can self-register to test the chat functionality
-enable_registration: true
-enable_registration_without_verification: true
+# No self-registration. Synapse listens on published ports, and the bot answers anyone who can join
+# its rooms with the DataPallas key's rights. Accounts are created by the AI Hub provisioner
+# (shared-secret admin API), which does not need registration to be open.
+enable_registration: false
 
 # Allow password login (needed for Baibot and test users)
 password_config:

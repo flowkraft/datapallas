@@ -9,17 +9,18 @@ import urllib.error
 
 def db_query(connection_code: str, sql: str, format: str = "table", max_rows: int = 50) -> str:
     """
-    Execute a READ-ONLY SQL query against the database currently connected in Chat2DB.
+    Execute a READ-ONLY SQL query against a database connected in Chat2DB.
 
     IMPORTANT: this tool does NOT open the database itself. It sends the SQL to the
     Chat2DB engine — a separate service that owns the JDBC drivers and the live
-    connection — which runs it and returns the rows. This is deliberate: the only way
+    connections, one per connection code — which runs it and returns the rows. This is deliberate: the only way
     to read data is through the engine, never by touching the database directly. This
     image has no database drivers, so there is no other path.
 
     Args:
-        connection_code (str): DataPallas connection code (informational; the query runs
-                               against whatever database is currently connected in Chat2DB).
+        connection_code (str): DataPallas connection code of the database to query (the
+                               CONNECTION CODE in the prompt). It must have been connected in
+                               Chat2DB. Empty is accepted only while exactly one database is connected.
         sql (str): A SELECT query. Destructive statements are blocked (READ-ONLY).
         format (str): Output format - "table" (default), "json", or "csv".
         max_rows (int): Maximum rows to return (default: 50).
@@ -29,7 +30,7 @@ def db_query(connection_code: str, sql: str, format: str = "table", max_rows: in
 
     Examples:
         >>> db_query("rbt-sample-northwind-sqlite-4f2", "SELECT * FROM Customers LIMIT 5")
-        >>> db_query("", "SELECT COUNT(*) FROM Orders", format="json")
+        >>> db_query("rbt-sample-northwind-sqlite-4f2", "SELECT COUNT(*) FROM Orders", format="json")
     """
     print(f"db_query called: connection={connection_code}, sql={sql[:100]}...")
 
@@ -51,7 +52,7 @@ def db_query(connection_code: str, sql: str, format: str = "table", max_rows: in
     base_url = os.environ.get('CHAT2DB_URL', 'http://flowkraft-ai-hub-chat2db:8888').rstrip('/')
     req = urllib.request.Request(
         base_url + '/api/sql',
-        data=json.dumps({'query': sql}).encode('utf-8'),
+        data=json.dumps({'query': sql, 'connection_code': connection_code}).encode('utf-8'),
         headers={'Content-Type': 'application/json'},
         method='POST',
     )
@@ -66,8 +67,8 @@ def db_query(connection_code: str, sql: str, format: str = "table", max_rows: in
             detail = str(e)
         if e.code == 400:
             raise Exception(
-                "No database is connected in Chat2DB. Connect a database first, then retry. "
-                f"({detail})"
+                f"Chat2DB has no connected database for connection_code '{connection_code}'. "
+                f"Connect it in Chat2DB first, then retry. ({detail})"
             )
         raise Exception(f"Query failed (HTTP {e.code}): {detail}")
     except Exception as e:

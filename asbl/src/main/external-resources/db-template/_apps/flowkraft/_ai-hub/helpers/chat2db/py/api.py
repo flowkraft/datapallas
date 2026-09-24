@@ -11,7 +11,7 @@ import math
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -53,10 +53,22 @@ class ConnectRequest(BaseModel):
 class AskRequest(BaseModel):
     question: str
     send_schema: bool = True
+    # The database the question is about, connected earlier through /api/connect.
+    # Empty: a DataPallas product question, answered without a database.
+    connection_code: Optional[str] = None
 
 
 class SqlRequest(BaseModel):
     query: str
+    # The database to run the query on. Optional only for older callers: they are served
+    # while exactly one database is connected, since the answer is then unambiguous.
+    connection_code: Optional[str] = None
+
+
+# Who is asking, as the AI Hub names them (it asks DataPallas). It only keeps one person's
+# last result ("now chart that") apart from another's; it grants nothing, and the AI Hub
+# checks the caller's right to a connection before forwarding anything here.
+USER_HEADER = "X-DataPallas-User"
 
 
 # ---------------------------------------------------------------------------
@@ -105,11 +117,11 @@ def _df_to_records(df):
 
 @app.get("/api/health")
 def health():
-    connected = chat is not None and chat._connection is not None
+    connections = chat.connected_codes() if chat is not None else []
     return {
         "status": "ok",
-        "connected": connected,
-        "connection": chat._connection_config.code if connected and chat._connection_config else None,
+        "connected": bool(connections),
+        "connections": connections,
     }
 
 
@@ -117,15 +129,18 @@ def health():
 def connect(req: ConnectRequest):
     """Open a JDBC connection using the details the browser read from the DataPallas
     REST API (the same source /explore-data lists from). Connection listing lives in
-    the Java backend now — there is no /api/connections here on purpose."""
+    the Java backend now — there is no /api/connections here on purpose.
+
+    One connection per connection code, shared by everybody asking about that database:
+    connecting a code that is already open reuses it."""
     if not req.dbserver:
         raise HTTPException(status_code=400, detail="Missing connection details (dbserver).")
     try:
-        chat.connect_details(req.connection_code, req.connection_name, req.dbserver)
+        database = chat.connect_details(req.connection_code, req.connection_name, req.dbserver)
         return {
             "connected": True,
             "connection_code": req.connection_code,
-            "schema": chat.schema(),
+            "schema": database.schema or "Schema not available",
         }
     except HTTPException:
         raise
@@ -158,15 +173,16 @@ def _sse(obj: dict) -> str:
 
 
 @app.post("/api/ask")
-def ask(req: AskRequest):
+def ask(req: AskRequest, x_datapallas_user: str = Header(default="")):
     # No connection guard on purpose: with no DB connected the question is a pure
     # DataPallas product question, which the engine routes to Athena accordingly.
-    result = chat.ask(req.question, send_schema=req.send_schema)
+    result = chat.ask(req.question, send_schema=req.send_schema,
+                      connection_code=req.connection_code, user=x_datapallas_user)
     return _result_to_dict(result)
 
 
 @app.post("/api/ask/stream")
-def ask_stream(req: AskRequest):
+def ask_stream(req: AskRequest, x_datapallas_user: str = Header(default="")):
     """Streaming version of /api/ask (Server-Sent Events).
 
     Emits {type:"delta",text} tokens as Athena types, then one
@@ -177,7 +193,8 @@ def ask_stream(req: AskRequest):
     # DataPallas product question, which the engine routes to Athena accordingly.
     def event_stream():
         try:
-            for ev in chat.ask_stream(req.question, send_schema=req.send_schema):
+            for ev in chat.ask_stream(req.question, send_schema=req.send_schema,
+                                      connection_code=req.connection_code, user=x_datapallas_user):
                 kind = ev.get("type")
                 if kind == "delta":
                     yield _sse({"type": "delta", "text": ev.get("text", "")})
@@ -198,10 +215,20 @@ def ask_stream(req: AskRequest):
 
 @app.post("/api/sql")
 def raw_sql(req: SqlRequest):
-    if not chat._connection:
-        raise HTTPException(status_code=400, detail="Not connected to a database. Call /api/connect first.")
+    code = (req.connection_code or "").strip()
+    if not code:
+        connected = chat.connected_codes()
+        if len(connected) != 1:
+            raise HTTPException(status_code=400, detail=(
+                "Name the database: connection_code is required while "
+                f"{len(connected)} databases are connected." if connected
+                else "Not connected to a database. Call /api/connect first."))
+        code = connected[0]
 
-    df = chat.sql(req.query)
+    try:
+        df = chat.sql(req.query, code)
+    except LookupError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {
         "data": _df_to_records(df),
         "row_count": len(df),

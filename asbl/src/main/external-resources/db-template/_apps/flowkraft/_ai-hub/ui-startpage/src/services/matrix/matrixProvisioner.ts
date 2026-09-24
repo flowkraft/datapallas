@@ -11,6 +11,8 @@
  * The matrix-js-sdk is available if more complex operations are needed.
  */
 
+import { readDataPallasApiKey } from '../../../lib/datapallas-api-key';
+
 // ============================================================================
 // Configuration
 // ============================================================================
@@ -178,10 +180,14 @@ export async function registerUserWithSharedSecret(options: {
   deviceId: string;
   message: string;
 }> {
-  const sharedSecret = config.registrationSharedSecret;
+  // Synapse reads its registration_shared_secret from the DataPallas API key file
+  // (registration_shared_secret_path in homeserver.yaml), so that file is asked first: it is right by
+  // definition, whereas MATRIX_REGISTRATION_SECRET may be left over in an older _ai-hub/.env. The
+  // variable remains the fallback for an AI Hub that runs without config/_internal mounted.
+  const sharedSecret = readDataPallasApiKey() || config.registrationSharedSecret;
   
   if (!sharedSecret) {
-    throw new Error('registration_shared_secret not configured. Set MATRIX_REGISTRATION_SECRET env var or call initMatrixConfig()');
+    throw new Error('registration_shared_secret not available: config/_internal/api-key.txt is not mounted and MATRIX_REGISTRATION_SECRET is not set');
   }
 
   console.log(`[Matrix] Registering user with shared secret: ${options.username}`);

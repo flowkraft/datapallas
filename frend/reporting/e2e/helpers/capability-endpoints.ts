@@ -91,6 +91,12 @@ export const CAPABILITY_DOORS: Record<string, CapabilityDoor | NoDoor> = {
       'it is the absence of the other capabilities rather than a door of its own: it tells the' +
       ' frontend to draw a person their dashboards and nothing else',
   },
+  useAi: {
+    doorless:
+      'its doors are the AI Hub\'s own AI routes (/api/chat, /api/chat2db, /api/agents, /api/openai,' +
+      ' ...), which the AI Hub middleware opens to administrators only; no DataPallas endpoint' +
+      ' stands for it',
+  },
 };
 
 export function isDoorless(door: CapabilityDoor | NoDoor): door is NoDoor {

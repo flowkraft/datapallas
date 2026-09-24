@@ -15,7 +15,9 @@ export function AINavbar() {
   // — they are not navigation into the app.
   // A dashboard viewer is the other case with no navigation: everything in it authors something,
   // which is the one thing their account does not do. They get the dashboard switcher instead.
-  const { needsSignIn, username, roleLabel, dashboardsOnly } = useDpSession()
+  // The AI links (and the gear, whose only entry updates the agents) are for administrators; the
+  // middleware refuses those routes to anybody else by the same useAi flag.
+  const { needsSignIn, username, roleLabel, dashboardsOnly, canUseAi } = useDpSession()
   const pathname = usePathname()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -48,12 +50,12 @@ export function AINavbar() {
 
   const navLinks = [
     { href: "/explore-data", label: "Explore Data" },
-    { href: "/chat2db", label: "Chat2DB" },
-    { href: "/agents", label: "Data Greeks (AI Crew)" },
+    { href: "/chat2db", label: "Chat2DB", ai: true },
+    { href: "/agents", label: "Data Greeks (AI Crew)", ai: true },
     // Mnemosyne's home — the standalone Data Learning Tutor gets her own front door
     // (exactly like /chat2db is Athena's), instead of a hero on the /agents page.
-    { href: "/chat2mnemo", label: "Finding Mnemo" },
-  ]
+    { href: "/chat2mnemo", label: "Finding Mnemo", ai: true },
+  ].filter((link) => canUseAi || !link.ai)
 
   return (
     <header id="app-navbar" className="bg-base-100/90 text-base-content fixed top-0 left-0 right-0 z-30 flex h-16 w-full backdrop-blur border-b border-base-300">
@@ -103,7 +105,7 @@ export function AINavbar() {
           </a>
 
           {/* Settings gear — administration, so it goes with the navigation. */}
-          {!needsSignIn && !dashboardsOnly && (
+          {!needsSignIn && !dashboardsOnly && canUseAi && (
           <div className="relative">
             <button
               id="navbar-settings-button"

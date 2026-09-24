@@ -59,7 +59,11 @@ agents:
       config:
         # Points to ai-crew frontend's OpenAI-compatible Letta endpoint
         base_url: "http://flowkraft-ai-hub-frend:3000/api/openai/athena/v1"
-        api_key: ""   # Empty for local dev
+        # The AI Hub answers only callers holding the DataPallas API key. baibot reads it from the
+        # file DataPallas writes (config/_internal, mounted read-only in docker-compose.yml) at every
+        # start, so the key is never copied here. api_key stays as the fallback if the file is missing.
+        api_key: ""
+        api_key_file: /app/config/_internal/api-key.txt
         text_generation:
           model_id: "letta:athena"
 
@@ -68,6 +72,7 @@ agents:
       config:
         base_url: "http://flowkraft-ai-hub-frend:3000/api/openai/hephaestus/v1"
         api_key: ""
+        api_key_file: /app/config/_internal/api-key.txt
         text_generation:
           model_id: "letta:hephaestus"
 
@@ -76,6 +81,7 @@ agents:
       config:
         base_url: "http://flowkraft-ai-hub-frend:3000/api/openai/hermes/v1"
         api_key: ""
+        api_key_file: /app/config/_internal/api-key.txt
         text_generation:
           model_id: "letta:hermes"
 
@@ -84,6 +90,7 @@ agents:
       config:
         base_url: "http://flowkraft-ai-hub-frend:3000/api/openai/apollo/v1"
         api_key: ""
+        api_key_file: /app/config/_internal/api-key.txt
         text_generation:
           model_id: "letta:apollo"
 
@@ -92,6 +99,7 @@ agents:
       config:
         base_url: "http://flowkraft-ai-hub-frend:3000/api/openai/pythia/v1"
         api_key: ""
+        api_key_file: /app/config/_internal/api-key.txt
         text_generation:
           model_id: "letta:pythia"
 
@@ -100,6 +108,7 @@ agents:
       config:
         base_url: "http://flowkraft-ai-hub-frend:3000/api/openai/mnemosyne/v1"
         api_key: ""
+        api_key_file: /app/config/_internal/api-key.txt
         text_generation:
           model_id: "letta:mnemosyne"
 

@@ -411,7 +411,7 @@ I read it with `execute_shell_command` (`ls`, then `grep`/`sed` for the specific
 | -------------- | ----------------------------- |
 | A widget's rendering + what data shape it expects | `components/explore-data/widgets/<Type>Widget.tsx` (Number, Chart, Trend, Tabulator, Pivot, Map, Gauge, Progress, Detail, Sankey, FilterPane) + `useWidgetData.ts` |
 | **Exactly which knobs a widget's config exposes** | `components/explore-data/config-panels/<Type>Config.tsx` — the source of truth for every display option |
-| The Visual four-buckets + Finetune editors | `components/explore-data/query-builder/{DataStep,FilterStep,SummarizeStep,SortStep,VisualQueryBuilder,FinetuneEditor,AiSqlStep}.tsx` |
+| The Visual four-buckets + Finetune editors | `components/explore-data/query-builder/{DataStep,FilterStep,SummarizeStep,SortStep,VisualQueryBuilder,FinetuneEditor}.tsx` |
 | UI ↔ DSL bidirectional editing | `components/explore-data/config-panels/{DslCustomizer,BidirectionalDslCustomizer}.tsx` |
 | Canvas shell, panels, toolbar, Hey AI dialog | `components/explore-data/{Canvas,SchemaBrowser,ConfigPanel,CanvasToolbar,AddElementMenu,AiHelpDialog}.tsx` |
 | **The exact prompt each "Hey AI, Help Me…" button generates** | `lib/explore-data/ai-prompt-builder.ts` · `AiHelpDialog.tsx` — lets me hand the user the ready prompt with no round-trip |

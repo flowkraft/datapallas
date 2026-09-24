@@ -1,6 +1,7 @@
 // Patched from https://raw.githubusercontent.com/etkecc/baibot/v1.13.0/src/bot/load_config.rs
 // Implements BAIBOT_SEND_N_NEWEST_MESSAGES=N (e.g., =1) for Letta integration.
 // Letta manages its own conversation memory, so we only need to send the last N messages.
+// Also implements `api_key_file` on static agent definitions (see resolve_agent_api_key_files).
 
 use std::env;
 use std::path::PathBuf;
@@ -140,7 +141,57 @@ pub fn load() -> anyhow::Result<Config> {
         }
     }
 
+    // FlowKraft Patch: Fill static agents' api_key from the file named by their api_key_file
+    resolve_agent_api_key_files(&mut config);
+
     config.validate().map_err(|s| anyhow!(s))?;
 
     Ok(config)
+}
+
+// FlowKraft Patch: `api_key_file` on static agent definitions.
+//
+// The AI Hub agents are served by DataPallas' own AI Hub, which only answers callers that present
+// the installation's API key. DataPallas writes that key to config/_internal/api-key.txt, and the
+// playground apps read it from there rather than copying it anywhere. This lets baibot do the same:
+// an agent whose config names `api_key_file` gets its `api_key` from that file at every start, so
+// the key is never copied into config.yml and a new key is picked up on the next restart.
+//
+// Opt-in per agent on purpose: an agent pointing at an outside provider must never be handed the
+// DataPallas key just because its own api_key is empty.
+//
+// A missing or empty file does not stop the bot: the agent keeps whatever api_key the YAML gave it,
+// and the warning says which file to look for. eprintln! rather than tracing: this runs inside
+// load_config(), before main() has installed the tracing subscriber, so tracing would be dropped.
+fn resolve_agent_api_key_files(config: &mut Config) {
+    for agent in config.agents.static_definitions.iter_mut() {
+        let serde_yaml::Value::Mapping(agent_config) = &mut agent.config else {
+            continue;
+        };
+
+        let Some(path) = agent_config.remove("api_key_file") else {
+            continue;
+        };
+
+        let Some(path) = path.as_str() else {
+            eprintln!("baibot: agent {}: api_key_file is not a string; ignoring it", agent.id);
+            continue;
+        };
+
+        match std::fs::read_to_string(path) {
+            Ok(contents) if !contents.trim().is_empty() => {
+                agent_config.insert(
+                    serde_yaml::Value::from("api_key"),
+                    serde_yaml::Value::from(contents.trim()),
+                );
+                eprintln!("baibot: agent {}: api_key loaded from {}", agent.id, path);
+            }
+            Ok(_) => {
+                eprintln!("baibot: agent {}: {} is empty; keeping the api_key from the config", agent.id, path);
+            }
+            Err(err) => {
+                eprintln!("baibot: agent {}: cannot read {} ({}); keeping the api_key from the config", agent.id, path, err);
+            }
+        }
+    }
 }

@@ -40,6 +40,14 @@ type DpSession = {
    * reducing an author to a dashboard viewer because an older backend said nothing.
    */
   dashboardsOnly: boolean;
+  /**
+   * May this person use the AI — the chats, the agents, Chat2DB?
+   *
+   * <p>`useAi`, from the same `capabilitiesOf()` table: administrators only. The middleware refuses
+   * the AI routes by the same flag; this only keeps the navbar from offering them. Defaults to true
+   * like `canEditReports`, so the desktop shows everything.
+   */
+  canUseAi: boolean;
 };
 
 /**
@@ -61,6 +69,7 @@ const Context = createContext<DpSession>({
   roleLabel: '',
   canEditReports: true,
   dashboardsOnly: false,
+  canUseAi: true,
 });
 
 /** Who is using the AI Hub. One probe, read by the navbar and the gate alike. */
@@ -86,6 +95,7 @@ export function DpSessionProvider({ children }: { children: React.ReactNode }) {
     roleLabel: '',
     canEditReports: true,
     dashboardsOnly: false,
+    canUseAi: true,
   });
 
   useEffect(() => {
@@ -107,6 +117,7 @@ export function DpSessionProvider({ children }: { children: React.ReactNode }) {
           // Absent capabilities mean an older backend, not a refusal — keep the app usable.
           canEditReports: identity.capabilities?.editReports !== false,
           dashboardsOnly: identity.capabilities?.dashboardsOnly === true,
+          canUseAi: identity.capabilities?.useAi !== false,
         });
       })
       .catch(() => {

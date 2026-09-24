@@ -25,13 +25,15 @@ export async function chat2dbStreamOne(
   question: string,
   signal: AbortSignal,
   sendSchema: boolean,
+  /** The connected database the question is about; "" asks a product question. */
+  connectionCode: string,
 ): Promise<void> {
   let acc = "";
   try {
     const res = await fetch("/api/chat2db", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, send_schema: sendSchema }),
+      body: JSON.stringify({ question, send_schema: sendSchema, connection_code: connectionCode }),
       signal,
     });
 
