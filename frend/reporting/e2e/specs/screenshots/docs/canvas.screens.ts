@@ -48,9 +48,10 @@ const VIEWPORT = { width: 1500, height: 900 };
  *
  * The 5 Northwind sample cubes (northwind-customers, northwind-sales, northwind-hr,
  * northwind-inventory, northwind-warehouse) are attached to this connection,
- * so once it's selected the SchemaBrowser shows them under CUBES. The 15 story-*
- * cubes ship next to them and are attached to the DuckDB sample connection, whose
- * cube_demo schema holds the data they read.
+ * so once it's selected the SchemaBrowser shows them under CUBES. The 8 cube_demo
+ * cube files (deals, tickets, shipments, shop, school, invoices-and-payments,
+ * accounts-receivable, students-per-program) ship next to them and are attached to
+ * the DuckDB sample connection, whose cube_demo schema holds the data they read.
  *
  * Synthetic samples appear in GET /api/connections/database only when
  * Settings.isShowSamplesEnabled() is true (reads config/_internal/settings.xml

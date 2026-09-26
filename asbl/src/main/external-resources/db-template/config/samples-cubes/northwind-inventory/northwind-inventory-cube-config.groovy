@@ -24,7 +24,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 cube {
-  sql_table 'Products'
+  sql_table '"Products"'
   title 'Northwind Product Inventory'
   description 'Product catalog with stock levels, categories and suppliers'
 
@@ -33,7 +33,7 @@ cube {
     name 'ProductID'
     title 'Product ID'
     description 'Unique product identifier'
-    sql 'ProductID'
+    sql '"ProductID"'
     type 'number'
     primary_key true
   }
@@ -41,49 +41,49 @@ cube {
     name 'ProductName'
     title 'Product Name'
     description 'Name of the product'
-    sql 'ProductName'
+    sql '"ProductName"'
     type 'string'
   }
   dimension {
     name 'QuantityPerUnit'
     title 'Pack Size'
     description 'Quantity per package (e.g. "10 boxes x 20 bags")'
-    sql 'QuantityPerUnit'
+    sql '"QuantityPerUnit"'
     type 'string'
   }
   dimension {
     name 'Discontinued'
     title 'Discontinued'
     description '1 if the product is no longer sold, 0 if active'
-    sql 'Discontinued'
+    sql '"Discontinued"'
     type 'number'
   }
   dimension {
     name 'UnitsInStock'
     title 'Units In Stock'
     description 'Current inventory count'
-    sql 'UnitsInStock'
+    sql '"UnitsInStock"'
     type 'number'
   }
   dimension {
     name 'UnitsOnOrder'
     title 'Units On Order'
     description 'Units currently on order from suppliers'
-    sql 'UnitsOnOrder'
+    sql '"UnitsOnOrder"'
     type 'number'
   }
   dimension {
     name 'ReorderLevel'
     title 'Reorder Level'
     description 'Minimum stock threshold before reordering (may be NULL)'
-    sql 'ReorderLevel'
+    sql '"ReorderLevel"'
     type 'number'
   }
   dimension {
     name 'UnitPrice'
     title 'Unit Price'
     description 'Catalog price per unit'
-    sql 'UnitPrice'
+    sql '"UnitPrice"'
     type 'number'
   }
 
@@ -92,7 +92,7 @@ cube {
     name 'CategoryName'
     title 'Category'
     description 'Product category name'
-    sql 'Categories.CategoryName'
+    sql '"Categories"."CategoryName"'
     type 'string'
   }
 
@@ -101,21 +101,21 @@ cube {
     name 'SupplierName'
     title 'Supplier'
     description 'Supplier company name'
-    sql 'Suppliers.CompanyName'
+    sql '"Suppliers"."CompanyName"'
     type 'string'
   }
   dimension {
     name 'SupplierCountry'
     title 'Supplier Country'
     description 'Country where the supplier is based (sourcing strategy / compliance)'
-    sql 'Suppliers.Country'
+    sql '"Suppliers"."Country"'
     type 'string'
   }
   dimension {
     name 'SupplierCity'
     title 'Supplier City'
     description 'City where the supplier is based (concentration-risk analysis)'
-    sql 'Suppliers.City'
+    sql '"Suppliers"."City"'
     type 'string'
   }
 
@@ -135,7 +135,7 @@ cube {
     name 'InventoryValue'
     title 'Inventory Value'
     description 'Dollar value of stock on hand (UnitsInStock \u00d7 UnitPrice). The classic inventory KPI.'
-    sql '(${CUBE}.UnitsInStock * ${CUBE}.UnitPrice)'
+    sql '(${CUBE}."UnitsInStock" * ${CUBE}."UnitPrice")'
     type 'sum'
     format 'currency'
   }
@@ -143,21 +143,21 @@ cube {
     name 'TotalUnitsInStock'
     title 'Total Units In Stock'
     description 'Sum of all units currently in stock'
-    sql '${CUBE}.UnitsInStock'
+    sql '${CUBE}."UnitsInStock"'
     type 'sum'
   }
   measure {
     name 'TotalUnitsOnOrder'
     title 'Total Units On Order'
     description 'Sum of all units currently on order from suppliers'
-    sql '${CUBE}.UnitsOnOrder'
+    sql '${CUBE}."UnitsOnOrder"'
     type 'sum'
   }
   measure {
     name 'AvgUnitPrice'
     title 'Average Unit Price'
     description "Average catalog price. PICK THIS WHEN: grouping by category / supplier. (At product grain it just returns the single product's own price.)"
-    sql '${CUBE}.UnitPrice'
+    sql '${CUBE}."UnitPrice"'
     type 'avg'
     format 'currency'
   }
@@ -165,21 +165,21 @@ cube {
     name 'UniqueSuppliers'
     title 'Unique Suppliers'
     description 'Number of distinct suppliers. PICK THIS WHEN: grouping by category / segment. (At product or supplier grain it always returns 1.)'
-    sql '${CUBE}.SupplierID'
+    sql '${CUBE}."SupplierID"'
     type 'count_distinct'
   }
 
   // ── Joins (L1 only) ─────────────────────────────────────────────────────
   join {
-    name 'Categories'
+    name '"Categories"'
     parent 'CUBE'
-    sql '${CUBE}.CategoryID = Categories.CategoryID'
+    sql '${CUBE}."CategoryID" = "Categories"."CategoryID"'
     relationship 'many_to_one'
   }
   join {
-    name 'Suppliers'
+    name '"Suppliers"'
     parent 'CUBE'
-    sql '${CUBE}.SupplierID = Suppliers.SupplierID'
+    sql '${CUBE}."SupplierID" = "Suppliers"."SupplierID"'
     relationship 'many_to_one'
   }
 
@@ -188,31 +188,31 @@ cube {
     name 'in_stock'
     title 'In Stock'
     description 'Products with at least one unit in stock'
-    sql '${CUBE}.UnitsInStock > 0'
+    sql '${CUBE}."UnitsInStock" > 0'
   }
   segment {
     name 'out_of_stock'
     title 'Out of Stock'
     description 'Products with zero units in stock'
-    sql '${CUBE}.UnitsInStock = 0'
+    sql '${CUBE}."UnitsInStock" = 0'
   }
   segment {
     name 'reorder_needed'
     title 'Reorder Needed'
     description 'Products at or below their reorder level'
-    sql '${CUBE}.UnitsInStock <= ${CUBE}.ReorderLevel AND ${CUBE}.ReorderLevel > 0'
+    sql '${CUBE}."UnitsInStock" <= ${CUBE}."ReorderLevel" AND ${CUBE}."ReorderLevel" > 0'
   }
   segment {
     name 'active'
     title 'Active Products'
     description 'Products that are not discontinued'
-    sql '${CUBE}.Discontinued = 0'
+    sql '${CUBE}."Discontinued" = 0'
   }
   segment {
     name 'discontinued'
     title 'Discontinued'
     description 'Products that are discontinued'
-    sql '${CUBE}.Discontinued = 1'
+    sql '${CUBE}."Discontinued" = 1'
   }
 
   // ── Hierarchies ─────────────────────────────────────────────────────────

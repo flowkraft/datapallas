@@ -30,7 +30,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 cube {
-  sql_table 'Orders'
+  sql_table '"Orders"'
   title 'Northwind Sales Analysis'
   description 'Sales transactions by customer, employee, product, time and geography'
 
@@ -39,7 +39,7 @@ cube {
     name 'OrderID'
     title 'Order ID'
     description 'Unique order identifier'
-    sql '${CUBE}.OrderID'
+    sql '${CUBE}."OrderID"'
     type 'number'
     primary_key true
   }
@@ -47,28 +47,28 @@ cube {
     name 'OrderDate'
     title 'Order Date'
     description 'When the order was placed'
-    sql 'OrderDate'
+    sql '"OrderDate"'
     type 'time'
   }
   dimension {
     name 'ShippedDate'
     title 'Shipped Date'
     description 'When the order shipped (NULL = not yet shipped)'
-    sql 'ShippedDate'
+    sql '"ShippedDate"'
     type 'time'
   }
   dimension {
     name 'ShipCountry'
     title 'Ship Country'
     description 'Destination country'
-    sql 'ShipCountry'
+    sql '"ShipCountry"'
     type 'string'
   }
   dimension {
     name 'ShipCity'
     title 'Ship City'
     description 'Destination city'
-    sql 'ShipCity'
+    sql '"ShipCity"'
     type 'string'
   }
 
@@ -77,21 +77,21 @@ cube {
     name 'Quantity'
     title 'Line Quantity'
     description 'Units sold per line item'
-    sql '"Order Details".Quantity'
+    sql '"Order Details"."Quantity"'
     type 'number'
   }
   dimension {
     name 'LineUnitPrice'
     title 'Line Unit Price'
     description 'Unit price actually paid (per line item)'
-    sql '"Order Details".UnitPrice'
+    sql '"Order Details"."UnitPrice"'
     type 'number'
   }
   dimension {
     name 'Discount'
     title 'Discount'
     description 'Discount applied to line item (0.0 to 1.0)'
-    sql '"Order Details".Discount'
+    sql '"Order Details"."Discount"'
     type 'number'
   }
 
@@ -100,7 +100,7 @@ cube {
     name 'ProductName'
     title 'Product'
     description 'Product name'
-    sql 'Products.ProductName'
+    sql '"Products"."ProductName"'
     type 'string'
   }
 
@@ -109,7 +109,7 @@ cube {
     name 'CategoryName'
     title 'Category'
     description 'Product category name'
-    sql 'Categories.CategoryName'
+    sql '"Categories"."CategoryName"'
     type 'string'
   }
 
@@ -118,14 +118,14 @@ cube {
     name 'SupplierName'
     title 'Supplier'
     description 'Supplier company name'
-    sql 'Suppliers.CompanyName'
+    sql '"Suppliers"."CompanyName"'
     type 'string'
   }
   dimension {
     name 'SupplierCountry'
     title 'Supplier Country'
     description 'Country where the supplier is based'
-    sql 'Suppliers.Country'
+    sql '"Suppliers"."Country"'
     type 'string'
   }
 
@@ -134,21 +134,21 @@ cube {
     name 'CustomerCompanyName'
     title 'Customer'
     description 'Customer company name'
-    sql 'Customers.CompanyName'
+    sql '"Customers"."CompanyName"'
     type 'string'
   }
   dimension {
     name 'CustomerCountry'
     title 'Customer Country'
     description 'Country where the customer is based'
-    sql 'Customers.Country'
+    sql '"Customers"."Country"'
     type 'string'
   }
   dimension {
     name 'CustomerCity'
     title 'Customer City'
     description 'City where the customer is based'
-    sql 'Customers.City'
+    sql '"Customers"."City"'
     type 'string'
   }
 
@@ -157,7 +157,7 @@ cube {
     name 'EmployeeName'
     title 'Sales Rep'
     description 'Employee who took the order (concatenated first + last name)'
-    sql "Employees.FirstName || ' ' || Employees.LastName"
+    sql "\"Employees\".\"FirstName\" || ' ' || \"Employees\".\"LastName\""
     type 'string'
   }
 
@@ -166,7 +166,7 @@ cube {
     name 'ShipperName'
     title 'Shipper'
     description 'Shipping company name'
-    sql 'Shippers.CompanyName'
+    sql '"Shippers"."CompanyName"'
     type 'string'
   }
 
@@ -175,7 +175,7 @@ cube {
     name 'OrderCount'
     title 'Order Count'
     description 'Number of unique orders. PICK THIS WHEN: NOT grouping by OrderID. (At order grain it always returns 1, which is meaningless.)'
-    sql '${CUBE}.OrderID'
+    sql '${CUBE}."OrderID"'
     type 'count_distinct'
   }
   // ── Revenue measures (two grain-specific names for the same SQL) ──
@@ -190,7 +190,7 @@ cube {
     name 'Revenue'
     title 'Revenue'
     description 'Sum of (UnitPrice \u00d7 Quantity \u00d7 (1 - Discount)) across all line items in scope. PICK THIS WHEN: grouping at customer / product / category / supplier / time grain. For per-order browsing use Order Value instead.'
-    sql '("Order Details".UnitPrice * "Order Details".Quantity * (1 - "Order Details".Discount))'
+    sql '("Order Details"."UnitPrice" * "Order Details"."Quantity" * (1 - "Order Details"."Discount"))'
     type 'sum'
     format 'currency'
   }
@@ -198,7 +198,7 @@ cube {
     name 'OrderValue'
     title 'Order Value'
     description 'Total value of an individual order. PICK THIS WHEN: grouping by Order ID for invoice-ledger / per-order browsing. For aggregated revenue use Revenue instead.'
-    sql '("Order Details".UnitPrice * "Order Details".Quantity * (1 - "Order Details".Discount))'
+    sql '("Order Details"."UnitPrice" * "Order Details"."Quantity" * (1 - "Order Details"."Discount"))'
     type 'sum'
     format 'currency'
   }
@@ -206,21 +206,21 @@ cube {
     name 'TotalQuantity'
     title 'Units Sold'
     description 'Total quantity sold across all line items'
-    sql '"Order Details".Quantity'
+    sql '"Order Details"."Quantity"'
     type 'sum'
   }
   measure {
     name 'AvgDiscount'
     title 'Average Discount'
     description 'Average discount applied across line items (0.0 to 1.0 \u2014 multiply by 100 for percent)'
-    sql '"Order Details".Discount'
+    sql '"Order Details"."Discount"'
     type 'avg'
   }
   measure {
     name 'TotalFreight'
     title 'Total Freight'
     description 'Sum of freight charges.'
-    sql '${CUBE}.Freight'
+    sql '${CUBE}."Freight"'
     type 'sum'
     format 'currency'
   }
@@ -228,14 +228,14 @@ cube {
     name 'UniqueCustomers'
     title 'Unique Customers'
     description 'Number of distinct customers'
-    sql '${CUBE}.CustomerID'
+    sql '${CUBE}."CustomerID"'
     type 'count_distinct'
   }
   measure {
     name 'UniqueProducts'
     title 'Unique Products'
     description 'Number of distinct products sold'
-    sql '"Order Details".ProductID'
+    sql '"Order Details"."ProductID"'
     type 'count_distinct'
   }
 
@@ -246,43 +246,43 @@ cube {
   join {
     name '"Order Details"'
     parent 'CUBE'
-    sql '${CUBE}.OrderID = "Order Details".OrderID'
+    sql '${CUBE}."OrderID" = "Order Details"."OrderID"'
     relationship 'one_to_many'
   }
   join {
-    name 'Products'
+    name '"Products"'
     parent '"Order Details"'
-    sql '"Order Details".ProductID = Products.ProductID'
+    sql '"Order Details"."ProductID" = "Products"."ProductID"'
     relationship 'many_to_one'
   }
   join {
-    name 'Categories'
-    parent 'Products'
-    sql 'Products.CategoryID = Categories.CategoryID'
+    name '"Categories"'
+    parent '"Products"'
+    sql '"Products"."CategoryID" = "Categories"."CategoryID"'
     relationship 'many_to_one'
   }
   join {
-    name 'Suppliers'
-    parent 'Products'
-    sql 'Products.SupplierID = Suppliers.SupplierID'
+    name '"Suppliers"'
+    parent '"Products"'
+    sql '"Products"."SupplierID" = "Suppliers"."SupplierID"'
     relationship 'many_to_one'
   }
   join {
-    name 'Customers'
+    name '"Customers"'
     parent 'CUBE'
-    sql '${CUBE}.CustomerID = Customers.CustomerID'
+    sql '${CUBE}."CustomerID" = "Customers"."CustomerID"'
     relationship 'many_to_one'
   }
   join {
-    name 'Employees'
+    name '"Employees"'
     parent 'CUBE'
-    sql '${CUBE}.EmployeeID = Employees.EmployeeID'
+    sql '${CUBE}."EmployeeID" = "Employees"."EmployeeID"'
     relationship 'many_to_one'
   }
   join {
-    name 'Shippers'
+    name '"Shippers"'
     parent 'CUBE'
-    sql '${CUBE}.ShipVia = Shippers.ShipperID'
+    sql '${CUBE}."ShipVia" = "Shippers"."ShipperID"'
     relationship 'many_to_one'
   }
 
@@ -291,25 +291,25 @@ cube {
     name 'shipped'
     title 'Shipped Orders'
     description 'Orders that have been shipped'
-    sql '${CUBE}.ShippedDate IS NOT NULL'
+    sql '${CUBE}."ShippedDate" IS NOT NULL'
   }
   segment {
     name 'unshipped'
     title 'Not Yet Shipped'
     description 'Orders still pending shipment (outstanding)'
-    sql '${CUBE}.ShippedDate IS NULL'
+    sql '${CUBE}."ShippedDate" IS NULL'
   }
   segment {
     name 'late_shipment'
     title 'Late Shipments'
     description 'Orders shipped after the customer-promised required date'
-    sql '${CUBE}.ShippedDate > ${CUBE}.RequiredDate'
+    sql '${CUBE}."ShippedDate" > ${CUBE}."RequiredDate"'
   }
   segment {
     name 'with_discount'
     title 'Discounted Lines'
     description 'Line items with a non-zero discount applied'
-    sql '"Order Details".Discount > 0'
+    sql '"Order Details"."Discount" > 0'
   }
 
   // ── Hierarchies (drill-down paths) ─────────────────────────────────────

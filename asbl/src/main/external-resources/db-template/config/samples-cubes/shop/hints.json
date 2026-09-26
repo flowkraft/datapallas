@@ -1,0 +1,107 @@
+[
+  {
+    "id": "sales-by-country",
+    "fromStory": 13,
+    "question": "What did we sell, and where?",
+    "text": "Tick **Orders**, **Shipping Fees** and **Gross Sales**, then add **Country**.",
+    "query": {
+      "dimensions": [
+        "Country"
+      ],
+      "measures": [
+        "Orders",
+        "ShippingFees",
+        "GrossSales"
+      ]
+    },
+    "variants": [
+      {
+        "id": "totals",
+        "text": "Drop the field: an order with ten lines still counts once.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Orders",
+            "ShippingFees",
+            "GrossSales"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "customers-by-country",
+    "fromStory": 13,
+    "question": "How many different people bought, and where from?",
+    "text": "Tick **Orders** and **Customers**, then add **Country**.",
+    "query": {
+      "dimensions": [
+        "Country"
+      ],
+      "measures": [
+        "Orders",
+        "Customers"
+      ]
+    },
+    "variants": [
+      {
+        "id": "totals",
+        "text": "Drop the field: guest orders count nobody.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Orders",
+            "Customers"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "customers-by-category",
+    "fromStory": 13,
+    "question": "How many different people bought in each product category?",
+    "text": "Tick **Customers** and add **Category** - the count stays right through the order lines.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "Customers"
+      ]
+    }
+  },
+  {
+    "id": "what-sells",
+    "fromStory": 13,
+    "question": "What sells?",
+    "text": "Tick **Units** and **Gross Sales**, then add **Category**.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "Units",
+        "GrossSales"
+      ]
+    }
+  },
+  {
+    "id": "discount-by-category",
+    "fromStory": null,
+    "question": "How deep do the discounts go? (new: the sale read line by line)",
+    "text": "Switch to the **Order Lines** cube, tick **Lines**, **Line Gross**, **Line Net** and **Average Discount %**, then add **Category**.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "Lines",
+        "LineGross",
+        "LineNet",
+        "AvgDiscountPct"
+      ],
+      "cubeName": "order_lines"
+    }
+  }
+]

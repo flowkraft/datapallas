@@ -1,0 +1,23 @@
+[
+  {
+    "hint": "students-per-program",
+    "rows": [
+      [
+        "Business Administration",
+        75
+      ],
+      [
+        "Computer Science",
+        75
+      ],
+      [
+        "Economics",
+        75
+      ],
+      [
+        "Mechanical Engineering",
+        75
+      ]
+    ]
+  }
+]

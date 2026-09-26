@@ -748,8 +748,7 @@ public class CliJob {
 					decryptedPassword)) {
 
 				// The bindings live in one place, so a seed script behaves the same here, in the
-				// packager and in the tests. It also gets 'scriptDir', for a script that ships
-				// its data files next to itself.
+				// packager and in the tests.
 				com.sourcekraft.documentburster.common.db.SeedScriptRunner.run(conn, vendor,
 						Path.of(scriptFilePath), params);
 			}

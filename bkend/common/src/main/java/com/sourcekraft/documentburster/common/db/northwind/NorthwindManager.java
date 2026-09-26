@@ -12,6 +12,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +50,9 @@ public class NorthwindManager implements AutoCloseable {
 	private final Map<DatabaseVendor, Boolean> runningDatabases = new HashMap<>();
 	private final Map<DatabaseVendor, Path> activeDataPaths = new HashMap<>();
 	private final Map<DatabaseVendor, Integer> activeHostPorts = new HashMap<>();
+
+	/** Databases this manager did not start, and where they are. See {@link #setJdbcOverride}. */
+	private final Map<DatabaseVendor, String[]> jdbcOverrides = new HashMap<>();
 
 	private final String baseDataPath;
 	private final String dockerComposeFilePath;
@@ -397,7 +401,24 @@ public class NorthwindManager implements AutoCloseable {
 	 * Uses Utils.getEffectiveHost() to handle Docker environment detection,
 	 * automatically converting localhost to host.docker.internal when running in Docker.
 	 */
+	/**
+	 * Says where a database already is, instead of where this manager would have started one.
+	 *
+	 * <p>Everything here reaches a database through {@link #getJdbcUrl}, which builds
+	 * {@code localhost:<published port>} - true for the databases this manager starts itself. A
+	 * caller that has its own container (a test loop on a Docker network, reaching it by service
+	 * name and publishing no port) hands that address over here, and then loads Northwind through
+	 * the very same methods a customer's install uses, rather than a second loader.
+	 */
+	public void setJdbcOverride(DatabaseVendor vendor, String jdbcUrl, String user, String password) {
+		jdbcOverrides.put(vendor, new String[] { jdbcUrl, user, password });
+	}
+
 	public String getJdbcUrl(DatabaseVendor vendor) {
+
+		String[] given = jdbcOverrides.get(vendor);
+		if (given != null)
+			return given[0];
 
 		int hostPort = activeHostPorts.getOrDefault(vendor, getDefaultHostPort(vendor));
 		String dbName = vendor.getDefaultDbName();
@@ -447,6 +468,19 @@ public class NorthwindManager implements AutoCloseable {
 	}
 
 	/**
+	 * What to ask the cube_demo seed script for: {@code today} (the day the data should end on, as
+	 * {@code yyyy-MM-dd}) and {@code wipe}. A package build and an installed product leave this
+	 * null, so the sample is current on the day it was made and an existing one is left alone; a
+	 * test sets both, so a truth about the data stays a truth and a reused file never keeps stale
+	 * rows.
+	 */
+	private Map<String, String> cubeDemoSeedParams;
+
+	public void setCubeDemoSeedParams(Map<String, String> params) {
+		this.cubeDemoSeedParams = params;
+	}
+
+	/**
 	 * Loads the Cube Stories demo data into the DuckDB sample, with the script that ships next to
 	 * the sample databases. A data folder with no scripts/ sibling is not an error: Northwind is
 	 * built as before, without the cube_demo schema. A seed that fails is thrown, like a warehouse
@@ -461,9 +495,18 @@ public class NorthwindManager implements AutoCloseable {
 			return;
 		}
 
+		// The script reads its rows from the installation unless it is told otherwise, and at build
+		// time there is no installation: the rows are in the folder being packaged, next to the
+		// script.
+		Map<String, String> params = new LinkedHashMap<>();
+		if (cubeDemoSeedParams != null) {
+			params.putAll(cubeDemoSeedParams);
+		}
+		params.put("dataDir", script.getParent().resolve("cube-demo-data").toAbsolutePath().toString());
+
 		log.info("Loading the cube_demo demo data into {} with {}", duckdbPath, script);
 		try (Connection duckConn = DriverManager.getConnection("jdbc:duckdb:" + duckdbPath)) {
-			SeedScriptRunner.run(duckConn, DatabaseVendor.DUCKDB.name(), script, null);
+			SeedScriptRunner.run(duckConn, DatabaseVendor.DUCKDB.name(), script, params);
 		}
 		log.info("cube_demo demo data loaded");
 	}
@@ -541,11 +584,9 @@ public class NorthwindManager implements AutoCloseable {
         if (vendor == DatabaseVendor.CLICKHOUSE) {
             log.info("Initializing ClickHouse data warehouse (Star Schema)...");
             
-            // Get JDBC URL with proper host/port
-            int clickHouseHostPort = activeHostPorts.getOrDefault(vendor, getDefaultHostPort(vendor));
-            String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(clickHouseHostPort));
-            String jdbcUrl = "jdbc:clickhouse://" + reachable[0] + ":" + reachable[1] + "/"
-                    + vendor.getDefaultDbName() + ServerDatabaseSettings.CLICKHOUSE_CONNECT_OPTIONS;
+            // Where ClickHouse is. getJdbcUrl builds exactly this, and also honours an address
+            // given by setJdbcOverride, so a caller with its own container is not rebuilt around.
+            String jdbcUrl = getJdbcUrl(vendor);
             
             // SQLite path - SQLite and ClickHouse marker folders are siblings under the same parent (db/)
             // Use hostDataPath.getParent() for consistency with DuckDB approach
@@ -678,11 +719,13 @@ public class NorthwindManager implements AutoCloseable {
 	}
 
 	public String getUsername(DatabaseVendor vendor) {
-		return vendor.getDefaultUser();
+		String[] given = jdbcOverrides.get(vendor);
+		return given != null ? given[1] : vendor.getDefaultUser();
 	}
 
 	public String getPassword(DatabaseVendor vendor) {
-		return vendor.getDefaultPassword();
+		String[] given = jdbcOverrides.get(vendor);
+		return given != null ? given[2] : vendor.getDefaultPassword();
 	}
 
 	public boolean isRunning(DatabaseVendor vendor) {

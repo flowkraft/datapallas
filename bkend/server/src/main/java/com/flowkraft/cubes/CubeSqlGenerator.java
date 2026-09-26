@@ -271,7 +271,16 @@ public class CubeSqlGenerator {
 					}
 				}
 			}
-			if (dim == null) continue;
+			if (dim == null) {
+				// A name the cube has not got. Dropping it quietly would answer a DIFFERENT question
+				// than the one asked - the same rows, grouped by less - and the caller would never
+				// know. A measure it has not got is already refused, and so is a filter and an
+				// order on one; a dimension is refused the same way, and the endpoint answers it
+				// as a 400.
+				throw new IllegalArgumentException("Dimension '" + requested
+						+ "' is not a dimension of this cube. Its dimensions are: "
+						+ memberNames(cube.getDimensions()) + ".");
+			}
 
 			refuseWhatTheCubeGotWrong(cube, "dimension", dim);
 
@@ -1420,7 +1429,7 @@ public class CubeSqlGenerator {
 
 		String condition = filterCondition(meas, cube, cubeRef, referencedTables);
 		if (two == null) {
-			return aggregate(type, sqlExpr, explicitSql != null, condition);
+			return aggregate(type, sqlExpr, explicitSql != null, condition, vendor);
 		}
 
 		// The two-level form: the value this measure aggregates is computed once per row of the
@@ -1434,7 +1443,7 @@ public class CubeSqlGenerator {
 		String value = condition == null
 				? sqlExpr
 				: "CASE WHEN " + condition + " THEN " + sqlExpr + " END";
-		return aggregate(type, two.column(value), true, null);
+		return aggregate(type, two.column(value), true, null, vendor);
 	}
 
 	/**
@@ -1504,13 +1513,17 @@ public class CubeSqlGenerator {
 	 *
 	 * <p>SUM and AVG are cast to a fixed DECIMAL so that the same query answers the same number on
 	 * every database: left alone, an integer column sums to an integer here and to a floating-point
-	 * value there. COUNT, COUNT DISTINCT, MIN and MAX keep the column's own type.
+	 * value there. Which decimal that is comes from {@link CubeSqlDialect#decimalType}, because two
+	 * engines cannot use the same one. COUNT, COUNT DISTINCT, MIN and MAX keep the column's own
+	 * type.
 	 *
 	 * <p>A measure's {@code filters} become a {@code CASE} inside the aggregate — the standard way
 	 * to aggregate part of the rows without a second query.
 	 */
-	private static String aggregate(String type, String sqlExpr, boolean hasExplicitSql, String condition) {
+	private static String aggregate(String type, String sqlExpr, boolean hasExplicitSql, String condition,
+			String vendor) {
 
+		String decimal = CubeSqlDialect.decimalType(vendor);
 		boolean filtered = condition != null;
 
 		if (filtered && "count".equals(type) && !hasExplicitSql) {
@@ -1521,9 +1534,9 @@ public class CubeSqlGenerator {
 
 		switch (type) {
 			case "sum":
-				return "CAST(SUM(" + value + ") AS DECIMAL(31,4))";
+				return "CAST(SUM(" + value + ") AS " + decimal + ")";
 			case "avg":
-				return "CAST(AVG(CAST(" + value + " AS DECIMAL(31,4))) AS DECIMAL(31,4))";
+				return "CAST(AVG(CAST(" + value + " AS " + decimal + ")) AS " + decimal + ")";
 			case "min":
 				return "MIN(" + value + ")";
 			case "max":
@@ -1566,6 +1579,15 @@ public class CubeSqlGenerator {
 		String parent = Objects.toString(join.get("parent"), "CUBE");
 		addJoinAndAncestors(parent, joinByName, requiredJoins);
 		requiredJoins.add(joinName);
+	}
+
+	/** The names of a cube's dimensions or measures, for a refusal that says what there IS. */
+	private static List<String> memberNames(List<Map<String, Object>> members) {
+		if (members == null) return List.of();
+		List<String> names = new ArrayList<>();
+		for (Map<String, Object> member : members)
+			names.add(Objects.toString(member.get("name"), ""));
+		return names;
 	}
 
 	private static Map<String, Object> findMember(List<Map<String, Object>> members, String name) {

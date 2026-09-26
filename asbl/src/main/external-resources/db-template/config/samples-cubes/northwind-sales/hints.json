@@ -1,0 +1,16 @@
+[
+  {
+    "id": "freight-by-country",
+    "fromStory": 20,
+    "question": "What do we pay in freight, country by country?",
+    "text": "Tick **Total Freight** and add **Ship Country**.",
+    "query": {
+      "dimensions": [
+        "ShipCountry"
+      ],
+      "measures": [
+        "TotalFreight"
+      ]
+    }
+  }
+]

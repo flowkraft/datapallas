@@ -637,7 +637,10 @@ public class CubeOptionsParserTest {
 				"../../asbl/src/main/external-resources/db-template/config/samples-cubes/northwind-sales",
 				"northwind-sales-cube-config.groovy"));
 		Map<String, String> where = CubeOptionsParser.parseGroovyCubeDslCode(sales).getDimensionTables();
-		assertEquals("Categories", where.get("CategoryName"), "A field of a joined table names it");
+		// The Northwind cubes name every table the ANSI way, because that is how their bundled
+		// SQLite Northwind creates them, so the table a field lives on comes back as the cube
+		// writes it - quotes and all. A picker that wants it plain unquotes it for display.
+		assertEquals("\"Categories\"", where.get("CategoryName"), "A field of a joined table names it");
 		assertEquals("\"Order Details\"", where.get("Quantity"),
 				"and a joined table whose name needs quotes is named as the cube writes it");
 		assertEquals("", where.get("ShipCountry"), "A field of the cube's own table names nothing");

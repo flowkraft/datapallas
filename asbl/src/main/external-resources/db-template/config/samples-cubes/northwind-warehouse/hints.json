@@ -1,0 +1,16 @@
+[
+  {
+    "id": "revenue-by-continent",
+    "fromStory": 10,
+    "question": "What does each continent bring in?",
+    "text": "Tick **Gross Revenue** and add **Continent**.",
+    "query": {
+      "dimensions": [
+        "Continent"
+      ],
+      "measures": [
+        "GrossRevenue"
+      ]
+    }
+  }
+]

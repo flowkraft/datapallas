@@ -447,9 +447,9 @@ class CubeSqlGeneratorTest {
 	// Parses each of the five Northwind sample cube DSL files from samples-cubes/
 	// and generates SQL for a representative dimension+measure combination.
 	// This catches DSL syntax errors and ensures the cubes compile against
-	// the actual Northwind schema before they ship. The fifteen story cubes that
-	// ship next to them are swept whole in CubeSampleSqlExecutesTest, which runs
-	// every one of their dimensions against a real database.
+	// the actual Northwind schema before they ship. The eight cube_demo cube files
+	// that ship next to them are swept whole in CubeSampleSqlExecutesTest, which
+	// runs every dimension of every cube in them against a real database.
 
 	private static String SAMPLES_CUBES_DIR =
 			"../../asbl/src/main/external-resources/db-template/config/samples-cubes";
@@ -468,7 +468,7 @@ class CubeSqlGeneratorTest {
 		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
 		assertNotNull(cube);
-		assertEquals("Orders", cube.getSqlTable());
+		assertEquals("\"Orders\"", cube.getSqlTable());
 		assertNotNull(cube.getDimensions());
 		assertNotNull(cube.getMeasures());
 		assertNotNull(cube.getJoins());
@@ -479,27 +479,27 @@ class CubeSqlGeneratorTest {
 				List.of("CategoryName"), List.of("Revenue"), "sqlite");
 		assertNotNull(sql1);
 		assertTrue(sql1.contains("JOIN \"Order Details\""), "Should JOIN \"Order Details\"");
-		assertTrue(sql1.contains("JOIN Products"), "Should JOIN Products (transitive)");
-		assertTrue(sql1.contains("JOIN Categories"), "Should JOIN Categories");
+		assertTrue(sql1.contains("JOIN \"Products\""), "Should JOIN \"Products\" (transitive)");
+		assertTrue(sql1.contains("JOIN \"Categories\""), "Should JOIN Categories");
 
 		// Test 2: pick a SupplierName (also 3-level: Order Details → Products → Suppliers)
 		String sql2 = CubeSqlGenerator.generateSql(cube,
 				List.of("SupplierName"), List.of("Revenue"), "sqlite");
 		assertTrue(sql2.contains("JOIN \"Order Details\""));
-		assertTrue(sql2.contains("JOIN Products"));
-		assertTrue(sql2.contains("JOIN Suppliers"));
+		assertTrue(sql2.contains("JOIN \"Products\""));
+		assertTrue(sql2.contains("JOIN \"Suppliers\""));
 
 		// Test 3: pick a CustomerCompanyName (L1 join — Customers)
 		String sql3 = CubeSqlGenerator.generateSql(cube,
 				List.of("CustomerCompanyName"), List.of("OrderCount"), "sqlite");
-		assertTrue(sql3.contains("JOIN Customers"));
-		assertFalse(sql3.contains("JOIN Products"), "Should NOT join Products when only Customer is selected");
+		assertTrue(sql3.contains("JOIN \"Customers\""));
+		assertFalse(sql3.contains("JOIN \"Products\""), "Should NOT join Products when only Customer is selected");
 
 		// Test 4: with segment
 		String sql4 = CubeSqlGenerator.generateSql(cube,
 				List.of("CustomerCountry"), List.of("OrderCount"), List.of("unshipped"), "sqlite");
 		assertTrue(sql4.contains("WHERE"));
-		assertTrue(sql4.contains("ShippedDate IS NULL"));
+		assertTrue(sql4.contains("\"ShippedDate\" IS NULL"));
 
 		// Test 5: per-order browsing — pick OrderID + OrderDate + OrderValue → invoice ledger
 		// OrderValue uses the same SQL as Revenue but is the semantically honest label
@@ -517,7 +517,7 @@ class CubeSqlGeneratorTest {
 		String dsl = readCubeDsl("northwind-inventory");
 		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
-		assertEquals("Products", cube.getSqlTable());
+		assertEquals("\"Products\"", cube.getSqlTable());
 		assertEquals(2, cube.getJoins().size(), "Inventory cube should have 2 joins");
 
 		// Pick CategoryName + SupplierCountry → both joins activated
@@ -526,10 +526,10 @@ class CubeSqlGeneratorTest {
 				List.of("AvgUnitPrice"),
 				List.of("active"),
 				"sqlite");
-		assertTrue(sql.contains("JOIN Categories"));
-		assertTrue(sql.contains("JOIN Suppliers"));
+		assertTrue(sql.contains("JOIN \"Categories\""));
+		assertTrue(sql.contains("JOIN \"Suppliers\""));
 		assertTrue(sql.contains("WHERE"));
-		assertTrue(sql.contains("Discontinued = 0"));
+		assertTrue(sql.contains("\"Discontinued\" = 0"));
 
 		System.out.println("[northwind-inventory] SQL gen passed");
 	}
@@ -539,7 +539,7 @@ class CubeSqlGeneratorTest {
 		String dsl = readCubeDsl("northwind-customers");
 		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
-		assertEquals("Customers", cube.getSqlTable());
+		assertEquals("\"Customers\"", cube.getSqlTable());
 		assertEquals(2, cube.getJoins().size(), "Customer cube should have 2 joins (Orders + Order Details for revenue)");
 
 		// Test 1: customer-only query (no join needed)
@@ -550,7 +550,7 @@ class CubeSqlGeneratorTest {
 		// Test 2: L1 join-activated by selecting Orders measure (no Order Details)
 		String sql2 = CubeSqlGenerator.generateSql(cube,
 				List.of("CustomerCompanyName"), List.of("OrderCount"), "sqlite");
-		assertTrue(sql2.contains("JOIN Orders"));
+		assertTrue(sql2.contains("JOIN \"Orders\""));
 		assertFalse(sql2.contains("JOIN \"Order Details\""), "Should NOT join Order Details when only Orders fields selected");
 
 		// Test 3: decision_makers segment
@@ -560,20 +560,20 @@ class CubeSqlGeneratorTest {
 				List.of("decision_makers"),
 				"sqlite");
 		assertTrue(sql3.contains("WHERE"));
-		assertTrue(sql3.contains("ContactTitle LIKE"));
+		assertTrue(sql3.contains("\"ContactTitle\" LIKE"));
 
 		// Test 4: L2 transitive join — CustomerLifetimeValue requires Customers → Orders → Order Details
 		// THE entire point of CRM analysis: "who are our biggest customers by revenue"
 		String sql4 = CubeSqlGenerator.generateSql(cube,
 				List.of("CustomerCompanyName"), List.of("CustomerLifetimeValue"), "sqlite");
-		assertTrue(sql4.contains("JOIN Orders"), "L2: should join Orders (transitive)");
+		assertTrue(sql4.contains("JOIN \"Orders\""), "L2: should join Orders (transitive)");
 		assertTrue(sql4.contains("JOIN \"Order Details\""), "L2: should join Order Details");
 		assertTrue(sql4.toLowerCase().contains("sum("), "Should aggregate revenue");
 
 		// Test 5: AvgOrderValue also goes through L2 chain
 		String sql5 = CubeSqlGenerator.generateSql(cube,
 				List.of("Country"), List.of("AvgOrderValue"), "sqlite");
-		assertTrue(sql5.contains("JOIN Orders"));
+		assertTrue(sql5.contains("JOIN \"Orders\""));
 		assertTrue(sql5.contains("JOIN \"Order Details\""));
 
 		// Test 6: shipped_orders segment + Orders.ShippedDate
@@ -582,9 +582,9 @@ class CubeSqlGeneratorTest {
 				List.of("OrderCount"),
 				List.of("unshipped_orders"),
 				"sqlite");
-		assertTrue(sql6.contains("JOIN Orders"));
+		assertTrue(sql6.contains("JOIN \"Orders\""));
 		assertTrue(sql6.contains("WHERE"));
-		assertTrue(sql6.contains("ShippedDate IS NULL"));
+		assertTrue(sql6.contains("\"ShippedDate\" IS NULL"));
 
 		// Test 7: per-order browsing — pick OrderID + OrderDate + OrderValue → invoice ledger view
 		// OrderValue uses the same SQL as CustomerLifetimeValue but is the semantically honest
@@ -592,9 +592,9 @@ class CubeSqlGeneratorTest {
 		String sql7 = CubeSqlGenerator.generateSql(cube,
 				List.of("CustomerCompanyName", "OrderID", "OrderDate"),
 				List.of("OrderValue"), "sqlite");
-		assertTrue(sql7.contains("JOIN Orders"), "Per-order browsing: should join Orders");
+		assertTrue(sql7.contains("JOIN \"Orders\""), "Per-order browsing: should join \"Orders\"");
 		assertTrue(sql7.contains("JOIN \"Order Details\""), "Per-order browsing: should join Order Details");
-		assertTrue(sql7.contains("Orders.OrderID"), "Per-order browsing: should select Orders.OrderID");
+		assertTrue(sql7.contains("\"Orders\".\"OrderID\""), "Per-order browsing: should select \"Orders\".\"OrderID\"");
 		assertTrue(sql7.toLowerCase().contains("group by"), "Per-order browsing: should GROUP BY");
 
 		System.out.println("[northwind-customers] All 7 SQL gen tests passed (CLV + OrderValue grain split)");
@@ -605,7 +605,7 @@ class CubeSqlGeneratorTest {
 		String dsl = readCubeDsl("northwind-hr");
 		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
-		assertEquals("Employees", cube.getSqlTable());
+		assertEquals("\"Employees\"", cube.getSqlTable());
 		assertEquals(3, cube.getJoins().size(), "HR cube should have 3 joins (3-level chain)");
 
 		// Test 1: simple Employees-only query
@@ -616,23 +616,23 @@ class CubeSqlGeneratorTest {
 		// Test 2: L2 join — TerritoryDescription requires EmployeeTerritories + Territories
 		String sql2 = CubeSqlGenerator.generateSql(cube,
 				List.of("TerritoryDescription"), List.of("EmployeeCount"), "sqlite");
-		assertTrue(sql2.contains("JOIN EmployeeTerritories"), "L2: should join EmployeeTerritories");
-		assertTrue(sql2.contains("JOIN Territories"), "L2: should join Territories");
-		assertFalse(sql2.contains("JOIN Region"), "Should NOT join Region for L2-only query");
+		assertTrue(sql2.contains("JOIN \"EmployeeTerritories\""), "L2: should join \"EmployeeTerritories\"");
+		assertTrue(sql2.contains("JOIN \"Territories\""), "L2: should join \"Territories\"");
+		assertFalse(sql2.contains("JOIN \"Region\""), "Should NOT join Region for L2-only query");
 
 		// Test 3: L3 join — RegionDescription requires the FULL 3-level chain
 		// (EmployeeTerritories → Territories → Region)
 		String sql3 = CubeSqlGenerator.generateSql(cube,
 				List.of("RegionDescription"), List.of("EmployeeCount"), "sqlite");
-		assertTrue(sql3.contains("JOIN EmployeeTerritories"), "L3: should join EmployeeTerritories (transitive)");
-		assertTrue(sql3.contains("JOIN Territories"), "L3: should join Territories (transitive)");
-		assertTrue(sql3.contains("JOIN Region"), "L3: should join Region");
+		assertTrue(sql3.contains("JOIN \"EmployeeTerritories\""), "L3: should join EmployeeTerritories (transitive)");
+		assertTrue(sql3.contains("JOIN \"Territories\""), "L3: should join Territories (transitive)");
+		assertTrue(sql3.contains("JOIN \"Region\""), "L3: should join \"Region\"");
 
 		// Test 4: executives segment
 		String sql4 = CubeSqlGenerator.generateSql(cube,
 				List.of("Title"), List.of("EmployeeCount"), List.of("executives"), "sqlite");
 		assertTrue(sql4.contains("WHERE"));
-		assertTrue(sql4.contains("ReportsTo IS NULL"));
+		assertTrue(sql4.contains("\"ReportsTo\" IS NULL"));
 
 		System.out.println("[northwind-hr] All 4 SQL gen tests passed (including L3 transitive chain)");
 	}
@@ -699,11 +699,20 @@ class CubeSqlGeneratorTest {
 	 * own table, in vendor_internalAlias_exactFormForEveryVendorKey.
 	 */
 	private static String plainInternals(String text, String vendor) {
-		String plain = text;
+		String plain = text.replace(dec(vendor), "DECIMAL(31,4)");
 		for (String name : List.of("__keys", "__mult", "__pk")) {
 			plain = plain.replace(CubeSqlDialect.internalAlias(name, vendor), name);
 		}
 		return plain;
+	}
+
+	/**
+	 * The decimal SUM and AVG are cast to on this vendor. Seven of the nine read
+	 * {@code DECIMAL(31,4)}; Db2 and ClickHouse cannot (see {@link CubeSqlDialect#decimalType}), so
+	 * a test that spells the cast out asks the dialect rather than hard-coding one engine's answer.
+	 */
+	private static String dec(String vendor) {
+		return CubeSqlDialect.decimalType(vendor);
 	}
 
 	/** Test 1 — identifier quoting, the exact form for every vendor key. */
@@ -767,8 +776,8 @@ class CubeSqlGeneratorTest {
 		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
 			String sql = CubeSqlGenerator.generateSql(cube, List.of("channel"), measures, vendor);
 
-			assertTrue(sql.contains("CAST(SUM(revenue) AS DECIMAL(31,4))"), "SUM cast on " + vendor);
-			assertTrue(sql.contains("CAST(AVG(CAST(revenue AS DECIMAL(31,4))) AS DECIMAL(31,4))"),
+			assertTrue(sql.contains("CAST(SUM(revenue) AS " + dec(vendor) + ")"), "SUM cast on " + vendor);
+			assertTrue(sql.contains("CAST(AVG(CAST(revenue AS " + dec(vendor) + ")) AS " + dec(vendor) + ")"),
 					"AVG cast on " + vendor);
 			assertTrue(sql.contains("MIN(revenue)"), "MIN unwrapped on " + vendor);
 			assertTrue(sql.contains("MAX(revenue)"), "MAX unwrapped on " + vendor);
@@ -869,7 +878,7 @@ class CubeSqlGeneratorTest {
 		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
 			String sql = CubeSqlGenerator.generateSql(cube, List.of("status"), List.of("headroom"), vendor);
 
-			assertTrue(sql.contains("CAST(SUM((select max(amount) from payments)) AS DECIMAL(31,4))"),
+			assertTrue(sql.contains("CAST(SUM((select max(amount) from payments)) AS " + dec(vendor) + ")"),
 					"The subquery must survive whole on " + vendor + ", got:\n" + sql);
 			// The negative half: the old generator stripped the first "select " it found anywhere.
 			assertFalse(sql.contains("(max(amount) from payments)"),
@@ -1062,11 +1071,11 @@ class CubeSqlGeneratorTest {
 			assertTrue(sql.contains(
 					"COUNT(DISTINCT CASE WHEN (Orders.Freight > 10) THEN Orders.CustomerID END)"),
 					"count_distinct on " + vendor);
-			assertTrue(sql.contains(
-					"CAST(SUM(CASE WHEN (Orders.Freight > 10) THEN Orders.Freight END) AS DECIMAL(31,4))"),
+			assertTrue(sql.contains("CAST(SUM(CASE WHEN (Orders.Freight > 10) THEN Orders.Freight END) AS "
+					+ dec(vendor) + ")"),
 					"a filtered SUM keeps its DECIMAL cast on " + vendor);
 			assertTrue(sql.contains("CAST(AVG(CAST(CASE WHEN (Orders.Freight > 10) THEN Orders.Freight END"
-					+ " AS DECIMAL(31,4))) AS DECIMAL(31,4))"),
+					+ " AS " + dec(vendor) + ")) AS " + dec(vendor) + ")"),
 					"a filtered AVG keeps both DECIMAL casts on " + vendor);
 			assertTrue(sql.contains("MIN(CASE WHEN (Orders.Freight > 10) THEN Orders.Freight END)"),
 					"MIN gets the same CASE, unwrapped, on " + vendor);
@@ -1221,11 +1230,11 @@ class CubeSqlGeneratorTest {
 
 		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
-		String revenue = "CAST(SUM(CASE WHEN (Orders.Freight > 0) THEN Orders.Freight END) AS DECIMAL(31,4))";
-		String cost = "CAST(SUM(Orders.ShipVia) AS DECIMAL(31,4))";
-
 		String first = null;
 		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
+			String revenue = "CAST(SUM(CASE WHEN (Orders.Freight > 0) THEN Orders.Freight END) AS "
+					+ dec(vendor) + ")";
+			String cost = "CAST(SUM(Orders.ShipVia) AS " + dec(vendor) + ")";
 			String sql = CubeSqlGenerator.generateSql(cube, List.of("ShipCountry"), List.of("Margin"), vendor);
 
 			assertTrue(sql.contains("(" + revenue + ")"),
@@ -1446,11 +1455,16 @@ class CubeSqlGeneratorTest {
 				() -> CubeSqlGenerator.generateSql(cube, List.of("OrderDate.month"), List.of("Orders"), null));
 		assertTrue(noVendor.getMessage().contains("pick a connection"), noVendor.getMessage());
 
-		// A dimension name that is no dimension of the cube is still ignored, exactly as before —
-		// the suffix rules apply only when the part before the dot IS a dimension.
-		String unknownDim = CubeSqlGenerator.generateSql(cube, List.of("Nothing.month"), List.of("Orders"),
-				"postgres");
-		assertFalse(unknownDim.contains("Nothing"), "An unknown dimension is skipped, not truncated");
+		// A name the cube has not got is refused, and the suffix changes nothing: the suffix rules
+		// apply only when the part before the dot IS a dimension, so 'Nothing.month' is simply an
+		// unknown dimension. Until Phase 1b's TODO 7 the generator dropped it and answered the
+		// question it was NOT asked - the same rows, grouped by less, with nothing to tell the
+		// caller. An unknown measure was already refused; a dimension is refused the same way now.
+		IllegalArgumentException unknownDim = assertThrows(IllegalArgumentException.class,
+				() -> CubeSqlGenerator.generateSql(cube, List.of("Nothing.month"), List.of("Orders"),
+						"postgres"));
+		assertTrue(unknownDim.getMessage().contains("Nothing"), "The message names the dimension");
+		assertTrue(unknownDim.getMessage().contains("OrderDate"), "The message says what there IS");
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────
@@ -1836,7 +1850,7 @@ class CubeSqlGeneratorTest {
 
 			// A named cube in the same file lends its measure, cast and all.
 			String spend = CubeSqlGenerator.generateSql(cube, List.of("spend"), List.of(), vendor);
-			assertTrue(spend.contains("(SELECT CAST(SUM(" + orders + ".amount) AS DECIMAL(31,4)) FROM "
+			assertTrue(spend.contains("(SELECT CAST(SUM(" + orders + ".amount) AS " + dec(vendor) + ") FROM "
 					+ orders + " WHERE " + customers + ".id = orders.customer_id)"),
 					"The named cube's own measure is what is read, on " + vendor + ":\n" + spend);
 
@@ -2144,7 +2158,7 @@ class CubeSqlGeneratorTest {
 					"notIn, on " + vendor + ":\n" + more.getSql());
 			assertTrue(text.contains("Orders.Quantity >= :cf2"), "gte, on " + vendor);
 			assertTrue(text.contains("Orders.Quantity <= :cf3"), "lte, on " + vendor);
-			assertTrue(text.contains("HAVING CAST(SUM(Orders.Freight) AS DECIMAL(31,4)) >= :cf4"),
+			assertTrue(text.contains("HAVING CAST(SUM(Orders.Freight) AS " + dec(vendor) + ") >= :cf4"),
 					"A measure filter is a HAVING, on " + vendor + ":\n" + more.getSql());
 			assertTrue(text.indexOf("WHERE") < text.indexOf("HAVING"),
 					"The WHERE narrows the rows before the HAVING narrows the answers, on " + vendor);

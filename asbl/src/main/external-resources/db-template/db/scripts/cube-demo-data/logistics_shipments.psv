@@ -65,7 +65,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 64|TRK-2026-000064|3|16|2026-01-18|2026-01-20|Returned|Czechia|Prague|2882.61|205.66|Express|8|2
 65|TRK-2025-000065|7|14|2025-12-08|2026-01-04|Delivered|Spain|Barcelona|889.82|32.24|Standard|3|27
 66|TRK-2025-000066|8|16|2025-09-10|2025-09-18|Delivered|Belgium|Antwerp|247.54|24.93|Standard|1|8
-67|TRK-2025-000067|6|28|2025-07-10|2025-08-05|Delivered|Spain|Valencia|197.62|21.16|Standard|1|26
+67|TRK-2025-000067|11|28|2025-07-10|2025-07-11|Delivered|Spain|Valencia|197.62|50.61|Standard|1|1
 68|TRK-2026-000068|2|27|2026-07-08|2026-07-10|Delivered|Poland|Krakow|317.51|38.67|Express|1|2
 69|TRK-2026-000069|3|2|2026-02-25|2026-03-04|Returned|France|Lyon|1969.71|100.73|Standard|6|7
 70|TRK-2025-000070|3|17|2025-12-01|2025-12-06|Delivered|Netherlands|Amsterdam|3799.59|177.58|Standard|18|5
@@ -151,7 +151,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 150|TRK-2026-000150|10|19|2026-03-27|2026-04-05|Delivered|United Kingdom|Birmingham|1647.22|64.12|Standard|4|9
 151|TRK-2025-000151|5|16|2025-09-13|2025-10-06|Delivered|Spain|Seville|766.28|30.26|Standard|2|23
 152|TRK-2026-000152|1|28|2026-03-26|2026-04-02|Delivered|France|Lyon|828.08|52.78|Standard|2|7
-153|TRK-2025-000153|1|19|2025-07-29|2025-08-09|Delivered|France|Paris|6108.24|218.11|Economy|18|11
+153|TRK-2025-000153|12|19|2025-07-29|2025-08-04|Delivered|France|Paris|6108.24|804.13|Economy|18|6
 154|TRK-2025-000154|2|13|2025-04-21|2025-04-26|Delivered|Spain|Barcelona|6842.92|305.40|Standard|26|5
 155|TRK-2026-000155|3|6|2026-03-11|2026-03-15|Delivered|France|Lyon|1338.78|61.86|Economy|4|4
 156|TRK-2025-000156|5|16|2025-04-18|2025-04-30|Delivered|Belgium|Ghent|2966.24|91.56|Express|8|12
@@ -193,7 +193,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 192|TRK-2026-000192|1|14|2026-04-05|2026-04-07|Delivered|Sweden|Gothenburg|1618.28|123.35|Express|4|2
 193|TRK-2026-000193|1|8|2026-08-25|2026-08-31|Delivered|Germany|Cologne|2895.09|139.59|Standard|8|6
 194|TRK-2025-000194|6|25|2025-12-10|2026-01-05|Delivered|Spain|Barcelona|589.90|27.44|Standard|2|26
-195|TRK-2026-000195|8|13|2026-07-04|2026-07-09|Delivered|Belgium|Brussels|2366.00|84.25|Standard|6|5
+195|TRK-2026-000195|11|13|2026-07-04|2026-07-06|Delivered|Belgium|Brussels|2366.00|408.39|Standard|6|2
 196|TRK-2025-000196|9|19|2025-07-29|2025-08-07|Delivered|Spain|Valencia|398.22|29.15|Standard|1|9
 197|TRK-2025-000197|6|10|2025-01-16|2025-02-15|Delivered|Austria|Linz|663.19|26.28|Economy|2|30
 198|TRK-2025-000198|4|10|2025-09-11|2025-09-13|Delivered|Spain|Barcelona|394.23|34.56|Standard|1|2
@@ -220,7 +220,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 219|TRK-2026-000219||1|2026-09-02||Awaiting Pickup|Spain|Valencia|2821.27|201.66|Express|8|
 220|TRK-2026-000220|1|22|2026-02-09|2026-02-13|Delivered|Denmark|Copenhagen|1201.06|68.44|Standard|6|4
 221|TRK-2026-000221|6|24|2026-06-15|2026-07-13|Delivered|Czechia|Brno|561.18|26.98|Standard|2|28
-222|TRK-2026-000222|1|19|2026-03-15|2026-03-19|Delivered|Netherlands|Eindhoven|1918.02|98.56|Standard|6|4
+222|TRK-2026-000222|12|19|2026-03-15|2026-03-17|Delivered|Netherlands|Eindhoven|1918.02|334.47|Standard|6|2
 223|TRK-2026-000223|2|19|2026-06-17|2026-06-26|Delivered|Germany|Berlin|2215.66|90.59|Economy|6|9
 224|TRK-2026-000224||22|2026-09-13||Awaiting Pickup|Germany|Berlin|1363.03|75.25|Standard|6|
 225|TRK-2026-000225|3|28|2026-04-18|2026-04-20|Delivered|Spain|Valencia|1198.46|96.02|Express|3|2
@@ -305,7 +305,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 304|TRK-2025-000304|3|23|2025-11-14|2025-11-22|Delivered|Belgium|Brussels|193.76|24.35|Economy|1|8
 305|TRK-2025-000305|99|23|2025-11-18|2025-11-24|Delivered|Germany|Hamburg|716.67|41.48|Economy|2|6
 306|TRK-2025-000306|5|2|2025-10-12|2025-11-05|Delivered|France|Toulouse|1139.43|36.23|Standard|4|24
-307|TRK-2026-000307|2|23|2026-02-02|2026-02-05|Delivered|Netherlands|Eindhoven|1155.53|93.23|Express|3|3
+307|TRK-2026-000307|11|23|2026-02-02|2026-02-03|Delivered|Netherlands|Eindhoven|1155.53|313.53|Express|3|1
 308|TRK-2026-000308|9|14|2026-05-01|2026-05-10|Delivered|Germany|Frankfurt|198.34|23.55|Standard|1|9
 309|TRK-2026-000309|9|27|2026-08-04|2026-08-09|Delivered|Czechia|Prague|468.50|28.23|Economy|2|5
 310|TRK-2025-000310|3|8|2025-02-17|2025-02-20|Delivered|Netherlands|Eindhoven|634.04|59.28|Express|2|3
@@ -480,7 +480,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 479|TRK-2025-000479|5|28|2025-06-25|2025-07-07|Delivered|France|Lyon|1670.10|59.42|Express|8|12
 480|TRK-2026-000480|3|18|2026-01-14|2026-01-17|Delivered|France|Lyon|735.04|65.85|Express|2|3
 481|TRK-2026-000481|9|23|2026-04-11|2026-04-14|Delivered|Germany|Cologne|2840.50|141.28|Express|8|3
-482|TRK-2025-000482|3|1|2025-01-16|2025-01-21|Delivered|Belgium|Ghent|1659.92|87.72|Standard|4|5
+482|TRK-2025-000482|12|1|2025-01-16|2025-01-17|Delivered|Belgium|Ghent|1659.92|291.89|Standard|4|1
 483|TRK-2026-000483|3|10|2026-08-25|2026-08-28|Delivered|Portugal|Porto|3198.59|152.34|Standard|8|3
 484|TRK-2026-000484|4|8|2026-04-30|2026-05-05|Delivered|Netherlands|Amsterdam|267.34|26.76|Economy|1|5
 485|TRK-2025-000485|3|18|2025-08-09|2025-08-15|Delivered|France|Paris|2697.65|131.30|Standard|8|6
@@ -535,7 +535,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 534|TRK-2025-000534|4|21|2025-12-06|2025-12-09|Returned|Czechia|Prague|2881.28|139.01|Standard|8|3
 535|TRK-2026-000535|5|20|2026-05-28|2026-06-13|Delivered|Germany|Frankfurt|453.21|25.25|Standard|2|16
 536|TRK-2025-000536|10|27|2025-10-29|2025-11-02|Delivered|France|Lyon|2147.80|78.14|Standard|8|4
-537|TRK-2025-000537|2|21|2025-09-11|2025-09-13|Delivered|France|Paris|3581.23|251.14|Express|12|2
+537|TRK-2025-000537|11|21|2025-09-11|2025-09-12|Delivered|France|Paris|3581.23|933.90|Express|12|1
 538|TRK-2025-000538|7|17|2025-11-30|2025-12-13|Delivered|Italy|Milan|705.25|29.28|Standard|2|13
 539|TRK-2026-000539|1|12|2026-07-16|2026-07-20|Delivered|Italy|Milan|321.61|31.51|Standard|1|4
 540|TRK-2026-000540|10|23|2026-03-03|2026-03-07|Delivered|Sweden|Malmo|619.58|44.89|Express|3|4
@@ -678,7 +678,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 677|TRK-2025-000677|6|13|2025-08-22|2025-09-20|Delivered|Germany|Hamburg|1213.54|37.42|Standard|3|29
 678|TRK-2025-000678|10|10|2025-06-27|2025-07-05|Delivered|Czechia|Prague|357.71|28.02|Standard|1|8
 679|TRK-2025-000679|8|28|2025-08-02|2025-08-06|Delivered|Poland|Krakow|1664.20|64.60|Standard|4|4
-680|TRK-2026-000680|5|25|2026-06-14|2026-07-15|Delivered|Sweden|Gothenburg|2484.62|49.01|Economy|8|31
+680|TRK-2026-000680|12|25|2026-06-14|2026-06-16|Delivered|Sweden|Gothenburg|2484.62|337.77|Economy|8|2
 681|TRK-2026-000681|8|20|2026-05-24|2026-06-01|Delivered|Italy|Milan|742.27|38.78|Standard|2|8
 682|TRK-2025-000682|1|2|2025-07-23|2025-07-29|Delivered|United Kingdom|Manchester|669.63|46.12|Standard|3|6
 683|TRK-2025-000683|3|11|2025-11-23|2025-11-29|Delivered|Italy|Naples|317.68|31.34|Standard|1|6
@@ -767,7 +767,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 766|TRK-2026-000766|1|18|2026-06-21|2026-06-26|Delivered|Germany|Frankfurt|385.35|30.62|Economy|1|5
 767|TRK-2026-000767|1|15|2026-07-16|2026-07-19|Delivered|France|Lyon|1079.79|63.35|Standard|4|3
 768|TRK-2026-000768|8|7|2026-05-19|2026-05-23|Delivered|Sweden|Stockholm|568.56|33.92|Standard|3|4
-769|TRK-2026-000769|9|23|2026-08-06|2026-08-13|Delivered|Germany|Hamburg|1008.51|46.24|Standard|3|7
+769|TRK-2026-000769|11|23|2026-08-06|2026-08-08|Delivered|Germany|Hamburg|1008.51|184.40|Standard|3|2
 770|TRK-2025-000770|9|8|2025-08-12|2025-08-15|Delivered|Spain|Seville|3276.63|160.21|Express|8|3
 771|TRK-2026-000771|6|24|2026-02-11|2026-02-26|Delivered|Germany|Hamburg|382.24|27.48|Express|2|15
 772|TRK-2025-000772|6|21|2025-06-12|2025-06-25|Delivered|Austria|Graz|1939.24|49.03|Standard|6|13
@@ -801,7 +801,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 800|TRK-2026-000800|4|12|2026-03-04|2026-03-06|Delivered|United Kingdom|Manchester|310.05|31.02|Standard|1|2
 801|TRK-2026-000801|10|11|2026-04-12|2026-04-20|Returned|Italy|Rome|998.97|45.97|Standard|3|8
 802|TRK-2026-000802|5|6|2026-01-16|2026-01-27|Delivered|Poland|Gdansk|1203.47|37.26|Standard|4|11
-803|TRK-2025-000803|1|7|2025-12-21|2025-12-28|Delivered|Italy|Milan|921.04|56.68|Standard|3|7
+803|TRK-2025-000803|12|7|2025-12-21|2025-12-23|Delivered|Italy|Milan|921.04|169.97|Standard|3|2
 804|TRK-2026-000804||29|2026-09-04||Awaiting Pickup|Switzerland|Geneva|2039.89|103.68|Standard|6|
 805|TRK-2026-000805|3|10|2026-01-05|2026-01-07|Delivered|Poland|Gdansk|953.32|80.06|Express|4|2
 806|TRK-2025-000806|2|17|2025-01-18|2025-01-22|Delivered|Netherlands|Eindhoven|617.93|43.95|Standard|2|4
@@ -835,7 +835,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 834|TRK-2025-000834|1|3|2025-06-06|2025-06-11|Delivered|Netherlands|Rotterdam|2349.42|116.68|Standard|8|5
 835|TRK-2026-000835|2|4|2026-05-11|2026-05-17|Returned|Netherlands|Rotterdam|822.48|52.54|Standard|2|6
 836|TRK-2025-000836|9|24|2025-11-19|2025-11-27|Delivered|Sweden|Gothenburg|2163.16|78.57|Standard|12|8
-837|TRK-2025-000837|2|18|2025-12-25|2025-12-28|Delivered|Italy|Turin|641.68|59.77|Express|2|3
+837|TRK-2025-000837|11|18|2025-12-25|2025-12-26|Delivered|Italy|Turin|641.68|182.11|Express|2|1
 838|TRK-2026-000838|10|8|2026-01-27|2026-02-03|Delivered|Czechia|Prague|724.94|38.30|Standard|2|7
 839|TRK-2025-000839|1|4|2025-07-27|2025-07-30|Delivered|Austria|Linz|379.07|42.68|Express|1|3
 840|TRK-2026-000840|2|18|2026-06-28|2026-07-04|Delivered|Germany|Munich|391.92|34.46|Standard|1|6
@@ -939,7 +939,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 938|TRK-2026-000938|2|10|2026-04-15|2026-04-23|Delivered|Belgium|Antwerp|1348.79|62.19|Economy|4|8
 939|TRK-2025-000939|10|17|2025-10-10|2025-10-23|Delivered|Spain|Madrid|337.63|25.37|Economy|1|13
 940|TRK-2026-000940|10|15|2026-07-14|2026-07-17|Delivered|Belgium|Brussels|281.34|25.88|Standard|1|3
-941|TRK-2025-000941|3|6|2025-10-12|2025-10-19|Delivered|Italy|Rome|461.04|37.36|Standard|2|7
+941|TRK-2025-000941|12|6|2025-10-12|2025-10-15|Delivered|Italy|Rome|461.04|94.07|Standard|2|3
 942|TRK-2026-000942|8|28|2026-01-11|2026-01-15|Returned|Italy|Milan|1105.64|65.98|Express|3|4
 943|TRK-2026-000943|4|10|2026-04-29|2026-05-10|Delivered|Germany|Berlin|336.45|29.02|Economy|1|11
 944|TRK-2026-000944|2|29|2026-08-09|2026-08-19|Delivered|Netherlands|Eindhoven|1614.77|70.90|Economy|4|10
@@ -953,7 +953,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 952|TRK-2026-000952|4|22|2026-02-13|2026-02-16|Delivered|Netherlands|Rotterdam|233.30|33.19|Express|1|3
 953|TRK-2025-000953|2|12|2025-09-02|2025-09-07|Delivered|Poland|Warsaw|251.07|26.23|Economy|1|5
 954|TRK-2025-000954|9|25|2025-07-05|2025-07-18|Delivered|Germany|Munich|2849.21|80.23|Economy|8|13
-955|TRK-2025-000955|2|17|2025-12-03|2025-12-05|Delivered|Switzerland|Zurich|775.71|50.58|Standard|3|2
+955|TRK-2025-000955|11|17|2025-12-03|2025-12-04|Delivered|Switzerland|Zurich|775.71|145.99|Standard|3|1
 956|TRK-2025-000956|2|3|2025-02-27|2025-03-02|Delivered|Sweden|Malmo|187.03|25.86|Standard|1|3
 957|TRK-2025-000957|1|22|2025-07-19|2025-07-26|Delivered|Switzerland|Basel|401.40|31.15|Economy|1|7
 958|TRK-2026-000958|9|14|2026-07-27|2026-07-30|Delivered|Poland|Warsaw|2216.64|114.20|Express|8|3
@@ -1025,7 +1025,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 1024|TRK-2025-001024|10|29|2025-11-18|2025-11-29|Delivered|Spain|Barcelona|3571.95|96.01|Economy|12|11
 1025|TRK-2025-001025|9|21|2025-03-03|2025-03-06|Delivered|Switzerland|Geneva|1535.85|84.66|Express|4|3
 1026|TRK-2026-001026|3|24|2026-07-05|2026-07-11|Delivered|Germany|Berlin|557.71|41.42|Standard|2|6
-1027|TRK-2025-001027|8|23|2025-10-04|2025-10-09|Delivered|Netherlands|Rotterdam|206.52|23.78|Standard|1|5
+1027|TRK-2025-001027|12|23|2025-10-04|2025-10-05|Delivered|Netherlands|Rotterdam|206.52|52.08|Standard|1|1
 1028|TRK-2025-001028|1|28|2025-06-20|2025-06-23|Delivered|Denmark|Aarhus|2353.13|171.19|Express|6|3
 1029|TRK-2025-001029|4|12|2025-08-11|2025-08-18|Delivered|Germany|Hamburg|1047.88|62.01|Standard|3|7
 1030|TRK-2026-001030|1|28|2026-06-11|2026-06-14|Delivered|Portugal|Porto|302.79|30.72|Standard|1|3
@@ -1285,7 +1285,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 1284|TRK-2026-001284|5|5|2026-08-04|2026-08-14|Delivered|France|Paris|205.50|23.10|Express|1|10
 1285|TRK-2025-001285|3|20|2025-11-15|2025-11-19|Delivered|Belgium|Ghent|233.41|27.80|Standard|1|4
 1286|TRK-2025-001286|5|22|2025-02-25|2025-03-10|Delivered|Netherlands|Amsterdam|1202.54|37.24|Standard|3|13
-1287|TRK-2026-001287|9|1|2026-08-28|2026-08-31|Delivered|France|Paris|1345.41|55.67|Standard|4|3
+1287|TRK-2026-001287|11|1|2026-08-28|2026-08-29|Delivered|France|Paris|1345.41|239.99|Standard|4|1
 1288|TRK-2025-001288|2|16|2025-07-18|2025-07-23|Delivered|Germany|Munich|211.86|26.90|Standard|1|5
 1289|TRK-2025-001289|10|19|2025-12-21|2025-12-24|Delivered|Italy|Naples|556.67|33.59|Standard|3|3
 1290|TRK-2025-001290|9|3|2025-08-09|2025-08-16|Delivered|Denmark|Aarhus|1076.76|48.15|Standard|3|7
@@ -1538,7 +1538,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 1537|TRK-2025-001537|4|17|2025-05-03|2025-05-09|Delivered|Poland|Krakow|976.82|59.03|Standard|4|6
 1538|TRK-2025-001538|9|27|2025-11-26|2025-12-02|Delivered|Spain|Valencia|1341.10|55.55|Standard|4|6
 1539|TRK-2026-001539|4|19|2026-08-04|2026-08-10|Delivered|Germany|Cologne|1128.61|54.97|Economy|6|6
-1540|TRK-2025-001540|8|16|2025-11-23|2025-12-04|Delivered|Sweden|Malmo|1251.96|45.34|Economy|4|11
+1540|TRK-2025-001540|12|16|2025-11-23|2025-11-29|Delivered|Sweden|Malmo|1251.96|179.13|Economy|4|6
 1541|TRK-2026-001541|1|1|2026-09-28||Awaiting Pickup|Italy|Rome|1018.41|60.77|Standard|3|
 1542|TRK-2025-001542|4|23|2025-02-18|2025-02-25|Delivered|Belgium|Ghent|1193.05|68.11|Standard|6|7
 1543|TRK-2025-001543|9|3|2025-07-21|2025-07-24|Delivered|Germany|Hamburg|332.40|27.31|Standard|1|3
@@ -1692,7 +1692,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 1691|TRK-2025-001691|3|22|2025-11-17|2025-11-27|Delivered|Austria|Graz|1413.43|64.30|Economy|6|10
 1692|TRK-2025-001692|6|4|2025-12-12|2025-12-22|Delivered|Germany|Munich|400.32|24.41|Standard|1|10
 1693|TRK-2026-001693|8|3|2026-08-27|2026-08-31|Delivered|Netherlands|Amsterdam|2988.68|101.68|Standard|8|4
-1694|TRK-2025-001694|2|6|2025-04-26|2025-04-29|Delivered|Netherlands|Amsterdam|1828.98|94.82|Standard|8|3
+1694|TRK-2025-001694|11|6|2025-04-26|2025-04-28|Delivered|Netherlands|Amsterdam|1828.98|319.78|Standard|8|2
 1695|TRK-2025-001695|3|6|2025-11-28|2025-12-01|Delivered|Germany|Hamburg|2110.28|106.63|Standard|8|3
 1696|TRK-2026-001696|4|20|2026-07-01|2026-07-07|Delivered|France|Paris|2900.25|139.81|Standard|8|6
 1697|TRK-2025-001697|9|21|2025-06-30|2025-07-05|Returned|Germany|Berlin|267.28|25.48|Standard|1|5
@@ -1870,7 +1870,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 1869|TRK-2026-001869|3|22|2026-08-21|2026-08-28|Returned|Belgium|Brussels|201.63|26.47|Standard|1|7
 1870|TRK-2026-001870|1|22|2026-01-10|2026-01-17|Delivered|Italy|Milan|980.64|59.19|Standard|3|7
 1871|TRK-2026-001871|3|10|2026-03-12|2026-03-24|Delivered|Germany|Hamburg|827.09|45.10|Economy|2|12
-1872|TRK-2026-001872|9|13|2026-05-23|2026-05-26|Delivered|Sweden|Gothenburg|286.01|30.41|Express|1|3
+1872|TRK-2026-001872|12|13|2026-05-23|2026-05-24|Delivered|Sweden|Gothenburg|286.01|91.15|Express|1|1
 1873|TRK-2025-001873|3|1|2025-11-16|2025-11-18|Delivered|France|Lyon|832.85|72.22|Express|2|2
 1874|TRK-2026-001874|3|24|2026-06-15|2026-06-18|Delivered|Belgium|Brussels|986.53|59.43|Standard|3|3
 1875|TRK-2025-001875|5|7|2025-06-21|2025-07-20|Returned|United Kingdom|London|392.45|24.28|Standard|1|29
@@ -2052,7 +2052,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2051|TRK-2026-002051|2|8|2026-07-15|2026-07-18|Delivered|United Kingdom|Manchester|1327.83|73.77|Standard|4|3
 2052|TRK-2025-002052|6|15|2025-09-13|2025-09-24|Delivered|Italy|Milan|3047.10|66.75|Standard|8|11
 2053|TRK-2026-002053|6|19|2026-04-24|2026-05-22|Delivered|France|Lyon|1121.14|31.99|Economy|3|28
-2054|TRK-2025-002054|6|28|2025-06-10|2025-06-30|Delivered|Switzerland|Geneva|1797.94|46.77|Standard|6|20
+2054|TRK-2025-002054|11|28|2025-06-10|2025-06-13|Delivered|Switzerland|Geneva|1797.94|314.66|Standard|6|3
 2055|TRK-2025-002055|9|7|2025-01-30|2025-02-02|Delivered|Italy|Milan|274.51|25.69|Standard|1|3
 2056|TRK-2025-002056|8|14|2025-06-28|2025-07-05|Delivered|Germany|Berlin|630.76|31.78|Economy|3|7
 2057|TRK-2025-002057|10|18|2025-12-02|2025-12-05|Delivered|United Kingdom|London|910.08|57.50|Express|4|3
@@ -2095,7 +2095,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2094|TRK-2025-002094|2|25|2025-05-19|2025-05-24|Delivered|Germany|Frankfurt|684.94|46.77|Standard|2|5
 2095|TRK-2025-002095|4|22|2025-10-31|2025-11-03|Delivered|Netherlands|Rotterdam|546.41|40.95|Standard|3|3
 2096|TRK-2026-002096|2|5|2026-01-02|2026-01-05|Delivered|Germany|Cologne|914.29|77.52|Express|4|3
-2097|TRK-2026-002097|10|8|2026-02-16|2026-02-19|Delivered|Poland|Warsaw|1091.60|65.38|Express|6|3
+2097|TRK-2026-002097|12|8|2026-02-16|2026-02-17|Delivered|Poland|Warsaw|1091.60|297.18|Express|6|1
 2098|TRK-2026-002098|10|25|2026-03-10|2026-03-17|Delivered|Poland|Gdansk|400.90|29.23|Standard|2|7
 2099|TRK-2026-002099|3|19|2026-02-02|2026-02-04|Delivered|Austria|Linz|313.86|38.43|Express|1|2
 2100|TRK-2026-002100||29|2026-09-08||Awaiting Pickup|Germany|Cologne|1032.83|61.38|Standard|3|
@@ -2254,7 +2254,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2253|TRK-2025-002253|7|19|2025-09-24|2025-10-18|Delivered|Czechia|Brno|189.63|21.03|Standard|1|24
 2254|TRK-2025-002254|3|6|2025-07-21|2025-07-23|Delivered|Sweden|Gothenburg|226.96|27.53|Standard|1|2
 2255|TRK-2026-002255|10|25|2026-02-26|2026-03-07|Delivered|Austria|Linz|635.00|35.78|Standard|2|9
-2256|TRK-2025-002256|4|9|2025-01-27|2025-01-30|Delivered|United Kingdom|London|962.16|80.64|Express|3|3
+2256|TRK-2025-002256|11|9|2025-01-27|2025-01-28|Delivered|United Kingdom|London|962.16|264.07|Express|3|1
 2257|TRK-2026-002257|1|13|2026-06-07|2026-06-10|Delivered|Poland|Warsaw|1558.18|83.44|Standard|4|3
 2258|TRK-2026-002258|3|27|2026-05-03|2026-05-06|Delivered|Spain|Barcelona|665.68|45.96|Standard|3|3
 2259|TRK-2025-002259|8|27|2025-02-20|2025-02-25|Delivered|Poland|Krakow|201.06|23.63|Standard|1|5
@@ -2404,7 +2404,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2403|TRK-2026-002403|3|10|2026-03-29|2026-04-04|Delivered|Spain|Madrid|1625.69|86.28|Standard|6|6
 2404|TRK-2025-002404|10|9|2025-06-04|2025-06-17|Delivered|Austria|Vienna|259.98|23.68|Economy|1|13
 2405|TRK-2025-002405|10|4|2025-12-29|2026-01-04|Delivered|Sweden|Malmo|9819.68|232.46|Economy|26|6
-2406|TRK-2026-002406|1|8|2026-08-21|2026-08-28|Returned|Italy|Naples|582.10|42.45|Standard|3|7
+2406|TRK-2026-002406|12|8|2026-08-21|2026-08-24|Returned|Italy|Naples|582.10|114.05|Standard|3|3
 2407|TRK-2025-002407|3|5|2025-01-14|2025-01-16|Delivered|Poland|Warsaw|4075.78|283.33|Express|12|2
 2408|TRK-2026-002408|8|13|2026-08-23|2026-09-04|Delivered|Netherlands|Rotterdam|332.00|25.25|Economy|1|12
 2409|TRK-2025-002409|1|23|2025-10-26|2025-10-28|Delivered|Germany|Munich|1889.42|141.00|Express|8|2
@@ -2430,7 +2430,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2429|TRK-2026-002429|10|25|2026-06-17|2026-06-21|Delivered|United Kingdom|London|1135.47|67.28|Express|3|4
 2430|TRK-2026-002430|8|19|2026-04-28|2026-05-07|Delivered|Austria|Vienna|709.34|33.49|Economy|3|9
 2431|TRK-2026-002431|7|23|2026-07-27|2026-08-15|Delivered|Germany|Berlin|2815.47|63.05|Standard|8|19
-2432|TRK-2025-002432|2|10|2025-12-01|2025-12-13|Delivered|Netherlands|Eindhoven|1668.70|72.67|Economy|4|12
+2432|TRK-2025-002432|11|10|2025-12-01|2025-12-03|Delivered|Netherlands|Eindhoven|1668.70|232.76|Economy|4|2
 2433|TRK-2026-002433|9|1|2026-07-30|2026-08-03|Delivered|France|Toulouse|956.60|44.78|Standard|3|4
 2434|TRK-2026-002434||11|2026-09-26||Awaiting Pickup|Germany|Berlin|2197.50|89.99|Economy|8|
 2435|TRK-2026-002435|8|15|2026-05-04|2026-05-07|Returned|Austria|Linz|1616.88|88.17|Express|8|3
@@ -2494,7 +2494,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2493|TRK-2026-002493|8|17|2026-06-04|2026-06-12|Delivered|Poland|Gdansk|694.98|37.46|Standard|2|8
 2494|TRK-2026-002494|4|18|2026-06-29|2026-07-02|Delivered|Belgium|Brussels|321.30|38.92|Express|1|3
 2495|TRK-2025-002495|10|7|2025-11-03|2025-11-15|Delivered|Portugal|Lisbon|1111.54|42.28|Economy|3|12
-2496|TRK-2025-002496|8|9|2025-02-12|2025-02-15|Delivered|Netherlands|Amsterdam|1040.88|63.17|Express|4|3
+2496|TRK-2025-002496|12|9|2025-02-12|2025-02-13|Delivered|Netherlands|Amsterdam|1040.88|284.21|Express|4|1
 2497|TRK-2026-002497|9|23|2026-03-13|2026-03-17|Delivered|Italy|Milan|935.89|58.62|Express|3|4
 2498|TRK-2026-002498|3|27|2026-06-10|2026-06-12|Delivered|Netherlands|Eindhoven|435.86|36.31|Standard|2|2
 2499|TRK-2025-002499|6|8|2025-03-31|2025-04-27|Delivered|Poland|Gdansk|1648.49|44.38|Standard|6|27
@@ -2536,7 +2536,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2535|TRK-2026-002535|2|24|2026-09-19|2026-09-21|Delivered|Italy|Milan|407.46|44.53|Express|1|2
 2536|TRK-2025-002536|9|1|2025-08-31|2025-09-05|Delivered|United Kingdom|London|520.46|32.57|Standard|2|5
 2537|TRK-2026-002537|10|18|2026-02-10|2026-02-13|Delivered|Czechia|Prague|629.25|45.31|Express|2|3
-2538|TRK-2026-002538|4|23|2026-09-20|2026-09-22|Delivered|United Kingdom|Manchester|1559.52|119.52|Express|6|2
+2538|TRK-2026-002538|11|23|2026-09-20|2026-09-21|Delivered|United Kingdom|Manchester|1559.52|416.85|Express|6|1
 2539|TRK-2026-002539|1|8|2026-01-25|2026-01-27|Delivered|Netherlands|Eindhoven|870.65|54.57|Standard|3|2
 2540|TRK-2026-002540|8|3|2026-08-01|2026-08-10|Delivered|Sweden|Stockholm|1785.46|67.99|Standard|8|9
 2541|TRK-2026-002541|10|13|2026-02-04|2026-02-15|Delivered|Germany|Hamburg|501.45|28.95|Economy|2|11
@@ -2599,7 +2599,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2598|TRK-2026-002598|9|18|2026-02-12|2026-02-21|Delivered|Germany|Munich|3897.16|103.11|Economy|12|9
 2599|TRK-2025-002599|7|11|2025-11-30|2025-12-24|Delivered|Poland|Warsaw|5025.83|98.41|Standard|12|24
 2600|TRK-2025-002600|8|5|2025-12-23|2025-12-31|Delivered|Austria|Graz|1414.31|57.60|Standard|4|8
-2601|TRK-2025-002601|3|11|2025-02-01|2025-02-03|Delivered|Germany|Munich|281.08|29.81|Standard|1|2
+2601|TRK-2025-002601|12|11|2025-02-01|2025-02-02|Delivered|Germany|Munich|281.08|64.38|Standard|1|1
 2602|TRK-2026-002602|2|13|2026-05-22|2026-05-24|Delivered|France|Paris|1807.13|135.64|Express|8|2
 2603|TRK-2025-002603|9|9|2025-05-22|2025-05-26|Delivered|Belgium|Antwerp|2073.95|76.07|Standard|6|4
 2604|TRK-2025-002604|8|19|2025-10-30|2025-11-03|Delivered|Germany|Berlin|4685.41|149.19|Standard|18|4
@@ -2855,7 +2855,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2854|TRK-2026-002854|1|2|2026-01-25|2026-01-31|Delivered|Denmark|Copenhagen|6922.75|308.76|Standard|18|6
 2855|TRK-2026-002855|8|21|2026-08-19|2026-08-22|Delivered|France|Marseille|433.49|36.81|Express|2|3
 2856|TRK-2025-002856|3|1|2025-11-09|2025-11-16|Delivered|Portugal|Lisbon|570.05|41.94|Standard|3|7
-2857|TRK-2026-002857|1|13|2026-08-02|2026-08-08|Delivered|Germany|Munich|767.72|50.24|Standard|2|6
+2857|TRK-2026-002857|11|13|2026-08-02|2026-08-03|Delivered|Germany|Munich|767.72|144.67|Standard|2|1
 2858|TRK-2025-002858|9|5|2025-07-18|2025-07-22|Delivered|Germany|Berlin|626.53|45.19|Express|2|4
 2859|TRK-2025-002859|2|20|2025-03-15|2025-03-18|Delivered|Denmark|Aarhus|624.74|58.67|Express|2|3
 2860|TRK-2026-002860|5|15|2026-01-26|2026-02-19|Delivered|Sweden|Stockholm|670.67|26.37|Economy|2|24
@@ -2887,7 +2887,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2886|TRK-2026-002886|9|6|2026-08-07|2026-08-11|Delivered|Italy|Naples|1429.70|58.03|Standard|6|4
 2887|TRK-2025-002887|3|16|2025-12-20|2025-12-29|Delivered|Germany|Munich|837.39|45.43|Economy|2|9
 2888|TRK-2025-002888|3|22|2025-11-18|2025-11-24|Delivered|Portugal|Porto|1078.98|63.32|Standard|3|6
-2889|TRK-2025-002889|3|5|2025-05-19|2025-05-26|Delivered|Denmark|Aarhus|1075.53|63.17|Standard|3|7
+2889|TRK-2025-002889|12|5|2025-05-19|2025-05-20|Delivered|Denmark|Aarhus|1075.53|195.46|Standard|3|1
 2890|TRK-2025-002890|3|1|2025-12-27|2026-01-03|Delivered|Spain|Seville|297.89|30.51|Standard|1|7
 2891|TRK-2025-002891|1|6|2025-06-03|2025-06-05|Delivered|United Kingdom|London|789.61|51.16|Standard|2|2
 2892|TRK-2026-002892|2|5|2026-05-05|2026-05-07|Delivered|Germany|Frankfurt|404.00|34.97|Standard|1|2
@@ -2911,7 +2911,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2910|TRK-2026-002910|8|13|2026-01-18|2026-01-22|Delivered|Netherlands|Eindhoven|203.45|26.83|Express|1|4
 2911|TRK-2025-002911|3|14|2025-06-16|2025-06-21|Delivered|France|Marseille|1329.94|73.86|Standard|6|5
 2912|TRK-2025-002912|9|1|2025-04-23|2025-04-26|Delivered|Spain|Madrid|1588.77|86.95|Express|4|3
-2913|TRK-2026-002913|9|2|2026-09-15||In Transit|Germany|Berlin|749.83|34.38|Economy|2|
+2913|TRK-2026-002913|11|2|2026-09-15||In Transit|Germany|Berlin|749.83|114.50|Economy|2|
 2914|TRK-2025-002914|6|27|2025-03-15|2025-03-27|Delivered|Netherlands|Rotterdam|277.65|22.44|Standard|1|12
 2915|TRK-2026-002915|2|28|2026-03-08|2026-03-13|Delivered|Portugal|Lisbon|181.41|25.62|Standard|1|5
 2916|TRK-2026-002916|9|7|2026-02-23|2026-03-03|Delivered|Poland|Gdansk|1098.95|48.77|Standard|3|8
@@ -2964,7 +2964,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2963|TRK-2025-002963|2|23|2025-01-16|2025-01-19|Delivered|Spain|Seville|352.62|32.81|Standard|1|3
 2964|TRK-2026-002964|1|27|2026-06-25|2026-06-29|Delivered|Czechia|Prague|4987.70|227.48|Standard|26|4
 2965|TRK-2026-002965|3|28|2026-02-23|2026-02-28|Delivered|Germany|Hamburg|859.55|54.10|Standard|3|5
-2966|TRK-2025-002966|8|11|2025-03-30|2025-04-02|Delivered|Italy|Milan|5004.14|158.12|Standard|12|3
+2966|TRK-2025-002966|12|11|2025-03-30|2025-04-02|Delivered|Italy|Milan|5004.14|843.68|Standard|12|3
 2967|TRK-2025-002967|10|14|2025-09-11|2025-09-14|Returned|Poland|Gdansk|635.71|45.59|Express|2|3
 2968|TRK-2026-002968|3|3|2026-01-02|2026-01-07|Delivered|Germany|Berlin|370.47|30.14|Economy|1|5
 2969|TRK-2025-002969|4|11|2025-12-29|2026-01-10|Delivered|Denmark|Copenhagen|360.29|29.80|Economy|2|12
@@ -2982,7 +2982,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 2981|TRK-2026-002981|9|23|2026-09-09|2026-09-12|Delivered|Poland|Warsaw|1973.34|73.25|Standard|8|3
 2982|TRK-2025-002982|4|7|2025-05-01|2025-05-07|Delivered|Sweden|Malmo|1126.23|65.30|Standard|4|6
 2983|TRK-2025-002983|5|3|2025-01-21|2025-02-04|Delivered|Denmark|Copenhagen|4284.77|124.26|Express|12|14
-2984|TRK-2025-002984|8|21|2025-04-20|2025-04-24|Delivered|France|Toulouse|1649.12|64.18|Standard|6|4
+2984|TRK-2025-002984|11|21|2025-04-20|2025-04-21|Delivered|France|Toulouse|1649.12|290.10|Standard|6|1
 2985|TRK-2026-002985|8|22|2026-07-06|2026-07-12|Delivered|Czechia|Prague|1612.56|63.15|Standard|4|6
 2986|TRK-2025-002986|10|11|2025-10-21|2025-10-26|Delivered|Netherlands|Rotterdam|2938.88|100.29|Standard|8|5
 2987|TRK-2025-002987|8|5|2025-06-19|2025-06-26|Returned|Germany|Hamburg|209.11|23.86|Standard|1|7
@@ -3103,7 +3103,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3102|TRK-2025-003102|1|13|2025-12-05|2025-12-07|Delivered|France|Marseille|294.96|30.39|Standard|1|2
 3103|TRK-2026-003103|8|29|2026-07-05|2026-07-11|Delivered|Sweden|Malmo|1282.83|53.92|Standard|4|6
 3104|TRK-2025-003104|9|7|2025-12-26|2026-01-04|Delivered|Sweden|Stockholm|6625.94|203.53|Standard|18|9
-3105|TRK-2025-003105|3|29|2025-01-02|2025-01-04|Delivered|Poland|Warsaw|976.45|59.01|Standard|4|2
+3105|TRK-2025-003105|12|29|2025-01-02|2025-01-03|Delivered|Poland|Warsaw|976.45|179.11|Standard|4|1
 3106|TRK-2026-003106|5|27|2026-04-16|2026-04-28|Delivered|Spain|Barcelona|655.81|28.49|Standard|2|12
 3107|TRK-2026-003107|2|1|2026-02-19|2026-02-22|Delivered|Germany|Cologne|565.37|41.75|Standard|3|3
 3108|TRK-2026-003108|4|1|2026-02-18|2026-02-21|Delivered|Austria|Vienna|703.24|63.78|Express|2|3
@@ -3174,7 +3174,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3173|TRK-2025-003173|1|17|2025-12-02|2025-12-04|Delivered|France|Marseille|4347.44|301.02|Express|12|2
 3174|TRK-2025-003174|1|4|2025-05-29|2025-06-04|Delivered|Spain|Valencia|2475.21|121.96|Standard|6|6
 3175|TRK-2025-003175|10|13|2025-12-08|2025-12-20|Delivered|Sweden|Stockholm|294.15|24.42|Economy|1|12
-3176|TRK-2025-003176|8|11|2025-08-24|2025-08-30|Delivered|Austria|Vienna|1017.63|46.49|Standard|3|6
+3176|TRK-2025-003176|11|11|2025-08-24|2025-08-26|Delivered|Austria|Vienna|1017.63|185.91|Standard|3|2
 3177|TRK-2026-003177|2|18|2026-06-05|2026-06-12|Delivered|Czechia|Brno|1060.80|62.55|Standard|3|7
 3178|TRK-2026-003178|10|9|2026-01-10|2026-01-22|Returned|Germany|Berlin|796.03|35.39|Economy|2|12
 3179|TRK-2025-003179|9|24|2025-03-15|2025-03-24|Delivered|Germany|Berlin|255.70|25.16|Standard|1|9
@@ -3184,7 +3184,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3183|TRK-2026-003183|10|28|2026-02-17|2026-02-26|Delivered|Germany|Hamburg|319.52|24.98|Economy|1|9
 3184|TRK-2026-003184|6|21|2026-06-17|2026-07-06|Delivered|Italy|Turin|1160.67|32.49|Economy|3|19
 3185|TRK-2026-003185|9|11|2026-08-31|2026-09-09|Delivered|Belgium|Ghent|372.40|26.13|Economy|2|9
-3186|TRK-2026-003186|1|2|2026-01-08|2026-01-11|Delivered|Spain|Barcelona|246.35|34.04|Express|1|3
+3186|TRK-2026-003186|12|2|2026-01-08|2026-01-09|Delivered|Spain|Barcelona|246.35|81.00|Express|1|1
 3187|TRK-2026-003187|8|1|2026-07-28|2026-08-06|Delivered|Switzerland|Basel|409.10|29.45|Standard|1|9
 3188|TRK-2025-003188|9|28|2025-04-17|2025-04-22|Delivered|United Kingdom|Manchester|579.87|34.24|Standard|2|5
 3189|TRK-2025-003189|3|22|2025-07-06|2025-07-13|Delivered|Netherlands|Amsterdam|355.89|32.95|Standard|1|7
@@ -3289,7 +3289,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3288|TRK-2026-003288|3|4|2026-01-04|2026-01-11|Delivered|Germany|Munich|495.39|38.81|Standard|2|7
 3289|TRK-2025-003289|2|2|2025-07-09|2025-07-14|Delivered|Germany|Hamburg|3006.24|116.48|Economy|12|5
 3290|TRK-2025-003290|9|5|2025-04-08|2025-04-19|Delivered|Spain|Seville|3105.81|85.83|Economy|12|11
-3291|TRK-2025-003291|4|18|2025-09-20|2025-09-30|Delivered|United Kingdom|Birmingham|253.28|26.30|Economy|1|10
+3291|TRK-2025-003291|11|18|2025-09-20|2025-09-26|Delivered|United Kingdom|Birmingham|253.28|50.60|Economy|1|6
 3292|TRK-2026-003292|2|4|2026-03-20|2026-03-22|Returned|Germany|Berlin|7372.82|327.66|Standard|26|2
 3293|TRK-2026-003293|8|13|2026-07-18|2026-07-24|Delivered|Spain|Seville|642.97|36.00|Standard|3|6
 3294|TRK-2026-003294|4|13|2026-04-26|2026-05-06|Delivered|Austria|Vienna|1156.02|55.87|Economy|4|10
@@ -3496,7 +3496,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3495|TRK-2026-003495|9|8|2026-08-13|2026-08-16|Delivered|Switzerland|Basel|677.93|47.42|Express|3|3
 3496|TRK-2026-003496|9|4|2026-04-11|2026-04-22|Delivered|Denmark|Copenhagen|1905.47|59.62|Economy|6|11
 3497|TRK-2026-003497|3|24|2026-05-29|2026-06-09|Delivered|Italy|Turin|7175.49|253.07|Economy|18|11
-3498|TRK-2025-003498|8|24|2025-12-03|2025-12-06|Delivered|Denmark|Copenhagen|892.77|43.00|Standard|4|3
+3498|TRK-2025-003498|12|24|2025-12-03|2025-12-04|Delivered|Denmark|Copenhagen|892.77|165.31|Standard|4|1
 3499|TRK-2025-003499|10|27|2025-01-27|2025-02-02|Delivered|Germany|Munich|638.67|35.88|Standard|2|6
 3500|TRK-2025-003500|6|7|2025-04-30|2025-05-20|Delivered|Germany|Cologne|233.85|20.92|Economy|1|20
 3501|TRK-2025-003501|8|6|2025-04-28|2025-05-10|Delivered|Germany|Berlin|1232.99|44.93|Economy|3|12
@@ -3505,7 +3505,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3504|TRK-2025-003504|8|14|2025-05-14|2025-05-17|Delivered|Spain|Madrid|2472.80|87.24|Standard|12|3
 3505|TRK-2026-003505|2|11|2026-07-13|2026-07-20|Delivered|Sweden|Malmo|502.57|39.11|Standard|2|7
 3506|TRK-2025-003506|1|27|2025-04-12|2025-04-19|Delivered|Netherlands|Rotterdam|1615.76|70.93|Economy|4|7
-3507|TRK-2026-003507|9|28|2026-03-26|2026-04-01|Delivered|Germany|Frankfurt|803.20|35.54|Economy|4|6
+3507|TRK-2026-003507|11|28|2026-03-26|2026-03-31|Delivered|Germany|Frankfurt|803.20|121.37|Economy|4|5
 3508|TRK-2025-003508|1|12|2025-07-23|2025-07-25|Delivered|Poland|Krakow|716.11|48.08|Standard|2|2
 3509|TRK-2026-003509|1|17|2026-05-03|2026-05-06|Delivered|Germany|Frankfurt|236.65|33.41|Express|1|3
 3510|TRK-2026-003510|6|10|2026-01-12|2026-02-09|Delivered|United Kingdom|London|1033.86|30.90|Economy|3|28
@@ -3525,7 +3525,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3524|TRK-2026-003524|1|18|2026-01-02|2026-01-05|Delivered|Netherlands|Eindhoven|6849.37|463.89|Express|18|3
 3525|TRK-2026-003525|10|9|2026-06-11|2026-06-24|Delivered|Germany|Berlin|607.08|31.26|Economy|3|13
 3526|TRK-2026-003526|10|16|2026-01-07|2026-01-18|Delivered|United Kingdom|Birmingham|835.51|36.25|Economy|2|11
-3527|TRK-2026-003527|2|7|2026-07-17|2026-07-29|Delivered|Poland|Warsaw|301.62|27.88|Economy|1|12
+3527|TRK-2026-003527|12|7|2026-07-17|2026-07-25|Delivered|Poland|Warsaw|301.62|56.82|Economy|1|8
 3528|TRK-2025-003528|3|24|2025-06-23|2025-06-26|Delivered|Netherlands|Eindhoven|643.95|45.05|Standard|2|3
 3529|TRK-2025-003529|6|21|2025-03-09|2025-04-06|Delivered|Germany|Cologne|1433.78|40.94|Standard|4|28
 3530|TRK-2026-003530|6|9|2026-09-08||Delayed|Denmark|Copenhagen|992.23|33.88|Standard|4|
@@ -3538,7 +3538,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3537|TRK-2025-003537|3|4|2025-08-07|2025-08-18|Delivered|Sweden|Stockholm|2085.42|86.32|Economy|8|11
 3538|TRK-2025-003538|2|20|2025-08-15|2025-08-17|Delivered|Sweden|Gothenburg|329.59|39.46|Express|1|2
 3539|TRK-2026-003539|7|6|2026-05-18|2026-05-30|Delivered|Spain|Madrid|939.16|41.29|Express|4|12
-3540|TRK-2026-003540|10|15|2026-03-02|2026-03-09|Delivered|Germany|Hamburg|603.32|34.89|Standard|3|7
+3540|TRK-2026-003540|11|15|2026-03-02|2026-03-03|Delivered|Germany|Hamburg|603.32|117.55|Standard|3|1
 3541|TRK-2026-003541|2|5|2026-04-13|2026-04-17|Delivered|Netherlands|Eindhoven|6600.35|295.21|Standard|18|4
 3542|TRK-2025-003542|5|7|2025-08-17|2025-08-27|Delivered|Netherlands|Rotterdam|377.68|27.37|Express|1|10
 3543|TRK-2025-003543|10|22|2025-08-20|2025-08-23|Delivered|Netherlands|Amsterdam|248.74|28.80|Express|1|3
@@ -3619,7 +3619,7 @@ shipment_id|tracking_no|carrier_id|origin_depot_id|booked_date|delivered_date|st
 3618|TRK-2025-003618|10|11|2025-03-16|2025-03-23|Delivered|Italy|Milan|703.59|33.37|Economy|3|7
 3619|TRK-2026-003619|2|8|2026-06-12|2026-06-15|Delivered|France|Paris|342.43|40.29|Express|1|3
 3620|TRK-2026-003620|9|21|2026-02-10|2026-02-14|Delivered|Germany|Hamburg|831.16|54.07|Express|3|4
-3621|TRK-2025-003621|1|7|2025-12-14|2025-12-20|Delivered|Sweden|Gothenburg|1173.62|56.45|Economy|3|6
+3621|TRK-2025-003621|12|7|2025-12-14|2025-12-18|Delivered|Sweden|Gothenburg|1173.62|169.04|Economy|3|4
 3622|TRK-2026-003622|1|16|2026-02-15|2026-02-18|Delivered|Netherlands|Eindhoven|4709.51|324.59|Express|12|3
 3623|TRK-2026-003623|9|23|2026-04-22|2026-04-25|Delivered|Belgium|Antwerp|1164.84|50.62|Standard|3|3
 3624|TRK-2026-003624|1|15|2026-01-28|2026-02-05|Delivered|Belgium|Antwerp|804.17|44.34|Economy|2|8

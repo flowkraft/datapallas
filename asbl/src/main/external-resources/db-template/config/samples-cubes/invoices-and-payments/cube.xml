@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Invoices and Payments</name>
+    <description>The finance desk: what was invoiced and to whom, what is on the invoices, and what came in. Runs on the cube_demo demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

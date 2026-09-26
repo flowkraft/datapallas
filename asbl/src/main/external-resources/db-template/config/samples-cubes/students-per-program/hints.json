@@ -1,0 +1,16 @@
+[
+  {
+    "id": "students-per-program",
+    "fromStory": 19,
+    "question": "How many students are in each program?",
+    "text": "Tick **Students** and add **Program** - the rest of this cube is wrong on purpose.",
+    "query": {
+      "dimensions": [
+        "Program"
+      ],
+      "measures": [
+        "Students"
+      ]
+    }
+  }
+]

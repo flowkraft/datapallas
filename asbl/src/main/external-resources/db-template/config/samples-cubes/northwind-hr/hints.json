@@ -1,0 +1,16 @@
+[
+  {
+    "id": "employees-by-title",
+    "fromStory": 14,
+    "question": "How many people hold each title?",
+    "text": "Tick **Employee Count** and add **Title**.",
+    "query": {
+      "dimensions": [
+        "Title"
+      ],
+      "measures": [
+        "EmployeeCount"
+      ]
+    }
+  }
+]

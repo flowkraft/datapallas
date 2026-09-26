@@ -1,0 +1,16 @@
+[
+  {
+    "id": "customers-by-country",
+    "fromStory": 15,
+    "question": "Where are our customers?",
+    "text": "Tick **Customer Count** and add **Country**.",
+    "query": {
+      "dimensions": [
+        "Country"
+      ],
+      "measures": [
+        "CustomerCount"
+      ]
+    }
+  }
+]

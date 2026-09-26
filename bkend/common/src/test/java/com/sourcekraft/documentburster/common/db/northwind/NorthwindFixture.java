@@ -54,6 +54,28 @@ import java.util.Properties;
  */
 public final class NorthwindFixture {
 
+	/**
+	 * The day the cube_demo demo data ends on in every test. The seed script shifts the rows to the
+	 * caller's today; a test that asked for the real today would assert a different number every
+	 * day, so every test pins this one - the day the rows were generated for, which makes the shift
+	 * zero and the frozen truths true.
+	 */
+	public static final String CUBE_DEMO_TODAY = "2026-09-30";
+
+	/**
+	 * What every test asks the cube_demo seed script for: the frozen day, and a reload. The script
+	 * loads once and does nothing on a later run, which is right for a user and wrong for a test
+	 * handed a database somebody else already seeded - so a test always says wipe.
+	 */
+	public static final java.util.Map<String, String> CUBE_DEMO_SEED_PARAMS = java.util.Map.of("today",
+			CUBE_DEMO_TODAY, "wipe", "true");
+
+	/** The same, for a caller that also has to say where the rows are. */
+	public static java.util.Map<String, String> cubeDemoSeedParams(java.nio.file.Path dataDir) {
+		return java.util.Map.of("today", CUBE_DEMO_TODAY, "wipe", "true", "dataDir",
+				dataDir.toAbsolutePath().toString());
+	}
+
 	/** Set on the read-only connections. The URL form (?access_mode=...) does NOT work - it is parsed as part of the filename. */
 	private static final String READ_ONLY_PROPERTY = "duckdb.read_only";
 
@@ -196,6 +218,7 @@ public final class NorthwindFixture {
 		copySeedScripts(tempRoot.resolve("build").resolve("scripts"));
 
 		try (NorthwindManager manager = new NorthwindManager()) {
+			manager.setCubeDemoSeedParams(CUBE_DEMO_SEED_PARAMS);
 			manager.startDatabase(NorthwindManager.DatabaseVendor.SQLITE, buildSqliteDir.toString());
 			manager.startDatabase(NorthwindManager.DatabaseVendor.DUCKDB, buildDuckDbDir.toString());
 		}

@@ -162,6 +162,34 @@ public final class CubeSqlDialect {
 	 * is handled part by part, so {@code my schema.Order Details} becomes two quoted parts. A name
 	 * the author already quoted, or a sub-query in brackets, is passed through untouched.
 	 */
+	/**
+	 * The fixed decimal a SUM or an AVG is cast to - <b>why ANSI cannot do it:</b> two engines
+	 * cannot use the plain {@code DECIMAL(31,4)} the others take.
+	 *
+	 * <ul>
+	 * <li><b>Db2</b> derives the scale of a division as {@code 31 - p1 + s1 - s2}, so dividing two
+	 * {@code DECIMAL(31,4)} values leaves scale 0 and a ratio - cost per kg, revenue per order -
+	 * comes back truncated to a whole number, silently. {@code DECIMAL(23,4)} leaves 8 decimal
+	 * places there, and still holds 19 digits before the point;
+	 * <li><b>ClickHouse</b> refuses to cast a NULL to a non-Nullable type (code 349), and a LEFT
+	 * JOIN or a filtered measure produces NULLs by design, so the cast says {@code Nullable}.
+	 * </ul>
+	 *
+	 * <p>Everything else keeps {@code DECIMAL(31,4)}, which is what the generator wrote before
+	 * there was a vendor layer.
+	 */
+	public static String decimalType(String vendor) {
+
+		switch (key(vendor)) {
+			case "db2":
+				return "DECIMAL(23,4)";
+			case "clickhouse":
+				return "Nullable(Decimal(31,4))";
+			default:
+				return "DECIMAL(31,4)";
+		}
+	}
+
 	public static String quoteIdent(String name, String vendor) {
 
 		if (name == null || name.isEmpty())

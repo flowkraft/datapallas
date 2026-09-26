@@ -1,0 +1,16 @@
+[
+  {
+    "id": "products-discontinued",
+    "fromStory": 12,
+    "question": "How many products are discontinued?",
+    "text": "Tick **Product Count** and add **Discontinued**.",
+    "query": {
+      "dimensions": [
+        "Discontinued"
+      ],
+      "measures": [
+        "ProductCount"
+      ]
+    }
+  }
+]

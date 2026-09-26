@@ -1,0 +1,173 @@
+[
+  {
+    "hint": "tickets-total",
+    "rows": [
+      [
+        3000
+      ]
+    ]
+  },
+  {
+    "hint": "tickets-by-status",
+    "rows": [
+      [
+        "Closed",
+        2196
+      ],
+      [
+        "In Progress",
+        69
+      ],
+      [
+        "Open",
+        141
+      ],
+      [
+        "Resolved",
+        453
+      ],
+      [
+        "Waiting on Customer",
+        141
+      ]
+    ]
+  },
+  {
+    "hint": "tickets-by-status/by-priority",
+    "rows": [
+      [
+        "High",
+        685
+      ],
+      [
+        "Low",
+        805
+      ],
+      [
+        "Normal",
+        1172
+      ],
+      [
+        "Urgent",
+        338
+      ]
+    ]
+  },
+  {
+    "hint": "still-open",
+    "rows": [
+      [
+        351
+      ]
+    ]
+  },
+  {
+    "hint": "urgent-or-past-sla",
+    "rows": [
+      [
+        1187
+      ]
+    ]
+  },
+  {
+    "hint": "urgent-or-past-sla/and-still-open",
+    "rows": [
+      [
+        347
+      ]
+    ]
+  },
+  {
+    "hint": "urgent-or-past-sla/and-still-open-by-priority",
+    "rows": [
+      [
+        "High",
+        76
+      ],
+      [
+        "Low",
+        88
+      ],
+      [
+        "Normal",
+        138
+      ],
+      [
+        "Urgent",
+        45
+      ]
+    ]
+  },
+  {
+    "hint": "breach-by-team",
+    "rows": [
+      [
+        "Billing",
+        594,
+        159,
+        26.77
+      ],
+      [
+        "Onboarding",
+        496,
+        131,
+        26.41
+      ],
+      [
+        "Tier 1",
+        670,
+        168,
+        25.07
+      ],
+      [
+        "Tier 2",
+        1199,
+        500,
+        41.7
+      ],
+      [
+        null,
+        41,
+        40,
+        97.56
+      ]
+    ],
+    "source": "SELECT ag.team, COUNT(*), COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END),\n       100.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0)\nFROM cube_demo.support_tickets t LEFT JOIN cube_demo.support_agents ag ON ag.agent_id = t.agent_id\nGROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "breach-by-category",
+    "rows": [
+      [
+        "Billing",
+        566,
+        26.68
+      ],
+      [
+        "Bug",
+        688,
+        35.76
+      ],
+      [
+        "Feature Request",
+        388,
+        27.06
+      ],
+      [
+        "How-To",
+        655,
+        27.33
+      ],
+      [
+        "Onboarding",
+        431,
+        25.75
+      ],
+      [
+        "Outage",
+        272,
+        75.74
+      ]
+    ],
+    "source": "SELECT t.category, COUNT(*),\n       100.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0)\nFROM cube_demo.support_tickets t GROUP BY 1 ORDER BY 1"
+  }
+]

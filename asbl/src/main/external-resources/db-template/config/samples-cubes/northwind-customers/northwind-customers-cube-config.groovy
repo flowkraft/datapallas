@@ -33,7 +33,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 cube {
-  sql_table 'Customers'
+  sql_table '"Customers"'
   title 'Northwind Customer Management'
   description 'Customer base, order activity and revenue analysis for CRM and sales-ops'
 
@@ -42,7 +42,7 @@ cube {
     name 'CustomerID'
     title 'Customer ID'
     description 'Unique customer identifier (5-character code)'
-    sql '${CUBE}.CustomerID'
+    sql '${CUBE}."CustomerID"'
     type 'string'
     primary_key true
   }
@@ -50,35 +50,35 @@ cube {
     name 'CustomerCompanyName'
     title 'Company'
     description 'Customer company name'
-    sql 'CompanyName'
+    sql '"CompanyName"'
     type 'string'
   }
   dimension {
     name 'ContactName'
     title 'Contact Name'
     description 'Primary contact person at the customer'
-    sql 'ContactName'
+    sql '"ContactName"'
     type 'string'
   }
   dimension {
     name 'ContactTitle'
     title 'Contact Title'
     description 'Job title of the primary contact (decision-maker analysis)'
-    sql 'ContactTitle'
+    sql '"ContactTitle"'
     type 'string'
   }
   dimension {
     name 'Country'
     title 'Country'
     description 'Customer country'
-    sql 'Country'
+    sql '"Country"'
     type 'string'
   }
   dimension {
     name 'City'
     title 'City'
     description 'Customer city'
-    sql 'City'
+    sql '"City"'
     type 'string'
   }
 
@@ -90,21 +90,21 @@ cube {
     name 'OrderID'
     title 'Order ID'
     description 'Unique order identifier. Pick this dimension to establish per-order grain for invoice/order-ledger browsing.'
-    sql 'Orders.OrderID'
+    sql '"Orders"."OrderID"'
     type 'number'
   }
   dimension {
     name 'OrderDate'
     title 'Order Date'
     description 'When the order was placed (slice customers by ordering era, or list individual orders chronologically)'
-    sql 'Orders.OrderDate'
+    sql '"Orders"."OrderDate"'
     type 'time'
   }
   dimension {
     name 'OrderShippedDate'
     title 'Order Shipped Date'
     description 'When the order shipped (NULL = not yet shipped). Useful in per-order browsing alongside OrderDate.'
-    sql 'Orders.ShippedDate'
+    sql '"Orders"."ShippedDate"'
     type 'time'
   }
 
@@ -113,14 +113,14 @@ cube {
     name 'CustomerCount'
     title 'Customer Count'
     description 'Number of distinct customers'
-    sql '${CUBE}.CustomerID'
+    sql '${CUBE}."CustomerID"'
     type 'count_distinct'
   }
   measure {
     name 'OrderCount'
     title 'Order Count'
     description 'Number of distinct orders placed'
-    sql 'Orders.OrderID'
+    sql '"Orders"."OrderID"'
     type 'count_distinct'
   }
   // ── Revenue measures (two grain-specific names for the same SQL) ──
@@ -135,7 +135,7 @@ cube {
     name 'CustomerLifetimeValue'
     title 'Customer Lifetime Value (CLV)'
     description 'Total revenue from a customer across all their orders. PICK THIS WHEN: grouping by Customer (no OrderID). DO NOT pick this when grouping by Order ID \u2014 use Order Value instead.'
-    sql '("Order Details".UnitPrice * "Order Details".Quantity * (1 - "Order Details".Discount))'
+    sql '("Order Details"."UnitPrice" * "Order Details"."Quantity" * (1 - "Order Details"."Discount"))'
     type 'sum'
     format 'currency'
   }
@@ -143,7 +143,7 @@ cube {
     name 'OrderValue'
     title 'Order Value'
     description 'Total value of an individual order. PICK THIS WHEN: grouping by Order ID for invoice/order-ledger browsing. For customer totals use Customer Lifetime Value instead.'
-    sql '("Order Details".UnitPrice * "Order Details".Quantity * (1 - "Order Details".Discount))'
+    sql '("Order Details"."UnitPrice" * "Order Details"."Quantity" * (1 - "Order Details"."Discount"))'
     type 'sum'
     format 'currency'
   }
@@ -151,7 +151,7 @@ cube {
     name 'AvgOrderValue'
     title 'Average Order Value'
     description "Average line revenue \u2014 grain-agnostic. At customer grain it shows avg line value per customer; at order grain it shows the order's avg line value."
-    sql '("Order Details".UnitPrice * "Order Details".Quantity * (1 - "Order Details".Discount))'
+    sql '("Order Details"."UnitPrice" * "Order Details"."Quantity" * (1 - "Order Details"."Discount"))'
     type 'avg'
     format 'currency'
   }
@@ -159,28 +159,28 @@ cube {
     name 'EarliestOrderDate'
     title 'First Order'
     description 'Date of the earliest order from this customer'
-    sql 'Orders.OrderDate'
+    sql '"Orders"."OrderDate"'
     type 'min'
   }
   measure {
     name 'LatestOrderDate'
     title 'Most Recent Order'
     description 'Date of the most recent order from this customer (churn risk indicator)'
-    sql 'Orders.OrderDate'
+    sql '"Orders"."OrderDate"'
     type 'max'
   }
 
   // ── Joins (2-level chain) ──────────────────────────────────────────────
   join {
-    name 'Orders'
+    name '"Orders"'
     parent 'CUBE'
-    sql '${CUBE}.CustomerID = Orders.CustomerID'
+    sql '${CUBE}."CustomerID" = "Orders"."CustomerID"'
     relationship 'one_to_many'
   }
   join {
     name '"Order Details"'
-    parent 'Orders'
-    sql 'Orders.OrderID = "Order Details".OrderID'
+    parent '"Orders"'
+    sql '"Orders"."OrderID" = "Order Details"."OrderID"'
     relationship 'one_to_many'
   }
 
@@ -189,49 +189,49 @@ cube {
     name 'usa_customers'
     title 'USA Customers'
     description 'Customers based in the USA'
-    sql "\${CUBE}.Country = 'USA'"
+    sql "\${CUBE}.\"Country\" = 'USA'"
   }
   segment {
     name 'uk_customers'
     title 'UK Customers'
     description 'Customers based in the United Kingdom'
-    sql "\${CUBE}.Country = 'UK'"
+    sql "\${CUBE}.\"Country\" = 'UK'"
   }
   segment {
     name 'german_customers'
     title 'German Customers'
     description 'Customers based in Germany'
-    sql "\${CUBE}.Country = 'Germany'"
+    sql "\${CUBE}.\"Country\" = 'Germany'"
   }
   segment {
     name 'french_customers'
     title 'French Customers'
     description 'Customers based in France'
-    sql "\${CUBE}.Country = 'France'"
+    sql "\${CUBE}.\"Country\" = 'France'"
   }
   segment {
     name 'decision_makers'
     title 'Decision Makers'
     description 'Customers whose contact is an Owner or Manager (decision-makers)'
-    sql "\${CUBE}.ContactTitle LIKE '%Owner%' OR \${CUBE}.ContactTitle LIKE '%Manager%'"
+    sql "\${CUBE}.\"ContactTitle\" LIKE '%Owner%' OR \${CUBE}.\"ContactTitle\" LIKE '%Manager%'"
   }
   segment {
     name 'with_email'
     title 'Has Email Contact'
     description 'Customers with an email address on file (data-quality / outreach segment)'
-    sql "\${CUBE}.Email IS NOT NULL AND \${CUBE}.Email != ''"
+    sql "\${CUBE}.\"Email\" IS NOT NULL AND \${CUBE}.\"Email\" != ''"
   }
   segment {
     name 'shipped_orders'
     title 'Shipped Orders'
     description 'Limit to orders that have been shipped'
-    sql 'Orders.ShippedDate IS NOT NULL'
+    sql '"Orders"."ShippedDate" IS NOT NULL'
   }
   segment {
     name 'unshipped_orders'
     title 'Outstanding Orders'
     description 'Limit to orders not yet shipped (outstanding)'
-    sql 'Orders.ShippedDate IS NULL'
+    sql '"Orders"."ShippedDate" IS NULL'
   }
 
   // ── Hierarchies ─────────────────────────────────────────────────────────

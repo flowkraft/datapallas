@@ -30,9 +30,15 @@ import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
 
 /**
- * Runs the SQL that CubeSqlGenerator produces for the twenty SHIPPED sample cubes
- * against a real Northwind database: the five Northwind samples and the fifteen
- * story cubes, which read the cube_demo schema of the DuckDB sample.
+ * Runs the SQL that CubeSqlGenerator produces for every SHIPPED sample cube
+ * against a real Northwind database: the five Northwind samples, and the eight
+ * files that read the cube_demo schema of the DuckDB sample - the six domain
+ * cubes and the two narrow ones kept beside them.
+ *
+ * <p>A file can hold more than one cube, and each of them is swept: the sweeps
+ * below run over every cube in every file, named ones included, so a cube that
+ * is only reachable by name (Depots, Order Lines, Payments, Enrollments) is
+ * proven exactly like the one the file opens with.
  *
  * CubeSqlGeneratorTest already covers generation, but every assertion there is
  * on the SQL TEXT - contains("country"), contains("group by"). Text assertions
@@ -46,7 +52,7 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
  * sql are hand-written fragments passed to the database verbatim - jOOQ handles
  * identifier quoting, nothing rewrites function calls. A cube proven only on
  * DuckDB can therefore ship broken: EXTRACT(YEAR FROM ...) runs there and is a
- * syntax error on SQLite, which is where four of the Northwind five run, while the fifteen story
+ * syntax error on SQLite, which is where four of the Northwind five run, while the cube_demo
  * cubes run on DuckDB.
  *
  * So the engine is not hardcoded here. It is read from each cube's own cube.xml
@@ -67,31 +73,49 @@ class CubeSampleSqlExecutesTest {
 	private static final String SAMPLES_CUBES_DIR = "../../asbl/src/main/external-resources/db-template/config/samples-cubes";
 
 	/**
-	 * Every cube that ships under config/samples-cubes: the five Northwind samples and the fifteen
-	 * story cubes the Cube Stories page is written against. The story cubes run on the DuckDB
-	 * sample, whose cube_demo schema holds their demo data; the Northwind five say in their own
-	 * cube.xml which engine they ship on, and shippedVendorOf reads it.
+	 * Every cube FILE that ships under config/samples-cubes: the five Northwind samples, the six
+	 * domain cubes the Cube Stories page is written against, and the two narrow cubes kept beside
+	 * them. The cube_demo eight run on the DuckDB sample, whose cube_demo schema holds their demo
+	 * data; the Northwind five say in their own cube.xml which engine they ship on, and
+	 * shippedVendorOf reads it.
 	 */
 	private static final List<String> SAMPLE_CUBES = List.of("northwind-sales", "northwind-customers", "northwind-hr",
-			"northwind-inventory", "northwind-warehouse", "story-sales-pipeline", "story-pipeline-by-stage",
-			"story-deals-per-month", "story-ticket-resolution", "story-win-rate", "story-grades",
-			"story-shipments-per-month", "story-shipments-by-destination", "story-depot-network",
-			"story-shipping-cost-by-carrier", "story-online-store-sales", "story-invoices-and-payments",
-			"story-accounts-receivable", "story-student-progress", "story-students-per-program");
+			"northwind-inventory", "northwind-warehouse", "deals", "tickets", "shipments", "shop", "school",
+			"invoices-and-payments", "accounts-receivable", "students-per-program");
 
 	/**
-	 * Story 19 is a first draft with mistakes in it, on purpose: a measure type that does not exist
+	 * Students per Program is a first draft with mistakes in it, on purpose: a measure type that does not exist
 	 * and a drill path naming a dimension that is not there. Generating SQL from it throws, which is
 	 * the whole point of the story, so the sweeps below leave it out by name and
 	 * everyShippedSampleParsesWithNothingToComplainAbout asserts its two warnings and two errors
 	 * instead. Naming it here rather than catching exceptions keeps a cube that breaks by accident
 	 * from passing quietly.
 	 */
-	private static final String BROKEN_ON_PURPOSE = "story-students-per-program";
+	private static final String BROKEN_ON_PURPOSE = "students-per-program";
 
-	/** The cubes the SQL sweeps run: every shipped sample but the one that is wrong on purpose. */
-	private static List<String> sweptCubes() {
-		return SAMPLE_CUBES.stream().filter(name -> !BROKEN_ON_PURPOSE.equals(name)).toList();
+	/**
+	 * The cubes the SQL sweeps run: every cube of every shipped file but the file that is wrong on
+	 * purpose. A cube is named by its file, and a cube that lives under a name inside that file by
+	 * {@code file#key} - so Depots is {@code shipments#depots} and the three finance cubes are
+	 * {@code invoices-and-payments#invoices}, {@code #payments} and {@code #cube_demo.erp_customers}.
+	 * Listing them from the files themselves rather than by hand is what keeps a cube added to a
+	 * file from going unswept.
+	 */
+	private List<String> sweptCubes() throws Exception {
+		List<String> swept = new ArrayList<>();
+		for (String fileName : SAMPLE_CUBES) {
+			if (BROKEN_ON_PURPOSE.equals(fileName)) continue;
+			CubeOptions file = parseSampleFile(fileName);
+			if (file.getSqlTable() != null || file.getSql() != null) {
+				swept.add(fileName);
+			}
+			if (file.getNamedOptions() != null) {
+				for (String key : file.getNamedOptions().keySet()) {
+					swept.add(fileName + "#" + key);
+				}
+			}
+		}
+		return swept;
 	}
 
 	private static final Pattern CONNECTION_ID = Pattern.compile("<connectionId>\\s*([^<\\s]+)\\s*</connectionId>");
@@ -395,7 +419,9 @@ class CubeSampleSqlExecutesTest {
 	 * listed here, so the two never drift apart.
 	 */
 	private String shippedVendorOf(String cubeName) throws Exception {
-		File cubeXml = new File(SAMPLES_CUBES_DIR, cubeName + "/cube.xml");
+		int hash = cubeName.indexOf('#');
+		String fileName = hash < 0 ? cubeName : cubeName.substring(0, hash);
+		File cubeXml = new File(SAMPLES_CUBES_DIR, fileName + "/cube.xml");
 		if (!cubeXml.exists()) {
 			throw new IllegalStateException("Sample cube descriptor not found: " + cubeXml.getAbsolutePath());
 		}
@@ -420,7 +446,7 @@ class CubeSampleSqlExecutesTest {
 	}
 
 	/**
-	 * A geo dimension, on real coordinates. The demo data's depots (story 9) are the only place in
+	 * A geo dimension, on real coordinates. The demo data's depots are the only place in
 	 * the shipped databases where a latitude and a longitude sit next to each other, and a map
 	 * widget is fed straight from these two columns: if the pair came back grouped into one column,
 	 * or one row short of a depot, the map would silently lose pins.
@@ -480,8 +506,18 @@ class CubeSampleSqlExecutesTest {
 		}
 	}
 
+	/** One cube: the whole file when the name is a file, the named cube when it is {@code file#key}. */
 	private CubeOptions parseSampleCube(String cubeName) throws Exception {
-		File configFile = new File(SAMPLES_CUBES_DIR, cubeName + "/" + cubeName + "-cube-config.groovy");
+		int hash = cubeName.indexOf('#');
+		if (hash < 0) {
+			return CubeSqlGenerator.pickCube(parseSampleFile(cubeName), "");
+		}
+		return CubeSqlGenerator.pickCube(parseSampleFile(cubeName.substring(0, hash)), cubeName.substring(hash + 1));
+	}
+
+	/** The whole file, cubes and warnings together. */
+	private CubeOptions parseSampleFile(String fileName) throws Exception {
+		File configFile = new File(SAMPLES_CUBES_DIR, fileName + "/" + fileName + "-cube-config.groovy");
 		if (!configFile.exists()) {
 			throw new IllegalStateException("Sample cube config not found: " + configFile.getAbsolutePath());
 		}
@@ -905,7 +941,7 @@ class CubeSampleSqlExecutesTest {
 		List<String> complaints = new ArrayList<>();
 		for (String cubeName : SAMPLE_CUBES) {
 			if (BROKEN_ON_PURPOSE.equals(cubeName)) continue;
-			for (Map<String, Object> warning : parseSampleCube(cubeName).getWarnings()) {
+			for (Map<String, Object> warning : parseSampleFile(cubeName).getWarnings()) {
 				String key = String.valueOf(warning.get("key"));
 				boolean allowed = "warning".equals(warning.get("level")) && notUsedYet.contains(key)
 						&& String.valueOf(warning.get("message")).endsWith(key + " is not used yet");
@@ -920,7 +956,7 @@ class CubeSampleSqlExecutesTest {
 		// Story 19 is the one sample that must complain, and about exactly these four things: a
 		// first draft whose mistakes are caught and explained. If the parser ever stops saying one
 		// of them, the story on the page stops being true.
-		List<Map<String, Object>> drafted = parseSampleCube(BROKEN_ON_PURPOSE).getWarnings();
+		List<Map<String, Object>> drafted = parseSampleFile(BROKEN_ON_PURPOSE).getWarnings();
 		List<String> saidAsWarning = new ArrayList<>();
 		List<String> saidAsError = new ArrayList<>();
 		for (Map<String, Object> said : drafted) {

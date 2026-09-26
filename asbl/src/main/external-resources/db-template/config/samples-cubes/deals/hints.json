@@ -1,0 +1,195 @@
+[
+  {
+    "id": "deals-and-value",
+    "fromStory": 1,
+    "question": "How many deals do we have, and what are they worth?",
+    "text": "Tick **Deals** and **Deal Value**.",
+    "query": {
+      "dimensions": [],
+      "measures": [
+        "Deals",
+        "DealValue"
+      ]
+    },
+    "variants": [
+      {
+        "id": "count-only",
+        "text": "Or tick **Deals** on its own.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Deals"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "deals-by-stage",
+    "fromStory": 2,
+    "question": "Where do our deals stand, stage by stage?",
+    "text": "Add **Stage** next to **Deals** and **Deal Value**.",
+    "query": {
+      "dimensions": [
+        "Stage"
+      ],
+      "measures": [
+        "Deals",
+        "DealValue"
+      ]
+    },
+    "variants": [
+      {
+        "id": "stage-alone",
+        "text": "Tick **Stage** with no measure at all: the six stages, nothing else.",
+        "query": {
+          "dimensions": [
+            "Stage"
+          ],
+          "measures": []
+        }
+      }
+    ]
+  },
+  {
+    "id": "deals-per-month",
+    "fromStory": 3,
+    "question": "Are we creating more deals than last year, month by month?",
+    "text": "Tick **Deals** and **Created Date**, then pick **Month**.",
+    "query": {
+      "dimensions": [
+        "CreatedDate.month"
+      ],
+      "measures": [
+        "Deals"
+      ]
+    },
+    "variants": [
+      {
+        "id": "quarter",
+        "text": "The same field, read by **Quarter**.",
+        "query": {
+          "dimensions": [
+            "CreatedDate.quarter"
+          ],
+          "measures": [
+            "Deals"
+          ]
+        }
+      },
+      {
+        "id": "year",
+        "text": "...or by **Year**.",
+        "query": {
+          "dimensions": [
+            "CreatedDate.year"
+          ],
+          "measures": [
+            "Deals"
+          ]
+        }
+      },
+      {
+        "id": "week",
+        "text": "...or by **Week**.",
+        "query": {
+          "dimensions": [
+            "CreatedDate.week"
+          ],
+          "measures": [
+            "Deals"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "busiest-days",
+    "fromStory": 3,
+    "question": "Which five days brought in the most deals?",
+    "text": "**Deals** by **Created Date** read by **Day**, sorted by **Deals** descending, top 5.",
+    "query": {
+      "dimensions": [
+        "CreatedDate.day"
+      ],
+      "measures": [
+        "Deals"
+      ],
+      "order": [
+        {
+          "member": "Deals",
+          "dir": "desc"
+        },
+        {
+          "member": "CreatedDate.day",
+          "dir": "asc"
+        }
+      ],
+      "limit": 5,
+      "ordered": true
+    }
+  },
+  {
+    "id": "win-rate-by-lead-source",
+    "fromStory": 5,
+    "question": "Which lead sources win most?",
+    "text": "Tick **Won Deals**, **Closed Deals** and **Win Rate**, then add **Lead Source**.",
+    "query": {
+      "dimensions": [
+        "LeadSource"
+      ],
+      "measures": [
+        "WonDeals",
+        "ClosedDeals",
+        "WinRate"
+      ]
+    },
+    "variants": [
+      {
+        "id": "totals",
+        "text": "Without a field, the same measures give the whole pipeline at once.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "WonDeals",
+            "LostDeals",
+            "ClosedDeals",
+            "WonValue",
+            "OpenPipeline",
+            "WinRate"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "deal-size-by-tier",
+    "fromStory": null,
+    "question": "Do the big accounts buy bigger? (new: the old cubes had no account)",
+    "text": "Tick **Deals** and **Average Deal Size**, then add **Account Tier**.",
+    "query": {
+      "dimensions": [
+        "AccountTier"
+      ],
+      "measures": [
+        "Deals",
+        "AvgDealSize"
+      ]
+    }
+  },
+  {
+    "id": "won-value-by-rep",
+    "fromStory": null,
+    "question": "Which rep brings in the most won business? (new: the old cubes had no rep)",
+    "text": "Tick **Deals** and **Won Value**, then add **Rep**.",
+    "query": {
+      "dimensions": [
+        "Rep"
+      ],
+      "measures": [
+        "Deals",
+        "WonValue"
+      ]
+    }
+  }
+]

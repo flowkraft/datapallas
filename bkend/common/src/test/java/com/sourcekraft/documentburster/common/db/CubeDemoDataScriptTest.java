@@ -37,8 +37,19 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindManager;
  */
 class CubeDemoDataScriptTest {
 
+	/**
+	 * What every test in here asks the script for. The day is pinned: the script shifts the rows to
+	 * the caller's today, so a test that let it use the real today would assert a different number
+	 * tomorrow; pinned to the day the rows were generated for, the shift is zero. And it always
+	 * wipes, because these tests are about what a load produces, not about the run-once check.
+	 */
+	static Map<String, String> seedParams(Path script) {
+		return NorthwindFixture.cubeDemoSeedParams(script.getParent().resolve("cube-demo-data"));
+	}
+
 	/** The 19 tables and their frozen row counts (32,313 rows in all). */
-	private static final Map<String, Integer> ROWS = new LinkedHashMap<>();
+	/** Shared with the other tests of this data: the 19 tables and the rows each one holds. */
+	static final Map<String, Integer> ROWS = new LinkedHashMap<>();
 	static {
 		ROWS.put("crm_accounts", 60);
 		ROWS.put("crm_sales_reps", 12);
@@ -61,7 +72,7 @@ class CubeDemoDataScriptTest {
 		ROWS.put("erp_payments", 1700);
 	}
 
-	private static final int TOTAL_ROWS = 32313;
+	static final int TOTAL_ROWS = 32313;
 
 	/** Unpaid invoices, each with what is still owed on it after its payments. */
 	private static final String UNPAID = "FROM (SELECT i.invoice_id, i.status,"
@@ -79,7 +90,7 @@ class CubeDemoDataScriptTest {
 		Path database = temp.resolve("demo.duckdb");
 
 		try (Connection connection = duckDb(database)) {
-			SeedScriptRunner.run(connection, "DUCKDB", script, null);
+			SeedScriptRunner.run(connection, "DUCKDB", script, seedParams(script));
 			assertRowCounts(connection);
 			assertTruths(connection);
 		}
@@ -92,8 +103,8 @@ class CubeDemoDataScriptTest {
 		Path database = temp.resolve("demo.duckdb");
 
 		try (Connection connection = duckDb(database)) {
-			SeedScriptRunner.run(connection, "DUCKDB", script, null);
-			SeedScriptRunner.run(connection, "DUCKDB", script, null);
+			SeedScriptRunner.run(connection, "DUCKDB", script, seedParams(script));
+			SeedScriptRunner.run(connection, "DUCKDB", script, seedParams(script));
 			assertRowCounts(connection);
 			assertTruths(connection);
 		}
@@ -108,7 +119,7 @@ class CubeDemoDataScriptTest {
 
 		try (Connection connection = duckDb(temp.resolve("demo.duckdb"))) {
 			Exception refused = assertThrows(Exception.class,
-					() -> SeedScriptRunner.run(connection, "DUCKDB", script, null));
+					() -> SeedScriptRunner.run(connection, "DUCKDB", script, seedParams(script)));
 			assertTrue(message(refused).contains(rows.toAbsolutePath().toString()),
 					"The message names the folder it looked in: " + message(refused));
 		}
@@ -120,7 +131,7 @@ class CubeDemoDataScriptTest {
 		Path script = shipScript(temp);
 		try (Connection connection = duckDb(temp.resolve("demo.duckdb"))) {
 			Exception refused = assertThrows(Exception.class,
-					() -> SeedScriptRunner.run(connection, "INFORMIX", script, null));
+					() -> SeedScriptRunner.run(connection, "INFORMIX", script, seedParams(script)));
 			assertTrue(message(refused).contains("INFORMIX"),
 					"The message names the vendor it does not know: " + message(refused));
 		}
@@ -135,7 +146,7 @@ class CubeDemoDataScriptTest {
 				.getConnection("jdbc:sqlite:" + temp.resolve("main.db").toAbsolutePath())) {
 
 			Exception refused = assertThrows(Exception.class,
-					() -> SeedScriptRunner.run(connection, "SQLITE", script, null));
+					() -> SeedScriptRunner.run(connection, "SQLITE", script, seedParams(script)));
 			assertTrue(message(refused).contains("cube_demo"),
 					"The message says what to attach: " + message(refused));
 
@@ -144,7 +155,7 @@ class CubeDemoDataScriptTest {
 				statement.execute("ATTACH DATABASE '" + temp.resolve("cube-demo.db").toAbsolutePath()
 						+ "' AS cube_demo");
 			}
-			SeedScriptRunner.run(connection, "SQLITE", script, null);
+			SeedScriptRunner.run(connection, "SQLITE", script, seedParams(script));
 			assertRowCounts(connection);
 
 			// The days are written as ISO text there, not as the epoch milliseconds a bound
@@ -210,7 +221,7 @@ class CubeDemoDataScriptTest {
 
 		assertEquals(1200L, number(connection, "SELECT COUNT(*) FROM cube_demo.crm_deals").longValue(),
 				"Deals");
-		assertEquals(43402000.00,
+		assertEquals(41116000.00,
 				number(connection, "SELECT SUM(amount) FROM cube_demo.crm_deals").doubleValue(), 0.01,
 				"Deal value");
 
@@ -243,7 +254,7 @@ class CubeDemoDataScriptTest {
 	// ── plumbing ─────────────────────────────────────────────────────────────
 
 	/** Copies the shipped script and its rows into {@code temp}, as the packager's folder holds them. */
-	private static Path shipScript(Path temp) throws Exception {
+	static Path shipScript(Path temp) throws Exception {
 
 		Path shipped = Paths.get(System.getProperty("user.dir")).toAbsolutePath().getParent().getParent()
 				.resolve("asbl").resolve("src").resolve("main").resolve("external-resources")

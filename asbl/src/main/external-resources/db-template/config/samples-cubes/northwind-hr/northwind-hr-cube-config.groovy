@@ -25,7 +25,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 cube {
-  sql_table 'Employees'
+  sql_table '"Employees"'
   title 'Northwind Human Resources'
   description 'Workforce composition, tenure, age, and territory coverage'
 
@@ -34,7 +34,7 @@ cube {
     name 'EmployeeID'
     title 'Employee ID'
     description 'Unique employee identifier'
-    sql '${CUBE}.EmployeeID'
+    sql '${CUBE}."EmployeeID"'
     type 'number'
     primary_key true
   }
@@ -42,42 +42,42 @@ cube {
     name 'EmployeeName'
     title 'Employee'
     description 'Full name (FirstName LastName)'
-    sql "FirstName || ' ' || LastName"
+    sql "\"FirstName\" || ' ' || \"LastName\""
     type 'string'
   }
   dimension {
     name 'Title'
     title 'Job Title'
     description 'Employee job title (e.g. "Sales Representative")'
-    sql 'Title'
+    sql '"Title"'
     type 'string'
   }
   dimension {
     name 'HireDate'
     title 'Hire Date'
     description 'Date employee was hired (group by year for hiring trends)'
-    sql 'HireDate'
+    sql '"HireDate"'
     type 'time'
   }
   dimension {
     name 'City'
     title 'City'
     description 'Employee city'
-    sql 'City'
+    sql '"City"'
     type 'string'
   }
   dimension {
     name 'Country'
     title 'Country'
     description 'Employee country'
-    sql 'Country'
+    sql '"Country"'
     type 'string'
   }
   dimension {
     name 'ReportsTo'
     title 'Manager Employee ID'
     description 'EmployeeID of the manager (NULL = top of org chart). Self-join not supported \u2014 group by this to count direct reports per manager ID.'
-    sql 'ReportsTo'
+    sql '"ReportsTo"'
     type 'number'
   }
 
@@ -86,7 +86,7 @@ cube {
     name 'TerritoryDescription'
     title 'Territory'
     description 'Human-readable territory name'
-    sql 'Territories.TerritoryDescription'
+    sql '"Territories"."TerritoryDescription"'
     type 'string'
   }
 
@@ -95,7 +95,7 @@ cube {
     name 'RegionDescription'
     title 'Sales Region'
     description 'Sales region (Eastern, Western, Northern, Southern)'
-    sql 'Region.RegionDescription'
+    sql '"Region"."RegionDescription"'
     type 'string'
   }
 
@@ -109,7 +109,7 @@ cube {
     name 'EmployeeCount'
     title 'Employee Count'
     description 'Number of distinct employees. PICK THIS WHEN: grouping by country / title / territory / region. (At per-employee grain it always returns 1.)'
-    sql '${CUBE}.EmployeeID'
+    sql '${CUBE}."EmployeeID"'
     type 'count_distinct'
   }
   // The date arithmetic below is SQLite's, deliberately: this sample is wired to
@@ -122,48 +122,48 @@ cube {
     name 'AvgTenureYears'
     title 'Avg Tenure (years)'
     description "Average years since hire date. PICK THIS WHEN: grouping by title / country / segment. (At per-employee grain it returns that employee's own tenure.)"
-    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.HireDate))"
+    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.\"HireDate\"))"
     type 'avg'
   }
   measure {
     name 'AvgAgeYears'
     title 'Avg Age (years)'
     description "Average age in years. PICK THIS WHEN: grouping by title / country / segment. (At per-employee grain it returns that employee's own age.)"
-    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.BirthDate))"
+    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.\"BirthDate\"))"
     type 'avg'
   }
   measure {
     name 'UniqueTerritories'
     title 'Unique Territories'
     description 'Number of distinct territories covered (requires Territories join)'
-    sql 'Territories.TerritoryDescription'
+    sql '"Territories"."TerritoryDescription"'
     type 'count_distinct'
   }
   measure {
     name 'UniqueSalesRegions'
     title 'Unique Sales Regions'
     description 'Number of distinct sales regions covered (requires the full 3-level chain)'
-    sql 'Region.RegionDescription'
+    sql '"Region"."RegionDescription"'
     type 'count_distinct'
   }
 
   // ── Joins (3-level chain) ──────────────────────────────────────────────
   join {
-    name 'EmployeeTerritories'
+    name '"EmployeeTerritories"'
     parent 'CUBE'
-    sql '${CUBE}.EmployeeID = EmployeeTerritories.EmployeeID'
+    sql '${CUBE}."EmployeeID" = "EmployeeTerritories"."EmployeeID"'
     relationship 'one_to_many'
   }
   join {
-    name 'Territories'
-    parent 'EmployeeTerritories'
-    sql 'EmployeeTerritories.TerritoryID = Territories.TerritoryID'
+    name '"Territories"'
+    parent '"EmployeeTerritories"'
+    sql '"EmployeeTerritories"."TerritoryID" = "Territories"."TerritoryID"'
     relationship 'many_to_one'
   }
   join {
-    name 'Region'
-    parent 'Territories'
-    sql 'Territories.RegionID = Region.RegionID'
+    name '"Region"'
+    parent '"Territories"'
+    sql '"Territories"."RegionID" = "Region"."RegionID"'
     relationship 'many_to_one'
   }
 
@@ -172,37 +172,37 @@ cube {
     name 'executives'
     title 'Executives (no manager)'
     description 'Employees without a ReportsTo manager \u2014 top of org chart'
-    sql '${CUBE}.ReportsTo IS NULL'
+    sql '${CUBE}."ReportsTo" IS NULL'
   }
   segment {
     name 'individual_contributors'
     title 'Individual Contributors'
     description 'Employees who report to someone'
-    sql '${CUBE}.ReportsTo IS NOT NULL'
+    sql '${CUBE}."ReportsTo" IS NOT NULL'
   }
   segment {
     name 'usa_based'
     title 'USA-Based'
     description 'Employees based in the USA'
-    sql "\${CUBE}.Country = 'USA'"
+    sql "\${CUBE}.\"Country\" = 'USA'"
   }
   segment {
     name 'uk_based'
     title 'UK-Based'
     description 'Employees based in the UK'
-    sql "\${CUBE}.Country = 'UK'"
+    sql "\${CUBE}.\"Country\" = 'UK'"
   }
   segment {
     name 'senior_tenure'
     title 'Senior Tenure (5+ years)'
     description 'Employees with 5 or more years of tenure'
-    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.HireDate)) >= 5"
+    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.\"HireDate\")) >= 5"
   }
   segment {
     name 'recent_hires'
     title 'Recent Hires (\u22642 years)'
     description 'Employees hired within the last 2 years'
-    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.HireDate)) <= 2"
+    sql "(strftime('%Y', 'now') - strftime('%Y', \${CUBE}.\"HireDate\")) <= 2"
   }
 
   // ── Hierarchies ─────────────────────────────────────────────────────────

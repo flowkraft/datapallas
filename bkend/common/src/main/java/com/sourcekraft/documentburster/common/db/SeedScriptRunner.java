@@ -26,10 +26,15 @@ import groovy.sql.Sql;
  * <li>{@code dbSql} - a {@link groovy.sql.Sql} on the caller's connection;</li>
  * <li>{@code vendor} - the database vendor, as the connection settings name it;</li>
  * <li>{@code log} - a logger;</li>
- * <li>{@code params} - the caller's parameters, never null;</li>
- * <li>{@code scriptDir} - the folder the script was read from, for a script that ships data
- * files next to itself, and null when the caller has only the text.</li>
+ * <li>{@code params} - the caller's parameters, never null.</li>
  * </ul>
+ *
+ * <p>
+ * A script that ships data files finds them through {@code params} or through the installation, as
+ * the custom app seeds do - never through the folder it was read from. The Seed Data tab sends the
+ * script as text and writes it to a temp file, so that folder says nothing about where a script
+ * lives, and a script that relied on it worked everywhere except from the tab.
+ * </p>
  */
 public class SeedScriptRunner {
 
@@ -38,25 +43,16 @@ public class SeedScriptRunner {
 	private SeedScriptRunner() {
 	}
 
-	/** Runs a script read from a file; {@code scriptDir} is that file's folder. */
+	/** Runs a script read from a file: the same as reading it and calling the text form. */
 	public static void run(Connection connection, String vendor, Path scriptFile, Map<String, String> params)
 			throws Exception {
 
-		String scriptText = Files.readString(scriptFile);
-		Path scriptDir = scriptFile.toAbsolutePath().getParent();
-
-		run(connection, vendor, scriptText, scriptDir, params);
+		run(connection, vendor, Files.readString(scriptFile), params);
 	}
 
-	/** Runs a script the caller already holds as text; the script gets no {@code scriptDir}. */
+	/** Runs a script the caller already holds as text, which is how the Seed Data tab sends one. */
 	public static void run(Connection connection, String vendor, String scriptText, Map<String, String> params)
 			throws Exception {
-
-		run(connection, vendor, scriptText, null, params);
-	}
-
-	private static void run(Connection connection, String vendor, String scriptText, Path scriptDir,
-			Map<String, String> params) throws Exception {
 
 		Sql dbSql = new Sql(connection);
 
@@ -65,7 +61,6 @@ public class SeedScriptRunner {
 		binding.setVariable("vendor", vendor);
 		binding.setVariable("log", log);
 		binding.setVariable("params", params != null ? params : new LinkedHashMap<String, String>());
-		binding.setVariable("scriptDir", scriptDir != null ? scriptDir.toString() : null);
 
 		new GroovyShell(Thread.currentThread().getContextClassLoader(), binding, new CompilerConfiguration())
 				.evaluate(scriptText);

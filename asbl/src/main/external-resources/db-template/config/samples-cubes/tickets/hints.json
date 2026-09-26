@@ -1,0 +1,135 @@
+[
+  {
+    "id": "tickets-total",
+    "fromStory": 4,
+    "question": "How many tickets has the desk taken?",
+    "text": "Tick **Tickets**.",
+    "query": {
+      "dimensions": [],
+      "measures": [
+        "Tickets"
+      ]
+    }
+  },
+  {
+    "id": "tickets-by-status",
+    "fromStory": 4,
+    "question": "Where do the tickets stand?",
+    "text": "Tick **Tickets** and add **Status**.",
+    "query": {
+      "dimensions": [
+        "Status"
+      ],
+      "measures": [
+        "Tickets"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-priority",
+        "text": "The same, by **Priority**.",
+        "query": {
+          "dimensions": [
+            "Priority"
+          ],
+          "measures": [
+            "Tickets"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "still-open",
+    "fromStory": 4,
+    "question": "How many are still open?",
+    "text": "Tick **Tickets** and the **Still open** segment.",
+    "query": {
+      "dimensions": [],
+      "measures": [
+        "Tickets"
+      ],
+      "segments": [
+        "open"
+      ]
+    }
+  },
+  {
+    "id": "urgent-or-past-sla",
+    "fromStory": 4,
+    "question": "How many are urgent or already past their SLA?",
+    "text": "Tick **Tickets** and the **Urgent or past SLA** segment.",
+    "query": {
+      "dimensions": [],
+      "measures": [
+        "Tickets"
+      ],
+      "segments": [
+        "urgent_or_breached"
+      ]
+    },
+    "variants": [
+      {
+        "id": "and-still-open",
+        "text": "Tick both segments: they are ANDed, each inside its own brackets - 347, not 790.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Tickets"
+          ],
+          "segments": [
+            "open",
+            "urgent_or_breached"
+          ]
+        }
+      },
+      {
+        "id": "and-still-open-by-priority",
+        "text": "Both segments, split by **Priority**.",
+        "query": {
+          "dimensions": [
+            "Priority"
+          ],
+          "measures": [
+            "Tickets"
+          ],
+          "segments": [
+            "open",
+            "urgent_or_breached"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "breach-by-team",
+    "fromStory": null,
+    "question": "Which team is missing the SLA? (new: the old cube had no agent)",
+    "text": "Tick **Tickets**, **Breached Tickets** and **Breach Rate**, then add **Team**.",
+    "query": {
+      "dimensions": [
+        "Team"
+      ],
+      "measures": [
+        "Tickets",
+        "BreachedTickets",
+        "BreachRate"
+      ]
+    }
+  },
+  {
+    "id": "breach-by-category",
+    "fromStory": null,
+    "question": "And what is breaching? (new)",
+    "text": "Tick **Tickets** and **Breach Rate**, then add **Category**.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "Tickets",
+        "BreachRate"
+      ]
+    }
+  }
+]
