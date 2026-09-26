@@ -31,6 +31,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -41,6 +42,7 @@ import com.flowkraft.iam.IamService;
 import com.flowkraft.iam.Role;
 import com.flowkraft.iam.model.Tenant;
 import com.flowkraft.iam.model.UserGroup;
+import com.flowkraft.security.ApiKeyManager;
 import com.flowkraft.reports.ReportsService;
 import com.flowkraft.system.services.FileSystemService;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
@@ -80,6 +82,21 @@ import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSetti
  * key and the two unlimited authors would all be limited to the connections of their groups, which
  * for three of the four is no connection at all.
  */
+/*
+ * Its own application context, because this test replaces the installation the server runs on.
+ *
+ * Every RANDOM_PORT journey test in this suite carries the same @SpringBootTest annotation, with
+ * nothing to tell them apart, so Spring's context cache hands them ONE server - booted by whichever
+ * class ran first, on whichever installation that class had written into AppPaths. Almost everything
+ * in the server resolves those statics per call, which is why the sharing stays invisible for the
+ * journeys that only sign people in. What the server reads ONCE, while it boots, is the exception:
+ * ApiKeyManager.init() caches the installation key from <installation>/config/_internal/api-key.txt
+ * and never looks at that file again. Share the context and this test's key is another test's key,
+ * so every X-API-Key call here is refused 401 at the first door. BEFORE_CLASS boots this class's
+ * server on this class's installation, whatever ran before it. A new journey test with the same
+ * annotation needs the same line.
+ */
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 @SpringBootTest(classes = ServerApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class UnlimitedCallersJourneyTest {
 
@@ -225,6 +242,9 @@ class UnlimitedCallersJourneyTest {
 	@Autowired
 	private LimitsService limitsService;
 
+	@Autowired
+	private ApiKeyManager apiKeyManager;
+
 	private final List<String> reportsToRemove = new ArrayList<>();
 
 	@BeforeEach
@@ -259,6 +279,26 @@ class UnlimitedCallersJourneyTest {
 	// ============================================================
 	// the four callers
 	// ============================================================
+
+	/**
+	 * The guard for the way this file once failed, and would fail again the moment a journey test loses
+	 * its own context: the server under test must be the server of THIS installation. ApiKeyManager
+	 * caches the installation key while the context boots, so a context booted on another test's
+	 * installation carries another key - and the only symptom used to be a 401 at the first door of the
+	 * journey below, which says nothing about why. This says it in one line.
+	 */
+	@Test
+	void theServerUnderTestRunsOnThisTestsInstallation() {
+
+		assertEquals(root.toString(), AppPaths.PORTABLE_EXECUTABLE_DIR_PATH,
+				"the installation under the server must be this test's own");
+
+		assertEquals(FIXTURE_API_KEY, apiKeyManager.getApiKey(),
+				"the context was booted on another installation, so the installation key it holds is not the one "
+						+ "this test wrote into " + root
+						+ "/config/_internal/api-key.txt - the @DirtiesContext(BEFORE_CLASS) on this class is what "
+						+ "keeps the journeys from sharing one server");
+	}
 
 	@Test
 	void anAdministratorWalksTheWholeChainOnAConnectionNoGroupNames() throws Exception {

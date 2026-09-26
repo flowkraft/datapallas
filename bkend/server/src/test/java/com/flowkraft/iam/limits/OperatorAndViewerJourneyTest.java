@@ -31,6 +31,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -79,6 +80,13 @@ import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSetti
  * uses, and for the same reason: {@code @PreAuthorize}, the grant check and the translation of a
  * refusal into a status code exist only in a real filter chain.
  */
+/*
+ * Its own application context, because this test replaces the installation the server runs on: the
+ * RANDOM_PORT journey tests all carry the same @SpringBootTest annotation, so without this they
+ * share one server, booted on whichever installation happened to be set first. The comment on
+ * UnlimitedCallersJourneyTest has the whole mechanism.
+ */
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 @SpringBootTest(classes = ServerApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OperatorAndViewerJourneyTest {
 
