@@ -1,0 +1,126 @@
+[
+  {
+    "dimensions": [
+      "Carrier"
+    ],
+    "measures": [
+      "Shipments",
+      "ShippingCost",
+      "WeightKg"
+    ],
+    "rows": [
+      [
+        "Alpine Road Logistics",
+        381,
+        33810.03,
+        572453.5
+      ],
+      [
+        "Baltic Sea Carriers",
+        151,
+        6069.71,
+        201672.2
+      ],
+      [
+        "Bluewave Express",
+        536,
+        48059.27,
+        855153.56
+      ],
+      [
+        "Continental Rail",
+        404,
+        25306.99,
+        590338.22
+      ],
+      [
+        "EuroRoad Freight",
+        566,
+        45451.28,
+        794965.25
+      ],
+      [
+        "Iberia Rail Freight",
+        474,
+        29757.8,
+        687417.22
+      ],
+      [
+        "Mediterra Shipping",
+        154,
+        6644.69,
+        225831.69
+      ],
+      [
+        "Nordic Rail Cargo",
+        472,
+        30271.91,
+        715826.88
+      ],
+      [
+        "Ocean Star Shipping",
+        195,
+        8487.38,
+        301346.73
+      ],
+      [
+        "Swiftline Parcel",
+        619,
+        54769.68,
+        969864.28
+      ],
+      [
+        null,
+        48,
+        4355.3,
+        80122.25
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Mode"
+    ],
+    "measures": [
+      "Shipments",
+      "ShippingCost"
+    ],
+    "rows": [
+      [
+        "Rail",
+        1350,
+        85336.7
+      ],
+      [
+        "Road",
+        2102,
+        182090.26
+      ],
+      [
+        "Sea",
+        500,
+        21201.78
+      ],
+      [
+        null,
+        48,
+        4355.3
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Shipments",
+      "ShippingCost",
+      "WeightKg"
+    ],
+    "rows": [
+      [
+        4000,
+        292984.04,
+        5994991.78
+      ]
+    ]
+  }
+]

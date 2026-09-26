@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -109,6 +110,15 @@ public class CubesController {
 	// DSL Parsing
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * The databases this generator writes SQL for: one entry per distinct SQL, in the connection
+	 * screen's order. The list lives in the vendor layer, so a new database appears here by itself.
+	 */
+	@GetMapping(value = "/dialects", consumes = MediaType.ALL_VALUE)
+	public Mono<List<Map<String, String>>> dialects() {
+		return Mono.just(CubeSqlDialect.DIALECTS);
+	}
+
 	/** Parse DSL code and return structured CubeOptions JSON */
 	@PostMapping(value = "/parse-dsl", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<CubeOptions> parseDsl(@RequestBody Map<String, String> request) throws Exception {
@@ -153,12 +163,14 @@ public class CubesController {
 	@SuppressWarnings("unchecked")
 	private Mono<Map<String, Object>> generateSqlInternal(CubeOptions cube, Map<String, Object> request) throws Exception {
 		String connectionId = (String) request.get("connectionId");
-		List<String> selectedDimensions = (List<String>) request.getOrDefault("selectedDimensions", List.of());
-		List<String> selectedMeasures = (List<String>) request.getOrDefault("selectedMeasures", List.of());
-		List<String> selectedSegments = (List<String>) request.getOrDefault("selectedSegments", List.of());
 
-		String dbVendor = "default";
-		if (connectionId != null && !connectionId.isBlank()) {
+		// A request either names a connection, whose settings say which database it is, or names
+		// the database itself (Cube Stories writes SQL for a vendor nobody is connected to). Both
+		// at once is a bad request, and so is a database this generator does not write.
+		String requested = CubeSqlDialect.requestedKey(connectionId, (String) request.get("dbVendor"));
+
+		String dbVendor = requested != null ? requested : CubeSqlDialect.DEFAULT_KEY;
+		if (requested == null) {
 			DatabaseConnectionManager dbManager = ConnectionFactory.newConnectionManager();
 			try {
 				ServerDatabaseSettings dbs = dbManager.getServerDatabaseSettings(connectionId);
@@ -170,7 +182,34 @@ public class CubesController {
 			}
 		}
 
-		String sql = CubeSqlGenerator.generateSql(cube, selectedDimensions, selectedMeasures, selectedSegments, dbVendor);
-		return Mono.just(Map.<String, Object>of("sql", sql, "dialect", dbVendor));
+		// One file may hold several cubes. cubeName says which one the caller means; without it the
+		// file's unnamed cube answers, and a file that has none says so, with the names it does have.
+		CubeOptions picked = CubeSqlGenerator.pickCube(cube, (String) request.get("cubeName"));
+
+		// One structured query: the new request keys, and the three old lists wherever they are what
+		// the caller sent. Design time shows the SQL with its values written in, because there is
+		// nothing to bind them to; params go with it, for whoever wants to see what was bound.
+		CubeQuery query = CubeSqlGenerator.buildQuery(picked, request, dbVendor);
+		return Mono.just(Map.<String, Object>of(
+				"sql", query.toInlineSql(dbVendor),
+				"dialect", dbVendor,
+				"params", query.getParams()));
+	}
+
+	/**
+	 * A cube that asks for something the generator cannot write is a bad request, not a server
+	 * failure: an unknown measure type, a calculated measure naming a measure that does not exist,
+	 * a reference cycle. The generator throws {@link IllegalArgumentException} with a sentence that
+	 * names the member and what is wrong with it, and that sentence is the whole answer — without
+	 * this method the one global handler turns it into a 500 with a stack trace in errors.log, and
+	 * the editor shows "server error" instead of telling the author what to fix.
+	 *
+	 * <p>Only this controller: everywhere else an {@code IllegalArgumentException} still means a
+	 * bug, and a bug is still a 500.
+	 */
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<Map<String, String>> handleBadCube(IllegalArgumentException ex) {
+		log.warn("Refused a cube request: {}", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
 	}
 }

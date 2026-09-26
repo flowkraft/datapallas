@@ -1,0 +1,142 @@
+[
+  {
+    "dimensions": [],
+    "measures": [
+      "Tickets"
+    ],
+    "rows": [
+      [
+        3000
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Status"
+    ],
+    "measures": [
+      "Tickets"
+    ],
+    "rows": [
+      [
+        "Closed",
+        2196
+      ],
+      [
+        "In Progress",
+        69
+      ],
+      [
+        "Open",
+        141
+      ],
+      [
+        "Resolved",
+        453
+      ],
+      [
+        "Waiting on Customer",
+        141
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Priority"
+    ],
+    "measures": [
+      "Tickets"
+    ],
+    "rows": [
+      [
+        "High",
+        685
+      ],
+      [
+        "Low",
+        805
+      ],
+      [
+        "Normal",
+        1172
+      ],
+      [
+        "Urgent",
+        338
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Tickets"
+    ],
+    "segments": [
+      "open"
+    ],
+    "rows": [
+      [
+        351
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Tickets"
+    ],
+    "segments": [
+      "urgent_or_breached"
+    ],
+    "rows": [
+      [
+        1028
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Tickets"
+    ],
+    "segments": [
+      "open",
+      "urgent_or_breached"
+    ],
+    "rows": [
+      [
+        347
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Priority"
+    ],
+    "measures": [
+      "Tickets"
+    ],
+    "segments": [
+      "open",
+      "urgent_or_breached"
+    ],
+    "rows": [
+      [
+        "High",
+        76
+      ],
+      [
+        "Low",
+        88
+      ],
+      [
+        "Normal",
+        138
+      ],
+      [
+        "Urgent",
+        45
+      ]
+    ]
+  }
+]

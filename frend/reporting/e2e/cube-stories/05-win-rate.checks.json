@@ -1,0 +1,65 @@
+[
+  {
+    "dimensions": [],
+    "measures": [
+      "WonDeals",
+      "LostDeals",
+      "ClosedDeals",
+      "WonValue",
+      "OpenPipeline",
+      "WinRate"
+    ],
+    "rows": [
+      [
+        402,
+        244,
+        646,
+        13752500.0,
+        20610500.0,
+        62.23
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "LeadSource"
+    ],
+    "measures": [
+      "WonDeals",
+      "ClosedDeals",
+      "WinRate"
+    ],
+    "rows": [
+      [
+        "Outbound",
+        89,
+        172,
+        51.74
+      ],
+      [
+        "Partner",
+        70,
+        113,
+        61.95
+      ],
+      [
+        "Referral",
+        83,
+        111,
+        74.77
+      ],
+      [
+        "Trade Show",
+        33,
+        70,
+        47.14
+      ],
+      [
+        "Website",
+        127,
+        180,
+        70.56
+      ]
+    ]
+  }
+]

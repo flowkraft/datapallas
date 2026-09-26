@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Cube Story 19 - Students per Program, a first draft</name>
+    <description>A cube written the way a first-time author writes it: two typos and two mistakes are caught, and the rest still answers.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

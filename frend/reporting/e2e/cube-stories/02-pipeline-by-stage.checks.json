@@ -1,0 +1,69 @@
+[
+  {
+    "dimensions": [
+      "Stage"
+    ],
+    "measures": [
+      "Deals",
+      "DealValue"
+    ],
+    "rows": [
+      [
+        "Closed Won",
+        402,
+        13752500.0
+      ],
+      [
+        "Closed Lost",
+        244,
+        9039000.0
+      ],
+      [
+        "Negotiation",
+        189,
+        6441000.0
+      ],
+      [
+        "Proposal",
+        148,
+        5712500.0
+      ],
+      [
+        "Qualification",
+        130,
+        5559500.0
+      ],
+      [
+        "Prospecting",
+        87,
+        2897500.0
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Stage"
+    ],
+    "measures": [],
+    "rows": [
+      [
+        "Closed Won"
+      ],
+      [
+        "Closed Lost"
+      ],
+      [
+        "Negotiation"
+      ],
+      [
+        "Proposal"
+      ],
+      [
+        "Qualification"
+      ],
+      [
+        "Prospecting"
+      ]
+    ]
+  }
+]

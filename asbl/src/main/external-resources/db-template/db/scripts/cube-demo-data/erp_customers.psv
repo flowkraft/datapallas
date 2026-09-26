@@ -1,0 +1,81 @@
+customer_id|name|country|payment_terms_days|credit_limit
+1|Humongous Insurance AB|Sweden|60|360000.00
+2|Blue Yonder Airlines AB|Sweden|60|175000.00
+3|Nod Publishers AG|Switzerland|30|155000.00
+4|Trail Frames Chalet Inc|United States|45|105000.00
+5|Prose Ware Systems Lda|Portugal|14|240000.00
+6|Adventure Works AB|Sweden|90|265000.00
+7|VanArsdel GmbH|Germany|45|410000.00
+8|Margie's Travel AB|Sweden|30|455000.00
+9|Bellows College SpA|Italy|30|60000.00
+10|Northwind Traders s.r.o.|Czechia|60|175000.00
+11|Wide Field Robotics Ltd|United Kingdom|30|400000.00
+12|Wide World Importers GmbH|Austria|30|370000.00
+13|Proseware BV|Netherlands|30|345000.00
+14|The Phone Company GmbH|Germany|60|290000.00
+15|First Up Consultants SARL|France|30|470000.00
+16|Liberty Delightful Sinful Bakery s.r.o.|Czechia|30|500000.00
+17|Tres Chic Boutique SpA|Italy|30|335000.00
+18|Trey Research BV|Netherlands|60|125000.00
+19|Alpine Ski House SpA|Italy|30|65000.00
+20|Graphic Design Institute Lda|Portugal|30|195000.00
+21|Munson's Pickles SpA|Italy|60|320000.00
+22|Parnell Aerospace SARL|France|45|315000.00
+23|Fabrikam Ltd|United Kingdom|30|100000.00
+24|Relecloud GmbH|Austria|90|120000.00
+25|Lamna Healthcare Ltd|United Kingdom|45|65000.00
+26|Southridge Video SpA|Italy|45|145000.00
+27|Wingtip Toys SARL|France|45|455000.00
+28|Tall Poppies AB|Sweden|60|490000.00
+29|Tailspin Toys GmbH|Germany|30|115000.00
+30|Coho Winery Inc|United States|60|420000.00
+31|Fourth Coffee Sp. z o.o.|Poland|30|295000.00
+32|City Power & Light SpA|Italy|14|340000.00
+33|Fincher Architects SARL|France|60|420000.00
+34|Winsome Apparel Ltd|United Kingdom|45|30000.00
+35|Litware Ltd|United Kingdom|45|260000.00
+36|Woodgrove Bank NV|Belgium|14|360000.00
+37|Consolidated Messenger SL|Spain|30|265000.00
+38|Best For You Organics s.r.o.|Czechia|30|220000.00
+39|Lucerne Publishing NV|Belgium|45|485000.00
+40|Contoso Sp. z o.o.|Poland|45|215000.00
+41|Humongous Insurance ApS|Denmark|45|30000.00
+42|Blue Yonder Airlines SpA|Italy|60|485000.00
+43|Nod Publishers Sp. z o.o.|Poland|60|355000.00
+44|Trail Frames Chalet GmbH|Germany|30|65000.00
+45|Prose Ware Systems SL|Spain|90|430000.00
+46|Adventure Works GmbH|Germany|45|210000.00
+47|VanArsdel Lda|Portugal|60|275000.00
+48|Margie's Travel SpA|Italy|30|395000.00
+49|Bellows College SpA|Italy|45|310000.00
+50|Northwind Traders BV|Netherlands|45|135000.00
+51|Wide Field Robotics SARL|France|45|465000.00
+52|Wide World Importers GmbH|Germany|14|310000.00
+53|Proseware SARL|France|90|205000.00
+54|The Phone Company Sp. z o.o.|Poland|90|20000.00
+55|First Up Consultants SARL|France|45|35000.00
+56|Liberty Delightful Sinful Bakery Ltd|United Kingdom|45|400000.00
+57|Tres Chic Boutique GmbH|Germany|45|415000.00
+58|Trey Research SpA|Italy|30|90000.00
+59|Alpine Ski House GmbH|Germany|14|315000.00
+60|Graphic Design Institute SARL|France|90|500000.00
+61|Munson's Pickles Inc|United States|30|305000.00
+62|Parnell Aerospace NV|Belgium|90|155000.00
+63|Fabrikam Sp. z o.o.|Poland|45|120000.00
+64|Relecloud AB|Sweden|30|360000.00
+65|Lamna Healthcare GmbH|Austria|60|115000.00
+66|Southridge Video Sp. z o.o.|Poland|30|85000.00
+67|Wingtip Toys NV|Belgium|60|395000.00
+68|Tall Poppies SARL|France|60|365000.00
+69|Tailspin Toys NV|Belgium|14|255000.00
+70|Coho Winery Ltd|United Kingdom|14|490000.00
+71|Fourth Coffee BV|Netherlands|60|405000.00
+72|City Power & Light AB|Sweden|30|480000.00
+73|Fincher Architects NV|Belgium|30|365000.00
+74|Winsome Apparel ApS|Denmark|90|350000.00
+75|Litware GmbH|Germany|14|375000.00
+76|Woodgrove Bank NV|Belgium|45|45000.00
+77|Consolidated Messenger ApS|Denmark|60|285000.00
+78|Best For You Organics BV|Netherlands|45|350000.00
+79|Lucerne Publishing SpA|Italy|60|210000.00
+80|Contoso AG|Switzerland|30|100000.00

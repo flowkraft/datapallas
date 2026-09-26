@@ -1,0 +1,239 @@
+[
+  {
+    "dimensions": [
+      "Depot",
+      "Location"
+    ],
+    "measures": [
+      "PalletCapacity",
+      "Docks"
+    ],
+    "rows": [
+      [
+        "Hamburg Port Depot",
+        53.54,
+        9.98,
+        1200,
+        18
+      ],
+      [
+        "Berlin South Hub",
+        52.4,
+        13.4,
+        800,
+        12
+      ],
+      [
+        "Munich East Depot",
+        48.14,
+        11.7,
+        650,
+        10
+      ],
+      [
+        "Paris Nord Depot",
+        48.93,
+        2.36,
+        950,
+        15
+      ],
+      [
+        "Lyon Cross-Dock",
+        45.73,
+        4.85,
+        400,
+        6
+      ],
+      [
+        "Rotterdam Maasvlakte",
+        51.95,
+        4.05,
+        1500,
+        22
+      ],
+      [
+        "Antwerp Harbour Depot",
+        51.26,
+        4.4,
+        1100,
+        16
+      ],
+      [
+        "Milan Logistics Park",
+        45.52,
+        9.21,
+        700,
+        11
+      ],
+      [
+        "Barcelona Zona Franca",
+        41.34,
+        2.14,
+        600,
+        9
+      ],
+      [
+        "Warsaw West Hub",
+        52.21,
+        20.93,
+        500,
+        8
+      ],
+      [
+        "Cologne Rhine Depot",
+        50.94,
+        6.96,
+        550,
+        9
+      ],
+      [
+        "Frankfurt Cargo Centre",
+        50.03,
+        8.56,
+        1300,
+        20
+      ],
+      [
+        "Stuttgart South Depot",
+        48.78,
+        9.18,
+        450,
+        7
+      ],
+      [
+        "Duisburg Inland Port",
+        51.44,
+        6.76,
+        1400,
+        19
+      ],
+      [
+        "Marseille Fos Terminal",
+        43.4,
+        4.9,
+        1250,
+        17
+      ],
+      [
+        "Toulouse Airport Depot",
+        43.63,
+        1.37,
+        350,
+        5
+      ],
+      [
+        "Amsterdam Westpoort",
+        52.4,
+        4.82,
+        900,
+        14
+      ],
+      [
+        "Eindhoven Regional Hub",
+        51.45,
+        5.38,
+        420,
+        6
+      ],
+      [
+        "Brussels Zaventem Depot",
+        50.9,
+        4.48,
+        700,
+        10
+      ],
+      [
+        "Vienna Danube Hub",
+        48.23,
+        16.42,
+        620,
+        9
+      ],
+      [
+        "Zurich Airport Depot",
+        47.45,
+        8.56,
+        380,
+        6
+      ],
+      [
+        "Rome Fiumicino Depot",
+        41.8,
+        12.25,
+        540,
+        8
+      ],
+      [
+        "Turin North Depot",
+        45.11,
+        7.65,
+        460,
+        7
+      ],
+      [
+        "Madrid Barajas Hub",
+        40.47,
+        -3.57,
+        810,
+        12
+      ],
+      [
+        "Valencia Port Depot",
+        39.44,
+        -0.33,
+        730,
+        11
+      ],
+      [
+        "Lisbon Alcantara Depot",
+        38.7,
+        -9.17,
+        480,
+        7
+      ],
+      [
+        "Gothenburg Harbour",
+        57.69,
+        11.87,
+        860,
+        13
+      ],
+      [
+        "Stockholm Arlanda Hub",
+        59.63,
+        17.92,
+        520,
+        8
+      ],
+      [
+        "Copenhagen Free Port",
+        55.7,
+        12.6,
+        640,
+        10
+      ],
+      [
+        "Krakow South Depot",
+        50.06,
+        19.94,
+        410,
+        6
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Depots",
+      "PalletCapacity",
+      "Docks"
+    ],
+    "rows": [
+      [
+        30,
+        22170,
+        331
+      ]
+    ]
+  }
+]

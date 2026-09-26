@@ -1,0 +1,81 @@
+product_id|sku|name|category|list_price|cost_price|brand
+1|SKU-1001|Orbit Accessories Pro|Accessories|27.42|13.75|Orbit
+2|SKU-1002|Lumen Accessories Ultra|Accessories|120.91|72.95|Lumen
+3|SKU-1003|Cobalt Accessories Compact|Accessories|148.69|76.44|Kestrel
+4|SKU-1004|Ridge Accessories Studio|Accessories|39.44|18.23|Cobalt
+5|SKU-1005|Voltra Accessories Nano|Accessories|82.16|53.13|Voltra
+6|SKU-1006|Lumen Accessories Max|Accessories|54.40|37.36|Solace
+7|SKU-1007|Vertex Accessories Air|Accessories|79.24|53.99|Ridge
+8|SKU-1008|Voltra Accessories Edge|Accessories|52.69|34.83|Orbit
+9|SKU-1009|Ridge Accessories Prime|Accessories|41.66|23.65|Solace
+10|SKU-1010|Orbit Accessories Lite|Accessories|54.08|27.73|Orbit
+11|SKU-1011|Orbit Audio Pro|Audio|268.79|144.53|Nimbus
+12|SKU-1012|Nimbus Audio Ultra|Audio|137.61|85.95|Voltra
+13|SKU-1013|Voltra Audio Compact|Audio|361.83|185.88|Vertex
+14|SKU-1014|Nimbus Audio Studio|Audio|190.57|89.34|Solace
+15|SKU-1015|Solace Audio Nano|Audio|77.82|51.05|Lumen
+16|SKU-1016|Voltra Audio Max|Audio|277.54|156.32|Voltra
+17|SKU-1017|Cobalt Audio Air|Audio|304.08|165.92|Lumen
+18|SKU-1018|Voltra Audio Edge|Audio|193.58|120.53|Kestrel
+19|SKU-1019|Nimbus Audio Prime|Audio|379.68|245.30|Voltra
+20|SKU-1020|Lumen Audio Lite|Audio|45.32|30.57|Nimbus
+21|SKU-1021|Vertex Cables Pro|Cables & Power|40.87|22.36|Voltra
+22|SKU-1022|Ridge Cables Ultra|Cables & Power|35.30|20.71|Ridge
+23|SKU-1023|Nimbus Cables Compact|Cables & Power|15.70|7.12|Ridge
+24|SKU-1024|Northgear Cables Studio|Cables & Power|22.81|14.62|Kestrel
+25|SKU-1025|Nimbus Cables Nano|Cables & Power|56.61|36.19|Voltra
+26|SKU-1026|Nimbus Cables Max|Cables & Power|53.73|32.13|Ridge
+27|SKU-1027|Lumen Cables Air|Cables & Power|26.97|15.19|Cobalt
+28|SKU-1028|Ridge Cables Edge|Cables & Power|44.97|27.80|Nimbus
+29|SKU-1029|Voltra Cables Prime|Cables & Power|11.38|6.89|Vertex
+30|SKU-1030|Ridge Cables Lite|Cables & Power|38.30|26.95|Lumen
+31|SKU-1031|Solace Displays Pro|Displays|572.84|369.33|Voltra
+32|SKU-1032|Cobalt Displays Ultra|Displays|886.69|587.11|Orbit
+33|SKU-1033|Northgear Displays Compact|Displays|916.67|552.49|Orbit
+34|SKU-1034|Cobalt Displays Studio|Displays|1042.04|650.50|Vertex
+35|SKU-1035|Ridge Displays Nano|Displays|493.52|343.61|Vertex
+36|SKU-1036|Ridge Displays Max|Displays|600.54|300.95|Orbit
+37|SKU-1037|Vertex Displays Air|Displays|290.89|188.97|Vertex
+38|SKU-1038|Voltra Displays Edge|Displays|1260.44|879.61|Northgear
+39|SKU-1039|Voltra Displays Prime|Displays|180.18|106.25|Lumen
+40|SKU-1040|Lumen Displays Lite|Displays|310.10|219.39|Cobalt
+41|SKU-1041|Voltra Storage Pro|Storage|315.72|220.08|Northgear
+42|SKU-1042|Nimbus Storage Ultra|Storage|65.62|41.23|Kestrel
+43|SKU-1043|Solace Storage Compact|Storage|390.04|276.67|Solace
+44|SKU-1044|Ridge Storage Studio|Storage|73.28|39.70|Lumen
+45|SKU-1045|Cobalt Storage Nano|Storage|83.72|37.69|Vertex
+46|SKU-1046|Nimbus Storage Max|Storage|264.10|176.64|Cobalt
+47|SKU-1047|Nimbus Storage Air|Storage|496.81|295.79|Orbit
+48|SKU-1048|Solace Storage Edge|Storage|298.20|183.00|Kestrel
+49|SKU-1049|Vertex Storage Prime|Storage|395.78|271.27|Orbit
+50|SKU-1050|Nimbus Storage Lite|Storage|518.17|300.48|Orbit
+51|SKU-1051|Orbit Video Pro|Video|479.47|313.40|Northgear
+52|SKU-1052|Northgear Video Ultra|Video|124.59|62.88|Northgear
+53|SKU-1053|Vertex Video Compact|Video|510.51|294.49|Nimbus
+54|SKU-1054|Cobalt Video Studio|Video|657.90|465.96|Vertex
+55|SKU-1055|Northgear Video Nano|Video|66.78|43.14|Kestrel
+56|SKU-1056|Kestrel Video Max|Video|842.57|433.96|Kestrel
+57|SKU-1057|Cobalt Video Air|Video|708.88|429.01|Nimbus
+58|SKU-1058|Vertex Video Edge|Video|720.71|517.49|Voltra
+59|SKU-1059|Kestrel Video Prime|Video|627.12|295.89|Cobalt
+60|SKU-1060|Kestrel Video Lite|Video|108.60|73.23|Orbit
+61|SKU-1061|Kestrel Networking Pro|Networking|366.77|262.83|Vertex
+62|SKU-1062|Lumen Networking Ultra|Networking|381.51|178.84|Ridge
+63|SKU-1063|Northgear Networking Compact|Networking|177.97|92.31|Lumen
+64|SKU-1064|Cobalt Networking Studio|Networking|128.47|74.03|Cobalt
+65|SKU-1065|Ridge Networking Nano|Networking|173.95|111.47|Vertex
+66|SKU-1066|Orbit Networking Max|Networking|147.27|67.51|Lumen
+67|SKU-1067|Vertex Networking Air|Networking|63.85|38.23|Voltra
+68|SKU-1068|Kestrel Networking Edge|Networking|196.96|137.10|Kestrel
+69|SKU-1069|Kestrel Networking Prime|Networking|203.22|125.76|Voltra
+70|SKU-1070|Ridge Networking Lite|Networking|362.97|255.80|Nimbus
+71|SKU-1071|Nimbus Peripherals Pro|Peripherals|219.93|145.18|Vertex
+72|SKU-1072|Northgear Peripherals Ultra|Peripherals|57.31|35.80|Orbit
+73|SKU-1073|Orbit Peripherals Compact|Peripherals|194.25|91.94|Orbit
+74|SKU-1074|Ridge Peripherals Studio|Peripherals|157.11|103.86|Vertex
+75|SKU-1075|Solace Peripherals Nano|Peripherals|173.63|84.52|Orbit
+76|SKU-1076|Northgear Peripherals Max|Peripherals|183.27|83.24|Orbit
+77|SKU-1077|Voltra Peripherals Air|Peripherals|62.44|44.75|Cobalt
+78|SKU-1078|Orbit Peripherals Edge|Peripherals|47.16|29.33|Nimbus
+79|SKU-1079|Nimbus Peripherals Prime|Peripherals|111.71|68.97|Cobalt
+80|SKU-1080|Northgear Peripherals Lite|Peripherals|112.72|74.07|Voltra

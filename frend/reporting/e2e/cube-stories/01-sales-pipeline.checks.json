@@ -1,0 +1,26 @@
+[
+  {
+    "dimensions": [],
+    "measures": [
+      "Deals"
+    ],
+    "rows": [
+      [
+        1200
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Deals",
+      "DealValue"
+    ],
+    "rows": [
+      [
+        1200,
+        43402000.0
+      ]
+    ]
+  }
+]

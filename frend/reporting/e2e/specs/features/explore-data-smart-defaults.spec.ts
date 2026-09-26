@@ -15,7 +15,8 @@
 //     Employees (9 rows), Order Details (5 cols), Suppliers, Categories, Shippers, etc.
 //   - Northwind OLAP cubes: bkend/common/.../db/northwind/NorthwindOlapDataGenerator.java
 //   - Sample cube configs:  asbl/.../config/samples-cubes/ (northwind-sales, northwind-customers,
-//     northwind-hr, northwind-inventory, northwind-warehouse)
+//     northwind-hr, northwind-inventory, northwind-warehouse, and the 15 story-* cubes of the
+//     Cube Stories page, which read the DuckDB sample's cube_demo schema)
 //
 // ── DB VENDOR SELECTION STRATEGY ──────────────────────────────────────────────
 //

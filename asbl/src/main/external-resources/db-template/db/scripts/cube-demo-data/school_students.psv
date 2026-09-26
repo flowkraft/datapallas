@@ -1,0 +1,301 @@
+student_id|first_name|last_name|program|start_year|country
+1|Oskar|Kowalski|Economics|2024|Austria
+2|Henrik|Novotny|Economics|2026|Poland
+3|Chiara|Kowalski|Mechanical Engineering|2022|Spain
+4|Milan|Kim|Mechanical Engineering|2025|Poland
+5|Milan|Dubois|Mechanical Engineering|2023|Austria
+6|Lena|Horvath|Computer Science|2026|Czechia
+7|Viktor|Andersson|Computer Science|2024|Austria
+8|Viktor|Kim|Mechanical Engineering|2026|Portugal
+9|Jonas|Kim|Business Administration|2022|United Kingdom
+10|Lena|Nowak|Computer Science|2026|Poland
+11|Diego|Bauer|Business Administration|2025|Netherlands
+12|Chiara|Vargas|Business Administration|2025|Netherlands
+13|Felix|Jansen|Computer Science|2024|Sweden
+14|Marta|Dubois|Mechanical Engineering|2025|Poland
+15|Mohammed|Weber|Economics|2024|Sweden
+16|Hannah|Fischer|Business Administration|2024|United Kingdom
+17|Mohammed|De Vries|Business Administration|2024|Sweden
+18|Fatima|Lehmann|Mechanical Engineering|2024|Poland
+19|Maja|Lehmann|Computer Science|2025|Italy
+20|Leila|Nielsen|Economics|2024|France
+21|David|Wagner|Business Administration|2022|United Kingdom
+22|Viktor|Wagner|Computer Science|2025|Poland
+23|Paul|Jansen|Mechanical Engineering|2025|Spain
+24|Lukas|Costa|Business Administration|2025|United Kingdom
+25|Viktor|Moreau|Economics|2025|Italy
+26|Karin|Kim|Economics|2023|Netherlands
+27|Bruno|Rossi|Mechanical Engineering|2023|Sweden
+28|Bruno|Nielsen|Computer Science|2025|Austria
+29|Clara|Silva|Computer Science|2022|United Kingdom
+30|Fatima|Novotny|Mechanical Engineering|2025|Spain
+31|Jan|Moreau|Computer Science|2022|Denmark
+32|Ruth|Novotny|Mechanical Engineering|2023|Spain
+33|Pieter|Berg|Business Administration|2024|Netherlands
+34|Fatima|O'Connor|Computer Science|2026|Portugal
+35|Maja|Wagner|Computer Science|2025|Netherlands
+36|Oskar|Fischer|Economics|2026|Portugal
+37|Milan|Novotny|Mechanical Engineering|2024|Germany
+38|Paul|Bianchi|Computer Science|2024|United Kingdom
+39|Chiara|Laurent|Mechanical Engineering|2025|Sweden
+40|Ruth|Bianchi|Computer Science|2025|Czechia
+41|Hannah|Muller|Economics|2022|Italy
+42|Emma|Dubois|Mechanical Engineering|2025|Denmark
+43|Marta|Haddad|Computer Science|2026|United Kingdom
+44|Julia|Kim|Computer Science|2023|United Kingdom
+45|Ines|Laurent|Mechanical Engineering|2025|Sweden
+46|David|Novotny|Economics|2025|France
+47|Lukas|Nielsen|Mechanical Engineering|2024|France
+48|Hannah|Lehmann|Business Administration|2022|Sweden
+49|Tomas|Rossi|Business Administration|2025|Austria
+50|Noah|Novotny|Business Administration|2024|France
+51|Lena|De Vries|Mechanical Engineering|2024|Germany
+52|Aisha|Fischer|Computer Science|2022|United Kingdom
+53|Bruno|Andersson|Business Administration|2025|Spain
+54|Nora|Bianchi|Business Administration|2026|France
+55|Ines|Bauer|Business Administration|2024|Italy
+56|Felix|Novotny|Business Administration|2026|Spain
+57|Tomas|De Vries|Mechanical Engineering|2022|Czechia
+58|Ali|Jansen|Computer Science|2024|Netherlands
+59|Noah|Laurent|Economics|2025|Sweden
+60|Pieter|Bianchi|Business Administration|2023|Poland
+61|Maja|Costa|Mechanical Engineering|2023|Sweden
+62|Lena|Muller|Business Administration|2025|Poland
+63|Sofia|Ferreira|Economics|2025|Spain
+64|Liam|Jansen|Economics|2023|Portugal
+65|Chiara|De Vries|Computer Science|2023|Germany
+66|Noah|Moreau|Economics|2022|Sweden
+67|Jan|Novotny|Mechanical Engineering|2026|Netherlands
+68|Karin|Dubois|Business Administration|2024|Czechia
+69|Jan|Dubois|Business Administration|2023|Spain
+70|Nora|Muller|Mechanical Engineering|2024|Poland
+71|Ruth|Lehmann|Business Administration|2023|Sweden
+72|Aisha|Novotny|Computer Science|2024|United Kingdom
+73|Paul|Andersson|Computer Science|2026|Poland
+74|Tomas|Lehmann|Computer Science|2022|Portugal
+75|Clara|Weber|Computer Science|2025|Portugal
+76|Marta|Muller|Mechanical Engineering|2022|Denmark
+77|Liam|Horvath|Business Administration|2023|Sweden
+78|Anna|Muller|Business Administration|2023|Spain
+79|Julia|Horvath|Computer Science|2023|Czechia
+80|Felix|Fischer|Mechanical Engineering|2025|Poland
+81|Clara|Bianchi|Economics|2022|Austria
+82|Ruth|Nielsen|Computer Science|2024|France
+83|Ali|Khan|Economics|2024|Austria
+84|Sara|Novotny|Economics|2025|France
+85|Tomas|Andersson|Economics|2026|Netherlands
+86|Jonas|Costa|Mechanical Engineering|2025|Netherlands
+87|Henrik|Moreau|Economics|2026|United Kingdom
+88|Ali|Schmidt|Business Administration|2025|Portugal
+89|Ruth|Muller|Computer Science|2025|Netherlands
+90|Karin|Khan|Computer Science|2023|Austria
+91|Mateo|O'Connor|Business Administration|2026|Czechia
+92|Elena|Lehmann|Computer Science|2025|Sweden
+93|Marta|Horvath|Computer Science|2024|France
+94|Hannah|De Vries|Business Administration|2024|Germany
+95|Mateo|Lindqvist|Mechanical Engineering|2025|Netherlands
+96|Grace|Jansen|Economics|2024|Italy
+97|Anna|Bauer|Business Administration|2024|Spain
+98|Lukas|Bauer|Computer Science|2024|Sweden
+99|Ruth|Horvath|Mechanical Engineering|2023|Portugal
+100|Ines|Bianchi|Economics|2023|Sweden
+101|Anna|Khan|Economics|2023|Denmark
+102|Fatima|Fischer|Computer Science|2025|Spain
+103|Lukas|Laurent|Business Administration|2024|Denmark
+104|Paul|Horvath|Mechanical Engineering|2026|Netherlands
+105|Bruno|Laurent|Mechanical Engineering|2022|Netherlands
+106|Nora|Kowalski|Mechanical Engineering|2026|Austria
+107|Chiara|Haddad|Business Administration|2023|Spain
+108|Sofia|Novotny|Business Administration|2024|Portugal
+109|Viktor|Muller|Business Administration|2025|United Kingdom
+110|Diego|Lindqvist|Computer Science|2024|Denmark
+111|Felix|Dubois|Mechanical Engineering|2022|Austria
+112|Jan|Lindqvist|Economics|2024|Denmark
+113|Julia|Lehmann|Business Administration|2023|Austria
+114|Diego|Ferreira|Computer Science|2024|Italy
+115|Ruth|Schmidt|Business Administration|2025|Portugal
+116|Fatima|Jansen|Computer Science|2025|Portugal
+117|Pieter|Kowalski|Mechanical Engineering|2025|Portugal
+118|Viktor|Lehmann|Business Administration|2024|Italy
+119|Liam|Lindqvist|Mechanical Engineering|2026|Poland
+120|Ruth|Moreau|Economics|2025|Austria
+121|Liam|Bauer|Mechanical Engineering|2024|Spain
+122|Nora|Kim|Business Administration|2023|Denmark
+123|Karin|Berg|Mechanical Engineering|2023|Sweden
+124|Fatima|Horvath|Mechanical Engineering|2022|Spain
+125|Mateo|Haddad|Mechanical Engineering|2025|Portugal
+126|Bruno|Jansen|Economics|2022|Germany
+127|Lukas|O'Connor|Economics|2023|France
+128|Paul|Bauer|Economics|2023|Netherlands
+129|Sara|Lindqvist|Business Administration|2026|Czechia
+130|Ines|Khan|Mechanical Engineering|2023|Italy
+131|Tomas|Bianchi|Computer Science|2026|Denmark
+132|Maja|Nowak|Business Administration|2025|Netherlands
+133|Ali|Berg|Mechanical Engineering|2026|Poland
+134|Ali|Kim|Computer Science|2023|Austria
+135|Oskar|Vargas|Computer Science|2024|France
+136|Ines|Berg|Economics|2024|Netherlands
+137|Henrik|Wagner|Economics|2023|France
+138|Diego|Weber|Computer Science|2023|Czechia
+139|David|Khan|Business Administration|2026|France
+140|Maja|Laurent|Computer Science|2026|Germany
+141|Leila|O'Connor|Mechanical Engineering|2024|Portugal
+142|Lukas|Bianchi|Economics|2023|Portugal
+143|Aisha|Wagner|Computer Science|2024|Czechia
+144|Lukas|Novotny|Economics|2024|Netherlands
+145|Grace|Moreau|Mechanical Engineering|2025|France
+146|Henrik|Fischer|Economics|2022|Austria
+147|Liam|Rossi|Business Administration|2023|Poland
+148|Leila|Horvath|Business Administration|2023|Portugal
+149|Leila|Khan|Computer Science|2024|Germany
+150|Lena|Costa|Economics|2024|Portugal
+151|Sofia|Rossi|Computer Science|2024|Netherlands
+152|Sofia|Silva|Computer Science|2025|Czechia
+153|Mateo|Nowak|Business Administration|2023|Austria
+154|Oskar|Dubois|Business Administration|2024|Portugal
+155|Fatima|Silva|Business Administration|2025|Austria
+156|Bruno|Wagner|Business Administration|2024|Germany
+157|Maja|Vargas|Business Administration|2024|Portugal
+158|Maja|Bianchi|Economics|2024|Netherlands
+159|Emma|Nielsen|Mechanical Engineering|2025|Poland
+160|David|Silva|Mechanical Engineering|2025|Italy
+161|Ines|Wagner|Mechanical Engineering|2025|Portugal
+162|Mohammed|Haddad|Computer Science|2023|Portugal
+163|Hannah|O'Connor|Economics|2023|Italy
+164|Oskar|Lehmann|Mechanical Engineering|2025|Austria
+165|Fatima|Bianchi|Economics|2026|France
+166|Mateo|Dubois|Economics|2026|Germany
+167|Noah|Kowalski|Computer Science|2025|Sweden
+168|Milan|Bianchi|Economics|2026|France
+169|Jonas|Dubois|Computer Science|2024|Sweden
+170|Noah|Horvath|Economics|2024|Italy
+171|Elena|Dubois|Mechanical Engineering|2026|Italy
+172|Marta|Silva|Mechanical Engineering|2024|Austria
+173|Noah|Vargas|Economics|2025|Spain
+174|Stefan|Weber|Economics|2023|Portugal
+175|Clara|Fischer|Computer Science|2026|Portugal
+176|Anna|Schmidt|Economics|2023|Sweden
+177|Bruno|Lindqvist|Business Administration|2022|Spain
+178|Hannah|Dubois|Mechanical Engineering|2026|Netherlands
+179|Henrik|Weber|Computer Science|2025|Spain
+180|Grace|Silva|Computer Science|2023|Sweden
+181|Ines|Horvath|Business Administration|2025|France
+182|Henrik|Bianchi|Mechanical Engineering|2024|Czechia
+183|Jan|Wagner|Computer Science|2024|Czechia
+184|Liam|Ferreira|Business Administration|2025|Portugal
+185|Aisha|Vargas|Business Administration|2025|Austria
+186|Emma|Kim|Computer Science|2023|Italy
+187|Fatima|Costa|Computer Science|2024|Czechia
+188|Jonas|Fischer|Computer Science|2022|Italy
+189|Noah|Dubois|Mechanical Engineering|2024|Sweden
+190|Felix|Silva|Business Administration|2026|Poland
+191|Emma|De Vries|Economics|2023|Netherlands
+192|Mateo|Weber|Economics|2025|Portugal
+193|Clara|Bauer|Business Administration|2025|Portugal
+194|Clara|Rossi|Business Administration|2023|Sweden
+195|Stefan|Nielsen|Economics|2023|Spain
+196|Viktor|Costa|Business Administration|2025|Spain
+197|Stefan|Khan|Mechanical Engineering|2025|Spain
+198|Grace|Rossi|Mechanical Engineering|2023|Italy
+199|Hannah|Kim|Computer Science|2022|Czechia
+200|Bruno|Moreau|Business Administration|2024|Germany
+201|Hannah|Berg|Business Administration|2024|Italy
+202|Ines|Ferreira|Business Administration|2026|Spain
+203|Marta|Novotny|Economics|2026|Italy
+204|Leila|Weber|Mechanical Engineering|2025|United Kingdom
+205|Mateo|Muller|Mechanical Engineering|2026|Portugal
+206|Mateo|Kowalski|Business Administration|2025|Italy
+207|Karin|Jansen|Computer Science|2023|Italy
+208|Ali|Novotny|Computer Science|2023|Czechia
+209|Maja|Muller|Economics|2025|Portugal
+210|Sofia|O'Connor|Business Administration|2024|Poland
+211|Aisha|Lindqvist|Computer Science|2024|Spain
+212|Henrik|Kowalski|Business Administration|2024|Italy
+213|Ruth|O'Connor|Business Administration|2022|Germany
+214|Nora|Nielsen|Computer Science|2024|United Kingdom
+215|Fatima|Haddad|Mechanical Engineering|2022|Poland
+216|Pieter|Novotny|Economics|2022|Austria
+217|Paul|Laurent|Economics|2024|Sweden
+218|Oskar|Bauer|Business Administration|2022|Sweden
+219|Chiara|Moreau|Mechanical Engineering|2025|Czechia
+220|Lena|Lehmann|Economics|2025|Poland
+221|Anna|Rossi|Economics|2025|Sweden
+222|Mohammed|Silva|Business Administration|2024|Germany
+223|Noah|Ferreira|Mechanical Engineering|2025|Netherlands
+224|Clara|Kim|Computer Science|2025|Denmark
+225|Felix|Berg|Economics|2022|Denmark
+226|Viktor|Horvath|Computer Science|2024|Portugal
+227|Nora|Schmidt|Economics|2024|Poland
+228|Leila|Haddad|Computer Science|2024|Portugal
+229|Grace|Lehmann|Mechanical Engineering|2025|Germany
+230|Milan|Jansen|Business Administration|2023|Poland
+231|Jan|Khan|Business Administration|2022|Spain
+232|Ali|Weber|Mechanical Engineering|2022|United Kingdom
+233|Tomas|Ferreira|Economics|2023|United Kingdom
+234|Mohammed|Dubois|Business Administration|2024|Poland
+235|Mohammed|Bauer|Business Administration|2023|Sweden
+236|Nora|Fischer|Economics|2024|Italy
+237|Jan|Lehmann|Computer Science|2023|Sweden
+238|Nora|Nowak|Mechanical Engineering|2023|Netherlands
+239|Maja|Moreau|Economics|2023|United Kingdom
+240|Lena|Schmidt|Economics|2026|Spain
+241|Mohammed|Andersson|Economics|2023|Portugal
+242|Paul|Schmidt|Economics|2025|Italy
+243|Ines|Jansen|Computer Science|2024|Czechia
+244|Viktor|Kowalski|Computer Science|2026|Denmark
+245|Leila|Berg|Computer Science|2023|Germany
+246|Grace|Haddad|Mechanical Engineering|2024|Portugal
+247|Lena|Haddad|Computer Science|2026|Sweden
+248|Karin|Nowak|Mechanical Engineering|2024|Denmark
+249|Fatima|Lindqvist|Economics|2022|United Kingdom
+250|Sara|Bianchi|Economics|2025|Sweden
+251|Sara|Andersson|Computer Science|2025|Poland
+252|Ruth|Andersson|Computer Science|2025|Italy
+253|Emma|Horvath|Mechanical Engineering|2024|Denmark
+254|Marta|Lehmann|Mechanical Engineering|2022|United Kingdom
+255|Milan|Rossi|Economics|2023|Spain
+256|Fatima|Bauer|Mechanical Engineering|2025|United Kingdom
+257|Anna|Jansen|Economics|2025|Spain
+258|Tomas|Khan|Mechanical Engineering|2022|United Kingdom
+259|Ruth|Weber|Economics|2026|Germany
+260|Pieter|Bauer|Business Administration|2022|Germany
+261|Aisha|Weber|Business Administration|2025|Czechia
+262|Lena|Novotny|Economics|2024|Poland
+263|Julia|De Vries|Economics|2026|Austria
+264|Leila|Schmidt|Computer Science|2025|Italy
+265|Mohammed|Costa|Economics|2026|Czechia
+266|Sofia|Fischer|Mechanical Engineering|2026|Czechia
+267|Sofia|Bauer|Mechanical Engineering|2025|United Kingdom
+268|Ali|Bauer|Computer Science|2025|Sweden
+269|Marta|Jansen|Business Administration|2026|Poland
+270|Pieter|Weber|Economics|2025|Netherlands
+271|Julia|Rossi|Computer Science|2024|Netherlands
+272|Jonas|Nowak|Computer Science|2026|Spain
+273|Noah|Costa|Computer Science|2022|Austria
+274|Lukas|Kowalski|Business Administration|2026|Sweden
+275|Sara|Horvath|Economics|2026|Denmark
+276|David|Lindqvist|Economics|2025|Spain
+277|Felix|Rossi|Mechanical Engineering|2022|Netherlands
+278|Maja|De Vries|Economics|2025|Germany
+279|Nora|Lindqvist|Business Administration|2024|Italy
+280|Bruno|Kowalski|Computer Science|2025|Germany
+281|Elena|Costa|Mechanical Engineering|2026|Czechia
+282|Viktor|Rossi|Business Administration|2025|Sweden
+283|Milan|Nowak|Computer Science|2025|Sweden
+284|Stefan|Silva|Mechanical Engineering|2025|Spain
+285|Karin|Horvath|Mechanical Engineering|2022|Germany
+286|Julia|Haddad|Economics|2024|Austria
+287|Viktor|Nielsen|Mechanical Engineering|2024|Italy
+288|Jonas|Vargas|Computer Science|2025|Portugal
+289|Oskar|Silva|Mechanical Engineering|2024|Italy
+290|Paul|Muller|Mechanical Engineering|2024|Portugal
+291|Viktor|Jansen|Economics|2026|Spain
+292|Mateo|Nielsen|Economics|2025|Portugal
+293|Diego|Novotny|Business Administration|2023|Portugal
+294|Oskar|Horvath|Business Administration|2024|Italy
+295|Diego|Haddad|Business Administration|2024|Austria
+296|Karin|Nielsen|Mechanical Engineering|2025|United Kingdom
+297|Leila|Lindqvist|Mechanical Engineering|2024|France
+298|Paul|Lehmann|Economics|2024|Spain
+299|Mateo|Bauer|Business Administration|2023|Austria
+300|Mateo|Costa|Economics|2025|Sweden

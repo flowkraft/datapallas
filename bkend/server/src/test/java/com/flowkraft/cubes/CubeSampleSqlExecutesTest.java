@@ -1,5 +1,7 @@
 package com.flowkraft.cubes;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
@@ -9,10 +11,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,22 +30,24 @@ import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
 
 /**
- * Runs the SQL that CubeSqlGenerator produces for the five SHIPPED sample cubes
- * against a real Northwind database.
+ * Runs the SQL that CubeSqlGenerator produces for the twenty SHIPPED sample cubes
+ * against a real Northwind database: the five Northwind samples and the fifteen
+ * story cubes, which read the cube_demo schema of the DuckDB sample.
  *
  * CubeSqlGeneratorTest already covers generation, but every assertion there is
  * on the SQL TEXT - contains("country"), contains("group by"). Text assertions
  * cannot see a query that is well-formed and still refuses to run, which is
  * exactly the class of defect this test exists for.
  *
- * EACH CUBE IS SWEPT ON THE ENGINE IT ACTUALLY SHIPS ON. The five samples do not
+ * EACH CUBE IS SWEPT ON THE ENGINE IT ACTUALLY SHIPS ON. The samples do not
  * share one connection: northwind-sales, -customers, -hr and -inventory are wired
  * to rbt-sample-northwind-sqlite-4f2, and northwind-warehouse to
  * rbt-sample-northwind-duckdb-4f2. That split matters because measure and segment
  * sql are hand-written fragments passed to the database verbatim - jOOQ handles
  * identifier quoting, nothing rewrites function calls. A cube proven only on
  * DuckDB can therefore ship broken: EXTRACT(YEAR FROM ...) runs there and is a
- * syntax error on SQLite, which is where four of these five cubes run.
+ * syntax error on SQLite, which is where four of the Northwind five run, while the fifteen story
+ * cubes run on DuckDB.
  *
  * So the engine is not hardcoded here. It is read from each cube's own cube.xml
  * connectionId, which means repointing a cube at another connection moves its
@@ -58,8 +66,33 @@ class CubeSampleSqlExecutesTest {
 
 	private static final String SAMPLES_CUBES_DIR = "../../asbl/src/main/external-resources/db-template/config/samples-cubes";
 
+	/**
+	 * Every cube that ships under config/samples-cubes: the five Northwind samples and the fifteen
+	 * story cubes the Cube Stories page is written against. The story cubes run on the DuckDB
+	 * sample, whose cube_demo schema holds their demo data; the Northwind five say in their own
+	 * cube.xml which engine they ship on, and shippedVendorOf reads it.
+	 */
 	private static final List<String> SAMPLE_CUBES = List.of("northwind-sales", "northwind-customers", "northwind-hr",
-			"northwind-inventory", "northwind-warehouse");
+			"northwind-inventory", "northwind-warehouse", "story-sales-pipeline", "story-pipeline-by-stage",
+			"story-deals-per-month", "story-ticket-resolution", "story-win-rate", "story-grades",
+			"story-shipments-per-month", "story-shipments-by-destination", "story-depot-network",
+			"story-shipping-cost-by-carrier", "story-online-store-sales", "story-invoices-and-payments",
+			"story-accounts-receivable", "story-student-progress", "story-students-per-program");
+
+	/**
+	 * Story 19 is a first draft with mistakes in it, on purpose: a measure type that does not exist
+	 * and a drill path naming a dimension that is not there. Generating SQL from it throws, which is
+	 * the whole point of the story, so the sweeps below leave it out by name and
+	 * everyShippedSampleParsesWithNothingToComplainAbout asserts its two warnings and two errors
+	 * instead. Naming it here rather than catching exceptions keeps a cube that breaks by accident
+	 * from passing quietly.
+	 */
+	private static final String BROKEN_ON_PURPOSE = "story-students-per-program";
+
+	/** The cubes the SQL sweeps run: every shipped sample but the one that is wrong on purpose. */
+	private static List<String> sweptCubes() {
+		return SAMPLE_CUBES.stream().filter(name -> !BROKEN_ON_PURPOSE.equals(name)).toList();
+	}
 
 	private static final Pattern CONNECTION_ID = Pattern.compile("<connectionId>\\s*([^<\\s]+)\\s*</connectionId>");
 
@@ -71,7 +104,7 @@ class CubeSampleSqlExecutesTest {
 		// Group the cubes by the engine their shipped connection names, so each
 		// group is swept once against one connection.
 		Map<String, List<String>> cubesByVendor = new LinkedHashMap<>();
-		for (String cubeName : SAMPLE_CUBES) {
+		for (String cubeName : sweptCubes()) {
 			cubesByVendor.computeIfAbsent(shippedVendorOf(cubeName), vendor -> new ArrayList<>()).add(cubeName);
 		}
 
@@ -140,6 +173,224 @@ class CubeSampleSqlExecutesTest {
 	}
 
 	/**
+	 * Every dimension ALONE, with no measure ticked (fix A).
+	 *
+	 * <p>The sweep above always ticks all the measures, so it never sees what a user sees first:
+	 * one field picked and nothing else. Without a GROUP BY that query answered one row per base
+	 * row - picking "Ship Country" on the Sales sample returned 79 rows for 10 countries. Running
+	 * it is not enough to catch that, because the wrong query runs perfectly well; so this sweep
+	 * also reads the answer back and fails on a repeated value.
+	 */
+	@Test
+	void everySampleCubeDimensionAloneReturnsOneRowPerValue() throws Exception {
+		Map<String, List<String>> cubesByVendor = new LinkedHashMap<>();
+		for (String cubeName : sweptCubes()) {
+			cubesByVendor.computeIfAbsent(shippedVendorOf(cubeName), vendor -> new ArrayList<>()).add(cubeName);
+		}
+
+		Map<String, List<String>> failuresByCube = new LinkedHashMap<>();
+		int executed = 0;
+
+		for (Map.Entry<String, List<String>> group : cubesByVendor.entrySet()) {
+			String vendor = group.getKey();
+
+			try (Connection connection = openFixtureFor(vendor)) {
+				for (String cubeName : group.getValue()) {
+					CubeOptions cube = parseSampleCube(cubeName);
+					List<String> failures = new ArrayList<>();
+
+					for (String dimensionName : namesOf(cube.getDimensions())) {
+						String sql = CubeSqlGenerator.generateSql(cube, List.of(dimensionName), List.of(), vendor);
+						executed++;
+						String problem = runAndReportDuplicates(connection, sql);
+						if (problem != null) {
+							failures.add(dimensionName + " -> " + problem + "\n" + sql);
+						}
+					}
+
+					System.out.println(cubeName + " [" + vendor + "]: " + namesOf(cube.getDimensions()).size()
+							+ " dimensions alone, " + failures.size() + " failed");
+					if (!failures.isEmpty()) {
+						failuresByCube.put(cubeName + " [" + vendor + "]", failures);
+					}
+				}
+			}
+		}
+
+		if (!failuresByCube.isEmpty()) {
+			StringBuilder message = new StringBuilder(
+					"A dimension picked alone did not give one row per value (" + executed + " queries swept):\n");
+			failuresByCube.forEach((cubeName, failures) -> {
+				message.append("\n=== ").append(cubeName).append(" ===\n");
+				failures.forEach(failure -> message.append(failure).append("\n"));
+			});
+			fail(message.toString());
+		}
+	}
+
+	/**
+	 * Every time dimension x each granularity, alone and with all the measures (TODO 4).
+	 *
+	 * <p>A truncation is vendor SQL, so a wrong one is either a syntax error here or - worse - a
+	 * query that runs and answers the wrong day. So this sweep reads the answer back: every
+	 * non-null value must be the first day of its period.
+	 */
+	@Test
+	void everySampleCubeTimeDimensionRunsAtEveryGranularity() throws Exception {
+		Map<String, List<String>> cubesByVendor = new LinkedHashMap<>();
+		for (String cubeName : sweptCubes()) {
+			cubesByVendor.computeIfAbsent(shippedVendorOf(cubeName), vendor -> new ArrayList<>()).add(cubeName);
+		}
+
+		Map<String, List<String>> failuresByCube = new LinkedHashMap<>();
+		int executed = 0;
+		int timeDimensions = 0;
+
+		for (Map.Entry<String, List<String>> group : cubesByVendor.entrySet()) {
+			String vendor = group.getKey();
+
+			try (Connection connection = openFixtureFor(vendor)) {
+				for (String cubeName : group.getValue()) {
+					CubeOptions cube = parseSampleCube(cubeName);
+					List<String> measureNames = namesOf(cube.getMeasures());
+					List<String> failures = new ArrayList<>();
+
+					for (String dimensionName : timeDimensionNames(cube)) {
+						timeDimensions++;
+						for (String granularity : CubeSqlDialect.GRANULARITIES) {
+							String picked = dimensionName + "." + granularity;
+
+							for (List<String> measures : List.of(List.<String>of(), measureNames)) {
+								String sql = CubeSqlGenerator.generateSql(cube, List.of(picked), measures, vendor);
+								executed++;
+								String problem = runAndReportPeriodStarts(connection, sql, granularity);
+								if (problem != null) {
+									failures.add(picked + (measures.isEmpty() ? " alone" : " with all measures")
+											+ " -> " + problem + "\n" + sql);
+								}
+							}
+						}
+					}
+
+					if (!failures.isEmpty()) {
+						failuresByCube.put(cubeName + " [" + vendor + "]", failures);
+					}
+				}
+			}
+		}
+
+		System.out.println("time granularity sweep: " + executed + " queries over " + timeDimensions
+				+ " time dimensions");
+
+		if (timeDimensions == 0) {
+			fail("No sample cube has a time dimension any more, so this sweep proved nothing.");
+		}
+
+		if (!failuresByCube.isEmpty()) {
+			StringBuilder message = new StringBuilder(
+					"A time granularity did not give the start of its period (" + executed + " queries swept):\n");
+			failuresByCube.forEach((cubeName, failures) -> {
+				message.append("\n=== ").append(cubeName).append(" ===\n");
+				failures.forEach(failure -> message.append(failure).append("\n"));
+			});
+			fail(message.toString());
+		}
+	}
+
+	/** The names of a cube's {@code type 'time'} dimensions. */
+	private List<String> timeDimensionNames(CubeOptions cube) {
+		List<String> names = new ArrayList<>();
+		if (cube.getDimensions() != null) {
+			for (Map<String, Object> dimension : cube.getDimensions()) {
+				if ("time".equals(String.valueOf(dimension.get("type"))) && dimension.get("name") != null) {
+					names.add(dimension.get("name").toString());
+				}
+			}
+		}
+		return names;
+	}
+
+	/**
+	 * Returns null when the query runs and every non-null value in the first column is the first
+	 * day of its period, otherwise what went wrong.
+	 */
+	private String runAndReportPeriodStarts(Connection connection, String sql, String granularity) {
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			while (rs.next()) {
+				String raw = rs.getString(1);
+				if (raw == null || raw.isBlank()) continue;
+
+				LocalDate date;
+				try {
+					date = LocalDate.parse(raw.substring(0, 10));
+				} catch (Exception notADate) {
+					return "'" + raw + "' is not a date, so the truncation did not happen";
+				}
+
+				String wrong = null;
+				switch (granularity) {
+					case "week":
+						if (date.getDayOfWeek() != DayOfWeek.MONDAY) wrong = "not a Monday";
+						break;
+					case "month":
+						if (date.getDayOfMonth() != 1) wrong = "not the 1st of a month";
+						break;
+					case "quarter":
+						if (date.getDayOfMonth() != 1 || (date.getMonthValue() - 1) % 3 != 0)
+							wrong = "not the first day of a quarter";
+						break;
+					case "year":
+						if (date.getDayOfMonth() != 1 || date.getMonthValue() != 1)
+							wrong = "not the 1st of January";
+						break;
+					default:
+						break;
+				}
+				if (wrong != null) {
+					return "'" + date + "' is " + wrong;
+				}
+			}
+			return null;
+		} catch (Exception e) {
+			return e.getMessage() == null ? e.toString() : e.getMessage().replace('\n', ' ');
+		}
+	}
+
+	/**
+	 * Returns null when the query runs and every row is a distinct value, otherwise what went
+	 * wrong: the database's complaint, or the first value that came back twice.
+	 */
+	private String runAndReportDuplicates(Connection connection, String sql) {
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			Set<String> seen = new LinkedHashSet<>();
+			int columns = rs.getMetaData().getColumnCount();
+			int rows = 0;
+			while (rs.next()) {
+				rows++;
+				// The whole row, not its first column: a geo dimension is one dimension written as
+				// two columns, and two depots may well share a latitude (Berlin South Hub and
+				// Amsterdam Westpoort both sit at 52.40). Keyed on column one alone, that pair would
+				// read as a duplicate and fail a sweep that is right. No measure is ticked here, so
+				// every column of the row is a dimension column and, for a one-column dimension,
+				// this is the same check as before.
+				StringBuilder row = new StringBuilder();
+				for (int column = 1; column <= columns; column++) {
+					if (column > 1) row.append(" | ");
+					row.append(String.valueOf(rs.getObject(column)));
+				}
+				String value = row.toString();
+				if (!seen.add(value)) {
+					return "value '" + value + "' came back more than once (" + rows
+							+ " rows so far, " + seen.size() + " distinct)";
+				}
+			}
+			return null;
+		} catch (Exception e) {
+			return e.getMessage() == null ? e.toString() : e.getMessage().replace('\n', ' ');
+		}
+	}
+
+	/**
 	 * The engine a sample cube ships on, read from its own cube.xml rather than
 	 * listed here, so the two never drift apart.
 	 */
@@ -166,6 +417,51 @@ class CubeSampleSqlExecutesTest {
 				+ "', whose engine this test cannot recognise. Teach it how to open that engine rather than "
 				+ "letting the cube go unswept - proving a cube on the wrong engine is what this test exists "
 				+ "to prevent.");
+	}
+
+	/**
+	 * A geo dimension, on real coordinates. The demo data's depots (story 9) are the only place in
+	 * the shipped databases where a latitude and a longitude sit next to each other, and a map
+	 * widget is fed straight from these two columns: if the pair came back grouped into one column,
+	 * or one row short of a depot, the map would silently lose pins.
+	 */
+	@Test
+	void aGeoDimensionIsTwoRealColumnsAndOneRowPerDepot() throws Exception {
+		CubeOptions cube = CubeSqlGenerator.pickCube(CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'cube_demo.logistics_depots'\n" +
+				"  dimension { name 'Depot'; sql '${CUBE}.name'; type 'string' }\n" +
+				"  dimension { name 'Where'; type 'geo'; latitude '${CUBE}.latitude'; longitude '${CUBE}.longitude' }\n" +
+				"  measure { name 'Pallets'; sql '${CUBE}.capacity_pallets'; type 'sum' }\n" +
+				"}"), "");
+
+		String vendor = "duckdb";
+		String sql = CubeSqlGenerator.generateSql(cube, List.of("Depot", "Where"), List.of("Pallets"), vendor);
+
+		try (Connection connection = openFixtureFor(vendor);
+				Statement statement = connection.createStatement();
+				ResultSet rows = statement.executeQuery(sql)) {
+
+			List<String> columns = new ArrayList<>();
+			for (int i = 1; i <= rows.getMetaData().getColumnCount(); i++) {
+				columns.add(rows.getMetaData().getColumnLabel(i));
+			}
+			assertEquals(List.of("Depot", "Where_lat", "Where_lng", "Pallets"), columns,
+					"A geo dimension comes back as its two coordinates:\n" + sql);
+
+			int depots = 0;
+			Double hamburgLat = null;
+			Double hamburgLng = null;
+			while (rows.next()) {
+				depots++;
+				if ("Hamburg Port Depot".equals(rows.getString("Depot"))) {
+					hamburgLat = rows.getDouble("Where_lat");
+					hamburgLng = rows.getDouble("Where_lng");
+				}
+			}
+			assertEquals(30, depots, "One row per depot, grouped by both coordinates:\n" + sql);
+			assertEquals(53.54, hamburgLat, 0.0001, "Hamburg Port Depot's latitude comes back as it was loaded");
+			assertEquals(9.98, hamburgLng, 0.0001, "and so does its longitude");
+		}
 	}
 
 	/** Opens the fixture for {@code vendor} without ever writing to a canonical file. */
@@ -215,5 +511,571 @@ class CubeSampleSqlExecutesTest {
 		} catch (Exception e) {
 			return e.getMessage() == null ? e.toString() : e.getMessage().replace('\n', ' ');
 		}
+	}
+
+	/**
+	 * No double counting: a measure must read the same whether it is asked for alone or together
+	 * with the measures that drag a one_to_many join into the query.
+	 *
+	 * <p>Only the main table's own members take part. A measure on a joined table has no single
+	 * "right" value to compare against once the join repeats its rows - that combination is the one
+	 * the generator refuses, and the refusal is checked here too.
+	 */
+	@Test
+	void noSampleCubeMeasureChangesWhenTheOtherMeasuresAreTicked() throws Exception {
+		Map<String, List<String>> cubesByVendor = new LinkedHashMap<>();
+		for (String cubeName : sweptCubes()) {
+			cubesByVendor.computeIfAbsent(shippedVendorOf(cubeName), vendor -> new ArrayList<>()).add(cubeName);
+		}
+
+		Map<String, List<String>> failuresByCube = new LinkedHashMap<>();
+		int compared = 0;
+		int refused = 0;
+
+		for (Map.Entry<String, List<String>> group : cubesByVendor.entrySet()) {
+			String vendor = group.getKey();
+
+			try (Connection connection = openFixtureFor(vendor)) {
+				for (String cubeName : group.getValue()) {
+					CubeOptions cube = parseSampleCube(cubeName);
+					List<String> allMeasures = namesOf(cube.getMeasures());
+					List<String> failures = new ArrayList<>();
+
+					for (String dimensionName : onTheMainTable(cube, cube.getDimensions())) {
+						for (String measureName : onTheMainTable(cube, addUpMeasures(cube))) {
+							Map<String, Double> alone;
+							Map<String, Double> together;
+							try {
+								alone = valuesByDimension(connection, CubeSqlGenerator.generateSql(cube,
+										List.of(dimensionName), List.of(measureName), vendor),
+										dimensionName, measureName);
+								together = valuesByDimension(connection, CubeSqlGenerator.generateSql(cube,
+										List.of(dimensionName), allMeasures, vendor),
+										dimensionName, measureName);
+							} catch (IllegalArgumentException refusal) {
+								// A refusal is an answer, as long as it is the step 5 one: it names
+								// the measure and the join, and says what to do instead.
+								if (!refusal.getMessage().contains("would be counted once per row of")) {
+									failures.add(dimensionName + " x " + measureName
+											+ " was refused, but not with the no-double-counting message: "
+											+ refusal.getMessage());
+								}
+								refused++;
+								continue;
+							}
+
+							compared++;
+							String difference = firstDifference(alone, together);
+							if (difference != null) {
+								failures.add(measureName + " changes when the other measures are ticked, by "
+										+ dimensionName + ": " + difference + "\n"
+										+ CubeSqlGenerator.generateSql(cube, List.of(dimensionName),
+												allMeasures, vendor));
+							}
+						}
+					}
+
+					if (!failures.isEmpty()) {
+						failuresByCube.put(cubeName + " [" + vendor + "]", failures);
+					}
+				}
+			}
+		}
+
+		System.out.println("no double counting sweep: " + compared + " measure comparisons, " + refused
+				+ " refused combinations");
+
+		if (compared == 0) {
+			fail("Nothing was compared, so this sweep proved nothing.");
+		}
+
+		if (!failuresByCube.isEmpty()) {
+			StringBuilder message = new StringBuilder("A measure's value depends on which other measures are "
+					+ "ticked (" + compared + " comparisons):\n");
+			failuresByCube.forEach((cubeName, failures) -> {
+				message.append("\n=== ").append(cubeName).append(" ===\n");
+				failures.forEach(failure -> message.append(failure).append("\n"));
+			});
+			fail(message.toString());
+		}
+	}
+
+	/**
+	 * The three fixed truths of the Sales cube, each against a hand-written query on the same
+	 * database: freight belongs to the order, not to its line items.
+	 */
+	@Test
+	void salesFreightIsTheOrdersOwnFreightHoweverManyLinesItHas() throws Exception {
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = shippedVendorOf("northwind-sales");
+
+		try (Connection connection = openFixtureFor(vendor)) {
+			List<String> problems = new ArrayList<>();
+
+			// 1. Per country, with Revenue ticked - Revenue is what brings the order lines in.
+			Map<String, Double> byCountry = valuesByDimension(connection,
+					CubeSqlGenerator.generateSql(cube, List.of("ShipCountry"),
+							List.of("TotalFreight", "Revenue"), vendor),
+					"ShipCountry", "TotalFreight");
+			Map<String, Double> handWritten = handWritten(connection,
+					"SELECT ShipCountry, SUM(Freight) FROM Orders GROUP BY ShipCountry");
+			String difference = firstDifference(handWritten, byCountry);
+			if (difference != null) {
+				problems.add("freight per country is not the orders' freight: " + difference);
+			}
+			// The naive number is the one this whole TODO exists to stop: say it out loud.
+			Double germany = byCountry.get("Germany");
+			if (germany == null || Math.abs(germany - 1841.78) > 0.01) {
+				problems.add("Germany's freight is " + germany + ", expected 1841.78 (4521.64 is the value "
+						+ "that counts one freight per line item)");
+			}
+
+			// 2. No dimension at all: one row, the grand total of Orders.Freight.
+			Map<String, Double> grand = valuesByDimension(connection,
+					CubeSqlGenerator.generateSql(cube, List.of(), List.of("TotalFreight", "Revenue"), vendor),
+					null, "TotalFreight");
+			Map<String, Double> grandHandWritten = handWritten(connection,
+					"SELECT 'all', SUM(Freight) FROM Orders");
+			String grandDifference = firstDifference(grandHandWritten, grand);
+			if (grandDifference != null) {
+				problems.add("the grand total of freight is not SUM(Orders.Freight): " + grandDifference);
+			}
+
+			// 3. Down to the line item: an order repeated once per product still carries its own
+			// freight, not its freight times its line count.
+			Map<String, Double> perLine = new LinkedHashMap<>();
+			String lineSql = CubeSqlGenerator.generateSql(cube, List.of("OrderID", "ProductName"),
+					List.of("TotalFreight"), vendor);
+			try (Statement statement = connection.createStatement();
+					ResultSet rs = statement.executeQuery(lineSql)) {
+				while (rs.next()) {
+					perLine.put(String.valueOf(rs.getObject("OrderID")) + " / " + rs.getObject("ProductName"),
+							numberOrNull(rs.getObject("TotalFreight")));
+				}
+			}
+			Map<String, Double> freightOfOrder = handWritten(connection,
+					"SELECT OrderID, Freight FROM Orders");
+			int checkedLines = 0;
+			for (Map.Entry<String, Double> line : perLine.entrySet()) {
+				String orderId = line.getKey().substring(0, line.getKey().indexOf(" / "));
+				Double expected = freightOfOrder.get(orderId);
+				if (expected == null) continue;
+				checkedLines++;
+				if (line.getValue() == null || Math.abs(line.getValue() - expected) > 0.01) {
+					problems.add("line '" + line.getKey() + "' carries " + line.getValue()
+							+ ", but its order's freight is " + expected);
+					break;
+				}
+			}
+			if (checkedLines == 0) {
+				problems.add("no order line was checked, so the per-line truth proved nothing");
+			}
+
+			if (!problems.isEmpty()) {
+				fail("The Sales cube's freight is not the orders' own freight:\n - "
+						+ String.join("\n - ", problems) + "\n\nThe per-country SQL was:\n"
+						+ CubeSqlGenerator.generateSql(cube, List.of("ShipCountry"),
+								List.of("TotalFreight", "Revenue"), vendor));
+			}
+		}
+	}
+
+	/** The cube's sum, avg and count measures - the only kinds repeated rows can inflate. */
+	private List<Map<String, Object>> addUpMeasures(CubeOptions cube) {
+		List<Map<String, Object>> measures = new ArrayList<>();
+		if (cube.getMeasures() != null) {
+			for (Map<String, Object> measure : cube.getMeasures()) {
+				String type = String.valueOf(measure.get("type")).trim().toLowerCase();
+				if (type.equals("sum") || type.equals("avg") || type.equals("count")) {
+					measures.add(measure);
+				}
+			}
+		}
+		return measures;
+	}
+
+	/**
+	 * The names of the members whose sql reads the cube's own table only - a member that mentions a
+	 * join is answered on the many side and has no one value to compare.
+	 */
+	private List<String> onTheMainTable(CubeOptions cube, List<Map<String, Object>> members) {
+		List<String> joinNames = namesOf(cube.getJoins());
+		List<String> names = new ArrayList<>();
+		if (members == null) return names;
+
+		for (Map<String, Object> member : members) {
+			if (member.get("name") == null) continue;
+			String sql = String.valueOf(member.get("sql") == null ? "" : member.get("sql"));
+			boolean readsAJoin = false;
+			for (String joinName : joinNames) {
+				// The join name is written both bare and quoted in cube sql, so compare on the
+				// name itself: "Order Details".Quantity mentions Order Details just as much as
+				// Products.ProductName mentions Products.
+				String bare = joinName.replace("\"", "").replace("`", "").replace("[", "").replace("]", "");
+				if (sql.replace("\"", "").replace("`", "").contains(bare + ".")) {
+					readsAJoin = true;
+					break;
+				}
+			}
+			if (!readsAJoin) {
+				names.add(member.get("name").toString());
+			}
+		}
+		return names;
+	}
+
+	/**
+	 * One measure's value per dimension value; {@code dimensionName} null means the single row.
+	 *
+	 * <p>A geo dimension does not come back as a column of its own name: it is the pair
+	 * {@code <name>_lat} and {@code <name>_lng}, because that is what a map widget reads. Its key
+	 * here is that pair, so a depot network is compared depot by depot like any other dimension
+	 * rather than being left out of the sweep.
+	 */
+	private Map<String, Double> valuesByDimension(Connection connection, String sql, String dimensionName,
+			String measureName) throws Exception {
+		Map<String, Double> values = new LinkedHashMap<>();
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			Set<String> columns = new LinkedHashSet<>();
+			for (int column = 1; column <= rs.getMetaData().getColumnCount(); column++) {
+				columns.add(rs.getMetaData().getColumnLabel(column));
+			}
+			boolean geo = dimensionName != null && !columns.contains(dimensionName)
+					&& columns.contains(dimensionName + "_lat") && columns.contains(dimensionName + "_lng");
+			while (rs.next()) {
+				String key;
+				if (dimensionName == null) {
+					key = "all";
+				} else if (geo) {
+					key = rs.getObject(dimensionName + "_lat") + ", " + rs.getObject(dimensionName + "_lng");
+				} else {
+					key = String.valueOf(rs.getObject(dimensionName));
+				}
+				values.put(key, numberOrNull(rs.getObject(measureName)));
+			}
+		}
+		return values;
+	}
+
+	/** A two-column query - key, value - as the same shape, so the two can be compared. */
+	private Map<String, Double> handWritten(Connection connection, String sql) throws Exception {
+		Map<String, Double> values = new LinkedHashMap<>();
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			while (rs.next()) {
+				values.put(String.valueOf(rs.getObject(1)), numberOrNull(rs.getObject(2)));
+			}
+		}
+		return values;
+	}
+
+	private Double numberOrNull(Object value) {
+		if (value == null) return null;
+		if (value instanceof Number) return ((Number) value).doubleValue();
+		try {
+			return Double.valueOf(value.toString());
+		} catch (NumberFormatException notANumber) {
+			return null;
+		}
+	}
+
+	/**
+	 * The first group whose value differs between the two answers, or null when they agree: same
+	 * keys, and same value within a cent. A null is only equal to a null.
+	 */
+	private String firstDifference(Map<String, Double> expected, Map<String, Double> actual) {
+		for (Map.Entry<String, Double> group : expected.entrySet()) {
+			if (!actual.containsKey(group.getKey())) {
+				return "group '" + group.getKey() + "' is missing from the second answer";
+			}
+			Double left = group.getValue();
+			Double right = actual.get(group.getKey());
+			if (left == null || right == null) {
+				if (left != right) {
+					return "group '" + group.getKey() + "': " + left + " vs " + right;
+				}
+				continue;
+			}
+			if (Math.abs(left - right) > 0.01) {
+				return "group '" + group.getKey() + "': " + left + " vs " + right;
+			}
+		}
+		for (String key : actual.keySet()) {
+			if (!expected.containsKey(key)) {
+				return "group '" + key + "' is only in the second answer";
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Every DSL feature, on a real database. The cube below uses each of them at once — a short
+	 * name for its table, a geo dimension, sub_query dimensions, a case dimension, a time dimension
+	 * read by month, filtered and calculated measures, a segment and a declared order — and every
+	 * field of it, alone and together, has to produce SQL the database runs.
+	 *
+	 * <p>A feature the generator writes SQL for that no database accepts is otherwise found by a
+	 * user, on their own data.
+	 */
+	@Test
+	void everyDslFeatureRunsOnARealDatabase() throws Exception {
+		String dsl = "cube {\n" +
+				"  sql_table 'Customers'\n" +
+				"  sql_alias 'c'\n" +
+				"  join { name 'Orders'; sql '${CUBE}.CustomerID = Orders.CustomerID'; relationship 'one_to_many' }\n" +
+				"  dimension { name 'CustomerID'; sql '${CUBE}.CustomerID'; type 'string'; primary_key true }\n" +
+				"  dimension { name 'Country'; sql '${CUBE}.Country'; type 'string'; order 'desc' }\n" +
+				"  dimension { name 'Where'; type 'geo'; latitude '${CUBE}.Fax'; longitude '${CUBE}.Phone' }\n" +
+				"  dimension { name 'orderCount'; sql '${Orders.count}'; type 'number'; sub_query true }\n" +
+				"  dimension { name 'freight'; sql '${Orders.freight}'; type 'number'; sub_query true }\n" +
+				"  dimension { name 'Size'; type 'string'\n" +
+				"    case_ {\n" +
+				"      when sql: \"${CUBE}.Country = 'USA'\", label: 'home'\n" +
+				"      when sql: \"${CUBE}.Country = 'Germany'\", label: 'near'\n" +
+				"      else_ 'far'\n" +
+				"    } }\n" +
+				"  dimension { name 'FirstOrder'; sql 'Orders.OrderDate'; type 'time' }\n" +
+				"  measure { name 'Customers'; type 'count' }\n" +
+				"  measure { name 'Cities'; sql '${CUBE}.City'; type 'count_distinct' }\n" +
+				"  measure { name 'BigOnes'; sql 'Orders.Freight'; type 'sum'\n" +
+				"    filters { filter sql: 'Orders.Freight > 50' } }\n" +
+				"  measure { name 'PerCustomer'; sql '${BigOnes} / NULLIF(${Customers}, 0)'; type 'number' }\n" +
+				"  segment { name 'europe'; sql \"${CUBE}.Country IN ('Germany', 'France', 'Spain')\" }\n" +
+				"}\n" +
+				"cube('Orders') {\n" +
+				"  sql_table 'Orders'\n" +
+				"  measure { name 'freight'; sql '${CUBE}.Freight'; type 'sum' }\n" +
+				"}";
+
+		CubeOptions file = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
+		CubeOptions cube = CubeSqlGenerator.pickCube(file, "");
+		List<String> dimensions = namesOf(cube.getDimensions());
+		List<String> measures = namesOf(cube.getMeasures());
+
+		List<String> broken = new ArrayList<>();
+		int queries = 0;
+		try (Connection connection = openFixtureFor("sqlite")) {
+			for (String dimension : dimensions) {
+				for (List<String> picked : List.of(List.<String>of(), measures)) {
+					for (List<String> segments : List.of(List.<String>of(), List.of("europe"))) {
+						String sql = CubeSqlGenerator.generateSql(cube, List.of(dimension), picked, segments,
+								"sqlite");
+						queries++;
+						String failure = runAndReportError(connection, sql);
+						if (failure != null) {
+							broken.add(dimension + " x " + picked.size() + " measures x " + segments
+									+ ": " + failure + "\n" + sql);
+						}
+					}
+				}
+			}
+			// And every field of the cube at once, which is what a curious user does first.
+			String all = CubeSqlGenerator.generateSql(cube, dimensions, measures, List.of("europe"), "sqlite");
+			queries++;
+			String failure = runAndReportError(connection, all);
+			if (failure != null) broken.add("everything at once: " + failure + "\n" + all);
+
+			// The truth check: a sub_query counts the other table's rows for this row, and nothing
+			// else. Hand-written, that is the same correlated count.
+			String sql = CubeSqlGenerator.generateSql(cube, List.of("CustomerID", "orderCount"), List.of(),
+					"sqlite");
+			Map<String, Double> generated = valuesByDimension(connection, sql, "CustomerID", "orderCount");
+			Map<String, Double> byHand = handWritten(connection,
+					"SELECT c.CustomerID, (SELECT COUNT(*) FROM Orders WHERE Orders.CustomerID = c.CustomerID) "
+							+ "FROM Customers c");
+			String difference = firstDifference(byHand, generated);
+			if (difference != null) {
+				broken.add("a sub_query is not the count it claims to be: " + difference + "\n" + sql);
+			}
+		}
+
+		if (!broken.isEmpty()) {
+			fail(broken.size() + " of " + queries + " queries over the DSL's features failed:\n\n"
+					+ String.join("\n\n", broken));
+		}
+		System.out.println("[cube-features] " + queries + " queries over every DSL feature, all runnable");
+	}
+
+	/**
+	 * The shipped samples are what a new user opens first, so they may not greet that user with a
+	 * complaint. The only thing they are allowed to say is that a key they use is not read yet.
+	 */
+	@Test
+	void everyShippedSampleParsesWithNothingToComplainAbout() throws Exception {
+		Set<String> notUsedYet = Set.of("format", "drill_members", "rolling_window");
+		List<String> complaints = new ArrayList<>();
+		for (String cubeName : SAMPLE_CUBES) {
+			if (BROKEN_ON_PURPOSE.equals(cubeName)) continue;
+			for (Map<String, Object> warning : parseSampleCube(cubeName).getWarnings()) {
+				String key = String.valueOf(warning.get("key"));
+				boolean allowed = "warning".equals(warning.get("level")) && notUsedYet.contains(key)
+						&& String.valueOf(warning.get("message")).endsWith(key + " is not used yet");
+				if (!allowed) complaints.add(cubeName + ": " + warning);
+			}
+		}
+		if (!complaints.isEmpty()) {
+			fail("The shipped samples say things a user should not have to read:\n"
+					+ String.join("\n", complaints));
+		}
+
+		// Story 19 is the one sample that must complain, and about exactly these four things: a
+		// first draft whose mistakes are caught and explained. If the parser ever stops saying one
+		// of them, the story on the page stops being true.
+		List<Map<String, Object>> drafted = parseSampleCube(BROKEN_ON_PURPOSE).getWarnings();
+		List<String> saidAsWarning = new ArrayList<>();
+		List<String> saidAsError = new ArrayList<>();
+		for (Map<String, Object> said : drafted) {
+			String message = String.valueOf(said.get("message"));
+			if ("error".equals(said.get("level"))) saidAsError.add(message);
+			else saidAsWarning.add(message);
+		}
+		assertEquals(2, saidAsWarning.size(), BROKEN_ON_PURPOSE + " warns about its two near-misses: " + drafted);
+		assertEquals(2, saidAsError.size(), BROKEN_ON_PURPOSE + " refuses its two mistakes: " + drafted);
+		assertTrue(saidAsWarning.get(0).contains("'titel'") && saidAsWarning.get(0).contains("did you mean 'title'"),
+				"the misspelled title is caught with a did-you-mean: " + saidAsWarning);
+		assertTrue(saidAsWarning.get(1).contains("'relationshp'")
+				&& saidAsWarning.get(1).contains("did you mean 'relationship'"),
+				"the misspelled relationship is caught with a did-you-mean: " + saidAsWarning);
+		assertTrue(saidAsError.get(0).contains("'median'"),
+				"a measure type that does not exist is an error: " + saidAsError);
+		assertTrue(saidAsError.get(1).contains("'City'") && saidAsError.get(1).contains("not a dimension"),
+				"a drill path level naming no dimension is an error: " + saidAsError);
+	}
+
+	/**
+	 * The structured query, on the real SQLite Northwind: the rows it returns, the dates it shows
+	 * and the numbers it adds up are all compared with a hand-written query on the same data, so a
+	 * filter that quietly narrows nothing, or a date read as an integer, cannot pass.
+	 */
+	@Test
+	void theStructuredQueryAnswersWhatAHandWrittenQueryAnswers() throws Exception {
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = "sqlite";
+		String date = CubeSqlDialect.timeValue("OrderDate", vendor);
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			// One row per distinct value, and no more.
+			long countries = oneNumber(connection, "SELECT COUNT(DISTINCT ShipCountry) FROM Orders").longValue();
+			assertTrue(countries > 0, "The fixture has orders to count");
+			assertEquals(countries, rowsOf(connection, ask(cube, vendor,
+					"dimensions", List.of("ShipCountry"), "measures", List.of("OrderCount"))),
+					"ShipCountry alone returns one row per country");
+
+			// SQLite keeps its dates as numbers. What comes back is the date the user sees.
+			List<String> days = textColumn(connection, ask(cube, vendor,
+					"dimensions", List.of("OrderDate"), "measures", List.of("OrderCount")));
+			assertEquals(oneNumber(connection, "SELECT COUNT(DISTINCT " + date + ") FROM Orders").longValue(),
+					days.size(), "One row per day the orders were placed on");
+			for (String day : days) {
+				assertTrue(day != null && day.matches("\\d{4}-\\d{2}-\\d{2}"),
+						"An order date reads as a date and not as a number: " + day);
+			}
+
+			// A time range takes in its whole last day, and takes in exactly the orders a
+			// hand-written query with the same reading of the column takes in.
+			long byHand = oneNumber(connection, "SELECT COUNT(*) FROM Orders WHERE " + date
+					+ " >= '2023-01-01' AND " + date + " < '2024-01-01'").longValue();
+			assertTrue(byHand > 0, "The range holds orders to find: " + byHand);
+			assertEquals(byHand, oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("OrderCount"),
+					"filters", List.of(filterOn("OrderDate", "between", "2023-01-01", "2023-12-31"))))
+							.longValue(),
+					"A between range returns the orders of that range, last day included");
+
+			// A filter on a country plus that range: the same revenue, added up by hand.
+			double revenueByHand = oneNumber(connection,
+					"SELECT SUM(\"Order Details\".UnitPrice * \"Order Details\".Quantity"
+							+ " * (1 - \"Order Details\".Discount))"
+							+ " FROM Orders LEFT JOIN \"Order Details\""
+							+ " ON Orders.OrderID = \"Order Details\".OrderID"
+							+ " WHERE Orders.ShipCountry = 'Germany' AND " + date + " >= '2023-01-01'"
+							+ " AND " + date + " < '2024-01-01'").doubleValue();
+			assertTrue(revenueByHand > 0, "Germany bought something that year");
+			assertEquals(revenueByHand, oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("Revenue"),
+					"filters", List.of(
+							filterOn("ShipCountry", "in", "Germany"),
+							filterOn("OrderDate", "between", "2023-01-01", "2023-12-31")))).doubleValue(),
+					0.01, "Two filters together give the hand-written revenue");
+
+			// Every granularity runs, and a month is a month.
+			for (String granularity : CubeSqlDialect.GRANULARITIES) {
+				String sql = ask(cube, vendor, "dimensions", List.of("OrderDate"),
+						"measures", List.of("OrderCount"), "granularities", Map.of("OrderDate", granularity));
+				String complaint = runAndReportError(connection, sql);
+				if (complaint != null) {
+					fail("The structured query at granularity '" + granularity + "' does not run: "
+							+ complaint + "\n" + sql);
+				}
+			}
+			assertEquals(oneNumber(connection,
+					"SELECT COUNT(DISTINCT substr(" + date + ", 1, 7)) FROM Orders").longValue(),
+					rowsOf(connection, ask(cube, vendor, "dimensions", List.of("OrderDate"),
+							"measures", List.of("OrderCount"), "granularities", Map.of("OrderDate", "month"))),
+					"By month there are as many rows as there are months");
+
+			// The top ten customers: ten rows, biggest first.
+			String top = ask(cube, vendor, "dimensions", List.of("CustomerCompanyName"),
+					"measures", List.of("Revenue"),
+					"order", List.of(Map.of("member", "Revenue", "dir", "desc")), "limit", 10);
+			List<Double> revenues = numberColumn(connection, top, 2);
+			assertEquals(10, revenues.size(), "Ten customers, and no eleventh:\n" + top);
+			for (int i = 1; i < revenues.size(); i++) {
+				assertTrue(revenues.get(i - 1) >= revenues.get(i),
+						"The top ten come biggest first:\n" + revenues);
+			}
+		}
+	}
+
+	/** The SQL one structured request generates, ready to run: its values written in. */
+	private String ask(CubeOptions cube, String vendor, Object... keysAndValues) {
+		Map<String, Object> request = new LinkedHashMap<>();
+		for (int i = 0; i < keysAndValues.length; i += 2) {
+			request.put(keysAndValues[i].toString(), keysAndValues[i + 1]);
+		}
+		return CubeSqlGenerator.buildQuery(cube, request, vendor).toInlineSql(vendor);
+	}
+
+	private Map<String, Object> filterOn(String member, String operator, Object... values) {
+		Map<String, Object> filter = new LinkedHashMap<>();
+		filter.put("member", member);
+		filter.put("operator", operator);
+		filter.put("values", java.util.Arrays.asList(values));
+		return filter;
+	}
+
+	private Number oneNumber(Connection connection, String sql) throws Exception {
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			if (!rs.next()) {
+				throw new IllegalStateException("No row came back from:\n" + sql);
+			}
+			return (Number) rs.getObject(1);
+		}
+	}
+
+	private long rowsOf(Connection connection, String sql) throws Exception {
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			long rows = 0;
+			while (rs.next()) rows++;
+			return rows;
+		}
+	}
+
+	private List<String> textColumn(Connection connection, String sql) throws Exception {
+		List<String> values = new ArrayList<>();
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			while (rs.next()) {
+				if (rs.getObject(1) != null) values.add(rs.getString(1));
+			}
+		}
+		return values;
+	}
+
+	private List<Double> numberColumn(Connection connection, String sql, int column) throws Exception {
+		List<Double> values = new ArrayList<>();
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			while (rs.next()) values.add(rs.getDouble(column));
+		}
+		return values;
 	}
 }

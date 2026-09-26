@@ -51,6 +51,7 @@ GET /api/connections/{connectionId} -> REPORT_AUTHOR
 GET /api/connections/{connectionId}/metadata/{type} -> REPORT_AUTHOR
 GET /api/connections/{connectionId}/oauth-flow/{flowId}/events -> ADMIN
 GET /api/cubes -> REPORT_AUTHOR
+GET /api/cubes/dialects -> REPORT_AUTHOR
 GET /api/cubes/{cubeId} -> REPORT_AUTHOR
 GET /api/embed/share-link -> REPORT_AUTHOR
 GET /api/explorations -> REPORT_AUTHOR

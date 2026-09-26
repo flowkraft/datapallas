@@ -1,0 +1,54 @@
+[
+  {
+    "sample": "northwind-sales",
+    "source": "SELECT ShipCountry, SUM(Freight) FROM Orders GROUP BY ShipCountry",
+    "dimensions": [
+      "ShipCountry"
+    ],
+    "measures": [
+      "TotalFreight"
+    ],
+    "rows": [
+      [
+        "Argentina",
+        163.88
+      ],
+      [
+        "Austria",
+        226.15
+      ],
+      [
+        "France",
+        347.85
+      ],
+      [
+        "Germany",
+        1841.78
+      ],
+      [
+        "Italy",
+        144.96
+      ],
+      [
+        "Mexico",
+        212.88
+      ],
+      [
+        "Sweden",
+        410.6
+      ],
+      [
+        "UK",
+        186.62
+      ],
+      [
+        "USA",
+        199.42
+      ],
+      [
+        "Venezuela",
+        254.38
+      ]
+    ]
+  }
+]

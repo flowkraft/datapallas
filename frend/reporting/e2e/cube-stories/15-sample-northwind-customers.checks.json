@@ -1,0 +1,54 @@
+[
+  {
+    "sample": "northwind-customers",
+    "source": "SELECT Country, COUNT(DISTINCT CustomerID) FROM Customers GROUP BY Country",
+    "dimensions": [
+      "Country"
+    ],
+    "measures": [
+      "CustomerCount"
+    ],
+    "rows": [
+      [
+        "Argentina",
+        1
+      ],
+      [
+        "Austria",
+        1
+      ],
+      [
+        "France",
+        2
+      ],
+      [
+        "Germany",
+        11
+      ],
+      [
+        "Italy",
+        1
+      ],
+      [
+        "Mexico",
+        2
+      ],
+      [
+        "Sweden",
+        2
+      ],
+      [
+        "UK",
+        2
+      ],
+      [
+        "USA",
+        1
+      ],
+      [
+        "Venezuela",
+        2
+      ]
+    ]
+  }
+]

@@ -1,0 +1,61 @@
+account_id|name|industry|country|city|employees|account_tier
+1|Southridge Video GmbH|Financial Services|Germany|Frankfurt|217|Mid-Market
+2|Tres Chic Boutique GmbH|Retail|Germany|Stuttgart|335|Mid-Market
+3|Nod Publishers GmbH|Media|Germany|Stuttgart|1532|Enterprise
+4|Consolidated Messenger GmbH|Retail|Germany|Stuttgart|256|Mid-Market
+5|Adventure Works GmbH|Healthcare|Germany|Berlin|157|Small
+6|Fincher Architects GmbH|Manufacturing|Germany|Hamburg|71|Small
+7|Margie's Travel GmbH|Retail|Germany|Munich|223|Mid-Market
+8|Fourth Coffee GmbH|Education|Germany|Frankfurt|516|Mid-Market
+9|City Power & Light GmbH|Media|Germany|Stuttgart|634|Mid-Market
+10|Winsome Apparel GmbH|Education|Germany|Berlin|7826|Strategic
+11|Northwind Traders GmbH|Logistics|Germany|Frankfurt|122|Small
+12|Litware GmbH|Media|Germany|Frankfurt|252|Mid-Market
+13|Munson's Pickles GmbH|Technology|Germany|Stuttgart|213|Mid-Market
+14|Coho Winery GmbH|Technology|Germany|Munich|210|Mid-Market
+15|Relecloud Inc|Manufacturing|United States|Atlanta|508|Mid-Market
+16|Woodgrove Bank Inc|Energy|United States|New York|31|Small
+17|Trey Research Inc|Financial Services|United States|Atlanta|427|Mid-Market
+18|Trail Frames Chalet Inc|Logistics|United States|Chicago|2399|Enterprise
+19|Prose Ware Systems Inc|Public Sector|United States|Atlanta|2018|Enterprise
+20|Graphic Design Institute Inc|Media|United States|Atlanta|1249|Enterprise
+21|Contoso Inc|Energy|United States|New York|863|Mid-Market
+22|Bellows College Inc|Public Sector|United States|Houston|417|Mid-Market
+23|Blue Yonder Airlines Inc|Technology|United States|Seattle|291|Mid-Market
+24|Wide World Importers Inc|Energy|United States|Seattle|63|Small
+25|Tailspin Toys Inc|Healthcare|United States|Houston|14|Small
+26|Alpine Ski House SARL|Manufacturing|France|Toulouse|1029|Enterprise
+27|VanArsdel SARL|Technology|France|Toulouse|621|Mid-Market
+28|The Phone Company SARL|Public Sector|France|Marseille|1114|Enterprise
+29|First Up Consultants SARL|Logistics|France|Marseille|399|Mid-Market
+30|Parnell Aerospace SARL|Retail|France|Paris|14000|Strategic
+31|Wide Field Robotics SARL|Energy|France|Paris|160|Small
+32|Fabrikam SARL|Logistics|France|Lyon|136|Small
+33|Humongous Insurance Ltd|Healthcare|United Kingdom|Birmingham|8|Small
+34|Lamna Healthcare Ltd|Media|United Kingdom|London|356|Mid-Market
+35|Liberty Delightful Sinful Bakery Ltd|Financial Services|United Kingdom|Manchester|249|Mid-Market
+36|Best For You Organics Ltd|Education|United Kingdom|Birmingham|4770|Enterprise
+37|Tall Poppies Ltd|Energy|United Kingdom|Manchester|189|Small
+38|Lucerne Publishing Ltd|Logistics|United Kingdom|London|1206|Enterprise
+39|Wingtip Toys BV|Public Sector|Netherlands|Amsterdam|1909|Enterprise
+40|Proseware BV|Financial Services|Netherlands|Amsterdam|324|Mid-Market
+41|Southridge Video BV|Healthcare|Netherlands|Amsterdam|68|Small
+42|Tres Chic Boutique BV|Retail|Netherlands|Amsterdam|57|Small
+43|Nod Publishers SpA|Education|Italy|Turin|76|Small
+44|Consolidated Messenger SpA|Energy|Italy|Rome|130|Small
+45|Adventure Works SpA|Retail|Italy|Milan|118|Small
+46|Fincher Architects SpA|Financial Services|Italy|Rome|392|Mid-Market
+47|Margie's Travel SL|Public Sector|Spain|Barcelona|503|Mid-Market
+48|Fourth Coffee SL|Public Sector|Spain|Valencia|1318|Enterprise
+49|City Power & Light SL|Financial Services|Spain|Madrid|163|Small
+50|Winsome Apparel AB|Education|Sweden|Stockholm|209|Mid-Market
+51|Northwind Traders AB|Manufacturing|Sweden|Stockholm|153|Small
+52|Litware AB|Education|Sweden|Gothenburg|915|Mid-Market
+53|Munson's Pickles Sp. z o.o.|Logistics|Poland|Krakow|4159|Enterprise
+54|Coho Winery Sp. z o.o.|Media|Poland|Krakow|75|Small
+55|Relecloud Sp. z o.o.|Technology|Poland|Warsaw|11271|Strategic
+56|Woodgrove Bank GmbH|Manufacturing|Austria|Vienna|44|Small
+57|Trey Research GmbH|Technology|Austria|Vienna|310|Mid-Market
+58|Trail Frames Chalet Inc|Healthcare|Canada|Toronto|1734|Enterprise
+59|Prose Ware Systems Inc|Healthcare|Canada|Toronto|46|Small
+60|Graphic Design Institute AG|Manufacturing|Switzerland|Geneva|879|Mid-Market

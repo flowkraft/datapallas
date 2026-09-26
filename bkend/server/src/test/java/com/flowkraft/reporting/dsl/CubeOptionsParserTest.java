@@ -2,8 +2,13 @@ package com.flowkraft.reporting.dsl;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -62,17 +67,7 @@ public class CubeOptionsParserTest {
 	// ─────────────────────────────────────────────────────────────────────────────
 	@Test
 	public void testCrmCustomerList() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'public.customers'\n" +
-			"  title 'Customers'\n" +
-			"  description 'All registered customers'\n" +
-			"\n" +
-			"  dimension { name 'customer_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'name'; sql 'name'; type 'string' }\n" +
-			"  dimension { name 'country'; sql 'country'; type 'string'; order 'asc' }\n" +
-			"\n" +
-			"  measure { name 'count'; type 'count' }\n" +
-			"}";
+		String dsl = CubeDslSamples.CRM_CUSTOMER_LIST;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -104,22 +99,7 @@ public class CubeOptionsParserTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testEcommerceRevenueDashboard() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'public.orders'\n" +
-			"  title 'Orders'\n" +
-			"  meta icon: 'shopping-cart', category: 'sales'\n" +
-			"\n" +
-			"  dimension { name 'order_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'status'; sql 'status'; type 'string' }\n" +
-			"  dimension { name 'created_at'; sql 'created_at'; type 'time'; order 'desc' }\n" +
-			"\n" +
-			"  measure {\n" +
-			"    name 'total_orders'; type 'count'\n" +
-			"    drill_members 'order_id', 'status', 'created_at'\n" +
-			"  }\n" +
-			"  measure { name 'revenue'; sql 'amount'; type 'sum'; format 'currency' }\n" +
-			"  measure { name 'avg_order_value'; sql 'amount'; type 'avg'; format 'currency' }\n" +
-			"}";
+		String dsl = CubeDslSamples.ECOMMERCE_REVENUE_DASHBOARD;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -153,33 +133,7 @@ public class CubeOptionsParserTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testCompletedOrdersFilteredKpis() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql 'SELECT * FROM orders WHERE created_at >= \\'2024-01-01\\''\n" +
-			"  title 'Orders 2024+'\n" +
-			"\n" +
-			"  dimension { name 'order_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'status'; sql 'status'; type 'string' }\n" +
-			"  dimension { name 'created_at'; sql 'created_at'; type 'time' }\n" +
-			"\n" +
-			"  measure { name 'total_orders'; type 'count' }\n" +
-			"  measure {\n" +
-			"    name 'completed_count'\n" +
-			"    type 'count'\n" +
-			"    sql 'id'\n" +
-			"    filters {\n" +
-			"      filter sql: \"${CUBE}.status = 'completed'\"\n" +
-			"    }\n" +
-			"  }\n" +
-			"  measure {\n" +
-			"    name 'high_value_revenue'\n" +
-			"    type 'sum'\n" +
-			"    sql 'amount'\n" +
-			"    format 'currency'\n" +
-			"    filters {\n" +
-			"      filter sql: '${CUBE}.amount > 500'\n" +
-			"    }\n" +
-			"  }\n" +
-			"}";
+		String dsl = CubeDslSamples.COMPLETED_ORDERS_FILTERED_KPIS;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -220,31 +174,7 @@ public class CubeOptionsParserTest {
 	// ─────────────────────────────────────────────────────────────────────────────
 	@Test
 	public void testCustomer360WithOrderStats() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'public.customers'\n" +
-			"  title 'Customer 360'\n" +
-			"  description 'Customer profiles with order history'\n" +
-			"\n" +
-			"  dimension { name 'customer_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'name'; sql 'name'; type 'string' }\n" +
-			"  dimension { name 'email'; sql 'email'; type 'string' }\n" +
-			"  dimension { name 'signed_up_at'; sql 'created_at'; type 'time' }\n" +
-			"  dimension {\n" +
-			"    name 'order_count'\n" +
-			"    sql '${orders.count}'\n" +
-			"    type 'number'\n" +
-			"    sub_query true\n" +
-			"    description 'Total orders placed by this customer'\n" +
-			"  }\n" +
-			"\n" +
-			"  measure { name 'count'; type 'count' }\n" +
-			"\n" +
-			"  join {\n" +
-			"    name 'orders'\n" +
-			"    sql '${CUBE}.id = orders.customer_id'\n" +
-			"    relationship 'one_to_many'\n" +
-			"  }\n" +
-			"}";
+		String dsl = CubeDslSamples.CUSTOMER360_WITH_ORDER_STATS;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -270,33 +200,7 @@ public class CubeOptionsParserTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testProductSalesStarSchema() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'public.order_items'\n" +
-			"  title 'Product Sales'\n" +
-			"\n" +
-			"  dimension { name 'id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"\n" +
-			"  measure {\n" +
-			"    name 'items_sold'; type 'count'\n" +
-			"    drill_members 'id'\n" +
-			"  }\n" +
-			"  measure { name 'revenue'; sql 'quantity * unit_price'; type 'sum'; format 'currency' }\n" +
-			"  measure { name 'unique_products'; sql 'product_id'; type 'count_distinct' }\n" +
-			"  measure { name 'avg_unit_price'; sql 'unit_price'; type 'avg' }\n" +
-			"  measure { name 'cheapest_item'; sql 'unit_price'; type 'min' }\n" +
-			"  measure { name 'most_expensive'; sql 'unit_price'; type 'max' }\n" +
-			"\n" +
-			"  join {\n" +
-			"    name 'orders'\n" +
-			"    sql '${CUBE}.order_id = orders.id'\n" +
-			"    relationship 'many_to_one'\n" +
-			"  }\n" +
-			"  join {\n" +
-			"    name 'products'\n" +
-			"    sql '${CUBE}.product_id = products.id'\n" +
-			"    relationship 'many_to_one'\n" +
-			"  }\n" +
-			"}";
+		String dsl = CubeDslSamples.PRODUCT_SALES_STAR_SCHEMA;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -338,37 +242,7 @@ public class CubeOptionsParserTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testClothingStoreSizeLabels() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'retail.products'\n" +
-			"  title 'Product Catalog'\n" +
-			"\n" +
-			"  dimension { name 'product_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'name'; sql 'name'; type 'string' }\n" +
-			"  dimension {\n" +
-			"    name 'size_label'\n" +
-			"    type 'string'\n" +
-			"    case_ {\n" +
-			"      when sql: \"${CUBE}.size_code = 'xs'\", label: 'Extra Small'\n" +
-			"      when sql: \"${CUBE}.size_code = 'sm'\", label: 'Small'\n" +
-			"      when sql: \"${CUBE}.size_code = 'md'\", label: 'Medium'\n" +
-			"      when sql: \"${CUBE}.size_code = 'lg'\", label: 'Large'\n" +
-			"      when sql: \"${CUBE}.size_code = 'xl'\", label: 'Extra Large'\n" +
-			"      else_ label: 'Unknown'\n" +
-			"    }\n" +
-			"  }\n" +
-			"  dimension {\n" +
-			"    name 'price_tier'\n" +
-			"    type 'string'\n" +
-			"    case_ {\n" +
-			"      when sql: '${CUBE}.price < 25', label: 'Budget'\n" +
-			"      when sql: '${CUBE}.price < 100', label: 'Mid-Range'\n" +
-			"      when sql: '${CUBE}.price >= 100', label: 'Premium'\n" +
-			"    }\n" +
-			"  }\n" +
-			"\n" +
-			"  measure { name 'product_count'; type 'count' }\n" +
-			"  measure { name 'avg_price'; sql 'price'; type 'avg'; format 'currency' }\n" +
-			"}";
+		String dsl = CubeDslSamples.CLOTHING_STORE_SIZE_LABELS;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -405,28 +279,7 @@ public class CubeOptionsParserTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testDeliveryFleetTracker() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'logistics.deliveries'\n" +
-			"  title 'Delivery Fleet'\n" +
-			"\n" +
-			"  dimension { name 'delivery_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'driver_name'; sql 'driver'; type 'string' }\n" +
-			"  dimension { name 'status'; sql 'status'; type 'string' }\n" +
-			"  dimension {\n" +
-			"    name 'current_location'\n" +
-			"    type 'geo'\n" +
-			"    latitude { sql '${CUBE}.lat' }\n" +
-			"    longitude { sql '${CUBE}.lng' }\n" +
-			"  }\n" +
-			"  dimension {\n" +
-			"    name 'destination'\n" +
-			"    type 'geo'\n" +
-			"    latitude { sql '${CUBE}.dest_lat' }\n" +
-			"    longitude { sql '${CUBE}.dest_lng' }\n" +
-			"  }\n" +
-			"\n" +
-			"  measure { name 'active_deliveries'; type 'count' }\n" +
-			"}";
+		String dsl = CubeDslSamples.DELIVERY_FLEET_TRACKER;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -458,35 +311,7 @@ public class CubeOptionsParserTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testRetailChainStoreLocator() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'public.stores'\n" +
-			"  title 'Store Directory'\n" +
-			"\n" +
-			"  dimension { name 'store_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'store_name'; sql 'name'; type 'string' }\n" +
-			"  dimension { name 'country'; sql 'country'; type 'string' }\n" +
-			"  dimension { name 'region'; sql 'region'; type 'string' }\n" +
-			"  dimension { name 'city'; sql 'city'; type 'string' }\n" +
-			"  dimension {\n" +
-			"    name 'opened_at'; sql 'opened_at'; type 'time'\n" +
-			"    title 'Opening Date'\n" +
-			"    description 'Date the store first opened'\n" +
-			"  }\n" +
-			"\n" +
-			"  measure { name 'store_count'; type 'count' }\n" +
-			"\n" +
-			"  segment {\n" +
-			"    name 'new_stores'\n" +
-			"    sql \"${CUBE}.opened_at >= CURRENT_DATE - INTERVAL '1 year'\"\n" +
-			"    description 'Opened within the last year'\n" +
-			"  }\n" +
-			"\n" +
-			"  hierarchy {\n" +
-			"    name 'geography'\n" +
-			"    title 'Location'\n" +
-			"    levels 'country', 'region', 'city'\n" +
-			"  }\n" +
-			"}";
+		String dsl = CubeDslSamples.RETAIL_CHAIN_STORE_LOCATOR;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -521,19 +346,7 @@ public class CubeOptionsParserTest {
 	// ─────────────────────────────────────────────────────────────────────────────
 	@Test
 	public void testFinanceInternalStagingCube() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'finance.staging_quarterly_reconciliation_transactions_v2'\n" +
-			"  sql_alias 'fin_recon'\n" +
-			"  title 'Reconciliation (staging)'\n" +
-			"  public_ false\n" +
-			"\n" +
-			"  dimension { name 'txn_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'account'; sql 'gl_account'; type 'string' }\n" +
-			"  dimension { name 'posted_at'; sql 'posted_at'; type 'time' }\n" +
-			"\n" +
-			"  measure { name 'count'; type 'count' }\n" +
-			"  measure { name 'net_amount'; sql 'debit - credit'; type 'sum'; format 'currency' }\n" +
-			"}";
+		String dsl = CubeDslSamples.FINANCE_INTERNAL_STAGING_CUBE;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -553,24 +366,7 @@ public class CubeOptionsParserTest {
 	// ─────────────────────────────────────────────────────────────────────────────
 	@Test
 	public void testRegionalOrdersExtends() throws Exception {
-		String dsl = "cube('base_orders') {\n" +
-			"  sql_table 'public.orders'\n" +
-			"  dimension { name 'order_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'status'; sql 'status'; type 'string' }\n" +
-			"  dimension { name 'created_at'; sql 'created_at'; type 'time' }\n" +
-			"  measure { name 'count'; type 'count' }\n" +
-			"  measure { name 'revenue'; sql 'amount'; type 'sum'; format 'currency' }\n" +
-			"}\n" +
-			"cube('orders_us') {\n" +
-			"  extends_ 'base_orders'\n" +
-			"  sql_table 'public.orders_us'\n" +
-			"  dimension { name 'us_state'; sql 'state'; type 'string' }\n" +
-			"}\n" +
-			"cube('orders_eu') {\n" +
-			"  extends_ 'base_orders'\n" +
-			"  sql_table 'public.orders_eu'\n" +
-			"  dimension { name 'eu_country'; sql 'country'; type 'string' }\n" +
-			"}";
+		String dsl = CubeDslSamples.REGIONAL_ORDERS_EXTENDS;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -611,22 +407,7 @@ public class CubeOptionsParserTest {
 	// ─────────────────────────────────────────────────────────────────────────────
 	@Test
 	public void testMultiDepartmentDashboard() throws Exception {
-		String dsl = "cube('hr_headcount') {\n" +
-			"  sql_table 'hr.employees'\n" +
-			"  title 'Headcount'\n" +
-			"  dimension { name 'emp_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'department'; sql 'department'; type 'string' }\n" +
-			"  dimension { name 'hire_date'; sql 'hire_date'; type 'time' }\n" +
-			"  measure { name 'headcount'; type 'count' }\n" +
-			"}\n" +
-			"cube('sales_revenue') {\n" +
-			"  sql_table 'sales.orders'\n" +
-			"  title 'Revenue'\n" +
-			"  dimension { name 'order_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"  dimension { name 'region'; sql 'region'; type 'string' }\n" +
-			"  measure { name 'total_orders'; type 'count' }\n" +
-			"  measure { name 'revenue'; sql 'amount'; type 'sum'; format 'currency' }\n" +
-			"}";
+		String dsl = CubeDslSamples.MULTI_DEPARTMENT_DASHBOARD;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -655,94 +436,7 @@ public class CubeOptionsParserTest {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testSalesPipelineFullModel() throws Exception {
-		String dsl = "cube {\n" +
-			"  sql_table 'public.sales'\n" +
-			"  sql_alias 'sales'\n" +
-			"  title 'Sales Transactions'\n" +
-			"  description 'Point-of-sale transactions across all channels'\n" +
-			"  public_ true\n" +
-			"  meta icon: 'dollar-sign', color: '#28a745', priority: 1\n" +
-			"\n" +
-			"  // Primary key\n" +
-			"  dimension { name 'sale_id'; sql 'id'; type 'number'; primary_key true }\n" +
-			"\n" +
-			"  // Categorical\n" +
-			"  dimension { name 'channel'; sql 'sales_channel'; type 'string'; title 'Sales Channel' }\n" +
-			"  dimension { name 'country'; sql 'country'; type 'string' }\n" +
-			"  dimension { name 'region'; sql 'region'; type 'string' }\n" +
-			"  dimension { name 'city'; sql 'city'; type 'string' }\n" +
-			"\n" +
-			"  // Conditional — map channel codes to labels\n" +
-			"  dimension {\n" +
-			"    name 'channel_label'\n" +
-			"    type 'string'\n" +
-			"    case_ {\n" +
-			"      when sql: \"${CUBE}.sales_channel = 'web'\", label: 'Website'\n" +
-			"      when sql: \"${CUBE}.sales_channel = 'pos'\", label: 'In-Store'\n" +
-			"      else_ label: 'Other'\n" +
-			"    }\n" +
-			"  }\n" +
-			"\n" +
-			"  // Time\n" +
-			"  dimension { name 'sold_at'; sql 'sold_at'; type 'time'; order 'desc' }\n" +
-			"\n" +
-			"  // Geo — for map visualization\n" +
-			"  dimension {\n" +
-			"    name 'store_location'\n" +
-			"    type 'geo'\n" +
-			"    latitude { sql '${CUBE}.store_lat' }\n" +
-			"    longitude { sql '${CUBE}.store_lng' }\n" +
-			"  }\n" +
-			"\n" +
-			"  // KPI measures with drill-down\n" +
-			"  measure {\n" +
-			"    name 'total_transactions'; type 'count'\n" +
-			"    drill_members 'sale_id', 'channel', 'sold_at'\n" +
-			"  }\n" +
-			"  measure { name 'revenue'; sql 'revenue'; type 'sum'; format 'currency' }\n" +
-			"  measure { name 'avg_sale'; sql 'revenue'; type 'avg'; format 'currency' }\n" +
-			"\n" +
-			"  // Filtered measure — only online revenue\n" +
-			"  measure {\n" +
-			"    name 'online_revenue'\n" +
-			"    sql 'revenue'\n" +
-			"    type 'sum'\n" +
-			"    format 'currency'\n" +
-			"    filters {\n" +
-			"      filter sql: \"${CUBE}.sales_channel = 'web'\"\n" +
-			"    }\n" +
-			"  }\n" +
-			"\n" +
-			"  // Star schema joins\n" +
-			"  join {\n" +
-			"    name 'customers'\n" +
-			"    sql '${CUBE}.customer_id = customers.id'\n" +
-			"    relationship 'many_to_one'\n" +
-			"  }\n" +
-			"  join {\n" +
-			"    name 'products'\n" +
-			"    sql '${CUBE}.product_id = products.id'\n" +
-			"    relationship 'many_to_one'\n" +
-			"  }\n" +
-			"\n" +
-			"  // Quick filters\n" +
-			"  segment {\n" +
-			"    name 'high_value'\n" +
-			"    sql '${CUBE}.revenue > 1000'\n" +
-			"    description 'Transactions above $1,000'\n" +
-			"  }\n" +
-			"  segment {\n" +
-			"    name 'last_30_days'\n" +
-			"    sql \"${CUBE}.sold_at >= CURRENT_DATE - INTERVAL '30 days'\"\n" +
-			"  }\n" +
-			"\n" +
-			"  // Drill-down\n" +
-			"  hierarchy {\n" +
-			"    name 'geography'\n" +
-			"    title 'Geography'\n" +
-			"    levels 'country', 'region', 'city'\n" +
-			"  }\n" +
-			"}";
+		String dsl = CubeDslSamples.SALES_PIPELINE_FULL_MODEL;
 
 		CubeOptions result = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
 
@@ -827,5 +521,155 @@ public class CubeOptionsParserTest {
 
 		CubeOptions result3 = CubeOptionsParser.parseGroovyCubeDslCode("   ");
 		assertNotNull(result3);
+	}
+
+	// ═════════════════════════════════════════════════════════════════════════════
+	// WHAT THE PARSER TELLS THE AUTHOR — warnings, errors and folders
+	// ═════════════════════════════════════════════════════════════════════════════
+
+	/** A cube whose author misspelled things, one mistake per member. */
+	private static final String TYPOS = "cube {\n" +
+			"  sql_table 'Orders'\n" +
+			"  join { name 'Customers'; sql '${CUBE}.CustomerID = Customers.CustomerID'; relationshp 'many_to_one' }\n" +
+			"  join { name 'Shippers'; sql '${CUBE}.ShipVia = Shippers.ShipperID'; relationship 'has_mnay' }\n" +
+			"  dimension { name 'OrderID'; sql '${CUBE}.OrderID'; type 'number'; primay_key true }\n" +
+			"  dimension { name 'Key1'; sql '${CUBE}.OrderID'; type 'number'; primary_key true }\n" +
+			"  dimension { name 'Key2'; sql '${CUBE}.CustomerID'; type 'string'; primary_key true }\n" +
+			"  dimension { name 'Country'; sql '${CUBE}.ShipCountry'; type 'strng'; owner_team 'analytics' }\n" +
+			"  measure { name 'Freight'; sql '${CUBE}.Freight'; type 'sum'; format 'krona'; titel 'Freight' }\n" +
+			"}";
+
+	private static List<String> messages(CubeOptions cube, String level) {
+		List<String> lines = new ArrayList<>();
+		for (Map<String, Object> warning : cube.getWarnings()) {
+			if (level.equals(warning.get("level"))) lines.add(warning.get("message").toString());
+		}
+		return lines;
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// #14  What the author is told
+	//      A cube nobody can run is worth saying so about, and a cube that runs but
+	//      ignores half of what its author wrote is worth saying so too. Both are in
+	//      the parsed cube, so the editor shows them without asking again.
+	// ─────────────────────────────────────────────────────────────────────────────
+	@Test
+	public void testWarningsAndErrorsSayWhatToFix() throws Exception {
+		// The tests' own cubes are written correctly: the only thing they hear is that a key they
+		// use is not read yet. A new warning that fires on a good cube fails here.
+		Set<String> notUsedYet = Set.of("format", "drill_members", "rolling_window");
+		Set<String> kept = Set.of("meta", "extends");
+		for (Map.Entry<String, String> sample : CubeDslSamples.all().entrySet()) {
+			CubeOptions parsed = CubeOptionsParser.parseGroovyCubeDslCode(sample.getValue());
+			for (Map<String, Object> warning : parsed.getWarnings()) {
+				String key = Objects.toString(warning.get("key"), "");
+				assertEquals("warning", warning.get("level"),
+						sample.getKey() + " is a correct cube, so it has no error: " + warning);
+				assertTrue(notUsedYet.contains(key) || kept.contains(key),
+						sample.getKey() + " should say nothing about '" + key + "': " + warning);
+				if (notUsedYet.contains(key)) {
+					assertTrue(warning.get("message").toString().endsWith(key + " is not used yet")
+							|| kept.contains(key),
+							"a key that is not read yet says exactly that: " + warning);
+				}
+			}
+		}
+
+		CubeOptions typos = CubeOptionsParser.parseGroovyCubeDslCode(TYPOS);
+		List<String> said = messages(typos, "warning");
+		assertTrue(messages(typos, "error").isEmpty(), "A typo is not an error: the cube still runs");
+
+		assertTrue(said.contains("unknown key 'primay_key' in dimension OrderID — did you mean 'primary_key'?"),
+				"A misspelled key is named, with the key it is close to: " + said);
+		assertTrue(said.contains("unknown key 'titel' in measure Freight — did you mean 'title'?"), said.toString());
+		assertTrue(said.contains("unknown key 'relationshp' in join Customers — did you mean 'relationship'?"), said.toString());
+		assertEquals(1, said.stream().filter(line -> line.contains("'relationshp'")).count(),
+				"One line per mistake, not one per rule that noticed it: " + said);
+		assertTrue(said.contains("unknown key 'owner_team' in dimension Country"),
+				"A key far from every known one is still kept and still mentioned, with no guess: " + said);
+
+		assertTrue(said.contains("dimension 'Country': type 'strng' is not a dimension type, so it is read "
+				+ "as a plain string — did you mean 'string'?"), said.toString());
+		assertTrue(said.contains("join 'Shippers': relationship 'has_mnay' is not a relationship, so it is "
+				+ "counted as 'many_to_one' and this join is left out of the double-counting fix — did you "
+				+ "mean 'has_many'?"), said.toString());
+		assertTrue(said.contains("measure 'Freight': format 'krona' is not a format, so the number is shown "
+				+ "as it is returned."), said.toString());
+		assertTrue(said.contains("measure 'Freight': format is not used yet"), said.toString());
+		assertTrue(said.contains("dimension 'Key2': primary_key is already declared on another dimension, "
+				+ "and the first declared is the key."), said.toString());
+
+		// P2/P4: what the author wrote is still there, in the order they wrote it — the warning is
+		// about what DataPallas reads, not about what it throws away.
+		Map<String, Object> orderId = typos.getDimensions().get(0);
+		assertEquals("true", Objects.toString(orderId.get("primay_key")), "The unknown key is kept");
+		assertEquals(List.of("name", "sql", "type", "primay_key"), new ArrayList<>(orderId.keySet()),
+				"and it is kept where the author wrote it");
+		assertEquals("many_to_one", typos.getJoins().get(0).get("relationshp"), "and so is a join's");
+
+		// The error DSL: one member per thing a cube can get wrong, one error each, and the member
+		// is named in the entry itself so the editor can point at it.
+		CubeOptions file = CubeOptionsParser.parseGroovyCubeDslCode(CubeDslSamples.ERROR_CASES);
+		List<Map<String, Object>> errors = new ArrayList<>();
+		for (Map<String, Object> warning : file.getWarnings()) {
+			if ("error".equals(warning.get("level"))) errors.add(warning);
+		}
+		assertEquals(8, errors.size(), "One error per broken member: " + errors);
+		List<String> members = new ArrayList<>();
+		for (Map<String, Object> error : errors) {
+			assertEquals("broken", error.get("cube"), "A named cube is checked like any other: " + error);
+			assertTrue(error.get("message").toString().contains("'" + error.get("member") + "'"),
+					"The message names the member it is about: " + error);
+			members.add(error.get("member").toString());
+		}
+		assertEquals(List.of("HalfWhere", "Where", "FarAway", "Sideways", "Median", "Dotted", "Nope",
+				"Nowhere"), members, "Every error case has exactly one member");
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// #15  Which table each field lives on
+	//      The field picker groups a cube's dimensions by the table they read, so it
+	//      needs the answer next to the cube, not one HTTP call per field.
+	// ─────────────────────────────────────────────────────────────────────────────
+	@Test
+	public void testDimensionTablesSayWhereEachFieldLives() throws Exception {
+		String sales = Files.readString(Paths.get(
+				"../../asbl/src/main/external-resources/db-template/config/samples-cubes/northwind-sales",
+				"northwind-sales-cube-config.groovy"));
+		Map<String, String> where = CubeOptionsParser.parseGroovyCubeDslCode(sales).getDimensionTables();
+		assertEquals("Categories", where.get("CategoryName"), "A field of a joined table names it");
+		assertEquals("\"Order Details\"", where.get("Quantity"),
+				"and a joined table whose name needs quotes is named as the cube writes it");
+		assertEquals("", where.get("ShipCountry"), "A field of the cube's own table names nothing");
+
+		String rules = "cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  join { name 'Orders2'; sql '${CUBE}.OrderID = Orders2.OrderID'; relationship 'many_to_one' }\n" +
+				"  join { name 'Customers'; sql '${CUBE}.CustomerID = Customers.CustomerID'; relationship 'many_to_one' }\n" +
+				"  join { name 'Shippers'; sql '${CUBE}.ShipVia = Shippers.ShipperID'; relationship 'many_to_one' }\n" +
+				"  join { name 'Regions'; parent 'Customers'; sql 'Customers.Region = Regions.Region'; relationship 'many_to_one' }\n" +
+				"  dimension { name 'NotAJoin'; sql 'myOrders2.Freight'; type 'number' }\n" +
+				"  dimension { name 'Cased'; sql 'orders2.Freight'; type 'number' }\n" +
+				"  dimension { name 'InAString'; sql \"CASE WHEN ${CUBE}.ShipCountry = 'Customers.Region' THEN 1 END\"; type 'number' }\n" +
+				"  dimension { name 'HowMany'; sql '${Customers.count}'; type 'number'; sub_query true }\n" +
+				"  dimension { name 'Both'; sql 'Customers.Region || Shippers.CompanyName'; type 'string' }\n" +
+				"  dimension { name 'FarSide'; sql 'Regions.Description'; type 'string' }\n" +
+				"}";
+		Map<String, String> byRule = CubeOptionsParser.parseGroovyCubeDslCode(rules).getDimensionTables();
+		assertEquals("", byRule.get("NotAJoin"), "A longer name that ends in a join's name is not that join");
+		assertEquals("Orders2", byRule.get("Cased"), "A table name is read whichever case it is written in");
+		assertEquals("", byRule.get("InAString"), "A join's name inside a string literal is text, not a table");
+		assertEquals("", byRule.get("HowMany"),
+				"A sub_query reads its table inside itself, so the field is the cube's own");
+		assertEquals("Customers", byRule.get("Both"), "Two tables: the first the cube declares");
+		assertEquals("Regions", byRule.get("FarSide"),
+				"A join hanging off another join is still the one table the field reads");
+
+		// A file with several cubes: each one gets its own map, because each has its own joins.
+		CubeOptions file = CubeOptionsParser.parseGroovyCubeDslCode(CubeDslSamples.MULTI_DEPARTMENT_DASHBOARD);
+		for (Map.Entry<String, CubeOptions> named : file.getNamedOptions().entrySet()) {
+			assertEquals(named.getValue().getDimensions().size(), named.getValue().getDimensionTables().size(),
+					"Every dimension of '" + named.getKey() + "' is in its own map");
+		}
 	}
 }

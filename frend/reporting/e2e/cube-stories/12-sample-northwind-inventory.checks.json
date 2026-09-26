@@ -1,0 +1,22 @@
+[
+  {
+    "sample": "northwind-inventory",
+    "source": "SELECT Discontinued, COUNT(*) FROM Products GROUP BY Discontinued",
+    "dimensions": [
+      "Discontinued"
+    ],
+    "measures": [
+      "ProductCount"
+    ],
+    "rows": [
+      [
+        0,
+        18
+      ],
+      [
+        1,
+        2
+      ]
+    ]
+  }
+]

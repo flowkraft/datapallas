@@ -1,0 +1,119 @@
+[
+  {
+    "dimensions": [
+      "Grade"
+    ],
+    "measures": [
+      "Enrollments"
+    ],
+    "rows": [
+      [
+        "Dean's List",
+        235
+      ],
+      [
+        "Failed",
+        289
+      ],
+      [
+        "In progress",
+        480
+      ],
+      [
+        "Passed",
+        1396
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Term",
+      "Grade"
+    ],
+    "measures": [
+      "Enrollments"
+    ],
+    "rows": [
+      [
+        "2025 Autumn",
+        "Dean's List",
+        48
+      ],
+      [
+        "2025 Autumn",
+        "Failed",
+        57
+      ],
+      [
+        "2025 Autumn",
+        "Passed",
+        295
+      ],
+      [
+        "2025 Spring",
+        "Dean's List",
+        44
+      ],
+      [
+        "2025 Spring",
+        "Failed",
+        62
+      ],
+      [
+        "2025 Spring",
+        "Passed",
+        274
+      ],
+      [
+        "2025 Summer",
+        "Dean's List",
+        42
+      ],
+      [
+        "2025 Summer",
+        "Failed",
+        48
+      ],
+      [
+        "2025 Summer",
+        "Passed",
+        250
+      ],
+      [
+        "2026 Autumn",
+        "In progress",
+        480
+      ],
+      [
+        "2026 Spring",
+        "Dean's List",
+        54
+      ],
+      [
+        "2026 Spring",
+        "Failed",
+        62
+      ],
+      [
+        "2026 Spring",
+        "Passed",
+        304
+      ],
+      [
+        "2026 Summer",
+        "Dean's List",
+        47
+      ],
+      [
+        "2026 Summer",
+        "Failed",
+        60
+      ],
+      [
+        "2026 Summer",
+        "Passed",
+        273
+      ]
+    ]
+  }
+]

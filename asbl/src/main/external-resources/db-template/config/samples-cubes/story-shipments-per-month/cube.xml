@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Cube Story 7 - Shipments per Month</name>
+    <description>A sort order set in the cube: latest month first, statuses A to Z inside each. Runs on the cube_demo demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

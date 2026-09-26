@@ -52,6 +52,14 @@ public class CubeOptionsParser {
             opts.setNamedOptions(named);
         }
 
+        // One rule for the whole file: which folder each dimension is in, and every problem the
+        // author can fix. Programs read both from parse-dsl, and the generator refuses the errors.
+        opts.setDimensionTables(CubeRules.dimensionTables(opts));
+        for (CubeOptions named : opts.getNamedOptions().values()) {
+            named.setDimensionTables(CubeRules.dimensionTables(named));
+        }
+        opts.setWarnings(CubeRules.warnings(opts));
+
         return opts;
     }
 

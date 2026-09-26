@@ -1,0 +1,1201 @@
+deal_id|deal_name|account_id|rep_id|stage|lead_source|deal_type|amount|probability_pct|created_date|expected_close_date|close_date
+1|Nod Publishers GmbH - Training Package|3|4|Closed Won|Referral|Renewal|31000.00|100|2025-11-04|2026-03-13|2026-03-07
+2|Fabrikam SARL - Data Platform|32|1|Qualification|Partner|New Business|76500.00|25|2026-07-13|2026-10-30|
+3|Winsome Apparel GmbH - Support Renewal|10|5|Qualification|Referral|Renewal|45500.00|25|2026-06-28|2026-09-06|
+4|Graphic Design Institute AG - Cloud Subscription|60|1|Proposal|Outbound|New Business|45500.00|50|2025-05-21|2025-07-22|
+5|Fabrikam SARL - Data Platform|32|5|Closed Lost|Outbound|Upsell|19000.00|0|2025-10-20|2025-12-29|2026-01-03
+6|Fabrikam SARL - Training Package|32|1|Closed Won|Outbound|New Business|15000.00|100|2026-07-09|2026-10-28|2026-09-30
+7|Munson's Pickles Sp. z o.o. - Enterprise License|53|11|Closed Won|Referral|Renewal|123000.00|100|2025-08-24|2025-09-14|2025-09-05
+8|Best For You Organics Ltd - Reporting Add-on|36|7|Closed Lost|Partner|Renewal|105000.00|0|2026-03-25|2026-07-24|2026-06-08
+9|Tall Poppies Ltd - Analytics Suite|37|12|Closed Won|Website|Upsell|10500.00|100|2026-05-31|2026-10-15|2026-09-30
+10|Lucerne Publishing Ltd - Data Platform|38|6|Prospecting|Website|New Business|17000.00|10|2026-07-01|2026-10-14|
+11|Woodgrove Bank GmbH - Enterprise License|56|10|Closed Lost|Website|New Business|30500.00|0|2025-12-07|2026-03-16|2026-03-01
+12|Margie's Travel SL - Migration Project|47|9|Proposal|Outbound|New Business|39500.00|50|2026-06-26|2026-10-13|
+13|Lucerne Publishing Ltd - Data Platform|38|7|Qualification|Partner|Upsell|55000.00|25|2026-07-10|2026-09-12|
+14|Lamna Healthcare Ltd - Training Package|34|4|Closed Won|Referral|New Business|15500.00|100|2025-05-28|2025-09-29|2025-10-19
+15|Litware GmbH - Reporting Add-on|12|2|Closed Won|Trade Show|Renewal|9500.00|100|2025-08-09|2025-12-03|2025-12-02
+16|First Up Consultants SARL - Support Renewal|29|4|Closed Lost|Outbound|New Business|43500.00|0|2025-09-04|2025-11-06|2025-11-26
+17|Southridge Video BV - Training Package|41|6|Prospecting|Partner|New Business|27500.00|10|2026-09-21|2026-11-07|
+18|Bellows College Inc - Analytics Suite|22|12|Closed Won|Website|Upsell|16500.00|100|2025-03-30|2025-08-16|2025-09-26
+19|Munson's Pickles Sp. z o.o. - Support Renewal|53|7|Qualification|Trade Show|New Business|31500.00|25|2025-08-16|2025-10-26|
+20|Coho Winery Sp. z o.o. - Reporting Add-on|54|9|Negotiation|Outbound|New Business|3500.00|75|2026-05-11|2026-08-02|
+21|Litware GmbH - Enterprise License|12|9|Negotiation|Trade Show|Upsell|14500.00|75|2026-06-02|2026-09-01|
+22|City Power & Light GmbH - Enterprise License|9|2|Closed Won|Website|New Business|23500.00|100|2025-09-29|2025-11-14|2025-11-30
+23|Winsome Apparel GmbH - Analytics Suite|10|9|Negotiation|Website|Renewal|9500.00|75|2026-05-12|2026-10-05|
+24|Winsome Apparel GmbH - Training Package|10|12|Closed Lost|Partner|Upsell|10000.00|0|2026-02-07|2026-03-24|2026-03-25
+25|Relecloud Inc - Reporting Add-on|15|11|Negotiation|Website|New Business|15500.00|75|2026-01-29|2026-04-14|
+26|Relecloud Inc - Analytics Suite|15|10|Prospecting|Partner|Upsell|17000.00|10|2026-07-18|2026-08-23|
+27|City Power & Light GmbH - Analytics Suite|9|4|Closed Won|Trade Show|New Business|6000.00|100|2025-07-27|2025-12-22|2025-11-13
+28|Nod Publishers GmbH - Cloud Subscription|3|3|Closed Lost|Outbound|Upsell|108500.00|0|2026-02-28|2026-04-23|2026-03-15
+29|Trey Research GmbH - Migration Project|57|5|Negotiation|Outbound|New Business|13500.00|75|2026-03-26|2026-05-16|
+30|Trey Research GmbH - Reporting Add-on|57|2|Negotiation|Outbound|Renewal|24500.00|75|2026-02-18|2026-07-06|
+31|Northwind Traders GmbH - Cloud Subscription|11|9|Closed Won|Partner|Renewal|102000.00|100|2026-01-27|2026-06-12|2026-07-25
+32|Prose Ware Systems Inc - Support Renewal|19|5|Qualification|Referral|Upsell|21000.00|25|2025-08-12|2025-10-09|
+33|Relecloud Inc - Enterprise License|15|4|Closed Lost|Referral|Upsell|42000.00|0|2026-01-21|2026-02-17|2026-03-16
+34|Wide Field Robotics SARL - Analytics Suite|31|5|Qualification|Referral|New Business|10000.00|25|2026-09-09|2026-11-20|
+35|Woodgrove Bank Inc - Migration Project|16|4|Closed Won|Outbound|New Business|47000.00|100|2025-03-09|2025-06-07|2025-06-13
+36|Trey Research GmbH - Migration Project|57|11|Closed Won|Outbound|New Business|30000.00|100|2025-02-18|2025-03-15|2025-03-02
+37|Trail Frames Chalet Inc - Reporting Add-on|58|12|Negotiation|Website|New Business|34000.00|75|2026-04-11|2026-08-20|
+38|Wide Field Robotics SARL - Reporting Add-on|31|9|Closed Won|Referral|Upsell|33500.00|100|2026-01-18|2026-05-06|2026-05-07
+39|Fincher Architects SpA - Support Renewal|46|2|Closed Won|Outbound|New Business|34500.00|100|2025-05-02|2025-08-05|2025-08-25
+40|Wingtip Toys BV - Support Renewal|39|3|Closed Won|Website|New Business|19000.00|100|2025-08-08|2025-12-25|2025-11-30
+41|Lamna Healthcare Ltd - Analytics Suite|34|5|Proposal|Outbound|New Business|50500.00|50|2025-11-13|2026-01-02|
+42|Northwind Traders GmbH - Data Platform|11|1|Prospecting|Website|New Business|15000.00|10|2026-09-14|2027-01-26|
+43|Fourth Coffee GmbH - Migration Project|8|10|Prospecting|Outbound|Upsell|65000.00|10|2026-07-13|2026-08-09|
+44|Prose Ware Systems Inc - Data Platform|19|11|Closed Won|Outbound|Renewal|57000.00|100|2026-04-07|2026-05-26|2026-06-09
+45|Fourth Coffee SL - Support Renewal|48|6|Closed Lost|Outbound|Renewal|11500.00|0|2025-03-08|2025-06-21|2025-04-26
+46|First Up Consultants SARL - Data Platform|29|4|Closed Won|Outbound|New Business|39000.00|100|2026-01-01|2026-03-22|2026-03-08
+47|Graphic Design Institute Inc - Reporting Add-on|20|11|Closed Lost|Outbound|New Business|41500.00|0|2025-05-14|2025-09-27|2025-10-02
+48|Liberty Delightful Sinful Bakery Ltd - Analytics Suite|35|2|Proposal|Outbound|New Business|24500.00|50|2026-05-08|2026-08-03|
+49|City Power & Light SL - Cloud Subscription|49|3|Qualification|Referral|Renewal|36000.00|25|2026-05-01|2026-06-26|
+50|Tres Chic Boutique GmbH - Support Renewal|2|3|Qualification|Outbound|New Business|20000.00|25|2026-02-05|2026-05-05|
+51|Margie's Travel GmbH - Reporting Add-on|7|9|Closed Lost|Outbound|New Business|13500.00|0|2025-12-06|2026-02-03|2026-02-01
+52|Trail Frames Chalet Inc - Training Package|58|2|Negotiation|Referral|New Business|15000.00|75|2025-01-12|2025-03-23|
+53|Northwind Traders GmbH - Analytics Suite|11|11|Qualification|Website|New Business|42500.00|25|2026-07-16|2026-09-14|
+54|Proseware BV - Enterprise License|40|12|Negotiation|Website|Upsell|63000.00|75|2025-09-11|2025-12-09|
+55|Lucerne Publishing Ltd - Cloud Subscription|38|8|Prospecting|Outbound|New Business|28000.00|10|2026-01-30|2026-05-08|
+56|Graphic Design Institute Inc - Migration Project|20|4|Qualification|Website|New Business|41500.00|25|2025-11-21|2026-01-03|
+57|Margie's Travel SL - Support Renewal|47|9|Prospecting|Website|Renewal|49000.00|10|2026-05-26|2026-09-12|
+58|Fourth Coffee GmbH - Enterprise License|8|8|Qualification|Referral|New Business|12500.00|25|2026-06-29|2026-10-25|
+59|Contoso Inc - Enterprise License|21|11|Closed Lost|Referral|New Business|37500.00|0|2026-05-26|2026-09-27|2026-08-21
+60|Wingtip Toys BV - Enterprise License|39|11|Proposal|Website|New Business|16000.00|50|2025-01-15|2025-06-14|
+61|Munson's Pickles GmbH - Cloud Subscription|13|1|Closed Won|Outbound|New Business|25500.00|100|2025-02-21|2025-04-26|2025-04-23
+62|Humongous Insurance Ltd - Support Renewal|33|7|Qualification|Outbound|Renewal|58500.00|25|2026-07-28|2026-10-06|
+63|Litware GmbH - Cloud Subscription|12|2|Closed Won|Trade Show|New Business|30500.00|100|2025-05-27|2025-10-23|2025-10-04
+64|Wide Field Robotics SARL - Cloud Subscription|31|8|Closed Won|Partner|Renewal|8500.00|100|2025-10-03|2026-01-30|2026-01-21
+65|Parnell Aerospace SARL - Enterprise License|30|5|Closed Won|Website|New Business|20000.00|100|2025-11-10|2026-04-04|2026-04-16
+66|Fincher Architects SpA - Reporting Add-on|46|5|Negotiation|Website|New Business|53500.00|75|2026-05-01|2026-06-18|
+67|Fourth Coffee SL - Support Renewal|48|7|Closed Lost|Website|New Business|4000.00|0|2026-06-12|2026-10-28|2026-09-30
+68|Winsome Apparel GmbH - Analytics Suite|10|6|Qualification|Outbound|New Business|62000.00|25|2026-05-20|2026-10-17|
+69|Fourth Coffee GmbH - Migration Project|8|5|Negotiation|Website|New Business|18500.00|75|2026-03-07|2026-07-17|
+70|Nod Publishers SpA - Training Package|43|4|Proposal|Website|Renewal|17500.00|50|2026-06-03|2026-07-12|
+71|Trey Research GmbH - Support Renewal|57|8|Closed Lost|Trade Show|New Business|64500.00|0|2025-04-14|2025-08-31|2025-08-08
+72|Fourth Coffee GmbH - Migration Project|8|9|Proposal|Website|Upsell|111000.00|50|2026-04-04|2026-05-23|
+73|The Phone Company SARL - Migration Project|28|5|Closed Won|Outbound|New Business|25500.00|100|2025-09-02|2025-10-27|2025-09-30
+74|VanArsdel SARL - Analytics Suite|27|11|Proposal|Referral|Upsell|9500.00|50|2026-08-05|2026-12-23|
+75|Northwind Traders AB - Enterprise License|51|9|Closed Won|Outbound|New Business|15500.00|100|2025-04-10|2025-08-31|2025-09-29
+76|Northwind Traders GmbH - Support Renewal|11|7|Closed Won|Outbound|Renewal|22500.00|100|2025-01-17|2025-04-01|2025-04-23
+77|Coho Winery Sp. z o.o. - Reporting Add-on|54|8|Proposal|Website|Renewal|24000.00|50|2026-07-26|2026-10-01|
+78|Adventure Works SpA - Training Package|45|2|Closed Lost|Referral|Upsell|130000.00|0|2025-07-11|2025-09-17|2025-10-10
+79|Prose Ware Systems Inc - Training Package|59|8|Closed Won|Outbound|Upsell|71000.00|100|2025-01-03|2025-01-23|2025-01-30
+80|Woodgrove Bank GmbH - Training Package|56|2|Closed Lost|Outbound|New Business|20500.00|0|2025-04-20|2025-07-29|2025-07-09
+81|Best For You Organics Ltd - Support Renewal|36|7|Closed Won|Website|Renewal|26500.00|100|2026-06-20|2026-10-05|2026-09-30
+82|Litware GmbH - Training Package|12|11|Qualification|Website|New Business|80500.00|25|2026-09-16|2027-01-16|
+83|Tailspin Toys Inc - Analytics Suite|25|5|Negotiation|Outbound|New Business|53000.00|75|2026-03-16|2026-05-06|
+84|Proseware BV - Cloud Subscription|40|9|Closed Won|Website|New Business|53500.00|100|2025-05-02|2025-07-13|2025-07-17
+85|Lucerne Publishing Ltd - Analytics Suite|38|11|Negotiation|Website|New Business|39000.00|75|2025-03-12|2025-06-09|
+86|Nod Publishers GmbH - Analytics Suite|3|2|Qualification|Referral|New Business|34500.00|25|2026-02-05|2026-05-04|
+87|Bellows College Inc - Training Package|22|12|Closed Won|Website|Upsell|33000.00|100|2025-03-29|2025-05-21|2025-05-20
+88|Consolidated Messenger GmbH - Analytics Suite|4|1|Negotiation|Referral|New Business|136000.00|75|2025-12-12|2026-03-10|
+89|Coho Winery GmbH - Migration Project|14|12|Closed Won|Website|Renewal|71000.00|100|2025-07-05|2025-11-04|2025-10-08
+90|Contoso Inc - Support Renewal|21|5|Closed Won|Website|Renewal|14500.00|100|2025-04-09|2025-07-11|2025-07-16
+91|Fincher Architects SpA - Enterprise License|46|8|Qualification|Trade Show|New Business|150000.00|25|2026-06-25|2026-09-20|
+92|Southridge Video GmbH - Reporting Add-on|1|4|Negotiation|Website|Upsell|36000.00|75|2026-01-30|2026-04-22|
+93|Bellows College Inc - Migration Project|22|3|Negotiation|Outbound|New Business|20000.00|75|2026-03-26|2026-05-08|
+94|Southridge Video BV - Analytics Suite|41|6|Negotiation|Referral|Renewal|28500.00|75|2026-01-01|2026-04-12|
+95|Prose Ware Systems Inc - Reporting Add-on|59|7|Proposal|Website|Renewal|24500.00|50|2026-03-01|2026-06-15|
+96|City Power & Light GmbH - Training Package|9|12|Qualification|Trade Show|New Business|16000.00|25|2026-03-04|2026-07-22|
+97|Winsome Apparel AB - Migration Project|50|4|Negotiation|Website|Renewal|22500.00|75|2025-10-12|2025-12-13|
+98|Fourth Coffee GmbH - Enterprise License|8|4|Proposal|Referral|New Business|45500.00|50|2025-10-27|2026-03-19|
+99|Wide World Importers Inc - Migration Project|24|4|Closed Won|Referral|New Business|25500.00|100|2026-06-05|2026-09-29|2026-09-12
+100|Winsome Apparel GmbH - Reporting Add-on|10|8|Prospecting|Website|Upsell|41000.00|10|2026-09-03|2026-12-30|
+101|Northwind Traders AB - Cloud Subscription|51|5|Closed Won|Website|Renewal|15000.00|100|2025-10-18|2025-12-07|2025-11-19
+102|Fourth Coffee GmbH - Support Renewal|8|5|Closed Won|Outbound|New Business|6000.00|100|2026-06-13|2026-09-11|2026-09-30
+103|Wide Field Robotics SARL - Data Platform|31|1|Closed Lost|Outbound|New Business|14500.00|0|2025-01-31|2025-03-18|2025-03-19
+104|Nod Publishers GmbH - Training Package|3|9|Negotiation|Partner|New Business|26500.00|75|2026-08-08|2026-10-10|
+105|Parnell Aerospace SARL - Cloud Subscription|30|1|Negotiation|Partner|Renewal|21000.00|75|2025-11-07|2025-12-02|
+106|Relecloud Sp. z o.o. - Enterprise License|55|12|Proposal|Referral|Renewal|24500.00|50|2026-09-04|2026-10-25|
+107|Adventure Works GmbH - Data Platform|5|8|Closed Lost|Trade Show|New Business|52000.00|0|2025-09-15|2026-01-20|2025-12-18
+108|Adventure Works GmbH - Reporting Add-on|5|9|Closed Won|Referral|New Business|63500.00|100|2025-08-16|2025-10-22|2025-10-28
+109|Consolidated Messenger GmbH - Training Package|4|4|Closed Lost|Trade Show|New Business|24000.00|0|2025-07-21|2025-12-18|2025-11-10
+110|Consolidated Messenger GmbH - Analytics Suite|4|11|Closed Won|Trade Show|Renewal|10500.00|100|2025-07-06|2025-08-02|2025-08-03
+111|Munson's Pickles Sp. z o.o. - Enterprise License|53|7|Closed Won|Website|New Business|121500.00|100|2025-05-07|2025-08-26|2025-09-14
+112|Margie's Travel SL - Support Renewal|47|8|Closed Won|Outbound|New Business|13000.00|100|2025-02-05|2025-06-11|2025-05-21
+113|Prose Ware Systems Inc - Analytics Suite|59|5|Negotiation|Referral|New Business|9500.00|75|2026-01-16|2026-05-08|
+114|Relecloud Inc - Data Platform|15|4|Closed Won|Trade Show|New Business|13000.00|100|2026-01-18|2026-04-10|2026-05-02
+115|Contoso Inc - Data Platform|21|9|Proposal|Trade Show|New Business|26500.00|50|2026-03-05|2026-07-25|
+116|Lucerne Publishing Ltd - Data Platform|38|5|Closed Won|Outbound|Renewal|17500.00|100|2025-05-12|2025-08-11|2025-07-05
+117|Winsome Apparel AB - Cloud Subscription|50|2|Proposal|Website|Renewal|22000.00|50|2026-02-28|2026-05-03|
+118|Bellows College Inc - Training Package|22|4|Closed Lost|Outbound|New Business|11500.00|0|2025-09-11|2025-11-14|2025-11-22
+119|Woodgrove Bank Inc - Analytics Suite|16|1|Negotiation|Website|New Business|32000.00|75|2025-07-27|2025-09-18|
+120|Relecloud Sp. z o.o. - Reporting Add-on|55|4|Closed Won|Referral|New Business|9000.00|100|2025-06-28|2025-07-23|2025-08-03
+121|Nod Publishers SpA - Reporting Add-on|43|7|Closed Lost|Outbound|New Business|11500.00|0|2025-11-30|2026-01-07|2025-12-31
+122|Nod Publishers SpA - Migration Project|43|3|Negotiation|Referral|New Business|35500.00|75|2026-01-17|2026-03-02|
+123|Lamna Healthcare Ltd - Cloud Subscription|34|5|Proposal|Trade Show|New Business|18500.00|50|2026-07-24|2026-10-11|
+124|First Up Consultants SARL - Analytics Suite|29|10|Prospecting|Website|Renewal|8500.00|10|2026-06-10|2026-07-23|
+125|Humongous Insurance Ltd - Support Renewal|33|8|Closed Won|Website|Upsell|20500.00|100|2025-07-08|2025-08-30|2025-09-21
+126|Nod Publishers SpA - Enterprise License|43|8|Closed Lost|Partner|Renewal|37000.00|0|2025-01-17|2025-05-11|2025-04-23
+127|City Power & Light SL - Data Platform|49|3|Closed Won|Partner|Upsell|25500.00|100|2025-04-21|2025-08-18|2025-07-15
+128|Northwind Traders AB - Cloud Subscription|51|12|Proposal|Trade Show|New Business|10500.00|50|2026-08-09|2026-12-13|
+129|Litware GmbH - Training Package|12|11|Closed Won|Website|Upsell|11000.00|100|2025-11-29|2026-02-19|2026-02-15
+130|Fincher Architects SpA - Reporting Add-on|46|3|Closed Won|Partner|Renewal|54000.00|100|2025-04-08|2025-08-28|2025-08-24
+131|Wide World Importers Inc - Data Platform|24|12|Negotiation|Partner|Renewal|17000.00|75|2026-03-16|2026-05-30|
+132|Liberty Delightful Sinful Bakery Ltd - Cloud Subscription|35|5|Qualification|Trade Show|New Business|27000.00|25|2026-08-26|2027-01-13|
+133|Fincher Architects SpA - Cloud Subscription|46|9|Closed Won|Website|New Business|50500.00|100|2026-02-20|2026-05-16|2026-05-13
+134|Nod Publishers SpA - Data Platform|43|11|Closed Won|Outbound|Renewal|47000.00|100|2026-02-01|2026-04-10|2026-03-02
+135|Consolidated Messenger GmbH - Cloud Subscription|4|12|Closed Lost|Outbound|Renewal|48000.00|0|2025-10-31|2026-03-19|2026-03-01
+136|Consolidated Messenger GmbH - Support Renewal|4|11|Closed Won|Referral|Renewal|44000.00|100|2025-01-30|2025-04-21|2025-06-03
+137|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|6|Qualification|Website|Renewal|23000.00|25|2026-04-26|2026-06-26|
+138|Consolidated Messenger GmbH - Data Platform|4|4|Closed Won|Partner|New Business|24500.00|100|2025-09-18|2026-01-05|2025-12-14
+139|Alpine Ski House SARL - Cloud Subscription|26|2|Closed Lost|Trade Show|Upsell|16500.00|0|2025-07-02|2025-10-15|2025-10-26
+140|Trail Frames Chalet Inc - Support Renewal|18|1|Prospecting|Outbound|Upsell|17000.00|10|2025-12-31|2026-02-17|
+141|Consolidated Messenger GmbH - Analytics Suite|4|11|Closed Won|Referral|New Business|19500.00|100|2025-04-17|2025-08-14|2025-10-16
+142|Contoso Inc - Analytics Suite|21|7|Prospecting|Outbound|Renewal|20000.00|10|2026-04-24|2026-06-21|
+143|Tres Chic Boutique GmbH - Cloud Subscription|2|3|Negotiation|Website|New Business|23000.00|75|2025-05-02|2025-08-03|
+144|Adventure Works GmbH - Enterprise License|5|7|Qualification|Trade Show|New Business|180000.00|25|2026-09-23|2026-10-31|
+145|The Phone Company SARL - Migration Project|28|12|Proposal|Outbound|New Business|17000.00|50|2026-03-13|2026-04-27|
+146|Wingtip Toys BV - Cloud Subscription|39|9|Closed Lost|Outbound|New Business|42000.00|0|2025-01-08|2025-02-25|2025-03-09
+147|Parnell Aerospace SARL - Training Package|30|11|Negotiation|Outbound|Renewal|74000.00|75|2026-01-18|2026-03-27|
+148|Coho Winery Sp. z o.o. - Enterprise License|54|5|Negotiation|Referral|Renewal|17500.00|75|2025-10-08|2026-01-06|
+149|The Phone Company SARL - Data Platform|28|11|Closed Lost|Website|Renewal|18000.00|0|2025-02-09|2025-05-17|2025-05-10
+150|Graphic Design Institute AG - Enterprise License|60|1|Proposal|Outbound|New Business|5000.00|50|2026-01-14|2026-04-24|
+151|Litware GmbH - Migration Project|12|2|Closed Won|Website|New Business|8500.00|100|2026-02-09|2026-03-21|2026-04-03
+152|VanArsdel SARL - Enterprise License|27|3|Closed Won|Website|New Business|15000.00|100|2025-05-19|2025-07-22|2025-06-21
+153|First Up Consultants SARL - Support Renewal|29|3|Closed Lost|Website|New Business|32500.00|0|2025-08-28|2025-09-18|2025-09-09
+154|The Phone Company SARL - Cloud Subscription|28|1|Qualification|Partner|New Business|73500.00|25|2025-09-27|2025-10-17|
+155|Liberty Delightful Sinful Bakery Ltd - Migration Project|35|9|Closed Won|Website|New Business|55500.00|100|2025-11-08|2026-03-03|2026-02-17
+156|Margie's Travel SL - Cloud Subscription|47|5|Closed Won|Referral|New Business|16000.00|100|2026-04-14|2026-07-31|2026-06-28
+157|Northwind Traders GmbH - Reporting Add-on|11|1|Closed Won|Outbound|Upsell|64500.00|100|2026-01-22|2026-03-20|2026-02-20
+158|Wingtip Toys BV - Migration Project|39|4|Closed Won|Partner|New Business|35000.00|100|2026-04-24|2026-06-25|2026-07-08
+159|Fourth Coffee GmbH - Analytics Suite|8|12|Closed Won|Website|Upsell|69000.00|100|2025-06-19|2025-10-21|2025-08-30
+160|Trail Frames Chalet Inc - Support Renewal|58|9|Negotiation|Outbound|New Business|41000.00|75|2025-12-11|2026-04-11|
+161|City Power & Light SL - Cloud Subscription|49|2|Closed Won|Website|New Business|25500.00|100|2025-04-09|2025-08-15|2025-09-06
+162|Coho Winery Sp. z o.o. - Migration Project|54|3|Qualification|Trade Show|Renewal|39000.00|25|2026-08-23|2026-12-15|
+163|Litware AB - Enterprise License|52|4|Closed Lost|Outbound|New Business|88000.00|0|2025-01-26|2025-06-14|2025-06-26
+164|Nod Publishers GmbH - Data Platform|3|2|Negotiation|Outbound|Upsell|20000.00|75|2025-08-22|2025-12-12|
+165|Munson's Pickles GmbH - Analytics Suite|13|4|Negotiation|Outbound|Renewal|12500.00|75|2026-07-16|2026-10-11|
+166|Litware GmbH - Support Renewal|12|2|Closed Lost|Outbound|Renewal|31500.00|0|2025-08-25|2026-01-08|2026-03-09
+167|Winsome Apparel AB - Analytics Suite|50|8|Closed Won|Website|New Business|27000.00|100|2025-06-21|2025-09-22|2025-10-04
+168|Alpine Ski House SARL - Training Package|26|1|Closed Lost|Website|New Business|31000.00|0|2025-05-26|2025-06-19|2025-06-11
+169|Woodgrove Bank Inc - Migration Project|16|12|Closed Lost|Partner|New Business|33500.00|0|2025-07-19|2025-10-12|2025-09-12
+170|Prose Ware Systems Inc - Training Package|19|2|Qualification|Outbound|New Business|22000.00|25|2026-01-19|2026-05-10|
+171|Lucerne Publishing Ltd - Enterprise License|38|5|Proposal|Outbound|New Business|12500.00|50|2026-05-23|2026-10-09|
+172|Trey Research GmbH - Analytics Suite|57|5|Negotiation|Website|Renewal|32000.00|75|2026-03-14|2026-06-10|
+173|Alpine Ski House SARL - Training Package|26|8|Negotiation|Partner|New Business|74500.00|75|2026-09-02|2026-11-12|
+174|Nod Publishers GmbH - Reporting Add-on|3|5|Qualification|Website|Upsell|57000.00|25|2026-03-31|2026-06-29|
+175|Tres Chic Boutique BV - Migration Project|42|4|Negotiation|Trade Show|Upsell|125500.00|75|2026-08-25|2027-01-06|
+176|Woodgrove Bank GmbH - Training Package|56|11|Closed Won|Partner|Renewal|36500.00|100|2025-10-05|2025-12-16|2025-12-30
+177|Consolidated Messenger GmbH - Support Renewal|4|5|Closed Won|Trade Show|Upsell|21000.00|100|2026-02-04|2026-07-02|2026-06-28
+178|Tall Poppies Ltd - Cloud Subscription|37|11|Negotiation|Partner|New Business|20000.00|75|2026-04-01|2026-05-30|
+179|Southridge Video BV - Training Package|41|11|Closed Lost|Partner|New Business|34000.00|0|2025-05-29|2025-09-09|2025-08-09
+180|Tall Poppies Ltd - Cloud Subscription|37|10|Closed Won|Referral|New Business|52500.00|100|2025-12-21|2026-02-07|2026-02-19
+181|Northwind Traders AB - Reporting Add-on|51|5|Closed Lost|Trade Show|New Business|35000.00|0|2025-08-13|2025-09-30|2025-09-19
+182|Wide World Importers Inc - Support Renewal|24|10|Closed Lost|Outbound|New Business|23000.00|0|2025-12-21|2026-03-01|2026-04-02
+183|Graphic Design Institute Inc - Reporting Add-on|20|8|Closed Won|Website|Renewal|19500.00|100|2025-05-07|2025-07-24|2025-08-15
+184|Litware AB - Reporting Add-on|52|4|Proposal|Website|New Business|20000.00|50|2026-07-23|2026-09-07|
+185|Relecloud Inc - Migration Project|15|8|Closed Lost|Outbound|Renewal|77000.00|0|2026-04-07|2026-08-05|2026-07-30
+186|Humongous Insurance Ltd - Migration Project|33|3|Closed Won|Website|New Business|48000.00|100|2025-02-28|2025-05-16|2025-05-25
+187|Best For You Organics Ltd - Data Platform|36|6|Closed Lost|Outbound|Renewal|31500.00|0|2026-05-13|2026-06-08|2026-06-19
+188|Prose Ware Systems Inc - Analytics Suite|19|6|Closed Won|Website|New Business|26500.00|100|2026-03-08|2026-04-09|2026-05-15
+189|Graphic Design Institute AG - Reporting Add-on|60|4|Closed Won|Partner|Renewal|37500.00|100|2025-04-26|2025-07-31|2025-08-20
+190|Trey Research GmbH - Migration Project|57|1|Closed Won|Partner|Renewal|45000.00|100|2025-05-15|2025-08-19|2025-07-27
+191|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|5|Negotiation|Partner|Upsell|37500.00|75|2026-07-24|2026-09-08|
+192|Munson's Pickles Sp. z o.o. - Migration Project|53|5|Prospecting|Outbound|Renewal|9500.00|10|2026-08-28|2026-12-10|
+193|VanArsdel SARL - Migration Project|27|5|Closed Lost|Partner|New Business|17000.00|0|2025-01-11|2025-04-24|2025-05-06
+194|Graphic Design Institute AG - Enterprise License|60|11|Qualification|Referral|New Business|22000.00|25|2026-07-02|2026-10-29|
+195|Fourth Coffee GmbH - Training Package|8|9|Closed Lost|Partner|Upsell|12000.00|0|2025-07-20|2025-08-22|2025-09-05
+196|Adventure Works GmbH - Data Platform|5|3|Prospecting|Website|Renewal|13500.00|10|2026-08-14|2027-01-05|
+197|Fabrikam SARL - Analytics Suite|32|4|Closed Won|Referral|New Business|25500.00|100|2026-01-23|2026-02-12|2026-02-04
+198|Winsome Apparel AB - Data Platform|50|6|Qualification|Referral|New Business|80000.00|25|2026-09-21|2027-02-11|
+199|Wide World Importers Inc - Analytics Suite|24|2|Closed Lost|Partner|New Business|48000.00|0|2025-01-07|2025-04-28|2025-04-22
+200|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|12|Closed Lost|Outbound|Renewal|42000.00|0|2025-06-14|2025-11-03|2025-09-11
+201|Tall Poppies Ltd - Reporting Add-on|37|7|Negotiation|Website|New Business|37500.00|75|2025-08-16|2025-09-06|
+202|Relecloud Inc - Analytics Suite|15|6|Closed Won|Referral|New Business|8000.00|100|2025-12-16|2026-02-02|2026-01-19
+203|Nod Publishers GmbH - Training Package|3|5|Qualification|Referral|Renewal|36500.00|25|2025-09-07|2026-01-24|
+204|Trail Frames Chalet Inc - Migration Project|18|9|Closed Lost|Trade Show|Renewal|24000.00|0|2025-08-25|2026-01-22|2026-01-04
+205|Southridge Video BV - Reporting Add-on|41|4|Closed Won|Partner|Upsell|5000.00|100|2025-04-28|2025-06-30|2025-06-08
+206|First Up Consultants SARL - Enterprise License|29|7|Prospecting|Partner|Renewal|17000.00|10|2026-08-01|2026-09-16|
+207|Margie's Travel SL - Migration Project|47|1|Closed Won|Website|New Business|19500.00|100|2025-12-17|2026-01-17|2026-02-19
+208|Alpine Ski House SARL - Analytics Suite|26|1|Closed Lost|Referral|New Business|15000.00|0|2025-05-18|2025-08-26|2025-08-25
+209|Relecloud Inc - Migration Project|15|5|Qualification|Outbound|Upsell|41500.00|25|2026-06-13|2026-10-10|
+210|Lamna Healthcare Ltd - Training Package|34|5|Closed Won|Referral|New Business|16500.00|100|2025-09-12|2025-10-23|2025-12-06
+211|Fourth Coffee SL - Cloud Subscription|48|4|Closed Won|Referral|New Business|31000.00|100|2026-01-06|2026-03-07|2026-03-16
+212|Fincher Architects SpA - Support Renewal|46|11|Closed Lost|Outbound|Renewal|28500.00|0|2025-03-06|2025-04-14|2025-03-29
+213|Winsome Apparel GmbH - Migration Project|10|8|Negotiation|Outbound|Upsell|76500.00|75|2025-11-16|2026-04-14|
+214|Winsome Apparel AB - Training Package|50|5|Qualification|Outbound|New Business|37500.00|25|2026-05-11|2026-05-31|
+215|Nod Publishers SpA - Data Platform|43|4|Closed Won|Website|New Business|33500.00|100|2025-06-15|2025-08-16|2025-08-18
+216|Lucerne Publishing Ltd - Migration Project|38|10|Closed Lost|Trade Show|New Business|9500.00|0|2025-01-31|2025-03-04|2025-04-27
+217|Litware AB - Data Platform|52|8|Closed Won|Outbound|Renewal|51000.00|100|2025-06-03|2025-09-24|2025-09-16
+218|Lamna Healthcare Ltd - Analytics Suite|34|1|Qualification|Partner|New Business|13500.00|25|2026-07-16|2026-08-19|
+219|Southridge Video GmbH - Reporting Add-on|1|5|Qualification|Partner|New Business|13000.00|25|2026-06-29|2026-10-12|
+220|Graphic Design Institute AG - Data Platform|60|7|Closed Won|Partner|New Business|31000.00|100|2025-09-06|2025-09-27|2025-10-20
+221|Fourth Coffee SL - Cloud Subscription|48|9|Closed Won|Outbound|New Business|9500.00|100|2025-10-05|2025-11-27|2025-12-08
+222|Humongous Insurance Ltd - Reporting Add-on|33|6|Closed Lost|Trade Show|Renewal|25000.00|0|2025-03-23|2025-08-15|2025-08-27
+223|Consolidated Messenger GmbH - Analytics Suite|4|7|Negotiation|Referral|New Business|22000.00|75|2025-08-06|2025-10-30|
+224|Adventure Works SpA - Reporting Add-on|45|3|Negotiation|Trade Show|New Business|17000.00|75|2026-01-30|2026-03-22|
+225|Prose Ware Systems Inc - Migration Project|19|10|Closed Lost|Referral|Upsell|17000.00|0|2026-08-19|2026-09-23|2026-09-08
+226|Adventure Works GmbH - Training Package|5|11|Closed Won|Outbound|Renewal|21500.00|100|2026-03-07|2026-04-24|2026-04-17
+227|Margie's Travel GmbH - Data Platform|7|2|Proposal|Website|New Business|23500.00|50|2026-07-23|2026-09-10|
+228|Coho Winery Sp. z o.o. - Enterprise License|54|6|Negotiation|Referral|New Business|28000.00|75|2026-08-13|2026-10-26|
+229|Fourth Coffee GmbH - Migration Project|8|7|Proposal|Website|Renewal|60500.00|50|2026-09-04|2027-01-16|
+230|Consolidated Messenger GmbH - Enterprise License|4|10|Closed Lost|Trade Show|New Business|9500.00|0|2025-08-17|2025-12-21|2025-11-26
+231|Wide World Importers Inc - Cloud Subscription|24|6|Closed Won|Website|New Business|48500.00|100|2025-04-13|2025-08-31|2025-09-01
+232|Northwind Traders GmbH - Training Package|11|8|Closed Won|Trade Show|New Business|11000.00|100|2026-05-13|2026-07-20|2026-08-01
+233|Tailspin Toys Inc - Migration Project|25|2|Closed Won|Outbound|New Business|47000.00|100|2025-07-05|2025-11-24|2025-11-21
+234|Liberty Delightful Sinful Bakery Ltd - Data Platform|35|10|Closed Lost|Outbound|New Business|9500.00|0|2026-07-22|2026-09-24|2026-09-30
+235|Relecloud Sp. z o.o. - Analytics Suite|55|8|Closed Won|Referral|New Business|5000.00|100|2025-05-29|2025-08-26|2025-08-23
+236|Coho Winery GmbH - Analytics Suite|14|10|Negotiation|Referral|Renewal|29000.00|75|2026-08-30|2026-10-21|
+237|Munson's Pickles Sp. z o.o. - Reporting Add-on|53|3|Qualification|Trade Show|New Business|35500.00|25|2026-09-23|2026-12-01|
+238|Best For You Organics Ltd - Support Renewal|36|8|Qualification|Partner|New Business|17000.00|25|2026-01-19|2026-05-20|
+239|Humongous Insurance Ltd - Training Package|33|5|Closed Won|Website|New Business|31500.00|100|2025-01-11|2025-03-19|2025-04-27
+240|Northwind Traders GmbH - Migration Project|11|8|Closed Lost|Trade Show|Renewal|12500.00|0|2026-01-18|2026-04-26|2026-03-19
+241|Prose Ware Systems Inc - Analytics Suite|59|3|Closed Won|Referral|New Business|43000.00|100|2025-07-30|2025-11-14|2025-12-07
+242|Trail Frames Chalet Inc - Migration Project|58|4|Closed Lost|Website|Renewal|23500.00|0|2026-06-06|2026-11-03|2026-09-30
+243|Margie's Travel GmbH - Migration Project|7|4|Closed Lost|Outbound|New Business|11000.00|0|2026-08-27|2026-12-29|2026-09-30
+244|Tres Chic Boutique BV - Migration Project|42|5|Closed Won|Website|New Business|23500.00|100|2025-11-01|2025-12-31|2026-02-08
+245|Woodgrove Bank GmbH - Migration Project|56|7|Closed Lost|Website|New Business|40500.00|0|2025-12-01|2026-04-03|2026-04-20
+246|Fincher Architects SpA - Data Platform|46|2|Qualification|Partner|New Business|35000.00|25|2026-08-22|2026-12-10|
+247|Adventure Works SpA - Analytics Suite|45|5|Qualification|Website|New Business|14500.00|25|2025-10-02|2025-10-27|
+248|Litware AB - Cloud Subscription|52|3|Closed Won|Trade Show|Renewal|18000.00|100|2025-01-27|2025-06-22|2025-07-06
+249|Prose Ware Systems Inc - Analytics Suite|19|2|Qualification|Outbound|New Business|43500.00|25|2025-09-26|2025-12-24|
+250|Trail Frames Chalet Inc - Migration Project|58|12|Closed Lost|Partner|Upsell|38000.00|0|2025-01-02|2025-03-09|2025-03-01
+251|Northwind Traders GmbH - Migration Project|11|2|Qualification|Trade Show|New Business|51000.00|25|2026-06-04|2026-09-04|
+252|Southridge Video GmbH - Training Package|1|5|Closed Won|Website|Renewal|29500.00|100|2025-07-31|2025-10-25|2025-12-17
+253|Liberty Delightful Sinful Bakery Ltd - Enterprise License|35|9|Closed Won|Website|Upsell|25500.00|100|2025-01-31|2025-05-19|2025-05-24
+254|Wide Field Robotics SARL - Support Renewal|31|4|Closed Won|Partner|Upsell|17500.00|100|2026-05-16|2026-06-26|2026-06-21
+255|VanArsdel SARL - Training Package|27|11|Proposal|Referral|New Business|26000.00|50|2026-05-07|2026-08-16|
+256|Tres Chic Boutique GmbH - Analytics Suite|2|12|Negotiation|Partner|New Business|87000.00|75|2026-06-14|2026-11-01|
+257|Prose Ware Systems Inc - Cloud Subscription|59|3|Proposal|Trade Show|New Business|15000.00|50|2025-08-02|2025-08-27|
+258|Bellows College Inc - Data Platform|22|3|Closed Lost|Outbound|Renewal|33000.00|0|2026-03-28|2026-05-01|2026-05-20
+259|Liberty Delightful Sinful Bakery Ltd - Analytics Suite|35|5|Closed Won|Referral|New Business|30000.00|100|2025-04-30|2025-08-10|2025-09-22
+260|VanArsdel SARL - Cloud Subscription|27|6|Proposal|Partner|Upsell|106500.00|50|2026-03-01|2026-07-27|
+261|Margie's Travel GmbH - Enterprise License|7|2|Closed Won|Website|New Business|13000.00|100|2026-05-19|2026-06-22|2026-05-31
+262|Relecloud Inc - Data Platform|15|10|Closed Lost|Referral|Renewal|83000.00|0|2026-04-25|2026-08-11|2026-08-09
+263|Wingtip Toys BV - Support Renewal|39|5|Closed Won|Referral|New Business|125500.00|100|2025-07-25|2025-11-03|2025-10-11
+264|Bellows College Inc - Cloud Subscription|22|1|Closed Won|Website|New Business|14000.00|100|2026-03-10|2026-06-13|2026-06-03
+265|Best For You Organics Ltd - Analytics Suite|36|12|Qualification|Partner|Renewal|6000.00|25|2026-09-21|2027-01-17|
+266|Munson's Pickles GmbH - Data Platform|13|9|Closed Won|Partner|New Business|86500.00|100|2025-02-10|2025-03-31|2025-03-08
+267|Munson's Pickles Sp. z o.o. - Cloud Subscription|53|4|Closed Won|Website|New Business|3500.00|100|2025-06-15|2025-07-24|2025-07-16
+268|Lamna Healthcare Ltd - Reporting Add-on|34|12|Proposal|Referral|New Business|42000.00|50|2025-09-13|2025-10-30|
+269|Litware GmbH - Enterprise License|12|12|Proposal|Partner|Renewal|44500.00|50|2026-07-09|2026-09-18|
+270|Prose Ware Systems Inc - Reporting Add-on|19|12|Closed Won|Partner|New Business|50000.00|100|2025-09-20|2025-12-05|2025-12-31
+271|City Power & Light SL - Training Package|49|4|Closed Lost|Outbound|Renewal|103500.00|0|2025-04-14|2025-05-06|2025-04-27
+272|Litware AB - Support Renewal|52|2|Qualification|Website|New Business|11000.00|25|2026-05-25|2026-09-13|
+273|Coho Winery Sp. z o.o. - Training Package|54|11|Negotiation|Trade Show|Upsell|63500.00|75|2026-01-22|2026-06-12|
+274|Relecloud Sp. z o.o. - Analytics Suite|55|1|Closed Won|Outbound|New Business|32000.00|100|2026-04-15|2026-05-22|2026-04-27
+275|Consolidated Messenger GmbH - Training Package|4|7|Closed Won|Outbound|New Business|83500.00|100|2025-01-26|2025-04-06|2025-03-23
+276|Litware AB - Cloud Subscription|52|12|Closed Won|Trade Show|Renewal|10500.00|100|2026-03-14|2026-05-12|2026-04-24
+277|Fincher Architects SpA - Reporting Add-on|46|10|Qualification|Referral|Renewal|35000.00|25|2026-09-26|2027-01-23|
+278|Tres Chic Boutique BV - Reporting Add-on|42|11|Proposal|Outbound|New Business|12500.00|50|2026-05-26|2026-07-15|
+279|City Power & Light GmbH - Migration Project|9|11|Qualification|Partner|New Business|21500.00|25|2026-09-16|2027-01-01|
+280|Northwind Traders AB - Data Platform|51|7|Closed Won|Website|New Business|39500.00|100|2026-03-13|2026-05-13|2026-06-23
+281|Woodgrove Bank GmbH - Training Package|56|1|Closed Lost|Website|New Business|54500.00|0|2025-02-05|2025-06-28|2025-06-12
+282|Adventure Works GmbH - Migration Project|5|12|Closed Won|Referral|New Business|40500.00|100|2025-03-16|2025-04-19|2025-03-28
+283|Fabrikam SARL - Cloud Subscription|32|2|Closed Won|Website|Renewal|20000.00|100|2025-05-29|2025-10-19|2025-10-16
+284|Consolidated Messenger GmbH - Cloud Subscription|4|3|Proposal|Website|New Business|18000.00|50|2026-03-18|2026-04-23|
+285|Woodgrove Bank GmbH - Cloud Subscription|56|10|Closed Lost|Referral|Renewal|92000.00|0|2025-02-20|2025-06-06|2025-05-21
+286|Margie's Travel GmbH - Support Renewal|7|6|Proposal|Website|Renewal|33500.00|50|2025-09-19|2025-11-05|
+287|Wingtip Toys BV - Training Package|39|3|Prospecting|Outbound|Renewal|14500.00|10|2026-09-03|2027-01-30|
+288|Woodgrove Bank Inc - Enterprise License|16|8|Proposal|Referral|New Business|31500.00|50|2026-09-27|2027-01-15|
+289|Northwind Traders AB - Analytics Suite|51|1|Negotiation|Trade Show|New Business|18500.00|75|2025-11-01|2026-01-19|
+290|Wide World Importers Inc - Enterprise License|24|8|Negotiation|Referral|Renewal|25000.00|75|2026-03-30|2026-06-07|
+291|Fincher Architects SpA - Analytics Suite|46|4|Qualification|Referral|Renewal|11000.00|25|2026-05-12|2026-08-16|
+292|Proseware BV - Analytics Suite|40|11|Closed Won|Website|New Business|29500.00|100|2025-04-21|2025-06-25|2025-08-01
+293|Northwind Traders GmbH - Data Platform|11|12|Qualification|Website|New Business|25000.00|25|2026-06-29|2026-09-16|
+294|Margie's Travel GmbH - Analytics Suite|7|7|Prospecting|Trade Show|New Business|20000.00|10|2026-01-30|2026-03-23|
+295|Lamna Healthcare Ltd - Analytics Suite|34|8|Closed Won|Outbound|Upsell|23500.00|100|2026-03-04|2026-05-07|2026-06-07
+296|Graphic Design Institute AG - Support Renewal|60|5|Negotiation|Partner|New Business|43000.00|75|2026-05-07|2026-07-20|
+297|Margie's Travel SL - Support Renewal|47|4|Prospecting|Referral|New Business|25500.00|10|2025-09-29|2026-02-26|
+298|Litware GmbH - Reporting Add-on|12|5|Negotiation|Outbound|Upsell|48000.00|75|2025-08-23|2025-09-21|
+299|Trail Frames Chalet Inc - Migration Project|58|8|Proposal|Outbound|Renewal|58000.00|50|2025-05-12|2025-07-18|
+300|Adventure Works SpA - Cloud Subscription|45|9|Closed Won|Partner|Renewal|63000.00|100|2025-10-13|2025-12-30|2025-11-27
+301|Wingtip Toys BV - Cloud Subscription|39|9|Negotiation|Referral|New Business|31000.00|75|2026-04-11|2026-07-01|
+302|First Up Consultants SARL - Training Package|29|2|Negotiation|Trade Show|New Business|25500.00|75|2026-05-22|2026-06-12|
+303|Lucerne Publishing Ltd - Analytics Suite|38|5|Closed Won|Outbound|Renewal|72000.00|100|2026-01-17|2026-03-14|2026-04-15
+304|Blue Yonder Airlines Inc - Support Renewal|23|7|Negotiation|Website|Renewal|14500.00|75|2026-06-26|2026-11-20|
+305|Tres Chic Boutique BV - Cloud Subscription|42|1|Closed Lost|Website|Upsell|42500.00|0|2025-12-07|2026-01-03|2026-02-11
+306|City Power & Light GmbH - Support Renewal|9|5|Closed Lost|Referral|New Business|165500.00|0|2025-08-21|2025-12-04|2025-11-14
+307|Tailspin Toys Inc - Support Renewal|25|5|Closed Won|Website|New Business|28500.00|100|2025-10-29|2026-01-04|2025-12-27
+308|Fabrikam SARL - Reporting Add-on|32|9|Closed Lost|Website|New Business|10500.00|0|2026-02-20|2026-05-07|2026-05-29
+309|Humongous Insurance Ltd - Cloud Subscription|33|9|Closed Won|Outbound|Upsell|56000.00|100|2025-03-24|2025-07-19|2025-08-13
+310|Parnell Aerospace SARL - Cloud Subscription|30|11|Closed Won|Website|Upsell|16500.00|100|2025-01-08|2025-04-28|2025-05-03
+311|Woodgrove Bank GmbH - Reporting Add-on|56|5|Closed Lost|Partner|Renewal|42000.00|0|2025-09-30|2025-10-26|2025-10-12
+312|Margie's Travel GmbH - Enterprise License|7|7|Negotiation|Partner|Renewal|14500.00|75|2026-07-29|2026-11-13|
+313|Southridge Video BV - Support Renewal|41|11|Closed Won|Referral|Renewal|21000.00|100|2026-03-20|2026-04-30|2026-05-28
+314|The Phone Company SARL - Migration Project|28|12|Prospecting|Referral|New Business|28000.00|10|2026-08-18|2026-09-21|
+315|Fabrikam SARL - Enterprise License|32|1|Negotiation|Referral|New Business|57500.00|75|2026-01-31|2026-06-11|
+316|Graphic Design Institute AG - Cloud Subscription|60|7|Closed Won|Website|Renewal|42500.00|100|2025-08-01|2025-08-23|2025-08-13
+317|Bellows College Inc - Cloud Subscription|22|1|Qualification|Outbound|New Business|23500.00|25|2026-07-26|2026-12-11|
+318|Litware AB - Reporting Add-on|52|8|Closed Won|Partner|Upsell|50500.00|100|2025-10-17|2025-12-09|2025-12-30
+319|Lamna Healthcare Ltd - Migration Project|34|3|Prospecting|Partner|New Business|14500.00|10|2026-06-23|2026-09-11|
+320|Winsome Apparel GmbH - Reporting Add-on|10|5|Negotiation|Partner|Upsell|43500.00|75|2026-05-12|2026-06-22|
+321|Consolidated Messenger GmbH - Analytics Suite|4|5|Closed Lost|Website|New Business|18500.00|0|2025-03-29|2025-04-20|2025-04-11
+322|Coho Winery Sp. z o.o. - Cloud Subscription|54|2|Closed Lost|Website|Renewal|36000.00|0|2025-12-15|2026-04-14|2026-03-29
+323|Northwind Traders AB - Analytics Suite|51|8|Qualification|Referral|New Business|18000.00|25|2026-06-11|2026-08-21|
+324|Humongous Insurance Ltd - Data Platform|33|3|Negotiation|Trade Show|Renewal|64000.00|75|2026-06-07|2026-08-17|
+325|Margie's Travel SL - Analytics Suite|47|11|Closed Won|Referral|Renewal|11000.00|100|2025-12-16|2026-04-23|2026-03-27
+326|Adventure Works SpA - Data Platform|45|6|Closed Won|Referral|New Business|32500.00|100|2025-02-03|2025-05-18|2025-04-03
+327|Fourth Coffee GmbH - Analytics Suite|8|6|Closed Lost|Partner|Upsell|21500.00|0|2025-12-19|2026-02-02|2026-02-02
+328|Best For You Organics Ltd - Migration Project|36|9|Prospecting|Partner|Upsell|44500.00|10|2025-03-19|2025-06-06|
+329|Munson's Pickles Sp. z o.o. - Data Platform|53|12|Closed Lost|Outbound|Renewal|127000.00|0|2026-02-18|2026-04-25|2026-04-06
+330|Fourth Coffee SL - Enterprise License|48|10|Proposal|Trade Show|New Business|23000.00|50|2026-06-02|2026-06-29|
+331|Southridge Video BV - Migration Project|41|11|Negotiation|Referral|Upsell|38000.00|75|2026-05-25|2026-09-07|
+332|Woodgrove Bank Inc - Data Platform|16|10|Closed Won|Website|Upsell|14000.00|100|2025-07-27|2025-11-23|2026-01-15
+333|Tailspin Toys Inc - Enterprise License|25|11|Proposal|Partner|Renewal|88500.00|50|2026-05-03|2026-08-03|
+334|Liberty Delightful Sinful Bakery Ltd - Training Package|35|3|Proposal|Website|New Business|22500.00|50|2026-08-09|2026-10-12|
+335|Fourth Coffee SL - Cloud Subscription|48|11|Closed Won|Referral|New Business|19500.00|100|2026-02-17|2026-03-24|2026-04-21
+336|Wide World Importers Inc - Cloud Subscription|24|8|Proposal|Outbound|Renewal|74500.00|50|2026-06-23|2026-07-30|
+337|Graphic Design Institute Inc - Cloud Subscription|20|6|Negotiation|Website|Upsell|34500.00|75|2025-07-31|2025-08-26|
+338|Coho Winery GmbH - Data Platform|14|7|Negotiation|Website|New Business|33500.00|75|2026-03-28|2026-07-03|
+339|Woodgrove Bank Inc - Migration Project|16|8|Closed Lost|Trade Show|Upsell|122000.00|0|2025-06-24|2025-08-26|2025-08-19
+340|Margie's Travel SL - Training Package|47|6|Closed Won|Partner|New Business|65000.00|100|2025-01-19|2025-06-03|2025-04-30
+341|VanArsdel SARL - Support Renewal|27|6|Qualification|Trade Show|New Business|39500.00|25|2026-06-22|2026-08-09|
+342|Adventure Works GmbH - Training Package|5|2|Closed Lost|Partner|New Business|46000.00|0|2026-01-24|2026-02-28|2026-04-06
+343|Adventure Works GmbH - Support Renewal|5|5|Prospecting|Website|New Business|14000.00|10|2026-05-26|2026-08-21|
+344|Lucerne Publishing Ltd - Training Package|38|4|Prospecting|Website|Upsell|12500.00|10|2026-05-14|2026-08-24|
+345|Fourth Coffee GmbH - Support Renewal|8|4|Negotiation|Referral|New Business|21000.00|75|2026-05-08|2026-07-20|
+346|Relecloud Inc - Data Platform|15|10|Closed Won|Outbound|Upsell|36000.00|100|2025-08-13|2025-09-21|2025-10-07
+347|Contoso Inc - Reporting Add-on|21|5|Closed Won|Trade Show|New Business|21500.00|100|2025-12-03|2026-02-07|2026-02-27
+348|Alpine Ski House SARL - Reporting Add-on|26|12|Closed Lost|Outbound|New Business|38500.00|0|2025-07-27|2025-11-09|2025-10-22
+349|Coho Winery Sp. z o.o. - Analytics Suite|54|12|Closed Won|Partner|Renewal|102500.00|100|2025-05-10|2025-09-16|2025-09-13
+350|Nod Publishers GmbH - Analytics Suite|3|5|Closed Won|Partner|New Business|16500.00|100|2026-03-20|2026-05-10|2026-05-31
+351|Trail Frames Chalet Inc - Migration Project|18|10|Closed Won|Website|New Business|46500.00|100|2025-08-28|2025-10-17|2025-10-06
+352|Woodgrove Bank Inc - Reporting Add-on|16|4|Closed Lost|Referral|New Business|21000.00|0|2025-11-16|2025-12-06|2025-12-15
+353|Wingtip Toys BV - Reporting Add-on|39|6|Proposal|Website|New Business|62000.00|50|2026-08-01|2026-11-13|
+354|Nod Publishers GmbH - Analytics Suite|3|12|Closed Lost|Website|New Business|6000.00|0|2025-02-10|2025-05-01|2025-04-08
+355|Wide Field Robotics SARL - Enterprise License|31|5|Prospecting|Website|New Business|27500.00|10|2026-09-20|2026-10-28|
+356|Fincher Architects GmbH - Enterprise License|6|4|Negotiation|Website|New Business|35000.00|75|2026-05-01|2026-08-28|
+357|Winsome Apparel GmbH - Migration Project|10|5|Closed Won|Referral|Renewal|38000.00|100|2025-06-09|2025-07-31|2025-09-09
+358|Bellows College Inc - Reporting Add-on|22|12|Prospecting|Outbound|New Business|32000.00|10|2026-08-21|2026-10-17|
+359|City Power & Light GmbH - Enterprise License|9|6|Qualification|Trade Show|Upsell|124500.00|25|2025-10-10|2025-12-21|
+360|Nod Publishers SpA - Enterprise License|43|6|Negotiation|Referral|Renewal|12000.00|75|2025-09-04|2025-12-11|
+361|Nod Publishers GmbH - Training Package|3|7|Closed Won|Referral|Upsell|10000.00|100|2025-11-29|2026-01-09|2025-12-30
+362|Fincher Architects SpA - Training Package|46|11|Negotiation|Referral|New Business|10500.00|75|2026-04-18|2026-05-23|
+363|Bellows College Inc - Analytics Suite|22|8|Proposal|Website|New Business|42000.00|50|2025-09-17|2025-10-26|
+364|Lucerne Publishing Ltd - Enterprise License|38|4|Qualification|Outbound|Renewal|30000.00|25|2025-05-17|2025-06-09|
+365|Trey Research GmbH - Training Package|57|12|Closed Lost|Outbound|New Business|15500.00|0|2025-08-10|2025-11-29|2025-12-17
+366|Tall Poppies Ltd - Enterprise License|37|6|Prospecting|Outbound|New Business|19500.00|10|2026-04-01|2026-07-24|
+367|Adventure Works GmbH - Reporting Add-on|5|4|Negotiation|Website|New Business|22500.00|75|2025-10-22|2025-12-28|
+368|Tailspin Toys Inc - Enterprise License|25|5|Closed Won|Outbound|New Business|20000.00|100|2025-05-23|2025-08-30|2025-10-08
+369|Tall Poppies Ltd - Training Package|37|2|Qualification|Partner|Renewal|62500.00|25|2026-09-20|2027-02-14|
+370|Southridge Video BV - Support Renewal|41|2|Closed Lost|Partner|Upsell|10500.00|0|2025-07-16|2025-09-27|2025-08-12
+371|Margie's Travel SL - Training Package|47|5|Closed Lost|Outbound|New Business|11000.00|0|2025-03-14|2025-06-20|2025-06-05
+372|Munson's Pickles GmbH - Analytics Suite|13|3|Closed Lost|Outbound|New Business|8000.00|0|2025-02-26|2025-03-22|2025-04-22
+373|Coho Winery Sp. z o.o. - Analytics Suite|54|8|Closed Won|Website|Upsell|80500.00|100|2025-04-20|2025-08-12|2025-09-11
+374|Parnell Aerospace SARL - Enterprise License|30|8|Proposal|Outbound|Renewal|81500.00|50|2025-09-11|2026-02-06|
+375|Trey Research GmbH - Migration Project|57|8|Closed Won|Referral|New Business|10500.00|100|2025-12-01|2026-04-03|2026-03-08
+376|Northwind Traders AB - Enterprise License|51|2|Closed Won|Partner|New Business|26000.00|100|2025-03-25|2025-04-15|2025-04-23
+377|Fincher Architects GmbH - Data Platform|6|12|Negotiation|Referral|New Business|66000.00|75|2026-06-27|2026-08-03|
+378|Best For You Organics Ltd - Analytics Suite|36|10|Closed Lost|Website|Renewal|95000.00|0|2026-01-07|2026-05-08|2026-04-19
+379|Trail Frames Chalet Inc - Migration Project|18|7|Negotiation|Referral|Renewal|66500.00|75|2026-01-27|2026-05-16|
+380|Wide World Importers Inc - Analytics Suite|24|8|Proposal|Website|New Business|12000.00|50|2026-04-29|2026-09-03|
+381|Consolidated Messenger GmbH - Cloud Subscription|4|12|Proposal|Partner|Renewal|10500.00|50|2025-06-16|2025-10-19|
+382|Fincher Architects GmbH - Training Package|6|2|Closed Lost|Trade Show|New Business|31500.00|0|2025-04-27|2025-06-22|2025-06-06
+383|Winsome Apparel AB - Reporting Add-on|50|7|Prospecting|Website|New Business|6500.00|10|2026-01-29|2026-06-10|
+384|Northwind Traders AB - Enterprise License|51|1|Proposal|Website|Renewal|22500.00|50|2025-09-19|2026-02-14|
+385|Coho Winery Sp. z o.o. - Reporting Add-on|54|1|Negotiation|Trade Show|New Business|15500.00|75|2026-04-14|2026-07-23|
+386|Humongous Insurance Ltd - Enterprise License|33|11|Proposal|Partner|Renewal|10500.00|50|2025-10-21|2025-11-18|
+387|Graphic Design Institute Inc - Enterprise License|20|1|Prospecting|Outbound|Renewal|108500.00|10|2026-09-26|2026-10-17|
+388|Tall Poppies Ltd - Migration Project|37|4|Closed Lost|Outbound|New Business|32000.00|0|2025-10-31|2026-02-06|2026-02-27
+389|Tres Chic Boutique GmbH - Reporting Add-on|2|12|Negotiation|Referral|New Business|20000.00|75|2026-03-11|2026-04-21|
+390|Litware AB - Analytics Suite|52|5|Negotiation|Referral|Upsell|16000.00|75|2025-09-10|2025-11-11|
+391|Graphic Design Institute AG - Training Package|60|12|Qualification|Website|New Business|19500.00|25|2026-07-27|2026-12-07|
+392|Margie's Travel SL - Migration Project|47|2|Qualification|Trade Show|Upsell|50500.00|25|2026-02-05|2026-06-06|
+393|Woodgrove Bank Inc - Support Renewal|16|1|Closed Lost|Website|New Business|8000.00|0|2025-06-04|2025-07-23|2025-07-07
+394|Litware AB - Migration Project|52|6|Negotiation|Outbound|Upsell|27500.00|75|2026-03-02|2026-04-06|
+395|Litware AB - Data Platform|52|2|Closed Won|Website|Renewal|33000.00|100|2025-07-30|2025-09-07|2025-09-11
+396|Margie's Travel SL - Analytics Suite|47|9|Closed Won|Referral|Upsell|5500.00|100|2025-06-28|2025-08-28|2025-09-06
+397|Lamna Healthcare Ltd - Migration Project|34|3|Qualification|Referral|New Business|100000.00|25|2026-08-30|2027-01-02|
+398|Fincher Architects SpA - Support Renewal|46|9|Closed Won|Outbound|New Business|14500.00|100|2026-04-30|2026-06-21|2026-06-18
+399|Tall Poppies Ltd - Analytics Suite|37|10|Negotiation|Website|Renewal|23500.00|75|2026-05-29|2026-08-27|
+400|Relecloud Sp. z o.o. - Support Renewal|55|9|Proposal|Outbound|Renewal|22000.00|50|2026-03-19|2026-06-27|
+401|Wide Field Robotics SARL - Analytics Suite|31|6|Closed Won|Outbound|New Business|20000.00|100|2026-03-27|2026-08-18|2026-08-20
+402|Tres Chic Boutique BV - Reporting Add-on|42|9|Closed Lost|Website|Upsell|7000.00|0|2025-12-24|2026-05-15|2026-04-30
+403|Blue Yonder Airlines Inc - Enterprise License|23|12|Proposal|Website|New Business|26000.00|50|2026-01-01|2026-05-23|
+404|Wide Field Robotics SARL - Reporting Add-on|31|10|Closed Won|Referral|New Business|26500.00|100|2026-01-16|2026-04-17|2026-04-29
+405|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|5|Negotiation|Outbound|Renewal|45500.00|75|2025-06-20|2025-09-05|
+406|Prose Ware Systems Inc - Cloud Subscription|59|5|Prospecting|Trade Show|New Business|75000.00|10|2026-08-26|2026-10-08|
+407|Lucerne Publishing Ltd - Enterprise License|38|12|Closed Won|Outbound|Renewal|34000.00|100|2026-03-02|2026-04-02|2026-04-15
+408|City Power & Light SL - Support Renewal|49|2|Negotiation|Referral|Renewal|18500.00|75|2025-03-23|2025-07-13|
+409|Trail Frames Chalet Inc - Analytics Suite|18|11|Closed Lost|Outbound|Upsell|92500.00|0|2026-07-23|2026-11-25|2026-09-30
+410|Munson's Pickles Sp. z o.o. - Data Platform|53|11|Closed Won|Website|Renewal|9000.00|100|2025-03-10|2025-05-25|2025-06-12
+411|Tres Chic Boutique BV - Enterprise License|42|5|Proposal|Referral|Renewal|56000.00|50|2026-03-08|2026-04-14|
+412|Fourth Coffee GmbH - Training Package|8|1|Prospecting|Referral|New Business|33000.00|10|2026-09-09|2026-10-02|
+413|Munson's Pickles GmbH - Analytics Suite|13|4|Closed Won|Referral|New Business|9500.00|100|2025-06-25|2025-11-08|2025-10-28
+414|VanArsdel SARL - Training Package|27|11|Closed Won|Website|Upsell|31000.00|100|2025-10-06|2025-11-13|2025-11-15
+415|Fincher Architects GmbH - Cloud Subscription|6|12|Closed Lost|Partner|Renewal|48500.00|0|2026-04-19|2026-05-17|2026-05-01
+416|Munson's Pickles Sp. z o.o. - Migration Project|53|5|Negotiation|Outbound|Renewal|75000.00|75|2026-02-07|2026-04-17|
+417|Alpine Ski House SARL - Migration Project|26|4|Prospecting|Outbound|New Business|12000.00|10|2026-07-30|2026-11-08|
+418|Woodgrove Bank GmbH - Reporting Add-on|56|6|Closed Won|Partner|New Business|40500.00|100|2025-11-19|2025-12-29|2026-01-08
+419|Northwind Traders AB - Support Renewal|51|6|Closed Won|Trade Show|New Business|39000.00|100|2025-04-20|2025-07-08|2025-06-24
+420|First Up Consultants SARL - Training Package|29|1|Prospecting|Outbound|New Business|38000.00|10|2026-06-02|2026-06-26|
+421|Litware AB - Support Renewal|52|2|Closed Won|Outbound|Renewal|30500.00|100|2025-09-09|2025-12-04|2025-12-16
+422|Proseware BV - Enterprise License|40|4|Closed Won|Trade Show|Renewal|25500.00|100|2025-10-10|2026-01-14|2026-01-25
+423|Graphic Design Institute Inc - Analytics Suite|20|12|Negotiation|Partner|Renewal|21500.00|75|2025-08-01|2025-11-01|
+424|Fincher Architects GmbH - Training Package|6|5|Closed Lost|Trade Show|Renewal|51000.00|0|2025-08-21|2025-09-24|2025-10-24
+425|Southridge Video GmbH - Reporting Add-on|1|12|Closed Won|Referral|New Business|86500.00|100|2026-06-26|2026-09-14|2026-09-30
+426|Nod Publishers SpA - Data Platform|43|1|Qualification|Partner|Renewal|48000.00|25|2026-06-05|2026-08-02|
+427|Proseware BV - Support Renewal|40|1|Closed Won|Referral|New Business|19500.00|100|2025-03-24|2025-05-14|2025-06-13
+428|Woodgrove Bank GmbH - Migration Project|56|5|Closed Won|Trade Show|Renewal|47000.00|100|2025-07-24|2025-12-19|2025-11-26
+429|Tres Chic Boutique GmbH - Cloud Subscription|2|7|Closed Won|Trade Show|Upsell|14500.00|100|2025-06-19|2025-08-07|2025-07-13
+430|Blue Yonder Airlines Inc - Reporting Add-on|23|9|Negotiation|Website|Upsell|9000.00|75|2026-08-13|2026-10-19|
+431|Prose Ware Systems Inc - Data Platform|19|6|Closed Won|Outbound|Renewal|17500.00|100|2025-12-09|2026-04-01|2026-04-18
+432|Relecloud Sp. z o.o. - Analytics Suite|55|9|Proposal|Website|New Business|40000.00|50|2025-06-04|2025-09-03|
+433|Relecloud Inc - Data Platform|15|11|Closed Won|Website|New Business|25500.00|100|2026-02-19|2026-05-29|2026-06-06
+434|Trail Frames Chalet Inc - Training Package|58|4|Closed Lost|Partner|New Business|28500.00|0|2026-01-09|2026-05-06|2026-07-07
+435|Fourth Coffee SL - Data Platform|48|6|Closed Won|Website|Renewal|9000.00|100|2025-03-02|2025-06-04|2025-06-08
+436|Prose Ware Systems Inc - Analytics Suite|19|7|Proposal|Outbound|New Business|50500.00|50|2025-09-19|2025-12-18|
+437|Munson's Pickles GmbH - Enterprise License|13|4|Closed Lost|Referral|Renewal|30500.00|0|2025-05-21|2025-08-19|2025-09-03
+438|Margie's Travel SL - Data Platform|47|12|Qualification|Outbound|New Business|44500.00|25|2026-06-11|2026-09-30|
+439|Trail Frames Chalet Inc - Cloud Subscription|58|2|Proposal|Outbound|New Business|14500.00|50|2025-08-02|2025-11-19|
+440|Fincher Architects GmbH - Support Renewal|6|5|Proposal|Outbound|New Business|19000.00|50|2025-11-09|2026-04-05|
+441|Alpine Ski House SARL - Reporting Add-on|26|2|Closed Won|Referral|Upsell|34500.00|100|2025-06-14|2025-11-11|2025-11-04
+442|Blue Yonder Airlines Inc - Migration Project|23|3|Closed Lost|Referral|New Business|59000.00|0|2025-03-14|2025-04-05|2025-03-26
+443|Southridge Video GmbH - Data Platform|1|8|Qualification|Outbound|New Business|20000.00|25|2026-08-29|2026-11-27|
+444|Northwind Traders GmbH - Support Renewal|11|6|Closed Won|Outbound|New Business|34500.00|100|2025-01-12|2025-02-03|2025-02-14
+445|Nod Publishers SpA - Cloud Subscription|43|11|Qualification|Trade Show|Renewal|62000.00|25|2026-09-16|2026-12-20|
+446|Proseware BV - Training Package|40|7|Closed Won|Referral|New Business|18000.00|100|2026-03-26|2026-05-01|2026-04-22
+447|Graphic Design Institute AG - Enterprise License|60|5|Prospecting|Outbound|New Business|29500.00|10|2026-03-12|2026-06-30|
+448|Trail Frames Chalet Inc - Training Package|18|9|Proposal|Partner|New Business|21000.00|50|2026-06-23|2026-10-15|
+449|Wide Field Robotics SARL - Training Package|31|2|Negotiation|Partner|New Business|36500.00|75|2025-07-21|2025-08-31|
+450|Graphic Design Institute Inc - Cloud Subscription|20|11|Negotiation|Website|Renewal|28000.00|75|2025-12-04|2026-02-06|
+451|Northwind Traders GmbH - Training Package|11|12|Closed Won|Outbound|Renewal|115000.00|100|2025-05-08|2025-07-05|2025-06-03
+452|Contoso Inc - Enterprise License|21|8|Closed Won|Website|New Business|39000.00|100|2025-08-16|2025-10-11|2025-10-31
+453|Contoso Inc - Training Package|21|12|Closed Lost|Partner|Renewal|19500.00|0|2025-12-13|2026-02-16|2026-02-12
+454|Tres Chic Boutique BV - Analytics Suite|42|9|Closed Won|Partner|Renewal|19000.00|100|2025-07-11|2025-11-21|2025-11-15
+455|The Phone Company SARL - Enterprise License|28|4|Negotiation|Trade Show|Renewal|11500.00|75|2025-08-23|2025-11-08|
+456|Lamna Healthcare Ltd - Training Package|34|3|Closed Lost|Website|Renewal|94500.00|0|2025-03-08|2025-07-28|2025-10-03
+457|Wide Field Robotics SARL - Training Package|31|1|Closed Won|Partner|Renewal|3000.00|100|2026-01-23|2026-05-08|2026-05-09
+458|City Power & Light SL - Data Platform|49|4|Negotiation|Partner|Renewal|29500.00|75|2025-12-28|2026-01-31|
+459|Fincher Architects GmbH - Training Package|6|12|Prospecting|Website|Renewal|8500.00|10|2025-10-27|2026-03-20|
+460|Prose Ware Systems Inc - Training Package|19|7|Proposal|Website|Upsell|37500.00|50|2026-09-18|2026-12-31|
+461|Contoso Inc - Support Renewal|21|11|Proposal|Outbound|Renewal|69000.00|50|2026-06-15|2026-08-20|
+462|Prose Ware Systems Inc - Enterprise License|19|11|Closed Lost|Outbound|New Business|29500.00|0|2025-05-15|2025-09-02|2025-09-18
+463|Graphic Design Institute Inc - Migration Project|20|6|Closed Lost|Outbound|New Business|19500.00|0|2025-04-20|2025-07-22|2025-06-26
+464|Lamna Healthcare Ltd - Migration Project|34|12|Closed Lost|Partner|New Business|67500.00|0|2025-01-25|2025-04-17|2025-04-21
+465|Southridge Video GmbH - Data Platform|1|3|Negotiation|Website|Renewal|45500.00|75|2026-09-03|2027-01-03|
+466|Lucerne Publishing Ltd - Migration Project|38|3|Closed Won|Website|New Business|18500.00|100|2025-03-02|2025-07-29|2025-07-14
+467|Relecloud Inc - Cloud Subscription|15|7|Closed Lost|Trade Show|Renewal|58500.00|0|2025-05-27|2025-08-06|2025-09-09
+468|City Power & Light GmbH - Cloud Subscription|9|7|Proposal|Referral|Renewal|59500.00|50|2026-07-03|2026-11-21|
+469|Graphic Design Institute AG - Data Platform|60|9|Negotiation|Referral|New Business|107500.00|75|2026-07-15|2026-11-15|
+470|Relecloud Sp. z o.o. - Reporting Add-on|55|12|Qualification|Website|New Business|18500.00|25|2026-06-18|2026-07-21|
+471|Wide Field Robotics SARL - Cloud Subscription|31|5|Closed Won|Referral|New Business|7000.00|100|2026-04-08|2026-05-19|2026-05-07
+472|Coho Winery Sp. z o.o. - Training Package|54|7|Closed Won|Trade Show|New Business|9000.00|100|2026-02-24|2026-06-27|2026-07-05
+473|Fourth Coffee SL - Cloud Subscription|48|5|Closed Won|Outbound|Renewal|53000.00|100|2025-07-31|2025-10-14|2025-09-28
+474|Trail Frames Chalet Inc - Support Renewal|58|9|Negotiation|Website|Renewal|33000.00|75|2025-11-22|2026-03-21|
+475|Woodgrove Bank GmbH - Data Platform|56|1|Qualification|Outbound|New Business|36000.00|25|2025-11-29|2026-03-15|
+476|Best For You Organics Ltd - Cloud Subscription|36|2|Closed Lost|Outbound|New Business|29500.00|0|2025-09-12|2025-11-07|2025-12-09
+477|Trail Frames Chalet Inc - Migration Project|18|1|Closed Lost|Outbound|Renewal|26000.00|0|2025-08-21|2025-12-13|2025-11-05
+478|Liberty Delightful Sinful Bakery Ltd - Training Package|35|9|Qualification|Referral|Renewal|74500.00|25|2026-08-09|2026-12-24|
+479|Trail Frames Chalet Inc - Data Platform|58|12|Closed Lost|Website|New Business|8500.00|0|2026-03-06|2026-03-26|2026-04-25
+480|Proseware BV - Reporting Add-on|40|7|Negotiation|Outbound|Renewal|25000.00|75|2026-01-13|2026-02-24|
+481|Lamna Healthcare Ltd - Migration Project|34|12|Negotiation|Trade Show|New Business|30500.00|75|2026-05-16|2026-07-11|
+482|Wingtip Toys BV - Analytics Suite|39|5|Closed Lost|Partner|New Business|34500.00|0|2025-04-10|2025-07-20|2025-08-07
+483|Adventure Works SpA - Analytics Suite|45|9|Closed Won|Website|Renewal|39500.00|100|2025-09-29|2026-01-24|2026-01-04
+484|Southridge Video BV - Support Renewal|41|8|Closed Lost|Referral|Upsell|20000.00|0|2025-06-15|2025-07-14|2025-06-27
+485|Graphic Design Institute AG - Enterprise License|60|8|Proposal|Partner|Renewal|31000.00|50|2026-09-02|2026-11-20|
+486|Prose Ware Systems Inc - Data Platform|19|3|Proposal|Website|Renewal|90000.00|50|2026-01-14|2026-03-15|
+487|Fincher Architects SpA - Enterprise License|46|3|Prospecting|Website|Renewal|30500.00|10|2026-09-03|2027-01-14|
+488|Lucerne Publishing Ltd - Enterprise License|38|10|Qualification|Outbound|New Business|36000.00|25|2025-11-28|2026-04-24|
+489|Southridge Video GmbH - Migration Project|1|7|Qualification|Partner|New Business|20000.00|25|2026-08-08|2027-01-02|
+490|Consolidated Messenger GmbH - Training Package|4|3|Closed Lost|Outbound|New Business|12000.00|0|2025-09-27|2025-12-04|2025-12-08
+491|Wide Field Robotics SARL - Data Platform|31|9|Closed Won|Website|Renewal|21500.00|100|2025-08-28|2025-12-19|2025-11-27
+492|Alpine Ski House SARL - Data Platform|26|5|Closed Lost|Website|New Business|24000.00|0|2025-11-19|2026-04-10|2026-03-31
+493|Graphic Design Institute AG - Enterprise License|60|1|Closed Won|Website|Renewal|9500.00|100|2025-09-28|2025-10-25|2025-11-08
+494|Contoso Inc - Support Renewal|21|11|Negotiation|Referral|Upsell|4000.00|75|2026-04-28|2026-07-14|
+495|Relecloud Sp. z o.o. - Enterprise License|55|12|Closed Won|Outbound|Upsell|18000.00|100|2025-12-27|2026-05-23|2026-06-25
+496|Coho Winery Sp. z o.o. - Reporting Add-on|54|10|Closed Won|Website|New Business|31000.00|100|2025-11-18|2026-02-15|2026-02-13
+497|Tall Poppies Ltd - Enterprise License|37|12|Closed Won|Website|New Business|89500.00|100|2026-04-09|2026-06-03|2026-06-02
+498|Prose Ware Systems Inc - Training Package|19|9|Qualification|Website|New Business|12500.00|25|2026-09-22|2027-02-07|
+499|Humongous Insurance Ltd - Reporting Add-on|33|1|Qualification|Partner|Renewal|18000.00|25|2026-05-27|2026-10-04|
+500|Tall Poppies Ltd - Analytics Suite|37|9|Closed Won|Outbound|Renewal|22500.00|100|2025-03-02|2025-06-08|2025-05-26
+501|Proseware BV - Analytics Suite|40|11|Qualification|Referral|New Business|8000.00|25|2026-06-12|2026-08-16|
+502|Graphic Design Institute AG - Cloud Subscription|60|1|Prospecting|Website|New Business|16000.00|10|2026-09-24|2026-12-21|
+503|City Power & Light SL - Enterprise License|49|10|Prospecting|Partner|New Business|99000.00|10|2026-07-01|2026-10-31|
+504|Winsome Apparel GmbH - Data Platform|10|2|Proposal|Website|New Business|54000.00|50|2026-04-04|2026-06-19|
+505|Consolidated Messenger GmbH - Reporting Add-on|4|8|Closed Won|Outbound|Renewal|15000.00|100|2025-10-12|2026-02-13|2026-02-21
+506|Tailspin Toys Inc - Training Package|25|2|Closed Won|Trade Show|Renewal|60500.00|100|2025-10-31|2025-12-07|2025-11-12
+507|Southridge Video BV - Data Platform|41|7|Proposal|Outbound|Upsell|27500.00|50|2026-02-28|2026-05-23|
+508|Fourth Coffee SL - Reporting Add-on|48|5|Closed Won|Website|Renewal|16500.00|100|2025-11-21|2026-03-03|2026-03-16
+509|Tres Chic Boutique GmbH - Support Renewal|2|11|Proposal|Referral|Renewal|33000.00|50|2026-03-08|2026-06-20|
+510|Best For You Organics Ltd - Cloud Subscription|36|9|Qualification|Outbound|New Business|7500.00|25|2026-06-29|2026-10-05|
+511|Wide Field Robotics SARL - Analytics Suite|31|8|Negotiation|Outbound|Renewal|19500.00|75|2026-05-01|2026-08-23|
+512|Tres Chic Boutique GmbH - Training Package|2|9|Closed Lost|Outbound|Upsell|12500.00|0|2025-06-09|2025-07-25|2025-08-11
+513|Fincher Architects SpA - Support Renewal|46|6|Closed Won|Referral|New Business|5000.00|100|2025-06-20|2025-07-22|2025-08-19
+514|Coho Winery Sp. z o.o. - Analytics Suite|54|2|Qualification|Outbound|Renewal|20500.00|25|2026-09-11|2026-10-19|
+515|Adventure Works GmbH - Support Renewal|5|5|Closed Won|Website|Upsell|100000.00|100|2026-05-20|2026-09-07|2026-08-17
+516|Lucerne Publishing Ltd - Support Renewal|38|6|Closed Won|Outbound|New Business|27000.00|100|2025-11-09|2026-03-31|2026-03-14
+517|Winsome Apparel AB - Data Platform|50|7|Prospecting|Website|New Business|75000.00|10|2025-11-25|2026-03-11|
+518|Northwind Traders GmbH - Analytics Suite|11|8|Closed Won|Website|New Business|26000.00|100|2025-08-22|2025-12-05|2025-11-17
+519|Trey Research GmbH - Cloud Subscription|57|1|Closed Won|Referral|New Business|180000.00|100|2025-02-27|2025-04-28|2025-05-23
+520|Nod Publishers GmbH - Reporting Add-on|3|10|Closed Won|Website|Renewal|85000.00|100|2025-06-03|2025-08-18|2025-08-19
+521|Graphic Design Institute AG - Support Renewal|60|5|Qualification|Outbound|Renewal|44500.00|25|2026-08-10|2026-08-31|
+522|Winsome Apparel GmbH - Data Platform|10|4|Prospecting|Website|Renewal|9500.00|10|2026-07-04|2026-11-24|
+523|Litware AB - Data Platform|52|9|Prospecting|Partner|New Business|15000.00|10|2026-04-20|2026-09-07|
+524|Northwind Traders AB - Migration Project|51|5|Closed Lost|Partner|New Business|37500.00|0|2025-06-26|2025-11-10|2025-12-26
+525|Coho Winery Sp. z o.o. - Support Renewal|54|9|Negotiation|Referral|New Business|39000.00|75|2026-06-01|2026-09-18|
+526|Wingtip Toys BV - Migration Project|39|6|Closed Won|Partner|Renewal|66500.00|100|2025-05-21|2025-07-31|2025-08-07
+527|Margie's Travel GmbH - Cloud Subscription|7|6|Closed Lost|Referral|New Business|39000.00|0|2025-03-01|2025-07-01|2025-07-02
+528|Margie's Travel GmbH - Support Renewal|7|9|Qualification|Website|Upsell|20000.00|25|2026-07-18|2026-08-22|
+529|Coho Winery GmbH - Enterprise License|14|8|Proposal|Website|New Business|50000.00|50|2026-04-04|2026-07-20|
+530|Munson's Pickles Sp. z o.o. - Data Platform|53|4|Closed Won|Referral|Renewal|8000.00|100|2026-07-09|2026-11-07|2026-09-30
+531|Graphic Design Institute AG - Enterprise License|60|4|Prospecting|Partner|New Business|11000.00|10|2026-08-29|2026-10-13|
+532|Liberty Delightful Sinful Bakery Ltd - Training Package|35|6|Proposal|Referral|New Business|28500.00|50|2026-08-06|2026-09-25|
+533|Tres Chic Boutique GmbH - Cloud Subscription|2|10|Closed Lost|Outbound|New Business|53500.00|0|2025-07-31|2025-10-31|2025-10-02
+534|Tall Poppies Ltd - Enterprise License|37|8|Closed Won|Partner|New Business|53500.00|100|2025-02-19|2025-05-01|2025-03-11
+535|Coho Winery Sp. z o.o. - Cloud Subscription|54|4|Negotiation|Website|New Business|27500.00|75|2026-01-19|2026-03-28|
+536|Woodgrove Bank Inc - Enterprise License|16|6|Qualification|Referral|New Business|73000.00|25|2025-12-01|2026-01-17|
+537|First Up Consultants SARL - Cloud Subscription|29|7|Qualification|Referral|Renewal|48000.00|25|2025-07-03|2025-09-05|
+538|Northwind Traders GmbH - Reporting Add-on|11|8|Negotiation|Referral|New Business|54000.00|75|2026-06-16|2026-10-02|
+539|Northwind Traders AB - Training Package|51|9|Proposal|Trade Show|Upsell|13500.00|50|2026-08-07|2026-10-13|
+540|Blue Yonder Airlines Inc - Cloud Subscription|23|4|Closed Won|Trade Show|Upsell|47000.00|100|2025-08-14|2025-11-20|2025-12-01
+541|Graphic Design Institute AG - Support Renewal|60|5|Closed Won|Referral|New Business|59000.00|100|2025-07-25|2025-09-10|2025-08-06
+542|Coho Winery GmbH - Training Package|14|1|Closed Won|Website|New Business|10500.00|100|2026-04-27|2026-05-24|2026-05-13
+543|First Up Consultants SARL - Support Renewal|29|9|Proposal|Outbound|Upsell|25500.00|50|2026-04-13|2026-07-08|
+544|Fincher Architects GmbH - Training Package|6|5|Closed Lost|Outbound|Upsell|14500.00|0|2025-05-09|2025-08-07|2025-07-27
+545|Tall Poppies Ltd - Enterprise License|37|4|Closed Lost|Outbound|New Business|25000.00|0|2025-10-30|2025-11-22|2025-11-11
+546|VanArsdel SARL - Reporting Add-on|27|1|Prospecting|Website|Renewal|35000.00|10|2026-09-07|2026-11-17|
+547|Tres Chic Boutique GmbH - Reporting Add-on|2|3|Closed Won|Outbound|New Business|12000.00|100|2025-04-28|2025-05-28|2025-05-10
+548|Nod Publishers SpA - Support Renewal|43|6|Negotiation|Outbound|Upsell|16000.00|75|2026-08-08|2026-09-14|
+549|Woodgrove Bank GmbH - Data Platform|56|11|Negotiation|Outbound|New Business|25000.00|75|2026-08-19|2026-10-27|
+550|Trail Frames Chalet Inc - Data Platform|58|9|Closed Lost|Outbound|Renewal|22500.00|0|2025-12-23|2026-05-07|2026-05-21
+551|Consolidated Messenger GmbH - Reporting Add-on|4|11|Closed Lost|Website|New Business|13500.00|0|2025-12-06|2026-02-03|2026-01-09
+552|Litware GmbH - Support Renewal|12|4|Closed Lost|Outbound|New Business|25000.00|0|2025-01-09|2025-02-11|2025-02-05
+553|Fincher Architects GmbH - Data Platform|6|10|Closed Won|Partner|New Business|29500.00|100|2025-10-27|2026-01-12|2026-01-03
+554|Munson's Pickles GmbH - Training Package|13|11|Closed Won|Partner|New Business|12500.00|100|2025-11-22|2026-02-08|2026-02-04
+555|Fourth Coffee SL - Migration Project|48|11|Closed Won|Website|New Business|48500.00|100|2025-06-12|2025-09-06|2025-10-11
+556|Consolidated Messenger GmbH - Cloud Subscription|4|1|Closed Won|Outbound|New Business|22500.00|100|2026-02-04|2026-04-19|2026-04-27
+557|Margie's Travel GmbH - Analytics Suite|7|12|Closed Lost|Website|Upsell|25500.00|0|2025-03-27|2025-05-24|2025-06-24
+558|VanArsdel SARL - Migration Project|27|3|Closed Won|Website|New Business|16500.00|100|2025-07-29|2025-08-30|2025-09-14
+559|Margie's Travel GmbH - Analytics Suite|7|11|Proposal|Trade Show|New Business|28000.00|50|2026-02-19|2026-06-14|
+560|Liberty Delightful Sinful Bakery Ltd - Support Renewal|35|12|Closed Lost|Referral|Renewal|17000.00|0|2025-11-11|2026-02-08|2026-02-19
+561|Southridge Video BV - Reporting Add-on|41|11|Closed Won|Website|Upsell|73000.00|100|2025-10-31|2026-02-21|2026-02-09
+562|Nod Publishers GmbH - Cloud Subscription|3|11|Qualification|Website|Renewal|38500.00|25|2026-03-28|2026-08-19|
+563|Adventure Works GmbH - Data Platform|5|9|Closed Won|Website|New Business|22500.00|100|2026-02-10|2026-04-21|2026-05-21
+564|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|12|Closed Lost|Partner|New Business|20000.00|0|2026-03-16|2026-06-14|2026-07-15
+565|Nod Publishers SpA - Training Package|43|11|Prospecting|Outbound|Renewal|32000.00|10|2026-09-01|2026-12-13|
+566|Relecloud Sp. z o.o. - Migration Project|55|3|Proposal|Website|New Business|48500.00|50|2026-05-20|2026-06-23|
+567|Northwind Traders AB - Reporting Add-on|51|6|Closed Won|Referral|New Business|32000.00|100|2025-03-01|2025-05-05|2025-04-29
+568|Tall Poppies Ltd - Cloud Subscription|37|4|Closed Lost|Referral|New Business|79000.00|0|2025-07-10|2025-08-15|2025-09-10
+569|Relecloud Sp. z o.o. - Support Renewal|55|4|Closed Lost|Outbound|New Business|22000.00|0|2025-11-28|2026-02-11|2026-02-19
+570|Margie's Travel SL - Analytics Suite|47|4|Qualification|Website|Renewal|32000.00|25|2026-06-17|2026-09-07|
+571|Woodgrove Bank GmbH - Training Package|56|2|Negotiation|Outbound|New Business|12000.00|75|2026-03-30|2026-07-19|
+572|Lucerne Publishing Ltd - Training Package|38|9|Proposal|Website|New Business|11000.00|50|2026-03-28|2026-04-27|
+573|Margie's Travel SL - Support Renewal|47|10|Closed Won|Outbound|Renewal|5500.00|100|2025-04-15|2025-06-12|2025-07-06
+574|Blue Yonder Airlines Inc - Training Package|23|5|Qualification|Referral|New Business|67000.00|25|2025-10-25|2025-12-30|
+575|Parnell Aerospace SARL - Migration Project|30|12|Closed Won|Referral|New Business|17500.00|100|2025-01-23|2025-05-02|2025-05-09
+576|Tres Chic Boutique BV - Analytics Suite|42|7|Closed Lost|Partner|Renewal|8500.00|0|2026-03-02|2026-04-06|2026-03-14
+577|Graphic Design Institute Inc - Migration Project|20|3|Closed Won|Partner|New Business|27500.00|100|2025-03-29|2025-04-30|2025-04-17
+578|First Up Consultants SARL - Cloud Subscription|29|7|Prospecting|Outbound|Upsell|25000.00|10|2026-08-24|2027-01-17|
+579|Woodgrove Bank GmbH - Cloud Subscription|56|5|Negotiation|Outbound|New Business|61500.00|75|2026-02-21|2026-03-15|
+580|Tailspin Toys Inc - Migration Project|25|3|Closed Lost|Outbound|New Business|26000.00|0|2025-12-20|2026-01-26|2026-01-01
+581|Proseware BV - Analytics Suite|40|2|Negotiation|Outbound|New Business|8500.00|75|2026-05-26|2026-07-09|
+582|Northwind Traders GmbH - Reporting Add-on|11|12|Negotiation|Website|New Business|69000.00|75|2025-04-06|2025-08-12|
+583|Parnell Aerospace SARL - Migration Project|30|9|Closed Lost|Partner|Renewal|11500.00|0|2026-04-07|2026-05-31|2026-06-19
+584|Proseware BV - Reporting Add-on|40|4|Qualification|Referral|New Business|39500.00|25|2025-10-05|2025-12-27|
+585|Northwind Traders GmbH - Data Platform|11|3|Closed Won|Outbound|New Business|30500.00|100|2025-12-05|2026-04-02|2026-04-29
+586|Blue Yonder Airlines Inc - Reporting Add-on|23|12|Closed Lost|Website|Upsell|14500.00|0|2025-07-22|2025-09-11|2025-09-16
+587|Trail Frames Chalet Inc - Training Package|58|7|Closed Lost|Partner|New Business|60000.00|0|2025-04-15|2025-06-10|2025-07-03
+588|Best For You Organics Ltd - Migration Project|36|11|Prospecting|Website|New Business|22000.00|10|2026-09-04|2026-12-10|
+589|Fincher Architects SpA - Support Renewal|46|5|Qualification|Outbound|Renewal|11500.00|25|2026-06-24|2026-09-10|
+590|Consolidated Messenger GmbH - Data Platform|4|9|Closed Won|Partner|New Business|14500.00|100|2026-07-12|2026-08-31|2026-09-05
+591|Litware AB - Data Platform|52|9|Closed Won|Partner|Upsell|34500.00|100|2025-03-25|2025-05-25|2025-05-11
+592|Contoso Inc - Enterprise License|21|6|Closed Lost|Website|New Business|19000.00|0|2025-10-02|2025-11-10|2025-12-03
+593|Bellows College Inc - Cloud Subscription|22|12|Closed Won|Partner|New Business|6000.00|100|2025-06-08|2025-09-22|2025-10-15
+594|Prose Ware Systems Inc - Analytics Suite|19|9|Closed Won|Trade Show|Renewal|43500.00|100|2026-06-15|2026-07-14|2026-07-06
+595|Bellows College Inc - Migration Project|22|6|Qualification|Website|Renewal|67500.00|25|2026-06-16|2026-08-25|
+596|Lucerne Publishing Ltd - Reporting Add-on|38|3|Proposal|Website|Upsell|10000.00|50|2026-01-12|2026-02-10|
+597|Nod Publishers SpA - Training Package|43|7|Proposal|Outbound|New Business|16000.00|50|2026-02-11|2026-03-17|
+598|Winsome Apparel GmbH - Training Package|10|7|Qualification|Trade Show|New Business|4500.00|25|2026-05-17|2026-07-06|
+599|Winsome Apparel AB - Support Renewal|50|8|Closed Won|Partner|New Business|29500.00|100|2025-11-20|2025-12-30|2026-01-18
+600|Margie's Travel GmbH - Enterprise License|7|3|Closed Won|Trade Show|Renewal|15500.00|100|2025-07-18|2025-10-24|2025-11-20
+601|Munson's Pickles Sp. z o.o. - Data Platform|53|4|Closed Won|Website|New Business|31500.00|100|2025-05-02|2025-05-27|2025-07-01
+602|Relecloud Sp. z o.o. - Migration Project|55|1|Closed Won|Partner|New Business|32000.00|100|2025-02-25|2025-06-30|2025-05-13
+603|Fourth Coffee SL - Enterprise License|48|9|Negotiation|Trade Show|New Business|32500.00|75|2025-08-02|2025-11-10|
+604|Tres Chic Boutique BV - Enterprise License|42|4|Closed Lost|Website|Renewal|20500.00|0|2025-06-30|2025-09-14|2025-09-08
+605|Nod Publishers SpA - Data Platform|43|5|Closed Won|Website|Upsell|22000.00|100|2025-05-25|2025-10-15|2025-09-30
+606|Coho Winery Sp. z o.o. - Training Package|54|6|Prospecting|Outbound|New Business|34000.00|10|2026-06-25|2026-07-17|
+607|City Power & Light GmbH - Enterprise License|9|4|Prospecting|Referral|New Business|61500.00|10|2026-07-24|2026-11-18|
+608|Southridge Video GmbH - Migration Project|1|1|Proposal|Partner|New Business|180000.00|50|2026-07-09|2026-09-28|
+609|The Phone Company SARL - Migration Project|28|9|Closed Lost|Outbound|New Business|44500.00|0|2025-01-05|2025-05-18|2025-05-05
+610|Adventure Works GmbH - Cloud Subscription|5|3|Closed Lost|Website|Renewal|10500.00|0|2025-04-21|2025-09-12|2025-07-26
+611|Tailspin Toys Inc - Reporting Add-on|25|6|Closed Lost|Outbound|Renewal|39500.00|0|2025-04-09|2025-06-02|2025-06-04
+612|Tres Chic Boutique BV - Cloud Subscription|42|5|Negotiation|Referral|Renewal|22000.00|75|2026-04-17|2026-08-11|
+613|Relecloud Sp. z o.o. - Analytics Suite|55|12|Closed Lost|Trade Show|Upsell|113000.00|0|2025-05-30|2025-08-27|2025-08-13
+614|Trail Frames Chalet Inc - Analytics Suite|58|1|Closed Won|Website|New Business|58000.00|100|2025-11-08|2025-12-08|2025-12-12
+615|Southridge Video GmbH - Migration Project|1|6|Negotiation|Referral|Renewal|40000.00|75|2026-05-26|2026-08-16|
+616|Fincher Architects SpA - Migration Project|46|7|Closed Lost|Outbound|New Business|13000.00|0|2025-06-09|2025-10-20|2025-09-12
+617|Margie's Travel SL - Training Package|47|1|Closed Won|Website|New Business|21500.00|100|2025-03-10|2025-06-07|2025-06-21
+618|Parnell Aerospace SARL - Cloud Subscription|30|5|Closed Lost|Outbound|New Business|14000.00|0|2025-05-17|2025-09-02|2025-08-26
+619|Contoso Inc - Migration Project|21|11|Closed Won|Website|New Business|13500.00|100|2026-08-10|2026-09-01|2026-08-22
+620|Margie's Travel GmbH - Data Platform|7|5|Closed Lost|Outbound|New Business|21500.00|0|2025-06-28|2025-09-04|2025-09-01
+621|Best For You Organics Ltd - Enterprise License|36|3|Negotiation|Trade Show|Renewal|18000.00|75|2026-01-25|2026-05-23|
+622|First Up Consultants SARL - Training Package|29|2|Negotiation|Partner|New Business|36500.00|75|2026-02-21|2026-03-30|
+623|Lamna Healthcare Ltd - Training Package|34|11|Closed Won|Referral|Upsell|17000.00|100|2025-04-28|2025-07-14|2025-07-19
+624|Coho Winery GmbH - Reporting Add-on|14|1|Qualification|Outbound|Upsell|23000.00|25|2026-07-21|2026-08-11|
+625|Northwind Traders AB - Reporting Add-on|51|1|Proposal|Referral|Renewal|22500.00|50|2025-10-21|2026-01-01|
+626|Fincher Architects SpA - Analytics Suite|46|9|Closed Lost|Trade Show|New Business|20500.00|0|2025-06-09|2025-10-20|2025-10-11
+627|Relecloud Sp. z o.o. - Support Renewal|55|11|Closed Lost|Website|New Business|71500.00|0|2025-05-17|2025-06-11|2025-06-08
+628|Coho Winery GmbH - Cloud Subscription|14|9|Negotiation|Trade Show|Renewal|21000.00|75|2026-03-12|2026-04-23|
+629|First Up Consultants SARL - Training Package|29|9|Negotiation|Outbound|New Business|60000.00|75|2026-02-15|2026-05-01|
+630|Margie's Travel SL - Analytics Suite|47|5|Proposal|Referral|New Business|9000.00|50|2025-12-19|2026-04-18|
+631|Fincher Architects SpA - Support Renewal|46|9|Proposal|Website|Renewal|10500.00|50|2026-09-12|2026-12-06|
+632|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|6|Prospecting|Outbound|New Business|12000.00|10|2026-09-11|2026-12-21|
+633|Bellows College Inc - Analytics Suite|22|9|Closed Won|Referral|New Business|21500.00|100|2026-03-20|2026-04-29|2026-04-17
+634|Contoso Inc - Migration Project|21|8|Closed Lost|Trade Show|New Business|35500.00|0|2026-04-27|2026-09-20|2026-08-17
+635|Best For You Organics Ltd - Data Platform|36|2|Negotiation|Outbound|New Business|36500.00|75|2026-04-07|2026-06-13|
+636|Adventure Works SpA - Migration Project|45|9|Closed Won|Trade Show|New Business|18500.00|100|2025-08-30|2025-10-25|2025-11-02
+637|Winsome Apparel AB - Support Renewal|50|4|Negotiation|Outbound|Upsell|37500.00|75|2025-12-31|2026-02-11|
+638|Woodgrove Bank Inc - Cloud Subscription|16|7|Proposal|Website|New Business|31000.00|50|2026-04-11|2026-09-06|
+639|Blue Yonder Airlines Inc - Migration Project|23|5|Closed Won|Referral|Upsell|31000.00|100|2026-06-11|2026-10-11|2026-09-30
+640|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|8|Negotiation|Partner|New Business|21000.00|75|2026-09-23|2026-12-14|
+641|City Power & Light SL - Reporting Add-on|49|11|Closed Won|Trade Show|New Business|69500.00|100|2025-05-14|2025-10-06|2025-09-22
+642|Trey Research GmbH - Reporting Add-on|57|2|Closed Lost|Website|New Business|25500.00|0|2025-05-24|2025-08-01|2025-06-26
+643|Trail Frames Chalet Inc - Enterprise License|58|12|Closed Won|Referral|New Business|24500.00|100|2025-06-08|2025-07-24|2025-08-10
+644|Relecloud Sp. z o.o. - Data Platform|55|4|Qualification|Outbound|Upsell|92500.00|25|2025-12-30|2026-04-27|
+645|Best For You Organics Ltd - Support Renewal|36|3|Qualification|Partner|New Business|16000.00|25|2026-09-16|2026-10-27|
+646|Contoso Inc - Data Platform|21|12|Proposal|Partner|New Business|57500.00|50|2025-06-05|2025-09-05|
+647|Alpine Ski House SARL - Data Platform|26|11|Negotiation|Partner|New Business|63500.00|75|2026-04-04|2026-05-28|
+648|Adventure Works SpA - Enterprise License|45|5|Prospecting|Website|Renewal|11500.00|10|2025-08-01|2025-10-01|
+649|Wingtip Toys BV - Migration Project|39|9|Closed Won|Trade Show|Renewal|20000.00|100|2025-07-21|2025-08-22|2025-08-02
+650|Adventure Works GmbH - Data Platform|5|4|Closed Won|Website|New Business|26000.00|100|2025-08-27|2025-12-15|2026-01-10
+651|Margie's Travel SL - Cloud Subscription|47|2|Negotiation|Trade Show|New Business|14500.00|75|2026-05-21|2026-09-28|
+652|Litware GmbH - Cloud Subscription|12|3|Closed Lost|Outbound|New Business|24000.00|0|2026-04-24|2026-08-07|2026-07-07
+653|Best For You Organics Ltd - Analytics Suite|36|9|Closed Lost|Outbound|New Business|80500.00|0|2026-01-15|2026-02-06|2026-01-27
+654|Adventure Works SpA - Reporting Add-on|45|4|Closed Lost|Outbound|Renewal|18000.00|0|2025-04-16|2025-05-21|2025-04-28
+655|Nod Publishers GmbH - Reporting Add-on|3|8|Closed Lost|Website|New Business|17500.00|0|2025-08-07|2025-12-24|2026-01-25
+656|Southridge Video GmbH - Migration Project|1|8|Prospecting|Referral|Upsell|27000.00|10|2026-08-13|2026-09-28|
+657|Relecloud Inc - Training Package|15|9|Closed Won|Outbound|New Business|28500.00|100|2026-03-24|2026-06-25|2026-07-14
+658|First Up Consultants SARL - Migration Project|29|7|Prospecting|Outbound|Renewal|26000.00|10|2026-07-04|2026-08-01|
+659|Woodgrove Bank Inc - Cloud Subscription|16|3|Negotiation|Outbound|New Business|27000.00|75|2025-11-01|2026-01-06|
+660|Fourth Coffee GmbH - Reporting Add-on|8|7|Proposal|Outbound|Renewal|107500.00|50|2026-06-24|2026-08-13|
+661|Northwind Traders AB - Training Package|51|5|Proposal|Trade Show|Renewal|9000.00|50|2026-03-10|2026-07-14|
+662|Wide World Importers Inc - Analytics Suite|24|9|Closed Won|Referral|New Business|11000.00|100|2025-08-12|2025-10-21|2025-10-23
+663|Margie's Travel SL - Analytics Suite|47|2|Closed Won|Partner|Renewal|118000.00|100|2025-04-20|2025-06-03|2025-06-13
+664|Fincher Architects GmbH - Cloud Subscription|6|7|Qualification|Trade Show|New Business|9500.00|25|2026-09-05|2026-11-04|
+665|Lucerne Publishing Ltd - Support Renewal|38|12|Closed Lost|Outbound|New Business|32000.00|0|2026-08-03|2026-11-30|2026-09-30
+666|Southridge Video BV - Support Renewal|41|9|Closed Lost|Website|New Business|24500.00|0|2025-10-07|2025-12-19|2025-12-24
+667|Parnell Aerospace SARL - Data Platform|30|11|Closed Won|Website|New Business|24500.00|100|2025-10-07|2025-12-29|2026-01-27
+668|Wingtip Toys BV - Training Package|39|10|Negotiation|Website|New Business|48500.00|75|2025-12-10|2026-04-10|
+669|Adventure Works SpA - Cloud Subscription|45|9|Negotiation|Website|Renewal|17000.00|75|2026-05-17|2026-10-14|
+670|VanArsdel SARL - Cloud Subscription|27|12|Closed Lost|Referral|Upsell|18500.00|0|2025-01-09|2025-04-25|2025-05-05
+671|Adventure Works SpA - Enterprise License|45|7|Closed Won|Partner|New Business|42500.00|100|2025-02-01|2025-04-27|2025-05-03
+672|Lamna Healthcare Ltd - Migration Project|34|7|Closed Won|Referral|Upsell|16000.00|100|2026-02-11|2026-03-26|2026-04-26
+673|The Phone Company SARL - Enterprise License|28|9|Qualification|Partner|Renewal|14000.00|25|2026-07-07|2026-08-25|
+674|First Up Consultants SARL - Reporting Add-on|29|2|Closed Won|Outbound|Renewal|17000.00|100|2025-10-17|2025-12-29|2025-12-31
+675|Margie's Travel GmbH - Data Platform|7|5|Closed Won|Website|New Business|24500.00|100|2025-06-08|2025-07-13|2025-08-17
+676|Bellows College Inc - Enterprise License|22|2|Closed Won|Outbound|Renewal|20500.00|100|2025-02-06|2025-04-07|2025-05-05
+677|Tailspin Toys Inc - Migration Project|25|12|Closed Won|Website|New Business|21500.00|100|2025-04-19|2025-05-17|2025-07-26
+678|Graphic Design Institute Inc - Training Package|20|3|Prospecting|Outbound|Upsell|31000.00|10|2026-08-31|2026-11-10|
+679|Lucerne Publishing Ltd - Support Renewal|38|2|Qualification|Outbound|Renewal|49000.00|25|2025-11-27|2026-01-09|
+680|Margie's Travel GmbH - Migration Project|7|11|Closed Won|Website|New Business|36000.00|100|2026-06-01|2026-07-01|2026-06-13
+681|Contoso Inc - Cloud Subscription|21|9|Closed Won|Trade Show|Renewal|13500.00|100|2025-06-18|2025-07-26|2025-07-05
+682|Fourth Coffee GmbH - Enterprise License|8|7|Qualification|Referral|New Business|75000.00|25|2026-09-12|2026-11-17|
+683|Humongous Insurance Ltd - Support Renewal|33|8|Qualification|Outbound|Upsell|180000.00|25|2026-01-04|2026-05-31|
+684|City Power & Light SL - Support Renewal|49|6|Closed Won|Partner|New Business|17500.00|100|2026-05-03|2026-06-23|2026-06-19
+685|Nod Publishers SpA - Enterprise License|43|3|Prospecting|Referral|New Business|24500.00|10|2025-07-20|2025-11-02|
+686|City Power & Light SL - Support Renewal|49|3|Proposal|Trade Show|Upsell|119000.00|50|2026-07-02|2026-11-09|
+687|Wide Field Robotics SARL - Support Renewal|31|4|Closed Lost|Trade Show|New Business|20000.00|0|2025-10-12|2026-03-06|2026-03-03
+688|Winsome Apparel AB - Reporting Add-on|50|4|Closed Lost|Outbound|New Business|14500.00|0|2025-04-23|2025-06-07|2025-05-14
+689|Tres Chic Boutique BV - Cloud Subscription|42|5|Closed Won|Website|New Business|26500.00|100|2025-07-22|2025-09-08|2025-10-14
+690|Proseware BV - Data Platform|40|12|Closed Won|Outbound|New Business|62500.00|100|2026-08-10|2026-09-25|2026-08-22
+691|Southridge Video BV - Reporting Add-on|41|2|Closed Lost|Referral|New Business|86500.00|0|2025-04-06|2025-07-03|2025-05-08
+692|Northwind Traders GmbH - Analytics Suite|11|11|Closed Won|Trade Show|Renewal|28000.00|100|2025-11-05|2026-02-01|2026-02-04
+693|City Power & Light SL - Training Package|49|4|Closed Won|Outbound|Renewal|23000.00|100|2025-07-27|2025-08-29|2025-09-06
+694|Fourth Coffee SL - Support Renewal|48|2|Proposal|Partner|Renewal|78000.00|50|2026-08-07|2026-10-18|
+695|Nod Publishers SpA - Migration Project|43|3|Prospecting|Partner|Renewal|14000.00|10|2026-07-10|2026-11-24|
+696|Trey Research GmbH - Cloud Subscription|57|11|Qualification|Outbound|Upsell|36000.00|25|2026-09-20|2026-10-11|
+697|Tailspin Toys Inc - Support Renewal|25|9|Closed Won|Partner|New Business|56500.00|100|2025-12-28|2026-02-21|2026-01-27
+698|Trail Frames Chalet Inc - Enterprise License|58|1|Qualification|Referral|New Business|38500.00|25|2026-05-24|2026-09-11|
+699|Prose Ware Systems Inc - Support Renewal|59|11|Closed Lost|Trade Show|New Business|10500.00|0|2026-04-22|2026-06-06|2026-05-15
+700|Contoso Inc - Support Renewal|21|5|Closed Lost|Referral|New Business|16500.00|0|2025-06-12|2025-10-30|2025-11-02
+701|Consolidated Messenger GmbH - Reporting Add-on|4|9|Closed Won|Referral|New Business|10000.00|100|2025-09-17|2026-02-05|2026-03-02
+702|Tres Chic Boutique GmbH - Support Renewal|2|10|Prospecting|Referral|Renewal|42000.00|10|2026-04-20|2026-08-05|
+703|City Power & Light SL - Cloud Subscription|49|11|Closed Lost|Referral|Renewal|55000.00|0|2025-01-03|2025-02-20|2025-02-15
+704|Tall Poppies Ltd - Migration Project|37|4|Closed Won|Partner|New Business|21500.00|100|2025-04-09|2025-05-31|2025-06-14
+705|Best For You Organics Ltd - Enterprise License|36|1|Prospecting|Outbound|Upsell|15000.00|10|2026-07-18|2026-08-23|
+706|Coho Winery Sp. z o.o. - Reporting Add-on|54|4|Closed Won|Trade Show|Renewal|18000.00|100|2026-03-23|2026-06-22|2026-06-06
+707|Alpine Ski House SARL - Training Package|26|4|Negotiation|Partner|New Business|30000.00|75|2026-07-24|2026-10-30|
+708|Consolidated Messenger GmbH - Training Package|4|10|Closed Lost|Outbound|New Business|12500.00|0|2026-03-19|2026-04-22|2026-05-05
+709|City Power & Light SL - Reporting Add-on|49|6|Prospecting|Website|New Business|90000.00|10|2026-09-25|2026-12-31|
+710|City Power & Light SL - Enterprise License|49|2|Closed Won|Referral|Renewal|9500.00|100|2026-03-04|2026-07-28|2026-08-10
+711|Prose Ware Systems Inc - Migration Project|59|1|Negotiation|Referral|New Business|19500.00|75|2026-05-21|2026-10-03|
+712|City Power & Light GmbH - Reporting Add-on|9|1|Prospecting|Trade Show|Upsell|66000.00|10|2026-08-20|2026-12-28|
+713|Blue Yonder Airlines Inc - Training Package|23|7|Closed Lost|Trade Show|New Business|30500.00|0|2025-01-25|2025-03-17|2025-04-26
+714|Tres Chic Boutique GmbH - Training Package|2|3|Negotiation|Outbound|Renewal|96000.00|75|2026-04-21|2026-08-03|
+715|Prose Ware Systems Inc - Analytics Suite|59|10|Negotiation|Website|New Business|24000.00|75|2026-04-14|2026-05-18|
+716|Wide World Importers Inc - Analytics Suite|24|3|Closed Won|Website|Renewal|11000.00|100|2025-02-22|2025-03-24|2025-04-30
+717|Litware AB - Migration Project|52|1|Closed Won|Outbound|New Business|17000.00|100|2026-03-12|2026-07-06|2026-05-21
+718|Liberty Delightful Sinful Bakery Ltd - Analytics Suite|35|2|Negotiation|Trade Show|New Business|63000.00|75|2025-12-06|2026-04-20|
+719|Proseware BV - Reporting Add-on|40|7|Closed Won|Partner|Upsell|43500.00|100|2025-04-01|2025-08-01|2025-08-17
+720|Coho Winery GmbH - Data Platform|14|11|Closed Won|Outbound|Renewal|8500.00|100|2025-04-10|2025-05-30|2025-07-02
+721|Parnell Aerospace SARL - Data Platform|30|11|Negotiation|Outbound|Renewal|30000.00|75|2026-06-21|2026-09-13|
+722|Southridge Video BV - Enterprise License|41|2|Closed Lost|Website|New Business|56000.00|0|2026-01-13|2026-03-26|2026-03-04
+723|The Phone Company SARL - Support Renewal|28|4|Negotiation|Trade Show|Renewal|35500.00|75|2026-04-23|2026-05-22|
+724|Fabrikam SARL - Analytics Suite|32|9|Proposal|Partner|Renewal|113000.00|50|2026-02-05|2026-06-08|
+725|Blue Yonder Airlines Inc - Reporting Add-on|23|2|Closed Won|Outbound|New Business|34500.00|100|2025-09-26|2025-10-16|2025-10-12
+726|Fincher Architects GmbH - Support Renewal|6|10|Prospecting|Website|New Business|54000.00|10|2026-08-24|2027-01-11|
+727|Nod Publishers GmbH - Support Renewal|3|12|Closed Won|Website|Upsell|16500.00|100|2025-05-06|2025-07-11|2025-07-19
+728|Trail Frames Chalet Inc - Migration Project|58|1|Proposal|Website|Renewal|21500.00|50|2026-03-10|2026-07-17|
+729|Nod Publishers SpA - Support Renewal|43|3|Negotiation|Trade Show|New Business|7500.00|75|2025-06-26|2025-09-17|
+730|Consolidated Messenger GmbH - Training Package|4|12|Prospecting|Website|New Business|106000.00|10|2025-11-12|2026-01-12|
+731|City Power & Light GmbH - Training Package|9|10|Proposal|Referral|Renewal|42500.00|50|2026-07-14|2026-08-25|
+732|Southridge Video GmbH - Support Renewal|1|11|Closed Lost|Website|New Business|27500.00|0|2025-10-03|2026-02-28|2025-12-28
+733|Coho Winery GmbH - Support Renewal|14|11|Proposal|Website|Renewal|72500.00|50|2026-09-09|2026-12-10|
+734|Lucerne Publishing Ltd - Analytics Suite|38|7|Closed Won|Partner|Renewal|20500.00|100|2025-05-08|2025-06-02|2025-05-20
+735|Contoso Inc - Migration Project|21|9|Prospecting|Partner|Upsell|33000.00|10|2026-08-19|2026-10-10|
+736|Lucerne Publishing Ltd - Support Renewal|38|2|Negotiation|Partner|Upsell|10000.00|75|2026-03-18|2026-08-09|
+737|Relecloud Sp. z o.o. - Reporting Add-on|55|6|Proposal|Website|Renewal|21000.00|50|2026-08-05|2026-09-04|
+738|Fabrikam SARL - Migration Project|32|3|Closed Won|Outbound|New Business|58000.00|100|2025-10-28|2026-03-03|2026-02-25
+739|Alpine Ski House SARL - Training Package|26|8|Proposal|Referral|Upsell|14500.00|50|2026-04-15|2026-09-03|
+740|Coho Winery GmbH - Enterprise License|14|3|Closed Lost|Website|Renewal|42000.00|0|2026-01-17|2026-06-07|2026-06-22
+741|Blue Yonder Airlines Inc - Reporting Add-on|23|3|Closed Won|Website|Renewal|6000.00|100|2025-05-03|2025-06-09|2025-05-17
+742|Woodgrove Bank GmbH - Reporting Add-on|56|6|Negotiation|Referral|Renewal|11000.00|75|2025-11-30|2026-01-19|
+743|Litware GmbH - Enterprise License|12|11|Proposal|Partner|New Business|58000.00|50|2025-10-03|2026-02-05|
+744|Southridge Video BV - Migration Project|41|12|Closed Won|Partner|New Business|15000.00|100|2025-11-09|2026-01-16|2025-12-31
+745|Woodgrove Bank GmbH - Reporting Add-on|56|5|Closed Lost|Referral|New Business|50000.00|0|2025-04-15|2025-07-09|2025-05-16
+746|Prose Ware Systems Inc - Analytics Suite|59|9|Closed Lost|Trade Show|Renewal|47000.00|0|2025-07-02|2025-07-24|2025-08-06
+747|Margie's Travel GmbH - Analytics Suite|7|4|Proposal|Website|New Business|62000.00|50|2026-02-18|2026-06-29|
+748|Adventure Works GmbH - Training Package|5|8|Prospecting|Referral|Upsell|30500.00|10|2026-09-25|2027-01-07|
+749|Humongous Insurance Ltd - Training Package|33|2|Closed Won|Website|New Business|11500.00|100|2025-08-01|2025-09-07|2025-08-30
+750|Winsome Apparel AB - Training Package|50|1|Closed Lost|Trade Show|New Business|47000.00|0|2025-06-16|2025-08-31|2025-09-04
+751|Fabrikam SARL - Training Package|32|3|Qualification|Referral|Upsell|68000.00|25|2026-06-19|2026-07-13|
+752|Bellows College Inc - Cloud Subscription|22|12|Prospecting|Partner|Renewal|18500.00|10|2026-01-13|2026-03-05|
+753|Fincher Architects GmbH - Data Platform|6|7|Closed Won|Referral|Renewal|50000.00|100|2026-06-08|2026-06-30|2026-07-09
+754|Prose Ware Systems Inc - Training Package|19|1|Qualification|Website|New Business|20000.00|25|2025-06-26|2025-10-20|
+755|City Power & Light GmbH - Data Platform|9|8|Negotiation|Website|Upsell|25500.00|75|2025-12-27|2026-05-04|
+756|Munson's Pickles GmbH - Analytics Suite|13|5|Closed Won|Partner|Renewal|21500.00|100|2025-02-01|2025-04-14|2025-04-20
+757|Proseware BV - Training Package|40|7|Proposal|Trade Show|New Business|21500.00|50|2026-01-21|2026-05-01|
+758|Best For You Organics Ltd - Cloud Subscription|36|3|Proposal|Trade Show|New Business|8000.00|50|2026-02-28|2026-05-31|
+759|Blue Yonder Airlines Inc - Reporting Add-on|23|5|Closed Won|Referral|Renewal|28000.00|100|2025-03-24|2025-05-05|2025-04-28
+760|Wide Field Robotics SARL - Cloud Subscription|31|4|Closed Lost|Outbound|New Business|57500.00|0|2026-01-31|2026-06-03|2026-05-15
+761|Fincher Architects SpA - Support Renewal|46|7|Qualification|Outbound|Upsell|33000.00|25|2025-08-23|2025-09-19|
+762|The Phone Company SARL - Reporting Add-on|28|11|Closed Lost|Partner|New Business|64000.00|0|2025-09-06|2025-09-28|2025-09-18
+763|Parnell Aerospace SARL - Reporting Add-on|30|2|Qualification|Referral|Renewal|21000.00|25|2025-09-14|2025-12-09|
+764|Wide World Importers Inc - Training Package|24|2|Proposal|Website|Renewal|36500.00|50|2025-09-22|2026-02-01|
+765|Humongous Insurance Ltd - Data Platform|33|5|Closed Lost|Website|New Business|10500.00|0|2025-03-04|2025-07-02|2025-06-26
+766|Adventure Works SpA - Reporting Add-on|45|3|Closed Won|Website|New Business|23000.00|100|2025-11-12|2025-12-27|2025-12-20
+767|Litware AB - Data Platform|52|11|Negotiation|Outbound|Renewal|39000.00|75|2026-06-12|2026-08-30|
+768|Relecloud Inc - Enterprise License|15|12|Closed Won|Referral|New Business|24000.00|100|2025-06-21|2025-10-20|2025-10-20
+769|Coho Winery GmbH - Migration Project|14|7|Prospecting|Referral|New Business|14500.00|10|2026-09-20|2027-02-09|
+770|Wingtip Toys BV - Migration Project|39|5|Proposal|Website|Upsell|9000.00|50|2026-02-26|2026-07-25|
+771|Trail Frames Chalet Inc - Reporting Add-on|18|2|Proposal|Outbound|Renewal|132000.00|50|2025-06-17|2025-07-18|
+772|Fourth Coffee GmbH - Cloud Subscription|8|4|Proposal|Partner|New Business|23000.00|50|2026-06-06|2026-07-26|
+773|Nod Publishers SpA - Training Package|43|11|Closed Lost|Trade Show|Renewal|40500.00|0|2026-01-17|2026-03-14|2026-02-27
+774|Munson's Pickles Sp. z o.o. - Support Renewal|53|9|Closed Lost|Website|New Business|22500.00|0|2025-05-08|2025-10-02|2025-10-13
+775|Adventure Works SpA - Training Package|45|11|Closed Won|Trade Show|New Business|61000.00|100|2025-10-28|2026-03-12|2026-05-03
+776|Litware GmbH - Migration Project|12|1|Closed Won|Website|Renewal|45000.00|100|2026-06-04|2026-10-01|2026-09-28
+777|Trail Frames Chalet Inc - Data Platform|58|8|Proposal|Referral|New Business|7000.00|50|2026-01-17|2026-05-25|
+778|Litware AB - Support Renewal|52|12|Closed Won|Outbound|New Business|14500.00|100|2025-03-29|2025-05-30|2025-05-21
+779|City Power & Light GmbH - Support Renewal|9|9|Negotiation|Website|New Business|9000.00|75|2026-06-01|2026-07-31|
+780|Consolidated Messenger GmbH - Cloud Subscription|4|8|Closed Won|Website|New Business|27000.00|100|2026-03-27|2026-08-02|2026-06-17
+781|Bellows College Inc - Data Platform|22|9|Closed Lost|Outbound|New Business|32000.00|0|2026-04-26|2026-08-10|2026-07-10
+782|Northwind Traders GmbH - Cloud Subscription|11|1|Qualification|Referral|New Business|25500.00|25|2026-04-17|2026-07-05|
+783|Wide Field Robotics SARL - Migration Project|31|1|Proposal|Referral|Renewal|99000.00|50|2026-06-24|2026-09-04|
+784|Tres Chic Boutique GmbH - Training Package|2|10|Closed Won|Partner|Renewal|16000.00|100|2026-04-28|2026-08-03|2026-06-30
+785|Coho Winery Sp. z o.o. - Support Renewal|54|9|Closed Won|Outbound|Upsell|25500.00|100|2025-09-28|2025-12-12|2025-11-11
+786|Tailspin Toys Inc - Analytics Suite|25|2|Closed Won|Website|Upsell|11000.00|100|2025-03-05|2025-07-16|2025-08-10
+787|Graphic Design Institute AG - Enterprise License|60|8|Proposal|Website|Upsell|3500.00|50|2026-01-21|2026-05-28|
+788|Margie's Travel GmbH - Training Package|7|11|Negotiation|Trade Show|New Business|72500.00|75|2026-05-09|2026-06-17|
+789|Liberty Delightful Sinful Bakery Ltd - Data Platform|35|12|Negotiation|Referral|Renewal|33000.00|75|2026-08-26|2026-10-11|
+790|Proseware BV - Analytics Suite|40|7|Closed Lost|Partner|Upsell|29500.00|0|2025-08-19|2025-09-21|2025-09-15
+791|Adventure Works GmbH - Training Package|5|1|Closed Won|Trade Show|Upsell|27500.00|100|2025-05-11|2025-06-02|2025-05-23
+792|Fourth Coffee SL - Data Platform|48|3|Closed Won|Outbound|New Business|26000.00|100|2025-12-07|2026-03-31|2026-05-25
+793|Proseware BV - Data Platform|40|7|Closed Lost|Outbound|Renewal|53500.00|0|2026-04-07|2026-07-17|2026-08-18
+794|Best For You Organics Ltd - Enterprise License|36|5|Closed Won|Website|Renewal|23000.00|100|2025-10-20|2026-01-20|2026-02-19
+795|Relecloud Sp. z o.o. - Training Package|55|4|Prospecting|Outbound|Renewal|63500.00|10|2026-09-14|2026-12-14|
+796|Woodgrove Bank Inc - Support Renewal|16|12|Closed Won|Referral|Upsell|124500.00|100|2025-02-04|2025-04-01|2025-04-06
+797|Wide Field Robotics SARL - Enterprise License|31|9|Qualification|Trade Show|New Business|30000.00|25|2026-04-25|2026-06-28|
+798|Bellows College Inc - Enterprise License|22|9|Closed Lost|Trade Show|Renewal|46000.00|0|2025-04-05|2025-07-08|2025-08-31
+799|Southridge Video GmbH - Support Renewal|1|11|Closed Won|Referral|Renewal|102500.00|100|2025-06-25|2025-09-11|2025-08-28
+800|Contoso Inc - Enterprise License|21|1|Negotiation|Website|New Business|25000.00|75|2026-03-18|2026-06-01|
+801|VanArsdel SARL - Training Package|27|3|Closed Won|Outbound|New Business|9000.00|100|2025-08-08|2025-09-10|2025-08-20
+802|Fourth Coffee GmbH - Support Renewal|8|12|Qualification|Website|New Business|71000.00|25|2026-06-03|2026-07-12|
+803|Wide World Importers Inc - Data Platform|24|4|Closed Lost|Referral|New Business|14000.00|0|2025-08-12|2025-09-16|2025-09-25
+804|Southridge Video GmbH - Data Platform|1|6|Negotiation|Trade Show|New Business|6000.00|75|2026-03-03|2026-05-05|
+805|Lamna Healthcare Ltd - Enterprise License|34|12|Closed Won|Website|Renewal|108000.00|100|2025-07-20|2025-12-13|2026-01-02
+806|Graphic Design Institute Inc - Data Platform|20|8|Closed Won|Partner|New Business|76000.00|100|2025-03-10|2025-05-31|2025-05-13
+807|Woodgrove Bank GmbH - Data Platform|56|1|Qualification|Referral|New Business|20500.00|25|2026-06-11|2026-10-16|
+808|Humongous Insurance Ltd - Data Platform|33|8|Closed Won|Referral|Renewal|47000.00|100|2025-04-20|2025-08-15|2025-08-27
+809|Munson's Pickles Sp. z o.o. - Analytics Suite|53|4|Closed Lost|Website|Upsell|9000.00|0|2025-02-06|2025-04-21|2025-03-31
+810|Adventure Works GmbH - Reporting Add-on|5|9|Qualification|Outbound|Renewal|18000.00|25|2026-09-02|2027-01-24|
+811|Humongous Insurance Ltd - Training Package|33|9|Proposal|Website|New Business|11500.00|50|2026-03-21|2026-07-21|
+812|Graphic Design Institute AG - Training Package|60|4|Closed Lost|Outbound|New Business|30500.00|0|2025-09-06|2025-11-19|2025-11-18
+813|Trail Frames Chalet Inc - Enterprise License|58|7|Proposal|Website|New Business|30000.00|50|2025-11-15|2025-12-21|
+814|Consolidated Messenger GmbH - Analytics Suite|4|7|Closed Won|Outbound|New Business|35500.00|100|2026-06-26|2026-08-23|2026-08-07
+815|Winsome Apparel GmbH - Analytics Suite|10|1|Closed Won|Partner|Upsell|14000.00|100|2025-01-30|2025-05-11|2025-05-08
+816|Tres Chic Boutique BV - Reporting Add-on|42|12|Closed Lost|Partner|Renewal|29500.00|0|2026-04-04|2026-06-28|2026-06-29
+817|First Up Consultants SARL - Migration Project|29|11|Closed Lost|Outbound|New Business|17500.00|0|2025-11-01|2025-12-26|2026-01-09
+818|Winsome Apparel GmbH - Training Package|10|11|Proposal|Outbound|Renewal|24000.00|50|2026-04-07|2026-09-04|
+819|Margie's Travel GmbH - Reporting Add-on|7|12|Closed Lost|Outbound|Upsell|71500.00|0|2025-12-30|2026-05-03|2026-06-02
+820|VanArsdel SARL - Cloud Subscription|27|1|Closed Won|Referral|Renewal|12500.00|100|2025-03-01|2025-04-28|2025-03-22
+821|Fincher Architects GmbH - Reporting Add-on|6|12|Closed Won|Outbound|Upsell|49000.00|100|2025-04-16|2025-05-14|2025-06-07
+822|Wide Field Robotics SARL - Training Package|31|7|Closed Won|Website|Renewal|10500.00|100|2025-04-16|2025-09-12|2025-09-07
+823|VanArsdel SARL - Training Package|27|9|Negotiation|Partner|New Business|41000.00|75|2025-10-16|2026-01-09|
+824|Margie's Travel GmbH - Data Platform|7|11|Negotiation|Referral|New Business|12000.00|75|2026-02-26|2026-03-18|
+825|Best For You Organics Ltd - Support Renewal|36|3|Proposal|Partner|Upsell|17000.00|50|2026-09-10|2026-11-10|
+826|Contoso Inc - Training Package|21|1|Negotiation|Website|Upsell|13500.00|75|2026-04-28|2026-08-10|
+827|Fourth Coffee GmbH - Cloud Subscription|8|12|Proposal|Referral|New Business|44000.00|50|2025-11-19|2026-01-26|
+828|Northwind Traders AB - Reporting Add-on|51|5|Prospecting|Partner|Upsell|21000.00|10|2026-06-05|2026-09-23|
+829|Fincher Architects SpA - Cloud Subscription|46|1|Closed Won|Referral|New Business|16000.00|100|2026-01-10|2026-03-12|2026-01-27
+830|Consolidated Messenger GmbH - Analytics Suite|4|10|Closed Won|Referral|Renewal|24500.00|100|2026-06-27|2026-08-31|2026-09-26
+831|Munson's Pickles GmbH - Training Package|13|7|Negotiation|Referral|New Business|102500.00|75|2026-04-03|2026-06-22|
+832|Prose Ware Systems Inc - Support Renewal|19|7|Negotiation|Website|New Business|42000.00|75|2026-05-12|2026-09-27|
+833|Best For You Organics Ltd - Data Platform|36|7|Closed Won|Website|New Business|20500.00|100|2026-04-24|2026-06-22|2026-05-06
+834|Margie's Travel GmbH - Support Renewal|7|12|Closed Won|Website|New Business|10500.00|100|2025-11-07|2026-03-13|2026-03-30
+835|Woodgrove Bank Inc - Reporting Add-on|16|7|Prospecting|Outbound|New Business|15500.00|10|2026-06-16|2026-07-26|
+836|Bellows College Inc - Reporting Add-on|22|8|Closed Won|Website|New Business|16500.00|100|2026-01-06|2026-04-10|2026-04-07
+837|Woodgrove Bank GmbH - Analytics Suite|56|6|Closed Lost|Partner|Upsell|36000.00|0|2026-07-12|2026-10-03|2026-09-29
+838|Coho Winery Sp. z o.o. - Reporting Add-on|54|9|Negotiation|Referral|Renewal|35500.00|75|2026-08-09|2026-11-22|
+839|Southridge Video GmbH - Analytics Suite|1|2|Closed Won|Website|Renewal|13000.00|100|2025-03-22|2025-07-17|2025-06-17
+840|Fourth Coffee SL - Reporting Add-on|48|3|Closed Won|Website|New Business|29000.00|100|2025-07-15|2025-09-13|2025-09-01
+841|Wingtip Toys BV - Data Platform|39|12|Closed Lost|Partner|New Business|82000.00|0|2025-01-08|2025-03-18|2025-03-01
+842|Humongous Insurance Ltd - Analytics Suite|33|11|Closed Lost|Trade Show|New Business|37000.00|0|2025-01-31|2025-05-21|2025-04-08
+843|Winsome Apparel GmbH - Analytics Suite|10|6|Proposal|Website|New Business|69000.00|50|2026-07-31|2026-11-19|
+844|Litware GmbH - Cloud Subscription|12|5|Closed Lost|Outbound|New Business|11500.00|0|2025-01-19|2025-03-25|2025-04-05
+845|Coho Winery GmbH - Analytics Suite|14|10|Closed Lost|Partner|Renewal|51000.00|0|2026-05-23|2026-08-04|2026-09-01
+846|Bellows College Inc - Data Platform|22|4|Closed Won|Outbound|New Business|30500.00|100|2026-04-03|2026-08-29|2026-08-27
+847|Winsome Apparel GmbH - Cloud Subscription|10|1|Closed Lost|Partner|Upsell|55500.00|0|2025-06-08|2025-10-20|2025-10-11
+848|Margie's Travel GmbH - Data Platform|7|1|Negotiation|Outbound|New Business|59500.00|75|2026-02-26|2026-03-29|
+849|Woodgrove Bank Inc - Data Platform|16|5|Closed Won|Website|New Business|4500.00|100|2026-06-12|2026-08-27|2026-08-24
+850|Relecloud Sp. z o.o. - Training Package|55|2|Closed Won|Referral|Renewal|15000.00|100|2025-11-09|2025-12-19|2025-11-21
+851|Alpine Ski House SARL - Cloud Subscription|26|1|Negotiation|Website|New Business|8500.00|75|2026-05-20|2026-08-03|
+852|Northwind Traders GmbH - Data Platform|11|3|Negotiation|Referral|New Business|12500.00|75|2026-03-23|2026-08-18|
+853|Tailspin Toys Inc - Reporting Add-on|25|9|Proposal|Outbound|New Business|55000.00|50|2025-09-07|2025-11-30|
+854|Coho Winery Sp. z o.o. - Cloud Subscription|54|7|Proposal|Partner|New Business|72000.00|50|2026-01-24|2026-04-21|
+855|VanArsdel SARL - Analytics Suite|27|11|Negotiation|Trade Show|Renewal|10500.00|75|2026-05-08|2026-09-26|
+856|Relecloud Sp. z o.o. - Cloud Subscription|55|5|Proposal|Outbound|New Business|7000.00|50|2025-08-14|2025-09-22|
+857|City Power & Light SL - Training Package|49|4|Closed Won|Website|Renewal|38000.00|100|2025-03-31|2025-07-02|2025-06-21
+858|Prose Ware Systems Inc - Training Package|59|6|Negotiation|Trade Show|New Business|20500.00|75|2026-04-29|2026-08-10|
+859|Fincher Architects GmbH - Analytics Suite|6|10|Prospecting|Website|Renewal|85500.00|10|2026-09-21|2026-12-10|
+860|Prose Ware Systems Inc - Reporting Add-on|19|10|Closed Lost|Partner|Renewal|45000.00|0|2026-03-07|2026-04-22|2026-03-19
+861|Lucerne Publishing Ltd - Migration Project|38|9|Qualification|Partner|Renewal|46000.00|25|2025-12-25|2026-05-03|
+862|Contoso Inc - Data Platform|21|12|Qualification|Partner|New Business|34000.00|25|2026-02-05|2026-04-28|
+863|Tres Chic Boutique BV - Training Package|42|6|Prospecting|Website|New Business|26500.00|10|2025-08-28|2025-11-23|
+864|Litware GmbH - Cloud Subscription|12|2|Closed Won|Referral|New Business|21500.00|100|2025-10-11|2025-12-14|2025-12-22
+865|Fincher Architects GmbH - Cloud Subscription|6|9|Proposal|Partner|New Business|77000.00|50|2026-05-25|2026-09-01|
+866|Relecloud Inc - Cloud Subscription|15|1|Closed Won|Partner|New Business|30500.00|100|2026-05-02|2026-07-21|2026-07-11
+867|Margie's Travel GmbH - Migration Project|7|2|Closed Won|Website|New Business|11500.00|100|2025-09-15|2025-11-13|2025-10-20
+868|Bellows College Inc - Cloud Subscription|22|11|Closed Lost|Trade Show|Renewal|13000.00|0|2026-02-10|2026-06-28|2026-07-25
+869|Trail Frames Chalet Inc - Cloud Subscription|58|12|Closed Won|Outbound|Renewal|18500.00|100|2026-02-19|2026-03-17|2026-03-03
+870|Wide Field Robotics SARL - Data Platform|31|8|Qualification|Trade Show|Renewal|15000.00|25|2025-07-28|2025-11-19|
+871|Bellows College Inc - Enterprise License|22|12|Closed Won|Referral|New Business|4000.00|100|2025-03-25|2025-08-20|2025-10-06
+872|Northwind Traders GmbH - Training Package|11|10|Closed Won|Outbound|New Business|94000.00|100|2025-06-02|2025-08-28|2025-10-03
+873|Trail Frames Chalet Inc - Migration Project|18|9|Closed Lost|Website|New Business|95000.00|0|2025-04-29|2025-08-14|2025-07-28
+874|Munson's Pickles GmbH - Enterprise License|13|3|Closed Won|Partner|Upsell|57000.00|100|2025-02-25|2025-04-25|2025-04-17
+875|Adventure Works GmbH - Training Package|5|8|Closed Lost|Website|New Business|22500.00|0|2025-06-11|2025-09-17|2025-08-30
+876|Bellows College Inc - Reporting Add-on|22|1|Closed Won|Website|New Business|24000.00|100|2025-06-08|2025-10-28|2025-09-12
+877|Tres Chic Boutique GmbH - Analytics Suite|2|2|Closed Won|Partner|Renewal|38000.00|100|2025-05-20|2025-10-04|2025-09-18
+878|Liberty Delightful Sinful Bakery Ltd - Training Package|35|3|Closed Won|Partner|Renewal|10500.00|100|2025-06-28|2025-08-01|2025-07-13
+879|Winsome Apparel AB - Reporting Add-on|50|4|Proposal|Outbound|New Business|12500.00|50|2026-02-20|2026-06-06|
+880|Parnell Aerospace SARL - Cloud Subscription|30|11|Closed Lost|Outbound|Renewal|40000.00|0|2025-07-20|2025-11-18|2025-10-23
+881|Relecloud Inc - Reporting Add-on|15|7|Negotiation|Outbound|New Business|23500.00|75|2025-10-21|2025-12-06|
+882|Prose Ware Systems Inc - Cloud Subscription|59|12|Prospecting|Trade Show|New Business|116500.00|10|2026-05-30|2026-08-20|
+883|Fabrikam SARL - Enterprise License|32|7|Negotiation|Referral|Upsell|78500.00|75|2026-07-15|2026-11-03|
+884|The Phone Company SARL - Reporting Add-on|28|1|Closed Won|Partner|Renewal|23500.00|100|2025-12-02|2026-03-21|2026-02-26
+885|Adventure Works GmbH - Support Renewal|5|10|Proposal|Outbound|Renewal|48500.00|50|2026-09-01|2026-10-29|
+886|Wide World Importers Inc - Migration Project|24|9|Proposal|Partner|Renewal|3500.00|50|2026-03-13|2026-05-04|
+887|Northwind Traders GmbH - Support Renewal|11|9|Closed Lost|Outbound|New Business|9000.00|0|2025-06-18|2025-08-28|2025-07-30
+888|Litware AB - Enterprise License|52|7|Qualification|Outbound|New Business|41000.00|25|2026-06-03|2026-07-15|
+889|Fincher Architects SpA - Support Renewal|46|10|Closed Won|Website|Upsell|40000.00|100|2025-10-19|2025-11-11|2025-10-31
+890|Litware GmbH - Reporting Add-on|12|12|Qualification|Website|Renewal|180000.00|25|2026-07-01|2026-11-09|
+891|Margie's Travel SL - Data Platform|47|7|Closed Lost|Outbound|Upsell|34000.00|0|2026-02-04|2026-04-26|2026-06-29
+892|Lucerne Publishing Ltd - Training Package|38|6|Negotiation|Website|New Business|97000.00|75|2026-02-18|2026-06-11|
+893|Southridge Video BV - Training Package|41|12|Prospecting|Outbound|Upsell|35500.00|10|2026-09-19|2026-12-15|
+894|Tailspin Toys Inc - Migration Project|25|2|Qualification|Website|Renewal|25500.00|25|2025-10-07|2026-01-19|
+895|Fabrikam SARL - Training Package|32|5|Closed Lost|Outbound|New Business|23000.00|0|2025-08-28|2025-11-30|2025-12-07
+896|Margie's Travel GmbH - Migration Project|7|4|Closed Lost|Trade Show|Renewal|27500.00|0|2025-10-25|2026-02-22|2026-02-12
+897|The Phone Company SARL - Reporting Add-on|28|7|Closed Won|Outbound|Upsell|23000.00|100|2026-03-24|2026-06-23|2026-05-20
+898|Woodgrove Bank GmbH - Reporting Add-on|56|10|Prospecting|Website|New Business|26500.00|10|2026-06-23|2026-08-23|
+899|Margie's Travel SL - Support Renewal|47|9|Closed Lost|Partner|Upsell|42500.00|0|2025-10-07|2026-01-29|2026-02-16
+900|Margie's Travel GmbH - Enterprise License|7|12|Proposal|Website|Renewal|43000.00|50|2026-08-01|2026-11-26|
+901|Relecloud Inc - Analytics Suite|15|12|Closed Lost|Partner|Renewal|42500.00|0|2025-05-25|2025-06-18|2025-07-08
+902|Graphic Design Institute Inc - Migration Project|20|12|Closed Won|Outbound|New Business|42500.00|100|2025-04-14|2025-06-23|2025-05-22
+903|Fabrikam SARL - Reporting Add-on|32|4|Proposal|Outbound|New Business|55000.00|50|2026-05-26|2026-09-20|
+904|Humongous Insurance Ltd - Data Platform|33|2|Closed Won|Outbound|New Business|32000.00|100|2025-09-27|2026-02-07|2026-01-19
+905|VanArsdel SARL - Data Platform|27|11|Closed Won|Partner|New Business|23000.00|100|2025-09-02|2025-10-20|2025-10-09
+906|VanArsdel SARL - Analytics Suite|27|10|Closed Won|Partner|Upsell|82000.00|100|2026-01-03|2026-04-08|2026-04-28
+907|Graphic Design Institute Inc - Enterprise License|20|5|Qualification|Partner|New Business|59000.00|25|2026-04-17|2026-08-05|
+908|Parnell Aerospace SARL - Cloud Subscription|30|9|Qualification|Trade Show|Upsell|18000.00|25|2026-06-23|2026-09-14|
+909|Woodgrove Bank Inc - Migration Project|16|12|Closed Lost|Trade Show|New Business|73500.00|0|2026-03-29|2026-07-06|2026-07-03
+910|Humongous Insurance Ltd - Training Package|33|4|Proposal|Website|Renewal|31500.00|50|2025-06-12|2025-09-10|
+911|Trey Research GmbH - Training Package|57|9|Proposal|Partner|New Business|24500.00|50|2026-04-01|2026-07-18|
+912|Winsome Apparel AB - Cloud Subscription|50|5|Closed Won|Outbound|New Business|25500.00|100|2025-03-14|2025-04-13|2025-05-12
+913|Prose Ware Systems Inc - Cloud Subscription|59|3|Closed Lost|Referral|Renewal|10000.00|0|2025-08-06|2025-11-17|2025-10-18
+914|Fincher Architects SpA - Reporting Add-on|46|4|Qualification|Website|Upsell|42000.00|25|2026-07-03|2026-09-24|
+915|Alpine Ski House SARL - Migration Project|26|7|Closed Won|Website|New Business|9500.00|100|2025-02-13|2025-05-02|2025-05-22
+916|The Phone Company SARL - Training Package|28|2|Qualification|Website|Renewal|180000.00|25|2026-09-19|2027-01-09|
+917|Contoso Inc - Migration Project|21|4|Closed Won|Website|Renewal|83000.00|100|2025-09-11|2025-12-16|2025-12-22
+918|Nod Publishers GmbH - Support Renewal|3|4|Negotiation|Referral|Upsell|14000.00|75|2025-12-18|2026-01-08|
+919|Nod Publishers GmbH - Data Platform|3|8|Closed Won|Website|New Business|30000.00|100|2025-11-27|2026-01-11|2025-12-09
+920|Northwind Traders GmbH - Data Platform|11|10|Closed Won|Partner|Renewal|8500.00|100|2025-07-23|2025-09-18|2025-10-08
+921|Wide Field Robotics SARL - Reporting Add-on|31|6|Closed Won|Referral|New Business|19500.00|100|2026-02-07|2026-04-02|2026-03-04
+922|Trail Frames Chalet Inc - Cloud Subscription|58|1|Closed Won|Referral|New Business|38500.00|100|2025-09-18|2025-10-12|2025-10-03
+923|Southridge Video GmbH - Data Platform|1|10|Proposal|Website|Renewal|26000.00|50|2026-04-26|2026-08-30|
+924|Woodgrove Bank GmbH - Enterprise License|56|6|Closed Won|Website|Upsell|14500.00|100|2026-03-05|2026-03-29|2026-04-01
+925|Fabrikam SARL - Cloud Subscription|32|4|Closed Won|Website|Upsell|41500.00|100|2025-02-16|2025-04-02|2025-04-27
+926|Adventure Works GmbH - Enterprise License|5|11|Closed Lost|Website|Upsell|28000.00|0|2026-02-12|2026-03-13|2026-03-26
+927|Consolidated Messenger GmbH - Training Package|4|6|Prospecting|Website|New Business|6500.00|10|2026-07-13|2026-11-08|
+928|Relecloud Inc - Migration Project|15|1|Proposal|Outbound|Renewal|12500.00|50|2025-12-09|2026-01-30|
+929|Northwind Traders AB - Support Renewal|51|3|Closed Won|Outbound|New Business|31500.00|100|2026-07-14|2026-10-26|2026-09-30
+930|VanArsdel SARL - Support Renewal|27|9|Closed Lost|Outbound|Upsell|15000.00|0|2025-05-05|2025-07-15|2025-07-15
+931|Humongous Insurance Ltd - Support Renewal|33|7|Closed Won|Website|Upsell|30500.00|100|2025-11-03|2026-03-02|2026-03-09
+932|Northwind Traders GmbH - Reporting Add-on|11|11|Closed Won|Website|New Business|25000.00|100|2026-06-04|2026-10-07|2026-09-22
+933|Tailspin Toys Inc - Analytics Suite|25|11|Closed Won|Website|New Business|33000.00|100|2025-04-15|2025-06-26|2025-07-04
+934|Tres Chic Boutique GmbH - Analytics Suite|2|11|Closed Lost|Outbound|New Business|40000.00|0|2025-09-07|2025-12-22|2025-12-31
+935|Consolidated Messenger GmbH - Enterprise License|4|8|Qualification|Website|Renewal|30000.00|25|2026-07-07|2026-11-14|
+936|Woodgrove Bank Inc - Reporting Add-on|16|6|Proposal|Trade Show|New Business|16000.00|50|2026-07-30|2026-10-22|
+937|Relecloud Inc - Migration Project|15|7|Qualification|Website|Upsell|14000.00|25|2026-07-07|2026-08-16|
+938|Nod Publishers SpA - Analytics Suite|43|6|Proposal|Partner|New Business|48500.00|50|2026-04-19|2026-05-15|
+939|Northwind Traders AB - Training Package|51|9|Qualification|Referral|Upsell|35000.00|25|2026-07-14|2026-10-11|
+940|Contoso Inc - Analytics Suite|21|4|Closed Won|Referral|Renewal|38000.00|100|2026-08-02|2026-09-28|2026-09-09
+941|VanArsdel SARL - Enterprise License|27|11|Negotiation|Website|New Business|16500.00|75|2026-01-22|2026-02-21|
+942|Trey Research GmbH - Reporting Add-on|57|7|Closed Lost|Outbound|New Business|31500.00|0|2026-05-17|2026-09-10|2026-09-30
+943|Relecloud Inc - Support Renewal|15|1|Proposal|Website|New Business|29000.00|50|2026-08-06|2026-08-28|
+944|Lamna Healthcare Ltd - Data Platform|34|3|Proposal|Partner|New Business|85000.00|50|2026-07-01|2026-11-27|
+945|Fourth Coffee GmbH - Reporting Add-on|8|5|Closed Won|Outbound|Renewal|51000.00|100|2025-09-24|2025-12-15|2026-01-05
+946|Trey Research GmbH - Data Platform|57|11|Closed Lost|Website|Renewal|20000.00|0|2026-06-18|2026-11-14|2026-09-30
+947|Contoso Inc - Cloud Subscription|21|12|Proposal|Website|New Business|117000.00|50|2026-02-25|2026-05-26|
+948|First Up Consultants SARL - Support Renewal|29|11|Negotiation|Referral|New Business|25500.00|75|2025-10-25|2026-03-18|
+949|Wide Field Robotics SARL - Training Package|31|11|Closed Won|Partner|Upsell|28000.00|100|2026-01-30|2026-03-26|2026-04-29
+950|Northwind Traders GmbH - Training Package|11|4|Closed Won|Referral|New Business|136500.00|100|2025-06-19|2025-11-13|2025-11-12
+951|Woodgrove Bank Inc - Reporting Add-on|16|12|Negotiation|Outbound|Renewal|31000.00|75|2026-05-27|2026-06-23|
+952|Margie's Travel SL - Analytics Suite|47|3|Closed Lost|Website|Renewal|23000.00|0|2026-01-29|2026-04-30|2026-06-09
+953|Liberty Delightful Sinful Bakery Ltd - Data Platform|35|7|Negotiation|Website|New Business|24000.00|75|2026-01-25|2026-06-20|
+954|Margie's Travel SL - Cloud Subscription|47|8|Closed Lost|Referral|New Business|5500.00|0|2025-04-16|2025-08-24|2025-07-25
+955|Relecloud Sp. z o.o. - Training Package|55|9|Closed Lost|Website|New Business|17000.00|0|2025-08-25|2026-01-04|2026-01-25
+956|Fabrikam SARL - Enterprise License|32|10|Closed Lost|Outbound|New Business|18000.00|0|2026-01-09|2026-01-31|2026-02-23
+957|Margie's Travel GmbH - Data Platform|7|4|Closed Won|Referral|New Business|11000.00|100|2026-08-12|2026-10-11|2026-09-30
+958|Wide Field Robotics SARL - Support Renewal|31|5|Closed Lost|Trade Show|Renewal|28500.00|0|2025-01-14|2025-06-13|2025-07-15
+959|Fourth Coffee GmbH - Reporting Add-on|8|7|Closed Won|Referral|New Business|89500.00|100|2025-12-04|2026-03-15|2026-03-15
+960|Prose Ware Systems Inc - Training Package|19|9|Closed Won|Outbound|Renewal|100000.00|100|2025-01-28|2025-04-19|2025-04-07
+961|Northwind Traders GmbH - Migration Project|11|2|Closed Lost|Website|New Business|21000.00|0|2025-04-06|2025-06-30|2025-07-28
+962|Relecloud Inc - Analytics Suite|15|4|Proposal|Partner|Renewal|18000.00|50|2026-05-12|2026-07-26|
+963|Southridge Video BV - Reporting Add-on|41|10|Negotiation|Partner|New Business|13500.00|75|2026-05-04|2026-08-05|
+964|Proseware BV - Support Renewal|40|1|Closed Won|Website|New Business|13500.00|100|2025-09-11|2025-12-19|2025-12-29
+965|City Power & Light SL - Data Platform|49|12|Proposal|Partner|New Business|54500.00|50|2026-05-16|2026-07-13|
+966|Humongous Insurance Ltd - Cloud Subscription|33|6|Proposal|Website|New Business|12000.00|50|2026-03-20|2026-05-06|
+967|City Power & Light GmbH - Support Renewal|9|12|Closed Won|Outbound|Renewal|36500.00|100|2026-04-04|2026-07-26|2026-07-15
+968|Graphic Design Institute Inc - Enterprise License|20|11|Proposal|Referral|New Business|13000.00|50|2026-05-23|2026-10-20|
+969|Wingtip Toys BV - Migration Project|39|9|Closed Lost|Trade Show|New Business|37000.00|0|2025-02-24|2025-05-29|2025-06-01
+970|Graphic Design Institute AG - Support Renewal|60|7|Closed Won|Outbound|Upsell|17500.00|100|2025-05-15|2025-06-28|2025-07-09
+971|City Power & Light GmbH - Data Platform|9|9|Negotiation|Website|New Business|6000.00|75|2025-04-27|2025-05-21|
+972|Fincher Architects SpA - Training Package|46|2|Closed Lost|Trade Show|New Business|83500.00|0|2026-04-03|2026-07-24|2026-07-19
+973|Wingtip Toys BV - Migration Project|39|11|Closed Won|Website|Renewal|12500.00|100|2025-11-12|2026-03-23|2026-03-15
+974|City Power & Light SL - Cloud Subscription|49|8|Closed Lost|Website|New Business|54500.00|0|2026-03-08|2026-04-29|2026-04-12
+975|Lamna Healthcare Ltd - Migration Project|34|9|Closed Won|Outbound|New Business|20500.00|100|2026-03-28|2026-04-19|2026-04-11
+976|Litware GmbH - Training Package|12|11|Closed Lost|Partner|New Business|17500.00|0|2026-04-28|2026-09-02|2026-09-23
+977|Tall Poppies Ltd - Reporting Add-on|37|5|Negotiation|Outbound|Renewal|11000.00|75|2025-11-05|2026-03-27|
+978|Southridge Video BV - Cloud Subscription|41|1|Negotiation|Partner|New Business|25500.00|75|2025-12-30|2026-05-17|
+979|Margie's Travel SL - Cloud Subscription|47|10|Closed Won|Website|Upsell|16000.00|100|2025-03-28|2025-07-09|2025-07-28
+980|City Power & Light SL - Migration Project|49|11|Closed Won|Partner|New Business|23000.00|100|2026-01-10|2026-02-26|2026-01-31
+981|Blue Yonder Airlines Inc - Training Package|23|5|Closed Won|Website|New Business|25000.00|100|2025-07-22|2025-11-16|2025-12-19
+982|Fabrikam SARL - Cloud Subscription|32|5|Negotiation|Trade Show|New Business|77500.00|75|2026-02-27|2026-06-18|
+983|Munson's Pickles Sp. z o.o. - Reporting Add-on|53|11|Negotiation|Referral|Upsell|12500.00|75|2026-04-27|2026-09-23|
+984|Woodgrove Bank GmbH - Analytics Suite|56|5|Qualification|Referral|New Business|12000.00|25|2025-07-16|2025-10-21|
+985|Alpine Ski House SARL - Data Platform|26|1|Closed Won|Trade Show|New Business|14500.00|100|2025-05-12|2025-09-24|2025-08-08
+986|The Phone Company SARL - Support Renewal|28|7|Closed Lost|Website|Upsell|58000.00|0|2025-06-06|2025-08-18|2025-09-21
+987|Southridge Video BV - Data Platform|41|3|Closed Won|Referral|New Business|21000.00|100|2025-07-13|2025-09-24|2025-09-11
+988|Margie's Travel GmbH - Reporting Add-on|7|2|Proposal|Partner|New Business|27500.00|50|2026-05-23|2026-09-24|
+989|Prose Ware Systems Inc - Cloud Subscription|19|4|Proposal|Website|New Business|20500.00|50|2026-06-24|2026-10-08|
+990|Prose Ware Systems Inc - Enterprise License|59|1|Proposal|Partner|New Business|39500.00|50|2026-04-13|2026-08-05|
+991|Fincher Architects SpA - Support Renewal|46|3|Closed Won|Referral|New Business|22500.00|100|2025-12-04|2026-02-01|2026-02-14
+992|Humongous Insurance Ltd - Training Package|33|2|Negotiation|Partner|New Business|19500.00|75|2026-05-30|2026-09-27|
+993|Trail Frames Chalet Inc - Cloud Subscription|18|2|Closed Lost|Trade Show|New Business|8000.00|0|2026-03-21|2026-05-08|2026-05-11
+994|Winsome Apparel AB - Migration Project|50|12|Closed Won|Outbound|Renewal|167000.00|100|2025-09-02|2026-01-12|2025-12-15
+995|Tres Chic Boutique GmbH - Data Platform|2|10|Proposal|Outbound|Upsell|18500.00|50|2026-07-28|2026-12-22|
+996|Coho Winery Sp. z o.o. - Reporting Add-on|54|9|Negotiation|Outbound|New Business|14000.00|75|2026-05-13|2026-07-04|
+997|Margie's Travel SL - Cloud Subscription|47|1|Closed Won|Website|Renewal|29000.00|100|2025-02-26|2025-07-04|2025-09-19
+998|Nod Publishers SpA - Training Package|43|11|Closed Won|Outbound|New Business|42000.00|100|2025-06-24|2025-09-05|2025-09-05
+999|Nod Publishers SpA - Migration Project|43|8|Closed Won|Partner|Renewal|50500.00|100|2025-05-04|2025-07-02|2025-07-19
+1000|Graphic Design Institute Inc - Enterprise License|20|2|Closed Won|Partner|New Business|29000.00|100|2026-06-08|2026-09-02|2026-09-03
+1001|Southridge Video GmbH - Analytics Suite|1|1|Proposal|Website|New Business|25500.00|50|2025-05-24|2025-10-04|
+1002|Trey Research GmbH - Training Package|57|1|Closed Won|Partner|Renewal|9500.00|100|2026-01-25|2026-04-18|2026-05-04
+1003|The Phone Company SARL - Training Package|28|5|Closed Lost|Partner|New Business|24500.00|0|2025-09-26|2025-12-06|2025-11-01
+1004|Tres Chic Boutique GmbH - Enterprise License|2|4|Closed Lost|Trade Show|Renewal|13500.00|0|2025-02-14|2025-06-17|2025-05-18
+1005|Graphic Design Institute AG - Reporting Add-on|60|1|Closed Won|Referral|New Business|16500.00|100|2025-11-29|2026-01-14|2026-01-24
+1006|Relecloud Sp. z o.o. - Enterprise License|55|12|Closed Lost|Outbound|New Business|36500.00|0|2025-05-14|2025-06-27|2025-06-20
+1007|Winsome Apparel GmbH - Reporting Add-on|10|7|Qualification|Partner|Renewal|32000.00|25|2026-08-09|2026-11-23|
+1008|Wingtip Toys BV - Training Package|39|11|Closed Lost|Website|Upsell|4000.00|0|2025-02-12|2025-06-28|2025-05-10
+1009|Coho Winery GmbH - Migration Project|14|8|Negotiation|Outbound|New Business|20000.00|75|2025-06-29|2025-10-06|
+1010|Southridge Video GmbH - Cloud Subscription|1|4|Qualification|Referral|New Business|81000.00|25|2025-11-05|2026-02-21|
+1011|First Up Consultants SARL - Support Renewal|29|2|Closed Won|Partner|Renewal|23500.00|100|2025-08-27|2025-11-27|2025-12-22
+1012|Wide Field Robotics SARL - Enterprise License|31|5|Negotiation|Referral|Upsell|36000.00|75|2026-08-22|2026-12-30|
+1013|Munson's Pickles Sp. z o.o. - Data Platform|53|2|Closed Lost|Outbound|New Business|79000.00|0|2026-05-16|2026-06-16|2026-06-29
+1014|Prose Ware Systems Inc - Reporting Add-on|59|6|Prospecting|Website|Upsell|10000.00|10|2026-07-20|2026-12-02|
+1015|Woodgrove Bank Inc - Support Renewal|16|12|Closed Lost|Outbound|New Business|180000.00|0|2025-02-12|2025-04-15|2025-05-02
+1016|Graphic Design Institute AG - Analytics Suite|60|8|Qualification|Partner|Upsell|47000.00|25|2026-06-06|2026-08-19|
+1017|Adventure Works SpA - Cloud Subscription|45|12|Prospecting|Website|New Business|30500.00|10|2026-08-29|2026-11-11|
+1018|Bellows College Inc - Enterprise License|22|2|Closed Lost|Outbound|Renewal|21000.00|0|2025-12-14|2026-01-23|2026-01-01
+1019|Humongous Insurance Ltd - Cloud Subscription|33|12|Closed Lost|Outbound|New Business|15500.00|0|2026-08-18|2026-12-10|2026-09-30
+1020|Liberty Delightful Sinful Bakery Ltd - Analytics Suite|35|1|Closed Won|Website|New Business|11500.00|100|2025-10-02|2025-10-27|2025-10-14
+1021|Proseware BV - Enterprise License|40|5|Closed Won|Website|Upsell|28000.00|100|2025-03-28|2025-08-07|2025-07-15
+1022|Northwind Traders AB - Enterprise License|51|12|Closed Lost|Partner|Renewal|24500.00|0|2025-07-30|2025-11-10|2025-11-09
+1023|Relecloud Inc - Enterprise License|15|5|Closed Won|Partner|New Business|10000.00|100|2025-07-11|2025-10-11|2025-10-19
+1024|Coho Winery GmbH - Training Package|14|12|Proposal|Trade Show|New Business|40000.00|50|2026-08-01|2026-10-06|
+1025|City Power & Light GmbH - Migration Project|9|7|Proposal|Trade Show|New Business|51000.00|50|2026-05-04|2026-07-04|
+1026|Fincher Architects SpA - Support Renewal|46|10|Closed Won|Website|Upsell|180000.00|100|2025-05-05|2025-08-23|2025-08-22
+1027|Margie's Travel GmbH - Migration Project|7|9|Closed Won|Trade Show|New Business|11000.00|100|2025-06-23|2025-09-05|2025-10-02
+1028|Lamna Healthcare Ltd - Enterprise License|34|4|Closed Won|Partner|New Business|68000.00|100|2025-06-18|2025-09-08|2025-09-28
+1029|Lamna Healthcare Ltd - Migration Project|34|9|Negotiation|Referral|Renewal|45000.00|75|2026-01-20|2026-03-03|
+1030|VanArsdel SARL - Cloud Subscription|27|9|Negotiation|Website|New Business|32500.00|75|2026-05-12|2026-08-01|
+1031|Southridge Video GmbH - Migration Project|1|12|Closed Won|Outbound|Renewal|28000.00|100|2025-11-25|2026-04-22|2026-06-16
+1032|Fabrikam SARL - Migration Project|32|12|Qualification|Outbound|Upsell|6500.00|25|2026-06-13|2026-07-25|
+1033|Prose Ware Systems Inc - Cloud Subscription|59|6|Negotiation|Website|Upsell|98000.00|75|2026-04-15|2026-06-06|
+1034|Prose Ware Systems Inc - Training Package|19|6|Closed Won|Website|New Business|37000.00|100|2025-05-30|2025-09-01|2025-10-04
+1035|Relecloud Inc - Enterprise License|15|12|Prospecting|Website|Renewal|36000.00|10|2026-09-20|2026-12-22|
+1036|Tall Poppies Ltd - Training Package|37|3|Closed Won|Outbound|Renewal|30500.00|100|2025-09-02|2025-12-25|2025-12-27
+1037|Northwind Traders AB - Analytics Suite|51|9|Negotiation|Trade Show|Renewal|43500.00|75|2025-07-30|2025-11-30|
+1038|The Phone Company SARL - Cloud Subscription|28|11|Closed Won|Outbound|Upsell|63500.00|100|2025-09-06|2025-10-19|2025-10-19
+1039|Graphic Design Institute Inc - Reporting Add-on|20|2|Qualification|Referral|New Business|29000.00|25|2026-09-28|2027-01-01|
+1040|Best For You Organics Ltd - Migration Project|36|1|Closed Lost|Referral|New Business|30000.00|0|2025-05-08|2025-08-27|2025-08-21
+1041|Woodgrove Bank Inc - Enterprise License|16|12|Closed Lost|Outbound|New Business|25000.00|0|2025-04-05|2025-06-03|2025-05-15
+1042|Woodgrove Bank Inc - Cloud Subscription|16|5|Qualification|Trade Show|Renewal|40500.00|25|2026-08-16|2026-11-27|
+1043|Margie's Travel SL - Analytics Suite|47|9|Closed Lost|Referral|New Business|46000.00|0|2025-05-15|2025-08-19|2025-08-09
+1044|Relecloud Inc - Training Package|15|7|Negotiation|Trade Show|Upsell|64500.00|75|2026-09-07|2026-12-08|
+1045|Adventure Works GmbH - Training Package|5|9|Closed Won|Website|Renewal|46500.00|100|2026-06-25|2026-07-27|2026-07-07
+1046|Nod Publishers SpA - Support Renewal|43|4|Closed Lost|Trade Show|New Business|37000.00|0|2025-08-18|2025-11-03|2025-10-16
+1047|Wingtip Toys BV - Enterprise License|39|9|Closed Won|Outbound|New Business|16500.00|100|2025-06-28|2025-07-19|2025-07-10
+1048|Northwind Traders AB - Enterprise License|51|12|Negotiation|Referral|Renewal|22000.00|75|2026-01-01|2026-01-27|
+1049|Consolidated Messenger GmbH - Enterprise License|4|12|Closed Won|Partner|New Business|105500.00|100|2025-10-08|2025-12-29|2025-12-05
+1050|Woodgrove Bank Inc - Migration Project|16|6|Closed Lost|Referral|Renewal|22000.00|0|2025-06-05|2025-07-12|2025-06-28
+1051|Litware AB - Cloud Subscription|52|5|Proposal|Referral|Upsell|70500.00|50|2025-12-02|2026-01-09|
+1052|Woodgrove Bank GmbH - Support Renewal|56|11|Qualification|Partner|New Business|120000.00|25|2026-06-30|2026-08-02|
+1053|Bellows College Inc - Reporting Add-on|22|6|Closed Lost|Partner|Renewal|12500.00|0|2025-09-02|2026-01-26|2026-03-27
+1054|Northwind Traders GmbH - Analytics Suite|11|3|Closed Won|Outbound|Renewal|42500.00|100|2025-07-10|2025-08-13|2025-09-16
+1055|Contoso Inc - Reporting Add-on|21|1|Negotiation|Outbound|Renewal|36000.00|75|2026-08-12|2026-10-28|
+1056|Northwind Traders AB - Analytics Suite|51|9|Proposal|Website|Upsell|19000.00|50|2026-05-16|2026-06-15|
+1057|Munson's Pickles GmbH - Enterprise License|13|5|Qualification|Outbound|New Business|40000.00|25|2026-09-12|2027-01-12|
+1058|Fincher Architects SpA - Reporting Add-on|46|2|Closed Lost|Trade Show|New Business|55000.00|0|2026-09-05|2027-01-07|2026-09-30
+1059|Fincher Architects SpA - Data Platform|46|4|Qualification|Referral|New Business|15000.00|25|2026-07-01|2026-10-29|
+1060|Relecloud Inc - Enterprise License|15|9|Closed Won|Partner|New Business|54000.00|100|2025-05-25|2025-09-22|2025-08-29
+1061|Litware AB - Reporting Add-on|52|5|Closed Won|Trade Show|Upsell|14500.00|100|2025-04-14|2025-06-16|2025-06-24
+1062|Fourth Coffee GmbH - Training Package|8|3|Negotiation|Outbound|New Business|17000.00|75|2026-01-11|2026-03-05|
+1063|Best For You Organics Ltd - Analytics Suite|36|11|Proposal|Outbound|New Business|70500.00|50|2026-05-06|2026-07-13|
+1064|Litware AB - Cloud Subscription|52|2|Prospecting|Website|New Business|32500.00|10|2026-07-10|2026-07-30|
+1065|Southridge Video BV - Analytics Suite|41|12|Closed Won|Outbound|Renewal|20000.00|100|2025-06-17|2025-08-01|2025-06-29
+1066|Litware GmbH - Enterprise License|12|12|Prospecting|Website|New Business|19500.00|10|2025-10-21|2026-01-20|
+1067|Best For You Organics Ltd - Support Renewal|36|4|Closed Won|Partner|New Business|27500.00|100|2025-11-17|2026-02-06|2026-02-19
+1068|Proseware BV - Analytics Suite|40|12|Closed Won|Partner|Renewal|6500.00|100|2025-02-24|2025-03-24|2025-03-20
+1069|Litware AB - Analytics Suite|52|11|Negotiation|Website|New Business|26500.00|75|2026-05-11|2026-10-05|
+1070|Southridge Video GmbH - Cloud Subscription|1|7|Proposal|Website|New Business|24500.00|50|2026-07-11|2026-09-06|
+1071|Fincher Architects SpA - Enterprise License|46|7|Closed Won|Website|Renewal|39000.00|100|2025-08-09|2025-09-15|2025-09-07
+1072|Best For You Organics Ltd - Reporting Add-on|36|10|Closed Won|Referral|New Business|24000.00|100|2025-05-17|2025-06-21|2025-05-29
+1073|Wingtip Toys BV - Cloud Subscription|39|2|Closed Lost|Website|Renewal|83500.00|0|2025-01-20|2025-03-03|2025-03-05
+1074|Parnell Aerospace SARL - Support Renewal|30|1|Closed Won|Website|Upsell|25500.00|100|2025-04-07|2025-07-25|2025-08-21
+1075|Southridge Video GmbH - Cloud Subscription|1|7|Negotiation|Website|New Business|43500.00|75|2025-12-07|2026-04-27|
+1076|Trail Frames Chalet Inc - Support Renewal|18|3|Closed Lost|Partner|New Business|24000.00|0|2025-04-17|2025-07-22|2025-07-04
+1077|Humongous Insurance Ltd - Reporting Add-on|33|9|Prospecting|Partner|Renewal|8500.00|10|2026-09-14|2026-12-21|
+1078|Relecloud Inc - Cloud Subscription|15|12|Closed Won|Outbound|Renewal|12500.00|100|2025-01-01|2025-02-12|2025-02-04
+1079|Consolidated Messenger GmbH - Support Renewal|4|12|Prospecting|Outbound|New Business|22500.00|10|2026-08-30|2026-12-10|
+1080|Northwind Traders AB - Migration Project|51|9|Negotiation|Outbound|New Business|43000.00|75|2026-05-13|2026-08-13|
+1081|Wide Field Robotics SARL - Analytics Suite|31|5|Closed Won|Outbound|Renewal|8000.00|100|2025-11-09|2026-01-14|2025-12-14
+1082|Tall Poppies Ltd - Cloud Subscription|37|8|Closed Lost|Website|Renewal|58500.00|0|2026-01-01|2026-02-10|2026-02-20
+1083|Adventure Works SpA - Cloud Subscription|45|10|Closed Won|Referral|New Business|27500.00|100|2026-02-02|2026-04-13|2026-04-17
+1084|First Up Consultants SARL - Reporting Add-on|29|7|Negotiation|Referral|New Business|39500.00|75|2025-10-29|2026-01-07|
+1085|Fincher Architects SpA - Cloud Subscription|46|2|Closed Won|Website|New Business|66500.00|100|2025-02-19|2025-03-12|2025-04-23
+1086|Bellows College Inc - Migration Project|22|2|Closed Lost|Referral|New Business|28000.00|0|2026-04-13|2026-07-19|2026-08-10
+1087|City Power & Light SL - Support Renewal|49|9|Closed Won|Referral|New Business|33000.00|100|2025-07-28|2025-11-15|2025-11-12
+1088|Prose Ware Systems Inc - Migration Project|19|9|Closed Won|Partner|Renewal|7000.00|100|2025-05-08|2025-09-05|2025-09-27
+1089|Relecloud Inc - Analytics Suite|15|11|Closed Lost|Website|Renewal|42500.00|0|2025-06-18|2025-07-09|2025-06-30
+1090|First Up Consultants SARL - Data Platform|29|6|Proposal|Partner|Upsell|23000.00|50|2026-07-08|2026-11-10|
+1091|VanArsdel SARL - Training Package|27|5|Negotiation|Trade Show|Renewal|18500.00|75|2026-06-02|2026-07-18|
+1092|Winsome Apparel AB - Migration Project|50|10|Proposal|Outbound|New Business|8500.00|50|2025-12-08|2026-01-01|
+1093|Liberty Delightful Sinful Bakery Ltd - Reporting Add-on|35|1|Closed Lost|Partner|New Business|19500.00|0|2025-02-09|2025-06-27|2025-07-05
+1094|Tres Chic Boutique BV - Support Renewal|42|7|Negotiation|Referral|Renewal|39000.00|75|2025-12-07|2026-03-15|
+1095|Tres Chic Boutique GmbH - Enterprise License|2|1|Proposal|Outbound|Renewal|11500.00|50|2025-12-16|2026-02-24|
+1096|Consolidated Messenger GmbH - Reporting Add-on|4|11|Closed Lost|Website|New Business|180000.00|0|2025-01-13|2025-03-27|2025-02-20
+1097|Munson's Pickles GmbH - Data Platform|13|10|Closed Won|Outbound|New Business|12500.00|100|2025-10-03|2026-01-08|2026-03-03
+1098|Consolidated Messenger GmbH - Cloud Subscription|4|11|Closed Lost|Website|New Business|71500.00|0|2025-05-03|2025-09-14|2025-09-05
+1099|Winsome Apparel AB - Enterprise License|50|9|Closed Won|Outbound|Renewal|33000.00|100|2025-03-23|2025-04-16|2025-04-04
+1100|Best For You Organics Ltd - Reporting Add-on|36|7|Closed Lost|Outbound|Renewal|27000.00|0|2025-11-08|2026-02-18|2025-12-24
+1101|Litware AB - Support Renewal|52|7|Qualification|Website|New Business|26500.00|25|2026-04-27|2026-05-28|
+1102|Fourth Coffee GmbH - Analytics Suite|8|4|Negotiation|Outbound|New Business|18000.00|75|2025-09-02|2025-10-29|
+1103|Northwind Traders GmbH - Cloud Subscription|11|11|Prospecting|Website|New Business|31500.00|10|2026-07-21|2026-12-04|
+1104|Relecloud Sp. z o.o. - Data Platform|55|5|Closed Lost|Website|New Business|42500.00|0|2025-04-14|2025-05-20|2025-04-26
+1105|Adventure Works GmbH - Cloud Subscription|5|10|Negotiation|Partner|Renewal|122500.00|75|2025-11-18|2026-04-06|
+1106|Proseware BV - Cloud Subscription|40|1|Closed Lost|Website|Upsell|13500.00|0|2026-03-10|2026-05-29|2026-06-16
+1107|Wingtip Toys BV - Analytics Suite|39|8|Prospecting|Trade Show|New Business|28500.00|10|2026-09-17|2026-10-22|
+1108|Fourth Coffee GmbH - Migration Project|8|11|Proposal|Trade Show|Renewal|117500.00|50|2026-04-18|2026-05-16|
+1109|Fincher Architects SpA - Training Package|46|3|Closed Won|Referral|Renewal|16000.00|100|2026-03-26|2026-05-18|2026-05-25
+1110|Contoso Inc - Enterprise License|21|2|Closed Won|Website|New Business|51500.00|100|2025-10-19|2026-02-01|2026-02-20
+1111|Trey Research GmbH - Support Renewal|57|7|Closed Won|Outbound|New Business|86000.00|100|2025-03-29|2025-06-23|2025-06-26
+1112|Tall Poppies Ltd - Support Renewal|37|9|Closed Won|Outbound|New Business|52000.00|100|2026-05-24|2026-08-12|2026-08-06
+1113|Contoso Inc - Analytics Suite|21|12|Closed Won|Website|Renewal|77500.00|100|2025-03-21|2025-05-16|2025-05-21
+1114|Winsome Apparel AB - Reporting Add-on|50|8|Closed Won|Referral|New Business|13000.00|100|2025-02-08|2025-04-01|2025-04-12
+1115|City Power & Light GmbH - Analytics Suite|9|2|Negotiation|Referral|Renewal|26500.00|75|2026-07-30|2026-11-22|
+1116|VanArsdel SARL - Support Renewal|27|10|Closed Won|Website|Renewal|28500.00|100|2025-02-23|2025-05-29|2025-06-11
+1117|Fourth Coffee GmbH - Cloud Subscription|8|7|Negotiation|Trade Show|New Business|32500.00|75|2026-07-25|2026-08-29|
+1118|Lucerne Publishing Ltd - Analytics Suite|38|2|Qualification|Partner|Renewal|19000.00|25|2026-06-05|2026-09-21|
+1119|City Power & Light GmbH - Migration Project|9|2|Closed Lost|Partner|New Business|19500.00|0|2025-01-20|2025-06-03|2025-05-12
+1120|Southridge Video BV - Cloud Subscription|41|11|Closed Won|Trade Show|New Business|25500.00|100|2026-07-08|2026-10-09|2026-09-30
+1121|VanArsdel SARL - Data Platform|27|7|Closed Won|Referral|New Business|31000.00|100|2025-04-19|2025-07-01|2025-05-19
+1122|Blue Yonder Airlines Inc - Enterprise License|23|10|Negotiation|Outbound|Renewal|11000.00|75|2026-06-17|2026-08-10|
+1123|Munson's Pickles Sp. z o.o. - Migration Project|53|10|Closed Won|Website|New Business|19500.00|100|2025-08-10|2025-12-28|2025-11-30
+1124|Fourth Coffee SL - Cloud Subscription|48|6|Closed Lost|Partner|Renewal|34500.00|0|2025-07-20|2025-12-05|2025-10-31
+1125|Humongous Insurance Ltd - Migration Project|33|6|Prospecting|Trade Show|Upsell|35000.00|10|2026-08-06|2026-11-21|
+1126|Contoso Inc - Analytics Suite|21|4|Negotiation|Outbound|New Business|17500.00|75|2025-10-13|2026-02-27|
+1127|Southridge Video GmbH - Enterprise License|1|4|Proposal|Outbound|New Business|12500.00|50|2025-06-10|2025-08-19|
+1128|Margie's Travel GmbH - Training Package|7|11|Closed Won|Website|New Business|18000.00|100|2025-07-14|2025-11-23|2025-11-23
+1129|Southridge Video BV - Analytics Suite|41|12|Closed Lost|Outbound|New Business|15500.00|0|2025-10-16|2026-01-15|2026-02-23
+1130|Liberty Delightful Sinful Bakery Ltd - Cloud Subscription|35|1|Proposal|Partner|Renewal|61500.00|50|2026-08-13|2026-11-06|
+1131|Litware AB - Enterprise License|52|8|Closed Lost|Partner|Renewal|33000.00|0|2025-09-18|2025-12-29|2025-11-24
+1132|Prose Ware Systems Inc - Support Renewal|19|8|Prospecting|Partner|New Business|14500.00|10|2026-09-11|2026-11-17|
+1133|Northwind Traders AB - Enterprise License|51|1|Closed Won|Outbound|New Business|11000.00|100|2026-02-18|2026-05-24|2026-05-09
+1134|Prose Ware Systems Inc - Migration Project|19|3|Closed Lost|Trade Show|Renewal|39500.00|0|2025-12-15|2026-02-04|2025-12-29
+1135|Lamna Healthcare Ltd - Analytics Suite|34|7|Closed Won|Trade Show|New Business|67500.00|100|2025-06-07|2025-10-01|2025-09-28
+1136|Graphic Design Institute AG - Training Package|60|4|Qualification|Outbound|New Business|48500.00|25|2026-08-17|2026-11-02|
+1137|City Power & Light GmbH - Analytics Suite|9|4|Qualification|Referral|Renewal|180000.00|25|2025-09-22|2026-01-27|
+1138|Best For You Organics Ltd - Data Platform|36|3|Closed Lost|Website|New Business|17000.00|0|2025-11-03|2026-02-27|2026-02-14
+1139|First Up Consultants SARL - Cloud Subscription|29|3|Qualification|Outbound|Upsell|36500.00|25|2025-10-04|2026-02-09|
+1140|Wide World Importers Inc - Reporting Add-on|24|12|Closed Won|Website|Renewal|52500.00|100|2026-02-08|2026-03-09|2026-03-08
+1141|Winsome Apparel AB - Enterprise License|50|9|Prospecting|Trade Show|Renewal|99500.00|10|2025-10-28|2026-01-07|
+1142|Adventure Works SpA - Support Renewal|45|12|Negotiation|Partner|Renewal|67000.00|75|2025-10-16|2025-11-14|
+1143|The Phone Company SARL - Analytics Suite|28|2|Closed Won|Partner|New Business|167500.00|100|2026-04-28|2026-06-05|2026-07-16
+1144|Wide World Importers Inc - Migration Project|24|4|Closed Won|Outbound|Renewal|9000.00|100|2026-01-10|2026-03-03|2026-01-27
+1145|Contoso Inc - Training Package|21|5|Closed Lost|Referral|Upsell|9500.00|0|2025-11-05|2026-01-19|2026-01-22
+1146|Tailspin Toys Inc - Cloud Subscription|25|3|Closed Won|Referral|New Business|17000.00|100|2026-08-05|2026-11-27|2026-09-30
+1147|The Phone Company SARL - Support Renewal|28|4|Negotiation|Partner|New Business|12500.00|75|2026-01-06|2026-05-12|
+1148|Tres Chic Boutique BV - Data Platform|42|11|Closed Won|Website|New Business|34000.00|100|2025-04-03|2025-05-07|2025-05-22
+1149|Litware AB - Data Platform|52|4|Closed Won|Trade Show|New Business|24000.00|100|2025-05-23|2025-10-20|2025-09-23
+1150|Nod Publishers GmbH - Enterprise License|3|4|Closed Lost|Outbound|New Business|44000.00|0|2025-02-16|2025-03-27|2025-02-28
+1151|Nod Publishers GmbH - Data Platform|3|11|Closed Won|Partner|Upsell|72500.00|100|2025-09-02|2025-10-03|2025-10-25
+1152|Coho Winery Sp. z o.o. - Migration Project|54|1|Qualification|Referral|Renewal|13000.00|25|2026-01-03|2026-04-03|
+1153|VanArsdel SARL - Training Package|27|2|Prospecting|Outbound|Upsell|47000.00|10|2026-02-07|2026-06-07|
+1154|Relecloud Inc - Cloud Subscription|15|2|Proposal|Website|Renewal|25500.00|50|2026-03-26|2026-05-08|
+1155|City Power & Light SL - Enterprise License|49|2|Negotiation|Website|Renewal|24000.00|75|2026-04-28|2026-05-24|
+1156|Graphic Design Institute AG - Training Package|60|5|Closed Won|Website|Upsell|20500.00|100|2026-01-09|2026-02-08|2026-02-09
+1157|Lamna Healthcare Ltd - Cloud Subscription|34|7|Closed Won|Referral|New Business|148000.00|100|2026-05-30|2026-06-21|2026-06-11
+1158|Fourth Coffee GmbH - Training Package|8|9|Closed Lost|Outbound|Upsell|27500.00|0|2025-12-04|2026-02-19|2026-02-10
+1159|Adventure Works SpA - Data Platform|45|9|Negotiation|Outbound|New Business|79000.00|75|2026-05-09|2026-06-29|
+1160|Prose Ware Systems Inc - Support Renewal|59|2|Proposal|Website|New Business|36500.00|50|2026-01-30|2026-03-01|
+1161|Wide World Importers Inc - Training Package|24|5|Proposal|Website|New Business|57000.00|50|2026-05-05|2026-09-14|
+1162|Fabrikam SARL - Cloud Subscription|32|8|Prospecting|Partner|New Business|5000.00|10|2026-07-08|2026-09-26|
+1163|Lamna Healthcare Ltd - Data Platform|34|11|Negotiation|Referral|Renewal|17000.00|75|2025-10-25|2026-03-21|
+1164|Best For You Organics Ltd - Migration Project|36|2|Negotiation|Outbound|Renewal|6500.00|75|2025-12-07|2026-02-10|
+1165|Margie's Travel GmbH - Enterprise License|7|1|Closed Won|Referral|New Business|64500.00|100|2025-01-20|2025-05-12|2025-04-05
+1166|Munson's Pickles Sp. z o.o. - Training Package|53|11|Proposal|Referral|Renewal|35500.00|50|2025-11-06|2026-02-23|
+1167|Munson's Pickles Sp. z o.o. - Cloud Subscription|53|11|Closed Lost|Trade Show|New Business|16500.00|0|2026-08-03|2026-12-01|2026-09-30
+1168|Lamna Healthcare Ltd - Reporting Add-on|34|5|Negotiation|Website|New Business|22500.00|75|2026-07-07|2026-10-15|
+1169|The Phone Company SARL - Reporting Add-on|28|5|Closed Won|Website|Renewal|14000.00|100|2025-07-07|2025-08-16|2025-08-12
+1170|Trail Frames Chalet Inc - Data Platform|58|4|Qualification|Referral|New Business|18500.00|25|2026-07-03|2026-11-08|
+1171|Trail Frames Chalet Inc - Migration Project|58|5|Negotiation|Website|Renewal|15000.00|75|2026-02-13|2026-04-06|
+1172|Bellows College Inc - Training Package|22|9|Closed Lost|Outbound|New Business|6000.00|0|2025-06-15|2025-09-27|2025-09-20
+1173|Munson's Pickles Sp. z o.o. - Reporting Add-on|53|12|Proposal|Outbound|New Business|40500.00|50|2026-06-27|2026-10-23|
+1174|Lamna Healthcare Ltd - Analytics Suite|34|10|Negotiation|Referral|New Business|19500.00|75|2026-06-03|2026-09-16|
+1175|Prose Ware Systems Inc - Reporting Add-on|59|1|Closed Lost|Outbound|New Business|19000.00|0|2025-03-08|2025-05-01|2025-04-23
+1176|Lucerne Publishing Ltd - Enterprise License|38|5|Closed Won|Outbound|New Business|35500.00|100|2025-07-29|2025-11-10|2025-10-20
+1177|Lamna Healthcare Ltd - Data Platform|34|10|Closed Won|Partner|Renewal|56000.00|100|2025-02-26|2025-06-18|2025-07-07
+1178|Fincher Architects GmbH - Support Renewal|6|1|Negotiation|Referral|New Business|61500.00|75|2025-09-21|2025-12-20|
+1179|Proseware BV - Data Platform|40|9|Negotiation|Referral|Renewal|21000.00|75|2026-02-18|2026-03-26|
+1180|City Power & Light SL - Support Renewal|49|1|Closed Won|Partner|Upsell|22000.00|100|2026-01-05|2026-04-21|2026-04-02
+1181|VanArsdel SARL - Reporting Add-on|27|8|Closed Won|Website|Renewal|14500.00|100|2025-05-02|2025-08-16|2025-08-25
+1182|Contoso Inc - Migration Project|21|3|Qualification|Outbound|New Business|8500.00|25|2026-06-28|2026-09-11|
+1183|Winsome Apparel AB - Support Renewal|50|6|Qualification|Outbound|Renewal|37000.00|25|2026-07-09|2026-08-09|
+1184|Woodgrove Bank Inc - Cloud Subscription|16|10|Closed Lost|Outbound|Upsell|169500.00|0|2025-06-14|2025-09-27|2025-08-15
+1185|Wingtip Toys BV - Support Renewal|39|2|Closed Lost|Outbound|New Business|26000.00|0|2025-08-12|2025-11-09|2025-10-25
+1186|Margie's Travel GmbH - Migration Project|7|11|Negotiation|Partner|Renewal|43500.00|75|2026-02-26|2026-06-07|
+1187|Northwind Traders GmbH - Data Platform|11|6|Closed Won|Referral|Renewal|86000.00|100|2026-05-26|2026-06-29|2026-08-15
+1188|The Phone Company SARL - Support Renewal|28|12|Closed Won|Referral|Renewal|32000.00|100|2025-08-30|2025-11-30|2026-03-02
+1189|Proseware BV - Enterprise License|40|9|Qualification|Trade Show|Renewal|69000.00|25|2026-07-20|2026-08-11|
+1190|Southridge Video BV - Enterprise License|41|3|Proposal|Partner|Renewal|10500.00|50|2026-01-10|2026-05-23|
+1191|VanArsdel SARL - Analytics Suite|27|7|Closed Won|Referral|New Business|48000.00|100|2025-12-06|2026-03-01|2026-04-06
+1192|Margie's Travel SL - Migration Project|47|11|Closed Won|Referral|New Business|37000.00|100|2025-01-02|2025-04-01|2025-04-06
+1193|Litware AB - Enterprise License|52|12|Closed Lost|Partner|New Business|64000.00|0|2025-06-24|2025-09-03|2025-08-05
+1194|Nod Publishers SpA - Cloud Subscription|43|4|Proposal|Website|New Business|26000.00|50|2026-09-12|2026-12-14|
+1195|Trey Research GmbH - Training Package|57|12|Negotiation|Partner|New Business|17000.00|75|2026-04-02|2026-05-01|
+1196|Wingtip Toys BV - Training Package|39|7|Negotiation|Trade Show|Renewal|44000.00|75|2025-12-20|2026-05-13|
+1197|Prose Ware Systems Inc - Data Platform|19|2|Proposal|Referral|New Business|47500.00|50|2025-12-05|2026-02-21|
+1198|Parnell Aerospace SARL - Analytics Suite|30|4|Prospecting|Website|New Business|90500.00|10|2025-11-15|2025-12-17|
+1199|Coho Winery Sp. z o.o. - Data Platform|54|9|Qualification|Website|New Business|15000.00|25|2026-07-18|2026-08-08|
+1200|Trail Frames Chalet Inc - Reporting Add-on|58|12|Closed Won|Outbound|Renewal|27500.00|100|2025-02-28|2025-05-22|2025-07-24

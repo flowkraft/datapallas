@@ -1,0 +1,62 @@
+# What this file is for
+# ---------------------
+# GeneratedSqlAllVendorsTest starts each container vendor from the PRODUCT's own compose file
+# (db-template/db/docker-compose.yml), so the images, the environment, the commands, the
+# healthchecks and Db2's `privileged` are the ones a customer runs. This override takes off the
+# three things that would make a test database collide with a real one:
+#
+#   - container_name: the product pins rb-northwind-<vendor>. A test that reused that name would
+#     refuse to start next to a running sample database, or - worse - adopt it and seed into it;
+#   - volumes: the product's named volumes hold the customer's Northwind data. The test wants a
+#     throwaway database, and `down -v` must be able to take it away;
+#   - ports: nothing is published. On a public server a published port goes round the host
+#     firewall, and these databases use the compose file's default passwords.
+#
+# `!reset` (Compose 2.24+) is what removes a key a base file set; an empty value would only be
+# merged with it. A YAML anchor loses the tag, so every service is written out in full.
+#
+# `networks.default` points the whole project at the external network `generated-sql-vendors`,
+# which the run command creates. The test runs inside a container on that same network and
+# reaches each database by service name and container port (postgres:5432), which is why nothing
+# needs publishing.
+services:
+
+  postgres:
+    container_name: !reset null
+    volumes: !reset null
+    ports: !reset null
+
+  mysql:
+    container_name: !reset null
+    volumes: !reset null
+    ports: !reset null
+
+  mariadb:
+    container_name: !reset null
+    volumes: !reset null
+    ports: !reset null
+
+  sqlserver:
+    container_name: !reset null
+    volumes: !reset null
+    ports: !reset null
+
+  oracle:
+    container_name: !reset null
+    volumes: !reset null
+    ports: !reset null
+
+  db2:
+    container_name: !reset null
+    volumes: !reset null
+    ports: !reset null
+
+  clickhouse:
+    container_name: !reset null
+    volumes: !reset null
+    ports: !reset null
+
+networks:
+  default:
+    name: generated-sql-vendors
+    external: true

@@ -1,0 +1,30 @@
+[
+  {
+    "sample": "northwind-warehouse",
+    "source": "SELECT continent, SUM(gross_revenue) FROM vw_sales_detail GROUP BY continent",
+    "dimensions": [
+      "Continent"
+    ],
+    "measures": [
+      "GrossRevenue"
+    ],
+    "rows": [
+      [
+        "Europe",
+        2332112.53
+      ],
+      [
+        "South America",
+        584346.09
+      ],
+      [
+        "North America",
+        1565308.4
+      ],
+      [
+        "Other",
+        271144.05
+      ]
+    ]
+  }
+]

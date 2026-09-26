@@ -1,0 +1,3001 @@
+order_id|customer_id|order_date|status|channel|shipping_fee
+1|22|2025-01-27|Delivered|Mobile App|6.99
+2|182|2025-06-04|Delivered|Marketplace|4.99
+3|260|2026-07-06|Delivered|Web|6.99
+4|266|2026-08-18|Delivered|Mobile App|2.99
+5|254|2025-11-19|Shipped|Web|6.99
+6|63|2025-06-08|Delivered|Phone|4.99
+7|103|2025-04-10|Delivered|Web|0.00
+8|109|2025-06-10|Delivered|Phone|2.99
+9|64|2025-11-05|Delivered|Web|4.99
+10|36|2025-02-08|Delivered|Web|0.00
+11|158|2025-06-22|Shipped|Web|0.00
+12|277|2025-09-27|Delivered|Web|9.99
+13|121|2026-04-19|Cancelled|Mobile App|4.99
+14|110|2025-12-08|Delivered|Marketplace|9.99
+15||2025-04-17|Delivered|Mobile App|4.99
+16|288|2025-06-20|Delivered|Mobile App|0.00
+17|156|2026-09-28|Processing|Marketplace|6.99
+18|286|2026-05-09|Shipped|Web|6.99
+19|198|2025-10-12|Delivered|Web|9.99
+20|76|2026-02-03|Delivered|Phone|14.99
+21|171|2025-01-14|Returned|Marketplace|4.99
+22||2026-08-20|Shipped|Marketplace|14.99
+23||2026-06-16|Delivered|Mobile App|2.99
+24|366|2025-06-27|Cancelled|Marketplace|0.00
+25|117|2025-11-14|Delivered|Mobile App|0.00
+26|200|2026-01-08|Delivered|Mobile App|0.00
+27|84|2026-01-07|Delivered|Mobile App|4.99
+28|342|2025-12-23|Cancelled|Mobile App|6.99
+29|317|2025-04-25|Delivered|Web|6.99
+30||2025-12-02|Cancelled|Web|4.99
+31||2026-09-10|Delivered|Marketplace|2.99
+32|18|2025-11-29|Delivered|Mobile App|2.99
+33|75|2026-02-27|Delivered|Phone|4.99
+34|175|2025-06-16|Delivered|Phone|4.99
+35|75|2026-01-11|Delivered|Web|4.99
+36|93|2026-02-18|Returned|Mobile App|4.99
+37|279|2026-05-11|Delivered|Web|0.00
+38|14|2025-01-28|Returned|Web|0.00
+39|309|2026-08-30|Delivered|Web|0.00
+40|158|2026-06-10|Delivered|Web|2.99
+41|395|2026-04-06|Delivered|Web|6.99
+42|80|2026-07-11|Shipped|Web|9.99
+43|48|2026-01-07|Delivered|Marketplace|0.00
+44|142|2025-08-15|Cancelled|Marketplace|2.99
+45|110|2026-01-31|Delivered|Mobile App|2.99
+46|95|2025-11-21|Delivered|Web|0.00
+47|70|2026-07-11|Shipped|Web|14.99
+48|222|2025-09-16|Delivered|Mobile App|2.99
+49|242|2025-01-26|Delivered|Mobile App|14.99
+50|65|2026-06-11|Delivered|Marketplace|4.99
+51||2025-11-13|Delivered|Web|0.00
+52||2026-03-13|Delivered|Mobile App|9.99
+53|242|2026-08-28|Cancelled|Marketplace|9.99
+54|33|2025-12-26|Cancelled|Web|9.99
+55|309|2026-09-14|Processing|Web|0.00
+56|156|2026-06-05|Delivered|Web|2.99
+57|344|2025-01-04|Shipped|Web|2.99
+58|117|2025-10-14|Delivered|Mobile App|0.00
+59|59|2025-07-01|Cancelled|Mobile App|4.99
+60|73|2025-02-17|Delivered|Mobile App|6.99
+61|15|2026-05-31|Delivered|Mobile App|0.00
+62|313|2026-05-12|Delivered|Web|4.99
+63|240|2026-02-05|Delivered|Web|4.99
+64|350|2026-08-23|Shipped|Web|4.99
+65|7|2025-10-10|Shipped|Web|4.99
+66|254|2026-03-09|Shipped|Web|4.99
+67|76|2026-07-24|Delivered|Web|4.99
+68|195|2025-11-08|Delivered|Web|0.00
+69|298|2025-03-20|Shipped|Web|2.99
+70|299|2025-06-29|Shipped|Web|2.99
+71|278|2026-02-10|Delivered|Web|2.99
+72|54|2026-04-11|Delivered|Web|4.99
+73|376|2025-08-19|Delivered|Mobile App|6.99
+74||2026-07-17|Shipped|Mobile App|2.99
+75|215|2026-02-19|Delivered|Marketplace|6.99
+76|309|2026-04-20|Cancelled|Phone|4.99
+77|355|2026-05-09|Delivered|Web|14.99
+78|41|2026-07-14|Cancelled|Marketplace|4.99
+79|368|2026-04-17|Delivered|Web|4.99
+80|347|2025-05-21|Delivered|Phone|6.99
+81|33|2025-12-12|Delivered|Marketplace|4.99
+82|110|2025-09-07|Delivered|Mobile App|4.99
+83||2025-08-20|Delivered|Marketplace|2.99
+84|117|2025-08-01|Delivered|Web|6.99
+85|387|2025-11-07|Returned|Mobile App|0.00
+86|264|2025-09-25|Delivered|Web|4.99
+87|73|2025-04-19|Delivered|Web|9.99
+88|305|2026-07-14|Delivered|Marketplace|2.99
+89|368|2026-03-31|Delivered|Web|6.99
+90|243|2026-07-31|Delivered|Web|0.00
+91|110|2026-04-22|Delivered|Mobile App|0.00
+92|370|2026-01-13|Delivered|Web|6.99
+93|67|2025-08-11|Returned|Marketplace|9.99
+94|254|2025-10-22|Delivered|Web|6.99
+95|90|2025-08-12|Delivered|Web|4.99
+96|223|2025-05-28|Returned|Mobile App|4.99
+97|254|2026-02-05|Delivered|Web|6.99
+98|275|2025-01-16|Shipped|Mobile App|4.99
+99|52|2025-12-14|Delivered|Phone|6.99
+100|339|2025-10-05|Delivered|Web|4.99
+101|390|2026-04-11|Cancelled|Mobile App|2.99
+102|110|2026-04-18|Delivered|Web|4.99
+103|171|2025-12-22|Delivered|Web|2.99
+104|199|2026-01-12|Shipped|Mobile App|2.99
+105|171|2025-11-03|Delivered|Marketplace|14.99
+106|264|2026-02-13|Delivered|Marketplace|2.99
+107|87|2026-07-09|Delivered|Mobile App|0.00
+108|110|2026-08-14|Delivered|Web|9.99
+109|103|2026-03-29|Shipped|Mobile App|2.99
+110|11|2025-10-13|Cancelled|Web|4.99
+111|198|2025-05-12|Delivered|Mobile App|2.99
+112|286|2026-01-30|Cancelled|Phone|2.99
+113|29|2025-09-21|Delivered|Mobile App|14.99
+114|196|2026-07-26|Delivered|Phone|4.99
+115|171|2026-06-04|Shipped|Mobile App|2.99
+116|314|2025-08-07|Cancelled|Marketplace|9.99
+117|77|2025-01-07|Delivered|Web|4.99
+118|152|2025-12-08|Shipped|Web|4.99
+119|110|2025-12-11|Delivered|Mobile App|2.99
+120|262|2025-05-08|Delivered|Mobile App|0.00
+121|33|2025-11-09|Cancelled|Web|9.99
+122|311|2025-08-04|Cancelled|Web|6.99
+123||2025-07-03|Delivered|Mobile App|2.99
+124|374|2026-02-21|Cancelled|Web|0.00
+125|387|2026-02-17|Delivered|Mobile App|2.99
+126|171|2026-09-06|Cancelled|Mobile App|4.99
+127|105|2026-08-25|Delivered|Marketplace|4.99
+128|264|2026-06-14|Delivered|Mobile App|4.99
+129|400|2026-05-02|Delivered|Mobile App|9.99
+130|181|2025-03-06|Delivered|Web|4.99
+131|123|2026-04-07|Returned|Phone|4.99
+132|215|2026-07-26|Delivered|Mobile App|14.99
+133|110|2026-09-27|Processing|Web|2.99
+134|99|2025-12-02|Delivered|Web|9.99
+135|266|2026-04-26|Returned|Mobile App|0.00
+136|19|2026-07-17|Cancelled|Web|6.99
+137|105|2025-07-25|Delivered|Marketplace|4.99
+138|242|2026-02-24|Delivered|Mobile App|9.99
+139|265|2025-03-13|Delivered|Web|4.99
+140|27|2025-10-31|Delivered|Mobile App|0.00
+141|264|2026-09-01|Cancelled|Web|2.99
+142|161|2025-03-27|Delivered|Web|0.00
+143|299|2026-06-27|Delivered|Marketplace|4.99
+144|223|2025-06-08|Delivered|Web|0.00
+145|110|2025-08-11|Delivered|Web|6.99
+146|366|2026-07-17|Delivered|Web|9.99
+147|202|2025-02-07|Cancelled|Mobile App|0.00
+148||2025-10-07|Delivered|Web|4.99
+149|310|2026-04-12|Cancelled|Web|4.99
+150|110|2026-06-23|Delivered|Web|6.99
+151|370|2026-06-16|Cancelled|Web|2.99
+152|321|2025-04-25|Delivered|Phone|9.99
+153|361|2026-09-19|Delivered|Mobile App|6.99
+154|264|2025-03-02|Cancelled|Marketplace|14.99
+155|110|2025-03-08|Delivered|Web|4.99
+156|110|2026-07-06|Delivered|Web|2.99
+157||2025-12-26|Delivered|Marketplace|2.99
+158|96|2025-02-27|Delivered|Web|2.99
+159|333|2025-12-02|Delivered|Web|6.99
+160|233|2026-08-09|Shipped|Web|9.99
+161|395|2026-03-19|Cancelled|Mobile App|4.99
+162|29|2025-09-08|Delivered|Mobile App|9.99
+163|123|2025-07-13|Cancelled|Web|9.99
+164||2026-06-07|Delivered|Mobile App|4.99
+165|393|2026-06-04|Delivered|Web|4.99
+166||2025-06-02|Delivered|Mobile App|2.99
+167|398|2026-09-10|Processing|Web|4.99
+168|80|2026-08-14|Delivered|Web|6.99
+169|9|2025-05-09|Delivered|Mobile App|6.99
+170|110|2025-11-05|Delivered|Web|4.99
+171|288|2026-09-28|Shipped|Phone|4.99
+172|70|2026-04-20|Cancelled|Web|2.99
+173||2026-09-25|Shipped|Marketplace|6.99
+174|347|2026-01-24|Delivered|Web|4.99
+175|315|2025-09-05|Delivered|Web|6.99
+176|110|2026-07-25|Delivered|Mobile App|6.99
+177||2026-09-03|Delivered|Phone|2.99
+178|257|2025-03-14|Shipped|Mobile App|4.99
+179|103|2025-12-21|Returned|Web|6.99
+180|156|2025-11-12|Delivered|Web|0.00
+181|270|2026-03-28|Delivered|Marketplace|2.99
+182|304|2025-12-25|Delivered|Web|9.99
+183|105|2026-07-31|Cancelled|Web|0.00
+184|395|2026-08-20|Delivered|Web|9.99
+185|274|2025-12-09|Delivered|Marketplace|6.99
+186|200|2026-04-17|Delivered|Web|2.99
+187||2025-07-11|Delivered|Web|0.00
+188|154|2026-05-26|Cancelled|Web|4.99
+189|145|2025-11-21|Delivered|Web|4.99
+190|307|2025-11-23|Delivered|Web|9.99
+191|254|2025-06-25|Delivered|Phone|4.99
+192|248|2026-01-22|Delivered|Mobile App|4.99
+193|125|2025-06-30|Delivered|Mobile App|4.99
+194|264|2025-05-21|Delivered|Web|6.99
+195|295|2025-07-14|Shipped|Mobile App|6.99
+196||2026-07-13|Delivered|Web|2.99
+197|306|2025-10-08|Delivered|Marketplace|6.99
+198|395|2026-07-09|Delivered|Web|4.99
+199|264|2026-03-15|Delivered|Mobile App|2.99
+200|387|2026-03-29|Delivered|Web|0.00
+201|323|2026-05-16|Delivered|Mobile App|2.99
+202|62|2025-10-04|Shipped|Web|6.99
+203|344|2025-09-28|Delivered|Mobile App|0.00
+204|156|2025-05-23|Cancelled|Mobile App|14.99
+205|288|2026-01-03|Delivered|Marketplace|4.99
+206||2025-10-09|Delivered|Mobile App|6.99
+207|188|2025-10-18|Cancelled|Web|9.99
+208|71|2025-03-04|Cancelled|Web|2.99
+209|171|2026-09-23|Delivered|Phone|6.99
+210|324|2026-05-17|Delivered|Mobile App|6.99
+211|110|2025-10-16|Delivered|Marketplace|2.99
+212|110|2025-09-27|Returned|Web|2.99
+213|58|2026-06-27|Delivered|Web|4.99
+214|377|2026-08-22|Delivered|Phone|0.00
+215|32|2026-09-11|Delivered|Marketplace|2.99
+216|171|2026-05-20|Delivered|Web|2.99
+217|247|2026-02-18|Delivered|Mobile App|4.99
+218|241|2026-01-03|Delivered|Phone|0.00
+219||2026-07-16|Delivered|Mobile App|0.00
+220|69|2025-07-12|Delivered|Mobile App|4.99
+221|309|2026-05-26|Cancelled|Phone|0.00
+222|123|2025-06-25|Delivered|Mobile App|2.99
+223|63|2025-05-11|Returned|Web|14.99
+224|15|2025-07-05|Delivered|Mobile App|4.99
+225|232|2025-03-26|Delivered|Web|14.99
+226|148|2025-05-31|Cancelled|Marketplace|14.99
+227||2025-07-22|Shipped|Web|4.99
+228|190|2026-06-07|Delivered|Mobile App|4.99
+229|228|2025-03-14|Delivered|Mobile App|2.99
+230|256|2026-01-03|Delivered|Mobile App|2.99
+231|162|2025-05-20|Delivered|Mobile App|0.00
+232|198|2026-03-14|Delivered|Mobile App|4.99
+233|277|2025-07-24|Delivered|Mobile App|6.99
+234|135|2025-10-08|Delivered|Mobile App|9.99
+235|347|2026-08-29|Delivered|Web|2.99
+236|76|2025-10-01|Delivered|Web|0.00
+237|105|2026-04-10|Delivered|Web|4.99
+238|304|2025-04-21|Delivered|Marketplace|4.99
+239|264|2025-05-23|Delivered|Web|9.99
+240|110|2025-12-13|Shipped|Web|6.99
+241|200|2025-05-12|Cancelled|Phone|6.99
+242|34|2026-03-13|Delivered|Web|0.00
+243|242|2025-04-08|Delivered|Web|4.99
+244|91|2025-08-04|Shipped|Web|4.99
+245|188|2025-03-10|Shipped|Web|0.00
+246|9|2025-08-27|Delivered|Web|4.99
+247|336|2025-10-28|Shipped|Web|2.99
+248|223|2026-02-12|Delivered|Mobile App|4.99
+249|303|2025-07-19|Cancelled|Web|6.99
+250|207|2025-09-21|Delivered|Mobile App|9.99
+251|152|2025-12-15|Delivered|Web|0.00
+252|309|2025-09-03|Delivered|Web|4.99
+253|139|2025-12-08|Delivered|Web|2.99
+254||2025-07-28|Delivered|Web|6.99
+255|45|2026-05-29|Returned|Web|9.99
+256|222|2026-08-26|Delivered|Web|2.99
+257|171|2026-09-22|Delivered|Web|14.99
+258|110|2025-12-20|Returned|Marketplace|6.99
+259||2026-04-10|Delivered|Web|2.99
+260|159|2026-01-17|Delivered|Marketplace|4.99
+261|393|2025-10-06|Delivered|Web|6.99
+262|171|2025-07-25|Delivered|Marketplace|0.00
+263|171|2026-08-09|Delivered|Marketplace|4.99
+264|171|2025-05-19|Delivered|Mobile App|4.99
+265|111|2026-04-16|Delivered|Web|0.00
+266|326|2026-03-11|Delivered|Mobile App|2.99
+267|164|2025-09-12|Delivered|Mobile App|2.99
+268|132|2025-09-17|Cancelled|Phone|2.99
+269|167|2025-05-19|Delivered|Marketplace|4.99
+270|212|2026-02-22|Delivered|Web|9.99
+271|67|2025-02-12|Delivered|Web|9.99
+272||2025-12-30|Shipped|Web|9.99
+273|322|2026-08-13|Delivered|Web|0.00
+274|344|2025-05-14|Returned|Mobile App|9.99
+275|298|2025-03-26|Delivered|Web|2.99
+276|256|2026-04-08|Delivered|Mobile App|2.99
+277|110|2025-04-23|Delivered|Marketplace|0.00
+278|185|2025-09-09|Shipped|Marketplace|9.99
+279|114|2026-03-07|Delivered|Phone|2.99
+280|212|2025-06-27|Delivered|Web|14.99
+281|43|2026-04-11|Cancelled|Mobile App|4.99
+282|309|2025-03-07|Delivered|Web|9.99
+283|270|2026-03-23|Delivered|Mobile App|4.99
+284||2025-06-25|Delivered|Mobile App|2.99
+285|373|2025-06-22|Cancelled|Marketplace|4.99
+286|12|2026-07-21|Delivered|Marketplace|2.99
+287|215|2026-03-28|Delivered|Marketplace|0.00
+288|380|2026-05-05|Delivered|Mobile App|2.99
+289|257|2026-08-21|Delivered|Mobile App|2.99
+290|175|2026-07-01|Delivered|Marketplace|4.99
+291|110|2026-04-15|Delivered|Mobile App|6.99
+292|141|2025-04-13|Delivered|Web|4.99
+293|134|2025-11-25|Delivered|Web|14.99
+294|387|2026-07-19|Delivered|Mobile App|2.99
+295|110|2025-11-25|Cancelled|Web|9.99
+296|199|2025-09-19|Returned|Mobile App|6.99
+297|153|2026-09-21|Delivered|Mobile App|0.00
+298||2025-06-01|Delivered|Web|0.00
+299|366|2025-01-19|Delivered|Web|0.00
+300|263|2026-09-26|Processing|Marketplace|2.99
+301|354|2026-06-10|Delivered|Web|9.99
+302|339|2026-08-07|Delivered|Web|6.99
+303|110|2026-07-29|Delivered|Mobile App|6.99
+304|146|2026-05-12|Cancelled|Phone|9.99
+305|309|2026-06-18|Cancelled|Web|0.00
+306|156|2025-01-21|Delivered|Web|2.99
+307||2025-05-12|Delivered|Marketplace|0.00
+308|389|2025-06-19|Delivered|Web|14.99
+309|110|2026-02-23|Delivered|Marketplace|6.99
+310|398|2025-06-01|Cancelled|Web|2.99
+311|264|2026-02-23|Delivered|Web|14.99
+312|361|2026-07-06|Delivered|Web|4.99
+313|376|2025-02-09|Delivered|Mobile App|2.99
+314|8|2025-10-12|Delivered|Mobile App|6.99
+315|183|2026-04-07|Delivered|Marketplace|2.99
+316|254|2025-04-10|Delivered|Marketplace|6.99
+317|140|2025-12-12|Cancelled|Web|4.99
+318|340|2025-07-06|Cancelled|Web|0.00
+319|254|2025-01-31|Delivered|Marketplace|0.00
+320|380|2025-09-25|Cancelled|Marketplace|2.99
+321|18|2026-07-07|Cancelled|Mobile App|6.99
+322|110|2025-09-30|Delivered|Mobile App|0.00
+323|300|2026-09-22|Shipped|Web|2.99
+324||2026-06-23|Delivered|Phone|14.99
+325|171|2026-05-11|Delivered|Marketplace|0.00
+326|137|2026-06-13|Cancelled|Web|0.00
+327|110|2026-02-11|Returned|Web|2.99
+328|280|2026-08-23|Delivered|Web|0.00
+329|19|2025-08-28|Cancelled|Mobile App|4.99
+330|309|2026-08-22|Delivered|Mobile App|9.99
+331|173|2025-08-09|Delivered|Marketplace|6.99
+332|380|2025-04-19|Delivered|Marketplace|4.99
+333||2025-11-10|Cancelled|Mobile App|0.00
+334|236|2026-04-26|Shipped|Mobile App|9.99
+335|153|2026-09-07|Delivered|Phone|0.00
+336|110|2025-07-07|Delivered|Mobile App|2.99
+337|29|2026-09-14|Delivered|Marketplace|2.99
+338|55|2026-03-12|Shipped|Web|4.99
+339|157|2025-04-20|Shipped|Web|2.99
+340|110|2026-01-06|Cancelled|Mobile App|4.99
+341|309|2026-09-09|Cancelled|Mobile App|2.99
+342|394|2025-11-14|Delivered|Web|9.99
+343|153|2025-04-16|Delivered|Mobile App|6.99
+344|49|2026-01-09|Cancelled|Web|0.00
+345|390|2026-05-20|Delivered|Web|2.99
+346|257|2025-04-09|Delivered|Web|9.99
+347|109|2025-10-18|Shipped|Mobile App|0.00
+348|75|2026-09-12|Shipped|Marketplace|4.99
+349|203|2025-09-26|Returned|Mobile App|4.99
+350|291|2025-11-04|Cancelled|Web|4.99
+351|79|2026-05-05|Delivered|Web|0.00
+352||2025-11-01|Delivered|Web|6.99
+353|358|2026-09-06|Delivered|Web|4.99
+354|309|2026-03-16|Returned|Web|2.99
+355|45|2025-07-13|Delivered|Web|4.99
+356|101|2026-01-27|Delivered|Web|6.99
+357|143|2025-11-10|Returned|Web|6.99
+358|242|2025-02-28|Cancelled|Web|6.99
+359|76|2026-07-10|Delivered|Mobile App|0.00
+360|1|2025-11-06|Returned|Marketplace|4.99
+361|268|2026-09-24|Delivered|Mobile App|6.99
+362|33|2025-06-05|Delivered|Web|0.00
+363|110|2026-01-21|Returned|Mobile App|9.99
+364|397|2026-07-05|Delivered|Mobile App|6.99
+365||2026-03-13|Delivered|Web|4.99
+366|194|2026-04-30|Delivered|Web|2.99
+367|91|2026-07-18|Cancelled|Web|4.99
+368|95|2025-10-15|Delivered|Mobile App|9.99
+369|384|2026-09-12|Delivered|Web|2.99
+370|366|2026-01-21|Delivered|Mobile App|0.00
+371|347|2025-02-22|Cancelled|Web|2.99
+372|9|2026-03-24|Delivered|Web|0.00
+373|12|2025-09-30|Delivered|Web|6.99
+374|67|2025-08-30|Cancelled|Web|2.99
+375|91|2025-04-23|Delivered|Web|4.99
+376||2026-08-21|Delivered|Marketplace|2.99
+377|34|2025-02-16|Shipped|Web|6.99
+378|171|2026-08-08|Shipped|Marketplace|9.99
+379|352|2026-01-06|Delivered|Phone|0.00
+380|110|2026-05-25|Delivered|Mobile App|4.99
+381|68|2025-09-07|Cancelled|Marketplace|9.99
+382|221|2025-01-18|Cancelled|Marketplace|6.99
+383|309|2026-03-07|Delivered|Mobile App|14.99
+384||2026-04-24|Delivered|Web|2.99
+385|48|2025-09-05|Delivered|Mobile App|6.99
+386|188|2025-08-10|Delivered|Web|6.99
+387|324|2025-03-17|Cancelled|Web|2.99
+388|282|2026-05-30|Shipped|Web|4.99
+389|264|2026-05-27|Delivered|Web|4.99
+390|321|2025-09-15|Delivered|Web|0.00
+391|372|2026-02-01|Delivered|Marketplace|9.99
+392|389|2025-12-28|Delivered|Mobile App|4.99
+393|382|2026-01-05|Delivered|Web|6.99
+394|118|2025-10-16|Delivered|Marketplace|4.99
+395|68|2025-10-08|Delivered|Marketplace|2.99
+396|131|2025-04-26|Delivered|Web|4.99
+397|311|2026-03-25|Shipped|Marketplace|6.99
+398|132|2025-01-29|Delivered|Marketplace|2.99
+399|280|2026-06-22|Delivered|Web|9.99
+400|222|2025-01-26|Cancelled|Web|2.99
+401|72|2026-05-15|Delivered|Marketplace|6.99
+402|114|2026-03-15|Delivered|Web|6.99
+403|358|2026-09-12|Cancelled|Web|4.99
+404|114|2025-03-13|Cancelled|Phone|6.99
+405|110|2025-03-01|Delivered|Web|6.99
+406|295|2025-10-15|Delivered|Web|4.99
+407|63|2026-01-19|Delivered|Mobile App|2.99
+408|264|2026-09-24|Delivered|Mobile App|0.00
+409|159|2026-09-24|Shipped|Web|2.99
+410|254|2026-06-02|Delivered|Web|14.99
+411|11|2026-05-05|Delivered|Web|9.99
+412|137|2025-03-24|Delivered|Mobile App|2.99
+413|68|2026-07-06|Delivered|Mobile App|0.00
+414||2026-03-30|Delivered|Web|2.99
+415|354|2026-02-08|Delivered|Mobile App|4.99
+416|321|2025-04-10|Delivered|Web|0.00
+417|309|2026-02-28|Delivered|Mobile App|2.99
+418|190|2025-09-29|Delivered|Mobile App|0.00
+419|324|2026-01-29|Delivered|Web|6.99
+420|288|2026-04-01|Delivered|Web|2.99
+421|118|2026-04-24|Cancelled|Mobile App|6.99
+422|238|2026-06-14|Shipped|Phone|6.99
+423|379|2026-05-20|Delivered|Marketplace|6.99
+424|285|2026-03-15|Delivered|Web|6.99
+425|105|2026-02-27|Delivered|Phone|6.99
+426|135|2025-03-16|Delivered|Mobile App|9.99
+427|171|2026-02-07|Delivered|Mobile App|4.99
+428|117|2025-10-04|Returned|Web|4.99
+429|223|2025-12-09|Returned|Mobile App|9.99
+430|203|2025-04-04|Delivered|Web|0.00
+431|47|2026-04-22|Shipped|Web|4.99
+432|6|2025-07-29|Delivered|Mobile App|2.99
+433|190|2025-11-13|Delivered|Mobile App|6.99
+434||2025-09-16|Delivered|Mobile App|6.99
+435|88|2025-10-01|Shipped|Marketplace|2.99
+436|13|2026-06-13|Delivered|Phone|2.99
+437|331|2025-06-28|Delivered|Web|6.99
+438|171|2025-04-20|Cancelled|Mobile App|14.99
+439|114|2025-11-23|Delivered|Web|6.99
+440|110|2026-03-17|Cancelled|Web|2.99
+441|400|2026-08-19|Shipped|Mobile App|2.99
+442|386|2025-03-27|Cancelled|Web|4.99
+443|347|2026-05-18|Delivered|Web|2.99
+444||2025-03-21|Delivered|Web|2.99
+445||2026-02-21|Delivered|Mobile App|9.99
+446|82|2026-09-15|Shipped|Web|4.99
+447|159|2026-08-01|Delivered|Web|0.00
+448|135|2025-12-12|Cancelled|Mobile App|0.00
+449|267|2025-09-11|Cancelled|Mobile App|0.00
+450|249|2026-06-02|Delivered|Marketplace|2.99
+451|101|2026-01-11|Delivered|Mobile App|4.99
+452|361|2025-04-01|Delivered|Mobile App|0.00
+453|110|2025-04-12|Delivered|Web|14.99
+454|22|2025-03-22|Delivered|Phone|2.99
+455|330|2026-07-14|Delivered|Phone|9.99
+456|4|2025-02-08|Delivered|Mobile App|0.00
+457|117|2026-07-26|Delivered|Web|4.99
+458|314|2025-10-27|Delivered|Mobile App|0.00
+459|110|2026-08-10|Delivered|Phone|0.00
+460||2026-07-26|Returned|Marketplace|2.99
+461|186|2025-02-28|Delivered|Web|6.99
+462|258|2025-09-12|Delivered|Phone|0.00
+463|117|2026-09-02|Cancelled|Web|0.00
+464|390|2025-12-17|Delivered|Phone|2.99
+465|347|2025-10-12|Delivered|Web|0.00
+466|83|2026-04-10|Delivered|Mobile App|6.99
+467|302|2026-01-17|Delivered|Mobile App|14.99
+468|152|2026-08-02|Delivered|Mobile App|6.99
+469|198|2025-09-24|Delivered|Web|2.99
+470|163|2026-09-03|Cancelled|Mobile App|2.99
+471|24|2025-06-23|Delivered|Web|0.00
+472|29|2025-05-19|Delivered|Web|0.00
+473|62|2026-06-09|Cancelled|Web|0.00
+474|79|2025-05-11|Delivered|Web|4.99
+475|226|2026-06-18|Returned|Web|0.00
+476|117|2026-02-02|Shipped|Web|4.99
+477|117|2026-06-28|Returned|Web|6.99
+478|110|2025-08-29|Delivered|Web|2.99
+479|215|2026-06-09|Delivered|Marketplace|0.00
+480|387|2025-05-26|Delivered|Marketplace|0.00
+481|181|2025-09-06|Delivered|Web|6.99
+482|110|2025-12-28|Delivered|Marketplace|2.99
+483|271|2025-11-05|Delivered|Mobile App|4.99
+484|393|2025-09-13|Delivered|Web|4.99
+485|14|2025-04-11|Delivered|Phone|0.00
+486|130|2025-03-02|Delivered|Web|9.99
+487|339|2025-12-18|Cancelled|Mobile App|2.99
+488|175|2026-03-12|Delivered|Web|6.99
+489|117|2025-11-04|Delivered|Web|6.99
+490|379|2025-05-11|Delivered|Web|9.99
+491|49|2025-05-28|Cancelled|Web|2.99
+492|134|2026-05-26|Delivered|Phone|6.99
+493|299|2026-04-13|Delivered|Web|2.99
+494|103|2025-10-08|Delivered|Web|9.99
+495|117|2025-03-03|Delivered|Mobile App|2.99
+496|326|2026-04-13|Returned|Web|4.99
+497||2025-09-11|Shipped|Mobile App|4.99
+498|66|2025-07-16|Delivered|Web|6.99
+499|309|2026-09-20|Delivered|Web|4.99
+500|68|2025-12-31|Cancelled|Marketplace|4.99
+501|198|2026-03-12|Delivered|Web|0.00
+502|199|2025-12-13|Delivered|Web|2.99
+503|139|2026-07-10|Delivered|Web|6.99
+504||2025-08-21|Delivered|Phone|4.99
+505|59|2025-09-14|Delivered|Mobile App|6.99
+506|273|2026-04-03|Delivered|Web|4.99
+507|309|2025-03-10|Delivered|Mobile App|6.99
+508|355|2026-09-28|Processing|Marketplace|0.00
+509|12|2025-07-26|Delivered|Web|4.99
+510|118|2025-07-10|Delivered|Web|4.99
+511|277|2026-04-09|Delivered|Phone|2.99
+512|110|2026-04-09|Delivered|Web|2.99
+513|122|2025-07-01|Delivered|Mobile App|2.99
+514||2026-09-08|Returned|Mobile App|9.99
+515|17|2026-06-24|Delivered|Mobile App|4.99
+516||2025-06-27|Delivered|Web|4.99
+517||2026-06-03|Shipped|Marketplace|2.99
+518|156|2025-03-06|Delivered|Web|6.99
+519|290|2026-08-23|Delivered|Web|4.99
+520|241|2026-04-23|Delivered|Web|0.00
+521|309|2025-03-06|Delivered|Mobile App|6.99
+522|110|2026-07-17|Delivered|Mobile App|4.99
+523||2026-05-25|Cancelled|Web|4.99
+524|105|2026-08-01|Cancelled|Web|2.99
+525|88|2025-12-04|Shipped|Mobile App|4.99
+526|352|2025-04-10|Delivered|Mobile App|0.00
+527|46|2026-03-17|Delivered|Mobile App|6.99
+528|118|2025-09-10|Delivered|Web|14.99
+529|393|2025-08-25|Returned|Mobile App|4.99
+530|302|2026-03-05|Delivered|Web|9.99
+531||2025-05-12|Delivered|Marketplace|4.99
+532|148|2025-02-16|Delivered|Mobile App|2.99
+533|71|2026-02-04|Delivered|Marketplace|2.99
+534|23|2025-02-27|Delivered|Mobile App|6.99
+535|117|2025-02-11|Delivered|Phone|4.99
+536|110|2026-05-13|Delivered|Mobile App|2.99
+537|309|2025-05-26|Delivered|Web|2.99
+538|310|2026-09-29|Processing|Web|9.99
+539|382|2026-05-23|Delivered|Web|0.00
+540|205|2026-06-16|Delivered|Web|4.99
+541|144|2026-05-16|Delivered|Web|9.99
+542|198|2025-12-12|Delivered|Web|0.00
+543|193|2025-11-19|Cancelled|Phone|6.99
+544|264|2025-07-31|Delivered|Web|4.99
+545|110|2025-05-01|Delivered|Marketplace|2.99
+546|57|2025-11-15|Cancelled|Mobile App|6.99
+547|309|2026-08-31|Delivered|Mobile App|4.99
+548|181|2026-08-05|Delivered|Mobile App|6.99
+549|183|2026-07-31|Delivered|Mobile App|14.99
+550|95|2026-03-13|Delivered|Mobile App|6.99
+551|105|2025-04-18|Cancelled|Phone|4.99
+552|166|2026-08-25|Cancelled|Web|2.99
+553|345|2025-12-26|Delivered|Web|4.99
+554|309|2025-02-10|Delivered|Web|4.99
+555|95|2026-05-30|Delivered|Web|4.99
+556|110|2025-09-14|Delivered|Web|2.99
+557|276|2026-01-15|Delivered|Mobile App|6.99
+558|230|2026-01-24|Cancelled|Mobile App|6.99
+559|277|2026-02-28|Delivered|Phone|2.99
+560|17|2025-02-02|Delivered|Web|0.00
+561|166|2025-02-12|Cancelled|Mobile App|2.99
+562|299|2026-01-20|Delivered|Web|4.99
+563|98|2026-02-02|Cancelled|Web|4.99
+564|226|2025-07-04|Delivered|Mobile App|2.99
+565|145|2025-05-20|Shipped|Web|4.99
+566|81|2025-11-20|Delivered|Phone|2.99
+567|110|2026-08-20|Delivered|Web|4.99
+568|366|2026-06-10|Delivered|Web|4.99
+569||2026-02-07|Delivered|Mobile App|9.99
+570|326|2026-05-26|Delivered|Mobile App|2.99
+571|171|2026-09-22|Shipped|Web|6.99
+572|302|2025-06-06|Delivered|Marketplace|4.99
+573||2025-02-11|Shipped|Marketplace|0.00
+574|227|2026-05-03|Delivered|Web|4.99
+575|366|2026-08-01|Cancelled|Web|0.00
+576|78|2025-09-17|Delivered|Web|4.99
+577|66|2025-12-04|Cancelled|Web|4.99
+578|67|2026-03-09|Delivered|Web|6.99
+579|319|2026-09-02|Delivered|Web|9.99
+580|257|2026-08-07|Delivered|Mobile App|6.99
+581|291|2025-11-12|Delivered|Web|9.99
+582||2026-06-12|Cancelled|Web|6.99
+583|47|2025-01-29|Delivered|Phone|2.99
+584||2026-04-19|Delivered|Mobile App|2.99
+585|110|2026-05-10|Delivered|Marketplace|2.99
+586|370|2025-11-30|Delivered|Phone|0.00
+587|300|2026-06-12|Delivered|Mobile App|9.99
+588|253|2026-01-14|Delivered|Mobile App|4.99
+589|198|2025-10-14|Delivered|Web|4.99
+590||2026-01-06|Delivered|Web|6.99
+591|387|2025-06-18|Delivered|Web|6.99
+592|117|2026-02-18|Returned|Web|6.99
+593|47|2026-03-26|Delivered|Marketplace|14.99
+594|180|2025-10-13|Delivered|Mobile App|2.99
+595|110|2026-01-02|Delivered|Mobile App|4.99
+596|306|2025-04-29|Returned|Web|6.99
+597|70|2025-11-08|Shipped|Marketplace|9.99
+598|347|2026-07-07|Delivered|Phone|6.99
+599|277|2026-07-10|Delivered|Web|2.99
+600|192|2026-08-20|Delivered|Web|4.99
+601||2026-03-31|Shipped|Mobile App|0.00
+602|194|2026-03-22|Shipped|Phone|2.99
+603|309|2026-03-10|Cancelled|Mobile App|4.99
+604|126|2025-05-30|Delivered|Web|0.00
+605|337|2026-03-26|Returned|Mobile App|2.99
+606|374|2026-06-24|Delivered|Mobile App|4.99
+607|309|2025-11-01|Delivered|Web|9.99
+608||2026-05-25|Delivered|Web|9.99
+609|279|2026-05-09|Delivered|Marketplace|6.99
+610|264|2025-03-05|Cancelled|Marketplace|0.00
+611|290|2026-05-06|Delivered|Mobile App|6.99
+612|171|2025-09-25|Shipped|Web|2.99
+613|179|2025-07-02|Delivered|Phone|14.99
+614|264|2026-01-11|Delivered|Web|0.00
+615|198|2026-09-19|Delivered|Web|6.99
+616|189|2026-02-25|Delivered|Mobile App|2.99
+617|254|2026-04-18|Returned|Web|0.00
+618|352|2025-03-17|Delivered|Web|0.00
+619|57|2025-09-14|Delivered|Web|14.99
+620|377|2026-03-25|Delivered|Marketplace|0.00
+621|110|2025-03-16|Shipped|Mobile App|6.99
+622|233|2025-06-28|Delivered|Web|9.99
+623|196|2025-05-04|Delivered|Web|4.99
+624|160|2026-08-29|Returned|Web|2.99
+625|253|2026-01-05|Delivered|Mobile App|9.99
+626|110|2026-07-20|Cancelled|Web|6.99
+627|47|2026-08-06|Delivered|Mobile App|0.00
+628|345|2026-05-17|Delivered|Phone|0.00
+629|257|2025-11-23|Delivered|Web|2.99
+630|215|2025-04-15|Delivered|Web|2.99
+631|263|2025-09-25|Delivered|Mobile App|6.99
+632|299|2026-02-22|Delivered|Web|2.99
+633|338|2025-06-18|Returned|Web|0.00
+634|196|2025-10-05|Delivered|Web|6.99
+635|105|2026-04-10|Delivered|Mobile App|9.99
+636|147|2025-09-30|Delivered|Marketplace|2.99
+637|117|2025-03-14|Delivered|Marketplace|2.99
+638|262|2026-05-20|Delivered|Mobile App|0.00
+639||2026-08-27|Delivered|Mobile App|2.99
+640|171|2025-10-31|Delivered|Marketplace|4.99
+641|110|2025-09-27|Delivered|Web|6.99
+642|254|2025-02-05|Delivered|Mobile App|4.99
+643|203|2025-03-04|Delivered|Mobile App|6.99
+644||2025-11-19|Delivered|Web|4.99
+645|387|2025-05-26|Cancelled|Web|6.99
+646|110|2025-07-13|Delivered|Marketplace|6.99
+647|324|2025-04-05|Cancelled|Web|6.99
+648|145|2025-11-30|Delivered|Marketplace|6.99
+649|24|2025-06-15|Delivered|Web|0.00
+650|241|2026-05-03|Delivered|Phone|2.99
+651|55|2026-04-24|Delivered|Web|2.99
+652|373|2025-05-26|Delivered|Web|14.99
+653|387|2025-09-21|Delivered|Web|0.00
+654||2026-03-31|Delivered|Marketplace|2.99
+655|29|2025-09-18|Cancelled|Phone|0.00
+656||2025-10-05|Delivered|Web|2.99
+657|17|2025-05-28|Delivered|Phone|4.99
+658|400|2025-11-09|Shipped|Mobile App|9.99
+659|110|2025-05-18|Delivered|Mobile App|0.00
+660|197|2026-08-16|Returned|Mobile App|4.99
+661|328|2026-09-29|Shipped|Phone|6.99
+662||2026-01-26|Delivered|Marketplace|6.99
+663|179|2025-10-20|Cancelled|Mobile App|0.00
+664|347|2025-12-10|Delivered|Web|4.99
+665|396|2025-08-09|Delivered|Web|2.99
+666|93|2025-10-03|Delivered|Mobile App|0.00
+667|66|2025-07-12|Delivered|Mobile App|9.99
+668|335|2025-02-18|Returned|Web|0.00
+669|223|2025-09-13|Delivered|Web|14.99
+670||2025-02-05|Delivered|Mobile App|2.99
+671|17|2026-04-29|Delivered|Mobile App|6.99
+672|322|2026-06-27|Delivered|Phone|2.99
+673|193|2025-03-12|Delivered|Web|9.99
+674|103|2026-06-08|Cancelled|Marketplace|2.99
+675|317|2026-08-29|Shipped|Marketplace|2.99
+676|387|2025-02-09|Delivered|Web|0.00
+677|268|2025-12-30|Delivered|Web|9.99
+678|117|2026-07-04|Shipped|Marketplace|6.99
+679|63|2026-08-22|Shipped|Mobile App|4.99
+680|9|2025-02-01|Delivered|Web|4.99
+681|233|2025-06-21|Delivered|Mobile App|6.99
+682|2|2025-02-08|Delivered|Mobile App|4.99
+683|219|2026-08-29|Delivered|Web|6.99
+684|10|2026-07-06|Delivered|Web|2.99
+685|67|2026-04-11|Delivered|Mobile App|0.00
+686|98|2025-12-29|Delivered|Web|2.99
+687|219|2026-04-29|Shipped|Web|14.99
+688|277|2026-06-30|Delivered|Mobile App|0.00
+689|338|2026-02-02|Shipped|Phone|4.99
+690|265|2026-02-24|Cancelled|Web|0.00
+691|369|2025-05-10|Cancelled|Mobile App|2.99
+692|180|2026-08-18|Delivered|Marketplace|9.99
+693|110|2025-03-01|Delivered|Mobile App|2.99
+694|308|2025-04-05|Delivered|Mobile App|0.00
+695|257|2026-05-10|Delivered|Marketplace|9.99
+696|154|2025-01-09|Returned|Web|4.99
+697|26|2026-02-06|Cancelled|Marketplace|9.99
+698|110|2025-11-02|Delivered|Web|6.99
+699|110|2025-12-14|Delivered|Mobile App|6.99
+700|110|2026-04-04|Returned|Marketplace|6.99
+701|103|2025-03-13|Delivered|Web|4.99
+702|294|2026-03-02|Delivered|Marketplace|0.00
+703|387|2026-01-10|Delivered|Web|6.99
+704|387|2025-12-19|Returned|Mobile App|0.00
+705|143|2026-09-04|Delivered|Web|2.99
+706|393|2025-07-08|Delivered|Mobile App|4.99
+707|309|2025-11-08|Cancelled|Mobile App|2.99
+708|193|2025-09-11|Delivered|Mobile App|14.99
+709|387|2025-02-10|Delivered|Web|9.99
+710|147|2025-03-31|Cancelled|Mobile App|0.00
+711|309|2026-08-19|Delivered|Marketplace|2.99
+712|387|2026-07-22|Cancelled|Web|4.99
+713|268|2025-03-08|Delivered|Web|14.99
+714|87|2026-03-17|Delivered|Marketplace|6.99
+715||2025-05-31|Returned|Marketplace|0.00
+716|117|2026-07-01|Shipped|Web|0.00
+717|327|2026-06-26|Delivered|Web|2.99
+718|62|2026-09-25|Processing|Web|2.99
+719||2026-01-23|Delivered|Web|2.99
+720|86|2026-03-07|Delivered|Web|0.00
+721|189|2026-09-14|Cancelled|Web|9.99
+722|321|2025-10-09|Delivered|Web|2.99
+723|81|2025-07-10|Delivered|Marketplace|0.00
+724|379|2026-05-21|Delivered|Phone|0.00
+725|247|2026-07-08|Cancelled|Mobile App|0.00
+726|88|2025-12-28|Delivered|Phone|6.99
+727|309|2026-02-14|Delivered|Web|4.99
+728|115|2025-08-23|Delivered|Web|6.99
+729|315|2025-06-06|Delivered|Web|2.99
+730|110|2025-03-18|Delivered|Web|2.99
+731|352|2025-02-27|Delivered|Phone|14.99
+732|351|2026-09-06|Returned|Web|9.99
+733|309|2026-06-28|Delivered|Marketplace|2.99
+734|339|2025-05-28|Delivered|Web|4.99
+735|59|2026-08-03|Delivered|Web|6.99
+736|171|2026-03-19|Delivered|Marketplace|0.00
+737|387|2025-06-04|Delivered|Web|4.99
+738|298|2026-09-21|Delivered|Web|6.99
+739|216|2025-03-21|Delivered|Mobile App|9.99
+740|117|2026-04-20|Delivered|Mobile App|2.99
+741|398|2025-07-02|Delivered|Web|6.99
+742||2025-06-07|Cancelled|Phone|2.99
+743|340|2025-10-15|Shipped|Web|4.99
+744|288|2025-09-15|Delivered|Web|0.00
+745|34|2026-03-14|Delivered|Web|2.99
+746|393|2025-06-28|Delivered|Web|0.00
+747|372|2026-07-26|Cancelled|Mobile App|0.00
+748||2026-07-24|Delivered|Marketplace|14.99
+749|357|2026-07-28|Cancelled|Web|0.00
+750||2026-05-04|Returned|Web|6.99
+751|88|2026-07-17|Delivered|Web|6.99
+752|204|2025-07-09|Shipped|Mobile App|4.99
+753|110|2026-09-06|Delivered|Web|2.99
+754|145|2026-05-07|Delivered|Web|4.99
+755||2026-05-21|Delivered|Web|4.99
+756|2|2025-09-26|Delivered|Phone|4.99
+757|83|2025-07-12|Delivered|Web|14.99
+758|15|2026-07-12|Delivered|Mobile App|0.00
+759|123|2026-07-27|Cancelled|Phone|2.99
+760|294|2025-10-11|Delivered|Web|4.99
+761|223|2025-07-13|Delivered|Web|14.99
+762|103|2025-11-29|Shipped|Mobile App|0.00
+763|248|2025-09-16|Cancelled|Web|4.99
+764|310|2026-06-11|Delivered|Marketplace|2.99
+765|25|2025-06-20|Cancelled|Web|6.99
+766|117|2025-10-03|Delivered|Web|4.99
+767|248|2025-08-31|Delivered|Web|2.99
+768|62|2026-05-09|Delivered|Web|6.99
+769|14|2026-03-23|Delivered|Web|2.99
+770||2026-04-02|Delivered|Web|9.99
+771||2025-07-16|Delivered|Mobile App|6.99
+772|67|2025-11-02|Delivered|Mobile App|2.99
+773|105|2025-02-23|Delivered|Mobile App|4.99
+774|192|2026-04-27|Delivered|Mobile App|4.99
+775|309|2025-08-22|Delivered|Web|6.99
+776|110|2025-10-27|Delivered|Web|6.99
+777|311|2026-06-06|Delivered|Web|0.00
+778|309|2025-02-12|Delivered|Phone|9.99
+779|264|2025-03-15|Delivered|Mobile App|0.00
+780|79|2025-01-24|Returned|Mobile App|6.99
+781|339|2026-01-13|Delivered|Web|9.99
+782|394|2025-12-25|Delivered|Mobile App|6.99
+783|110|2026-08-10|Delivered|Web|2.99
+784|64|2025-08-01|Cancelled|Web|4.99
+785|264|2025-05-11|Delivered|Marketplace|6.99
+786|288|2026-07-10|Delivered|Marketplace|4.99
+787|299|2025-08-05|Delivered|Mobile App|2.99
+788|182|2025-10-08|Delivered|Web|2.99
+789|156|2026-07-29|Delivered|Web|6.99
+790|132|2025-05-16|Delivered|Mobile App|4.99
+791|322|2025-06-16|Delivered|Marketplace|0.00
+792||2025-12-24|Cancelled|Web|6.99
+793|105|2025-10-11|Delivered|Web|2.99
+794|117|2025-03-26|Delivered|Web|6.99
+795|206|2025-05-27|Delivered|Web|0.00
+796|344|2025-12-07|Delivered|Phone|6.99
+797|390|2025-10-22|Shipped|Marketplace|0.00
+798||2025-01-27|Delivered|Mobile App|14.99
+799|347|2025-09-11|Delivered|Web|2.99
+800|123|2026-01-15|Delivered|Web|2.99
+801|281|2025-12-13|Delivered|Mobile App|6.99
+802|264|2025-12-17|Delivered|Web|0.00
+803|264|2025-03-30|Cancelled|Web|2.99
+804|147|2026-02-19|Shipped|Marketplace|2.99
+805|163|2026-04-01|Delivered|Web|14.99
+806|254|2026-07-02|Delivered|Marketplace|4.99
+807|215|2026-05-18|Delivered|Web|2.99
+808|337|2025-03-16|Delivered|Web|6.99
+809|366|2026-05-26|Returned|Mobile App|2.99
+810|76|2025-09-28|Shipped|Mobile App|6.99
+811|145|2025-08-02|Delivered|Mobile App|0.00
+812|356|2025-12-17|Delivered|Web|0.00
+813||2026-08-30|Returned|Web|2.99
+814|117|2025-09-30|Cancelled|Marketplace|6.99
+815|88|2026-09-04|Delivered|Marketplace|2.99
+816|288|2026-05-28|Shipped|Web|6.99
+817|319|2025-09-08|Delivered|Web|0.00
+818|223|2026-06-20|Delivered|Web|6.99
+819|47|2026-02-22|Delivered|Web|4.99
+820|46|2025-05-15|Delivered|Mobile App|4.99
+821|264|2025-12-11|Delivered|Mobile App|4.99
+822|154|2025-07-30|Delivered|Web|14.99
+823|341|2026-05-18|Delivered|Mobile App|2.99
+824|286|2026-09-09|Shipped|Marketplace|6.99
+825|159|2026-01-01|Delivered|Web|9.99
+826|63|2025-03-17|Cancelled|Web|14.99
+827|395|2025-05-18|Delivered|Marketplace|4.99
+828|110|2025-05-12|Delivered|Web|4.99
+829|189|2025-03-08|Delivered|Web|0.00
+830|250|2026-08-16|Delivered|Web|4.99
+831|383|2026-02-16|Delivered|Web|2.99
+832|349|2026-01-11|Delivered|Mobile App|2.99
+833|165|2026-04-30|Returned|Web|6.99
+834|122|2026-07-01|Delivered|Web|0.00
+835|347|2025-02-12|Shipped|Web|4.99
+836|229|2025-10-04|Delivered|Web|4.99
+837|47|2025-07-27|Delivered|Web|0.00
+838|277|2025-04-11|Delivered|Mobile App|4.99
+839|270|2025-01-11|Delivered|Web|4.99
+840|317|2026-03-03|Delivered|Mobile App|4.99
+841|149|2025-02-17|Delivered|Phone|0.00
+842|376|2026-02-19|Delivered|Mobile App|4.99
+843|389|2026-07-13|Delivered|Phone|14.99
+844|253|2025-12-29|Delivered|Mobile App|4.99
+845|91|2025-09-15|Cancelled|Web|0.00
+846|103|2025-11-05|Delivered|Web|6.99
+847|32|2025-11-07|Delivered|Mobile App|6.99
+848|86|2026-02-08|Delivered|Marketplace|0.00
+849|14|2025-12-31|Shipped|Mobile App|4.99
+850|110|2025-11-07|Delivered|Web|6.99
+851|110|2025-07-19|Delivered|Web|6.99
+852|250|2025-07-09|Delivered|Web|6.99
+853|78|2026-07-20|Delivered|Web|0.00
+854||2025-11-30|Delivered|Web|4.99
+855|131|2025-01-19|Delivered|Marketplace|6.99
+856|110|2026-08-30|Returned|Web|6.99
+857|199|2026-08-24|Delivered|Web|4.99
+858|8|2025-12-20|Returned|Mobile App|6.99
+859|20|2026-04-17|Delivered|Web|6.99
+860|263|2025-08-25|Returned|Web|0.00
+861|42|2026-09-16|Shipped|Mobile App|0.00
+862|175|2026-03-21|Shipped|Mobile App|9.99
+863|264|2025-11-02|Delivered|Web|2.99
+864|358|2026-06-10|Cancelled|Web|4.99
+865|354|2026-09-09|Cancelled|Web|2.99
+866|316|2026-06-05|Cancelled|Marketplace|2.99
+867|110|2026-09-14|Shipped|Web|4.99
+868|9|2025-12-30|Cancelled|Mobile App|2.99
+869|264|2026-06-30|Delivered|Phone|2.99
+870|6|2025-03-14|Delivered|Mobile App|6.99
+871||2026-03-09|Cancelled|Mobile App|2.99
+872|87|2025-12-01|Delivered|Mobile App|4.99
+873|110|2026-06-06|Delivered|Marketplace|9.99
+874|134|2025-03-12|Returned|Mobile App|9.99
+875|213|2025-03-25|Delivered|Phone|2.99
+876|270|2026-04-07|Returned|Web|4.99
+877|355|2026-07-15|Shipped|Mobile App|0.00
+878||2026-05-16|Delivered|Marketplace|2.99
+879||2026-07-30|Delivered|Mobile App|4.99
+880|67|2025-11-04|Delivered|Mobile App|14.99
+881|264|2025-11-06|Delivered|Web|14.99
+882|309|2025-10-26|Delivered|Marketplace|6.99
+883|293|2025-07-31|Delivered|Web|6.99
+884|119|2025-01-25|Delivered|Web|9.99
+885|309|2026-05-03|Cancelled|Web|4.99
+886|105|2026-07-14|Delivered|Web|0.00
+887|57|2026-07-04|Delivered|Mobile App|2.99
+888|212|2025-05-14|Delivered|Web|4.99
+889|88|2025-07-02|Delivered|Mobile App|4.99
+890|131|2025-01-27|Cancelled|Web|0.00
+891|159|2026-06-08|Delivered|Marketplace|4.99
+892|110|2026-01-10|Delivered|Web|4.99
+893|387|2026-05-20|Delivered|Web|9.99
+894|105|2025-08-28|Shipped|Web|6.99
+895|295|2026-01-16|Delivered|Web|2.99
+896|130|2026-01-05|Delivered|Web|2.99
+897|167|2026-01-22|Delivered|Web|0.00
+898|294|2025-09-19|Delivered|Marketplace|6.99
+899||2025-12-11|Delivered|Mobile App|14.99
+900|125|2026-07-07|Delivered|Mobile App|0.00
+901|41|2026-09-17|Shipped|Marketplace|4.99
+902|330|2026-08-01|Cancelled|Mobile App|6.99
+903|240|2026-09-12|Delivered|Marketplace|6.99
+904|340|2026-05-21|Delivered|Web|6.99
+905|171|2025-06-05|Delivered|Web|9.99
+906|125|2025-12-21|Delivered|Web|2.99
+907||2026-09-29|Processing|Mobile App|14.99
+908|223|2026-01-01|Delivered|Mobile App|4.99
+909|13|2025-11-19|Returned|Web|14.99
+910||2026-01-03|Delivered|Web|9.99
+911|225|2026-05-06|Returned|Web|0.00
+912|393|2025-11-14|Returned|Marketplace|4.99
+913|381|2025-07-09|Delivered|Web|4.99
+914|41|2026-03-14|Delivered|Web|0.00
+915|168|2026-08-30|Delivered|Phone|9.99
+916|394|2025-12-16|Delivered|Web|2.99
+917||2025-03-10|Delivered|Mobile App|0.00
+918|110|2026-05-19|Delivered|Web|0.00
+919|165|2025-05-16|Delivered|Mobile App|0.00
+920|214|2025-12-14|Delivered|Web|14.99
+921|91|2025-01-31|Delivered|Web|6.99
+922||2025-01-06|Returned|Mobile App|2.99
+923|121|2025-04-27|Cancelled|Web|2.99
+924|79|2025-02-12|Cancelled|Mobile App|4.99
+925|111|2025-05-05|Delivered|Mobile App|0.00
+926|159|2026-03-09|Returned|Web|4.99
+927|335|2026-06-08|Delivered|Web|2.99
+928||2025-11-08|Delivered|Mobile App|14.99
+929|93|2026-09-09|Delivered|Web|9.99
+930|192|2025-04-08|Delivered|Web|14.99
+931|317|2026-02-12|Shipped|Web|6.99
+932|110|2026-05-28|Cancelled|Web|2.99
+933|181|2025-03-23|Delivered|Web|6.99
+934|10|2026-05-03|Delivered|Web|6.99
+935|241|2026-05-13|Delivered|Phone|0.00
+936|152|2026-05-25|Returned|Web|2.99
+937|374|2026-08-16|Cancelled|Web|0.00
+938|356|2026-09-08|Delivered|Marketplace|2.99
+939|349|2025-03-13|Cancelled|Web|2.99
+940|95|2026-05-30|Delivered|Marketplace|4.99
+941|319|2026-03-15|Shipped|Marketplace|6.99
+942|246|2026-07-28|Shipped|Phone|2.99
+943|179|2026-07-10|Delivered|Web|2.99
+944|95|2026-07-05|Shipped|Web|2.99
+945|12|2025-08-23|Delivered|Web|2.99
+946|110|2025-06-21|Delivered|Mobile App|0.00
+947|110|2026-08-08|Cancelled|Web|4.99
+948|370|2025-05-25|Delivered|Marketplace|9.99
+949|154|2026-01-08|Delivered|Web|2.99
+950|110|2026-03-15|Delivered|Marketplace|0.00
+951|309|2025-03-16|Delivered|Marketplace|14.99
+952|159|2025-04-21|Cancelled|Mobile App|2.99
+953|352|2026-07-01|Delivered|Web|6.99
+954||2026-02-28|Delivered|Mobile App|2.99
+955|220|2025-05-20|Delivered|Web|9.99
+956|67|2025-06-26|Delivered|Web|2.99
+957|280|2026-01-20|Delivered|Web|6.99
+958|280|2026-03-17|Delivered|Marketplace|4.99
+959|47|2026-04-02|Delivered|Web|2.99
+960|378|2026-02-11|Delivered|Web|9.99
+961|309|2025-12-02|Cancelled|Web|6.99
+962|110|2026-03-17|Delivered|Web|9.99
+963||2025-02-16|Delivered|Mobile App|2.99
+964|223|2026-07-25|Delivered|Mobile App|9.99
+965|213|2025-09-11|Delivered|Web|4.99
+966|194|2025-09-19|Cancelled|Web|4.99
+967|31|2025-11-03|Delivered|Web|6.99
+968|64|2025-07-31|Delivered|Web|9.99
+969|229|2025-03-12|Delivered|Web|9.99
+970|215|2025-11-30|Delivered|Web|4.99
+971|171|2025-05-23|Delivered|Web|0.00
+972|309|2026-09-15|Delivered|Marketplace|0.00
+973|335|2025-04-28|Returned|Phone|2.99
+974|110|2026-04-27|Delivered|Web|9.99
+975|266|2025-11-26|Delivered|Mobile App|0.00
+976|128|2025-12-02|Delivered|Web|2.99
+977|97|2025-11-17|Delivered|Web|4.99
+978|171|2026-07-06|Delivered|Phone|0.00
+979|209|2025-07-23|Returned|Phone|0.00
+980|82|2025-05-02|Delivered|Mobile App|14.99
+981|233|2026-08-19|Cancelled|Mobile App|4.99
+982|327|2025-06-15|Delivered|Web|6.99
+983|366|2026-06-25|Delivered|Web|4.99
+984|159|2026-07-21|Shipped|Web|6.99
+985|137|2025-08-04|Shipped|Marketplace|2.99
+986|145|2026-05-11|Delivered|Web|0.00
+987|217|2026-08-01|Delivered|Mobile App|4.99
+988|215|2025-10-24|Cancelled|Mobile App|4.99
+989|321|2025-06-15|Delivered|Mobile App|2.99
+990|134|2026-09-06|Delivered|Mobile App|0.00
+991|110|2026-09-11|Delivered|Web|9.99
+992|65|2026-09-25|Shipped|Web|6.99
+993|223|2026-09-14|Processing|Marketplace|4.99
+994|347|2026-06-28|Delivered|Web|0.00
+995|167|2025-08-11|Shipped|Mobile App|4.99
+996|309|2026-07-31|Delivered|Web|0.00
+997|340|2025-03-11|Delivered|Marketplace|9.99
+998||2026-01-01|Shipped|Mobile App|6.99
+999|15|2026-09-04|Returned|Marketplace|2.99
+1000|32|2025-07-21|Delivered|Marketplace|4.99
+1001|44|2025-04-17|Delivered|Web|4.99
+1002|309|2025-09-06|Returned|Mobile App|4.99
+1003|233|2026-08-24|Delivered|Web|4.99
+1004|290|2025-07-04|Returned|Web|6.99
+1005|362|2025-03-19|Cancelled|Web|6.99
+1006|117|2025-10-28|Shipped|Mobile App|4.99
+1007|354|2026-04-22|Delivered|Web|2.99
+1008|110|2026-06-12|Delivered|Mobile App|4.99
+1009|110|2025-05-14|Returned|Mobile App|4.99
+1010|339|2026-09-23|Cancelled|Mobile App|2.99
+1011|215|2025-12-11|Delivered|Marketplace|0.00
+1012|79|2025-12-05|Delivered|Mobile App|4.99
+1013|298|2026-06-16|Cancelled|Mobile App|4.99
+1014|290|2026-09-17|Processing|Phone|4.99
+1015|212|2026-07-22|Delivered|Mobile App|6.99
+1016|171|2026-01-12|Delivered|Web|4.99
+1017|321|2025-11-17|Returned|Marketplace|6.99
+1018|110|2026-08-06|Delivered|Marketplace|2.99
+1019||2025-10-09|Returned|Mobile App|0.00
+1020||2026-05-04|Cancelled|Mobile App|6.99
+1021||2025-07-11|Delivered|Phone|0.00
+1022|110|2025-07-29|Cancelled|Web|9.99
+1023|320|2025-05-22|Delivered|Web|2.99
+1024|95|2026-09-16|Delivered|Mobile App|0.00
+1025|29|2025-05-03|Returned|Web|9.99
+1026|309|2025-12-14|Delivered|Mobile App|0.00
+1027|329|2026-01-13|Cancelled|Web|2.99
+1028|294|2025-02-24|Delivered|Mobile App|6.99
+1029|171|2026-06-27|Delivered|Marketplace|0.00
+1030|95|2025-02-26|Delivered|Marketplace|2.99
+1031|140|2026-08-28|Cancelled|Web|9.99
+1032|83|2026-05-25|Shipped|Mobile App|0.00
+1033|354|2026-07-07|Returned|Web|2.99
+1034|48|2026-03-31|Delivered|Web|2.99
+1035|12|2026-06-07|Cancelled|Web|9.99
+1036|254|2026-06-12|Delivered|Mobile App|0.00
+1037|343|2025-12-31|Returned|Marketplace|4.99
+1038|342|2026-03-16|Returned|Phone|2.99
+1039|254|2025-04-26|Cancelled|Phone|6.99
+1040|159|2025-10-15|Delivered|Mobile App|4.99
+1041|91|2026-07-30|Delivered|Web|0.00
+1042|117|2025-04-29|Delivered|Web|2.99
+1043|67|2025-10-08|Cancelled|Web|2.99
+1044|114|2026-05-28|Delivered|Web|2.99
+1045||2025-12-08|Delivered|Web|6.99
+1046|125|2025-08-16|Delivered|Web|2.99
+1047|156|2025-10-21|Delivered|Mobile App|0.00
+1048|110|2026-06-04|Delivered|Marketplace|2.99
+1049|293|2026-08-08|Delivered|Web|4.99
+1050|123|2026-06-19|Delivered|Web|14.99
+1051|362|2026-03-10|Delivered|Web|6.99
+1052|117|2026-08-10|Delivered|Web|2.99
+1053|309|2026-06-20|Delivered|Web|0.00
+1054|168|2026-08-13|Delivered|Marketplace|6.99
+1055|362|2025-02-02|Cancelled|Web|6.99
+1056|355|2025-07-29|Delivered|Web|6.99
+1057|302|2026-01-15|Returned|Mobile App|4.99
+1058||2026-05-14|Cancelled|Web|2.99
+1059|80|2025-03-08|Delivered|Mobile App|0.00
+1060|110|2026-05-11|Delivered|Web|9.99
+1061|110|2025-06-30|Delivered|Web|2.99
+1062|171|2025-08-13|Cancelled|Phone|2.99
+1063|46|2025-04-25|Delivered|Web|0.00
+1064|166|2026-09-23|Shipped|Mobile App|0.00
+1065|40|2025-06-06|Delivered|Marketplace|4.99
+1066|96|2026-03-13|Delivered|Marketplace|4.99
+1067|215|2025-08-30|Delivered|Marketplace|4.99
+1068|137|2025-04-23|Delivered|Marketplace|2.99
+1069|240|2025-12-20|Delivered|Mobile App|2.99
+1070|266|2025-10-20|Cancelled|Phone|0.00
+1071|122|2026-09-22|Delivered|Mobile App|9.99
+1072|126|2026-01-27|Delivered|Marketplace|4.99
+1073|47|2026-07-30|Delivered|Web|4.99
+1074|107|2025-07-23|Delivered|Marketplace|0.00
+1075|289|2026-04-01|Returned|Mobile App|4.99
+1076|398|2026-01-16|Delivered|Web|4.99
+1077|76|2026-03-29|Delivered|Mobile App|0.00
+1078|171|2026-04-18|Cancelled|Web|0.00
+1079|110|2025-06-09|Delivered|Mobile App|4.99
+1080|96|2025-08-30|Delivered|Web|4.99
+1081|347|2025-08-03|Delivered|Web|4.99
+1082|257|2026-07-20|Delivered|Mobile App|4.99
+1083|366|2025-12-21|Cancelled|Web|6.99
+1084|87|2025-11-03|Delivered|Web|6.99
+1085|288|2025-12-29|Cancelled|Web|6.99
+1086|241|2026-04-07|Delivered|Mobile App|9.99
+1087|137|2025-04-08|Delivered|Mobile App|4.99
+1088|263|2026-03-18|Delivered|Web|9.99
+1089|251|2026-04-01|Delivered|Web|2.99
+1090||2025-06-03|Shipped|Web|0.00
+1091|34|2025-09-07|Cancelled|Web|0.00
+1092|290|2026-07-18|Delivered|Mobile App|9.99
+1093||2026-05-19|Shipped|Mobile App|9.99
+1094|25|2025-03-15|Shipped|Mobile App|2.99
+1095|326|2025-07-06|Delivered|Marketplace|2.99
+1096|285|2025-07-24|Delivered|Marketplace|4.99
+1097|277|2026-03-22|Delivered|Marketplace|2.99
+1098|110|2026-05-05|Shipped|Marketplace|2.99
+1099||2026-02-18|Shipped|Mobile App|4.99
+1100|230|2025-05-07|Delivered|Web|0.00
+1101|20|2026-01-13|Delivered|Web|2.99
+1102|159|2025-11-29|Shipped|Marketplace|6.99
+1103|136|2026-08-14|Delivered|Web|4.99
+1104|81|2025-04-25|Delivered|Mobile App|6.99
+1105|87|2025-11-29|Delivered|Phone|4.99
+1106|22|2025-04-19|Delivered|Marketplace|9.99
+1107|175|2026-08-17|Returned|Mobile App|9.99
+1108|67|2025-08-05|Delivered|Mobile App|9.99
+1109|6|2026-05-22|Delivered|Web|2.99
+1110|88|2026-07-17|Returned|Marketplace|2.99
+1111|110|2026-01-06|Delivered|Mobile App|6.99
+1112|366|2025-07-11|Returned|Web|14.99
+1113|314|2026-05-13|Delivered|Mobile App|6.99
+1114|63|2026-02-12|Delivered|Marketplace|4.99
+1115|379|2026-03-20|Delivered|Mobile App|4.99
+1116|250|2025-04-19|Delivered|Web|4.99
+1117|194|2025-02-16|Returned|Web|4.99
+1118|110|2025-11-09|Delivered|Web|0.00
+1119|63|2026-09-19|Cancelled|Web|6.99
+1120|257|2025-08-07|Cancelled|Marketplace|2.99
+1121|254|2026-06-01|Delivered|Web|4.99
+1122|56|2025-05-10|Delivered|Mobile App|4.99
+1123|388|2026-06-24|Delivered|Mobile App|2.99
+1124|232|2025-03-25|Returned|Web|6.99
+1125|235|2025-08-02|Delivered|Web|4.99
+1126|171|2026-06-11|Delivered|Mobile App|2.99
+1127|110|2026-06-30|Delivered|Web|4.99
+1128|1|2025-07-24|Delivered|Web|0.00
+1129|397|2026-05-19|Delivered|Web|6.99
+1130|246|2025-09-18|Delivered|Web|2.99
+1131|158|2026-03-27|Delivered|Marketplace|2.99
+1132|49|2025-04-11|Delivered|Marketplace|4.99
+1133|375|2025-05-05|Delivered|Mobile App|6.99
+1134|161|2026-03-05|Delivered|Mobile App|9.99
+1135|271|2025-05-21|Delivered|Marketplace|9.99
+1136|194|2026-05-12|Delivered|Web|9.99
+1137|120|2026-06-22|Delivered|Mobile App|6.99
+1138|110|2026-08-26|Delivered|Mobile App|2.99
+1139|267|2026-09-06|Cancelled|Web|2.99
+1140|260|2025-09-28|Delivered|Mobile App|0.00
+1141|222|2026-05-25|Cancelled|Mobile App|0.00
+1142|286|2025-08-23|Delivered|Mobile App|6.99
+1143|215|2025-02-07|Delivered|Phone|0.00
+1144||2026-07-16|Shipped|Web|0.00
+1145||2026-05-05|Delivered|Mobile App|9.99
+1146|77|2026-02-04|Delivered|Web|2.99
+1147|340|2025-04-13|Delivered|Phone|4.99
+1148|209|2026-09-04|Delivered|Web|9.99
+1149|338|2025-11-06|Returned|Mobile App|9.99
+1150|60|2026-07-23|Delivered|Marketplace|4.99
+1151|209|2025-11-28|Delivered|Mobile App|2.99
+1152|47|2025-01-15|Delivered|Marketplace|2.99
+1153|295|2025-07-27|Cancelled|Mobile App|6.99
+1154||2026-02-15|Delivered|Web|2.99
+1155|266|2026-07-19|Delivered|Mobile App|4.99
+1156|110|2025-06-21|Delivered|Web|9.99
+1157|30|2025-11-27|Cancelled|Web|6.99
+1158|240|2026-01-19|Delivered|Web|6.99
+1159|264|2025-05-21|Delivered|Web|6.99
+1160|79|2025-08-17|Cancelled|Web|9.99
+1161|95|2025-04-16|Delivered|Mobile App|2.99
+1162|123|2026-01-06|Delivered|Marketplace|0.00
+1163|141|2025-05-26|Cancelled|Web|14.99
+1164|287|2026-02-16|Delivered|Mobile App|4.99
+1165|314|2025-12-08|Delivered|Web|0.00
+1166|294|2025-07-11|Delivered|Web|4.99
+1167|119|2026-05-05|Delivered|Marketplace|4.99
+1168|349|2025-12-14|Delivered|Mobile App|4.99
+1169|199|2026-09-15|Shipped|Web|2.99
+1170||2025-08-30|Delivered|Web|0.00
+1171|303|2025-09-08|Returned|Web|4.99
+1172||2025-04-01|Delivered|Mobile App|9.99
+1173||2025-11-08|Shipped|Mobile App|2.99
+1174||2026-09-20|Shipped|Web|4.99
+1175|119|2025-01-01|Delivered|Marketplace|2.99
+1176|355|2026-08-27|Cancelled|Marketplace|6.99
+1177|263|2026-05-31|Delivered|Web|4.99
+1178|366|2025-11-04|Cancelled|Web|4.99
+1179|366|2026-09-17|Shipped|Web|2.99
+1180|356|2026-05-21|Cancelled|Marketplace|2.99
+1181|9|2025-10-12|Returned|Marketplace|0.00
+1182|77|2025-04-26|Shipped|Mobile App|2.99
+1183|194|2025-09-12|Delivered|Web|4.99
+1184|213|2025-11-02|Delivered|Web|2.99
+1185||2026-01-14|Delivered|Web|9.99
+1186|193|2025-05-27|Delivered|Phone|2.99
+1187|32|2025-02-17|Delivered|Marketplace|2.99
+1188|64|2025-01-22|Delivered|Mobile App|6.99
+1189|64|2025-12-11|Delivered|Mobile App|4.99
+1190|114|2025-09-17|Delivered|Mobile App|6.99
+1191|387|2025-05-17|Delivered|Mobile App|2.99
+1192|215|2025-03-09|Delivered|Web|6.99
+1193|79|2025-06-14|Delivered|Web|0.00
+1194|117|2025-08-10|Delivered|Marketplace|2.99
+1195|137|2026-01-16|Delivered|Mobile App|0.00
+1196|381|2026-02-03|Delivered|Web|0.00
+1197|4|2025-11-25|Delivered|Mobile App|6.99
+1198|205|2025-07-31|Delivered|Phone|0.00
+1199|117|2026-08-19|Delivered|Mobile App|2.99
+1200|8|2025-07-20|Delivered|Mobile App|2.99
+1201|277|2025-11-01|Delivered|Marketplace|2.99
+1202||2026-05-21|Delivered|Web|6.99
+1203||2026-04-01|Delivered|Marketplace|4.99
+1204|23|2026-09-03|Returned|Web|0.00
+1205|337|2025-02-01|Delivered|Web|6.99
+1206|110|2026-04-10|Delivered|Web|2.99
+1207|339|2026-08-19|Delivered|Phone|9.99
+1208|264|2025-04-01|Delivered|Web|2.99
+1209|333|2026-03-23|Cancelled|Web|4.99
+1210||2026-05-22|Delivered|Web|2.99
+1211|110|2026-02-10|Delivered|Mobile App|9.99
+1212|271|2026-07-25|Delivered|Marketplace|9.99
+1213|269|2026-05-09|Shipped|Web|6.99
+1214|110|2025-08-26|Delivered|Marketplace|4.99
+1215|149|2025-11-13|Cancelled|Web|6.99
+1216|267|2026-05-20|Delivered|Marketplace|14.99
+1217|309|2026-09-11|Cancelled|Mobile App|0.00
+1218|134|2026-01-08|Delivered|Mobile App|4.99
+1219|146|2025-03-23|Cancelled|Phone|9.99
+1220|26|2026-09-04|Delivered|Mobile App|9.99
+1221|324|2026-05-19|Returned|Web|9.99
+1222|110|2026-04-23|Delivered|Web|4.99
+1223|200|2026-08-06|Returned|Mobile App|6.99
+1224|375|2025-02-12|Returned|Web|6.99
+1225|317|2025-11-28|Cancelled|Phone|6.99
+1226|149|2025-03-22|Returned|Marketplace|0.00
+1227|216|2026-08-17|Cancelled|Mobile App|2.99
+1228|112|2026-09-11|Shipped|Web|4.99
+1229|109|2025-11-17|Delivered|Marketplace|6.99
+1230|343|2025-11-25|Delivered|Mobile App|4.99
+1231|31|2026-03-26|Delivered|Mobile App|0.00
+1232|171|2025-04-30|Returned|Web|14.99
+1233|198|2025-10-13|Delivered|Web|6.99
+1234||2025-08-24|Shipped|Marketplace|6.99
+1235|272|2025-09-03|Delivered|Web|2.99
+1236|192|2025-03-26|Shipped|Marketplace|6.99
+1237|246|2025-04-23|Returned|Web|0.00
+1238||2026-02-21|Delivered|Web|6.99
+1239|385|2026-04-05|Cancelled|Marketplace|2.99
+1240|273|2025-01-20|Delivered|Web|0.00
+1241|171|2025-06-21|Delivered|Web|14.99
+1242|176|2026-03-19|Returned|Marketplace|2.99
+1243|117|2026-06-14|Cancelled|Marketplace|2.99
+1244|110|2025-12-02|Delivered|Marketplace|6.99
+1245|198|2025-10-07|Delivered|Web|2.99
+1246|347|2026-01-21|Cancelled|Web|4.99
+1247|393|2026-05-23|Cancelled|Phone|4.99
+1248|156|2026-01-27|Delivered|Web|0.00
+1249|208|2025-07-03|Shipped|Marketplace|14.99
+1250|110|2026-02-09|Delivered|Web|6.99
+1251||2026-02-13|Delivered|Phone|2.99
+1252|347|2025-11-09|Shipped|Marketplace|9.99
+1253|16|2026-03-07|Delivered|Phone|0.00
+1254|76|2025-09-26|Delivered|Mobile App|2.99
+1255|10|2026-09-05|Delivered|Web|14.99
+1256|264|2025-03-14|Returned|Mobile App|4.99
+1257|110|2025-07-20|Delivered|Web|0.00
+1258|118|2026-02-20|Delivered|Mobile App|2.99
+1259|293|2026-07-02|Delivered|Web|4.99
+1260|373|2026-09-15|Delivered|Mobile App|6.99
+1261|110|2026-08-18|Delivered|Web|9.99
+1262|315|2026-05-25|Delivered|Web|2.99
+1263|300|2026-02-07|Delivered|Web|6.99
+1264|105|2025-09-18|Delivered|Phone|0.00
+1265|171|2025-08-25|Delivered|Phone|14.99
+1266|1|2025-02-21|Returned|Web|4.99
+1267|171|2025-10-05|Delivered|Mobile App|2.99
+1268|225|2026-05-02|Delivered|Mobile App|4.99
+1269|199|2026-07-13|Delivered|Web|6.99
+1270|250|2026-05-21|Delivered|Mobile App|6.99
+1271|122|2025-12-15|Returned|Web|4.99
+1272|378|2026-01-12|Cancelled|Mobile App|0.00
+1273|274|2025-09-03|Returned|Web|6.99
+1274|309|2026-04-05|Delivered|Mobile App|2.99
+1275|352|2026-03-23|Delivered|Marketplace|4.99
+1276||2026-08-24|Cancelled|Web|2.99
+1277|47|2026-09-14|Processing|Marketplace|6.99
+1278|199|2025-09-09|Delivered|Marketplace|4.99
+1279|376|2026-05-25|Delivered|Web|0.00
+1280|264|2026-07-31|Delivered|Web|0.00
+1281|181|2025-10-31|Delivered|Mobile App|14.99
+1282|36|2025-12-28|Delivered|Web|9.99
+1283|372|2026-07-03|Delivered|Phone|4.99
+1284|223|2026-08-31|Cancelled|Web|4.99
+1285|347|2025-03-20|Cancelled|Web|9.99
+1286|248|2025-06-27|Delivered|Web|4.99
+1287|263|2026-05-20|Delivered|Mobile App|0.00
+1288|2|2025-06-26|Delivered|Web|14.99
+1289||2026-03-11|Delivered|Phone|6.99
+1290||2025-01-27|Delivered|Web|2.99
+1291|135|2026-08-25|Delivered|Web|2.99
+1292|264|2025-09-11|Delivered|Mobile App|2.99
+1293|171|2025-08-26|Delivered|Mobile App|6.99
+1294|132|2025-10-09|Returned|Mobile App|6.99
+1295|39|2026-07-16|Delivered|Web|0.00
+1296|381|2025-03-23|Delivered|Web|4.99
+1297|110|2025-05-22|Delivered|Mobile App|9.99
+1298|101|2026-09-06|Delivered|Mobile App|14.99
+1299|356|2025-09-01|Shipped|Marketplace|4.99
+1300|251|2026-03-20|Delivered|Marketplace|2.99
+1301|222|2026-04-05|Delivered|Web|0.00
+1302|285|2025-04-27|Delivered|Web|2.99
+1303|324|2026-03-17|Returned|Web|2.99
+1304|66|2025-02-06|Delivered|Mobile App|2.99
+1305|55|2025-02-10|Shipped|Marketplace|6.99
+1306|110|2025-01-14|Delivered|Web|4.99
+1307|171|2025-05-11|Shipped|Phone|4.99
+1308||2025-03-12|Cancelled|Phone|4.99
+1309|309|2025-05-17|Delivered|Mobile App|4.99
+1310||2025-12-18|Delivered|Web|4.99
+1311|309|2025-12-31|Cancelled|Mobile App|0.00
+1312|193|2025-11-01|Delivered|Web|14.99
+1313|110|2026-03-25|Cancelled|Web|6.99
+1314||2026-04-16|Delivered|Mobile App|2.99
+1315|145|2025-08-26|Shipped|Web|0.00
+1316||2026-08-11|Delivered|Marketplace|14.99
+1317|2|2026-08-25|Shipped|Mobile App|2.99
+1318|258|2025-05-08|Cancelled|Web|4.99
+1319|335|2025-09-04|Delivered|Phone|0.00
+1320|110|2025-08-12|Returned|Mobile App|14.99
+1321|65|2026-05-29|Shipped|Web|2.99
+1322|309|2025-07-01|Delivered|Phone|6.99
+1323|309|2026-09-01|Delivered|Phone|6.99
+1324|293|2025-09-10|Delivered|Web|6.99
+1325|387|2026-08-08|Shipped|Web|4.99
+1326|199|2025-11-05|Delivered|Phone|2.99
+1327|110|2026-03-14|Delivered|Web|6.99
+1328|66|2025-12-17|Delivered|Web|0.00
+1329|176|2026-07-28|Delivered|Web|0.00
+1330|14|2026-09-12|Processing|Mobile App|6.99
+1331|276|2025-07-24|Delivered|Mobile App|0.00
+1332|209|2026-05-18|Delivered|Web|2.99
+1333|308|2025-11-05|Delivered|Mobile App|2.99
+1334|264|2026-02-18|Cancelled|Web|2.99
+1335|297|2026-05-05|Delivered|Web|0.00
+1336||2026-05-05|Delivered|Marketplace|6.99
+1337|197|2026-06-29|Delivered|Web|6.99
+1338|395|2026-04-22|Delivered|Marketplace|2.99
+1339|282|2025-03-01|Delivered|Marketplace|0.00
+1340|283|2026-08-10|Delivered|Web|6.99
+1341|223|2026-09-20|Delivered|Web|2.99
+1342|199|2026-01-18|Returned|Web|4.99
+1343|347|2026-04-09|Delivered|Web|0.00
+1344|264|2026-05-01|Delivered|Phone|9.99
+1345|363|2025-12-01|Delivered|Web|6.99
+1346|124|2025-05-09|Returned|Web|4.99
+1347|233|2026-09-06|Returned|Web|0.00
+1348|99|2025-08-29|Delivered|Mobile App|4.99
+1349|159|2026-07-28|Delivered|Web|4.99
+1350|93|2026-04-23|Returned|Web|4.99
+1351|118|2026-06-24|Delivered|Mobile App|2.99
+1352|259|2026-07-06|Delivered|Web|2.99
+1353|342|2025-03-17|Delivered|Phone|4.99
+1354|123|2026-05-13|Delivered|Mobile App|0.00
+1355|243|2026-09-11|Delivered|Marketplace|9.99
+1356|323|2026-09-27|Processing|Phone|4.99
+1357|17|2025-02-15|Cancelled|Mobile App|4.99
+1358|215|2026-06-21|Cancelled|Web|2.99
+1359|110|2025-12-11|Delivered|Mobile App|2.99
+1360|294|2026-04-03|Delivered|Web|6.99
+1361|209|2025-06-15|Returned|Web|4.99
+1362|315|2026-07-09|Delivered|Mobile App|0.00
+1363|114|2026-06-07|Cancelled|Web|6.99
+1364|166|2026-01-25|Delivered|Marketplace|14.99
+1365|198|2025-11-05|Delivered|Mobile App|2.99
+1366|388|2026-09-17|Delivered|Web|6.99
+1367|152|2026-08-07|Cancelled|Web|2.99
+1368|259|2025-09-01|Cancelled|Web|2.99
+1369|309|2025-12-14|Returned|Web|2.99
+1370|260|2026-04-30|Delivered|Web|4.99
+1371|42|2026-09-18|Shipped|Marketplace|2.99
+1372|288|2025-11-09|Cancelled|Web|4.99
+1373|105|2025-05-11|Delivered|Web|0.00
+1374|117|2026-08-03|Returned|Web|2.99
+1375|171|2026-05-31|Delivered|Web|4.99
+1376|355|2026-07-18|Cancelled|Mobile App|2.99
+1377||2026-02-15|Delivered|Marketplace|2.99
+1378|385|2025-04-10|Delivered|Mobile App|0.00
+1379|91|2025-12-15|Delivered|Web|9.99
+1380|110|2026-06-20|Cancelled|Web|6.99
+1381|336|2026-01-01|Delivered|Web|6.99
+1382|98|2026-02-18|Cancelled|Web|6.99
+1383|182|2026-02-01|Cancelled|Web|2.99
+1384|105|2025-08-18|Delivered|Web|2.99
+1385|393|2025-10-08|Delivered|Mobile App|4.99
+1386|40|2025-09-18|Delivered|Mobile App|4.99
+1387|159|2026-01-23|Delivered|Phone|2.99
+1388|355|2025-10-27|Delivered|Mobile App|0.00
+1389|282|2026-05-08|Cancelled|Mobile App|4.99
+1390|60|2026-05-04|Returned|Web|2.99
+1391||2026-09-04|Delivered|Mobile App|0.00
+1392|139|2025-11-27|Delivered|Web|9.99
+1393|340|2026-05-29|Delivered|Web|2.99
+1394|145|2025-09-27|Delivered|Mobile App|6.99
+1395|171|2025-07-05|Delivered|Mobile App|9.99
+1396|313|2026-05-11|Delivered|Web|6.99
+1397|59|2026-09-02|Delivered|Mobile App|6.99
+1398|110|2025-07-22|Delivered|Mobile App|9.99
+1399|163|2026-04-06|Delivered|Web|2.99
+1400|163|2026-07-30|Returned|Phone|2.99
+1401|134|2025-03-21|Returned|Marketplace|2.99
+1402|340|2026-06-11|Delivered|Phone|4.99
+1403|309|2025-10-06|Delivered|Phone|4.99
+1404|366|2025-08-30|Cancelled|Mobile App|4.99
+1405|156|2025-06-09|Delivered|Mobile App|6.99
+1406|264|2026-09-04|Delivered|Web|4.99
+1407|117|2026-08-24|Delivered|Mobile App|2.99
+1408|264|2025-10-05|Shipped|Web|2.99
+1409|90|2025-10-28|Delivered|Web|4.99
+1410|176|2025-11-01|Delivered|Mobile App|6.99
+1411|87|2025-09-14|Delivered|Mobile App|2.99
+1412|110|2025-09-22|Delivered|Web|2.99
+1413|158|2025-02-08|Delivered|Web|2.99
+1414|137|2026-02-28|Delivered|Marketplace|6.99
+1415|80|2025-11-01|Delivered|Mobile App|4.99
+1416|79|2026-01-07|Shipped|Mobile App|4.99
+1417|216|2026-05-04|Shipped|Web|4.99
+1418|318|2025-07-23|Delivered|Web|2.99
+1419|91|2025-06-03|Delivered|Mobile App|4.99
+1420|347|2025-12-19|Shipped|Marketplace|0.00
+1421|119|2025-12-27|Delivered|Marketplace|4.99
+1422|120|2026-03-05|Delivered|Marketplace|0.00
+1423|110|2025-09-16|Shipped|Web|4.99
+1424||2025-07-30|Delivered|Web|9.99
+1425|152|2026-08-30|Cancelled|Web|4.99
+1426|146|2025-10-08|Delivered|Mobile App|6.99
+1427|203|2026-02-13|Shipped|Web|6.99
+1428|217|2025-05-26|Delivered|Mobile App|14.99
+1429|396|2025-07-13|Delivered|Web|4.99
+1430||2025-10-08|Delivered|Marketplace|9.99
+1431|219|2025-05-27|Returned|Web|6.99
+1432|243|2026-03-15|Delivered|Marketplace|4.99
+1433|309|2025-10-14|Delivered|Marketplace|6.99
+1434|110|2025-03-24|Delivered|Mobile App|2.99
+1435|1|2025-05-28|Delivered|Web|4.99
+1436|311|2025-11-16|Delivered|Web|4.99
+1437|272|2026-07-04|Returned|Mobile App|4.99
+1438|309|2025-09-28|Delivered|Mobile App|9.99
+1439|199|2025-03-22|Cancelled|Marketplace|6.99
+1440|110|2026-09-16|Shipped|Web|6.99
+1441|146|2025-07-31|Delivered|Web|2.99
+1442|58|2026-05-04|Delivered|Mobile App|9.99
+1443|114|2025-11-14|Delivered|Web|2.99
+1444|288|2025-10-08|Delivered|Web|2.99
+1445|103|2026-03-04|Shipped|Web|4.99
+1446|160|2026-01-20|Delivered|Mobile App|0.00
+1447|290|2026-04-26|Delivered|Mobile App|4.99
+1448|156|2026-06-03|Cancelled|Web|2.99
+1449|70|2026-04-29|Returned|Mobile App|9.99
+1450||2025-07-19|Delivered|Web|6.99
+1451|139|2026-06-05|Delivered|Marketplace|6.99
+1452|110|2025-09-24|Delivered|Web|9.99
+1453|117|2025-08-16|Returned|Web|0.00
+1454||2026-01-15|Delivered|Mobile App|0.00
+1455|80|2026-01-06|Delivered|Mobile App|4.99
+1456|311|2025-05-12|Delivered|Phone|2.99
+1457|158|2025-06-13|Delivered|Web|4.99
+1458|192|2026-05-07|Returned|Phone|0.00
+1459|131|2025-03-02|Delivered|Marketplace|2.99
+1460|311|2026-02-22|Cancelled|Mobile App|2.99
+1461|206|2025-04-30|Delivered|Mobile App|6.99
+1462|118|2025-03-30|Delivered|Web|2.99
+1463|309|2026-01-29|Delivered|Web|6.99
+1464|347|2025-05-07|Returned|Phone|9.99
+1465|397|2026-03-12|Delivered|Web|4.99
+1466|277|2025-12-13|Delivered|Web|2.99
+1467|390|2026-09-18|Delivered|Mobile App|0.00
+1468|266|2025-11-11|Delivered|Mobile App|2.99
+1469|79|2025-03-15|Delivered|Mobile App|4.99
+1470|165|2026-03-17|Delivered|Web|2.99
+1471||2025-03-06|Delivered|Mobile App|14.99
+1472|192|2026-09-22|Delivered|Web|6.99
+1473|264|2025-06-15|Delivered|Mobile App|4.99
+1474|185|2026-05-26|Delivered|Web|4.99
+1475|2|2026-07-28|Delivered|Marketplace|9.99
+1476|13|2026-07-30|Cancelled|Mobile App|9.99
+1477|400|2026-03-21|Returned|Mobile App|14.99
+1478|41|2025-08-24|Delivered|Marketplace|0.00
+1479|257|2026-03-21|Delivered|Web|0.00
+1480|321|2026-05-12|Cancelled|Marketplace|2.99
+1481|144|2026-08-30|Shipped|Mobile App|6.99
+1482|122|2026-05-11|Delivered|Web|4.99
+1483|315|2025-09-18|Cancelled|Mobile App|2.99
+1484|264|2026-01-29|Delivered|Web|6.99
+1485|264|2025-04-27|Delivered|Marketplace|0.00
+1486|59|2026-02-10|Delivered|Mobile App|9.99
+1487|343|2025-06-18|Delivered|Web|0.00
+1488|69|2026-03-10|Returned|Web|4.99
+1489|316|2026-02-22|Delivered|Mobile App|6.99
+1490||2026-03-19|Delivered|Mobile App|14.99
+1491|71|2025-05-11|Shipped|Mobile App|2.99
+1492|198|2026-06-23|Delivered|Web|2.99
+1493|231|2025-04-29|Cancelled|Web|6.99
+1494|390|2026-07-15|Delivered|Web|6.99
+1495|171|2025-08-26|Delivered|Marketplace|2.99
+1496||2026-05-25|Delivered|Marketplace|4.99
+1497|40|2026-03-01|Delivered|Mobile App|2.99
+1498|62|2025-08-24|Returned|Mobile App|6.99
+1499|398|2025-02-23|Returned|Web|4.99
+1500|387|2026-05-03|Cancelled|Web|0.00
+1501|171|2025-04-30|Delivered|Marketplace|2.99
+1502|276|2025-06-22|Cancelled|Mobile App|9.99
+1503|313|2025-07-09|Delivered|Phone|6.99
+1504||2026-07-31|Returned|Web|4.99
+1505|246|2025-02-16|Delivered|Web|4.99
+1506|222|2026-01-02|Delivered|Mobile App|0.00
+1507|115|2026-07-03|Shipped|Mobile App|0.00
+1508|198|2026-05-14|Returned|Marketplace|6.99
+1509||2025-12-26|Delivered|Web|0.00
+1510|110|2025-05-06|Delivered|Web|2.99
+1511|110|2026-09-15|Processing|Marketplace|2.99
+1512|62|2026-03-16|Returned|Web|2.99
+1513|200|2025-12-17|Delivered|Web|4.99
+1514|268|2025-05-19|Delivered|Marketplace|0.00
+1515|340|2025-12-21|Delivered|Marketplace|2.99
+1516|211|2025-04-10|Cancelled|Mobile App|0.00
+1517|279|2025-06-28|Delivered|Web|6.99
+1518|110|2026-01-16|Delivered|Mobile App|4.99
+1519|117|2025-02-28|Delivered|Web|4.99
+1520|321|2026-04-18|Delivered|Web|2.99
+1521|326|2026-04-30|Delivered|Web|2.99
+1522|49|2025-09-09|Delivered|Mobile App|4.99
+1523|71|2025-03-04|Delivered|Mobile App|0.00
+1524|312|2026-04-30|Returned|Web|14.99
+1525|254|2026-03-19|Shipped|Web|2.99
+1526|310|2025-06-02|Returned|Web|2.99
+1527|379|2026-06-04|Shipped|Mobile App|4.99
+1528|288|2025-03-07|Delivered|Mobile App|2.99
+1529|145|2025-07-28|Shipped|Web|2.99
+1530|375|2025-09-19|Delivered|Web|0.00
+1531||2025-06-03|Cancelled|Web|2.99
+1532|329|2025-09-07|Delivered|Web|6.99
+1533|176|2026-07-03|Delivered|Web|0.00
+1534|65|2025-12-15|Returned|Mobile App|9.99
+1535|149|2026-09-13|Shipped|Web|0.00
+1536|78|2026-01-12|Delivered|Mobile App|2.99
+1537|309|2025-11-14|Returned|Web|6.99
+1538|211|2026-04-09|Delivered|Web|2.99
+1539||2026-07-29|Delivered|Mobile App|2.99
+1540|266|2026-06-20|Delivered|Web|4.99
+1541|310|2025-04-09|Delivered|Marketplace|6.99
+1542|153|2026-04-01|Delivered|Marketplace|9.99
+1543|110|2025-07-31|Returned|Marketplace|2.99
+1544|65|2026-05-10|Delivered|Phone|0.00
+1545|246|2026-06-17|Delivered|Web|6.99
+1546|110|2026-03-26|Delivered|Mobile App|9.99
+1547||2026-01-08|Delivered|Marketplace|9.99
+1548|164|2026-01-07|Cancelled|Mobile App|6.99
+1549|29|2026-07-26|Delivered|Phone|14.99
+1550|110|2026-05-25|Delivered|Web|0.00
+1551|67|2026-04-24|Delivered|Web|4.99
+1552|366|2025-05-03|Delivered|Mobile App|0.00
+1553|110|2026-03-25|Delivered|Web|2.99
+1554|29|2026-09-25|Processing|Mobile App|2.99
+1555|66|2025-07-08|Delivered|Phone|0.00
+1556|309|2025-09-24|Delivered|Web|0.00
+1557|207|2025-04-03|Delivered|Marketplace|0.00
+1558|105|2025-01-10|Cancelled|Web|14.99
+1559|204|2025-04-25|Delivered|Marketplace|4.99
+1560|81|2025-04-03|Delivered|Web|4.99
+1561|295|2025-11-22|Cancelled|Web|0.00
+1562|110|2026-03-10|Returned|Web|9.99
+1563|65|2026-05-12|Delivered|Mobile App|4.99
+1564|358|2026-07-02|Delivered|Marketplace|6.99
+1565|171|2025-01-24|Delivered|Web|6.99
+1566|99|2025-01-21|Returned|Web|4.99
+1567|398|2026-07-08|Delivered|Web|6.99
+1568|366|2026-06-25|Shipped|Web|4.99
+1569|139|2026-06-08|Delivered|Mobile App|4.99
+1570|68|2026-08-13|Delivered|Marketplace|2.99
+1571|370|2025-09-06|Delivered|Web|9.99
+1572|95|2025-02-14|Delivered|Mobile App|6.99
+1573|309|2025-03-17|Delivered|Web|4.99
+1574|156|2025-06-18|Delivered|Mobile App|0.00
+1575|263|2026-08-07|Delivered|Marketplace|0.00
+1576|62|2025-05-13|Cancelled|Marketplace|0.00
+1577|145|2026-01-06|Delivered|Phone|4.99
+1578|103|2026-02-21|Delivered|Web|4.99
+1579|111|2026-01-29|Cancelled|Phone|0.00
+1580|309|2025-02-15|Delivered|Web|6.99
+1581|215|2026-01-13|Returned|Mobile App|6.99
+1582|48|2025-04-07|Delivered|Web|6.99
+1583|49|2026-07-14|Cancelled|Web|0.00
+1584|291|2026-06-06|Delivered|Marketplace|2.99
+1585|145|2026-05-06|Delivered|Mobile App|4.99
+1586|65|2026-06-26|Returned|Marketplace|2.99
+1587||2025-12-20|Cancelled|Marketplace|6.99
+1588|309|2025-08-21|Delivered|Web|6.99
+1589|87|2025-07-06|Delivered|Marketplace|2.99
+1590|263|2025-06-26|Delivered|Web|2.99
+1591|46|2026-08-23|Delivered|Web|4.99
+1592||2026-07-18|Delivered|Marketplace|2.99
+1593|264|2025-05-02|Shipped|Mobile App|9.99
+1594|343|2025-11-05|Delivered|Web|6.99
+1595|218|2026-03-10|Delivered|Mobile App|0.00
+1596|158|2025-11-26|Shipped|Web|9.99
+1597|103|2026-04-17|Cancelled|Marketplace|14.99
+1598|105|2025-02-18|Delivered|Marketplace|14.99
+1599|314|2025-08-01|Cancelled|Mobile App|2.99
+1600|145|2026-06-21|Delivered|Mobile App|9.99
+1601|306|2025-09-26|Shipped|Web|6.99
+1602|199|2026-04-02|Delivered|Web|2.99
+1603|212|2026-03-18|Shipped|Marketplace|9.99
+1604|269|2025-09-06|Delivered|Mobile App|6.99
+1605|198|2025-11-05|Delivered|Marketplace|4.99
+1606|356|2026-01-17|Returned|Marketplace|2.99
+1607|277|2026-02-03|Shipped|Mobile App|4.99
+1608|59|2026-03-13|Delivered|Mobile App|6.99
+1609|105|2025-06-03|Delivered|Mobile App|4.99
+1610|215|2025-07-17|Delivered|Marketplace|2.99
+1611|159|2025-10-07|Delivered|Web|2.99
+1612|282|2025-04-23|Delivered|Mobile App|4.99
+1613|171|2025-07-13|Delivered|Web|4.99
+1614|129|2025-04-30|Delivered|Web|6.99
+1615|327|2025-06-01|Delivered|Mobile App|9.99
+1616|277|2026-09-04|Delivered|Marketplace|4.99
+1617|366|2026-04-20|Delivered|Marketplace|4.99
+1618|153|2025-11-05|Delivered|Marketplace|2.99
+1619|374|2026-05-18|Cancelled|Mobile App|4.99
+1620||2025-11-14|Delivered|Web|4.99
+1621||2026-07-23|Delivered|Web|0.00
+1622|110|2025-08-16|Delivered|Mobile App|2.99
+1623|103|2026-01-26|Delivered|Marketplace|2.99
+1624||2025-08-11|Cancelled|Web|4.99
+1625|277|2026-05-16|Delivered|Mobile App|4.99
+1626|91|2026-04-04|Returned|Mobile App|2.99
+1627|168|2025-04-28|Returned|Mobile App|0.00
+1628|29|2025-07-06|Shipped|Marketplace|2.99
+1629|181|2025-04-27|Delivered|Web|0.00
+1630|79|2025-08-19|Returned|Web|6.99
+1631|16|2025-03-27|Delivered|Mobile App|9.99
+1632|45|2026-07-22|Delivered|Mobile App|2.99
+1633|67|2026-06-16|Delivered|Marketplace|4.99
+1634|126|2025-01-15|Delivered|Web|6.99
+1635|125|2025-01-13|Delivered|Marketplace|9.99
+1636|112|2026-05-14|Delivered|Marketplace|2.99
+1637|12|2026-01-22|Delivered|Mobile App|6.99
+1638|91|2025-06-11|Delivered|Web|14.99
+1639|28|2026-06-08|Cancelled|Web|4.99
+1640|308|2026-01-17|Delivered|Web|9.99
+1641|342|2025-03-09|Shipped|Marketplace|0.00
+1642|59|2026-01-06|Delivered|Web|4.99
+1643|295|2026-01-22|Delivered|Marketplace|2.99
+1644|110|2026-09-04|Delivered|Web|4.99
+1645|83|2026-02-06|Shipped|Phone|4.99
+1646|171|2025-08-28|Delivered|Phone|0.00
+1647|83|2025-11-22|Delivered|Web|2.99
+1648|162|2025-05-26|Returned|Web|2.99
+1649|358|2025-05-11|Delivered|Web|0.00
+1650|105|2025-10-05|Delivered|Marketplace|4.99
+1651|223|2026-08-04|Delivered|Web|2.99
+1652|55|2026-09-08|Delivered|Mobile App|2.99
+1653|340|2026-01-02|Delivered|Mobile App|6.99
+1654|90|2025-03-08|Returned|Web|6.99
+1655|347|2026-04-19|Returned|Mobile App|14.99
+1656|355|2025-07-03|Delivered|Web|2.99
+1657||2025-03-11|Shipped|Marketplace|0.00
+1658|299|2026-04-16|Delivered|Marketplace|0.00
+1659|239|2026-04-27|Delivered|Web|4.99
+1660|117|2025-11-20|Delivered|Web|6.99
+1661|387|2025-03-20|Delivered|Web|4.99
+1662||2026-06-25|Delivered|Web|9.99
+1663||2026-01-02|Delivered|Web|4.99
+1664|298|2026-04-15|Returned|Web|6.99
+1665|366|2026-05-19|Shipped|Mobile App|2.99
+1666|282|2025-10-26|Delivered|Mobile App|9.99
+1667|158|2026-06-26|Returned|Web|2.99
+1668|350|2025-06-13|Delivered|Web|2.99
+1669|355|2025-03-01|Cancelled|Web|4.99
+1670|363|2026-01-03|Delivered|Web|4.99
+1671|130|2025-08-24|Delivered|Marketplace|4.99
+1672|114|2026-05-22|Delivered|Mobile App|9.99
+1673|372|2025-03-20|Delivered|Web|4.99
+1674|165|2025-05-18|Shipped|Web|4.99
+1675|375|2025-03-17|Shipped|Web|14.99
+1676|79|2025-12-20|Delivered|Web|9.99
+1677|134|2025-11-19|Delivered|Mobile App|14.99
+1678|397|2025-12-21|Delivered|Web|4.99
+1679|159|2026-05-03|Delivered|Web|6.99
+1680||2026-04-30|Returned|Web|4.99
+1681|171|2025-10-01|Delivered|Marketplace|2.99
+1682|78|2025-08-03|Delivered|Web|14.99
+1683|110|2025-10-13|Delivered|Mobile App|2.99
+1684|93|2026-05-20|Cancelled|Web|2.99
+1685|110|2026-03-21|Cancelled|Phone|2.99
+1686|146|2026-03-08|Delivered|Web|0.00
+1687|216|2025-05-02|Delivered|Web|4.99
+1688|299|2025-06-28|Delivered|Marketplace|0.00
+1689|121|2025-11-30|Shipped|Web|2.99
+1690|238|2026-05-27|Returned|Mobile App|9.99
+1691|382|2025-06-04|Delivered|Web|2.99
+1692|290|2026-02-28|Delivered|Marketplace|0.00
+1693|146|2025-05-07|Delivered|Web|6.99
+1694|215|2026-02-17|Delivered|Mobile App|2.99
+1695|126|2026-05-13|Delivered|Marketplace|2.99
+1696|137|2026-07-29|Delivered|Web|9.99
+1697|159|2025-08-16|Delivered|Web|9.99
+1698|147|2025-09-01|Delivered|Marketplace|6.99
+1699|309|2026-08-27|Delivered|Marketplace|6.99
+1700|368|2026-05-09|Delivered|Web|2.99
+1701|110|2025-02-03|Cancelled|Mobile App|0.00
+1702|265|2025-09-25|Delivered|Web|6.99
+1703|164|2025-05-08|Delivered|Mobile App|6.99
+1704|198|2025-11-27|Cancelled|Web|14.99
+1705|302|2026-01-24|Delivered|Phone|0.00
+1706|9|2026-07-30|Delivered|Phone|9.99
+1707|302|2026-07-25|Delivered|Mobile App|4.99
+1708|326|2026-01-12|Delivered|Web|9.99
+1709|309|2025-12-15|Cancelled|Phone|0.00
+1710||2026-08-09|Returned|Marketplace|4.99
+1711|330|2025-05-28|Delivered|Mobile App|9.99
+1712|309|2025-01-03|Delivered|Web|4.99
+1713|208|2025-12-10|Returned|Mobile App|2.99
+1714|122|2025-08-08|Delivered|Marketplace|0.00
+1715|64|2026-01-18|Shipped|Mobile App|0.00
+1716|323|2026-08-07|Delivered|Mobile App|4.99
+1717|47|2026-07-06|Delivered|Web|4.99
+1718|366|2025-06-15|Delivered|Web|6.99
+1719|105|2026-04-20|Delivered|Phone|6.99
+1720|110|2026-09-08|Cancelled|Web|4.99
+1721|160|2026-09-07|Delivered|Phone|9.99
+1722|110|2026-03-01|Delivered|Mobile App|4.99
+1723|186|2025-03-26|Delivered|Mobile App|2.99
+1724|110|2026-02-19|Delivered|Web|0.00
+1725|264|2026-09-19|Delivered|Web|2.99
+1726|387|2025-07-12|Delivered|Web|4.99
+1727|40|2026-08-09|Delivered|Marketplace|0.00
+1728|264|2025-08-17|Delivered|Web|2.99
+1729|340|2026-02-03|Cancelled|Mobile App|2.99
+1730|175|2025-11-03|Shipped|Web|0.00
+1731|9|2025-06-02|Delivered|Phone|2.99
+1732|87|2026-03-05|Delivered|Web|4.99
+1733|96|2026-08-04|Returned|Web|6.99
+1734|215|2026-04-27|Delivered|Marketplace|4.99
+1735|192|2026-03-25|Delivered|Web|2.99
+1736|16|2026-06-29|Delivered|Web|6.99
+1737|95|2026-08-14|Cancelled|Mobile App|4.99
+1738|272|2025-09-20|Delivered|Marketplace|6.99
+1739|277|2025-12-16|Delivered|Web|4.99
+1740|158|2026-01-02|Delivered|Mobile App|0.00
+1741|95|2025-08-29|Cancelled|Web|2.99
+1742|306|2026-08-06|Delivered|Web|9.99
+1743|160|2025-08-25|Delivered|Mobile App|0.00
+1744|32|2026-01-26|Returned|Mobile App|9.99
+1745|88|2026-07-28|Cancelled|Web|4.99
+1746|287|2026-06-11|Delivered|Mobile App|2.99
+1747|80|2026-09-05|Delivered|Phone|4.99
+1748|233|2026-09-17|Shipped|Mobile App|0.00
+1749|336|2026-07-10|Delivered|Web|0.00
+1750|156|2025-09-12|Delivered|Web|0.00
+1751|16|2026-06-11|Delivered|Web|2.99
+1752|354|2026-08-26|Delivered|Mobile App|6.99
+1753|117|2026-06-22|Shipped|Phone|0.00
+1754|256|2026-03-23|Returned|Mobile App|2.99
+1755|117|2026-07-02|Delivered|Web|0.00
+1756|295|2026-04-25|Delivered|Mobile App|4.99
+1757|228|2025-10-29|Returned|Mobile App|14.99
+1758|24|2025-01-08|Delivered|Marketplace|6.99
+1759|197|2025-05-09|Delivered|Marketplace|9.99
+1760|169|2026-06-09|Delivered|Marketplace|4.99
+1761|96|2026-09-10|Processing|Web|4.99
+1762||2025-11-29|Cancelled|Marketplace|6.99
+1763|309|2026-02-09|Delivered|Web|9.99
+1764|103|2025-05-03|Returned|Web|4.99
+1765|128|2025-10-28|Cancelled|Web|6.99
+1766|333|2025-06-04|Delivered|Web|4.99
+1767|372|2025-09-18|Delivered|Mobile App|2.99
+1768|156|2025-05-14|Delivered|Mobile App|0.00
+1769|179|2026-06-08|Delivered|Marketplace|0.00
+1770|117|2026-05-10|Delivered|Web|0.00
+1771|203|2026-02-24|Delivered|Web|0.00
+1772|196|2026-04-18|Delivered|Web|4.99
+1773|349|2026-01-17|Delivered|Phone|0.00
+1774|25|2026-04-11|Delivered|Marketplace|4.99
+1775||2026-06-30|Delivered|Marketplace|4.99
+1776|326|2026-08-03|Delivered|Marketplace|6.99
+1777|187|2026-02-05|Returned|Marketplace|4.99
+1778|355|2025-09-24|Delivered|Web|4.99
+1779|388|2026-05-03|Delivered|Marketplace|4.99
+1780|309|2026-05-07|Returned|Web|2.99
+1781|46|2025-04-06|Delivered|Web|6.99
+1782|378|2025-05-06|Delivered|Web|2.99
+1783|248|2025-02-09|Cancelled|Mobile App|0.00
+1784|110|2025-04-13|Returned|Web|0.00
+1785|117|2026-09-16|Delivered|Mobile App|4.99
+1786|122|2025-10-29|Shipped|Web|0.00
+1787|233|2025-04-15|Delivered|Mobile App|0.00
+1788||2026-01-28|Delivered|Marketplace|4.99
+1789|240|2025-12-09|Returned|Mobile App|14.99
+1790|223|2025-11-12|Delivered|Mobile App|4.99
+1791|31|2026-01-03|Delivered|Marketplace|6.99
+1792||2026-09-10|Processing|Mobile App|4.99
+1793|374|2026-01-25|Delivered|Mobile App|4.99
+1794|172|2025-07-11|Delivered|Phone|0.00
+1795|190|2025-11-28|Returned|Web|9.99
+1796|309|2025-06-22|Delivered|Marketplace|2.99
+1797|30|2025-12-02|Shipped|Marketplace|14.99
+1798||2026-06-01|Delivered|Mobile App|0.00
+1799|326|2025-02-07|Delivered|Marketplace|2.99
+1800|257|2026-08-22|Delivered|Mobile App|9.99
+1801|67|2026-09-10|Shipped|Web|0.00
+1802|194|2025-01-26|Delivered|Web|0.00
+1803|153|2026-04-21|Delivered|Web|6.99
+1804|387|2026-04-04|Cancelled|Web|2.99
+1805|309|2025-12-22|Cancelled|Web|9.99
+1806|281|2025-03-11|Delivered|Mobile App|2.99
+1807|239|2025-03-12|Returned|Web|2.99
+1808|232|2026-07-01|Delivered|Web|2.99
+1809|111|2026-05-10|Delivered|Marketplace|2.99
+1810|259|2025-12-24|Delivered|Marketplace|2.99
+1811|110|2025-12-31|Delivered|Web|2.99
+1812|47|2026-01-08|Returned|Web|4.99
+1813||2026-09-01|Delivered|Mobile App|6.99
+1814|397|2025-11-26|Delivered|Web|2.99
+1815|231|2026-06-09|Delivered|Web|4.99
+1816|347|2025-10-03|Delivered|Web|0.00
+1817|105|2026-01-07|Shipped|Web|14.99
+1818|128|2026-08-17|Delivered|Web|4.99
+1819|110|2025-05-16|Delivered|Phone|4.99
+1820|223|2026-03-28|Delivered|Web|2.99
+1821|171|2025-06-05|Cancelled|Web|2.99
+1822|324|2025-06-22|Delivered|Web|0.00
+1823||2026-05-04|Delivered|Phone|0.00
+1824|368|2025-08-31|Delivered|Marketplace|0.00
+1825|388|2026-09-05|Returned|Phone|4.99
+1826|286|2025-10-26|Delivered|Web|0.00
+1827|153|2025-05-05|Cancelled|Web|9.99
+1828||2025-09-12|Delivered|Web|2.99
+1829|190|2026-08-28|Delivered|Mobile App|4.99
+1830|105|2025-05-10|Delivered|Marketplace|4.99
+1831|171|2026-04-20|Delivered|Mobile App|9.99
+1832|264|2025-03-06|Returned|Marketplace|0.00
+1833|265|2026-02-18|Cancelled|Marketplace|2.99
+1834|311|2025-12-06|Delivered|Web|2.99
+1835|194|2025-10-13|Delivered|Mobile App|2.99
+1836||2026-05-14|Delivered|Mobile App|4.99
+1837|175|2026-08-29|Delivered|Web|14.99
+1838|282|2025-12-28|Delivered|Web|6.99
+1839|264|2025-11-16|Delivered|Web|4.99
+1840|98|2026-07-07|Delivered|Marketplace|0.00
+1841|16|2025-05-25|Shipped|Marketplace|4.99
+1842|41|2025-02-19|Delivered|Web|4.99
+1843|320|2025-12-02|Delivered|Mobile App|2.99
+1844|107|2025-10-02|Delivered|Web|6.99
+1845|268|2025-02-27|Delivered|Mobile App|6.99
+1846|110|2025-12-23|Delivered|Mobile App|0.00
+1847|309|2026-06-11|Delivered|Web|6.99
+1848|363|2025-07-06|Delivered|Mobile App|4.99
+1849|280|2025-02-07|Delivered|Web|9.99
+1850||2026-05-24|Delivered|Web|2.99
+1851|209|2026-01-25|Delivered|Marketplace|6.99
+1852|194|2025-11-08|Delivered|Mobile App|4.99
+1853|226|2025-12-14|Delivered|Marketplace|0.00
+1854|122|2026-04-10|Shipped|Web|4.99
+1855|227|2025-04-30|Shipped|Mobile App|4.99
+1856|400|2026-02-26|Delivered|Mobile App|2.99
+1857||2025-10-07|Delivered|Web|2.99
+1858|133|2026-05-17|Returned|Marketplace|14.99
+1859|88|2026-05-26|Delivered|Web|4.99
+1860|145|2025-04-08|Delivered|Web|4.99
+1861|200|2026-09-08|Cancelled|Web|6.99
+1862|314|2026-08-05|Delivered|Web|9.99
+1863|277|2025-07-08|Delivered|Mobile App|2.99
+1864|105|2026-05-27|Delivered|Web|4.99
+1865|64|2026-06-08|Delivered|Marketplace|2.99
+1866|215|2025-08-28|Returned|Web|2.99
+1867|351|2025-12-12|Delivered|Marketplace|9.99
+1868|338|2026-09-05|Delivered|Mobile App|6.99
+1869|25|2026-03-23|Cancelled|Web|4.99
+1870|132|2026-06-28|Delivered|Web|14.99
+1871|35|2026-04-10|Delivered|Web|4.99
+1872|10|2026-04-23|Delivered|Web|0.00
+1873|326|2026-09-09|Delivered|Web|4.99
+1874|215|2026-02-15|Shipped|Web|9.99
+1875|110|2025-01-04|Delivered|Mobile App|4.99
+1876|33|2026-07-11|Returned|Marketplace|14.99
+1877|82|2025-04-03|Delivered|Web|0.00
+1878|196|2026-02-28|Cancelled|Web|0.00
+1879|300|2025-04-10|Delivered|Mobile App|0.00
+1880|331|2025-10-27|Cancelled|Mobile App|4.99
+1881|193|2025-03-10|Delivered|Web|2.99
+1882|347|2026-04-11|Delivered|Mobile App|0.00
+1883|140|2025-03-29|Cancelled|Web|2.99
+1884|128|2026-03-08|Delivered|Web|2.99
+1885|93|2025-12-04|Returned|Mobile App|2.99
+1886|121|2025-10-21|Delivered|Web|0.00
+1887|229|2025-11-06|Returned|Marketplace|0.00
+1888|103|2026-09-06|Delivered|Mobile App|2.99
+1889|297|2025-08-06|Delivered|Web|4.99
+1890|14|2026-04-04|Cancelled|Web|0.00
+1891|40|2026-03-19|Delivered|Phone|14.99
+1892|309|2026-08-23|Returned|Web|9.99
+1893||2025-12-11|Returned|Web|2.99
+1894|385|2025-03-20|Delivered|Mobile App|14.99
+1895|110|2025-10-08|Delivered|Web|9.99
+1896|110|2026-02-20|Delivered|Web|4.99
+1897|267|2026-08-13|Delivered|Web|6.99
+1898|105|2025-05-15|Delivered|Marketplace|0.00
+1899||2026-03-30|Delivered|Marketplace|14.99
+1900|193|2025-12-02|Delivered|Web|4.99
+1901|121|2026-04-22|Cancelled|Web|0.00
+1902|253|2026-03-07|Delivered|Mobile App|9.99
+1903||2025-05-25|Returned|Mobile App|0.00
+1904|378|2026-09-02|Delivered|Web|9.99
+1905|199|2026-09-19|Delivered|Web|0.00
+1906|265|2026-01-18|Delivered|Phone|9.99
+1907|33|2025-02-07|Delivered|Mobile App|4.99
+1908|186|2025-11-14|Delivered|Mobile App|4.99
+1909|46|2026-01-29|Delivered|Web|6.99
+1910|193|2026-07-28|Shipped|Web|0.00
+1911|254|2025-06-25|Delivered|Web|2.99
+1912|39|2025-09-15|Delivered|Mobile App|2.99
+1913|110|2025-11-02|Delivered|Mobile App|6.99
+1914|38|2025-10-11|Cancelled|Web|2.99
+1915|231|2025-03-01|Cancelled|Web|2.99
+1916|137|2026-05-07|Returned|Mobile App|6.99
+1917|171|2025-09-12|Delivered|Mobile App|4.99
+1918|171|2026-09-12|Cancelled|Mobile App|4.99
+1919|288|2026-01-10|Delivered|Web|4.99
+1920|360|2025-03-20|Delivered|Mobile App|14.99
+1921|37|2026-03-26|Delivered|Web|4.99
+1922|128|2026-03-06|Delivered|Mobile App|4.99
+1923|398|2025-04-14|Delivered|Phone|6.99
+1924|348|2025-06-02|Delivered|Web|2.99
+1925|191|2026-03-17|Delivered|Marketplace|0.00
+1926|286|2025-08-27|Delivered|Web|2.99
+1927||2026-07-22|Delivered|Web|4.99
+1928||2026-01-07|Delivered|Web|4.99
+1929|116|2025-07-04|Cancelled|Mobile App|0.00
+1930|114|2025-12-27|Delivered|Web|9.99
+1931|320|2026-02-20|Delivered|Web|4.99
+1932|385|2025-07-21|Cancelled|Phone|14.99
+1933|264|2025-11-24|Delivered|Web|2.99
+1934|95|2026-06-20|Delivered|Marketplace|2.99
+1935|26|2026-01-01|Cancelled|Marketplace|4.99
+1936|193|2025-12-01|Cancelled|Marketplace|9.99
+1937|67|2026-02-24|Delivered|Mobile App|6.99
+1938|95|2025-11-26|Delivered|Web|4.99
+1939|351|2025-06-04|Delivered|Phone|2.99
+1940|59|2026-07-31|Delivered|Web|0.00
+1941|264|2025-06-08|Delivered|Web|9.99
+1942|146|2026-06-11|Delivered|Marketplace|4.99
+1943|347|2026-01-02|Delivered|Web|4.99
+1944|103|2026-03-08|Delivered|Marketplace|2.99
+1945||2025-06-30|Delivered|Phone|2.99
+1946|351|2026-01-04|Delivered|Web|0.00
+1947|309|2025-07-08|Delivered|Web|2.99
+1948||2026-09-01|Delivered|Web|4.99
+1949|326|2026-04-22|Cancelled|Marketplace|2.99
+1950|156|2026-06-09|Delivered|Web|4.99
+1951|6|2025-11-23|Delivered|Mobile App|4.99
+1952|117|2025-02-25|Delivered|Web|2.99
+1953|79|2026-07-01|Delivered|Mobile App|2.99
+1954|118|2025-05-12|Delivered|Phone|4.99
+1955|105|2025-03-30|Cancelled|Phone|9.99
+1956||2026-06-22|Delivered|Mobile App|0.00
+1957|263|2026-06-26|Cancelled|Mobile App|6.99
+1958|256|2025-01-27|Delivered|Marketplace|2.99
+1959|309|2026-02-22|Delivered|Mobile App|14.99
+1960|114|2026-09-26|Processing|Web|6.99
+1961|81|2026-04-12|Delivered|Marketplace|4.99
+1962|132|2025-07-18|Cancelled|Web|4.99
+1963|171|2025-10-30|Delivered|Web|4.99
+1964||2025-06-11|Delivered|Marketplace|6.99
+1965|165|2026-07-29|Delivered|Mobile App|9.99
+1966|147|2026-08-08|Delivered|Web|0.00
+1967|326|2026-07-12|Delivered|Mobile App|2.99
+1968|110|2026-02-03|Delivered|Mobile App|9.99
+1969|181|2025-11-17|Delivered|Mobile App|6.99
+1970|350|2026-01-24|Delivered|Mobile App|6.99
+1971|110|2026-01-07|Returned|Mobile App|4.99
+1972|80|2025-02-22|Delivered|Mobile App|0.00
+1973|62|2026-08-03|Shipped|Web|14.99
+1974||2026-09-11|Shipped|Web|2.99
+1975|321|2025-09-23|Returned|Phone|0.00
+1976|137|2026-01-03|Delivered|Web|6.99
+1977|161|2026-07-05|Delivered|Web|4.99
+1978|110|2025-11-21|Delivered|Web|6.99
+1979|252|2025-09-30|Delivered|Web|6.99
+1980|279|2026-05-16|Delivered|Mobile App|0.00
+1981|74|2025-03-10|Shipped|Phone|0.00
+1982|22|2025-06-11|Delivered|Web|4.99
+1983|264|2026-04-16|Cancelled|Marketplace|9.99
+1984|300|2025-05-16|Delivered|Mobile App|14.99
+1985|372|2026-01-12|Delivered|Web|6.99
+1986|251|2026-05-10|Delivered|Mobile App|14.99
+1987|57|2026-02-07|Delivered|Mobile App|2.99
+1988|316|2026-04-27|Delivered|Web|6.99
+1989|57|2025-04-30|Shipped|Web|4.99
+1990|215|2025-01-20|Returned|Marketplace|9.99
+1991|309|2025-07-26|Delivered|Marketplace|2.99
+1992|110|2026-04-18|Delivered|Mobile App|4.99
+1993|9|2026-02-20|Delivered|Web|4.99
+1994|171|2026-05-10|Cancelled|Mobile App|4.99
+1995|114|2026-05-16|Cancelled|Web|6.99
+1996|339|2025-12-06|Delivered|Mobile App|2.99
+1997|110|2026-08-02|Delivered|Mobile App|6.99
+1998|110|2026-01-25|Delivered|Web|4.99
+1999|387|2025-07-24|Delivered|Mobile App|4.99
+2000|309|2025-09-29|Delivered|Web|0.00
+2001|117|2025-10-11|Delivered|Mobile App|2.99
+2002|153|2025-06-21|Delivered|Web|14.99
+2003|117|2026-02-13|Shipped|Web|2.99
+2004|243|2026-09-17|Processing|Web|4.99
+2005|146|2026-08-26|Delivered|Marketplace|2.99
+2006|88|2025-04-09|Shipped|Web|4.99
+2007|309|2026-04-04|Delivered|Phone|2.99
+2008|110|2026-02-18|Delivered|Web|4.99
+2009|73|2025-06-03|Delivered|Web|9.99
+2010||2025-08-18|Delivered|Web|9.99
+2011|254|2025-12-26|Returned|Web|2.99
+2012|302|2026-03-25|Cancelled|Mobile App|0.00
+2013|321|2026-07-20|Delivered|Web|4.99
+2014|235|2025-12-28|Delivered|Mobile App|6.99
+2015|356|2025-01-29|Delivered|Web|0.00
+2016|354|2025-08-05|Delivered|Marketplace|6.99
+2017|16|2026-01-14|Delivered|Web|6.99
+2018|322|2025-08-22|Delivered|Marketplace|6.99
+2019|223|2026-04-28|Shipped|Phone|6.99
+2020|328|2026-04-10|Delivered|Mobile App|4.99
+2021|172|2025-05-03|Delivered|Web|4.99
+2022|110|2026-03-26|Cancelled|Marketplace|6.99
+2023|382|2025-05-09|Delivered|Mobile App|14.99
+2024||2026-04-28|Delivered|Web|2.99
+2025|309|2026-07-22|Delivered|Marketplace|2.99
+2026|117|2026-07-18|Delivered|Mobile App|2.99
+2027||2026-04-13|Delivered|Phone|4.99
+2028|171|2025-05-31|Delivered|Web|2.99
+2029|209|2025-08-25|Delivered|Web|4.99
+2030|239|2026-09-16|Shipped|Mobile App|4.99
+2031|257|2025-07-18|Cancelled|Web|9.99
+2032|79|2025-03-03|Delivered|Mobile App|9.99
+2033|323|2025-07-30|Delivered|Mobile App|14.99
+2034|263|2025-10-04|Delivered|Web|2.99
+2035|110|2025-09-19|Shipped|Web|2.99
+2036|142|2025-07-04|Returned|Mobile App|2.99
+2037|257|2026-04-22|Cancelled|Web|0.00
+2038|165|2026-01-11|Cancelled|Web|2.99
+2039||2025-03-13|Returned|Phone|9.99
+2040|257|2025-04-06|Delivered|Web|4.99
+2041|393|2026-09-05|Delivered|Mobile App|9.99
+2042|81|2025-03-14|Delivered|Marketplace|14.99
+2043|280|2025-10-16|Delivered|Web|0.00
+2044|269|2026-06-15|Delivered|Web|4.99
+2045|124|2025-12-18|Cancelled|Web|9.99
+2046|111|2025-12-21|Delivered|Web|4.99
+2047|219|2025-04-28|Delivered|Web|9.99
+2048|347|2025-10-27|Delivered|Mobile App|4.99
+2049|309|2026-03-04|Shipped|Marketplace|2.99
+2050|309|2026-04-19|Delivered|Web|0.00
+2051|385|2026-08-05|Delivered|Mobile App|2.99
+2052|117|2026-04-13|Shipped|Web|0.00
+2053||2026-09-24|Delivered|Mobile App|4.99
+2054|118|2026-04-11|Delivered|Mobile App|2.99
+2055|336|2025-05-15|Shipped|Web|4.99
+2056|117|2026-03-10|Delivered|Web|9.99
+2057|319|2025-10-01|Cancelled|Web|6.99
+2058|77|2026-09-21|Shipped|Web|2.99
+2059|381|2025-10-17|Delivered|Mobile App|4.99
+2060|164|2025-08-25|Shipped|Mobile App|0.00
+2061|110|2025-04-16|Shipped|Mobile App|4.99
+2062|314|2026-04-20|Delivered|Web|9.99
+2063|253|2025-08-22|Returned|Web|4.99
+2064|372|2026-02-13|Delivered|Mobile App|4.99
+2065|233|2025-01-23|Delivered|Web|14.99
+2066|269|2026-09-12|Delivered|Phone|2.99
+2067|110|2026-08-17|Delivered|Mobile App|2.99
+2068|305|2025-07-11|Delivered|Mobile App|0.00
+2069|114|2026-04-29|Delivered|Marketplace|6.99
+2070|171|2026-01-23|Delivered|Web|0.00
+2071|119|2025-02-19|Delivered|Web|4.99
+2072|285|2026-03-02|Delivered|Web|2.99
+2073|87|2025-12-26|Delivered|Web|0.00
+2074|340|2025-09-23|Delivered|Mobile App|14.99
+2075|356|2025-08-07|Delivered|Web|6.99
+2076|10|2026-03-05|Delivered|Marketplace|2.99
+2077|110|2025-10-27|Delivered|Marketplace|6.99
+2078|193|2025-11-21|Cancelled|Web|0.00
+2079|331|2025-05-09|Delivered|Web|2.99
+2080|262|2025-05-01|Delivered|Web|14.99
+2081|311|2026-01-23|Delivered|Web|6.99
+2082|297|2025-12-27|Delivered|Mobile App|9.99
+2083|220|2026-03-04|Delivered|Mobile App|0.00
+2084|169|2026-03-19|Cancelled|Marketplace|6.99
+2085|282|2026-05-01|Shipped|Marketplace|2.99
+2086|387|2026-07-25|Returned|Web|6.99
+2087|4|2025-08-25|Delivered|Mobile App|2.99
+2088|95|2026-02-10|Delivered|Web|0.00
+2089|109|2026-05-23|Delivered|Mobile App|4.99
+2090|395|2025-09-22|Delivered|Web|2.99
+2091|110|2025-06-29|Delivered|Web|0.00
+2092|322|2026-04-30|Delivered|Web|2.99
+2093|110|2026-04-02|Shipped|Mobile App|0.00
+2094|121|2025-11-16|Delivered|Marketplace|0.00
+2095|110|2026-03-06|Shipped|Web|6.99
+2096|119|2026-07-10|Delivered|Web|0.00
+2097|111|2025-07-15|Delivered|Web|6.99
+2098|373|2025-12-07|Returned|Mobile App|4.99
+2099|119|2026-06-05|Cancelled|Web|4.99
+2100|105|2025-12-24|Delivered|Marketplace|2.99
+2101|168|2025-11-12|Delivered|Web|2.99
+2102|326|2025-08-03|Delivered|Web|2.99
+2103|156|2025-06-23|Delivered|Web|0.00
+2104|110|2026-03-19|Returned|Web|0.00
+2105|32|2025-09-11|Delivered|Web|2.99
+2106|366|2025-12-02|Delivered|Mobile App|0.00
+2107|276|2026-05-30|Delivered|Marketplace|0.00
+2108|159|2026-07-13|Delivered|Mobile App|4.99
+2109|310|2026-08-10|Shipped|Mobile App|2.99
+2110|171|2026-06-27|Delivered|Web|2.99
+2111|156|2025-12-29|Delivered|Web|0.00
+2112|110|2026-06-30|Delivered|Web|2.99
+2113|98|2026-01-05|Delivered|Mobile App|0.00
+2114|387|2026-03-10|Delivered|Web|4.99
+2115|264|2026-02-16|Delivered|Mobile App|2.99
+2116|41|2026-08-18|Delivered|Web|4.99
+2117|309|2026-01-02|Delivered|Phone|9.99
+2118||2025-10-09|Delivered|Web|4.99
+2119|49|2026-02-17|Cancelled|Web|2.99
+2120|36|2025-07-27|Delivered|Web|4.99
+2121||2025-01-09|Shipped|Web|4.99
+2122|47|2025-12-12|Delivered|Mobile App|6.99
+2123|215|2026-09-07|Delivered|Phone|6.99
+2124|309|2025-06-20|Delivered|Web|4.99
+2125|4|2025-06-03|Delivered|Phone|2.99
+2126|321|2026-02-06|Delivered|Web|4.99
+2127|79|2025-05-07|Delivered|Mobile App|0.00
+2128|171|2026-01-25|Delivered|Mobile App|6.99
+2129|58|2025-01-15|Shipped|Web|2.99
+2130|97|2026-06-28|Returned|Mobile App|6.99
+2131|57|2026-09-21|Delivered|Web|2.99
+2132|302|2026-02-05|Shipped|Mobile App|2.99
+2133|54|2025-06-30|Delivered|Web|4.99
+2134|246|2026-09-08|Delivered|Web|6.99
+2135|286|2026-08-12|Delivered|Web|2.99
+2136||2026-04-16|Delivered|Web|6.99
+2137|40|2025-11-24|Delivered|Marketplace|6.99
+2138|340|2026-01-11|Delivered|Web|0.00
+2139|228|2026-06-16|Delivered|Web|0.00
+2140|91|2026-01-05|Delivered|Web|0.00
+2141|206|2025-10-11|Delivered|Mobile App|0.00
+2142|257|2026-05-25|Delivered|Web|2.99
+2143|103|2026-05-22|Shipped|Mobile App|4.99
+2144|347|2025-04-10|Delivered|Phone|0.00
+2145|117|2026-06-03|Delivered|Mobile App|4.99
+2146|91|2025-04-02|Delivered|Web|6.99
+2147|59|2025-10-19|Shipped|Phone|4.99
+2148|288|2026-01-20|Delivered|Marketplace|2.99
+2149|309|2026-01-10|Cancelled|Web|6.99
+2150|279|2026-05-05|Delivered|Web|0.00
+2151|375|2026-09-08|Cancelled|Web|0.00
+2152|373|2025-03-17|Shipped|Mobile App|2.99
+2153|171|2025-02-23|Shipped|Web|6.99
+2154|192|2025-08-29|Delivered|Mobile App|0.00
+2155|356|2026-05-22|Delivered|Mobile App|9.99
+2156|76|2026-04-15|Delivered|Mobile App|4.99
+2157|368|2025-07-14|Shipped|Web|4.99
+2158|117|2026-02-14|Delivered|Mobile App|9.99
+2159|222|2026-03-06|Delivered|Web|4.99
+2160||2025-10-25|Delivered|Web|0.00
+2161|171|2026-04-09|Delivered|Web|14.99
+2162|223|2026-08-09|Delivered|Phone|0.00
+2163|366|2025-06-17|Delivered|Mobile App|6.99
+2164|320|2025-10-11|Delivered|Mobile App|4.99
+2165||2026-01-19|Delivered|Mobile App|0.00
+2166|267|2026-05-03|Delivered|Mobile App|6.99
+2167|299|2026-06-07|Delivered|Phone|6.99
+2168|103|2026-04-23|Delivered|Mobile App|6.99
+2169|289|2026-06-12|Delivered|Mobile App|2.99
+2170|354|2026-07-11|Delivered|Marketplace|2.99
+2171|171|2026-01-27|Delivered|Web|4.99
+2172||2026-04-24|Shipped|Web|0.00
+2173||2025-12-16|Delivered|Marketplace|2.99
+2174|103|2025-09-27|Delivered|Mobile App|9.99
+2175|171|2026-01-11|Delivered|Marketplace|2.99
+2176||2026-06-11|Delivered|Web|4.99
+2177||2025-05-18|Delivered|Web|2.99
+2178|275|2026-02-07|Delivered|Mobile App|0.00
+2179|102|2025-03-26|Delivered|Mobile App|0.00
+2180|213|2025-07-22|Delivered|Marketplace|6.99
+2181|350|2025-08-28|Shipped|Web|4.99
+2182|392|2026-02-02|Delivered|Mobile App|2.99
+2183|114|2025-09-28|Delivered|Web|2.99
+2184|12|2025-12-01|Delivered|Web|4.99
+2185|243|2025-08-20|Delivered|Web|4.99
+2186|321|2025-02-20|Delivered|Marketplace|6.99
+2187|46|2026-04-07|Cancelled|Phone|4.99
+2188|67|2026-04-01|Cancelled|Web|6.99
+2189|372|2025-10-22|Delivered|Web|6.99
+2190|263|2026-09-27|Processing|Web|4.99
+2191|223|2025-04-14|Delivered|Web|6.99
+2192|233|2026-05-11|Delivered|Mobile App|6.99
+2193|99|2025-11-17|Delivered|Mobile App|0.00
+2194|87|2026-03-26|Delivered|Marketplace|4.99
+2195|248|2025-02-23|Delivered|Mobile App|2.99
+2196|274|2026-04-02|Delivered|Mobile App|4.99
+2197|198|2025-09-05|Delivered|Web|0.00
+2198|216|2025-12-12|Delivered|Web|2.99
+2199|212|2026-02-03|Delivered|Web|2.99
+2200|110|2025-01-10|Returned|Mobile App|14.99
+2201|7|2026-01-10|Delivered|Web|2.99
+2202|37|2026-04-28|Delivered|Web|9.99
+2203|75|2026-07-22|Delivered|Web|2.99
+2204|335|2026-09-20|Shipped|Mobile App|2.99
+2205|110|2026-06-23|Shipped|Web|9.99
+2206|22|2026-01-03|Delivered|Mobile App|14.99
+2207|171|2025-09-08|Shipped|Mobile App|2.99
+2208|59|2025-11-26|Shipped|Marketplace|6.99
+2209|213|2025-06-15|Shipped|Mobile App|0.00
+2210|60|2025-07-31|Delivered|Mobile App|2.99
+2211|199|2026-05-11|Delivered|Mobile App|4.99
+2212|114|2025-10-14|Shipped|Web|4.99
+2213|309|2025-09-27|Delivered|Web|0.00
+2214|262|2026-07-04|Delivered|Mobile App|4.99
+2215|30|2025-02-11|Delivered|Marketplace|2.99
+2216|286|2025-03-30|Delivered|Marketplace|4.99
+2217|332|2025-10-10|Delivered|Marketplace|2.99
+2218|63|2025-07-22|Delivered|Web|4.99
+2219|8|2025-03-22|Delivered|Mobile App|2.99
+2220|133|2025-06-26|Delivered|Web|2.99
+2221|354|2025-02-23|Cancelled|Web|0.00
+2222|239|2026-07-06|Delivered|Mobile App|4.99
+2223|80|2026-03-21|Returned|Web|2.99
+2224|282|2026-07-17|Returned|Web|4.99
+2225|82|2025-07-07|Delivered|Web|2.99
+2226|42|2025-03-30|Delivered|Web|4.99
+2227|181|2026-01-31|Delivered|Web|0.00
+2228|280|2026-02-11|Delivered|Marketplace|2.99
+2229|203|2025-01-22|Delivered|Web|4.99
+2230|156|2026-07-18|Delivered|Mobile App|6.99
+2231|160|2025-11-07|Delivered|Mobile App|2.99
+2232|129|2025-11-09|Cancelled|Web|4.99
+2233|366|2025-06-28|Cancelled|Web|6.99
+2234|110|2025-05-25|Delivered|Mobile App|6.99
+2235|363|2025-02-15|Returned|Mobile App|6.99
+2236|16|2026-05-25|Shipped|Marketplace|9.99
+2237|317|2026-06-28|Delivered|Mobile App|2.99
+2238|105|2026-03-19|Cancelled|Web|4.99
+2239|396|2025-06-06|Delivered|Mobile App|4.99
+2240|215|2026-01-15|Delivered|Web|2.99
+2241|50|2026-02-25|Delivered|Web|4.99
+2242|103|2025-12-28|Delivered|Marketplace|2.99
+2243|192|2026-07-20|Delivered|Marketplace|4.99
+2244|263|2025-11-05|Delivered|Marketplace|9.99
+2245|378|2026-04-09|Shipped|Mobile App|4.99
+2246|140|2026-03-10|Delivered|Web|4.99
+2247|66|2025-12-08|Shipped|Mobile App|4.99
+2248|287|2026-01-11|Delivered|Web|9.99
+2249|219|2026-08-31|Delivered|Marketplace|9.99
+2250|366|2025-09-30|Returned|Web|2.99
+2251|171|2026-03-12|Cancelled|Mobile App|2.99
+2252|227|2026-01-27|Delivered|Mobile App|4.99
+2253|147|2025-09-13|Delivered|Web|6.99
+2254|62|2025-10-12|Delivered|Mobile App|9.99
+2255|110|2026-03-04|Delivered|Phone|2.99
+2256|239|2026-07-12|Delivered|Web|4.99
+2257|282|2025-07-08|Delivered|Mobile App|2.99
+2258|324|2025-06-30|Shipped|Mobile App|4.99
+2259|347|2026-01-26|Delivered|Mobile App|6.99
+2260|172|2026-07-07|Delivered|Marketplace|4.99
+2261|387|2026-02-24|Delivered|Mobile App|6.99
+2262|32|2026-01-10|Delivered|Web|2.99
+2263|215|2025-12-18|Cancelled|Web|2.99
+2264|309|2025-06-26|Delivered|Mobile App|2.99
+2265|317|2026-04-08|Delivered|Mobile App|14.99
+2266|233|2025-11-06|Delivered|Phone|2.99
+2267|204|2025-10-24|Delivered|Web|4.99
+2268|382|2025-05-21|Delivered|Mobile App|9.99
+2269|34|2025-10-11|Returned|Mobile App|0.00
+2270|303|2025-04-21|Delivered|Web|9.99
+2271|277|2026-01-28|Delivered|Web|2.99
+2272|320|2025-03-11|Delivered|Mobile App|9.99
+2273|215|2025-11-24|Cancelled|Web|4.99
+2274|165|2026-02-09|Delivered|Web|4.99
+2275|30|2026-02-07|Returned|Marketplace|4.99
+2276|223|2025-10-15|Cancelled|Marketplace|0.00
+2277|196|2025-11-10|Delivered|Mobile App|14.99
+2278|298|2025-07-10|Cancelled|Marketplace|4.99
+2279||2025-11-19|Cancelled|Web|4.99
+2280|160|2025-10-29|Delivered|Marketplace|4.99
+2281|31|2026-04-27|Delivered|Web|2.99
+2282|114|2026-03-17|Delivered|Marketplace|6.99
+2283|243|2026-04-05|Cancelled|Mobile App|0.00
+2284|96|2025-06-18|Delivered|Web|4.99
+2285|366|2025-10-13|Delivered|Phone|0.00
+2286|109|2025-04-09|Delivered|Marketplace|0.00
+2287|206|2026-04-22|Shipped|Web|6.99
+2288|76|2026-08-03|Delivered|Web|6.99
+2289||2026-08-29|Delivered|Web|4.99
+2290|154|2026-05-18|Delivered|Mobile App|14.99
+2291|181|2026-04-25|Delivered|Web|0.00
+2292|381|2025-04-26|Delivered|Web|6.99
+2293|134|2025-08-03|Delivered|Web|6.99
+2294|16|2025-11-05|Delivered|Web|6.99
+2295||2025-12-12|Delivered|Marketplace|2.99
+2296|309|2025-07-04|Delivered|Web|9.99
+2297|117|2026-05-19|Delivered|Mobile App|0.00
+2298|182|2026-05-05|Cancelled|Web|4.99
+2299|381|2025-09-07|Delivered|Marketplace|0.00
+2300|276|2025-11-01|Delivered|Mobile App|2.99
+2301|375|2026-09-15|Shipped|Web|14.99
+2302|110|2026-03-26|Delivered|Web|0.00
+2303|264|2026-07-23|Cancelled|Web|2.99
+2304|215|2025-06-18|Delivered|Mobile App|2.99
+2305|366|2025-06-20|Delivered|Web|2.99
+2306|223|2025-12-26|Delivered|Web|2.99
+2307|303|2025-12-10|Delivered|Marketplace|9.99
+2308|146|2025-07-06|Delivered|Marketplace|4.99
+2309||2026-06-21|Delivered|Marketplace|2.99
+2310|91|2025-08-12|Cancelled|Web|6.99
+2311|115|2026-05-06|Delivered|Phone|2.99
+2312|309|2025-06-30|Delivered|Web|4.99
+2313|247|2025-05-04|Delivered|Web|4.99
+2314|110|2025-11-21|Shipped|Mobile App|6.99
+2315|110|2026-07-21|Delivered|Mobile App|0.00
+2316|107|2025-12-17|Delivered|Web|2.99
+2317|171|2025-11-30|Delivered|Marketplace|14.99
+2318|241|2026-09-16|Delivered|Web|0.00
+2319||2025-12-19|Cancelled|Marketplace|9.99
+2320|341|2026-06-01|Delivered|Marketplace|2.99
+2321|198|2026-01-26|Delivered|Web|0.00
+2322|46|2026-05-24|Delivered|Mobile App|6.99
+2323|136|2025-07-29|Delivered|Web|6.99
+2324|306|2025-11-12|Delivered|Web|4.99
+2325|270|2025-01-07|Delivered|Web|6.99
+2326|263|2026-06-28|Delivered|Web|14.99
+2327|131|2026-08-12|Cancelled|Mobile App|6.99
+2328|297|2025-06-04|Delivered|Web|2.99
+2329|175|2026-04-27|Returned|Marketplace|4.99
+2330|266|2025-10-28|Returned|Web|2.99
+2331||2025-06-08|Delivered|Web|0.00
+2332|400|2025-01-28|Delivered|Web|2.99
+2333|110|2026-08-24|Delivered|Web|14.99
+2334|264|2025-05-18|Delivered|Web|6.99
+2335|58|2026-01-24|Delivered|Phone|0.00
+2336|295|2026-07-04|Returned|Web|0.00
+2337|364|2026-08-10|Delivered|Mobile App|2.99
+2338|213|2025-03-14|Shipped|Phone|6.99
+2339|110|2025-06-25|Delivered|Web|6.99
+2340|387|2025-10-04|Delivered|Web|9.99
+2341|225|2026-06-26|Delivered|Web|2.99
+2342|65|2025-05-29|Delivered|Web|4.99
+2343|9|2025-03-10|Delivered|Marketplace|14.99
+2344|47|2026-02-12|Delivered|Mobile App|6.99
+2345||2026-09-04|Delivered|Mobile App|4.99
+2346|105|2026-04-27|Delivered|Marketplace|0.00
+2347|289|2025-06-21|Delivered|Web|4.99
+2348|286|2025-07-20|Delivered|Mobile App|6.99
+2349|95|2025-02-11|Delivered|Phone|6.99
+2350|257|2025-02-21|Delivered|Marketplace|4.99
+2351|387|2025-11-14|Delivered|Mobile App|2.99
+2352|366|2025-12-21|Delivered|Mobile App|6.99
+2353|342|2026-03-18|Returned|Marketplace|4.99
+2354|309|2025-03-16|Delivered|Mobile App|2.99
+2355|110|2026-09-07|Delivered|Phone|6.99
+2356|47|2026-03-15|Delivered|Web|0.00
+2357|398|2025-09-20|Delivered|Web|4.99
+2358|107|2026-02-13|Delivered|Phone|4.99
+2359|208|2026-01-19|Delivered|Web|0.00
+2360|110|2026-08-11|Cancelled|Mobile App|0.00
+2361|366|2025-06-05|Delivered|Mobile App|6.99
+2362|215|2025-06-05|Delivered|Web|14.99
+2363|110|2025-12-08|Delivered|Marketplace|2.99
+2364||2026-09-05|Delivered|Phone|0.00
+2365|387|2026-01-29|Returned|Marketplace|6.99
+2366|262|2026-05-16|Delivered|Mobile App|4.99
+2367|304|2025-08-09|Returned|Web|4.99
+2368|333|2026-07-02|Cancelled|Web|0.00
+2369|327|2025-07-24|Delivered|Phone|0.00
+2370|363|2026-01-10|Shipped|Marketplace|0.00
+2371|216|2026-05-16|Delivered|Web|4.99
+2372|110|2026-07-04|Delivered|Web|0.00
+2373|266|2025-10-30|Delivered|Web|14.99
+2374|219|2026-03-31|Delivered|Marketplace|14.99
+2375|398|2025-08-09|Delivered|Mobile App|2.99
+2376|132|2026-04-30|Delivered|Web|4.99
+2377|110|2025-05-31|Delivered|Mobile App|6.99
+2378|56|2025-06-12|Delivered|Mobile App|0.00
+2379|309|2025-07-14|Delivered|Web|4.99
+2380|366|2026-09-01|Shipped|Marketplace|6.99
+2381|64|2025-03-23|Delivered|Mobile App|4.99
+2382|95|2025-07-21|Returned|Marketplace|6.99
+2383|63|2026-02-25|Delivered|Phone|4.99
+2384||2025-09-26|Shipped|Mobile App|4.99
+2385|79|2025-08-16|Delivered|Mobile App|2.99
+2386||2026-06-19|Delivered|Marketplace|0.00
+2387||2026-01-07|Delivered|Web|6.99
+2388|12|2025-09-28|Returned|Web|9.99
+2389||2025-12-07|Delivered|Web|0.00
+2390|110|2026-08-21|Delivered|Marketplace|4.99
+2391|64|2025-05-25|Delivered|Web|2.99
+2392||2025-11-10|Delivered|Phone|0.00
+2393|117|2025-06-12|Delivered|Web|2.99
+2394||2026-06-04|Returned|Mobile App|4.99
+2395|153|2025-09-23|Delivered|Web|4.99
+2396|323|2026-05-01|Cancelled|Web|4.99
+2397|264|2025-07-15|Delivered|Mobile App|0.00
+2398||2025-03-12|Delivered|Web|4.99
+2399|318|2026-05-20|Shipped|Web|6.99
+2400|260|2025-12-21|Delivered|Web|2.99
+2401|198|2026-01-16|Delivered|Mobile App|0.00
+2402|309|2025-03-08|Delivered|Web|0.00
+2403||2026-04-26|Delivered|Marketplace|0.00
+2404|207|2025-09-27|Delivered|Web|6.99
+2405|6|2025-08-24|Cancelled|Web|2.99
+2406|319|2025-11-24|Cancelled|Phone|0.00
+2407|73|2025-06-28|Delivered|Web|4.99
+2408|350|2025-01-06|Shipped|Web|6.99
+2409|156|2025-12-02|Delivered|Mobile App|0.00
+2410|152|2025-05-10|Cancelled|Mobile App|2.99
+2411|79|2026-01-14|Delivered|Mobile App|4.99
+2412|189|2026-08-01|Delivered|Mobile App|0.00
+2413||2026-06-25|Delivered|Phone|4.99
+2414|171|2026-07-19|Delivered|Marketplace|4.99
+2415|145|2025-11-06|Delivered|Marketplace|2.99
+2416||2026-06-05|Delivered|Mobile App|0.00
+2417|201|2026-05-11|Delivered|Web|14.99
+2418|22|2026-02-15|Delivered|Phone|0.00
+2419|110|2025-12-05|Delivered|Mobile App|9.99
+2420|369|2026-03-13|Delivered|Mobile App|6.99
+2421|198|2025-11-02|Delivered|Marketplace|9.99
+2422||2025-05-21|Delivered|Web|0.00
+2423|110|2026-04-28|Delivered|Mobile App|4.99
+2424|208|2025-12-04|Delivered|Marketplace|4.99
+2425|196|2025-08-04|Delivered|Web|0.00
+2426|66|2026-09-10|Shipped|Phone|2.99
+2427|235|2025-12-27|Shipped|Web|2.99
+2428|41|2025-09-01|Delivered|Web|2.99
+2429||2026-08-23|Delivered|Web|0.00
+2430||2025-02-14|Delivered|Marketplace|6.99
+2431|46|2025-05-22|Delivered|Web|2.99
+2432|79|2026-09-29|Processing|Marketplace|2.99
+2433|47|2026-06-15|Returned|Mobile App|6.99
+2434|278|2025-05-10|Shipped|Marketplace|9.99
+2435|381|2025-06-02|Returned|Mobile App|6.99
+2436||2025-08-02|Returned|Web|2.99
+2437|387|2025-07-05|Delivered|Mobile App|0.00
+2438|27|2025-02-01|Cancelled|Web|6.99
+2439||2026-09-19|Shipped|Marketplace|0.00
+2440|7|2026-04-21|Delivered|Marketplace|0.00
+2441|309|2025-04-04|Cancelled|Web|4.99
+2442|295|2026-01-29|Cancelled|Mobile App|4.99
+2443|356|2026-08-13|Cancelled|Phone|6.99
+2444|309|2025-02-10|Delivered|Marketplace|6.99
+2445|35|2026-05-16|Delivered|Marketplace|4.99
+2446|266|2025-07-21|Delivered|Marketplace|4.99
+2447|341|2025-01-09|Delivered|Web|6.99
+2448|297|2025-09-13|Delivered|Marketplace|4.99
+2449|159|2026-08-31|Delivered|Web|4.99
+2450|339|2025-08-12|Delivered|Web|6.99
+2451|288|2025-08-14|Delivered|Web|2.99
+2452|289|2026-01-03|Delivered|Mobile App|6.99
+2453|380|2025-08-07|Delivered|Phone|6.99
+2454|16|2025-07-16|Delivered|Mobile App|4.99
+2455|377|2025-10-29|Delivered|Mobile App|6.99
+2456|154|2025-04-27|Cancelled|Web|6.99
+2457|144|2026-06-09|Delivered|Web|2.99
+2458|331|2026-07-19|Delivered|Web|4.99
+2459|307|2025-06-14|Shipped|Phone|6.99
+2460|284|2025-08-18|Delivered|Web|6.99
+2461|339|2025-07-29|Delivered|Web|0.00
+2462|205|2025-11-05|Delivered|Phone|0.00
+2463|172|2026-01-04|Delivered|Web|4.99
+2464|366|2025-12-21|Delivered|Web|14.99
+2465|64|2026-06-10|Delivered|Marketplace|0.00
+2466|139|2025-10-26|Shipped|Web|0.00
+2467|71|2026-03-18|Delivered|Mobile App|4.99
+2468|309|2025-12-29|Delivered|Web|9.99
+2469|356|2026-03-12|Delivered|Web|4.99
+2470|355|2026-05-30|Delivered|Mobile App|2.99
+2471|87|2025-10-09|Delivered|Marketplace|6.99
+2472|387|2025-02-16|Delivered|Mobile App|9.99
+2473|122|2025-01-27|Delivered|Web|6.99
+2474|228|2026-08-17|Delivered|Web|2.99
+2475|246|2025-06-02|Delivered|Marketplace|9.99
+2476|64|2025-11-09|Cancelled|Web|9.99
+2477|337|2025-09-08|Delivered|Mobile App|6.99
+2478|254|2026-06-11|Delivered|Web|14.99
+2479|160|2026-01-09|Delivered|Web|9.99
+2480|115|2025-09-03|Delivered|Web|6.99
+2481||2025-06-11|Delivered|Mobile App|4.99
+2482||2026-09-22|Shipped|Web|4.99
+2483|110|2025-04-05|Cancelled|Mobile App|2.99
+2484|156|2025-05-02|Delivered|Mobile App|4.99
+2485|168|2025-03-15|Delivered|Web|6.99
+2486|103|2025-02-02|Delivered|Mobile App|4.99
+2487|118|2025-03-24|Delivered|Mobile App|0.00
+2488||2025-07-07|Delivered|Web|6.99
+2489|317|2025-02-20|Delivered|Phone|2.99
+2490|321|2025-08-20|Delivered|Web|6.99
+2491|32|2025-09-30|Delivered|Web|4.99
+2492|154|2025-11-11|Delivered|Web|2.99
+2493|77|2025-08-09|Delivered|Marketplace|9.99
+2494|49|2026-02-05|Delivered|Mobile App|2.99
+2495|286|2026-09-18|Shipped|Web|4.99
+2496|166|2026-07-25|Delivered|Marketplace|14.99
+2497|162|2026-01-28|Returned|Web|4.99
+2498|117|2025-09-15|Shipped|Marketplace|6.99
+2499|347|2026-01-14|Shipped|Marketplace|2.99
+2500|139|2025-08-28|Returned|Mobile App|2.99
+2501|275|2026-07-16|Returned|Web|0.00
+2502|26|2026-05-26|Returned|Web|4.99
+2503|7|2025-05-14|Delivered|Web|0.00
+2504|331|2026-04-02|Returned|Mobile App|4.99
+2505|267|2026-03-08|Delivered|Phone|6.99
+2506|338|2025-09-11|Delivered|Web|14.99
+2507|282|2025-03-19|Delivered|Phone|2.99
+2508|77|2026-01-16|Delivered|Marketplace|9.99
+2509|199|2026-08-28|Cancelled|Web|0.00
+2510||2026-02-08|Delivered|Web|6.99
+2511|387|2025-01-13|Delivered|Web|6.99
+2512|153|2025-09-24|Delivered|Web|4.99
+2513|347|2025-06-30|Delivered|Phone|4.99
+2514||2026-05-15|Cancelled|Web|6.99
+2515|331|2025-11-20|Returned|Web|4.99
+2516|19|2026-06-13|Delivered|Mobile App|6.99
+2517|188|2025-12-13|Shipped|Phone|14.99
+2518|117|2025-05-04|Delivered|Mobile App|4.99
+2519|280|2026-07-17|Cancelled|Phone|4.99
+2520||2025-12-16|Delivered|Web|2.99
+2521|110|2026-03-18|Delivered|Phone|9.99
+2522|239|2025-06-05|Delivered|Phone|2.99
+2523|303|2025-02-04|Delivered|Web|9.99
+2524|139|2026-09-12|Delivered|Phone|2.99
+2525|122|2025-01-24|Cancelled|Marketplace|2.99
+2526|146|2025-04-13|Shipped|Web|0.00
+2527|110|2026-09-10|Shipped|Marketplace|4.99
+2528|312|2026-06-15|Delivered|Marketplace|2.99
+2529|257|2025-06-22|Delivered|Web|0.00
+2530|274|2026-04-08|Cancelled|Web|4.99
+2531|208|2025-07-23|Delivered|Web|0.00
+2532|309|2025-07-24|Delivered|Marketplace|6.99
+2533|129|2025-10-01|Delivered|Web|0.00
+2534|387|2026-02-01|Shipped|Web|4.99
+2535||2026-05-02|Delivered|Marketplace|9.99
+2536|159|2026-02-05|Delivered|Mobile App|14.99
+2537|60|2025-04-20|Delivered|Web|0.00
+2538|197|2025-07-03|Shipped|Phone|4.99
+2539|266|2026-01-15|Cancelled|Mobile App|4.99
+2540|246|2025-12-01|Delivered|Web|14.99
+2541|373|2025-11-17|Delivered|Web|2.99
+2542|347|2026-07-07|Delivered|Web|0.00
+2543|368|2025-10-22|Cancelled|Marketplace|4.99
+2544|295|2026-05-24|Delivered|Web|0.00
+2545|327|2026-08-03|Cancelled|Web|2.99
+2546|197|2025-04-05|Delivered|Web|4.99
+2547|193|2026-09-07|Shipped|Web|4.99
+2548||2026-07-08|Delivered|Web|4.99
+2549|257|2025-07-03|Cancelled|Web|4.99
+2550|251|2026-09-07|Delivered|Web|9.99
+2551|266|2026-08-28|Delivered|Web|2.99
+2552|124|2026-01-12|Delivered|Marketplace|6.99
+2553|309|2026-08-13|Shipped|Web|0.00
+2554|338|2026-02-15|Delivered|Mobile App|0.00
+2555|264|2026-07-05|Delivered|Web|4.99
+2556|105|2026-09-21|Delivered|Mobile App|6.99
+2557|192|2025-09-06|Delivered|Web|0.00
+2558|126|2025-10-07|Delivered|Mobile App|2.99
+2559||2025-02-08|Delivered|Mobile App|6.99
+2560|81|2025-05-27|Returned|Web|2.99
+2561|110|2026-09-25|Shipped|Marketplace|4.99
+2562|114|2025-12-27|Delivered|Mobile App|0.00
+2563||2025-10-03|Cancelled|Web|14.99
+2564|193|2026-09-10|Shipped|Web|2.99
+2565|387|2026-09-17|Shipped|Mobile App|6.99
+2566|156|2026-09-05|Delivered|Marketplace|6.99
+2567|110|2026-01-07|Delivered|Web|2.99
+2568|327|2026-09-23|Shipped|Web|14.99
+2569|400|2026-07-21|Delivered|Phone|0.00
+2570|67|2026-06-04|Delivered|Marketplace|0.00
+2571|171|2026-04-07|Delivered|Web|0.00
+2572|95|2026-01-16|Cancelled|Marketplace|2.99
+2573|394|2026-01-13|Shipped|Web|0.00
+2574|43|2026-03-06|Returned|Marketplace|0.00
+2575|58|2025-07-12|Delivered|Web|4.99
+2576|110|2026-09-11|Shipped|Marketplace|4.99
+2577|269|2025-01-09|Returned|Web|4.99
+2578|124|2025-10-01|Delivered|Web|6.99
+2579|131|2026-09-25|Processing|Web|6.99
+2580|384|2025-10-19|Delivered|Phone|2.99
+2581||2026-06-07|Delivered|Web|2.99
+2582|15|2025-08-26|Delivered|Mobile App|0.00
+2583|110|2026-05-23|Cancelled|Web|4.99
+2584|248|2026-05-28|Delivered|Marketplace|6.99
+2585||2025-05-15|Returned|Mobile App|4.99
+2586|339|2025-10-16|Delivered|Web|6.99
+2587|380|2025-03-04|Shipped|Mobile App|0.00
+2588|297|2026-05-01|Shipped|Web|2.99
+2589|63|2025-01-16|Shipped|Phone|6.99
+2590|262|2025-12-27|Delivered|Marketplace|4.99
+2591|188|2026-04-14|Delivered|Mobile App|0.00
+2592|144|2026-07-14|Delivered|Web|4.99
+2593||2026-06-19|Delivered|Web|4.99
+2594|360|2026-09-26|Shipped|Web|2.99
+2595|171|2026-02-16|Delivered|Mobile App|6.99
+2596|156|2026-01-24|Shipped|Phone|6.99
+2597|366|2026-04-28|Returned|Web|0.00
+2598|294|2025-10-14|Delivered|Mobile App|2.99
+2599|257|2026-09-12|Cancelled|Mobile App|14.99
+2600|243|2026-02-14|Delivered|Marketplace|2.99
+2601|130|2026-01-15|Delivered|Web|2.99
+2602|347|2025-12-31|Cancelled|Mobile App|6.99
+2603|299|2025-05-26|Shipped|Mobile App|2.99
+2604|212|2025-06-19|Delivered|Web|4.99
+2605|122|2025-06-18|Delivered|Marketplace|2.99
+2606|319|2025-03-22|Delivered|Mobile App|6.99
+2607|52|2026-08-08|Delivered|Marketplace|0.00
+2608|387|2025-07-22|Cancelled|Marketplace|6.99
+2609|33|2026-09-26|Processing|Mobile App|6.99
+2610|217|2026-09-26|Processing|Mobile App|4.99
+2611|110|2026-09-23|Delivered|Web|4.99
+2612|382|2025-10-08|Delivered|Phone|6.99
+2613|12|2026-06-06|Delivered|Marketplace|2.99
+2614|80|2025-12-24|Delivered|Phone|0.00
+2615|88|2026-02-14|Delivered|Mobile App|2.99
+2616|114|2026-08-03|Delivered|Web|0.00
+2617|110|2025-04-23|Delivered|Web|9.99
+2618|110|2025-12-26|Cancelled|Web|4.99
+2619|73|2026-07-22|Returned|Mobile App|4.99
+2620|155|2026-09-16|Delivered|Marketplace|9.99
+2621|366|2025-02-12|Delivered|Web|2.99
+2622||2025-12-22|Delivered|Web|4.99
+2623|115|2026-07-16|Delivered|Marketplace|2.99
+2624|179|2026-02-01|Delivered|Web|14.99
+2625||2026-03-26|Delivered|Mobile App|4.99
+2626|257|2026-01-16|Cancelled|Mobile App|6.99
+2627|309|2025-05-29|Delivered|Mobile App|4.99
+2628|309|2026-08-21|Shipped|Web|4.99
+2629|309|2026-08-11|Cancelled|Web|0.00
+2630|240|2026-02-28|Delivered|Marketplace|0.00
+2631|248|2026-09-12|Processing|Web|9.99
+2632|339|2025-09-28|Delivered|Phone|2.99
+2633||2026-02-09|Cancelled|Web|14.99
+2634||2026-01-05|Delivered|Web|4.99
+2635|15|2025-12-31|Delivered|Mobile App|9.99
+2636|103|2026-08-14|Delivered|Marketplace|0.00
+2637|76|2026-09-05|Delivered|Web|2.99
+2638||2025-04-02|Returned|Phone|4.99
+2639||2026-08-25|Delivered|Marketplace|0.00
+2640|291|2025-07-14|Cancelled|Marketplace|2.99
+2641|179|2025-05-05|Delivered|Web|6.99
+2642|124|2026-05-18|Delivered|Web|14.99
+2643|366|2026-04-04|Delivered|Web|14.99
+2644|220|2026-01-26|Cancelled|Phone|2.99
+2645|257|2026-03-23|Delivered|Web|6.99
+2646|196|2025-02-15|Shipped|Mobile App|6.99
+2647|170|2026-07-19|Delivered|Phone|4.99
+2648|378|2025-09-26|Shipped|Mobile App|4.99
+2649|373|2025-11-15|Delivered|Marketplace|0.00
+2650|264|2025-09-19|Returned|Web|6.99
+2651|316|2026-09-24|Delivered|Mobile App|4.99
+2652|160|2025-05-01|Shipped|Web|4.99
+2653|6|2026-03-09|Delivered|Web|0.00
+2654|176|2025-02-21|Delivered|Web|9.99
+2655||2025-02-02|Delivered|Web|4.99
+2656|302|2025-08-10|Delivered|Web|0.00
+2657|110|2025-11-30|Returned|Mobile App|6.99
+2658|40|2025-10-28|Delivered|Marketplace|14.99
+2659|110|2025-06-05|Delivered|Marketplace|2.99
+2660|66|2026-09-04|Returned|Mobile App|9.99
+2661|309|2026-02-14|Cancelled|Mobile App|4.99
+2662|326|2026-07-13|Delivered|Web|0.00
+2663|181|2026-01-27|Delivered|Web|2.99
+2664|7|2025-10-12|Delivered|Web|2.99
+2665|398|2026-02-07|Delivered|Web|4.99
+2666|218|2026-01-30|Cancelled|Phone|2.99
+2667|198|2026-03-10|Delivered|Mobile App|4.99
+2668|393|2026-06-26|Delivered|Phone|4.99
+2669|275|2026-03-04|Cancelled|Marketplace|6.99
+2670|64|2025-08-29|Shipped|Web|4.99
+2671||2025-03-20|Delivered|Marketplace|4.99
+2672|373|2026-01-20|Delivered|Web|6.99
+2673|22|2025-10-05|Delivered|Web|6.99
+2674|212|2025-02-08|Delivered|Phone|9.99
+2675|49|2025-05-26|Delivered|Web|4.99
+2676|13|2026-06-13|Delivered|Phone|0.00
+2677|340|2025-12-30|Delivered|Phone|4.99
+2678|110|2025-05-27|Delivered|Marketplace|6.99
+2679|273|2025-12-27|Cancelled|Mobile App|2.99
+2680|258|2026-03-07|Delivered|Web|4.99
+2681|364|2026-08-20|Delivered|Mobile App|4.99
+2682|171|2025-10-10|Delivered|Mobile App|0.00
+2683|215|2025-09-25|Cancelled|Web|0.00
+2684||2025-02-27|Cancelled|Marketplace|4.99
+2685||2025-03-28|Delivered|Marketplace|4.99
+2686|294|2025-03-14|Cancelled|Web|4.99
+2687|389|2026-01-22|Delivered|Web|4.99
+2688|125|2025-10-25|Delivered|Mobile App|2.99
+2689|358|2026-04-24|Cancelled|Web|6.99
+2690||2025-12-12|Delivered|Web|2.99
+2691|70|2026-07-27|Delivered|Mobile App|9.99
+2692||2025-05-22|Cancelled|Web|2.99
+2693|107|2026-04-09|Delivered|Mobile App|14.99
+2694|93|2025-07-07|Cancelled|Web|6.99
+2695|111|2026-02-28|Cancelled|Mobile App|2.99
+2696|114|2026-09-15|Shipped|Web|6.99
+2697|335|2026-07-13|Delivered|Web|4.99
+2698|223|2026-08-17|Returned|Web|2.99
+2699|110|2025-05-15|Delivered|Mobile App|2.99
+2700|103|2025-04-19|Delivered|Web|0.00
+2701||2025-03-24|Delivered|Marketplace|4.99
+2702|343|2026-01-11|Returned|Marketplace|14.99
+2703|201|2026-04-13|Cancelled|Web|2.99
+2704|316|2026-04-20|Returned|Web|0.00
+2705|357|2025-07-14|Delivered|Web|9.99
+2706|358|2025-08-03|Delivered|Web|9.99
+2707|59|2026-06-18|Delivered|Web|2.99
+2708|28|2025-06-25|Delivered|Web|4.99
+2709||2026-04-27|Returned|Marketplace|0.00
+2710|317|2026-06-07|Delivered|Mobile App|9.99
+2711|379|2025-09-25|Returned|Web|2.99
+2712||2025-06-14|Delivered|Web|6.99
+2713|165|2026-01-02|Delivered|Marketplace|0.00
+2714|308|2025-01-31|Delivered|Marketplace|6.99
+2715|225|2025-12-30|Delivered|Web|4.99
+2716|110|2026-07-17|Delivered|Web|2.99
+2717|330|2026-05-14|Delivered|Web|0.00
+2718|32|2026-09-29|Processing|Web|0.00
+2719|122|2026-02-11|Delivered|Web|6.99
+2720|331|2026-02-13|Delivered|Phone|0.00
+2721|117|2026-06-29|Delivered|Web|6.99
+2722|266|2025-11-25|Delivered|Web|2.99
+2723|110|2026-08-13|Cancelled|Mobile App|4.99
+2724|257|2026-06-27|Delivered|Mobile App|0.00
+2725|202|2025-08-26|Shipped|Phone|0.00
+2726|60|2026-06-22|Delivered|Web|4.99
+2727|110|2025-04-12|Delivered|Web|0.00
+2728|110|2025-12-30|Delivered|Web|14.99
+2729|110|2026-02-11|Delivered|Mobile App|9.99
+2730|91|2025-04-15|Delivered|Marketplace|0.00
+2731|260|2025-06-12|Delivered|Mobile App|2.99
+2732|369|2025-07-17|Delivered|Mobile App|4.99
+2733|105|2025-09-22|Delivered|Web|4.99
+2734|364|2025-05-16|Delivered|Phone|0.00
+2735|340|2025-06-06|Delivered|Mobile App|2.99
+2736|105|2026-02-15|Delivered|Mobile App|4.99
+2737|198|2025-06-30|Delivered|Marketplace|9.99
+2738|110|2025-11-24|Delivered|Web|2.99
+2739|194|2026-08-28|Delivered|Web|2.99
+2740|199|2025-11-13|Delivered|Web|9.99
+2741|309|2026-08-06|Delivered|Web|14.99
+2742|110|2026-02-19|Delivered|Web|9.99
+2743|87|2025-05-08|Cancelled|Web|9.99
+2744|38|2026-02-18|Delivered|Marketplace|4.99
+2745|293|2025-07-09|Shipped|Web|9.99
+2746||2026-07-31|Delivered|Marketplace|4.99
+2747|110|2026-09-11|Delivered|Web|2.99
+2748|277|2025-05-02|Delivered|Web|4.99
+2749|372|2025-05-14|Delivered|Web|6.99
+2750|163|2025-06-03|Cancelled|Marketplace|6.99
+2751|171|2026-01-05|Delivered|Marketplace|6.99
+2752||2026-08-17|Delivered|Mobile App|6.99
+2753|110|2026-09-13|Processing|Phone|6.99
+2754|140|2026-07-07|Delivered|Marketplace|2.99
+2755|171|2026-05-08|Cancelled|Web|14.99
+2756|233|2025-04-19|Delivered|Mobile App|0.00
+2757|83|2026-01-20|Delivered|Web|2.99
+2758|254|2026-07-04|Returned|Marketplace|6.99
+2759|398|2025-04-05|Delivered|Web|6.99
+2760|64|2026-06-12|Delivered|Web|6.99
+2761|324|2026-03-19|Delivered|Mobile App|4.99
+2762|168|2026-09-02|Delivered|Mobile App|0.00
+2763|385|2026-05-10|Delivered|Web|4.99
+2764|225|2026-08-31|Cancelled|Mobile App|4.99
+2765|286|2026-07-01|Delivered|Web|2.99
+2766|159|2025-07-17|Delivered|Mobile App|6.99
+2767|328|2026-04-29|Shipped|Web|4.99
+2768|392|2026-05-12|Delivered|Mobile App|14.99
+2769|117|2026-07-19|Returned|Web|4.99
+2770|89|2026-08-25|Cancelled|Web|6.99
+2771|321|2025-12-08|Returned|Phone|4.99
+2772|180|2026-05-07|Delivered|Web|4.99
+2773|340|2025-10-18|Cancelled|Web|4.99
+2774|32|2025-09-18|Delivered|Phone|4.99
+2775|42|2026-01-02|Delivered|Mobile App|4.99
+2776|56|2025-05-05|Delivered|Phone|6.99
+2777|34|2026-07-19|Delivered|Marketplace|2.99
+2778|18|2026-03-15|Delivered|Marketplace|9.99
+2779||2025-08-08|Delivered|Web|2.99
+2780|309|2025-10-08|Delivered|Web|2.99
+2781|171|2025-08-25|Delivered|Web|9.99
+2782|110|2026-07-02|Cancelled|Web|2.99
+2783|159|2025-10-26|Returned|Web|0.00
+2784|207|2026-02-13|Cancelled|Web|0.00
+2785|389|2026-06-11|Returned|Web|0.00
+2786|352|2025-12-05|Delivered|Mobile App|4.99
+2787|203|2025-08-23|Cancelled|Mobile App|6.99
+2788|398|2025-07-06|Delivered|Web|2.99
+2789|133|2025-09-02|Delivered|Mobile App|0.00
+2790|295|2026-05-05|Delivered|Mobile App|2.99
+2791|144|2026-02-14|Delivered|Phone|9.99
+2792|137|2026-01-22|Returned|Mobile App|0.00
+2793|315|2026-08-11|Shipped|Web|4.99
+2794|393|2025-12-05|Delivered|Mobile App|6.99
+2795|387|2026-06-07|Shipped|Phone|4.99
+2796|387|2026-01-15|Delivered|Web|4.99
+2797|326|2025-06-15|Returned|Mobile App|4.99
+2798|380|2026-03-16|Delivered|Web|4.99
+2799|287|2025-10-31|Delivered|Web|4.99
+2800|136|2026-07-14|Delivered|Web|0.00
+2801|166|2025-12-11|Delivered|Web|0.00
+2802|171|2025-09-27|Shipped|Marketplace|2.99
+2803|279|2025-02-17|Delivered|Web|0.00
+2804|167|2025-09-17|Delivered|Web|9.99
+2805|110|2025-07-07|Delivered|Web|2.99
+2806|200|2026-05-03|Delivered|Web|2.99
+2807||2025-08-24|Delivered|Web|2.99
+2808|383|2025-06-17|Delivered|Marketplace|0.00
+2809|223|2025-10-22|Delivered|Web|0.00
+2810|226|2026-07-18|Delivered|Mobile App|4.99
+2811|148|2025-08-24|Delivered|Marketplace|4.99
+2812||2026-07-01|Delivered|Mobile App|6.99
+2813|348|2026-05-11|Delivered|Web|6.99
+2814|257|2026-02-14|Cancelled|Web|4.99
+2815|216|2026-08-16|Delivered|Web|6.99
+2816|127|2025-12-12|Delivered|Phone|2.99
+2817|195|2025-09-20|Returned|Web|6.99
+2818|75|2026-06-20|Delivered|Web|2.99
+2819|69|2025-12-20|Delivered|Web|6.99
+2820|119|2025-09-30|Delivered|Mobile App|0.00
+2821|110|2025-04-25|Shipped|Web|0.00
+2822|389|2025-08-10|Delivered|Web|4.99
+2823|363|2026-01-15|Delivered|Mobile App|4.99
+2824|294|2026-05-06|Delivered|Web|14.99
+2825||2025-08-12|Delivered|Web|0.00
+2826|110|2026-07-15|Returned|Mobile App|6.99
+2827|366|2026-04-22|Delivered|Web|2.99
+2828|137|2025-07-01|Delivered|Mobile App|2.99
+2829|345|2025-07-31|Delivered|Web|2.99
+2830|48|2026-04-22|Delivered|Web|9.99
+2831|117|2025-02-19|Delivered|Web|0.00
+2832|72|2026-06-23|Delivered|Web|2.99
+2833|62|2025-04-20|Delivered|Web|2.99
+2834|15|2025-07-22|Delivered|Web|6.99
+2835|209|2026-07-12|Returned|Web|9.99
+2836|340|2026-05-09|Delivered|Web|2.99
+2837|295|2025-06-30|Delivered|Web|4.99
+2838|40|2025-09-26|Delivered|Mobile App|0.00
+2839|43|2026-04-06|Delivered|Mobile App|6.99
+2840|91|2025-06-17|Delivered|Web|9.99
+2841|47|2025-09-12|Delivered|Web|2.99
+2842|257|2025-05-09|Delivered|Marketplace|4.99
+2843|374|2026-09-28|Processing|Web|0.00
+2844|95|2025-05-24|Delivered|Mobile App|2.99
+2845|349|2025-10-06|Cancelled|Web|0.00
+2846|117|2026-07-15|Delivered|Mobile App|6.99
+2847|114|2025-05-15|Delivered|Web|0.00
+2848|377|2026-04-10|Delivered|Web|0.00
+2849|119|2025-10-24|Cancelled|Mobile App|4.99
+2850|215|2025-07-17|Cancelled|Web|4.99
+2851|142|2025-06-09|Cancelled|Web|6.99
+2852|60|2025-12-11|Delivered|Web|2.99
+2853|171|2025-07-31|Cancelled|Marketplace|4.99
+2854|11|2025-05-21|Returned|Web|2.99
+2855|29|2026-02-21|Cancelled|Web|2.99
+2856|210|2026-04-24|Delivered|Marketplace|2.99
+2857|152|2025-11-26|Delivered|Mobile App|2.99
+2858|105|2025-10-19|Delivered|Mobile App|0.00
+2859|366|2025-04-16|Delivered|Phone|0.00
+2860|337|2026-04-06|Delivered|Mobile App|2.99
+2861|215|2025-05-26|Delivered|Mobile App|4.99
+2862|295|2025-10-26|Delivered|Web|4.99
+2863|208|2026-07-31|Shipped|Mobile App|9.99
+2864|293|2026-04-30|Returned|Web|4.99
+2865|238|2025-06-15|Delivered|Web|0.00
+2866|167|2026-02-02|Delivered|Web|2.99
+2867|380|2026-08-18|Delivered|Web|6.99
+2868|326|2026-01-02|Cancelled|Mobile App|2.99
+2869|246|2025-07-15|Delivered|Web|0.00
+2870|83|2026-08-30|Returned|Web|4.99
+2871|343|2026-06-24|Delivered|Mobile App|6.99
+2872|264|2025-08-26|Delivered|Web|2.99
+2873|168|2025-01-19|Delivered|Web|0.00
+2874|387|2026-01-01|Delivered|Mobile App|4.99
+2875|117|2025-04-01|Delivered|Mobile App|4.99
+2876|259|2025-04-01|Delivered|Mobile App|6.99
+2877|110|2025-07-01|Delivered|Marketplace|4.99
+2878|332|2026-03-25|Delivered|Mobile App|0.00
+2879|110|2026-05-07|Delivered|Web|2.99
+2880|304|2026-08-26|Delivered|Marketplace|6.99
+2881|117|2026-04-24|Delivered|Web|9.99
+2882|139|2026-05-11|Delivered|Mobile App|9.99
+2883||2026-07-19|Delivered|Mobile App|2.99
+2884|194|2025-05-23|Delivered|Marketplace|4.99
+2885|91|2026-03-15|Delivered|Mobile App|4.99
+2886|46|2026-03-20|Returned|Web|4.99
+2887|166|2025-12-30|Returned|Mobile App|4.99
+2888|209|2025-05-23|Delivered|Web|0.00
+2889|312|2025-09-25|Delivered|Mobile App|2.99
+2890|276|2025-09-25|Cancelled|Web|0.00
+2891|302|2026-04-12|Delivered|Phone|0.00
+2892||2025-06-01|Shipped|Mobile App|9.99
+2893|57|2026-03-25|Delivered|Web|0.00
+2894|309|2025-02-09|Delivered|Phone|0.00
+2895|345|2025-12-25|Delivered|Phone|6.99
+2896|361|2026-07-04|Delivered|Web|0.00
+2897||2026-07-20|Returned|Mobile App|6.99
+2898|47|2025-02-11|Delivered|Web|2.99
+2899|230|2025-11-26|Shipped|Web|0.00
+2900|140|2025-04-22|Cancelled|Mobile App|2.99
+2901|99|2026-01-24|Delivered|Mobile App|2.99
+2902|339|2025-02-11|Delivered|Web|0.00
+2903|87|2026-04-26|Delivered|Mobile App|4.99
+2904|88|2026-07-21|Delivered|Phone|9.99
+2905|299|2025-01-06|Cancelled|Web|6.99
+2906||2025-04-11|Delivered|Web|2.99
+2907|293|2026-02-08|Cancelled|Marketplace|2.99
+2908|46|2026-06-11|Shipped|Web|2.99
+2909|83|2025-06-12|Delivered|Web|6.99
+2910|290|2025-02-28|Delivered|Web|6.99
+2911||2025-08-11|Delivered|Mobile App|9.99
+2912||2025-07-04|Delivered|Mobile App|9.99
+2913|257|2026-02-05|Delivered|Phone|9.99
+2914||2026-07-18|Shipped|Web|4.99
+2915|374|2025-08-22|Delivered|Mobile App|14.99
+2916|127|2026-04-22|Delivered|Marketplace|6.99
+2917|110|2026-08-05|Delivered|Web|6.99
+2918|45|2026-08-24|Delivered|Web|14.99
+2919|159|2026-06-17|Delivered|Mobile App|0.00
+2920|118|2026-06-30|Delivered|Web|4.99
+2921||2026-04-25|Delivered|Phone|14.99
+2922|302|2025-05-18|Delivered|Web|2.99
+2923|158|2025-07-26|Cancelled|Web|4.99
+2924|366|2025-02-16|Delivered|Web|0.00
+2925|159|2026-09-20|Shipped|Web|4.99
+2926|286|2026-06-29|Delivered|Mobile App|14.99
+2927|233|2025-08-27|Delivered|Web|2.99
+2928|289|2026-07-29|Delivered|Marketplace|4.99
+2929|86|2026-09-02|Delivered|Web|4.99
+2930|10|2025-07-09|Returned|Marketplace|6.99
+2931||2026-04-26|Delivered|Web|0.00
+2932|117|2026-03-16|Delivered|Web|9.99
+2933|310|2026-09-29|Cancelled|Mobile App|2.99
+2934|171|2026-03-22|Delivered|Mobile App|6.99
+2935|58|2025-09-01|Delivered|Web|6.99
+2936|219|2026-07-24|Delivered|Mobile App|9.99
+2937|153|2025-09-19|Delivered|Marketplace|4.99
+2938|110|2026-05-22|Delivered|Mobile App|0.00
+2939|273|2025-01-25|Cancelled|Mobile App|4.99
+2940|380|2025-06-28|Cancelled|Marketplace|6.99
+2941|7|2026-07-28|Delivered|Web|4.99
+2942|277|2025-06-16|Delivered|Web|6.99
+2943|68|2026-07-02|Delivered|Mobile App|0.00
+2944|256|2025-07-29|Shipped|Mobile App|6.99
+2945|299|2025-12-13|Returned|Web|6.99
+2946||2026-07-04|Delivered|Mobile App|2.99
+2947|122|2025-11-07|Cancelled|Web|0.00
+2948|110|2025-12-01|Returned|Mobile App|0.00
+2949|137|2026-06-24|Delivered|Mobile App|6.99
+2950|327|2026-09-22|Shipped|Web|9.99
+2951|99|2025-04-21|Delivered|Marketplace|0.00
+2952|145|2025-06-23|Returned|Web|9.99
+2953|179|2025-03-07|Returned|Web|2.99
+2954|159|2025-01-27|Cancelled|Web|4.99
+2955||2025-05-22|Delivered|Mobile App|2.99
+2956|52|2026-09-11|Cancelled|Web|6.99
+2957|266|2026-09-07|Delivered|Mobile App|2.99
+2958|127|2026-08-11|Delivered|Web|0.00
+2959|105|2025-10-15|Returned|Mobile App|4.99
+2960|196|2026-09-13|Shipped|Web|2.99
+2961|110|2026-04-07|Delivered|Marketplace|2.99
+2962|117|2025-11-23|Delivered|Mobile App|4.99
+2963|343|2025-11-20|Delivered|Web|2.99
+2964|57|2026-08-02|Delivered|Web|9.99
+2965|309|2025-01-30|Delivered|Mobile App|0.00
+2966|198|2025-09-01|Delivered|Phone|6.99
+2967|122|2025-12-20|Delivered|Web|6.99
+2968|264|2026-09-05|Delivered|Phone|2.99
+2969|110|2025-07-23|Delivered|Mobile App|4.99
+2970|68|2025-12-28|Returned|Web|0.00
+2971|139|2025-04-02|Delivered|Mobile App|0.00
+2972|153|2025-12-05|Cancelled|Web|6.99
+2973|337|2025-11-06|Shipped|Web|4.99
+2974|110|2026-03-17|Delivered|Web|6.99
+2975|291|2025-07-31|Delivered|Web|6.99
+2976|171|2026-06-25|Delivered|Web|6.99
+2977|288|2026-03-30|Delivered|Web|2.99
+2978|180|2026-04-15|Returned|Web|4.99
+2979|110|2025-11-24|Shipped|Marketplace|4.99
+2980|264|2026-06-07|Delivered|Web|2.99
+2981|134|2025-09-12|Delivered|Web|2.99
+2982|70|2025-12-25|Delivered|Web|4.99
+2983|117|2025-03-25|Delivered|Phone|0.00
+2984|337|2025-10-03|Delivered|Web|4.99
+2985||2026-04-08|Delivered|Phone|2.99
+2986|260|2025-12-25|Delivered|Web|6.99
+2987|43|2025-09-09|Delivered|Mobile App|9.99
+2988|383|2025-09-07|Shipped|Web|6.99
+2989|257|2025-06-08|Delivered|Web|4.99
+2990|309|2025-01-18|Delivered|Web|0.00
+2991|342|2026-02-04|Delivered|Web|4.99
+2992|117|2026-03-21|Delivered|Web|4.99
+2993|241|2026-02-12|Delivered|Mobile App|6.99
+2994|262|2026-08-02|Delivered|Web|4.99
+2995|18|2026-04-05|Delivered|Marketplace|0.00
+2996|110|2025-08-15|Delivered|Mobile App|9.99
+2997|222|2025-11-27|Delivered|Marketplace|9.99
+2998|264|2025-08-18|Delivered|Phone|4.99
+2999|390|2025-12-27|Delivered|Web|0.00
+3000|88|2026-04-02|Delivered|Web|2.99

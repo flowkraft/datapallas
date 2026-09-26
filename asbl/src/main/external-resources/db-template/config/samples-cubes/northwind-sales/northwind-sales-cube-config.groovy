@@ -219,7 +219,7 @@ cube {
   measure {
     name 'TotalFreight'
     title 'Total Freight'
-    description 'Sum of freight charges. NOTE: this over-counts when joined to Order Details (one freight value is repeated per line item)'
+    description 'Sum of freight charges.'
     sql '${CUBE}.Freight'
     type 'sum'
     format 'currency'

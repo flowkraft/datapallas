@@ -741,25 +741,17 @@ public class CliJob {
 			}
 
 			String vendor = normalizeDbVendorType(dbSettings.connection.databaseserver.type);
-			String script  = Files.readString(Path.of(scriptFilePath));
 
 			try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
 					dbSettings.connection.databaseserver.url,
 					dbSettings.connection.databaseserver.userid,
 					decryptedPassword)) {
 
-				groovy.sql.Sql dbSql = new groovy.sql.Sql(conn);
-				groovy.lang.Binding binding = new groovy.lang.Binding();
-				binding.setVariable("dbSql",   dbSql);
-				binding.setVariable("vendor",  vendor);
-				binding.setVariable("log",     log);
-				binding.setVariable("params",  params != null ? params : new LinkedHashMap<>());
-
-				new groovy.lang.GroovyShell(
-						Thread.currentThread().getContextClassLoader(),
-						binding,
-						new org.codehaus.groovy.control.CompilerConfiguration())
-						.evaluate(script);
+				// The bindings live in one place, so a seed script behaves the same here, in the
+				// packager and in the tests. It also gets 'scriptDir', for a script that ships
+				// its data files next to itself.
+				com.sourcekraft.documentburster.common.db.SeedScriptRunner.run(conn, vendor,
+						Path.of(scriptFilePath), params);
 			}
 
 			log.info("Seed script completed for: {}", connectionFilePath);

@@ -141,6 +141,38 @@ public final class NorthwindFixture {
 		}
 	}
 
+	/**
+	 * Copies {@code cube-demo-data.groovy} and its {@code cube-demo-data/} rows out of the
+	 * product's db-template into the fixture's own scripts folder. The path is resolved from
+	 * {@code user.dir} (the module folder) the way the cube tests resolve the sample cubes.
+	 */
+	private static void copySeedScripts(Path destination) throws Exception {
+
+		Path shipped = Paths.get(System.getProperty("user.dir")).toAbsolutePath().getParent().getParent()
+				.resolve("asbl").resolve("src").resolve("main").resolve("external-resources")
+				.resolve("db-template").resolve("db").resolve("scripts");
+
+		Path script = shipped.resolve("cube-demo-data.groovy");
+		Path rows = shipped.resolve("cube-demo-data");
+		if (!Files.exists(script) || !Files.isDirectory(rows)) {
+			throw new IllegalStateException("The Northwind fixture builds the DuckDB sample the way the "
+					+ "packager does, which loads the cube_demo demo data from " + script
+					+ " and its cube-demo-data/ folder. One of them is missing.");
+		}
+
+		Files.createDirectories(destination);
+		Files.copy(script, destination.resolve(script.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+
+		Path rowsDestination = destination.resolve(rows.getFileName());
+		Files.createDirectories(rowsDestination);
+		try (java.util.stream.Stream<Path> files = Files.list(rows)) {
+			for (Path file : files.collect(java.util.stream.Collectors.toList())) {
+				Files.copy(file, rowsDestination.resolve(file.getFileName()),
+						StandardCopyOption.REPLACE_EXISTING);
+			}
+		}
+	}
+
 	private static void build() throws Exception {
 		if (canonicalDuckDb != null) {
 			return;
@@ -157,6 +189,11 @@ public final class NorthwindFixture {
 		Path buildDuckDbDir = tempRoot.resolve("build").resolve("sample-northwind-duckdb");
 		Files.createDirectories(buildSqliteDir);
 		Files.createDirectories(buildDuckDbDir);
+
+		// The shipped seed script and its rows go next to the sample folders, where
+		// NorthwindManager looks for them, so the fixture's DuckDB file holds the cube_demo demo
+		// data exactly as the shipped one does.
+		copySeedScripts(tempRoot.resolve("build").resolve("scripts"));
 
 		try (NorthwindManager manager = new NorthwindManager()) {
 			manager.startDatabase(NorthwindManager.DatabaseVendor.SQLITE, buildSqliteDir.toString());

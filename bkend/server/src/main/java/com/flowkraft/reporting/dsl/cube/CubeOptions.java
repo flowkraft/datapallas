@@ -42,6 +42,12 @@ public class CubeOptions {
     // Named blocks for multi-cube reports
     private Map<String, CubeOptions> namedOptions = new LinkedHashMap<>();
 
+    // What CubeRules found in the whole file: one entry per problem, on the top-level cube only
+    private List<Map<String, Object>> warnings = new ArrayList<>();
+
+    // Which folder each dimension goes in: dimension name -> the join it is on, "" for this table
+    private Map<String, String> dimensionTables = new LinkedHashMap<>();
+
     public String getSqlTable() { return sqlTable; }
     public void setSqlTable(String sqlTable) { this.sqlTable = sqlTable; }
 
@@ -83,4 +89,10 @@ public class CubeOptions {
 
     public Map<String, CubeOptions> getNamedOptions() { return namedOptions; }
     public void setNamedOptions(Map<String, CubeOptions> namedOptions) { this.namedOptions = namedOptions; }
+
+    public List<Map<String, Object>> getWarnings() { return warnings; }
+    public void setWarnings(List<Map<String, Object>> warnings) { this.warnings = warnings; }
+
+    public Map<String, String> getDimensionTables() { return dimensionTables; }
+    public void setDimensionTables(Map<String, String> dimensionTables) { this.dimensionTables = dimensionTables; }
 }

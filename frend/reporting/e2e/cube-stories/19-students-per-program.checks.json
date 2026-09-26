@@ -1,0 +1,28 @@
+[
+  {
+    "dimensions": [
+      "Program"
+    ],
+    "measures": [
+      "Students"
+    ],
+    "rows": [
+      [
+        "Business Administration",
+        75
+      ],
+      [
+        "Computer Science",
+        75
+      ],
+      [
+        "Economics",
+        75
+      ],
+      [
+        "Mechanical Engineering",
+        75
+      ]
+    ]
+  }
+]

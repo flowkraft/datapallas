@@ -1,0 +1,352 @@
+[
+  {
+    "dimensions": [],
+    "measures": [
+      "Invoices",
+      "BalanceDue"
+    ],
+    "rows": [
+      [
+        432,
+        4096696.09
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Status"
+    ],
+    "measures": [
+      "Invoices",
+      "BalanceDue"
+    ],
+    "rows": [
+      [
+        "Open",
+        59,
+        520961.78
+      ],
+      [
+        "Overdue",
+        373,
+        3575734.31
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Customer"
+    ],
+    "measures": [
+      "Invoices",
+      "BalanceDue"
+    ],
+    "rows": [
+      [
+        "Wingtip Toys NV",
+        19,
+        188343.99
+      ],
+      [
+        "Fincher Architects NV",
+        19,
+        185700.07
+      ],
+      [
+        "Southridge Video SpA",
+        23,
+        183209.57
+      ],
+      [
+        "Lucerne Publishing SpA",
+        14,
+        181814.08
+      ],
+      [
+        "VanArsdel GmbH",
+        15,
+        179976.3
+      ],
+      [
+        "Graphic Design Institute Lda",
+        16,
+        175747.17
+      ],
+      [
+        "Fourth Coffee BV",
+        17,
+        172580.06
+      ],
+      [
+        "Lamna Healthcare Ltd",
+        15,
+        167761.46
+      ],
+      [
+        "Wide World Importers GmbH",
+        13,
+        158008.15
+      ],
+      [
+        "Prose Ware Systems Lda",
+        15,
+        149463.48
+      ],
+      [
+        "Tres Chic Boutique GmbH",
+        15,
+        147520.63
+      ],
+      [
+        "Tailspin Toys NV",
+        19,
+        139827.97
+      ],
+      [
+        "Woodgrove Bank NV",
+        15,
+        134045.47
+      ],
+      [
+        "Alpine Ski House SpA",
+        14,
+        134037.03
+      ],
+      [
+        "Coho Winery Inc",
+        13,
+        131886.79
+      ],
+      [
+        "The Phone Company GmbH",
+        13,
+        129494.97
+      ],
+      [
+        "Parnell Aerospace SARL",
+        12,
+        123746.47
+      ],
+      [
+        "Lucerne Publishing NV",
+        17,
+        121475.25
+      ],
+      [
+        "Trey Research BV",
+        16,
+        121273.53
+      ],
+      [
+        "Prose Ware Systems SL",
+        12,
+        120575.18
+      ],
+      [
+        "City Power & Light AB",
+        10,
+        118077.7
+      ],
+      [
+        "Relecloud GmbH",
+        10,
+        114202.64
+      ],
+      [
+        "Tailspin Toys GmbH",
+        9,
+        111300.11
+      ],
+      [
+        "Blue Yonder Airlines SpA",
+        17,
+        108571.92
+      ],
+      [
+        "Nod Publishers Sp. z o.o.",
+        14,
+        107023.01
+      ],
+      [
+        "Adventure Works AB",
+        12,
+        100344.59
+      ],
+      [
+        "First Up Consultants SARL",
+        13,
+        87848.61
+      ],
+      [
+        "Contoso Sp. z o.o.",
+        10,
+        83935.42
+      ],
+      [
+        "Parnell Aerospace NV",
+        10,
+        62891.81
+      ],
+      [
+        "Wide Field Robotics SARL",
+        6,
+        43884.3
+      ],
+      [
+        "Wide Field Robotics Ltd",
+        2,
+        40849.89
+      ],
+      [
+        "Best For You Organics BV",
+        2,
+        30286.8
+      ],
+      [
+        "Tall Poppies SARL",
+        2,
+        13815.56
+      ],
+      [
+        "Litware Ltd",
+        1,
+        12716.33
+      ],
+      [
+        "Proseware BV",
+        1,
+        9693.81
+      ],
+      [
+        "Winsome Apparel Ltd",
+        1,
+        4765.97
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Customer"
+    ],
+    "measures": [
+      "Invoices",
+      "BalanceDue"
+    ],
+    "order": [
+      {
+        "member": "BalanceDue",
+        "dir": "desc"
+      }
+    ],
+    "limit": 10,
+    "ordered": true,
+    "rows": [
+      [
+        "Wingtip Toys NV",
+        19,
+        188343.99
+      ],
+      [
+        "Fincher Architects NV",
+        19,
+        185700.07
+      ],
+      [
+        "Southridge Video SpA",
+        23,
+        183209.57
+      ],
+      [
+        "Lucerne Publishing SpA",
+        14,
+        181814.08
+      ],
+      [
+        "VanArsdel GmbH",
+        15,
+        179976.3
+      ],
+      [
+        "Graphic Design Institute Lda",
+        16,
+        175747.17
+      ],
+      [
+        "Fourth Coffee BV",
+        17,
+        172580.06
+      ],
+      [
+        "Lamna Healthcare Ltd",
+        15,
+        167761.46
+      ],
+      [
+        "Wide World Importers GmbH",
+        13,
+        158008.15
+      ],
+      [
+        "Prose Ware Systems Lda",
+        15,
+        149463.48
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Invoices",
+      "BalanceDue",
+      "OldestDueDate",
+      "LargestBalance"
+    ],
+    "rows": [
+      [
+        432,
+        4096696.09,
+        "2025-02-16",
+        42419.85
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Status"
+    ],
+    "measures": [
+      "Invoices",
+      "BalanceDue",
+      "OldestDueDate",
+      "LargestBalance"
+    ],
+    "rows": [
+      [
+        "Open",
+        59,
+        520961.78,
+        "2026-09-30",
+        31128.55
+      ],
+      [
+        "Overdue",
+        373,
+        3575734.31,
+        "2025-02-16",
+        42419.85
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Invoices"
+    ],
+    "cube": "invoices",
+    "rows": [
+      [
+        2000
+      ]
+    ]
+  }
+]

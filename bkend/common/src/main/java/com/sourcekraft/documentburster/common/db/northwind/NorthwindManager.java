@@ -21,6 +21,7 @@ import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 import com.sourcekraft.documentburster.common.ServicesManager;
 import com.sourcekraft.documentburster.common.db.ContainerAddresses;
+import com.sourcekraft.documentburster.common.db.SeedScriptRunner;
 import com.sourcekraft.documentburster.utils.Utils;
 
 import jakarta.persistence.EntityManager;
@@ -437,6 +438,28 @@ public class NorthwindManager implements AutoCloseable {
 		Files.createDirectories(this.sqliteDbFile.getParentFile().toPath());
 	}
 
+	/**
+	 * Loads the Cube Stories demo data into the DuckDB sample, with the script that ships next to
+	 * the sample databases. A data folder with no scripts/ sibling is not an error: Northwind is
+	 * built as before, without the cube_demo schema. A seed that fails is thrown, like a warehouse
+	 * error, so a package build or a test fails loudly instead of shipping half the data.
+	 */
+	private void seedCubeDemoData(Path hostDataPath, String duckdbPath) throws Exception {
+
+		Path script = hostDataPath.getParent().resolve("scripts").resolve("cube-demo-data.groovy");
+		if (!Files.exists(script)) {
+			log.warn("No cube_demo seed script at {} - the DuckDB sample is built without the "
+					+ "cube_demo demo data", script.toAbsolutePath());
+			return;
+		}
+
+		log.info("Loading the cube_demo demo data into {} with {}", duckdbPath, script);
+		try (Connection duckConn = DriverManager.getConnection("jdbc:duckdb:" + duckdbPath)) {
+			SeedScriptRunner.run(duckConn, DatabaseVendor.DUCKDB.name(), script, null);
+		}
+		log.info("cube_demo demo data loaded");
+	}
+
 	public void initializeDatabaseWithGenerator(DatabaseVendor vendor, Path hostDataPath) throws Exception {
 
         // DuckDB uses a specialized data warehouse creator (dimensional model, not OLTP)
@@ -464,6 +487,14 @@ public class NorthwindManager implements AutoCloseable {
             DuckDBDataWarehouseCreator.createDataWarehouse(duckdbPath, sqlitePath);
 
             log.info("DuckDB data warehouse created successfully");
+
+            // The Cube Stories demo data (schema cube_demo) is loaded by the shipped seed script
+            // from the shipped rows, so the sample database a user gets is built the same way
+            // wherever it is built: by the packager, by 'system service database start', or by
+            // the tests' fixture. The script sits in the db/ folder's scripts/ sibling, the same
+            // parent this branch already uses to find the SQLite sample.
+            seedCubeDemoData(hostDataPath, duckdbPath);
+
             return; // Skip JPA initialization below - already created via SQL
         }
 

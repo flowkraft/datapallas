@@ -1,0 +1,89 @@
+[
+  {
+    "dimensions": [
+      "Status"
+    ],
+    "measures": [
+      "Invoices",
+      "Invoiced"
+    ],
+    "cube": "invoices",
+    "rows": [
+      [
+        "Open",
+        59,
+        547874.85
+      ],
+      [
+        "Overdue",
+        373,
+        3752935.81
+      ],
+      [
+        "Paid",
+        1568,
+        16110704.38
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Invoices",
+      "Invoiced"
+    ],
+    "cube": "invoices",
+    "rows": [
+      [
+        2000,
+        20411515.04
+      ]
+    ]
+  },
+  {
+    "dimensions": [
+      "Method"
+    ],
+    "measures": [
+      "Payments",
+      "Received"
+    ],
+    "cube": "payments",
+    "rows": [
+      [
+        "Bank Transfer",
+        987,
+        9517674.41
+      ],
+      [
+        "Check",
+        77,
+        855265.25
+      ],
+      [
+        "Credit Card",
+        227,
+        2207632.76
+      ],
+      [
+        "Direct Debit",
+        409,
+        3734246.53
+      ]
+    ]
+  },
+  {
+    "dimensions": [],
+    "measures": [
+      "Payments",
+      "Received"
+    ],
+    "cube": "payments",
+    "rows": [
+      [
+        1700,
+        16314818.95
+      ]
+    ]
+  }
+]

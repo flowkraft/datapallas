@@ -136,6 +136,14 @@
 			<artifactId>groovy-sql</artifactId>
 		</dependency>
 
+		<!-- A cube's SQL can also be generated from a script, wherever a script runs, so jOOQ
+		     sits next to groovy-sql and the JDBC drivers rather than in the server only. -->
+		<dependency>
+			<groupId>org.jooq</groupId>
+			<artifactId>jooq</artifactId>
+			<version>3.19.24</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.hibernate.orm</groupId>
 			<artifactId>hibernate-core</artifactId>

@@ -1,0 +1,13 @@
+carrier_id|name|transport_mode|country
+1|Swiftline Parcel|Road|Germany
+2|EuroRoad Freight|Road|Germany
+3|Bluewave Express|Road|Netherlands
+4|Alpine Road Logistics|Road|Austria
+5|Ocean Star Shipping|Sea|Netherlands
+6|Baltic Sea Carriers|Sea|Sweden
+7|Mediterra Shipping|Sea|Italy
+8|Nordic Rail Cargo|Rail|Sweden
+9|Continental Rail|Rail|Germany
+10|Iberia Rail Freight|Rail|Spain
+11|SkyBridge Air Cargo|Air|Germany
+12|AeroLink Cargo|Air|France

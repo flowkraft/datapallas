@@ -1,0 +1,16 @@
+agent_id|name|team|email
+1|Henrik Kim|Tier 1|henrik.kim@support.cube-demo.example
+2|Felix Rossi|Tier 1|felix.rossi@support.cube-demo.example
+3|Jonas Nowak|Tier 1|jonas.nowak@support.cube-demo.example
+4|Grace Lindqvist|Tier 1|grace.lindqvist@support.cube-demo.example
+5|Ines Costa|Tier 1|ines.costa@support.cube-demo.example
+6|Fatima Vargas|Tier 2|fatima.vargas@support.cube-demo.example
+7|Milan Muller|Tier 2|milan.muller@support.cube-demo.example
+8|Chiara Muller|Tier 2|chiara.muller@support.cube-demo.example
+9|Felix Silva|Tier 2|felix.silva@support.cube-demo.example
+10|Jonas Berg|Billing|jonas.berg@support.cube-demo.example
+11|Henrik Silva|Billing|henrik.silva@support.cube-demo.example
+12|Lukas O'Connor|Billing|lukas.oconnor@support.cube-demo.example
+13|Liam O'Connor|Onboarding|liam.oconnor@support.cube-demo.example
+14|Bruno Khan|Onboarding|bruno.khan@support.cube-demo.example
+15|David Andersson|Onboarding|david.andersson@support.cube-demo.example

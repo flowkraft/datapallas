@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Cube Story 4 - Ticket Resolution</name>
+    <description>Named filters (segments), on their own and combined: open tickets, urgent or SLA-breached ones. Runs on the cube_demo demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

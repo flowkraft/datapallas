@@ -1,0 +1,31 @@
+depot_id|name|city|country|latitude|longitude|capacity_pallets|docks
+1|Hamburg Port Depot|Hamburg|Germany|53.54|9.98|1200|18
+2|Berlin South Hub|Berlin|Germany|52.40|13.40|800|12
+3|Munich East Depot|Munich|Germany|48.14|11.70|650|10
+4|Paris Nord Depot|Paris|France|48.93|2.36|950|15
+5|Lyon Cross-Dock|Lyon|France|45.73|4.85|400|6
+6|Rotterdam Maasvlakte|Rotterdam|Netherlands|51.95|4.05|1500|22
+7|Antwerp Harbour Depot|Antwerp|Belgium|51.26|4.40|1100|16
+8|Milan Logistics Park|Milan|Italy|45.52|9.21|700|11
+9|Barcelona Zona Franca|Barcelona|Spain|41.34|2.14|600|9
+10|Warsaw West Hub|Warsaw|Poland|52.21|20.93|500|8
+11|Cologne Rhine Depot|Cologne|Germany|50.94|6.96|550|9
+12|Frankfurt Cargo Centre|Frankfurt|Germany|50.03|8.56|1300|20
+13|Stuttgart South Depot|Stuttgart|Germany|48.78|9.18|450|7
+14|Duisburg Inland Port|Duisburg|Germany|51.44|6.76|1400|19
+15|Marseille Fos Terminal|Marseille|France|43.40|4.90|1250|17
+16|Toulouse Airport Depot|Toulouse|France|43.63|1.37|350|5
+17|Amsterdam Westpoort|Amsterdam|Netherlands|52.40|4.82|900|14
+18|Eindhoven Regional Hub|Eindhoven|Netherlands|51.45|5.38|420|6
+19|Brussels Zaventem Depot|Brussels|Belgium|50.90|4.48|700|10
+20|Vienna Danube Hub|Vienna|Austria|48.23|16.42|620|9
+21|Zurich Airport Depot|Zurich|Switzerland|47.45|8.56|380|6
+22|Rome Fiumicino Depot|Rome|Italy|41.80|12.25|540|8
+23|Turin North Depot|Turin|Italy|45.11|7.65|460|7
+24|Madrid Barajas Hub|Madrid|Spain|40.47|-3.57|810|12
+25|Valencia Port Depot|Valencia|Spain|39.44|-0.33|730|11
+26|Lisbon Alcantara Depot|Lisbon|Portugal|38.70|-9.17|480|7
+27|Gothenburg Harbour|Gothenburg|Sweden|57.69|11.87|860|13
+28|Stockholm Arlanda Hub|Stockholm|Sweden|59.63|17.92|520|8
+29|Copenhagen Free Port|Copenhagen|Denmark|55.70|12.60|640|10
+30|Krakow South Depot|Krakow|Poland|50.06|19.94|410|6

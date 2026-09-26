@@ -1,0 +1,25 @@
+course_id|code|title|department|credits
+1|CS101|Computer Science Introduction|Computer Science|5
+2|CS151|Computer Science Foundations|Computer Science|3
+3|CS201|Computer Science Advanced Topics|Computer Science|8
+4|CS251|Computer Science Data Analysis|Computer Science|4
+5|CS301|Computer Science Modelling|Computer Science|5
+6|CS351|Computer Science Research Methods|Computer Science|4
+7|BUS101|Business Introduction|Business|4
+8|BUS151|Business Foundations|Business|8
+9|BUS201|Business Advanced Topics|Business|8
+10|BUS251|Business Data Analysis|Business|5
+11|BUS301|Business Modelling|Business|4
+12|ECO101|Economics Introduction|Economics|4
+13|ECO151|Economics Foundations|Economics|4
+14|ECO201|Economics Advanced Topics|Economics|5
+15|ECO251|Economics Data Analysis|Economics|5
+16|ENG101|Engineering Introduction|Engineering|3
+17|ENG151|Engineering Foundations|Engineering|3
+18|ENG201|Engineering Advanced Topics|Engineering|5
+19|ENG251|Engineering Data Analysis|Engineering|4
+20|ENG301|Engineering Modelling|Engineering|8
+21|MAT101|Mathematics Introduction|Mathematics|3
+22|MAT151|Mathematics Foundations|Mathematics|4
+23|MAT201|Mathematics Advanced Topics|Mathematics|5
+24|MAT251|Mathematics Data Analysis|Mathematics|5

@@ -1,0 +1,22 @@
+[
+  {
+    "sample": "northwind-hr",
+    "source": "SELECT Title, COUNT(DISTINCT EmployeeID) FROM Employees GROUP BY Title",
+    "dimensions": [
+      "Title"
+    ],
+    "measures": [
+      "EmployeeCount"
+    ],
+    "rows": [
+      [
+        "Sales Representative",
+        2
+      ],
+      [
+        "Vice President, Sales",
+        1
+      ]
+    ]
+  }
+]
