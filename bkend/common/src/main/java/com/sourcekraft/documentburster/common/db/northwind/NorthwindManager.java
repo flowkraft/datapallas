@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 import com.sourcekraft.documentburster.common.ServicesManager;
+import com.sourcekraft.documentburster.common.db.AcademyDatasetsSeeder;
 import com.sourcekraft.documentburster.common.db.ContainerAddresses;
 import com.sourcekraft.documentburster.common.db.SeedScriptRunner;
 import com.sourcekraft.documentburster.utils.Utils;
@@ -202,6 +203,13 @@ public class NorthwindManager implements AutoCloseable {
 		// --- Initialize Data (if needed) ---
 		if (needsInitialization) {
 			initializeDatabaseWithGenerator(vendor, hostDataPath);
+		}
+
+		// The academy datasets are checked on every PostgreSQL start, not only the first: a
+		// container that already held Northwind gets them too, and a load a stop cut short is
+		// finished. A dataset already loaded is left alone.
+		if (vendor == DatabaseVendor.POSTGRES) {
+			seedAcademyDatasets(vendor, hostDataPath);
 		}
 
 		log.info("Northwind DB Started: {} | Data Path: {} | JDBC URL: {}", vendor, getActualDataPath(vendor),
@@ -460,6 +468,30 @@ public class NorthwindManager implements AutoCloseable {
 		log.info("cube_demo demo data loaded");
 	}
 
+	/**
+	 * Loads the DataZeus academy datasets at scale S (Northwind Company, its warehouse and its
+	 * change log) into the DuckDB or PostgreSQL sample, with the install scripts that ship with
+	 * the DataZeus content in db/datazeus. A data folder with no db/datazeus sibling is not an
+	 * error: Northwind is there as before, without the academy schemas. A load that fails is
+	 * thrown, like the cube_demo seed.
+	 */
+	private void seedAcademyDatasets(DatabaseVendor vendor, Path hostDataPath) throws Exception {
+
+		Path scripts = hostDataPath.getParent().resolve("datazeus").resolve("datasets").resolve("scripts");
+		if (!Files.isDirectory(scripts)) {
+			log.warn("No DataZeus dataset scripts at {} - the {} sample is built without the academy datasets",
+					scripts.toAbsolutePath(), vendor);
+			return;
+		}
+
+		try (Connection connection = (vendor == DatabaseVendor.DUCKDB)
+				? DriverManager.getConnection(
+						"jdbc:duckdb:" + hostDataPath.resolve("northwind.duckdb").toAbsolutePath())
+				: DriverManager.getConnection(getJdbcUrl(vendor), getUsername(vendor), getPassword(vendor))) {
+			AcademyDatasetsSeeder.seed(connection, vendor.name(), scripts);
+		}
+	}
+
 	public void initializeDatabaseWithGenerator(DatabaseVendor vendor, Path hostDataPath) throws Exception {
 
         // DuckDB uses a specialized data warehouse creator (dimensional model, not OLTP)
@@ -494,6 +526,9 @@ public class NorthwindManager implements AutoCloseable {
             // the tests' fixture. The script sits in the db/ folder's scripts/ sibling, the same
             // parent this branch already uses to find the SQLite sample.
             seedCubeDemoData(hostDataPath, duckdbPath);
+
+            // The DataZeus academy datasets at scale S, so the lessons' data ships in the sample.
+            seedAcademyDatasets(vendor, hostDataPath);
 
             return; // Skip JPA initialization below - already created via SQL
         }
