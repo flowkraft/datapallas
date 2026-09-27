@@ -2,7 +2,7 @@
 
 // lucide-react removed
 import type { ColumnSchema } from "@/lib/explore-data/types";
-import { isParamRef } from "@/lib/explore-data/sql-builder";
+import { columnClassOf, isParamRef } from "@/lib/explore-data/sql-builder";
 
 interface FilterItem {
   column: string;
@@ -77,27 +77,25 @@ const PARAM_BINDABLE_OPS = new Set([
 ]);
 
 // Type detection from column schema
-const NUMERIC_TYPES = new Set([
-  "INTEGER", "INT", "BIGINT", "SMALLINT", "TINYINT",
-  "FLOAT", "DOUBLE", "REAL", "DECIMAL", "NUMERIC",
-  "NUMBER", "MONEY", "INT4", "INT8", "INT2",
-  "FLOAT4", "FLOAT8", "HUGEINT", "UINTEGER", "UBIGINT",
-]);
-
-const DATE_TYPES = new Set([
-  "DATE", "DATETIME", "TIMESTAMP", "TIMESTAMPTZ",
-  "TIMESTAMP_TZ", "TIMESTAMP WITH TIME ZONE",
-  "TIME", "TIMETZ", "INTERVAL",
-]);
-
-const BOOLEAN_TYPES = new Set(["BOOLEAN", "BOOL", "BIT"]);
-
+/**
+ * Which operators and which input control this column gets.
+ *
+ * The classification itself is `columnClassOf` in `sql-builder.ts`, the one
+ * place a database type name is read: the operator list offered here and the
+ * literal the generator writes have to come from the same answer. This step
+ * only collapses it — a date, a timestamp and a time all get the date
+ * operators, while the generator writes a time as a plain string because ANSI
+ * has no portable time literal.
+ */
 function getColumnType(column: ColumnSchema): "string" | "number" | "date" | "boolean" {
-  const type = (column.typeName || "").toUpperCase().split("(")[0].trim();
-  if (NUMERIC_TYPES.has(type)) return "number";
-  if (DATE_TYPES.has(type)) return "date";
-  if (BOOLEAN_TYPES.has(type)) return "boolean";
-  return "string";
+  switch (columnClassOf(column)) {
+    case "number":    return "number";
+    case "date":
+    case "timestamp":
+    case "time":      return "date";
+    case "boolean":   return "boolean";
+    default:          return "string";
+  }
 }
 
 function getOperatorsForColumn(column: ColumnSchema | undefined): OperatorDef[] {

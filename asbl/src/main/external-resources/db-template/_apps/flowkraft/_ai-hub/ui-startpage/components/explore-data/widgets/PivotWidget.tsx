@@ -6,6 +6,7 @@ import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "./useRbElementReady";
 import { IconSparkles as Sparkles, IconBarChart3 as BarChart3 } from "@/components/shared/Icons";
 import { fetchSchema } from "@/lib/explore-data/rb-api";
+import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
 import { autoPivotLayout, isIdColumn, probeCardinality, classifyColumn } from "@/lib/explore-data/smart-defaults";
 import { useEffectiveField } from "@/lib/hooks/use-effective-field";
 import { useDslConfig } from "@/lib/hooks/use-dsl-config";
@@ -65,7 +66,7 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
     setAutoErr(null);
     try {
       const schema = await fetchSchema(connectionId);
-      const tbl = schema.tables.find((t) => t.tableName === vq.table);
+      const tbl = findTable(schema, refForQuery(vq));
       if (!tbl) {
         setAutoErr(`Table ${vq.table} not found.`);
         return;
@@ -73,7 +74,7 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
       const stringCols = tbl.columns
         .filter((c) => classifyColumn(c, tbl) === "category-low")
         .map((c) => c.columnName);
-      const cardinality = stringCols.length > 0 ? await probeCardinality(connectionId, tbl.tableName, stringCols) : {};
+      const cardinality = stringCols.length > 0 ? await probeCardinality(connectionId, refForQuery(vq), stringCols) : {};
       const layout = autoPivotLayout(tbl, cardinality);
       updateConfig({
         ...dslMap,

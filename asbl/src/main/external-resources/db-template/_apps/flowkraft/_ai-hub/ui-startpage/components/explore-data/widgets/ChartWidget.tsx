@@ -6,7 +6,8 @@ import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "./useRbElementReady";
 import { IconSparkles as Sparkles } from "@/components/shared/Icons";
 import { fetchSchema, getConnectionType } from "@/lib/explore-data/rb-api";
-import { buildSql } from "@/lib/explore-data/sql-builder";
+import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
+import { buildSql, columnKindsOf } from "@/lib/explore-data/sql-builder";
 import {
   autoSummarize,
   isIdColumn,
@@ -279,14 +280,17 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
     setAutoErr(null);
     try {
       const schema = await fetchSchema(connectionId);
-      const tbl = schema.tables.find((t) => t.tableName === vq.table);
+      const tbl = findTable(schema, refForQuery(vq));
       if (!tbl) {
         setAutoErr(`Table ${vq.table} not found in schema.`);
         return;
       }
       // autoSummarize is async — it probes date range + cardinality.
       const newVq = await autoSummarize(connectionId, tbl);
-      const newSql = buildSql(newVq, { connectionType: getConnectionType(connectionId) });
+      const newSql = buildSql(newVq, {
+        connectionType: getConnectionType(connectionId),
+        columnKinds: columnKindsOf(tbl.columns),
+      });
       updateWidgetDataSource(widget.id, { mode: "visual", visualQuery: newVq, generatedSql: newSql });
     } catch (e) {
       setAutoErr(e instanceof Error ? e.message : "Auto-summarize failed");

@@ -1,27 +1,62 @@
-// Database probes — cardinality, date range, numeric range.
-// All cached per (connectionId, tableName) with a 5-min TTL so repeat clicks
+// ANSI SQL only — no vendor branch in this file; vendor forms live in
+// `../sql-dialects.ts`.
+//
+// Database probes — cardinality, date range, numeric range, value fingerprint.
+// All cached per (connectionId, schema-qualified table) with a 5-min TTL so repeat clicks
 // during a canvas edit session don't re-run `COUNT(DISTINCT)` or `MIN/MAX`.
 
 import { executeQuery, getConnectionType } from "../rb-api";
-import { quoteIdent, dialectFor, sqliteDateNormalize } from "../sql-dialects";
+import { quoteIdent, quoteTableRef, dialectFor, datetimeExpr, limitClause, type SqlDialect } from "../sql-dialects";
+import { asTableRef, tableKey, type TableRef } from "../table-ref";
 import type { CardinalityMap } from "./classification";
 import type { ColumnSchema, SemanticHint } from "../types";
 import { normalizeType, NUMERIC_TYPES } from "./classification";
 
 export type { CardinalityMap };
 
-// All SQL generated here uses quoteIdent(name, dialect) from sql-dialects.ts.
-// This ensures tables/columns named with any casing (e.g. "Orders", "order_id",
-// "Order ID") are quoted correctly for every database vendor — double-quotes for
-// PostgreSQL/DuckDB/SQLite, backticks for MySQL/MariaDB, brackets for SQL Server.
-// The dialect is derived per call from getConnectionType(connectionId) so the same
-// probe function works regardless of which database the canvas is connected to.
+// THE RULE: every query below is ANSI SQL, the same text on all nine vendors.
+// The four things ANSI cannot say — quoting a name (`quoteIdent`), quoting a
+// table reference (`quoteTableRef`), capping rows (`limitClause`) and reading a
+// datetime out of a column that may hold an epoch (`datetimeExpr`) — come from
+// `sql-dialects.ts`, the vendor layer. There is no vendor check in this file.
+//
+// Each probe's SQL is a pure function of its inputs (`cardinalitySql`,
+// `dateRangeSql`, `numericRangeSql`, `sampleRowsSql`), exported so the tests
+// read exactly the text the probe sends, for every vendor, without a database.
+//
+// Quoting matters for the aliases too: Oracle and Db2 fold an unquoted alias to
+// upper case, so `AS minv` came back as the column `MINV` and `row.minv` was
+// undefined — the date and numeric probes simply returned null there, and every
+// bucket and bin width fell back to a guess. The aliases are quoted now.
+//
+// The dialect is derived per call from getConnectionType(connectionId), so the
+// same probe works regardless of which database the canvas is connected to.
+//
+// Every probe takes the table as a `TableRef | string`: a bare name means the
+// connection's default schema, which is what a probe was always given, so a
+// caller that passes a string keeps the SQL and the cache key it had.
 
 const CARDINALITY_CACHE: Map<string, { at: number; data: CardinalityMap }> = new Map();
 const CARDINALITY_TTL_MS = 5 * 60 * 1000;
 
-function cacheKey(connectionId: string, tableName: string): string {
-  return `${connectionId}\u0000${tableName}`;
+function cacheKey(connectionId: string, table: TableRef | string): string {
+  return `${connectionId}\u0000${tableKey(table)}`;
+}
+
+/**
+ * The one-round-trip distinct-count query: one `COUNT(DISTINCT c) AS c` per
+ * column. ANSI on every vendor, and the alias is the column's own name so the
+ * result row is read by column name.
+ */
+export function cardinalitySql(
+  table: TableRef | string,
+  columnNames: string[],
+  dialect: SqlDialect,
+): string {
+  const selects = columnNames
+    .map((c) => `COUNT(DISTINCT ${quoteIdent(c, dialect)}) AS ${quoteIdent(c, dialect)}`)
+    .join(", ");
+  return `SELECT ${selects} FROM ${quoteTableRef(asTableRef(table), dialect)}`;
 }
 
 /**
@@ -29,18 +64,18 @@ function cacheKey(connectionId: string, tableName: string): string {
  *   SELECT COUNT(DISTINCT "A") AS "A", COUNT(DISTINCT "B") AS "B" FROM "table"
  *
  * Returns a `{col: number}` map. Columns that fail individually return 0.
- * Cached per `(connectionId, tableName)` pair with a 5-min TTL. Unknown columns
+ * Cached per `(connectionId, table reference)` with a 5-min TTL. Unknown columns
  * (not in cache) trigger a single batched query covering only the missing ones;
  * their results are merged back into the cache.
  */
 export async function probeCardinality(
   connectionId: string,
-  tableName: string,
+  table: TableRef | string,
   columnNames: string[],
 ): Promise<CardinalityMap> {
   if (columnNames.length === 0) return {};
 
-  const key = cacheKey(connectionId, tableName);
+  const key = cacheKey(connectionId, table);
   const entry = CARDINALITY_CACHE.get(key);
   const now = Date.now();
   const cached = entry && now - entry.at < CARDINALITY_TTL_MS ? entry.data : {};
@@ -54,10 +89,7 @@ export async function probeCardinality(
     return out;
   }
 
-  const selects = missing
-    .map((c) => `COUNT(DISTINCT ${quoteIdent(c, dialect)}) AS ${quoteIdent(c, dialect)}`)
-    .join(", ");
-  const sql = `SELECT ${selects} FROM ${quoteIdent(tableName, dialect)}`;
+  const sql = cardinalitySql(table, missing, dialect);
 
   let fetched: CardinalityMap = {};
   try {
@@ -84,23 +116,29 @@ export async function probeCardinality(
  * Probe the MIN/MAX of a date column to pick a time bucket sized to the data range.
  * Returns null if the query fails or the column has no rows.
  */
+export function dateRangeSql(
+  table: TableRef | string,
+  column: string,
+  dialect: SqlDialect,
+): string {
+  // The value read is `datetimeExpr(column)`, not the raw column: a JDBC driver
+  // commonly writes a LocalDateTime to SQLite as BIGINT epoch ms, and a raw
+  // MIN/MAX then returns an integer that `guessTimeBucket(string)` mis-parses
+  // via `new Date(...)`. The vendor layer decodes it where that happens and
+  // hands back the column itself everywhere else.
+  const value = datetimeExpr(column, dialect);
+  return `SELECT MIN(${value}) AS ${quoteIdent("minv", dialect)}, MAX(${value}) AS ${quoteIdent("maxv", dialect)}`
+    + ` FROM ${quoteTableRef(asTableRef(table), dialect)} WHERE ${quoteIdent(column, dialect)} IS NOT NULL`;
+}
+
 export async function probeDateRange(
   connectionId: string,
-  tableName: string,
+  table: TableRef | string,
   column: string,
 ): Promise<{ min: string; max: string } | null> {
   try {
     const dialect = dialectFor(getConnectionType(connectionId));
-    const colId = quoteIdent(column, dialect);
-    // SQLite has no native DATETIME — JDBC drivers commonly write LocalDateTime
-    // as BIGINT epoch ms. Raw MIN/MAX on such a column returns integer epoch,
-    // which downstream `guessTimeBucket(string)` mis-parses via `new Date(...)`.
-    // Wrapping with sqliteDateNormalize coerces to ISO so callers receive a
-    // consistent ISO datetime string regardless of how SQLite stored the value.
-    // Other dialects use their native datetime types — MIN/MAX returns ISO via
-    // JDBC's standard mapping — so we leave them untouched.
-    const minMaxArg = dialect === "sqlite" ? sqliteDateNormalize(colId) : colId;
-    const sql = `SELECT MIN(${minMaxArg}) AS minv, MAX(${minMaxArg}) AS maxv FROM ${quoteIdent(tableName, dialect)} WHERE ${colId} IS NOT NULL`;
+    const sql = dateRangeSql(table, column, dialect);
     const res = await executeQuery(connectionId, sql);
     const row = res.data[0];
     if (!row || row.minv == null || row.maxv == null) return null;
@@ -115,14 +153,24 @@ export async function probeDateRange(
  * pick a nice bin width via `nicerBinWidth(min, max)`. Returns null if the
  * query fails or the column has no rows.
  */
+export function numericRangeSql(
+  table: TableRef | string,
+  column: string,
+  dialect: SqlDialect,
+): string {
+  const c = quoteIdent(column, dialect);
+  return `SELECT MIN(${c}) AS ${quoteIdent("minv", dialect)}, MAX(${c}) AS ${quoteIdent("maxv", dialect)}`
+    + ` FROM ${quoteTableRef(asTableRef(table), dialect)} WHERE ${c} IS NOT NULL`;
+}
+
 export async function probeNumericRange(
   connectionId: string,
-  tableName: string,
+  table: TableRef | string,
   column: string,
 ): Promise<{ min: number; max: number } | null> {
   try {
     const dialect = dialectFor(getConnectionType(connectionId));
-    const sql = `SELECT MIN(${quoteIdent(column, dialect)}) AS minv, MAX(${quoteIdent(column, dialect)}) AS maxv FROM ${quoteIdent(tableName, dialect)} WHERE ${quoteIdent(column, dialect)} IS NOT NULL`;
+    const sql = numericRangeSql(table, column, dialect);
     const res = await executeQuery(connectionId, sql);
     const row = res.data[0];
     if (!row || row.minv == null || row.maxv == null) return null;
@@ -225,27 +273,43 @@ function bestHint(sample: PredicateSample): SemanticHint | null {
   return best;
 }
 
-// Module-level cache: { `${connectionId}\0${tableName}`: { at, hints } }.
+// Module-level cache, keyed like the cardinality one: `${connectionId}\0${tableKey(table)}`.
 // Mirrors the cardinality cache — 5-min TTL.
 const FINGERPRINT_CACHE: Map<string, { at: number; hints: Record<string, SemanticHint> }> = new Map();
 const FINGERPRINT_TTL_MS = 5 * 60 * 1000;
 
 /**
+ * The fingerprint sample: some columns, capped to a sample size. `LIMIT n` was
+ * rejected outright by SQL Server, Oracle and Db2, so no column on those three
+ * ever got a semantic hint; the cap is written by the vendor layer now.
+ */
+export function sampleRowsSql(
+  table: TableRef | string,
+  columnNames: string[],
+  sampleSize: number,
+  dialect: SqlDialect,
+): string {
+  const selects = columnNames.map((c) => quoteIdent(c, dialect)).join(", ");
+  const sql = `SELECT ${selects} FROM ${quoteTableRef(asTableRef(table), dialect)}`;
+  return limitClause(sql, sampleSize, dialect);
+}
+
+/**
  * Probe semantic types for all text-like columns in a table by sampling up
  * to 200 rows via a single SQL round-trip. Returns a `{col: SemanticHint}`
  * map (cols that don't hit any threshold are omitted). Cached per
- * `(connectionId, tableName)` with 5-min TTL.
+ * `(connectionId, table reference)` with 5-min TTL.
  *
  * Numeric / temporal / boolean columns are skipped — their types are
  * already precise at the JDBC level.
  */
 export async function probeSemanticType(
   connectionId: string,
-  tableName: string,
+  table: TableRef | string,
   cols: ColumnSchema[],
   sampleSize = 200,
 ): Promise<Record<string, SemanticHint>> {
-  const key = `${connectionId}\u0000${tableName}`;
+  const key = cacheKey(connectionId, table);
   const entry = FINGERPRINT_CACHE.get(key);
   const now = Date.now();
   if (entry && now - entry.at < FINGERPRINT_TTL_MS) return entry.hints;
@@ -262,10 +326,9 @@ export async function probeSemanticType(
   }
 
   const dialect = dialectFor(getConnectionType(connectionId));
-  const selects = textCols.map((c) => quoteIdent(c.columnName, dialect)).join(", ");
-  const sql = `SELECT ${selects} FROM ${quoteIdent(tableName, dialect)} LIMIT ${sampleSize}`;
+  const sql = sampleRowsSql(table, textCols.map((c) => c.columnName), sampleSize, dialect);
 
-  console.log('[probeSemanticType] START table=' + tableName + ' textCols=' + textCols.length);
+  console.log('[probeSemanticType] START table=' + tableKey(table) + ' textCols=' + textCols.length);
   let samples: Record<string, PredicateSample> = {};
   try {
     const res = await executeQuery(connectionId, sql);

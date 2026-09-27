@@ -13,6 +13,7 @@
  */
 
 import { fetchCube } from "./rb-api";
+import { findTable } from "./table-ref";
 import type { SchemaInfo, ColumnSchema } from "./types";
 
 export type AiMode = "sql" | "script";
@@ -40,7 +41,7 @@ async function fetchTemplate(promptId: string): Promise<string> {
 // ── Schema formatting ─────────────────────────────────────────────────────────
 
 function formatSchemaForTable(schema: SchemaInfo, tableName: string): string {
-  const table = schema.tables.find((t) => t.tableName === tableName);
+  const table = findTable(schema, tableName);
   if (!table) return `-- Table "${tableName}" not found in schema`;
   return JSON.stringify(
     [
@@ -61,7 +62,7 @@ function formatSchemaForTable(schema: SchemaInfo, tableName: string): string {
 /** Format multiple tables' schema as JSON — same structure as formatSchemaForTable but for N tables. */
 function formatSchemaForTables(schema: SchemaInfo, tableNames: string[]): string {
   const tables = tableNames
-    .map((name) => schema.tables.find((t) => t.tableName === name))
+    .map((name) => findTable(schema, name))
     .filter(Boolean);
   if (tables.length === 0) return "-- No tables found in schema";
   return JSON.stringify(

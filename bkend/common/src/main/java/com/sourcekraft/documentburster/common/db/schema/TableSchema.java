@@ -16,6 +16,15 @@ public class TableSchema {
     public String tableName;
 
     /**
+     * The schema the table or view lives in, exactly as the JDBC catalog reports it
+     * (TABLE_SCHEM in DatabaseMetaData.getTables) - "main" or "cube_demo" on DuckDB,
+     * "public" on PostgreSQL, "dbo" on SQL Server, null where the vendor has no
+     * schema concept. Without it two tables of the same name in two schemas are
+     * indistinguishable, and a client cannot qualify a reference to the one it means.
+     */
+    public String schemaName;
+
+    /**
      * The type of the object, typically "TABLE" or "VIEW".
      * Helps LLMs distinguish between base data tables and potentially pre-joined or filtered views.
      * Knowing view definitions (if fetched) allows LLMs to use these abstractions.
@@ -70,13 +79,14 @@ public class TableSchema {
          if (this == o) return true;
          if (o == null || getClass() != o.getClass()) return false;
          TableSchema that = (TableSchema) o;
-         // Only compare by name for simplicity in lists/sets
-         return Objects.equals(tableName, that.tableName);
+         // Name and schema together: a table name alone is not unique in a catalog
+         // that reports more than one schema.
+         return Objects.equals(tableName, that.tableName) && Objects.equals(schemaName, that.schemaName);
      }
 
      @Override
      public int hashCode() {
-         return Objects.hash(tableName);
+         return Objects.hash(tableName, schemaName);
      }
 
      /**
@@ -86,6 +96,7 @@ public class TableSchema {
      public String toString() {
         return "TableSchema{" +
                "tableName='" + tableName + '\'' +
+               ", schemaName='" + schemaName + '\'' +
                ", tableType='" + tableType + '\'' +
                ", remarks='" + remarks + '\'' + // Added remarks
                ", notes='" + notes + '\'' + // Renamed from description

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 // lucide-react removed
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
-import { sqlForDataSource } from "@/lib/explore-data/sql-builder";
+import { columnKindsOf, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import { getConnectionType, updateCanvas } from "@/lib/explore-data/rb-api";
 import { saveDashboardToDataPallas } from "./rbApiClient";
@@ -52,7 +52,17 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       const hasExplicitSql = (ds.mode === "sql" || ds.mode === "ai-sql") && !!ds.sql?.trim();
       const alreadyPersisted = !!ds.generatedSql?.trim();
       if (hasExplicitSql || alreadyPersisted) return w;
-      const built = sqlForDataSource(ds, connectionType, temporalColumnNamesOf(w.shape));
+      // The widget's own classified columns give the literal kinds. This is a
+      // fallback path — a widget the builder has already touched arrives with
+      // generatedSql and returns above — so the columns are the result shape, and
+      // a filter on a column the query does not select keeps the string literal
+      // it had.
+      const built = sqlForDataSource(
+        ds,
+        connectionType,
+        temporalColumnNamesOf(w.shape),
+        columnKindsOf(w.columns),
+      );
       return built ? { ...w, dataSource: { ...ds, generatedSql: built } } : w;
     });
     try {

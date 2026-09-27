@@ -11,6 +11,7 @@ import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { WidgetType } from "@/lib/stores/canvas-store";
 import { fetchConnections, fetchSchema, fetchCubes, type CubeInfo } from "@/lib/explore-data/rb-api";
 import type { ConnectionInfo, SchemaInfo, TableSchema } from "@/lib/explore-data/types";
+import { refForTable, tableKey } from "@/lib/explore-data/table-ref";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
 
 // ── Props ──────────────────────────────────────────────────────────────────────
@@ -395,24 +396,33 @@ export function SchemaBrowser({
                 </button>
                 {tablesOpen && (
                   <div id="schemaBrowserTablesList" className="space-y-0.5">
-                    {filteredTables.map((table) => (
+                    {filteredTables.map((table) => {
+                      // The reference this table is keyed and quoted by: its schema
+                      // only when that schema is not the connection's default one, so
+                      // every `main` / `public` / `dbo` table keeps the element id and
+                      // the generated SQL it has today.
+                      const ref = schema ? refForTable(table, schema) : { name: table.tableName };
+                      const key = tableKey(ref);
+                      return (
                       <TableNode
-                        key={table.tableName}
+                        key={key}
+                        refKey={key}
                         table={table}
-                        expanded={expandedTables.has(table.tableName)}
-                        onToggleExpand={() => toggleExpand(table.tableName)}
+                        expanded={expandedTables.has(key)}
+                        onToggleExpand={() => toggleExpand(key)}
                         onPickTable={isPicker ? () => toggleTableCheck(table.tableName) : () => {
-                          const tableKey = `table:${table.tableName}`;
-                          if (pendingAdd === tableKey) setPendingAdd(null);
-                          else setPendingAdd(tableKey);
+                          const pendingKey = `table:${key}`;
+                          if (pendingAdd === pendingKey) setPendingAdd(null);
+                          else setPendingAdd(pendingKey);
                         }}
                         mode={mode}
                         checked={isPicker ? selectedTables.has(table.tableName) : undefined}
-                        isPending={!isPicker && pendingAdd === `table:${table.tableName}`}
-                        onConfirmAdd={() => { addWidgetFromTable(table.tableName); setPendingAdd(null); }}
+                        isPending={!isPicker && pendingAdd === `table:${key}`}
+                        onConfirmAdd={() => { addWidgetFromTable(table.tableName, ref.schema); setPendingAdd(null); }}
                         onCancelAdd={() => setPendingAdd(null)}
                       />
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -477,6 +487,7 @@ export function SchemaBrowser({
 
 function TableNode({
   table,
+  refKey,
   expanded,
   onToggleExpand,
   onPickTable,
@@ -487,6 +498,11 @@ function TableNode({
   onCancelAdd,
 }: {
   table: TableSchema;
+  /** `tableKey(ref)` — the bare table name for a table in the connection's
+   *  default schema, `schema.name` for one anywhere else. Element ids key on
+   *  this, so an existing `btnTable-Customers` id is unchanged and a second
+   *  `Customers` in another schema gets its own id instead of a duplicate. */
+  refKey: string;
   expanded: boolean;
   onToggleExpand: () => void;
   onPickTable: () => void;
@@ -522,7 +538,7 @@ function TableNode({
         </button>
         <button
           type="button"
-          id={`btnTable-${table.tableName}`}
+          id={`btnTable-${refKey}`}
           onClick={onPickTable}
           className="flex-1 flex items-center gap-1.5 text-left text-xs text-base-content"
           title={isPicker ? "Toggle selection" : "Click to add this table to the canvas"}
@@ -539,7 +555,7 @@ function TableNode({
           <span className="text-base-content/60">Add to canvas?</span>
           <button
             type="button"
-            id={`btnConfirmAdd-${table.tableName}`}
+            id={`btnConfirmAdd-${refKey}`}
             onClick={onConfirmAdd}
             className="font-bold text-primary hover:underline"
           >
@@ -547,7 +563,7 @@ function TableNode({
           </button>
           <button
             type="button"
-            id={`btnCancelAdd-${table.tableName}`}
+            id={`btnCancelAdd-${refKey}`}
             onClick={onCancelAdd}
             className="text-base-content hover:underline"
           >

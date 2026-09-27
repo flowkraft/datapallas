@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { TableSchema } from "@/lib/explore-data/types";
 import type { CubeInfo } from "@/lib/explore-data/rb-api";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
+import { findTable } from "@/lib/explore-data/table-ref";
 import { getColumnIcon, getColumnIconLabel } from "@/lib/explore-data/column-icons";
 import { cn } from "@/lib/utils";
 import {
@@ -40,7 +41,7 @@ const CUBE_PREFIX = "cube:";
 export function DataStep({ tables, cubes = [], value, valueKind, onPickTable, onPickCube }: DataStepProps) {
   const [open, setOpen] = useState(false);
 
-  const selectedTable = valueKind === "table" ? tables.find((t) => t.tableName === value) : undefined;
+  const selectedTable = valueKind === "table" ? findTable(tables, value) : undefined;
   const selectedCube = valueKind === "cube" ? cubes.find((c) => c.id === value) : undefined;
 
   const triggerLabel = selectedTable

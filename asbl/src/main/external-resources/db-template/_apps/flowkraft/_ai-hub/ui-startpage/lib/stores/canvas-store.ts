@@ -52,6 +52,13 @@ export interface VisualQuery {
   // For kind === "cube" — the cube id from /api/cubes
   cubeId?: string;
   table: string;
+  // The schema `table` lives in — set by the schema browser ONLY when that
+  // schema differs from the connection's default one (`SchemaInfo.defaultSchema`).
+  // A table in `main`, `public` or `dbo` leaves it unset, so its SQL, its probe
+  // cache key and its `btnTable-…` element id are exactly what they were before
+  // AI Hub could see schemas at all, and every canvas saved until now still
+  // resolves and still generates the same SQL. See `table-ref.ts`.
+  tableSchema?: string;
   filters: { column: string; operator: string; value: string; valueTo?: string }[];
   summarize: { aggregation: string; field: string }[];
   groupBy: string[];
@@ -222,7 +229,9 @@ interface CanvasActions {
   setDescription: (description: string) => void;
   setConnectionId: (connectionId: string | null) => void;
   addWidget: (type: WidgetType) => string;
-  addWidgetFromTable: (tableName: string) => string;
+  // `tableSchema` is passed ONLY for a table outside the connection's default
+  // schema; see VisualQuery.tableSchema and `table-ref.ts`.
+  addWidgetFromTable: (tableName: string, tableSchema?: string) => string;
   addWidgetFromCube: (cubeId: string) => string;
   changeWidgetRenderMode: (id: string, newType: WidgetType) => void;
   removeWidget: (id: string) => void;
@@ -322,7 +331,7 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
   // Data-first: create a widget pre-wired to a table. Default render mode is
   // Data Table — start with raw rows; the user switches via "Visualize as".
-  addWidgetFromTable: (tableName) => {
+  addWidgetFromTable: (tableName, tableSchema) => {
     const id = `w-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const defaults = WIDGET_DEFAULTS.tabulator;
     const widgets = get().widgets;
@@ -340,6 +349,9 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
         visualQuery: {
           kind: "table",
           table: tableName,
+          // Spread so a default-schema table has no `tableSchema` key at all and
+          // serializes byte-for-byte as it did before schemas were reported.
+          ...(tableSchema ? { tableSchema } : {}),
           filters: [],
           summarize: [],
           groupBy: [],

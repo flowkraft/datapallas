@@ -22,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -79,6 +80,15 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
  * {@code Order Details}, which ClickHouse's Northwind names {@code OrderDetails}. Every such
  * exception is printed with the run summary.
  *
+ * <p><b>AI Hub's own SQL is looped here too.</b> The same throwaway database answers the AI Hub
+ * cases of {@code frend/reporting/e2e/_resources/ai-hub-sql/ai-hub-sql-cases.json}, run from the
+ * SQL its generator wrote for each vendor and committed in {@code ai-hub-sql.generated.json}.
+ * Group A names every table {@code cube_demo.<table>} and runs on all nine vendors, so the loop is
+ * itself the proof that AI Hub reaches a schema outside the default one; groups B and C read
+ * Northwind and the star schema by their bare names and run on the two legs that have them, group C
+ * through the one connection that sees both schemas. Nothing here builds SQL: the generator is
+ * TypeScript, which is also how production splits it - AI Hub builds the SQL, the backend runs it.
+ *
  * <p>Every vendor runs even when one fails, and the failure message then carries one line per
  * failed check: vendor, cube, hint, the query, the SQL, and the expected and actual rows.
  */
@@ -87,6 +97,13 @@ class GeneratedSqlAllVendorsTest {
 	/** Resolved from {@code user.dir} (bkend/server), the way CubeSampleSqlExecutesTest does it. */
 	private static final String SAMPLES_CUBES_DIR = "../../asbl/src/main/external-resources/db-template/config/samples-cubes";
 	private static final String CHECKS_DIR = "../../frend/reporting/e2e/_resources/cube-checks";
+	private static final String AI_HUB_CASES = "../../frend/reporting/e2e/_resources/ai-hub-sql/ai-hub-sql-cases.json";
+	private static final String AI_HUB_SQL = "../../frend/reporting/e2e/_resources/ai-hub-sql/ai-hub-sql.generated.json";
+
+	/** How the committed per-vendor SQL is written again, named by every complaint about it. */
+	private static final String WRITE_AI_HUB_SQL = "Write it again with: docker run --rm -v <repo>:/x"
+			+ " -w /x/frend/reporting node:20-slim npx ts-node -r tsconfig-paths/register"
+			+ " --project e2e/tsconfig.e2e.json e2e/explore-data/write-ai-hub-sql.ts";
 	private static final String DB_TEMPLATE_DB = "../../asbl/src/main/external-resources/db-template/db";
 
 	private static final String COMPOSE_PROJECT = "generated-sql-vendors";
@@ -103,10 +120,14 @@ class GeneratedSqlAllVendorsTest {
 	@TempDir
 	Path tempDir;
 
+	/** {@code {caseId: {vendor: sql}}}, read once by {@link #readAiHubCases()}. */
+	private Map<String, Map<String, String>> aiHubSql = Map.of();
+
 	@Test
 	void theGeneratedSqlRunsOnEveryVendorAndAnswersTheHintsTruths() throws Exception {
 
 		List<Ask> asks = readAsks();
+		List<AiHubCase> aiHubCases = readAiHubCases();
 		List<String> vendors = askedVendors();
 
 		List<String> failures = new ArrayList<>();
@@ -118,6 +139,8 @@ class GeneratedSqlAllVendorsTest {
 			long started = System.currentTimeMillis();
 			int checked = 0;
 			int failed = 0;
+			int casesChecked = 0;
+			int casesFailed = 0;
 
 			try {
 				if (!IN_PROCESS.contains(vendor)) {
@@ -139,6 +162,23 @@ class GeneratedSqlAllVendorsTest {
 							failures.add(problem);
 						}
 					}
+
+					// AI Hub's own SQL, on the same database, after the stories.
+					Jdbi jdbi = jdbiOn(connection);
+					for (AiHubCase one : aiHubCases) {
+						String why = whyNotAiHub(one, vendor);
+						if (why != null) {
+							String line = vendor + " | AI Hub " + one.id + ": " + why;
+							if (!notAsked.contains(line)) notAsked.add(line);
+							continue;
+						}
+						casesChecked++;
+						String problem = runAiHubCase(jdbi, vendor, one);
+						if (problem != null) {
+							casesFailed++;
+							failures.add(problem);
+						}
+					}
 				}
 			} catch (Exception unreachable) {
 				// One vendor that never starts must not hide the other eight.
@@ -150,7 +190,8 @@ class GeneratedSqlAllVendorsTest {
 				}
 			}
 
-			perVendor.add(String.format("%-12s %3d checks, %d failed, %d s", vendor, checked, failed,
+			perVendor.add(String.format("%-12s %3d hint checks, %d failed | %2d AI Hub cases, %d failed | %d s",
+					vendor, checked, failed, casesChecked, casesFailed,
 					(System.currentTimeMillis() - started) / 1000));
 		}
 
@@ -163,7 +204,7 @@ class GeneratedSqlAllVendorsTest {
 
 		if (!failures.isEmpty()) {
 			StringBuilder message = new StringBuilder(
-					"The generated SQL did not answer the hints' truths (" + failures.size() + " checks):\n");
+					"The generated SQL did not answer the truths behind it (" + failures.size() + " checks):\n");
 			perVendor.forEach(line -> message.append(line).append("\n"));
 			notAsked.forEach(line -> message.append(line).append("\n"));
 			failures.forEach(failure -> message.append(failure).append("\n"));
@@ -537,6 +578,199 @@ class GeneratedSqlAllVendorsTest {
 		return shown.toString();
 	}
 
+	// ── the AI Hub cases ─────────────────────────────────────────────────────────
+
+	/**
+	 * One AI Hub question: its committed SQL runs, and answers this.
+	 *
+	 * <p>The case lives in {@code ai-hub-sql-cases.json} - the query or probe, and the rows - and
+	 * its SQL in {@code ai-hub-sql.generated.json}, written by the generator itself
+	 * ({@code write-ai-hub-sql.ts}) for each of the nine vendor keys. Nothing here builds SQL: the
+	 * generator is TypeScript, exactly as in production, where AI Hub builds the SQL and the backend
+	 * runs it.
+	 */
+	private static final class AiHubCase {
+
+		private final String id;
+		private final String group;
+		private final List<List<Object>> rows;
+		private final Integer rowCount;
+		private final boolean ordered;
+		private final List<?> columns;
+		private final List<?> vendors;
+
+		private AiHubCase(String id, String group, List<List<Object>> rows, Integer rowCount, boolean ordered,
+				List<?> columns, List<?> vendors) {
+			this.id = id;
+			this.group = group;
+			this.rows = rows;
+			this.rowCount = rowCount;
+			this.ordered = ordered;
+			this.columns = columns;
+			this.vendors = vendors;
+		}
+	}
+
+	/**
+	 * The cases, with the SQL the generator wrote for them.
+	 *
+	 * <p>A case with no SQL, or a vendor missing from a case's SQL, fails here rather than on the
+	 * vendor the loop happens to start, and says how to write the file again - the generated file is
+	 * committed, so it can be older than the generator. Jasmine block 10 is the other half of that
+	 * tie: it fails when the file no longer matches what the generator writes today.
+	 */
+	private List<AiHubCase> readAiHubCases() throws Exception {
+
+		Path casesFile = Paths.get(AI_HUB_CASES);
+		Path sqlFile = Paths.get(AI_HUB_SQL);
+		if (!Files.exists(casesFile) || !Files.exists(sqlFile)) {
+			throw new IllegalStateException("The AI Hub cases are missing: " + casesFile.toAbsolutePath() + " and "
+					+ sqlFile.toAbsolutePath() + ". " + WRITE_AI_HUB_SQL);
+		}
+
+		Map<String, Object> file = JSON.readValue(casesFile.toFile(), new TypeReference<Map<String, Object>>() {
+		});
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> cases = (List<Map<String, Object>>) file.get("cases");
+		if (cases == null || cases.isEmpty()) {
+			throw new IllegalStateException(casesFile.getFileName() + " holds no cases.");
+		}
+
+		aiHubSql = JSON.readValue(sqlFile.toFile(), new TypeReference<Map<String, Map<String, String>>>() {
+		});
+
+		List<AiHubCase> read = new ArrayList<>();
+		Set<String> seen = new LinkedHashSet<>();
+		for (Map<String, Object> one : cases) {
+
+			String id = Objects.toString(one.get("id"), "");
+			if (!seen.add(id)) {
+				throw new IllegalStateException(casesFile.getFileName() + " holds two cases called '" + id
+						+ "'. One case, one id.");
+			}
+			Map<String, String> perVendorSql = aiHubSql.get(id);
+			if (perVendorSql == null) {
+				throw new IllegalStateException("No generated SQL for case '" + id + "'. " + WRITE_AI_HUB_SQL);
+			}
+			for (String vendor : EVERY_VENDOR) {
+				if (!perVendorSql.containsKey(vendor)) {
+					throw new IllegalStateException("The generated SQL of case '" + id + "' has no " + vendor
+							+ " form. " + WRITE_AI_HUB_SQL);
+				}
+			}
+			@SuppressWarnings("unchecked")
+			List<List<Object>> rows = (List<List<Object>>) one.get("rows");
+			Object rowCount = one.get("rowCount");
+			if ((rows == null) == (rowCount == null)) {
+				throw new IllegalStateException("Case '" + id + "' must hold either rows or a rowCount.");
+			}
+			read.add(new AiHubCase(id, Objects.toString(one.get("group"), ""), rows,
+					rowCount instanceof Number ? ((Number) rowCount).intValue() : null,
+					Boolean.TRUE.equals(one.get("ordered")), (List<?>) one.get("columns"),
+					(List<?>) one.get("vendors")));
+		}
+		return read;
+	}
+
+	/**
+	 * Why an AI Hub case is not asked on a vendor, or null when it is.
+	 *
+	 * <p>Group A names its tables {@code cube_demo.<table>}, and the loop seeds {@code cube_demo} on
+	 * every vendor, so every vendor answers it - that loop is itself the proof that AI Hub reaches a
+	 * schema outside the default one. Groups B and C read Northwind and the star schema by their
+	 * bare names, which only the two legs that run on a copy of a shipped sample file have; and a
+	 * case may name the vendors it belongs to ({@code fact_sales} is built only by the DuckDB and
+	 * ClickHouse warehouse creators, and ClickHouse has no {@code main} schema here).
+	 */
+	private static String whyNotAiHub(AiHubCase one, String vendor) {
+		if (one.vendors != null && !one.vendors.contains(vendor)) {
+			return "the case runs on " + one.vendors + " only";
+		}
+		if (!"A".equals(one.group) && !IN_PROCESS.contains(vendor)) {
+			return "group " + one.group + " reads Northwind and the star schema by their bare names, which only the "
+					+ "legs running on a copy of a shipped sample file have (" + IN_PROCESS + ")";
+		}
+		return null;
+	}
+
+	/** Returns null when the case passes, otherwise the one line that says what went wrong. */
+	private String runAiHubCase(Jdbi jdbi, String vendor, AiHubCase one) {
+
+		String sql = aiHubSql.get(one.id).get(vendor);
+
+		List<Map<String, Object>> answered;
+		try {
+			answered = jdbi.withHandle(handle -> {
+				// The mapping SqlExecutor.executeQuery uses: the label as the vendor's catalog
+				// reports it, never JDBI's lower-cased mapToMap, because AI Hub reads a probe's
+				// columns back by name.
+				return handle.createQuery(sql).map((resultSet, context) -> {
+					java.sql.ResultSetMetaData meta = resultSet.getMetaData();
+					Map<String, Object> row = new LinkedHashMap<>();
+					for (int column = 1; column <= meta.getColumnCount(); column++) {
+						row.put(meta.getColumnLabel(column), resultSet.getObject(column));
+					}
+					return row;
+				}).list();
+			});
+		} catch (Exception broken) {
+			return reportAiHub(vendor, one, sql, "the database refused it: " + broken);
+		}
+
+		if (one.columns != null) {
+			List<String> labels = answered.isEmpty() ? List.of() : new ArrayList<>(answered.get(0).keySet());
+			if (!one.columns.equals(labels)) {
+				// Oracle and Db2 fold an unquoted alias to upper case, and AI Hub would not find it.
+				return reportAiHub(vendor, one, sql,
+						"the columns came back as " + labels + " instead of " + one.columns);
+			}
+		}
+
+		List<List<Object>> actual = new ArrayList<>();
+		for (Map<String, Object> row : answered) {
+			actual.add(new ArrayList<>(row.values()));
+		}
+
+		if (one.rowCount != null) {
+			return one.rowCount == actual.size() ? null
+					: reportAiHub(vendor, one, sql, "expected " + one.rowCount + " rows, got " + actual.size());
+		}
+
+		String difference = difference(one.rows, actual, one.ordered);
+		return difference == null ? null : reportAiHub(vendor, one, sql, difference);
+	}
+
+	private String reportAiHub(String vendor, AiHubCase one, String sql, String problem) {
+		return "\n=== " + vendor + " | AI Hub | " + one.id + " (group " + one.group + ") ===\n  " + problem
+				+ "\n  SQL: " + sql;
+	}
+
+	/**
+	 * JDBI on the loop's own connection.
+	 *
+	 * <p>{@code SqlExecutor} goes through {@code handle.createQuery}, so the cases do too: JDBI
+	 * reads {@code :name} in the SQL as a parameter, and a colon that would break production breaks
+	 * the test here. {@code SqlExecutor} itself wants a saved connection file, which a throwaway
+	 * database has not got, so this is the one thing the test holds instead of calling it.
+	 *
+	 * <p>The connection is handed over as a proxy that ignores {@code close()}: a handle closes its
+	 * connection, and this one is the vendor's single connection, seeded and - on SQLite - carrying
+	 * the attached {@code cube_demo}.
+	 */
+	private static Jdbi jdbiOn(Connection connection) {
+		Connection notClosing = (Connection) java.lang.reflect.Proxy.newProxyInstance(
+				GeneratedSqlAllVendorsTest.class.getClassLoader(), new Class<?>[] { Connection.class },
+				(proxy, method, arguments) -> {
+					if ("close".equals(method.getName())) return null;
+					try {
+						return method.invoke(connection, arguments);
+					} catch (java.lang.reflect.InvocationTargetException wrapped) {
+						throw wrapped.getCause();
+					}
+				});
+		return Jdbi.create(() -> notClosing);
+	}
+
 	// ── the databases ────────────────────────────────────────────────────────────
 
 	private List<String> askedVendors() {
@@ -704,6 +938,90 @@ class GeneratedSqlAllVendorsTest {
 		assertASecondRunDoesNothing(connection, vendor, script);
 
 		loadNorthwind(vendor);
+
+		mirrorCubeDemoLowercase(connection, vendor);
+	}
+
+	/**
+	 * Oracle and Db2 also get {@code cube_demo} under the name the AI Hub cases write.
+	 *
+	 * <p>The shipped seed script creates the schema and its tables undelimited - {@code CREATE TABLE
+	 * cube_demo.crm_deals} - which is what the cubes need, so it is not touched. Oracle and Db2 fold
+	 * an undelimited name to upper case, so those two hold {@code CUBE_DEMO.CRM_DEALS}, while every
+	 * other vendor here holds {@code cube_demo.crm_deals}. The AI Hub cases name the table the way a
+	 * lowercase-folding vendor's catalog reports it, and the generator quotes what it is given
+	 * (that is right: in the product the name comes from the catalog of the database in front of it,
+	 * so on a real Oracle it would be quoting {@code CRM_DEALS}).
+	 *
+	 * <p>Rather than write the cases twice, these two vendors get a second, delimited-lowercase
+	 * {@code "cube_demo"} schema of views over the seeded tables, with lowercase column names. The
+	 * group A cases then run on all nine vendors unchanged, which is the point of the loop: the
+	 * Oracle and Db2 forms of every expression are exercised on a real Oracle and a real Db2.
+	 */
+	private void mirrorCubeDemoLowercase(Connection connection, String vendor) throws Exception {
+
+		boolean oracle = "oracle".equals(vendor);
+		if (!oracle && !"db2".equals(vendor)) return;
+
+		if (oracle) {
+			// The user may be left over from an earlier run of the loop against the same container.
+			ignoringFailure(connection, "CREATE USER \"cube_demo\" NO AUTHENTICATION");
+			// A view is created in that schema, so its owner needs the privilege and the reads.
+			ignoringFailure(connection, "GRANT CREATE VIEW TO \"cube_demo\"");
+		} else {
+			ignoringFailure(connection, "CREATE SCHEMA \"cube_demo\"");
+		}
+
+		for (String table : catalogNames(connection, oracle
+				? "SELECT table_name FROM all_tables WHERE owner = 'CUBE_DEMO' ORDER BY table_name"
+				: "SELECT tabname FROM syscat.tables WHERE tabschema = 'CUBE_DEMO' AND type = 'T' ORDER BY tabname")) {
+
+			List<String> columns = catalogNames(connection, oracle
+					? "SELECT column_name FROM all_tab_columns WHERE owner = 'CUBE_DEMO' AND table_name = '" + table
+							+ "' ORDER BY column_id"
+					: "SELECT colname FROM syscat.columns WHERE tabschema = 'CUBE_DEMO' AND tabname = '" + table
+							+ "' ORDER BY colno");
+			if (columns.isEmpty()) continue;
+
+			StringBuilder select = new StringBuilder();
+			for (String column : columns) {
+				if (select.length() > 0) select.append(", ");
+				select.append('"').append(column).append("\" AS \"").append(column.toLowerCase(Locale.ROOT))
+						.append('"');
+			}
+
+			if (oracle) {
+				ignoringFailure(connection, "GRANT SELECT ON CUBE_DEMO." + table + " TO \"cube_demo\"");
+			}
+			try (Statement statement = connection.createStatement()) {
+				statement.execute("CREATE OR REPLACE VIEW \"cube_demo\".\"" + table.toLowerCase(Locale.ROOT)
+						+ "\" AS SELECT " + select + " FROM CUBE_DEMO." + table);
+			}
+		}
+	}
+
+	/** The names one catalog query returns, in its order. */
+	private List<String> catalogNames(Connection connection, String sql) throws Exception {
+		List<String> names = new ArrayList<>();
+		try (Statement statement = connection.createStatement(); ResultSet rows = statement.executeQuery(sql)) {
+			while (rows.next()) {
+				names.add(rows.getString(1).trim());
+			}
+		}
+		return names;
+	}
+
+	/**
+	 * A fixture statement that is allowed to have been done already - the user, the schema, the
+	 * grant - on a container an earlier run of the loop left behind. A real problem surfaces at the
+	 * next statement, which is not forgiven.
+	 */
+	private void ignoringFailure(Connection connection, String sql) {
+		try (Statement statement = connection.createStatement()) {
+			statement.execute(sql);
+		} catch (Exception alreadyThere) {
+			// Deliberate: see above.
+		}
 	}
 
 	/**

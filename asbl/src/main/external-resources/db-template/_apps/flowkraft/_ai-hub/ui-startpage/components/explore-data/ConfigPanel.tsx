@@ -5,10 +5,11 @@ import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { DataSource, WidgetDisplayConfig } from "@/lib/stores/canvas-store";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { fetchSchema, executeQuery, getConnectionType } from "@/lib/explore-data/rb-api";
-import { sqlForDataSource } from "@/lib/explore-data/sql-builder";
+import { columnKindsOf, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { isTemporalExtraction, probeCardinality, probeSemanticType, pickDefaultAxes, canReuseAxisPicks, splitDimsAndMeasures, groupWidgetsByShape, groupWidgetsBySensibility, rankChartSubtypes, type CardinalityMap } from "@/lib/explore-data/smart-defaults";
 import { seedDisplayConfigForType, synthesizePostAggColumns, temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import type { TableSchema } from "@/lib/explore-data/types";
+import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
 // lucide-react removed — icons replaced with inline heroicons below
 // Icon components used from lucide: Settings2, Database, Palette, Wand2, Loader2, Table,
 // BarChart3, PieChart, Hash, MapIcon, Workflow, GaugeIcon, TrendingUp, BarChartHorizontal,
@@ -117,7 +118,10 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
     if (!connectionId || !ds) { setSchemaCols(EMPTY_COLS); setSchemaTable(null); setLastRowCount(undefined); return; }
 
     const tableInVisual = ds.mode === "visual" ? ds.visualQuery?.table : undefined;
-    if (!tableInVisual) {
+    const tableRefInVisual = ds.mode === "visual" && ds.visualQuery
+      ? refForQuery(ds.visualQuery)
+      : undefined;
+    if (!tableInVisual || !tableRefInVisual) {
       setSchemaCols(EMPTY_COLS);
       setSchemaTable(null);
       setSampleData([]);
@@ -129,7 +133,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
     fetchSchema(connectionId)
       .then(async (schema) => {
         if (cancelled) return;
-        const t = schema.tables.find((t) => t.tableName === tableInVisual);
+        const t = findTable(schema, tableRefInVisual);
         const baseCols = t?.columns || [];
         setSchemaCols(baseCols);
         setSchemaTable(t ?? null);
@@ -139,7 +143,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
         // merge semanticHint into each column (drives isEmail/isURL/isState etc).
         if (baseCols.length > 0) {
           try {
-            const hints = await probeSemanticType(connectionId, tableInVisual, baseCols);
+            const hints = await probeSemanticType(connectionId, tableRefInVisual, baseCols);
             if (cancelled) return;
             if (Object.keys(hints).length > 0) {
               setSchemaCols(baseCols.map((c) => hints[c.columnName]
@@ -199,6 +203,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
       ds,
       getConnectionType(connectionId),
       temporalColumnNamesOf(selectedWidget?.shape),
+      columnKindsOf(schemaCols),
     );
     if (!sql) return;
 
@@ -228,6 +233,9 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
     (selectedWidget?.dataSource?.visualQuery?.groupBy ?? []).join("\u0000"),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     JSON.stringify(selectedWidget?.dataSource?.visualQuery?.summarize ?? []),
+    // The column kinds decide the filter literals, so the row-count query has to
+    // be rebuilt once the table's columns have arrived.
+    schemaCols,
   ]);
 
   // Probe distinct-value counts for the group-by columns — only for chart
@@ -237,14 +245,14 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
   useEffect(() => {
     if (selectedWidget?.type !== "chart") { setCardinality({}); return; }
     const ds = selectedWidget.dataSource;
-    const tableName = ds?.mode === "visual" ? ds.visualQuery?.table : undefined;
+    const tableRef = ds?.mode === "visual" && ds.visualQuery ? refForQuery(ds.visualQuery) : undefined;
     const groupBy = ds?.mode === "visual" ? ds.visualQuery?.groupBy : undefined;
-    if (!connectionId || !tableName || !groupBy || groupBy.length === 0) {
+    if (!connectionId || !tableRef || !groupBy || groupBy.length === 0) {
       setCardinality({});
       return;
     }
     let cancelled = false;
-    probeCardinality(connectionId, tableName, groupBy)
+    probeCardinality(connectionId, tableRef, groupBy)
       .then((result) => { if (!cancelled) setCardinality(result); })
       .catch(() => { if (!cancelled) setCardinality({}); });
     return () => { cancelled = true; };
@@ -345,6 +353,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
         ds,
         getConnectionType(connectionId),
         temporalColumnNamesOf(selectedWidget?.shape),
+        columnKindsOf(schemaCols),
       );
       if (!sql) { setDetectError("Write or generate a query first"); return; }
       const nextVersion = (ds.executeVersion ?? 0) + 1;

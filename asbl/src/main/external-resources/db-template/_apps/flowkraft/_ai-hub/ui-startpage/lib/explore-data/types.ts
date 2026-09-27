@@ -2,6 +2,12 @@
 
 export interface SchemaInfo {
   notes: string | null;
+  /** The schema an unqualified table name resolves to on this connection, from
+   *  the Java `SchemaInfo.defaultSchema`. A table reference is qualified only
+   *  when the table's own `schemaName` differs from this, so `main`, `public`
+   *  and `dbo` tables keep exactly the SQL and the element ids they had before
+   *  schemas were reported. Absent on a backend that predates that field. */
+  defaultSchema?: string | null;
   tables: TableSchema[];
 }
 
@@ -15,6 +21,12 @@ export interface ForeignKeySchema {
 
 export interface TableSchema {
   tableName: string;
+  /** The schema the table lives in, from the Java `TableSchema.schemaName`
+   *  (TABLE_SCHEM in the JDBC catalog) — "main" or "cube_demo" on DuckDB,
+   *  "public" on PostgreSQL, "dbo" on SQL Server, absent where the vendor has
+   *  no schema concept. Two tables of the same name in two schemas are told
+   *  apart by this; see `findTable` in `table-ref.ts`. */
+  schemaName?: string | null;
   tableType: "TABLE" | "VIEW";
   columns: ColumnSchema[];
   primaryKeyColumns: string[];

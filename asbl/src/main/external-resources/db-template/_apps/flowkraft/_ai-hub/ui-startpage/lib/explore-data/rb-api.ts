@@ -152,21 +152,25 @@ export async function fetchCube(cubeId: string): Promise<{ id: string; name: str
 }
 
 /**
- * Generate SQL from a cube's selected dimensions and measures.
- * Mirrors the POST call that <rb-cube-renderer> makes internally when
- * the user clicks "Generate SQL" in its own modal.
+ * Generate SQL from a cube's selected dimensions, measures and segments.
+ *
+ * The segments are the cube's named WHERE clauses. They were left out of this
+ * call, so a user who picked a segment in the renderer got the unsegmented SQL
+ * back — every row, silently. The backend has always read them
+ * (`CubeSqlGenerator.requestedList(request, "segments", "selectedSegments")`).
  */
 export async function generateCubeSql(
   cubeId: string,
   connectionId: string,
   selectedDimensions: string[],
   selectedMeasures: string[],
+  selectedSegments: string[] = [],
 ): Promise<string> {
   const id = cubeId && cubeId !== "(default)" ? cubeId : "preview";
   const res = await fetch(`${RB_BASE}/cubes/${encodeURIComponent(id)}/generate-sql`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ connectionId, selectedDimensions, selectedMeasures }),
+    body: JSON.stringify({ connectionId, selectedDimensions, selectedMeasures, selectedSegments }),
   });
   if (!res.ok) {
     const text = await res.text();

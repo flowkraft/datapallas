@@ -437,6 +437,7 @@ public class DatabaseSchemaFetcher {
         // vendor.
         String catalog = getCatalog(settings, metaData);
         String schemaPattern = getSchemaPattern(settings, metaData);
+        schemaInfo.defaultSchema = getDefaultSchema(metaData, schemaPattern);
         String tableNamePattern = "%"; // Wildcard for all tables/views
         String[] types = { "TABLE", "BASE TABLE", "VIEW" }; // Fetch tables and views (DuckDB uses "BASE TABLE")
 
@@ -464,6 +465,15 @@ public class DatabaseSchemaFetcher {
                 TableSchema tableSchema = new TableSchema();
                 tableSchema.tableName = tableName;
                 tableSchema.tableType = tableType;
+                tableSchema.schemaName = tableSchem;
+
+                // Look this table's columns, keys and indexes up in the schema the table
+                // itself reported, not in the global pattern. On DuckDB and SQLite
+                // getSchemaPattern is null, which matches EVERY schema, so a table of the
+                // same name in a second schema contributed its columns, keys and indexes
+                // to this one. Falls back to the global pattern when the vendor reports no
+                // schema, which is byte-for-byte the old behaviour there.
+                String tableSchemaPattern = StringUtils.isNotBlank(tableSchem) ? tableSchem : schemaPattern;
                 // Assign the fetched remarks to the TableSchema.
                 tableSchema.remarks = tableRemarks;
                 // The 'description' field remains null here; it's intended for supplementary
@@ -471,24 +481,24 @@ public class DatabaseSchemaFetcher {
 
                 // Fetch Columns for this table/view
                 // Column metadata (types, nullability, remarks, defaults) is crucial for LLMs.
-                fetchColumnsForTable(metaData, catalog, schemaPattern, tableName, tableSchema);
+                fetchColumnsForTable(metaData, catalog, tableSchemaPattern, tableName, tableSchema);
 
                 // Fetch Primary Keys (usually only relevant for TABLE type)
                 // PKs help LLMs identify unique records.
                 if ("TABLE".equalsIgnoreCase(tableType)) {
-                    fetchPrimaryKeysForTable(metaData, catalog, schemaPattern, tableName, tableSchema);
+                    fetchPrimaryKeysForTable(metaData, catalog, tableSchemaPattern, tableName, tableSchema);
                 }
 
                 // Fetch Foreign Keys (usually only relevant for TABLE type)
                 // FKs define relationships, essential for LLMs to generate JOINs.
                 if ("TABLE".equalsIgnoreCase(tableType)) {
-                    fetchForeignKeysForTable(metaData, catalog, schemaPattern, tableName, tableSchema);
+                    fetchForeignKeysForTable(metaData, catalog, tableSchemaPattern, tableName, tableSchema);
                 }
 
                 // Fetch Indexes (usually only relevant for TABLE type)
                 // Indexes provide uniqueness info and optimization hints for LLMs.
                 if ("TABLE".equalsIgnoreCase(tableType)) {
-                    fetchIndexesForTable(metaData, catalog, schemaPattern, tableName, tableSchema);
+                    fetchIndexesForTable(metaData, catalog, tableSchemaPattern, tableName, tableSchema);
                 }
 
                 schemaInfo.tables.add(tableSchema);
@@ -508,6 +518,19 @@ public class DatabaseSchemaFetcher {
      * @return The catalog name (often null).
      * @throws SQLException If metadata access fails.
      */
+    protected String getDefaultSchema(DatabaseMetaData metaData, String schemaPattern) {
+        try {
+            String schema = metaData.getConnection().getSchema();
+            if (StringUtils.isNotBlank(schema))
+                return schema;
+        } catch (Throwable t) {
+            // Connection.getSchema() is optional in JDBC; some drivers throw
+            // SQLFeatureNotSupportedException, others AbstractMethodError.
+            log.debug("Connection.getSchema() unavailable, falling back to the schema pattern: {}", t.getMessage());
+        }
+        return StringUtils.isNotBlank(schemaPattern) ? schemaPattern : null;
+    }
+
     protected String getCatalog(ServerDatabaseSettings settings, DatabaseMetaData metaData) throws SQLException {
         String t = (settings.type == null ? "" : settings.type.toLowerCase());
         switch (t) {

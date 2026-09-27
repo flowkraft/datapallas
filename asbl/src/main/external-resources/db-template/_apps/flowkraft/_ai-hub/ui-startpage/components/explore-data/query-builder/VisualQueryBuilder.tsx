@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { VisualQuery, DataSource } from "@/lib/stores/canvas-store";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { SchemaInfo } from "@/lib/explore-data/types";
-import { buildSql, extractParamIds } from "@/lib/explore-data/sql-builder";
+import { buildSql, columnKindsOf, extractParamIds } from "@/lib/explore-data/sql-builder";
+import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
 import { fetchCubes, fetchCube, parseCubeDsl, generateCubeSql, getConnectionType, type CubeInfo } from "@/lib/explore-data/rb-api";
 import { useRbElementReady } from "../widgets/useRbElementReady";
 import { DataStep } from "./DataStep";
@@ -59,10 +60,13 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
   // 4.6b — preview SQL must match the connection's dialect so the user sees
   // the same SQL that will actually execute (e.g. TO_CHAR on Postgres, not SQLite strftime).
   const connectionType = getConnectionType(connectionId);
-  const sql = isCube ? "" : buildSql(query, { connectionType });
   const tables = schema.tables || [];
-  const selectedTable = tables.find((t) => t.tableName === query.table);
+  const selectedTable = findTable(schema, refForQuery(query));
   const columns = selectedTable?.columns || [];
+  // The column types decide what a filter literal looks like: a number goes in
+  // bare, a date as the vendor's date literal. Without them every value was a
+  // string, which a numeric or date column rejects on the strict vendors.
+  const sql = isCube ? "" : buildSql(query, { connectionType, columnKinds: columnKindsOf(columns) });
 
   // Load cube config (DSL → parsed object) whenever the picked cube changes
   useEffect(() => {
@@ -113,11 +117,14 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
       }>).detail;
       if (!detail.selectedDimensions.length && !detail.selectedMeasures.length) return;
       try {
+        // The segments go with the selection: a cube segment is a WHERE clause,
+        // and leaving it out gave back the SQL for every row.
         const generatedSql = await generateCubeSql(
           query.cubeId!,
           connectionId || "",
           detail.selectedDimensions,
           detail.selectedMeasures,
+          detail.selectedSegments || [],
         );
         onChange({ mode: "visual", visualQuery: { ...query }, generatedSql });
       } catch {
@@ -134,10 +141,15 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
       const updated = { ...query, ...patch };
       // 4.6b — dialect-aware SQL generation so the cached generatedSql matches
       // what useWidgetData will execute (and what the Finetune tab shows).
-      const newSql = updated.kind === "cube" ? "" : buildSql(updated, { connectionType: getConnectionType(connectionId) });
+      const newSql = updated.kind === "cube"
+        ? ""
+        : buildSql(updated, {
+            connectionType: getConnectionType(connectionId),
+            columnKinds: columnKindsOf(findTable(schema, refForQuery(updated))?.columns),
+          });
       onChange({ mode: "visual", visualQuery: updated, generatedSql: newSql });
     },
-    [query, onChange, connectionId]
+    [query, onChange, connectionId, schema]
   );
 
   const handlePickTable = (table: string) => {
@@ -226,6 +238,7 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
           </div>
 
           <button
+            id="btnToggleVisualSql"
             onClick={() => setShowSql(!showSql)}
             className="flex items-center gap-1.5 text-xs text-base-content/60 hover:text-base-content transition-colors"
           >
@@ -234,7 +247,10 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
           </button>
 
           {showSql && (
-            <pre className="text-[11px] bg-base-200/50 border border-base-300 rounded-md p-3 overflow-x-auto text-base-content font-mono whitespace-pre-wrap">
+            <pre
+              id="preVisualSql"
+              className="text-[11px] bg-base-200/50 border border-base-300 rounded-md p-3 overflow-x-auto text-base-content font-mono whitespace-pre-wrap"
+            >
               {sql || "-- build your query above"}
             </pre>
           )}

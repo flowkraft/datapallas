@@ -6,6 +6,7 @@ import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "./useRbElementReady";
 import { IconSparkles as Sparkles } from "@/components/shared/Icons";
 import { fetchSchema } from "@/lib/explore-data/rb-api";
+import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
 import { autoPickMeasure } from "@/lib/explore-data/smart-defaults";
 import { pickColumnFormat } from "@/lib/explore-data/type-formatters";
 import { useEffectiveField } from "@/lib/hooks/use-effective-field";
@@ -61,7 +62,7 @@ export function NumberWidget({ widgetId }: NumberWidgetProps) {
     setAutoErr(null);
     try {
       const schema = await fetchSchema(connectionId);
-      const tbl = schema.tables.find((t) => t.tableName === vq.table);
+      const tbl = findTable(schema, refForQuery(vq));
       if (!tbl) {
         setAutoErr(`Table ${vq.table} not found.`);
         return;

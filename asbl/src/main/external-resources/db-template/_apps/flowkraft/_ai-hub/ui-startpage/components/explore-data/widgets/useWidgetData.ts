@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { SchemaInfo, TableSchema } from "@/lib/explore-data/types";
 import { executeQuery, executeScript, fetchSchema, getConnectionType, hasConnectionsCached, ensureConnectionsLoaded } from "@/lib/explore-data/rb-api";
-import { sqlForDataSource } from "@/lib/explore-data/sql-builder";
+import { columnKindsOf, sqlForDataSource } from "@/lib/explore-data/sql-builder";
+import { asTableRef, findTable, tableKey, type TableRef } from "@/lib/explore-data/table-ref";
 import { temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import { LAST_EXEC } from "@/lib/explore-data/widget-exec-cache";
 
-// Per-table schema cache: keyed by `${connectionId}\u0000${tableName}`.
+// Per-table schema cache: keyed by `${connectionId}\u0000${tableKey(ref)}`, so a
+// table outside the default schema has its own entry instead of sharing one with
+// a same-named table in the default schema.
 // Used by visual-query mode to get the selected table's full column list
 // (including foreignKeys) for FK-column exclusion in ChartWidget / NumberWidget.
 const SCHEMA_CACHE: Map<string, Promise<TableSchema | null>> = new Map();
@@ -29,16 +32,16 @@ function getConnectionSchema(connectionId: string): Promise<SchemaInfo> {
   return CONNECTION_SCHEMA_CACHE.get(connectionId)!;
 }
 
-function schemaCacheKey(connectionId: string, tableName: string): string {
-  return `${connectionId}\u0000${tableName}`;
+function schemaCacheKey(connectionId: string, table: TableRef | string): string {
+  return `${connectionId}\u0000${tableKey(table)}`;
 }
 
-async function getTableSchema(connectionId: string, tableName: string): Promise<TableSchema | null> {
-  const key = schemaCacheKey(connectionId, tableName);
+async function getTableSchema(connectionId: string, table: TableRef | string): Promise<TableSchema | null> {
+  const key = schemaCacheKey(connectionId, table);
   const cached = SCHEMA_CACHE.get(key);
   if (cached) return cached;
   const p = fetchSchema(connectionId)
-    .then((s) => s.tables.find((t) => t.tableName === tableName) ?? null)
+    .then((s) => findTable(s, table) ?? null)
     .catch(() => null);
   SCHEMA_CACHE.set(key, p);
   return p;
@@ -94,6 +97,7 @@ export function useWidgetData(widgetId: string) {
 
   const dataSource = widget?.dataSource;
   const tableName = dataSource?.visualQuery?.table || "";
+  const tableSchemaName = dataSource?.visualQuery?.tableSchema;
 
   // Expose the TableSchema (with foreignKeys) for the widget's table.
   // Lets ChartWidget/NumberWidget call `isIdColumn(k, tableSchema)` so FK columns
@@ -102,11 +106,11 @@ export function useWidgetData(widgetId: string) {
   useEffect(() => {
     if (!connectionId || !tableName) { setTableSchema(null); return; }
     let cancelled = false;
-    getTableSchema(connectionId, tableName).then((t) => {
+    getTableSchema(connectionId, asTableRef(tableName, tableSchemaName)).then((t) => {
       if (!cancelled) setTableSchema(t);
     });
     return () => { cancelled = true; };
-  }, [connectionId, tableName]);
+  }, [connectionId, tableName, tableSchemaName]);
 
   // Populate connectionSchemas for SQL/script cross-reference in shapeFromResult.
   // Fires once per connectionId; the Promise is shared via CONNECTION_SCHEMA_CACHE
@@ -162,10 +166,14 @@ export function useWidgetData(widgetId: string) {
     // Build raw SQL. Filter values are sent to the backend separately as named
     // params — the backend converts ${param} → :param and uses JDBI bindMap for
     // injection-safe binding.  No client-side string substitution.
+    // The column kinds come from the same table schema this hook already loads,
+    // so the SQL that executes writes a number as a number and a date as the
+    // vendor's date literal — the strict vendors reject the quoted form.
     const raw = sqlForDataSource(
       dataSource,
       getConnectionType(connectionId),
       temporalColumnNamesOf(widget?.shape),
+      columnKindsOf(tableSchema?.columns),
     );
     if (!raw) { clearWidgetQueryLoading(widgetId); return; }
 
@@ -218,7 +226,7 @@ export function useWidgetData(widgetId: string) {
       // because React runs cleanup + next-effect inside the same commit phase.
       if (!settled) clearWidgetQueryLoading(widgetId);
     };
-  }, [connectionId, dataSource, filterValues, filterVersion, widgetId, connectionsReady, setWidgetQueryLoading, setWidgetQueryResult, setWidgetQueryError, clearWidgetQueryLoading]);
+  }, [connectionId, dataSource, filterValues, filterVersion, widgetId, connectionsReady, tableSchema, setWidgetQueryLoading, setWidgetQueryResult, setWidgetQueryError, clearWidgetQueryLoading]);
 
   return {
     result: cached?.result ?? null,

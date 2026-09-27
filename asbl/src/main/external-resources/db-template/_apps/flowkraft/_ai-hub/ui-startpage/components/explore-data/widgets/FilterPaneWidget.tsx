@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
-import { executeQuery, exploreAssociations, fetchSchema } from "@/lib/explore-data/rb-api";
+import { executeQuery, exploreAssociations, fetchSchema, getConnectionType } from "@/lib/explore-data/rb-api";
+import { dialectFor } from "@/lib/explore-data/sql-dialects";
+import { buildDistinctValuesSql } from "@/lib/explore-data/sql-builder";
+import { asTableRef, findTable } from "@/lib/explore-data/table-ref";
 import { autoFilterPaneField, probeCardinality, classifyColumn } from "@/lib/explore-data/smart-defaults";
 import { useRbElementReady } from "./useRbElementReady";
 import { useDslConfig } from "@/lib/hooks/use-dsl-config";
@@ -21,6 +24,10 @@ import { IconSparkles as Sparkles } from "@/components/shared/Icons";
  * here AND to the published page after DSL→parse round-trip.
  * ============================================================================
  */
+
+/** How many distinct values the pane lists. A pane is a picker, not a report:
+ *  past a thousand values the user types instead of scrolling. */
+const DISTINCT_VALUES_LIMIT = 1000;
 
 interface FilterPaneWidgetProps {
   widgetId: string;
@@ -47,6 +54,8 @@ export function FilterPaneWidget({ widgetId }: FilterPaneWidgetProps) {
 
   const field = (dslMap.field as string | undefined) ?? "";
   const table = (widget?.dataSource?.visualQuery?.table as string) || "";
+  const tableSchema = widget?.dataSource?.visualQuery?.tableSchema;
+  const tableRef = asTableRef(table, tableSchema);
 
   const handleAutoPickField = async () => {
     if (!widget || !connectionId || !table) return;
@@ -54,7 +63,7 @@ export function FilterPaneWidget({ widgetId }: FilterPaneWidgetProps) {
     setAutoErr(null);
     try {
       const schema = await fetchSchema(connectionId);
-      const tbl = schema.tables.find((t) => t.tableName === table);
+      const tbl = findTable(schema, tableRef);
       if (!tbl) {
         setAutoErr(`Table ${table} not found.`);
         return;
@@ -62,7 +71,7 @@ export function FilterPaneWidget({ widgetId }: FilterPaneWidgetProps) {
       const stringCols = tbl.columns
         .filter((c) => classifyColumn(c, tbl) === "category-low")
         .map((c) => c.columnName);
-      const cardinality = stringCols.length > 0 ? await probeCardinality(connectionId, tbl.tableName, stringCols) : {};
+      const cardinality = stringCols.length > 0 ? await probeCardinality(connectionId, tableRef, stringCols) : {};
       const picked = autoFilterPaneField(tbl, cardinality);
       if (!picked) {
         setAutoErr("No suitable filter field found in this table.");
@@ -79,14 +88,20 @@ export function FilterPaneWidget({ widgetId }: FilterPaneWidgetProps) {
   useEffect(() => {
     if (!connectionId || !field || !table) { setRows([]); return; }
     setLoading(true);
+    // The query is `buildDistinctValuesSql`, a pure function of the table, the
+    // field, the cap and the vendor: ANSI SQL, with the names quoted and the row
+    // cap written by the vendor layer. The cap used to be a literal `LIMIT
+    // 1000`, which SQL Server, Oracle and Db2 reject outright — the pane's value
+    // list came back empty on all three.
+    const dialect = dialectFor(getConnectionType(connectionId));
     executeQuery(
       connectionId,
-      `SELECT DISTINCT "${field}" FROM "${table}" WHERE "${field}" IS NOT NULL ORDER BY "${field}" LIMIT 1000`,
+      buildDistinctValuesSql(tableRef, field, DISTINCT_VALUES_LIMIT, dialect),
     )
       .then((res) => setRows(res.data))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
-  }, [connectionId, field, table]);
+  }, [connectionId, field, table, tableSchema]);
 
   // Recompute associative-exploration field states. Reads filter-pane fields
   // from each widget's dslConfig.field (canonical Map), not legacy filterField.

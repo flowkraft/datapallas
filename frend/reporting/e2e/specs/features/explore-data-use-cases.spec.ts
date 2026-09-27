@@ -3044,4 +3044,149 @@ return ctx.dbSql.rows(sql)`,
     }
   });
 
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // D24 — a table in another schema  (Phase 2, TODO 10a: the schema reach)
+  //
+  // Everything else in this suite lives in the connection's default schema.
+  // This one proves the reach into another schema, end to end, on a temporary
+  // duckdb connection pointed at a COPY of the shipped `northwind.duckdb`
+  // (which carries both plain Northwind and the `cube_demo` schema), so no
+  // shipped file is ever written to:
+  //   • the schema browser lists `cube_demo.crm_deals` AND a bare `Orders`;
+  //   • the generated SQL quotes the reference per part —
+  //     `"cube_demo"."crm_deals"`, never `"cube_demo.crm_deals"`;
+  //   • a table in the default schema is still unqualified: `FROM "Orders"`;
+  //   • the numbers are `ai-hub-sql-cases.json`'s own truths (case a3):
+  //     1,200 deals, Closed Won 402, Closed Lost 244.
+  //
+  // The canvas has no row-count label and the grid renders virtualised rows,
+  // so the row count is asserted as data — COUNT over the primary key, read
+  // from the published dashboard, the way every other number in this suite is.
+  // ────────────────────────────────────────────────────────────────────────────
+  test('(explore-data) D24 — a table in another schema', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName      = 'D24 — a table in another schema';
+    const connectionName  = 'SchemaReach';
+    const connectionVendor = 'duckdb';
+    const connectionCode  = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder      = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    // Create the connection, then re-point it at a copy of the shipped sample:
+    // readUpdateAndAssertDatabaseConnection makes the copy under
+    // db/sample-northwind-duckdb-test/ and browses to it. It also renames the
+    // connection's label ("SchemaReach Updated"); the connection CODE, which is
+    // what the canvas dropdown selects by, is unchanged.
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      // Both reaches are visible at once: the other schema's table under its
+      // schema, the default schema's table bare.
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('[id="btnTable-Orders"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the qualified table: its row count ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'number', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+      });
+
+      // View SQL — quoted per part, not as one name
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const d24DealsSql = await page.locator('#preVisualSql').innerText();
+      expect(d24DealsSql).toContain('"cube_demo"."crm_deals"');
+      expect(d24DealsSql).not.toContain('"cube_demo.crm_deals"');
+      await page.locator('#btnToggleVisualSql').click();
+
+      // ── the qualified table: the grouped count (case a3's truth) ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+        await addGroupBy(page, 'stage');
+      });
+
+      // ── the default schema is untouched: still unqualified ──
+      await addVisualWidget(page, 'Orders', 'chart', async () => {
+        await addAggregation(page, 0, 'COUNT', 'OrderID');
+        await addGroupBy(page, 'ShipCountry');
+      });
+
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const d24OrdersSql = await page.locator('#preVisualSql').innerText();
+      expect(d24OrdersSql).toContain('FROM "Orders"');
+      expect(d24OrdersSql).not.toContain('."Orders"');
+      await page.locator('#btnToggleVisualSql').click();
+
+      // Layout. Insertion order: number, tabulator, chart.
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 12, h: 2 }, // number    — deals in cube_demo.crm_deals
+        { x: 0, y: 2, w: 6,  h: 5 }, // tabulator — deals by stage
+        { x: 6, y: 2, w: 6,  h: 5 }, // chart     — orders by ship country
+      ]);
+
+      const d24CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d24Url } = await publishDashboard(page);
+      const d24Ids = await getCanvasComponentIds(page, d24CanvasId);
+      const d24ReportCode = d24Url.split('/').pop()!;
+
+      await page.goto(d24Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-value')).toHaveCount(1, { timeout: 20_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(1, { timeout: 20_000 });
+      await expect(page.locator('rb-chart')).toHaveCount(1, { timeout: 20_000 });
+
+      // 1,200 rows in cube_demo.crm_deals
+      const d24CountId = (d24Ids['number'] ?? [])[0];
+      const d24CountData = await page.evaluate(async ({ rc, cid }) => {
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+        return r.json();
+      }, { rc: d24ReportCode, cid: d24CountId });
+      expect(Number(d24CountData.data[0].deal_id_count)).toBe(1200);
+
+      // By stage — Closed Won 402, Closed Lost 244, six stages, 1,200 in total
+      const d24StageId = (d24Ids['tabulator'] ?? [])[0];
+      const d24StageData = await page.evaluate(async ({ rc, cid }) => {
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+        return r.json();
+      }, { rc: d24ReportCode, cid: d24StageId });
+      const byStage = new Map<string, number>(
+        d24StageData.data.map((row: { stage: string; deal_id_count: number }) =>
+          [String(row.stage), Number(row.deal_id_count)] as [string, number]),
+      );
+      expect(byStage.get('Closed Won')).toBe(402);
+      expect(byStage.get('Closed Lost')).toBe(244);
+      expect(d24StageData.data.length).toBe(6);
+      expect([...byStage.values()].reduce((a, b) => a + b, 0)).toBe(1200);
+
+      // The default schema's own table still answers as it always did
+      const d24CountryId = (d24Ids['chart'] ?? [])[0];
+      const d24CountryData = await page.evaluate(async ({ rc, cid }) => {
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+        return r.json();
+      }, { rc: d24ReportCode, cid: d24CountryId });
+      const germany = d24CountryData.data.find(
+        (row: { ShipCountry: string }) => row.ShipCountry === 'Germany');
+      expect(germany).toBeDefined();
+      expect(Number(germany.OrderID_count)).toBe(32);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      // The connection and its copy of the sample are test-provisioned: both go.
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
 });
