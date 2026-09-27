@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Online Sales</name>
+    <description>The online store: every order with its customer, its products and its lines, so the same sale reads by order or by line. Runs on the cube_demo demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

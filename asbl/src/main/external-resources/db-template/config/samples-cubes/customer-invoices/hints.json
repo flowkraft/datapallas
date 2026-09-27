@@ -1,0 +1,63 @@
+[
+  {
+    "id": "invoices-by-status",
+    "fromStory": 16,
+    "question": "What did we invoice, and where does it stand?",
+    "text": "Tick **Invoices** and **Invoiced**, then add **Status**.",
+    "query": {
+      "dimensions": [
+        "Status"
+      ],
+      "measures": [
+        "Invoices",
+        "Invoiced"
+      ]
+    },
+    "variants": [
+      {
+        "id": "totals",
+        "text": "Drop the field: 2,000 invoices, however many lines they have.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Invoices",
+            "Invoiced"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "what-was-invoiced",
+    "fromStory": null,
+    "question": "What is actually on the invoices? (new: the invoice lines were in no cube)",
+    "text": "Tick **Units** and **Line Amount**, then add **Item**.",
+    "query": {
+      "dimensions": [
+        "Item"
+      ],
+      "measures": [
+        "Units",
+        "LineAmount"
+      ]
+    }
+  },
+  {
+    "id": "overdue-by-country",
+    "fromStory": null,
+    "question": "Who is late, and where are they? (new: the customer's country was in no cube)",
+    "text": "Tick **Invoices** and **Invoiced**, the **Overdue** segment, and add **Country**.",
+    "query": {
+      "dimensions": [
+        "Country"
+      ],
+      "measures": [
+        "Invoices",
+        "Invoiced"
+      ],
+      "segments": [
+        "overdue"
+      ]
+    }
+  }
+]

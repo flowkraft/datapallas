@@ -1,0 +1,225 @@
+[
+  {
+    "hint": "grades",
+    "rows": [
+      [
+        "Dean's List",
+        235
+      ],
+      [
+        "Failed",
+        289
+      ],
+      [
+        "In progress",
+        480
+      ],
+      [
+        "Passed",
+        1396
+      ]
+    ]
+  },
+  {
+    "hint": "grades/by-term",
+    "rows": [
+      [
+        "2025 Autumn",
+        "Dean's List",
+        48
+      ],
+      [
+        "2025 Autumn",
+        "Failed",
+        57
+      ],
+      [
+        "2025 Autumn",
+        "Passed",
+        295
+      ],
+      [
+        "2025 Spring",
+        "Dean's List",
+        44
+      ],
+      [
+        "2025 Spring",
+        "Failed",
+        62
+      ],
+      [
+        "2025 Spring",
+        "Passed",
+        274
+      ],
+      [
+        "2025 Summer",
+        "Dean's List",
+        42
+      ],
+      [
+        "2025 Summer",
+        "Failed",
+        48
+      ],
+      [
+        "2025 Summer",
+        "Passed",
+        250
+      ],
+      [
+        "2026 Autumn",
+        "In progress",
+        480
+      ],
+      [
+        "2026 Spring",
+        "Dean's List",
+        54
+      ],
+      [
+        "2026 Spring",
+        "Failed",
+        62
+      ],
+      [
+        "2026 Spring",
+        "Passed",
+        304
+      ],
+      [
+        "2026 Summer",
+        "Dean's List",
+        47
+      ],
+      [
+        "2026 Summer",
+        "Failed",
+        60
+      ],
+      [
+        "2026 Summer",
+        "Passed",
+        273
+      ]
+    ]
+  },
+  {
+    "hint": "grades-by-program",
+    "rows": [
+      [
+        "Business Administration",
+        "Dean's List",
+        60
+      ],
+      [
+        "Business Administration",
+        "Failed",
+        73
+      ],
+      [
+        "Business Administration",
+        "In progress",
+        123
+      ],
+      [
+        "Business Administration",
+        "Passed",
+        364
+      ],
+      [
+        "Computer Science",
+        "Dean's List",
+        56
+      ],
+      [
+        "Computer Science",
+        "Failed",
+        67
+      ],
+      [
+        "Computer Science",
+        "In progress",
+        120
+      ],
+      [
+        "Computer Science",
+        "Passed",
+        359
+      ],
+      [
+        "Economics",
+        "Dean's List",
+        56
+      ],
+      [
+        "Economics",
+        "Failed",
+        68
+      ],
+      [
+        "Economics",
+        "In progress",
+        114
+      ],
+      [
+        "Economics",
+        "Passed",
+        335
+      ],
+      [
+        "Mechanical Engineering",
+        "Dean's List",
+        63
+      ],
+      [
+        "Mechanical Engineering",
+        "Failed",
+        81
+      ],
+      [
+        "Mechanical Engineering",
+        "In progress",
+        123
+      ],
+      [
+        "Mechanical Engineering",
+        "Passed",
+        338
+      ]
+    ],
+    "source": "SELECT st.program,\n       CASE WHEN e.score >= 90 THEN 'Dean''s List' WHEN e.score >= 60 THEN 'Passed'\n            WHEN e.score IS NOT NULL THEN 'Failed' ELSE 'In progress' END,\n       COUNT(*)\nFROM cube_demo.school_enrollments e\nLEFT JOIN cube_demo.school_students st ON st.student_id = e.student_id\nGROUP BY 1, 2 ORDER BY 1, 2"
+  },
+  {
+    "hint": "score-by-department",
+    "rows": [
+      [
+        "Business",
+        498,
+        74.09
+      ],
+      [
+        "Computer Science",
+        599,
+        73.07
+      ],
+      [
+        "Economics",
+        410,
+        73.25
+      ],
+      [
+        "Engineering",
+        504,
+        74.15
+      ],
+      [
+        "Mathematics",
+        389,
+        73.97
+      ]
+    ],
+    "source": "SELECT c.department, COUNT(*), AVG(e.score)\nFROM cube_demo.school_enrollments e\nLEFT JOIN cube_demo.school_courses c ON c.course_id = e.course_id\nGROUP BY 1 ORDER BY 1"
+  }
+]

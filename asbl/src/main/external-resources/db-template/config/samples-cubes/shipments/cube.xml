@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<cube>
-    <name>Shipments</name>
-    <description>The logistics desk: shipments with their carrier and their origin depot, and the depot network on a map. Runs on the cube_demo demo data.</description>
-    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
-</cube>

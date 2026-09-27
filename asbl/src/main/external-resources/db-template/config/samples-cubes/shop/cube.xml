@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<cube>
-    <name>Shop</name>
-    <description>The online store: orders with their customer and their products, and the same sale read line by line. Runs on the cube_demo demo data.</description>
-    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
-</cube>

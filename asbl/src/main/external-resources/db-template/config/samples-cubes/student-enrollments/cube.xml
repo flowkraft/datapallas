@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Student Enrollments</name>
+    <description>One row per student and course: the term, the grade band and the score, read by program, department, course and student. Runs on the cube_demo demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

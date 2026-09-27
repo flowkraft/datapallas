@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Freight Shipments</name>
+    <description>The logistics desk: every shipment with the carrier that took it and the depot it left from, where it went, and what it cost. Runs on the cube_demo demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

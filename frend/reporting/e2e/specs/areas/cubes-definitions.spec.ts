@@ -177,4 +177,46 @@ test.describe('', async () => {
       return ft;
     },
   );
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 4.4 — Every sample cube is listed by its title, never by its folder id
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  electronBeforeAfterAllTest(
+    '(cube-definitions) should list every sample cube by its title, never by its folder id',
+    async function ({ beforeAfterEach: firstPage }) {
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+
+      // One row per sample folder: the id is what the row is keyed on, the title is
+      // what the user has to read. A folder whose cube.xml has no <name> falls back
+      // to showing the id, which is what this test is here to catch.
+      const samples: [string, string][] = [
+        ['online-sales', 'Online Sales'],
+        ['sales-pipeline', 'Sales Pipeline'],
+        ['support-desk', 'Support Desk'],
+        ['freight-shipments', 'Freight Shipments'],
+        ['student-enrollments', 'Student Enrollments'],
+        ['customer-invoices', 'Customer Invoices'],
+        ['customer-payments', 'Customer Payments'],
+        ['invoice-balances', 'Invoice Balances'],
+        ['northwind-sales', 'Northwind Sales Analysis'],
+        ['northwind-customers', 'Northwind Customer Management'],
+        ['northwind-inventory', 'Northwind Product Inventory'],
+        ['northwind-hr', 'Northwind Human Resources'],
+        ['northwind-warehouse', 'Northwind Sales Warehouse'],
+      ];
+
+      const ft = new FluentTester(firstPage);
+
+      ft.gotoCubeDefinitions();
+
+      for (const [cubeId, cubeTitle] of samples) {
+        ft.waitOnElementToBecomeVisible(`#${cubeId}`)
+          .elementShouldContainText(`#${cubeId}`, cubeTitle)
+          .elementShouldNotContainText(`#${cubeId}`, cubeId);
+      }
+
+      return ft;
+    },
+  );
 });

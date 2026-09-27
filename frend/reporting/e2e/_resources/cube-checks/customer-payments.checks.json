@@ -1,0 +1,36 @@
+[
+  {
+    "hint": "payments-by-method",
+    "rows": [
+      [
+        "Bank Transfer",
+        987,
+        9517674.41
+      ],
+      [
+        "Check",
+        77,
+        855265.25
+      ],
+      [
+        "Credit Card",
+        227,
+        2207632.76
+      ],
+      [
+        "Direct Debit",
+        409,
+        3734246.53
+      ]
+    ]
+  },
+  {
+    "hint": "payments-by-method/totals",
+    "rows": [
+      [
+        1700,
+        16314818.95
+      ]
+    ]
+  }
+]

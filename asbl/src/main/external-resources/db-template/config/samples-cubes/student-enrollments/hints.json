@@ -1,0 +1,61 @@
+[
+  {
+    "id": "grades",
+    "fromStory": 6,
+    "question": "How many made the Dean's List, passed or failed?",
+    "text": "Tick **Enrollments** and add **Grade**.",
+    "query": {
+      "dimensions": [
+        "Grade"
+      ],
+      "measures": [
+        "Enrollments"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-term",
+        "text": "Add **Term** in front of it: the current term has no scores yet.",
+        "query": {
+          "dimensions": [
+            "Term",
+            "Grade"
+          ],
+          "measures": [
+            "Enrollments"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "grades-by-program",
+    "fromStory": null,
+    "question": "Which programs pass, and which do not? (new: grade and program were in different cubes)",
+    "text": "Tick **Enrollments** and add **Program** and **Grade**.",
+    "query": {
+      "dimensions": [
+        "Program",
+        "Grade"
+      ],
+      "measures": [
+        "Enrollments"
+      ]
+    }
+  },
+  {
+    "id": "score-by-department",
+    "fromStory": null,
+    "question": "Which departments score best? (new: the course was in no cube at all)",
+    "text": "Tick **Enrollments** and **Average Score**, then add **Department**.",
+    "query": {
+      "dimensions": [
+        "Department"
+      ],
+      "measures": [
+        "Enrollments",
+        "AverageScore"
+      ]
+    }
+  }
+]

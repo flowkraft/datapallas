@@ -32,13 +32,14 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
 /**
  * Runs the SQL that CubeSqlGenerator produces for every SHIPPED sample cube
  * against a real Northwind database: the five Northwind samples, and the eight
- * files that read the cube_demo schema of the DuckDB sample - the six domain
- * cubes and the two narrow ones kept beside them.
+ * domain cubes that read the cube_demo schema of the DuckDB sample - one cube
+ * per business process, one cube per file.
  *
- * <p>A file can hold more than one cube, and each of them is swept: the sweeps
- * below run over every cube in every file, named ones included, so a cube that
- * is only reachable by name (Depots, Order Lines, Payments, Enrollments) is
- * proven exactly like the one the file opens with.
+ * <p>The DSL still lets an author put named cubes in one file, and each of them
+ * is swept too: the sweeps below run over every cube in every file, named ones
+ * included, so a cube that is only reachable by name would be proven exactly
+ * like the one the file opens with. No shipped sample has one any more, which
+ * CubeSampleDesignTest is what keeps true.
  *
  * CubeSqlGeneratorTest already covers generation, but every assertion there is
  * on the SQL TEXT - contains("country"), contains("group by"). Text assertions
@@ -72,39 +73,43 @@ class CubeSampleSqlExecutesTest {
 
 	private static final String SAMPLES_CUBES_DIR = "../../asbl/src/main/external-resources/db-template/config/samples-cubes";
 
+	/** Where the one cube kept as a test example lives, outside the shipped samples. */
+	private static final String CUBE_EXAMPLES_DIR = "src/test/resources/cube-examples";
+
 	/**
-	 * Every cube FILE that ships under config/samples-cubes: the five Northwind samples, the six
-	 * domain cubes the Cube Stories page is written against, and the two narrow cubes kept beside
-	 * them. The cube_demo eight run on the DuckDB sample, whose cube_demo schema holds their demo
-	 * data; the Northwind five say in their own cube.xml which engine they ship on, and
+	 * Every cube FILE that ships under config/samples-cubes: the five Northwind samples and the
+	 * eight domain cubes the Cube Stories page is written against - one cube per business process,
+	 * one cube per file. The cube_demo eight run on the DuckDB sample, whose cube_demo schema holds
+	 * their demo data; the Northwind five say in their own cube.xml which engine they ship on, and
 	 * shippedVendorOf reads it.
 	 */
 	private static final List<String> SAMPLE_CUBES = List.of("northwind-sales", "northwind-customers", "northwind-hr",
-			"northwind-inventory", "northwind-warehouse", "deals", "tickets", "shipments", "shop", "school",
-			"invoices-and-payments", "accounts-receivable", "students-per-program");
+			"northwind-inventory", "northwind-warehouse", "online-sales", "sales-pipeline", "support-desk",
+			"freight-shipments", "student-enrollments", "customer-invoices", "customer-payments",
+			"invoice-balances");
 
 	/**
 	 * Students per Program is a first draft with mistakes in it, on purpose: a measure type that does not exist
 	 * and a drill path naming a dimension that is not there. Generating SQL from it throws, which is
-	 * the whole point of the story, so the sweeps below leave it out by name and
-	 * everyShippedSampleParsesWithNothingToComplainAbout asserts its two warnings and two errors
-	 * instead. Naming it here rather than catching exceptions keeps a cube that breaks by accident
-	 * from passing quietly.
+	 * the whole point of the story, so everyShippedSampleParsesWithNothingToComplainAbout asserts its
+	 * two warnings and two errors instead. It is NOT one of SAMPLE_CUBES: it is not shipped, because a
+	 * user's first look at the samples may not be a broken cube. It lives under CUBE_EXAMPLES_DIR,
+	 * and parseSampleFile knows where to find it. Keeping it tested rather than deleting it is what
+	 * keeps the parser's two complaints from quietly going away.
 	 */
 	private static final String BROKEN_ON_PURPOSE = "students-per-program";
 
 	/**
-	 * The cubes the SQL sweeps run: every cube of every shipped file but the file that is wrong on
-	 * purpose. A cube is named by its file, and a cube that lives under a name inside that file by
-	 * {@code file#key} - so Depots is {@code shipments#depots} and the three finance cubes are
-	 * {@code invoices-and-payments#invoices}, {@code #payments} and {@code #cube_demo.erp_customers}.
-	 * Listing them from the files themselves rather than by hand is what keeps a cube added to a
-	 * file from going unswept.
+	 * The cubes the SQL sweeps run: every cube of every shipped file. A cube is named by its file,
+	 * and a cube that lives under a name inside that file by {@code file#key}. No shipped sample has
+	 * a named cube any more - one cube per file - so today this returns one name per file and the
+	 * {@code #key} form never fires for a sample. It stays because the DSL still allows named cubes
+	 * in an author's own file: listing them from the files themselves rather than by hand is what
+	 * keeps a cube added to a file from going unswept.
 	 */
 	private List<String> sweptCubes() throws Exception {
 		List<String> swept = new ArrayList<>();
 		for (String fileName : SAMPLE_CUBES) {
-			if (BROKEN_ON_PURPOSE.equals(fileName)) continue;
 			CubeOptions file = parseSampleFile(fileName);
 			if (file.getSqlTable() != null || file.getSql() != null) {
 				swept.add(fileName);
@@ -421,7 +426,7 @@ class CubeSampleSqlExecutesTest {
 	private String shippedVendorOf(String cubeName) throws Exception {
 		int hash = cubeName.indexOf('#');
 		String fileName = hash < 0 ? cubeName : cubeName.substring(0, hash);
-		File cubeXml = new File(SAMPLES_CUBES_DIR, fileName + "/cube.xml");
+		File cubeXml = new File(dirOf(fileName), fileName + "/cube.xml");
 		if (!cubeXml.exists()) {
 			throw new IllegalStateException("Sample cube descriptor not found: " + cubeXml.getAbsolutePath());
 		}
@@ -516,8 +521,16 @@ class CubeSampleSqlExecutesTest {
 	}
 
 	/** The whole file, cubes and warnings together. */
+	/**
+	 * The folder a cube file lives in: the shipped samples, or the test examples for the one cube
+	 * that is wrong on purpose and therefore not shipped.
+	 */
+	private static String dirOf(String fileName) {
+		return BROKEN_ON_PURPOSE.equals(fileName) ? CUBE_EXAMPLES_DIR : SAMPLES_CUBES_DIR;
+	}
+
 	private CubeOptions parseSampleFile(String fileName) throws Exception {
-		File configFile = new File(SAMPLES_CUBES_DIR, fileName + "/" + fileName + "-cube-config.groovy");
+		File configFile = new File(dirOf(fileName), fileName + "/" + fileName + "-cube-config.groovy");
 		if (!configFile.exists()) {
 			throw new IllegalStateException("Sample cube config not found: " + configFile.getAbsolutePath());
 		}
@@ -940,7 +953,6 @@ class CubeSampleSqlExecutesTest {
 		Set<String> notUsedYet = Set.of("format", "drill_members", "rolling_window");
 		List<String> complaints = new ArrayList<>();
 		for (String cubeName : SAMPLE_CUBES) {
-			if (BROKEN_ON_PURPOSE.equals(cubeName)) continue;
 			for (Map<String, Object> warning : parseSampleFile(cubeName).getWarnings()) {
 				String key = String.valueOf(warning.get("key"));
 				boolean allowed = "warning".equals(warning.get("level")) && notUsedYet.contains(key)

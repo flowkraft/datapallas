@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<cube>
-    <name>School</name>
-    <description>Students and their enrollments: how far each student has got, and how the terms went by grade band, program, department and course. Runs on the cube_demo demo data.</description>
-    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
-</cube>

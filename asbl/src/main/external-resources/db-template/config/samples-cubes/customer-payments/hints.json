@@ -1,0 +1,30 @@
+[
+  {
+    "id": "payments-by-method",
+    "fromStory": 16,
+    "question": "What came in, and how was it paid?",
+    "text": "Tick **Payments** and **Received**, then add **Method**.",
+    "query": {
+      "dimensions": [
+        "Method"
+      ],
+      "measures": [
+        "Payments",
+        "Received"
+      ]
+    },
+    "variants": [
+      {
+        "id": "totals",
+        "text": "Drop the field for what came in altogether.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Payments",
+            "Received"
+          ]
+        }
+      }
+    ]
+  }
+]

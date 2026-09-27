@@ -1,0 +1,238 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Online Sales — the online store
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// What it holds: one row per order, with its customer and — through the order
+// lines — the products on it, so the same sale reads by order or line by line.
+//
+// Joins: cube_demo.shop_order_lines on order_id, one_to_many; through it
+// cube_demo.shop_products on product_id, many_to_one; and
+// cube_demo.shop_customers on customer_id, many_to_one. All LEFT joins, so a
+// guest order with no customer still counts.
+//
+// Grain: one row per order. The one_to_many join to the lines repeats an order
+// once per line, and the generator handles that by itself: a measure that lives
+// on the order (Orders, ShippingFees) is summed once per order in a WITH, while
+// a measure that lives on the line (Lines, Units, GrossSales, AvgDiscountPct)
+// is summed over the lines. Germany answers 749 orders, not the 2,108 line rows
+// the join produces, and the shipping fee is added once per order however many
+// lines it has.
+//
+// What it can answer:
+//   - how much was sold and to how many people (Orders, GrossSales, NetSales,
+//     Units, Customers, ShippingFees, AvgOrderValue);
+//   - line by line: how many lines and at what discount (Lines, DiscountPct,
+//     AvgDiscountPct, LineNo);
+//   - by where the customer is (Country, City), since when they have been one
+//     (Customer Since), by what was bought (Category, Brand, Product, SKU), by
+//     when (OrderDate, readable by day, week, month, quarter or year) and by how
+//     the order came in (Channel, Status);
+//   - with the shipped and guest_orders segments for the two questions worth
+//     asking on their own.
+//
+// Data: cube_demo.shop_orders (3,000 orders, 240 of them guest orders),
+// cube_demo.shop_order_lines (8,500 lines), cube_demo.shop_products (80) and
+// cube_demo.shop_customers (400).
+// ═══════════════════════════════════════════════════════════════════════════
+
+cube {
+  sql_table 'cube_demo.shop_orders'
+  title 'Online Sales'
+  description 'Orders, shipping fees and sales, by country and by product category'
+
+  join {
+    name 'cube_demo.shop_order_lines'
+    title 'Order Lines'
+    description 'The lines of the order'
+    sql '${CUBE}.order_id = cube_demo.shop_order_lines.order_id'
+    relationship 'one_to_many'
+  }
+  join {
+    name 'cube_demo.shop_products'
+    title 'Products'
+    description 'The product on the order line'
+    sql 'cube_demo.shop_order_lines.product_id = cube_demo.shop_products.product_id'
+    relationship 'many_to_one'
+    parent 'cube_demo.shop_order_lines'
+  }
+  join {
+    name 'cube_demo.shop_customers'
+    title 'Customers'
+    description 'The customer who placed the order. Empty on a guest order'
+    sql '${CUBE}.customer_id = cube_demo.shop_customers.customer_id'
+    relationship 'many_to_one'
+  }
+
+  dimension {
+    name 'OrderId'
+    title 'Order'
+    description 'The order number'
+    sql '${CUBE}.order_id'
+    type 'number'
+    primary_key true
+  }
+  dimension {
+    name 'OrderDate'
+    title 'Ordered'
+    description 'The day the order was placed'
+    sql '${CUBE}.order_date'
+    type 'time'
+  }
+  dimension {
+    name 'Status'
+    title 'Status'
+    description 'Where the order stands'
+    sql '${CUBE}.status'
+    type 'string'
+  }
+  dimension {
+    name 'Channel'
+    title 'Channel'
+    description 'How the order came in'
+    sql '${CUBE}.channel'
+    type 'string'
+  }
+  dimension {
+    name 'Country'
+    title 'Country'
+    description 'The country of the customer. Empty on a guest order'
+    sql 'cube_demo.shop_customers.country'
+    type 'string'
+  }
+  dimension {
+    name 'City'
+    title 'City'
+    description 'The city of the customer. Empty on a guest order'
+    sql 'cube_demo.shop_customers.city'
+    type 'string'
+  }
+  dimension {
+    name 'SignupDate'
+    title 'Customer Since'
+    description 'The day the customer signed up. Empty on a guest order'
+    sql 'cube_demo.shop_customers.signup_date'
+    type 'time'
+  }
+  dimension {
+    name 'Category'
+    title 'Category'
+    description 'The product category on the order line'
+    sql 'cube_demo.shop_products.category'
+    type 'string'
+  }
+  dimension {
+    name 'Brand'
+    title 'Brand'
+    description 'The product brand on the order line'
+    sql 'cube_demo.shop_products.brand'
+    type 'string'
+  }
+  dimension {
+    name 'Product'
+    title 'Product'
+    description 'The product on the order line'
+    sql 'cube_demo.shop_products.name'
+    type 'string'
+  }
+  dimension {
+    name 'Sku'
+    title 'SKU'
+    description 'The product code on the order line'
+    sql 'cube_demo.shop_products.sku'
+    type 'string'
+  }
+  dimension {
+    name 'LineNo'
+    title 'Line'
+    description 'Which line of the order this is'
+    sql 'cube_demo.shop_order_lines.line_no'
+    type 'number'
+  }
+  dimension {
+    name 'DiscountPct'
+    title 'Discount %'
+    description 'The discount given on the order line'
+    sql 'cube_demo.shop_order_lines.discount_pct'
+    type 'number'
+  }
+
+  measure {
+    name 'Orders'
+    title 'Orders'
+    description 'How many orders there are. An order with ten lines still counts once'
+    type 'count'
+  }
+  measure {
+    name 'ShippingFees'
+    title 'Shipping Fees'
+    description 'The shipping fees, added up once per order'
+    sql '${CUBE}.shipping_fee'
+    type 'sum'
+    format 'currency'
+  }
+  measure {
+    name 'GrossSales'
+    title 'Gross Sales'
+    description 'What was sold, before discount: quantity times unit price on every order line'
+    sql 'cube_demo.shop_order_lines.qty * cube_demo.shop_order_lines.unit_price'
+    type 'sum'
+    format 'currency'
+  }
+  measure {
+    name 'NetSales'
+    title 'Net Sales'
+    description 'What was sold after the discount on each line'
+    sql 'cube_demo.shop_order_lines.qty * cube_demo.shop_order_lines.unit_price * (1 - cube_demo.shop_order_lines.discount_pct / 100.0)'
+    type 'sum'
+    format 'currency'
+  }
+  measure {
+    name 'Units'
+    title 'Units'
+    description 'How many items were sold'
+    sql 'cube_demo.shop_order_lines.qty'
+    type 'sum'
+  }
+  measure {
+    name 'Customers'
+    title 'Customers'
+    description 'How many different customers ordered. A guest order counts nobody'
+    sql '${CUBE}.customer_id'
+    type 'count_distinct'
+  }
+  measure {
+    name 'AvgOrderValue'
+    title 'Average Order Value'
+    description 'What an order is worth on average, before discount'
+    sql '${GrossSales} / NULLIF(${Orders}, 0)'
+    type 'number'
+    format 'currency'
+  }
+  measure {
+    name 'Lines'
+    title 'Lines'
+    description 'How many order lines there are. An order with ten lines counts ten'
+    sql 'cube_demo.shop_order_lines.line_no'
+    type 'count'
+  }
+  measure {
+    name 'AvgDiscountPct'
+    title 'Average Discount %'
+    description 'The average discount on an order line'
+    sql 'cube_demo.shop_order_lines.discount_pct'
+    type 'avg'
+  }
+
+  segment {
+    name 'shipped'
+    title 'Shipped'
+    description 'Orders that have left the warehouse'
+    sql "\${CUBE}.status = 'Shipped'"
+  }
+  segment {
+    name 'guest_orders'
+    title 'Guest orders'
+    description 'Orders placed without an account'
+    sql "\${CUBE}.customer_id IS NULL"
+  }
+}
