@@ -145,7 +145,7 @@ export async function fetchCubes(): Promise<CubeInfo[]> {
 /**
  * Load a single cube definition (metadata + Groovy DSL source).
  */
-export async function fetchCube(cubeId: string): Promise<{ id: string; name: string; description: string; connectionId: string; dslCode: string; isSample: boolean }> {
+export async function fetchCube(cubeId: string): Promise<{ id: string; name: string; description: string; connectionId: string; dslCode: string; isSample: boolean; cubeName?: string | null }> {
   const res = await fetch(`${RB_BASE}/cubes/${encodeURIComponent(cubeId)}`);
   if (!res.ok) throw new Error("Failed to load cube");
   return res.json();
@@ -179,12 +179,13 @@ export async function generateCubeSql(
 /**
  * Parse a cube DSL code string into a structured CubeOptions object.
  * The result is the shape that <rb-cube-renderer cubeConfig={...} /> expects.
+ * cubeName picks the cube the file holds under that name (a loaded cube's cubeName).
  */
-export async function parseCubeDsl(dslCode: string): Promise<unknown> {
+export async function parseCubeDsl(dslCode: string, cubeName?: string | null): Promise<unknown> {
   const res = await fetch(`${RB_BASE}/cubes/parse-dsl`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dslCode }),
+    body: JSON.stringify({ dslCode, cubeName }),
   });
   if (!res.ok) {
     const text = await res.text();

@@ -1,5 +1,6 @@
 package com.flowkraft.cubes;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -119,12 +120,23 @@ public class CubesController {
 		return Mono.just(CubeSqlDialect.DIALECTS);
 	}
 
-	/** Parse DSL code and return structured CubeOptions JSON */
+	/**
+	 * Parse DSL code and return structured CubeOptions JSON. With a cubeName, the cube the file
+	 * holds under that name - the one a loaded cube's cubeName says is meant - and the file's
+	 * warnings with it.
+	 */
 	@PostMapping(value = "/parse-dsl", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<CubeOptions> parseDsl(@RequestBody Map<String, String> request) throws Exception {
 		String dslCode = request.get("dslCode");
 		limitsSandbox.check(dslCode);
-		return Mono.just(cubesService.parseDsl(dslCode));
+		CubeOptions file = cubesService.parseDsl(dslCode);
+		String cubeName = request.get("cubeName");
+		if (cubeName == null || cubeName.isBlank()) {
+			return Mono.just(file);
+		}
+		CubeOptions picked = CubeSqlGenerator.pickCube(file, cubeName);
+		picked.setWarnings(file.getWarnings());
+		return Mono.just(picked);
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
@@ -151,7 +163,10 @@ public class CubesController {
 		// Checked although it was saved earlier: it is about to be compiled and run for this caller.
 		limitsSandbox.check(dslCode);
 		CubeOptions cube = cubesService.parseDsl(dslCode);
-		return generateSqlInternal(cube, request);
+		// A cube kept under a name in its file is picked by that name, unless the caller names another.
+		Map<String, Object> asked = new LinkedHashMap<>(request);
+		asked.putIfAbsent("cubeName", cubeData.get("cubeName"));
+		return generateSqlInternal(cube, asked);
 	}
 
 	/**

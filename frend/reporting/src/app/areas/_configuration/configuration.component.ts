@@ -2189,7 +2189,7 @@ export class ConfigurationComponent implements OnInit {
       const full = await this.cubesService.load(cube.id);
       if (full) {
         this.selectedCubeForReuse = full;
-        const parsed = await this.cubesService.parseDsl(full.dslCode);
+        const parsed = await this.cubesService.parseDsl(full.dslCode, full.cubeName);
         this.parsedCubeForReuse = parsed;
       }
     } catch (e: any) {
@@ -2219,6 +2219,7 @@ export class ConfigurationComponent implements OnInit {
         this.cubesReuseSelectedDimensions,
         this.cubesReuseSelectedMeasures,
         this.cubesReuseSelectedSegments,
+        this.selectedCubeForReuse.cubeName,
       );
       this.cubesReuseGeneratedSql = result?.sql || '-- No SQL generated';
     } catch (e: any) {

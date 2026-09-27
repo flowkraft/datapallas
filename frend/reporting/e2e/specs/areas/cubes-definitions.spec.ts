@@ -199,6 +199,8 @@ test.describe('', async () => {
         ['customer-invoices', 'Customer Invoices'],
         ['customer-payments', 'Customer Payments'],
         ['invoice-balances', 'Invoice Balances'],
+        ['depot-network', 'Depot Network'],
+        ['student-progress', 'Student Progress'],
         ['northwind-sales', 'Northwind Sales Analysis'],
         ['northwind-customers', 'Northwind Customer Management'],
         ['northwind-inventory', 'Northwind Product Inventory'],

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Depot Network</name>
+    <description>Our depot network: where each depot is, how many pallets and docks it has, and how many shipments leave from it, read on a map or as a list. Runs on the cube_demo demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

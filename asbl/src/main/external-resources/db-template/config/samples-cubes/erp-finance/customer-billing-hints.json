@@ -5,6 +5,7 @@
     "question": "What did we invoice, and where does it stand?",
     "text": "Tick **Invoices** and **Invoiced**, then add **Status**.",
     "query": {
+      "cubeName": "customer-invoices",
       "dimensions": [
         "Status"
       ],
@@ -18,6 +19,7 @@
         "id": "totals",
         "text": "Drop the field: 2,000 invoices, however many lines they have.",
         "query": {
+          "cubeName": "customer-invoices",
           "dimensions": [],
           "measures": [
             "Invoices",
@@ -33,6 +35,7 @@
     "question": "What is actually on the invoices? (new: the invoice lines were in no cube)",
     "text": "Tick **Units** and **Line Amount**, then add **Item**.",
     "query": {
+      "cubeName": "customer-invoices",
       "dimensions": [
         "Item"
       ],
@@ -48,6 +51,7 @@
     "question": "Who is late, and where are they? (new: the customer's country was in no cube)",
     "text": "Tick **Invoices** and **Invoiced**, the **Overdue** segment, and add **Country**.",
     "query": {
+      "cubeName": "customer-invoices",
       "dimensions": [
         "Country"
       ],
@@ -59,5 +63,35 @@
         "overdue"
       ]
     }
+  },
+  {
+    "id": "payments-by-method",
+    "fromStory": 16,
+    "question": "What came in, and how was it paid?",
+    "text": "Tick **Payments** and **Received**, then add **Method**.",
+    "query": {
+      "cubeName": "customer-payments",
+      "dimensions": [
+        "Method"
+      ],
+      "measures": [
+        "Payments",
+        "Received"
+      ]
+    },
+    "variants": [
+      {
+        "id": "totals",
+        "text": "Drop the field for what came in altogether.",
+        "query": {
+          "cubeName": "customer-payments",
+          "dimensions": [],
+          "measures": [
+            "Payments",
+            "Received"
+          ]
+        }
+      }
+    ]
   }
 ]

@@ -394,6 +394,7 @@ cube {
         this.lastSelectedDimensions,
         this.lastSelectedMeasures,
         this.lastSelectedSegments,
+        this.editingCube.cubeName,
       );
       this.generatedSql = result?.sql || '-- No SQL generated';
     } catch (e: any) {
@@ -432,6 +433,7 @@ cube {
       }
       const result = await this.cubesService.parseDsl(
         this.editingCube.dslCode,
+        this.editingCube.cubeName,
       );
       // Only re-bind `parsedCube` when the parse output actually differs.
       // ngx-codejar can emit (update) events with unchanged content during

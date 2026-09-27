@@ -27,6 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flowkraft.cubes.CubeFiles;
 import com.flowkraft.cubes.CubeSqlGenerator;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
@@ -46,7 +47,8 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
  * same demo data, and compares the rows with that hint's check.
  *
  * <p>A hint is a question a shipped cube already knows how to answer: it lives beside the cube, in
- * {@code samples-cubes/<cube>/hints.json}, and the page offers it to the user. Its truths live in
+ * its hints file ({@code <cube>/hints.json}, or {@code <domain>/<cube>-hints.json} where a domain
+ * folder holds several cubes - {@link CubeFiles} says which), and the page offers it to the user. Its truths live in
  * {@code e2e/_resources/cube-checks/<cube>.checks.json}, one {@code {hint, rows}} per hint (and per
  * variant), which the page's e2e reads too. {@link #readAsks} pairs the two and refuses a cube with
  * no hints, a hint with no check, a check naming no hint, and two checks for one hint - so a
@@ -172,7 +174,7 @@ class GeneratedSqlAllVendorsTest {
 	/**
 	 * The hints and their checks answer each other, and every hint names fields its cube has.
 	 *
-	 * <p>This one needs no database: it reads the 13 shipped {@code hints.json} and the 13
+	 * <p>This one needs no database: it reads every shipped cube's hints and its
 	 * {@code <cube>.checks.json} next to the e2e, pairs them, and generates the SQL for every hint.
 	 * A hint with no check, a check with no hint, or a hint naming a field the cube does not have
 	 * fails here, on every {@code mvn test}, rather than on the vendor the loop happens to start.
@@ -202,6 +204,7 @@ class GeneratedSqlAllVendorsTest {
 		private final String cube;
 		private final String hint;
 		private final CubeOptions file;
+		private final String cubeName;
 		private final Map<String, Object> query;
 		private final List<List<Object>> rows;
 
@@ -213,19 +216,23 @@ class GeneratedSqlAllVendorsTest {
 		 */
 		private final List<?> refusedOn;
 
-		private Ask(String cube, String hint, CubeOptions file, Map<String, Object> query,
+		private Ask(String cube, String hint, CubeOptions file, String cubeName, Map<String, Object> query,
 				List<List<Object>> rows, List<?> refusedOn) {
 			this.cube = cube;
 			this.hint = hint;
 			this.file = file;
+			this.cubeName = cubeName;
 			this.query = query;
 			this.rows = rows;
 			this.refusedOn = refusedOn == null ? List.of() : refusedOn;
 		}
 
-		/** The cube inside the file this hint ticks: a named one, or the one the file opens with. */
+		/**
+		 * The cube inside the file this hint ticks: the one the hint names, else the cube's own name
+		 * in its file, else the file's unnamed cube.
+		 */
 		private String cubeKey() {
-			return Objects.toString(query.get("cubeName"), "");
+			return Objects.toString(query.get("cubeName"), Objects.toString(cubeName, ""));
 		}
 
 		private boolean refusedOn(String vendor) {
@@ -272,7 +279,7 @@ class GeneratedSqlAllVendorsTest {
 	/**
 	 * Every hint of every shipped cube, paired with the rows its check holds.
 	 *
-	 * <p>The pairing is the tie between the two files: {@code samples-cubes/<cube>/hints.json} ships
+	 * <p>The pairing is the tie between the two files: the cube's hints file ships
 	 * with the cube and holds the question, the words and the query; the query lives there once, so
 	 * it can never disagree with the text a user reads. {@code
 	 * _resources/cube-checks/<cube>.checks.json} holds the truths -
@@ -287,17 +294,17 @@ class GeneratedSqlAllVendorsTest {
 		File checksDir = existing(CHECKS_DIR, "the cubes' checks");
 		File cubesDir = existing(SAMPLES_CUBES_DIR, "the shipped sample cubes");
 
-		String[] cubes = cubesDir.list((dir, name) -> new File(dir, name).isDirectory());
-		if (cubes == null || cubes.length == 0) {
-			throw new IllegalStateException("No cube folders in " + cubesDir.getAbsolutePath());
+		List<CubeFiles> cubes = CubeFiles.scan(cubesDir);
+		if (cubes.isEmpty()) {
+			throw new IllegalStateException("No cubes in " + cubesDir.getAbsolutePath());
 		}
-		Arrays.sort(cubes);
 
 		List<Ask> asks = new ArrayList<>();
-		for (String cube : cubes) {
+		for (CubeFiles cubeFiles : cubes) {
 
-			File hintsFile = new File(cubesDir, cube + "/hints.json");
-			File config = new File(cubesDir, cube + "/" + cube + "-cube-config.groovy");
+			String cube = cubeFiles.getId();
+			File hintsFile = cubeFiles.getHintsFile();
+			File config = cubeFiles.getDslFile();
 			File checksFile = new File(checksDir, cube + ".checks.json");
 			if (!hintsFile.exists()) {
 				throw new IllegalStateException(cube + " ships without its hints: " + hintsFile.getAbsolutePath());
@@ -307,7 +314,7 @@ class GeneratedSqlAllVendorsTest {
 						+ checksFile.getAbsolutePath());
 			}
 
-			Map<String, Map<String, Object>> queries = queriesOf(hintsFile);
+			Map<String, Map<String, Object>> queries = queriesOf(hintsFile, cubeFiles.getCubeName());
 			CubeOptions file = CubeOptionsParser.parseGroovyCubeDslCode(Files.readString(config.toPath()));
 
 			Set<String> checked = new LinkedHashSet<>();
@@ -327,7 +334,8 @@ class GeneratedSqlAllVendorsTest {
 				@SuppressWarnings("unchecked")
 				List<List<Object>> rows = (List<List<Object>>) check.get("rows");
 				Object refused = check.get("refusedOn");
-				asks.add(new Ask(cube, hint, file, query, rows, refused instanceof List ? (List<?>) refused : null));
+				asks.add(new Ask(cube, hint, file, cubeFiles.getCubeName(), query, rows,
+						refused instanceof List ? (List<?>) refused : null));
 			}
 
 			for (String hint : queries.keySet()) {
@@ -341,7 +349,12 @@ class GeneratedSqlAllVendorsTest {
 	}
 
 	/** A cube's hints, flattened: {@code <id>} for a hint and {@code <id>/<variant>} for a variant. */
-	private Map<String, Map<String, Object>> queriesOf(File hintsFile) throws Exception {
+	/**
+	 * The hints of one cube. The cubes one DSL file holds under a name share one hints file, and
+	 * each hint's query names its cube in cubeName, as a generate-sql request does; a file's
+	 * unnamed cube owns the hints that name none.
+	 */
+	private Map<String, Map<String, Object>> queriesOf(File hintsFile, String cubeName) throws Exception {
 
 		Map<String, Map<String, Object>> queries = new LinkedHashMap<>();
 		for (Map<String, Object> hint : JSON.<List<Map<String, Object>>>readValue(hintsFile,
@@ -350,6 +363,7 @@ class GeneratedSqlAllVendorsTest {
 			String id = Objects.toString(hint.get("id"), "");
 			@SuppressWarnings("unchecked")
 			Map<String, Object> query = (Map<String, Object>) hint.get("query");
+			if (!Objects.toString(cubeName, "").equals(Objects.toString(query.get("cubeName"), ""))) continue;
 			queries.put(id, query);
 
 			Object variants = hint.get("variants");

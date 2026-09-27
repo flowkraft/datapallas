@@ -1,0 +1,66 @@
+[
+  {
+    "id": "depot-network",
+    "fromStory": 9,
+    "question": "Where are our depots, and how big are they?",
+    "text": "Tick **Depot**, **Location**, **Pallet Capacity** and **Docks**.",
+    "query": {
+      "dimensions": [
+        "Depot",
+        "Location"
+      ],
+      "measures": [
+        "PalletCapacity",
+        "Docks"
+      ]
+    },
+    "variants": [
+      {
+        "id": "totals",
+        "text": "Drop the fields for the whole network at once.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Depots",
+            "PalletCapacity",
+            "Docks"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "depot-load",
+    "fromStory": null,
+    "question": "Which depots carry the load, and how big are they for it? (new: capacity and shipments were in different cubes)",
+    "text": "Tick **Depot**, **Shipments** and **Pallet Capacity**. Each depot's capacity counts once, however many shipments left from it, and a depot that shipped nothing still shows, with 0.",
+    "query": {
+      "dimensions": [
+        "Depot"
+      ],
+      "measures": [
+        "Shipments",
+        "PalletCapacity"
+      ]
+    }
+  },
+  {
+    "id": "idle-depots",
+    "fromStory": null,
+    "question": "Which depots shipped nothing at all? (new)",
+    "text": "Tick **Depot**, **City**, **Country** and **Pallet Capacity**, with the **Idle** segment.",
+    "query": {
+      "dimensions": [
+        "Depot",
+        "City",
+        "Country"
+      ],
+      "measures": [
+        "PalletCapacity"
+      ],
+      "segments": [
+        "idle"
+      ]
+    }
+  }
+]

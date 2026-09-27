@@ -49,22 +49,27 @@ Top menu → **Configuration** → **Reports, Connections & Cubes** → left men
 
 Five Northwind sample cubes ship bundled — each shown in the list with a **sample** badge. They sit on the **Northwind SQLite sample database** that ships with DataPallas (no Docker, no external setup). **Sample cubes are read-only**; to change one, click **Duplicate** to create an editable copy (it lands in `config/cubes/`):
 
-| Sample cube                   | On-disk folder                                |
-| ----------------------------- | --------------------------------------------- |
-| Northwind Customer Management | `/datapallas/config/samples-cubes/northwind-customers/` |
-| Northwind Human Resources     | `/datapallas/config/samples-cubes/northwind-hr/`        |
-| Northwind Product Inventory   | `/datapallas/config/samples-cubes/northwind-inventory/` |
-| Northwind Sales Analysis      | `/datapallas/config/samples-cubes/northwind-sales/`     |
-| Northwind Sales Warehouse     | `/datapallas/config/samples-cubes/northwind-warehouse/` |
+All five live in one folder, `/datapallas/config/samples-cubes/northwind/`:
 
-Each folder contains two files:
+| Sample cube                   | Cube id               |
+| ----------------------------- | --------------------- |
+| Northwind Customer Management | `northwind-customers` |
+| Northwind Human Resources     | `northwind-hr`        |
+| Northwind Product Inventory   | `northwind-inventory` |
+| Northwind Sales Analysis      | `northwind-sales`     |
+| Northwind Sales Warehouse     | `northwind-warehouse` |
 
-- `cube.xml` — cube metadata (name, title, description, database connection reference, capabilities)
-- `<cube-name>-cube-config.groovy` — the actual Cube DSL (dimensions, measures, joins, segments, hierarchies)
+Each cube is one set of three files named after its id:
+
+- `<cube-id>-cube.xml` — cube metadata (name, description, database connection reference)
+- `<cube-id>-cube-config.groovy` — the actual Cube DSL (dimensions, measures, joins, segments, hierarchies)
+- `<cube-id>-hints.json` — ready-made questions the cube answers
 
 These are great starting points: open one in the UI, OR read the `*-cube-config.groovy` directly on disk to study the DSL, then adapt the pattern to your own database.
 
-**Where your own cubes are saved:** cubes the user creates land in `/datapallas/config/cubes/<cube-id>/` — the same two files (`cube.xml` + `<cube-id>-cube-config.groovy`). DataPallas resolves cubes from `config/cubes/` first (user-owned), then falls back to the read-only `config/samples-cubes/`. I read either the same way.
+Next to them, ten business-domain cubes run on the `cube_demo` demo data, grouped **one folder per business domain** (`crm-sales/`, `customer-support/`, `retail-ecommerce/`, `transport-logistics/`, `erp-finance/`, `education/`). Like `northwind/`, a domain folder holds several sets of cube files; a set is `<name>-cube-config.groovy` (the DSL), `<name>-cube.xml` (metadata) and `<name>-hints.json`. Most sets hold one unnamed `cube { }`, whose cube id is `<name>`. The `erp-finance/customer-billing-*` set shows the other way: one set holding two **named** cubes, `cube('customer-invoices') { }` and `cube('customer-payments') { }`. Its `-cube.xml` has a `<cubes>` root with one `<cube>` per named cube (its `<cubeName>`, name, description, connection), and every hint in its `-hints.json` names its cube in `query.cubeName`. Both ways are valid DSL; each named cube is still its own cube in the UI, with its name as its id.
+
+**Where your own cubes are saved:** cubes the user creates land in their own folder, `/datapallas/config/cubes/<cube-id>/`, as `cube.xml` + `<cube-id>-cube-config.groovy`. DataPallas resolves cubes from `config/cubes/` first (user-owned), then falls back to the read-only `config/samples-cubes/`. I read either the same way.
 
 ---
 

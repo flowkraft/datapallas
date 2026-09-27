@@ -454,8 +454,12 @@ class CubeSqlGeneratorTest {
 	private static String SAMPLES_CUBES_DIR =
 			"../../asbl/src/main/external-resources/db-template/config/samples-cubes";
 
-	private static String readCubeDsl(String folderName) throws Exception {
-		File f = new File(SAMPLES_CUBES_DIR + "/" + folderName + "/" + folderName + "-cube-config.groovy");
+	private static String readCubeDsl(String cubeId) throws Exception {
+		CubeFiles cube = CubeFiles.find(new File(SAMPLES_CUBES_DIR), cubeId);
+		if (cube == null) {
+			fail("Sample cube not found: " + cubeId);
+		}
+		File f = cube.getDslFile();
 		if (!f.exists()) {
 			fail("Sample cube DSL file not found: " + f.getAbsolutePath());
 		}

@@ -1,0 +1,53 @@
+[
+  {
+    "id": "student-progress",
+    "fromStory": 18,
+    "question": "For this year's intake, how far has each student got?",
+    "text": "Tick **First Name**, **Last Name** and **Courses Taken**, the measure **Average Score**, and the **Intake 2026** segment.",
+    "query": {
+      "dimensions": [
+        "FirstName",
+        "LastName",
+        "CoursesTaken"
+      ],
+      "measures": [
+        "AverageScore"
+      ],
+      "segments": [
+        "intake_2026"
+      ]
+    }
+  },
+  {
+    "id": "course-load",
+    "fromStory": null,
+    "question": "How many courses do our students take? (new)",
+    "text": "Tick **Courses Taken** and **Students**. Courses Taken is a value of each student, so it can be grouped by.",
+    "query": {
+      "dimensions": [
+        "CoursesTaken"
+      ],
+      "measures": [
+        "Students"
+      ]
+    }
+  },
+  {
+    "id": "not-started",
+    "fromStory": null,
+    "question": "Who has not started a single course? (new)",
+    "text": "Tick **First Name**, **Last Name**, **Program** and **Start Year**, with the **Not started** segment.",
+    "query": {
+      "dimensions": [
+        "FirstName",
+        "LastName",
+        "Program",
+        "StartYear"
+      ],
+      "measures": [],
+      "segments": [
+        "not_started"
+      ]
+    }
+  }
+]

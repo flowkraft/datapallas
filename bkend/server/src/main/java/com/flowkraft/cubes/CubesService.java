@@ -3,7 +3,6 @@ package com.flowkraft.cubes;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,6 +31,10 @@ import com.sourcekraft.documentburster.common.settings.Settings;
  *     {cubeId}-cube-config.groovy   (DSL code)
  *     cube.xml                       (metadata: name, description, connectionId)
  *
+ * The read-only samples under config/samples-cubes are grouped one folder per domain (northwind,
+ * crm-sales, erp-finance, ...), several cubes to a folder and, when a DSL file holds more than one
+ * cube, several cubes to a file. {@link CubeFiles} says where each cube's files are; a cube's id is the same either way.
+ *
  * Naming convention follows existing DSL pattern:
  *   g-dashboard-tabulator-config.groovy → {cubeId}-cube-config.groovy
  */
@@ -55,34 +58,28 @@ public class CubesService {
 		return getCubesDir() + "/" + cubeId;
 	}
 
-	private String getSampleCubeDir(String cubeId) {
-		return getSamplesCubesDir() + "/" + cubeId;
+	private CubeFiles userCubeFiles(String cubeId) throws IOException {
+		return CubeFiles.inCubeFolder(new File(getCubesDir()), cubeId);
 	}
 
-	private String getDslPath(String cubeId) {
-		return getCubeDir(cubeId) + "/" + cubeId + "-cube-config.groovy";
-	}
-
-	private String getMetadataPath(String cubeId) {
-		return getCubeDir(cubeId) + "/cube.xml";
+	private CubeFiles sampleCubeFiles(String cubeId) throws IOException {
+		return CubeFiles.find(new File(getSamplesCubesDir()), cubeId);
 	}
 
 	/** Returns true if the given cube ID is a bundled sample (read-only). */
-	public boolean isSampleCube(String cubeId) {
-		File f = new File(getSampleCubeDir(cubeId));
-		return f.exists() && f.isDirectory();
+	public boolean isSampleCube(String cubeId) throws IOException {
+		return sampleCubeFiles(cubeId) != null;
 	}
 
 	/**
-	 * Resolve the on-disk directory for a cube ID.
+	 * Resolve the files of a cube ID.
 	 * Looks first in config/cubes (user-owned), then in config/samples-cubes (read-only samples).
 	 */
-	private File resolveCubeDir(String cubeId) {
-		File userDir = new File(getCubeDir(cubeId));
-		if (userDir.exists()) return userDir;
-		File sampleDir = new File(getSampleCubeDir(cubeId));
-		if (sampleDir.exists()) return sampleDir;
-		return userDir; // default to user dir for not-yet-existing cubes (used by save())
+	private CubeFiles resolveCubeFiles(String cubeId) throws IOException {
+		if (new File(getCubeDir(cubeId)).exists()) return userCubeFiles(cubeId);
+		CubeFiles sample = sampleCubeFiles(cubeId);
+		if (sample != null) return sample;
+		return userCubeFiles(cubeId); // default to user dir for not-yet-existing cubes (used by save())
 	}
 
 	/**
@@ -110,17 +107,14 @@ public class CubesService {
 			return;
 		}
 
-		File[] dirs = cubesDir.listFiles(File::isDirectory);
-		if (dirs == null) return;
-
-		for (File dir : dirs) {
-			String cubeId = dir.getName();
-			File metaFile = new File(dir, "cube.xml");
+		for (CubeFiles files : CubeFiles.scan(cubesDir)) {
+			String cubeId = files.getId();
+			File metaFile = files.getMetadataFile();
 			Map<String, String> info = new LinkedHashMap<>();
 			info.put("id", cubeId);
 
 			if (metaFile.exists()) {
-				String xml = Files.readString(metaFile.toPath());
+				String xml = files.getMetadataXml();
 				info.put("name", extractXmlValue(xml, "name", cubeId));
 				info.put("description", extractXmlValue(xml, "description", ""));
 				info.put("connectionId", extractXmlValue(xml, "connectionId", ""));
@@ -144,12 +138,12 @@ public class CubesService {
 		Map<String, Object> result = new LinkedHashMap<>();
 		result.put("id", cubeId);
 
-		File cubeDir = resolveCubeDir(cubeId);
+		CubeFiles files = resolveCubeFiles(cubeId);
 		boolean isSample = isSampleCube(cubeId) && !new File(getCubeDir(cubeId)).exists();
 
-		File metaFile = new File(cubeDir, "cube.xml");
+		File metaFile = files.getMetadataFile();
 		if (metaFile.exists()) {
-			String xml = Files.readString(metaFile.toPath());
+			String xml = files.getMetadataXml();
 			result.put("name", extractXmlValue(xml, "name", cubeId));
 			result.put("description", extractXmlValue(xml, "description", ""));
 			result.put("connectionId", extractXmlValue(xml, "connectionId", ""));
@@ -159,12 +153,16 @@ public class CubesService {
 			result.put("connectionId", "");
 		}
 
-		File dslFile = new File(cubeDir, cubeId + "-cube-config.groovy");
+		File dslFile = files.getDslFile();
 		if (dslFile.exists()) {
 			result.put("dslCode", Files.readString(dslFile.toPath()));
 		} else {
 			result.put("dslCode", "");
 		}
+
+		// Set when the DSL file holds this cube under a name: the file is shown whole, and whoever
+		// parses it or generates SQL from it picks the cube by this name.
+		result.put("cubeName", files.getCubeName());
 
 		result.put("isSample", isSample);
 
@@ -177,6 +175,12 @@ public class CubesService {
 	 */
 	public void save(String cubeId, String name, String description, String connectionId, String dslCode)
 			throws IOException {
+		// A saved cube keeps the name it has in its file (a copy of a named sample cube has one).
+		save(cubeId, name, description, connectionId, dslCode, userCubeFiles(cubeId).getCubeName());
+	}
+
+	private void save(String cubeId, String name, String description, String connectionId, String dslCode,
+			String cubeName) throws IOException {
 		limitsSandbox.check(dslCode);
 		if (isSampleCube(cubeId) && !new File(getCubeDir(cubeId)).exists()) {
 			throw new IllegalArgumentException("Sample cube '" + cubeId + "' is read-only");
@@ -192,11 +196,13 @@ public class CubesService {
 				+ "    <name>" + escapeXml(name) + "</name>\n"
 				+ "    <description>" + escapeXml(description) + "</description>\n"
 				+ "    <connectionId>" + escapeXml(connectionId) + "</connectionId>\n"
+				+ (StringUtils.isBlank(cubeName) ? "" : "    <cubeName>" + escapeXml(cubeName) + "</cubeName>\n")
 				+ "</cube>\n";
-		Files.writeString(Path.of(getMetadataPath(cubeId)), xml);
+		CubeFiles files = userCubeFiles(cubeId);
+		Files.writeString(files.getMetadataFile().toPath(), xml);
 
 		// Save DSL code as plain groovy file
-		Files.writeString(Path.of(getDslPath(cubeId)), dslCode != null ? dslCode : "");
+		Files.writeString(files.getDslFile().toPath(), dslCode != null ? dslCode : "");
 
 		log.info("Saved cube definition: {}", cubeId);
 	}
@@ -251,7 +257,8 @@ public class CubesService {
 		save(targetId, targetName,
 				(String) source.get("description"),
 				(String) source.get("connectionId"),
-				(String) source.get("dslCode"));
+				(String) source.get("dslCode"),
+				(String) source.get("cubeName"));
 		return load(targetId);
 	}
 
@@ -265,12 +272,7 @@ public class CubesService {
 	// ── Helpers ──
 
 	private static String extractXmlValue(String xml, String tag, String defaultValue) {
-		int start = xml.indexOf("<" + tag + ">");
-		int end = xml.indexOf("</" + tag + ">");
-		if (start >= 0 && end > start) {
-			return xml.substring(start + tag.length() + 2, end);
-		}
-		return defaultValue;
+		return CubeFiles.xmlValue(xml, tag, defaultValue);
 	}
 
 	private static String escapeXml(String s) {

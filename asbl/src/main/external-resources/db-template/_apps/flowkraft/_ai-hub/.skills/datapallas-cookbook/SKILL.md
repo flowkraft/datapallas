@@ -45,18 +45,21 @@ Docs: [JasperReports](https://datapallas.com/docs/report-generation/jasperreport
 
 Five reusable Cube definitions that ship bundled — all built on top of the **Northwind SQLite sample database** that ships with DataPallas (no Docker, no external setup). Open any cube in the UI (top menu → Configuration → Reports, Connections & Cubes → Cubes / Semantic Layer) OR read the files directly on disk to study the DSL pattern.
 
-| Sample cube                   | On-disk folder                                |
-| ----------------------------- | --------------------------------------------- |
-| Northwind Customer Management | `/datapallas/config/samples-cubes/northwind-customers/` |
-| Northwind Human Resources     | `/datapallas/config/samples-cubes/northwind-hr/`        |
-| Northwind Product Inventory   | `/datapallas/config/samples-cubes/northwind-inventory/` |
-| Northwind Sales Analysis      | `/datapallas/config/samples-cubes/northwind-sales/`     |
-| Northwind Sales Warehouse     | `/datapallas/config/samples-cubes/northwind-warehouse/` |
+All five live in one folder, `/datapallas/config/samples-cubes/northwind/`:
 
-Each folder contains two files:
+| Sample cube                   | Cube id               |
+| ----------------------------- | --------------------- |
+| Northwind Customer Management | `northwind-customers` |
+| Northwind Human Resources     | `northwind-hr`        |
+| Northwind Product Inventory   | `northwind-inventory` |
+| Northwind Sales Analysis      | `northwind-sales`     |
+| Northwind Sales Warehouse     | `northwind-warehouse` |
 
-- `cube.xml` — cube metadata (name, title, description, database connection reference, capabilities)
-- `<cube-name>-cube-config.groovy` — the actual Cube DSL (dimensions, measures, joins, segments, hierarchies)
+Each cube is one set of three files named after its id:
+
+- `<cube-id>-cube.xml` — cube metadata (name, description, database connection reference)
+- `<cube-id>-cube-config.groovy` — the actual Cube DSL (dimensions, measures, joins, segments, hierarchies)
+- `<cube-id>-hints.json` — ready-made questions the cube answers
 
 For deeper guidance on what a cube is, when to reach for one, the DSL keywords, and how cubes feed Canvas widgets, dashboards, and reports — read the **datapallas-semantic-layer-cubes** skill.
 

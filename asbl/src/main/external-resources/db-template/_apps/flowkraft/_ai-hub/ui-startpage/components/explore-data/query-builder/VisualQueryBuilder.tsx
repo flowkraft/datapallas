@@ -73,7 +73,7 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
     (async () => {
       try {
         const cube = await fetchCube(query.cubeId!);
-        const parsed = await parseCubeDsl(cube.dslCode);
+        const parsed = await parseCubeDsl(cube.dslCode, cube.cubeName);
         if (!cancelled) setCubeConfig(parsed);
       } catch (e) {
         if (!cancelled) setCubeError(e instanceof Error ? e.message : "Failed to load cube");

@@ -634,7 +634,7 @@ public class CubeOptionsParserTest {
 	@Test
 	public void testDimensionTablesSayWhereEachFieldLives() throws Exception {
 		String sales = Files.readString(Paths.get(
-				"../../asbl/src/main/external-resources/db-template/config/samples-cubes/northwind-sales",
+				"../../asbl/src/main/external-resources/db-template/config/samples-cubes/northwind",
 				"northwind-sales-cube-config.groovy"));
 		Map<String, String> where = CubeOptionsParser.parseGroovyCubeDslCode(sales).getDimensionTables();
 		// The Northwind cubes name every table the ANSI way, because that is how their bundled

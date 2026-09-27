@@ -47,7 +47,7 @@ export function CubeRendererWidget({ widgetId }: CubeRendererWidgetProps) {
     (async () => {
       try {
         const cube = await fetchCube(cubeId);
-        const parsed = await parseCubeDsl(cube.dslCode);
+        const parsed = await parseCubeDsl(cube.dslCode, cube.cubeName);
         if (cancelled) return;
         setCubeConfig(parsed);
       } catch (e) {

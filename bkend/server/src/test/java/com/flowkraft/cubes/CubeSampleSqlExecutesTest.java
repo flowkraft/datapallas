@@ -31,9 +31,8 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
 
 /**
  * Runs the SQL that CubeSqlGenerator produces for every SHIPPED sample cube
- * against a real Northwind database: the five Northwind samples, and the eight
- * domain cubes that read the cube_demo schema of the DuckDB sample - one cube
- * per business process, one cube per file.
+ * against a real Northwind database: the five Northwind samples, and the ten
+ * domain cubes that read the cube_demo schema of the DuckDB sample.
  *
  * <p>The DSL still lets an author put named cubes in one file, and each of them
  * is swept too: the sweeps below run over every cube in every file, named ones
@@ -77,16 +76,17 @@ class CubeSampleSqlExecutesTest {
 	private static final String CUBE_EXAMPLES_DIR = "src/test/resources/cube-examples";
 
 	/**
-	 * Every cube FILE that ships under config/samples-cubes: the five Northwind samples and the
-	 * eight domain cubes the Cube Stories page is written against - one cube per business process,
-	 * one cube per file. The cube_demo eight run on the DuckDB sample, whose cube_demo schema holds
-	 * their demo data; the Northwind five say in their own cube.xml which engine they ship on, and
+	 * Every cube that ships under config/samples-cubes, by id: the five Northwind samples and the
+	 * ten domain cubes the Cube Stories page is written against. CubeFiles says where each one's
+	 * files are - the domain folder it shares (northwind, crm-sales, ...), and for customer-invoices and
+	 * customer-payments one set of customer-billing files that holds both, each under its name. The cube_demo ten run on the DuckDB
+	 * sample, whose cube_demo schema holds their demo data; the Northwind five say in their own cube.xml which engine they ship on, and
 	 * shippedVendorOf reads it.
 	 */
 	private static final List<String> SAMPLE_CUBES = List.of("northwind-sales", "northwind-customers", "northwind-hr",
 			"northwind-inventory", "northwind-warehouse", "online-sales", "sales-pipeline", "support-desk",
 			"freight-shipments", "student-enrollments", "customer-invoices", "customer-payments",
-			"invoice-balances");
+			"invoice-balances", "depot-network", "student-progress");
 
 	/**
 	 * Students per Program is a first draft with mistakes in it, on purpose: a measure type that does not exist
@@ -100,23 +100,26 @@ class CubeSampleSqlExecutesTest {
 	private static final String BROKEN_ON_PURPOSE = "students-per-program";
 
 	/**
-	 * The cubes the SQL sweeps run: every cube of every shipped file. A cube is named by its file,
-	 * and a cube that lives under a name inside that file by {@code file#key}. No shipped sample has
-	 * a named cube any more - one cube per file - so today this returns one name per file and the
-	 * {@code #key} form never fires for a sample. It stays because the DSL still allows named cubes
-	 * in an author's own file: listing them from the files themselves rather than by hand is what
-	 * keeps a cube added to a file from going unswept.
+	 * The cubes the SQL sweeps run: every shipped cube. A cube is named by its id. A cube whose id
+	 * names it inside its file (customer-invoices, customer-payments) is that named cube, and its
+	 * neighbours in the file have ids of their own. Any other file is swept whole: its unnamed cube
+	 * by the id, and each cube it holds under a name by {@code id#key} - listing those from the file
+	 * itself rather than by hand is what keeps a cube added to a file from going unswept.
 	 */
 	private List<String> sweptCubes() throws Exception {
 		List<String> swept = new ArrayList<>();
-		for (String fileName : SAMPLE_CUBES) {
-			CubeOptions file = parseSampleFile(fileName);
+		for (String cubeId : SAMPLE_CUBES) {
+			if (filesOf(cubeId).getCubeName() != null) {
+				swept.add(cubeId);
+				continue;
+			}
+			CubeOptions file = parseSampleFile(cubeId);
 			if (file.getSqlTable() != null || file.getSql() != null) {
-				swept.add(fileName);
+				swept.add(cubeId);
 			}
 			if (file.getNamedOptions() != null) {
 				for (String key : file.getNamedOptions().keySet()) {
-					swept.add(fileName + "#" + key);
+					swept.add(cubeId + "#" + key);
 				}
 			}
 		}
@@ -425,13 +428,13 @@ class CubeSampleSqlExecutesTest {
 	 */
 	private String shippedVendorOf(String cubeName) throws Exception {
 		int hash = cubeName.indexOf('#');
-		String fileName = hash < 0 ? cubeName : cubeName.substring(0, hash);
-		File cubeXml = new File(dirOf(fileName), fileName + "/cube.xml");
+		String cubeId = hash < 0 ? cubeName : cubeName.substring(0, hash);
+		File cubeXml = filesOf(cubeId).getMetadataFile();
 		if (!cubeXml.exists()) {
 			throw new IllegalStateException("Sample cube descriptor not found: " + cubeXml.getAbsolutePath());
 		}
 
-		Matcher matcher = CONNECTION_ID.matcher(Files.readString(cubeXml.toPath()));
+		Matcher matcher = CONNECTION_ID.matcher(filesOf(cubeId).getMetadataXml());
 		if (!matcher.find()) {
 			throw new IllegalStateException("No <connectionId> in " + cubeXml.getAbsolutePath()
 					+ ", so there is no way to know which engine this cube must be proven on.");
@@ -511,11 +514,11 @@ class CubeSampleSqlExecutesTest {
 		}
 	}
 
-	/** One cube: the whole file when the name is a file, the named cube when it is {@code file#key}. */
+	/** One cube: the cube an id names, or the named cube {@code id#key} of that id's file. */
 	private CubeOptions parseSampleCube(String cubeName) throws Exception {
 		int hash = cubeName.indexOf('#');
 		if (hash < 0) {
-			return CubeSqlGenerator.pickCube(parseSampleFile(cubeName), "");
+			return CubeSqlGenerator.pickCube(parseSampleFile(cubeName), filesOf(cubeName).getCubeName());
 		}
 		return CubeSqlGenerator.pickCube(parseSampleFile(cubeName.substring(0, hash)), cubeName.substring(hash + 1));
 	}
@@ -529,12 +532,21 @@ class CubeSampleSqlExecutesTest {
 		return BROKEN_ON_PURPOSE.equals(fileName) ? CUBE_EXAMPLES_DIR : SAMPLES_CUBES_DIR;
 	}
 
-	private CubeOptions parseSampleFile(String fileName) throws Exception {
-		File configFile = new File(dirOf(fileName), fileName + "/" + fileName + "-cube-config.groovy");
+	private CubeOptions parseSampleFile(String cubeId) throws Exception {
+		File configFile = filesOf(cubeId).getDslFile();
 		if (!configFile.exists()) {
 			throw new IllegalStateException("Sample cube config not found: " + configFile.getAbsolutePath());
 		}
 		return CubeOptionsParser.parseGroovyCubeDslCode(Files.readString(configFile.toPath()));
+	}
+
+	/** Where a cube's files are, wherever its folder puts them. */
+	private static CubeFiles filesOf(String cubeId) throws Exception {
+		CubeFiles files = CubeFiles.find(new File(dirOf(cubeId)), cubeId);
+		if (files == null) {
+			throw new IllegalStateException("No sample cube '" + cubeId + "' under " + new File(dirOf(cubeId)).getAbsolutePath());
+		}
+		return files;
 	}
 
 	private List<String> namesOf(List<Map<String, Object>> fields) {

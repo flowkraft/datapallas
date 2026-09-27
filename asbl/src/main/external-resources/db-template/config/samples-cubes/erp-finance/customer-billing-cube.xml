@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cubes>
+    <cube>
+        <cubeName>customer-invoices</cubeName>
+        <name>Customer Invoices</name>
+        <description>What was invoiced and to whom, where each invoice stands, and what is on its lines. Runs on the cube_demo demo data.</description>
+        <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+    </cube>
+    <cube>
+        <cubeName>customer-payments</cubeName>
+        <name>Customer Payments</name>
+        <description>What came in: every payment with the way it was paid, the invoice it settles and the customer it came from. Runs on the cube_demo demo data.</description>
+        <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+    </cube>
+</cubes>

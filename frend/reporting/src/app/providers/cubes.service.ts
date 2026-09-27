@@ -10,6 +10,9 @@ export interface CubeDefinition {
   activeClicked?: boolean;
   // True for bundled sample cubes (under config/samples-cubes/) — read-only
   isSample?: boolean;
+  // Set when the DSL file holds this cube under a name (a file may hold several):
+  // the cube to pick when the DSL is parsed or turned into SQL
+  cubeName?: string | null;
 }
 
 @Injectable({
@@ -63,8 +66,8 @@ export class CubesService {
     );
   }
 
-  async parseDsl(dslCode: string): Promise<any> {
-    return this.apiService.post('/cubes/parse-dsl', { dslCode });
+  async parseDsl(dslCode: string, cubeName?: string | null): Promise<any> {
+    return this.apiService.post('/cubes/parse-dsl', { dslCode, cubeName });
   }
 
   async generateSqlFromDsl(
@@ -73,6 +76,7 @@ export class CubesService {
     selectedDimensions: string[],
     selectedMeasures: string[],
     selectedSegments: string[] = [],
+    cubeName?: string | null,
   ): Promise<{ sql: string; dialect: string }> {
     return this.apiService.post('/cubes/generate-sql', {
       dslCode,
@@ -80,6 +84,7 @@ export class CubesService {
       selectedDimensions,
       selectedMeasures,
       selectedSegments,
+      cubeName,
     });
   }
 
