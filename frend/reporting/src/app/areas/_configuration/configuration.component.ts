@@ -3347,7 +3347,7 @@ pivotTable {
   <!-- Dashboard -->
   <rb-dashboard
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-dashboard>
 
 </body>
@@ -3372,7 +3372,7 @@ pivotTable {
   <!-- Full Report -->
   <rb-report
     report-id="${reportId}"${entityCodeAttr}
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-report>`;
 
     // Data Table(s)
@@ -3384,7 +3384,7 @@ pivotTable {
   <rb-tabulator
     report-id="${reportId}"
     component-id="${cid}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-tabulator>`;
       }
     } else {
@@ -3393,7 +3393,7 @@ pivotTable {
   <!-- Data Table -->
   <rb-tabulator
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-tabulator>`;
     }
 
@@ -3403,7 +3403,7 @@ pivotTable {
   <!-- Report Parameters -->
   <rb-parameters
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-parameters>`;
     }
 
@@ -3416,7 +3416,7 @@ pivotTable {
   <rb-chart
     report-id="${reportId}"
     component-id="${cid}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-chart>`;
       }
     } else if (this.activeChartConfigScriptGroovy?.trim()) {
@@ -3425,7 +3425,7 @@ pivotTable {
   <!-- Chart -->
   <rb-chart
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-chart>`;
     }
 
@@ -3438,7 +3438,7 @@ pivotTable {
   <rb-pivottable
     report-id="${reportId}"
     component-id="${cid}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-pivottable>`;
       }
     } else if (this.activePivotTableConfigScriptGroovy?.trim()) {
@@ -3447,7 +3447,7 @@ pivotTable {
   <!-- Pivot Table -->
   <rb-pivottable
     report-id="${reportId}"
-    api-base-url="${apiBaseUrl}">
+    api-base-url="${apiBaseUrl}">
   </rb-pivottable>`;
     }
 
