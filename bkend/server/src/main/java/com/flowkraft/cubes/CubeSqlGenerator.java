@@ -356,6 +356,21 @@ public class CubeSqlGenerator {
 		// containing OR cannot swallow the segment next to it, and a segment on a joined table
 		// brings that join in exactly as a dimension would.
 		List<String> whereClauses = new ArrayList<>();
+
+		// The cube's access filter comes first, and is the one condition no request can leave out:
+		// it is written by the author of the cube, not asked for by the caller, and it is here on
+		// every SELECT this builder writes - the query, its totals, its drill, and the filter
+		// options list the generator writes when the author wrote none. Its own brackets keep an
+		// OR inside it from swallowing the conditions next to it, exactly as a segment's do. The
+		// ${dp_…} variables it names are left standing: whoever runs the SQL binds their own
+		// values, and the text itself says nothing about any one person.
+		String accessFilter = Objects.toString(cube.getAccessFilter(), "").trim();
+		if (!accessFilter.isEmpty()) {
+			String condition = accessFilter.replace("${CUBE}", cubeRef);
+			detectReferencedTables(condition, cube, referencedTables);
+			whereClauses.add("(" + condition + ")");
+		}
+
 		if (selectedSegments != null && !selectedSegments.isEmpty() && cube.getSegments() != null) {
 			for (String segName : selectedSegments) {
 				Map<String, Object> seg = findMember(cube.getSegments(), segName);

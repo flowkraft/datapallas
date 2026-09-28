@@ -221,7 +221,7 @@ public class IamService {
 				.map(user -> new TenantUserDto(user.id(), user.username(), user.email(), user.status(),
 						user.platformAdmin(),
 						repository.findRole(user.id(), tenant.id()).map(Role::name).orElse(null),
-						user.createdAt()))
+						user.createdAt(), user.timezone(), user.locale()))
 				.toList()).orElseGet(List::of);
 	}
 
@@ -268,6 +268,28 @@ public class IamService {
 		Tenant tenant = repository.findTenantByCode(tenantCode)
 				.orElseThrow(() -> new IllegalArgumentException("No such tenant: " + tenantCode));
 		repository.upsertMembership(user.id(), tenant.id(), role);
+	}
+
+	/**
+	 * Where a person is and what they read in — what {@code ${dp_user_timezone}},
+	 * {@code ${dp_user_locale}} and, through them, {@code ${dp_today}} and {@code ${dp_now}} answer.
+	 *
+	 * <p>Both are checked before they are stored, because a dashboard reads them on every request and
+	 * a zone that is not a zone would silently become the server's.
+	 */
+	public void setUserPreferences(String username, String timezone, String locale) {
+		Preferences.assertValid(timezone, locale);
+		AppUser user = repository.findUserByUsername(username)
+				.orElseThrow(() -> new IllegalArgumentException("No such user: " + username));
+		repository.updateUserPreferences(user.id(), timezone, locale);
+	}
+
+	/** The same, for everybody in a tenant who has not said otherwise. */
+	public void setTenantPreferences(String tenantCode, String timezone, String locale) {
+		Preferences.assertValid(timezone, locale);
+		Tenant tenant = repository.findTenantByCode(tenantCode)
+				.orElseThrow(() -> new IllegalArgumentException("No such tenant: " + tenantCode));
+		repository.updateTenantPreferences(tenant.id(), timezone, locale);
 	}
 
 	public void changePassword(String username, String newPassword) {

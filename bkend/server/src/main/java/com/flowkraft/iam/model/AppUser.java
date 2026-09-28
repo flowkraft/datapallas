@@ -11,6 +11,11 @@ package com.flowkraft.iam.model;
  *                     have to be read back, which a password never does.
  * @param platformAdmin manages tenants and users across the whole installation. In SaaS this is ours,
  *                      never the customer's.
+ * @param timezone      an IANA zone ({@code Europe/Lisbon}), or {@code null} when this person never
+ *                      said and the tenant, then the server, answers for them. It is what
+ *                      {@code ${dp_today}} and {@code ${dp_now}} are computed in: a dashboard
+ *                      filtered on "today" means the reader's today, not the server's.
+ * @param locale        a BCP 47 tag ({@code pt-BR}), or {@code null} for the same reason.
  */
 public record AppUser(
 		long id,
@@ -19,7 +24,9 @@ public record AppUser(
 		String passwordHash,
 		String status,
 		boolean platformAdmin,
-		String createdAt) {
+		String createdAt,
+		String timezone,
+		String locale) {
 
 	public static final String DEFAULT_USERNAME = "admin";
 
@@ -32,6 +39,6 @@ public record AppUser(
 
 	/** Same user without the hash, for anything that leaves the server. */
 	public AppUser withoutSecret() {
-		return new AppUser(id, username, email, null, status, platformAdmin, createdAt);
+		return new AppUser(id, username, email, null, status, platformAdmin, createdAt, timezone, locale);
 	}
 }

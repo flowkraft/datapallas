@@ -9,13 +9,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.sourcekraft.documentburster.common.reportparameters.BuiltinVariables;
+
 /**
  * What a line of dashboard SQL uses, and whether that line applies.
  *
  * <p>A dashboard filter is written one condition per line, and a filter with no value is not a
  * filter: the line that uses it is left out and the query answers as if the filter were not there.
  * The published script has always done exactly that - {@code if (hasTo) { … }} around each line,
- * and {@code __bindInList} returning false for an empty list - and the canvas now asks the
+ * and {@code listHasValues} answering false for an empty list - and the canvas now asks the
  * database the same question through {@link #linesThatApply}. Both read the SQL with the parser
  * below, so there is one rule, in one place: change it here and the canvas and the dashboard it
  * was published as change together.
@@ -118,6 +120,15 @@ public final class SqlParameterLines {
         boolean anyDropped = false;
         List<String> kept = new ArrayList<>();
         for (Line line : lines) {
+            // A line that uses a built-in is never left out, whatever its value is. An empty
+            // ${dp_user_email} has to match no row; turning its line into `WHERE 1=1` would show
+            // the viewer every row instead - the same leak the script's has<P> guard would be.
+            // A dashboard parameter sharing the line loses the courtesy with it: the line is one
+            // condition, and half a condition is not a safe thing to write.
+            if (usesBuiltin(line.used())) {
+                kept.add(line.text());
+                continue;
+            }
             boolean applies = true;
             for (String p : line.params()) {
                 if (notApplied(values == null ? null : values.get(p))) applies = false;
@@ -135,6 +146,11 @@ public final class SqlParameterLines {
         return anyDropped ? String.join("\n", kept) : sql;
     }
 
+    /** True when any of these names is the server's to fill - see {@link BuiltinVariables}. */
+    public static boolean usesBuiltin(Collection<String> names) {
+        return names != null && names.stream().anyMatch(BuiltinVariables::isBuiltinName);
+    }
+
     /**
      * No value, so the filter is not applied. The script's {@code hasX} guard, in Java:
      * a parameter is either something or nothing, and whitespace is something (a filter on a
@@ -145,7 +161,7 @@ public final class SqlParameterLines {
     }
 
     /**
-     * The same for a parameter spread into an {@code IN (…)} list, as {@code __bindInList} sees it:
+     * The same for a parameter spread into an {@code IN (…)} list, as {@code listHasValues} sees it:
      * nothing, or nothing but separators. The "all" wildcard {@code *} is not handled here - it is
      * a value that means every row, and {@code DatabaseHelper.convertToJdbiParameters} already
      * turns its clause into {@code 1=1}.

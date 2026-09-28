@@ -37,6 +37,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.embed.UserVariables;
 import com.flowkraft.iam.IamDatabase;
 import com.flowkraft.iam.IamRepository;
 import com.flowkraft.iam.Role;
@@ -510,6 +511,10 @@ class OwnerScenarioFullChainTest {
 		ReflectionTestUtils.setField(controller, "limitsService", limitsService);
 		ReflectionTestUtils.setField(controller, "dashboardAccess", new DashboardAccess(repository,
 				new DashboardGrants(repository, List::of)));
+		// The data door asks who is calling before it runs anything: the same IAM database this
+		// test signs people into answers it, so a report whose SQL names ${dp_user_email} binds
+		// this signed-in person and nobody else.
+		ReflectionTestUtils.setField(controller, "userVariables", new UserVariables(repository));
 		ReflectionTestUtils.setField(controller, "objectMapper", new ObjectMapper());
 		return controller;
 	}

@@ -143,6 +143,8 @@ class GeneratedSqlAllVendorsTest {
 			int failed = 0;
 			int casesChecked = 0;
 			int casesFailed = 0;
+			int viewersChecked = 0;
+			int viewersFailed = 0;
 
 			try {
 				if (!IN_PROCESS.contains(vendor)) {
@@ -181,6 +183,15 @@ class GeneratedSqlAllVendorsTest {
 							failures.add(problem);
 						}
 					}
+
+					// And the one condition a request cannot leave out, bound for each viewer.
+					for (String problem : runAccessFilterViewers(jdbi, vendor)) {
+						viewersChecked++;
+						if (problem != null) {
+							viewersFailed++;
+							failures.add(problem);
+						}
+					}
 				}
 			} catch (Exception unreachable) {
 				// One vendor that never starts must not hide the other eight.
@@ -192,8 +203,9 @@ class GeneratedSqlAllVendorsTest {
 				}
 			}
 
-			perVendor.add(String.format("%-12s %3d hint checks, %d failed | %2d AI Hub cases, %d failed | %d s",
-					vendor, checked, failed, casesChecked, casesFailed,
+			perVendor.add(String.format(
+					"%-12s %3d hint checks, %d failed | %2d AI Hub cases, %d failed | %d access filter viewers, %d failed | %d s",
+					vendor, checked, failed, casesChecked, casesFailed, viewersChecked, viewersFailed,
 					(System.currentTimeMillis() - started) / 1000));
 		}
 
@@ -237,6 +249,200 @@ class GeneratedSqlAllVendorsTest {
 		if (!complaints.isEmpty()) {
 			fail("A hint asks its cube for something it has not got:\n" + String.join("\n", complaints));
 		}
+	}
+
+	// ── the access filter, bound, for a viewer ─────────────────────────
+
+	/**
+	 * A cube's {@code access_filter}, written the way an author writes one, naming every builtin.
+	 *
+	 * <p>Read it as the rule the support desk would actually have: you see the tickets you own, by
+	 * the name you sign in with or by your email, or the tickets of a team you are in; the strategic
+	 * accounts are for report authors; the host portal's viewer is pinned to one account; and nothing
+	 * after today, in this tenant. The demo data has no column holding a sign-in name, so the agent's
+	 * name stands in for one here - Phase 4's story 31 joins on the email, which the data does have.
+	 *
+	 * <p>It is one line on purpose. The condition travels through {@code SqlParameterLines}, which
+	 * reads the SQL a line at a time, and a condition split over several lines would be several
+	 * lines to it.
+	 *
+	 * <p>Two things an author learns from the databases here, and only from them. First: a builtin
+	 * is bound as text (only {@code dp_today} and {@code dp_now} are typed), so it is compared with
+	 * a text column - {@code crm_accounts.name}, not {@code crm_accounts.account_id}. Postgres
+	 * refuses {@code integer = character varying} outright, and no cast helps, because a cast that
+	 * is right on one vendor is wrong on the next and a cube may not name a vendor (THE RULE).
+	 * Second: a builtin compared with a literal is typed FROM that literal on DB2, so a value longer
+	 * than the literal overflows it ({@code SQLCODE=-302}); the tenant codes here are therefore no
+	 * longer than {@code 'cube-demo'}, and an installation with longer ones compares the builtin
+	 * with a column instead.
+	 */
+	private static final String ACCESS_FILTER = "(cube_demo.support_agents.email = ${dp_user_email}"
+			+ " OR cube_demo.support_agents.name = ${dp_user_id}"
+			+ " OR cube_demo.support_agents.team IN (${dp_user_groups}))"
+			+ " AND (cube_demo.crm_accounts.account_tier <> 'Strategic' OR ${dp_user_role} = 'report_author')"
+			+ " AND cube_demo.crm_accounts.name = ${dp_attr_customer_id}"
+			+ " AND ${CUBE}.opened_date <= ${dp_today}"
+			+ " AND ${dp_tenant_id} = 'cube-demo'";
+
+	/** {@code dp_today} is a date, and a date bound as text is the wrong rows on SQLite and an error on Postgres. */
+	private static final Map<String, String> ACCESS_FILTER_TYPES = Map.of("dp_today", "Date");
+
+	private static final String SUPPORT_DESK = "customer-support/support-desk-cube-config.groovy";
+
+	/** One person asking, and the rows the filter leaves them. */
+	private static final class Viewer {
+
+		private final String who;
+		private final Map<String, Object> values;
+		private final List<List<Object>> rows;
+
+		private Viewer(String who, Map<String, Object> values, List<List<Object>> rows) {
+			this.who = who;
+			this.values = values;
+			this.rows = rows;
+		}
+	}
+
+	/** The values {@code UserVariables} would hand over for this person, as it hands them over: text. */
+	private static Map<String, Object> asking(String id, String email, String groups, String role, String tenant,
+			String customer, String today) {
+		Map<String, Object> values = new LinkedHashMap<>();
+		values.put("dp_user_id", id);
+		values.put("dp_user_email", email);
+		values.put("dp_user_groups", groups);
+		values.put("dp_user_role", role);
+		values.put("dp_tenant_id", tenant);
+		values.put("dp_attr_customer_id", customer);
+		values.put("dp_today", today);
+		return values;
+	}
+
+	private static final String CHIARA = "chiara.muller@support.cube-demo.example";
+	/** The account the host portal pins its viewer to: a name with an apostrophe in it, bound. */
+	private static final String MUNSONS = "Munson's Pickles Sp. z o.o.";
+	private static final String PARNELL = "Parnell Aerospace SARL";
+	private static final String ORGANICS = "Best For You Organics Ltd";
+	private static final String NOBODY = "nobody@support.cube-demo.example";
+	private static final String TODAY = "2026-09-30";
+
+	/**
+	 * Seven people asking the same cube the same question, and getting seven different answers -
+	 * each one the rows the condition leaves them, on the frozen demo data.
+	 */
+	private static final List<Viewer> VIEWERS = List.of(
+			new Viewer("the agent, found by her email",
+					asking("-", CHIARA, "", "report_viewer", "cube-demo", MUNSONS, TODAY),
+					List.of(List.of("Chiara Muller", "Tier 2", MUNSONS, "Enterprise", 13))),
+			new Viewer("the same agent, asking as if it were June 2025 - the date binds as a date",
+					asking("-", CHIARA, "", "report_viewer", "cube-demo", MUNSONS, "2025-06-30"),
+					List.of(List.of("Chiara Muller", "Tier 2", MUNSONS, "Enterprise", 1))),
+			new Viewer("another agent, found by the name he signs in with, on another account",
+					asking("Milan Muller", NOBODY, "", "report_viewer", "cube-demo", ORGANICS, TODAY),
+					List.of(List.of("Milan Muller", "Tier 2", ORGANICS, "Enterprise", 14))),
+			new Viewer("a viewer on a strategic account: her own tickets, and not one row of them",
+					asking("-", CHIARA, "", "report_viewer", "cube-demo", PARNELL, TODAY),
+					List.of()),
+			new Viewer("the same person as a report author: the same account answers",
+					asking("-", CHIARA, "", "report_author", "cube-demo", PARNELL, TODAY),
+					List.of(List.of("Chiara Muller", "Tier 2", PARNELL, "Strategic", 16))),
+			new Viewer("somebody nobody knows, in two groups: the teams' tickets, apostrophe and all",
+					asking("-", NOBODY, "Billing,Tier 2", "report_viewer", "cube-demo", MUNSONS, TODAY),
+					List.of(List.of("Chiara Muller", "Tier 2", MUNSONS, "Enterprise", 13),
+							List.of("Fatima Vargas", "Tier 2", MUNSONS, "Enterprise", 12),
+							List.of("Felix Silva", "Tier 2", MUNSONS, "Enterprise", 10),
+							List.of("Henrik Silva", "Billing", MUNSONS, "Enterprise", 4),
+							List.of("Jonas Berg", "Billing", MUNSONS, "Enterprise", 9),
+							List.of("Lukas O'Connor", "Billing", MUNSONS, "Enterprise", 9),
+							List.of("Milan Muller", "Tier 2", MUNSONS, "Enterprise", 5))),
+			new Viewer("the same agent in another tenant: nothing",
+					asking("-", CHIARA, "", "report_viewer", "other-co", MUNSONS, TODAY),
+					List.of()));
+
+	/** Agent, team, account and its tier, with the tickets counted: enough to see whose rows came back. */
+	private static Map<String, Object> accessFilterRequest() {
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("Agent", "Team", "Account", "AccountTier"));
+		request.put("measures", List.of("Tickets"));
+		return request;
+	}
+
+	/**
+	 * The shipped Support Desk cube, with an access filter on it, asked by each viewer in turn.
+	 *
+	 * <p>Generated once per vendor and bound seven times, because that is the shape of the promise:
+	 * the SQL a cube generates says nothing about who is asking - it carries {@code ${dp_…}} on to
+	 * whoever runs it - and the rows it comes back with are that person's and nobody else's. Only a
+	 * real database can show that. Bound as text, {@code opened_date <= '2025-06-30'} answers every
+	 * row on some vendors and is an error on others; the apostrophe in an agent's name is a syntax
+	 * error the moment a value is pasted into the text instead of bound; and a condition whose
+	 * brackets the generator forgot hands the strategic account to the viewer who may not see it.
+	 *
+	 * <p>The filter is set on the parsed cube rather than written into the shipped file: Phase 4's
+	 * story 31 puts the real one there, and this case must keep working when it does.
+	 *
+	 * @return one entry per viewer, null where that viewer's rows were right
+	 */
+	private List<String> runAccessFilterViewers(Jdbi jdbi, String vendor) {
+
+		String generated;
+		try {
+			File config = new File(existing(SAMPLES_CUBES_DIR, "the shipped sample cubes"), SUPPORT_DESK);
+			CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(Files.readString(config.toPath()));
+			cube.setAccessFilter(ACCESS_FILTER);
+			generated = CubeSqlGenerator.buildQuery(cube, accessFilterRequest(), vendor).toInlineSql(vendor);
+		} catch (Exception broken) {
+			return List.of("\n=== " + vendor + " | access filter | - ===\n  the SQL was not generated: " + broken);
+		}
+
+		if (!generated.contains("${dp_user_email}")) {
+			return List.of("\n=== " + vendor + " | access filter | - ===\n  the generated SQL does not carry the"
+					+ " builtin variables on to whoever runs it\n  SQL: " + generated);
+		}
+
+		List<String> answers = new ArrayList<>();
+		for (Viewer viewer : VIEWERS) {
+			answers.add(askAsViewer(jdbi, vendor, generated, viewer));
+		}
+		return answers;
+	}
+
+	/** One viewer's values bound the production way - {@code QueriesService.prepare}, then JDBI. */
+	private String askAsViewer(Jdbi jdbi, String vendor, String generated, Viewer viewer) {
+
+		QueriesService.PreparedSql prepared = QueriesService.prepare(generated, viewer.values, ACCESS_FILTER_TYPES);
+		String sql = prepared.sql();
+		Map<String, Object> binds = prepared.params() == null ? Map.of() : prepared.params();
+
+		List<List<Object>> actual;
+		try {
+			actual = jdbi.withHandle(handle -> {
+				org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+				for (Map.Entry<String, Object> bind : binds.entrySet()) {
+					if (bind.getValue() instanceof List<?> list) {
+						query.bindList(bind.getKey(), list);
+					} else {
+						query.bind(bind.getKey(), bind.getValue());
+					}
+				}
+				return query.map((resultSet, context) -> {
+					List<Object> row = new ArrayList<>();
+					for (int column = 1; column <= resultSet.getMetaData().getColumnCount(); column++) {
+						row.add(resultSet.getObject(column));
+					}
+					return row;
+				}).list();
+			});
+		} catch (Exception broken) {
+			return reportViewer(vendor, viewer, sql, "the database refused it: " + broken + " (parameters " + binds + ")");
+		}
+
+		String difference = difference(viewer.rows, actual, false);
+		return difference == null ? null : reportViewer(vendor, viewer, sql, difference);
+	}
+
+	private String reportViewer(String vendor, Viewer viewer, String sql, String problem) {
+		return "\n=== " + vendor + " | access filter | " + viewer.who + " ===\n  " + problem + "\n  asked with "
+				+ viewer.values + "\n  SQL: " + sql;
 	}
 
 	// ── the hints ────────────────────────────────────────────────────────────────

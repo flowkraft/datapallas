@@ -78,6 +78,44 @@ export async function fetchSchema(connectionId: string): Promise<SchemaInfo> {
   return res.json();
 }
 
+/** `${dp_user_id}` / `#{dp_attr_customer_id}` — the built-in variables a piece of SQL names. */
+const DP_VARIABLE = /[$#]\{(dp_[a-z0-9_]*)\}/g;
+
+/** The two that are not text: a widget compares them with a date and a timestamp column. */
+const DP_VARIABLE_TYPES: Record<string, string> = { dp_today: "Date", dp_now: "DateTime" };
+
+// One fetch per app load, shared: the values do not change while the page is open, and every
+// widget on a canvas would otherwise ask for them at once.
+let _userVariablesPromise: Promise<Record<string, string>> | null = null;
+
+/**
+ * This caller's own `dp_` variables, for the SQL the authoring screens run.
+ *
+ * A viewer never comes through here: their values are put into the request by the server, after
+ * it has read what they sent, so they cannot name somebody else. The canvas is the one place that
+ * assembles SQL in the browser and runs it through `run-sql`, which binds what the caller sends
+ * and nothing else — so the author asks the server what it would say about them, and sends that.
+ *
+ * Empty when the answer is anything but 200 (a viewer's session, an older backend). A variable
+ * with no value binds as an empty value and matches no row, which is the safe end of the mistake.
+ */
+export function fetchUserVariables(): Promise<Record<string, string>> {
+  if (!_userVariablesPromise) {
+    _userVariablesPromise = fetch(`${RB_BASE}/user-variables`, { headers: { Accept: "application/json" } })
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((values) => (values && typeof values === "object" ? values as Record<string, string> : {}))
+      .catch(() => ({} as Record<string, string>));
+  }
+  return _userVariablesPromise;
+}
+
+/** The `dp_` names this SQL asks for, each once. */
+function dpVariablesNamedBy(sql: string): string[] {
+  const named = new Set<string>();
+  for (const found of sql.matchAll(DP_VARIABLE)) named.add(found[1]);
+  return [...named];
+}
+
 export async function executeQuery(
   connectionId: string,
   sql: string,
@@ -85,12 +123,30 @@ export async function executeQuery(
   paramTypes?: Record<string, string>,
 ): Promise<QueryResult> {
   console.log('[executeQuery] FETCH-START sql=' + sql.slice(0, 80));
+
+  // A cube's access_filter, and any widget SQL that names ${dp_…}, reaches this one place with
+  // its placeholders still in it - that is what the generated text is meant to carry, so that the
+  // published dashboard binds the person looking at it. Here there is no such person: the author
+  // is running their own SQL, so the author's own values are the ones bound, and the canvas shows
+  // them their own rows. Values the caller already sent win: a dashboard parameter the author is
+  // trying out is theirs to set, and nothing named dp_ can be declared as one anyway.
+  const params: Record<string, string> = { ...(filterValues ?? {}) };
+  const types: Record<string, string> = { ...(paramTypes ?? {}) };
+  const named = dpVariablesNamedBy(sql);
+  if (named.length > 0) {
+    const mine = await fetchUserVariables();
+    for (const name of named) {
+      if (params[name] === undefined && mine[name] !== undefined) params[name] = mine[name];
+      if (types[name] === undefined && DP_VARIABLE_TYPES[name]) types[name] = DP_VARIABLE_TYPES[name];
+    }
+  }
+
   const body: Record<string, unknown> = { connectionId, sql };
-  if (filterValues && Object.keys(filterValues).length > 0) body.params = filterValues;
+  if (Object.keys(params).length > 0) body.params = params;
   // The declared type of each parameter travels with its value: the backend binds a
   // date as a date and a number as a number, which the strict vendors require and the
   // lenient ones answer differently from one another without.
-  if (paramTypes && Object.keys(paramTypes).length > 0) body.paramTypes = paramTypes;
+  if (Object.keys(types).length > 0) body.paramTypes = types;
   const res = await fetch(`${RB_BASE}/queries/run-sql`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

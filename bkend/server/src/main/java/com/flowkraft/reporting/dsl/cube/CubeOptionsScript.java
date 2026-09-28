@@ -83,6 +83,8 @@ public abstract class CubeOptionsScript extends Script {
         private String description;
         private Boolean public_ = null;
         private Map<String, Object> meta = null;
+        private String accessFilter = null;
+        private int accessFilters = 0;
         private final List<Map<String, Object>> dimensions = new ArrayList<>();
         private final List<Map<String, Object>> measures = new ArrayList<>();
         private final List<Map<String, Object>> joins = new ArrayList<>();
@@ -103,6 +105,19 @@ public abstract class CubeOptionsScript extends Script {
         public void description(String d) { this.description = d; }
         public void public_(boolean b) { this.public_ = b; }
         public void meta(Map<String, Object> m) { this.meta = m != null ? new LinkedHashMap<>(m) : null; }
+
+        /**
+         * The cube's row filter: one SQL condition every SELECT over this cube carries.
+         *
+         * <p>Written twice, the second call would replace the first — a row filter that quietly
+         * stops hiding what it was written to hide. So every call is counted, the first condition
+         * is the one kept, and {@code CubeRules} turns the count into an error telling the author
+         * to write one condition with AND or OR.
+         */
+        public void access_filter(String condition) {
+            accessFilters++;
+            if (accessFilter == null) accessFilter = condition;
+        }
 
         // Dimension — closure form
         public void dimension(Closure<?> body) {
@@ -180,6 +195,8 @@ public abstract class CubeOptionsScript extends Script {
             if (description != null) out.put("description", description);
             if (public_ != null) out.put("public", public_);
             if (meta != null) out.put("meta", new LinkedHashMap<>(meta));
+            if (accessFilter != null) out.put("access_filter", accessFilter);
+            if (accessFilters > 1) out.put("access_filter_count", accessFilters);
             if (!dimensions.isEmpty()) out.put("dimensions", new ArrayList<>(dimensions));
             if (!measures.isEmpty()) out.put("measures", new ArrayList<>(measures));
             if (!joins.isEmpty()) out.put("joins", new ArrayList<>(joins));

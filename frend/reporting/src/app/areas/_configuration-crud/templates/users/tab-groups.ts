@@ -27,7 +27,14 @@ export const tabGroupsTemplate = `
     <tbody>
       @for (group of groups; track group.id) {
         <tr [id]="'group-' + group.id">
-          <td class="font-medium">{{ group.name }}</td>
+          <td class="font-medium">
+            {{ group.name }}
+            <!-- What an access filter writes to name this group. Small, under the name, because it
+                 is only interesting to whoever is writing SQL - and then it is the whole answer. -->
+            <div [id]="'groupSlug-' + group.id" class="text-xs opacity-60 font-mono">
+              {{ group.slug }}
+            </div>
+          </td>
           <td class="text-sm">{{ describeLimits(group) }}</td>
           <td class="text-sm">{{ group.members.length }}</td>
           <td class="text-right">
@@ -73,6 +80,16 @@ export const tabGroupsTemplate = `
     <div class="label"><span class="label-text">Name</span></div>
     <input id="groupName" class="input input-bordered w-full" [(ngModel)]="groupForm.name" />
   </label>
+
+  <!-- Read-only on purpose: renaming the group must not change what SQL already written about it
+       means. Absent for a new group, where there is nothing to show until it is saved. -->
+  @if (editingGroupSlug) {
+    <div class="text-xs opacity-70 mb-2">
+      <span class="font-semibold">Name in SQL:</span>
+      <span id="editGroupSlug" class="font-mono">{{ editingGroupSlug }}</span>
+      — what an access filter writes to name this group. It does not change when the group is renamed.
+    </div>
+  }
 
   <label class="label cursor-pointer justify-start gap-2">
     <input id="groupLimitsEnabled" type="checkbox" class="checkbox checkbox-sm"

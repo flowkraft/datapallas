@@ -10,6 +10,9 @@ import com.flowkraft.iam.limits.LimitSettings;
  * <p>The members come along with the group rather than from a second request per row, because the
  * screen shows the count on every line and the names in the dialog.
  *
+ * @param slug             what an access filter calls this group, and what ${dp_user_groups} puts
+ *                         in the list. Read-only on the screen: it is set when the group is created
+ *                         and a rename leaves it alone, so SQL written against it keeps working.
  * @param reports          the report ids this group grants its members, as stored. Empty is not
  *                         "nothing": a member no group of whose names a single report may see every
  *                         report, which is what keeps an upgraded installation working. See
@@ -22,6 +25,7 @@ import com.flowkraft.iam.limits.LimitSettings;
 public record GroupDto(
 		long id,
 		String name,
+		String slug,
 		LimitSettings settings,
 		List<String> members,
 		List<String> reports,

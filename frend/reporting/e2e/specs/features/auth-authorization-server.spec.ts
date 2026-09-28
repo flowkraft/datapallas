@@ -97,6 +97,19 @@ const EXPLORE_CONNECTION_NAME = 'Explore Northwind';
 const EXPLORE_CONNECTION_CODE = 'db-explore-northwind-sqlite';
 const EXPLORE_TABLE = 'Orders';
 
+/**
+ * Who a share link is for — the attribute bag, read from SQL as `${dp_attr_customer_id}`.
+ *
+ * A real Northwind customer rather than the 4711 of the design, because the widget selects from
+ * `Orders`: an attribute that matched no row would prove nothing, since a filter that reaches
+ * nothing and a filter that reaches everything both answer without an error.
+ */
+const ATTRIBUTE = 'customer_id';
+const ATTRIBUTE_PARAM = 'dp_attr_customer_id';
+const ATTRIBUTE_VALUE = 'VINET';
+const OTHER_CUSTOMER = 'TOMSP';
+const ATTRIBUTE_SQL = `SELECT * FROM ${EXPLORE_TABLE} WHERE CustomerID = \${${ATTRIBUTE_PARAM}}`;
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -4332,6 +4345,11 @@ async function exploreAndPublishAs(
   user: { username: string; password: string },
   canvasName: string,
   afterPublish?: (publishedReportId: string) => Promise<void>,
+  /**
+   * Anything the canvas must carry INTO the publish — the export reads the stored canvas, so a
+   * widget that cannot be authored through the preview is written here and the page reloaded.
+   */
+  beforePublish?: (canvasId: string) => Promise<void>,
 ) {
   let canvasId: string | undefined;
   let reportId: string | undefined;
@@ -4346,6 +4364,8 @@ async function exploreAndPublishAs(
     await selectConnection(page, EXPLORE_CONNECTION_NAME, 'sqlite');
     await addTableToCanvas(page, EXPLORE_TABLE);
     await waitForWidgetData(page, await getLastWidgetId(page));
+
+    if (beforePublish) await beforePublish(canvasId!);
 
     const published = await publishDashboard(page);
     reportId = published.reportId;
@@ -5000,6 +5020,148 @@ test.describe('Auth — Server: the AI Hub door', () => {
       const author = await login(AUTHOR.username, AUTHOR.password);
       await revokeAllShareLinks(author, reportId);
     });
+  });
+
+  test('(share-ui) the author says who a link is for, and the recipient sees only their own rows', async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+    // The attribute bag, through the product: an attribute typed into the Share dialog, stored with
+    // the link, and read by the widget's SQL as ${dp_attr_customer_id}. It is a browser test for the
+    // reason a lock is: nothing in the URL the recipient holds says VINET, and nothing they can type
+    // into it does either — the value exists only inside the link.
+    await exploreAndPublishAs(
+      page,
+      AUTHOR,
+      'e2e-shareui-attrs',
+      async (reportId) => {
+        const ft = new FluentTester(page);
+        await ft
+          .waitOnElementToBecomeVisible('#btnShareDashboard')
+          .click('#btnShareDashboard')
+          .waitOnElementToBecomeVisible('#shareDialog')
+          .waitOnElementToBecomeVisible('#shareAttributes')
+          .click('#btnAddShareAttribute');
+
+        // The row ids carry the row's key, not the attribute's name — the editor keeps rows in a
+        // list precisely so a half-typed name stays editable — so the row is found by position.
+        await page.locator('#shareAttributes input[id^="shareAttrName-"]').first().fill(ATTRIBUTE);
+        await page
+          .locator('#shareAttributes input[id^="shareAttrValue-"]')
+          .first()
+          .fill(ATTRIBUTE_VALUE);
+
+        await page.locator('#btnCreateShareLink').click();
+        await expect(page.locator('#shareNewUrl')).toBeVisible({ timeout: 60_000 });
+
+        // The URL is shown once, so the table is the only place an author can later check what a
+        // link they already handed out will show — the locks AND who it is for.
+        await expect(
+          page.locator('#tableShareLinks'),
+          'the links table says who the link is for',
+        ).toContainText(`${ATTRIBUTE} = ${ATTRIBUTE_VALUE}`);
+
+        const shareUrl = await page.locator('#shareNewUrl').inputValue();
+        const token = new URL(shareUrl).searchParams.get('token');
+        expect(token, 'the link carries a share token').toBeTruthy();
+
+        // What the recipient's widget actually fetches, asked directly. Both halves: every row is
+        // theirs, and there ARE rows — an attribute that reached nothing would empty the widget,
+        // and "no other customer's rows" would be satisfied by an empty answer just as well.
+        const config = await fetch(
+          `${BASE_URL}/api/reports/${reportId}/config?token=${encodeURIComponent(token!)}`,
+        ).then((r) => r.json());
+        const componentId = Object.keys(config)
+          .filter((key) => key.startsWith('named') && key.endsWith('Options'))
+          .flatMap((key) => Object.keys(config[key] ?? {}))[0];
+        expect(componentId, 'the published dashboard has a component to read').toBeTruthy();
+
+        const rows = await fetch(
+          `${BASE_URL}/api/reports/${reportId}/data?componentId=${componentId}` +
+            `&token=${encodeURIComponent(token!)}`,
+        ).then((r) => r.json());
+        expect(
+          rows.reportColumnNames,
+          'the widget behind the link did not fail — a failed fetch answers 200 with an error row',
+        ).not.toContain('ERROR_MESSAGE');
+        expect(rows.data.length, 'the attribute narrows the rows, it does not empty them').toBeGreaterThan(0);
+        expect(
+          new Set((rows.data as Array<Record<string, unknown>>).map((row) => String(row.CustomerID))),
+          'and every row belongs to the customer the link was created for',
+        ).toEqual(new Set([ATTRIBUTE_VALUE]));
+
+        // The half that says the value comes from the link and not from the request: naming the
+        // attribute in the query string changes nothing, because the server overwrites it.
+        const asked = await fetch(
+          `${BASE_URL}/api/reports/${reportId}/data?componentId=${componentId}` +
+            `&${ATTRIBUTE_PARAM}=${OTHER_CUSTOMER}&token=${encodeURIComponent(token!)}`,
+        ).then((r) => r.json());
+        expect(
+          new Set((asked.data as Array<Record<string, unknown>>).map((row) => String(row.CustomerID))),
+          'asking for another customer answers with the same rows',
+        ).toEqual(new Set([ATTRIBUTE_VALUE]));
+
+        // A separate context, the only honest way to ask what somebody without an account sees:
+        // this browser profile still holds the author's session cookie.
+        const recipientContext = await browser.newContext();
+        try {
+          const recipient = await recipientContext.newPage();
+          await recipient.goto(shareUrl, { timeout: 60_000, waitUntil: 'networkidle' });
+
+          const table = recipient.locator('.tabulator').first();
+          await expect(table, 'the recipient is shown the widget').toBeVisible({ timeout: 60_000 });
+          await expect(table, 'filled with their own customer').toContainText(ATTRIBUTE_VALUE, {
+            timeout: 60_000,
+          });
+          await expect(
+            table,
+            'and with nobody else — the attribute is not a default the page can be talked out of',
+          ).not.toContainText(OTHER_CUSTOMER);
+
+        } finally {
+          await recipientContext.close();
+        }
+
+        // Deleted where it was created. A link is shown once and revoked from this table, and
+        // revoking is the only protection a link that is already in somebody's inbox has.
+        const listed = page.locator('#tableShareLinks tbody tr[id^="shareLink-"]');
+        await expect(listed).toHaveCount(1);
+        const linkId = (await listed.first().getAttribute('id'))!.replace('shareLink-', '');
+        await page.locator(`#btnRevokeShareLink-${linkId}`).click();
+        await expect(
+          page.locator('#tableShareLinks'),
+          'and the table says so afterwards',
+        ).toContainText('Not shared with anyone yet');
+
+        const afterRevoke = await fetch(
+          `${BASE_URL}/api/reports/${reportId}/data?componentId=${componentId}` +
+            `&token=${encodeURIComponent(token!)}`,
+        );
+        expect(afterRevoke.status, 'the revoked link opens nothing').not.toBe(200);
+      },
+      async (canvasId) => {
+        // The widget is given SQL the canvas cannot preview, which is why it is written into the
+        // stored canvas rather than typed into the SQL editor: ${dp_attr_customer_id} is nobody's
+        // value until a credential supplies one, so an ad-hoc run has nothing to bind it to. The
+        // page is reloaded so the publish that follows exports what was just written.
+        const author = await login(AUTHOR.username, AUTHOR.password);
+        const canvas = await jsonAs(author, `/api/explorations/${canvasId}`);
+        const state =
+          typeof canvas.state === 'string' ? JSON.parse(canvas.state) : (canvas.state ?? {});
+
+        expect(state.widgets?.length, 'the canvas has the widget the dropped table made').toBeGreaterThan(0);
+        state.widgets[0].dataSource = { mode: 'sql', sql: ATTRIBUTE_SQL };
+
+        expect(
+          await statusAs(author, 'PUT', `/api/explorations/${canvasId}`, { ...canvas, state }),
+          'the canvas keeps the SQL that names the attribute',
+        ).toBe(200);
+
+        await page.reload({ timeout: 60_000, waitUntil: 'networkidle' });
+      },
+    );
   });
 });
 

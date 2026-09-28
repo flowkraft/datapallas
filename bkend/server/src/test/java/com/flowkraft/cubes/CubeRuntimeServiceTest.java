@@ -87,6 +87,28 @@ class CubeRuntimeServiceTest {
 				}
 				""");
 
+		cube("orders-of-mine", "My orders", """
+				cube {
+				  sql_table '"Orders"'
+				  title 'My orders'
+				  // What "mine" means here: my own orders, my team's, or - for a viewer the host
+				  // application vouches for and this installation has no account for - my customer's.
+				  access_filter '${CUBE}."SalesRepEmail" = ${dp_user_email} OR ${CUBE}."TeamSlug" IN (${dp_user_groups}) OR ${CUBE}."CustomerID" = ${dp_attr_customer_id}'
+				  dimension {
+				    name 'ShipCountry'
+				    title 'Ship Country'
+				    sql '${CUBE}."ShipCountry"'
+				    type 'string'
+				  }
+				  measure {
+				    name 'OrderCount'
+				    title 'Orders'
+				    sql '${CUBE}."OrderID"'
+				    type 'count'
+				  }
+				}
+				""");
+
 		write("config/reports/sales-board/sales-board-cube-widgets.json", """
 				{
 				  "cube1": {
@@ -100,6 +122,12 @@ class CubeRuntimeServiceTest {
 				    "connectionId": "the-other-connection",
 				    "initial": { "measures": ["PartCount"] },
 				    "display": "value"
+				  },
+				  "cube3": {
+				    "cubeId": "orders-of-mine",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["ShipCountry"], "measures": ["OrderCount"] },
+				    "display": "table"
 				  }
 				}
 				""");
@@ -413,8 +441,137 @@ class CubeRuntimeServiceTest {
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
+	// The access filter: one widget, one statement, each viewer their own rows
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * The same widget, the same question, two people - one answer each. The statement they are
+	 * answered from is the same bytes: the cube's condition is in it with a placeholder where the
+	 * person goes, and who they are arrives as a bound value. That is what makes the answer theirs
+	 * and not the first viewer's, on a database that caches statements as much as on one that does
+	 * not.
+	 */
+	@Test
+	void twoPeopleAskingTheSameQuestionEachGetTheirOwnValuesBound() throws Exception {
+
+		runtime.query("sales-board", "cube3", Map.of("dimensions", List.of("ShipCountry")),
+				asking("anna@example.com", "sales,tier-2", "4711"));
+		String forAnna = database.sql;
+		Map<String, Object> annasValues = database.params;
+
+		runtime.query("sales-board", "cube3", Map.of("dimensions", List.of("ShipCountry")),
+				asking("boris@example.com", "billing", "0815"));
+
+		assertEquals(forAnna, database.sql, "The same question is the same statement");
+		assertTrue(forAnna.contains(":dp_user_email"), forAnna);
+		assertTrue(forAnna.contains("<dp_user_groups>"), "The groups are a bound list: " + forAnna);
+		assertTrue(forAnna.contains(":dp_attr_customer_id"), forAnna);
+		assertFalse(forAnna.contains("anna@example.com"), "Nobody is written into the SQL: " + forAnna);
+		assertFalse(forAnna.contains("boris@example.com"), forAnna);
+
+		assertEquals("anna@example.com", annasValues.get("dp_user_email"));
+		assertEquals(List.of("sales", "tier-2"), annasValues.get("dp_user_groups"));
+		assertEquals("4711", annasValues.get("dp_attr_customer_id"));
+
+		assertEquals("boris@example.com", database.params.get("dp_user_email"));
+		assertEquals(List.of("billing"), database.params.get("dp_user_groups"));
+		assertEquals("0815", database.params.get("dp_attr_customer_id"));
+	}
+
+	/**
+	 * A saved view (W5) is a selection replayed as a request, and a request cannot reach the
+	 * condition: it is not in the question at all, it is in the cube. So a view saved by one person
+	 * and opened by another shows the second person their own rows - the selection travels, the
+	 * rows do not.
+	 */
+	@Test
+	void aSavedViewNeverRemovesTheCondition() throws Exception {
+
+		Map<String, Object> savedView = new LinkedHashMap<>();
+		savedView.put("dimensions", List.of("ShipCountry"));
+		savedView.put("measures", List.of("OrderCount"));
+		savedView.put("filters", List.of(Map.of("member", "ShipCountry", "operator", "in",
+				"values", List.of("Germany"))));
+		savedView.put("order", List.of(Map.of("member", "OrderCount", "dir", "desc")));
+		savedView.put("limit", 50);
+
+		runtime.query("sales-board", "cube3", savedView, asking("anna@example.com", "sales", ""));
+		assertTrue(database.sql.contains(":dp_user_email"), database.sql);
+		assertEquals("anna@example.com", database.params.get("dp_user_email"));
+
+		runtime.query("sales-board", "cube3", savedView, asking("boris@example.com", "billing", ""));
+		assertTrue(database.sql.contains(":dp_user_email"), "The view carried the selection, not the rows");
+		assertEquals("boris@example.com", database.params.get("dp_user_email"));
+		assertTrue(database.params.values().toString().contains("Germany"), "And the view's own filter is still bound");
+	}
+
+	/**
+	 * Row 0 of the precedence table, on this endpoint: a viewer naming themselves somebody else in
+	 * the request body is answered their own rows. The names are not among the keys a question may
+	 * carry, so they never reach the generator, and the values bound are the session's either way.
+	 */
+	@Test
+	void aRequestNamingSomebodyElseChangesNothing() throws Exception {
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("ShipCountry"));
+		request.put("dp_user_id", "boss");
+		request.put("dp_user_email", "boss@example.com");
+		request.put("dp_attr_customer_id", "9999");
+
+		runtime.query("sales-board", "cube3", request, asking("anna@example.com", "sales", "4711"));
+
+		assertEquals("anna@example.com", database.params.get("dp_user_email"), "Their own, not the one asked for");
+		assertEquals("4711", database.params.get("dp_attr_customer_id"));
+		assertFalse(database.sql.contains("boss"), database.sql);
+		assertFalse(database.params.values().toString().contains("boss"), database.params.toString());
+		assertFalse(database.params.values().toString().contains("9999"), database.params.toString());
+	}
+
+	/**
+	 * An embed token's attributes reach the live cube exactly as they reach {@code /data}: the same
+	 * {@code UserVariables} map, bound the same way. A token has no person behind it, so the four
+	 * person variables are empty and match no row - the attribute is the whole of what such a
+	 * viewer is - and an attribute the token does not carry is empty too, which shows them nothing
+	 * rather than everything.
+	 */
+	@Test
+	void anEmbedTokensAttributesReachTheLiveCubeExactlyAsTheyReachData() throws Exception {
+
+		Map<String, String> tokenViewer = new LinkedHashMap<>();
+		tokenViewer.put("dp_user_id", "");
+		tokenViewer.put("dp_user_email", "");
+		tokenViewer.put("dp_user_groups", "");
+		tokenViewer.put("dp_user_role", "");
+		tokenViewer.put("dp_attr_customer_id", "4711");
+
+		runtime.query("sales-board", "cube3", Map.of("dimensions", List.of("ShipCountry")), tokenViewer);
+
+		assertEquals("4711", database.params.get("dp_attr_customer_id"), "What the host application vouched for");
+		assertEquals("", database.params.get("dp_user_email"), "Nobody, which matches no row");
+		assertEquals(List.of(""), database.params.get("dp_user_groups"),
+				"A person in no group is IN (''), which matches no row - never IN (), which is not SQL");
+
+		// The same token without that attribute: the condition stays, with nothing in it.
+		runtime.query("sales-board", "cube3", Map.of("dimensions", List.of("ShipCountry")), Map.of());
+		assertTrue(database.sql.contains(":dp_attr_customer_id"), database.sql);
+		assertEquals("", database.params.get("dp_attr_customer_id"),
+				"An attribute the credential does not carry is empty, not missing");
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
 	// helpers
 	// ═══════════════════════════════════════════════════════════════════════════
+
+	/** What {@code UserVariables.of(request)} answers for one signed-in person, as far as this cube asks. */
+	private static Map<String, String> asking(String email, String groups, String customerId) {
+
+		Map<String, String> values = new LinkedHashMap<>();
+		values.put("dp_user_email", email);
+		values.put("dp_user_groups", groups);
+		values.put("dp_attr_customer_id", customerId);
+		return values;
+	}
 
 	/** The status of the refusal this request earns on cube2, whose hidden members it names. */
 	private int refusedBy(Map<String, Object> request) {

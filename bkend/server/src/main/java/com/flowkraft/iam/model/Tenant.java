@@ -9,6 +9,11 @@ package com.flowkraft.iam.model;
  * @param customerRef the billing customer this tenant belongs to — a plain string carried from the
  *                    license (self-hosted) or set by the control plane (SaaS). Deliberately NOT a
  *                    foreign key to a Customer entity: DataPallas does not model billing.
+ * @param timezone    the IANA zone a person of this tenant is assumed to be in when they have not
+ *                    said themselves, or {@code null} to leave it to the server. A department in one
+ *                    country answering for everybody in it is the common case, and the reason this
+ *                    sits here as well as on the person.
+ * @param locale      a BCP 47 tag, the same way.
  */
 public record Tenant(
 		long id,
@@ -17,7 +22,9 @@ public record Tenant(
 		String homeDir,
 		String customerRef,
 		String status,
-		String createdAt) {
+		String createdAt,
+		String timezone,
+		String locale) {
 
 	public static final String DEFAULT_CODE = "default";
 

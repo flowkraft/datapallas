@@ -17,6 +17,16 @@ const RB_BASE = "/api/dp";
  */
 export type LockedParams = { [name: string]: string | string[] };
 
+/**
+ * What the link says its recipient IS — the attribute bag behind `${dp_attr_<name>}`.
+ *
+ * Not a lock: it names no parameter the report declares, the viewer never sees it, and any widget's
+ * SQL can filter on it (`WHERE customer_id = ${dp_attr_customer_id}`). Names are lower-case
+ * letters, digits and `_`, starting with a letter — the server refuses anything else, because a
+ * name that cannot be written as `${dp_attr_…}` is a filter that would silently never apply.
+ */
+export type CallerAttributes = { [name: string]: string };
+
 export interface ShareLink {
   id: number;
   reportId: string;
@@ -25,6 +35,8 @@ export interface ShareLink {
   createdAt: string;
   /** Fixed for the life of the link — to change them, create a new link and revoke this one. */
   lockedParams?: LockedParams;
+  /** Who the recipient is, on the same terms. */
+  attributes?: CallerAttributes;
 }
 
 /**
@@ -62,16 +74,18 @@ export async function fetchReportParameters(reportId: string): Promise<ReportPar
  *
  * @param expiresInDays omit for a link that never expires on its own
  * @param lockedParams  values forced on every request made with this link; omit for none
+ * @param attributes    who the recipient is, for widgets filtering on `${dp_attr_<name>}`
  */
 export async function createShareLink(
   reportId: string,
   expiresInDays?: number,
   lockedParams?: LockedParams,
+  attributes?: CallerAttributes,
 ): Promise<{ url: string }> {
   const res = await fetch(`${RB_BASE}/embed/share-link`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reportId, expiresInDays, lockedParams }),
+    body: JSON.stringify({ reportId, expiresInDays, lockedParams, attributes }),
   });
   // The server refuses an unknown parameter name or a value its constraints reject, and says which
   // one. That message is the whole point of validating at creation — show it instead of a generic
@@ -98,6 +112,13 @@ export async function revokeShareLink(id: number): Promise<void> {
 export function absoluteShareUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   return `${window.location.protocol}//${window.location.hostname}:9090${url}`;
+}
+
+/** "customer_id = 4711" — what a link says its recipient is, in the links table. */
+export function describeAttributes(attributes?: CallerAttributes): string {
+  const entries = Object.entries(attributes ?? {});
+  if (entries.length === 0) return "\u2014";
+  return entries.map(([name, value]) => `${name} = ${value}`).join(", ");
 }
 
 /** "region = EU, year = 2026" — what a link's locks look like in the links table. */

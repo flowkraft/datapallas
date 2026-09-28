@@ -84,9 +84,16 @@ public class EmbedController {
 		try {
 			Map<String, Object> lockedParams = lockedParamsValidator.validate(reportId, request.get("lockedParams"));
 
-			String token = embedTokenService.mint(reportId, ttlSeconds, lockedParams);
-			return ResponseEntity
-					.ok(Map.of("token", token, "expiresInSeconds", ttlSeconds, "lockedParams", lockedParams));
+			// Who the page is being rendered for: the attribute bag, and the zone and tag that viewer
+			// reads in. Both are checked inside mint, where a bad name or a zone nobody can read is
+			// answered to the host application's face rather than stored and ignored per request.
+			Map<String, String> attributes = CallerAttributes.validated(request.get("attrs"));
+			String timezone = text(request.get("tz"));
+			String locale = text(request.get("locale"));
+
+			String token = embedTokenService.mint(reportId, ttlSeconds, lockedParams, attributes, timezone, locale);
+			return ResponseEntity.ok(Map.of("token", token, "expiresInSeconds", ttlSeconds,
+					"lockedParams", lockedParams, "attrs", attributes));
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}
@@ -111,6 +118,11 @@ public class EmbedController {
 	 * multi-value parameter — restricts the link to those parameter values for its whole life. They
 	 * cannot be edited afterwards, for the same reason the link itself cannot be shown again: change
 	 * what a recipient may see by creating a new link and revoking this one.
+	 *
+	 * <p>Optional {@code attributes} — {@code {"customer_id": "4711"}} — says who the recipient is,
+	 * for the widgets that filter with {@code ${dp_attr_customer_id}}. Unlike a lock it names no
+	 * declared parameter and is never shown to the viewer; it is fixed for the link's life on the
+	 * same terms.
 	 */
 	@PreAuthorize("hasRole('REPORT_AUTHOR')")
 	@PostMapping("/share-link")
@@ -140,14 +152,23 @@ public class EmbedController {
 			// Validation first, then creation: a link that named a parameter the report does not have
 			// would look restricted in the list and show every row, and nobody ever opens it again to
 			// find out.
-			String token = shareTokenService.createShareToken(reportId, expiresInDays, lockedParams);
+			Map<String, String> attributes = CallerAttributes.validated(request.get("attributes"));
+
+			String token = shareTokenService.createShareToken(reportId, expiresInDays, lockedParams, attributes);
 			return ResponseEntity.ok(Map.of(
 					"token", token,
 					"url", "/dashboard/" + reportId + "?token=" + token,
-					"lockedParams", lockedParams));
+					"lockedParams", lockedParams,
+					"attributes", attributes));
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}
+	}
+
+	/** A request body value as text, or null when it is absent or blank - which means "not said". */
+	private static String text(Object value) {
+		String text = value == null ? null : String.valueOf(value).trim();
+		return text == null || text.isEmpty() ? null : text;
 	}
 
 	@PreAuthorize("hasRole('REPORT_AUTHOR')")

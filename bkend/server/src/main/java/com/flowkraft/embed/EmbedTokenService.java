@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.iam.Preferences;
 
 import jakarta.annotation.PostConstruct;
 
@@ -117,9 +118,33 @@ public class EmbedTokenService {
 	 *                     exactly the token {@link #mint(String, long)} always did
 	 */
 	public String mint(String reportId, long ttlSeconds, Map<String, Object> lockedParams) {
+		return mint(reportId, ttlSeconds, lockedParams, null, null, null);
+	}
+
+	/**
+	 * Mint a token that also says who the host application is rendering the page for: the attribute
+	 * bag, and the zone and locale that viewer reads in.
+	 *
+	 * <p>The attributes travel inside the signed payload, as the {@code at} claim, for the same
+	 * reason the locks do - a viewer who edits one breaks the signature. They are what
+	 * {@code ${dp_attr_<name>}} reads; see {@link CallerAttributes}.
+	 *
+	 * @param attributes name/value pairs, already checked by {@link CallerAttributes#validated};
+	 *                   null or empty mints exactly the token the overload above does
+	 * @param timezone   an IANA zone the viewer's {@code ${dp_today}} is computed in, else null and
+	 *                   the tenant's (then the server's) applies
+	 * @param locale     a BCP 47 tag, on the same terms
+	 */
+	public String mint(String reportId, long ttlSeconds, Map<String, Object> lockedParams,
+			Map<String, String> attributes, String timezone, String locale) {
 
 		if (StringUtils.isBlank(reportId))
 			throw new IllegalArgumentException("reportId is required");
+
+		// Checked at mint time, where the host application is there to be told. A zone nobody can
+		// read is a "today" that silently becomes the server's, on every render, for one customer.
+		Preferences.assertValid(timezone, locale);
+		Map<String, String> checkedAttributes = CallerAttributes.validated(attributes);
 
 		long ttl = ttlSeconds <= 0 ? DEFAULT_TTL_SECONDS : Math.min(ttlSeconds, MAX_TTL_SECONDS);
 		long expiresAt = System.currentTimeMillis() / 1000 + ttl;
@@ -129,6 +154,12 @@ public class EmbedTokenService {
 		claims.put("exp", expiresAt);
 		if (lockedParams != null && !lockedParams.isEmpty())
 			claims.set("lp", MAPPER.valueToTree(lockedParams));
+		if (!checkedAttributes.isEmpty())
+			claims.set("at", MAPPER.valueToTree(checkedAttributes));
+		if (StringUtils.isNotBlank(timezone))
+			claims.put("tz", timezone.trim());
+		if (StringUtils.isNotBlank(locale))
+			claims.put("loc", locale.trim());
 
 		String payload;
 		try {
@@ -197,7 +228,22 @@ public class EmbedTokenService {
 					})
 					: Map.of();
 
-			return Optional.of(new Claims(reportId, lockedParams));
+			JsonNode attrs = claims.get("at");
+			Map<String, String> attributes = attrs != null && attrs.isObject()
+					? MAPPER.convertValue(attrs, new com.fasterxml.jackson.core.type.TypeReference<
+							java.util.LinkedHashMap<String, String>>() {
+					})
+					: Map.of();
+
+			// A zone or a tag that has stopped being one - a JDK that dropped it, a token minted by an
+			// older host - is dropped rather than failing the read: the tenant's answer is a worse
+			// "today" than the token's, and a dashboard nobody can open is worse than both.
+			String timezone = claims.path("tz").asText(null);
+			String locale = claims.path("loc").asText(null);
+
+			return Optional.of(new Claims(reportId, lockedParams, attributes,
+					Preferences.isValidZone(timezone) ? timezone.trim() : null,
+					Preferences.isValidLocale(locale) ? locale.trim() : null));
 
 		} catch (Exception e) {
 			return Optional.empty();
@@ -234,6 +280,12 @@ public class EmbedTokenService {
 	 * with. Locks are empty for a token that carries none, never null, so a caller never has to ask
 	 * twice whether a token locks anything.
 	 */
-	public record Claims(String reportId, Map<String, Object> lockedParams) {
+	public record Claims(String reportId, Map<String, Object> lockedParams, Map<String, String> attributes,
+			String timezone, String locale) {
+
+		/** A token that says nothing about its viewer beyond the report and its locks. */
+		public Claims(String reportId, Map<String, Object> lockedParams) {
+			this(reportId, lockedParams, Map.of(), null, null);
+		}
 	}
 }

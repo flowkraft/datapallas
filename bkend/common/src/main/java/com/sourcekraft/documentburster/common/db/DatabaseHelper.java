@@ -17,6 +17,7 @@ import org.jdbi.v3.core.statement.Query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sourcekraft.documentburster.common.reportparameters.BuiltinVariables;
 import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.context.BurstingContext;
 
@@ -116,6 +117,10 @@ public class DatabaseHelper {
 				Object v = e.getValue();
 				if (v == null) continue;
 				if (!WILDCARD_VALUE.equals(v.toString().trim())) continue;
+				// Not for a built-in: `*` is a convenience for what a viewer types, and a viewer
+				// types none of these — the server fills them. A group really named `*` would
+				// otherwise drop the access filter that uses it and show every row.
+				if (BuiltinVariables.isBuiltinName(e.getKey())) continue;
 				// Match `<col> [NOT] IN (${name})` — column captured as
 				// non-whitespace-non-paren so `t.col`, `"col"`, `[col]`,
 				// `\`col\`` all work uniformly across vendors. The `1=1`

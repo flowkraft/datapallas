@@ -26,29 +26,41 @@ class ScriptAssemblerTest {
     // ── Generated text ────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("One param on a line: guarded append, one bind (unchanged)")
+    @DisplayName("One param on a line: guarded append, one bind, one statement per line")
     void singleParam() throws Exception {
         String s = assemble("SELECT *\nFROM t\nWHERE x = ${a}", "a");
-        assertTrue(s.contains("    tabulator_a_sb.append('SELECT *\\n')\n"), s);
+        assertTrue(s.contains("    sql << 'SELECT *\\n'\n"), s);
         assertTrue(s.contains(
-            "    if (hasA) { tabulator_a_sb.append('WHERE x = ?\\n'); tabulator_a_params << a }"
-            + " else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
+              "    if (hasA) {\n"
+            + "        sql << 'WHERE x = ?\\n'\n"
+            + "        params << a\n"
+            + "    } else {\n"
+            + "        sql << 'WHERE 1=1\\n'   // no value: this filter is off\n"
+            + "    }\n"), s);
     }
 
     @Test
     @DisplayName("Two params on a line bind in the order they appear, not the order they were defined")
     void bindOrderFollowsLine() throws Exception {
         String s = assemble("WHERE d BETWEEN ${to} AND ${from}", "from", "to");
-        assertTrue(s.contains("    if (hasFrom && hasTo) { tabulator_a_sb.append('WHERE d BETWEEN ? AND ?\\n')"
-            + "; tabulator_a_params << to; tabulator_a_params << from } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
+        assertTrue(s.contains(
+              "    if (hasFrom && hasTo) {\n"
+            + "        sql << 'WHERE d BETWEEN ? AND ?\\n'\n"
+            + "        params << to\n"
+            + "        params << from\n"
+            + "    } else {\n"), s);
     }
 
     @Test
     @DisplayName("A param used twice on a line is bound twice, guarded once")
     void repeatedParam() throws Exception {
         String s = assemble("WHERE a = ${p} OR b = ${p}", "p");
-        assertTrue(s.contains("    if (hasP) { tabulator_a_sb.append('WHERE a = ? OR b = ?\\n')"
-            + "; tabulator_a_params << p; tabulator_a_params << p } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
+        assertTrue(s.contains(
+              "    if (hasP) {\n"
+            + "        sql << 'WHERE a = ? OR b = ?\\n'\n"
+            + "        params << p\n"
+            + "        params << p\n"
+            + "    } else {\n"), s);
     }
 
     @Test
@@ -56,36 +68,80 @@ class ScriptAssemblerTest {
     void quotedAndBackslashForms() throws Exception {
         String s = assemble("WHERE a = '${p}' AND b = \"${q}\" AND c = \\${p} AND d = '\\${q}' AND e = \"\\${p}\"",
             "q", "p");
-        assertTrue(s.contains("tabulator_a_sb.append('WHERE a = ? AND b = ? AND c = ? AND d = ? AND e = ?\\n')"
-            + "; tabulator_a_params << p; tabulator_a_params << q; tabulator_a_params << p"
-            + "; tabulator_a_params << q; tabulator_a_params << p } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
-        assertTrue(s.contains("    if (hasQ && hasP) {"), s);
+        assertTrue(s.contains(
+              "    if (hasQ && hasP) {\n"
+            + "        sql << 'WHERE a = ? AND b = ? AND c = ? AND d = ? AND e = ?\\n'\n"
+            + "        params << p\n"
+            + "        params << q\n"
+            + "        params << p\n"
+            + "        params << q\n"
+            + "        params << p\n"
+            + "    } else {\n"), s);
     }
 
     @Test
     @DisplayName("A param whose name starts another's is not confused with it")
     void prefixNames() throws Exception {
         String s = assemble("WHERE a = ${pp} AND b = ${p}", "p", "pp");
-        assertTrue(s.contains("    if (hasP && hasPp) { tabulator_a_sb.append('WHERE a = ? AND b = ?\\n')"
-            + "; tabulator_a_params << pp; tabulator_a_params << p } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
+        assertTrue(s.contains(
+              "    if (hasP && hasPp) {\n"
+            + "        sql << 'WHERE a = ? AND b = ?\\n'\n"
+            + "        params << pp\n"
+            + "        params << p\n"
+            + "    } else {\n"), s);
     }
 
     @Test
-    @DisplayName("IN (${p}) still goes through __bindInList (unchanged)")
+    @DisplayName("IN (${p}) goes through addInList, and only when the list has values")
     void inList() throws Exception {
         String s = assemble("SELECT *\nFROM t\nWHERE id IN (${ids})", "ids");
         assertTrue(s.contains(
-            "    if (!(hasIds && __bindInList(tabulator_a_sb, tabulator_a_params, ids, 'WHERE id IN')))"
-            + " { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
+              "    if (hasIds && listHasValues(ids)) {\n"
+            + "        addInList(sql, params, ids, 'WHERE id IN')\n"
+            + "    } else {\n"
+            + "        sql << 'WHERE 1=1\\n'   // no values, or '*' (all): this filter is off\n"
+            + "    }\n"), s);
     }
 
     @Test
-    @DisplayName("No params: plain appends, no bind list; an undeclared token is left alone (unchanged)")
+    @DisplayName("No params: plain appends, no bind list, no helpers; an undeclared token is left alone")
     void noParams() throws Exception {
         String s = assemble("SELECT '${other}' AS x\nFROM t");
-        assertTrue(s.contains("    tabulator_a_sb.append('SELECT \\'${other}\\' AS x\\n')\n"), s);
-        assertTrue(s.contains("    def tabulator_a_data = dbSql.rows(tabulator_a_sb.toString())\n"), s);
-        assertFalse(s.contains("_params"), s);
+        assertTrue(s.contains("    sql << 'SELECT \\'${other}\\' AS x\\n'\n"), s);
+        assertTrue(s.contains("    def data = dbSql.rows(sql.toString())\n"), s);
+        assertFalse(s.contains("def params"), s);
+    }
+
+    @Test
+    @DisplayName("A script gets only the helpers it calls")
+    void onlyTheHelpersItCalls() throws Exception {
+        String s = assemble("SELECT *\nFROM t\nWHERE x = ${a}", "a");
+        for (String helper : List.of("asDeclaredType", "dayAfter", "listHasValues", "numberOrText", "addInList"))
+            assertFalse(s.contains("def " + helper), helper + "\n" + s);
+    }
+
+    @Test
+    @DisplayName("A value the server sets is always applied: no guard, a comment that says so, its list never dropped")
+    void builtinLinesAreAlwaysApplied() throws Exception {
+        String s = assemble("SELECT *\nFROM t\nWHERE customer_id = ${dp_attr_customer_id}\nAND g IN (${dp_user_groups})");
+        assertTrue(s.contains(
+              "    // Always applied: dp_attr_customer_id is set by the server, and an empty value matches no row\n"
+            + "    sql << 'WHERE customer_id = ?\\n'\n"
+            + "    params << dp_attr_customer_id\n"), s);
+        assertTrue(s.contains(
+              "    // Always applied: dp_user_groups is set by the server, and an empty list matches no row\n"
+            + "    addInList(sql, params, dp_user_groups, 'AND g IN')\n"), s);
+        assertTrue(s.contains("// ─── Set by the server for the viewer, never by the request ───\n"), s);
+        assertFalse(s.contains("hasDp_"), s);
+        assertFalse(s.contains("listHasValues"), s);
+    }
+
+    @Test
+    @DisplayName("A parameter named like one of the script's helpers is refused, in words")
+    void helperNameIsRefused() {
+        CanvasExportException e = assertThrows(CanvasExportException.class,
+            () -> assemble("SELECT *\nFROM t\nWHERE x IN (${addInList})", "addInList"));
+        assertTrue(e.getMessage().contains("'addInList'"), e.getMessage());
     }
 
     // ── What reaches JDBC ─────────────────────────────────────────────────────
@@ -124,8 +180,13 @@ class ScriptAssemblerTest {
     @DisplayName("IN (${p}) with a scalar param earlier on the line: both substituted, scalar passed as `before`")
     void inListWithScalarPrefix() throws Exception {
         String s = assemble("AND y = ${b} AND id IN (${ids})", "ids", "b");
-        assertTrue(s.contains("    if (!(hasIds && hasB && __bindInList(tabulator_a_sb, tabulator_a_params, ids, "
-            + "'AND y = ? AND id IN', [b]))) { tabulator_a_sb.append('AND 1=1\\n') }\n"), s);
+        assertTrue(s.contains(
+              "    if (hasIds && hasB && listHasValues(ids)) {\n"
+            + "        params << b\n"
+            + "        addInList(sql, params, ids, 'AND y = ? AND id IN')\n"
+            + "    } else {\n"
+            + "        sql << 'AND 1=1\\n'   // no values, or '*' (all): this filter is off\n"
+            + "    }\n"), s);
     }
 
     @Test
@@ -150,19 +211,20 @@ class ScriptAssemblerTest {
     // ── Declared parameter types (P1) ───────────────────────────
 
     @Test
-    @DisplayName("A parameter with no declared type is written exactly as it always was")
+    @DisplayName("A parameter with no declared type binds its bare value, and no conversion is written")
     void untypedParamIsUnchanged() throws Exception {
         String s = assemble("SELECT *\nFROM t\nWHERE d <= ${to}", "to");
-        assertTrue(s.contains("; tabulator_a_params << to } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
-        assertFalse(s.contains("__typed('to'"), s);
+        assertTrue(s.contains("        params << to\n"), s);
+        assertFalse(s.contains("asDeclaredType"), s);
     }
 
     @Test
     @DisplayName("A declared type travels into the script: the bind goes through the one conversion")
     void typedParamBindsThroughTheConversion() throws Exception {
         String s = assembleTyped("SELECT *\nFROM t\nWHERE d <= ${to}", Map.of("to", "Date"));
-        assertTrue(s.contains("; tabulator_a_params << __typed('to', 'Date', to) } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
-        assertTrue(s.contains("com.sourcekraft.documentburster.common.reportparameters.ParameterTypes.typed"), s);
+        assertTrue(s.contains("        params << asDeclaredType('to', 'Date', to)\n"), s);
+        assertTrue(s.contains("import com.sourcekraft.documentburster.common.reportparameters.ParameterTypes\n"), s);
+        assertTrue(s.contains("    return ParameterTypes.typed(name, type, value.toString())\n"), s);
     }
 
     @Test
@@ -197,6 +259,37 @@ class ScriptAssemblerTest {
         assertTrue(message.contains("'to'") && message.contains("yyyy-MM-dd"), message);
     }
 
+    @Test
+    @DisplayName("Run: an empty server list binds one empty item, and a '*' in it is a name, not all")
+    void runBuiltinList() throws Exception {
+        String script = assemble("SELECT *\nFROM t\nWHERE customer_id = ${dp_attr_customer_id}\nAND g IN (${dp_user_groups})");
+        assertEquals(List.of(List.of("SELECT *\nFROM t\nWHERE customer_id = ?\nAND g IN (?)\n", List.of("", ""))),
+            run(script, Map.of("dp_attr_customer_id", "", "dp_user_groups", "")));
+        assertEquals(List.of(List.of("SELECT *\nFROM t\nWHERE customer_id = ?\nAND g IN (?)\n", List.of("7", "*"))),
+            run(script, Map.of("dp_attr_customer_id", "7", "dp_user_groups", "*")));
+    }
+
+    @Test
+    @DisplayName("Run: parameters named like the script's own words still compile, and bind in order")
+    void runParametersNamedLikeTheScriptsWords() throws Exception {
+        String sql = "SELECT *\nFROM t\nWHERE a = ${sql} AND b = ${params} AND c = ${data}\n"
+            + "AND d = ${name} AND e = ${type} AND f = ${value}\nAND g IN (${items})\nAND h = ${item} AND i = ${text}";
+        List<Map<String, Object>> params = new ArrayList<>();
+        for (String id : List.of("sql", "params", "data", "name", "type", "item", "text"))
+            params.add(Map.of("id", id));
+        params.add(Map.of("id", "value", "type", "Integer"));
+        params.add(Map.of("id", "items", "type", "Integer"));
+        String script = assembleWith(sql, params);
+        assertTrue(script.contains("    def tabulator_a_sql = new StringBuilder()\n"), script);
+        Map<String, String> values = new LinkedHashMap<>();
+        for (String id : List.of("sql", "params", "data", "name", "type", "item", "text")) values.put(id, id);
+        values.put("value", "5");
+        values.put("items", "1, 2");
+        assertEquals(List.of(List.of(
+            "SELECT *\nFROM t\nWHERE a = ? AND b = ? AND c = ?\nAND d = ? AND e = ? AND f = ?\nAND g IN (?, ?)\nAND h = ? AND i = ?\n",
+            List.of("sql", "params", "data", "name", "type", 5L, 1L, 2L, "item", "text"))), run(script, values));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static String assemble(String sql, String... paramIds) throws Exception {
@@ -209,6 +302,18 @@ class ScriptAssemblerTest {
         w.put("dataSource", ds);
         List<Map<String, Object>> params = new ArrayList<>();
         for (String id : paramIds) params.add(Map.of("id", id));
+        return ScriptAssembler.assemble(List.of(w), params).text();
+    }
+
+    /** The same widget, with the parameter definitions given as they are. */
+    private static String assembleWith(String sql, List<Map<String, Object>> params) throws Exception {
+        Map<String, Object> ds = new LinkedHashMap<>();
+        ds.put("mode", "sql");
+        ds.put("sql", sql);
+        Map<String, Object> w = new LinkedHashMap<>();
+        w.put("id", "w-a");
+        w.put("type", "tabulator");
+        w.put("dataSource", ds);
         return ScriptAssembler.assemble(List.of(w), params).text();
     }
 

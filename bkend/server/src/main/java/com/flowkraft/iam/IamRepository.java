@@ -143,6 +143,24 @@ public class IamRepository {
 		execute("UPDATE app_user SET password_hash = ? WHERE id = ?", passwordHash, userId);
 	}
 
+	/**
+	 * Both columns are written together, blanks stored as {@code NULL}, so that clearing a person's
+	 * zone means "ask the tenant again" rather than "the empty zone".
+	 */
+	public void updateUserPreferences(long userId, String timezone, String locale) {
+		execute("UPDATE app_user SET timezone = ?, locale = ? WHERE id = ?", blankToNull(timezone),
+				blankToNull(locale), userId);
+	}
+
+	public void updateTenantPreferences(long tenantId, String timezone, String locale) {
+		execute("UPDATE tenant SET timezone = ?, locale = ? WHERE id = ?", blankToNull(timezone),
+				blankToNull(locale), tenantId);
+	}
+
+	private String blankToNull(String value) {
+		return value == null || value.isBlank() ? null : value.trim();
+	}
+
 	public void deleteUser(long userId) {
 		execute("DELETE FROM app_user WHERE id = ?", userId);
 	}
@@ -197,14 +215,18 @@ public class IamRepository {
 		return queryOne("SELECT * FROM user_group WHERE tenant_id = ? AND name = ?", this::readGroup, tenantId, name);
 	}
 
-	public UserGroup insertGroup(long tenantId, String name, String settingsJson) {
-		long id = insert("INSERT INTO user_group (tenant_id, name, settings_json, created_at) "
-				+ "VALUES (?, ?, ?, datetime('now'))", tenantId, name, settingsJson);
+	public UserGroup insertGroup(long tenantId, String name, String slug, String settingsJson) {
+		long id = insert("INSERT INTO user_group (tenant_id, name, slug, settings_json, created_at) "
+				+ "VALUES (?, ?, ?, ?, datetime('now'))", tenantId, name, slug, settingsJson);
 
 		return findGroupById(id)
 				.orElseThrow(() -> new IllegalStateException("Group " + name + " vanished after insert"));
 	}
 
+	/**
+	 * Renames a group and rewrites its limits. Deliberately does not touch the slug: an access filter
+	 * that names the group keeps working across a rename, which is the whole point of having a slug.
+	 */
 	public void updateGroup(long groupId, String name, String settingsJson) {
 		execute("UPDATE user_group SET name = ?, settings_json = ? WHERE id = ?", name, settingsJson, groupId);
 	}
@@ -462,17 +484,18 @@ public class IamRepository {
 	private Tenant readTenant(ResultSet rs) throws SQLException {
 		return new Tenant(rs.getLong("id"), rs.getString("code"), rs.getString("display_name"),
 				rs.getString("home_dir"), rs.getString("customer_ref"), rs.getString("status"),
-				rs.getString("created_at"));
+				rs.getString("created_at"), rs.getString("timezone"), rs.getString("locale"));
 	}
 
 	private UserGroup readGroup(ResultSet rs) throws SQLException {
 		return new UserGroup(rs.getLong("id"), rs.getLong("tenant_id"), rs.getString("name"),
-				rs.getString("settings_json"), rs.getString("default_dashboard"), rs.getString("created_at"));
+				rs.getString("slug"), rs.getString("settings_json"), rs.getString("default_dashboard"),
+				rs.getString("created_at"));
 	}
 
 	private AppUser readUser(ResultSet rs) throws SQLException {
 		return new AppUser(rs.getLong("id"), rs.getString("username"), rs.getString("email"),
 				rs.getString("password_hash"), rs.getString("status"), rs.getInt("platform_admin") == 1,
-				rs.getString("created_at"));
+				rs.getString("created_at"), rs.getString("timezone"), rs.getString("locale"));
 	}
 }

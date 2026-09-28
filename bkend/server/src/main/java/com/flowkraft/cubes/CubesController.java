@@ -21,12 +21,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.flowkraft.embed.UserVariables;
 import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.queries.ConnectionFactory;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.sourcekraft.documentburster.common.db.DatabaseConnectionManager;
 import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
 
+import jakarta.servlet.http.HttpServletRequest;
 import reactor.core.publisher.Mono;
 
 /**
@@ -53,6 +55,10 @@ public class CubesController {
 
 	@Autowired
 	private CubeFilterOptions cubeFilterOptions;
+
+	/** Who is asking, for a cube whose access_filter names them - the author is a viewer too. */
+	@Autowired
+	private UserVariables userVariables;
 
 	// ═══════════════════════════════════════════════════════════════════════════
 	// CRUD
@@ -160,7 +166,8 @@ public class CubesController {
 	@PostMapping(value = "/{cubeId}/filter-options", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<Map<String, Object>> filterOptions(
 			@PathVariable String cubeId,
-			@RequestBody Map<String, String> request) throws Exception {
+			@RequestBody Map<String, String> request,
+			HttpServletRequest httpRequest) throws Exception {
 
 		Map<String, Object> cubeData = cubesService.load(cubeId);
 		String dslCode = (String) cubeData.get("dslCode");
@@ -179,8 +186,11 @@ public class CubesController {
 			connectionId = (String) cubeData.get("connectionId");
 		}
 
+		// Author mode: a cube with an access_filter is filtered for the author too, because the
+		// author is a person with a role and groups like any other - a list offered here that the
+		// same cube's dashboard would not show would be a list of somebody else's values.
 		return Mono.just(cubeFilterOptions.options(picked, request.get("dimension"), connectionId,
-				request.get("search")));
+				request.get("search"), userVariables.of(httpRequest)));
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

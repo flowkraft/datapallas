@@ -7,6 +7,10 @@ package com.flowkraft.iam.model;
  * in any number of groups, including none, and a group that sets no limits is simply a way of
  * organising people.
  *
+ * @param slug             the name this group answers to inside an access filter — lower case, with
+ *                         hyphens, derived from the name when the group was created and never changed
+ *                         by a rename. See {@code com.flowkraft.iam.Slugs}. It is what
+ *                         {@code ${dp_user_groups}} lists.
  * @param settingsJson     the raw {@code settings_json} column. Kept as text here so the store layer
  *                         stays free of Jackson; {@code LimitSettings.parse} turns it into the shape,
  *                         and the one place that decides what an unknown key means stays the one place.
@@ -18,6 +22,7 @@ public record UserGroup(
 		long id,
 		long tenantId,
 		String name,
+		String slug,
 		String settingsJson,
 		String defaultDashboard,
 		String createdAt) {

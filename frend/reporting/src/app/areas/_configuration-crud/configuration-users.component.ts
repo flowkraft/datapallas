@@ -293,6 +293,12 @@ export class ConfigurationUsersComponent implements OnInit {
   groupError = '';
   groupDialogHeader = 'New Group';
   private editingGroupId: number | null = null;
+  /**
+   * The name SQL knows this group by, shown while it is edited and never editable: it is derived
+   * from the name when the group is created and deliberately survives a rename, so an access
+   * filter that names the group keeps answering the same rows.
+   */
+  editingGroupSlug = '';
   groupMembers: string[] = [];
 
   groupForm: {
@@ -450,6 +456,7 @@ export class ConfigurationUsersComponent implements OnInit {
 
   openNewGroup(): void {
     this.editingGroupId = null;
+    this.editingGroupSlug = '';
     this.groupDialogHeader = 'New Group';
     this.groupForm = {
       name: '',
@@ -469,6 +476,7 @@ export class ConfigurationUsersComponent implements OnInit {
   openEditGroup(group: IamGroup): void {
     const settings = group.settings ?? {};
     this.editingGroupId = group.id;
+    this.editingGroupSlug = group.slug ?? '';
     this.groupDialogHeader = 'Edit Group';
     this.groupForm = {
       name: group.name,
@@ -585,6 +593,20 @@ export class ConfigurationUsersComponent implements OnInit {
   editUserEffectiveReports = '';
   editUserOpensOn = '';
   editUserGroupIds: number[] = [];
+  /** Theirs to set, and empty means "follow the tenant" — see the two fields in the dialog. */
+  editUserTimezone = '';
+  editUserLocale = '';
+
+  /**
+   * The IANA zones this machine knows, offered as suggestions. `Intl.supportedValuesOf` is the one
+   * list a browser will vouch for; where it is missing the field is simply a text box, which is
+   * what it is anyway — the server decides what a valid zone is, and it is the only one that can,
+   * since a zone typed here is resolved there.
+   */
+  readonly knownTimezones: string[] = (() => {
+    const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] };
+    return typeof intl.supportedValuesOf === 'function' ? intl.supportedValuesOf('timeZone') : [];
+  })();
 
   newUserGroupIds: number[] = [];
 
@@ -645,21 +667,33 @@ export class ConfigurationUsersComponent implements OnInit {
     this.editUserEffectiveReports = this.describeEffectiveReports(user);
     this.editUserOpensOn = this.describeOpensOn(user);
     this.editUserGroupIds = (user.groups ?? []).map((group) => group.id);
+    this.editUserTimezone = user.timezone ?? '';
+    this.editUserLocale = user.locale ?? '';
     this.editUserError = '';
     this.editUserVisible = true;
   }
 
-  async saveUserGroups(): Promise<void> {
+  /**
+   * One Save for the whole dialog. The preferences go first: a zone the server refuses leaves the
+   * dialog open with the message, and nothing has been changed yet — saving the groups first would
+   * leave half the dialog applied and the other half rejected.
+   */
+  async saveUser(): Promise<void> {
     this.editUserError = '';
     try {
+      await this.iamService.setUserPreferences(
+        this.editUsername,
+        this.editUserTimezone.trim(),
+        this.editUserLocale.trim(),
+      );
       await this.iamService.setUserGroups(this.editUsername, this.editUserGroupIds);
       this.editUserVisible = false;
-      this.messagesService.showSuccess(`Groups saved for ${this.editUsername}`);
+      this.messagesService.showSuccess(`Saved ${this.editUsername}`);
       await this.reload();
       // Member counts and the members line in the group dialog move with this.
       await this.reloadGroups();
     } catch (status) {
-      this.editUserError = this.describeFailure(status, 'Could not save the groups.');
+      this.editUserError = this.describeFailure(status, 'Could not save this user.');
     }
   }
 
@@ -671,7 +705,8 @@ export class ConfigurationUsersComponent implements OnInit {
     if (status === 409) return 'That name is already taken.';
     if (status === 402) return 'Your license does not allow any more. Contact sales to add seats.';
     if (status === 403) return 'You do not have permission to do that.';
-    if (status === 400) return 'The server refused that. Check the name and the groups.';
+    if (status === 400)
+      return 'The server refused that. Check the name, the groups, the time zone and the locale.';
     return fallback;
   }
 }

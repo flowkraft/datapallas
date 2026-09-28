@@ -3,6 +3,8 @@ package com.flowkraft.exploredata.export;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.exploredata.ExploreDataService;
 import com.flowkraft.exploredata.ScriptModeWidgets;
+import com.flowkraft.embed.ReservedParameterNameException;
+import com.flowkraft.embed.UserVariables;
 import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.reports.ReportsService;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettings;
@@ -125,6 +127,16 @@ public class CanvasExportService {
                 stateMap.getOrDefault("parametersConfig", Map.of("parameters", List.of()));
         List<Map<String, Object>> parametersList = (List<Map<String, Object>>)
                 parametersConfig.getOrDefault("parameters", List.of());
+
+        // dp_ belongs to the server's builtin variables, which are set on every request: a dashboard
+        // parameter with such a name would be a control whose value is thrown away. Refused here as
+        // well as where the parameters spec is saved, because publishing is the other way a canvas's
+        // parameters become a dashboard's.
+        for (Map<String, Object> parameter : parametersList) {
+            Object id = parameter == null ? null : parameter.get("id");
+            if (id instanceof String name && UserVariables.isBuiltinName(name))
+                throw new ReservedParameterNameException(name);
+        }
 
         // A dashboard built from a script-mode widget runs that Groovy on every view of it, so
         // publishing one is the same act as running it.

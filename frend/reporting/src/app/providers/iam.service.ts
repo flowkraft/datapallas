@@ -16,6 +16,8 @@ export interface IamLimitSettings {
 export interface IamGroupRef {
   id: number;
   name: string;
+  /** The name SQL knows the group by (`${dp_user_groups}`). Set when the group is created, never renamed. */
+  slug: string;
 }
 
 /** One published dashboard, as `PublishedDashboard` writes it: the report id and its template name. */
@@ -34,6 +36,12 @@ export interface IamReport {
 export interface IamGroup {
   id: number;
   name: string;
+  /**
+   * What an access filter writes to name this group — `${dp_user_groups}` is a list of these.
+   * Derived from the name once, when the group is created, and never changed by a rename, so SQL
+   * that names a group keeps working after somebody fixes its capitalisation.
+   */
+  slug: string;
   settings: IamLimitSettings;
   members: string[];
   /**
@@ -74,6 +82,12 @@ export interface IamUser {
   platformAdmin: boolean;
   role: string | null;
   createdAt: string;
+  /**
+   * The person's own IANA time zone and BCP 47 locale, or null to follow the tenant's, and the
+   * server's after that. The time zone is what `${dp_today}` and `${dp_now}` are computed in.
+   */
+  timezone: string | null;
+  locale: string | null;
   groups: IamGroupRef[];
   /** The union of the groups' limits, already worked out by the server. Null for an unlimited user. */
   effectiveLimits: IamLimitSettings | null;
@@ -147,6 +161,18 @@ export class IamService {
   /** Replaces the user's groups with exactly this list — an empty list takes them out of all of them. */
   setUserGroups(username: string, groupIds: number[]): Promise<void> {
     return this.apiService.put(`/iam/users/${encodeURIComponent(username)}/groups`, { groupIds });
+  }
+
+  /**
+   * The person's time zone and locale. Empty means "follow the tenant", and the server refuses a
+   * zone it does not know or a language tag that does not round-trip — the check lives there, once,
+   * because the same values arrive from the API without passing through this screen.
+   */
+  setUserPreferences(username: string, timezone: string, locale: string): Promise<void> {
+    return this.apiService.put(`/iam/users/${encodeURIComponent(username)}/preferences`, {
+      timezone,
+      locale,
+    });
   }
 
   setRole(username: string, role: string, tenantCode?: string): Promise<void> {

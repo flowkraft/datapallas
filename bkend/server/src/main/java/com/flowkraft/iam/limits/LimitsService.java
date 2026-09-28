@@ -3,8 +3,10 @@ package com.flowkraft.iam.limits;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import com.flowkraft.iam.IamRepository;
 import com.flowkraft.iam.Role;
+import com.flowkraft.iam.Slugs;
 import com.flowkraft.iam.model.AppUser;
 import com.flowkraft.iam.model.Tenant;
 import com.flowkraft.iam.model.UserGroup;
@@ -42,7 +45,7 @@ public class LimitsService {
 	 * proxy — not a person, and it is never limited. It already holds ROLE_ADMIN, so the admin rule
 	 * below would cover it anyway; it is named here so that stays true on purpose rather than by luck.
 	 */
-	static final String API_KEY_PRINCIPAL = "api-key-user";
+	public static final String API_KEY_PRINCIPAL = "api-key-user";
 
 	private final IamRepository repository;
 
@@ -192,7 +195,14 @@ public class LimitsService {
 		LimitSettings checked = settingsOrEmpty(settings);
 		assertConnectionsExist(checked);
 
-		return repository.insertGroup(tenant.id(), cleanName, checked.toJson());
+		// The slug is decided once, here, and against the slugs the tenant already has, because
+		// ${dp_user_groups} is a flat list and two groups answering to one name in it would make an
+		// access filter mean two different things. A later rename leaves it alone.
+		Set<String> taken = repository.findGroupsInTenant(tenant.id()).stream().map(UserGroup::slug)
+				.filter(Objects::nonNull).collect(Collectors.toSet());
+		String slug = Slugs.unique(Slugs.of(cleanName), taken);
+
+		return repository.insertGroup(tenant.id(), cleanName, slug, checked.toJson());
 	}
 
 	public UserGroup updateGroup(long groupId, String name, LimitSettings settings) {

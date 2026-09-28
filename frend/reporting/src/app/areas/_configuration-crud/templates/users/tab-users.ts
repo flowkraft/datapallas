@@ -217,8 +217,9 @@ export const tabUsersTemplate = `
   </div>
 </dp-dialog>
 
-<!-- Edit user: the read-only facts, and the one thing this dialog changes — their groups.
-     The role stays inline on the row, where it has always been changed. -->
+<!-- Edit user: the read-only facts, their groups, and the two settings that are theirs alone —
+     the time zone and the locale. The role stays inline on the row, where it has always been
+     changed. -->
 <dp-dialog id="editUserDialog" header="Edit User" [(visible)]="editUserVisible"
            [style]="{ width: '520px' }">
 
@@ -238,6 +239,34 @@ export const tabUsersTemplate = `
   <dburst-group-picker [groups]="groups" idPrefix="userGroup"
                        [selected]="editUserGroupIds" (selectedChange)="editUserGroupIds = $event">
   </dburst-group-picker>
+
+  <!-- Their day and their language. Empty follows the tenant, and the server after that, which is
+       why neither field is required. The time zone is not decoration: it is what "today" means in
+       a dashboard that filters on the dp_today variable, so a report read from Auckland and one from
+       Los Angeles are each right. The list offers what this machine knows; anything may be typed,
+       and the server is the one that refuses a name it cannot resolve. -->
+  <label class="form-control w-full mb-2">
+    <div class="label">
+      <span class="label-text">Time zone</span>
+      <span class="label-text-alt opacity-60">Empty: the tenant's</span>
+    </div>
+    <input id="editUserTimezone" class="input input-bordered input-sm w-full" list="ianaTimezones"
+           placeholder="Europe/Berlin" [(ngModel)]="editUserTimezone" />
+    <datalist id="ianaTimezones">
+      @for (zone of knownTimezones; track zone) {
+        <option [value]="zone"></option>
+      }
+    </datalist>
+  </label>
+
+  <label class="form-control w-full mb-2">
+    <div class="label">
+      <span class="label-text">Locale</span>
+      <span class="label-text-alt opacity-60">Empty: the tenant's</span>
+    </div>
+    <input id="editUserLocale" class="input input-bordered input-sm w-full"
+           placeholder="en-GB" [(ngModel)]="editUserLocale" />
+  </label>
 
   @if (editUserRole !== 'ADMIN') {
     <div class="text-xs opacity-70">
@@ -266,7 +295,7 @@ export const tabUsersTemplate = `
   }
 
   <div ngProjectAs="[footer]">
-    <button id="btnSaveUser" type="button" class="btn btn-outline btn-primary" (click)="saveUserGroups()">
+    <button id="btnSaveUser" type="button" class="btn btn-outline btn-primary" (click)="saveUser()">
       Save
     </button>
     <button id="btnCancelUser" type="button" class="btn btn-outline" (click)="editUserVisible = false">

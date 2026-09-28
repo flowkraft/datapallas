@@ -73,6 +73,20 @@ public class CubeFilterOptions {
 	 */
 	public Map<String, Object> options(CubeOptions cube, String dimension, String connectionId, String search)
 			throws Exception {
+		return options(cube, dimension, connectionId, search, Map.of());
+	}
+
+	/**
+	 * The same list, for whoever is asking: the generated query carries the cube's
+	 * {@code access_filter}, and {@link CubeVariableBinding} gives its {@code ${dp_…}} variables
+	 * this caller's values - so the values offered for a filter are the values this caller may see,
+	 * in the editor and in a published dashboard alike.
+	 *
+	 * @param userVariables {@code UserVariables.of(request)} for this caller; empty means nobody in
+	 *                      particular, and every variable then binds empty and matches no row
+	 */
+	public Map<String, Object> options(CubeOptions cube, String dimension, String connectionId, String search,
+			Map<String, String> userVariables) throws Exception {
 
 		Map<String, Object> member = dimensionOf(cube, dimension);
 		String authorSql = Objects.toString(member.get("filter_options"), "").trim();
@@ -95,8 +109,8 @@ public class CubeFilterOptions {
 				return answer(values, readWholeCap || values.size() > MAX_VALUES);
 			}
 
-			CubeQuery query = CubeSqlGenerator.buildQuery(cube, generatedRequest(dimension, search),
-					vendorOf(connectionId));
+			CubeQuery query = CubeVariableBinding.bound(CubeSqlGenerator.buildQuery(cube,
+					generatedRequest(dimension, search), vendorOf(connectionId)), userVariables);
 			List<Map<String, Object>> rows = executor.queryOn(connectionId, query.getSql(), query.getParams(),
 					PROBE);
 			List<List<String>> values = SqlOptionRows.pairs(rows);

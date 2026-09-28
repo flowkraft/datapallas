@@ -32,6 +32,18 @@ public final class CubeRules {
 	// and the docs show, and it travels with the key so the two cannot drift apart.
 	// ═══════════════════════════════════════════════════════════════════════════
 
+	/**
+	 * The keys a {@code cube} block itself may say, each with its tier.
+	 *
+	 * <p>Unlike a member's keys these cannot be misspelt into silence: the builder has one method
+	 * per key and no catch-all, so {@code acces_filter 'x'} is a Groovy failure the author sees at
+	 * once. The map is here all the same, because the tier is what the UI and the docs show and it
+	 * has to travel with the key like every other one.
+	 */
+	public static final Map<String, Integer> CUBE_KEYS = keys(
+			"sql_table", 3, "sql", 3, "sql_alias", 3, "extends", 5, "title", 1, "description", 2,
+			"public", 3, "access_filter", 3, "meta", 5);
+
 	/** The keys of a {@code dimension} block, as the parser stores them, each with its tier. */
 	public static final Map<String, Integer> DIMENSION_KEYS = keys(
 			"name", 1, "title", 1, "description", 2, "sql", 3, "type", 3, "primary_key", 3,
@@ -494,6 +506,15 @@ public final class CubeRules {
 		if (cube.getMeta() != null && !cube.getMeta().isEmpty()) {
 			all.add(entry(cubeName, "cube", Objects.toString(cube.getTitle(), ""), "meta", "warning",
 					"meta is kept for other tools, and nothing here reads it."));
+		}
+		if (cube.getAccessFilterCount() > 1) {
+			// The second call replaced nothing in the parser - the first condition is kept - but a
+			// row filter the author believes is there and is not is exactly the mistake that shows
+			// somebody else's rows. It is an error, not a warning.
+			all.add(entry(cubeName, "cube", Objects.toString(cube.getTitle(), ""), "access_filter", "error",
+					"access_filter is written once per cube, and this cube writes it "
+							+ cube.getAccessFilterCount() + " times. Write one condition, joining "
+							+ "them with AND or OR."));
 		}
 
 		block(cube, file, cubeName, "dimension", cube.getDimensions(), DIMENSION_KEYS, all);

@@ -208,9 +208,21 @@ public class CubeRuntimeService {
 	// /query — the question, run on the widget's own connection
 	// ═══════════════════════════════════════════════════════════════════════════
 
-	/** The rows this selection asks for, and whether there were more of them. */
-	public Map<String, Object> query(String reportId, String componentId, Map<String, Object> request)
-			throws Exception {
+	/** Nobody in particular is asking: every {@code ${dp_…}} binds empty, which matches no row. */
+	Map<String, Object> query(String reportId, String componentId, Map<String, Object> request) throws Exception {
+		return query(reportId, componentId, request, Map.of());
+	}
+
+	/**
+	 * The rows this selection asks for, and whether there were more of them.
+	 *
+	 * @param userVariables who is asking, as {@code UserVariables.of(request)} answers it - the same
+	 *                      map {@code /data} binds. The cube's {@code access_filter} is written into
+	 *                      every SELECT by the generator and given these values here, so two people
+	 *                      asking the same question of the same widget are answered their own rows.
+	 */
+	public Map<String, Object> query(String reportId, String componentId, Map<String, Object> request,
+			Map<String, String> userVariables) throws Exception {
 
 		Widget widget = CubeWidgets.of(reportId, componentId);
 		CubeOptions cube = cubeOf(widget);
@@ -223,7 +235,11 @@ public class CubeRuntimeService {
 		// the same way a cut filter list is.
 		asked.put("limit", limit + 1);
 
-		CubeQuery query = generated(cube, asked, database.vendorOf(widget.connectionId()));
+		// The values of whoever is asking go in here and nowhere earlier: the request said which
+		// question, the session says whose answer. A dp_ name in the request body is not one of
+		// QUERY_KEYS and never reached this far, so there is nothing of the viewer's to overwrite.
+		CubeQuery query = CubeVariableBinding.bound(
+				generated(cube, asked, database.vendorOf(widget.connectionId())), userVariables);
 		List<Map<String, Object>> rows = database.read(widget.connectionId(), query.getSql(), query.getParams(),
 				limit + 1);
 
@@ -247,13 +263,23 @@ public class CubeRuntimeService {
 	 */
 	public Map<String, Object> filterOptions(String reportId, String componentId, String dimension, String search)
 			throws Exception {
+		return filterOptions(reportId, componentId, dimension, search, Map.of());
+	}
+
+	/**
+	 * The same list, for whoever is asking: the values offered for a filter are the values this
+	 * viewer may see, because the generated list carries the cube's access filter and it is bound
+	 * here with the values {@link #query} binds.
+	 */
+	public Map<String, Object> filterOptions(String reportId, String componentId, String dimension, String search,
+			Map<String, String> userVariables) throws Exception {
 
 		Widget widget = CubeWidgets.of(reportId, componentId);
 		CubeOptions cube = cubeOf(widget);
 
 		assertOffered(cube, "dimension", Objects.toString(dimension, ""));
 		try {
-			return cubeFilterOptions.options(cube, dimension, widget.connectionId(), search);
+			return cubeFilterOptions.options(cube, dimension, widget.connectionId(), search, userVariables);
 		} catch (IllegalArgumentException badRequest) {
 			throw badRequest(badRequest);
 		}

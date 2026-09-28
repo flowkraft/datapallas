@@ -4,11 +4,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
+  CallerAttributes,
   LockedParams,
   ReportParameter,
   ShareLink,
   absoluteShareUrl,
   createShareLink,
+  describeAttributes,
   describeLocks,
   fetchReportParameters,
   listShareLinks,
@@ -95,6 +97,19 @@ function LockValueInput({
   });
 }
 
+/**
+ * One line of the attributes editor, kept as a list rather than an object so a half-typed name is
+ * still editable: an object keyed by name loses the row the moment the name is blank or repeated.
+ */
+interface AttributeRow {
+  key: number;
+  name: string;
+  value: string;
+}
+
+/** The server's rule, enforced here too so the mistake is visible while it is being made. */
+const ATTRIBUTE_NAME = /^[a-z][a-z0-9_]*$/;
+
 interface ShareDialogProps {
   open: boolean;
   onClose: () => void;
@@ -121,6 +136,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
   const [parameters, setParameters] = useState<ReportParameter[]>([]);
   const [lockedNames, setLockedNames] = useState<string[]>([]);
   const [lockValues, setLockValues] = useState<{ [name: string]: string }>({});
+  const [attributeRows, setAttributeRows] = useState<AttributeRow[]>([]);
   const [newUrl, setNewUrl] = useState("");
   const [expiry, setExpiry] = useState<"never" | "7" | "30" | "90">("never");
   const [busy, setBusy] = useState(false);
@@ -142,6 +158,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
     setCopied(false);
     setLockedNames([]);
     setLockValues({});
+    setAttributeRows([]);
     void reload();
     // A report with no parameters is normal (canvases published from here usually declare none),
     // so a failure to read them only means "nothing to lock" — it must not hide the links table.
@@ -169,7 +186,41 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
     return Object.keys(locked).length === 0 ? undefined : locked;
   };
 
+  const addAttributeRow = () =>
+    setAttributeRows((previous) => [...previous, { key: Date.now() + previous.length, name: "", value: "" }]);
+
+  const changeAttributeRow = (key: number, field: "name" | "value", text: string) =>
+    setAttributeRows((previous) =>
+      previous.map((row) => (row.key === key ? { ...row, [field]: text } : row)),
+    );
+
+  const removeAttributeRow = (key: number) =>
+    setAttributeRows((previous) => previous.filter((row) => row.key !== key));
+
+  /** A row with no name at all is someone who started typing and changed their mind: skip it. */
+  const namedAttributeRows = () => attributeRows.filter((row) => row.name.trim() !== "");
+
+  const badAttributeNames = () =>
+    namedAttributeRows()
+      .map((row) => row.name.trim())
+      .filter((name) => !ATTRIBUTE_NAME.test(name));
+
+  const collectAttributes = (): CallerAttributes | undefined => {
+    const attributes: CallerAttributes = {};
+    for (const row of namedAttributeRows()) attributes[row.name.trim()] = row.value;
+    return Object.keys(attributes).length === 0 ? undefined : attributes;
+  };
+
   const handleCreate = async () => {
+    const refused = badAttributeNames();
+    if (refused.length > 0) {
+      setError(
+        `${refused.join(", ")} cannot be used as an attribute name. ` +
+          "Use lower-case letters, digits and _, starting with a letter.",
+      );
+      return;
+    }
+
     setBusy(true);
     setError("");
     try {
@@ -177,6 +228,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
         reportId,
         expiry === "never" ? undefined : Number(expiry),
         collectLocks(),
+        collectAttributes(),
       );
       setNewUrl(absoluteShareUrl(url));
       setCopied(false);
@@ -287,6 +339,47 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
           )}
         </div>
 
+        <div id="shareAttributes" className="mb-4 rounded-lg border border-base-300 p-3">
+          <p className="mb-1 text-sm font-medium">Who this link is for</p>
+          <p className="mb-2 text-xs text-base-content/60">
+            Values a widget can filter on as <code>{"${dp_attr_<name>}"}</code>, for example
+            {" "}<code>customer_id</code>. The person opening the link never sees them and cannot change
+            them.
+          </p>
+          {attributeRows.length > 0 && (
+            <div className="mb-2 flex flex-col gap-2">
+              {attributeRows.map((row) => (
+                <div key={row.key} className="flex items-center gap-2">
+                  <input
+                    id={`shareAttrName-${row.key}`}
+                    className="input input-bordered input-xs w-48 font-mono"
+                    placeholder="customer_id"
+                    value={row.name}
+                    onChange={(e) => changeAttributeRow(row.key, "name", e.target.value)}
+                  />
+                  <input
+                    id={`shareAttrValue-${row.key}`}
+                    className="input input-bordered input-xs grow"
+                    placeholder="4711"
+                    value={row.value}
+                    onChange={(e) => changeAttributeRow(row.key, "value", e.target.value)}
+                  />
+                  <button
+                    id={`btnRemoveShareAttribute-${row.key}`}
+                    className="btn btn-ghost btn-xs text-error"
+                    onClick={() => removeAttributeRow(row.key)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button id="btnAddShareAttribute" className="btn btn-xs" onClick={addAttributeRow}>
+            Add attribute
+          </button>
+        </div>
+
         <div className="mb-4 flex items-end gap-2">
           <label className="form-control">
             <div className="label">
@@ -320,6 +413,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
               <th>Created</th>
               <th>Expires</th>
               <th>Locked</th>
+              <th>For</th>
               <th className="text-right">Actions</th>
             </tr>
           </thead>
@@ -329,6 +423,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
                 <td className="text-xs">{formatWhen(link.createdAt)}</td>
                 <td className="text-xs">{formatWhen(link.expiresAt)}</td>
                 <td className="text-xs">{describeLocks(link.lockedParams)}</td>
+                <td className="text-xs">{describeAttributes(link.attributes)}</td>
                 <td className="text-right">
                   <button
                     id={`btnRevokeShareLink-${link.id}`}
@@ -343,7 +438,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
             ))}
             {links.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-center text-xs opacity-60">
+                <td colSpan={5} className="text-center text-xs opacity-60">
                   Not shared with anyone yet.
                 </td>
               </tr>

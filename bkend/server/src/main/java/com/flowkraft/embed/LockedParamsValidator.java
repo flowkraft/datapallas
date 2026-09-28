@@ -61,6 +61,15 @@ public class LockedParamsValidator {
 		for (Map.Entry<?, ?> entry : requested.entrySet()) {
 
 			String name = String.valueOf(entry.getKey());
+
+			// Row 0 of the precedence table: the dp_ variables are set by the server on every request
+			// and are not lockable. Refused by name rather than left to fall through the "no such
+			// parameter" branch below, so the message says why, and so it keeps saying it if a later
+			// change ever lists a dp_ name among the declared parameters.
+			if (UserVariables.isBuiltinName(name))
+				throw new IllegalArgumentException(
+						"'" + name + "' is a built-in variable the server sets on every request; it cannot be locked");
+
 			ReportParameter parameter = declared.get(name);
 
 			if (parameter == null)
@@ -90,7 +99,12 @@ public class LockedParamsValidator {
 		Map<String, ReportParameter> byId = new LinkedHashMap<>();
 		if (parameters != null)
 			for (ReportParameter parameter : parameters)
-				if (parameter != null && StringUtils.isNotBlank(parameter.id))
+				// A dp_ name is never a declared parameter, whatever a hand-edited spec says and
+				// whatever a later change adds to this list (04 R4 extends it with the cubes' own
+				// parameters): the server's value wins on every request, so a lock on one would be a
+				// lock that silently does nothing.
+				if (parameter != null && StringUtils.isNotBlank(parameter.id)
+						&& !UserVariables.isBuiltinName(parameter.id))
 					byId.put(parameter.id, parameter);
 
 		return byId;

@@ -272,7 +272,7 @@ class DashboardGrantsTest {
 	// ============================================================
 
 	private UserGroup group(String name) {
-		return repository.insertGroup(tenant.id(), name, "{}");
+		return repository.insertGroup(tenant.id(), name, com.flowkraft.iam.Slugs.of(name), "{}");
 	}
 
 	private AppUser user(String username) {

@@ -19,6 +19,7 @@ import com.sourcekraft.documentburster.common.db.DatabaseSchemaFetcher;
 import com.sourcekraft.documentburster.common.db.SqlExecutor;
 import com.sourcekraft.documentburster.common.db.schema.SchemaInfo;
 import com.flowkraft.exploredata.export.SqlParameterLines;
+import com.sourcekraft.documentburster.common.reportparameters.BuiltinVariables;
 import com.sourcekraft.documentburster.common.reportparameters.DateParameters;
 import com.sourcekraft.documentburster.common.reportparameters.ParameterTypes;
 
@@ -234,8 +235,13 @@ public class QueriesService {
 							}
 						}
 					}
-					// The list cannot be empty here: a parameter with nothing in it took its line
-					// with it above, so there is no `IN (…)` left to bind.
+					// A built-in keeps its line whatever it holds, so this list can be empty - a
+					// person in no group. It binds one empty value: `IN ('')` matches no row, which
+					// is the answer, where an empty list is not valid SQL at all. Everything else
+					// cannot be empty here: a parameter with nothing in it took its line with it
+					// above, so there is no `IN (…)` left to bind.
+					if (list.isEmpty() && BuiltinVariables.isBuiltinName(name))
+						list.add("");
 					boundParams.put(name, list);
 				} else if (usesNamedParameter(sql, name)) {
 					boundParams.put(name,

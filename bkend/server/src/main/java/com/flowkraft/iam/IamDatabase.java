@@ -5,9 +5,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -257,9 +264,32 @@ public class IamDatabase {
 			// locks simply has no value there, which reads as "locks nothing", exactly what it did.
 			addColumnIfMissing(conn, "share_token", "locked_params", "TEXT");
 
+			// Who the recipient of a link is, for the widgets that filter with ${dp_attr_<name>}. Added
+			// when missing on the same terms as locked_params: a link handed out before the attribute
+			// bag existed carries none, which reads as "says nothing about the viewer".
+			addColumnIfMissing(conn, "share_token", "attributes", "TEXT");
+
+			// Where a person is and what they read in. A dashboard filtered on ${dp_today} has to mean
+			// the caller's today, and a Tokyo viewer's today is not a Lisbon viewer's today, so the zone
+			// is a property of the person rather than of the server the report happens to run on. Both
+			// are nullable: the tenant answers for a person who never said, and the server for a tenant
+			// that never said. Added when missing, like the columns above, so an installation that
+			// predates the builtin variables upgrades in place.
+			addColumnIfMissing(conn, "app_user", "timezone", "TEXT");
+			addColumnIfMissing(conn, "app_user", "locale", "TEXT");
+			addColumnIfMissing(conn, "tenant", "timezone", "TEXT");
+			addColumnIfMissing(conn, "tenant", "locale", "TEXT");
+
+			// The name a group answers to inside an access filter. See Slugs for why SQL cannot name a
+			// group by its display name. Groups created before this column exists are given one from
+			// their name, once, so an access filter written today works against a store set up last year.
+			addColumnIfMissing(conn, "user_group", "slug", "TEXT");
+			backfillGroupSlugs(conn);
+
 			st.execute("CREATE INDEX IF NOT EXISTS idx_membership_user ON membership(user_id)");
 			st.execute("CREATE INDEX IF NOT EXISTS idx_share_resource ON share_token(resource_type, resource_id)");
 			st.execute("CREATE INDEX IF NOT EXISTS idx_user_group_member_user ON user_group_member(user_id)");
+			st.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_group_slug ON user_group(tenant_id, slug)");
 			st.execute("CREATE INDEX IF NOT EXISTS idx_user_group_dashboard_group ON user_group_dashboard(group_id)");
 			st.execute("CREATE INDEX IF NOT EXISTS idx_user_group_report_group ON user_group_report(group_id)");
 
@@ -286,6 +316,52 @@ public class IamDatabase {
 			st.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
 			log.info("Added the {}.{} column to the IAM store", table, column);
 		}
+	}
+
+	/**
+	 * Gives every group that has no slug yet the one its name produces, keeping them unique inside the
+	 * tenant. Runs on each boot but touches nothing once done, because a group written by
+	 * {@link com.flowkraft.iam.limits.LimitsService} always arrives with a slug.
+	 */
+	private void backfillGroupSlugs(Connection conn) throws SQLException {
+
+		record Pending(long id, long tenantId, String name) {
+		}
+
+		List<Pending> pending = new ArrayList<>();
+		Map<Long, Set<String>> takenPerTenant = new HashMap<>();
+
+		try (Statement st = conn.createStatement();
+				ResultSet rs = st.executeQuery("SELECT id, tenant_id, name, slug FROM user_group")) {
+
+			while (rs.next()) {
+				long tenantId = rs.getLong("tenant_id");
+				String slug = rs.getString("slug");
+
+				if (slug == null || slug.isBlank())
+					pending.add(new Pending(rs.getLong("id"), tenantId, rs.getString("name")));
+				else
+					takenPerTenant.computeIfAbsent(tenantId, key -> new HashSet<>()).add(slug);
+			}
+		}
+
+		if (pending.isEmpty())
+			return;
+
+		try (PreparedStatement ps = conn.prepareStatement("UPDATE user_group SET slug = ? WHERE id = ?")) {
+			for (Pending group : pending) {
+
+				Set<String> taken = takenPerTenant.computeIfAbsent(group.tenantId(), key -> new HashSet<>());
+				String slug = Slugs.unique(Slugs.of(group.name()), taken);
+				taken.add(slug);
+
+				ps.setString(1, slug);
+				ps.setLong(2, group.id());
+				ps.executeUpdate();
+			}
+		}
+
+		log.info("Gave {} existing group(s) a slug in the IAM store", pending.size());
 	}
 
 	private void stampSchemaVersion(Connection conn) throws SQLException {

@@ -70,7 +70,7 @@ public class UsersController {
 
 	private TenantUserDto withGroups(TenantUserDto user) {
 		List<GroupRefDto> groups = limitsService.groupsOf(user.id()).stream()
-				.map(group -> new GroupRefDto(group.id(), group.name())).toList();
+				.map(group -> new GroupRefDto(group.id(), group.name(), group.slug())).toList();
 
 		Role role = user.role() == null ? null : Role.parse(user.role());
 
@@ -169,6 +169,19 @@ public class UsersController {
 		}
 	}
 
+	/**
+	 * A person's time zone and language tag. Blank clears the value, which means "ask the tenant".
+	 */
+	@PutMapping("/users/{username}/preferences")
+	public ResponseEntity<?> setUserPreferences(@PathVariable String username, @RequestBody Map<String, String> body) {
+		try {
+			iamService.setUserPreferences(username, body.get("timezone"), body.get("locale"));
+			return ResponseEntity.ok().build();
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+		}
+	}
+
 	@PutMapping("/users/{username}/password")
 	public ResponseEntity<?> changePassword(@PathVariable String username, @RequestBody Map<String, String> body) {
 		try {
@@ -231,6 +244,21 @@ public class UsersController {
 		} catch (IamService.LicenseLimitException e) {
 			return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(Map.of("error", e.getMessage()));
 
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+		}
+	}
+
+	/**
+	 * The tenant's defaults, for everybody in it who has not said otherwise. There is no tenant edit
+	 * screen yet, so this is an API-only endpoint today — the user form is where an admin sets a
+	 * person's own zone.
+	 */
+	@PutMapping("/tenants/{code}/preferences")
+	public ResponseEntity<?> setTenantPreferences(@PathVariable String code, @RequestBody Map<String, String> body) {
+		try {
+			iamService.setTenantPreferences(code, body.get("timezone"), body.get("locale"));
+			return ResponseEntity.ok().build();
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}

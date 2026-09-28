@@ -77,6 +77,11 @@ public class CubeOptionsParser {
         if (map.containsKey("description")) opts.setDescription(String.valueOf(map.get("description")));
         if (map.containsKey("public")) opts.setPublic_((Boolean) map.get("public"));
         if (map.containsKey("meta")) opts.setMeta((Map<String, Object>) map.get("meta"));
+        // The row filter, and how many were written: one is the cube's, a second is an error
+        // CubeRules reports, because the second would replace the first.
+        if (map.containsKey("access_filter")) opts.setAccessFilter(String.valueOf(map.get("access_filter")));
+        if (map.get("access_filter_count") instanceof Number count) opts.setAccessFilterCount(count.intValue());
+        else if (map.containsKey("access_filter")) opts.setAccessFilterCount(1);
         // Semantic members
         if (map.containsKey("dimensions")) opts.setDimensions((List<Map<String, Object>>) map.get("dimensions"));
         if (map.containsKey("measures")) opts.setMeasures((List<Map<String, Object>>) map.get("measures"));

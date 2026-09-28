@@ -128,6 +128,9 @@ GET /api/system/license/status -> (none)
 GET /api/system/preferences -> (none)
 GET /api/system/services/status -> JOB_OPERATOR
 GET /api/system/test-url -> JOB_OPERATOR
+# The caller's own dp_ values, and nobody else's: the authoring canvas asks for them so the SQL
+# it runs through run-sql binds what a viewer's SQL will bind. Same role as run-sql itself.
+GET /api/user-variables -> REPORT_AUTHOR
 # The shared dashboard page: a share token or an embed token opens it without a session (SecurityConfig), and the handler then runs dashboardAccess.check and reportAccess.assertReportReadable. Report access, not role access.
 GET /dashboard/{reportCode} -> (none)
 PATCH /api/jobs/{id} -> JOB_OPERATOR
@@ -218,8 +221,14 @@ PUT /api/connections/{connectionId}/metadata/{type} -> ADMIN
 PUT /api/cubes/{cubeId} -> REPORT_AUTHOR
 PUT /api/explorations/{id} -> REPORT_AUTHOR
 PUT /api/iam/groups/{groupId} -> ADMIN
+# A tenant's default time zone and language, for everybody in it: an administrative decision,
+# like every other door under /api/iam.
+PUT /api/iam/tenants/{code}/preferences -> ADMIN
 PUT /api/iam/users/{username}/groups -> ADMIN
 PUT /api/iam/users/{username}/password -> ADMIN
+# Somebody else's time zone and language, set from the user form. A person changing their own
+# working preferences does it through PUT /api/system/preferences, which is REPORT_AUTHOR.
+PUT /api/iam/users/{username}/preferences -> ADMIN
 PUT /api/iam/users/{username}/role -> ADMIN
 # and then by data: limitsService.assertConnectionAllowed on the conncode being saved - an author
 # cannot point a report at a connection they may not use themselves.

@@ -91,7 +91,7 @@ class DashboardAccessTest {
 
 		AppUser mark = repository.insertUser("mark", null, "{noop}x", false);
 		repository.upsertMembership(mark.id(), tenant.id(), Role.DASHBOARD_VIEWER);
-		UserGroup finance = repository.insertGroup(tenant.id(), "Finance", "{}");
+		UserGroup finance = repository.insertGroup(tenant.id(), "Finance", "finance", "{}");
 		grants.setGroupDashboards(finance.id(), List.of(REVENUE.id()), null);
 		repository.replaceUserGroups(mark.id(), List.of(finance.id()));
 

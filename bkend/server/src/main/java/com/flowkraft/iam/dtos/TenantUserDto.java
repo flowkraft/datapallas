@@ -21,6 +21,8 @@ public record TenantUserDto(
 		boolean platformAdmin,
 		String role,
 		String createdAt,
+		String timezone,
+		String locale,
 		List<GroupRefDto> groups,
 		LimitSettings effectiveLimits,
 		List<String> effectiveReports,
@@ -28,8 +30,9 @@ public record TenantUserDto(
 
 	/** A user with nothing filled in about groups — what the store alone can say. */
 	public TenantUserDto(long id, String username, String email, String status, boolean platformAdmin, String role,
-			String createdAt) {
-		this(id, username, email, status, platformAdmin, role, createdAt, List.of(), null, null, null);
+			String createdAt, String timezone, String locale) {
+		this(id, username, email, status, platformAdmin, role, createdAt, timezone, locale, List.of(), null, null,
+				null);
 	}
 
 	/**
@@ -49,7 +52,7 @@ public record TenantUserDto(
 	 */
 	public TenantUserDto withGroups(List<GroupRefDto> groups, LimitSettings effectiveLimits,
 			List<String> effectiveReports, String opensOn) {
-		return new TenantUserDto(id, username, email, status, platformAdmin, role, createdAt, groups, effectiveLimits,
-				effectiveReports, opensOn);
+		return new TenantUserDto(id, username, email, status, platformAdmin, role, createdAt, timezone, locale, groups,
+				effectiveLimits, effectiveReports, opensOn);
 	}
 }

@@ -48,6 +48,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.common.Utils;
 import com.flowkraft.embed.LockedParams;
+import com.flowkraft.embed.ReservedParameterNameException;
+import com.flowkraft.embed.UserVariables;
 import com.flowkraft.cubes.CubeRuntimeService;
 import com.flowkraft.iam.dashboards.DashboardAccess;
 import com.flowkraft.iam.limits.LimitsSandbox;
@@ -115,6 +117,10 @@ public class ReportsController {
 
 	@Autowired
 	CubeRuntimeService cubeRuntimeService;
+
+	/** Row 0 of the precedence table: who is asking, in the form a widget's SQL compares against. */
+	@Autowired
+	UserVariables userVariables;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -374,6 +380,11 @@ public class ReportsController {
 			testMode = Boolean.FALSE;
 		}
 
+		// Row 0 of the precedence table, and it comes last on purpose: whatever the query string said
+		// about a dp_ name is overwritten here by what the session or the token actually says. A viewer
+		// asking for ?dp_user_id=boss gets their own rows, not the boss's.
+		parameters.putAll(userVariables.of(httpRequest));
+
 		String sort = extractBracketParams(parameters, "sort");
 		String filter = extractBracketParams(parameters, "filter");
 		ReportDataResult result = reportingService.fetchReportData(reportId, parameters, testMode);
@@ -409,7 +420,9 @@ public class ReportsController {
 		dashboardAccess.check(reportId, httpRequest);
 		reportAccess.assertReportReadable(reportId, httpRequest);
 
-		return Mono.just(cubeRuntimeService.query(reportId, componentId, request));
+		// Row 0 of the precedence table again, and the same call /data makes a few lines above: the
+		// live cube learns who is asking from the session or the credential, never from the request.
+		return Mono.just(cubeRuntimeService.query(reportId, componentId, request, userVariables.of(httpRequest)));
 	}
 
 	@Operation(summary = "The values one dimension of a dashboard's live cube may be filtered by")
@@ -424,7 +437,8 @@ public class ReportsController {
 		Map<String, Object> asked = request != null ? request : Map.of();
 		String dimension = asked.get("dimension") != null ? asked.get("dimension").toString() : null;
 		String search = asked.get("search") != null ? asked.get("search").toString() : null;
-		return Mono.just(cubeRuntimeService.filterOptions(reportId, componentId, dimension, search));
+		return Mono.just(cubeRuntimeService.filterOptions(reportId, componentId, dimension, search,
+				userVariables.of(httpRequest)));
 	}
 
 	private String extractBracketParams(Map<String, String> params, String prefix) throws Exception {
@@ -887,6 +901,7 @@ public class ReportsController {
 			return Mono.just(new ResponseEntity<>(HttpStatus.BAD_REQUEST));
 		}
 		assertScriptSaveAllowed(suffix, content);
+		assertNoReservedParameterNames(suffix, content);
 		String settingsPath = resolveSettingsPath(reportId);
 		String configDir = new File(settingsPath).getParent();
 		String scriptPath = configDir + "/" + reportId + "-" + suffix + ".groovy";
@@ -910,6 +925,36 @@ public class ReportsController {
 		}
 
 		limitsSandbox.check(content.orElse(""));
+	}
+
+	/**
+	 * A dashboard may not declare a parameter named {@code dp_…}.
+	 *
+	 * <p>The prefix is the server's namespace, and a parameter sharing a name with a built-in variable
+	 * is a parameter whose value is overwritten on every request — the author would see a control that
+	 * does nothing. Refused here, where the parameters spec is saved, rather than explained later.
+	 *
+	 * <p>A spec that does not parse is left alone: saving a half-written DSL is how an author works,
+	 * and refusing the save on a syntax error would be a new rule this is not the place for.
+	 */
+	private void assertNoReservedParameterNames(String suffix, Optional<String> content) {
+
+		if (!"report-parameters-spec".equals(suffix))
+			return;
+
+		List<ReportParameter> parameters;
+		try {
+			parameters = ReportParametersHelper.parseGroovyParametersDslCode(content.orElse(""));
+		} catch (Exception e) {
+			return;
+		}
+
+		if (parameters == null)
+			return;
+
+		for (ReportParameter parameter : parameters)
+			if (parameter != null && UserVariables.isBuiltinName(parameter.id))
+				throw new ReservedParameterNameException(parameter.id);
 	}
 
 	private String resolveScriptSuffix(String scriptType) {

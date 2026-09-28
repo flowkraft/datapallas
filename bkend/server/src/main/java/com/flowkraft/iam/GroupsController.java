@@ -126,7 +126,7 @@ public class GroupsController {
 	// ============================================================
 
 	private GroupDto toDto(UserGroup group) {
-		return new GroupDto(group.id(), group.name(), LimitSettings.parse(group.settingsJson()),
+		return new GroupDto(group.id(), group.name(), group.slug(), LimitSettings.parse(group.settingsJson()),
 				limitsService.membersOf(group.id()), reportGrants.reportsOfGroup(group.id()),
 				dashboardGrants.dashboardsOfGroup(group.id()), group.defaultDashboard());
 	}

@@ -32,6 +32,24 @@ public class CubeOptions {
     private Boolean public_ = true;  // defaults to visible
     private Map<String, Object> meta = new LinkedHashMap<>();
 
+    /**
+     * The row filter every SELECT over this cube carries: {@code access_filter '<SQL condition>'}.
+     *
+     * <p>Optional, and at most one per cube. It is any valid SQL condition, and it may name
+     * {@code ${CUBE}}, the joined tables and the {@code ${dp_…}} variables of whoever is asking.
+     * The generator puts it, in its own brackets, into the WHERE of every SELECT it writes for
+     * this cube, so an {@code OR} inside it cannot swallow the conditions next to it.
+     */
+    private String accessFilter;
+
+    /**
+     * How many {@code access_filter} lines the author wrote. More than one is a mistake — the
+     * second would silently replace the first, which for a row filter means showing rows the
+     * first one hid — and {@link CubeRules} reports it as an {@code error}. The first one is the
+     * one kept, so the narrower answer stands until the author fixes the file.
+     */
+    private int accessFilterCount;
+
     // Semantic members
     private List<Map<String, Object>> dimensions = new ArrayList<>();
     private List<Map<String, Object>> measures = new ArrayList<>();
@@ -71,6 +89,12 @@ public class CubeOptions {
 
     public Map<String, Object> getMeta() { return meta; }
     public void setMeta(Map<String, Object> meta) { this.meta = meta; }
+
+    public String getAccessFilter() { return accessFilter; }
+    public void setAccessFilter(String accessFilter) { this.accessFilter = accessFilter; }
+
+    public int getAccessFilterCount() { return accessFilterCount; }
+    public void setAccessFilterCount(int accessFilterCount) { this.accessFilterCount = accessFilterCount; }
 
     public List<Map<String, Object>> getDimensions() { return dimensions; }
     public void setDimensions(List<Map<String, Object>> dimensions) { this.dimensions = dimensions; }

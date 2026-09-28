@@ -93,6 +93,7 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 			if (claims.isPresent()) {
 				TokenRequest.mark(request, requestedReportId.get());
 				attachLocks(request, claims.get().lockedParams());
+				attachCaller(request, claims.get().attributes(), claims.get().timezone(), claims.get().locale());
 				return new AuthorizationDecision(true);
 			}
 
@@ -108,6 +109,7 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 				if (shared.isPresent()) {
 					TokenRequest.mark(request, requestedReportId.get());
 					attachLocks(request, shared.get().lockedParams());
+					attachCaller(request, shared.get().attributes(), null, null);
 					return new AuthorizationDecision(true);
 				}
 			}
@@ -128,6 +130,28 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 	private void attachLocks(HttpServletRequest request, Map<String, Object> lockedParams) {
 		if (lockedParams != null && !lockedParams.isEmpty())
 			request.setAttribute(LockedParams.REQUEST_ATTRIBUTE, lockedParams);
+	}
+
+	/**
+	 * Hand over what the credential says about the viewer behind it: the attribute bag, and the zone
+	 * and locale it asks for.
+	 *
+	 * <p>Here for exactly the reason the locks are here, and it is worth saying twice: this is the
+	 * only place holding a verified credential, so it is the only place that may say a request
+	 * carries an attribute. {@code ?dp_attr_customer_id=1} in a query string reaches nothing, because
+	 * nothing downstream reads attributes from anywhere but this attribute.
+	 */
+	private void attachCaller(HttpServletRequest request, Map<String, String> attributes, String timezone,
+			String locale) {
+
+		if (attributes != null && !attributes.isEmpty())
+			request.setAttribute(CallerAttributes.REQUEST_ATTRIBUTE, attributes);
+
+		if (timezone != null && !timezone.isBlank())
+			request.setAttribute(CallerAttributes.ZONE_REQUEST_ATTRIBUTE, timezone);
+
+		if (locale != null && !locale.isBlank())
+			request.setAttribute(CallerAttributes.LOCALE_REQUEST_ATTRIBUTE, locale);
 	}
 
 	/**
