@@ -44,6 +44,14 @@ public final class CubeRules {
 			"share_of_total", 2, "rolling_window", 2, "time_shift", 2,
 			"format", 4, "drill_members", 4, "public", 3, "meta", 5);
 
+	/**
+	 * Keys a rule of its own already explains, per block: they are not reported as unknown too,
+	 * because one mistake is worth one line. {@code filter_options} on a measure is the one there
+	 * is — it is a real key on the wrong member, and the line that says so says what happens to it.
+	 */
+	private static final Map<String, Set<String>> SAID_ELSEWHERE = Map.of(
+			"measure", Set.of("filter_options"));
+
 	/** The keys of a {@code join} block. */
 	public static final Map<String, Integer> JOIN_KEYS = keys(
 			"name", 3, "sql", 3, "relationship", 3, "parent", 3, "title", 1, "description", 2,
@@ -520,6 +528,7 @@ public final class CubeRules {
 
 			for (String key : member.keySet()) {
 				if (knownKeys.containsKey(key)) continue;
+				if (SAID_ELSEWHERE.getOrDefault(blockName, Set.of()).contains(key)) continue;
 				String suggestion = closest(key, knownKeys.keySet());
 				all.add(entry(cubeName, blockName, name, key, "warning",
 						"unknown key '" + key + "' in " + blockName + " " + name

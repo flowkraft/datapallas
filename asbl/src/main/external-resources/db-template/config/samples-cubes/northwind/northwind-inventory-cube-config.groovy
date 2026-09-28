@@ -57,6 +57,9 @@ cube {
     description '1 if the product is no longer sold, 0 if active'
     sql '"Discontinued"'
     type 'number'
+    // The column holds 0 and 1; a person filtering wants Active and Discontinued. The second
+    // column is the label, the first is what the filter binds.
+    filter_options 'SELECT 0 AS value, \'Active\' AS label UNION ALL SELECT 1, \'Discontinued\''
   }
   dimension {
     name 'UnitsInStock'

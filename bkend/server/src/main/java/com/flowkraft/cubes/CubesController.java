@@ -51,6 +51,9 @@ public class CubesController {
 	@Autowired
 	private LimitsSandbox limitsSandbox;
 
+	@Autowired
+	private CubeFilterOptions cubeFilterOptions;
+
 	// ═══════════════════════════════════════════════════════════════════════════
 	// CRUD
 	// ═══════════════════════════════════════════════════════════════════════════
@@ -137,6 +140,47 @@ public class CubesController {
 		CubeOptions picked = CubeSqlGenerator.pickCube(file, cubeName);
 		picked.setWarnings(file.getWarnings());
 		return Mono.just(picked);
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Viewer filters
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * The values one dimension may be filtered by, for the filter popover of the cube component:
+	 * body {@code {cubeName?, dimension, connectionId?, search?}}, answer
+	 * {@code {values: [[value, label], …], truncated}}.
+	 *
+	 * <p>Where the list comes from, how long it may be and how {@code search} is applied are
+	 * {@link CubeFilterOptions}'s, so the runtime twin of this endpoint answers exactly the same.
+	 * Without a {@code connectionId} the cube's own saved connection is read, which is what the
+	 * editor means every time; without a {@code cubeName} the name the file keeps this cube under
+	 * is, exactly as generate-sql does it.
+	 */
+	@PostMapping(value = "/{cubeId}/filter-options", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> filterOptions(
+			@PathVariable String cubeId,
+			@RequestBody Map<String, String> request) throws Exception {
+
+		Map<String, Object> cubeData = cubesService.load(cubeId);
+		String dslCode = (String) cubeData.get("dslCode");
+		// Checked although it was saved earlier: it is about to be compiled and run for this caller.
+		limitsSandbox.check(dslCode);
+		CubeOptions file = cubesService.parseDsl(dslCode);
+
+		String cubeName = request.get("cubeName");
+		if (cubeName == null) {
+			cubeName = (String) cubeData.get("cubeName");
+		}
+		CubeOptions picked = CubeSqlGenerator.pickCube(file, cubeName);
+
+		String connectionId = request.get("connectionId");
+		if (connectionId == null || connectionId.isBlank()) {
+			connectionId = (String) cubeData.get("connectionId");
+		}
+
+		return Mono.just(cubeFilterOptions.options(picked, request.get("dimension"), connectionId,
+				request.get("search")));
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

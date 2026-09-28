@@ -48,6 +48,7 @@ import { SelfServicePortalsTestHelper } from '../../../helpers/areas/self-servic
 import {
   createFreshCanvas,
   addCubeToCanvas,
+  openCubeFolders,
   addUIElement,
   arrangeWidgets,
   clickDataTab,
@@ -299,6 +300,8 @@ async function tickFields(
   // refetch. Real users pause ~1s between clicks; do the same instead of
   // hammering at 200ms intervals (which forced concurrent generateCubeSql
   // calls to race and was the root cause of the early "stuck loading" bugs).
+  // A dimension of a joined table sits in a collapsed folder in the default view.
+  await openCubeFolders(page, dims.map((d) => `chk-dim-${d}`));
   for (const d of dims) {
     await page.locator(`#chk-dim-${d}`).check();
     await page.waitForTimeout(800);
@@ -401,6 +404,7 @@ async function arrangeAndHighlight(
     // It also dispatches selectionChanged → VisualQueryBuilder calls
     // generateCubeSql, but useWidgetData's LAST_EXEC short-circuits the refetch
     // when the SQL hasn't changed (which it hasn't — same selection).
+    await openCubeFolders(page, cubeFields.dims.map((d) => `chk-dim-${d}`));
     for (const d of cubeFields.dims) {
       const cb = page.locator(`#chk-dim-${d}`);
       if (await cb.count() > 0 && !(await cb.isChecked().catch(() => false))) {

@@ -136,6 +136,28 @@ export async function addCubeToCanvas(page: Page, cubeId: string): Promise<void>
  *  the widget's generatedSql and triggers a data refresh. Dispatching the
  *  event directly avoids needing to drive the cube renderer's internal
  *  shadow-DOM checkbox UI. */
+/**
+ * Open the joined-table folders a spec is about to tick in.
+ *
+ * The field tree opens with the joined tables collapsed (the design's default view), so a field
+ * from a join is not visible until its `grp-join-…` folder is clicked. A folder that is already
+ * open is left alone: its field is visible, and a second click would close it again.
+ */
+export async function openCubeFolders(page: Page, fieldIds: string[]): Promise<void> {
+  await page.locator('rb-cube-renderer').first().waitFor({ state: 'visible', timeout: 15_000 });
+  for (const fieldId of fieldIds) {
+    const field = page.locator(`#${fieldId}`);
+    if (await field.isVisible().catch(() => false)) continue;
+    const folders = await page.locator('[id^="grp-join-"]').all();
+    for (const folder of folders) {
+      await folder.click();
+      if (await field.isVisible().catch(() => false)) break;
+      await folder.click(); // not this folder: leave it as it was
+    }
+    await field.waitFor({ state: 'visible', timeout: 10_000 });
+  }
+}
+
 export async function selectCubeFields(
   page: Page,
   dimensions: string[],

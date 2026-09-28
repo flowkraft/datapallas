@@ -24,6 +24,7 @@ import com.flowkraft.samples.SamplesFrendOnlyService;
 import com.flowkraft.reports.ReportsService;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.queries.ConnectionFactory;
+import com.flowkraft.queries.SqlOptionRows;
 import com.flowkraft.reporting.dtos.ReportFullConfigDto;
 import com.flowkraft.reporting.dsl.chart.ChartOptionsParser;
 import com.sourcekraft.documentburster.common.db.DatabaseConnectionManager;
@@ -732,18 +733,9 @@ public class ReportingService {
 						// the shape `<rb-parameters>` and `FilterBar.tsx` both consume to render
 						// `name` while binding `id` to the IN-list. Same convention used by the
 						// canvas-side resolver in FilterBar.tsx.
-						List<Object> resolved = new ArrayList<>();
-						for (Map<String, Object> row : rows) {
-							java.util.Iterator<Object> it = row.values().iterator();
-							Object first = it.hasNext() ? it.next() : null;
-							if (first == null) continue;
-							if (it.hasNext()) {
-								Object second = it.next();
-								resolved.add(new Object[] { String.valueOf(first), String.valueOf(second) });
-							} else {
-								resolved.add(String.valueOf(first));
-							}
-						}
+						// The loop that reads those two shapes lives in SqlOptionRows, because a
+						// cube dimension's filter_options reads exactly the same rows.
+						List<Object> resolved = SqlOptionRows.options(rows);
 						param.uiHints.put("options", resolved);
 						log.debug("Resolved SQL options for param '" + param.id + "': " + resolved.size() + " values");
 					}

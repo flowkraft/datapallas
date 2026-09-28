@@ -47,6 +47,15 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 	 */
 	private static final Pattern REPORT_CONFIG = Pattern.compile("^/api/reports/([^/]+)/config/?$");
 
+	/**
+	 * A live cube of a published dashboard: its field tree, the rows one selection asks for, and the
+	 * values a dimension may be filtered by. All three are ways of reading the same report, and all
+	 * three are scoped by that report's own {@code -cube-widgets.json}, so a token for a report opens
+	 * the live cubes that report declares and nothing else. (TODO 7f adds {@code drill} here.)
+	 */
+	private static final Pattern REPORT_CUBE = Pattern
+			.compile("^/api/reports/([^/]+)/cube/[^/]+/(meta|query|filter-options)/?$");
+
 	private static final Pattern DASHBOARD = Pattern.compile("^/dashboard/([^/]+)/?$");
 
 	/**
@@ -160,6 +169,10 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 		Matcher config = REPORT_CONFIG.matcher(path);
 		if (config.matches())
 			return Optional.of(decode(config.group(1)));
+
+		Matcher cube = REPORT_CUBE.matcher(path);
+		if (cube.matches())
+			return Optional.of(decode(cube.group(1)));
 
 		Matcher dashboard = DASHBOARD.matcher(path);
 		if (dashboard.matches())

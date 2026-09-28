@@ -179,6 +179,77 @@ test.describe('', async () => {
   );
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // 4.3b — A viewer filter: the icon, the popover, the chip, and the SQL
+  //        (Phase 3a TODO 7b, W1. Written, never run by the plan; retries 0.)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  electronBeforeAfterAllTest(
+    '(cube-definitions) should filter from the field tree and show it in View SQL',
+    async function ({ beforeAfterEach: firstPage }) {
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+
+      const ft = new FluentTester(firstPage);
+
+      // Business question: "Revenue by category, Germany only". The filter is on a dimension nobody
+      // ticked (ShipCountry), because a filter is a WHERE and not a column - and the chip is what
+      // says so on screen.
+      //
+      // `#cubeFilterParams` is `<rb-parameters>` fed the metadata of that one dimension. Its
+      // multi-select draws a trigger button carrying the dimension's own id (`#ShipCountry`), and
+      // the modal behind it holds one checkbox per value (`#ShipCountry_cb_Germany`) and its own OK.
+      // Germany is in that list only if the options endpoint really read the column.
+      ft.gotoCubeDefinitions()
+        .waitOnElementToBecomeVisible('#northwind-sales')
+        .clickAndSelectTableRow('#northwind-sales')
+        .waitOnElementToBecomeEnabled('#btnEditCube')
+        .click('#btnEditCube')
+        .waitOnElementToBecomeVisible('#cubePreviewContainer')
+        // CategoryName is two joins away, in the Categories folder
+        .click('#grp-join-Categories')
+        .waitOnElementToBecomeVisible('#dim-CategoryName')
+        .click('#chk-dim-CategoryName')
+        .waitOnElementToBecomeVisible('#meas-Revenue')
+        .click('#chk-meas-Revenue')
+        // ── The filter icon of a dimension that is not ticked ──
+        .waitOnElementToBecomeVisible('#btnFilter-ShipCountry')
+        .click('#btnFilter-ShipCountry')
+        .waitOnElementToBecomeVisible('#cubeFilterPopover')
+        .waitOnElementToBecomeVisible('#cubeFilterParams')
+        .waitOnElementToBecomeVisible('#ShipCountry')
+        .click('#ShipCountry')
+        .waitOnElementToBecomeVisible('#ShipCountry_cb_Germany')
+        .click('#ShipCountry_cb_Germany')
+        .click('#ShipCountry_btnOk')
+        .click('#btnFilterApply')
+        .waitOnElementToBecomeInvisible('#cubeFilterPopover')
+        .waitOnElementToBecomeVisible('#cubeFilterChips')
+        .elementShouldContainText('#chipFilter-ShipCountry', 'Ship Country: Germany')
+        // ── The filter is really applied ──
+        .waitOnElementToBecomeEnabled('#btnViewSql')
+        .click('#btnViewSql')
+        .waitOnElementToBecomeVisible('#cubeSqlResult')
+        .elementShouldContainText('#cubeSqlResult', 'Germany')
+        .elementShouldContainText('#cubeSqlResult', 'GROUP BY')
+        .click('#btnCloseCubeSqlModal')
+        .waitOnElementToBecomeInvisible('#cubeSqlResult')
+        // ── and really removed: the other half of the same question. The grouping stays,
+        //    so what went is the filter and not the query.
+        .click('#btnChipRemove-ShipCountry')
+        .waitOnElementToBecomeInvisible('#cubeFilterChips')
+        .click('#btnViewSql')
+        .waitOnElementToBecomeVisible('#cubeSqlResult')
+        .elementShouldNotContainText('#cubeSqlResult', 'Germany')
+        .elementShouldContainText('#cubeSqlResult', 'GROUP BY')
+        .click('#btnCloseCubeSqlModal')
+        .waitOnElementToBecomeInvisible('#cubeSqlResult')
+        // The sample cube is read-only: close without saving anything
+        .click('#btnCloseCubeModal');
+
+      return ft;
+    },
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // 4.4 — Every sample cube is listed by its title, never by its folder id
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -217,6 +288,155 @@ test.describe('', async () => {
           .elementShouldContainText(`#${cubeId}`, cubeTitle)
           .elementShouldNotContainText(`#${cubeId}`, cubeId);
       }
+
+      return ft;
+    },
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 4.5 — A time dimension is asked for by month, and the picker says so
+  //       (Phase 3a TODO 7. Written, never run by the plan; retries 0.)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  electronBeforeAfterAllTest(
+    '(cube-definitions) time dimension by month',
+    async function ({ beforeAfterEach: firstPage }) {
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+
+      const ft = new FluentTester(firstPage);
+
+      // The northwind-sales sample ships on SQLite, so the month bucket is
+      // `date(…, 'start of month')` — the string this test reads.
+      ft.gotoCubeDefinitions()
+        .waitOnElementToBecomeVisible('#northwind-sales')
+        .clickAndSelectTableRow('#northwind-sales')
+        .waitOnElementToBecomeEnabled('#btnEditCube')
+        .click('#btnEditCube')
+        .waitOnElementToBecomeVisible('#cubePreviewContainer')
+        // ── U1: the default view — Measures and the main table open, joins closed ──
+        .waitOnElementToBecomeVisible('#grp-measures')
+        .waitOnElementToBecomeVisible('#grp-main')
+        .waitOnElementToBecomeVisible('#meas-Revenue')
+        .waitOnElementToBecomeVisible('#dim-OrderDate')
+        // A joined table's field is one click away, not on screen from the start.
+        .waitOnElementToBecomeInvisible('#dim-SupplierName')
+        .click('#grp-join-Suppliers')
+        .waitOnElementToBecomeVisible('#dim-SupplierName')
+        // ── The Month default: the picker is not touched ──
+        .click('#chk-dim-OrderDate')
+        .click('#chk-meas-Revenue')
+        .waitOnElementToBecomeVisible('#gran-OrderDate')
+        .selectedOptionShouldContainText('#gran-OrderDate', 'Month')
+        .waitOnElementToBecomeEnabled('#btnViewSql')
+        .click('#btnViewSql')
+        .waitOnElementToBecomeVisible('#cubeSqlResult')
+        .elementShouldContainText('#cubeSqlResult', 'start of month')
+        .click('#btnCloseCubeSqlModal')
+        .waitOnElementToBecomeInvisible('#cubeSqlResult')
+        // ── Year: the same tick, another bucket ──
+        .dropDownSelectOptionHavingValue('#gran-OrderDate', 'year')
+        .click('#btnViewSql')
+        .waitOnElementToBecomeVisible('#cubeSqlResult')
+        .elementShouldContainText('#cubeSqlResult', 'start of year')
+        .elementShouldNotContainText('#cubeSqlResult', 'start of month')
+        .click('#btnCloseCubeSqlModal')
+        .waitOnElementToBecomeInvisible('#cubeSqlResult')
+        // ── As is: the raw values, no bucket at all ──
+        .dropDownSelectOptionHavingValue('#gran-OrderDate', '')
+        .click('#btnViewSql')
+        .waitOnElementToBecomeVisible('#cubeSqlResult')
+        .elementShouldNotContainText('#cubeSqlResult', 'start of')
+        .click('#btnCloseCubeSqlModal')
+        .waitOnElementToBecomeInvisible('#cubeSqlResult')
+        // The sample cube is read-only: close without saving.
+        .click('#btnCloseCubeModal');
+
+      return ft;
+    },
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 4.6 — Several cubes in one file: the picker, the warnings and a drill path
+  //       (Phase 3a TODO 7. Written, never run by the plan; retries 0.)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  electronBeforeAfterAllTest(
+    '(cube-definitions) several cubes in one file, and a drill path',
+    async function ({ beforeAfterEach: firstPage }) {
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+
+      const ft = new FluentTester(firstPage);
+
+      // Two named cubes on the Northwind tables. Two mistakes are left in on
+      // purpose: `titel` (an unknown key, so a warning that suggests `title`)
+      // and `type 'median'` (a type the generator refuses, so an error — and a
+      // measure that cannot be ticked).
+      const twoCubesDsl = `cube('customers') {
+  sql_table '"Customers"'
+  title 'Customers'
+  dimension { name 'Country'; title 'Country'; sql '"Country"'; type 'string' }
+  dimension { name 'City'; title 'City'; sql '"City"'; type 'string' }
+  measure { name 'CustomerCount'; title 'Customer Count'; type 'count' }
+  hierarchy { name 'geography'; title 'Geography'; levels 'Country', 'City' }
+}
+
+cube('orders') {
+  sql_table '"Orders"'
+  title 'Orders'
+  dimension { name 'OrderID'; titel 'Order'; sql '"OrderID"'; type 'number'; primary_key true }
+  dimension { name 'ShipCountry'; title 'Ship Country'; sql '"ShipCountry"'; type 'string' }
+  measure { name 'OrderCount'; title 'Order Count'; type 'count' }
+  measure { name 'MedianFreight'; title 'Median Freight'; sql '"Freight"'; type 'median' }
+}`;
+
+      ft.gotoCubeDefinitions()
+        .click('#btnCreateCube')
+        .waitOnElementToBecomeVisible('#cubeName')
+        .click('#cubeName')
+        .typeText('Two Cubes Test')
+        .setCodeJarContentSingleShot('#cubeDslEditor', twoCubesDsl)
+        .waitOnElementToBecomeVisible('#cubePreviewContainer')
+        // ── U5: the mistakes are said out loud, and the file still previews ──
+        .waitOnElementToBecomeVisible('#cubeDslWarnings')
+        .elementShouldContainText('#cubeDslWarnings', "did you mean 'title'")
+        .elementShouldContainText('#cubeDslWarnings', 'MedianFreight')
+        .waitOnElementToBecomeVisible('#cubeSelect')
+        .elementShouldContainText('#cubeSelect', 'customers')
+        .elementShouldContainText('#cubeSelect', 'orders')
+        // ── The picked cube is the one the generator is asked about ──
+        .dropDownSelectOptionHavingValue('#cubeSelect', 'orders')
+        .waitOnElementToBecomeVisible('#meas-MedianFreight')
+        .waitOnElementToBecomeDisabled('#chk-meas-MedianFreight')
+        .click('#chk-dim-ShipCountry')
+        .click('#chk-meas-OrderCount')
+        .waitOnElementToBecomeEnabled('#btnViewSql')
+        .click('#btnViewSql')
+        .waitOnElementToBecomeVisible('#cubeSqlResult')
+        .elementShouldContainText('#cubeSqlResult', 'Orders')
+        .elementShouldNotContainText('#cubeSqlResult', 'No sql_table')
+        .click('#btnCloseCubeSqlModal')
+        .waitOnElementToBecomeInvisible('#cubeSqlResult')
+        // ── A drill path ticks its level and every level above it ──
+        .dropDownSelectOptionHavingValue('#cubeSelect', 'customers')
+        .waitOnElementToBecomeVisible('#grp-drill')
+        .click('#grp-drill')
+        .waitOnElementToBecomeVisible('#chk-hier-geography-City')
+        .click('#chk-hier-geography-City')
+        .elementCheckBoxShouldBeSelected('#chk-dim-Country')
+        .elementCheckBoxShouldBeSelected('#chk-dim-City')
+        .click('#chk-meas-CustomerCount')
+        .waitOnElementToBecomeEnabled('#btnViewSql')
+        .click('#btnViewSql')
+        .waitOnElementToBecomeVisible('#cubeSqlResult')
+        .elementShouldContainText('#cubeSqlResult', 'Country')
+        .elementShouldContainText('#cubeSqlResult', 'City')
+        .click('#btnCloseCubeSqlModal')
+        .waitOnElementToBecomeInvisible('#cubeSqlResult')
+        // ── U3: "Show everything" is the same tree, so a tick survives it ──
+        .click('#chk-show-everything')
+        .elementCheckBoxShouldBeSelected('#chk-dim-City')
+        // Nothing is saved: the file was only ever previewed.
+        .click('#btnCloseCubeModal');
 
       return ft;
     },

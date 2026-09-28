@@ -54,6 +54,8 @@ export interface VisualQuery {
   kind?: "table" | "cube";
   // For kind === "cube" — the cube id from /api/cubes
   cubeId?: string;
+  /** The cube inside that file, when it holds several. Absent means the unnamed one. */
+  cubeName?: string;
   table: string;
   // The schema `table` lives in — set by the schema browser ONLY when that
   // schema differs from the connection's default one (`SchemaInfo.defaultSchema`).

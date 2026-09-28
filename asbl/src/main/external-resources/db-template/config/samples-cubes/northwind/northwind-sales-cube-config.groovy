@@ -136,6 +136,9 @@ cube {
     description 'Customer company name'
     sql '"Customers"."CompanyName"'
     type 'string'
+    // The list of customers to filter by, read straight from the small table instead of from the
+    // order lines: 91 names either way, one cheap query rather than a grouped join.
+    filter_options 'SELECT CompanyName FROM Customers ORDER BY CompanyName'
   }
   dimension {
     name 'CustomerCountry'

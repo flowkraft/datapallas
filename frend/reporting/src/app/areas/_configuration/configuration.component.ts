@@ -595,6 +595,7 @@ export class ConfigurationComponent implements OnInit {
   cubesReuseSelectedDimensions: string[] = [];
   cubesReuseSelectedMeasures: string[] = [];
   cubesReuseSelectedSegments: string[] = [];
+  cubesReuseCubeName = '';
   hasCubesReuseFieldSelections = false;
   isCubesReuseSqlModalVisible = false;
   cubesReuseGeneratedSql = '';
@@ -2189,7 +2190,9 @@ export class ConfigurationComponent implements OnInit {
       const full = await this.cubesService.load(cube.id);
       if (full) {
         this.selectedCubeForReuse = full;
-        const parsed = await this.cubesService.parseDsl(full.dslCode, full.cubeName);
+        // The whole file: the component's own picker lists its cubes, and the saved `cubeName`
+        // only says which one starts selected.
+        const parsed = await this.cubesService.parseDsl(full.dslCode);
         this.parsedCubeForReuse = parsed;
       }
     } catch (e: any) {
@@ -2202,6 +2205,8 @@ export class ConfigurationComponent implements OnInit {
     this.cubesReuseSelectedDimensions = detail?.selectedDimensions || [];
     this.cubesReuseSelectedMeasures = detail?.selectedMeasures || [];
     this.cubesReuseSelectedSegments = detail?.selectedSegments || [];
+    // Which cube of the file is shown: it decides what the generated SQL is for.
+    this.cubesReuseCubeName = detail?.cubeName || '';
     this.hasCubesReuseFieldSelections =
       this.cubesReuseSelectedDimensions.length > 0 ||
       this.cubesReuseSelectedMeasures.length > 0;
@@ -2219,7 +2224,7 @@ export class ConfigurationComponent implements OnInit {
         this.cubesReuseSelectedDimensions,
         this.cubesReuseSelectedMeasures,
         this.cubesReuseSelectedSegments,
-        this.selectedCubeForReuse.cubeName,
+        this.cubesReuseCubeName || this.selectedCubeForReuse.cubeName || null,
       );
       this.cubesReuseGeneratedSql = result?.sql || '-- No SQL generated';
     } catch (e: any) {

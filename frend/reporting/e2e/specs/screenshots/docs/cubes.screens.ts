@@ -177,6 +177,9 @@ electronBeforeAfterAllTest(
         .waitOnElementToBecomeVisible('#cubePreviewContainer')
         .waitOnElementToBecomeVisible('#dim-order_id')
         .waitOnElementToBecomeVisible('#dim-status')
+        // The customers join starts collapsed in the default view: open it so the
+        // screenshot shows the joined fields, and so they can be ticked below.
+        .click('#grp-join-customers')
         .waitOnElementToBecomeVisible('#dim-customer_name')
         .waitOnElementToBecomeVisible('#dim-country');
       await firstPage.waitForTimeout(800);

@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.flowkraft.queries.SqlOptionRows;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
@@ -1085,6 +1086,192 @@ class CubeSampleSqlExecutesTest {
 						"The top ten come biggest first:\n" + revenues);
 			}
 		}
+	}
+
+	/**
+	 * The values a viewer is offered to filter by, on the real databases.
+	 *
+	 * <p>A filter list is the one part of a cube a user sees before they see any number, and it is
+	 * read two ways: the author's own {@code filter_options} statement, run exactly as written, and
+	 * the query the generator writes when there is none. Both run here, on the engine each cube
+	 * ships on, through the same {@link CubeFilterOptions} the endpoint calls - so a filter list
+	 * that cannot run, or comes back the wrong shape, fails the build instead of coming back empty
+	 * in the viewer.
+	 */
+	@Test
+	void everyFilterListRunsAndComesBackAsValuesAndLabels() throws Exception {
+
+		// Every filter_options that ships, run on its own engine. The set is asserted below, so a
+		// filter list quietly dropped from a sample fails here too.
+		Set<String> found = new LinkedHashSet<>();
+		Map<String, List<String>> failuresByCube = new LinkedHashMap<>();
+
+		Map<String, List<String>> cubesByVendor = new LinkedHashMap<>();
+		for (String cubeName : sweptCubes()) {
+			cubesByVendor.computeIfAbsent(shippedVendorOf(cubeName), vendor -> new ArrayList<>()).add(cubeName);
+		}
+
+		for (Map.Entry<String, List<String>> group : cubesByVendor.entrySet()) {
+			try (Connection connection = openFixtureFor(group.getKey())) {
+				for (String cubeName : group.getValue()) {
+					CubeOptions cube = parseSampleCube(cubeName);
+					for (Map<String, Object> dimension : cube.getDimensions()) {
+						Object authorSql = dimension.get("filter_options");
+						if (authorSql == null || authorSql.toString().isBlank()) continue;
+
+						String where = cubeName + "." + dimension.get("name");
+						found.add(where);
+
+						List<List<String>> values;
+						try {
+							values = SqlOptionRows.pairs(rowsFrom(connection, authorSql.toString()));
+						} catch (Exception e) {
+							failuresByCube.computeIfAbsent(cubeName, key -> new ArrayList<>())
+									.add(where + " does not run: " + e.getMessage() + "\n  " + authorSql);
+							continue;
+						}
+
+						if (values.isEmpty()) {
+							failuresByCube.computeIfAbsent(cubeName, key -> new ArrayList<>())
+									.add(where + " offers no value at all:\n  " + authorSql);
+						}
+						for (List<String> pair : values) {
+							if (pair.size() != 2 || pair.get(1) == null || pair.get(1).isBlank()) {
+								failuresByCube.computeIfAbsent(cubeName, key -> new ArrayList<>())
+										.add(where + " gives a value with nothing to show for it: " + pair);
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (!failuresByCube.isEmpty()) {
+			StringBuilder message = new StringBuilder("A shipped filter list does not work:\n");
+			failuresByCube.forEach((cube, lines) -> lines.forEach(line -> message.append("  ").append(line).append('\n')));
+			fail(message.toString());
+		}
+
+		assertEquals(Set.of("northwind-sales.CustomerCompanyName", "northwind-inventory.Discontinued",
+				"northwind-warehouse.MonthName"), found,
+				"These are the samples that show how filter_options is written. One added is welcome here; "
+						+ "one gone means a sample stopped showing it.");
+
+		// The author's two-column shape: the viewer picks a label and the query filters by the value
+		// behind it. Discontinued is the reason the shape exists - 0 and 1 mean nothing on screen.
+		try (Connection connection = openFixtureFor("sqlite")) {
+			CubeOptions inventory = parseSampleCube("northwind-inventory");
+			List<List<String>> flags = SqlOptionRows.pairs(rowsFrom(connection,
+					dimensionOf(inventory, "Discontinued").get("filter_options").toString()));
+			assertEquals(List.of(List.of("0", "Active"), List.of("1", "Discontinued")), flags,
+					"A two-column filter_options comes back as value and label, in the author's order");
+
+			// A one-column statement is its own label, and search reads the label - both of them
+			// exactly as the endpoint does it, because this is the endpoint's own code.
+			CubeOptions sales = parseSampleCube("northwind-sales");
+			List<List<String>> customers = SqlOptionRows.pairs(rowsFrom(connection,
+					dimensionOf(sales, "CustomerCompanyName").get("filter_options").toString()));
+			assertTrue(customers.size() > 20, "The fixture has customers to offer: " + customers.size());
+			for (List<String> pair : customers) {
+				assertEquals(pair.get(0), pair.get(1), "A one-column list shows the value it filters by");
+			}
+			List<List<String>> searched = CubeFilterOptions.searched(customers, "ANtoN");
+			assertTrue(searched.size() < customers.size() && !searched.isEmpty(),
+					"Typing narrows the list: " + searched);
+			for (List<String> pair : searched) {
+				assertTrue(pair.get(1).toLowerCase().contains("anton"),
+						"and what is left holds what was typed, whatever the case: " + pair);
+			}
+
+			// The generated list: no author SQL, so the generator writes the query - the dimension
+			// alone, no measure, ordered by it, and one row more than the answer may carry.
+			String countriesSql = CubeSqlGenerator
+					.buildQuery(sales, CubeFilterOptions.generatedRequest("ShipCountry", null), "sqlite")
+					.toInlineSql("sqlite");
+			List<String> countries = textColumn(connection, countriesSql);
+			long distinct = oneNumber(connection,
+					"SELECT COUNT(DISTINCT ShipCountry) FROM Orders WHERE ShipCountry IS NOT NULL").longValue();
+			assertEquals(Math.min(distinct, CubeFilterOptions.MAX_VALUES + 1L), (long) countries.size(),
+					"One row per country, and at most one more than an answer carries:\n" + countriesSql);
+			assertEquals(new ArrayList<>(new LinkedHashSet<>(countries)), countries,
+					"Each country once, in the order the viewer reads them:\n" + countries);
+			List<String> sorted = new ArrayList<>(countries);
+			java.util.Collections.sort(sorted);
+			assertEquals(sorted, countries, "and they come back A to Z:\n" + countries);
+
+			// Searching a generated list is the database's work, not the browser's.
+			String germanSql = CubeSqlGenerator
+					.buildQuery(sales, CubeFilterOptions.generatedRequest("ShipCountry", "ger"), "sqlite")
+					.toInlineSql("sqlite");
+			List<String> german = textColumn(connection, germanSql);
+			assertTrue(!german.isEmpty() && german.size() < countries.size(), "'ger' narrows: " + german);
+			for (String country : german) {
+				assertTrue(country.toLowerCase().contains("ger"), "and only matches come back: " + german);
+			}
+
+			// However long the list is, the database is asked for one value more than an answer may
+			// carry: reading that one extra is the only way to know a list was cut, and a cut list is
+			// what makes the renderer keep asking as the viewer types.
+			String manySql = CubeSqlGenerator
+					.buildQuery(sales, CubeFilterOptions.generatedRequest("OrderID", null), "sqlite")
+					.toInlineSql("sqlite");
+			assertTrue(manySql.toUpperCase().contains("LIMIT " + (CubeFilterOptions.MAX_VALUES + 1)),
+					"The generated list is asked for one value past the limit:\n" + manySql);
+			long orders = oneNumber(connection, "SELECT COUNT(DISTINCT OrderID) FROM Orders").longValue();
+			assertEquals(Math.min(orders, CubeFilterOptions.MAX_VALUES + 1L),
+					(long) textColumn(connection, manySql).size(), "and that is what comes back:\n" + manySql);
+
+			// What the endpoint then answers with: the limit, and the word that says it was cut.
+			List<List<String>> tooMany = new ArrayList<>();
+			for (int i = 0; i < CubeFilterOptions.MAX_VALUES + 1; i++) {
+				tooMany.add(List.of(String.valueOf(i), "Value " + i));
+			}
+			Map<String, Object> answer = CubeFilterOptions.answer(tooMany,
+					tooMany.size() > CubeFilterOptions.MAX_VALUES);
+			assertEquals(CubeFilterOptions.MAX_VALUES, ((List<?>) answer.get("values")).size(),
+					"The answer carries the limit, not the probe");
+			assertEquals(true, answer.get("truncated"), "and says it was cut, so the renderer searches remotely");
+			assertEquals(false, CubeFilterOptions.answer(tooMany.subList(0, 3), false).get("truncated"),
+					"and a whole list says nothing was left out");
+		}
+
+		// The warehouse cube's months live on DuckDB, and they come back in the year's own order
+		// rather than alphabetically - which is the whole reason its filter_options is hand-written.
+		try (Connection connection = openFixtureFor("duckdb")) {
+			CubeOptions warehouse = parseSampleCube("northwind-warehouse");
+			List<List<String>> months = SqlOptionRows.pairs(rowsFrom(connection,
+					dimensionOf(warehouse, "MonthName").get("filter_options").toString()));
+			List<String> names = new ArrayList<>();
+			for (List<String> pair : months) names.add(pair.get(1));
+			assertEquals(12, names.size(), "Twelve months, each once: " + names);
+			assertEquals("January", names.get(0), "and January comes first, not April: " + names);
+			assertEquals("December", names.get(names.size() - 1), "and December last: " + names);
+		}
+	}
+
+	/** One dimension of a cube, by name - the test's own lookup, so a rename fails loudly. */
+	private Map<String, Object> dimensionOf(CubeOptions cube, String name) {
+		for (Map<String, Object> dimension : cube.getDimensions()) {
+			if (name.equals(dimension.get("name"))) return dimension;
+		}
+		throw new IllegalStateException("No dimension '" + name + "' on this cube any more.");
+	}
+
+	/** The rows a statement returns, in the shape SqlOptionRows reads them in. */
+	private List<Map<String, Object>> rowsFrom(Connection connection, String sql) throws Exception {
+		List<Map<String, Object>> rows = new ArrayList<>();
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			int columns = rs.getMetaData().getColumnCount();
+			while (rs.next()) {
+				Map<String, Object> row = new LinkedHashMap<>();
+				for (int i = 1; i <= columns; i++) {
+					row.put(rs.getMetaData().getColumnLabel(i), rs.getObject(i));
+				}
+				rows.add(row);
+			}
+		}
+		return rows;
 	}
 
 	/** The SQL one structured request generates, ready to run: its values written in. */

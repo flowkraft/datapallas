@@ -77,6 +77,7 @@ export class CubesService {
     selectedMeasures: string[],
     selectedSegments: string[] = [],
     cubeName?: string | null,
+    filters: any[] = [],
   ): Promise<{ sql: string; dialect: string }> {
     return this.apiService.post('/cubes/generate-sql', {
       dslCode,
@@ -85,7 +86,26 @@ export class CubesService {
       selectedMeasures,
       selectedSegments,
       cubeName,
+      filters,
     });
+  }
+
+  /**
+   * The values one dimension may be filtered by, for the cube component's filter popover:
+   * `{ values: [[value, label], …], truncated }`. The cube must be saved, because the values are
+   * read through the saved cube's own connection.
+   */
+  async filterOptions(
+    cubeId: string,
+    dimension: string,
+    connectionId: string,
+    cubeName?: string | null,
+    search?: string,
+  ): Promise<{ values: any[][]; truncated: boolean }> {
+    return this.apiService.post(
+      `/cubes/${encodeURIComponent(cubeId)}/filter-options`,
+      { dimension, connectionId, cubeName, search },
+    );
   }
 
   async generateSql(
@@ -94,10 +114,17 @@ export class CubesService {
     selectedDimensions: string[],
     selectedMeasures: string[],
     selectedSegments: string[] = [],
+    cubeName?: string | null,
   ): Promise<{ sql: string; dialect: string }> {
     return this.apiService.post(
       `/cubes/${encodeURIComponent(cubeId)}/generate-sql`,
-      { connectionId, selectedDimensions, selectedMeasures, selectedSegments },
+      {
+        connectionId,
+        selectedDimensions,
+        selectedMeasures,
+        selectedSegments,
+        cubeName,
+      },
     );
   }
 }

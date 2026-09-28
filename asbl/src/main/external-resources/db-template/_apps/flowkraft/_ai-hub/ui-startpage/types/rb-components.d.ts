@@ -55,6 +55,8 @@ declare namespace JSX {
         "connection-id"?: string
         "api-base-url"?: string
         "api-key"?: string
+        "cube-name"?: string
+        "show-hidden"?: boolean | string
       },
       HTMLElement
     >

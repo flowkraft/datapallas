@@ -135,6 +135,33 @@ public class SqlExecutor {
 	}
 
 	/**
+	 * Executes a SELECT on a specific database connection and reads at most {@code maxRows} rows.
+	 *
+	 * <p>For SQL somebody else wrote, whose result the caller only needs the first rows of: an
+	 * author's {@code filter_options} list, for instance. The cap is set on the statement, so the
+	 * driver stops fetching instead of this code reading a whole table and throwing most of it
+	 * away. A {@code maxRows} of 0 or less means no cap, exactly like
+	 * {@link #queryOn(String, String, Map)}.
+	 *
+	 * @param connectionCode The code identifying the target database connection.
+	 * @param sql            The SQL query string. Use named parameters like :paramName.
+	 * @param params         A Map containing parameter names and their values (optional).
+	 * @param maxRows        The greatest number of rows to read, or 0 for all of them.
+	 * @return A List of Maps representing the rows.
+	 * @throws Exception if the connection code is blank, getting the connection fails, or
+	 *                   executing the query fails.
+	 */
+	public List<Map<String, Object>> queryOn(String connectionCode, String sql, Map<String, Object> params,
+			int maxRows) throws Exception {
+		log.debug("Executing query on '{}' for at most {} rows: {}", connectionCode, maxRows, sql);
+		if (StringUtils.isBlank(connectionCode)) {
+			throw new IllegalArgumentException("Connection code cannot be blank for queryOn.");
+		}
+		Jdbi jdbi = dbManager.getJdbi(connectionCode);
+		return jdbi.withHandle(handle -> executeQuery(handle, sql, params, maxRows));
+	}
+
+	/**
 	 * Executes a SELECT query on a specific database connection inside a transaction that is
 	 * always rolled back, with the JDBC connection flagged read-only for the duration.
 	 *
@@ -250,7 +277,16 @@ public class SqlExecutor {
 	 * propagate.
 	 */
 	private List<Map<String, Object>> executeQuery(Handle handle, String sql, Map<String, Object> params) {
+		return executeQuery(handle, sql, params, 0);
+	}
+
+	/** The same, reading at most {@code maxRows} rows; 0 reads them all. */
+	private List<Map<String, Object>> executeQuery(Handle handle, String sql, Map<String, Object> params,
+			int maxRows) {
 		org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+		if (maxRows > 0) {
+			query.setMaxRows(maxRows);
+		}
 		if (params != null && !params.isEmpty()) {
 			Map<String, Object> scalarParams = new java.util.LinkedHashMap<>();
 			for (Map.Entry<String, Object> e : params.entrySet()) {

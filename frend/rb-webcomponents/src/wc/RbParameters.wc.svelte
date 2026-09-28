@@ -78,6 +78,15 @@
   let multiSearch: { [id: string]: string } = {};
   let multiPage: { [id: string]: number } = {};
 
+  // A list too long to send whole is searched where it lives: `uiHints.remoteSearch` makes the
+  // search box ask whoever supplies the options (a `searchChange` host event, 300 ms after the
+  // typing stops) instead of filtering the list it was given, and `setOptions` puts the answer in
+  // place - so the modal stays open, with the typed text and the boxes ticked so far.
+  const REMOTE_SEARCH_DEBOUNCE_MS = 300;
+  let searchTimers: { [id: string]: any } = {};
+  /** Bumped by `setOptions`, so an open list redraws although `parameters` is the same array. */
+  let optionsVersion = 0;
+
   // Modal open-state and draft-value per multi-select param. The modal commits
   // to formValues only on OK; Cancel and backdrop-click discard the draft.
   // This isolates exploratory editing from valueChange events that re-fire
@@ -337,6 +346,36 @@
     return [];
   }
 
+  /** Does this parameter's search box ask the host instead of filtering the list it was given? */
+  function isRemoteSearch(p: ParamMeta): boolean {
+    return !!(p.uiHints as any)?.remoteSearch;
+  }
+
+  /**
+   * One parameter's options, replaced in place: what the host answers a `searchChange` with.
+   *
+   * `parameters` deliberately keeps its identity - a new array re-runs `initForm`, and the modal the
+   * person is typing in would close and forget what they had ticked. `optionsVersion` is what tells
+   * the open list to redraw.
+   */
+  export function setOptions(id: string, options: any[]) {
+    const p = (parameters || []).find(x => x.id === id);
+    if (!p) return;
+    p.uiHints = { ...(p.uiHints || {}), options };
+    optionsVersion += 1;
+  }
+
+  /** The search box was typed in: page 1 again, and for a remote list, ask the host. */
+  function onMultiSearchInput(p: ParamMeta) {
+    multiPage[p.id] = 0;
+    multiPage = multiPage;
+    if (!isRemoteSearch(p)) return;
+    clearTimeout(searchTimers[p.id]);
+    searchTimers[p.id] = setTimeout(() => {
+      emitHostEvent('searchChange', { id: p.id, search: multiSearch[p.id] || '' });
+    }, REMOTE_SEARCH_DEBOUNCE_MS);
+  }
+
   // ── Multi-select helpers ──────────────────────────────────────────────
   // Value contract: formValues[p.id] is either the literal '*' (wildcard,
   // backend rewrites the IN clause to 1=1) or a CSV of selected values
@@ -377,12 +416,20 @@
 
   function visibleOptions(p: ParamMeta): { label: string; value: any }[] {
     const all = loadOptions(p);
+    // A remote list is already the answer to what was typed, and a label need not contain the text
+    // at all (the host may have matched on the value): filtering it again here would hide values.
+    if (isRemoteSearch(p)) return all;
     const q = (multiSearch[p.id] || '').trim().toLowerCase();
     if (!q) return all;
     return all.filter(o => o.label.toLowerCase().includes(q));
   }
 
-  function pagedVisibleOptions(p: ParamMeta): { label: string; value: any }[] {
+  // `_search`, `_page` and `_version` are the reactive deps this reads through `multiSearch`,
+  // `multiPage` and the options: the template passes them so Svelte redraws the list when they
+  // change, exactly as the note above `isDraftCheckedFor` says it must.
+  function pagedVisibleOptions(
+    p: ParamMeta, _search?: string, _page?: number, _version?: number,
+  ): { label: string; value: any }[] {
     const visible = visibleOptions(p);
     const size = multiPageSize(p);
     const page = multiPage[p.id] ?? 0;
@@ -390,7 +437,7 @@
     return visible.slice(start, start + size);
   }
 
-  function pageCount(p: ParamMeta): number {
+  function pageCount(p: ParamMeta, _search?: string, _version?: number): number {
     const total = visibleOptions(p).length;
     const size = multiPageSize(p);
     return Math.max(1, Math.ceil(total / size));
@@ -847,7 +894,7 @@
                   <input type="search" id={p.id + '_search'} class="form-control rb-multi-search"
                          placeholder="Search…"
                          bind:value={multiSearch[p.id]}
-                         on:input={() => { multiPage[p.id] = 0; multiPage = multiPage; }} />
+                         on:input={() => onMultiSearchInput(p)} />
 
                   <div class="rb-multi-toolbar">
                     <button type="button" class="rb-multi-link"
@@ -860,7 +907,7 @@
                   </div>
 
                   <div class="rb-multi-list">
-                    {#each pagedVisibleOptions(p) as o (o.value)}
+                    {#each pagedVisibleOptions(p, multiSearch[p.id], multiPage[p.id], optionsVersion) as o (o.value)}
                       <label class="rb-multi-row" for={p.id + '_cb_' + safeId(o.value)}>
                         <input type="checkbox"
                                id={p.id + '_cb_' + safeId(o.value)}
@@ -872,16 +919,16 @@
                     {/each}
                   </div>
 
-                  {#if pageCount(p) > 1}
+                  {#if pageCount(p, multiSearch[p.id], optionsVersion) > 1}
                     <div class="rb-multi-pager">
                       <button type="button"
                               id={p.id + '_btnPrevPage'}
                               disabled={(multiPage[p.id] ?? 0) === 0}
                               on:click={() => prevPage(p)}>‹ Prev</button>
-                      <span id={p.id + '_lblPagePos'}>Page {(multiPage[p.id] ?? 0) + 1} of {pageCount(p)}</span>
+                      <span id={p.id + '_lblPagePos'}>Page {(multiPage[p.id] ?? 0) + 1} of {pageCount(p, multiSearch[p.id], optionsVersion)}</span>
                       <button type="button"
                               id={p.id + '_btnNextPage'}
-                              disabled={(multiPage[p.id] ?? 0) === pageCount(p) - 1}
+                              disabled={(multiPage[p.id] ?? 0) === pageCount(p, multiSearch[p.id], optionsVersion) - 1}
                               on:click={() => nextPage(p)}>Next ›</button>
                     </div>
                   {/if}

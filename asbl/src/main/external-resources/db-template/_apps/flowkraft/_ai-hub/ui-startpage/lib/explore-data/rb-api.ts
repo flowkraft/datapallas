@@ -172,12 +172,20 @@ export async function generateCubeSql(
   selectedDimensions: string[],
   selectedMeasures: string[],
   selectedSegments: string[] = [],
+  cubeName?: string | null,
 ): Promise<string> {
   const id = cubeId && cubeId !== "(default)" ? cubeId : "preview";
   const res = await fetch(`${RB_BASE}/cubes/${encodeURIComponent(id)}/generate-sql`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ connectionId, selectedDimensions, selectedMeasures, selectedSegments }),
+    body: JSON.stringify({
+      connectionId,
+      selectedDimensions,
+      selectedMeasures,
+      selectedSegments,
+      // A file's named cube: which one the renderer is showing. Left out, the saved name stands.
+      cubeName: cubeName || null,
+    }),
   });
   if (!res.ok) {
     const text = await res.text();

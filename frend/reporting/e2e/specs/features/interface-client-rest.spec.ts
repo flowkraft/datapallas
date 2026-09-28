@@ -674,6 +674,166 @@ test.describe('REST — Cubes', () => {
     // CubeOptionsParser/CubesService failure chain.
     expect(text).toMatch(/Method|method|Script|signature|MissingMethod|parse/i);
   });
+
+  // The structured query, over REST. The desktop asks this endpoint on every click in the
+  // cube viewer, so the keys below are the viewer's own contract: what is ticked, what it is
+  // filtered by, which period a date is rolled up to, how it is sorted and how much comes back.
+  // No connection is seeded here, so the vendor is named outright — generation needs no database.
+  test('POST /api/cubes/northwind-sales/generate-sql writes one query from the whole selection', async () => {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/generate-sql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dbVendor: 'sqlite',
+        dimensions: ['ShipCountry', 'OrderDate'],
+        measures: ['Revenue'],
+        granularities: { OrderDate: 'month' },
+        filters: [{ member: 'ShipCountry', operator: 'in', values: ['Germany', 'France'] }],
+        order: [{ member: 'Revenue', dir: 'desc' }],
+        limit: 5,
+      }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+    expect(body.dialect).toEqual('sqlite');
+    // The SQL comes back ready to run, with the filter's values written into it: design time has
+    // nothing to bind them to. params says what was bound, for whoever wants to see it.
+    expect(typeof body.sql).toEqual('string');
+    expect(body.sql).toMatch(/Germany/);
+    expect(body.sql).toMatch(/France/);
+    expect(body.sql.toLowerCase()).toContain('group by');
+    expect(body.sql.toLowerCase()).toContain('order by');
+    expect(body.sql.toLowerCase()).toContain('limit 5');
+    expect(Array.isArray(body.params)).toBeTruthy();
+  });
+
+  test('POST /api/cubes/northwind-sales/generate-sql answers a request with no measure ticked', async () => {
+    // Picking a dimension and no measure is the first thing a viewer does, and it must answer
+    // the list of values rather than refusing for want of a number.
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/generate-sql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dbVendor: 'sqlite', dimensions: ['ShipCountry'], measures: [] }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+    expect(body.sql).toMatch(/ShipCountry/);
+    expect(body.sql.toLowerCase()).toContain('group by');
+  });
+
+  test('POST /api/cubes/generate-sql refuses a cube whose measure type does not exist', async () => {
+    // A cube the generator cannot write is the author's mistake, so the answer is 400 with the
+    // sentence that names the member — not a 500 the editor can only show as "server error".
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/generate-sql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dbVendor: 'sqlite',
+        dslCode: "cube {\n  sql_table 'Orders'\n" +
+          "  dimension { name 'ShipCountry'; sql '${CUBE}.ShipCountry'; type 'string' }\n" +
+          "  measure { name 'Freight'; sql '${CUBE}.Freight'; type 'grand_total' }\n}",
+        dimensions: ['ShipCountry'],
+        measures: ['Freight'],
+      }),
+    });
+    expect(response.status).toEqual(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/Freight/);
+    expect(body.error).toMatch(/grand_total/);
+  });
+
+  // The values a viewer may filter by. A date needs no list — the renderer offers a range from
+  // the type alone — so this pair of checks proves the route, the cube and the type rule without
+  // a seeded connection, which this testground has none of.
+  test('POST /api/cubes/northwind-sales/filter-options answers a date with no list to show', async () => {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/filter-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimension: 'OrderDate' }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+    expect(Array.isArray(body.values)).toBeTruthy();
+    expect(body.values.length).toEqual(0);
+    expect(body.truncated).toEqual(false);
+  });
+
+  test('POST /api/cubes/northwind-sales/filter-options names the dimensions there are', async () => {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/filter-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimension: 'NoSuchDimension' }),
+    });
+    expect(response.status).toEqual(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/NoSuchDimension/);
+    // The answer tells the caller what it could have asked for instead.
+    expect(body.error).toMatch(/ShipCountry/);
+  });
+
+  // The two lists that come off a real database. northwind-sales is bound to the shipped sample
+  // connection rbt-sample-northwind-sqlite-4f2 in its own cube.xml, so the endpoint needs no
+  // connectionId from the caller: the saved cube's own connection is the one it reads.
+  test('POST /api/cubes/northwind-sales/filter-options lists the countries orders were shipped to', async () => {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/filter-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimension: 'ShipCountry' }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+    expect(Array.isArray(body.values)).toBeTruthy();
+    expect(body.values.length).toBeGreaterThan(5);
+    // Every entry is [value, label]: the query filters by the first and the viewer reads the second.
+    for (const pair of body.values) {
+      expect(Array.isArray(pair)).toBeTruthy();
+      expect(pair.length).toEqual(2);
+      expect(typeof pair[1]).toEqual('string');
+      expect(pair[1].length).toBeGreaterThan(0);
+    }
+    const labels = body.values.map((pair: string[]) => pair[1]);
+    expect(labels).toContain('Germany');
+    // A country once, A to Z: this list is generated, so it is grouped and ordered by the dimension.
+    expect(new Set(labels).size).toEqual(labels.length);
+    expect([...labels].sort()).toEqual(labels);
+    // Fewer countries than the cut-off, so nothing was left out.
+    expect(body.truncated).toEqual(false);
+  });
+
+  test('POST /api/cubes/northwind-sales/filter-options narrows the list to what the viewer typed', async () => {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/filter-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimension: 'ShipCountry', search: 'ger' }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+    const labels = body.values.map((pair: string[]) => pair[1]);
+    expect(labels).toContain('Germany');
+    // Searching is the database's work here, so nothing that does not match may come back.
+    for (const label of labels) {
+      expect(label.toLowerCase()).toContain('ger');
+    }
+  });
+
+  test('POST /api/cubes/northwind-sales/filter-options runs the list the author wrote', async () => {
+    // CustomerCompanyName carries the cube's own filter_options statement, which reads the
+    // customers table straight — every customer, including any that never placed an order.
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/filter-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimension: 'CustomerCompanyName' }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+    const labels = body.values.map((pair: string[]) => pair[1]);
+    expect(labels.length).toBeGreaterThan(20);
+    // One column, so each value is its own label.
+    for (const pair of body.values) {
+      expect(pair[0]).toEqual(pair[1]);
+    }
+    expect([...labels].sort()).toEqual(labels);
+  });
 });
 
 // ── Tier 2: Analytics ──

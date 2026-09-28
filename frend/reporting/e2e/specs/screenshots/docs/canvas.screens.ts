@@ -27,6 +27,7 @@ import {
   createFreshCanvas,
   addCubeToCanvas,
   selectCubeFields,
+  openCubeFolders,
   layoutWidgetsByDrag,
 } from '../../../helpers/explore-data-test-helper';
 import { captureDocsScreenshot } from '../../../utils/docs-screenshot-helper';
@@ -137,6 +138,8 @@ electronBeforeAfterAllTest(
       // Next Last" controls under 6 rows. Going back to the Data tab leaves
       // the cube tree visible in the right panel for CAPTURE 3.
       await addCubeToCanvas(page, SAMPLE_CUBE_ID);
+      // SupplierName comes from the Suppliers join, and joined folders start collapsed.
+      await openCubeFolders(page, ['chk-dim-SupplierName']);
       await page.locator('#chk-dim-SupplierName').check();
       await page.locator('#chk-meas-Revenue').check();
       await page.locator('#chk-meas-OrderCount').check();
@@ -173,6 +176,8 @@ electronBeforeAfterAllTest(
       // rows correctly) but the visual checkboxes show empty. .check() is
       // idempotent — no-op if already ticked, otherwise it clicks and the
       // on:change handler re-syncs the Set.
+      // SupplierName comes from the Suppliers join, and joined folders start collapsed.
+      await openCubeFolders(page, ['chk-dim-SupplierName']);
       await page.locator('#chk-dim-SupplierName').check();
       await page.locator('#chk-meas-Revenue').check();
       await page.locator('#chk-meas-OrderCount').check();
@@ -215,7 +220,8 @@ electronBeforeAfterAllTest(
       // Force widget 2 (the newest, hence last in DOM) to be the selected one.
       await page.locator('[id^="widgetHeader-"]').last().click();
       await page.waitForTimeout(800);
-      await page.locator('#chk-dim-SupplierName').waitFor({ state: 'visible', timeout: 10_000 });
+      // SupplierName comes from the Suppliers join, and joined folders start collapsed.
+      await openCubeFolders(page, ['chk-dim-SupplierName']);
       await page.locator('#chk-dim-SupplierName').check();
       await page.locator('#chk-meas-Revenue').check();
       // Authoritative selection update via the helper used by other specs.
@@ -241,6 +247,8 @@ electronBeforeAfterAllTest(
       // just the measure (single bar = total, the previous bug).
       await page.locator('[id^="widgetHeader-"]').last().click();
       await page.waitForTimeout(800);
+      // SupplierName comes from the Suppliers join, and joined folders start collapsed.
+      await openCubeFolders(page, ['chk-dim-SupplierName']);
       await page.locator('#chk-dim-SupplierName').check();
       await page.locator('#chk-meas-Revenue').check();
       await selectCubeFields(page, ['SupplierName'], ['Revenue']);
@@ -266,6 +274,8 @@ electronBeforeAfterAllTest(
       // fires the on:change handler and the local Set re-syncs.
       await page.locator('[id^="widgetHeader-"]').last().click();
       await page.waitForTimeout(500);
+      // SupplierName comes from the Suppliers join, and joined folders start collapsed.
+      await openCubeFolders(page, ['chk-dim-SupplierName']);
       await page.locator('#chk-dim-SupplierName').check();
       await page.locator('#chk-meas-Revenue').check();
       await page.waitForTimeout(400);

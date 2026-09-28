@@ -44,6 +44,9 @@ import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
  *     #12  Sales Pipeline Full Model     — every feature combined
  *     #13  Empty Config Fallback         — graceful defaults
  *
+ *   THE VIEWER'S OWN FILTERS
+ *     #16  Filter lists (filter_options)  — a dimension says where its values come from
+ *
  * <p><b>📖 Tests are the regression net for the DSL syntax contract.</b>
  * Every test fixture uses canonical block form. Adding a test that uses the
  * legacy parens/list-of-maps form silently weakens the contract — refuse it
@@ -674,5 +677,46 @@ public class CubeOptionsParserTest {
 			assertEquals(named.getValue().getDimensions().size(), named.getValue().getDimensionTables().size(),
 					"Every dimension of '" + named.getKey() + "' is in its own map");
 		}
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// #16  The keys the viewer's own filters bring (W1)
+	//      A filter list is a dimension's business: the author says where its values
+	//      come from, and a measure asking for one is told that nothing reads it.
+	// ─────────────────────────────────────────────────────────────────────────────
+	@Test
+	public void testFilterOptionsIsADimensionKey() throws Exception {
+		String dsl = "cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  dimension { name 'ShipCountry'; title 'Ship Country'; sql '\"ShipCountry\"'; type 'string'\n" +
+				"    filter_options 'SELECT Country FROM Customers ORDER BY Country' }\n" +
+				"  dimension { name 'OrderDate'; sql '\"OrderDate\"'; type 'time' }\n" +
+				"  measure { name 'Freight'; sql '\"Freight\"'; type 'sum'\n" +
+				"    filter_options 'SELECT 1' }\n" +
+				"}";
+
+		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
+
+		// The author's SQL is kept exactly as written: the endpoint runs it, so a changed character
+		// is a changed query.
+		assertEquals("SELECT Country FROM Customers ORDER BY Country",
+				cube.getDimensions().get(0).get("filter_options"),
+				"filter_options is stored on the dimension, verbatim");
+		assertFalse(cube.getDimensions().get(1).containsKey("filter_options"),
+				"and a dimension the author left alone has no filter list of its own");
+
+		List<String> said = messages(cube, "warning");
+		assertTrue(messages(cube, "error").isEmpty(), "Nothing here stops the cube from running: " + said);
+		assertTrue(said.stream().noneMatch(line -> line.contains("unknown key 'filter_options' in dimension")),
+				"filter_options is a known dimension key, not a typo: " + said);
+		assertEquals(1, said.stream().filter(line -> line.contains("filter_options")).count(),
+				"One line about it, and it is the measure's: " + said);
+		assertTrue(said.contains("measure 'Freight': filter_options is ignored, because only dimensions have "
+				+ "filter lists."), said.toString());
+
+		// A dimension with no filter_options says nothing at all: the list is then the generator's,
+		// which is the usual case and not worth a word.
+		assertTrue(said.stream().noneMatch(line -> line.contains("OrderDate")),
+				"A dimension without filter_options is not mentioned: " + said);
 	}
 }

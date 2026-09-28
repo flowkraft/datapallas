@@ -301,11 +301,18 @@ public class SecurityConfig {
 
 				// Embedded web components on a third-party page have no session and cannot hold a
 				// secret. They present a short-lived token, minted server-side by the page's own
-				// backend, that unlocks exactly one report's data — its config, its data, its dashboard
-				// and its server-side pivot. Anything without a valid token for the report being
-				// requested falls through to normal authentication.
+				// backend, that unlocks exactly one report's data — its config, its data, its dashboard,
+				// its server-side pivot and the live cubes that dashboard declares. Anything without a
+				// valid token for the report being requested falls through to normal authentication.
+				//
+				// The three cube paths are the same door as /data: what they read is decided by the
+				// report's own -cube-widgets.json, so a token for a report opens the cubes that report
+				// publishes and no others. Without them a token-only viewer of a published dashboard
+				// would reach anyRequest().authenticated() and be refused the rows of a cube they are
+				// already looking at.
 				.requestMatchers("/api/reports/*/config", "/api/reports/*/data", "/dashboard/*",
-						"/api/analytics/pivot")
+						"/api/analytics/pivot", "/api/reports/*/cube/*/meta", "/api/reports/*/cube/*/query",
+						"/api/reports/*/cube/*/filter-options")
 				.access(embedTokenAuthorization())
 
 				.anyRequest().authenticated());

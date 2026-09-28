@@ -285,11 +285,24 @@ export const tabCubeDefinitionsTemplate = `
             <div style="height: 100%; display: flex; flex-direction: column;">
               <div style="flex: 1; border: 1px solid var(--color-base-300); border-radius: 4px 4px 0 0; padding: 10px; overflow-y: auto; background: var(--color-base-200); color: var(--color-base-content);">
                 <rb-cube-renderer
+                  show-hidden
                   [cubeConfig]="parsedCube"
+                  [cubeName]="editingCube.cubeName || ''"
                   [connectionId]="editingCube.connectionId"
                   [apiBaseUrl]="apiBaseUrl"
+                  [fetchFilterOptions]="fetchCubeFilterOptions"
                   (selectionChanged)="onCubeSelectionChanged($any($event))">
                 </rb-cube-renderer>
+
+                @if (parsedCubeWarnings.length > 0) {
+                <div id="cubeDslWarnings" style="margin-top: 10px;">
+                  @for (w of parsedCubeWarnings; track $index) {
+                  <div [class]="w.level === 'error' ? 'text-error' : 'text-warning'" style="font-size: 12px;">
+                    {{ w.message }}
+                  </div>
+                  }
+                </div>
+                }
 
                 @if (parseDslError) {
                 <div class="text-error" style="margin-top: 10px;">

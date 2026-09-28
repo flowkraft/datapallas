@@ -67,6 +67,7 @@ import {
 import {
   createFreshCanvas,
   addUIElement,
+  openCubeFolders,
   arrangeWidgets,
   runSqlQuery,
   type WidgetType,
@@ -1459,6 +1460,8 @@ async function tickFields(page: Page, dims: string[], measures: string[]): Promi
   await page.waitForTimeout(3_000);
   // A freshly-added cube widget starts with no fields selected (the store seeds an empty
   // visualQuery), so we only tick the ones we want — no pre-clear pass is needed.
+  // A joined table's dimension is inside a collapsed folder until the folder is clicked.
+  await openCubeFolders(page, dims.map((d) => `chk-dim-${d}`));
   for (const d of dims) { await page.locator(`#chk-dim-${d}`).check(); await page.waitForTimeout(800); }
   for (const m of measures) { await page.locator(`#chk-meas-${m}`).check(); await page.waitForTimeout(800); }
   await page.waitForLoadState('networkidle').catch(() => {});
@@ -1504,6 +1507,7 @@ async function captureWidgetCube(
 ): Promise<void> {
   await page.locator('#btnDataTab').click({ timeout: 4_000 }).catch(() => {});
   await page.waitForTimeout(600);
+  await openCubeFolders(page, dims.map((d) => `chk-dim-${d}`));
   for (const d of dims) {
     const cb = page.locator(`#chk-dim-${d}`);
     if ((await cb.count()) > 0 && !(await cb.isChecked().catch(() => false))) { await cb.check().catch(() => {}); await page.waitForTimeout(300); }

@@ -45,6 +45,8 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
 
   // Cube renderer in-panel state
   const cubeRef = useRef<HTMLElement>(null);
+  /** The saved cube's own name inside its file: which cube of it the renderer starts on. */
+  const cubeFileName = useRef("");
   const cubeReady = useRbElementReady("rb-cube-renderer");
   const [cubeConfig, setCubeConfig] = useState<unknown>(null);
   const [cubeLoading, setCubeLoading] = useState(false);
@@ -89,7 +91,10 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
     (async () => {
       try {
         const cube = await fetchCube(query.cubeId!);
-        const parsed = await parseCubeDsl(cube.dslCode, cube.cubeName);
+        // The whole file: the renderer's own picker lists its cubes, and the saved `cubeName`
+        // only says which one starts selected.
+        const parsed = await parseCubeDsl(cube.dslCode);
+        cubeFileName.current = cube.cubeName || "";
         if (!cancelled) setCubeConfig(parsed);
       } catch (e) {
         if (!cancelled) setCubeError(e instanceof Error ? e.message : "Failed to load cube");
@@ -105,11 +110,13 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
     if (!cubeReady || !cubeRef.current || !cubeConfig) return;
     const el = cubeRef.current as HTMLElement & {
       cubeConfig?: unknown; connectionId?: string; apiBaseUrl?: string; apiKey?: string;
+      cubeName?: string;
     };
     const rbConfig = (typeof window !== "undefined"
       ? (window as unknown as { rbConfig?: { apiBaseUrl: string; apiKey: string } }).rbConfig
       : undefined);
     el.cubeConfig = cubeConfig;
+    el.cubeName = query.cubeName || cubeFileName.current || "";
     el.connectionId = connectionId || "";
     el.apiBaseUrl = rbConfig?.apiBaseUrl || "";
     el.apiKey = rbConfig?.apiKey || "";
@@ -126,19 +133,28 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
         selectedDimensions: string[];
         selectedMeasures: string[];
         selectedSegments: string[];
+        cubeName?: string;
       }>).detail;
       if (!detail.selectedDimensions.length && !detail.selectedMeasures.length) return;
       try {
         // The segments go with the selection: a cube segment is a WHERE clause,
         // and leaving it out gave back the SQL for every row.
+        // The cube the renderer is showing travels with the selection, so a file of several
+        // cubes generates SQL for the one on screen — and a saved canvas keeps it.
+        const cubeName = detail.cubeName || cubeFileName.current || "";
         const generatedSql = await generateCubeSql(
           query.cubeId!,
           connectionId || "",
           detail.selectedDimensions,
           detail.selectedMeasures,
           detail.selectedSegments || [],
+          cubeName,
         );
-        onChange({ mode: "visual", visualQuery: { ...query }, generatedSql });
+        onChange({
+          mode: "visual",
+          visualQuery: { ...query, cubeName: cubeName || undefined },
+          generatedSql,
+        });
       } catch {
         // Silent — user can try again by changing selection
       }

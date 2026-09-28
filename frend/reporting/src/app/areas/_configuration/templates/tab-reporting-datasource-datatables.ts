@@ -1285,6 +1285,7 @@ Column 3, 15"
           @if (parsedCubeForReuse && selectedCubeForReuse) {
           <rb-cube-renderer
             [cubeConfig]="parsedCubeForReuse"
+            [cubeName]="selectedCubeForReuse.cubeName || ''"
             [connectionId]="selectedCubeForReuse.connectionId"
             [apiBaseUrl]="cubesReuseApiBaseUrl"
             (selectionChanged)="onCubeForReuseSelectionChanged($any($event))">

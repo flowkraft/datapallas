@@ -24,10 +24,13 @@ export function CubeRendererWidget({ widgetId }: CubeRendererWidgetProps) {
   const changeWidgetRenderMode = useCanvasStore((s) => s.changeWidgetRenderMode);
 
   const cubeId = widget?.dataSource?.visualQuery?.cubeId || "";
+  // Which cube of the file the widget was built on: the renderer starts on that one.
+  const savedCubeName = widget?.dataSource?.visualQuery?.cubeName || "";
   const currentType = widget?.type;
 
   const ref = useRef<HTMLElement>(null);
   const [cubeConfig, setCubeConfig] = useState<unknown>(null);
+  const [cubeFileName, setCubeFileName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const ready = useRbElementReady("rb-cube-renderer");
@@ -47,8 +50,11 @@ export function CubeRendererWidget({ widgetId }: CubeRendererWidgetProps) {
     (async () => {
       try {
         const cube = await fetchCube(cubeId);
-        const parsed = await parseCubeDsl(cube.dslCode, cube.cubeName);
+        // The whole file: the renderer's picker lists its cubes, and a name only says which
+        // one starts selected.
+        const parsed = await parseCubeDsl(cube.dslCode);
         if (cancelled) return;
+        setCubeFileName(cube.cubeName || "");
         setCubeConfig(parsed);
       } catch (e) {
         if (cancelled) return;
@@ -69,15 +75,17 @@ export function CubeRendererWidget({ widgetId }: CubeRendererWidgetProps) {
       connectionId?: string;
       apiBaseUrl?: string;
       apiKey?: string;
+      cubeName?: string;
     };
     const rbConfig = (typeof window !== "undefined"
       ? (window as unknown as { rbConfig?: { apiBaseUrl: string; apiKey: string } }).rbConfig
       : undefined);
     el.cubeConfig = cubeConfig;
+    el.cubeName = savedCubeName || cubeFileName;
     el.connectionId = connectionId || "";
     el.apiBaseUrl = rbConfig?.apiBaseUrl || "";
     el.apiKey = rbConfig?.apiKey || "";
-  }, [ready, cubeConfig, connectionId]);
+  }, [ready, cubeConfig, connectionId, savedCubeName, cubeFileName]);
 
   // Listen for cube selection changes → auto-pick the best render mode for
   // the current shape (0 dims → Number, 1 dim → chart, 2+ dims → pivot).

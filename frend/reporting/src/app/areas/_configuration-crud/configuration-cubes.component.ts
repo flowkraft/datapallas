@@ -78,6 +78,8 @@ export class CubeListComponent implements OnInit, OnDestroy {
   parsedCube: any = null;
   parsedCubeConfigJson: string = '';
   parseDslError: string = '';
+  /** The parser's `warnings`, errors first, listed under the editor (`#cubeDslWarnings`). */
+  parsedCubeWarnings: Array<{ level: string; message: string }> = [];
   private dslParseDebounce: any;
 
   // API base URL for the web component
@@ -264,6 +266,7 @@ cube {
     this.cubeNameAlreadyExists = false;
     this.parsedCube = null;
     this.parseDslError = '';
+    this.parsedCubeWarnings = [];
     this.duplicateSourceId = '';
 
     if (mode === 'update') {
@@ -366,6 +369,10 @@ cube {
     this.lastSelectedDimensions = detail?.selectedDimensions || [];
     this.lastSelectedMeasures = detail?.selectedMeasures || [];
     this.lastSelectedSegments = detail?.selectedSegments || [];
+    // The viewer filters the person set in the tree, already in the structured query's own shape.
+    this.lastSelectedFilters = detail?.selectedFilters || [];
+    // Which cube of the file the preview is showing: it decides what View SQL generates.
+    this.lastCubeName = detail?.cubeName || '';
     this.hasFieldSelections = this.lastSelectedDimensions.length > 0 || this.lastSelectedMeasures.length > 0;
     this.cdRef.detectChanges();
   }
@@ -377,6 +384,26 @@ cube {
   private lastSelectedDimensions: string[] = [];
   private lastSelectedMeasures: string[] = [];
   private lastSelectedSegments: string[] = [];
+  private lastSelectedFilters: any[] = [];
+  private lastCubeName = '';
+
+  /**
+   * Where the filter popover's values come from. The component never builds a URL with a cube id of
+   * its own, so the host passes the one call it may make. An arrow property, because the component
+   * calls it as a plain function.
+   */
+  fetchCubeFilterOptions = async (dimension: string, search: string) => {
+    if (!this.editingCube?.id) {
+      throw new Error('Save this cube first: its values are read through its own connection.');
+    }
+    return this.cubesService.filterOptions(
+      this.editingCube.id,
+      dimension,
+      this.editingCube.connectionId,
+      this.lastCubeName || this.editingCube.cubeName || null,
+      search,
+    );
+  };
 
   async viewSql() {
     if (!this.hasFieldSelections) return;
@@ -394,7 +421,8 @@ cube {
         this.lastSelectedDimensions,
         this.lastSelectedMeasures,
         this.lastSelectedSegments,
-        this.editingCube.cubeName,
+        this.lastCubeName || this.editingCube.cubeName || null,
+        this.lastSelectedFilters,
       );
       this.generatedSql = result?.sql || '-- No SQL generated';
     } catch (e: any) {
@@ -424,17 +452,28 @@ cube {
     );
   }
 
+  /** Errors first, warnings after: a mistake that stops a field being ticked is read first. */
+  private sortWarnings(warnings: any): Array<{ level: string; message: string }> {
+    if (!Array.isArray(warnings)) return [];
+    const of = (level: string) =>
+      warnings.filter((w: any) => w?.level === level).map((w: any) => ({
+        level,
+        message: w?.message || '',
+      }));
+    return [...of('error'), ...of('warning')];
+  }
+
   async doParseDsl() {
     try {
       this.parseDslError = '';
       if (!this.editingCube.dslCode || !this.editingCube.dslCode.trim()) {
         this.parsedCube = null;
+        this.parsedCubeWarnings = [];
         return;
       }
-      const result = await this.cubesService.parseDsl(
-        this.editingCube.dslCode,
-        this.editingCube.cubeName,
-      );
+      // The whole file, never one picked cube: the preview's own picker (`#cubeSelect`) is what
+      // lists the file's cubes, and the saved `cubeName` only says which one starts selected.
+      const result = await this.cubesService.parseDsl(this.editingCube.dslCode);
       // Only re-bind `parsedCube` when the parse output actually differs.
       // ngx-codejar can emit (update) events with unchanged content during
       // Angular CD cycles; without this guard each spurious emit creates a new
@@ -443,11 +482,13 @@ cube {
       if (!_.isEqual(this.parsedCube, result)) {
         this.parsedCube = result;
         this.parsedCubeConfigJson = JSON.stringify(result);
+        this.parsedCubeWarnings = this.sortWarnings(result?.warnings);
         this.cdRef.detectChanges();
       }
     } catch (e: any) {
       this.parseDslError = e?.message || 'Failed to parse DSL';
       this.parsedCube = null;
+      this.parsedCubeWarnings = [];
       this.cdRef.detectChanges();
     }
   }

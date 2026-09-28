@@ -68,6 +68,9 @@ cube {
     description 'Month name (January, February, ...)'
     sql 'month_name'
     type 'string'
+    // Calendar order, not alphabetical: April first is what a generated list would give, because
+    // all it can order by is the name it shows.
+    filter_options 'SELECT month_name FROM dim_time GROUP BY month, month_name ORDER BY month'
   }
 
   // ── Dimensions: Customer ───────────────────────────────────────────────

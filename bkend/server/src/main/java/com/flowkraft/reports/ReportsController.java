@@ -48,6 +48,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.common.Utils;
 import com.flowkraft.embed.LockedParams;
+import com.flowkraft.cubes.CubeRuntimeService;
 import com.flowkraft.iam.dashboards.DashboardAccess;
 import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.iam.limits.LimitsService;
@@ -111,6 +112,9 @@ public class ReportsController {
 
 	@Autowired
 	DashboardAccess dashboardAccess;
+
+	@Autowired
+	CubeRuntimeService cubeRuntimeService;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -375,6 +379,52 @@ public class ReportsController {
 		ReportDataResult result = reportingService.fetchReportData(reportId, parameters, testMode);
 		result = reportingService.applyServerSideOperations(result, page, size, sort, filter);
 		return Mono.just(result);
+	}
+
+	// ── W2: the live cube of a published dashboard ──
+	//
+	// Three endpoints beside /data, because a live cube is a second kind of report data: the rows a
+	// viewer's own selection asks for. They make the same two checks /data makes, in the same order,
+	// and take the cube, its name and its connection from the dashboard's own
+	// {reportId}-cube-widgets.json — never from the request. Everything else is CubeRuntimeService's.
+
+	@Operation(summary = "The live cube behind one component of a dashboard, as much of it as a viewer may see")
+	@GetMapping(value = "/{reportId}/cube/{componentId}/meta", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> getLiveCubeMeta(@PathVariable String reportId,
+			@PathVariable String componentId, HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		// The field tree of a live cube is part of opening this dashboard, so it is the data door again.
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		return Mono.just(cubeRuntimeService.meta(reportId, componentId));
+	}
+
+	@Operation(summary = "The rows one selection of a dashboard's live cube asks for")
+	@PostMapping(value = "/{reportId}/cube/{componentId}/query", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> queryLiveCube(@PathVariable String reportId,
+			@PathVariable String componentId, @RequestBody(required = false) Map<String, Object> request,
+			HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		return Mono.just(cubeRuntimeService.query(reportId, componentId, request));
+	}
+
+	@Operation(summary = "The values one dimension of a dashboard's live cube may be filtered by")
+	@PostMapping(value = "/{reportId}/cube/{componentId}/filter-options", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> liveCubeFilterOptions(@PathVariable String reportId,
+			@PathVariable String componentId, @RequestBody(required = false) Map<String, Object> request,
+			HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		Map<String, Object> asked = request != null ? request : Map.of();
+		String dimension = asked.get("dimension") != null ? asked.get("dimension").toString() : null;
+		String search = asked.get("search") != null ? asked.get("search").toString() : null;
+		return Mono.just(cubeRuntimeService.filterOptions(reportId, componentId, dimension, search));
 	}
 
 	private String extractBracketParams(Map<String, String> params, String prefix) throws Exception {
