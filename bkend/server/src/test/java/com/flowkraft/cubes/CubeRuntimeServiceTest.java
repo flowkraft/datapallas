@@ -2,6 +2,7 @@ package com.flowkraft.cubes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -127,6 +128,51 @@ class CubeRuntimeServiceTest {
 				}
 				""");
 
+		// A cube of the Cube Stories kind: one field the parser refuses, so the error rule has
+		// something to refuse, and a hints file, so the questions have somewhere to come from.
+		cube("stories-cube", "Deals", """
+				cube {
+				  sql_table '"Deals"'
+				  title 'Deals'
+				  dimension {
+				    name 'Stage'
+				    title 'Stage'
+				    sql '${CUBE}."Stage"'
+				    type 'string'
+				  }
+				  dimension {
+				    name 'Owner'
+				    title 'Owner'
+				    sql '${CUBE}."Owner"'
+				    type 'string'
+				    order 'sideways'
+				  }
+				  measure {
+				    name 'Deals'
+				    title 'Deals'
+				    sql '${CUBE}."DealID"'
+				    type 'count'
+				  }
+				}
+				""");
+
+		write("config/cubes/stories-cube/hints.json", """
+				[
+				  { "id": "deals-by-stage", "fromStory": 1,
+				    "question": "How many deals are at each stage?",
+				    "text": "Tick Stage and Deals.",
+				    "query": { "dimensions": ["Stage"], "measures": ["Deals"] },
+				    "variants": [
+				      { "id": "by-owner", "text": "The same, by owner.",
+				        "query": { "dimensions": ["Owner"], "measures": ["Deals"] } }
+				    ] },
+				  { "id": "deals-of-another-cube",
+				    "question": "A question about another cube of the same file",
+				    "text": "Not this widget's.",
+				    "query": { "cubeName": "Payments", "measures": ["Deals"] } }
+				]
+				""");
+
 		write("config/reports/sales-board/sales-board-cube-widgets.json", """
 				{
 				  "cube1": {
@@ -153,6 +199,21 @@ class CubeRuntimeServiceTest {
 				    "initial": { "measures": ["Revenue"] },
 				    "display": "value",
 				    "saveView": false
+				  },
+				  "cube5": {
+				    "cubeId": "stories-cube",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Stage"], "measures": ["Deals"] },
+				    "display": ["table", "chart"],
+				    "showSql": true,
+				    "showCode": true,
+				    "showHints": true,
+				    "saveView": false
+				  },
+				  "cube6": {
+				    "cubeId": "stories-cube",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Stage"], "measures": ["Deals"] }
 				  }
 				}
 				""");
@@ -249,7 +310,9 @@ class CubeRuntimeServiceTest {
 
 		assertEquals(Map.of("dimensions", List.of("ShipCountry"), "measures", List.of("Revenue")),
 				meta.get("initial"));
-		assertEquals("chart", meta.get("display"));
+		// A widget's display is the list of shapes it offers, even where that list holds one: the
+		// renderer draws a switch from it, and a switch of one is a shape that cannot be changed.
+		assertEquals(List.of("chart"), meta.get("display"));
 		assertEquals("cube1", meta.get("componentId"));
 		assertEquals("northwind-sales", meta.get("cubeId"));
 	}
@@ -890,6 +953,155 @@ class CubeRuntimeServiceTest {
 		assertTrue(database.sql.contains(":dp_attr_customer_id"), database.sql);
 		assertEquals("", database.params.get("dp_attr_customer_id"),
 				"An attribute the credential does not carry is empty, not missing");
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Cube Stories: the five opt-ins, /sql and the error rule (design part 8)
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * What an author opens up is opened up for their widget alone. Two widgets on one dashboard
+	 * read the very same cube here: one says so in its file, the other says nothing, and the
+	 * second is the negative half — a key it never asked for is absent, not empty, so a page
+	 * cannot draw a View SQL it would have nothing to fill.
+	 */
+	@Test
+	void theOptInsAreTheAuthorsAndNobodyElsesDefault() throws Exception {
+
+		Map<String, Object> opened = runtime.meta("sales-board", "cube5");
+
+		assertEquals(CubeSqlDialect.DIALECTS, opened.get("sqlDialects"));
+		assertEquals("sqlite", opened.get("dbVendor"), "The database the rows really come from");
+		assertTrue(String.valueOf(opened.get("code")).contains("sql_table"), "The cube's own DSL");
+		assertNotNull(opened.get("warnings"), "What the parser found wrong with it");
+		assertNotNull(opened.get("hints"), "The questions the cube was written to answer");
+		// saveView false, so nothing this viewer does is kept anywhere (W5).
+		assertEquals("none", opened.get("viewStorage"));
+
+		Map<String, Object> shut = runtime.meta("sales-board", "cube6");
+
+		for (String key : List.of("sqlDialects", "dbVendor", "code", "warnings", "hints")) {
+			assertFalse(shut.containsKey(key), "A widget that did not ask for " + key + " gets none");
+		}
+		// The same cube, so the difference really is the file's opt-ins and not the cube's fields.
+		assertEquals(names(opened, "dimensions"), names(shut, "dimensions"));
+	}
+
+	/**
+	 * A hint and each of its variants is one ask of its own, because each is a different answer.
+	 * The id is what the page's markup is built from and the check is what the e2e truth file
+	 * calls the same ask; they differ in one character, and both travel so neither side guesses.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void everyHintAndEveryVariantIsOneAskWithItsOwnId() throws Exception {
+
+		List<Map<String, Object>> asks =
+				(List<Map<String, Object>>) runtime.meta("sales-board", "cube5").get("hints");
+
+		assertEquals(List.of("deals-by-stage", "deals-by-stage--by-owner"),
+				asks.stream().map(ask -> ask.get("id")).toList());
+		assertEquals(List.of("deals-by-stage", "deals-by-stage/by-owner"),
+				asks.stream().map(ask -> ask.get("check")).toList());
+
+		// A variant asks the hint's question again; its own sentence says what changed.
+		assertEquals("How many deals are at each stage?", asks.get(1).get("question"));
+		assertEquals("The same, by owner.", asks.get(1).get("text"));
+		assertEquals(Map.of("dimensions", List.of("Owner"), "measures", List.of("Deals")),
+				asks.get(1).get("query"));
+
+		// The negative half: a hint of another cube of the same file is not this widget's, and no
+		// ask carries a cubeName - /query refuses that key, so a Show Me that sent it would fail.
+		assertFalse(asks.toString().contains("deals-of-another-cube"));
+		assertFalse(asks.toString().contains("cubeName"), asks.toString());
+	}
+
+	/**
+	 * A field the parser refuses is shown as broken and cannot be asked for — on every dashboard,
+	 * opt-ins or not. The cube's other fields go on working, which is the point: one bad line in a
+	 * file does not take the whole cube off the page.
+	 */
+	@Test
+	void aMemberInErrorIsMarkedAndRefused() throws Exception {
+
+		Map<String, Object> meta = runtime.meta("sales-board", "cube6");
+
+		assertEquals(Boolean.TRUE, memberOf(meta, "dimensions", "Owner").get("error"));
+		assertNull(memberOf(meta, "dimensions", "Stage").get("error"),
+				"A field with nothing wrong with it carries no error");
+		assertFalse(meta.toString().contains("sideways"),
+				"What is wrong with it is the author's business, not every viewer's");
+
+		// The positive half: the rest of the cube answers.
+		Map<String, Object> good = new LinkedHashMap<>();
+		good.put("dimensions", List.of("Stage"));
+		good.put("measures", List.of("Deals"));
+		assertNotNull(runtime.query("sales-board", "cube6", good, Map.of()));
+
+		// The negative half: the broken one is refused, in words, naming it.
+		Map<String, Object> broken = new LinkedHashMap<>();
+		broken.put("dimensions", List.of("Owner"));
+		broken.put("measures", List.of("Deals"));
+		ResponseStatusException refused = assertThrows(ResponseStatusException.class,
+				() -> runtime.query("sales-board", "cube6", broken, Map.of()));
+		assertEquals(400, refused.getStatusCode().value());
+		assertTrue(refused.getReason().contains("Owner"), refused.getReason());
+	}
+
+	/**
+	 * View SQL: the statement this selection would be answered by, for the database a viewer
+	 * picked. It runs nothing and opens no connection — the rows always come from {@code /query},
+	 * on the widget's own connection, whatever vendor is chosen here.
+	 */
+	@Test
+	void sqlIsWrittenForTheDatabaseAskedForAndNothingIsRun() throws Exception {
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("Stage"));
+		request.put("measures", List.of("Deals"));
+
+		Map<String, Object> onItsOwn = runtime.sql("sales-board", "cube5", request);
+		assertEquals("sqlite", onItsOwn.get("dialect"), "The connection's own database, by default");
+		assertTrue(String.valueOf(onItsOwn.get("sql")).contains("\"Deals\""), onItsOwn.toString());
+
+		request.put("dbVendor", "oracle");
+		Map<String, Object> onOracle = runtime.sql("sales-board", "cube5", request);
+		assertEquals("oracle", onOracle.get("dialect"));
+		assertNotEquals(onItsOwn.get("sql"), onOracle.get("sql"),
+				"Another database is another SQL, or the vendor select says nothing");
+
+		assertNull(database.readOn, "Nothing is read: View SQL is not a second way to the rows");
+	}
+
+	/** A widget whose author did not turn View SQL on has no SQL to give, and says so. */
+	@Test
+	void sqlIsRefusedWhereTheAuthorDidNotTurnItOn() throws Exception {
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("Stage"));
+		request.put("measures", List.of("Deals"));
+
+		ResponseStatusException refused = assertThrows(ResponseStatusException.class,
+				() -> runtime.sql("sales-board", "cube6", request));
+		assertEquals(403, refused.getStatusCode().value());
+		assertTrue(refused.getReason().contains("showSql"), refused.getReason());
+
+		// The negative half of the negative half: a broken field is refused here too, so the SQL
+		// panel cannot be used to read what the tree will not let anybody tick.
+		Map<String, Object> broken = new LinkedHashMap<>();
+		broken.put("dimensions", List.of("Owner"));
+		broken.put("measures", List.of("Deals"));
+		assertEquals(400, refusedBy(() -> runtime.sql("sales-board", "cube5", broken)));
+	}
+
+	/** The shapes a widget offers are a list, whichever of the two ways its file wrote them. */
+	@Test
+	void theShapesOfferedAreAlwaysAList() throws Exception {
+
+		assertEquals(List.of("table", "chart"), runtime.meta("sales-board", "cube5").get("display"));
+		assertEquals(List.of("value"), runtime.meta("sales-board", "cube4").get("display"));
+		assertEquals(List.of(), runtime.meta("sales-board", "cube6").get("display"),
+				"A widget that says nothing offers nothing, and the answer's own shape decides");
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

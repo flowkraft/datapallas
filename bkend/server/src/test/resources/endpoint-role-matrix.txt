@@ -33,7 +33,7 @@ DELETE /api/reports/{reportId} -> REPORT_AUTHOR
 # dashboardAccess.check plus reportAccess.assertReportReadable as the cube's rows, and then the
 # row belongs to whoever is asking (CubeViewers.of), so nobody can read or write anybody else's.
 # An embed token never reaches it at all - the token-scoped paths are meta, query,
-# filter-options and drill only, so a share link falls through to anyRequest().authenticated().
+# filter-options, drill and sql only, so a share link falls through to anyRequest().authenticated().
 DELETE /api/reports/{reportId}/cube/{componentId}/my-view -> (none)
 DELETE /api/system/fs -> REPORT_AUTHOR
 GET /api/analytics/aggregators -> REPORT_AUTHOR
@@ -94,7 +94,7 @@ GET /api/reports/{reportId}/cube/{componentId}/meta -> (none)
 # dashboardAccess.check plus reportAccess.assertReportReadable as the cube's rows, and then the
 # row belongs to whoever is asking (CubeViewers.of), so nobody can read or write anybody else's.
 # An embed token never reaches it at all - the token-scoped paths are meta, query,
-# filter-options and drill only, so a share link falls through to anyRequest().authenticated().
+# filter-options, drill and sql only, so a share link falls through to anyRequest().authenticated().
 GET /api/reports/{reportId}/cube/{componentId}/my-view -> (none)
 # The data door, guarded the same way as its config: embed token or session to get in, then dashboardAccess.check and reportAccess.assertReportReadable decide whether this caller may read this report's rows.
 GET /api/reports/{reportId}/data -> (none)
@@ -218,6 +218,12 @@ POST /api/reports/{reportId}/cube/{componentId}/drill -> (none)
 POST /api/reports/{reportId}/cube/{componentId}/filter-options -> (none)
 # The rows one selection of a dashboard's live cube asks for. A POST because the selection is a structured question, not because it changes anything; the same two checks as /data decide who may ask it, and the request may name only members the cube offers.
 POST /api/reports/{reportId}/cube/{componentId}/query -> (none)
+# The SQL one selection of a dashboard's live cube would be answered by - the statement, not the
+# rows: nothing is run and no connection is opened, so it gives away no data the same selection's
+# /query would not. Open exactly as far as those rows are (dashboardAccess.check plus
+# reportAccess.assertReportReadable), and narrowed again in the handler by the widget's own
+# showSql, which a dashboard's author turns on per widget: where it is off the answer is 403.
+POST /api/reports/{reportId}/cube/{componentId}/sql -> (none)
 POST /api/reports/{reportId}/duplicate -> REPORT_AUTHOR
 POST /api/reports/{reportId}/restore-defaults -> REPORT_AUTHOR
 POST /api/system/feedback/feature-request -> JOB_OPERATOR
@@ -255,7 +261,7 @@ PUT /api/iam/users/{username}/role -> ADMIN
 # dashboardAccess.check plus reportAccess.assertReportReadable as the cube's rows, and then the
 # row belongs to whoever is asking (CubeViewers.of), so nobody can read or write anybody else's.
 # An embed token never reaches it at all - the token-scoped paths are meta, query,
-# filter-options and drill only, so a share link falls through to anyRequest().authenticated().
+# filter-options, drill and sql only, so a share link falls through to anyRequest().authenticated().
 PUT /api/reports/{reportId}/cube/{componentId}/my-view -> (none)
 # and then by data: limitsService.assertConnectionAllowed on the conncode being saved - an author
 # cannot point a report at a connection they may not use themselves.

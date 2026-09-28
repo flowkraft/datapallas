@@ -42,6 +42,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.flowkraft.embed.EmbedTokenAuthorizationManager;
 import com.flowkraft.iam.AuthController;
 import com.flowkraft.iam.Role;
 
@@ -171,19 +172,33 @@ class EndpointRoleMatrixTest {
 						+ "with the reason, and say in the pull request what is now reachable without a\n"
 						+ "credential. An extra group here means an extra door.");
 
-		// Not permitAll and not authenticated either: eight paths opened by a short-lived embed token
+		// Not permitAll and not authenticated either: nine paths opened by a short-lived embed token
 		// for one report. Pinned for the same reason - widening this list widens the product.
 		assertEquals(List.of(
 				"\"/api/reports/*/config\", \"/api/reports/*/data\", \"/dashboard/*\","
 						+ " \"/api/analytics/pivot\", \"/api/reports/*/cube/*/meta\","
 						+ " \"/api/reports/*/cube/*/query\", \"/api/reports/*/cube/*/filter-options\","
-						+ " \"/api/reports/*/cube/*/drill\""),
+						+ " \"/api/reports/*/cube/*/drill\", \"/api/reports/*/cube/*/sql\""),
 				matchersEndingIn(config, ".access("),
-				"The token-authorised paths changed. Eight of them were decided, each because a web"
-						+ " component on somebody else's page needs it - the last four because a live cube"
-						+ " of a published dashboard is read the same way its rows are, and the rows behind"
-						+ " one of its numbers are read the same way the number is; a ninth needs the same"
-						+ " argument made.");
+				"The token-authorised paths changed. Nine of them were decided, each because a web"
+						+ " component on somebody else's page needs it - the last five because a live cube"
+						+ " of a published dashboard is read the same way its rows are, the rows behind"
+						+ " one of its numbers are read the same way the number is, and the SQL a selection"
+						+ " would be answered by says less than those rows do and is answered only where the"
+						+ " widget's author turned it on; a tenth needs the same argument made.");
+
+		// The chain and the manager have to name the same live-cube reads, and for a while they did
+		// not: the chain listed four while EmbedTokenAuthorizationManager matched five, so View SQL
+		// answered 401 to the very viewer a dashboard had been shared with - invisible to every test
+		// here, because each side was self-consistent. Checked in both directions.
+		for (String path : EmbedTokenAuthorizationManager.CUBE_PATHS)
+			assertTrue(config.contains("\"" + path + "\""),
+					path + " is a live-cube read EmbedTokenAuthorizationManager answers for, but the chain"
+							+ " does not send it there, so a share link is refused on it.");
+		assertEquals(EmbedTokenAuthorizationManager.CUBE_PATHS.length,
+				matchersEndingIn(config, ".access(").get(0).split("/cube/\\*/", -1).length - 1,
+				"The chain opens a different number of live-cube paths than the manager answers for."
+						+ " One of them would refuse a viewer the other lets in.");
 
 		assertTrue(config.contains(".anyRequest().authenticated())"),
 				"The real chain no longer ends in anyRequest().authenticated(), so an endpoint nobody"

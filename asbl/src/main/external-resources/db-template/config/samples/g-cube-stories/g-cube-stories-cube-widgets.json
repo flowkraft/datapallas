@@ -1,0 +1,174 @@
+{
+  "sales-pipeline": {
+    "cubeId": "sales-pipeline",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": [], "measures": ["Deals", "DealValue"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "support-desk": {
+    "cubeId": "support-desk",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": [], "measures": ["Tickets"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "student-enrollments": {
+    "cubeId": "student-enrollments",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": ["Grade"], "measures": ["Enrollments"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "student-progress": {
+    "cubeId": "student-progress",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": {
+      "dimensions": ["FirstName", "LastName", "CoursesTaken"],
+      "measures": ["AverageScore"],
+      "segments": ["intake_2026"]
+    },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "customer-invoices": {
+    "cubeId": "customer-invoices",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": ["Status"], "measures": ["Invoices", "Invoiced"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "customer-payments": {
+    "cubeId": "customer-payments",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": ["Method"], "measures": ["Payments", "Received"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "invoice-balances": {
+    "cubeId": "invoice-balances",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": [], "measures": ["Invoices", "BalanceDue"], "segments": ["unpaid"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "northwind-customers": {
+    "cubeId": "northwind-customers",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+    "initial": { "dimensions": ["Country"], "measures": ["CustomerCount"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "northwind-hr": {
+    "cubeId": "northwind-hr",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+    "initial": { "dimensions": ["Title"], "measures": ["EmployeeCount"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "northwind-inventory": {
+    "cubeId": "northwind-inventory",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+    "initial": { "dimensions": ["Discontinued"], "measures": ["ProductCount"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "northwind-sales": {
+    "cubeId": "northwind-sales",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+    "initial": { "dimensions": ["ShipCountry"], "measures": ["TotalFreight"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "northwind-warehouse": {
+    "cubeId": "northwind-warehouse",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": ["Continent"], "measures": ["GrossRevenue"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "online-sales": {
+    "cubeId": "online-sales",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": {
+      "dimensions": ["Country"],
+      "measures": ["Orders", "ShippingFees", "GrossSales"]
+    },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "depot-network": {
+    "cubeId": "depot-network",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": ["Depot", "Location"], "measures": ["PalletCapacity", "Docks"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
+  "freight-shipments": {
+    "cubeId": "freight-shipments",
+    "cubeName": null,
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": ["BookedDate.month", "Status"], "measures": ["Shipments"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  }
+}

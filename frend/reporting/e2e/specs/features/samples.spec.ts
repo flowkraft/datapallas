@@ -9,6 +9,14 @@ import { SamplesTestHelper } from '../../helpers/samples-test-helper';
 import { assertDashboardRendersCorrectly } from '../../helpers/dashboard-test-helper';
 import { SelfServicePortalsTestHelper } from '../../helpers/areas/self-service-portals-test-helper';
 import { Helpers } from '../../utils/helpers';
+import {
+  CUBE_STORIES_CARDS,
+  cardOf,
+  checksOf,
+  difference,
+  drawnRows,
+  waitForCard,
+} from '../../helpers/cube-stories-test-helper';
 
 //DONE2
 test.describe('', async () => {
@@ -1111,6 +1119,73 @@ electronBeforeAfterAllTest(
         .appStatusShouldBeGreatNoErrorsNoWarnings()
         .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'pdf')
         .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (21_cube_stories)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trCUBE-STORIES')
+        .waitOnElementToContainText('#tdCUBE-STORIES', 'Cube Stories');
+
+      // Verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(ft, 'CUBE-STORIES', 'northwind.db');
+
+      // A dashboard sample's "Try It" opens the page in the browser, as sample 19 does.
+      let externalBrowser = null;
+
+      await ft
+        .scrollIntoViewIfNeeded('#trCUBE-STORIES')
+        .click('#trCUBE-STORIES')
+        .click('#btnSampleTryItCUBE-STORIES');
+
+      try {
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        externalBrowser = browser;
+
+        // A brand new browser carries no session; on a Server the dashboard would otherwise be
+        // the login page. On a desktop installation this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
+
+        const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-stories';
+
+        await SelfServicePortalsTestHelper.waitForServerReady(page, dashboardUrl, 30, 2000);
+
+        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
+
+        const { expect } = await import('@playwright/test');
+        const frame = page.mainFrame();
+
+        // The sample is the page: every cube DataPallas ships, each card with the questions its
+        // cube was written to answer.
+        await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 10000 });
+        await expect(frame.locator('.rb-cube-stories-root .card'))
+          .toHaveCount(CUBE_STORIES_CARDS.length, { timeout: 60000 });
+        for (const card of CUBE_STORIES_CARDS) {
+          await expect(frame.locator(`#cube-${card.id} #cubeHints .rb-hint`).first())
+            .toBeVisible({ timeout: 60000 });
+        }
+
+        // And it is live: the Deals card answers its own first question with the rows the vendor
+        // loop checks that cube's SQL against. That check counts every deal and adds up what they
+        // are worth, so it is the same on any day the demo data was seeded.
+        const deals = cardOf('sales-pipeline');
+        await waitForCard(frame, deals.id, 60000);
+        const dealsAndValue = checksOf(deals.id).get('deals-and-value');
+        expect(dealsAndValue, 'the Deals cube has a check for its first hint').toBeTruthy();
+        const wrong = difference(dealsAndValue.rows, await drawnRows(frame, deals.id), false);
+        expect(wrong, `the Deals card: ${wrong ?? ''}`).toBeNull();
+      } finally {
+        if (externalBrowser) {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
+        }
+      }
     },
   );
 

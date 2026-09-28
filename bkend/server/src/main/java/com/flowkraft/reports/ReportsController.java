@@ -399,7 +399,7 @@ public class ReportsController {
 
 	// ── W2: the live cube of a published dashboard ──
 	//
-	// Four endpoints beside /data, because a live cube is a second kind of report data: the rows a
+	// Five endpoints beside /data, because a live cube is a second kind of report data: the rows a
 	// viewer's own selection asks for. They make the same two checks /data makes, in the same order,
 	// and take the cube, its name and its connection from the dashboard's own
 	// {reportId}-cube-widgets.json — never from the request. Everything else is CubeRuntimeService's.
@@ -429,6 +429,21 @@ public class ReportsController {
 		// Row 0 of the precedence table again, and the same call /data makes a few lines above: the
 		// live cube learns who is asking from the session or the credential, never from the request.
 		return Mono.just(cubeRuntimeService.query(reportId, componentId, request, userVariables.of(httpRequest)));
+	}
+
+	@Operation(summary = "The SQL one selection of a dashboard's live cube would be answered by")
+	@PostMapping(value = "/{reportId}/cube/{componentId}/sql", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> liveCubeSql(@PathVariable String reportId,
+			@PathVariable String componentId, @RequestBody(required = false) Map<String, Object> request,
+			HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		// The same two doors as the rows, although no row is read: what the SQL says about the
+		// cube is as much this dashboard's as the numbers are. Whether this widget shows it at
+		// all is the author's own showSql, and CubeRuntimeService answers 403 when it is off.
+		return Mono.just(cubeRuntimeService.sql(reportId, componentId, request));
 	}
 
 	@Operation(summary = "The rows behind one number of a dashboard's live cube")

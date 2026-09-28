@@ -92,7 +92,7 @@ class CubeSampleSqlExecutesTest {
 	/**
 	 * Students per Program is a first draft with mistakes in it, on purpose: a measure type that does not exist
 	 * and a drill path naming a dimension that is not there. Generating SQL from it throws, which is
-	 * the whole point of the story, so everyShippedSampleParsesWithNothingToComplainAbout asserts its
+	 * the whole point of it, so everyShippedSampleParsesWithNothingToComplainAbout asserts its
 	 * two warnings and two errors instead. It is NOT one of SAMPLE_CUBES: it is not shipped, because a
 	 * user's first look at the samples may not be a broken cube. It lives under CUBE_EXAMPLES_DIR,
 	 * and parseSampleFile knows where to find it. Keeping it tested rather than deleting it is what
@@ -999,9 +999,9 @@ class CubeSampleSqlExecutesTest {
 					+ String.join("\n", complaints));
 		}
 
-		// Story 19 is the one sample that must complain, and about exactly these four things: a
-		// first draft whose mistakes are caught and explained. If the parser ever stops saying one
-		// of them, the story on the page stops being true.
+		// Students per Program is the one cube that must complain, and about exactly these four
+		// things: a first draft whose mistakes are caught and explained. If the parser ever stops
+		// saying one of them, this fails.
 		List<Map<String, Object>> drafted = parseSampleFile(BROKEN_ON_PURPOSE).getWarnings();
 		List<String> saidAsWarning = new ArrayList<>();
 		List<String> saidAsError = new ArrayList<>();

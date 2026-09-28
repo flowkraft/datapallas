@@ -29,8 +29,13 @@ import static com.sourcekraft.documentburster.utils.Utils.resolvePathAgainstPort
  *   { "cube1": { "cubeId": "northwind-sales", "cubeName": null,
  *                "connectionId": "rbt-sample-northwind-sqlite-4f2",
  *                "initial": { "dimensions": [...], "measures": [...], "filters": [...] },
- *                "display": "chart" } }
+ *                "display": ["table", "chart"] } }
  * </pre>
+ *
+ * <p>Five more keys are the author's own opt-ins, all off unless the entry says otherwise, because
+ * a dashboard published to people who are not its author shows no SQL, no DSL and no teaching aid
+ * unless the author asked for it (design part 8): {@code showSql}, {@code showCode},
+ * {@code showHints}, a {@code display} of several shapes, and {@code saveView}.
  *
  * <p><b>Why this file is the lock.</b> A runtime request names a report and one of its components,
  * and nothing else: the cube it may run, the cube name inside that cube's file and the connection
@@ -70,13 +75,24 @@ public final class CubeWidgets {
 	 * @param cubeName     the cube's name inside its DSL file, or null for the file's own cube
 	 * @param connectionId the connection its rows are read through — this file's, never a request's
 	 * @param initial      the selection the widget opens with (ticks, filters, order, limit)
-	 * @param display      {@code value}, {@code chart}, {@code table}, or null to let the shape decide
+	 * @param display      the shapes this widget offers — {@code value}, {@code chart},
+	 *                     {@code table} or {@code map} — in the order a viewer is offered them, and
+	 *                     empty to let the answer's own shape decide. The file may write one name or
+	 *                     a list of them, and this is always the list: a list of one is still a list,
+	 *                     so nothing downstream has to ask which of the two the author wrote
 	 * @param saveView     whether a viewer's own view of this widget is kept between visits (W5);
 	 *                     true unless the file says otherwise, because a dashboard published before
 	 *                     the key existed opens where its viewer left it, like every other one
+	 * @param showSql      whether a viewer may see the SQL this widget's questions are answered by,
+	 *                     for the database of their choice (design part 8: View SQL, {@code /sql})
+	 * @param showCode     whether a viewer may see the cube's own DSL text, and what the parser
+	 *                     found wrong with it (design part 8: View Code)
+	 * @param showHints    whether the cube's {@code hints.json} travels with the field tree, so the
+	 *                     widget can offer the questions the cube was written to answer
 	 */
 	public record Widget(String componentId, String cubeId, String cubeName, String connectionId,
-			Map<String, Object> initial, String display, boolean saveView) {
+			Map<String, Object> initial, List<String> display, boolean saveView,
+			boolean showSql, boolean showCode, boolean showHints) {
 	}
 
 	/**
@@ -133,8 +149,35 @@ public final class CubeWidgets {
 				: new LinkedHashMap<>();
 
 		return new Widget(componentId, text(entry.get("cubeId")), text(entry.get("cubeName")),
-				text(entry.get("connectionId")), initial, text(entry.get("display")),
-				!Boolean.FALSE.equals(entry.get("saveView")));
+				text(entry.get("connectionId")), initial, displayOf(entry.get("display")),
+				!Boolean.FALSE.equals(entry.get("saveView")),
+				Boolean.TRUE.equals(entry.get("showSql")),
+				Boolean.TRUE.equals(entry.get("showCode")),
+				Boolean.TRUE.equals(entry.get("showHints")));
+	}
+
+	/**
+	 * The shapes a {@code display} key offers, whether it was written as one name or as a list.
+	 *
+	 * <p>A list of one is kept as a list of one. Collapsing it to the single name it holds would
+	 * make "this widget offers exactly the table" indistinguishable from "this widget is a table",
+	 * and the switch a viewer is offered is drawn from this list.
+	 */
+	private static List<String> displayOf(Object declared) {
+
+		List<String> shapes = new ArrayList<>();
+		if (declared instanceof List) {
+			for (Object shape : (List<?>) declared) {
+				String name = text(shape);
+				if (name != null && !shapes.contains(name))
+					shapes.add(name);
+			}
+			return shapes;
+		}
+		String name = text(declared);
+		if (name != null)
+			shapes.add(name);
+		return shapes;
 	}
 
 	/**

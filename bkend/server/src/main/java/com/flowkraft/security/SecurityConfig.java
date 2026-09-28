@@ -145,6 +145,10 @@ public class SecurityConfig {
 			@Autowired(required = false) List<FederatedLoginCustomizer> federatedLogins) throws Exception {
 
 		if (!securityEnabled) {
+			// Even a chain that enforces nothing says who may frame a page: what an iframe is
+			// allowed to show is not an authorization rule, and a developer's build is where the
+			// Cube Stories page is looked at first.
+			configureHeaders(http);
 			http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 			return http.build();
 		}
@@ -152,6 +156,7 @@ public class SecurityConfig {
 		http.cors(cors -> {
 		});
 
+		configureHeaders(http);
 		configureCsrf(http);
 		configureSessions(http);
 		configureFilters(http);
@@ -202,6 +207,20 @@ public class SecurityConfig {
 	private EmbedTokenAuthorizationManager embedTokenAuthorization() {
 		return new EmbedTokenAuthorizationManager(embedTokenService, shareTokenService,
 				AuthenticatedAuthorizationManager.authenticated());
+	}
+
+	/**
+	 * Framing: one writer decides it for every response (see {@link DashboardFraming}).
+	 *
+	 * <p>Spring's own frame-options writer is switched off first, because it would send
+	 * {@code X-Frame-Options: DENY} on the one page that has to be framed and there is no way to
+	 * except a path from it. The writer that replaces it sends the same DENY everywhere else, so
+	 * nothing is opened up: what changes is that one path, and only its header.
+	 */
+	private void configureHeaders(HttpSecurity http) throws Exception {
+		http.headers(headers -> headers
+				.frameOptions(frameOptions -> frameOptions.disable())
+				.addHeaderWriter(new DashboardFraming()));
 	}
 
 	/**
@@ -305,14 +324,20 @@ public class SecurityConfig {
 				// its server-side pivot and the live cubes that dashboard declares. Anything without a
 				// valid token for the report being requested falls through to normal authentication.
 				//
-				// The four cube paths are the same door as /data: what they read is decided by the
+				// The five cube paths are the same door as /data: what they read is decided by the
 				// report's own -cube-widgets.json, so a token for a report opens the cubes that report
 				// publishes and no others. Without them a token-only viewer of a published dashboard
-				// would reach anyRequest().authenticated() and be refused the rows of a cube they are
-				// already looking at.
+				// would reach anyRequest().authenticated() and be refused the rows - or the SQL - of a
+				// cube they are already looking at. /sql is one of them because it says less than the
+				// rows do: the statement those same rows came from, and only where the widget's author
+				// turned it on. Spelled out rather than taken from a constant, because
+				// EndpointRoleMatrixTest reads this list as text - a symbol would let a sixth path in
+				// without anybody deciding. That test also checks this list against
+				// EmbedTokenAuthorizationManager.CUBE_PATHS, in both directions.
 				.requestMatchers("/api/reports/*/config", "/api/reports/*/data", "/dashboard/*",
 						"/api/analytics/pivot", "/api/reports/*/cube/*/meta", "/api/reports/*/cube/*/query",
-						"/api/reports/*/cube/*/filter-options", "/api/reports/*/cube/*/drill")
+						"/api/reports/*/cube/*/filter-options", "/api/reports/*/cube/*/drill",
+						"/api/reports/*/cube/*/sql")
 				.access(embedTokenAuthorization())
 
 				.anyRequest().authenticated());

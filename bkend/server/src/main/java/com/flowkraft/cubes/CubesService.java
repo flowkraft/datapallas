@@ -83,6 +83,15 @@ public class CubesService {
 	}
 
 	/**
+	 * The same resolution, for whoever needs one of a cube's files rather than its content: the
+	 * live cube reads a cube's {@code hints.json} this way, and a hints file is found wherever the
+	 * cube itself is found, never anywhere else.
+	 */
+	public CubeFiles filesOf(String cubeId) throws IOException {
+		return resolveCubeFiles(cubeId);
+	}
+
+	/**
 	 * List all cube definitions.
 	 * Returns a list of maps with id, name, description, connectionId, isSample.
 	 * Sample cubes (under config/samples-cubes/) are only included when the

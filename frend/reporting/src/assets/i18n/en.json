@@ -1045,6 +1045,11 @@
       "NOTES": {
         "INNER-HTML": "This sample demonstrates an interactive <strong>Pivot Table</strong> powered by <strong>DuckDB</strong> — the \"SQLite for analytics\" (<a href='https://datapallas.com/docs/bi-analytics/data-warehouse-olap' target='_blank'>learn more</a>). It queries the <em>Northwind data warehouse</em> (~8,000 sales transactions) and lets you drag and drop <strong>countries</strong>, <strong>categories</strong>, and <strong>quarters</strong> to explore revenue from every angle — all aggregation runs server-side in DuckDB for instant results. <br/><br/>Click <strong>Try It</strong> to open the live pivot table in your browser."
       }
+    },
+    "CUBE-STORIES": {
+      "NOTES": {
+        "INNER-HTML": "This sample is the <strong>cube demo page</strong>: one card for every cube DataPallas ships, live. Each card shows the cube's fields, the questions it was written to answer &mdash; click <strong>Show Me</strong> and the fields a question needs are ticked for you &mdash; and the answer as a <strong>table or a chart</strong>. Each card also offers <strong>View SQL</strong>, the statement your selection would be answered by, for <em>any</em> of the databases DataPallas writes SQL for, and <strong>View Code</strong>, the cube's own definition. Nothing you tick here is saved: the page opens the same way for everybody. <br/><br/>Click <strong>Try It</strong> to open the page in your browser."
+      }
     }
   }
 }

@@ -38,8 +38,20 @@ import com.sourcekraft.documentburster.common.db.SqlExecutor;
  * <p><b>What a viewer never receives</b> ({@link #meta}): no {@code sql} of the cube, of a measure,
  * of a dimension or of a segment, no joins, no {@code filter_options} statement. A dashboard is
  * published to people who are not its author; the field tree needs names, titles, types and
- * formats, and nothing in it needs the statements underneath. The opt-ins that do show SQL are the
- * author's own, declared per widget, and are not built here.
+ * formats, and nothing in it needs the statements underneath.
+ *
+ * <p><b>What the author may open up</b> (design part 8, the Cube Stories opt-ins). Three keys of
+ * the widget's own entry, each off unless it says otherwise, are answered here: {@code showSql}
+ * adds the databases a viewer may read the SQL for ({@code sqlDialects}) and turns on
+ * {@link #sql}; {@code showCode} adds the cube's DSL text ({@code code}) and what the parser
+ * found wrong with it ({@code warnings}); {@code showHints} adds the questions the cube was
+ * written to answer ({@code hints}). None of them widens what a query may ask: {@link #sql} runs
+ * nothing and reads nothing, and every other answer is the same with them as without.
+ *
+ * <p><b>A member the parser found an error on</b> is marked {@code error} in {@link #meta} and
+ * refused by {@link #query} with a 400 naming it. The generator would write SQL for it that the
+ * database refuses, or — worse — SQL that answers something else; a dashboard's viewer cannot fix
+ * the cube, so they are told which field is broken rather than shown a database error.
  *
  * <p><b>What a viewer may ask</b> ({@link #query}): the same structured query the cube editor
  * sends, minus everything the file decides. Every member, segment and filter name must be one this
@@ -160,7 +172,9 @@ public class CubeRuntimeService {
 	public Map<String, Object> meta(String reportId, String componentId, CubeViewer viewer) throws Exception {
 
 		Widget widget = CubeWidgets.of(reportId, componentId);
-		CubeOptions cube = cubeOf(widget);
+		Loaded loaded = loaded(widget);
+		CubeOptions cube = loaded.cube();
+		List<Map<String, Object>> broken = loaded.errors();
 
 		Map<String, Object> meta = new LinkedHashMap<>();
 		meta.put("componentId", widget.componentId());
@@ -172,13 +186,16 @@ public class CubeRuntimeService {
 		for (Map<String, Object> member : offered(cube.getDimensions())) {
 			Map<String, Object> shown = shown(member);
 			shown.put("hasFilterOptions", !text(member.get("filter_options")).isEmpty());
+			markError(shown, broken, "dimension");
 			dimensions.add(shown);
 		}
 		meta.put("dimensions", dimensions);
 
 		List<Map<String, Object>> measures = new ArrayList<>();
 		for (Map<String, Object> member : offered(cube.getMeasures())) {
-			measures.add(shown(member));
+			Map<String, Object> shown = shown(member);
+			markError(shown, broken, "measure");
+			measures.add(shown);
 		}
 		meta.put("measures", measures);
 
@@ -188,6 +205,7 @@ public class CubeRuntimeService {
 			shown.put("name", member.get("name"));
 			shown.put("title", member.get("title"));
 			shown.put("description", member.get("description"));
+			markError(shown, broken, "segment");
 			segments.add(shown);
 		}
 		meta.put("segments", segments);
@@ -205,7 +223,26 @@ public class CubeRuntimeService {
 		// What the numbers are in, for the formatter: one cube, one currency (W4.2).
 		meta.put("currency", cube.getCurrency());
 		meta.put("initial", widget.initial());
+		// Always the list of shapes the author offers, even when they offered one: the switch a
+		// viewer is offered is drawn from it (design part 8, the Table | Chart switch).
 		meta.put("display", widget.display());
+
+		// The three opt-ins of design part 8. Each key is absent, not empty, when its opt-in is
+		// off: a viewer's page cannot then draw a View SQL it would have nothing to fill.
+		if (widget.showSql()) {
+			meta.put("sqlDialects", CubeSqlDialect.DIALECTS);
+			// The database the rows actually come from, which the vendor select starts on and the
+			// line above the SQL names: "SQL for Oracle, the data comes from the DuckDB demo data".
+			meta.put("dbVendor", database.vendorOf(widget.connectionId()));
+		}
+		if (widget.showCode()) {
+			meta.put("code", loaded.dslCode());
+			meta.put("warnings", loaded.warnings());
+		}
+		if (widget.showHints()) {
+			meta.put("hints", CubeHints.of(cubesService.filesOf(widget.cubeId()).getHintsFile(),
+					loaded.cubeName()));
+		}
 
 		// W5: where this viewer's own view is kept, and — when it is kept here — the view itself,
 		// already merged over the author's default and already cleaned against the cube as it is
@@ -256,7 +293,9 @@ public class CubeRuntimeService {
 			Map<String, String> userVariables) throws Exception {
 
 		Widget widget = CubeWidgets.of(reportId, componentId);
-		Map<String, Object> answer = rows(cubeOf(widget), widget.connectionId(), request, userVariables);
+		Loaded loaded = loaded(widget);
+		assertNoNameIsInError(loaded.errors(), asked(request));
+		Map<String, Object> answer = rows(loaded.cube(), widget.connectionId(), request, userVariables);
 		log.debug("Live cube '{}' of report '{}' answered {} rows{}", componentId, reportId,
 				((List<?>) answer.get("rows")).size(),
 				Boolean.TRUE.equals(answer.get("truncated")) ? " (cut)" : "");
@@ -811,6 +850,11 @@ public class CubeRuntimeService {
 	 * DSL — the file is about to be compiled and run for this caller, whoever saved it.
 	 */
 	private CubeOptions cubeOf(Widget widget) throws Exception {
+		return loaded(widget).cube();
+	}
+
+	/** The same load, with the file's own name, text and warnings kept (design part 8). */
+	private Loaded loaded(Widget widget) throws Exception {
 
 		Map<String, Object> cubeData = cubesService.load(widget.cubeId());
 		String dslCode = Objects.toString(cubeData.get("dslCode"), "");
@@ -823,9 +867,102 @@ public class CubeRuntimeService {
 		CubeOptions file = cubesService.parseDsl(dslCode);
 		String cubeName = widget.cubeName() != null ? widget.cubeName() : (String) cubeData.get("cubeName");
 		try {
-			return CubeSqlGenerator.pickCube(file, cubeName);
+			return new Loaded(CubeSqlGenerator.pickCube(file, cubeName), text(cubeName), dslCode,
+					ownWarnings(file, text(cubeName)));
 		} catch (IllegalArgumentException badCube) {
 			throw badRequest(badCube);
+		}
+	}
+
+	/**
+	 * The warnings of one cube of a file. The parser lists a whole file's warnings on the file,
+	 * each naming the cube it belongs to ({@code ""} for the file's own cube), so this is the
+	 * filter that makes "what is wrong with this cube" answerable from a file of several.
+	 */
+	private static List<Map<String, Object>> ownWarnings(CubeOptions file, String cubeName) {
+
+		List<Map<String, Object>> own = new ArrayList<>();
+		for (Map<String, Object> warning : file.getWarnings() != null
+				? file.getWarnings()
+				: List.<Map<String, Object>>of()) {
+			if (cubeName.equals(Objects.toString(warning.get("cube"), "")))
+				own.add(warning);
+		}
+		return own;
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// /sql — the statement behind the answer, for the database a viewer picks
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * The SQL this selection would be answered by, written for one database (design part 8, View
+	 * SQL). Nothing is run and no connection is opened: this is the generator's text, so a viewer
+	 * reading it learns what the cube means, not what the data is.
+	 *
+	 * <p>This is the one runtime call that takes a {@code dbVendor}, and it takes it because that
+	 * is the whole point of the vendor select beside it: the same question, written for Oracle,
+	 * for PostgreSQL, for SQLite. It still cannot move the question off this widget's cube — the
+	 * cube and the connection come from the dashboard's declaration as everywhere else, and every
+	 * other key {@link #asked} refuses is refused here too. Without {@code dbVendor} the answer is
+	 * for the database the widget's own connection is, which is what the page opens on.
+	 *
+	 * @throws ResponseStatusException 403 when the widget's entry has no {@code showSql}: the SQL
+	 *                                 of a dashboard the author did not open up is not a viewer's
+	 *                                 to read, and saying so is not the same as saying "no such
+	 *                                 endpoint"
+	 */
+	public Map<String, Object> sql(String reportId, String componentId, Map<String, Object> request)
+			throws Exception {
+
+		Widget widget = CubeWidgets.of(reportId, componentId);
+		if (!widget.showSql()) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This dashboard does not show the SQL of "
+					+ "its live cube '" + componentId + "'. Its author turns that on with \"showSql\": true.");
+		}
+
+		Map<String, Object> sent = request != null ? new LinkedHashMap<>(request) : new LinkedHashMap<>();
+		String vendor = text(sent.remove("dbVendor"));
+
+		Loaded loaded = loaded(widget);
+		Map<String, Object> asked = asked(sent);
+		assertEveryNameIsOffered(loaded.cube(), asked);
+		assertNoNameIsInError(loaded.errors(), asked);
+		asked.put("limit", limitOf(asked));
+
+		String wanted = vendor.isEmpty() ? database.vendorOf(widget.connectionId()) : CubeSqlDialect.key(vendor);
+
+		Map<String, Object> answer = new LinkedHashMap<>();
+		answer.put("dialect", wanted);
+		// The inline form, which is what a person reads: the bound form is a statement plus a map
+		// of :cf… values, and nobody learns anything from reading those two apart.
+		answer.put("sql", generated(loaded.cube(), asked, wanted).getSql());
+		return answer;
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// The cube behind a widget
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * A widget's cube, and the three things about it that only its file knows: the name it has in
+	 * that file, the text of the file, and what the parser found wrong with it.
+	 *
+	 * <p>The warnings are the file's and name the cube each belongs to, so a file of several cubes
+	 * does not hand one cube's broken measure to another; {@link #errors} is this cube's own, and
+	 * only the ones that are errors.
+	 */
+	private record Loaded(CubeOptions cube, String cubeName, String dslCode,
+			List<Map<String, Object>> warnings) {
+
+		/** The warnings of this cube that are errors — a member the generator cannot write. */
+		List<Map<String, Object>> errors() {
+			List<Map<String, Object>> errors = new ArrayList<>();
+			for (Map<String, Object> warning : warnings) {
+				if ("error".equals(Objects.toString(warning.get("level"), "")))
+					errors.add(warning);
+			}
+			return errors;
 		}
 	}
 
@@ -926,6 +1063,82 @@ public class CubeRuntimeService {
 			int dot = member.indexOf('.');
 			assertMemberOffered(cube, dot > 0 ? member.substring(0, dot) : member);
 		}
+	}
+
+	/**
+	 * {@code error: true} on a member the parser found an error on, and nothing on the others.
+	 *
+	 * <p>Only the flag travels, never the sentence: the sentence names the DSL key that is wrong,
+	 * which is the author's business and is what {@code showCode} is for. The renderer needs to
+	 * know that it may not be ticked, and that is all this says.
+	 */
+	private static void markError(Map<String, Object> shown, List<Map<String, Object>> errors, String block) {
+
+		String name = Objects.toString(shown.get("name"), "");
+		for (Map<String, Object> error : errors) {
+			if (block.equals(Objects.toString(error.get("block"), ""))
+					&& name.equals(Objects.toString(error.get("member"), ""))) {
+				shown.put("error", true);
+				return;
+			}
+		}
+	}
+
+	/**
+	 * No name in the request is a member the parser found an error on.
+	 *
+	 * <p>This is the error-member rule of design part 8, and it is the runtime's own: the author's
+	 * screens show a broken member so that it can be fixed. A dashboard's viewer cannot fix it, and
+	 * the generator would either refuse it further down in words about SQL or write SQL that
+	 * answers a different question, so the refusal is made here, in the cube's own words.
+	 */
+	private static void assertNoNameIsInError(List<Map<String, Object>> errors, Map<String, Object> asked) {
+
+		if (errors.isEmpty())
+			return;
+
+		for (Map<String, Object> error : errors) {
+			String block = Objects.toString(error.get("block"), "");
+			String member = Objects.toString(error.get("member"), "");
+			// A cube-level error names the cube, not a field of the tree, and is the author's to
+			// fix; this rule is about the fields a viewer may tick.
+			if (member.isEmpty() || "cube".equals(block) || !namesIt(asked, member))
+				continue;
+
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The " + block + " '" + member
+					+ "' of this cube has an error in it, so it cannot be asked for: "
+					+ Objects.toString(error.get("message"), "") + " Ask for one of the cube's other fields.");
+		}
+	}
+
+	/** Whether a request names one member, in whichever of its keys that member could appear. */
+	@SuppressWarnings("unchecked")
+	private static boolean namesIt(Map<String, Object> asked, String member) {
+
+		List<Object> named = new ArrayList<>();
+		named.addAll(list(asked.get("dimensions")));
+		named.addAll(list(asked.get("measures")));
+		named.addAll(list(asked.get("segments")));
+		if (asked.get("granularities") instanceof Map)
+			named.addAll(((Map<String, Object>) asked.get("granularities")).keySet());
+		for (Object filter : list(asked.get("filters"))) {
+			if (filter instanceof Map)
+				named.add(((Map<String, Object>) filter).get("member"));
+		}
+		for (Object order : list(asked.get("order"))) {
+			named.add(order instanceof Map
+					? ((Map<String, Object>) order).get("member")
+					: Objects.toString(order, "").split(" ")[0]);
+		}
+
+		for (Object name : named) {
+			// A granularity rides on the name here exactly as it does in assertEveryNameIsOffered.
+			String asWritten = Objects.toString(name, "");
+			int dot = asWritten.indexOf('.');
+			if (member.equals(dot > 0 ? asWritten.substring(0, dot) : asWritten))
+				return true;
+		}
+		return false;
 	}
 
 	/** A filter and an order may name a dimension or a measure; both must be on offer. */

@@ -1,5 +1,6 @@
 package com.flowkraft.embed;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -48,13 +49,27 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 	private static final Pattern REPORT_CONFIG = Pattern.compile("^/api/reports/([^/]+)/config/?$");
 
 	/**
-	 * A live cube of a published dashboard: its field tree, the rows one selection asks for, and the
-	 * values a dimension may be filtered by. All three are ways of reading the same report, and all
-	 * three are scoped by that report's own {@code -cube-widgets.json}, so a token for a report opens
-	 * the live cubes that report declares and nothing else.
+	 * A live cube of a published dashboard: its field tree, the rows one selection asks for, the
+	 * rows behind one number, the values a dimension may be filtered by, and — where the author
+	 * turned it on — the SQL a selection would be answered by. All of them are ways of reading the
+	 * same report, and all of them are scoped by that report's own {@code -cube-widgets.json}, so a
+	 * token for a report opens the live cubes that report declares and nothing else.
 	 */
+	private static final List<String> CUBE_READS = List.of("meta", "query", "filter-options", "drill",
+			"sql");
+
 	private static final Pattern REPORT_CUBE = Pattern
-			.compile("^/api/reports/([^/]+)/cube/[^/]+/(meta|query|filter-options|drill)/?$");
+			.compile("^/api/reports/([^/]+)/cube/[^/]+/(" + String.join("|", CUBE_READS) + ")/?$");
+
+	/**
+	 * The same five reads as request-matcher patterns, for the security chain that has to send them
+	 * here. Both are built from one list on purpose: a read added to the pattern but left out of the
+	 * chain answers 401 to the very viewer the author shared the dashboard with, and a read added to
+	 * the chain but left out of the pattern falls through to being signed in, which is the same
+	 * refusal by a different route. Neither is visible until somebody opens a share link.
+	 */
+	public static final String[] CUBE_PATHS = CUBE_READS.stream()
+			.map(read -> "/api/reports/*/cube/*/" + read).toArray(String[]::new);
 
 	private static final Pattern DASHBOARD = Pattern.compile("^/dashboard/([^/]+)/?$");
 

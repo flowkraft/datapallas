@@ -130,7 +130,9 @@ class CubeWidgetExportTest {
 		assertEquals("northwind-sales", widget.cubeId());
 		assertNull(widget.cubeName(), "The file's own cube");
 		assertEquals(CONNECTION, widget.connectionId());
-		assertEquals("chart", widget.display());
+		// display is always the list of shapes offered, whether the file wrote one name or several
+		// (design part 8: the Table | Chart switch).
+		assertEquals(List.of("chart"), widget.display());
 		assertEquals(List.of("ShipCountry"), widget.initial().get("dimensions"));
 		assertEquals(List.of("Revenue"), widget.initial().get("measures"));
 		assertEquals(List.of("shipped"), widget.initial().get("segments"));

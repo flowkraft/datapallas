@@ -1112,6 +1112,56 @@ public class NoExeAssembler extends AbstractAssembler {
 				new File(packageDirPath + "/" + topFolderName
 						+ "/samples/reports/northwind/g-pivottable-template.html"));
 
+		// 20. g-cube-stories (Cube Stories - one card per shipped cube, the live cube widget)
+
+		String cubeStoriesSampleDir = packageDirPath + "/" + topFolderName + "/config/samples/g-cube-stories";
+		String cubeStoriesSettingsFilePath = cubeStoriesSampleDir + "/settings.xml";
+		String cubeStoriesReportingFilePath = cubeStoriesSampleDir + "/reporting.xml";
+
+		// copy base settings and tweak for this sample
+		FileUtils.copyFile(new File(packageDirPath + "/" + topFolderName + "/config/burst/settings.xml"),
+				new File(cubeStoriesSettingsFilePath));
+		content = FileUtils.readFileToString(new File(cubeStoriesSettingsFilePath), "UTF-8");
+
+		content = content.replaceAll("(?s)<template\\s*/>|<template>\\s*(?:My Reports|Bursting)\\s*</template>",
+				"<template>CubeStories</template>");
+		content = content.replaceAll(
+				"(?s)<reportdistribution\\s*/>|<reportdistribution>\\s*true\\s*</reportdistribution>",
+				"<reportdistribution>false</reportdistribution>");
+		content = content.replaceAll(
+				"(?s)<reportgenerationmailmerge\\s*/>|<reportgenerationmailmerge>\\s*false\\s*</reportgenerationmailmerge>",
+				"<reportgenerationmailmerge>true</reportgenerationmailmerge>");
+		content = content.replaceAll(
+				"(?s)<burstfilename>.*?</burstfilename>",
+				"<burstfilename>dashboard.html</burstfilename>");
+
+		FileUtils.writeStringToFile(new File(cubeStoriesSettingsFilePath), content, "UTF-8");
+
+		// prepare reporting.xml
+		FileUtils.copyFile(new File(packageDirPath + "/" + topFolderName + "/config/_defaults/reporting.xml"),
+				new File(cubeStoriesReportingFilePath));
+		content = FileUtils.readFileToString(new File(cubeStoriesReportingFilePath), "UTF-8");
+
+		content = content.replaceAll("(?si)<type\\s*>\\s*ds\\.csvfile\\s*</type>", "<type>ds.dashboard</type>");
+		// the page's own connection; each card reads its cube on the connection its entry in
+		// g-cube-stories-cube-widgets.json names, which is this one or the sqlite Northwind one
+		content = content.replaceAll("(?s)<conncode\\s*/>|<conncode>\\s*</conncode>",
+				"<conncode>rbt-sample-northwind-duckdb-4f2</conncode>");
+		content = content.replaceAll("(?s)<scriptname\\s*/>|<scriptname>\\s*</scriptname>",
+				"<scriptname>g-cube-stories-script.groovy</scriptname>");
+		content = content.replaceAll("(?s)output\\.none", "output.dashboard");
+		content = content.replaceAll("(?s)<documentpath\\s*/>|<documentpath>\\s*</documentpath>",
+				"<documentpath>samples/reports/cubes/g-cube-stories-template.html</documentpath>");
+
+		FileUtils.writeStringToFile(new File(cubeStoriesReportingFilePath), content, "UTF-8");
+
+		// move the Cube Stories HTML template from config/samples into samples/reports/cubes; the
+		// widgets file stays beside settings.xml, which is where the server reads it from
+		FileUtils.moveFile(
+				new File(cubeStoriesSampleDir + "/g-cube-stories-template.html"),
+				new File(packageDirPath + "/" + topFolderName
+						+ "/samples/reports/cubes/g-cube-stories-template.html"));
+
 		// SAMPLES END
 
 		// FREND SAMPLES START

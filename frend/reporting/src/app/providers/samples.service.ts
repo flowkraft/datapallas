@@ -823,6 +823,38 @@ export class SamplesService {
       capReportGenerationMailMerge: true,
       activeClicked: false,
     },
+    {
+      id: 'CUBE-STORIES',
+      name: '21. Cube Stories (interactive)',
+      visibility: 'visible',
+      jobType: 'dashboard',
+      input: {
+        data: [
+          'file:db/sample-northwind-duckdb/northwind.duckdb',
+          'file:db/sample-northwind-sqlite/northwind.db',
+        ],
+        dataUrl: [],
+        numberOfPages: -1,
+        tokens: [],
+      },
+      step1: 'dashboard',
+      step2: '',
+      step3: '',
+      output: {
+        data: [],
+        folder: '',
+      },
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive cube page (no output files)`,
+      configurationFilePath: `config/samples/g-cube-stories/settings.xml`,
+      configurationFileName: 'g-cube-stories',
+      notes: ``,
+      recipientType: '',
+      documentType: 'dashboard',
+      capReportSplitting: false,
+      capReportDistribution: false,
+      capReportGenerationMailMerge: true,
+      activeClicked: false,
+    },
   ];
 
   samplesNotYetImplemented: Array<SampleInfo> = [

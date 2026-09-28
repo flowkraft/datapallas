@@ -17,7 +17,7 @@
    * The component never writes DSL. It receives a parsed copy of the file and sends back the ticks
    * and the name of the cube they belong to; the SQL is generated from the DSL text on the server.
    */
-  import { onMount, tick, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   // One formatter for every host: the table, the single value, the chart and the time labels all
   // show a number the way the cube declares it (W4.2), so two hosts cannot disagree about it.
   import { formatCell, formatMeasure, DEFAULT_CURRENCY } from '../shared/cube-format';
@@ -886,8 +886,13 @@
   /** Either mode asks a server for rows; the cube editor's preview asks nothing. */
   $: live = runtime || author;
 
-  /** `value`, `chart`, `table` or `''` — the dashboard's say in how its answer is drawn. */
-  let runtimeDisplay = '';
+  /**
+   * The shapes this widget offers, as `/meta`'s `display` list gives them, and the one being
+   * drawn. One shape is a widget with nothing to choose; two or more are the Table | Chart switch,
+   * and the first of them is what the card opens on (design part 8).
+   */
+  let displayShapes: string[] = [];
+  let chosenShape = '';
   let runtimeRows: any[] = [];
   /** W4.3: one number per measure over all the rows the filters leave, or `null` if none was asked. */
   let runtimeTotals: Record<string, any> | null = null;
@@ -901,6 +906,26 @@
   /** What a hint can ask for and no tick box can: the order, and how many rows. */
   let selectedOrder: Array<{ member: string; dir: string }> = [];
   let selectedLimit: number | null = null;
+
+  // ── Cube Stories: what the widget's author turned on (design part 8) ──────
+
+  /** The databases View SQL offers, as `/meta` gives them; empty unless `showSql` is on. */
+  let sqlDialects: Array<{ key: string; label: string }> = [];
+  /** The database the SQL is written for; every card on the page follows the last one chosen. */
+  let sqlVendor = '';
+  /** The database the rows really come from, which no vendor choice changes. */
+  let dataVendor = '';
+  let sqlOpen = false;
+  let sqlText = '';
+  let sqlError = '';
+  let sqlLoading = false;
+  /** The cube's own DSL text, only where the author turned View Code on. */
+  let cubeCode = '';
+  let codeOpen = false;
+  /** The questions the cube was written to answer: its hints, and each variant as one of its own. */
+  let hints: any[] = [];
+  /** The name a page's cards agree on, so one vendor choice moves all of them at once. */
+  const SQL_VENDOR_EVENT = 'rb-cube-sql-vendor';
 
   // ── W5: my view ────────────────────────────────────────────────────────────
 
@@ -1045,7 +1070,19 @@
     try {
       const response = await fetch(runtimeUrl('meta'), { headers: runtimeHeaders() });
       const meta = await runtimeAnswer(response, 'This live cube could not be read');
-      runtimeDisplay = String(meta?.display ?? '');
+      displayShapes = shapesOf(meta?.display);
+      chosenShape = displayShapes[0] ?? '';
+      // The opt-ins: a key `/meta` did not send is an opt-in that is off, and its panel is then
+      // never drawn at all rather than drawn empty.
+      sqlDialects = dialectsOf(meta?.sqlDialects);
+      dataVendor = String(meta?.dbVendor ?? '');
+      sqlVendor = pageVendor() || dataVendor || (sqlDialects[0]?.key ?? '');
+      cubeCode = String(meta?.code ?? '');
+      hints = Array.isArray(meta?.hints) ? meta.hints : [];
+      sqlOpen = false;
+      codeOpen = false;
+      sqlText = '';
+      sqlError = '';
       cubeConfig = cubeOfMeta(meta);
       // The tree reads the new cube first: `initial` names its fields.
       await tick();
@@ -1060,9 +1097,10 @@
   }
 
   /**
-   * `/meta` in the shape the tree already knows. There is no `sqlTable` and no `warnings` in it: a
-   * viewer is told what the cube offers, never how it reads it. `hasFilterOptions` becomes the
-   * `filter_options` the popover asks about, which is the key the editor's own copy carries.
+   * `/meta` in the shape the tree already knows. There is no `sqlTable` in it: a viewer is told
+   * what the cube offers, never how it reads it. `hasFilterOptions` becomes the `filter_options`
+   * the popover asks about, which is the key the editor's own copy carries, and the members marked
+   * `error: true` become the `warnings` the tree already refuses a click on.
    */
   function cubeOfMeta(meta: any): any {
     return {
@@ -1074,9 +1112,56 @@
       measures: meta?.measures ?? [],
       segments: meta?.segments ?? [],
       hierarchies: meta?.hierarchies ?? [],
+      warnings: warningsOf(meta),
       // The one currency the cube declares, for every `currency` format in its result (W4.2).
       currency: meta?.currency,
     };
+  }
+
+  /** What a broken field says when the parser's own words did not travel with it. */
+  const BROKEN_FIELD = 'This field has an error in it, so it cannot be asked for.';
+
+  /**
+   * The warnings the tree reads, out of what `/meta` was allowed to say. Every member the server
+   * marked `error: true` is one error entry, so a broken field is drawn in the error style and
+   * cannot be ticked on every dashboard, opt-ins or not. Where View Code is on, the parser's own
+   * list comes too, and its words are the ones shown, because they say what is actually wrong.
+   *
+   * <p>A live cube is one cube, so every entry belongs to the unnamed one: `errorOf` matches on
+   * `cube`, and the name a file gives a cube inside itself never reaches a viewer.
+   */
+  function warningsOf(meta: any): any[] {
+    const all: any[] = [];
+    for (const w of (Array.isArray(meta?.warnings) ? meta.warnings : [])) {
+      all.push({ ...w, cube: '' });
+    }
+    for (const block of ['dimension', 'measure', 'segment']) {
+      for (const member of (meta?.[block + 's'] ?? [])) {
+        if (member?.error) {
+          all.push({ cube: '', block, member: member?.name, level: 'error', message: BROKEN_FIELD });
+        }
+      }
+    }
+    return all;
+  }
+
+  /** `display` as the list of shapes it always is, whatever the widget file wrote in it. */
+  function shapesOf(declared: any): string[] {
+    const said = Array.isArray(declared) ? declared : (declared ? [declared] : []);
+    const shapes: string[] = [];
+    for (const shape of said) {
+      const name = String(shape ?? '').trim();
+      if (name && !shapes.includes(name)) shapes.push(name);
+    }
+    return shapes;
+  }
+
+  /** `/meta`'s `sqlDialects`, as the vendor select shows them: the key it sends, the name read. */
+  function dialectsOf(declared: any): Array<{ key: string; label: string }> {
+    if (!Array.isArray(declared)) return [];
+    return declared
+      .map((d: any) => ({ key: String(d?.key ?? ''), label: String(d?.label ?? d?.key ?? '') }))
+      .filter((d: any) => !!d.key);
   }
 
   /**
@@ -1110,6 +1195,93 @@
     }
     return request;
   }
+
+  // ── Cube Stories: View SQL, View Code and Show Me (design part 8) ────────
+
+  /** The vendor the page as a whole is on, so a card read later starts where the others are. */
+  function pageVendor(): string {
+    try {
+      return window.localStorage.getItem(SQL_VENDOR_EVENT) || '';
+    } catch (e) {
+      // A browser that keeps nothing still shows SQL: the card just starts on its own database.
+      return '';
+    }
+  }
+
+  /**
+   * One choice of database, on every card of the page. The Cube Stories page holds a card per cube
+   * and nobody wants to say "Oracle" fifteen times, so the select tells the whole page through a
+   * `rb-cube-sql-vendor` event on the document, and every other card follows it. The page itself
+   * runs no script: the cards agree among themselves.
+   */
+  function pickSqlVendor(vendor: string) {
+    sqlVendor = vendor;
+    try { window.localStorage.setItem(SQL_VENDOR_EVENT, vendor); } catch (e) { /* kept nowhere */ }
+    document.dispatchEvent(new CustomEvent(SQL_VENDOR_EVENT, { detail: { vendor } }));
+  }
+
+  /** Another card's choice, or this one's echo of it: follow it, and the SQL is written again. */
+  function onPageSqlVendor(event: any) {
+    const vendor = String(event?.detail?.vendor ?? '');
+    if (vendor && vendor !== sqlVendor) sqlVendor = vendor;
+  }
+
+  /**
+   * The SQL this selection would be answered by, on the chosen database. It runs nothing and opens
+   * no connection: the rows always come from `/query`, on the widget's own connection, whatever
+   * vendor is chosen here.
+   */
+  async function loadSql() {
+    if (!runtime || sqlDialects.length === 0) return;
+    if (nothingTicked) {
+      sqlText = '';
+      sqlError = '';
+      return;
+    }
+    sqlLoading = true;
+    try {
+      const request = runtimeRequest();
+      if (sqlVendor) request.dbVendor = sqlVendor;
+      const response = await fetch(runtimeUrl('sql'), {
+        method: 'POST', headers: runtimeHeaders(), body: JSON.stringify(request),
+      });
+      const answer = await runtimeAnswer(response, 'The SQL of this question could not be written');
+      sqlText = String(answer?.sql ?? '');
+      sqlError = '';
+    } catch (e: any) {
+      sqlText = '';
+      sqlError = String(e?.message || 'The SQL of this question could not be written.');
+      // A refusal is not hidden behind a closed panel: it is about the ticks, which are on screen.
+      sqlOpen = true;
+    } finally {
+      sqlLoading = false;
+    }
+  }
+
+  /**
+   * The SQL always matches the ticks, open or closed, so opening the panel shows the question that
+   * is on the screen and never the one before it. The vendor is in here too: choosing another
+   * database writes the same question again, in that database's SQL.
+   */
+  $: if (mounted && runtime && sqlDialects.length > 0 && sqlVendor !== undefined
+      && currentViewSignature !== undefined) {
+    loadSql();
+  }
+
+  /**
+   * A hint's **Show Me**: the selection a person would make by hand, made for them. It goes
+   * through `applySelection`, the one 3a wrote, so a hint naming a field this cube has not got is
+   * refused in words instead of half-applied, and the question is asked as a tick asks it.
+   */
+  function showMe(ask: any) {
+    runtimeError = '';
+    applySelection(ask?.query);
+  }
+
+  /** The errors and the notes the parser left on this cube, errors first (design part 8). */
+  $: shownWarnings = [...(cubeConfig?.warnings ?? [])]
+    .filter((w: any) => String(w?.message ?? '') && String(w.message) !== BROKEN_FIELD)
+    .sort((a: any, b: any) => (a?.level === 'error' ? 0 : 1) - (b?.level === 'error' ? 0 : 1));
 
   // ── W5: my view — loading it, saving it, and giving it back ─────────────────
 
@@ -1471,8 +1643,11 @@
    * anything else nobody asked a chart of is a table.
    */
   function shapeOf(display: string, rows: any[], dimensions: Set<string>, measures: Set<string>,
-      cube: any): string {
-    if (display === 'value' || (rows.length === 1 && measures.size === 1 && dimensions.size === 0)) {
+      cube: any, offersChoice: boolean): string {
+    // A widget that offers a choice of shapes never answers with a single number: its viewer asked
+    // for the table or the chart, and one measure ticked is a table of one row (design part 8).
+    if (display === 'value'
+        || (!offersChoice && rows.length === 1 && measures.size === 1 && dimensions.size === 0)) {
       return 'value';
     }
     if (display === 'chart' && dimensions.size >= 1 && measures.size >= 1) return 'chart';
@@ -1480,10 +1655,42 @@
     return 'table';
   }
 
-  /** The host's wish, and over it the one a live cube's own file declares. */
-  $: shownDisplay = runtimeDisplay || display;
+  /**
+   * Whether the ticks make a shape a chart can draw: one dimension along the bottom and at least
+   * one measure up the side. Two dimensions are rows, not a chart, and a geo one is the map's.
+   */
+  function chartable(dimensions: Set<string>, measures: Set<string>, cube: any): boolean {
+    if (measures.size < 1 || dimensions.size !== 1) return false;
+    const name = dimensionNameOf([...dimensions][0]);
+    return (cube?.dimensions || []).find((d: any) => d?.name === name)?.type !== 'geo';
+  }
 
-  $: resultShape = shapeOf(shownDisplay, runtimeRows, selectedDimensions, selectedMeasures, activeCube);
+  /** More than one shape offered: the viewer chooses, and the switch is drawn. */
+  $: offersShapeChoice = displayShapes.length > 1;
+
+  $: chartFits = chartable(selectedDimensions, selectedMeasures, activeCube);
+
+  /**
+   * The host's wish, and over it the shape a live cube's own file offers. Where the file offers
+   * several, the viewer's own choice decides, and a selection no chart can draw falls back to the
+   * table rather than leaving the card empty.
+   */
+  $: shownDisplay = offersShapeChoice
+    ? (chosenShape === 'chart' && chartFits ? 'chart' : 'table')
+    : (displayShapes[0] ?? display);
+
+  $: resultShape = shapeOf(shownDisplay, runtimeRows, selectedDimensions, selectedMeasures,
+    activeCube, offersShapeChoice);
+
+  /** A date along the bottom is a line; anything else is a bar (design part 8). */
+  $: chartType = timeTicked(selectedDimensions, activeCube) ? 'line' : 'bar';
+
+  /** Whether the one ticked dimension is a time dimension. */
+  function timeTicked(dimensions: Set<string>, cube: any): boolean {
+    if (dimensions.size !== 1) return false;
+    const name = dimensionNameOf([...dimensions][0]);
+    return (cube?.dimensions || []).find((d: any) => d?.name === name)?.type === 'time';
+  }
 
   /** The ticked fields under the names the answer's columns carry: a grain comes back plain. */
   $: askedDimensions = [...selectedDimensions].map((key) => dimensionNameOf(key));
@@ -1567,7 +1774,8 @@
   }
 
   /** Totals belong under a table, so they are asked for only where there is a row to show them in. */
-  $: wantsTotals = shapeOf(shownDisplay, [], selectedDimensions, selectedMeasures, activeCube) === 'table';
+  $: wantsTotals = shapeOf(shownDisplay, [], selectedDimensions, selectedMeasures, activeCube,
+    offersShapeChoice) === 'table';
 
   $: resultColumns = columnsOf(askedDimensions, askedMeasures, runtimeTotals);
 
@@ -2186,6 +2394,12 @@
       }
     }
     mounted = true;
+    // Every card of a Cube Stories page hears every other card's choice of database.
+    document.addEventListener(SQL_VENDOR_EVENT, onPageSqlVendor);
+  });
+
+  onDestroy(() => {
+    document.removeEventListener(SQL_VENDOR_EVENT, onPageSqlVendor);
   });
 
   // The host may set the two runtime props instead of the attributes, and after the first render:
@@ -2285,6 +2499,31 @@
     {#if viewSaveError}
       <div id="cubeViewSaveError" class="rb-filter-note rb-filter-bad"
            title={viewSaveReason}>{viewSaveError}</div>
+    {/if}
+
+    <!-- What the parser found wrong with this cube, errors first (View Code's other half) -->
+    {#if shownWarnings.length > 0}
+      <div id="cubeRuntimeWarnings" class="rb-warnings">
+        {#each shownWarnings as warning}
+          <div class="rb-filter-note" class:rb-filter-bad={warning.level === 'error'}>
+            {warning.member ? warning.member + ': ' : ''}{warning.message}
+          </div>
+        {/each}
+      </div>
+    {/if}
+
+    <!-- The questions this cube was written to answer, each one click away (design part 8) -->
+    {#if hints.length > 0 && !readOnly}
+      <div id="cubeHints" class="rb-hints">
+        {#each hints as ask (ask.id)}
+          <div id="hint-{ask.id}" class="rb-hint">
+            <div class="rb-hint-question">{ask.question}</div>
+            <div class="rb-hint-text">{ask.text}</div>
+            <button type="button" id="btnShowMe-{ask.id}" class="rb-hint-showme"
+                    title="Tick what this question asks for" on:click={() => showMe(ask)}>Show Me</button>
+          </div>
+        {/each}
+      </div>
     {/if}
 
     <!-- read-only (W4.8): the answer without the asking - no tree, and so no icon and no grain -->
@@ -2453,6 +2692,21 @@
     </div>
     {/if}
 
+    <!-- The shapes this widget offers, where it offers more than one (design part 8) -->
+    {#if offersShapeChoice && runtime && !runtimeError}
+      <div id="cubeDisplaySwitch" class="rb-display-switch">
+        <button type="button" id="cubeRuntimeViewTable" class="rb-display-button"
+                class:rb-display-on={shownDisplay === 'table'} aria-pressed={shownDisplay === 'table'}
+                on:click={() => (chosenShape = 'table')}>Table</button>
+        <button type="button" id="cubeRuntimeViewChart" class="rb-display-button"
+                class:rb-display-on={shownDisplay === 'chart'} aria-pressed={shownDisplay === 'chart'}
+                disabled={!chartFits} title={chartFits
+                  ? 'Draw this answer as a chart'
+                  : 'A chart needs one dimension and at least one measure'}
+                on:click={() => (chosenShape = 'chart')}>Chart</button>
+      </div>
+    {/if}
+
     <!-- W2: the answer, under the tree it was asked from -->
     {#if runtime || runtimeError}
       <div id="cubeRuntimeResult" class="rb-runtime-result">
@@ -2486,7 +2740,7 @@
               </div>
             {/if}
           {:else if resultShape === 'chart'}
-            <rb-chart data={chartData} type="bar" height="260px" options={chartOptions}
+            <rb-chart data={chartData} type={chartType} height="260px" options={chartOptions}
                       on:chartClick={onChartClick}></rb-chart>
             {#if askedDimensions.length > 1}
               <div class="rb-filter-note">
@@ -2500,6 +2754,57 @@
             <rb-tabulator data={runtimeRows} columns={resultColumns}
                           on:cellClick={onCellClick}></rb-tabulator>
           {/if}
+        {/if}
+      </div>
+    {/if}
+
+    <!-- What the author opened up: the SQL of this question, and the cube's own DSL -->
+    {#if runtime && (sqlDialects.length > 0 || cubeCode)}
+      <div class="rb-opened-up">
+        <div class="rb-opened-buttons">
+          {#if sqlDialects.length > 0}
+            <button type="button" id="cubeRuntimeViewSql" class="rb-opened-button"
+                    aria-expanded={sqlOpen}
+                    on:click={() => (sqlOpen = !sqlOpen)}>{sqlOpen ? 'Hide SQL' : 'View SQL'}</button>
+          {/if}
+          {#if cubeCode}
+            <button type="button" id="cubeRuntimeViewCode" class="rb-opened-button"
+                    aria-expanded={codeOpen}
+                    on:click={() => (codeOpen = !codeOpen)}>{codeOpen ? 'Hide Code' : 'View Code'}</button>
+          {/if}
+        </div>
+
+        {#if sqlOpen && sqlDialects.length > 0}
+          <div id="cubeRuntimeSql" class="rb-opened-panel">
+            <div class="rb-opened-head">
+              <select id="cubeRuntimeSqlVendor" class="rb-cube-select" value={sqlVendor}
+                      title="The database this SQL is written for"
+                      on:change={(e) => pickSqlVendor((e.currentTarget as HTMLSelectElement).value)}>
+                {#each sqlDialects as dialect}
+                  <option value={dialect.key}>{dialect.label}</option>
+                {/each}
+              </select>
+              <span class="rb-cube-hint">
+                SQL for {sqlDialects.find((d) => d.key === sqlVendor)?.label ?? sqlVendor}
+                {#if dataVendor} &middot; the data comes from the {dataVendor} demo data{/if}
+              </span>
+            </div>
+            {#if sqlError}
+              <div id="cubeRuntimeSqlError" class="rb-filter-note rb-filter-bad">{sqlError}</div>
+            {:else if nothingTicked}
+              <div class="rb-filter-note">Tick a field to see its SQL</div>
+            {:else if sqlLoading && !sqlText}
+              <div class="rb-filter-note">Generating&hellip;</div>
+            {:else}
+              <pre class="rb-opened-text">{sqlText}</pre>
+            {/if}
+          </div>
+        {/if}
+
+        {#if codeOpen && cubeCode}
+          <div id="cubeRuntimeCode" class="rb-opened-panel">
+            <pre class="rb-opened-text">{cubeCode}</pre>
+          </div>
         {/if}
       </div>
     {/if}
@@ -2536,6 +2841,83 @@
 </div>
 
 <style>
+  /* Cube Stories: the hints, the shape switch, and the two panels the author opened up */
+  .rb-hints {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 8px 0;
+  }
+
+  .rb-hint {
+    border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .rb-hint-question {
+    font-weight: 600;
+  }
+
+  .rb-hint-text {
+    font-size: 12px;
+    color: color-mix(in oklab, currentColor 70%, transparent);
+    margin: 2px 0 6px;
+  }
+
+  .rb-hint-showme,
+  .rb-opened-button,
+  .rb-display-button {
+    border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+
+  .rb-display-switch,
+  .rb-opened-buttons {
+    display: flex;
+    gap: 6px;
+    margin: 8px 0;
+  }
+
+  .rb-display-button[disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .rb-display-on {
+    background: color-mix(in oklab, currentColor 12%, transparent);
+    font-weight: 600;
+  }
+
+  .rb-opened-panel {
+    border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+
+  .rb-opened-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .rb-opened-text {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   /* W5: the cube panel's header line - the whole line is the control */
   .rb-panel-header {
     display: flex;
