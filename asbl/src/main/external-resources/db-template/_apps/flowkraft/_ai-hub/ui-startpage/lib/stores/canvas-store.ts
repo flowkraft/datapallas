@@ -1,5 +1,8 @@
 import { create } from "zustand";
 import type { ColumnSchema, QueryResult, TableSchema } from "@/lib/explore-data/types";
+import type { ComputedColumn } from "@/lib/explore-data/computed-columns";
+import type { AggregateCondition } from "@/lib/explore-data/aggregations";
+import type { FilterMatch } from "@/lib/explore-data/filter-operators";
 import type { PickShape } from "@/lib/explore-data/smart-defaults/widget-picker";
 import type { CardinalityMap } from "@/lib/explore-data/smart-defaults/classification";
 import {
@@ -59,8 +62,27 @@ export interface VisualQuery {
   // AI Hub could see schemas at all, and every canvas saved until now still
   // resolves and still generates the same SQL. See `table-ref.ts`.
   tableSchema?: string;
+  // Named columns the query computes for itself - one arithmetic step over two
+  // operands, each a numeric column or a number (`computed-columns.ts`). Their
+  // names are usable in Filter, Summarize and Sort like a column's, because the
+  // SQL builder resolves a name to its expression everywhere. Absent on every
+  // canvas saved before this existed, which therefore generates the SQL it did.
+  computed?: ComputedColumn[];
+  // Whether a row has to pass every filter (`all`, the default and what every
+  // canvas saved before this existed means) or any one of them (`any`, joined
+  // with OR - `filter-operators.ts`).
+  filterMatch?: FilterMatch;
   filters: { column: string; operator: string; value: string; valueTo?: string }[];
-  summarize: { aggregation: string; field: string }[];
+  // An aggregate may carry a condition (`having`): the rows it keeps are the
+  // groups whose aggregate passes it ("customers with more than 5 orders"),
+  // which is what a WHERE cannot say. Absent on every canvas saved before this
+  // existed, which therefore generates the SQL it did.
+  // `share` reads an aggregate as the % of the whole result (F9); absent means
+  // the plain aggregate, which is what every canvas saved before means.
+  summarize: {
+    aggregation: string; field: string; having?: AggregateCondition;
+    share?: boolean; runningTotal?: boolean;
+  }[];
   groupBy: string[];
   // Optional per-column time bucket. When set and the column is in `groupBy`,
   // the SQL builder replaces the raw column with a date-truncated/extracted

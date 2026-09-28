@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // lucide-react removed
 import type { VisualQuery, DataSource } from "@/lib/stores/canvas-store";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { SchemaInfo } from "@/lib/explore-data/types";
-import { buildSql, columnKindsOf, extractParamIds } from "@/lib/explore-data/sql-builder";
+import { buildSql, columnClassOf, columnKindsOf, extractParamIds, extractParamTypes, sortableColumns } from "@/lib/explore-data/sql-builder";
+import { computedColumnSchemas } from "@/lib/explore-data/computed-columns";
 import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
 import { fetchCubes, fetchCube, parseCubeDsl, generateCubeSql, getConnectionType, type CubeInfo } from "@/lib/explore-data/rb-api";
 import { useRbElementReady } from "../widgets/useRbElementReady";
 import { DataStep } from "./DataStep";
+import { ComputeStep } from "./ComputeStep";
 import { FilterStep } from "./FilterStep";
 import { SummarizeStep } from "./SummarizeStep";
 import { SortStep } from "./SortStep";
@@ -37,6 +39,9 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
   const [cubes, setCubes] = useState<CubeInfo[]>([]);
   const parametersConfig = useCanvasStore((s) => s.parametersConfig);
   const availableParams = extractParamIds(parametersConfig?.parameters);
+  // Their declared types too: a filter bound to a Date parameter means the
+  // whole day it names, so the preview SQL has to be written with them (F8).
+  const paramTypes = useMemo(() => extractParamTypes(parametersConfig?.parameters), [parametersConfig]);
 
   // Cube renderer in-panel state
   const cubeRef = useRef<HTMLElement>(null);
@@ -63,10 +68,17 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
   const tables = schema.tables || [];
   const selectedTable = findTable(schema, refForQuery(query));
   const columns = selectedTable?.columns || [];
+  // A computed column is a column to every step after Compute: it is offered in
+  // Filter, Summarize and Sort under its own name, and the generator knows how to
+  // write SQL for that name (`computed-columns.ts`, `refFor`). Its operands are
+  // the columns that hold a number - arithmetic on a date or a name is not what
+  // this step is for.
+  const numericColumns = columns.filter((c) => columnClassOf(c) === "number");
+  const columnsWithComputed = [...columns, ...computedColumnSchemas(query.computed)];
   // The column types decide what a filter literal looks like: a number goes in
   // bare, a date as the vendor's date literal. Without them every value was a
   // string, which a numeric or date column rejects on the strict vendors.
-  const sql = isCube ? "" : buildSql(query, { connectionType, columnKinds: columnKindsOf(columns) });
+  const sql = isCube ? "" : buildSql(query, { connectionType, columnKinds: columnKindsOf(columns), paramTypes });
 
   // Load cube config (DSL → parsed object) whenever the picked cube changes
   useEffect(() => {
@@ -146,18 +158,19 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
         : buildSql(updated, {
             connectionType: getConnectionType(connectionId),
             columnKinds: columnKindsOf(findTable(schema, refForQuery(updated))?.columns),
+            paramTypes,
           });
       onChange({ mode: "visual", visualQuery: updated, generatedSql: newSql });
     },
-    [query, onChange, connectionId, schema]
+    [query, onChange, connectionId, schema, paramTypes]
   );
 
   const handlePickTable = (table: string) => {
-    updateQuery({ kind: "table", cubeId: undefined, table, filters: [], summarize: [], groupBy: [], sort: [] });
+    updateQuery({ kind: "table", cubeId: undefined, table, computed: [], filters: [], summarize: [], groupBy: [], sort: [] });
   };
 
   const handlePickCube = (cubeId: string) => {
-    updateQuery({ kind: "cube", cubeId, table: "", filters: [], summarize: [], groupBy: [], sort: [] });
+    updateQuery({ kind: "cube", cubeId, table: "", computed: [], filters: [], summarize: [], groupBy: [], sort: [] });
   };
 
   return (
@@ -211,9 +224,19 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
           Shown only when a plain table (not a cube) is selected. */}
       {!isCube && query.table && columns.length > 0 && (
         <>
-          <FilterStep columns={columns} filters={query.filters} availableParams={availableParams} onChange={(filters) => updateQuery({ filters })} />
+          {/* Compute comes first: the columns it names are then pickable in every
+              step below it. Nothing to compute without a numeric column. */}
+          {numericColumns.length > 0 && (
+            <ComputeStep
+              columns={numericColumns}
+              computed={query.computed ?? []}
+              onChange={(computed) => updateQuery({ computed })}
+            />
+          )}
+          <FilterStep columns={columnsWithComputed} filters={query.filters} match={query.filterMatch ?? "all"} onMatchChange={(filterMatch) => updateQuery({ filterMatch })} availableParams={availableParams} onChange={(filters) => updateQuery({ filters })} />
           <SummarizeStep
             columns={columns}
+            aggregateColumns={columnsWithComputed}
             summarize={query.summarize}
             groupBy={query.groupBy}
             groupByNumericBuckets={query.groupByNumericBuckets}
@@ -224,7 +247,10 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
               updateQuery({ summarize, groupBy, groupByNumericBuckets, groupByBuckets })
             }
           />
-          <SortStep columns={columns} sort={query.sort} onChange={(sort) => updateQuery({ sort })} />
+          {/* Sorting a summarized query is sorting what it selects, so the step
+              offers the grouped columns and the aggregates, not every column of
+              the table (`sortableColumns`). */}
+          <SortStep columns={sortableColumns(query, columnsWithComputed)} sort={query.sort} onChange={(sort) => updateQuery({ sort })} />
 
           <div className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 text-base-content/60 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" /></svg>

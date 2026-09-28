@@ -41,8 +41,15 @@ import {
   addAggregation,
   addGroupBy,
   addVisualSort,
+  setVisualLimit,
   addVisualFilter,
   bindVisualFilterToParam,
+  addComputedColumn,
+  setAggregationCondition,
+  setAggregationRunningTotal,
+  setAggregationShare,
+  setFilterMatch,
+  setTimeBucket,
   runVisualQuery,
 } from '../../helpers/explore-data-test-helper';
 
@@ -3182,6 +3189,1887 @@ return ctx.dbSql.rows(sql)`,
     } finally {
       await deleteCanvasViaUI(page, canvasName);
       // The connection and its copy of the sample are test-provisioned: both go.
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // D27 — starts with ignores case and treats % as a character
+  //       (Phase 2a, TODO T2: the three LIKE filters are one predicate)
+  //
+  // `starts with` used to write `c LIKE 'v%'` on its own: whether it ignored
+  // case was the column collation's business, and a `%` the user typed was a
+  // wildcard. It now goes through the same vendor-layer predicate as
+  // `contains` - the value's wildcards escaped, both sides folded to lower
+  // case - so on a DuckDB connection, where the collation is case sensitive:
+  //   • `stage` starts with `closed` finds the 646 Closed Won + Closed Lost
+  //     deals (before this, 0);
+  //   • `stage` starts with `%` finds none, because the `%` is a character the
+  //     data does not hold (before this, all 1,200 - `%` matched everything).
+  // The numbers are `ai-hub-sql-cases.json`'s own truths (cases a18 and a21).
+  //
+  // Same shape as D24: a temporary duckdb connection pointed at a COPY of the
+  // shipped `northwind.duckdb`, which carries the `cube_demo` schema, so no
+  // shipped file is ever written to.
+  // ────────────────────────────────────────────────────────────────────────────
+  test('(explore-data) D27 — starts with ignores case and treats % as a character', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D27 — starts with ignores case and treats % as a character';
+    const connectionName   = 'LikeFilters';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── starts with `closed`, in lower case, against `Closed Won` / `Closed Lost` ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'number', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+        await addVisualFilter(page, 0, 'stage', 'starts_with', 'closed');
+      });
+
+      // The SQL folds both sides and escapes the value's wildcards, exactly as
+      // `contains` does; the bare `LIKE 'closed%'` form must not come back.
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const d27StartsSql = await page.locator('#preVisualSql').innerText();
+      expect(d27StartsSql).toContain('LOWER("stage") LIKE LOWER(');
+      expect(d27StartsSql).toContain("ESCAPE '!'");
+      expect(d27StartsSql).not.toContain('"stage" LIKE \'closed%\'');
+      await page.locator('#btnToggleVisualSql').click();
+
+      // ── starts with `%`: a character, not a wildcard ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'number', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+        await addVisualFilter(page, 0, 'stage', 'starts_with', '%');
+      });
+
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const d27PercentSql = await page.locator('#preVisualSql').innerText();
+      // The typed `%` is escaped, so the pattern is "a literal % then anything".
+      expect(d27PercentSql).toContain("LOWER('!%%')");
+      await page.locator('#btnToggleVisualSql').click();
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 2 }, // number — deals whose stage starts with `closed`
+        { x: 6, y: 0, w: 6, h: 2 }, // number — deals whose stage starts with `%`
+      ]);
+
+      const d27CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d27Url } = await publishDashboard(page);
+      const d27Ids = await getCanvasComponentIds(page, d27CanvasId);
+      const d27ReportCode = d27Url.split('/').pop()!;
+
+      await page.goto(d27Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-value')).toHaveCount(2, { timeout: 20_000 });
+
+      const readCount = async (componentId: string): Promise<number> => {
+        const payload = await page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          return r.json();
+        }, { rc: d27ReportCode, cid: componentId });
+        return Number(payload.data[0].deal_id_count);
+      };
+
+      const [d27StartsId, d27PercentId] = d27Ids['number'] ?? [];
+      // 402 Closed Won + 244 Closed Lost, found although the data holds them
+      // capitalised and the filter was typed in lower case.
+      expect(await readCount(d27StartsId)).toBe(646);
+      // No stage starts with a literal `%`.
+      expect(await readCount(d27PercentId)).toBe(0);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+  // ───────────────────────────────────────────────────────────────────────
+  // D28 — top N by an aggregate
+  //       (Phase 2a, TODO T7: sorting an aggregated query)
+  //
+  // A summarized query can only sort by what it selects - one of the grouped
+  // columns, or one of the aggregates - and sorting it by any other column is
+  // SQL that MySQL and MariaDB refuse under `ONLY_FULL_GROUP_BY` and that
+  // PostgreSQL, Oracle and Db2 refuse always. So the Sort step now offers only
+  // those: for "count the deals of each stage" it offers `stage` and
+  // `deal_id_count`, and `deal_name` is not in the list at all.
+  //
+  // What the query answers: the three biggest stages by deal count, the count
+  // descending, a limit of 3 - Closed Won 402, Closed Lost 244, Negotiation 189,
+  // `ai-hub-sql-cases.json`'s own truths (case a27; the fourth stage, Proposal,
+  // has 148, so the cut is a real one). The sort key is written as the aggregate
+  // expression `COUNT("deal_id")` and never as the alias, which PostgreSQL
+  // rejects inside an ORDER BY expression.
+  //
+  // Same shape as D24 and D27: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ───────────────────────────────────────────────────────────────────────
+  test('(explore-data) D28 — top N by an aggregate', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D28 — top N by an aggregate';
+    const connectionName   = 'TopNAggregate';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── count the deals of each stage, the count descending, the top 3 ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+        await addGroupBy(page, 'stage');
+        // The Sort step offers the grouped column and the aggregate, and nothing
+        // else: a key on `deal_name` is SQL no strict database runs, so it is not
+        // on offer at all. The list is read from the fresh sort row, because that
+        // is what the user chooses from.
+        await page.locator('#btnAddSort').click();
+        await page.locator('#selectSortCol-0').waitFor({ state: 'visible', timeout: 5_000 });
+        const offered = await page.locator('#selectSortCol-0').locator('option').allTextContents();
+        expect(offered).toEqual(['stage', 'deal_id_count']);
+        expect(offered).not.toContain('deal_name');
+
+        await page.locator('#selectSortCol-0').selectOption('deal_id_count');
+        await page.locator('#selectSortDir-0').selectOption('DESC');
+        await setVisualLimit(page, 3);
+      });
+
+      // The sort key is the aggregate expression, not the alias PostgreSQL
+      // rejects inside an ORDER BY expression.
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const d28Sql = await page.locator('#preVisualSql').innerText();
+      expect(d28Sql).toContain('ORDER BY COUNT("deal_id") DESC');
+      expect(d28Sql).not.toContain('ORDER BY "deal_id_count"');
+      await page.locator('#btnToggleVisualSql').click();
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 12, h: 5 }, // tabulator — the three biggest stages
+      ]);
+
+      const d28CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d28Url } = await publishDashboard(page);
+      const d28Ids = await getCanvasComponentIds(page, d28CanvasId);
+      const d28ReportCode = d28Url.split('/').pop()!;
+
+      await page.goto(d28Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(1, { timeout: 20_000 });
+
+      // The grid's own rows, in the order the SQL returned them: three rows, the
+      // counts descending.
+      const [d28GridId] = d28Ids['tabulator'] ?? [];
+      const payload = await page.evaluate(async ({ rc, cid }) => {
+        const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+        return r.json();
+      }, { rc: d28ReportCode, cid: d28GridId });
+      const rows = payload.data as Record<string, unknown>[];
+      expect(rows.length).toBe(3);
+      expect(rows.map((r) => String(r.stage))).toEqual(['Closed Won', 'Closed Lost', 'Negotiation']);
+      expect(rows.map((r) => Number(r.deal_id_count))).toEqual([402, 244, 189]);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+  // ────────────────────────────────────────────────────────────────────
+  // D29 — a dashboard Date parameter filters a date column
+  //       (Phase 2a, TODO P1: parameters bound with their declared type)
+  //
+  // A date picker writes text: `2026-01-31`. Until P1, that text was bound as
+  // text, which PostgreSQL refuses outright ("operator does not exist: date <=
+  // character varying") and SQLite answers with whatever its rank ordering makes
+  // of a string against a number. Now the type the dashboard declared travels
+  // with the value - the canvas sends `paramTypes` beside `params`, the published
+  // script calls the same conversion - and the value is bound as a date.
+  //
+  // What the query answers: 425 of the 500 deals of `cube_demo.crm_deals` close
+  // on or before 2026-01-31, and 394 of them are over 31999.99 - the truths of
+  // `truths-ai-hub.out` (cases p1a and p1d), which the vendor loop runs on every
+  // vendor from the committed SQL. Here the same two numbers are asked of the
+  // product itself: on the canvas, and again on the published dashboard, whose
+  // script is a different path to the same conversion.
+  //
+  // The Double parameter is the one that cannot be faked: nine deals are exactly
+  // 32000.00, so an Integer 32000 answers 385 and the Double 31999.99 answers
+  // 394. A fraction that never left the text bind would show up as 385.
+  //
+  // Same shape as D24, D27 and D28: a temporary duckdb connection pointed at a
+  // COPY of the shipped `northwind.duckdb`, which carries the `cube_demo` schema,
+  // so no shipped file is ever written to.
+  // ────────────────────────────────────────────────────────────────────
+  test('(explore-data) D29 — a dashboard Date parameter filters a date column', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D29 — a dashboard Date parameter filters a date column';
+    const connectionName   = 'DateParameterBind';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // A date and a number with a fraction, declared as what they are. `Double`
+      // is the name the backend conversion knows; the parameter bar gives it the
+      // same number box a `decimal` gets.
+      await addFilterBarParam(page,
+        "reportParameters {\n" +
+        "  parameter(id: 'to', type: Date, label: 'Closing on or before', defaultValue: '2026-01-31') {\n" +
+        "    constraints(required: false)\n" +
+        "  }\n" +
+        "  parameter(id: 'min', type: Double, label: 'Amount over', defaultValue: '31999.99') {\n" +
+        "    constraints(required: false)\n" +
+        "  }\n" +
+        "}"
+      );
+
+      // The date picker is a date control and the Double is a number box - the
+      // declared type reaches the parameter bar, not only the query.
+      await expect(page.locator('rb-parameters')).toBeVisible({ timeout: 10_000 });
+      const controls = await page.locator('rb-parameters').evaluate((host: Element) => {
+        const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null }).shadowRoot ?? host;
+        return Array.from(root.querySelectorAll('input')).map((i) => (i as HTMLInputElement).type);
+      });
+      expect(controls).toContain('date');
+      expect(controls).toContain('number');
+
+      // ── the deals closing on or before the date the picker holds ──
+      await addWidget(page, 'cube_demo.crm_deals',
+        `SELECT COUNT(*) AS deal_count FROM cube_demo.crm_deals WHERE close_date <= \${to}`,
+        'number');
+      // ── and, of those, the ones over an amount with a fraction ──
+      await addWidget(page, 'cube_demo.crm_deals',
+        `SELECT COUNT(*) AS big_deal_count FROM cube_demo.crm_deals WHERE amount > \${min}`,
+        'number');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // number — deals closing by the date
+        { x: 6, y: 0, w: 6, h: 4 },  // number — deals over the amount
+      ]);
+
+      const d29CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d29Url } = await publishDashboard(page);
+      const d29Ids = await getCanvasComponentIds(page, d29CanvasId);
+      const d29ReportCode = d29Url.split('/').pop()!;
+
+      await page.goto(d29Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-number')).toHaveCount(2, { timeout: 20_000 });
+
+      // The published dashboard's own answers, from the script the publisher
+      // wrote - the path that converts through ParameterTypes.typed.
+      const [byDate, byAmount] = d29Ids['number'] ?? [];
+      const answers = await page.evaluate(async ({ rc, ids }) => {
+        const out: Record<string, unknown>[] = [];
+        for (const cid of ids) {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          out.push((payload.data as Record<string, unknown>[])[0]);
+        }
+        return out;
+      }, { rc: d29ReportCode, ids: [byDate, byAmount] });
+
+      expect(Number(answers[0].deal_count)).toBe(425);
+      expect(Number(answers[1].big_deal_count)).toBe(394);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+  // ────────────────────────────────────────────────────────────────────
+  // D30 — clearing a dashboard filter shows every row again
+  //       (Phase 2a, TODO P2: an empty parameter means the filter is not applied)
+  //
+  // A filter with nothing in it is not a filter. Until P2 the canvas bound the
+  // empty text and asked `close_date <= ''`, which answers nothing at all, while
+  // the published dashboard left the line out and answered every row: the same
+  // dashboard, two answers. Now both leave the filter out - the line becomes
+  // `WHERE 1=1`, so the rest of the query is still a whole question - and both
+  // answer every row.
+  //
+  // What the query answers: 425 of the deals of `cube_demo.crm_deals` close on
+  // or before 2026-01-31 (`truths-ai-hub.out`, case p1a), and all 1,200 of them
+  // are deals (`crm_deals.psv`). So 425 with the date picker filled in, 1,200
+  // with it cleared - asked of the canvas path (`/api/dp/queries/run-sql`, what
+  // a widget calls) and of the published dashboard's own data endpoint.
+  //
+  // Same shape as D24, D27, D28 and D29: a temporary duckdb connection pointed
+  // at a COPY of the shipped `northwind.duckdb`, which carries the `cube_demo`
+  // schema, so no shipped file is ever written to.
+  // ────────────────────────────────────────────────────────────────────
+  test('(explore-data) D30 — clearing a dashboard filter shows every row again', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D30 — clearing a dashboard filter shows every row again';
+    const connectionName   = 'ClearedFilterShowsAll';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      await addFilterBarParam(page,
+        "reportParameters {\n" +
+        "  parameter(id: 'to', type: Date, label: 'Closing on or before', defaultValue: '2026-01-31') {\n" +
+        "    constraints(required: false)\n" +
+        "  }\n" +
+        "}"
+      );
+
+      const d30Sql = `SELECT COUNT(*) AS deal_count\nFROM cube_demo.crm_deals\nWHERE close_date <= \${to}`;
+      await addWidget(page, 'cube_demo.crm_deals', d30Sql, 'number');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // number — the deals the filter lets through
+      ]);
+
+      // ── the canvas path, the one a widget calls, asked both ways ──
+      const onCanvas = async (value: string): Promise<number> =>
+        page.evaluate(async ({ connectionId, sql, to }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql, params: { to }, paramTypes: { to: 'Date' } }),
+          });
+          const payload = await r.json();
+          const rows = payload.data as Record<string, unknown>[];
+          return Number(rows[0].deal_count);
+        }, { connectionId: connectionCode, sql: d30Sql, to: value });
+
+      expect(await onCanvas('2026-01-31')).toBe(425);
+      // Nothing in the box: the filter is not applied, and every deal comes back -
+      // not the nothing an empty text bind used to answer.
+      expect(await onCanvas('')).toBe(1200);
+
+      // ── and the same thing done the way a person does it: clear the picker ──
+      await expect(page.locator('rb-parameters')).toBeVisible({ timeout: 10_000 });
+      await page.locator('rb-parameters').evaluate((host: Element) => {
+        const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null }).shadowRoot ?? host;
+        const box = root.querySelector('input[type="date"]') as HTMLInputElement | null;
+        if (!box) throw new Error('the date picker of the parameter bar was not found');
+        box.value = '';
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      // The cleared value reaches the canvas - it is not dropped as an echo of the
+      // component seeding itself - so the widget asks its question again without
+      // the filter.
+      const cleared = await page.locator('rb-parameters').evaluate((host: Element) => {
+        const root = (host as HTMLElement & { shadowRoot: ShadowRoot | null }).shadowRoot ?? host;
+        return (root.querySelector('input[type="date"]') as HTMLInputElement).value;
+      });
+      expect(cleared).toBe('');
+
+      const d30CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d30Url } = await publishDashboard(page);
+      const d30Ids = await getCanvasComponentIds(page, d30CanvasId);
+      const d30ReportCode = d30Url.split('/').pop()!;
+
+      await page.goto(d30Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-number')).toHaveCount(1, { timeout: 20_000 });
+
+      // ── the published dashboard, asked both ways through its own data door ──
+      const [d30WidgetId] = d30Ids['number'] ?? [];
+      const published = async (value: string): Promise<number> =>
+        page.evaluate(async ({ rc, cid, to }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}&to=${encodeURIComponent(to)}`);
+          const payload = await r.json();
+          return Number((payload.data as Record<string, unknown>[])[0].deal_count);
+        }, { rc: d30ReportCode, cid: d30WidgetId, to: value });
+
+      expect(await published('2026-01-31')).toBe(425);
+      expect(await published('')).toBe(1200);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+  // ────────────────────────────────────────────────────────────────────
+  // D31 — a relative date filter means the same rows as the dates it stands for
+  //       (Phase 2a, TODO F1: relative dates)
+  //
+  // Every KPI and trend on a dashboard says "this year" or "the last 30 days",
+  // and a canvas saved with a typed date goes stale the day after it is saved.
+  // The date dropdown therefore offers the relative spans, and their two bounds
+  // are computed in the browser from its own date (`relative-dates.ts`) and
+  // written as the half-open range of whole days a `between` writes - so the SQL
+  // is ANSI, holds no `CURRENT_DATE` and no interval, and is the same text on
+  // every vendor (Jasmine block 19, and case a33 on all nine).
+  //
+  // What this proves that the text cannot: the range runs, and it answers the
+  // same rows as the two typed comparisons it stands for. So the canvas asks
+  // `close_date this year` in one widget, and `close_date on or after <from>`
+  // and `before <to>` - the very two days the first widget's SQL shows - in
+  // another, and the published dashboard answers both with the same count.
+  // Written that way on purpose: the deals of `cube_demo.crm_deals` close
+  // between 2025-01-30 and 2026-09-30, so any count pinned here would be a
+  // different number next year, while "the same rows as the dates it stands
+  // for" is true on every day the test is ever run.
+  //
+  // Same shape as D24, D27, D28, D29 and D30: a temporary duckdb connection
+  // pointed at a COPY of the shipped `northwind.duckdb`, which carries the
+  // `cube_demo` schema, so no shipped file is ever written to.
+  // ────────────────────────────────────────────────────────────────────
+  test('(explore-data) D31 — a relative date filter means the same rows as the dates it stands for', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D31 — a relative date filter means the same rows as the dates it stands for';
+    const connectionName   = 'RelativeDateFilter';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the deals closed this year, said as "this year" ──
+      let offered: string[] = [];
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+        await page.locator('#btnAddFilter').click();
+        await page.locator('#selectFilterCol-0').selectOption('close_date');
+        // The dropdown of a date column offers the relative spans beside the
+        // typed comparisons; the value box of a fixed period is not there at all.
+        offered = await page.locator('#selectFilterOp-0').locator('option').allTextContents();
+        await page.locator('#selectFilterOp-0').selectOption('this_year');
+        await expect(page.locator('#inputFilterValue-0')).toHaveCount(0);
+      });
+      expect(offered).toContain('this year');
+      expect(offered).toContain('in the last N days');
+      expect(offered).toContain('previous month');
+
+      const relativeSql = await visualSql();
+      // Nothing the database computes: two days, and a plain half-open range.
+      for (const forbidden of ['CURRENT_DATE', 'INTERVAL', 'DATEADD', 'GETDATE', "'now'"]) {
+        expect(relativeSql).not.toContain(forbidden);
+      }
+      const days = relativeSql.match(/DATE '(\d{4}-\d{2}-\d{2})'/g) ?? [];
+      expect(days.length).toBe(2);
+      const [from, to] = days.map((one) => one.slice(6, 16));
+      // The browser's own date decides the year - read here from the very clock
+      // the generator read, so the assertion holds on any day of any year.
+      const thisYear = await page.evaluate(() => new Date().getFullYear());
+      expect(from).toBe(`${thisYear}-01-01`);
+      expect(to).toBe(`${thisYear + 1}-01-01`);
+      expect(relativeSql).toContain(`"close_date" >= DATE '${from}' AND "close_date" < DATE '${to}'`);
+
+      // ── the same rows, said as the two dates that span it ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+        await addVisualFilter(page, 0, 'close_date', 'greater_or_equal', from);
+        await addVisualFilter(page, 1, 'close_date', 'less_than', to);
+      });
+      const typedSql = await visualSql();
+      // The same WHERE, to the character: what the relative span stands for.
+      expect(typedSql.split('WHERE ')[1]).toBe(relativeSql.split('WHERE ')[1]);
+
+      // ── and "in the last N days" counts back from the browser's own today ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'deal_id');
+        await addVisualFilter(page, 0, 'close_date', 'last_n_days', '30');
+      });
+      const lastThirtySql = await visualSql();
+      const today = await page.evaluate(() => {
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      });
+      const dayOf = (iso: string, shift: number): string => {
+        const d = new Date(`${iso}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() + shift);
+        return d.toISOString().slice(0, 10);
+      };
+      // The last 30 days end today, today included: 29 days back, and the
+      // half-open end is tomorrow.
+      expect(lastThirtySql).toContain(
+        `"close_date" >= DATE '${dayOf(today, -29)}' AND "close_date" < DATE '${dayOf(today, 1)}'`);
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — this year, as a relative span
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — this year, as two typed dates
+        { x: 0, y: 4, w: 6, h: 4 },  // tabulator — the last 30 days
+      ]);
+
+      const d31CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d31Url } = await publishDashboard(page);
+      const d31Ids = await getCanvasComponentIds(page, d31CanvasId);
+      const d31ReportCode = d31Url.split('/').pop()!;
+
+      await page.goto(d31Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(3, { timeout: 20_000 });
+
+      // ── the published dashboard: the relative span and the typed dates agree ──
+      const gridIds = d31Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(3);
+      const countOf = async (componentId: string): Promise<number> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return Number((payload.data as Record<string, unknown>[])[0].deal_id_count);
+        }, { rc: d31ReportCode, cid: componentId });
+
+      const [relativeCount, typedCount, lastThirtyCount] = [
+        await countOf(gridIds[0]), await countOf(gridIds[1]), await countOf(gridIds[2]),
+      ];
+      // The range runs on a real database, and says what the two dates say.
+      expect(relativeCount).toBe(typedCount);
+      // The newest deal in the sample closes on 2026-09-30, so the last 30 days
+      // hold a different number of them every year this runs: what is asserted
+      // here is that the computed range ran on the database and came back with a
+      // count. The days it counts between are pinned on its SQL, above.
+      expect(lastThirtyCount).toBeGreaterThanOrEqual(0);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+  // ────────────────────────────────────────────────────────────
+  // D32 — "how many customers ordered" is not "how many orders"
+  //       (Phase 2a, TODO F7: COUNT DISTINCT in Summarize)
+  //
+  // COUNT DISTINCT is the everyday KPI after COUNT and SUM, and the generator
+  // has always written `COUNT(DISTINCT c)` for it - only the Summarize dropdown
+  // had no way to ask for it. It offers it now, labelled "Count distinct"
+  // (`lib/explore-data/aggregations.ts`, Jasmine block 20, case a34 on all nine).
+  //
+  // What this proves that the text cannot: the three counts are three different
+  // numbers, and a real database answers each of them through the published
+  // dashboard. `cube_demo.shop_orders` is frozen demo data - 3000 orders, 2760
+  // of them with a customer_id and 240 without, placed by 359 different
+  // customers - so all three are pinned here:
+  //
+  //   COUNT(order_id)             3000   every order
+  //   COUNT(customer_id)          2760   the orders that name a customer
+  //   COUNT(DISTINCT customer_id)  359   the customers who ordered
+  //
+  // The middle one is why this is worth an e2e: a vendor that counted NULL as
+  // one more distinct value would answer 360, and one that ignored DISTINCT
+  // would answer 2760.
+  //
+  // Same shape as D24, D27-D31: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ────────────────────────────────────────────────────────
+  test('(explore-data) D32 — "how many customers ordered" is not "how many orders"', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D32 — how many customers ordered';
+    const connectionName   = 'CountDistinct';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.shop_orders"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the orders, and the customers who placed them ──
+      let offered: string[] = [];
+      await addVisualWidget(page, 'cube_demo.shop_orders', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'order_id');
+        // The Summarize dropdown offers it in words, not as SQL: the user who
+        // needs "how many customers ordered" is the one who does not write SQL.
+        offered = await page.locator('#selectAggFunc-0').locator('option').allTextContents();
+        await addAggregation(page, 1, 'COUNT DISTINCT', 'customer_id');
+      });
+      expect(offered).toContain('Count distinct');
+      expect(offered).toContain('COUNT');
+
+      const distinctSql = await visualSql();
+      expect(distinctSql).toContain('COUNT(DISTINCT "customer_id") AS "customer_id_count distinct"');
+      // Nothing of any one vendor: uniqExact and the approximate counts are a
+      // user's own SQL, never the generator's.
+      for (const forbidden of ['uniqExact', 'approx_count_distinct', 'APPROX_COUNT_DISTINCT']) {
+        expect(distinctSql).not.toContain(forbidden);
+      }
+
+      // ── and the plain count of the same column, which is neither number ──
+      await addVisualWidget(page, 'cube_demo.shop_orders', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'customer_id');
+      });
+      const plainSql = await visualSql();
+      expect(plainSql).toContain('COUNT("customer_id") AS "customer_id_count"');
+      expect(plainSql).not.toContain('DISTINCT');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — orders, and distinct customers
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — the plain count of customer_id
+      ]);
+
+      const d32CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d32Url } = await publishDashboard(page);
+      const d32Ids = await getCanvasComponentIds(page, d32CanvasId);
+      const d32ReportCode = d32Url.split('/').pop()!;
+
+      await page.goto(d32Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(2, { timeout: 20_000 });
+
+      // ── the published dashboard: three numbers, none of them the others ──
+      const gridIds = d32Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(2);
+      const rowOf = async (componentId: string): Promise<Record<string, unknown>> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return (payload.data as Record<string, unknown>[])[0];
+        }, { rc: d32ReportCode, cid: componentId });
+
+      const first = await rowOf(gridIds[0]);
+      const second = await rowOf(gridIds[1]);
+      expect(Number(first['order_id_count'])).toBe(3000);
+      expect(Number(first['customer_id_count distinct'])).toBe(359);
+      expect(Number(second['customer_id_count'])).toBe(2760);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+  // ────────────────────────────────────────────────────────────
+  // D33 — a dashboard date range means whole days, the last one included
+  //       (Phase 2a, TODO F8: a date range bound to two filter-bar parameters)
+  //
+  // "1 Jan to 8 Jan" means every row of both days and of every day between
+  // them. A range whose upper bound is the parameter itself stops at midnight
+  // of the 8th and loses that whole day - the same whole-day rule the generator
+  // already applies to a typed date (T5), now applied to a day that only
+  // arrives when someone picks it in the filter bar.
+  //
+  // The day after `to` is not written in SQL: "+ 1 day" is a different text on
+  // nearly every vendor, and the browser does not have the value yet. The
+  // generator writes a parameter of its own, ${to__next_day}, and the day is
+  // derived in the one place both paths convert a parameter
+  // (`DateParameters` - `QueriesService.prepare` for the canvas,
+  // `ScriptAssembler` for the published script).
+  //
+  // What this proves that the text cannot: `cube_demo.erp_invoices` is frozen
+  // demo data, and 18 invoices are issued from 2025-01-01 to 2025-01-08, two of
+  // them on the 8th itself (`truths-ai-hub.out`, cases p1e and p1f):
+  //
+  //   the range as the generator writes it, ${to__next_day}    18   the week
+  //   the same range stopping at ${to}                         16   the 8th lost
+  //
+  // asked of the canvas path (`/api/dp/queries/run-sql`, what a widget calls)
+  // and of the published dashboard's own data endpoint.
+  //
+  // Same shape as D24, D27-D32: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ────────────────────────────────────────────────────────────
+  test('(explore-data) D33 — a dashboard date range means whole days, the last one included', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D33 — a dashboard date range of whole days';
+    const connectionName   = 'DateRangeWholeDays';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.erp_invoices"]')).toBeVisible({ timeout: 15_000 });
+
+      // The two dates of a range are two parameters of the filter bar, each one
+      // a Date: that declared type is what makes the day after derivable.
+      await addFilterBarParam(page,
+        "reportParameters {\n" +
+        "  parameter(id: 'from', type: Date, label: 'Issued from', defaultValue: '2025-01-01') {\n" +
+        "    constraints(required: false)\n" +
+        "  }\n" +
+        "  parameter(id: 'to', type: Date, label: 'Issued to', defaultValue: '2025-01-08') {\n" +
+        "    constraints(required: false)\n" +
+        "  }\n" +
+        "}"
+      );
+
+      // ── the range, one parameter per box of a `between` filter ──
+      await addVisualWidget(page, 'cube_demo.erp_invoices', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'invoice_id');
+        await addVisualFilter(page, 0, 'issue_date', 'between');
+        await bindVisualFilterToParam(page, 0, 'from');
+        await bindVisualFilterToParam(page, 0, 'to', 'valueTo');
+      });
+
+      const rangeSql = await visualSql();
+      // One ANSI text, on every vendor: the lower bound as it was picked, the
+      // upper one the day after - named, not computed here.
+      expect(rangeSql).toContain('"issue_date" >= ${from} AND "issue_date" < ${to__next_day}');
+      for (const forbidden of ['INTERVAL', 'DATEADD', 'DATE_ADD', 'GETDATE', 'CURRENT_DATE', 'BETWEEN']) {
+        expect(rangeSql).not.toContain(forbidden);
+      }
+
+      // ── and "on or before" a picked day, which is the same upper bound ──
+      await addVisualWidget(page, 'cube_demo.erp_invoices', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', 'invoice_id');
+        await addVisualFilter(page, 0, 'issue_date', 'less_or_equal');
+        await bindVisualFilterToParam(page, 0, 'to');
+      });
+      const onOrBeforeSql = await visualSql();
+      expect(onOrBeforeSql).toContain('"issue_date" < ${to__next_day}');
+      expect(onOrBeforeSql).not.toContain('<= ${to}');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — the range, both bounds bound
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — on or before the picked day
+      ]);
+
+      // ── the canvas path, the one a widget calls ──
+      const onCanvas = async (sql: string): Promise<number> =>
+        page.evaluate(async ({ connectionId, sql: text }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              connectionId, sql: text,
+              params: { from: '2025-01-01', to: '2025-01-08' },
+              paramTypes: { from: 'Date', to: 'Date' },
+            }),
+          });
+          const payload = await r.json();
+          return Number((payload.data as Record<string, unknown>[])[0].invoice_id_count);
+        }, { connectionId: connectionCode, sql });
+
+      expect(await onCanvas(rangeSql)).toBe(18);
+      expect(await onCanvas(onOrBeforeSql)).toBe(18);
+      // Why the derived day is there: the same range stopping at the parameter
+      // itself answers 16, because two invoices are issued on the 8th.
+      expect(await onCanvas(rangeSql.replace('${to__next_day}', '${to}'))).toBe(16);
+
+      const d33CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d33Url } = await publishDashboard(page);
+      const d33Ids = await getCanvasComponentIds(page, d33CanvasId);
+      const d33ReportCode = d33Url.split('/').pop()!;
+
+      await page.goto(d33Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(2, { timeout: 20_000 });
+
+      // ── the published dashboard, asked through its own data door ──
+      // The script it runs was never given a `to__next_day`: it declares one
+      // beside `to` and derives it there, so both paths answer the same week.
+      const gridIds = d33Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(2);
+      const published = async (componentId: string): Promise<number> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`
+            + '&from=2025-01-01&to=2025-01-08');
+          const payload = await r.json();
+          return Number((payload.data as Record<string, unknown>[])[0].invoice_id_count);
+        }, { rc: d33ReportCode, cid: componentId });
+
+      expect(await published(gridIds[0])).toBe(18);
+      expect(await published(gridIds[1])).toBe(18);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+
+
+  // ──────────────────────────────────────────────────────
+  // D34 — a column the table does not have: price × quantity, then the top 10 by it
+  //       (Phase 2a, TODO F6: computed columns, the narrow form)
+  //
+  // "The top 10 items by revenue" on a table that carries a price and a
+  // quantity and no revenue. The Compute step adds ONE arithmetic step over two
+  // operands, each a numeric column or a number, under a name; from there the
+  // name behaves like a column - it can be filtered, aggregated, grouped and
+  // sorted, and the grid shows it beside the table's own columns.
+  //
+  // What the text specs cannot prove, and this does: the arithmetic answers the
+  // truth. `cube_demo.erp_invoice_lines` is frozen demo data whose `amount`
+  // column IS unit_price × qty, so the computed column has something exact to be
+  // right against (`truths-ai-hub.out`, cases A35 and A36):
+  //
+  //   the lines, SUM(unit_price × qty), SUM(amount)   5500 | 20411515.04 | 20411515.04
+  //   the top item by computed revenue                Server Hardware | 1155157.35
+  //   the 11th item, the one a limit of 10 cuts       Consulting Day  | 1021198.97
+  //   shop_order_lines, and the lines whose unit_price ÷ discount_pct is not NULL
+  //                                                   8500 | 2543
+  //
+  // The last one is the division: dividing by zero is NULL and not an error
+  // (NULLIF), and `qty ÷ 2` is a fraction and not integer division (the vendor
+  // layer's `decimalDivision`), so a filter on it keeps the 2543 lines whose qty
+  // is 1 as well.
+  //
+  // Same shape as D24, D27-D33: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ──────────────────────────────────────────────────────
+  test('(explore-data) D34 — a column the table does not have: price × quantity, then the top 10 by it', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D34 — a computed column';
+    const connectionName   = 'ComputedColumns';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.erp_invoice_lines"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the arithmetic, summed, against the column that already holds it ──
+      await addVisualWidget(page, 'cube_demo.erp_invoice_lines', 'tabulator', async () => {
+        await addComputedColumn(page, 0, 'line_revenue', 'unit_price', '*', 'qty');
+        await addAggregation(page, 0, 'SUM', 'line_revenue');
+        await addAggregation(page, 1, 'SUM', 'amount');
+        await addAggregation(page, 2, 'COUNT', '*');
+      });
+
+      const sumSql = await visualSql();
+      // The name is the expression wherever it is read, never the alias, and a
+      // summarized query selects no star at all.
+      expect(sumSql).toContain('CAST(SUM(("unit_price" * "qty")) AS DECIMAL(31,4)) AS "line_revenue_sum"');
+      expect(sumSql).not.toContain('.*');
+
+      // ── the use case: the top 10 items by that revenue ──
+      await addVisualWidget(page, 'cube_demo.erp_invoice_lines', 'tabulator', async () => {
+        await addComputedColumn(page, 0, 'line_revenue', 'unit_price', '*', 'qty');
+        await addGroupBy(page, 'item');
+        await addAggregation(page, 0, 'SUM', 'line_revenue');
+        await addVisualSort(page, 0, 'line_revenue_sum', 'DESC');
+        await setVisualLimit(page, 10);
+      });
+
+      const top10Sql = await visualSql();
+      expect(top10Sql).toContain('GROUP BY "item"');
+      expect(top10Sql).toContain('ORDER BY CASE WHEN CAST(SUM(("unit_price" * "qty")) AS DECIMAL(31,4)) IS NULL');
+
+      // ── the grid of a query with no aggregate: the column beside the row ──
+      await addVisualWidget(page, 'cube_demo.erp_invoice_lines', 'tabulator', async () => {
+        await addComputedColumn(page, 0, 'line_revenue', 'unit_price', '*', 'qty');
+        await addVisualSort(page, 0, 'line_revenue', 'DESC');
+        await setVisualLimit(page, 5);
+      });
+
+      const rowsSql = await visualSql();
+      // The star is qualified, because Oracle rejects a bare `*` beside another
+      // select item - one text for all nine vendors.
+      expect(rowsSql).toContain('"erp_invoice_lines".*');
+      expect(rowsSql).toContain('("unit_price" * "qty") AS "line_revenue"');
+      expect(rowsSql).not.toContain('SELECT *');
+
+      // ── the division: a zero divisor is NULL, and a half is a half ──
+      await addVisualWidget(page, 'cube_demo.shop_order_lines', 'tabulator', async () => {
+        await addComputedColumn(page, 0, 'per_point', 'unit_price', '/', 'discount_pct');
+        await addComputedColumn(page, 1, 'half_qty', 'qty', '/', '2');
+        await addVisualFilter(page, 0, 'half_qty', 'greater_than', '0');
+        await addAggregation(page, 0, 'COUNT', '*');
+        await addAggregation(page, 1, 'COUNT', 'per_point');
+      });
+
+      const dividedSql = await visualSql();
+      expect(dividedSql).toContain('CAST("unit_price" AS DECIMAL(31,4)) / NULLIF("discount_pct", 0)');
+      expect(dividedSql).toContain('WHERE (CAST("qty" AS DECIMAL(31,4)) / NULLIF(2, 0)) > 0');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — the sums, against `amount`
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — the top 10 items by revenue
+        { x: 0, y: 4, w: 6, h: 4 },  // tabulator — the rows, revenue beside them
+        { x: 6, y: 4, w: 6, h: 4 },  // tabulator — the division
+      ]);
+
+      // ── the canvas path, the one a widget calls ──
+      const onCanvas = async (sql: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ connectionId, sql: text }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql: text, params: {}, paramTypes: {} }),
+          });
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { connectionId: connectionCode, sql });
+
+      const sums = (await onCanvas(sumSql))[0];
+      expect(Number(sums.count)).toBe(5500);
+      expect(Number(sums.line_revenue_sum)).toBeCloseTo(20411515.04, 2);
+      // The table's own answer for the same arithmetic: the computed column is
+      // right against a number nobody computed here.
+      expect(Number(sums.line_revenue_sum)).toBeCloseTo(Number(sums.amount_sum), 2);
+
+      const top10 = await onCanvas(top10Sql);
+      expect(top10.length).toBe(10);
+      expect(String(top10[0].item)).toBe('Server Hardware');
+      expect(Number(top10[0].line_revenue_sum)).toBeCloseTo(1155157.35, 2);
+      // The 11th item, 19000 behind the 10th: the cap kept the right rows.
+      expect(top10.map((r) => String(r.item))).not.toContain('Consulting Day');
+
+      const rows = await onCanvas(rowsSql);
+      expect(rows.length).toBe(5);
+      // The row carries the table's columns AND the computed one, whose value is
+      // the arithmetic of that row.
+      expect(Number(rows[0].line_revenue))
+        .toBeCloseTo(Number(rows[0].unit_price) * Number(rows[0].qty), 2);
+
+      const divided = (await onCanvas(dividedSql))[0];
+      // Every line, because half of a qty of 1 is 0.5 and not 0 …
+      expect(Number(divided.count)).toBe(8500);
+      // … and only the lines with a discount, because ÷ 0 answered NULL instead
+      // of failing the query.
+      expect(Number(divided.per_point_count)).toBe(2543);
+
+      const d34CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d34Url } = await publishDashboard(page);
+      const d34Ids = await getCanvasComponentIds(page, d34CanvasId);
+      const d34ReportCode = d34Url.split('/').pop()!;
+
+      await page.goto(d34Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(4, { timeout: 20_000 });
+
+      // ── the published dashboard, asked through its own data door ──
+      // The script it runs holds the same arithmetic the canvas showed.
+      const gridIds = d34Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(4);
+      const published = async (componentId: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { rc: d34ReportCode, cid: componentId });
+
+      const publishedSums = (await published(gridIds[0]))[0];
+      expect(Number(publishedSums.line_revenue_sum)).toBeCloseTo(20411515.04, 2);
+      const publishedTop10 = await published(gridIds[1]);
+      expect(publishedTop10.length).toBe(10);
+      expect(String(publishedTop10[0].item)).toBe('Server Hardware');
+      expect(Number((await published(gridIds[3]))[0].per_point_count)).toBe(2543);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+  // ──────────────────────────────────────────────────────
+  // D35 — a question about the group, not the row: the stages of more than 150 deals
+  //       (Phase 2a, TODO F2: HAVING, a condition on an aggregate)
+  //
+  // "Customers with more than 5 orders" is the everyday shape of this: a
+  // condition on something that does not exist until the rows are grouped. A
+  // filter cannot say it - a filter reads one row, and one row has no count -
+  // so the Summarize step carries a condition of its own, and it becomes
+  // HAVING.
+  //
+  // It holds the aggregate EXPRESSION and never the alias the SELECT gives it:
+  // PostgreSQL, SQL Server, Oracle and Db2 reject an alias inside a HAVING, so
+  // a dashboard built here would have run on SQLite and MySQL and failed on the
+  // other four.
+  //
+  // What the text specs cannot prove, and this does (`truths-ai-hub.out`, A37
+  // and A38, over the frozen `cube_demo.crm_deals`):
+  //
+  //   the stages of more than 150 deals   Closed Won 402, Closed Lost 244, Negotiation 189
+  //   the fourth stage, the one it drops  Proposal 148
+  //   and more than 10 million of amount  Closed Won 402 | 11971500.00 alone
+  //   the stage that fails only the money Closed Lost 244 | 9037500.00
+  //
+  // Same shape as D24, D27-D34: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ──────────────────────────────────────────────────────
+  test('(explore-data) D35 — a question about the group, not the row: the stages of more than 150 deals', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D35 — a condition on an aggregate';
+    const connectionName   = 'AggregateCondition';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the count, and the condition on it ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'stage');
+        await addAggregation(page, 0, 'COUNT', '*');
+        await setAggregationCondition(page, 0, '>', '150');
+        await addVisualSort(page, 0, 'count', 'DESC');
+      });
+
+      const overSql = await visualSql();
+      expect(overSql).toContain('HAVING COUNT(*) > 150');
+      // The expression, never the alias: four of the nine reject an alias here.
+      expect(overSql).not.toContain('HAVING "count"');
+      expect(overSql.indexOf('GROUP BY')).toBeLessThan(overSql.indexOf('HAVING'));
+      expect(overSql.indexOf('HAVING')).toBeLessThan(overSql.indexOf('ORDER BY'));
+
+      // ── two conditions, joined with AND ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'stage');
+        await addAggregation(page, 0, 'COUNT', '*');
+        await setAggregationCondition(page, 0, '>', '150');
+        await addAggregation(page, 1, 'SUM', 'amount');
+        await setAggregationCondition(page, 1, '>', '10000000');
+      });
+
+      const bothSql = await visualSql();
+      expect(bothSql).toContain('HAVING COUNT(*) > 150');
+      // A SUM is compared inside the DECIMAL cast it is selected in, so the two
+      // always read the same number.
+      expect(bothSql).toContain('AND CAST(SUM("amount") AS DECIMAL(31,4)) > 10000000');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — the stages of more than 150 deals
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — and more than 10 million of amount
+      ]);
+
+      // ── the canvas path, the one a widget calls ──
+      const onCanvas = async (sql: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ connectionId, sql: text }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql: text, params: {}, paramTypes: {} }),
+          });
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { connectionId: connectionCode, sql });
+
+      const over = await onCanvas(overSql);
+      expect(over.map((r) => String(r.stage))).toEqual(['Closed Won', 'Closed Lost', 'Negotiation']);
+      expect(over.map((r) => Number(r.count))).toEqual([402, 244, 189]);
+      // Why the condition is doing something: the fourth stage has 148 deals.
+      expect(over.map((r) => String(r.stage))).not.toContain('Proposal');
+
+      const both = await onCanvas(bothSql);
+      expect(both.length).toBe(1);
+      expect(String(both[0].stage)).toBe('Closed Won');
+      // Closed Lost passes the count with 244 deals and fails the money with
+      // 9037500: the two conditions are joined with AND.
+      expect(Number(both[0].amount_sum)).toBeCloseTo(11971500, 2);
+
+      const d35CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d35Url } = await publishDashboard(page);
+      const d35Ids = await getCanvasComponentIds(page, d35CanvasId);
+      const d35ReportCode = d35Url.split('/').pop()!;
+
+      await page.goto(d35Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(2, { timeout: 20_000 });
+
+      // ── the published dashboard, asked through its own data door ──
+      const gridIds = d35Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(2);
+      const published = async (componentId: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { rc: d35ReportCode, cid: componentId });
+
+      expect((await published(gridIds[0])).map((r) => Number(r.count))).toEqual([402, 244, 189]);
+      const publishedBoth = await published(gridIds[1]);
+      expect(publishedBoth.length).toBe(1);
+      expect(String(publishedBoth[0].stage)).toBe('Closed Won');
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+  // ──────────────────────────────────────────────────────
+  // D36 — Closed Won, or any big deal: matching ANY filter
+  //       (Phase 2a, TODO F3: match all / any)
+  //
+  // Two filters have always meant "both". "Everything Closed Won, plus any deal
+  // above 80000, wherever it stands" is one question the AND join cannot ask:
+  // ANDed, those two filters answer 27 deals - the big won ones - instead of
+  // the 474 the question is about.
+  //
+  // The Filter step carries the choice, and `any` joins the conditions with OR
+  // inside ONE pair of brackets. The brackets are the whole point: without them
+  // a condition the user adds later, or a parameter bound into the pane, would
+  // bind tighter than the OR and quietly answer something else.
+  //
+  // What the text specs cannot prove, and this does (`truths-ai-hub.out`, A39,
+  // over the frozen `cube_demo.crm_deals`):
+  //
+  //   Closed Won OR above 80000, by stage   Closed Won 402, Closed Lost 22, Proposal 20
+  //   the same two filters ANDed            27 deals in all
+  //   the OR, all stages                    474 deals in all
+  //
+  // Same shape as D24, D27-D35: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ──────────────────────────────────────────────────────
+  test('(explore-data) D36 — Closed Won, or any big deal: matching ANY filter', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D36 — match any filter';
+    const connectionName   = 'MatchAnyFilter';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the two filters, matched ANY ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addVisualFilter(page, 0, 'stage', 'equals', 'Closed Won');
+        await addVisualFilter(page, 1, 'amount', 'greater_than', '80000');
+        await setFilterMatch(page, 'any');
+        await addGroupBy(page, 'stage');
+        await addAggregation(page, 0, 'COUNT', '*');
+        await addVisualSort(page, 0, 'count', 'DESC');
+      });
+
+      const anySql = await visualSql();
+      expect(anySql).toContain('OR "amount" > 80000)');
+      // One pair of brackets around the whole set, and a WHERE that still
+      // stands where a WHERE stands.
+      expect(anySql).toContain('WHERE ("stage" = \'Closed Won\'');
+      expect(anySql.indexOf('WHERE (')).toBeLessThan(anySql.indexOf('GROUP BY'));
+
+      // ── the same two filters, matched ALL: the question nobody asked ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addVisualFilter(page, 0, 'stage', 'equals', 'Closed Won');
+        await addVisualFilter(page, 1, 'amount', 'greater_than', '80000');
+        await addGroupBy(page, 'stage');
+        await addAggregation(page, 0, 'COUNT', '*');
+      });
+
+      const allSql = await visualSql();
+      expect(allSql).toContain('AND "amount" > 80000');
+      expect(allSql).not.toContain('OR "amount"');
+      expect(allSql).not.toContain('WHERE (');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — Closed Won OR a big deal
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — the same two filters ANDed
+      ]);
+
+      // ── the canvas path, the one a widget calls ──
+      const onCanvas = async (sql: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ connectionId, sql: text }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql: text, params: {}, paramTypes: {} }),
+          });
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { connectionId: connectionCode, sql });
+
+      const anyRows = await onCanvas(anySql);
+      expect(anyRows.map((r) => String(r.stage)).slice(0, 3))
+        .toEqual(['Closed Won', 'Closed Lost', 'Proposal']);
+      expect(anyRows.map((r) => Number(r.count)).slice(0, 3)).toEqual([402, 22, 20]);
+      // 474 deals in all: every Closed Won deal, and the big deals of the five
+      // other stages.
+      expect(anyRows.reduce((sum, r) => sum + Number(r.count), 0)).toBe(474);
+
+      // The AND answers a different question entirely: 27 big won deals.
+      const allRows = await onCanvas(allSql);
+      expect(allRows.length).toBe(1);
+      expect(String(allRows[0].stage)).toBe('Closed Won');
+      expect(Number(allRows[0].count)).toBe(27);
+
+      const d36CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d36Url } = await publishDashboard(page);
+      const d36Ids = await getCanvasComponentIds(page, d36CanvasId);
+      const d36ReportCode = d36Url.split('/').pop()!;
+
+      await page.goto(d36Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(2, { timeout: 20_000 });
+
+      // ── the published dashboard, asked through its own data door ──
+      const gridIds = d36Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(2);
+      const published = async (componentId: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { rc: d36ReportCode, cid: componentId });
+
+      const publishedAny = await published(gridIds[0]);
+      expect(publishedAny.reduce((sum, r) => sum + Number(r.count), 0)).toBe(474);
+      const publishedAll = await published(gridIds[1]);
+      expect(publishedAll.length).toBe(1);
+      expect(Number(publishedAll[0].count)).toBe(27);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+  // ──────────────────────────────────────────────────────
+  // D37 — which stages are there: grouping with nothing to summarize
+  //       (Phase 2a, TODO F4: SELECT DISTINCT)
+  //
+  // "Which values does this column hold?" is a question of its own, and it is
+  // the one a grouping with no Summarize asks. Until now the grouping was
+  // silently dropped and the widget answered every row of the table - 1200
+  // deals instead of the 6 stages.
+  //
+  // It is written as SELECT DISTINCT over the grouped columns, and a distinct
+  // query that sorts sorts OUTSIDE itself, as a derived table: the NULLs-last
+  // CASE every sorted query in the product carries is an expression the SELECT
+  // list does not hold, and PostgreSQL, Oracle, Db2 and SQL Server refuse such
+  // an ORDER BY for a SELECT DISTINCT outright.
+  //
+  // What the text specs cannot prove, and this does (`truths-ai-hub.out`, A40,
+  // over the frozen `cube_demo.crm_deals`):
+  //
+  //   the stages there are   Closed Lost, Closed Won, Negotiation, Proposal, Prospecting, Qualification
+  //   the rows behind them   1200 deals, 6 distinct stages
+  //
+  // Same shape as D24, D27-D36: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ──────────────────────────────────────────────────────
+  test('(explore-data) D37 — which stages are there: grouping with nothing to summarize', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D37 — the distinct combinations';
+    const connectionName   = 'DistinctCombinations';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the stages, sorted: the distinct rows become a derived table ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'stage');
+        await addVisualSort(page, 0, 'stage', 'ASC');
+      });
+
+      const sortedSql = await visualSql();
+      expect(sortedSql).toContain('SELECT DISTINCT "stage"');
+      expect(sortedSql).toContain(') distinct_rows');
+      expect(sortedSql).toContain('ORDER BY CASE WHEN "stage" IS NULL THEN 1 ELSE 0 END, "stage" ASC');
+      // The grouping is not dropped any more, and it is not a GROUP BY either.
+      expect(sortedSql).not.toContain('GROUP BY');
+
+      // ── the same question unsorted: the distinct query on its own ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'stage');
+      });
+
+      const plainSql = await visualSql();
+      expect(plainSql).toContain('SELECT DISTINCT "stage"');
+      expect(plainSql).not.toContain('distinct_rows');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — the stages, sorted
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — the same, unsorted
+      ]);
+
+      // ── the canvas path, the one a widget calls ──
+      const onCanvas = async (sql: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ connectionId, sql: text }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql: text, params: {}, paramTypes: {} }),
+          });
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { connectionId: connectionCode, sql });
+
+      const sorted = await onCanvas(sortedSql);
+      expect(sorted.map((r) => String(r.stage))).toEqual([
+        'Closed Lost', 'Closed Won', 'Negotiation', 'Proposal', 'Prospecting', 'Qualification',
+      ]);
+      // 6 rows, not the 1200 the dropped grouping used to answer.
+      expect(sorted.length).toBe(6);
+
+      const plain = await onCanvas(plainSql);
+      expect(plain.length).toBe(6);
+      expect(plain.map((r) => String(r.stage)).sort()).toEqual([
+        'Closed Lost', 'Closed Won', 'Negotiation', 'Proposal', 'Prospecting', 'Qualification',
+      ]);
+
+      const d37CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d37Url } = await publishDashboard(page);
+      const d37Ids = await getCanvasComponentIds(page, d37CanvasId);
+      const d37ReportCode = d37Url.split('/').pop()!;
+
+      await page.goto(d37Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(2, { timeout: 20_000 });
+
+      // ── the published dashboard, asked through its own data door ──
+      const gridIds = d37Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(2);
+      const published = async (componentId: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { rc: d37ReportCode, cid: componentId });
+
+      expect((await published(gridIds[0])).map((r) => String(r.stage))).toEqual([
+        'Closed Lost', 'Closed Won', 'Negotiation', 'Proposal', 'Prospecting', 'Qualification',
+      ]);
+      expect((await published(gridIds[1])).length).toBe(6);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+  // ──────────────────────────────────────────────────
+  // D38 — how the money splits between the stages: a % of total
+  //       (Phase 2a, TODO F9: share of the whole result)
+  //
+  // "Closed Won is 12 million - is that a lot?" only has an answer next to the
+  // whole: 29% of the money. The share is the number every pie chart and every
+  // breakdown is really about, and until now nothing in the product computed it
+  // - the percent options of the widgets only FORMAT a number that is already a
+  // share, and the pivot's totals are its own row and column sums.
+  //
+  // It is a window over the grouped rows, because the total is a number no
+  // single grouped row holds: `100.0 * SUM(amount) / NULLIF(SUM(SUM(amount))
+  // OVER (), 0)`. The HAVING and the ORDER BY keep the plain aggregate - no
+  // vendor allows a window function in a HAVING, and the total is one number for
+  // the whole result, so the order the shares make is the order the money makes.
+  //
+  // What the text specs cannot prove, and this does (`truths-ai-hub.out`, A41,
+  // over the frozen `cube_demo.crm_deals`):
+  //
+  //   Closed Won     11,971,500   29.12%
+  //   Closed Lost     9,037,500   21.98%
+  //   Proposal        5,873,000   14.28%
+  //   Negotiation     5,822,000   14.16%
+  //   Qualification   5,572,500   13.55%
+  //   Prospecting     2,839,500    6.91%
+  //   the six shares add up to 100, over 41,116,000 of money
+  //
+  // Same shape as D24, D27-D37: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ──────────────────────────────────────────────────
+  test('(explore-data) D38 — how the money splits between the stages: a % of total', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D38 — the share of the whole';
+    const connectionName   = 'ShareOfTheWhole';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the money of each stage, and the share of the whole it is ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'stage');
+        await addAggregation(page, 0, 'SUM', 'amount');
+        await addAggregation(page, 1, 'SUM', 'amount');
+        await setAggregationShare(page, 1);
+        await addVisualSort(page, 0, 'amount_sum', 'DESC');
+      });
+
+      const shareSql = await visualSql();
+      expect(shareSql).toContain('NULLIF(SUM(CAST(SUM("amount") AS DECIMAL(31,4))) OVER (), 0)');
+      // The share stands apart from the number it is a share of.
+      expect(shareSql).toContain('AS "amount_sum"');
+      expect(shareSql).toContain('AS "amount_sum_pct"');
+      // The window never reaches the ORDER BY: the plain aggregate sorts.
+      expect(shareSql.split('ORDER BY')[1]).not.toContain('OVER ()');
+
+      // ── the same aggregate without the share: nothing changed for it ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'stage');
+        await addAggregation(page, 0, 'SUM', 'amount');
+      });
+
+      const plainSql = await visualSql();
+      expect(plainSql).not.toContain('OVER ()');
+      expect(plainSql).toContain('AS "amount_sum"');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — the money and its share
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — the money alone
+      ]);
+
+      // ── the canvas path, the one a widget calls ──
+      const onCanvas = async (sql: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ connectionId, sql: text }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql: text, params: {}, paramTypes: {} }),
+          });
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { connectionId: connectionCode, sql });
+
+      const shares = await onCanvas(shareSql);
+      expect(shares.map((r) => String(r.stage))).toEqual([
+        'Closed Won', 'Closed Lost', 'Proposal', 'Negotiation', 'Qualification', 'Prospecting',
+      ]);
+      const pct = shares.map((r) => Math.round(Number(r.amount_sum_pct) * 100) / 100);
+      expect(pct).toEqual([29.12, 21.98, 14.28, 14.16, 13.55, 6.91]);
+      // A share of the whole, so the six of them are the whole.
+      expect(Math.round(pct.reduce((a, b) => a + b, 0))).toBe(100);
+      expect(Number(shares[0].amount_sum)).toBe(11_971_500);
+
+      const plain = await onCanvas(plainSql);
+      expect(plain.length).toBe(6);
+      expect(Object.keys(plain[0])).not.toContain('amount_sum_pct');
+
+      const d38CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d38Url } = await publishDashboard(page);
+      const d38Ids = await getCanvasComponentIds(page, d38CanvasId);
+      const d38ReportCode = d38Url.split('/').pop()!;
+
+      await page.goto(d38Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(2, { timeout: 20_000 });
+
+      // ── the published dashboard, asked through its own data door ──
+      const gridIds = d38Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(2);
+      const published = async (componentId: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { rc: d38ReportCode, cid: componentId });
+
+      const publishedShares = await published(gridIds[0]);
+      expect(publishedShares.map((r) => Math.round(Number(r.amount_sum_pct) * 100) / 100))
+        .toEqual([29.12, 21.98, 14.28, 14.16, 13.55, 6.91]);
+      expect((await published(gridIds[1])).length).toBe(6);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+  // ──────────────────────────────────────────────────
+  // D39 — the deals closed so far: a running total over the months
+  //       (Phase 2a, TODO F10: running total)
+  //
+  // A bar per month answers "how did March do?"; the cumulative line answers
+  // "where are we for the year?" - and that second question had no answer in
+  // the product at all: no widget accumulates anything in the browser.
+  //
+  // It is a window whose frame starts at the first row the query answers:
+  // `SUM(COUNT(*)) OVER (ORDER BY <month bucket> ROWS UNBOUNDED PRECEDING)`.
+  // The window's ORDER BY is the bucket the query groups by, carrying the same
+  // NULLs-last CASE every sort in the product carries, so the deals that have
+  // not closed - which have no month - are one bucket at the END of the series
+  // (T6) instead of a step that lifts the whole line before it starts.
+  //
+  // What the text specs cannot prove, and this does (`truths-ai-hub.out`, A42,
+  // over the frozen `cube_demo.crm_deals`):
+  //
+  //   2025-01     1 closed,     1 so far
+  //   2025-06    35 closed,   131 so far
+  //   2026-09    33 closed,   646 so far   ← every deal that has closed
+  //   (no month) 554 open,   1200 so far   ← last, and only then all 1200
+  //
+  // Same shape as D24, D27-D38: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ──────────────────────────────────────────────────
+  test('(explore-data) D39 — the deals closed so far: a running total over the months', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D39 — the deals so far';
+    const connectionName   = 'TheDealsSoFar';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
+
+      // ── the deals of each month, and the deals closed so far ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'close_date');
+        await setTimeBucket(page, 'close_date', 'month');
+        await addAggregation(page, 0, 'COUNT', '*');
+        await addAggregation(page, 1, 'COUNT', '*');
+        await setAggregationRunningTotal(page, 1);
+        await addVisualSort(page, 0, 'close_date', 'ASC');
+      });
+
+      const runningSql = await visualSql();
+      expect(runningSql).toContain('SUM(COUNT(*)) OVER (ORDER BY CASE WHEN ');
+      expect(runningSql).toContain('ROWS UNBOUNDED PRECEDING) AS "count_running"');
+      // The accumulated column stands apart from the number it accumulates.
+      expect(runningSql).toContain('COUNT(*) AS "count"');
+      // The window never reaches the query's own ORDER BY.
+      expect(runningSql.split('ORDER BY').pop()).not.toContain('OVER (');
+
+      // ── the same two counts without the accumulation ──
+      await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
+        await addGroupBy(page, 'close_date');
+        await setTimeBucket(page, 'close_date', 'month');
+        await addAggregation(page, 0, 'COUNT', '*');
+        await addVisualSort(page, 0, 'close_date', 'ASC');
+      });
+
+      const plainSql = await visualSql();
+      expect(plainSql).not.toContain('OVER (');
+      expect(plainSql).toContain('COUNT(*) AS "count"');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6, h: 4 },  // tabulator — the months and the total so far
+        { x: 6, y: 0, w: 6, h: 4 },  // tabulator — the months alone
+      ]);
+
+      // ── the canvas path, the one a widget calls ──
+      const onCanvas = async (sql: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ connectionId, sql: text }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql: text, params: {}, paramTypes: {} }),
+          });
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { connectionId: connectionCode, sql });
+
+      const series = await onCanvas(runningSql);
+      // 21 months that closed a deal, and the bucket of those that have not.
+      expect(series.length).toBe(22);
+      expect(String(series[0].close_date)).toBe('2025-01');
+      expect(Number(series[0].count)).toBe(1);
+      expect(Number(series[0].count_running)).toBe(1);
+
+      // Every step is the month before it plus this month: that is what
+      // "so far" means, and the plain counts on their own never show it.
+      let soFar = 0;
+      for (const row of series) {
+        soFar += Number(row.count);
+        expect(Number(row.count_running)).toBe(soFar);
+      }
+
+      // The deals with no close date are one bucket, LAST in the series, where
+      // the running total finally reaches every row of the table (T6).
+      const last = series[series.length - 1];
+      expect(last.close_date === null || last.close_date === '').toBe(true);
+      expect(Number(last.count)).toBe(554);
+      expect(Number(last.count_running)).toBe(1200);
+      // The month before it is the last month that closed anything.
+      const lastMonth = series[series.length - 2];
+      expect(String(lastMonth.close_date)).toBe('2026-09');
+      expect(Number(lastMonth.count_running)).toBe(646);
+
+      const plain = await onCanvas(plainSql);
+      expect(plain.length).toBe(22);
+      expect(Object.keys(plain[0])).not.toContain('count_running');
+
+      const d39CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d39Url } = await publishDashboard(page);
+      const d39Ids = await getCanvasComponentIds(page, d39CanvasId);
+      const d39ReportCode = d39Url.split('/').pop()!;
+
+      await page.goto(d39Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(2, { timeout: 20_000 });
+
+      // ── the published dashboard, asked through its own data door ──
+      const gridIds = d39Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(2);
+      const published = async (componentId: string): Promise<Record<string, unknown>[]> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          return payload.data as Record<string, unknown>[];
+        }, { rc: d39ReportCode, cid: componentId });
+
+      const publishedSeries = await published(gridIds[0]);
+      expect(publishedSeries.length).toBe(22);
+      expect(Number(publishedSeries[publishedSeries.length - 1].count_running)).toBe(1200);
+      expect(Number(publishedSeries[publishedSeries.length - 2].count_running)).toBe(646);
+      expect((await published(gridIds[1])).length).toBe(22);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
       await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
         new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
       );

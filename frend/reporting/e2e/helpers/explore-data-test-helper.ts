@@ -430,6 +430,109 @@ export async function addVisualSort(
   await page.waitForTimeout(300);
 }
 
+/** Put a condition on the aggregate at `index` in the Visual SummarizeStep UI
+ *  (F2): the comparison ('>', '>=', '<', '<=', '=' - the SQL sign, not the
+ *  label the dropdown shows) and the number to compare to. The value box only
+ *  exists once a comparison is picked, so the order here is the order the UI
+ *  needs. Call AFTER addAggregation created that row. */
+export async function setAggregationCondition(
+  page: Page,
+  index: number,
+  operator: '>' | '>=' | '<' | '<=' | '=',
+  value: string,
+): Promise<void> {
+  await page.locator(`#selectHavingOp-${index}`).selectOption(operator);
+  await page.locator(`#inputHavingValue-${index}`).fill(value);
+  await page.waitForTimeout(300);
+}
+
+/** Say whether a row has to pass every filter or any one of them (F3).
+ *  The dropdown appears with the second filter - one filter is one condition -
+ *  so call this AFTER adding at least two of them. `any` joins the conditions
+ *  with OR inside one pair of brackets. */
+export async function setFilterMatch(
+  page: Page,
+  match: 'all' | 'any',
+): Promise<void> {
+  await page.locator('#selectFilterMatch').selectOption(match);
+  await page.waitForTimeout(300);
+}
+
+/** Read an aggregation as a % of the whole result (F9): the "% of total"
+ *  checkbox of that Summarize row. The column is then written as
+ *  `100.0 * <aggregate> / NULLIF(SUM(<aggregate>) OVER (), 0)` under the
+ *  aggregate's own alias plus `_pct`. Call AFTER addAggregation created the row. */
+export async function setAggregationShare(
+  page: Page,
+  index: number,
+  share = true,
+): Promise<void> {
+  await page.locator(`#checkShare-${index}`).setChecked(share);
+  await page.waitForTimeout(300);
+}
+
+/** Read an aggregation as the total accumulated up to this bucket (F10): the
+ *  "running total" checkbox of that Summarize row. The checkbox only exists
+ *  while the query groups by one time-bucketed column and the aggregate is one
+ *  that adds up (SUM, COUNT, COUNT DISTINCT) - the same rule the SQL follows -
+ *  so call this AFTER addGroupBy and setTimeBucket. The column is written as
+ *  `SUM(<aggregate>) OVER (ORDER BY <bucket> ROWS UNBOUNDED PRECEDING)` under
+ *  the aggregate's own alias plus `_running`. */
+export async function setAggregationRunningTotal(
+  page: Page,
+  index: number,
+  running = true,
+): Promise<void> {
+  await page.locator(`#checkRunningTotal-${index}`).setChecked(running);
+  await page.waitForTimeout(300);
+}
+
+/** Bucket a grouped date column by day, week, month, quarter or year (or read
+ *  it raw). Without this the step picks a bucket itself from the column's range
+ *  (`guessTimeBucket`), which is the right default and the wrong thing for a
+ *  test to depend on. Call AFTER addGroupBy named that column. */
+export async function setTimeBucket(
+  page: Page,
+  column: string,
+  bucket: 'auto' | 'none' | 'day' | 'week' | 'month' | 'quarter' | 'year'
+    | 'day-of-week' | 'hour-of-day' | 'month-of-year' | 'quarter-of-year',
+): Promise<void> {
+  await page.locator(`#selectTimeBucket-${column}`).selectOption(bucket);
+  await page.waitForTimeout(500);
+}
+
+/** Add one computed column in the Visual ComputeStep UI: a name, and the two
+ *  operands of one arithmetic step (F6). A side is either one of the table's
+ *  numeric columns or a number, which the "a number" option of the same dropdown
+ *  opens a box for - this helper picks whichever the value is. `operator` is the
+ *  SQL sign ('+', '-', '*', '/'), not the label the dropdown shows ('\u00d7' for '*').
+ *  The Compute step only appears when the table has a numeric column, and a
+ *  computed column is offered in Filter, Summarize and Sort, so call this BEFORE
+ *  addVisualFilter / addAggregation / addVisualSort name it. */
+export async function addComputedColumn(
+  page: Page,
+  index: number,
+  name: string,
+  left: string,
+  operator: '+' | '-' | '*' | '/',
+  right: string,
+): Promise<void> {
+  await page.locator('#btnAddComputed').click();
+  await page.locator(`#inputComputedName-${index}`).fill(name);
+  await page.locator(`#selectComputedOp-${index}`).selectOption(operator);
+  for (const [suffix, value] of [['Left', left], ['Right', right]] as const) {
+    if (/^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(value.trim())) {
+      // The sentinel of the "a number" option, which clears the side and opens
+      // the number box beside the dropdown (`ComputeStep.tsx`).
+      await page.locator(`#selectComputed${suffix}-${index}`).selectOption('(a number)');
+      await page.locator(`#inputComputed${suffix}-${index}`).fill(value);
+    } else {
+      await page.locator(`#selectComputed${suffix}-${index}`).selectOption(value);
+    }
+  }
+  await page.waitForTimeout(300);
+}
+
 /** Add one filter row in the Visual FilterStep UI: pick a column, operator, and value.
  *  Omit `value` for the no-value operators (is_null / is_not_null). */
 export async function addVisualFilter(
@@ -451,15 +554,20 @@ export async function addVisualFilter(
 /** Bind the filter row at `index` to a dashboard filter parameter (\${paramId}).
  *  Uses the `${}` chip in FilterStep: single-param → btnBindParam-${index};
  *  multi-param → selectBindParam-${index}. The operator must be param-bindable
- *  (equals / not_equals / numeric comparisons); `between` and LIKE-family are not.
+ *  (equals / not_equals / numeric comparisons, and `between`); the LIKE-family is not.
+ *  `between` has two boxes, so `box` says which one: 'value' is the lower bound
+ *  and 'valueTo' the upper, whose controls carry the `To` suffix
+ *  (btnBindParamTo-${index} / selectBindParamTo-${index}).
  *  Call AFTER addVisualFilter with a compatible operator (do NOT pass a value). */
 export async function bindVisualFilterToParam(
   page: Page,
   index: number,
   paramId: string,
+  box: 'value' | 'valueTo' = 'value',
 ): Promise<void> {
-  const singleBtn = page.locator(`#btnBindParam-${index}`);
-  const multiSel  = page.locator(`#selectBindParam-${index}`);
+  const suffix    = box === 'value' ? '' : 'To';
+  const singleBtn = page.locator(`#btnBindParam${suffix}-${index}`);
+  const multiSel  = page.locator(`#selectBindParam${suffix}-${index}`);
   if (await singleBtn.count() > 0) {
     await singleBtn.click();
   } else {

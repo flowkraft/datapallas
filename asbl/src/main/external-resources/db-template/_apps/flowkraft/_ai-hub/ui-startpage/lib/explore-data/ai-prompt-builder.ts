@@ -79,6 +79,44 @@ function formatSchemaForTables(schema: SchemaInfo, tableNames: string[]): string
   );
 }
 
+// ── The database the AI writes for ────────────────────────────────────────────
+
+/**
+ * The name the prompt gives the database, by connection type. The AI is told the database's own
+ * name, not the product's type code: `ibmdb2` is Db2, `supabase` and `timescaledb` are PostgreSQL,
+ * and `mssql` is SQL Server. The order matters the same way it does in `dialectFor`: `mariadb`
+ * before `mysql`, and the PostgreSQL flavours before `postgres`.
+ *
+ * A type nobody here knows is passed on as the user wrote it - it still names something - and only
+ * a missing type falls back to plain `SQL`. The names are not guessed from `dialectFor`, whose
+ * fallback is SQLite: telling an AI "SQLite" about a database that is not SQLite would be worse
+ * than telling it nothing.
+ */
+const VENDOR_NAMES: ReadonlyArray<readonly [string, string]> = [
+  ["sqlite", "SQLite"],
+  ["duckdb", "DuckDB"],
+  ["supabase", "PostgreSQL (Supabase)"],
+  ["timescale", "PostgreSQL (TimescaleDB)"],
+  ["postgres", "PostgreSQL"],
+  ["mariadb", "MariaDB"],
+  ["mysql", "MySQL"],
+  ["clickhouse", "ClickHouse"],
+  ["sqlserver", "Microsoft SQL Server"],
+  ["mssql", "Microsoft SQL Server"],
+  ["sql server", "Microsoft SQL Server"],
+  ["oracle", "Oracle Database"],
+  ["db2", "IBM Db2 for Linux, UNIX and Windows"],
+];
+
+/** The value `[DATABASE_VENDOR]` is filled with for a connection type. */
+export function vendorNameFor(connectionType?: string | null): string {
+  const raw = (connectionType ?? "").trim();
+  if (!raw) return "SQL";
+  const t = raw.toLowerCase();
+  for (const [needle, name] of VENDOR_NAMES) if (t.includes(needle)) return name;
+  return raw;
+}
+
 // ── Main builder ──────────────────────────────────────────────────────────────
 
 export interface BuildPromptOptions {
@@ -170,7 +208,7 @@ export async function buildAiPrompt(opts: BuildPromptOptions): Promise<string> {
   );
 
   // 2. Fill in DB vendor
-  template = template.replace(/\[DATABASE_VENDOR\]/g, connectionType || "SQL");
+  template = template.replace(/\[DATABASE_VENDOR\]/g, vendorNameFor(connectionType));
 
   // 3. Fill in schema or cube DSL
   if (kind === "table" && schema && tableName) {

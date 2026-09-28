@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 // lucide-react removed
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
-import { columnKindsOf, sqlForDataSource } from "@/lib/explore-data/sql-builder";
+import { columnKindsOf, extractParamTypes, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import { getConnectionType, updateCanvas } from "@/lib/explore-data/rb-api";
 import { saveDashboardToDataPallas } from "./rbApiClient";
@@ -62,6 +62,8 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         connectionType,
         temporalColumnNamesOf(w.shape),
         columnKindsOf(w.columns),
+        // A Date parameter a filter is bound to means the whole day it names (F8).
+        extractParamTypes(state.parametersConfig?.parameters),
       );
       return built ? { ...w, dataSource: { ...ds, generatedSql: built } } : w;
     });

@@ -1,5 +1,7 @@
 package com.flowkraft.exploredata.export;
 
+import com.sourcekraft.documentburster.common.reportparameters.DateParameters;
+
 import groovy.lang.GroovyShell;
 import org.codehaus.groovy.control.CompilationFailedException;
 import org.codehaus.groovy.control.CompilerConfiguration;
@@ -72,6 +74,17 @@ public class ScriptAssembler {
         SqlLine(String text, List<String> params) { this(text, params, null); }
     }
 
+    /**
+     * What the script binds for one parameter: the value itself when the dashboard declared no type
+     * for it — which is every parameter of every dashboard published before types were bound, so
+     * their scripts are written exactly as they were — and the value through {@code __typed}
+     * otherwise.
+     */
+    private static String bindExpression(String paramName, Map<String, String> paramTypes) {
+        String type = paramTypes.get(paramName);
+        return type == null ? paramName : "__typed('" + paramName + "', '" + type + "', " + paramName + ")";
+    }
+
     // ── Public entry point ────────────────────────────────────────────────────
 
     /**
@@ -106,13 +119,53 @@ public class ScriptAssembler {
         }
 
         // 3. Read parameter IDs straight from the canonical Map — no DSL parse needed.
-        List<String> paramNames = (parametersList == null ? List.<Map<String, Object>>of() : parametersList).stream()
+        List<Map<String, Object>> declaredParams =
+                parametersList == null ? List.<Map<String, Object>>of() : parametersList;
+        List<String> paramNames = declaredParams.stream()
                 .map(p -> {
                     Object id = p.get("id");
                     return id instanceof String s ? s : null;
                 })
                 .filter(s -> s != null && !s.isBlank())
                 .toList();
+
+        // The type each parameter was declared with on the canvas ("Date", "Integer", …). Every
+        // value reaches the script as text, so this is what a bind has to go through to become the
+        // type the database expects — the same conversion the canvas path binds with.
+        Map<String, String> paramTypes = new LinkedHashMap<>();
+        for (Map<String, Object> declared : declaredParams) {
+            Object id = declared.get("id");
+            Object type = declared.get("type");
+            if (id instanceof String name && !name.isBlank() && type instanceof String t && !t.isBlank())
+                paramTypes.put(name, t);
+        }
+
+        // A date range of whole days ends at midnight after the last day, and the SQL the canvas
+        // generated names that day as a parameter of its own (`${to__next_day}`). It is declared
+        // beside the parameter it derives from, with the same declared type, and from there on it is
+        // a parameter like any other: the line guard, the bind and the "no value, no filter" rule all
+        // read it as one. The value itself comes from DateParameters - the conversion the canvas path
+        // derives it with too, so a published dashboard and the canvas it came from ask the same
+        // question.
+        StringBuilder everyQuery = new StringBuilder();
+        for (Map<String, Object> w : widgets) {
+            everyQuery.append(dsField(w, "sql")).append('\n').append(dsField(w, "script")).append('\n');
+        }
+        List<String> withDerived = new ArrayList<>(paramNames);
+        for (String name : paramNames) {
+            if (!DateParameters.isDayType(paramTypes.get(name)))
+                continue;
+            String derived = DateParameters.nextDayName(name);
+            if (withDerived.contains(derived))
+                continue;
+            // Only what a widget actually asks for: a Date parameter used plainly - or given a list of
+            // days for an IN - has no day after it, and nothing is written for it.
+            if (!DateParameters.mentions(everyQuery.toString(), derived))
+                continue;
+            withDerived.add(derived);
+            paramTypes.put(derived, paramTypes.get(name));
+        }
+        paramNames = withDerived;
 
         // 4. Build script text + line-to-widget blame map
         StringBuilder sb          = new StringBuilder();
@@ -131,6 +184,28 @@ public class ScriptAssembler {
         sb.append("def userVars    = ctx.variables.getUserVariables(ctx.token ?: '')\n");
         sb.append("\n");
 
+        // ── Declared-type conversion ──────────────────────────────────────────
+        // The same ParameterTypes the canvas path binds through, so a published dashboard and the
+        // canvas it was published from ask the database the same question. A parameter with no
+        // declared type is never handed to it: the generator writes the bare value, as before.
+        sb.append("def __typed = { String __id, String __type, __v ->\n");
+        sb.append("    (__v == null || __v.toString().isEmpty()) ? __v\n");
+        sb.append("        : com.sourcekraft.documentburster.common.reportparameters.ParameterTypes"
+                + ".typed(__id, __type, __v.toString())\n");
+        sb.append("}\n\n");
+
+        // ── The day after a Date parameter ────────────────────────────────────
+        // The upper bound of a range of whole days, derived from the parameter it follows and never
+        // written in SQL (nine vendors, nine texts for "+ 1 day"). Written only when the dashboard
+        // has a Date parameter, so every script published without one is written as it was.
+        if (paramNames.stream().anyMatch(DateParameters::isNextDayName)) {
+            sb.append("def __nextDay = { String __id, String __type, __v ->\n");
+            sb.append("    (__v == null || __v.toString().isEmpty()) ? __v\n");
+            sb.append("        : com.sourcekraft.documentburster.common.reportparameters.DateParameters"
+                    + ".nextDay(__id, __type, __v.toString())\n");
+            sb.append("}\n\n");
+        }
+
         // ── IN-list expansion helper ──────────────────────────────────────────
         // At runtime, splits a CSV param value (\"1, 5, 10\") into a real SQL list.
         // Without this, IN (${p}) emits IN (?) and binds the entire CSV string as
@@ -140,7 +215,7 @@ public class ScriptAssembler {
         // → query runs without that filter → user sees rows for every value.
         // `before` = the binds of scalar params earlier on the same line; they are
         // added only when the line is appended, and ahead of the list values.
-        sb.append("def __bindInList = { sb, params, csv, sqlPrefix, before = [] ->\n");
+        sb.append("def __bindInList = { sb, params, csv, sqlPrefix, before = [], type = null, id = null ->\n");
         sb.append("    if (!csv) return false\n");
         sb.append("    if (csv.toString().trim() == '*') return false\n");
         sb.append("    def vals = csv.toString().split(',').collect { it.trim() }.findAll { it }\n");
@@ -148,6 +223,7 @@ public class ScriptAssembler {
         sb.append("    sb.append(sqlPrefix + ' (' + vals.collect { '?' }.join(', ') + ')\\n')\n");
         sb.append("    params.addAll(before)\n");
         sb.append("    vals.each { v ->\n");
+        sb.append("        if (type) { params << __typed(id, type, v); return }\n");
         sb.append("        try { params << Long.parseLong(v) }\n");
         sb.append("        catch (e) { try { params << Double.parseDouble(v) } catch (e2) { params << v } }\n");
         sb.append("    }\n");
@@ -156,8 +232,17 @@ public class ScriptAssembler {
 
         // ── Canvas parameters ─────────────────────────────────────────────────
         for (String paramName : paramNames) {
-            sb.append("def ").append(paramName)
-              .append(" = userVars?.get('").append(paramName).append("')?.toString()\n");
+            if (DateParameters.isNextDayName(paramName)) {
+                // Derived, not read from the filter bar: the day after the one it follows.
+                String base = DateParameters.baseName(paramName);
+                sb.append("def ").append(paramName)
+                  .append(" = __nextDay('").append(base).append("', '")
+                  .append(paramTypes.get(paramName)).append("', ").append(base).append(")\n");
+            } else {
+                sb.append("def ").append(paramName)
+                  .append(" = userVars?.get('").append(paramName).append("')?.toString()\n");
+            }
+            // Either way it is a value that may be empty, and an empty one is no filter.
             sb.append("def has").append(capitalize(paramName))
               .append(" = (").append(paramName)
               .append(" != null && !").append(paramName).append(".isEmpty())\n");
@@ -217,14 +302,36 @@ public class ScriptAssembler {
                             String p = sl.inListParam();
                             List<String> used = new ArrayList<>(sl.params());
                             used.add(p);
-                            sb.append("    if (").append(guard(paramNames, used)).append(") { ")
+                            // A list with nothing in it, or the "all" wildcard, is not a filter:
+                            // the helper appends nothing and answers false, and the line then says
+                            // so - `WHERE 1=1` - instead of vanishing and leaving the next line
+                            // opening with AND. SqlParameterLines.notAppliedForm is that rule, the
+                            // one the canvas applies to the same SQL.
+                            String listNoop = SqlParameterLines.notAppliedForm(sl.text());
+                            sb.append("    if (");
+                            if (listNoop != null) sb.append("!(");
+                            sb.append(guard(paramNames, used));
+                            sb.append(listNoop != null ? " && " : ") { ")
                               .append("__bindInList(").append(vp).append("_sb, ")
                               .append(vp).append("_params, ").append(p).append(", '")
                               .append(esc).append("'");
-                            if (!sl.params().isEmpty()) {
-                                sb.append(", [").append(String.join(", ", sl.params())).append("]");
+                            List<String> before = sl.params().stream()
+                                    .map(scalar -> bindExpression(scalar, paramTypes)).toList();
+                            String listType = paramTypes.get(p);
+                            // `before` comes first positionally, so a typed list has to name it even
+                            // when there are no scalar binds on the line.
+                            if (!before.isEmpty() || listType != null) {
+                                sb.append(", [").append(String.join(", ", before)).append("]");
                             }
-                            sb.append(") }\n");
+                            if (listType != null) {
+                                sb.append(", '").append(listType).append("', '").append(p).append("'");
+                            }
+                            if (listNoop == null) {
+                                sb.append(") }\n");
+                            } else {
+                                sb.append("))) { ").append(vp).append("_sb.append('")
+                                  .append(escapeForGroovySingleQuoted(listNoop)).append("\\n') }\n");
+                            }
                         } else if (sl.params().isEmpty()) {
                             sb.append("    ").append(vp).append("_sb.append('").append(esc).append("\\n')\n");
                         } else {
@@ -232,9 +339,18 @@ public class ScriptAssembler {
                             sb.append("    if (").append(guard(paramNames, sl.params())).append(") { ")
                               .append(vp).append("_sb.append('").append(esc).append("\\n')");
                             for (String p : sl.params()) {
-                                sb.append("; ").append(vp).append("_params << ").append(p);
+                                sb.append("; ").append(vp).append("_params << ")
+                                  .append(bindExpression(p, paramTypes));
                             }
-                            sb.append(" }\n");
+                            sb.append(" }");
+                            // The same rule for a scalar filter: no value, no filter, and the line
+                            // keeps the query whole by asking something that is always true.
+                            String noop = SqlParameterLines.notAppliedForm(sl.text());
+                            if (noop != null) {
+                                sb.append(" else { ").append(vp).append("_sb.append('")
+                                  .append(escapeForGroovySingleQuoted(noop)).append("\\n') }");
+                            }
+                            sb.append("\n");
                         }
                     }
                     if (hasCond) {
@@ -394,68 +510,18 @@ public class ScriptAssembler {
     }
 
     /**
-     * Splits user SQL into per-line records. Any {@code ${paramName}} token —
-     * including surrounding single or double quotes, e.g. {@code '${p}'} — is
-     * replaced with a JDBC {@code ?} placeholder and the parameter name is
-     * recorded once per placeholder, in the order the placeholders appear on
-     * the line (JDBC binds by position). Lines with no parameter references are
-     * returned as-is.
-     * Trailing blank lines are stripped so the generated SQL has no redundant
-     * trailing newlines.
+     * Splits user SQL into per-line records, through {@link SqlParameterLines} - the one parser
+     * the canvas reads the same SQL with, so what a line uses, and therefore when it applies, is
+     * decided once for the dashboard and for the canvas it was published from.
      */
     private static List<SqlLine> analyzeSqlLines(String sql, List<String> paramNames) {
         List<SqlLine> result = new ArrayList<>();
-        Pattern scalarP = scalarTokenPattern(paramNames);
-        for (String rawLine : sql.stripTrailing().split("\n", -1)) {
-            // Detect IN-list pattern first: anything ending with `IN (${p})` or
-            // `NOT IN (${p})`. The prefix (operator + column, e.g. `WHERE "id"`)
-            // is carried as the line's text; the runtime __bindInList helper appends
-            // ` IN (?, ?, ...)` and binds each value with type coercion.
-            String inListParam = null;
-            String processed = rawLine;
-            for (String p : paramNames) {
-                Pattern inListP = Pattern.compile(
-                    "^(.*?)\\s+(IN|NOT\\s+IN)\\s*\\(\\s*\\$\\{" + Pattern.quote(p) + "\\}\\s*\\)\\s*;?\\s*$",
-                    Pattern.CASE_INSENSITIVE);
-                Matcher m = inListP.matcher(rawLine);
-                if (m.matches()) {
-                    String prefix = m.group(1).trim();
-                    String op = m.group(2).toUpperCase().replaceAll("\\s+", " ");
-                    processed = prefix + " " + op; // e.g. `WHERE "id" IN` — helper appends ` (?, ?, ...)`
-                    inListParam = p;
-                    break;
-                }
-            }
-            List<String> lineParams = new ArrayList<>();
-            processed = substituteScalars(processed, scalarP, lineParams);
-            if (inListParam != null) {
-                // Scalar params before the IN clause (`AND y = ${b} AND id IN (${ids})`)
-                // bind ahead of the list values, via the helper's `before` argument.
-                result.add(new SqlLine(processed, Collections.unmodifiableList(lineParams), inListParam));
-                continue;
-            }
-            result.add(new SqlLine(processed, Collections.unmodifiableList(lineParams)));
+        for (SqlParameterLines.Line line : SqlParameterLines.split(sql, paramNames)) {
+            result.add(new SqlLine(line.jdbcText(), line.params(), line.inListParam()));
         }
         return result;
     }
 
-    /**
-     * Scalar param substitution: one left-to-right scan, so a param used twice is
-     * bound twice and params bind in the order they appear, not the order they were
-     * defined ({@code BETWEEN ${to} AND ${from}} must not swap the values). Each
-     * token becomes {@code ?}; its param name is appended to {@code params}.
-     */
-    private static String substituteScalars(String text, Pattern scalarP, List<String> params) {
-        if (scalarP == null) return text;
-        Matcher m = scalarP.matcher(text);
-        StringBuilder out = new StringBuilder();
-        while (m.find()) {
-            params.add(m.group(1) != null ? m.group(1) : m.group(2) != null ? m.group(2) : m.group(3));
-            m.appendReplacement(out, "?");
-        }
-        m.appendTail(out);
-        return out.toString();
-    }
 
     /** {@code hasA && hasB} — each param the line uses, once, in definition order. */
     private static String guard(List<String> paramNames, Collection<String> used) {
@@ -463,20 +529,6 @@ public class ScriptAssembler {
                 .map(p -> "has" + capitalize(p)).collect(Collectors.joining(" && "));
     }
 
-    /**
-     * Matches one {@code ${p}} token of any declared param, together with what
-     * surrounds it: {@code '${p}'} or {@code "${p}"} (quotes consumed, the value is
-     * bound), and an optional leading backslash — {@code \${p}} surfaces when SQL
-     * is pasted from a TS template-literal source where {@code \$} escapes the
-     * interpolation; Monaco keeps the backslash and it has no meaning in SQL.
-     * Group 1, 2 or 3 holds the param name. Null when there are no params.
-     */
-    private static Pattern scalarTokenPattern(List<String> paramNames) {
-        if (paramNames.isEmpty()) return null;
-        String names = paramNames.stream().map(Pattern::quote).collect(Collectors.joining("|"));
-        String tok = "\\\\?\\$\\{(" + names + ")\\}";
-        return Pattern.compile("'" + tok + "'|\"" + tok + "\"|" + tok);
-    }
 
     /** Escapes a string for safe embedding inside a Groovy single-quoted string literal. */
     private static String escapeForGroovySingleQuoted(String s) {

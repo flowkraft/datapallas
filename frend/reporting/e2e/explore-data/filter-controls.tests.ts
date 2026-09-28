@@ -4,6 +4,7 @@
 // Comment above each `it(...)` is the matching row from README.md.
 
 import { autoFilterPaneField } from "@/lib/explore-data/smart-defaults";
+import { filterValueApplies } from "@/lib/explore-data/filter-values";
 
 import {
   customersSchema,
@@ -95,5 +96,28 @@ describe("Dashboard builder adds a 'filter employees by title' — only 2 distin
       employeesCardinality,
     );
     expect(suggested).toBe("Title");
+  });
+});
+
+describe("A dashboard filter the user clears means the filter is not applied", () => {
+  // The canvas hears every value through one `valueChange` event, fired both when
+  // <rb-parameters> seeds itself and when a person changes a control. Empty means
+  // opposite things in the two cases, and `rbInit` is what tells them apart.
+  it("a value a person cleared reaches the canvas — the filter goes, the rows come back", () => {
+    expect(filterValueApplies("", "2026-01-31", false)).toBe(true);
+  });
+
+  it("the component seeding itself may not write an empty over a value already there", () => {
+    expect(filterValueApplies("", "2026-01-31", true)).toBe(false);
+  });
+
+  it("a seeded empty with nothing already there is simply the empty value", () => {
+    expect(filterValueApplies("", undefined, true)).toBe(true);
+    expect(filterValueApplies("", "", true)).toBe(true);
+  });
+
+  it("a value that is something always applies, whoever wrote it", () => {
+    expect(filterValueApplies("2026-01-31", "", true)).toBe(true);
+    expect(filterValueApplies("2026-01-31", "2026-02-01", false)).toBe(true);
   });
 });

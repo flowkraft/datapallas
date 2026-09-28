@@ -304,7 +304,10 @@ public class DatabaseConnectionManager implements AutoCloseable {
 
 		// Create Jdbi instance
 		log.trace("Creating Jdbi instance using DataSource for code: {}", connectionCode);
-		Jdbi jdbi = Jdbi.create(dataSource);
+		// Dashboard parameters are bound as the java.time value their declared type made of them;
+		// this is what sends that value to the driver as it is. See ParameterArguments.
+		Jdbi jdbi = com.sourcekraft.documentburster.common.reportparameters.ParameterArguments
+				.install(Jdbi.create(dataSource));
 		log.debug("Jdbi instance created successfully for code: {}", connectionCode);
 
 		// Cache it

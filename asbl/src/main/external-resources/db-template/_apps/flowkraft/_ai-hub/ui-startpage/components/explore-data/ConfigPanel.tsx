@@ -5,7 +5,7 @@ import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { DataSource, WidgetDisplayConfig } from "@/lib/stores/canvas-store";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { fetchSchema, executeQuery, getConnectionType } from "@/lib/explore-data/rb-api";
-import { columnKindsOf, sqlForDataSource } from "@/lib/explore-data/sql-builder";
+import { columnKindsOf, extractParamTypes, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { isTemporalExtraction, probeCardinality, probeSemanticType, pickDefaultAxes, canReuseAxisPicks, splitDimsAndMeasures, groupWidgetsByShape, groupWidgetsBySensibility, rankChartSubtypes, type CardinalityMap } from "@/lib/explore-data/smart-defaults";
 import { seedDisplayConfigForType, synthesizePostAggColumns, temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import type { TableSchema } from "@/lib/explore-data/types";
@@ -56,7 +56,7 @@ const EMPTY_COLS: ColumnSchema[] = [];
 let _cpRenderN = 0;
 
 export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
-  const { widgets, selectedWidgetId, connectionId, updateWidgetDataSource, updateWidgetDisplayConfig, changeWidgetRenderMode, setWidgetColumnsFromSchema } = useCanvasStore();
+  const { widgets, selectedWidgetId, connectionId, parametersConfig, updateWidgetDataSource, updateWidgetDisplayConfig, changeWidgetRenderMode, setWidgetColumnsFromSchema } = useCanvasStore();
   const selectedWidget = widgets.find((w) => w.id === selectedWidgetId);
   _cpRenderN++;
   console.log('[ConfigPanel] #' + _cpRenderN + ' widgetId=' + selectedWidget?.id +
@@ -204,6 +204,8 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
       getConnectionType(connectionId),
       temporalColumnNamesOf(selectedWidget?.shape),
       columnKindsOf(schemaCols),
+      // A Date parameter a filter is bound to means the whole day it names (F8).
+      extractParamTypes(parametersConfig?.parameters),
     );
     if (!sql) return;
 
@@ -354,6 +356,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
         getConnectionType(connectionId),
         temporalColumnNamesOf(selectedWidget?.shape),
         columnKindsOf(schemaCols),
+        extractParamTypes(parametersConfig?.parameters),
       );
       if (!sql) { setDetectError("Write or generate a query first"); return; }
       const nextVersion = (ds.executeVersion ?? 0) + 1;

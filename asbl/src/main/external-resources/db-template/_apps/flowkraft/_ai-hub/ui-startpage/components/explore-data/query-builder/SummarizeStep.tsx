@@ -6,6 +6,10 @@ import type { ColumnSchema } from "@/lib/explore-data/types";
 import type { NumericBucket, TimeBucket } from "@/lib/stores/canvas-store";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
 import {
+  AGGREGATIONS, HAVING_OPS, SHARE_LABEL, RUNNING_TOTAL_LABEL,
+  RUNNING_TOTAL_AGGREGATIONS, type AggregateCondition,
+} from "@/lib/explore-data/aggregations";
+import {
   nicerBinWidth, probeNumericRange, probeDateRange,
   guessTimeBucket, isTemporal,
 } from "@/lib/explore-data/smart-defaults";
@@ -13,9 +17,13 @@ import {
 interface AggItem {
   aggregation: string;
   field: string;
+  /** Keep only the groups whose aggregate passes this (F2). */
+  having?: AggregateCondition;
+  /** Read this aggregate as the share it holds of the whole result (F9). */
+  share?: boolean;
+  /** Read this aggregate as the total accumulated up to this bucket (F10). */
+  runningTotal?: boolean;
 }
-
-const AGGREGATIONS = ["COUNT", "SUM", "AVG", "MIN", "MAX"];
 
 /** Numeric binning presets — 4 fixed targets + Off. `numBins === null` =
  *  "don't bin" (group by raw value). */
@@ -48,6 +56,11 @@ const TEMPORAL_BUCKET_OPTIONS: { label: string; value: TemporalBucketChoice; gro
 
 interface SummarizeStepProps {
   columns: ColumnSchema[];
+  /** What an aggregate may be taken over: the table's columns plus the query's
+   *  computed ones (F6). Only the aggregate's field list uses it - Group by stays
+   *  on the table's own columns, whose ranges the bucket pickers probe. Absent
+   *  means the columns themselves, which is what every caller had. */
+  aggregateColumns?: ColumnSchema[];
   summarize: AggItem[];
   groupBy: string[];
   groupByNumericBuckets?: Record<string, NumericBucket>;
@@ -66,13 +79,14 @@ interface SummarizeStepProps {
 }
 
 export function SummarizeStep({
-  columns, summarize, groupBy,
+  columns, aggregateColumns, summarize, groupBy,
   groupByNumericBuckets = {},
   groupByBuckets = {},
   onChange, connectionId, tableName,
 }: SummarizeStepProps) {
   // Columns keyed by name — avoid repeated finds.
   const colByName = Object.fromEntries(columns.map((c) => [c.columnName, c]));
+  const aggFields = aggregateColumns ?? columns;
 
   // Probe caches — filled on demand / lazily on group-by add. Keyed per-column
   // so each column is probed at most once per query edit session (the probe
@@ -103,6 +117,12 @@ export function SummarizeStep({
     const updated = summarize.map((a, idx) => (idx === i ? { ...a, ...patch } : a));
     onChange(updated, groupBy, groupByNumericBuckets, groupByBuckets);
   };
+
+  /** True while the query is one series over time: grouped by exactly one
+   *  column, and that column bucketed by day, week, month, quarter or year.
+   *  That is the only shape a running total has an order to accumulate in, and
+   *  it is the same rule `runsAsRunningTotal` applies to the SQL. */
+  const groupsByOneTimeBucket = groupBy.length === 1 && Boolean(groupByBuckets[groupBy[0]]);
 
   const removeAgg = (i: number) => {
     onChange(summarize.filter((_, idx) => idx !== i), groupBy, groupByNumericBuckets, groupByBuckets);
@@ -248,15 +268,15 @@ export function SummarizeStep({
       </div>
 
       {summarize.map((a, i) => (
-        <div key={i} className="flex items-center gap-1.5 ml-6">
+        <div key={i} className="flex items-center gap-1.5 ml-6 flex-wrap">
           <select
             id={`selectAggFunc-${i}`}
             value={a.aggregation}
             onChange={(e) => updateAgg(i, { aggregation: e.target.value })}
-            className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content w-20"
+            className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content w-28"
           >
             {AGGREGATIONS.map((agg) => (
-              <option key={agg} value={agg}>{agg}</option>
+              <option key={agg.value} value={agg.value}>{agg.label}</option>
             ))}
           </select>
           <span className="text-xs text-base-content/60">of</span>
@@ -266,10 +286,70 @@ export function SummarizeStep({
             onChange={(e) => updateAgg(i, { field: e.target.value })}
             className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
           >
-            {columns.map((c) => (
+            {aggFields.map((c) => (
               <option key={c.columnName} value={c.columnName}>{c.columnName}</option>
             ))}
           </select>
+          {/* The condition on this aggregate: "of more than 150 deals". The
+              value box appears only once a comparison is picked, and both are
+              needed before the query says anything different (F2). */}
+          <select
+            id={`selectHavingOp-${i}`}
+            value={a.having?.operator ?? ""}
+            onChange={(e) => updateAgg(i, {
+              having: e.target.value
+                ? { operator: e.target.value, value: a.having?.value ?? "" }
+                : undefined,
+            })}
+            className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content w-20"
+          >
+            <option value="">any</option>
+            {HAVING_OPS.map((op) => (
+              <option key={op.value} value={op.value}>{op.label}</option>
+            ))}
+          </select>
+          {a.having && (
+            <input
+              id={`inputHavingValue-${i}`}
+              type="number"
+              step="any"
+              value={a.having.value}
+              placeholder="0"
+              onChange={(e) => updateAgg(i, { having: { operator: a.having!.operator, value: e.target.value } })}
+              className="w-20 text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content"
+            />
+          )}
+          {/* "% of total": the same aggregate, read as a share (F9). The
+              column it writes is `<alias>_pct`, so a chart or a grid can show
+              both the number and the share side by side. */}
+          <label className="flex items-center gap-1 text-xs text-base-content/60 whitespace-nowrap">
+            <input
+              id={`checkShare-${i}`}
+              type="checkbox"
+              checked={a.share ?? false}
+              onChange={(e) => updateAgg(i, { share: e.target.checked ? true : undefined })}
+              className="checkbox checkbox-xs"
+            />
+            {SHARE_LABEL}
+          </label>
+          {/* "Running total": the same aggregate, accumulated over the time
+              bucket (F10). Offered only while the query is one series over
+              time and the aggregate is one that adds up - the same rule the
+              SQL follows, so what the step offers is what the query can
+              answer. The column it writes is `<alias>_running`. */}
+          {groupsByOneTimeBucket && RUNNING_TOTAL_AGGREGATIONS.includes(a.aggregation) && (
+            <label className="flex items-center gap-1 text-xs text-base-content/60 whitespace-nowrap">
+              <input
+                id={`checkRunningTotal-${i}`}
+                type="checkbox"
+                checked={a.runningTotal ?? false}
+                onChange={(e) => updateAgg(i, { runningTotal: e.target.checked ? true : undefined })}
+                className="checkbox checkbox-xs"
+              />
+              {RUNNING_TOTAL_LABEL}
+            </label>
+          )}
+
           <button id={`btnRemoveAgg-${i}`} onClick={() => removeAgg(i)} className="p-0.5 rounded hover:bg-error/10 text-base-content/60 hover:text-error">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
           </button>
@@ -330,6 +410,7 @@ export function SummarizeStep({
                       <>
                         <span className="text-[10px] text-base-content/60">bucket:</span>
                         <select
+                          id={`selectTimeBucket-${col}`}
                           value={currentTimeBucket ?? "none"}
                           onChange={(e) => setTemporalBucket(col, e.target.value as TemporalBucketChoice)}
                           disabled={isProbing}

@@ -13,12 +13,29 @@
 //   quoteTableRef   same, per part of a `schema.table` reference
 //   limitClause     ANSI `FETCH FIRST n ROWS ONLY` is not accepted everywhere
 //   sqlLiteral      `DATE '…'` is not accepted by SQLite/SQL Server; booleans
-//                   are `TRUE`/`FALSE` on some vendors and `1`/`0` on others
-//   containsFilter  MySQL and MariaDB reject `ESCAPE '\'`; ClickHouse has no
-//                   `ESCAPE` clause at all (both verified)
-//   bucketExpr      ANSI has no date formatting or date truncation
+//                   are `TRUE`/`FALSE` on some vendors and `1`/`0` on others;
+//                   SQL Server reads a plain `'…'` in the database code page,
+//                   so a value with a character outside ASCII needs `N'…'`
+//   likeFilter      contains, starts with and ends with, which differ only in
+//                   where the `%` goes: MySQL and MariaDB reject `ESCAPE '\'`;
+//                   ClickHouse has no `ESCAPE` clause at all (both verified);
+//                   and ClickHouse folds Unicode in `lowerUTF8`, not in
+//                   `lower` (SQLite folds ASCII only and cannot be fixed here)
+//   containsFilter  the contains case of `likeFilter`, under its own name
+//   bucketExpr      ANSI has no date formatting or date truncation. Two of
+//                   these forms also have to be session-independent or fast:
+//                   the weekday, because SQL Server's `DATEPART(WEEKDAY, …)`
+//                   counts from `SET DATEFIRST` and Oracle's `TO_CHAR(c, 'D')`
+//                   from the session's territory, so the same Monday changed
+//                   number with the login; and SQL Server's day, month and
+//                   year, which use `CONVERT(VARCHAR(10), c, 23)` because
+//                   `FORMAT()` is a CLR call made once per row
 //   datetimeExpr    SQLite has no temporal type; its driver stores epoch ms
 //   dateExpr        same, and the decoded value needs truncating to compare
+//   decimalDivision `a / b` is integer division on PostgreSQL, SQL Server,
+//                   SQLite and Db2, so the left side is cast first: SQLite
+//                   has no decimal type, where the other eight take
+//                   `DECIMAL(31,4)` (verified on all nine)
 //   aliasSafeColumnRef
 //                   ClickHouse resolves an unqualified name in SELECT and
 //                   GROUP BY to a SELECT alias of the same name instead of
@@ -105,8 +122,9 @@ export function bucketExpr(
     case "sqlserver":
       return sqlserverBucket(c, bucket);
     case "oracle":
+      return oracleBucket(c, bucket, "oracle");
     case "db2":
-      return oracleBucket(c, bucket);
+      return oracleBucket(c, bucket, "db2");
     default:
       return sqliteBucket(c, bucket);
   }
@@ -177,6 +195,29 @@ export function datetimeExpr(column: string, dialect: SqlDialect = DEFAULT_DIALE
 export function dateExpr(column: string, dialect: SqlDialect = DEFAULT_DIALECT): string {
   const c = quoteIdent(column, dialect);
   return dialect === "sqlite" ? `date(${sqliteDateNormalize(c)})` : c;
+}
+
+/**
+ * Divide one numeric expression by another and get a fractional result, with a
+ * zero divisor giving NULL instead of an error — what a computed `÷` column
+ * is (`computed-columns.ts`).
+ *
+ * Why not ANSI: `a / b` is integer division on PostgreSQL, SQL Server, SQLite
+ * and Db2 when both sides are integers, so the left side is cast to a decimal
+ * type first. `DECIMAL(31,4)` is that cast on eight of the nine, but SQLite has
+ * no decimal type: `CAST(x AS DECIMAL(31,4))` only gives the value NUMERIC
+ * affinity, which leaves an integer an integer, and the division stays integer
+ * division. SQLite therefore casts to REAL, its own floating type. Callers must
+ * not branch on the dialect to decide that — they call this and get a
+ * fractional quotient either way.
+ */
+export function decimalDivision(
+  left: string,
+  right: string,
+  dialect: SqlDialect = DEFAULT_DIALECT,
+): string {
+  const asDecimal = dialect === "sqlite" ? "REAL" : "DECIMAL(31,4)";
+  return `(CAST(${left} AS ${asDecimal}) / NULLIF(${right}, 0))`;
 }
 
 function sqliteBucket(c: string, b: TimeBucket): string {
@@ -268,20 +309,29 @@ function clickhouseBucket(c: string, b: TimeBucket): string {
 }
 
 function sqlserverBucket(c: string, b: TimeBucket): string {
-  // FORMAT() requires SQL Server 2012+. Acceptable for modern deployments.
+  // FORMAT() is a CLR call: SQL Server leaves the query processor for the .NET
+  // runtime once per row, which is an order of magnitude slower than a plain
+  // CONVERT and cannot be folded into an index. Style 23 is the ISO
+  // `yyyy-mm-dd`, so the day label is that string, the month label its first 7
+  // characters and the year its first 4 - the same three labels FORMAT wrote.
   switch (b) {
-    case "day":     return `FORMAT(${c}, 'yyyy-MM-dd')`;
+    case "day":     return `CONVERT(VARCHAR(10), ${c}, 23)`;
     // SQL Server has ISO_WEEK but no ISO year datepart. DATEADD(DAY, 26 -
     // ISO_WEEK, d) always lands inside the ISO year's own calendar year, so
     // YEAR() of it is the ISO year. Pairing DATEPART(YEAR, d) with ISO_WEEK
     // called 2024-12-30 "2024-W01".
     case "week":    return `CONCAT(DATEPART(YEAR, DATEADD(DAY, 26 - DATEPART(ISO_WEEK, ${c}), ${c})), '-W', RIGHT('0' + CAST(DATEPART(ISO_WEEK, ${c}) AS VARCHAR), 2))`;
-    case "month":   return `FORMAT(${c}, 'yyyy-MM')`;
+    case "month":   return `LEFT(CONVERT(VARCHAR(10), ${c}, 23), 7)`;
     case "quarter": return `CONCAT(DATEPART(YEAR, ${c}), '-Q', DATEPART(QUARTER, ${c}))`;
-    case "year":    return `FORMAT(${c}, 'yyyy')`;
-    // SQL Server WEEKDAY is 1..7 but start depends on DATEFIRST; subtract 1
-    // to get 0..6 with the current DATEFIRST as day-0.
-    case "day-of-week":     return `DATEPART(WEEKDAY, ${c}) - 1`;
+    case "year":    return `LEFT(CONVERT(VARCHAR(10), ${c}, 23), 4)`;
+    // SQL Server's WEEKDAY is 1..7 counted from whatever `SET DATEFIRST` says
+    // the week starts on, and DATEFIRST comes from the login's language: the
+    // same Monday is 2 for an English login (DATEFIRST 7, Sunday first) and 1
+    // for a German one (DATEFIRST 1, Monday first), so `DATEPART(WEEKDAY, c) - 1`
+    // labelled the same day differently per session. `@@DATEFIRST` is the
+    // setting itself, so adding it back cancels it: the result is 0..6 with
+    // Sunday 0 under every DATEFIRST, which is what the other eight write.
+    case "day-of-week":     return `(DATEPART(WEEKDAY, ${c}) + @@DATEFIRST - 1) % 7`;
     // DATEPART(HOUR, …) is rejected on a DATE column ("The datepart hour is not
     // supported by date function datepart for data type date"); the CAST to
     // DATETIME2 is accepted on DATE and on DATETIME2 alike (verified).
@@ -291,16 +341,28 @@ function sqlserverBucket(c: string, b: TimeBucket): string {
   }
 }
 
-function oracleBucket(c: string, b: TimeBucket): string {
-  // Oracle/DB2 share TO_CHAR syntax.
+function oracleBucket(c: string, b: TimeBucket, dialect: "oracle" | "db2"): string {
+  // Oracle/DB2 share TO_CHAR syntax - every form below is the same text on both,
+  // except the weekday, which each says in its own session-independent way.
   switch (b) {
     case "day":     return `TO_CHAR(${c}, 'YYYY-MM-DD')`;
     case "week":    return `TO_CHAR(${c}, 'IYYY') || '-W' || TO_CHAR(${c}, 'IW')`;
     case "month":   return `TO_CHAR(${c}, 'YYYY-MM')`;
     case "quarter": return `TO_CHAR(${c}, 'YYYY') || '-Q' || TO_CHAR(${c}, 'Q')`;
     case "year":    return `TO_CHAR(${c}, 'YYYY')`;
-    // Oracle TO_CHAR 'D' is 1..7 with locale-dependent start; subtract 1.
-    case "day-of-week":     return `TO_NUMBER(TO_CHAR(${c}, 'D')) - 1`;
+    // `TO_CHAR(c, 'D')` is 1..7 counted from whatever day the territory starts
+    // the week on (`NLS_TERRITORY`): 1 is Sunday in AMERICA and Monday in
+    // GERMANY, so the same Monday came out 1 or 0 depending on the session.
+    // Neither form below can move:
+    //   Oracle - `TRUNC(c, 'IW')` is the Monday of the ISO week, and ISO weeks
+    //     start on Monday whatever the territory, so the day's distance from
+    //     that Monday is fixed; +1 and MOD 7 turn Monday 1 ... Sunday 0.
+    //     `TRUNC(c)` drops the time part, so a timestamp counts as its day.
+    //   Db2 - `DAYOFWEEK` is 1 = Sunday by definition, locale-free, so one
+    //     subtraction gives 0..6 Sunday-first. (Db2 has no TRUNC(c, 'IW').)
+    case "day-of-week":     return dialect === "db2"
+      ? `DAYOFWEEK(${c}) - 1`
+      : `MOD(TRUNC(${c}) - TRUNC(${c}, 'IW') + 1, 7)`;
     // EXTRACT(HOUR FROM …) rejects an Oracle/DB2 DATE column ("invalid
     // extract field for extract source"); TO_CHAR 'HH24' works on DATE and on
     // TIMESTAMP alike.
@@ -471,8 +533,17 @@ export function sqlLiteral(value: unknown, kind: SqlLiteralKind, dialect: SqlDia
 function stringLiteral(value: string, dialect: SqlDialect): string {
   let body = value.replace(/'/g, "''");
   if (BACKSLASH_IN_LITERALS.has(dialect)) body = body.replace(/\\/g, "\\\\");
+  // SQL Server converts a plain `'…'` to the database code page before it
+  // compares it, so `'Łódź'` arrives as `'L?dz'` and matches nothing in an
+  // NVARCHAR column; `N'Łódź'` stays Unicode. The prefix is written only when
+  // the value really holds a character outside ASCII, because an `N'…'`
+  // compared with a VARCHAR column converts the column instead and costs the
+  // index seek. Every other vendor's literal is Unicode already.
+  if (dialect === "sqlserver" && NON_ASCII.test(value)) return `N'${body}'`;
   return `'${body}'`;
 }
+
+const NON_ASCII = /[^\x00-\x7F]/;
 
 function isTruthy(value: unknown): boolean {
   if (typeof value === "boolean") return value;
@@ -491,11 +562,42 @@ function isTruthy(value: unknown): boolean {
  * clause at all and uses `\` as its own LIKE escape. Both verified.
  */
 export function containsFilter(columnExpr: string, value: string, dialect: SqlDialect = DEFAULT_DIALECT): string {
+  return likeFilter(columnExpr, value, "contains", dialect);
+}
+
+/** Where in the column the value has to sit: anywhere, at the start, or at the end. */
+export type LikeFilterKind = "contains" | "starts" | "ends";
+
+/**
+ * The one LIKE predicate behind the Filter step's `contains`, `starts with` and
+ * `ends with`. All three escape the wildcards in the value and fold the case of
+ * both sides, so they differ in one thing only: where the `%` goes.
+ *
+ * `starts with` used to write `c LIKE 'v%'` itself: a `%` or a `_` the user
+ * typed was a wildcard, and whether the match ignored case was left to the
+ * column's collation - so the same filter answered 646 rows on MySQL and 0 on
+ * PostgreSQL, Oracle, Db2, DuckDB and ClickHouse.
+ */
+export function likeFilter(
+  columnExpr: string,
+  value: string,
+  kind: LikeFilterKind,
+  dialect: SqlDialect = DEFAULT_DIALECT,
+): string {
   const escapeChar = dialect === "clickhouse" ? "\\" : "!";
-  const pattern = `%${escapeLikeWildcards(value ?? "", escapeChar)}%`;
+  const escaped = escapeLikeWildcards(value ?? "", escapeChar);
+  const pattern = kind === "contains" ? `%${escaped}%`
+    : kind === "starts" ? `${escaped}%`
+      : `%${escaped}`;
   const literal = sqlLiteral(pattern, "string", dialect);
   const escapeClause = dialect === "clickhouse" ? "" : ` ESCAPE '${escapeChar}'`;
-  return `LOWER(${columnExpr}) LIKE LOWER(${literal})${escapeClause}`;
+  // ClickHouse's `lower()` folds ASCII only, so `MÜNCHEN` and `ŁÓDŹ` came back
+  // unchanged from it and a filter typed in lower case found nothing;
+  // `lowerUTF8()` folds them. The other seven non-SQLite vendors fold Unicode
+  // in `LOWER` itself. SQLite folds ASCII only and has no Unicode lower without
+  // ICU - not fixable here, and written down as a known limit (T12).
+  const lower = dialect === "clickhouse" ? "lowerUTF8" : "LOWER";
+  return `${lower}(${columnExpr}) LIKE ${lower}(${literal})${escapeClause}`;
 }
 
 /** Escape the LIKE wildcards `%` and `_`, and the escape character itself, so

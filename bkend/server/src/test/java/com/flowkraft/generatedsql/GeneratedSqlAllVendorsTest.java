@@ -23,6 +23,8 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.jdbi.v3.core.Jdbi;
+
+import com.flowkraft.queries.services.QueriesService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -596,11 +598,39 @@ class GeneratedSqlAllVendorsTest {
 		private final List<List<Object>> rows;
 		private final Integer rowCount;
 		private final boolean ordered;
-		private final List<?> columns;
+		/**
+		 * The labels the result must come back with, compared exactly: one list when every vendor
+		 * answers the same, or a map vendor -> labels when they do not - an unquoted alias comes
+		 * back folded to upper case on Oracle and Db2, which is recorded here per vendor, not fixed.
+		 */
+		private final Object columns;
 		private final List<?> vendors;
+		/**
+		 * Per vendor, a session setting that used to change this case's answer, e.g.
+		 * {@code SET DATEFIRST 1} on SQL Server. The case is asked twice on such a vendor - in the
+		 * loop's own session and under this one - and must answer the same both times.
+		 */
+		private final Map<String, String> session;
+		/**
+		 * A dashboard parameter's value, as text - which is how every path delivers one - keyed by
+		 * its name; null for a case with no parameters. The SQL then holds {@code ${name}}, and the
+		 * case is asked the way the canvas asks it: through {@code QueriesService.prepare}, which
+		 * turns the placeholders into JDBI's {@code :name} and binds each value as the type
+		 * {@link #paramTypes} declares.
+		 */
+		private final Map<String, Object> params;
+		/** The type each parameter was declared with on the canvas: {@code {to: "Date"}}. */
+		private final Map<String, String> paramTypes;
+		/**
+		 * Group D only: the vendors that refuse this SQL, each with the database's own words. The
+		 * user's SQL is the user's - a database that does not know a construct is a fact about that
+		 * database, recorded here and reported, never a reason to rewrite what the user typed.
+		 */
+		private final Map<String, String> excluded;
 
 		private AiHubCase(String id, String group, List<List<Object>> rows, Integer rowCount, boolean ordered,
-				List<?> columns, List<?> vendors) {
+				Object columns, List<?> vendors, Map<String, String> session, Map<String, Object> params,
+				Map<String, String> paramTypes, Map<String, String> excluded) {
 			this.id = id;
 			this.group = group;
 			this.rows = rows;
@@ -608,6 +638,10 @@ class GeneratedSqlAllVendorsTest {
 			this.ordered = ordered;
 			this.columns = columns;
 			this.vendors = vendors;
+			this.session = session;
+			this.params = params;
+			this.paramTypes = paramTypes;
+			this.excluded = excluded;
 		}
 	}
 
@@ -664,10 +698,18 @@ class GeneratedSqlAllVendorsTest {
 			if ((rows == null) == (rowCount == null)) {
 				throw new IllegalStateException("Case '" + id + "' must hold either rows or a rowCount.");
 			}
+			@SuppressWarnings("unchecked")
+			Map<String, String> session = (Map<String, String>) one.get("session");
+			@SuppressWarnings("unchecked")
+			Map<String, Object> params = (Map<String, Object>) one.get("params");
+			@SuppressWarnings("unchecked")
+			Map<String, String> paramTypes = (Map<String, String>) one.get("paramTypes");
+			@SuppressWarnings("unchecked")
+			Map<String, String> excluded = (Map<String, String>) one.get("excluded");
 			read.add(new AiHubCase(id, Objects.toString(one.get("group"), ""), rows,
 					rowCount instanceof Number ? ((Number) rowCount).intValue() : null,
-					Boolean.TRUE.equals(one.get("ordered")), (List<?>) one.get("columns"),
-					(List<?>) one.get("vendors")));
+					Boolean.TRUE.equals(one.get("ordered")), one.get("columns"),
+					(List<?>) one.get("vendors"), session, params, paramTypes, excluded));
 		}
 		return read;
 	}
@@ -675,9 +717,13 @@ class GeneratedSqlAllVendorsTest {
 	/**
 	 * Why an AI Hub case is not asked on a vendor, or null when it is.
 	 *
-	 * <p>Group A names its tables {@code cube_demo.<table>}, and the loop seeds {@code cube_demo} on
-	 * every vendor, so every vendor answers it - that loop is itself the proof that AI Hub reaches a
-	 * schema outside the default one. Groups B and C read Northwind and the star schema by their
+	 * <p>Groups A and D name their tables {@code cube_demo.<table>}, and the loop seeds
+	 * {@code cube_demo} on every vendor, so every vendor answers them - group D being the user's own
+	 * SQL, sent byte for byte, with the vendors that refuse a construct listed in the case's
+	 * {@code excluded}; group A being what the generator wrote - that loop is itself the proof that AI Hub reaches a
+	 * schema outside the default one. A group A case carries an {@code excluded} vendor only where
+	 * the driver will not make the binding at all, however the SQL is written: ClickHouse reads no
+	 * timestamp against a date column (p1b). Groups B and C read Northwind and the star schema by their
 	 * bare names, which only the two legs that run on a copy of a shipped sample file have; and a
 	 * case may name the vendors it belongs to ({@code fact_sales} is built only by the DuckDB and
 	 * ClickHouse warehouse creators, and ClickHouse has no {@code main} schema here).
@@ -686,17 +732,99 @@ class GeneratedSqlAllVendorsTest {
 		if (one.vendors != null && !one.vendors.contains(vendor)) {
 			return "the case runs on " + one.vendors + " only";
 		}
-		if (!"A".equals(one.group) && !IN_PROCESS.contains(vendor)) {
+		if (one.excluded != null && one.excluded.containsKey(vendor)) {
+			return "this database refuses the construct, recorded rather than fixed: " + one.excluded.get(vendor);
+		}
+		if (!"A".equals(one.group) && !"D".equals(one.group) && !IN_PROCESS.contains(vendor)) {
 			return "group " + one.group + " reads Northwind and the star schema by their bare names, which only the "
 					+ "legs running on a copy of a shipped sample file have (" + IN_PROCESS + ")";
 		}
 		return null;
 	}
 
-	/** Returns null when the case passes, otherwise the one line that says what went wrong. */
+	/**
+	 * Returns null when the case passes, otherwise the one line that says what went wrong.
+	 *
+	 * <p>A case may name a session setting per vendor ({@code session}), one that used to change its
+	 * answer: {@code SET DATEFIRST 1} on SQL Server, {@code ALTER SESSION SET NLS_TERRITORY =
+	 * 'GERMANY'} on Oracle. It is then asked twice on that vendor - in the loop's own session, then
+	 * under the hostile one - and must answer the same both times. The setting is read before it is
+	 * changed and put back afterwards, whatever happens, because the loop holds ONE connection per
+	 * vendor and every later case runs on it. This is test code: nothing here builds SQL, and the
+	 * generator knows nothing about sessions - that is the point, its forms cannot be moved by one.
+	 */
 	private String runAiHubCase(Jdbi jdbi, String vendor, AiHubCase one) {
 
-		String sql = aiHubSql.get(one.id).get(vendor);
+		String problem = askAiHubCase(jdbi, vendor, one);
+		if (problem != null) return problem;
+
+		String hostile = one.session == null ? null : one.session.get(vendor);
+		if (hostile == null) return null;
+
+		String restore;
+		try {
+			restore = sessionSettingOf(jdbi, vendor);
+		} catch (Exception broken) {
+			return reportAiHub(vendor, one, aiHubSql.get(one.id).get(vendor),
+					"the session setting could not be read back, so `" + hostile + "` was not applied: " + broken);
+		}
+		try {
+			jdbi.useHandle(handle -> handle.execute(hostile));
+			String underHostile = askAiHubCase(jdbi, vendor, one);
+			return underHostile == null ? null : "\n  (asked again under `" + hostile + "`)" + underHostile;
+		} catch (Exception broken) {
+			return reportAiHub(vendor, one, aiHubSql.get(one.id).get(vendor),
+					"`" + hostile + "` was refused: " + broken);
+		} finally {
+			jdbi.useHandle(handle -> handle.execute(restore));
+		}
+	}
+
+	/**
+	 * The statement that puts this vendor's session setting back where it was.
+	 *
+	 * <p>Read from the database rather than assumed: the default is the image's, not ours - SQL
+	 * Server's DATEFIRST comes from the login's language, Oracle's territory from the instance.
+	 */
+	private static String sessionSettingOf(Jdbi jdbi, String vendor) {
+		switch (vendor) {
+			case "sqlserver":
+				return "SET DATEFIRST " + jdbi.withHandle(
+						handle -> handle.createQuery("SELECT @@DATEFIRST").mapTo(Integer.class).one());
+			case "oracle":
+				return "ALTER SESSION SET NLS_TERRITORY = '" + jdbi.withHandle(
+						handle -> handle.createQuery(
+								"SELECT value FROM nls_session_parameters WHERE parameter = 'NLS_TERRITORY'")
+								.mapTo(String.class).one()) + "'";
+			default:
+				throw new IllegalStateException("A case names a session setting for '" + vendor
+						+ "', but there is no way written here to read that vendor's setting and put it back.");
+		}
+	}
+
+	/** The case asked once, in whatever session the connection is in. */
+	private String askAiHubCase(Jdbi jdbi, String vendor, AiHubCase one) {
+
+		String generated = aiHubSql.get(one.id).get(vendor);
+
+		// A case with parameters is asked the way the canvas asks it: the generated SQL holds
+		// `${to}`, and QueriesService - the production path, not a copy of it - rewrites that to
+		// JDBI's `:to` and binds the text as the type the dashboard declared. That conversion is
+		// the whole point of such a case: bound as text, `close_date <= :to` is an error on
+		// PostgreSQL and silently the wrong rows on SQLite.
+		// Group D is the user's own SQL. It goes through the canvas's own prepare too - P2 put a
+		// line parser in there - although it binds nothing, so the text that reaches the database
+		// is proven to be the text the user typed.
+		QueriesService.PreparedSql prepared = one.params == null && !"D".equals(one.group) ? null
+				: QueriesService.prepare(generated, one.params == null ? Map.of() : one.params,
+						one.paramTypes == null ? Map.of() : one.paramTypes);
+		String sql = prepared == null ? generated : prepared.sql();
+		Map<String, Object> binds = prepared == null || prepared.params() == null ? Map.of()
+				: prepared.params();
+		if ("D".equals(one.group) && !generated.equals(sql)) {
+			return reportAiHub(vendor, one, sql,
+					"QueriesService.prepare changed the user's own SQL on its way to the database");
+		}
 
 		List<Map<String, Object>> answered;
 		try {
@@ -704,7 +832,15 @@ class GeneratedSqlAllVendorsTest {
 				// The mapping SqlExecutor.executeQuery uses: the label as the vendor's catalog
 				// reports it, never JDBI's lower-cased mapToMap, because AI Hub reads a probe's
 				// columns back by name.
-				return handle.createQuery(sql).map((resultSet, context) -> {
+				org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+				for (Map.Entry<String, Object> bind : binds.entrySet()) {
+					if (bind.getValue() instanceof List<?> list) {
+						query.bindList(bind.getKey(), list);
+					} else {
+						query.bind(bind.getKey(), bind.getValue());
+					}
+				}
+				return query.map((resultSet, context) -> {
 					java.sql.ResultSetMetaData meta = resultSet.getMetaData();
 					Map<String, Object> row = new LinkedHashMap<>();
 					for (int column = 1; column <= meta.getColumnCount(); column++) {
@@ -714,15 +850,17 @@ class GeneratedSqlAllVendorsTest {
 				}).list();
 			});
 		} catch (Exception broken) {
-			return reportAiHub(vendor, one, sql, "the database refused it: " + broken);
+			return reportAiHub(vendor, one, sql, "the database refused it: " + broken
+					+ (binds.isEmpty() ? "" : " (parameters " + binds + ")"));
 		}
 
-		if (one.columns != null) {
+		Object wantedColumns = one.columns instanceof Map<?, ?> perVendor ? perVendor.get(vendor) : one.columns;
+		if (wantedColumns != null) {
 			List<String> labels = answered.isEmpty() ? List.of() : new ArrayList<>(answered.get(0).keySet());
-			if (!one.columns.equals(labels)) {
+			if (!wantedColumns.equals(labels)) {
 				// Oracle and Db2 fold an unquoted alias to upper case, and AI Hub would not find it.
 				return reportAiHub(vendor, one, sql,
-						"the columns came back as " + labels + " instead of " + one.columns);
+						"the columns came back as " + labels + " instead of " + wantedColumns);
 			}
 		}
 
@@ -768,7 +906,8 @@ class GeneratedSqlAllVendorsTest {
 						throw wrapped.getCause();
 					}
 				});
-		return Jdbi.create(() -> notClosing);
+		return com.sourcekraft.documentburster.common.reportparameters.ParameterArguments
+				.install(Jdbi.create(() -> notClosing));
 	}
 
 	// ── the databases ────────────────────────────────────────────────────────────

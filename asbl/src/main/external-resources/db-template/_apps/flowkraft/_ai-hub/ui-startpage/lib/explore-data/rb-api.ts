@@ -82,10 +82,15 @@ export async function executeQuery(
   connectionId: string,
   sql: string,
   filterValues?: Record<string, string>,
+  paramTypes?: Record<string, string>,
 ): Promise<QueryResult> {
   console.log('[executeQuery] FETCH-START sql=' + sql.slice(0, 80));
   const body: Record<string, unknown> = { connectionId, sql };
   if (filterValues && Object.keys(filterValues).length > 0) body.params = filterValues;
+  // The declared type of each parameter travels with its value: the backend binds a
+  // date as a date and a number as a number, which the strict vendors require and the
+  // lenient ones answer differently from one another without.
+  if (paramTypes && Object.keys(paramTypes).length > 0) body.paramTypes = paramTypes;
   const res = await fetch(`${RB_BASE}/queries/run-sql`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -105,9 +110,11 @@ export async function executeScript(
   connectionId: string,
   script: string,
   filterValues?: Record<string, string>,
+  paramTypes?: Record<string, string>,
 ): Promise<QueryResult> {
   const body: Record<string, unknown> = { connectionId, script };
   if (filterValues && Object.keys(filterValues).length > 0) body.filterValues = filterValues;
+  if (paramTypes && Object.keys(paramTypes).length > 0) body.paramTypes = paramTypes;
   const res = await fetch(`${RB_BASE}/queries/run-script`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

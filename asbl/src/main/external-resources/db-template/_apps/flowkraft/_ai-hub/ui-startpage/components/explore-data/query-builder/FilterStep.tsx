@@ -3,6 +3,22 @@
 // lucide-react removed
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { columnClassOf, isParamRef } from "@/lib/explore-data/sql-builder";
+// The operator lists live next to the generator (`lib/explore-data/filter-operators.ts`),
+// so a test can walk every operator this step offers and check that the
+// generator writes SQL for it. This step only picks the list for the column's
+// kind, as it always did.
+import {
+  BOOLEAN_OPS,
+  DATE_OPS,
+  FILTER_MATCHES,
+  NO_VALUE_OPS,
+  NUMBER_OPS,
+  PARAM_BINDABLE_OPS,
+  RELATIVE_DATE_N_OPS,
+  STRING_OPS,
+  type FilterMatch,
+  type OperatorDef,
+} from "@/lib/explore-data/filter-operators";
 
 interface FilterItem {
   column: string;
@@ -10,71 +26,6 @@ interface FilterItem {
   value: string;
   valueTo?: string;
 }
-
-// --- Type-aware operator groups ---
-
-interface OperatorDef {
-  value: string;
-  label: string;
-}
-
-const STRING_OPS: OperatorDef[] = [
-  { value: "equals", label: "=" },
-  { value: "not_equals", label: "!=" },
-  { value: "contains", label: "contains" },
-  { value: "starts_with", label: "starts with" },
-  { value: "ends_with", label: "ends with" },
-  { value: "in", label: "in" },
-  { value: "not_in", label: "not in" },
-  { value: "is_null", label: "is null" },
-  { value: "is_not_null", label: "is not null" },
-];
-
-const NUMBER_OPS: OperatorDef[] = [
-  { value: "equals", label: "=" },
-  { value: "not_equals", label: "!=" },
-  { value: "greater_than", label: ">" },
-  { value: "greater_or_equal", label: ">=" },
-  { value: "less_than", label: "<" },
-  { value: "less_or_equal", label: "<=" },
-  { value: "between", label: "between" },
-  { value: "in", label: "in" },
-  { value: "not_in", label: "not in" },
-  { value: "is_null", label: "is null" },
-  { value: "is_not_null", label: "is not null" },
-];
-
-const DATE_OPS: OperatorDef[] = [
-  { value: "equals", label: "=" },
-  { value: "not_equals", label: "!=" },
-  { value: "greater_than", label: "after" },
-  { value: "greater_or_equal", label: "on or after" },
-  { value: "less_than", label: "before" },
-  { value: "less_or_equal", label: "on or before" },
-  { value: "between", label: "between" },
-  { value: "is_null", label: "is null" },
-  { value: "is_not_null", label: "is not null" },
-];
-
-const BOOLEAN_OPS: OperatorDef[] = [
-  { value: "equals", label: "=" },
-  { value: "is_null", label: "is null" },
-  { value: "is_not_null", label: "is not null" },
-];
-
-const NO_VALUE_OPS = ["is_null", "is_not_null"];
-
-// Operators where a single ${paramName} placeholder makes sense in SQL.
-// LIKE-family and `between` are excluded: LIKE needs the % wrapper (complex),
-// between needs two values. `in` / `not_in` are bindable: the param value
-// (CSV string like "1, 5, 10") is split into a real SQL list at the JDBI layer
-// via bindList — see DatabaseHelper.convertToJdbiParameters / QueriesService.
-const PARAM_BINDABLE_OPS = new Set([
-  "equals", "not_equals",
-  "greater_than", "greater_or_equal",
-  "less_than", "less_or_equal",
-  "in", "not_in",
-]);
 
 // Type detection from column schema
 /**
@@ -112,11 +63,14 @@ interface FilterStepProps {
   columns: ColumnSchema[];
   filters: FilterItem[];
   onChange: (filters: FilterItem[]) => void;
+  /** Whether a row has to pass all the filters or any one of them (F3). */
+  match?: FilterMatch;
+  onMatchChange?: (match: FilterMatch) => void;
   /** Parameter IDs defined in the canvas filterDsl — drives the "bind to param" toggle. */
   availableParams?: string[];
 }
 
-export function FilterStep({ columns, filters, onChange, availableParams = [] }: FilterStepProps) {
+export function FilterStep({ columns, filters, onChange, match = "all", onMatchChange, availableParams = [] }: FilterStepProps) {
   const addFilter = () => {
     onChange([...filters, { column: columns[0]?.columnName || "", operator: "equals", value: "" }]);
   };
@@ -152,8 +106,68 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
     onChange(filters.filter((_, idx) => idx !== i));
   };
 
-  const bindParam = (i: number, paramId: string) => {
-    updateFilter(i, { value: `\${${paramId}}` });
+  const bindParam = (i: number, paramId: string, field: "value" | "valueTo" = "value") => {
+    updateFilter(i, { [field]: `\${${paramId}}` });
+  };
+
+  /** One box of a `between` filter: the parameter it is bound to, or the input
+   *  and the control that binds it. A date range on a dashboard is two Date
+   *  parameters, one per box, so each box binds on its own; the single-value
+   *  operators keep their own markup below. */
+  const betweenBox = (i: number, field: "value" | "valueTo", value: string, placeholder: string) => {
+    const id = field === "value" ? "" : "To";
+    if (isParamRef(value)) {
+      return (
+        <div title={value} className="flex items-center gap-1 min-w-0 flex-1 bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
+          <span className="text-xs font-mono text-primary truncate flex-1">{value}</span>
+          <button
+            type="button"
+            onClick={() => updateFilter(i, { [field]: "" })}
+            className="text-primary/50 hover:text-primary shrink-0"
+            title="Unbind parameter — use a literal value instead"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      );
+    }
+    return (
+      <>
+        <input
+          id={`inputFilterValue${id}-${i}`}
+          value={value}
+          onChange={(e) => updateFilter(i, { [field]: e.target.value })}
+          placeholder={placeholder}
+          className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
+        />
+        {availableParams.length > 0 && (
+          availableParams.length === 1 ? (
+            <button
+              id={`btnBindParam${id}-${i}`}
+              type="button"
+              title={`Bind to dashboard filter \${${availableParams[0]}}`}
+              onClick={() => bindParam(i, availableParams[0], field)}
+              className="text-[11px] font-mono text-base-content/60 hover:text-primary hover:bg-primary/10 px-1 py-0.5 rounded shrink-0 leading-none"
+            >
+              {'${}'}
+            </button>
+          ) : (
+            <select
+              id={`selectBindParam${id}-${i}`}
+              value=""
+              onChange={(e) => { if (e.target.value) bindParam(i, e.target.value, field); }}
+              className="text-[11px] font-mono bg-base-100 border border-base-300 rounded px-1 py-0.5 text-base-content/60 hover:text-primary shrink-0"
+              title="Bind to a dashboard filter parameter"
+            >
+              <option value="">{'${}'}</option>
+              {availableParams.map((prm) => (
+                <option key={prm} value={prm}>{prm}</option>
+              ))}
+            </select>
+          )
+        )}
+      </>
+    );
   };
 
   return (
@@ -164,6 +178,23 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
         <button id="btnAddFilter" onClick={addFilter} className="p-0.5 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
         </button>
+        {/* One filter is one condition, so there is nothing to join and nothing
+            to ask; the dropdown appears with the second one. */}
+        {filters.length > 1 && (
+          <>
+            <span className="text-xs text-base-content/60">match</span>
+            <select
+              id="selectFilterMatch"
+              value={match}
+              onChange={(e) => onMatchChange?.(e.target.value as FilterMatch)}
+              className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content"
+            >
+              {FILTER_MATCHES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {filters.map((f, i) => {
@@ -199,19 +230,9 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
             {/* Value area */}
             {f.operator === "between" ? (
               <div className="flex items-center gap-1 flex-1 min-w-0">
-                <input
-                  value={f.value}
-                  onChange={(e) => updateFilter(i, { value: e.target.value })}
-                  placeholder="min"
-                  className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
-                />
+                {betweenBox(i, "value", f.value, "min")}
                 <span className="text-[10px] text-base-content/60 shrink-0">and</span>
-                <input
-                  value={f.valueTo || ""}
-                  onChange={(e) => updateFilter(i, { valueTo: e.target.value })}
-                  placeholder="max"
-                  className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
-                />
+                {betweenBox(i, "valueTo", f.valueTo || "", "max")}
               </div>
             ) : !NO_VALUE_OPS.includes(f.operator) && (
               boundToParam ? (
@@ -236,7 +257,9 @@ export function FilterStep({ columns, filters, onChange, availableParams = [] }:
                     placeholder={
                       f.operator === "in" || f.operator === "not_in"
                         ? "comma-separated: 1, 5, 10  or  PAID, PENDING"
-                        : "value"
+                        : RELATIVE_DATE_N_OPS.includes(f.operator)
+                          ? "how many, e.g. 30"
+                          : "value"
                     }
                     className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
                   />

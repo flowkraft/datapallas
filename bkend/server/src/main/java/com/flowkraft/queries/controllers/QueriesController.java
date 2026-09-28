@@ -51,11 +51,16 @@ public class QueriesController {
         @SuppressWarnings("unchecked")
         Map<String, Object> params = (Map<String, Object>) request.get("params");
 
+        // The type each parameter was declared with on the dashboard, e.g. {to: "Date"}. Values
+        // arrive as text on every path, so this is what tells the bind a date from a string.
+        @SuppressWarnings("unchecked")
+        Map<String, String> paramTypes = (Map<String, String>) request.get("paramTypes");
+
         log.info("Executing ad-hoc query on connection '{}': {}", connectionId,
                 sql != null && sql.length() > 100 ? sql.substring(0, 100) + "..." : sql);
 
         try {
-            List<Map<String, Object>> rows = queriesService.executeAdHocQuery(connectionId, sql, params);
+            List<Map<String, Object>> rows = queriesService.executeAdHocQuery(connectionId, sql, params, paramTypes);
             return Mono.just(Map.of("data", rows, "rowCount", rows.size()));
         } catch (ConnectionNotAllowedException refused) {
             // Not an exploration error: a refusal must reach the caller as 403, not as a 200 with an

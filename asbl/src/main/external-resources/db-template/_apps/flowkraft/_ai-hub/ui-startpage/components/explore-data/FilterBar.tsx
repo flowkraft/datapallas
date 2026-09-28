@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useCanvasStore, type ParamMeta } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "@/components/explore-data/widgets/useRbElementReady";
 import { executeQuery } from "@/lib/explore-data/rb-api";
+import { filterValueApplies } from "@/lib/explore-data/filter-values";
 import { FilterBarConfigPanel } from "@/components/explore-data/config-panels/FilterBarConfigPanel";
 
 // Re-export for callers (legacy import path).
@@ -112,13 +113,17 @@ export function FilterBar() {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<Record<string, unknown>>;
       const values = ce.detail ?? {};
-      // <rb-parameters> can echo valueChange on init/re-render. Drop empty
-      // strings that would shadow a seeded default; setFilterValue is also
-      // idempotent so same-value echoes are no-ops.
+      // <rb-parameters> echoes valueChange when it seeds itself as well as when a
+      // person changes a filter, and says which through `rbInit` (not part of the
+      // values: it is non-enumerable, so every other consumer sees what it always
+      // saw). A seeded empty may not shadow a default; a cleared one must go
+      // through - an empty filter is not a filter, and the widgets have to hear it.
+      // setFilterValue is idempotent, so same-value echoes are no-ops.
+      const fromInit = (ce.detail as { rbInit?: boolean })?.rbInit === true;
       const currentFV = useCanvasStore.getState().filterValues;
       for (const [paramName, value] of Object.entries(values)) {
         const next = value == null ? "" : String(value);
-        if (next === "" && currentFV[paramName] && currentFV[paramName] !== "") continue;
+        if (!filterValueApplies(next, currentFV[paramName], fromInit)) continue;
         setFilterValue(paramName, next);
       }
     };

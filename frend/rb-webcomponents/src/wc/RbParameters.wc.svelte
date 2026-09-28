@@ -4,6 +4,9 @@
   //console.log('[rb-parameters] ====== COMPONENT SCRIPT LOADED ======');
   
   import { onMount, createEventDispatcher, tick } from 'svelte';
+  // Which control each declared type is filled in with lives in its own module, so `npm test`
+  // can ask it directly - see src/shared/parameter-controls.test.ts.
+  import { controlTypeOf, defaultForType } from '../shared/parameter-controls';
 
   // ParamRef type for cross-field references
   interface ParamRef {
@@ -224,7 +227,7 @@
     });
 
     validateAll(true); // Force emit on init
-    emitValues();
+    emitValues(true);
     // In standalone published dashboard mode, auto-apply defaults to sibling widgets
     // so the initial load reflects the default filter value without requiring a Reload click
     if (showReload && hostElement) {
@@ -247,10 +250,7 @@
   }
 
   function getDefaultForType(type: string): any {
-    const t = type.toLowerCase();
-    if (t === 'boolean') return false;
-    if (t === 'integer' || t === 'decimal') return null;
-    return '';
+    return defaultForType(type);
   }
 
   // Sanitise an arbitrary option value into characters safe for an HTML id /
@@ -286,10 +286,7 @@
   // FilterBarConfigPanel UI dropdown convention, no hyphens e.g. `multiselect`)
   // and normalises common aliases so both styles render the same control.
   function getControlType(p: ParamMeta): string {
-    const raw = (p.uiHints?.control || p.uiHints?.widget || p.type || 'text').toLowerCase();
-    if (raw === 'multiselect') return 'multi-select';
-    if (raw === 'datepicker')  return 'date';
-    return raw;
+    return controlTypeOf(p as any);
   }
 
   // Resolve min constraint (non-ref only for HTML attributes)
@@ -598,9 +595,14 @@
     touched[p.id] = true;
   }
 
-  // Emit current values
-  function emitValues() {
+  // Emit current values. `fromInit` says this is the component seeding itself from the declared
+  // defaults, not a person changing a filter: the two mean opposite things when a value is empty,
+  // and only the page that hosts the controls can tell them apart. The flag rides along on the
+  // detail without being part of it - non-enumerable, so Object.entries, JSON.stringify and every
+  // consumer that reads the values see exactly what they saw before.
+  function emitValues(fromInit = false) {
     const values = { ...formValues };
+    Object.defineProperty(values, 'rbInit', { value: fromInit, enumerable: false });
     dispatch('valueChange', values);
     // Emit as CustomEvent for Angular/vanilla JS consumers
     emitHostEvent('valueChange', values);

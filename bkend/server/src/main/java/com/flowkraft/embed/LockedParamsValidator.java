@@ -1,6 +1,5 @@
 package com.flowkraft.embed;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.flowkraft.reporting.services.ReportingService;
+import com.sourcekraft.documentburster.common.reportparameters.ParameterTypes;
 import com.sourcekraft.documentburster.common.reportparameters.ParameterValidator;
 import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
 import com.sourcekraft.documentburster.common.reportparameters.ValidationException;
@@ -137,29 +137,12 @@ public class LockedParamsValidator {
 	/**
 	 * {@link ParameterValidator} compares dates as dates and numbers as numbers, so a locked value
 	 * arriving as text has to become the type the report declared before it can be checked at all.
+	 *
+	 * <p>It is {@link ParameterTypes} that decides what each declared type becomes, because the same
+	 * locked value is later bound to the query: checking it as one type and binding it as another
+	 * would be a link that validates and then answers the wrong rows.
 	 */
 	private Object typed(ReportParameter parameter, String value) {
-
-		switch (StringUtils.lowerCase(parameter.type)) {
-
-		case "integer":
-			try {
-				return Long.valueOf(value.trim());
-			} catch (NumberFormatException e) {
-				throw new IllegalArgumentException(
-						"Parameter '" + parameter.id + "' expects a whole number, not '" + value + "'");
-			}
-
-		case "date":
-			try {
-				return java.sql.Date.valueOf(LocalDate.parse(value.trim()));
-			} catch (Exception e) {
-				throw new IllegalArgumentException(
-						"Parameter '" + parameter.id + "' expects a date as yyyy-MM-dd, not '" + value + "'");
-			}
-
-		default:
-			return value;
-		}
+		return ParameterTypes.typed(parameter.id, parameter.type, value);
 	}
 }

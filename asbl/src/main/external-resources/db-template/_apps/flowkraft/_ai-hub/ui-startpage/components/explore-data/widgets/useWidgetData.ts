@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { SchemaInfo, TableSchema } from "@/lib/explore-data/types";
 import { executeQuery, executeScript, fetchSchema, getConnectionType, hasConnectionsCached, ensureConnectionsLoaded } from "@/lib/explore-data/rb-api";
-import { columnKindsOf, sqlForDataSource } from "@/lib/explore-data/sql-builder";
+import { columnKindsOf, extractParamTypes, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { asTableRef, findTable, tableKey, type TableRef } from "@/lib/explore-data/table-ref";
 import { temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import { LAST_EXEC } from "@/lib/explore-data/widget-exec-cache";
@@ -65,6 +65,10 @@ export function useWidgetData(widgetId: string) {
   const widget = useCanvasStore((s) => s.widgets.find((w) => w.id === widgetId));
   const connectionId = useCanvasStore((s) => s.connectionId);
   const filterValues = useCanvasStore((s) => s.filterValues);
+  // The declared type of each dashboard parameter, from the canonical Map the
+  // parameter bar is built from: it travels with the values so the backend binds
+  // a date as a date, exactly as the published dashboard does.
+  const parametersConfig = useCanvasStore((s) => s.parametersConfig);
   const filterVersion = useCanvasStore((s) => s.filterVersion);
   // Store reader — this is what the widget renders from.  QueryBuilder and
   // ConfigPanel read the same entry so they all see one execution.
@@ -153,7 +157,7 @@ export function useWidgetData(widgetId: string) {
       let cancelled = false;
       let settled = false;
       setWidgetQueryLoading(widgetId);
-      executeScript(connectionId, script, filterValues ?? {})
+      executeScript(connectionId, script, filterValues ?? {}, extractParamTypes(parametersConfig?.parameters))
         .then((res) => { settled = true; if (!cancelled) setWidgetQueryResult(widgetId, res); })
         .catch((e) => { settled = true; if (!cancelled) setWidgetQueryError(widgetId, e instanceof Error ? e.message : "Script failed"); });
 
@@ -174,6 +178,9 @@ export function useWidgetData(widgetId: string) {
       getConnectionType(connectionId),
       temporalColumnNamesOf(widget?.shape),
       columnKindsOf(tableSchema?.columns),
+      // The declared parameter types say which bound filter is bound to a Date,
+      // and a Date parameter means the whole day it names (F8).
+      extractParamTypes(parametersConfig?.parameters),
     );
     if (!raw) { clearWidgetQueryLoading(widgetId); return; }
 
@@ -207,7 +214,7 @@ export function useWidgetData(widgetId: string) {
     let cancelled = false;
     let settled = false;  // set true when result/error has been stored
     setWidgetQueryLoading(widgetId);
-    executeQuery(connectionId, raw, filterValues ?? {})
+    executeQuery(connectionId, raw, filterValues ?? {}, extractParamTypes(parametersConfig?.parameters))
       .then((res) => {
         settled = true;
         if (!cancelled) setWidgetQueryResult(widgetId, res);
@@ -226,7 +233,7 @@ export function useWidgetData(widgetId: string) {
       // because React runs cleanup + next-effect inside the same commit phase.
       if (!settled) clearWidgetQueryLoading(widgetId);
     };
-  }, [connectionId, dataSource, filterValues, filterVersion, widgetId, connectionsReady, tableSchema, setWidgetQueryLoading, setWidgetQueryResult, setWidgetQueryError, clearWidgetQueryLoading]);
+  }, [connectionId, dataSource, filterValues, filterVersion, parametersConfig, widgetId, connectionsReady, tableSchema, setWidgetQueryLoading, setWidgetQueryResult, setWidgetQueryError, clearWidgetQueryLoading]);
 
   return {
     result: cached?.result ?? null,

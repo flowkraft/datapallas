@@ -31,7 +31,8 @@ class ScriptAssemblerTest {
         String s = assemble("SELECT *\nFROM t\nWHERE x = ${a}", "a");
         assertTrue(s.contains("    tabulator_a_sb.append('SELECT *\\n')\n"), s);
         assertTrue(s.contains(
-            "    if (hasA) { tabulator_a_sb.append('WHERE x = ?\\n'); tabulator_a_params << a }\n"), s);
+            "    if (hasA) { tabulator_a_sb.append('WHERE x = ?\\n'); tabulator_a_params << a }"
+            + " else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
     }
 
     @Test
@@ -39,7 +40,7 @@ class ScriptAssemblerTest {
     void bindOrderFollowsLine() throws Exception {
         String s = assemble("WHERE d BETWEEN ${to} AND ${from}", "from", "to");
         assertTrue(s.contains("    if (hasFrom && hasTo) { tabulator_a_sb.append('WHERE d BETWEEN ? AND ?\\n')"
-            + "; tabulator_a_params << to; tabulator_a_params << from }\n"), s);
+            + "; tabulator_a_params << to; tabulator_a_params << from } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
     }
 
     @Test
@@ -47,7 +48,7 @@ class ScriptAssemblerTest {
     void repeatedParam() throws Exception {
         String s = assemble("WHERE a = ${p} OR b = ${p}", "p");
         assertTrue(s.contains("    if (hasP) { tabulator_a_sb.append('WHERE a = ? OR b = ?\\n')"
-            + "; tabulator_a_params << p; tabulator_a_params << p }\n"), s);
+            + "; tabulator_a_params << p; tabulator_a_params << p } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
     }
 
     @Test
@@ -57,7 +58,7 @@ class ScriptAssemblerTest {
             "q", "p");
         assertTrue(s.contains("tabulator_a_sb.append('WHERE a = ? AND b = ? AND c = ? AND d = ? AND e = ?\\n')"
             + "; tabulator_a_params << p; tabulator_a_params << q; tabulator_a_params << p"
-            + "; tabulator_a_params << q; tabulator_a_params << p }\n"), s);
+            + "; tabulator_a_params << q; tabulator_a_params << p } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
         assertTrue(s.contains("    if (hasQ && hasP) {"), s);
     }
 
@@ -66,7 +67,7 @@ class ScriptAssemblerTest {
     void prefixNames() throws Exception {
         String s = assemble("WHERE a = ${pp} AND b = ${p}", "p", "pp");
         assertTrue(s.contains("    if (hasP && hasPp) { tabulator_a_sb.append('WHERE a = ? AND b = ?\\n')"
-            + "; tabulator_a_params << pp; tabulator_a_params << p }\n"), s);
+            + "; tabulator_a_params << pp; tabulator_a_params << p } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
     }
 
     @Test
@@ -74,7 +75,8 @@ class ScriptAssemblerTest {
     void inList() throws Exception {
         String s = assemble("SELECT *\nFROM t\nWHERE id IN (${ids})", "ids");
         assertTrue(s.contains(
-            "    if (hasIds) { __bindInList(tabulator_a_sb, tabulator_a_params, ids, 'WHERE id IN') }\n"), s);
+            "    if (!(hasIds && __bindInList(tabulator_a_sb, tabulator_a_params, ids, 'WHERE id IN')))"
+            + " { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
     }
 
     @Test
@@ -109,18 +111,21 @@ class ScriptAssemblerTest {
     }
 
     @Test
-    @DisplayName("Run: a line whose param is missing is dropped with its binds")
+    @DisplayName("Run: a line whose param has no value is not applied - it asks 1=1, and its binds are gone")
     void runMissingParam() throws Exception {
+        // P2: the filter is not applied, but the line stays as something always true, so the
+        // question is still whole - a line that simply vanished would leave the next one
+        // opening with AND, and the database would refuse the whole query.
         List<List<Object>> calls = run(assemble("SELECT *\nFROM t\nWHERE a = ${p} OR b = ${p}", "p"), Map.of());
-        assertEquals(List.of(Arrays.asList("SELECT *\nFROM t\n", null)), calls);
+        assertEquals(List.of(Arrays.asList("SELECT *\nFROM t\nWHERE 1=1\n", null)), calls);
     }
 
     @Test
     @DisplayName("IN (${p}) with a scalar param earlier on the line: both substituted, scalar passed as `before`")
     void inListWithScalarPrefix() throws Exception {
         String s = assemble("AND y = ${b} AND id IN (${ids})", "ids", "b");
-        assertTrue(s.contains("    if (hasIds && hasB) { __bindInList(tabulator_a_sb, tabulator_a_params, ids, "
-            + "'AND y = ? AND id IN', [b]) }\n"), s);
+        assertTrue(s.contains("    if (!(hasIds && hasB && __bindInList(tabulator_a_sb, tabulator_a_params, ids, "
+            + "'AND y = ? AND id IN', [b]))) { tabulator_a_sb.append('AND 1=1\\n') }\n"), s);
     }
 
     @Test
@@ -135,11 +140,61 @@ class ScriptAssemblerTest {
     }
 
     @Test
-    @DisplayName("Run: IN wildcard '*' drops the whole line, its scalar bind too")
+    @DisplayName("Run: IN wildcard '*' leaves the whole line out, its scalar bind too, and asks 1=1 instead")
     void runInListWildcardDropsScalar() throws Exception {
         String sql = "SELECT *\nFROM t\nWHERE 1 = 1\nAND y = ${b} AND id IN (${ids})";
         List<List<Object>> calls = run(assemble(sql, "ids", "b"), Map.of("b", "x", "ids", "*"));
-        assertEquals(List.of(Arrays.asList("SELECT *\nFROM t\nWHERE 1 = 1\n", null)), calls);
+        assertEquals(List.of(Arrays.asList("SELECT *\nFROM t\nWHERE 1 = 1\nAND 1=1\n", null)), calls);
+    }
+
+    // ── Declared parameter types (P1) ───────────────────────────
+
+    @Test
+    @DisplayName("A parameter with no declared type is written exactly as it always was")
+    void untypedParamIsUnchanged() throws Exception {
+        String s = assemble("SELECT *\nFROM t\nWHERE d <= ${to}", "to");
+        assertTrue(s.contains("; tabulator_a_params << to } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
+        assertFalse(s.contains("__typed('to'"), s);
+    }
+
+    @Test
+    @DisplayName("A declared type travels into the script: the bind goes through the one conversion")
+    void typedParamBindsThroughTheConversion() throws Exception {
+        String s = assembleTyped("SELECT *\nFROM t\nWHERE d <= ${to}", Map.of("to", "Date"));
+        assertTrue(s.contains("; tabulator_a_params << __typed('to', 'Date', to) } else { tabulator_a_sb.append('WHERE 1=1\\n') }\n"), s);
+        assertTrue(s.contains("com.sourcekraft.documentburster.common.reportparameters.ParameterTypes.typed"), s);
+    }
+
+    @Test
+    @DisplayName("Run: the published script converts, so JDBC is sent a date and a number, not their text")
+    void runTypedParams() throws Exception {
+        String sql = "SELECT *\nFROM t\nWHERE d <= ${to} AND n > ${min}";
+        List<List<Object>> calls = run(assembleTyped(sql, Map.of("to", "Date", "min", "Integer")),
+            Map.of("to", "2026-01-31", "min", "32000"));
+        assertEquals(1, calls.size());
+        List<Object> bound = (List<Object>) calls.get(0).get(1);
+        assertEquals(java.time.LocalDate.parse("2026-01-31"), bound.get(0));
+        assertEquals(32000L, bound.get(1));
+    }
+
+    @Test
+    @DisplayName("Run: every value of a typed IN list is converted, not only the first")
+    void runTypedInList() throws Exception {
+        String sql = "SELECT *\nFROM t\nWHERE d IN (${days})";
+        List<List<Object>> calls = run(assembleTyped(sql, Map.of("days", "Date")),
+            Map.of("days", "2026-01-05, 2026-01-31"));
+        assertEquals(List.of(List.of("SELECT *\nFROM t\nWHERE d IN (?, ?)\n",
+            List.of(java.time.LocalDate.parse("2026-01-05"), java.time.LocalDate.parse("2026-01-31")))), calls);
+    }
+
+    @Test
+    @DisplayName("Run: a value the declared type refuses names the parameter and the form it wanted")
+    void runTypedParamRefusesABadValue() throws Exception {
+        String script = assembleTyped("SELECT *\nFROM t\nWHERE d <= ${to}", Map.of("to", "Date"));
+        Exception thrown = assertThrows(Exception.class, () -> run(script, Map.of("to", "31/01/2026")));
+        String message = String.valueOf(thrown.getMessage()) + String.valueOf(
+            thrown.getCause() == null ? "" : thrown.getCause().getMessage());
+        assertTrue(message.contains("'to'") && message.contains("yyyy-MM-dd"), message);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -154,6 +209,21 @@ class ScriptAssemblerTest {
         w.put("dataSource", ds);
         List<Map<String, Object>> params = new ArrayList<>();
         for (String id : paramIds) params.add(Map.of("id", id));
+        return ScriptAssembler.assemble(List.of(w), params).text();
+    }
+
+    /** The same widget, with a declared type beside each parameter id. */
+    private static String assembleTyped(String sql, Map<String, String> types) throws Exception {
+        Map<String, Object> ds = new LinkedHashMap<>();
+        ds.put("mode", "sql");
+        ds.put("sql", sql);
+        Map<String, Object> w = new LinkedHashMap<>();
+        w.put("id", "w-a");
+        w.put("type", "tabulator");
+        w.put("dataSource", ds);
+        List<Map<String, Object>> params = new ArrayList<>();
+        for (Map.Entry<String, String> one : types.entrySet())
+            params.add(Map.of("id", one.getKey(), "type", one.getValue()));
         return ScriptAssembler.assemble(List.of(w), params).text();
     }
 
