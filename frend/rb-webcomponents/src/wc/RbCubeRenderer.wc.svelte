@@ -18,6 +18,9 @@
    * and the name of the cube they belong to; the SQL is generated from the DSL text on the server.
    */
   import { onMount, tick, createEventDispatcher } from 'svelte';
+  // One formatter for every host: the table, the single value, the chart and the time labels all
+  // show a number the way the cube declares it (W4.2), so two hosts cannot disagree about it.
+  import { formatCell, formatMeasure, DEFAULT_CURRENCY } from '../shared/cube-format';
 
   // Props
   export let cubeConfig: any = null;
@@ -57,6 +60,33 @@
    */
   export let reportId: string = '';
   export let componentId: string = '';
+  /**
+   * W4.8, author mode: the saved cube this tree is of. The component loads the cube and its parsed
+   * fields by itself (`/api/cubes/{id}` and parse-dsl) instead of being handed a `cubeConfig`, and
+   * asks `/api/cubes/{id}/query` for the rows with an author's own credential.
+   *
+   * A viewer never has one: a dashboard's live cube is `report-id` + `component-id`, where the
+   * widget file says which cube may be asked about and the token unlocks only that report.
+   */
+  export let cubeId: string = '';
+  /**
+   * `default-fields="Revenue,CategoryName"`: the fields ticked at the start, in every mode, in
+   * place of the ticks a saved selection makes - never in place of its filters. A name the cube
+   * does not offer is ignored, and said so in the console, so the rest of the list still works.
+   */
+  export let defaultFields: string = '';
+  /**
+   * The answer without the asking: no field tree, no filter icons, no grain selects, and the chips
+   * without their ×. What is being looked at is still said; only changing it is taken away.
+   */
+  export let readOnly: boolean = false;
+  /**
+   * What the host wants the answer drawn as: `value`, `chart`, or `table` for the plain rows. It
+   * is what the widget file says for a dashboard's live cube, and what the widget type says on the
+   * canvas, so the author sees the shape a viewer will get. A live cube's own `/meta` wins over it,
+   * and an empty one leaves the shape to the selection, as it has always been.
+   */
+  export let display: string = '';
 
   const dispatch = createEventDispatcher();
 
@@ -769,6 +799,7 @@
   /** Esc closes the popover, and so does a click anywhere outside it: neither applies anything. */
   function onWindowKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' && openFilterFor) closeFilter();
+    else if (event.key === 'Escape' && drillOpen) closeDrill();
   }
 
   function onWindowPointerDown(event: Event) {
@@ -798,9 +829,50 @@
       selectedFilters: filtersOf(),
       selectedOrder: [...selectedOrder],
       selectedLimit,
+      // The names the docs promise a host (W4.8), next to the `selected*` keys every host already
+      // reads: the same selection, under both spellings, so no host has to be changed for it.
+      dimensions: [...selectedDimensions].map((key) => dimensionNameOf(key)),
+      measures: [...selectedMeasures],
+      segments: [...selectedSegments],
+      filters: filtersOf(),
     });
     // W2: the change the host is told about is the change the live cube answers.
     scheduleQuery();
+  }
+
+  // ── W4.8: the fields a host asks for by name ────────────────────────────────
+
+  /** `default-fields` is applied once: the cube it names has to be there to be ticked in. */
+  let defaultsApplied = false;
+
+  /**
+   * The fields `default-fields` names, ticked as a click would tick them: a measure by its name, a
+   * dimension at its default grain. They replace the ticks a saved selection made, and leave its
+   * filters alone. A name this cube does not offer is ignored and said so in the console, so a
+   * host that mistyped one is told and the rest of its list still works.
+   */
+  function applyDefaultFields() {
+    if (defaultsApplied || !defaultFields || !activeCube) return;
+    defaultsApplied = true;
+    const wanted = defaultFields.split(',').map((name) => name.trim()).filter((name) => name.length > 0);
+    if (wanted.length === 0) return;
+    selectedDimensions = new Set();
+    selectedMeasures = new Set();
+    for (const name of wanted) {
+      const dim = dimensionByName(name);
+      if (dim) {
+        selectedDimensions.add(defaultKeyOf(dim));
+      } else if (measureByName(name)) {
+        selectedMeasures.add(name);
+      } else {
+        console.warn('rb-cube-renderer: default-fields names "' + name
+          + '", which this cube does not offer');
+      }
+    }
+    selectedDimensions = new Set(selectedDimensions);
+    selectedMeasures = new Set(selectedMeasures);
+    openFoldersOfSelection();
+    dispatchSelection();
   }
 
   // ── W2: the live cube of a published dashboard ───────────────────────
@@ -808,9 +880,17 @@
   /** Both runtime props set: this tree is a dashboard's live cube, not the cube editor's preview. */
   $: runtime = !!reportId && !!componentId;
 
+  /** A cube id and no dashboard: author mode (W4.8), the same tree on the author's own endpoints. */
+  $: author = !!cubeId && !runtime;
+
+  /** Either mode asks a server for rows; the cube editor's preview asks nothing. */
+  $: live = runtime || author;
+
   /** `value`, `chart`, `table` or `''` — the dashboard's say in how its answer is drawn. */
   let runtimeDisplay = '';
   let runtimeRows: any[] = [];
+  /** W4.3: one number per measure over all the rows the filters leave, or `null` if none was asked. */
+  let runtimeTotals: Record<string, any> | null = null;
   let runtimeTruncated = false;
   /** A refusal or a failure, in words: it is shown where the answer would be, and never swallowed. */
   let runtimeError = '';
@@ -821,6 +901,27 @@
   /** What a hint can ask for and no tick box can: the order, and how many rows. */
   let selectedOrder: Array<{ member: string; dir: string }> = [];
   let selectedLimit: number | null = null;
+
+  // ── W5: my view ────────────────────────────────────────────────────────────
+
+  /** Where this viewer's own view is kept, as `/meta` says: `account`, `browser` or `none`. */
+  let viewStorage = 'none';
+  /** The author's opening selection, layer 1, which "Reset view" goes back to. */
+  let authorDefault: any = {};
+  /** The cube panel, folded to its header line or open; part of the saved view. */
+  let panelCollapsed = false;
+  /** Fields a saved view named that the cube no longer offers, said once under the chips. */
+  let viewDropped: string[] = [];
+  /** A save that did not happen is never silent, and never in the way either. */
+  let viewSaveError = '';
+  let viewSaveReason = '';
+  /** Nothing is saved before the first `/meta` has said what there is to save over. */
+  let viewLoaded = false;
+  /** What is in the store right now, so an unchanged view is not written again. */
+  let savedViewSignature = '';
+  /** A view is saved once the clicking stops (the design's 1 second), never on every tick. */
+  const VIEW_SAVE_DEBOUNCE = 1000;
+  let viewSaveTimer: any = null;
 
   /** Ticking three boxes is one question, not three (the design's 300 ms). */
   const QUERY_DEBOUNCE = 300;
@@ -844,27 +945,92 @@
       + encodeURIComponent(componentId) + '/' + what;
   }
 
+  /** The credential of whoever is asking: a viewer's embed token, or an author's API key. */
+  function askHeaders(): Record<string, string> {
+    if (runtime) return runtimeHeaders();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['X-API-Key'] = apiKey;
+    return headers;
+  }
+
+  /** The same three questions, asked of the dashboard's cube (W2) or of the author's own (W4.8). */
+  function askUrl(what: string): string {
+    return runtime
+      ? runtimeUrl(what)
+      : apiBaseUrl + '/cubes/' + encodeURIComponent(cubeId) + '/' + what;
+  }
+
   /** A refused answer carries `{ error }`; anything else says what it was by its status. */
   async function runtimeAnswer(response: Response, what: string): Promise<any> {
     const answer = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(String(answer?.error || what + ' (' + response.status + ').'));
+    if (!response.ok) {
+      // The status travels with the message: the `error` event says `code` (W4.8), and a host that
+      // tells a refusal from a failure apart can only do so if it is told which this was.
+      const refused: any = new Error(String(answer?.error || what + ' (' + response.status + ').'));
+      refused.code = response.status;
+      throw refused;
+    }
     return answer;
   }
 
-  async function startRuntime() {
+  /**
+   * Everything the result area shows as a failure is also an `error` event (W4.8): a host that
+   * draws its own message is told the same thing, with the HTTP status as `code`.
+   */
+  function reportError(e: any, fallback: string) {
+    runtimeError = String(e?.message || e || fallback);
+    runtimeRows = [];
+    runtimeTotals = null;
+    runtimeTruncated = false;
+    dispatch('error', { message: runtimeError, code: Number(e?.code ?? 0) });
+  }
+
+  async function startLive() {
     runtimeStarted = true;
-    // The list a filter popover offers comes from this dashboard's own endpoint: the component still
-    // builds no URL of a cube's own, and no cube id is in one.
+    // The list a filter popover offers comes from the endpoint of the very cube being shown: the
+    // component still builds no URL of its own beyond the one mode it was put in.
     if (!fetchFilterOptions) fetchFilterOptions = runtimeFilterOptions;
-    await loadRuntimeMeta();
+    if (runtime) await loadRuntimeMeta();
+    else await loadAuthorCube();
+  }
+
+  /**
+   * Author mode loads the cube itself (W4.8): the saved file, then the parsed copy of it the tree
+   * reads. It is the same tree and the same result area as a dashboard's live cube - what differs
+   * is who is asking and which cube may be asked about.
+   */
+  async function loadAuthorCube() {
+    runtimeError = '';
+    try {
+      const loaded = await runtimeAnswer(
+        await fetch(apiBaseUrl + '/cubes/' + encodeURIComponent(cubeId), { headers: askHeaders() }),
+        'This cube could not be read');
+      // The cube the file keeps this id under, and the connection it was saved with: the host may
+      // name both itself, and where it does not, the saved cube's own answer is the one meant.
+      if (!cubeName) cubeName = String(loaded?.cubeName ?? '');
+      if (!connectionId) connectionId = String(loaded?.connectionId ?? '');
+      cubeConfig = await runtimeAnswer(
+        await fetch(apiBaseUrl + '/cubes/parse-dsl', {
+          method: 'POST',
+          headers: askHeaders(),
+          body: JSON.stringify({ dslCode: String(loaded?.dslCode ?? '') }),
+        }), 'This cube could not be read');
+      await tick();
+      applyDefaultFields();
+    } catch (e: any) {
+      reportError(e, 'This cube could not be read.');
+    }
   }
 
   /** The values of one dimension, through the runtime twin of the cube editor's endpoint. */
   async function runtimeFilterOptions(dimension: string, search: string): Promise<any> {
-    const response = await fetch(runtimeUrl('filter-options'), {
+    const body: any = { dimension, search };
+    if (author && currentCubeName()) body.cubeName = currentCubeName();
+    if (author && connectionId) body.connectionId = connectionId;
+    const response = await fetch(askUrl('filter-options'), {
       method: 'POST',
-      headers: runtimeHeaders(),
-      body: JSON.stringify({ dimension, search }),
+      headers: askHeaders(),
+      body: JSON.stringify(body),
     });
     return await runtimeAnswer(response, 'The values of this field could not be read');
   }
@@ -883,11 +1049,13 @@
       cubeConfig = cubeOfMeta(meta);
       // The tree reads the new cube first: `initial` names its fields.
       await tick();
-      applySelection(meta?.initial ?? {});
+      applySelection(startingView(meta));
+      applyDefaultFields();
+      // What is on the screen now is what the store holds, so nothing is written back for it.
+      viewLoaded = true;
+      savedViewSignature = currentViewSignature;
     } catch (e: any) {
-      runtimeError = String(e?.message || e || 'This live cube could not be read.');
-      runtimeRows = [];
-      runtimeTruncated = false;
+      reportError(e, 'This live cube could not be read.');
     }
   }
 
@@ -906,6 +1074,8 @@
       measures: meta?.measures ?? [],
       segments: meta?.segments ?? [],
       hierarchies: meta?.hierarchies ?? [],
+      // The one currency the cube declares, for every `currency` format in its result (W4.2).
+      currency: meta?.currency,
     };
   }
 
@@ -931,11 +1101,297 @@
     };
     if (selectedOrder.length > 0) request.order = selectedOrder.map((o) => ({ member: o.member, dir: o.dir }));
     if (selectedLimit) request.limit = selectedLimit;
+    // Only a table has a bottom row to put them in, so a chart and a single number cost one query
+    // and not two (W4.3).
+    if (wantsTotals) request.totals = true;
+    if (author) {
+      if (currentCubeName()) request.cubeName = currentCubeName();
+      if (connectionId) request.connectionId = connectionId;
+    }
     return request;
   }
 
+  // ── W5: my view — loading it, saving it, and giving it back ─────────────────
+
+  /**
+   * Layer 1 is the dashboard the author published; layer 2 is what this viewer did to it. The
+   * server has already put the two together for an account, so the first render is the viewer's
+   * own view with no flash of the default in front of it. A browser-kept view is put together
+   * here instead, out of the same names, because the server never sees it.
+   */
+  function startingView(meta: any): any {
+
+    viewStorage = String(meta?.viewStorage ?? 'none');
+    authorDefault = meta?.initial ?? {};
+    viewDropped = Array.isArray(meta?.myViewDropped) ? meta.myViewDropped.map(String) : [];
+    viewSaveError = '';
+    panelCollapsed = false;
+
+    if (viewStorage === 'account' && meta?.myView?.selection) {
+      panelCollapsed = !!meta.myView.collapsed;
+      return meta.myView.selection;
+    }
+
+    if (viewStorage === 'browser') {
+      const saved = readBrowserView();
+      if (saved?.selection) {
+        const dropped: string[] = [];
+        const cleaned = cleanAgainst(meta, saved.selection, dropped);
+        viewDropped = dropped;
+        // Nothing the cube still offers is not a view: the author's own is one that works.
+        if (list(cleaned.dimensions).length > 0 || list(cleaned.measures).length > 0) {
+          panelCollapsed = !!saved.collapsed;
+          return cleaned;
+        }
+        panelCollapsed = !!saved.collapsed;
+      }
+    }
+
+    return authorDefault;
+  }
+
+  /**
+   * The cube is edited after a view of it was saved: whatever it no longer offers goes, and is
+   * named, and the rest of the view still opens. This is the same cleaning the server does for an
+   * account, over the names `/meta` just sent.
+   */
+  function cleanAgainst(meta: any, selection: any, dropped: string[]): any {
+
+    const offered = new Set<string>();
+    for (const group of [meta?.dimensions, meta?.measures, meta?.segments]) {
+      for (const member of (group ?? [])) if (member?.name) offered.add(String(member.name));
+    }
+
+    const keep = (names: any): string[] => list(names).filter((name: string) => {
+      if (offered.has(name)) return true;
+      dropped.push(name);
+      return false;
+    });
+
+    const cleaned: any = {
+      dimensions: keep(selection?.dimensions),
+      measures: keep(selection?.measures),
+      segments: keep(selection?.segments),
+      filters: (Array.isArray(selection?.filters) ? selection.filters : []).filter((filter: any) => {
+        if (offered.has(String(filter?.member))) return true;
+        dropped.push(String(filter?.member));
+        return false;
+      }),
+      granularities: {} as Record<string, string>,
+    };
+    for (const [name, grain] of Object.entries(selection?.granularities ?? {})) {
+      if (cleaned.dimensions.includes(name)) cleaned.granularities[name] = String(grain);
+    }
+    if (Array.isArray(selection?.order)) {
+      cleaned.order = selection.order.filter((o: any) => offered.has(String(o?.member)));
+    }
+    if (selection?.limit) cleaned.limit = selection.limit;
+    if (selection?.totals) cleaned.totals = true;
+    return cleaned;
+  }
+
+  function list(values: any): string[] {
+    return Array.isArray(values) ? values.map(String) : [];
+  }
+
+  /** `rb-cube-view:<reportId>:<componentId>`: one key per widget, per browser. */
+  function browserViewKey(): string {
+    return 'rb-cube-view:' + reportId + ':' + componentId;
+  }
+
+  /**
+   * Browser storage is the one place here that is allowed to be missing: a private window, blocked
+   * site data, or a page drawn for a thumbnail. Every touch of it is guarded, and a dashboard whose
+   * view could not be read is still a dashboard.
+   */
+  function readBrowserView(): any {
+    try {
+      const raw = window.localStorage.getItem(browserViewKey());
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeBrowserView(value: any): boolean {
+    try {
+      window.localStorage.setItem(browserViewKey(), JSON.stringify(value));
+      return true;
+    } catch (e) {
+      viewSaveReason = String((e as any)?.message || e || '');
+      return false;
+    }
+  }
+
+  function forgetBrowserView(): boolean {
+    try {
+      window.localStorage.removeItem(browserViewKey());
+      return true;
+    } catch (e) {
+      viewSaveReason = String((e as any)?.message || e || '');
+      return false;
+    }
+  }
+
+  /** The view as it stands: the question that would be asked, plus how the panel is left. */
+  function currentView(): any {
+    return { v: 1, selection: runtimeRequest(), collapsed: panelCollapsed };
+  }
+
+  /**
+   * Two views are the same view when they ask the same thing and are left the same way. Comparing
+   * them is what tells a change worth saving from a redraw, and what tells "this is the author's
+   * own view again" — which is a delete, not a save, so the viewer still gets a default the
+   * author publishes later.
+   */
+  function signatureOf(view: any): string {
+
+    const selection = view?.selection ?? {};
+    const grains = Object.keys(selection.granularities ?? {}).sort()
+      .map((name) => name + ':' + selection.granularities[name]);
+    return JSON.stringify([
+      list(selection.dimensions).slice().sort(),
+      list(selection.measures).slice().sort(),
+      list(selection.segments).slice().sort(),
+      (selection.filters ?? []).map((f: any) => [f?.member, f?.operator, list(f?.values)]),
+      grains,
+      (selection.order ?? []).map((o: any) => [o?.member, o?.dir]),
+      selection.limit ?? null,
+      !!selection.totals,
+      !!view?.collapsed,
+    ]);
+  }
+
+  /**
+   * Svelte is told what this depends on by being handed it: the arguments are the state the
+   * signature is built from, so ticking a box or opening the panel recomputes it (and with it the
+   * Reset view link) without anything having to remember to say so.
+   */
+  function signatureNow(..._changes: any[]): string {
+    return live ? signatureOf(currentView()) : '';
+  }
+
+  $: currentViewSignature = signatureNow(selectedDimensions, selectedMeasures, selectedSegments,
+    activeFilters, selectedOrder, selectedLimit, wantsTotals, panelCollapsed, activeCube);
+
+  $: defaultViewSignature = signatureOf({ selection: authorDefault, collapsed: false });
+
+  /** The link shows only when there is something to go back from. */
+  $: viewDiffers = runtime && viewStorage !== 'none' && viewLoaded
+    && currentViewSignature !== defaultViewSignature;
+
+  /** `Cube · Ship Country: Germany`, in chip order, the same text in both panel states. */
+  $: panelHeaderText = filterChips.length === 0
+    ? 'Cube'
+    : 'Cube · ' + filterChips.map((chip) => chip.text).join('; ');
+
+  /**
+   * The author's canvas keeps its selection on the widget (W3), and a read-only cube cannot be
+   * changed at all, so neither saves a view. `none` is the author's own answer for this widget:
+   * no layer 2 for anybody.
+   */
+  function scheduleViewSave() {
+    if (!runtime || readOnly || !viewLoaded || viewStorage === 'none') return;
+    if (viewSaveTimer) clearTimeout(viewSaveTimer);
+    viewSaveTimer = setTimeout(saveView, VIEW_SAVE_DEBOUNCE);
+  }
+
+  async function saveView() {
+
+    viewSaveTimer = null;
+    if (!runtime || readOnly || !viewLoaded || viewStorage === 'none') return;
+
+    const view = currentView();
+    const signature = signatureOf(view);
+    if (signature === savedViewSignature) return;
+
+    // Back at what the author published: the row goes, so a default they publish tomorrow is the
+    // one this viewer opens tomorrow.
+    const isDefault = signature === defaultViewSignature;
+    viewSaveReason = '';
+    const done = isDefault ? await removeSavedView() : await putSavedView(view);
+
+    if (done) {
+      savedViewSignature = signature;
+      viewSaveError = '';
+    } else {
+      viewSaveError = 'Your view was not saved';
+    }
+  }
+
+  async function putSavedView(view: any): Promise<boolean> {
+
+    if (viewStorage === 'browser') return writeBrowserView(view);
+
+    try {
+      const response = await fetch(runtimeUrl('my-view'), {
+        method: 'PUT',
+        headers: runtimeHeaders(),
+        body: JSON.stringify({ selection: view.selection, collapsed: view.collapsed }),
+      });
+      if (!response.ok) {
+        const answer = await response.json().catch(() => null);
+        viewSaveReason = String(answer?.error || ('HTTP ' + response.status));
+        return false;
+      }
+      return true;
+    } catch (e: any) {
+      viewSaveReason = String(e?.message || e || '');
+      return false;
+    }
+  }
+
+  async function removeSavedView(): Promise<boolean> {
+
+    if (viewStorage === 'browser') return forgetBrowserView();
+
+    try {
+      const response = await fetch(runtimeUrl('my-view'), {
+        method: 'DELETE',
+        headers: runtimeHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        viewSaveReason = 'HTTP ' + response.status;
+        return false;
+      }
+      return true;
+    } catch (e: any) {
+      viewSaveReason = String(e?.message || e || '');
+      return false;
+    }
+  }
+
+  /**
+   * Reset view: one click, no dialog. What was saved is thrown away, the author's own dashboard is
+   * loaded again, and the panel is open, which is how the author published it.
+   */
+  async function resetView() {
+
+    if (viewSaveTimer) {
+      clearTimeout(viewSaveTimer);
+      viewSaveTimer = null;
+    }
+    viewSaveReason = '';
+    const done = await removeSavedView();
+    viewSaveError = done ? '' : 'Your view was not saved';
+
+    viewDropped = [];
+    panelCollapsed = false;
+    savedViewSignature = defaultViewSignature;
+    applySelection(authorDefault);
+  }
+
+  /** The header is the only control there is, and in read-only it is a label rather than one. */
+  function togglePanel() {
+    if (readOnly) return;
+    panelCollapsed = !panelCollapsed;
+    // How the panel is left is part of the view, and it is left this way whether or not a query
+    // follows: folding a panel asks nothing of the database.
+    scheduleViewSave();
+  }
+
   function scheduleQuery() {
-    if (!runtime || !activeCube) return;
+    if (!live || !activeCube) return;
     if (queryTimer) clearTimeout(queryTimer);
     queryTimer = setTimeout(runQuery, QUERY_DEBOUNCE);
   }
@@ -947,9 +1403,10 @@
    */
   async function runQuery() {
     queryTimer = null;
-    if (!runtime) return;
+    if (!live) return;
     if (nothingTicked) {
       runtimeRows = [];
+      runtimeTotals = null;
       runtimeTruncated = false;
       runtimeError = '';
       runtimeLoading = false;
@@ -962,23 +1419,30 @@
     queryRunning = true;
     runtimeLoading = true;
     try {
-      const response = await fetch(runtimeUrl('query'), {
+      const response = await fetch(askUrl('query'), {
         method: 'POST',
-        headers: runtimeHeaders(),
+        headers: askHeaders(),
         body: JSON.stringify(runtimeRequest()),
       });
       const answer = await runtimeAnswer(response, 'This question could not be answered');
       if (!queryQueued) {
         runtimeRows = Array.isArray(answer?.rows) ? answer.rows : [];
         runtimeTruncated = !!answer?.truncated;
+        runtimeTotals = answer?.totals ?? null;
         runtimeError = '';
+        const loaded: any = {
+          rows: runtimeRows,
+          columns: [...askedDimensions, ...askedMeasures],
+        };
+        // The statement only where the person asking may see it: the author's own cube, never a
+        // viewer's dashboard (W4.8).
+        if (author && answer?.sql) loaded.sql = String(answer.sql);
+        dispatch('dataLoaded', loaded);
+        // W5: a view that answers is a view worth keeping. One that errored never gets saved.
+        scheduleViewSave();
       }
     } catch (e: any) {
-      if (!queryQueued) {
-        runtimeRows = [];
-        runtimeTruncated = false;
-        runtimeError = String(e?.message || e || 'This question could not be answered.');
-      }
+      if (!queryQueued) reportError(e, 'This question could not be answered.');
     } finally {
       queryRunning = false;
       if (queryQueued) {
@@ -1016,7 +1480,10 @@
     return 'table';
   }
 
-  $: resultShape = shapeOf(runtimeDisplay, runtimeRows, selectedDimensions, selectedMeasures, activeCube);
+  /** The host's wish, and over it the one a live cube's own file declares. */
+  $: shownDisplay = runtimeDisplay || display;
+
+  $: resultShape = shapeOf(shownDisplay, runtimeRows, selectedDimensions, selectedMeasures, activeCube);
 
   /** The ticked fields under the names the answer's columns carry: a grain comes back plain. */
   $: askedDimensions = [...selectedDimensions].map((key) => dimensionNameOf(key));
@@ -1032,7 +1499,7 @@
    */
   function chartOf(rows: any[], dimensions: string[], measures: string[]): any {
     return {
-      labels: rows.map((row) => String(row?.[dimensions[0]] ?? '')),
+      labels: rows.map((row) => formatCell(row?.[dimensions[0]], columnFormat(dimensions[0] ?? ''))),
       datasets: measures.map((name) => ({
         label: measureTitle(name),
         data: rows.map((row) => Number(row?.[name] ?? 0)),
@@ -1043,6 +1510,231 @@
   $: chartData = resultShape === 'chart'
     ? chartOf(runtimeRows, askedDimensions, askedMeasures)
     : { labels: [], datasets: [] };
+
+  // ── W4.2: the formats the cube declares, wherever the answer is drawn ───────
+
+  /** The currency a `currency` format is in: the cube says it once, and every host keeps it. */
+  $: cubeCurrency = String(activeCube?.currency || DEFAULT_CURRENCY);
+
+  /**
+   * How one column of the answer is shown: a measure in its declared format, a ticked time
+   * dimension at the grain it was asked at. A time field nobody asked a grain of - a drill's own
+   * date, say - is shown as the database returned it rather than rounded to a month it never said.
+   */
+  function columnFormat(name: string): { format?: string; granularity?: string; currency?: string } {
+    if (measureByName(name)) {
+      return { format: String(measureByName(name)?.format ?? ''), currency: cubeCurrency };
+    }
+    const dim = dimensionByName(name);
+    if (dim?.type === 'time') {
+      return { granularity: isDimensionSelected(name) ? granularityOf(name) : '' };
+    }
+    return {};
+  }
+
+  /**
+   * The answer's columns, told by the cube instead of guessed from the values, with the totals of
+   * all the rows as the bottom row (W4.3). Tabulator's `bottomCalc` here adds nothing up: it
+   * answers the number the server ran a second query for, which is the only right one for a
+   * distinct count, an average, a ratio or a cut answer.
+   */
+  function columnsOf(dimensions: string[], measures: string[], totals: Record<string, any> | null): any[] {
+    const columns: any[] = [];
+    for (const name of dimensions) {
+      const shape = columnFormat(name);
+      const column: any = {
+        title: titleOf(name),
+        field: name,
+        formatter: (cell: any) => formatCell(cell.getValue(), shape),
+      };
+      if (totals && columns.length === 0) column.bottomCalc = () => 'Total';
+      columns.push(column);
+    }
+    for (const name of measures) {
+      const shape = columnFormat(name);
+      const column: any = {
+        title: measureTitle(name),
+        field: name,
+        hozAlign: 'right',
+        formatter: (cell: any) => formatCell(cell.getValue(), shape),
+      };
+      if (totals) {
+        column.bottomCalc = () => formatMeasure(totals[name], String(shape.format ?? ''), cubeCurrency);
+      }
+      columns.push(column);
+    }
+    return columns;
+  }
+
+  /** Totals belong under a table, so they are asked for only where there is a row to show them in. */
+  $: wantsTotals = shapeOf(shownDisplay, [], selectedDimensions, selectedMeasures, activeCube) === 'table';
+
+  $: resultColumns = columnsOf(askedDimensions, askedMeasures, runtimeTotals);
+
+  /** The chart says its numbers in the same words as the table does (W4.2). */
+  $: chartOptions = {
+    scales: {
+      y: {
+        ticks: {
+          callback: (value: any) => formatMeasure(value,
+            String(measureByName(askedMeasures[0])?.format ?? ''), cubeCurrency),
+        },
+      },
+    },
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: (item: any) => {
+            const name = askedMeasures[Number(item?.datasetIndex ?? 0)] ?? '';
+            return measureTitle(name) + ': ' + formatMeasure(item?.parsed?.y ?? item?.raw,
+              String(measureByName(name)?.format ?? ''), cubeCurrency);
+          },
+        },
+      },
+    },
+  };
+
+  // ── W4.7: a ticked place is drawn on a map ──────────────────────────────────
+
+  /** The ticked geo dimension, whose two generated columns are the point (part 2, item 2). */
+  function geoOf(dimensions: Set<string>, cube: any): string {
+    for (const key of dimensions) {
+      const name = dimensionNameOf(key);
+      if ((cube?.dimensions || []).find((d: any) => d?.name === name)?.type === 'geo') return name;
+    }
+    return '';
+  }
+
+  $: geoName = geoOf(selectedDimensions, activeCube);
+
+  $: mapOptions = {
+    mapType: 'pin',
+    latField: geoName ? geoName + '_lat' : '',
+    lonField: geoName ? geoName + '_lng' : '',
+    metric: askedMeasures[0] ?? '',
+  };
+
+  // ── W4.6: the rows behind one number ────────────────────────────────────────
+
+  let drillOpen = false;
+  let drillTitle = '';
+  let drillRows: any[] = [];
+  let drillColumns: any[] = [];
+  let drillTruncated = false;
+  let drillLoading = false;
+  let drillError = '';
+
+  /**
+   * The fields "the rows behind this number" shows, or none at all: a measure says so with
+   * `drill_members`, and a measure read over the finished groups - a share, a running total, a
+   * to-date total, a period a year back - drills by the measure it is computed from.
+   */
+  function drillMembersOf(name: string): string[] {
+    const measure = measureByName(name);
+    if (!measure) return [];
+    const own = listOf(measure.drill_members).map((member: any) => String(member));
+    if (own.length > 0) return own;
+    if (!isTrue(measure.share_of_total) && !measure.rolling_window && !measure.time_shift) return [];
+    for (const base of referencedMeasures(String(measure.sql ?? ''))) {
+      const members = listOf(measureByName(base)?.drill_members).map((member: any) => String(member));
+      if (members.length > 0) return members;
+    }
+    return [];
+  }
+
+  /** A measure without `drill_members` cannot be drilled: no pointer, no click, no modal. */
+  function isDrillable(name: string): boolean {
+    return live && drillMembersOf(name).length > 0;
+  }
+
+  /** Which row of the answer was clicked, as the cell the question is about: its ticked fields. */
+  function cellOf(row: any): Record<string, any> {
+    const cell: Record<string, any> = {};
+    for (const name of askedDimensions) cell[name] = row?.[name] ?? null;
+    return cell;
+  }
+
+  /** "Revenue: Ship Country Germany · Order Date Mar 2024" - the number, said in words. */
+  function drillTitleOf(measure: string, cell: Record<string, any>): string {
+    const parts = Object.keys(cell).map((name) =>
+      titleOf(name) + ' ' + (formatCell(cell[name], columnFormat(name)) || 'not set'));
+    return measureTitle(measure) + (parts.length > 0 ? ': ' + parts.join(' · ') : '');
+  }
+
+  /**
+   * The rows one number is made of. The question is the same in both live modes and is the
+   * server's to answer: which fields, which filters and how many rows are the cube's own say, not
+   * this component's.
+   */
+  async function openDrill(measure: string, row: any) {
+    if (!isDrillable(measure)) return;
+    const cell = cellOf(row);
+    drillOpen = true;
+    drillError = '';
+    drillLoading = true;
+    drillRows = [];
+    drillColumns = [];
+    drillTruncated = false;
+    drillTitle = drillTitleOf(measure, cell);
+
+    const granularities: Record<string, string> = {};
+    for (const key of selectedDimensions) {
+      const dot = key.indexOf('.');
+      if (dot > 0) granularities[key.slice(0, dot)] = key.slice(dot + 1);
+    }
+    const body: any = {
+      measure,
+      cell,
+      filters: filtersOf(),
+      segments: [...selectedSegments],
+      granularities,
+    };
+    if (author) {
+      if (currentCubeName()) body.cubeName = currentCubeName();
+      if (connectionId) body.connectionId = connectionId;
+    }
+
+    try {
+      const answer = await runtimeAnswer(await fetch(askUrl('drill'), {
+        method: 'POST',
+        headers: askHeaders(),
+        body: JSON.stringify(body),
+      }), 'The rows behind this number could not be read');
+      drillRows = Array.isArray(answer?.rows) ? answer.rows : [];
+      drillTruncated = !!answer?.truncated;
+      const members = drillMembersOf(measure);
+      drillColumns = columnsOf(members.filter((name) => !measureByName(name)),
+        members.filter((name) => !!measureByName(name)), null);
+    } catch (e: any) {
+      drillError = String(e?.message || e || 'The rows behind this number could not be read.');
+      dispatch('error', { message: drillError, code: Number(e?.code ?? 0) });
+    } finally {
+      drillLoading = false;
+    }
+  }
+
+  function closeDrill() {
+    drillOpen = false;
+  }
+
+  /** A table cell: the field it is in says which measure, the row it is in says which cell. */
+  function onCellClick(event: any) {
+    const field = String(event?.detail?.field ?? '');
+    if (isDrillable(field)) openDrill(field, event?.detail?.rowData ?? {});
+  }
+
+  /** A chart point: the dataset is the measure, and the point along it is the row. */
+  function onChartClick(event: any) {
+    const measure = askedMeasures[Number(event?.detail?.datasetIndex ?? -1)] ?? '';
+    const row = runtimeRows[Number(event?.detail?.index ?? -1)];
+    if (measure && row) openDrill(measure, row);
+  }
+
+  /** A point on the map: the row it was drawn from is the cell. */
+  function onPointClick(event: any) {
+    const measure = askedMeasures[0] ?? '';
+    if (measure && event?.detail?.row) openDrill(measure, event.detail.row);
+  }
 
   // ── Show Me: one call applies a whole selection (design part 8) ───────────
 
@@ -1479,6 +2171,12 @@
       if (!cubeName) cubeName = hostEl.getAttribute('cube-name') || '';
       if (!reportId) reportId = hostEl.getAttribute('report-id') || '';
       if (!componentId) componentId = hostEl.getAttribute('component-id') || '';
+      if (!cubeId) cubeId = hostEl.getAttribute('cube-id') || '';
+      if (!defaultFields) defaultFields = hostEl.getAttribute('default-fields') || '';
+      if (!display) display = hostEl.getAttribute('display') || '';
+      if (!readOnly && hostEl.hasAttribute('read-only')) {
+        readOnly = hostEl.getAttribute('read-only') !== 'false';
+      }
       if (!showHidden && hostEl.hasAttribute('show-hidden')) {
         showHidden = hostEl.getAttribute('show-hidden') !== 'false';
       }
@@ -1492,7 +2190,11 @@
 
   // The host may set the two runtime props instead of the attributes, and after the first render:
   // either way the live cube starts once.
-  $: if (mounted && runtime && !runtimeStarted) startRuntime();
+  $: if (mounted && live && !runtimeStarted) startLive();
+
+  // Design time has no cube to load: the host pushes one, and `default-fields` ticks in it as soon
+  // as it is there.
+  $: if (mounted && !live && activeCube && defaultFields && !defaultsApplied) applyDefaultFields();
 </script>
 
 <svelte:window on:keydown={onWindowKeydown} on:pointerdown={onWindowPointerDown} />
@@ -1540,20 +2242,53 @@
       </div>
     {/if}
 
+    <!-- W5: the one control the cube panel has, and what the data is filtered by, in one line -->
+    {#if runtime}
+      <button type="button" id="cubePanelHeader" class="rb-panel-header" class:rb-panel-fixed={readOnly}
+              aria-expanded={!panelCollapsed} aria-disabled={readOnly} title={panelHeaderText}
+              on:click={togglePanel}>
+        <span class="rb-panel-chevron">{panelCollapsed ? '▸' : '▾'}</span>
+        <span class="rb-panel-text">{panelHeaderText}</span>
+      </button>
+    {/if}
+
+    {#if !runtime || !panelCollapsed}
+    <div id="cubePanelBody">
+
     <!-- The filters in force, one chip each: what is being looked at, before the tree it came from -->
-    {#if filterChips.length > 0}
+    {#if filterChips.length > 0 || viewDiffers}
+      <div class="rb-chip-bar">
       <div id="cubeFilterChips" class="rb-chips">
         {#each filterChips as chip (chip.member)}
           <span id="chipFilter-{chip.member}" class="rb-chip">
-            <button type="button" class="rb-chip-text" title="Change this filter"
-                    on:click={() => openFilter(dimensionByName(chip.member))}>{chip.text}</button>
-            <button type="button" id="btnChipRemove-{chip.member}" class="rb-chip-x"
-                    title="Remove this filter" on:click={() => removeFilter(chip.member)}>×</button>
+            {#if readOnly}
+              <span class="rb-chip-text">{chip.text}</span>
+            {:else}
+              <button type="button" class="rb-chip-text" title="Change this filter"
+                      on:click={() => openFilter(dimensionByName(chip.member))}>{chip.text}</button>
+              <button type="button" id="btnChipRemove-{chip.member}" class="rb-chip-x"
+                      title="Remove this filter" on:click={() => removeFilter(chip.member)}>×</button>
+            {/if}
           </span>
         {/each}
       </div>
+      {#if viewDiffers && !readOnly}
+        <button type="button" id="lnkCubeResetView" class="rb-reset-view"
+                title="Go back to the dashboard as it was published" on:click={resetView}>Reset view</button>
+      {/if}
+      </div>
     {/if}
 
+    {#if viewDropped.length > 0}
+      <div id="cubeViewDropped" class="rb-filter-note">Some saved fields no longer exist and were removed.</div>
+    {/if}
+    {#if viewSaveError}
+      <div id="cubeViewSaveError" class="rb-filter-note rb-filter-bad"
+           title={viewSaveReason}>{viewSaveError}</div>
+    {/if}
+
+    <!-- read-only (W4.8): the answer without the asking - no tree, and so no icon and no grain -->
+    {#if !readOnly}
     <div class="rb-tree">
       {#each rows as row}
         {#if row.kind === 'folder'}
@@ -1703,6 +2438,8 @@
       {/each}
     </div>
 
+    {/if}
+
     <!-- Selection summary -->
     {#if selectedDimensions.size > 0 || selectedMeasures.size > 0 || selectedSegments.size > 0}
       <p class="rb-cube-hint" style="margin-top: 8px; text-align: center;">
@@ -1711,6 +2448,9 @@
         {#if selectedSegments.size > 0}, {selectedSegments.size} filter{selectedSegments.size !== 1 ? 's' : ''}{/if}
         selected
       </p>
+    {/if}
+
+    </div>
     {/if}
 
     <!-- W2: the answer, under the tree it was asked from -->
@@ -1729,11 +2469,25 @@
             <div id="cubeRuntimeTruncated" class="rb-filter-note">First {runtimeRows.length} rows</div>
           {/if}
           {#if resultShape === 'value'}
-            <div id="cubeRuntimeValue">
-              <rb-value data={runtimeRows} field={valueField} format={valueFormat}></rb-value>
-            </div>
+            <!-- One number is drillable too: the wrapper is what is clicked (W4.6). A number
+                 nothing can be asked about is not a button and is not reached by the keyboard. -->
+            {#if isDrillable(valueField)}
+              <div id="cubeRuntimeValue" class="rb-drillable" role="button" tabindex="0"
+                   title="The rows behind this number"
+                   on:click={() => openDrill(valueField, runtimeRows[0] ?? {})}
+                   on:keydown={(e) => { if (e.key === 'Enter') openDrill(valueField, runtimeRows[0] ?? {}); }}>
+                <rb-value data={runtimeRows} field={valueField} format={valueFormat}
+                          currency={cubeCurrency}></rb-value>
+              </div>
+            {:else}
+              <div id="cubeRuntimeValue">
+                <rb-value data={runtimeRows} field={valueField} format={valueFormat}
+                          currency={cubeCurrency}></rb-value>
+              </div>
+            {/if}
           {:else if resultShape === 'chart'}
-            <rb-chart data={chartData} type="bar" height="260px"></rb-chart>
+            <rb-chart data={chartData} type="bar" height="260px" options={chartOptions}
+                      on:chartClick={onChartClick}></rb-chart>
             {#if askedDimensions.length > 1}
               <div class="rb-filter-note">
                 Drawn by {titleOf(askedDimensions[0])}. The fields ticked after it are in the rows,
@@ -1741,23 +2495,135 @@
               </div>
             {/if}
           {:else if resultShape === 'map'}
-            <rb-map data={runtimeRows}></rb-map>
+            <rb-map data={runtimeRows} options={mapOptions} on:pointClick={onPointClick}></rb-map>
           {:else}
-            <rb-tabulator data={runtimeRows}></rb-tabulator>
+            <rb-tabulator data={runtimeRows} columns={resultColumns}
+                          on:cellClick={onCellClick}></rb-tabulator>
           {/if}
         {/if}
       </div>
     {/if}
 
     <!-- Show everything: the same tree, with the detail line and the settings -->
-    <label class="rb-show-toggle">
-      <input id="chk-show-everything" type="checkbox" bind:checked={showEverything} />
-      Show everything
-    </label>
+    {#if !readOnly}
+      <label class="rb-show-toggle">
+        <input id="chk-show-everything" type="checkbox" bind:checked={showEverything} />
+        Show everything
+      </label>
+    {/if}
+  {/if}
+
+  <!-- W4.6: the rows behind the number that was clicked -->
+  {#if drillOpen}
+    <div id="cubeDrillModal" class="rb-drill-modal">
+      <div class="rb-drill-head">
+        <span id="cubeDrillTitle" class="rb-drill-title">{drillTitle}</span>
+        <button type="button" id="btnDrillClose" class="rb-drill-close" title="Close"
+                on:click={closeDrill}>×</button>
+      </div>
+      {#if drillError}
+        <div id="cubeDrillError" class="rb-filter-note rb-filter-bad">{drillError}</div>
+      {:else if drillLoading}
+        <div class="rb-filter-note">Answering…</div>
+      {:else}
+        {#if drillTruncated}
+          <div id="cubeDrillTruncated" class="rb-filter-note">First {drillRows.length} rows</div>
+        {/if}
+        <rb-tabulator data={drillRows} columns={drillColumns}></rb-tabulator>
+      {/if}
+    </div>
   {/if}
 </div>
 
 <style>
+  /* W5: the cube panel's header line - the whole line is the control */
+  .rb-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid color-mix(in oklab, currentColor 15%, transparent);
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    padding: 4px 2px;
+    margin-bottom: 6px;
+  }
+  /* read-only: the same line, saying the same thing, with nothing to click. */
+  .rb-panel-header.rb-panel-fixed {
+    cursor: default;
+  }
+  .rb-panel-chevron {
+    opacity: 0.7;
+  }
+  /* Too long for the width is cut here, and said in full in the tooltip. */
+  .rb-panel-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .rb-chip-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rb-chip-bar > .rb-chips {
+    flex: 1;
+    min-width: 0;
+  }
+  .rb-reset-view {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    opacity: 0.8;
+    padding: 0;
+    text-decoration: underline;
+    white-space: nowrap;
+  }
+
+  /* W4.6: the rows behind one number, over the tree they were asked from */
+  .rb-drill-modal {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    top: 24px;
+    z-index: 20;
+    border: 1px solid color-mix(in oklab, currentColor 20%, transparent);
+    border-radius: 4px;
+    padding: 8px;
+    background: Canvas;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+  }
+  .rb-drill-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .rb-drill-title {
+    font-weight: 600;
+    flex: 1;
+  }
+  .rb-drill-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 4px;
+  }
+  /* A number that has rows behind it says so before it is clicked. */
+  .rb-drillable {
+    cursor: pointer;
+  }
   /* Viewer filters: the icon on a row, the popover under it, the chips above the tree */
   .rb-filter-icon {
     background: none;
@@ -1863,6 +2729,8 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 13px;
     line-height: 1.5;
+    /* The drill modal is placed over this tree, not over the page it is embedded in. */
+    position: relative;
   }
   .rb-cube-select {
     width: 100%;

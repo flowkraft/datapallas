@@ -54,6 +54,11 @@
   export let componentId: string = '';
   export let field: string = '';
   export let format: string = '';         // 'currency', 'number', 'percent', 'date', or ''
+  /**
+   * Which currency the `currency` format is in, as an ISO code. A cube declares it once
+   * (`currency 'EUR'`) and passes it here; every other host keeps the dollars it had.
+   */
+  export let currency: string = 'USD';
   export let reportParams: Record<string, string> = {};
 
   // ============================================================================
@@ -67,7 +72,7 @@
   let loading = true;
   let error: string | null = null;
 
-  function formatValue(raw: any, fmt: string): string {
+  function formatValue(raw: any, fmt: string, currencyCode: string = 'USD'): string {
     if (raw === null || raw === undefined) return '';
     const str = String(raw);
 
@@ -79,7 +84,7 @@
         // (sign outside the symbol — trader convention) instead of "$-5,234,567".
         return num.toLocaleString('en-US', {
           style: 'currency',
-          currency: 'USD',
+          currency: currencyCode || 'USD',
           minimumFractionDigits: 0,
           maximumFractionDigits: 0,
         });
@@ -132,7 +137,7 @@
 
       const resolvedField = field || (rows.length > 0 ? Object.keys(rows[0])[0] : '');
       if (resolvedField && rows.length > 0 && resolvedField in rows[0]) {
-        displayValue = formatValue(rows[0][resolvedField], format);
+        displayValue = formatValue(rows[0][resolvedField], format, currency);
       } else {
         displayValue = '';
       }
@@ -149,7 +154,7 @@
     const resolvedField = field || (rows.length > 0 ? Object.keys(rows[0])[0] : '');
     if (!resolvedField) { displayValue = ''; return; }
     if (rows.length > 0 && resolvedField in rows[0]) {
-      displayValue = formatValue(rows[0][resolvedField], format);
+      displayValue = formatValue(rows[0][resolvedField], format, currency);
     } else {
       displayValue = '';
     }
@@ -168,6 +173,7 @@
       if (!componentId) componentId = hostEl.getAttribute('component-id') || '';
       if (!field) field = hostEl.getAttribute('field') || '';
       if (!format) format = hostEl.getAttribute('format') || '';
+      if (currency === 'USD') currency = hostEl.getAttribute('currency') || 'USD';
       if (!Object.keys(reportParams).length) {
         const rp = hostEl.getAttribute('report-params');
         if (rp) try { reportParams = JSON.parse(rp); } catch(e) {}

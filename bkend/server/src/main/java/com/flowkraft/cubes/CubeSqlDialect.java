@@ -578,6 +578,93 @@ public final class CubeSqlDialect {
 		}
 	}
 
+	/**
+	 * {@code expr} moved by {@code amount} units — <b>why ANSI cannot do it:</b> the standard has
+	 * {@code x + INTERVAL '1' YEAR}, and of the nine databases here only three accept it; the rest
+	 * each spell date arithmetic their own way, and SQLite has no date type to add to at all.
+	 *
+	 * <p>The expression handed in is already the value {@link #timeValue} reads, so a SQLite epoch
+	 * column is a date by the time it gets here. A negative {@code amount} moves backwards, which is
+	 * what "the same period last year" asks for.
+	 *
+	 * <p>Quarters and weeks are written as months and days wherever a database has no unit for them,
+	 * because a quarter is three months and an ISO week is seven days on every calendar this server
+	 * supports.
+	 *
+	 * @throws IllegalArgumentException if the unit is not one of {@link #GRANULARITIES}, or if the
+	 *                                  vendor key is {@code default} — with no connection there is no
+	 *                                  way to know how this database adds to a date.
+	 */
+	public static String addInterval(String expr, int amount, String unit, String vendor) {
+
+		String step = unit == null ? "" : unit.trim().toLowerCase(Locale.ROOT);
+		if (!GRANULARITIES.contains(step)) {
+			throw new IllegalArgumentException("'" + unit
+					+ "' is not a time unit. The units a time shift may use are: "
+					+ String.join(", ", GRANULARITIES) + ".");
+		}
+
+		// Every vendor below writes months or days when it has no unit of its own for a quarter or a
+		// week. The two numbers are worked out once, here, so no vendor can get the arithmetic wrong.
+		int months = "year".equals(step) ? amount * 12 : "quarter".equals(step) ? amount * 3
+				: "month".equals(step) ? amount : 0;
+		int days = "week".equals(step) ? amount * 7 : "day".equals(step) ? amount : 0;
+		boolean byMonth = months != 0 || "month".equals(step) || "quarter".equals(step)
+				|| "year".equals(step);
+
+		switch (key(vendor)) {
+
+			case "postgres":
+			case "duckdb":
+				return "(" + expr + " + INTERVAL '" + amount + " " + step + "')";
+
+			case "sqlite":
+				return "date(" + expr + ", '" + plus(byMonth ? months : days) + " "
+						+ (byMonth ? "months" : "days") + "')";
+
+			case "mysql":
+			case "mariadb":
+				return "DATE_ADD(" + expr + ", INTERVAL " + amount + " " + step.toUpperCase(Locale.ROOT) + ")";
+
+			case "sqlserver":
+				return "DATEADD(" + step + ", " + amount + ", " + expr + ")";
+
+			case "oracle":
+				// No month-long INTERVAL literal that survives a leap year: ADD_MONTHS is the one form
+				// Oracle documents for month, quarter and year, and it lands on the month's last day.
+				return byMonth
+						? "ADD_MONTHS(" + expr + ", " + months + ")"
+						: "(" + expr + " + " + days + ")";
+
+			case "db2":
+				return "(" + expr + " + " + (byMonth ? months + " MONTHS" : days + " DAYS") + ")";
+
+			case "clickhouse":
+				return clickhouseAdd(expr, amount, step);
+
+			default:
+				throw new IllegalArgumentException(
+						"a time shift needs a database vendor: pick a connection");
+		}
+	}
+
+	/** ClickHouse names one function per unit, and only these five are ever asked for. */
+	private static String clickhouseAdd(String expr, int amount, String step) {
+
+		switch (step) {
+			case "day":     return "addDays(" + expr + ", " + amount + ")";
+			case "week":    return "addWeeks(" + expr + ", " + amount + ")";
+			case "month":   return "addMonths(" + expr + ", " + amount + ")";
+			case "quarter": return "addQuarters(" + expr + ", " + amount + ")";
+			default:        return "addYears(" + expr + ", " + amount + ")";
+		}
+	}
+
+	/** SQLite reads its modifiers as text, and a positive number needs its {@code +} written out. */
+	private static String plus(int amount) {
+		return amount >= 0 ? "+" + amount : String.valueOf(amount);
+	}
+
 	/** The truncation unit Oracle and DB2 share. */
 	private static String truncUnit(String unit) {
 

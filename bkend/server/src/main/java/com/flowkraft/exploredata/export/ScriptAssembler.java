@@ -116,6 +116,12 @@ public class ScriptAssembler {
         // 1. Filter to data widgets and sort canonically: (y, x, id)
         List<Map<String, Object>> widgets = allWidgets.stream()
                 .filter(w -> DATA_TYPES.contains(str(w, "type")))
+                // A widget published as the cube itself has no SQL in the dashboard at all: the
+                // viewer's questions are answered live, against the cube file, through the runtime
+                // endpoints. It is left out here rather than further down so that nothing of it
+                // reaches the data script - no block, no parameter binding, no builtin variable.
+                // Unticked cube widgets are untouched: their SQL is frozen, as before.
+                .filter(w -> !LiveCubeWidgets.isLive(w))
                 .sorted(Comparator.comparingInt((Map<String, Object> w) -> gridInt(w, "y"))
                         .thenComparingInt(w -> gridInt(w, "x"))
                         .thenComparing(w -> str(w, "id")))

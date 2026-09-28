@@ -32,6 +32,7 @@ import { TrendWidget } from "./TrendWidget";
 import { ProgressWidget } from "./ProgressWidget";
 import { DetailWidget } from "./DetailWidget";
 import { FilterPaneWidget } from "./FilterPaneWidget";
+import { CubeRendererWidget } from "./CubeRendererWidget";
 import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 
 const WIDGET_META: Record<WidgetType, { label: string; icon: React.ElementType; color: string }> = {
@@ -85,6 +86,10 @@ export function WidgetShell({ widgetId, type }: WidgetShellProps) {
   const meta = WIDGET_META[type];
   const Icon = meta.icon;
   const hasData = widget?.dataSource != null;
+  // Show In Dashboard: the widget is the cube itself, whatever its type — the field tree with its
+  // result below, exactly what the published dashboard will hold (W3).
+  const showsCube = widget?.dataSource?.visualQuery?.kind === "cube"
+    && !!widget?.dataSource?.visualQuery?.showInDashboard;
   const textContent = (widget?.displayConfig?.textContent as string) || "";
 
   // Divider — minimal chrome: just a line. Selectable for delete.
@@ -190,8 +195,10 @@ export function WidgetShell({ widgetId, type }: WidgetShellProps) {
           )
         ) : hasData ? (
           <div className="p-2 h-full">
-            <WidgetErrorBoundary resetKey={`${type}:${widgetId}`}>
-              <LiveWidget widgetId={widgetId} type={type} />
+            <WidgetErrorBoundary resetKey={`${showsCube ? "cube" : type}:${widgetId}`}>
+              {showsCube
+                ? <CubeRendererWidget widgetId={widgetId} />
+                : <LiveWidget widgetId={widgetId} type={type} />}
             </WidgetErrorBoundary>
           </div>
         ) : (

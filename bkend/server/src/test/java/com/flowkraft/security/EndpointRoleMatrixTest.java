@@ -171,17 +171,19 @@ class EndpointRoleMatrixTest {
 						+ "with the reason, and say in the pull request what is now reachable without a\n"
 						+ "credential. An extra group here means an extra door.");
 
-		// Not permitAll and not authenticated either: seven paths opened by a short-lived embed token
+		// Not permitAll and not authenticated either: eight paths opened by a short-lived embed token
 		// for one report. Pinned for the same reason - widening this list widens the product.
 		assertEquals(List.of(
 				"\"/api/reports/*/config\", \"/api/reports/*/data\", \"/dashboard/*\","
 						+ " \"/api/analytics/pivot\", \"/api/reports/*/cube/*/meta\","
-						+ " \"/api/reports/*/cube/*/query\", \"/api/reports/*/cube/*/filter-options\""),
+						+ " \"/api/reports/*/cube/*/query\", \"/api/reports/*/cube/*/filter-options\","
+						+ " \"/api/reports/*/cube/*/drill\""),
 				matchersEndingIn(config, ".access("),
-				"The token-authorised paths changed. Seven of them were decided, each because a web"
-						+ " component on somebody else's page needs it - the last three because a live cube"
-						+ " of a published dashboard is read the same way its rows are; an eighth needs the"
-						+ " same argument made.");
+				"The token-authorised paths changed. Eight of them were decided, each because a web"
+						+ " component on somebody else's page needs it - the last four because a live cube"
+						+ " of a published dashboard is read the same way its rows are, and the rows behind"
+						+ " one of its numbers are read the same way the number is; a ninth needs the same"
+						+ " argument made.");
 
 		assertTrue(config.contains(".anyRequest().authenticated())"),
 				"The real chain no longer ends in anyRequest().authenticated(), so an endpoint nobody"

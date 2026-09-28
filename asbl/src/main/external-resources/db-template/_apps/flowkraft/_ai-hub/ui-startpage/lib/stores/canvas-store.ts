@@ -48,6 +48,25 @@ export interface NumericBucket {
   numBins?: number;
 }
 
+/** What a person ticked in a cube's field tree, in the structured query's own words.
+ *
+ *  It is what `<rb-cube-renderer>` reports through `selectionChanged` and what it takes back
+ *  through `applySelection`, so reopening a widget restores the very ticks, grains and filter
+ *  chips it was saved with. The same shape is sent to `/generate-sql` for the frozen SQL, and,
+ *  for a widget with `showInDashboard`, written into the published `-cube-widgets.json` as the
+ *  selection the dashboard opens with. A dimension carries its grain in its own name
+ *  (`OrderDate.month`); `granularities` says the same thing the way the backend's map form does.
+ */
+export interface CubeSelection {
+  dimensions: string[];
+  measures: string[];
+  segments: string[];
+  filters: { member: string; operator: string; values: string[] }[];
+  granularities: Record<string, string>;
+  order: { member: string; dir: string }[];
+  limit: number | null;
+}
+
 export interface VisualQuery {
   // Discriminator: "table" (default, backward-compatible) drives the existing
   // SQL builder. "cube" routes the widget to <rb-cube-renderer> instead.
@@ -96,6 +115,15 @@ export interface VisualQuery {
   groupByNumericBuckets?: Record<string, NumericBucket>;
   sort: { column: string; direction: "ASC" | "DESC" }[];
   limit: number;
+  // For kind === "cube" — the cube's own selection, kept beside the table query's steps because
+  // a cube widget has no columns, filters or sort of its own: the field tree holds all of it.
+  // Absent on every canvas saved before this existed, which therefore reopens with an empty tree
+  // exactly as it did.
+  cubeSelection?: CubeSelection;
+  // Show In Dashboard: unchecked (or absent, which is every canvas saved until now) freezes the
+  // cube's SQL into the published dashboard, as before; checked publishes the cube itself, so a
+  // viewer picks fields and filters in the dashboard and sees whatever the cube says that day.
+  showInDashboard?: boolean;
 }
 
 export interface DataSource {

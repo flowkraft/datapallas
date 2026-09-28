@@ -3,6 +3,7 @@ package com.flowkraft.exploredata.export;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.exploredata.ExploreDataService;
 import com.flowkraft.exploredata.ScriptModeWidgets;
+import com.flowkraft.cubes.CubeWidgets;
 import com.flowkraft.embed.ReservedParameterNameException;
 import com.flowkraft.embed.UserVariables;
 import com.flowkraft.iam.limits.LimitsService;
@@ -170,7 +171,7 @@ public class CanvasExportService {
 
         // ── Step 6: Generate + write all sidecar files server-side ────────────
         DashboardFileGenerator.GeneratedFiles files = DashboardFileGenerator.generate(
-                widgets, parametersList, reportId, rbApiBaseUrl);
+                widgets, parametersList, reportId, rbApiBaseUrl, connectionId);
 
         writeIfPresent(templateDir, reportId + "-template.html",                 files.templateHtml());
         writeIfPresent(configDir,   reportId + "-chart-config.groovy",           files.chartConfigGroovy());
@@ -185,6 +186,9 @@ public class CanvasExportService {
         writeIfPresent(configDir,   reportId + "-trend-config.json",             files.trendConfigJson());
         writeIfPresent(configDir,   reportId + "-progress-config.json",          files.progressConfigJson());
         writeIfPresent(configDir,   reportId + "-detail-config.json",            files.detailConfigJson());
+        // The live cubes of this dashboard, beside its settings.xml - where CubeWidgets looks for
+        // them. A canvas that shows no cube writes no file, as with every other sidecar.
+        writeIfPresent(configDir,   reportId + CubeWidgets.SUFFIX,                files.cubeWidgetsJson());
 
         // ── Step 7: Update exportedReportCode in DB (best-effort) ─────────────
         try {

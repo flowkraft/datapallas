@@ -2,115 +2,122 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
-import { fetchCube, parseCubeDsl } from "@/lib/explore-data/rb-api";
+import { generateCubeSql } from "@/lib/explore-data/rb-api";
+import { cubeDisplayOf, selectionOfEvent } from "@/lib/explore-data/cube-selection";
 import { useRbElementReady } from "./useRbElementReady";
 // lucide-react removed
-import { suggestRenderModeForCube } from "@/lib/explore-data/smart-defaults";
 
 interface CubeRendererWidgetProps {
   widgetId: string;
 }
 
 /**
- * Widget renderer that mounts <rb-cube-renderer> from the rb-webcomponents
- * Svelte bundle. Used by ANY widget type (chart / data table / pivot / value
- * card) when its dataSource has visualQuery.kind === "cube".
+ * The cube itself on the canvas: the widget of a data source whose `visualQuery.showInDashboard`
+ * is set (W3). Inside it is `<rb-cube-renderer>` in author mode (W4.8) — the same field tree, the
+ * same filters and the same result area a viewer will get in the published dashboard, asked with
+ * the author's own credential and of the cube the widget names.
+ *
+ * Everything ticked here is written back to `visualQuery.cubeSelection` and regenerates
+ * `generatedSql`, so unchecking Show In Dashboard later leaves current frozen SQL behind. The
+ * result under the tree follows the widget type: number → value, chart → chart, else table.
  *
  * The bundle is loaded globally by RbWebComponentsLoader in app/layout.tsx.
  */
 export function CubeRendererWidget({ widgetId }: CubeRendererWidgetProps) {
   const widget = useCanvasStore((s) => s.widgets.find((w) => w.id === widgetId));
   const connectionId = useCanvasStore((s) => s.connectionId);
-  const changeWidgetRenderMode = useCanvasStore((s) => s.changeWidgetRenderMode);
 
-  const cubeId = widget?.dataSource?.visualQuery?.cubeId || "";
-  // Which cube of the file the widget was built on: the renderer starts on that one.
-  const savedCubeName = widget?.dataSource?.visualQuery?.cubeName || "";
-  const currentType = widget?.type;
+  const query = widget?.dataSource?.visualQuery;
+  const cubeId = query?.cubeId || "";
+  /** Which cube of the file the widget was built on: the renderer starts on that one. */
+  const savedCubeName = query?.cubeName || "";
+  const display = cubeDisplayOf(widget?.type);
 
   const ref = useRef<HTMLElement>(null);
-  const [cubeConfig, setCubeConfig] = useState<unknown>(null);
-  const [cubeFileName, setCubeFileName] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  /** The cube whose saved selection has already been put back into the tree: once per load. */
+  const restoredFor = useRef("");
+  const [sqlError, setSqlError] = useState<string | null>(null);
   const ready = useRbElementReady("rb-cube-renderer");
 
-  // Load the cube DSL and parse it into the structured CubeOptions object
-  // that <rb-cube-renderer cubeConfig={...} /> expects (mirrors the Angular
-  // pattern in tab-cube-definitions.ts: parseDsl(dslCode) → cubeConfig).
+  // Author mode reads the cube by itself (`/api/cubes/{id}` and parse-dsl), so all this widget
+  // hands over is which cube, which connection and what the answer should look like.
   useEffect(() => {
-    if (!cubeId) {
-      setCubeConfig(null);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    (async () => {
-      try {
-        const cube = await fetchCube(cubeId);
-        // The whole file: the renderer's picker lists its cubes, and a name only says which
-        // one starts selected.
-        const parsed = await parseCubeDsl(cube.dslCode);
-        if (cancelled) return;
-        setCubeFileName(cube.cubeName || "");
-        setCubeConfig(parsed);
-      } catch (e) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load cube");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [cubeId]);
-
-  // Push complex props (objects) into the custom element via direct property
-  // assignment — same pattern as next-playground does for refs.
-  useEffect(() => {
-    if (!ready || !ref.current || !cubeConfig) return;
+    if (!ready || !ref.current || !cubeId) return;
     const el = ref.current as HTMLElement & {
-      cubeConfig?: unknown;
+      cubeId?: string;
+      cubeName?: string;
       connectionId?: string;
       apiBaseUrl?: string;
       apiKey?: string;
-      cubeName?: string;
+      display?: string;
     };
     const rbConfig = (typeof window !== "undefined"
       ? (window as unknown as { rbConfig?: { apiBaseUrl: string; apiKey: string } }).rbConfig
       : undefined);
-    el.cubeConfig = cubeConfig;
-    el.cubeName = savedCubeName || cubeFileName;
+    el.cubeName = savedCubeName;
     el.connectionId = connectionId || "";
     el.apiBaseUrl = rbConfig?.apiBaseUrl || "";
     el.apiKey = rbConfig?.apiKey || "";
-  }, [ready, cubeConfig, connectionId, savedCubeName, cubeFileName]);
+    el.display = display;
+    // Last: author mode starts as soon as it has a cube id, and it starts with the rest set.
+    el.cubeId = cubeId;
+  }, [ready, cubeId, savedCubeName, connectionId, display]);
 
-  // Listen for cube selection changes → auto-pick the best render mode for
-  // the current shape (0 dims → Number, 1 dim → chart, 2+ dims → pivot).
+  // The ticks, the grains and the filter chips the widget was saved with are what it reopens
+  // with — `applySelection` is the tree's own one path, so it ends in `selectionChanged` exactly
+  // as a click does.
   useEffect(() => {
-    if (!ready || !ref.current || !widgetId) return;
-    const el = ref.current;
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as {
-        selectedDimensions?: string[];
-        selectedMeasures?: string[];
-      };
-      const dims = detail?.selectedDimensions ?? [];
-      const measures = detail?.selectedMeasures ?? [];
-      if (dims.length === 0 && measures.length === 0) return; // nothing picked yet
-      const suggested = suggestRenderModeForCube(dims, measures);
-      // Only change when the current type differs AND the user hasn't been
-      // working inside an already-matching mode (avoid bouncing between modes
-      // if the user toggles selections quickly).
-      if (suggested && suggested !== currentType) {
-        changeWidgetRenderMode(widgetId, suggested);
-      }
+    if (!ready || !ref.current || !cubeId) return;
+    if (restoredFor.current === cubeId) return;
+    restoredFor.current = cubeId;
+    const selection = widget?.dataSource?.visualQuery?.cubeSelection;
+    if (!selection) return;
+    const el = ref.current as HTMLElement & {
+      initialFilters?: unknown[];
+      applySelection?: (selection: unknown) => boolean;
     };
+    el.initialFilters = selection.filters || [];
+    el.applySelection?.(selection);
+    // The saved selection is this widget's, and it is applied to the tree it was taken from — so
+    // this effect watches the cube, not the selection, and a tick does not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, cubeId]);
+
+  // Every change on the canvas is the widget's new selection, and its new frozen SQL.
+  useEffect(() => {
+    const el = ref.current;
+    if (!ready || !el || !cubeId) return;
+
+    const handler = async (event: Event) => {
+      const asked = selectionOfEvent(event);
+      if (!asked) return;
+      const store = useCanvasStore.getState();
+      const current = store.widgets.find((w) => w.id === widgetId);
+      const currentQuery = current?.dataSource?.visualQuery;
+      if (!currentQuery) return;
+      // The cube the renderer is showing travels with the selection, so a file of several cubes
+      // generates SQL for the one on screen — and a saved canvas keeps it.
+      const cubeName = asked.cubeName || currentQuery.cubeName || "";
+      let generatedSql = current?.dataSource?.generatedSql ?? "";
+      try {
+        generatedSql = await generateCubeSql(cubeId, connectionId || "", asked.selection, cubeName);
+        setSqlError(null);
+      } catch (err) {
+        // The frozen SQL is what unchecking the box falls back to, so a refusal is said rather
+        // than swallowed — and the last SQL that did generate is kept.
+        setSqlError(err instanceof Error ? err.message : "Failed to generate SQL");
+      }
+      store.updateWidgetDataSource(widgetId, {
+        ...current!.dataSource!,
+        mode: "visual",
+        visualQuery: { ...currentQuery, cubeName: cubeName || undefined, cubeSelection: asked.selection },
+        generatedSql,
+      });
+    };
+
     el.addEventListener("selectionChanged", handler);
     return () => el.removeEventListener("selectionChanged", handler);
-  }, [ready, widgetId, currentType, changeWidgetRenderMode]);
+  }, [ready, cubeId, connectionId, widgetId]);
 
   if (!cubeId) {
     return (
@@ -119,10 +126,21 @@ export function CubeRendererWidget({ widgetId }: CubeRendererWidgetProps) {
       </div>
     );
   }
-  if (loading) return <div className="flex items-center justify-center h-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 animate-spin text-base-content/60"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg></div>;
-  if (error) return <div className="text-xs text-error p-2 overflow-hidden">Query error: {error.split('\n')[0].slice(0, 200)}</div>;
   if (!ready) return <div className="flex items-center justify-center h-full text-xs text-base-content/60">Loading components...</div>;
 
-  // @ts-expect-error - Web component custom element
-  return <rb-cube-renderer ref={ref} style={{ display: "block", width: "100%", height: "100%", overflow: "auto" }} />;
+  return (
+    <div className="h-full flex flex-col">
+      {/* @ts-expect-error - Web component custom element */}
+      <rb-cube-renderer
+        ref={ref}
+        id={`widgetViz-${widgetId}`}
+        style={{ display: "block", width: "100%", flex: 1, overflow: "auto" }}
+      />
+      {sqlError && (
+        <div id={`widgetSqlError-${widgetId}`} className="shrink-0 text-[10px] text-error px-2 py-0.5 overflow-hidden">
+          {sqlError.split("\n")[0].slice(0, 200)}
+        </div>
+      )}
+    </div>
+  );
 }

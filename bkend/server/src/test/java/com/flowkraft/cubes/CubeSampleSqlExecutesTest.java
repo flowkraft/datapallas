@@ -151,7 +151,7 @@ class CubeSampleSqlExecutesTest {
 				for (String cubeName : group.getValue()) {
 					CubeOptions cube = parseSampleCube(cubeName);
 
-					List<String> measureNames = namesOf(cube.getMeasures());
+					List<String> measureNames = measuresASweepCanTickAtOnce(cube);
 					List<String> failures = new ArrayList<>();
 
 					List<String> dimensionNames = namesOf(cube.getDimensions());
@@ -285,7 +285,7 @@ class CubeSampleSqlExecutesTest {
 			try (Connection connection = openFixtureFor(vendor)) {
 				for (String cubeName : group.getValue()) {
 					CubeOptions cube = parseSampleCube(cubeName);
-					List<String> measureNames = namesOf(cube.getMeasures());
+					List<String> measureNames = measuresASweepCanTickAtOnce(cube);
 					List<String> failures = new ArrayList<>();
 
 					for (String dimensionName : timeDimensionNames(cube)) {
@@ -550,6 +550,30 @@ class CubeSampleSqlExecutesTest {
 		return files;
 	}
 
+	/**
+	 * The measures a sweep can tick all at once.
+	 *
+	 * <p>A measure that runs along time - a running total, a year to date, the same period a year
+	 * earlier - only answers a question that has a date in it, at a grain. Ticked beside a country,
+	 * or by year, it refuses by design, so a sweep that ticks everything would be asserting those
+	 * refusals instead of sweeping the cube. They are asked the way a user asks them, and executed,
+	 * by the W4 tests below, and the refusals are asserted there by name.
+	 */
+	private List<String> measuresASweepCanTickAtOnce(CubeOptions cube) {
+		List<String> names = new ArrayList<>();
+		if (cube.getMeasures() != null) {
+			for (Map<String, Object> measure : cube.getMeasures()) {
+				if (measure.get("rolling_window") != null || measure.get("time_shift") != null) {
+					continue;
+				}
+				if (measure.get("name") != null) {
+					names.add(measure.get("name").toString());
+				}
+			}
+		}
+		return names;
+	}
+
 	private List<String> namesOf(List<Map<String, Object>> fields) {
 		List<String> names = new ArrayList<>();
 		if (fields != null) {
@@ -600,7 +624,7 @@ class CubeSampleSqlExecutesTest {
 			try (Connection connection = openFixtureFor(vendor)) {
 				for (String cubeName : group.getValue()) {
 					CubeOptions cube = parseSampleCube(cubeName);
-					List<String> allMeasures = namesOf(cube.getMeasures());
+					List<String> allMeasures = measuresASweepCanTickAtOnce(cube);
 					List<String> failures = new ArrayList<>();
 
 					for (String dimensionName : onTheMainTable(cube, cube.getDimensions())) {
@@ -959,18 +983,15 @@ class CubeSampleSqlExecutesTest {
 
 	/**
 	 * The shipped samples are what a new user opens first, so they may not greet that user with a
-	 * complaint. The only thing they are allowed to say is that a key they use is not read yet.
+	 * complaint — and now that W4 reads format, rolling_window and drill_members, they have nothing
+	 * left to say at all.
 	 */
 	@Test
 	void everyShippedSampleParsesWithNothingToComplainAbout() throws Exception {
-		Set<String> notUsedYet = Set.of("format", "drill_members", "rolling_window");
 		List<String> complaints = new ArrayList<>();
 		for (String cubeName : SAMPLE_CUBES) {
 			for (Map<String, Object> warning : parseSampleFile(cubeName).getWarnings()) {
-				String key = String.valueOf(warning.get("key"));
-				boolean allowed = "warning".equals(warning.get("level")) && notUsedYet.contains(key)
-						&& String.valueOf(warning.get("message")).endsWith(key + " is not used yet");
-				if (!allowed) complaints.add(cubeName + ": " + warning);
+				complaints.add(cubeName + ": " + warning);
 			}
 		}
 		if (!complaints.isEmpty()) {
@@ -1275,6 +1296,338 @@ class CubeSampleSqlExecutesTest {
 	}
 
 	/** The SQL one structured request generates, ready to run: its values written in. */
+	// ═══════════════════════════════════════════════════════════════════════════
+	// W4 — the analysis features, on the real database
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * A total is a second query over all the rows, not the sum of the rows shown.
+	 *
+	 * <p>The proof is a distinct count: added up per category it counts the same customer once in
+	 * every category they ever bought from, and the answer a user is shown must be the number of
+	 * customers there are.
+	 */
+	@Test
+	void totalsAreAskedAgainAndAreNotTheSumOfTheRowsShown() throws Exception {
+
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = "sqlite";
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("CategoryName"));
+		request.put("measures", List.of("Revenue", "UniqueCustomers"));
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			List<List<Object>> rows = table(connection,
+					CubeSqlGenerator.buildQuery(cube, request, vendor).toInlineSql(vendor));
+			assertTrue(rows.size() > 1, "The fixture has categories to add up");
+
+			List<List<Object>> totals = table(connection, CubeSqlGenerator
+					.buildQuery(cube, CubeSqlGenerator.totalsRequest(request), vendor).toInlineSql(vendor));
+			assertEquals(1, totals.size(), "A total is one row, however many rows it is over");
+
+			double revenueOfTheRows = 0;
+			long customersAddedUp = 0;
+			for (List<Object> row : rows) {
+				revenueOfTheRows += number(row.get(1));
+				customersAddedUp += (long) number(row.get(2));
+			}
+
+			assertEquals(revenueOfTheRows, number(totals.get(0).get(0)), 0.01,
+					"A sum totals to the sum of the rows, which is the case that hides the bug");
+
+			long customers = oneNumber(connection,
+					"SELECT COUNT(DISTINCT CustomerID) FROM Orders").longValue();
+			assertEquals(customers, (long) number(totals.get(0).get(1)),
+					"A distinct count totals to how many there are");
+			assertTrue(customers < customersAddedUp,
+					"and not to " + customersAddedUp + ", which is what adding the rows up would give");
+		}
+	}
+
+	/** A share of the total is a share of every group in the answer, so the shares add up to one. */
+	@Test
+	void everyGroupsShareOfTheTotalAddsUpToTheWholeOfIt() throws Exception {
+
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = "sqlite";
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			double whole = 0;
+			for (Double share : numberColumn(connection, ask(cube, vendor,
+					"dimensions", List.of("CategoryName"), "measures", List.of("Revenue", "RevenueShare")), 3)) {
+				whole += share;
+			}
+			assertEquals(1.0, whole, 1e-9, "Every category's share of the revenue is all of it");
+
+			// The share is of every group, not of the rows that fit on the screen: three of them
+			// are three of the categories, and three categories are not the whole business.
+			double threeOfThem = 0;
+			for (Double share : numberColumn(connection, ask(cube, vendor,
+					"dimensions", List.of("CategoryName"), "measures", List.of("Revenue", "RevenueShare"),
+					"order", List.of(Map.of("member", "Revenue", "dir", "desc")), "limit", 3), 3)) {
+				threeOfThem += share;
+			}
+			assertTrue(threeOfThem < 1.0 - 1e-9,
+					"Three categories are less than all of them: " + threeOfThem);
+		}
+	}
+
+	/** A running total adds up along the date, and starts again for each of the other fields. */
+	@Test
+	void aRunningTotalAddsUpAlongTheDateAndRestartsPerCategory() throws Exception {
+
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = "sqlite";
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			List<List<Object>> months = table(connection, ask(cube, vendor,
+					"dimensions", List.of("OrderDate.month"),
+					"measures", List.of("Revenue", "RevenueRunning")));
+			assertTrue(months.size() > 12, "The fixture has months to run along");
+
+			double soFar = 0;
+			for (List<Object> month : months) {
+				soFar += number(month.get(1));
+				assertEquals(soFar, number(month.get(2)), 0.01,
+						"Each month is the months before it plus its own, at " + month.get(0));
+			}
+			assertEquals(number(oneNumber(connection, CubeSqlGenerator.buildQuery(cube,
+					CubeSqlGenerator.totalsRequest(Map.of("dimensions", List.of("OrderDate.month"),
+							"measures", List.of("Revenue"))),
+					vendor).toInlineSql(vendor))), soFar, 0.01,
+					"and the last month is the whole of it");
+
+			// With a second field, each category is its own series: the first month of each one
+			// is that month's own revenue, not everybody's.
+			Map<String, Double> firstSeen = new LinkedHashMap<>();
+			for (List<Object> row : table(connection, ask(cube, vendor,
+					"dimensions", List.of("OrderDate.month", "CategoryName"),
+					"measures", List.of("Revenue", "RevenueRunning")))) {
+
+				String category = String.valueOf(row.get(1));
+				if (firstSeen.containsKey(category)) continue;
+				firstSeen.put(category, number(row.get(3)));
+				assertEquals(number(row.get(2)), number(row.get(3)), 0.01,
+						"A category's first month has only itself in it: " + category);
+			}
+			assertTrue(firstSeen.size() > 1, "Several categories were seen: " + firstSeen.keySet());
+		}
+	}
+
+	/** A to-date total is the same window, restarted every year. */
+	@Test
+	void aYearToDateTotalStartsAgainWithEachYear() throws Exception {
+
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = "sqlite";
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			Set<String> yearsSeen = new LinkedHashSet<>();
+			for (List<Object> month : table(connection, ask(cube, vendor,
+					"dimensions", List.of("OrderDate.month"),
+					"measures", List.of("Revenue", "RevenueYTD")))) {
+
+				String year = String.valueOf(month.get(0)).substring(0, 4);
+				if (!yearsSeen.add(year)) continue;
+				assertEquals(number(month.get(1)), number(month.get(2)), 0.01,
+						"The first month of " + year + " has only itself to date");
+			}
+			assertTrue(yearsSeen.size() > 1, "More than one year, or nothing was restarted: " + yearsSeen);
+		}
+	}
+
+	/** The same period one year earlier, for the same groups — and nothing before the data starts. */
+	@Test
+	void thePriorYearIsTheSameMonthTwelveMonthsBack() throws Exception {
+
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = "sqlite";
+		String date = CubeSqlDialect.timeValue("OrderDate", vendor);
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			List<List<Object>> months = table(connection, ask(cube, vendor,
+					"dimensions", List.of("OrderDate.month"),
+					"measures", List.of("Revenue", "RevenuePriorYear")));
+
+			Map<String, Double> revenueOf = new LinkedHashMap<>();
+			for (List<Object> month : months) {
+				revenueOf.put(String.valueOf(month.get(0)), number(month.get(1)));
+			}
+
+			int compared = 0;
+			for (List<Object> month : months) {
+				String shown = String.valueOf(month.get(0));
+				String aYearBack = (Integer.parseInt(shown.substring(0, 4)) - 1) + shown.substring(4);
+				Double earlier = revenueOf.get(aYearBack);
+
+				if (earlier == null) {
+					assertEquals(null, month.get(2),
+							"Nothing was sold before the data starts, so " + shown + " has no prior year");
+					continue;
+				}
+				assertEquals(earlier, number(month.get(2)), 0.01,
+						"The prior year of " + shown + " is " + aYearBack);
+				compared++;
+			}
+			assertTrue(compared > 6, "Enough months had a year before them to prove it: " + compared);
+
+			// With no date in the question, the prior period is one number: the whole of the range
+			// the filters ask about, moved back a year.
+			double shifted = oneNumber(connection,
+					"SELECT SUM(\"Order Details\".UnitPrice * \"Order Details\".Quantity"
+							+ " * (1 - \"Order Details\".Discount))"
+							+ " FROM Orders LEFT JOIN \"Order Details\""
+							+ " ON Orders.OrderID = \"Order Details\".OrderID"
+							+ " WHERE " + date + " >= '2022-01-01' AND " + date + " < '2023-01-01'")
+									.doubleValue();
+			assertTrue(shifted > 0, "There is an earlier year to find");
+			assertEquals(shifted, number(oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("RevenuePriorYear"),
+					"filters", List.of(filterOn("OrderDate", "between", "2023-01-01", "2023-12-31"))))),
+					0.01, "One number for the year before the year that was asked about");
+		}
+	}
+
+	/** The rows behind a number add up to it, which is the whole promise of a drill. */
+	@Test
+	void theRowsBehindANumberAddUpToThatNumber() throws Exception {
+
+		CubeOptions cube = parseSampleCube("northwind-sales");
+		String vendor = "sqlite";
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			// The cell: Germany's revenue, out of a revenue-by-country answer.
+			double germany = number(oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("Revenue"),
+					"filters", List.of(filterOn("ShipCountry", "in", "Germany")))));
+			assertTrue(germany > 0, "Germany bought something");
+
+			Map<String, Object> clicked = new LinkedHashMap<>();
+			clicked.put("dimensions", List.of("ShipCountry"));
+			clicked.put("measures", List.of("Revenue"));
+			clicked.put("measure", "Revenue");
+			clicked.put("cell", Map.of("ShipCountry", "Germany"));
+
+			List<List<Object>> orders = table(connection, CubeSqlGenerator
+					.buildQuery(cube, CubeDrill.request(cube, clicked), vendor).toInlineSql(vendor));
+			assertTrue(orders.size() > 1, "Germany's revenue is more than one order");
+
+			double addedUp = 0;
+			for (List<Object> order : orders) addedUp += number(order.get(4));
+			assertEquals(germany, addedUp, 0.01, "The orders behind the number add up to it");
+
+			// A month cell drills to that month, taking in its whole last day.
+			Map<String, Object> aMonth = new LinkedHashMap<>();
+			aMonth.put("measure", "Revenue");
+			aMonth.put("cell", Map.of("OrderDate.month", "2023-03-01"));
+			double march = 0;
+			for (List<Object> order : table(connection, CubeSqlGenerator
+					.buildQuery(cube, CubeDrill.request(cube, aMonth), vendor).toInlineSql(vendor))) {
+				march += number(order.get(4));
+			}
+			assertEquals(number(oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("Revenue"),
+					"filters", List.of(filterOn("OrderDate", "between", "2023-03-01", "2023-03-31"))))),
+					march, 0.01, "A month cell drills to that month and no other");
+
+			// An empty cell is the rows that have nothing there - which is what was counted under it.
+			Map<String, Object> nothing = new LinkedHashMap<>();
+			Map<String, Object> emptyCell = new LinkedHashMap<>();
+			emptyCell.put("ShipCountry", null);
+			nothing.put("measure", "Revenue");
+			nothing.put("cell", emptyCell);
+			String noCountry = CubeSqlGenerator
+					.buildQuery(cube, CubeDrill.request(cube, nothing), vendor).toInlineSql(vendor);
+			assertTrue(noCountry.contains("IS NULL"), "An empty cell asks for nothing, by name:\n" + noCountry);
+			assertEquals(oneNumber(connection,
+					"SELECT COUNT(*) FROM Orders WHERE ShipCountry IS NULL").longValue(),
+					rowsOf(connection, noCountry), "and finds exactly those orders");
+		}
+	}
+
+	/**
+	 * Every refusal, on the cube that ships. A sentence a user reads is worth as much as the
+	 * number beside it, so each one is asserted where the cube is real.
+	 */
+	@Test
+	void everyAnalysisAMeasureCannotBeIsRefusedOnTheShippedCube() throws Exception {
+
+		CubeOptions cube = parseSampleCube("northwind-sales");
+
+		// A running total has nothing to run along without a date in the question.
+		assertTrue(refusalOf(() -> CubeSqlGenerator.generateSql(cube, List.of("CategoryName"),
+				List.of("RevenueRunning"), "sqlite")).contains("needs a date field in the query"));
+
+		// A year to date, asked by year, would be the running total under another name.
+		assertTrue(refusalOf(() -> CubeSqlGenerator.generateSql(cube, List.of("OrderDate.year"),
+				List.of("RevenueYTD"), "sqlite")).contains("every row would be its own total"));
+
+		// And a date with no grain at all is not a period to restart in.
+		assertTrue(refusalOf(() -> CubeSqlGenerator.generateSql(cube, List.of("OrderDate"),
+				List.of("RevenueYTD"), "sqlite")).contains("needs a granularity"));
+
+		// The two the cube itself gets wrong, written into the shipped cube's own text.
+		String dsl = Files.readString(filesOf("northwind-sales").getDslFile().toPath());
+		int end = dsl.lastIndexOf('}');
+
+		CubeOptions shareOfAnAverage = CubeOptionsParser.parseGroovyCubeDslCode(dsl.substring(0, end)
+				+ "  measure { name 'DiscountShare'; type 'number'; sql '${AvgDiscount}'; "
+				+ "share_of_total true }\n}");
+		assertTrue(refusalOf(() -> CubeSqlGenerator.generateSql(shareOfAnAverage,
+				List.of("CategoryName"), List.of("DiscountShare"), "sqlite")).contains("never of an average"));
+
+		CubeOptions threeMonths = CubeOptionsParser.parseGroovyCubeDslCode(dsl.substring(0, end)
+				+ "  measure { name 'RevenueQuarter'; type 'number'; sql '${Revenue}'; "
+				+ "rolling_window trailing: '3 month' }\n}");
+		assertTrue(refusalOf(() -> CubeSqlGenerator.generateSql(threeMonths,
+				List.of("OrderDate.month"), List.of("RevenueQuarter"), "sqlite"))
+						.contains("which is not built"));
+	}
+
+	/** The sentence a refusal says, or a failure naming the SQL it produced instead. */
+	private String refusalOf(SqlThatShouldNotBeWritten attempt) {
+		try {
+			fail("This was refused by nothing and came back as:\n" + attempt.write());
+			return "";
+		} catch (IllegalArgumentException refused) {
+			return refused.getMessage();
+		} catch (Exception other) {
+			throw new IllegalStateException(other);
+		}
+	}
+
+	private interface SqlThatShouldNotBeWritten {
+		String write() throws Exception;
+	}
+
+	/** Every row of an answer, as its columns came back. */
+	private List<List<Object>> table(Connection connection, String sql) throws Exception {
+		List<List<Object>> rows = new ArrayList<>();
+		try (Statement statement = connection.createStatement(); ResultSet rs = statement.executeQuery(sql)) {
+			int columns = rs.getMetaData().getColumnCount();
+			while (rs.next()) {
+				List<Object> row = new ArrayList<>();
+				for (int i = 1; i <= columns; i++) row.add(rs.getObject(i));
+				rows.add(row);
+			}
+		}
+		return rows;
+	}
+
+	/** A number as the driver handed it over, whatever box it came in. */
+	private static double number(Object value) {
+		if (value == null) return 0;
+		return value instanceof Number ? ((Number) value).doubleValue()
+				: Double.parseDouble(value.toString());
+	}
+
 	private String ask(CubeOptions cube, String vendor, Object... keysAndValues) {
 		Map<String, Object> request = new LinkedHashMap<>();
 		for (int i = 0; i < keysAndValues.length; i += 2) {

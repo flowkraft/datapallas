@@ -254,6 +254,23 @@ public class IamDatabase {
 					    PRIMARY KEY (group_id, report_id)
 					)""");
 
+			// What one viewer set for themselves, which is the second layer of a live cube's view (W5):
+			// the dashboard's own file holds the lock and the author's default, this holds what each
+			// viewer changed, so one viewer's filters never reach another's screen and republishing the
+			// dashboard leaves every saved view alone. Generic on purpose — an owner, a key and a JSON
+			// value — and owner is text rather than a foreign key, because the desktop's installation
+			// key owns rows here too and has no app_user row of its own. IamRepository.deleteUser
+			// therefore takes a person's rows with it, in the same transaction.
+			st.execute("""
+					CREATE TABLE IF NOT EXISTS user_setting (
+					    owner        TEXT NOT NULL,
+					    tenant_code  TEXT NOT NULL DEFAULT '',
+					    setting_key  TEXT NOT NULL,
+					    value_json   TEXT NOT NULL,
+					    updated_at   TEXT NOT NULL,
+					    PRIMARY KEY (owner, tenant_code, setting_key)
+					)""");
+
 			// The dashboard a group's viewers land on. Nullable because most groups have no opinion, and
 			// added when missing so a group table created by an earlier build of this release upgrades in
 			// place, the same way locked_params does below.

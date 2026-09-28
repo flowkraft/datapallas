@@ -54,14 +54,16 @@ public class DashboardFileGenerator {
         String gaugeConfigJson,
         String trendConfigJson,
         String progressConfigJson,
-        String detailConfigJson
+        String detailConfigJson,
+        String cubeWidgetsJson
     ) {}
 
     public static GeneratedFiles generate(
             List<Map<String, Object>> widgets,
             List<Map<String, Object>> parametersList,
             String reportId,
-            String apiBaseUrl) throws Exception {
+            String apiBaseUrl,
+            String connectionId) throws Exception {
 
         // Single source of truth (Principle 4): parametersConfig.parameters Map.
         // Serialize to canonical DSL text for the published spec file.
@@ -86,7 +88,10 @@ public class DashboardFileGenerator {
             generateGaugeConfig(byType(widgets, "gauge")),
             generateJsonSidecar(byType(widgets, "trend"),    "dateField", "valueField", "format", "label"),
             generateJsonSidecar(byType(widgets, "progress"), "field", "goal", "label", "format", "color"),
-            generateJsonSidecar(byType(widgets, "detail"),   "hiddenColumns", "rowIndex")
+            generateJsonSidecar(byType(widgets, "detail"),   "hiddenColumns", "rowIndex"),
+            // The live cubes this dashboard declares - the file the runtime reads its cube, its
+            // cube name and its connection from, and never from a request.
+            LiveCubeWidgets.json(widgets, DashboardFileGenerator::componentId, connectionId)
         );
     }
 
@@ -244,6 +249,15 @@ public class DashboardFileGenerator {
         // to the row span (80px per row matches grid-auto-rows' minimum) so the
         // chart fills its allotted vertical real estate.
         String chartStyle = style + String.format(" min-height: %dpx;", row * 80);
+
+        // Show In Dashboard: this widget is the cube, whatever type the widget picker says. The
+        // type only decides how the result under the field tree is drawn, and that travels in the
+        // `display` of its -cube-widgets.json entry, not in the markup. The field tree needs the
+        // height a chart needs, for the same reason: nothing here has an intrinsic one.
+        if (LiveCubeWidgets.isLive(w))
+            return String.format(
+                "    <div class=\"grid-item\" style=\"%s\">\n      <rb-cube-renderer %s></rb-cube-renderer>\n    </div>",
+                chartStyle, attrs);
 
         return switch (type) {
             case "chart" ->

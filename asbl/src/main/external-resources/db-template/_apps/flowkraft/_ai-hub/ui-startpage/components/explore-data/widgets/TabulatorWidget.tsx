@@ -10,6 +10,7 @@ import type { ColumnSchema } from "@/lib/explore-data/types";
 import { pickColumnFormat, formatCellHtml, type FormatSpec } from "@/lib/explore-data/type-formatters";
 import { pseudoColumnSchema } from "@/lib/explore-data/pseudo-column";
 import { ColumnSettingsDialog } from "../ColumnSettingsDialog";
+import { mergeColumnFormat, type ColumnSettingsMap } from "@/lib/explore-data/column-settings";
 import { useDslConfig } from "@/lib/hooks/use-dsl-config";
 import { mapToTabulatorRenderConfig } from "@/lib/explore-data/render/tabulator-render-config";
 
@@ -75,6 +76,9 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
   //    render-config helper applies sensible Tabulator defaults (autoColumns +
   //    fitColumns layout) so the widget renders all data columns by default.
   const { config: dslMap } = useDslConfig(widgetId, "tabulator");
+  // What the columns of this widget were settled to be — today the cube's declared formats seed
+  // them (W4.2), and the auto-picker decides every column nothing was said about.
+  const columnSettings = (widget?.displayConfig.columnSettings as ColumnSettingsMap | undefined) ?? {};
   const groupByBuckets = widget?.dataSource?.visualQuery?.groupByBuckets ?? {};
   const groupByCols = new Set(widget?.dataSource?.visualQuery?.groupBy ?? []);
 
@@ -104,9 +108,9 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
           base = { ...base, kind: "date", dateUnit: bucket };
         }
       }
-      return { field, col, effective: base, sample };
+      return { field, col, effective: mergeColumnFormat(base, columnSettings[field]), sample };
     });
-  }, [result, JSON.stringify(groupByBuckets)]);
+  }, [result, JSON.stringify(groupByBuckets), JSON.stringify(columnSettings)]);
 
   // ── Build the <rb-tabulator> config from the canonical Map.
   const renderConfig = useMemo(
@@ -187,7 +191,7 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
         open={activeField !== null && activeMeta !== null}
         onClose={() => setActiveField(null)}
         column={activeMeta?.col ?? null}
-        settings={undefined}
+        settings={activeField ? columnSettings[activeField] : undefined}
         sampleValue={activeMeta?.sample}
         onChange={() => {
           // Column-settings persistence will be wired into setPath in a follow-up.

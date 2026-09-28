@@ -161,8 +161,34 @@ public class IamRepository {
 		return value == null || value.isBlank() ? null : value.trim();
 	}
 
+	/**
+	 * Deletes the person, and everything that person saved for themselves with them.
+	 *
+	 * <p>Memberships and group rows go by {@code ON DELETE CASCADE}; {@code user_setting} cannot,
+	 * because its owner is text rather than a foreign key — the desktop's installation key owns rows
+	 * there too. One transaction, so a store is never left holding the saved views of somebody who is
+	 * no longer in it: the id would be handed out again.
+	 */
 	public void deleteUser(long userId) {
-		execute("DELETE FROM app_user WHERE id = ?", userId);
+		try (Connection conn = db.getConnection()) {
+			boolean autoCommit = conn.getAutoCommit();
+			conn.setAutoCommit(false);
+			try {
+				UserSettingsRepository.deleteAllFor(conn, UserSettingsRepository.ownerOfUser(userId));
+				try (PreparedStatement ps = conn.prepareStatement("DELETE FROM app_user WHERE id = ?")) {
+					ps.setLong(1, userId);
+					ps.executeUpdate();
+				}
+				conn.commit();
+			} catch (SQLException e) {
+				conn.rollback();
+				throw e;
+			} finally {
+				conn.setAutoCommit(autoCommit);
+			}
+		} catch (SQLException e) {
+			throw new IllegalStateException("Failed to delete user " + userId, e);
+		}
 	}
 
 	// ============================================================

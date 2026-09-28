@@ -28,6 +28,7 @@ import {
   selectConnection,
   addTableToCanvas,
   addCubeToCanvas,
+  openCubeFolders,
   selectCubeFields,
   switchToWidget,
   enterTextIntoEditor,
@@ -3196,6 +3197,394 @@ return ctx.dbSql.rows(sql)`,
     }
   });
 
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // D25 — Northwind Sales Live Cube  (Phase 3, W1 + W2 + W3 + W5)
+  //
+  // D23 publishes a cube as a SQL GENERATOR — the canvas turns the selection
+  // into SQL and the dashboard carries that frozen SQL. This one publishes THE
+  // CUBE ITSELF: the author ticks Show In Dashboard, the exporter writes an
+  // <rb-cube-renderer> plus this widget's entry in {reportId}-cube-widgets.json
+  // with the author's own opening selection, and the viewer asks the live cube.
+  //
+  // Same fixture as D23: the SHIPPED sample connection
+  // `rbt-sample-northwind-sqlite-4f2` and the shipped `northwind-sales` cube,
+  // both reachable once the `showsamples` preference is on. Nothing here is
+  // test-provisioned but the canvas, which the finally block deletes.
+  //
+  // What it proves, in the order the two people do it:
+  //   • W1 + W3 — the author ticks CategoryName + Revenue and filters
+  //     ShipCountry to Germany on the canvas, ticks #chkCubeShowInDashboard,
+  //     and the tree moves onto the canvas widget (#cubeOnCanvasNote);
+  //   • W2 — the published dashboard opens on the author's own selection, the
+  //     Germany chip included, and every change is a new answer from the live
+  //     cube: removing the chip, a date range on OrderDate and ticking
+  //     ShipCountry each change what the result says (both halves — the filter
+  //     is really applied and really removed);
+  //   • W5 — the viewer's own view: the panel header says what the data is
+  //     filtered by, collapsing it survives F5 because it was saved to the
+  //     ACCOUNT (GET …/my-view answers with it, in a fresh page), and Reset
+  //     view puts the author's dashboard back and leaves nothing behind (204);
+  //   • the lock is still the lock: through the API, an unknown member is
+  //     refused, and a request naming another connection is answered on the
+  //     connection the widget file names, never the one that was asked for.
+  // ────────────────────────────────────────────────────────────────────────────
+  test('D25 — Northwind Sales Live Cube', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName = 'D25 — Northwind Sales Live Cube';
+    const cubeId = 'northwind-sales';
+    const sampleConnectionCode = 'rbt-sample-northwind-sqlite-4f2';
+
+    // Same preference as D23: the shipped sample connection and its bound cubes
+    // are hidden from the canvas until it is on.
+    await page.goto(AI_HUB_BASE_URL);
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(async () => {
+      // Through the app's /api/dp proxy, as the app itself does: it carries the session + CSRF token.
+      const res = await fetch('/api/dp/system/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: { showsamples: true } }),
+      });
+      if (!res.ok) throw new Error(`enable showsamples failed: ${res.status} ${await res.text()}`);
+    });
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await page.locator('#selectConnection').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#selectConnection').selectOption(sampleConnectionCode);
+      await page.locator('#schemaBrowserTablesList').waitFor({ state: 'visible', timeout: 15_000 });
+
+      await addCubeToCanvas(page, cubeId);
+      await switchToWidget(page, 'tabulator');
+
+      // ── W1 on the canvas: the author's own ticks, and one filter ─────────
+      // CategoryName comes from the joined Categories table, so its folder is
+      // opened first; Revenue is a measure of the cube itself.
+      await openCubeFolders(page, ['chk-dim-CategoryName']);
+      await page.locator('#chk-dim-CategoryName').check();
+      await page.locator('#chk-meas-Revenue').check();
+
+      await page.locator('#btnFilter-ShipCountry').click();
+      await page.locator('#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#cubeFilterParams').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#ShipCountry').click();
+      await page.locator('#ShipCountry_cb_Germany').waitFor({ state: 'visible', timeout: 15_000 });
+      await page.locator('#ShipCountry_cb_Germany').click();
+      await page.locator('#ShipCountry_btnOk').click();
+      await page.locator('#btnFilterApply').click();
+      await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany');
+
+      // ── W3: Show In Dashboard — the cube itself is published ─────────────
+      await page.locator('#chkCubeShowInDashboard').check();
+      await expect(page.locator('#cubeOnCanvasNote')).toBeVisible({ timeout: 10_000 });
+      await page.waitForTimeout(1_500);
+
+      const d25CanvasId = page.url().split('/').pop()!;
+      const { reportId: d25ReportId, dashboardUrl: d25Url } = await publishDashboard(page);
+      const d25Ids = await getCanvasComponentIds(page, d25CanvasId);
+      const d25ComponentId = (d25Ids['tabulator'] ?? [])[0];
+      expect(d25ComponentId).toBeTruthy();
+
+      // ── W2: the dashboard opens on the author's own selection ────────────
+      await page.goto(d25Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-cube-renderer')).toHaveCount(1, { timeout: 20_000 });
+      // The field tree is the live cube's own /meta, ticked as the author left it.
+      await expect(page.locator('#chk-meas-Revenue')).toBeChecked({ timeout: 30_000 });
+      await expect(page.locator('#chk-dim-CategoryName')).toBeChecked();
+      await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany');
+
+      const d25Result = page.locator('#cubeRuntimeResult');
+      await expect(d25Result).toContainText('Beverages', { timeout: 30_000 });
+      const d25Germany = await d25Result.textContent();
+
+      // Removing the filter is a new question to the live cube, not a redraw.
+      await page.locator('#btnChipRemove-ShipCountry').click();
+      await expect.poll(() => d25Result.textContent(), { timeout: 30_000 }).not.toBe(d25Germany);
+      const d25Everywhere = await d25Result.textContent();
+
+      // A date range on OrderDate: the same rows, cut by when they happened.
+      await page.locator('#btnFilter-OrderDate').click();
+      await page.locator('#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#OrderDate__from').fill('1997-01-01');
+      await page.locator('#OrderDate__to').fill('1997-06-30');
+      await page.locator('#btnFilterApply').click();
+      await expect(page.locator('#chipFilter-OrderDate')).toBeVisible({ timeout: 10_000 });
+      await expect.poll(() => d25Result.textContent(), { timeout: 30_000 }).not.toBe(d25Everywhere);
+      const d25FirstHalf = await d25Result.textContent();
+
+      // And one more field in the tree is one more column in the answer.
+      await page.locator('#chk-dim-ShipCountry').check();
+      await expect.poll(() => d25Result.textContent(), { timeout: 30_000 }).not.toBe(d25FirstHalf);
+      await expect(d25Result).toContainText('Germany', { timeout: 30_000 });
+
+      // ── W5: back to the author's question, plus this viewer's own filter ──
+      await page.locator('#chk-dim-ShipCountry').uncheck();
+      await page.locator('#btnFilter-OrderDate').click();
+      await page.locator('#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#btnFilterClear').click();
+      await expect(page.locator('#chipFilter-OrderDate')).toHaveCount(0, { timeout: 10_000 });
+
+      await page.locator('#btnFilter-ShipCountry').click();
+      await page.locator('#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#cubeFilterParams').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#ShipCountry').click();
+      await page.locator('#ShipCountry_cb_Germany').waitFor({ state: 'visible', timeout: 15_000 });
+      await page.locator('#ShipCountry_cb_Germany').click();
+      await page.locator('#ShipCountry_btnOk').click();
+      await page.locator('#btnFilterApply').click();
+      await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany');
+
+      // The header says what the data is filtered by, in the viewer's own words.
+      await expect(page.locator('#cubePanelHeader')).toHaveText('▾ Cube · Ship Country: Germany',
+        { timeout: 30_000 });
+
+      // One click folds the cube away and leaves the data where it was.
+      await page.locator('#cubePanelHeader').click();
+      await expect(page.locator('#cubePanelBody')).toHaveCount(0, { timeout: 10_000 });
+      await expect(d25Result).toBeVisible();
+      await expect(page.locator('#cubePanelHeader')).toHaveAttribute('aria-expanded', 'false');
+
+      // The save is debounced a second, and it is the account that is written to.
+      await page.waitForTimeout(3_000);
+      const d25Saved = await page.evaluate(async ({ rid, cid }) => {
+        const r = await fetch(`/api/reports/${rid}/cube/${cid}/my-view`);
+        return { status: r.status, body: r.status === 200 ? await r.json() : null };
+      }, { rid: d25ReportId, cid: d25ComponentId });
+      expect(d25Saved.status).toBe(200);
+      expect(d25Saved.body.collapsed).toBe(true);
+      expect(d25Saved.body.selection.filters[0].member).toBe('ShipCountry');
+      expect(d25Saved.body.selection.filters[0].values).toEqual(['Germany']);
+
+      // F5: the dashboard opens as this viewer left it, from that saved view.
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('#cubePanelHeader')).toHaveText('▸ Cube · Ship Country: Germany',
+        { timeout: 30_000 });
+      await expect(page.locator('#cubePanelBody')).toHaveCount(0);
+      await expect(d25Result).toContainText('Beverages', { timeout: 30_000 });
+
+      // The header is the only control, and it works both ways.
+      await page.locator('#cubePanelHeader').click();
+      await expect(page.locator('#cubePanelBody')).toBeVisible({ timeout: 10_000 });
+
+      // A view that is no longer the author's says so, and can be given back.
+      await page.locator('#btnChipRemove-ShipCountry').click();
+      await expect(page.locator('#cubePanelHeader')).toHaveText('▾ Cube', { timeout: 30_000 });
+      await page.locator('#lnkCubeResetView').click();
+      await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany',
+        { timeout: 30_000 });
+      await expect(page.locator('#cubePanelHeader')).toHaveText('▾ Cube · Ship Country: Germany');
+      // Nothing is left in the store: the next default the author publishes is
+      // the one this viewer will open.
+      await page.waitForTimeout(3_000);
+      const d25Reset = await page.evaluate(async ({ rid, cid }) => {
+        const r = await fetch(`/api/reports/${rid}/cube/${cid}/my-view`);
+        return r.status;
+      }, { rid: d25ReportId, cid: d25ComponentId });
+      expect(d25Reset).toBe(204);
+
+      // ── The lock, through the API ────────────────────────────────────────
+      // A member this cube does not offer is refused, and the refusal says so
+      // rather than answering something near it.
+      const d25Unknown = await page.evaluate(async ({ rid, cid }) => {
+        const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dimensions: ['NoSuchField'], measures: ['Revenue'] }),
+        });
+        return { status: r.status, body: await r.text() };
+      }, { rid: d25ReportId, cid: d25ComponentId });
+      expect(d25Unknown.status).toBe(400);
+      expect(d25Unknown.body).toContain('NoSuchField');
+
+      // The connection is the widget file's, and asking for another one does
+      // not change which database answers: the rows are the same rows.
+      const d25Honest = await page.evaluate(async ({ rid, cid }) => {
+        const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dimensions: ['CategoryName'],
+            measures: ['Revenue'],
+            connectionId: 'some-other-connection',
+          }),
+        });
+        return { status: r.status, body: await r.json().catch(() => null) };
+      }, { rid: d25ReportId, cid: d25ComponentId });
+      // The eight Northwind categories, out of the connection the file names.
+      expect(d25Honest.status).toBe(200);
+      expect(d25Honest.body.rows.length).toBe(8);
+    } finally {
+      // The canvas only: the sample connection and the shipped `northwind-sales`
+      // cube are not test-provisioned and must survive the run (as in D23).
+      await deleteCanvasViaUI(page, canvasName);
+    }
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // D26 — Northwind Sales Live Cube analysis  (Phase 3, W3 + W4)
+  //
+  // D23 publishes a cube as a SQL GENERATOR: the selection is turned into SQL on
+  // the canvas and the dashboard carries that frozen SQL. This one publishes THE
+  // CUBE ITSELF — the author ticks Show In Dashboard, the exporter writes an
+  // <rb-cube-renderer> plus this widget's entry in {reportId}-cube-widgets.json,
+  // and a viewer picks the fields in the dashboard, against the live cube.
+  //
+  // Same fixture as D23: the SHIPPED sample connection
+  // `rbt-sample-northwind-sqlite-4f2` and the shipped `northwind-sales` cube,
+  // both reachable once the `showsamples` preference is on. Nothing here is
+  // test-provisioned but the canvas, which the finally block deletes.
+  //
+  // What it proves, in the order a viewer does it:
+  //   • the cube is published live — the dashboard holds an <rb-cube-renderer>
+  //     with the whole field tree, and nothing is ticked in it, because the
+  //     author ticked nothing on the canvas;
+  //   • W4.2 — ticking only `Revenue` gives one number, written in the currency
+  //     the cube declares (`format 'currency'`, and no `currency` of its own, so
+  //     the default USD): the answer says `$` without anyone formatting it here;
+  //   • W4.6 — that number is clickable, the rows behind it come up in
+  //     #cubeDrillModal, and #btnDrillClose puts them away;
+  //   • W4.1 / W4.3 / W4.4 — ticking `OrderDate` asks for its month
+  //     (#gran-OrderDate), and with `RevenueRunning` beside `Revenue` the table
+  //     carries a month label and the server's own `Total` row;
+  //   • the same component answered through the API: `totals`, a `RevenueShare`
+  //     that sums to 1 over the groups (W4.5), and a `/drill` that returns rows.
+  // ────────────────────────────────────────────────────────────────────────────
+  test('D26 — Northwind Sales Live Cube analysis', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName = 'D26 — Northwind Sales Live Cube analysis';
+    const cubeId = 'northwind-sales';
+    const sampleConnectionCode = 'rbt-sample-northwind-sqlite-4f2';
+
+    // Same preference as D23: the shipped sample connection and its bound cubes
+    // are hidden from the canvas until it is on.
+    await page.goto(AI_HUB_BASE_URL);
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(async () => {
+      // Through the app's /api/dp proxy, as the app itself does: it carries the session + CSRF token.
+      const res = await fetch('/api/dp/system/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: { showsamples: true } }),
+      });
+      if (!res.ok) throw new Error(`enable showsamples failed: ${res.status} ${await res.text()}`);
+    });
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await page.locator('#selectConnection').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#selectConnection').selectOption(sampleConnectionCode);
+      await page.locator('#schemaBrowserTablesList').waitFor({ state: 'visible', timeout: 15_000 });
+
+      // The cube widget, left as a table: the widget type is what says how the
+      // result under the field tree is drawn, and `tabulator` means the rows.
+      await addCubeToCanvas(page, cubeId);
+      await switchToWidget(page, 'tabulator');
+
+      // Show In Dashboard — the whole difference between the two modes. Nothing
+      // is ticked on the canvas, so the dashboard opens on the bare tree.
+      await page.locator('#chkCubeShowInDashboard').check();
+      // The tree moves to the canvas: the right panel says so instead of showing a second one.
+      await expect(page.locator('#cubeOnCanvasNote')).toBeVisible({ timeout: 10_000 });
+      await page.waitForTimeout(1_500);
+
+      const d26CanvasId = page.url().split('/').pop()!;
+      const { reportId: d26ReportId, dashboardUrl: d26Url } = await publishDashboard(page);
+      const d26Ids = await getCanvasComponentIds(page, d26CanvasId);
+      const d26ComponentId = (d26Ids['tabulator'] ?? [])[0];
+      expect(d26ComponentId).toBeTruthy();
+
+      // ── The dashboard: the cube itself, not a frozen answer ──────────────
+      await page.goto(d26Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-cube-renderer')).toHaveCount(1, { timeout: 20_000 });
+      // The field tree is the live cube's own /meta, so its arrival is the proof
+      // that the dashboard reads the cube rather than a published copy of it.
+      await expect(page.locator('#chk-meas-Revenue')).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator('#chk-meas-Revenue')).not.toBeChecked();
+      await expect(page.locator('#chk-dim-OrderDate')).not.toBeChecked();
+
+      // ── W4.2: one measure, one number, in the cube's own currency ────────
+      await page.locator('#chk-meas-Revenue').check();
+      await expect(page.locator('#cubeRuntimeValue')).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator('#cubeRuntimeValue')).toContainText('$', { timeout: 30_000 });
+
+      // ── W4.6: the rows behind that number ────────────────────────────────
+      await page.locator('#cubeRuntimeValue').click();
+      await expect(page.locator('#cubeDrillModal')).toBeVisible({ timeout: 30_000 });
+      // `Revenue` drills into OrderID, OrderDate, CustomerCompanyName,
+      // EmployeeName and OrderValue, so the modal names the measure it opened on
+      // and holds the order lines behind it.
+      await expect(page.locator('#cubeDrillTitle')).toContainText('Revenue');
+      await expect(page.locator('#cubeDrillError')).toHaveCount(0);
+      await page.locator('#btnDrillClose').click();
+      await expect(page.locator('#cubeDrillModal')).toHaveCount(0, { timeout: 10_000 });
+
+      // ── W4.1 / W4.3 / W4.4: a month, a running total, and the Total row ──
+      await page.locator('#chk-dim-OrderDate').check();
+      // Ticking a time dimension asks for its month.
+      await expect(page.locator('#gran-OrderDate')).toHaveValue('month');
+      await page.locator('#chk-meas-RevenueRunning').check();
+      const d26Result = page.locator('#cubeRuntimeResult');
+      // A month label the cube's own grain wrote, like `Jul 1996`.
+      await expect(d26Result).toContainText(
+        /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}\b/, { timeout: 30_000 });
+      // The bottom row is the server's second query, not a sum of the page.
+      await expect(d26Result).toContainText('Total', { timeout: 30_000 });
+      await expect(d26Result).toContainText('$');
+
+      // ── The same component, asked through the API ────────────────────────
+      // W4.5: a share of the total is 1 by definition, and the groups add up to it.
+      const d26Query = await page.evaluate(async ({ rid, cid }) => {
+        const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dimensions: ['CategoryName'],
+            measures: ['Revenue', 'RevenueShare'],
+            totals: true,
+          }),
+        });
+        if (!r.ok) throw new Error(`live cube query failed: ${r.status} ${await r.text()}`);
+        return r.json();
+      }, { rid: d26ReportId, cid: d26ComponentId });
+
+      // The eight Northwind categories, as D23 reads them out of the same database.
+      expect(d26Query.rows.length).toBe(8);
+      expect(Number(d26Query.totals.Revenue)).toBeGreaterThan(0);
+      expect(Number(d26Query.totals.RevenueShare)).toBe(1);
+      const d26Share = d26Query.rows.reduce(
+        (sum: number, row: { RevenueShare: number }) => sum + Number(row.RevenueShare), 0);
+      expect(d26Share).toBeCloseTo(1, 3);
+
+      // W4.6 again, without the UI: the rows behind one category's revenue.
+      const d26Drill = await page.evaluate(async ({ rid, cid }) => {
+        const r = await fetch(`/api/reports/${rid}/cube/${cid}/drill`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            measure: 'Revenue',
+            cell: { CategoryName: 'Beverages' },
+          }),
+        });
+        if (!r.ok) throw new Error(`live cube drill failed: ${r.status} ${await r.text()}`);
+        return r.json();
+      }, { rid: d26ReportId, cid: d26ComponentId });
+
+      expect(d26Drill.rows.length).toBeGreaterThan(0);
+      // Its columns are the measure's own drill_members.
+      expect(Number(d26Drill.rows[0].OrderID)).toBeGreaterThan(0);
+      expect(Number(d26Drill.rows[0].OrderValue)).toBeGreaterThan(0);
+    } finally {
+      // The canvas only: the sample connection and the shipped `northwind-sales`
+      // cube are not test-provisioned and must survive the run (as in D23).
+      await deleteCanvasViaUI(page, canvasName);
+    }
+  });
 
   // ────────────────────────────────────────────────────────────────────────────
   // D27 — starts with ignores case and treats % as a character

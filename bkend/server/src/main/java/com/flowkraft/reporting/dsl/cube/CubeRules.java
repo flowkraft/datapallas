@@ -42,7 +42,7 @@ public final class CubeRules {
 	 */
 	public static final Map<String, Integer> CUBE_KEYS = keys(
 			"sql_table", 3, "sql", 3, "sql_alias", 3, "extends", 5, "title", 1, "description", 2,
-			"public", 3, "access_filter", 3, "meta", 5);
+			"public", 3, "access_filter", 3, "currency", 4, "meta", 5);
 
 	/** The keys of a {@code dimension} block, as the parser stores them, each with its tier. */
 	public static final Map<String, Integer> DIMENSION_KEYS = keys(
@@ -96,11 +96,21 @@ public final class CubeRules {
 	/** The formats a measure may ask for. */
 	public static final List<String> FORMATS = List.of("currency", "percent", "number");
 
-	/** The keys the parser stores but nothing uses yet, each with the TODO that will use it. */
-	private static final Map<String, String> NOT_USED_YET = Map.of(
-			"format", "format is not used yet",
-			"drill_members", "drill_members is not used yet",
-			"rolling_window", "rolling_window is not used yet");
+	/**
+	 * The units a {@code time_shift} may name, and the grains a query may be grouped by.
+	 *
+	 * <p>The same five {@code CubeSqlDialect} truncates and adds by. They are written twice because
+	 * the vendor layer reads nothing above it — it is a leaf on purpose, so that no vendor form can
+	 * grow a dependency on the DSL — and a test holds the two lists against each other, so the copy
+	 * cannot drift.
+	 */
+	public static final List<String> TIME_UNITS = List.of("day", "week", "month", "quarter", "year");
+
+	/** The measure types a share, a running total or a period comparison may be taken of. */
+	public static final List<String> ADDS_UP = List.of("sum", "count", "count_distinct");
+
+	/** An ISO 4217 code: three letters, which is all the formatter needs to be handed. */
+	private static final Pattern CURRENCY_CODE = Pattern.compile("^[A-Za-z]{3}$");
 
 	// ═══════════════════════════════════════════════════════════════════════════
 	// Which joins a piece of SQL names — the one rule (design part 2, item 7)
@@ -383,10 +393,12 @@ public final class CubeRules {
 		String sql = Objects.toString(meas.get("sql"), null);
 		if ("number".equals(type)) {
 			referenceErrors(cube, name, sql, new ArrayList<>(List.of(name)), errors);
+			analysisErrors(cube, meas, name, errors);
 			return;
 		}
 
 		dottedPlaceholder(sql, "Measure", name, errors);
+		analysisErrors(cube, meas, name, errors);
 		Object filters = meas.get("filters");
 		if (filters instanceof List) {
 			for (Object one : (List<?>) filters) {
@@ -395,6 +407,169 @@ public final class CubeRules {
 				}
 			}
 		}
+	}
+
+	/**
+	 * What a measure read over the finished groups — a share of the total, a running total, the
+	 * same period an interval earlier — got wrong about itself.
+	 *
+	 * <p>These live here, and not beside the SQL that writes them, because they are all things the
+	 * cube says and none of them depends on the question asked: the author sees them in the cube
+	 * editor as soon as the file is saved, and the generator throws the same sentence if a query
+	 * reaches it anyway. What a query rather than a cube makes impossible — a running total with no
+	 * date to run along, a to-date total no coarser than its own rows — is refused where the query
+	 * is built, because only there is it known.
+	 *
+	 * @param name the measure's name, as every sentence here begins with it
+	 */
+	public static void analysisErrors(CubeOptions cube, Map<String, Object> meas, String name,
+			List<String> errors) {
+
+		List<String> asked = new ArrayList<>();
+		if (isTrue(meas.get("share_of_total"))) asked.add("share_of_total");
+		if (meas.get("rolling_window") != null) asked.add("rolling_window");
+		if (meas.get("time_shift") != null) asked.add("time_shift");
+		if (asked.isEmpty()) return;
+
+		if (asked.size() > 1) {
+			// Ranking them would answer one of the two and hide that the author has not decided
+			// which the measure is.
+			errors.add("Measure '" + name + "' asks for " + String.join(" and ", asked)
+					+ " at once, and a measure is one of them. Write one measure for each.");
+			return;
+		}
+
+		baseErrors(cube, meas, name, errors);
+		if ("time_shift".equals(asked.get(0))) shiftErrors(meas.get("time_shift"), name, errors);
+		if ("rolling_window".equals(asked.get(0))) windowErrors(meas.get("rolling_window"), name, errors);
+	}
+
+	/**
+	 * The one measure it is computed over: the single {@code ${Measure}} of its {@code sql}, and it
+	 * has to add up. A share of an average is not 34% of anything and a running average is not the
+	 * average of what has run so far — both are numbers that look right and are not.
+	 */
+	private static void baseErrors(CubeOptions cube, Map<String, Object> meas, String name,
+			List<String> errors) {
+
+		List<String> named = new ArrayList<>();
+		Matcher found = PLACEHOLDER.matcher(Objects.toString(meas.get("sql"), ""));
+		while (found.find()) {
+			String reference = found.group(1).trim();
+			if (!"CUBE".equals(reference)) named.add(reference);
+		}
+
+		if (named.size() != 1) {
+			errors.add("Measure '" + name + "' is computed over one other measure, so its sql is that "
+					+ "measure's name in braces, as in sql '${Revenue}'"
+					+ (named.isEmpty() ? ", and this one names none."
+							: ", and this one names " + named.size() + ": " + String.join(", ", named) + "."));
+			return;
+		}
+
+		String base = named.get(0);
+		Map<String, Object> baseMeasure = null;
+		List<String> all = new ArrayList<>();
+		for (Map<String, Object> other : cube.getMeasures() == null
+				? List.<Map<String, Object>>of()
+				: cube.getMeasures()) {
+			String otherName = Objects.toString(other.get("name"), "");
+			all.add(otherName);
+			if (base.equals(otherName)) baseMeasure = other;
+		}
+		if (baseMeasure == null) {
+			errors.add("Measure '" + name + "' is computed over '" + base + "', which is not a measure of "
+					+ "this cube. Its measures are: " + (all.isEmpty() ? "(none)" : String.join(", ", all))
+					+ ".");
+			return;
+		}
+
+		String baseType = Objects.toString(baseMeasure.get("type"), "count").trim().toLowerCase();
+		if (!ADDS_UP.contains(baseType)) {
+			errors.add("Measure '" + name + "' is computed over '" + base + "', which is a '" + baseType
+					+ "'. A share, a running total and a period comparison add numbers up, so they are "
+					+ "taken of a sum or a count, never of an average, a minimum or a maximum.");
+		}
+	}
+
+	/** {@code time_shift interval: '<n> <unit>'} — and nothing else. */
+	private static void shiftErrors(Object declared, String name, List<String> errors) {
+
+		String interval = declared instanceof Map
+				? Objects.toString(((Map<?, ?>) declared).get("interval"), "").trim()
+				: Objects.toString(declared, "").trim();
+
+		String[] parts = interval.split("\\s+");
+		int amount;
+		try {
+			if (parts.length != 2) throw new NumberFormatException(interval);
+			amount = Integer.parseInt(parts[0]);
+		} catch (NumberFormatException wrong) {
+			errors.add("Measure '" + name + "': time_shift is written interval: '<how many> <unit>', as "
+					+ "in time_shift interval: '1 year'. This one says '" + interval + "'.");
+			return;
+		}
+
+		String unit = timeUnit(parts[1]);
+		if (unit == null) {
+			errors.add("Measure '" + name + "': '" + parts[1] + "' is not a time unit. The units a time "
+					+ "shift may use are: " + String.join(", ", TIME_UNITS) + ".");
+			return;
+		}
+		if (amount <= 0) {
+			errors.add("Measure '" + name + "': a time shift looks back, so its interval is a number of "
+					+ unit + "s greater than zero.");
+		}
+	}
+
+	/** The two {@code rolling_window} forms this server builds, and a sentence for every other. */
+	private static void windowErrors(Object declared, String name, List<String> errors) {
+
+		if (!(declared instanceof Map)) {
+			errors.add("Measure '" + name + "': rolling_window is written either rolling_window "
+					+ "trailing: 'unbounded' or rolling_window type: 'to_date', granularity: 'year'.");
+			return;
+		}
+		Map<?, ?> window = (Map<?, ?>) declared;
+
+		if (window.get("leading") != null || window.get("offset") != null) {
+			errors.add("Measure '" + name + "': a rolling_window here runs from the first period the "
+					+ "filters leave in up to the row, so it takes neither 'leading' nor 'offset'. Write "
+					+ "rolling_window trailing: 'unbounded', or rolling_window type: 'to_date', "
+					+ "granularity: 'year'.");
+			return;
+		}
+
+		String trailing = Objects.toString(window.get("trailing"), "").trim().toLowerCase();
+		if (!trailing.isEmpty()) {
+			if (!"unbounded".equals(trailing)) {
+				errors.add("Measure '" + name + "': rolling_window trailing: '" + trailing + "' is a "
+						+ "moving window of its own length, which is not built. The trailing window here is "
+						+ "'unbounded', which adds up everything so far.");
+			}
+			return;
+		}
+
+		String type = Objects.toString(window.get("type"), "").trim().toLowerCase();
+		if (!"to_date".equals(type)) {
+			errors.add("Measure '" + name + "': rolling_window is written either rolling_window "
+					+ "trailing: 'unbounded' or rolling_window type: 'to_date', granularity: 'year'"
+					+ (type.isEmpty() ? ", and this one says neither." : ", and this one says type: '"
+							+ type + "'."));
+			return;
+		}
+		if (timeUnit(Objects.toString(window.get("granularity"), "")) == null) {
+			errors.add("Measure '" + name + "': a to_date window restarts every period, so it needs "
+					+ "granularity: one of " + String.join(", ", TIME_UNITS) + ".");
+		}
+	}
+
+	/** One of the five units, written singular or plural, or null when it is not one of them. */
+	public static String timeUnit(String written) {
+
+		String unit = Objects.toString(written, "").trim().toLowerCase();
+		if (unit.endsWith("s")) unit = unit.substring(0, unit.length() - 1);
+		return TIME_UNITS.contains(unit) ? unit : null;
 	}
 
 	/** Walks a calculated measure's {@code ${Other}} references: each must exist, and none may loop. */
@@ -517,6 +692,16 @@ public final class CubeRules {
 							+ "them with AND or OR."));
 		}
 
+		String currency = Objects.toString(cube.getCurrency(), "").trim();
+		if (!currency.isEmpty() && !CURRENCY_CODE.matcher(currency).matches()) {
+			// Not a check of the world's currencies, which change: a check of the shape the
+			// formatter needs. Intl.NumberFormat takes an ISO 4217 code and throws on anything
+			// else, and a widget that throws shows no number at all.
+			all.add(entry(cubeName, "cube", Objects.toString(cube.getTitle(), ""), "currency", "warning",
+					"currency '" + currency + "' is not a currency code, so amounts are shown as plain "
+							+ "numbers. A currency code is three letters, as in EUR or USD."));
+		}
+
 		block(cube, file, cubeName, "dimension", cube.getDimensions(), DIMENSION_KEYS, all);
 		block(cube, file, cubeName, "measure", cube.getMeasures(), MEASURE_KEYS, all);
 		block(cube, file, cubeName, "join", cube.getJoins(), JOIN_KEYS, all);
@@ -604,12 +789,6 @@ public final class CubeRules {
 			}
 		}
 
-		for (Map.Entry<String, String> notUsed : NOT_USED_YET.entrySet()) {
-			if (member.containsKey(notUsed.getKey())) {
-				all.add(entry(cubeName, blockName, name, notUsed.getKey(), "warning",
-						blockName + " '" + name + "': " + notUsed.getValue()));
-			}
-		}
 		if (member.containsKey("meta")) {
 			all.add(entry(cubeName, blockName, name, "meta", "warning",
 					blockName + " '" + name + "': meta is kept for other tools, and nothing here reads it."));

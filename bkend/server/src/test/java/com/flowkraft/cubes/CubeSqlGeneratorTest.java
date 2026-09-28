@@ -704,7 +704,8 @@ class CubeSqlGeneratorTest {
 	 */
 	private static String plainInternals(String text, String vendor) {
 		String plain = text.replace(dec(vendor), "DECIMAL(31,4)");
-		for (String name : List.of("__keys", "__mult", "__pk")) {
+		// The longer names first: an untagged replace would leave a tagged one half-folded.
+		for (String name : List.of("__keys_p", "__mult_p", "__pk_p", "__keys", "__mult", "__pk")) {
 			plain = plain.replace(CubeSqlDialect.internalAlias(name, vendor), name);
 		}
 		return plain;
@@ -2015,6 +2016,17 @@ class CubeSqlGeneratorTest {
 						if (name.isEmpty()) continue;
 						fields++;
 
+						// An analysis measure is read over the finished groups, so asking for it alone is
+						// a question it cannot answer: a running total has nothing to run along. It is
+						// asked along the cube's own date instead, by month, which is what a user does.
+						// Read off the DSL here, never through CubeAnalysis: a key the generator has
+						// stopped recognising has to fail this test rather than quietly agree with it.
+						boolean analytic = "measure".equals(block)
+								&& (Boolean.TRUE.equals(member.get("share_of_total"))
+										|| member.get("rolling_window") != null
+										|| member.get("time_shift") != null);
+						List<String> along = analytic ? alongTime(cube) : List.of();
+
 						String parserSaid = errorOf(file, one.getKey(), block, name);
 						String generatorSaid = null;
 						String sql = null;
@@ -2022,7 +2034,7 @@ class CubeSqlGeneratorTest {
 							sql = "segment".equals(block)
 									? CubeSqlGenerator.generateSql(cube, List.of(), List.of(), List.of(name), "sqlite")
 									: "measure".equals(block)
-											? CubeSqlGenerator.generateSql(cube, List.of(), List.of(name), "sqlite")
+											? CubeSqlGenerator.generateSql(cube, along, List.of(name), "sqlite")
 											: CubeSqlGenerator.generateSql(cube, List.of(name), List.of(), "sqlite");
 						} catch (IllegalArgumentException refused) {
 							generatorSaid = refused.getMessage();
@@ -2035,6 +2047,20 @@ class CubeSqlGeneratorTest {
 						assertFalse(sql.contains("${"),
 								"Nothing unresolved reaches the database — " + block + " '" + name + "' of "
 										+ where + ":\n" + sql);
+
+						// A window or a prior period taught to the parser alone would come back here as
+						// the plain query with an ordinary column in it, and nobody would notice.
+						if (analytic) {
+							String line = oneLine(sql);
+							assertTrue(line.contains("FROM (SELECT"),
+									"Analysis measure '" + name + "' of " + where
+											+ " is read over the ordinary query, not inside it:\n" + sql);
+							String shape = member.get("rolling_window") != null ? "ROWS UNBOUNDED PRECEDING"
+									: member.get("time_shift") != null ? ") p ON " : "OVER ()";
+							assertTrue(line.contains(shape),
+									"Analysis measure '" + name + "' of " + where + " is written as " + shape
+											+ ":\n" + sql);
+						}
 						if (!"segment".equals(block) && member.get("sql") == null) {
 							assertFalse(sql.matches("(?s).*[\\s,(]" + Pattern.quote(name) + " AS .*"),
 									"A " + block + " with no sql of its own is not a column named after "
@@ -2059,6 +2085,16 @@ class CubeSqlGeneratorTest {
 			}
 		}
 		assertTrue(fields > 80, "Every field of every sample was tried, not a handful: " + fields);
+	}
+
+	/** The cube's first date, by month, or nothing when it has none: what a window runs along. */
+	private static List<String> alongTime(CubeOptions cube) {
+		for (Map<String, Object> dimension : membersOf(cube, "dimension")) {
+			if ("time".equals(Objects.toString(dimension.get("type"), ""))) {
+				return List.of(Objects.toString(dimension.get("name"), "") + ".month");
+			}
+		}
+		return List.of();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -2565,6 +2601,557 @@ class CubeSqlGeneratorTest {
 			assertTrue(unknown.getMessage().contains(key),
 					"The refusal lists the known key '" + key + "': " + unknown.getMessage());
 		}
+	}
+
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Tests 25-26 — the measures read over the finished groups (W4.4, W4.5)
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * A cube with one of each analysis measure, over a plain table so that the shape of the outer
+	 * query is the only thing the SQL shows.
+	 */
+	private static CubeOptions analysisCube() throws Exception {
+		return CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  currency 'EUR'\n" +
+				"  dimension { name 'OrderDate'; sql '${CUBE}.OrderDate'; type 'time' }\n" +
+				"  dimension { name 'CategoryName'; sql '${CUBE}.CategoryName'; type 'string' }\n" +
+				"  measure { name 'Revenue'; sql '${CUBE}.Amount'; type 'sum' }\n" +
+				"  measure { name 'AvgRevenue'; sql '${CUBE}.Amount'; type 'avg' }\n" +
+				"  measure { name 'RevenueShare'; type 'number'; sql '${Revenue}'; share_of_total true; format 'percent' }\n" +
+				"  measure { name 'RevenueRunning'; type 'number'; sql '${Revenue}'; rolling_window trailing: 'unbounded' }\n" +
+				"  measure { name 'RevenueYTD'; type 'number'; sql '${Revenue}'; rolling_window type: 'to_date', granularity: 'year' }\n" +
+				"  measure { name 'RevenuePriorYear'; type 'number'; sql '${Revenue}'; time_shift interval: '1 year' }\n" +
+				"}");
+	}
+
+	/**
+	 * Test 25 — a share of the total, a running total and a to-date total: one outer SELECT over
+	 * the ordinary query, and nothing vendor-specific in any of it.
+	 */
+	@Test
+	void ansi_analysis_shareRunningAndToDateAreOneOuterSelect() throws Exception {
+		CubeOptions cube = analysisCube();
+
+		String first = null;
+		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
+			String sql = oneLine(CubeSqlGenerator.generateSql(cube, List.of("CategoryName"),
+					List.of("Revenue", "RevenueShare"), vendor));
+
+			assertTrue(sql.contains("FROM (SELECT"), "The ordinary query became a subquery, on "
+					+ vendor + ":\n" + sql);
+			assertTrue(sql.contains(") b"), "and it is called b, on " + vendor + ":\n" + sql);
+			assertTrue(sql.contains("(b.\"Revenue\" / NULLIF(SUM(b.\"Revenue\") OVER (), 0)) AS \"RevenueShare\""),
+					"A share is the base over the grand total of every group, on " + vendor + ":\n" + sql);
+			// The share is of all the groups, so the total is taken before the limit cuts the rows:
+			// the inner query has neither the limit nor the order, and the outer has both.
+			assertEquals(1, sql.split("ORDER BY", -1).length - 1,
+					"One ORDER BY, on the outer query, on " + vendor + ":\n" + sql);
+			assertTrue(sql.indexOf("ORDER BY") > sql.indexOf(") b"),
+					"and it comes after the subquery, on " + vendor + ":\n" + sql);
+
+			if (first == null) first = plainInternals(sql, vendor);
+			else assertEquals(first, plainInternals(sql, vendor),
+					"A window is ANSI, so " + vendor + " must read the same");
+		}
+
+		// A running total runs along the date, and restarts for each of the other dimensions: a
+		// running total per category is that category's own series, not everybody's.
+		String running = oneLine(CubeSqlGenerator.generateSql(cube,
+				List.of("OrderDate.month", "CategoryName"), List.of("Revenue", "RevenueRunning"), "postgres"));
+		assertTrue(running.contains("SUM(b.\"Revenue\") OVER (PARTITION BY b.\"CategoryName\" "
+				+ "ORDER BY b.\"OrderDate\" ROWS UNBOUNDED PRECEDING) AS \"RevenueRunning\""),
+				"The running total partitions by the other dimensions:\n" + running);
+
+		// A to-date total is the same window, restarted every period: the date truncated to that
+		// period is one more thing to partition by.
+		String ytd = oneLine(CubeSqlGenerator.generateSql(cube, List.of("OrderDate.month"),
+				List.of("Revenue", "RevenueYTD"), "postgres"));
+		assertTrue(ytd.contains("SUM(b.\"Revenue\") OVER (PARTITION BY "
+				+ CubeSqlDialect.dateTrunc("b.\"OrderDate\"", "year", "postgres")
+				+ " ORDER BY b.\"OrderDate\" ROWS UNBOUNDED PRECEDING) AS \"RevenueYTD\""),
+				"A year-to-date total restarts every year:\n" + ytd);
+
+		// The base measure is put into the subquery whether or not it was asked for, and is not
+		// handed back when it was not: a share on its own is one column, computed over a column
+		// the caller never sees.
+		String shareAlone = oneLine(CubeSqlGenerator.generateSql(cube, List.of("CategoryName"),
+				List.of("RevenueShare"), "postgres"));
+		assertTrue(shareAlone.contains("AS \"Revenue\" FROM Orders"), "The base is in b:\n" + shareAlone);
+		assertFalse(shareAlone.contains("b.\"Revenue\" AS \"Revenue\""),
+				"but it is not one of the answer's columns:\n" + shareAlone);
+	}
+
+	/**
+	 * Test 25, continued — a fan-out measure under an analysis measure: the {@code WITH} has to
+	 * stay at the very front of the statement, because no supported database reads one inside a
+	 * derived table.
+	 */
+	@Test
+	void ansi_analysis_keepsTheFanOutWithAtTheFrontOfTheStatement() throws Exception {
+		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  dimension { name 'OrderID'; sql '${CUBE}.OrderID'; type 'number'; primary_key true }\n" +
+				"  dimension { name 'ShipCountry'; sql '${CUBE}.ShipCountry'; type 'string' }\n" +
+				"  measure { name 'TotalFreight'; sql '${CUBE}.Freight'; type 'sum' }\n" +
+				"  measure { name 'Revenue'; sql '\"Order Details\".UnitPrice * \"Order Details\".Quantity'; type 'sum' }\n" +
+				"  measure { name 'FreightShare'; type 'number'; sql '${TotalFreight}'; share_of_total true }\n" +
+				"  join { name '\"Order Details\"'; parent 'CUBE'; sql '${CUBE}.OrderID = \"Order Details\".OrderID'; relationship 'one_to_many' }\n" +
+				"}");
+
+		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
+			String sql = plainInternals(oneLine(CubeSqlGenerator.generateSql(cube, List.of("ShipCountry"),
+					List.of("TotalFreight", "Revenue", "FreightShare"), vendor)), vendor);
+
+			assertTrue(sql.startsWith("WITH __keys AS ("),
+					"The WITH is the first thing in the statement, on " + vendor + ":\n" + sql);
+			assertTrue(sql.indexOf("FROM (SELECT") > sql.indexOf("__mult AS ("),
+					"and the analysis layer reads the query it wrote, on " + vendor + ":\n" + sql);
+			assertFalse(sql.substring(sql.indexOf("FROM (SELECT")).contains("WITH "),
+					"No WITH inside the subquery, on " + vendor + ":\n" + sql);
+		}
+	}
+
+	/** Test 25, negative half — every analysis measure a cube or a query cannot answer. */
+	@Test
+	void ansi_analysis_refusesWhatItCannotAnswer() throws Exception {
+		CubeOptions cube = analysisCube();
+
+		// A running total with no date has nothing to run along.
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeSqlGenerator.generateSql(cube, List.of("CategoryName"),
+						List.of("RevenueRunning"), "postgres")).getMessage()
+								.contains("needs a date field in the query"),
+				"A running total with no time dimension says what to add");
+
+		// A to-date total whose rows are already one per year would be the running total again.
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeSqlGenerator.generateSql(cube, List.of("OrderDate.year"),
+						List.of("RevenueYTD"), "postgres")).getMessage()
+								.contains("every row would be its own total"),
+				"A to-date total no finer than its own period says why it cannot be");
+
+		// and one whose date carries no grain at all has no period to restart in.
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeSqlGenerator.generateSql(cube, List.of("OrderDate"),
+						List.of("RevenueYTD"), "postgres")).getMessage()
+								.contains("needs a granularity"),
+				"A to-date total on an ungrouped date says what to pick");
+
+		// A share of an average is not 34% of anything - refused by the cube, before any query.
+		CubeOptions ofAnAverage = CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  dimension { name 'CategoryName'; sql '${CUBE}.CategoryName'; type 'string' }\n" +
+				"  measure { name 'AvgRevenue'; sql '${CUBE}.Amount'; type 'avg' }\n" +
+				"  measure { name 'AvgShare'; type 'number'; sql '${AvgRevenue}'; share_of_total true }\n" +
+				"}");
+		assertTrue(Objects.toString(errorOf(ofAnAverage, "", "measure", "AvgShare"), "")
+				.contains("never of an average"),
+				"The cube editor says so before any query is asked: "
+						+ errorOf(ofAnAverage, "", "measure", "AvgShare"));
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeSqlGenerator.generateSql(ofAnAverage, List.of("CategoryName"),
+						List.of("AvgShare"), "postgres")).getMessage().contains("never of an average"),
+				"and the generator says the same sentence if a query reaches it anyway");
+
+		// A moving window of its own length is not built, and says which window is.
+		CubeOptions movingWindow = CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  dimension { name 'OrderDate'; sql '${CUBE}.OrderDate'; type 'time' }\n" +
+				"  measure { name 'Revenue'; sql '${CUBE}.Amount'; type 'sum' }\n" +
+				"  measure { name 'Revenue3M'; type 'number'; sql '${Revenue}'; rolling_window trailing: '3 month' }\n" +
+				"}");
+		assertTrue(Objects.toString(errorOf(movingWindow, "", "measure", "Revenue3M"), "")
+				.contains("which is not built"),
+				"trailing: '3 month' is refused by the cube: "
+						+ errorOf(movingWindow, "", "measure", "Revenue3M"));
+
+		// Two of the three keys at once is an author who has not decided which measure this is.
+		CubeOptions both = CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  measure { name 'Revenue'; sql '${CUBE}.Amount'; type 'sum' }\n" +
+				"  measure { name 'Muddle'; type 'number'; sql '${Revenue}'; share_of_total true; rolling_window trailing: 'unbounded' }\n" +
+				"}");
+		assertTrue(Objects.toString(errorOf(both, "", "measure", "Muddle"), "")
+				.contains("Write one measure for each"),
+				"Two at once is refused, not ranked: " + errorOf(both, "", "measure", "Muddle"));
+	}
+
+	/**
+	 * Test 26 — the same period an interval earlier: a second grouped query, its filters moved
+	 * back and its date moved forward, joined onto the first.
+	 */
+	@Test
+	void ansi_priorPeriod_isASecondQueryJoinedBackOnTheDimensions() throws Exception {
+		CubeOptions cube = analysisCube();
+
+		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
+			String sql = plainInternals(oneLine(CubeSqlGenerator.generateSql(cube,
+					List.of("OrderDate.month"), List.of("Revenue", "RevenuePriorYear"), vendor)), vendor);
+
+			assertTrue(sql.contains("LEFT JOIN (SELECT"), "The earlier period is a second query, on "
+					+ vendor + ":\n" + sql);
+			assertTrue(sql.contains(") p ON "), "and it is called p, on " + vendor + ":\n" + sql);
+			assertTrue(sql.contains("p.\"Revenue\" AS \"RevenuePriorYear\""),
+					"The earlier number is the answer's column, on " + vendor + ":\n" + sql);
+
+			// The NULL-safe equality of "no double counting", written out: a dimension with no
+			// value is still a group, and no vendor is asked how it spells IS NOT DISTINCT FROM.
+			assertTrue(sql.contains("ON (b.\"OrderDate\" = p.\"OrderDate\" "
+					+ "OR (b.\"OrderDate\" IS NULL AND p.\"OrderDate\" IS NULL))"),
+					"The join is NULL-safe and written out, on " + vendor + ":\n" + sql);
+
+			// p's date is moved forward before it is truncated, so last March comes out of p as
+			// this March and the two rows meet on a plain equality.
+			// ansiText, because the SQL being searched has had its quote character folded.
+			String moved = ansiText(CubeSqlDialect.dateTrunc(
+					CubeSqlDialect.addInterval(CubeSqlDialect.timeValue("Orders.OrderDate", vendor),
+							1, "year", vendor),
+					"month", vendor));
+			assertTrue(sql.contains(moved + " AS " + ansiText(CubeSqlDialect.quoteAlias("OrderDate", vendor))),
+					"p moves its date forward, then truncates, on " + vendor + ":\n" + sql);
+
+			// Nothing here is compared across vendors: a date lives in the vendor layer end to end
+			// (timeValue, then addInterval, then dateTrunc), so the text of b and p is different on
+			// every engine by design. What is ANSI - the LEFT JOIN, the NULL-safe ON, the aliases -
+			// is asserted above, on each vendor in turn.
+		}
+	}
+
+	/** Test 26, continued — the filters of the earlier query are the same dates, a year back. */
+	@Test
+	void ansi_priorPeriod_movesTheTimeFiltersBackByTheInterval() throws Exception {
+		CubeOptions cube = analysisCube();
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("OrderDate.month"));
+		request.put("measures", List.of("Revenue", "RevenuePriorYear"));
+		request.put("filters", List.of(Map.of("member", "OrderDate", "operator", "between",
+				"values", List.of("2024-01-01", "2024-06-30"))));
+		CubeQuery query = CubeSqlGenerator.buildQuery(cube, request, "postgres");
+
+		assertTrue(query.getParams().containsValue(LocalDate.of(2024, 1, 1)), "b asks about 2024: "
+				+ query.getParams());
+		assertTrue(query.getParams().containsValue(LocalDate.of(2023, 1, 1))
+				&& query.getParams().containsValue(LocalDate.of(2023, 7, 1)),
+				"and p asks about the same days a year earlier: " + query.getParams());
+
+		// A filter on anything but a date is the same filter in both queries: only time moves.
+		Map<String, Object> notATime = new LinkedHashMap<>(request);
+		notATime.put("filters", List.of(Map.of("member", "CategoryName", "operator", "in",
+				"values", List.of("Beverages"))));
+		CubeQuery same = CubeSqlGenerator.buildQuery(cube, notATime, "postgres");
+		assertEquals(2, same.getParams().values().stream().filter("Beverages"::equals).count(),
+				"Both queries ask about Beverages, and neither moves it: " + same.getParams());
+	}
+
+	/**
+	 * Test 26, continued — with no date ticked, the earlier period is one number, and with neither
+	 * a date nor a date filter there is no earlier period to ask about.
+	 */
+	@Test
+	void ansi_priorPeriod_withoutATickedDateIsOneNumber() throws Exception {
+		CubeOptions cube = analysisCube();
+
+		String sql = oneLine(CubeSqlGenerator.generateSql(cube, List.of(),
+				List.of("Revenue", "RevenuePriorYear"), "postgres"));
+		assertTrue(sql.contains("LEFT JOIN (SELECT"), "There is still a second query:\n" + sql);
+		assertTrue(sql.contains(") p ON 1 = 1"),
+				"with nothing to match the two single rows on:\n" + sql);
+		assertFalse(sql.contains("GROUP BY"), "and neither of them groups by anything:\n" + sql);
+	}
+
+	/**
+	 * Test 26, vendor part — adding an interval to a date, the exact form for every vendor key.
+	 *
+	 * <p>The one form in all of W4 that ANSI cannot write: the standard has
+	 * {@code x + INTERVAL '1' YEAR}, three of these nine accept it, and SQLite has no date type to
+	 * add to at all. So every row is written down here, and a vendor key with no row fails.
+	 */
+	@Test
+	void vendor_addInterval_exactFormForEveryVendorKey() {
+
+		// One row per vendor key, in the order: 1 day | 2 week | 3 month | 1 quarter | 1 year
+		Map<String, List<String>> expected = new LinkedHashMap<>();
+		expected.put("postgres", List.of("(x + INTERVAL '1 day')", "(x + INTERVAL '2 week')",
+				"(x + INTERVAL '3 month')", "(x + INTERVAL '1 quarter')", "(x + INTERVAL '1 year')"));
+		expected.put("duckdb", expected.get("postgres"));
+		expected.put("sqlite", List.of("date(x, '+1 days')", "date(x, '+14 days')",
+				"date(x, '+3 months')", "date(x, '+3 months')", "date(x, '+12 months')"));
+		expected.put("mysql", List.of("DATE_ADD(x, INTERVAL 1 DAY)", "DATE_ADD(x, INTERVAL 2 WEEK)",
+				"DATE_ADD(x, INTERVAL 3 MONTH)", "DATE_ADD(x, INTERVAL 1 QUARTER)",
+				"DATE_ADD(x, INTERVAL 1 YEAR)"));
+		expected.put("mariadb", expected.get("mysql"));
+		expected.put("sqlserver", List.of("DATEADD(day, 1, x)", "DATEADD(week, 2, x)",
+				"DATEADD(month, 3, x)", "DATEADD(quarter, 1, x)", "DATEADD(year, 1, x)"));
+		expected.put("oracle", List.of("(x + 1)", "(x + 14)", "ADD_MONTHS(x, 3)",
+				"ADD_MONTHS(x, 3)", "ADD_MONTHS(x, 12)"));
+		expected.put("db2", List.of("(x + 1 DAYS)", "(x + 14 DAYS)", "(x + 3 MONTHS)",
+				"(x + 3 MONTHS)", "(x + 12 MONTHS)"));
+		expected.put("clickhouse", List.of("addDays(x, 1)", "addWeeks(x, 2)", "addMonths(x, 3)",
+				"addQuarters(x, 1)", "addYears(x, 1)"));
+
+		List<List<Object>> asked = List.of(List.of(1, "day"), List.of(2, "week"), List.of(3, "month"),
+				List.of(1, "quarter"), List.of(1, "year"));
+
+		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
+			List<String> row = expected.get(CubeSqlDialect.key(vendor));
+			assertNotNull(row, "No addInterval row for vendor key '" + vendor + "'");
+			for (int i = 0; i < asked.size(); i++) {
+				assertEquals(row.get(i), CubeSqlDialect.addInterval("x", (Integer) asked.get(i).get(0),
+						(String) asked.get(i).get(1), vendor),
+						"addInterval " + asked.get(i) + " on " + vendor);
+			}
+		}
+
+		// A negative amount moves backwards, which is what SQLite's modifier has to spell out.
+		assertEquals("date(x, '-1 months')", CubeSqlDialect.addInterval("x", -1, "month", "sqlite"));
+
+		// Not a unit, and no vendor at all: each refused in a sentence naming what is allowed.
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeSqlDialect.addInterval("x", 1, "fortnight", "postgres")).getMessage()
+						.contains("is not a time unit"));
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeSqlDialect.addInterval("x", 1, "year", "default")).getMessage()
+						.contains("pick a connection"),
+				"Plain ANSI cannot add to a date, so it asks for a database");
+	}
+
+	/**
+	 * The five units the DSL may name are the five the vendor layer can truncate and add by. The
+	 * two lists are written twice on purpose — the vendor layer reads nothing above it — so this
+	 * is what keeps the copy from drifting.
+	 */
+	@Test
+	void ansi_timeUnits_theDslAndTheDialectNameTheSameFive() {
+		assertEquals(CubeSqlDialect.GRANULARITIES, com.flowkraft.reporting.dsl.cube.CubeRules.TIME_UNITS,
+				"The DSL's units and the dialect's granularities are one list, written twice");
+	}
+
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Test 27 — totals and drill-through (W4.3, W4.6)
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/** A cube with drillable measures, a filtered measure and a geo dimension. */
+	private static CubeOptions drillCube() throws Exception {
+		return CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  access_filter '${CUBE}.SalesRep = ${dp_user_id}'\n" +
+				"  dimension { name 'OrderID'; sql '${CUBE}.OrderID'; type 'number' }\n" +
+				"  dimension { name 'OrderDate'; sql '${CUBE}.OrderDate'; type 'time' }\n" +
+				"  dimension { name 'ShipCountry'; sql '${CUBE}.ShipCountry'; type 'string' }\n" +
+				"  dimension { name 'Depot'; type 'geo'; latitude '${CUBE}.Lat'; longitude '${CUBE}.Lng' }\n" +
+				"  measure { name 'Revenue'; sql '${CUBE}.Amount'; type 'sum'\n" +
+				"            drill_members 'OrderID', 'OrderDate', 'ShipCountry' }\n" +
+				"  measure { name 'WonDeals'; type 'count'\n" +
+				"            filters([[sql: '${CUBE}.Status = 1']])\n" +
+				"            drill_members 'OrderID', 'ShipCountry' }\n" +
+				"  measure { name 'UniqueCustomers'; sql '${CUBE}.CustomerID'; type 'count_distinct' }\n" +
+				"  measure { name 'RevenueShare'; type 'number'; sql '${Revenue}'; share_of_total true }\n" +
+				"  measure { name 'RevenuePriorYear'; type 'number'; sql '${Revenue}'; time_shift interval: '1 year' }\n" +
+				"  segment { name 'shipped'; sql '${CUBE}.ShippedDate IS NOT NULL' }\n" +
+				"}");
+	}
+
+	/**
+	 * Test 27a — {@code totals: true}: the same question with the grouping taken away and
+	 * everything that narrows the rows left alone.
+	 */
+	@Test
+	void ansi_totals_areTheSameQuestionWithoutTheGrouping() throws Exception {
+		CubeOptions cube = drillCube();
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("ShipCountry", "OrderDate.month"));
+		request.put("measures", List.of("Revenue", "UniqueCustomers"));
+		request.put("segments", List.of("shipped"));
+		request.put("granularities", Map.of("OrderDate", "month"));
+		request.put("filters", List.of(Map.of("member", "ShipCountry", "operator", "in",
+				"values", List.of("Germany"))));
+		request.put("order", List.of("Revenue desc"));
+		request.put("limit", 10);
+
+		Map<String, Object> totals = CubeSqlGenerator.totalsRequest(request);
+		assertFalse(totals.containsKey("dimensions"), "No grouping: " + totals.keySet());
+		assertFalse(totals.containsKey("order"), "and nothing to order: " + totals.keySet());
+		assertFalse(totals.containsKey("limit"), "and nothing to cut: " + totals.keySet());
+		assertEquals(List.of("Revenue", "UniqueCustomers"), totals.get("measures"));
+		assertEquals(request.get("filters"), totals.get("filters"), "The filters are kept");
+		assertEquals(List.of("shipped"), totals.get("segments"), "and so are the segments");
+		// Nothing of the caller's map is changed under them.
+		assertTrue(request.containsKey("dimensions"), "The request itself is untouched");
+
+		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
+			String sql = oneLine(CubeSqlGenerator.buildQuery(cube, totals, vendor).getSql());
+
+			assertFalse(sql.contains("GROUP BY"), "One row, so nothing to group, on " + vendor + ":\n" + sql);
+			assertFalse(sql.contains("ORDER BY"), "and nothing to order, on " + vendor + ":\n" + sql);
+			// The three things that decide which rows are counted are all still there: the filter,
+			// the segment and the cube's own access filter. A total over more rows than the table
+			// showed would be a different number from the one under it.
+			assertTrue(sql.contains(":cf1"), "The filter is still bound, on " + vendor + ":\n" + sql);
+			assertTrue(sql.contains("Orders.ShippedDate IS NOT NULL"),
+					"The segment still narrows it, on " + vendor + ":\n" + sql);
+			assertTrue(sql.contains("Orders.SalesRep = ${dp_user_id}"),
+					"and so does the access filter, on " + vendor + ":\n" + sql);
+			// The distinct count is re-asked, which is the whole reason this is a second query and
+			// not a sum of the rows shown.
+			assertTrue(sql.contains("COUNT(DISTINCT Orders.CustomerID)"),
+					"UniqueCustomers is counted again over all the rows, on " + vendor + ":\n" + sql);
+		}
+	}
+
+	/**
+	 * Test 27b — a drill: the measure's own drill members as the query, the cell as filters, and
+	 * the measure's own filters kept so that the rows shown are the rows counted.
+	 */
+	@Test
+	void ansi_drill_isTheDrillMembersWithTheCellAsFilters() throws Exception {
+		CubeOptions cube = drillCube();
+
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("measure", "Revenue");
+		Map<String, Object> cell = new LinkedHashMap<>();
+		cell.put("ShipCountry", "Germany");
+		cell.put("OrderDate.month", "2024-03-01");
+		body.put("cell", cell);
+		body.put("segments", List.of("shipped"));
+
+		Map<String, Object> request = CubeDrill.request(cube, body);
+		assertEquals(List.of("OrderID", "OrderDate", "ShipCountry"), request.get("dimensions"),
+				"The drill members are the query");
+		assertEquals(List.of(), request.get("measures"), "and none of them is a measure here");
+		assertEquals(1000, request.get("limit"), "A drill answers at most a thousand rows");
+
+		for (String vendor : CubeSqlDialect.VENDOR_KEYS) {
+			CubeQuery query = CubeSqlGenerator.buildQuery(cube, request, vendor);
+			String sql = oneLine(query.getSql());
+
+			assertTrue(query.getParams().containsValue("Germany"), "The cell's country is bound, on "
+					+ vendor + ": " + query.getParams());
+			// A month cell is the month, not an equality against a truncation: the first day, and
+			// the day after the last one, because a timestamp column carries the hours too.
+			// written(): SQLite has no date type, so its values are bound as the text they are.
+			assertTrue(written(query).contains("2024-03-01") && written(query).contains("2024-04-01"),
+					"and its month is the whole month, on " + vendor + ": " + query.getParams());
+			assertTrue(sql.contains("Orders.ShippedDate IS NOT NULL"),
+					"The segment the number was under is kept, on " + vendor + ":\n" + sql);
+			assertTrue(sql.contains("Orders.SalesRep = ${dp_user_id}"),
+					"and so is the access filter, on " + vendor + ":\n" + sql);
+		}
+
+		// An empty cell means the rows that have no value there - the rows that were counted under
+		// it - and not the rows whose value is the empty text.
+		Map<String, Object> nothingThere = new LinkedHashMap<>(body);
+		Map<String, Object> blank = new LinkedHashMap<>();
+		blank.put("ShipCountry", null);
+		nothingThere.put("cell", blank);
+		assertTrue(oneLine(CubeSqlGenerator.buildQuery(cube, CubeDrill.request(cube, nothingThere),
+				"postgres").getSql()).contains("Orders.ShipCountry IS NULL"),
+				"An empty cell drills into the rows that have nothing there");
+
+		// A measure that counts only some of the rows drills into only those rows.
+		Map<String, Object> won = new LinkedHashMap<>(body);
+		won.put("measure", "WonDeals");
+		Map<String, Object> wonRequest = CubeDrill.request(cube, won);
+		assertEquals(List.of("OrderID", "ShipCountry"), wonRequest.get("dimensions"),
+				"WonDeals has its own drill members");
+		assertTrue(oneLine(CubeSqlGenerator.buildQuery(cube, wonRequest, "postgres").getSql())
+				.contains("(Orders.Status = 1)"),
+				"and a drill into a filtered measure shows the rows it counted, not every row");
+
+		// A geo cell is its two coordinate columns, and each of them filters like any other number.
+		Map<String, Object> onTheMap = new LinkedHashMap<>(body);
+		Map<String, Object> pin = new LinkedHashMap<>();
+		pin.put("Depot_lat", 52.52);
+		pin.put("Depot_lng", 13.4);
+		onTheMap.put("cell", pin);
+		String pinned = oneLine(CubeSqlGenerator.buildQuery(cube, CubeDrill.request(cube, onTheMap),
+				"postgres").getSql());
+		assertTrue(pinned.contains("Orders.Lat IN (") && pinned.contains("Orders.Lng IN ("),
+				"A map point drills on both of its coordinates:\n" + pinned);
+	}
+
+	/** Test 27b, the measures read over the finished groups: they drill through their base. */
+	@Test
+	void ansi_drill_ofAnAnalysisMeasureGoesThroughItsBase() throws Exception {
+		CubeOptions cube = drillCube();
+
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("measure", "RevenueShare");
+		body.put("cell", new LinkedHashMap<>(Map.of("OrderDate.month", "2024-03-01")));
+
+		assertEquals(List.of("OrderID", "OrderDate", "ShipCountry"),
+				CubeDrill.request(cube, body).get("dimensions"),
+				"A share drills with the members of the measure it is a share of");
+
+		// A prior-period number was the earlier period's, so its rows are the earlier period's.
+		Map<String, Object> lastYear = new LinkedHashMap<>(body);
+		lastYear.put("measure", "RevenuePriorYear");
+		CubeQuery query = CubeSqlGenerator.buildQuery(cube, CubeDrill.request(cube, lastYear), "postgres");
+		assertTrue(written(query).contains("2023-03-01") && written(query).contains("2023-04-01"),
+				"March 2023, not March 2024: " + query.getParams());
+	}
+
+	/** Test 27, negative half — what cannot be drilled, and what a drill may not be asked. */
+	@Test
+	void ansi_drill_refusesWhatItCannotShow() throws Exception {
+		CubeOptions cube = drillCube();
+
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeDrill.request(cube, Map.of("measure", "UniqueCustomers", "cell", Map.of())))
+						.getMessage().contains("Add drill_members"),
+				"A measure that does not say which rows are behind it says so, and says what to add");
+
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeDrill.request(cube, Map.of("measure", "NotAMeasure", "cell", Map.of())))
+						.getMessage().contains("Revenue"),
+				"A measure this cube does not have is refused, with the ones it does have");
+
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeDrill.request(cube, Map.of("measure", "Revenue",
+						"cell", new LinkedHashMap<>(Map.of("NotAField", "x")))))
+								.getMessage().contains("no dimension of"),
+				"A cell naming something that is not a dimension is refused");
+
+		assertTrue(assertThrows(IllegalArgumentException.class,
+				() -> CubeDrill.request(cube, Map.of("measure", "Revenue",
+						"cell", new LinkedHashMap<>(Map.of("OrderDate.month", "not a date")))))
+								.getMessage().contains("that is not a date"),
+				"and so is a date cell that is not a date");
+	}
+
+	/**
+	 * The one filter key that is SQL rather than a value: the server writes one when it drills a
+	 * filtered measure, and it reaches the statement as written — which is exactly why nothing but
+	 * the server may ever put one there (see {@code CubeSqlGenerator.SERVER_CONDITION}, and
+	 * {@code CubeRuntimeServiceTest} for the refusal a request gets).
+	 */
+	@Test
+	void ansi_serverCondition_isWrittenOutAndBringsItsJoins() throws Exception {
+		CubeOptions cube = drillCube();
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("ShipCountry"));
+		request.put("measures", List.of("Revenue"));
+		request.put("filters", List.of(Map.of(CubeSqlGenerator.SERVER_CONDITION, "${CUBE}.Status = 1")));
+
+		String sql = oneLine(CubeSqlGenerator.buildQuery(cube, request, "postgres").getSql());
+		assertTrue(sql.contains("(Orders.Status = 1)"), "The condition is the condition:\n" + sql);
+		assertFalse(sql.contains("${CUBE}"), "with the cube's own table written in:\n" + sql);
+	}
+
+	/** Every bound value as it is written down - a date is a date on eight of the nine, and text on SQLite. */
+	private static List<String> written(CubeQuery query) {
+
+		List<String> values = new ArrayList<>();
+		for (Object value : query.getParams().values()) {
+			values.add(Objects.toString(value, ""));
+		}
+		return values;
 	}
 
 	/** What the parser says is wrong with one member, or null when it says nothing. */

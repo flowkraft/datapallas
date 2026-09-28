@@ -21,8 +21,11 @@ import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.jdbi.v3.core.Jdbi;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.flowkraft.queries.services.QueriesService;
 import org.junit.jupiter.api.Test;
@@ -30,8 +33,17 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flowkraft.common.AppPaths;
+import com.flowkraft.cubes.CubeFilterOptions;
 import com.flowkraft.cubes.CubeFiles;
+import com.flowkraft.cubes.CubeRuntimeService;
 import com.flowkraft.cubes.CubeSqlGenerator;
+import com.flowkraft.cubes.CubeWidgets;
+import com.flowkraft.cubes.CubesService;
+import com.flowkraft.exploredata.export.DashboardFileGenerator;
+import com.flowkraft.exploredata.export.ScriptAssembler;
+import com.flowkraft.iam.limits.LimitsSandbox;
+import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindManager.DatabaseVendor;
@@ -145,6 +157,9 @@ class GeneratedSqlAllVendorsTest {
 			int casesFailed = 0;
 			int viewersChecked = 0;
 			int viewersFailed = 0;
+			int parityChecked = 0;
+			int parityFailed = 0;
+			filteredPasses = 0;
 
 			try {
 				if (!IN_PROCESS.contains(vendor)) {
@@ -164,6 +179,14 @@ class GeneratedSqlAllVendorsTest {
 						if (problem != null) {
 							failed++;
 							failures.add(problem);
+						}
+
+						// The same selection, published both ways, on this same database.
+						parityChecked++;
+						List<String> disagreements = runParity(connection, vendor, ask, parityChecked, notAsked);
+						if (!disagreements.isEmpty()) {
+							parityFailed++;
+							failures.addAll(disagreements);
 						}
 					}
 
@@ -204,8 +227,10 @@ class GeneratedSqlAllVendorsTest {
 			}
 
 			perVendor.add(String.format(
-					"%-12s %3d hint checks, %d failed | %2d AI Hub cases, %d failed | %d access filter viewers, %d failed | %d s",
+					"%-12s %3d hint checks, %d failed | %2d AI Hub cases, %d failed | %d access filter viewers, %d failed"
+							+ " | %3d two-mode checks (%d with a chip), %d failed | %d s",
 					vendor, checked, failed, casesChecked, casesFailed, viewersChecked, viewersFailed,
+					parityChecked, filteredPasses, parityFailed,
 					(System.currentTimeMillis() - started) / 1000));
 		}
 
@@ -453,6 +478,8 @@ class GeneratedSqlAllVendorsTest {
 		private final String cube;
 		private final String hint;
 		private final CubeOptions file;
+		/** The DSL file itself: Mode 2 reads its cube from an installation, not from a parse. */
+		private final File dslFile;
 		private final String cubeName;
 		private final Map<String, Object> query;
 		private final List<List<Object>> rows;
@@ -465,11 +492,12 @@ class GeneratedSqlAllVendorsTest {
 		 */
 		private final List<?> refusedOn;
 
-		private Ask(String cube, String hint, CubeOptions file, String cubeName, Map<String, Object> query,
-				List<List<Object>> rows, List<?> refusedOn) {
+		private Ask(String cube, String hint, CubeOptions file, File dslFile, String cubeName,
+				Map<String, Object> query, List<List<Object>> rows, List<?> refusedOn) {
 			this.cube = cube;
 			this.hint = hint;
 			this.file = file;
+			this.dslFile = dslFile;
 			this.cubeName = cubeName;
 			this.query = query;
 			this.rows = rows;
@@ -583,7 +611,7 @@ class GeneratedSqlAllVendorsTest {
 				@SuppressWarnings("unchecked")
 				List<List<Object>> rows = (List<List<Object>>) check.get("rows");
 				Object refused = check.get("refusedOn");
-				asks.add(new Ask(cube, hint, file, cubeFiles.getCubeName(), query, rows,
+				asks.add(new Ask(cube, hint, file, config, cubeFiles.getCubeName(), query, rows,
 						refused instanceof List ? (List<?>) refused : null));
 			}
 
@@ -690,6 +718,354 @@ class GeneratedSqlAllVendorsTest {
 			}
 		}
 		return rows;
+	}
+
+	// ── the two modes a cube widget is published in ──────────────────────────────
+
+	/** The dashboard the parity cases publish to. Nothing of it outlives the check. */
+	private static final String PARITY_REPORT = "parity-board";
+
+	/**
+	 * The connection the canvas was on. It is what the published file says, and therefore the only
+	 * one the runtime may read an answer on - which is asserted below rather than assumed.
+	 */
+	private static final String PARITY_CONNECTION = "the-dashboards-connection";
+
+	/** Filtered passes run, for the per-vendor line: a selection with a chip goes both ways too. */
+	private int filteredPasses;
+
+	/** What one pass of the two modes left behind: what went wrong, and the frozen mode's rows. */
+	private record Both(List<String> problems, List<List<Object>> mode1) {
+	}
+
+	/**
+	 * One hint's selection, published both ways on the same canvas and answered on the same
+	 * database (design "Tests", <b>"The two modes give the same rows"</b>).
+	 *
+	 * <p><b>Mode 1, Show In Dashboard unchecked:</b> the selection is turned into SQL the way
+	 * {@code generate-sql} turns it, the canvas freezes that SQL on the widget, and the real
+	 * exporter publishes it - so what is run here is the SQL the published dashboard's own data
+	 * script holds, read back out of the assembled script line by line.
+	 *
+	 * <p><b>Mode 2, checked:</b> the same selection is the {@code initial} of the
+	 * {@code {reportId}-cube-widgets.json} entry the same exporter writes, read back with
+	 * {@link CubeWidgets} - the runtime's own reader - and asked through
+	 * {@link CubeRuntimeService#query}, values bound, connection and cube taken from the file.
+	 *
+	 * <p>Both must answer the hint's own truths, and each other. A hint with a filter of its own
+	 * would prove the chips too; none of the shipped hints has one, so each hint that answered more
+	 * than one value of its first dimension is asked a second time with a chip on it, and the two
+	 * modes must agree about that answer as well.
+	 *
+	 * @return one entry per problem, empty when both modes answered the same rows
+	 */
+	private List<String> runParity(Connection connection, String vendor, Ask ask, int ordinal,
+			List<String> notAsked) {
+
+		if (ask.refusedOn(vendor)) {
+			notAsked.add(vendor + " | parity " + ask.cube + " | " + ask.hint
+					+ ": generate-sql refuses this question on " + vendor + ", so neither mode publishes it");
+			return List.of();
+		}
+
+		String propertyBefore = System.getProperty("PORTABLE_EXECUTABLE_DIR");
+		String appPathBefore = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH;
+		List<String> problems = new ArrayList<>();
+		try {
+			// An installation of its own per case: the cube where a person's own cubes live, and the
+			// dashboard's file written next to where its settings.xml would be. Under the temp folder,
+			// never in the tree.
+			Path home = tempDir.resolve("parity/" + vendor + "/" + ordinal);
+			Path cubeDir = home.resolve("config/cubes/" + ask.cube);
+			Files.createDirectories(cubeDir);
+			Files.writeString(cubeDir.resolve("cube.xml"), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<cube>\n"
+					+ "    <name>" + ask.cube + "</name>\n    <description>A cube of a dashboard</description>\n"
+					+ "    <connectionId>" + PARITY_CONNECTION + "</connectionId>\n</cube>\n");
+			Files.writeString(cubeDir.resolve(ask.cube + "-cube-config.groovy"),
+					Files.readString(ask.dslFile.toPath()));
+			System.setProperty("PORTABLE_EXECUTABLE_DIR", home.toString());
+			AppPaths.PORTABLE_EXECUTABLE_DIR_PATH = home.toString();
+
+			Map<String, Object> selection = selectionOf(ask.query);
+			Both plain = bothModes(connection, vendor, ask, selection, ask.rows, home, "");
+			problems.addAll(plain.problems());
+
+			Map<String, Object> withAChip = withAChip(selection, plain.mode1());
+			if (withAChip != null) {
+				filteredPasses++;
+				problems.addAll(bothModes(connection, vendor, ask, withAChip, null, home,
+						" + " + withAChip.get("filters")).problems());
+			}
+		} catch (Exception broken) {
+			problems.add(reportParity(vendor, ask, "", "-", "the two modes were not published: " + broken));
+		} finally {
+			AppPaths.PORTABLE_EXECUTABLE_DIR_PATH = appPathBefore;
+			if (propertyBefore == null) System.clearProperty("PORTABLE_EXECUTABLE_DIR");
+			else System.setProperty("PORTABLE_EXECUTABLE_DIR", propertyBefore);
+		}
+		return problems;
+	}
+
+	/** One selection, both ways. {@code expected} is the hint's own rows, or null for a chip pass. */
+	private Both bothModes(Connection connection, String vendor, Ask ask, Map<String, Object> selection,
+			List<List<Object>> expected, Path home, String what) {
+
+		List<String> problems = new ArrayList<>();
+		boolean ordered = Boolean.TRUE.equals(ask.query.get("ordered"));
+
+		// ── Mode 1: the frozen SQL the published data script holds ────────────────
+		String frozenSql;
+		String script;
+		DashboardFileGenerator.GeneratedFiles files;
+		try {
+			CubeOptions cube = CubeSqlGenerator.pickCube(ask.file, ask.cubeKey());
+			frozenSql = CubeSqlGenerator.buildQuery(cube, selection, vendor).toInlineSql(vendor);
+			List<Map<String, Object>> canvas = List.of(cubeWidget("w-frozen", ask, selection, false, frozenSql),
+					cubeWidget("w-live", ask, selection, true, ""));
+			script = ScriptAssembler.assemble(canvas, List.of()).text();
+			files = DashboardFileGenerator.generate(canvas, List.of(), PARITY_REPORT,
+					"http://localhost:9090/api", PARITY_CONNECTION);
+		} catch (Exception broken) {
+			problems.add(reportParity(vendor, ask, what, "-", "the canvas was not published: " + broken));
+			return new Both(problems, List.of());
+		}
+
+		String published = frozenSqlOf(script);
+		if (published.isBlank()) {
+			problems.add(reportParity(vendor, ask, what, script,
+					"the published data script holds no SQL for the unchecked widget"));
+			return new Both(problems, List.of());
+		}
+		if (published.contains("${dp_")) {
+			problems.add(reportParity(vendor, ask, what, published,
+					"the frozen SQL still carries a builtin variable, which only a request can bind"));
+			return new Both(problems, List.of());
+		}
+
+		List<List<Object>> mode1;
+		try {
+			mode1 = rows(connection, published);
+		} catch (Exception broken) {
+			problems.add(reportParity(vendor, ask, what, published, "the database refused Mode 1: " + broken));
+			return new Both(problems, List.of());
+		}
+
+		// ── Mode 2: the same selection, live, through the runtime ─────────────────
+		List<List<Object>> mode2;
+		try {
+			mode2 = liveRows(connection, vendor, files.cubeWidgetsJson(), home, problems, ask, what);
+		} catch (Exception broken) {
+			problems.add(reportParity(vendor, ask, what, published, "the live cube refused it: " + broken));
+			return new Both(problems, mode1);
+		}
+		if (mode2 == null) return new Both(problems, mode1);
+
+		// ── And what they must agree with ─────────────────────────────────────────
+		if (expected != null) {
+			String mode1Differs = difference(expected, mode1, ordered);
+			if (mode1Differs != null)
+				problems.add(reportParity(vendor, ask, what, published, "Mode 1: " + mode1Differs));
+			String mode2Differs = difference(expected, mode2, ordered);
+			if (mode2Differs != null)
+				problems.add(reportParity(vendor, ask, what, published, "Mode 2: " + mode2Differs));
+		} else if (mode1.isEmpty()) {
+			problems.add(reportParity(vendor, ask, what, published,
+					"the chip left no rows at all, so the pass proves nothing"));
+		}
+		String between = difference(mode1, mode2, ordered);
+		if (between != null)
+			problems.add(reportParity(vendor, ask, what, published, "the two modes disagree - " + between));
+
+		return new Both(problems, mode1);
+	}
+
+	/**
+	 * Mode 2's rows: the exporter's own {@code -cube-widgets.json} written where the runtime looks
+	 * for it, read back by the runtime's reader, and the entry's {@code initial} asked as a viewer's
+	 * opening request - which is what the renderer sends when the dashboard opens.
+	 */
+	private List<List<Object>> liveRows(Connection connection, String vendor, String widgetsJson, Path home,
+			List<String> problems, Ask ask, String what) throws Exception {
+
+		if (widgetsJson.isBlank()) {
+			problems.add(reportParity(vendor, ask, what, "-",
+					"the exporter declared no live cube for a widget that is ticked"));
+			return null;
+		}
+		Path reportDir = home.resolve("config/reports/" + PARITY_REPORT);
+		Files.createDirectories(reportDir);
+		Files.writeString(reportDir.resolve(PARITY_REPORT + CubeWidgets.SUFFIX), widgetsJson);
+
+		Map<String, Map<String, Object>> declared = JSON.readValue(widgetsJson,
+				new TypeReference<LinkedHashMap<String, Map<String, Object>>>() {
+				});
+		String componentId = declared.keySet().iterator().next();
+		CubeWidgets.Widget widget = CubeWidgets.of(PARITY_REPORT, componentId);
+
+		TheLoopsDatabase database = new TheLoopsDatabase(jdbiOn(connection), vendor);
+		CubesService cubesService = new CubesService();
+		LimitsSandbox sandbox = new LimitsSandbox(new LimitsService(null, null));
+		ReflectionTestUtils.setField(cubesService, "limitsSandbox", sandbox);
+		CubeRuntimeService runtime = new CubeRuntimeService();
+		ReflectionTestUtils.setField(runtime, "cubesService", cubesService);
+		ReflectionTestUtils.setField(runtime, "cubeFilterOptions", new CubeFilterOptions());
+		ReflectionTestUtils.setField(runtime, "limitsSandbox", sandbox);
+		// The seam CubeRuntimeService declares for a test (useDatabase); set by its field, because
+		// that method is the cubes package's own and this loop is not in it.
+		ReflectionTestUtils.setField(runtime, "database", database);
+
+		// What the renderer opens with: the entry's own selection, and nothing the request added.
+		Map<String, Object> request = new LinkedHashMap<>(widget.initial());
+		Map<String, Object> answer = runtime.query(PARITY_REPORT, componentId, request, Map.of());
+
+		if (!PARITY_CONNECTION.equals(database.readOn)) {
+			problems.add(reportParity(vendor, ask, what, "-", "the live cube read its answer on '"
+					+ database.readOn + "', and the dashboard declares '" + PARITY_CONNECTION + "'"));
+			return null;
+		}
+		List<List<Object>> rows = new ArrayList<>();
+		for (Object row : (List<?>) answer.get("rows")) {
+			rows.add(new ArrayList<>(((Map<?, ?>) row).values()));
+		}
+		return rows;
+	}
+
+	/** The selection, as the canvas holds it: the keys a cube widget carries, and no check's flag. */
+	private static Map<String, Object> selectionOf(Map<String, Object> query) {
+		Map<String, Object> selection = new LinkedHashMap<>();
+		for (String key : List.of("dimensions", "measures", "segments", "granularities", "filters", "order",
+				"limit")) {
+			if (query.get(key) != null) selection.put(key, query.get(key));
+		}
+		return selection;
+	}
+
+	/**
+	 * The same selection with one chip on it: the first dimension, held to the first row's value.
+	 * Null when this hint cannot carry one - no dimension, no rows, a value that is not a word, or
+	 * one value only, where a chip would prove nothing.
+	 */
+	private static Map<String, Object> withAChip(Map<String, Object> selection, List<List<Object>> rows) {
+
+		List<?> dimensions = selection.get("dimensions") instanceof List<?> list ? list : List.of();
+		if (dimensions.isEmpty() || rows.isEmpty()) return null;
+		// The first column is the first dimension. A grain of a date - "BookedDate.month" - is a
+		// column of the answer and not a member a filter may name, so a hint that opens with one
+		// carries no chip here.
+		String member = Objects.toString(dimensions.get(0), "");
+		if (member.isBlank() || member.indexOf('.') >= 0) return null;
+		Set<Object> values = new LinkedHashSet<>();
+		for (List<Object> row : rows) {
+			if (!row.isEmpty()) values.add(row.get(0));
+		}
+		if (values.size() < 2) return null;
+		Object first = values.iterator().next();
+		if (!(first instanceof String word) || word.isBlank()) return null;
+
+		Map<String, Object> withAChip = new LinkedHashMap<>(selection);
+		withAChip.put("filters",
+				List.of(Map.of("member", member, "operator", "in", "values", List.of(word))));
+		return withAChip;
+	}
+
+	/** One cube widget of the canvas, in the shape the AI Hub sends it in. */
+	private static Map<String, Object> cubeWidget(String id, Ask ask, Map<String, Object> selection,
+			boolean showInDashboard, String generatedSql) {
+
+		Map<String, Object> visualQuery = new LinkedHashMap<>();
+		visualQuery.put("kind", "cube");
+		visualQuery.put("cubeId", ask.cube);
+		visualQuery.put("cubeName", ask.cubeKey());
+		visualQuery.put("cubeSelection", selection);
+		if (showInDashboard) visualQuery.put("showInDashboard", true);
+
+		Map<String, Object> dataSource = new LinkedHashMap<>();
+		dataSource.put("mode", "visual");
+		dataSource.put("visualQuery", visualQuery);
+		dataSource.put("generatedSql", generatedSql);
+
+		Map<String, Object> widget = new LinkedHashMap<>();
+		widget.put("id", id);
+		widget.put("type", "tabulator");
+		widget.put("dataSource", dataSource);
+		widget.put("gridPosition", Map.of("x", 0, "y", showInDashboard ? 4 : 0, "w", 6, "h", 4));
+		widget.put("displayConfig", Map.of());
+		return widget;
+	}
+
+	/** A line of SQL as the published script appends it: {@code sql << '…\n'}. */
+	private static final Pattern PUBLISHED_SQL_LINE = Pattern.compile("^\\s*(\\w+) << '(.*)\\\\n'$");
+
+	/**
+	 * The SQL the published data script builds, read back out of it line by line - so what Mode 1
+	 * runs is what the dashboard runs, and not the string the test handed the exporter.
+	 */
+	private static String frozenSqlOf(String script) {
+		StringBuilder sql = new StringBuilder();
+		for (String line : script.split("\n", -1)) {
+			Matcher appended = PUBLISHED_SQL_LINE.matcher(line);
+			if (!appended.matches() || !appended.group(1).endsWith("sql")) continue;
+			sql.append(unescaped(appended.group(2))).append('\n');
+		}
+		return sql.toString();
+	}
+
+	/** Groovy's single-quoted escaping, undone. */
+	private static String unescaped(String text) {
+		StringBuilder plain = new StringBuilder();
+		for (int at = 0; at < text.length(); at++) {
+			char letter = text.charAt(at);
+			if (letter == '\\' && at + 1 < text.length()) letter = text.charAt(++at);
+			plain.append(letter);
+		}
+		return plain.toString();
+	}
+
+	private String reportParity(String vendor, Ask ask, String what, String sql, String problem) {
+		return "\n=== " + vendor + " | two modes | " + ask.cube + " | " + ask.hint + what + " ===\n  " + problem
+				+ "\n  SQL: " + sql;
+	}
+
+	/** The vendor loop's own database, as the runtime needs one: its connection, its values bound. */
+	private static final class TheLoopsDatabase implements CubeRuntimeService.Database {
+
+		private final Jdbi jdbi;
+		private final String vendor;
+		private String readOn;
+		private String sql;
+
+		private TheLoopsDatabase(Jdbi jdbi, String vendor) {
+			this.jdbi = jdbi;
+			this.vendor = vendor;
+		}
+
+		@Override
+		public String vendorOf(String connectionId) {
+			return vendor;
+		}
+
+		@Override
+		public List<Map<String, Object>> read(String connectionId, String sql, Map<String, Object> params,
+				int limit) {
+			this.readOn = connectionId;
+			this.sql = sql;
+			return jdbi.withHandle(handle -> {
+				org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+				for (Map.Entry<String, Object> bind : (params == null ? Map.<String, Object>of() : params)
+						.entrySet()) {
+					if (bind.getValue() instanceof List<?> list) query.bindList(bind.getKey(), list);
+					else query.bind(bind.getKey(), bind.getValue());
+				}
+				if (limit > 0) query.setMaxRows(limit);
+				return query.map((resultSet, context) -> {
+					Map<String, Object> row = new LinkedHashMap<>();
+					for (int column = 1; column <= resultSet.getMetaData().getColumnCount(); column++) {
+						row.put(resultSet.getMetaData().getColumnLabel(column), resultSet.getObject(column));
+					}
+					return row;
+				}).list();
+			});
+		}
 	}
 
 	// ── comparing rows, by the e2e's rules ───────────────────────────────────────

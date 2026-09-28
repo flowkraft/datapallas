@@ -603,6 +603,10 @@
         updateTable();
       });
       table.on('rowClick', (e, row) => dispatch('rowClick', { event: e, row, rowData: row.getData() }));
+      // One cell, not the whole row: a cube's drill-through is a question about the number that
+      // was clicked, so the field it belongs to travels with the row it is in.
+      table.on('cellClick', (e, cell) => dispatch('cellClick',
+        { event: e, field: cell.getField(), value: cell.getValue(), rowData: cell.getRow().getData() }));
       table.on('dataLoaded', (d) => dispatch('dataLoaded', { data: d }));
       table.on('dataFiltered', (filters: any[], rows: any[]) => dispatch('dataFiltered', { filters, rowCount: rows.length }));
 

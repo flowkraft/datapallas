@@ -82,6 +82,7 @@ public class CubeOptionsParser {
         if (map.containsKey("access_filter")) opts.setAccessFilter(String.valueOf(map.get("access_filter")));
         if (map.get("access_filter_count") instanceof Number count) opts.setAccessFilterCount(count.intValue());
         else if (map.containsKey("access_filter")) opts.setAccessFilterCount(1);
+        if (map.containsKey("currency")) opts.setCurrency(String.valueOf(map.get("currency")));
         // Semantic members
         if (map.containsKey("dimensions")) opts.setDimensions((List<Map<String, Object>>) map.get("dimensions"));
         if (map.containsKey("measures")) opts.setMeasures((List<Map<String, Object>>) map.get("measures"));

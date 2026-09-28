@@ -183,6 +183,7 @@ export function QueryBuilder({ widgetId, dataSource, onChange, connectionId }: Q
           {/* Visual tab */}
           {topTab === "visual" && schema && (
             <VisualQueryBuilder
+              widgetId={widgetId}
               schema={schema}
               dataSource={dataSource}
               onChange={onChange}

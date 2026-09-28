@@ -28,6 +28,13 @@ DELETE /api/jobs/resume-file -> JOB_OPERATOR
 DELETE /api/jobs/temp/{folderName} -> JOB_OPERATOR
 DELETE /api/jobs/{id} -> JOB_OPERATOR
 DELETE /api/reports/{reportId} -> REPORT_AUTHOR
+# One viewer's own view of one live cube - the fields, filters and order they last looked at, and
+# whether they had the panel folded away. Not a role but a report and a person: the same
+# dashboardAccess.check plus reportAccess.assertReportReadable as the cube's rows, and then the
+# row belongs to whoever is asking (CubeViewers.of), so nobody can read or write anybody else's.
+# An embed token never reaches it at all - the token-scoped paths are meta, query,
+# filter-options and drill only, so a share link falls through to anyRequest().authenticated().
+DELETE /api/reports/{reportId}/cube/{componentId}/my-view -> (none)
 DELETE /api/system/fs -> REPORT_AUTHOR
 GET /api/analytics/aggregators -> REPORT_AUTHOR
 GET /api/analytics/aggregators/display-names -> REPORT_AUTHOR
@@ -82,6 +89,13 @@ GET /api/reports/{id}/preview -> REPORT_AUTHOR
 GET /api/reports/{reportId}/config -> (none)
 # The field tree of a live cube of a published dashboard: same door as that dashboard's data, and guarded by the same two checks in the handler. Which cube it answers about is decided by the report's own -cube-widgets.json, never by the request, so a viewer of a dashboard sees the cubes that dashboard publishes.
 GET /api/reports/{reportId}/cube/{componentId}/meta -> (none)
+# One viewer's own view of one live cube - the fields, filters and order they last looked at, and
+# whether they had the panel folded away. Not a role but a report and a person: the same
+# dashboardAccess.check plus reportAccess.assertReportReadable as the cube's rows, and then the
+# row belongs to whoever is asking (CubeViewers.of), so nobody can read or write anybody else's.
+# An embed token never reaches it at all - the token-scoped paths are meta, query,
+# filter-options and drill only, so a share link falls through to anyRequest().authenticated().
+GET /api/reports/{reportId}/cube/{componentId}/my-view -> (none)
 # The data door, guarded the same way as its config: embed token or session to get in, then dashboardAccess.check and reportAccess.assertReportReadable decide whether this caller may read this report's rows.
 GET /api/reports/{reportId}/data -> (none)
 GET /api/reports/{reportId}/datasource -> REPORT_AUTHOR
@@ -161,9 +175,11 @@ POST /api/connections/{connectionId}/test-sms -> ADMIN
 POST /api/cubes -> REPORT_AUTHOR
 POST /api/cubes/generate-sql -> REPORT_AUTHOR
 POST /api/cubes/parse-dsl -> REPORT_AUTHOR
+POST /api/cubes/{cubeId}/drill -> REPORT_AUTHOR
 POST /api/cubes/{cubeId}/duplicate -> REPORT_AUTHOR
 POST /api/cubes/{cubeId}/filter-options -> REPORT_AUTHOR
 POST /api/cubes/{cubeId}/generate-sql -> REPORT_AUTHOR
+POST /api/cubes/{cubeId}/query -> REPORT_AUTHOR
 # and then by data: limitsService.assertConnectionAllowed on the connection the DSL names.
 POST /api/dsl/{type}/parse -> REPORT_AUTHOR
 POST /api/dsl/{type}/serialize -> REPORT_AUTHOR
@@ -194,6 +210,10 @@ POST /api/jobs/upload-and-qa -> JOB_OPERATOR
 POST /api/queries/run-script -> REPORT_AUTHOR
 POST /api/queries/run-sql -> REPORT_AUTHOR
 POST /api/reports -> REPORT_AUTHOR
+# The rows behind one number of a dashboard's live cube - a click on a cell, answered by the same
+# cube, connection and access_filter as the number itself, and capped at 1000 rows. Open exactly as
+# far as that number was: dashboardAccess.check plus reportAccess.assertReportReadable.
+POST /api/reports/{reportId}/cube/{componentId}/drill -> (none)
 # The values one dimension of a dashboard's live cube may be filtered by - the viewer-facing twin of the cube editor's own endpoint, answering from the same helper. Open exactly as far as the dashboard's data is: dashboardAccess.check plus reportAccess.assertReportReadable in the handler.
 POST /api/reports/{reportId}/cube/{componentId}/filter-options -> (none)
 # The rows one selection of a dashboard's live cube asks for. A POST because the selection is a structured question, not because it changes anything; the same two checks as /data decide who may ask it, and the request may name only members the cube offers.
@@ -230,6 +250,13 @@ PUT /api/iam/users/{username}/password -> ADMIN
 # working preferences does it through PUT /api/system/preferences, which is REPORT_AUTHOR.
 PUT /api/iam/users/{username}/preferences -> ADMIN
 PUT /api/iam/users/{username}/role -> ADMIN
+# One viewer's own view of one live cube - the fields, filters and order they last looked at, and
+# whether they had the panel folded away. Not a role but a report and a person: the same
+# dashboardAccess.check plus reportAccess.assertReportReadable as the cube's rows, and then the
+# row belongs to whoever is asking (CubeViewers.of), so nobody can read or write anybody else's.
+# An embed token never reaches it at all - the token-scoped paths are meta, query,
+# filter-options and drill only, so a share link falls through to anyRequest().authenticated().
+PUT /api/reports/{reportId}/cube/{componentId}/my-view -> (none)
 # and then by data: limitsService.assertConnectionAllowed on the conncode being saved - an author
 # cannot point a report at a connection they may not use themselves.
 PUT /api/reports/{reportId}/datasource -> REPORT_AUTHOR

@@ -57,6 +57,16 @@ declare namespace JSX {
         "api-key"?: string
         "cube-name"?: string
         "show-hidden"?: boolean | string
+        // The live cube of a published dashboard (W2), and the author's own cube (W4.8).
+        "report-id"?: string
+        "component-id"?: string
+        "embed-token"?: string
+        "cube-id"?: string
+        "default-fields"?: string
+        // What the answer is drawn as: value | chart | table (W3 on the canvas, the widget file
+        // in a dashboard).
+        "display"?: string
+        "read-only"?: boolean | string
       },
       HTMLElement
     >

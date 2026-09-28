@@ -208,8 +208,12 @@ public class CubeSqlGenerator {
 	}
 
 	/**
-	 * The one builder every entry point goes through: the SQL, with a placeholder wherever a filter
-	 * carried a value, and those values typed by the member they filter.
+	 * The one builder every entry point goes through.
+	 *
+	 * <p>Almost every query is the plain grouped one below. A measure that is read over the
+	 * finished groups instead of inside them — a share of the total, a running total, the same
+	 * period a year earlier — turns that query into the subquery of one more SELECT, and
+	 * {@link CubeAnalysis} writes the outer layer, calling back into {@link #plain} for the inside.
 	 */
 	private static CubeQuery build(
 			CubeOptions cube,
@@ -221,12 +225,106 @@ public class CubeSqlGenerator {
 			Integer limit,
 			String dbVendor) {
 
+		if (!CubeAnalysis.analyticsOf(cube, selectedMeasures).isEmpty()) {
+			return CubeAnalysis.analysedQuery(cube, selectedDimensions, selectedMeasures,
+					selectedSegments, requestOrder, filters, limit, dbVendor);
+		}
+
+		return plain(cube, selectedDimensions, selectedMeasures, selectedSegments, requestOrder,
+				filters, limit, dbVendor, Nested.whole()).query();
+	}
+
+	/**
+	 * One grouped query, in pieces: its {@code WITH}, its {@code SELECT}, and what it returns.
+	 *
+	 * <p>It is handed out in pieces rather than as one string because the analysis layer has to
+	 * keep the {@code WITH} at the very front — Oracle and SQL Server both reject one inside a
+	 * derived table — and has to know which alias is the date column before it can write a window
+	 * that runs along it.
+	 *
+	 * @param with           the {@code WITH …} clause, or empty
+	 * @param body           the {@code SELECT …}, which stands alone as a subquery
+	 * @param tail           what a vendor needs after the whole statement; nothing may follow it
+	 * @param orderAliases   the order this query chose, each part already quoted, for a caller that
+	 *                       wraps the query and wants to keep that order
+	 * @param timeAlias      the first ticked time dimension's alias, or null if none was ticked
+	 * @param timeGranularity that dimension's grain, or null when it was asked for without one
+	 */
+	record Plain(String with, String body, String tail, List<String> dimensionAliases,
+			List<String> measureAliases, String timeAlias, String timeGranularity,
+			List<String> orderAliases, Map<String, Object> params) {
+
+		/** The whole statement, as every entry point but the analysis layer wants it. */
+		CubeQuery query() {
+			return new CubeQuery(nothingUnresolvedLeft(with + body + tail), params);
+		}
+	}
+
+	/**
+	 * How far forward a prior-period query moves its time dimension.
+	 *
+	 * <p>The query {@code p} groups the rows of an earlier period, and its ticked date is moved
+	 * forward by the interval so that last March comes out as this March and the two rows meet on
+	 * a plain equality. The move happens before the truncation, not after: a month-grained query
+	 * shifted by a week must land on a month start, and truncating first would leave it a week
+	 * past one.
+	 */
+	record Shift(int amount, String unit) {
+	}
+
+	/**
+	 * What makes a query a part of a bigger one rather than the whole of it.
+	 *
+	 * @param binder  where values are bound. It is shared between the queries of one statement, so
+	 *                two of them cannot give two different values the same name.
+	 * @param tag     what this query's internal table names end in, so that the fan-out rewrite of
+	 *                two queries standing side by side in one {@code WITH} cannot collide
+	 * @param shift   null for an ordinary query; the interval a prior-period query moves its time
+	 *                dimension forward by
+	 * @param ordered false to leave the ORDER BY out and hand it back instead. A subquery may not
+	 *                carry one: SQL Server rejects an ORDER BY in a derived table outright, and
+	 *                where it is accepted it is still meaningless, because the query that reads
+	 *                the subquery is the one whose order the rows come back in.
+	 */
+	record Nested(Binder binder, String tag, Shift shift, boolean ordered) {
+
+		/** A query that is the whole statement: its own values, no tag, no shift, its own order. */
+		static Nested whole() {
+			return new Nested(new Binder(), "", null, true);
+		}
+	}
+
+	/** A query there is nothing to write: the reason stands where the SQL would. */
+	private static Plain nothing(String reason) {
+		return new Plain("", reason, "", List.of(), List.of(), null, null, List.of(), Map.of());
+	}
+
+	/**
+	 * The plain grouped query: the SQL, with a placeholder wherever a filter carried a value, and
+	 * those values typed by the member they filter.
+	 *
+	 * @param nested what makes this query a part of a bigger one — {@link Nested#whole()} when it
+	 *               is the whole statement
+	 */
+	static Plain plain(
+			CubeOptions cube,
+			List<String> selectedDimensions,
+			List<String> selectedMeasures,
+			List<String> selectedSegments,
+			List<String> requestOrder,
+			List<Map<String, Object>> filters,
+			Integer limit,
+			String dbVendor,
+			Nested nested) {
+
 		String vendor = CubeSqlDialect.key(dbVendor);
-		Binder binder = new Binder();
+		Binder binder = nested.binder();
+		String tag = nested.tag();
+		Shift shift = nested.shift();
 
 		// Resolve the source table.
 		if (cube.getSqlTable() == null && cube.getSql() == null) {
-			return new CubeQuery("-- No sql_table or sql defined in cube", Map.of());
+			return nothing("-- No sql_table or sql defined in cube");
 		}
 
 		// The FROM clause, and the name every ${CUBE} expands to. An sql-based cube is a derived
@@ -305,11 +403,13 @@ public class CubeSqlGenerator {
 				column.subQuery = true;
 			} else {
 				column = new Column(dimName,
-						dimensionExpression(dim, dimName, granularity, cube, cubeRef, vendor, referencedTables),
+						dimensionExpression(dim, dimName, granularity, cube, cubeRef, vendor, referencedTables,
+								shift),
 						dimName);
 			}
 			column.order = declaredOrder;
 			column.time = "time".equals(type);
+			column.granularity = granularity;
 			columns.add(column);
 		}
 
@@ -340,7 +440,7 @@ public class CubeSqlGenerator {
 		}
 
 		if (columns.isEmpty() && measureNames.isEmpty()) {
-			return new CubeQuery("-- No fields selected", Map.of());
+			return nothing("-- No fields selected");
 		}
 
 		// Build a join lookup map for parent-chain walking
@@ -392,9 +492,32 @@ public class CubeSqlGenerator {
 		// was selected, and brings that dimension's joins exactly as a selected one would.
 		List<Map<String, Object>> measureFilters = new ArrayList<>();
 		for (Map<String, Object> filter : filters) {
+
+			// A condition the server wrote out of the cube's own text, not a member and a value:
+			// a drilled measure's own `filters` are SQL, and the rows behind its number are the
+			// rows it counted (W4.6). See SERVER_CONDITION on why a request can never carry one.
+			String serverCondition = Objects.toString(filter.get(SERVER_CONDITION), "").trim();
+			if (!serverCondition.isEmpty()) {
+				String condition = serverCondition.replace("${CUBE}", cubeRef);
+				detectReferencedTables(condition, cube, referencedTables);
+				whereClauses.add("(" + condition + ")");
+				continue;
+			}
+
 			String member = Objects.toString(filter.get("member"), "").trim();
 			Map<String, Object> dim = findMember(cube.getDimensions(), member);
 			if (dim == null) {
+				// A geo dimension's two coordinates are two columns of the answer, so they are also
+				// the two names a drill's cell filters on. The dimension itself still cannot be
+				// filtered - a pair of coordinates is not one value - but each half of it is one
+				// number like any other.
+				String cornerSql = geoCornerSql(cube, member);
+				if (cornerSql != null) {
+					String expr = cornerSql.replace("${CUBE}", cubeRef);
+					detectReferencedTables(expr, cube, referencedTables);
+					whereClauses.add(filterCondition(expr, member, "number", filter, vendor, binder));
+					continue;
+				}
 				if (findMember(cube.getMeasures(), member) == null) {
 					throw new IllegalArgumentException("The answer cannot be filtered on '" + member
 							+ "', because this cube has no dimension or measure of that name.");
@@ -412,7 +535,9 @@ public class CubeSqlGenerator {
 			// the month its chart groups it under.
 			String expr = CubeRules.isTrue(dim.get("sub_query"))
 					? subQueryExpression(dim, member, cube, cubeRef, vendor)
-					: dimensionExpression(dim, member, null, cube, cubeRef, vendor, referencedTables);
+					// Never shifted: a prior-period query's filters were moved by their values, and
+					// moving the column as well would move the same rows twice.
+					: dimensionExpression(dim, member, null, cube, cubeRef, vendor, referencedTables, null);
 			whereClauses.add(filterCondition(expr, member, type, filter, vendor, binder));
 		}
 
@@ -498,8 +623,8 @@ public class CubeSqlGenerator {
 			}
 			innerParts.addAll(twoLevel.inner);
 			if (keyExpr != null) {
-				innerParts.add(keyExpr + " AS " + CubeSqlDialect.internalAlias(PK, vendor));
-				keyInKeys = "q." + CubeSqlDialect.internalAlias(PK, vendor);
+				innerParts.add(keyExpr + " AS " + internal(PK, tag, vendor));
+				keyInKeys = "q." + internal(PK, tag, vendor);
 			}
 			fromClause = new StringBuilder("(SELECT " + String.join(", ", innerParts) + " FROM "
 					+ fromClause + where + ") q");
@@ -508,18 +633,24 @@ public class CubeSqlGenerator {
 
 		String tail = joinOrder.isEmpty() ? "" : CubeSqlDialect.leftJoinSettings(vendor);
 		List<OrderBy> orderBy = orderBy(requestOrder, columns, measureNames, cube);
+		// The order is always worked out, so that a caller wrapping this query can keep it, and is
+		// written into the SQL only when this query is the whole statement.
+		List<OrderBy> emitted = nested.ordered() ? orderBy : List.<OrderBy>of();
 
 		// A row limit is two things at once: a clause at the end almost everywhere, and a word
 		// inside the SELECT on SQL Server. Both are asked for, and one of them is always empty.
 		String selectPrefix = limit == null ? "" : CubeSqlDialect.limitPrefix(limit, vendor);
 		String limitClause = limit == null ? "" : CubeSqlDialect.limitClause(limit, vendor);
 
-		String sql;
+		String with;
+		String body;
 		if (!multipliedBy.isEmpty()) {
-			sql = withoutDoubleCounting(cube, cubeRef, vendor, fromSource, fromClause.toString(), where,
-					keyInKeys, keyExpr, columns, columnExprs, measureNames, measureExprs,
-					mainTableMeasureExprs, multipliedBy, orderBy, selectPrefix, outerWhereClauses)
-					+ limitClause + tail;
+			String[] rewritten = withoutDoubleCounting(cube, cubeRef, vendor, fromSource,
+					fromClause.toString(), where, keyInKeys, keyExpr, columns, columnExprs, measureNames,
+					measureExprs, mainTableMeasureExprs, multipliedBy, emitted, selectPrefix,
+					outerWhereClauses, tag);
+			with = rewritten[0];
+			body = rewritten[1] + limitClause;
 		} else {
 			List<String> selectParts = new ArrayList<>();
 			for (int i = 0; i < columns.size(); i++) {
@@ -546,9 +677,9 @@ public class CubeSqlGenerator {
 			if (!havingClauses.isEmpty()) {
 				plain.append("\nHAVING ").append(String.join("\n  AND ", havingClauses));
 			}
-			if (!orderBy.isEmpty()) {
+			if (!emitted.isEmpty()) {
 				List<String> parts = new ArrayList<>();
-				for (OrderBy order : orderBy) {
+				for (OrderBy order : emitted) {
 					String name = order.measure
 							? measureNames.get(order.index)
 							: columns.get(order.index).alias;
@@ -557,11 +688,81 @@ public class CubeSqlGenerator {
 				plain.append("\nORDER BY\n  ").append(String.join(",\n  ", parts));
 			}
 
-			plain.append(limitClause).append(tail);
-			sql = plain.toString();
+			plain.append(limitClause);
+			with = "";
+			body = plain.toString();
 		}
 
-		return new CubeQuery(nothingUnresolvedLeft(sql), binder.params);
+		List<String> dimensionAliases = new ArrayList<>();
+		for (Column column : columns) dimensionAliases.add(column.alias);
+
+		// The order this query settled on, written as the wrapping query would have to write it:
+		// by alias, because by then the expressions are gone and only the columns are left.
+		List<String> orderAliases = new ArrayList<>();
+		for (OrderBy order : orderBy) {
+			orderAliases.add(CubeSqlDialect.quoteAlias(order.measure
+					? measureNames.get(order.index)
+					: columns.get(order.index).alias, vendor) + " " + order.direction);
+		}
+
+		String timeAlias = null;
+		String timeGranularity = null;
+		for (Column column : columns) {
+			if (column.time && timeAlias == null) {
+				timeAlias = column.alias;
+				timeGranularity = column.granularity;
+			}
+		}
+
+		return new Plain(with, body, tail, dimensionAliases, measureNames, timeAlias, timeGranularity,
+				orderAliases, binder.params);
+	}
+
+	/**
+	 * The key a filter carries a finished SQL condition under, instead of a member and a value.
+	 *
+	 * <p><b>Why this is not a hole.</b> The text is SQL and is written into the statement, so the
+	 * only thing that may ever put one here is this server, from the cube file's own text - today
+	 * that is a drilled measure's {@code filters} ({@link CubeDrill}). A request cannot: the
+	 * runtime takes only the keys of {@code QUERY_KEYS}, every filter it passes on must name a
+	 * member the cube offers, and it refuses outright a filter carrying this key, so a viewer
+	 * hears about it rather than watching it be dropped.
+	 */
+	public static final String SERVER_CONDITION = "serverCondition";
+
+	/**
+	 * The SQL of the coordinate one of the answer's {@code _lat}/{@code _lng} columns is, or null
+	 * when this name is not a geo dimension's coordinate.
+	 */
+	private static String geoCornerSql(CubeOptions cube, String member) {
+
+		for (String suffix : List.of("_lat", "_lng")) {
+			if (!member.endsWith(suffix)) continue;
+			Map<String, Object> dim = findMember(cube.getDimensions(),
+					member.substring(0, member.length() - suffix.length()));
+			if (dim == null || !"geo".equals(Objects.toString(dim.get("type"), "").trim().toLowerCase()))
+				continue;
+			return CubeRules.cornerSql(dim, "_lat".equals(suffix) ? "latitude" : "longitude");
+		}
+		return null;
+	}
+
+	/**
+	 * The same question asked of every row at once: the request without its dimensions, its order
+	 * and its limit, and with everything that narrows the rows - filters, segments and, through the
+	 * generator, the cube's {@code access_filter} - kept exactly as it was (W4.3).
+	 *
+	 * <p>That is why a total is right where adding up the shown rows is wrong: a distinct count, an
+	 * average and a ratio are each re-asked of all the rows rather than added up from a page of
+	 * them.
+	 */
+	public static Map<String, Object> totalsRequest(Map<String, Object> request) {
+
+		Map<String, Object> totals = new LinkedHashMap<>(request != null ? request : Map.of());
+		for (String dropped : List.of("dimensions", "selectedDimensions", "granularities", "order", "limit")) {
+			totals.remove(dropped);
+		}
+		return totals;
 	}
 
 	/** The operators a value filter may ask for. Anything else is a mistake in the request. */
@@ -575,9 +776,14 @@ public class CubeSqlGenerator {
 	 * an apostrophe in it is a name and not a syntax error, and a value that was meant as SQL stays
 	 * a value. See {@link CubeQuery}.
 	 */
-	private static final class Binder {
+	static final class Binder {
 		private final Map<String, Object> params = new LinkedHashMap<>();
 		private int bound;
+
+		/** Everything bound so far — the map a {@link CubeQuery} carries beside its SQL. */
+		Map<String, Object> params() {
+			return params;
+		}
 
 		/** Binds one value and returns how the SQL names it. */
 		String bind(Object value) {
@@ -745,6 +951,8 @@ public class CubeSqlGenerator {
 		boolean subQuery;
 		boolean time;
 		String order;
+		/** The grain it was asked for — OrderDate.month — or null when it was asked for plain. */
+		String granularity;
 
 		Column(String alias, String expr, String dimension) {
 			this.alias = alias;
@@ -959,6 +1167,11 @@ public class CubeSqlGenerator {
 	private static final String MULT = "__mult";
 	private static final String PK = "__pk";
 
+	/** An internal table name, with the tag that keeps two queries in one {@code WITH} apart. */
+	private static String internal(String name, String tag, String vendor) {
+		return CubeSqlDialect.internalAlias(name + tag, vendor);
+	}
+
 	/**
 	 * The query the plain form would answer wrongly, written so that it answers rightly: every
 	 * multiplied measure is aggregated once per key of its own table, in a {@code WITH}, and joined
@@ -968,7 +1181,7 @@ public class CubeSqlGenerator {
 	 * there is nothing vendor-specific here. A query it cannot rewrite is refused with a message
 	 * naming the measure and the join, never answered with a number that is too big.
 	 */
-	private static String withoutDoubleCounting(
+	private static String[] withoutDoubleCounting(
 			CubeOptions cube,
 			String cubeRef,
 			String vendor,
@@ -985,7 +1198,8 @@ public class CubeSqlGenerator {
 			Map<String, String> multipliedBy,
 			List<OrderBy> orderBy,
 			String selectPrefix,
-			List<String> outerWhereClauses) {
+			List<String> outerWhereClauses,
+			String tag) {
 
 		for (Map.Entry<String, String> multiplied : multipliedBy.entrySet()) {
 			refuseWhatCannotBeRewritten(multiplied.getKey(), multiplied.getValue(), cube, cubeRef);
@@ -995,10 +1209,10 @@ public class CubeSqlGenerator {
 		for (int i = 0; i < columnExprs.size(); i++) {
 			keyParts.add(columnExprs.get(i) + " AS d" + i);
 		}
-		keyParts.add(keyInKeys + " AS " + CubeSqlDialect.internalAlias(PK, vendor));
+		keyParts.add(keyInKeys + " AS " + internal(PK, tag, vendor));
 
 		StringBuilder sql = new StringBuilder();
-		sql.append("WITH ").append(CubeSqlDialect.internalAlias(KEYS, vendor))
+		sql.append("WITH ").append(internal(KEYS, tag, vendor))
 				.append(" AS (\n  SELECT DISTINCT ")
 				.append(String.join(", ", keyParts))
 				.append("\n  FROM ").append(fromClause).append(where).append("\n),\n");
@@ -1013,18 +1227,21 @@ public class CubeSqlGenerator {
 						+ CubeSqlDialect.quoteAlias(measureNames.get(i), vendor));
 			}
 		}
-		sql.append(CubeSqlDialect.internalAlias(MULT, vendor)).append(" AS (\n  SELECT ")
+		sql.append(internal(MULT, tag, vendor)).append(" AS (\n  SELECT ")
 				.append(String.join(", ", multParts))
-				.append("\n  FROM ").append(CubeSqlDialect.internalAlias(KEYS, vendor))
+				.append("\n  FROM ").append(internal(KEYS, tag, vendor))
 				.append(" k LEFT JOIN ").append(fromSource)
 				.append(" ON ").append(keyExpr).append(" = k.")
-				.append(CubeSqlDialect.internalAlias(PK, vendor));
+				.append(internal(PK, tag, vendor));
 		if (!columnExprs.isEmpty()) {
 			List<String> multGroup = new ArrayList<>();
 			for (int i = 0; i < columnExprs.size(); i++) multGroup.add("k.d" + i);
 			sql.append("\n  GROUP BY ").append(String.join(", ", multGroup));
 		}
 		sql.append("\n)\n");
+		// Everything up to here is the WITH clause, and a caller that wraps this query in another
+		// SELECT has to lift it out whole: no supported database reads a WITH inside a subquery.
+		int withEnd = sql.length();
 
 		boolean hasPlainMeasures = measureNames.size() > multipliedBy.size();
 
@@ -1061,7 +1278,7 @@ public class CubeSqlGenerator {
 
 			if (columnExprs.isEmpty()) {
 				// Both sides are one row, and there is nothing to match them on.
-				sql.append("\nCROSS JOIN ").append(CubeSqlDialect.internalAlias(MULT, vendor)).append(" x");
+				sql.append("\nCROSS JOIN ").append(internal(MULT, tag, vendor)).append(" x");
 			} else {
 				// One NULL-safe equality per dimension, written out: no vendor has to be asked
 				// whether it spells this IS NOT DISTINCT FROM, <=> or something else again.
@@ -1069,11 +1286,11 @@ public class CubeSqlGenerator {
 				for (int i = 0; i < columnExprs.size(); i++) {
 					on.add("(m.d" + i + " = x.d" + i + " OR (m.d" + i + " IS NULL AND x.d" + i + " IS NULL))");
 				}
-				sql.append("\nLEFT JOIN ").append(CubeSqlDialect.internalAlias(MULT, vendor))
+				sql.append("\nLEFT JOIN ").append(internal(MULT, tag, vendor))
 						.append(" x ON ").append(String.join("\n  AND ", on));
 			}
 		} else {
-			sql.append("\nFROM ").append(CubeSqlDialect.internalAlias(MULT, vendor)).append(" x");
+			sql.append("\nFROM ").append(internal(MULT, tag, vendor)).append(" x");
 		}
 
 		if (!outerWhereClauses.isEmpty()) {
@@ -1092,7 +1309,7 @@ public class CubeSqlGenerator {
 			sql.append("\nORDER BY ").append(String.join(", ", parts));
 		}
 
-		return sql.toString();
+		return new String[] { sql.substring(0, withEnd), sql.substring(withEnd) };
 	}
 
 	/**
@@ -1334,7 +1551,8 @@ public class CubeSqlGenerator {
 			CubeOptions cube,
 			String cubeRef,
 			String vendor,
-			Set<String> referencedTables) {
+			Set<String> referencedTables,
+			Shift shift) {
 
 		boolean isTime = "time".equals(Objects.toString(dim.get("type"), "").trim().toLowerCase());
 
@@ -1352,6 +1570,12 @@ public class CubeSqlGenerator {
 				// Read through timeValue first, then truncate: the truncation works on the value
 				// the user sees, and SELECT, GROUP BY and ORDER BY all share this one expression.
 				sqlExpr = CubeSqlDialect.timeValue(sqlExpr, vendor);
+				if (shift != null) {
+					// A prior-period query: the earlier date is moved forward to the row it belongs
+					// beside, and only then truncated, so that the grain it lands on is the grain the
+					// query groups by.
+					sqlExpr = CubeSqlDialect.addInterval(sqlExpr, shift.amount(), shift.unit(), vendor);
+				}
 				if (granularity != null) {
 					sqlExpr = CubeSqlDialect.dateTrunc(sqlExpr, granularity, vendor);
 				}

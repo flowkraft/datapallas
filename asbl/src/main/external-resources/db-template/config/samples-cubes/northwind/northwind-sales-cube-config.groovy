@@ -196,6 +196,8 @@ cube {
     sql '("Order Details"."UnitPrice" * "Order Details"."Quantity" * (1 - "Order Details"."Discount"))'
     type 'sum'
     format 'currency'
+    // Click a revenue number and these are the order lines behind it, in this order.
+    drill_members 'OrderID', 'OrderDate', 'CustomerCompanyName', 'EmployeeName', 'OrderValue'
   }
   measure {
     name 'OrderValue'
@@ -240,6 +242,45 @@ cube {
     description 'Number of distinct products sold'
     sql '"Order Details"."ProductID"'
     type 'count_distinct'
+  }
+
+  // ── Analysis measures (read over the finished groups, not inside them) ──
+  // Each one is Revenue seen a different way, so they are ticked beside it, never instead of it.
+  measure {
+    name 'RevenueShare'
+    title 'Revenue Share'
+    description "This group's share of the revenue of every group in the answer (0.0 to 1.0). PICK THIS WHEN: asking how the total splits - by category, by country, by rep."
+    sql '${Revenue}'
+    type 'number'
+    share_of_total true
+    format 'percent'
+  }
+  measure {
+    name 'RevenueRunning'
+    title 'Running Revenue'
+    description 'Revenue added up along the date, from the first row of the answer to this one. PICK THIS WHEN: Order Date is one of the fields. Needs a date in the question.'
+    sql '${Revenue}'
+    type 'number'
+    rolling_window trailing: 'unbounded'
+    format 'currency'
+  }
+  measure {
+    name 'RevenueYTD'
+    title 'Revenue Year To Date'
+    description 'The running revenue, restarted every year. PICK THIS WHEN: Order Date is asked for by a grain finer than a year, month or quarter.'
+    sql '${Revenue}'
+    type 'number'
+    rolling_window type: 'to_date', granularity: 'year'
+    format 'currency'
+  }
+  measure {
+    name 'RevenuePriorYear'
+    title 'Revenue Prior Year'
+    description 'The same period one year earlier, for the same groups. PICK THIS WHEN: comparing this year with last. Without a date it is one number for the whole earlier period.'
+    sql '${Revenue}'
+    type 'number'
+    time_shift interval: '1 year'
+    format 'currency'
   }
 
   // ── Joins (with parent chain for transitive resolution) ────────────────

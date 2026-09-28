@@ -834,6 +834,102 @@ test.describe('REST — Cubes', () => {
     }
     expect([...labels].sort()).toEqual(labels);
   });
+
+  // The rows a live cube answers with, over REST. northwind-sales names its own connection, so
+  // this is the same query the dashboard runs, asked by the author's endpoint.
+  test('POST /api/cubes/northwind-sales/query answers the rows and totals every row at once', async () => {
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dimensions: ['CategoryName'],
+        measures: ['Revenue', 'UniqueCustomers'],
+        totals: true,
+      }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+
+    expect(Array.isArray(body.rows)).toBeTruthy();
+    expect(body.rows.length).toBeGreaterThan(1);
+    expect(body.truncated).toEqual(false);
+    for (const row of body.rows) {
+      expect(typeof row.CategoryName).toEqual('string');
+      expect(Number(row.Revenue)).toBeGreaterThan(0);
+    }
+
+    // A total is a second question asked of every row, not the sum of the answer shown. Revenue
+    // adds up, so it is the half that would pass either way; the distinct count is the half that
+    // cannot: every category counts the same customer again, so adding the rows up overcounts.
+    expect(body.totals).toBeTruthy();
+    const revenueOfTheRows = body.rows.reduce(
+      (sum: number, row: Record<string, unknown>) => sum + Number(row.Revenue), 0);
+    expect(Number(body.totals.Revenue)).toBeCloseTo(revenueOfTheRows, 2);
+
+    const customersAddedUp = body.rows.reduce(
+      (sum: number, row: Record<string, unknown>) => sum + Number(row.UniqueCustomers), 0);
+    expect(Number(body.totals.UniqueCustomers)).toBeGreaterThan(0);
+    expect(Number(body.totals.UniqueCustomers)).toBeLessThan(customersAddedUp);
+
+    // The author's own endpoint also answers with the statement it ran: that is what the
+    // component's `dataLoaded` carries as `sql` while a cube is being written (W4.8). A viewer's
+    // live-cube endpoint never does, which is the runtime half of the same rule.
+    expect(typeof body.sql).toEqual('string');
+    expect(body.sql).toContain('SELECT');
+
+    // And no totals unless they were asked for.
+    const plain = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimensions: ['CategoryName'], measures: ['Revenue'] }),
+    });
+    expect(plain.ok).toBeTruthy();
+    expect((await plain.json()).totals).toBeUndefined();
+  });
+
+  test('POST /api/cubes/northwind-sales/drill answers the orders one number is made of', async () => {
+    // The cell: Germany's revenue out of a revenue-by-country answer.
+    const byCountry = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dimensions: ['ShipCountry'], measures: ['Revenue'] }),
+    });
+    expect(byCountry.ok).toBeTruthy();
+    const countries = (await byCountry.json()).rows;
+    const germany = countries.find(
+      (row: Record<string, unknown>) => row.ShipCountry === 'Germany');
+    expect(germany).toBeTruthy();
+    expect(Number(germany.Revenue)).toBeGreaterThan(0);
+
+    const response = await fetchWithApiKey(`${BASE_URL}/api/cubes/northwind-sales/drill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        measure: 'Revenue',
+        cell: { ShipCountry: 'Germany' },
+      }),
+    });
+    expect(response.ok).toBeTruthy();
+    const body = await response.json();
+
+    // The measure's own drill_members, in the order the cube declares them.
+    expect(body.rows.length).toBeGreaterThan(1);
+    expect(body.truncated).toEqual(false);
+    for (const row of body.rows) {
+      expect(row.OrderID).toBeDefined();
+      expect(row.OrderDate).toBeDefined();
+      expect(typeof row.CustomerCompanyName).toEqual('string');
+    }
+
+    // The promise of a drill: these rows ARE that number, and they are only that cell's.
+    const addedUp = body.rows.reduce(
+      (sum: number, row: Record<string, unknown>) => sum + Number(row.OrderValue), 0);
+    expect(addedUp).toBeCloseTo(Number(germany.Revenue), 2);
+
+    const otherCountry = countries.find(
+      (row: Record<string, unknown>) => row.ShipCountry !== 'Germany');
+    expect(addedUp).not.toBeCloseTo(Number(otherCountry.Revenue), 2);
+  });
 });
 
 // ── Tier 2: Analytics ──

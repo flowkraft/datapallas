@@ -46,6 +46,8 @@ public final class CubeDslSamples {
 			"  }\n" +
 			"  measure { name 'revenue'; sql 'amount'; type 'sum'; format 'currency' }\n" +
 			"  measure { name 'avg_order_value'; sql 'amount'; type 'avg'; format 'currency' }\n" +
+			"  measure { name 'revenue_share'; type 'number'; sql '${revenue}'; share_of_total true; format 'percent' }\n" +
+			"  measure { name 'revenue_last_year'; type 'number'; sql '${revenue}'; time_shift interval: '1 year'; format 'currency' }\n" +
 			"}";
 
 	public static final String COMPLETED_ORDERS_FILTERED_KPIS =
@@ -333,6 +335,10 @@ public final class CubeDslSamples {
 			"    }\n" +
 			"  }\n" +
 			"\n" +
+			"  // Analysis measures - read over the finished groups, not inside them\n" +
+			"  measure { name 'revenue_running'; type 'number'; sql '${revenue}'; rolling_window trailing: 'unbounded'; format 'currency' }\n" +
+			"  measure { name 'revenue_ytd'; type 'number'; sql '${revenue}'; rolling_window type: 'to_date', granularity: 'year'; format 'currency' }\n" +
+			"\n" +
 			"  // Star schema joins\n" +
 			"  join {\n" +
 			"    name 'customers'\n" +
@@ -382,6 +388,11 @@ public final class CubeDslSamples {
 			"  measure { name 'Median'; sql '${CUBE}.Freight'; type 'median' }\n" +
 			"  measure { name 'Dotted'; sql '${Customers.Region}'; type 'sum' }\n" +
 			"  measure { name 'Nope'; sql '${NotAMeasure} + 1'; type 'number' }\n" +
+			"  measure { name 'Freight'; sql '${CUBE}.Freight'; type 'sum' }\n" +
+			"  measure { name 'AvgFreight'; sql '${CUBE}.Freight'; type 'avg' }\n" +
+			"  measure { name 'ShareOfAnAverage'; type 'number'; sql '${AvgFreight}'; share_of_total true }\n" +
+			"  measure { name 'ThreeMonths'; type 'number'; sql '${Freight}'; rolling_window trailing: '3 month' }\n" +
+			"  measure { name 'Muddled'; type 'number'; sql '${Freight}'; share_of_total true; time_shift interval: '1 year' }\n" +
 			"  hierarchy { name 'Nowhere'; levels(['NoSuchDimension']) }\n" +
 			"}";
 

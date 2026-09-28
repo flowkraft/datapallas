@@ -51,10 +51,10 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 	 * A live cube of a published dashboard: its field tree, the rows one selection asks for, and the
 	 * values a dimension may be filtered by. All three are ways of reading the same report, and all
 	 * three are scoped by that report's own {@code -cube-widgets.json}, so a token for a report opens
-	 * the live cubes that report declares and nothing else. (TODO 7f adds {@code drill} here.)
+	 * the live cubes that report declares and nothing else.
 	 */
 	private static final Pattern REPORT_CUBE = Pattern
-			.compile("^/api/reports/([^/]+)/cube/[^/]+/(meta|query|filter-options)/?$");
+			.compile("^/api/reports/([^/]+)/cube/[^/]+/(meta|query|filter-options|drill)/?$");
 
 	private static final Pattern DASHBOARD = Pattern.compile("^/dashboard/([^/]+)/?$");
 

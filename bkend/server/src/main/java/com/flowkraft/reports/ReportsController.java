@@ -51,6 +51,7 @@ import com.flowkraft.embed.LockedParams;
 import com.flowkraft.embed.ReservedParameterNameException;
 import com.flowkraft.embed.UserVariables;
 import com.flowkraft.cubes.CubeRuntimeService;
+import com.flowkraft.cubes.CubeViewers;
 import com.flowkraft.iam.dashboards.DashboardAccess;
 import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.iam.limits.LimitsService;
@@ -117,6 +118,10 @@ public class ReportsController {
 
 	@Autowired
 	CubeRuntimeService cubeRuntimeService;
+
+	/** W5: whether this caller has an account to keep their own view of a live cube under. */
+	@Autowired
+	CubeViewers cubeViewers;
 
 	/** Row 0 of the precedence table: who is asking, in the form a widget's SQL compares against. */
 	@Autowired
@@ -394,7 +399,7 @@ public class ReportsController {
 
 	// ── W2: the live cube of a published dashboard ──
 	//
-	// Three endpoints beside /data, because a live cube is a second kind of report data: the rows a
+	// Four endpoints beside /data, because a live cube is a second kind of report data: the rows a
 	// viewer's own selection asks for. They make the same two checks /data makes, in the same order,
 	// and take the cube, its name and its connection from the dashboard's own
 	// {reportId}-cube-widgets.json — never from the request. Everything else is CubeRuntimeService's.
@@ -408,7 +413,8 @@ public class ReportsController {
 		// The field tree of a live cube is part of opening this dashboard, so it is the data door again.
 		reportAccess.assertReportReadable(reportId, httpRequest);
 
-		return Mono.just(cubeRuntimeService.meta(reportId, componentId));
+		// W5: the answer carries this viewer's own view, so the first render is already theirs.
+		return Mono.just(cubeRuntimeService.meta(reportId, componentId, cubeViewers.of(httpRequest)));
 	}
 
 	@Operation(summary = "The rows one selection of a dashboard's live cube asks for")
@@ -425,6 +431,20 @@ public class ReportsController {
 		return Mono.just(cubeRuntimeService.query(reportId, componentId, request, userVariables.of(httpRequest)));
 	}
 
+	@Operation(summary = "The rows behind one number of a dashboard's live cube")
+	@PostMapping(value = "/{reportId}/cube/{componentId}/drill", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> drillLiveCube(@PathVariable String reportId,
+			@PathVariable String componentId, @RequestBody(required = false) Map<String, Object> request,
+			HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		// The rows behind a number are rows, so they pass the same door and carry the same
+		// access_filter as the number did: a viewer drills into their own rows and nobody else's.
+		return Mono.just(cubeRuntimeService.drill(reportId, componentId, request, userVariables.of(httpRequest)));
+	}
+
 	@Operation(summary = "The values one dimension of a dashboard's live cube may be filtered by")
 	@PostMapping(value = "/{reportId}/cube/{componentId}/filter-options", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<Map<String, Object>> liveCubeFilterOptions(@PathVariable String reportId,
@@ -439,6 +459,50 @@ public class ReportsController {
 		String search = asked.get("search") != null ? asked.get("search").toString() : null;
 		return Mono.just(cubeRuntimeService.filterOptions(reportId, componentId, dimension, search,
 				userVariables.of(httpRequest)));
+	}
+
+	// ── W5: the viewer's own view of one live cube ──
+	//
+	// Three more endpoints beside W2's four, behind the same lock and the same two checks. They are
+	// deliberately NOT among the report-scoped paths EmbedTokenAuthorizationManager opens: a share
+	// link and an embed token name no person, so there is no account to keep a view under and such a
+	// caller is refused here (401) and keeps its view in its own browser instead.
+
+	@Operation(summary = "The view this viewer saved for one live cube of a dashboard")
+	@GetMapping(value = "/{reportId}/cube/{componentId}/my-view", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Map<String, Object>> getMyCubeView(@PathVariable String reportId,
+			@PathVariable String componentId, HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		Map<String, Object> view = cubeRuntimeService.myView(reportId, componentId, cubeViewers.of(httpRequest));
+		return view == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(view);
+	}
+
+	@Operation(summary = "Saves what this viewer is looking at, as their own view of one live cube")
+	@PutMapping(value = "/{reportId}/cube/{componentId}/my-view", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Map<String, Object>> saveMyCubeView(@PathVariable String reportId,
+			@PathVariable String componentId, @RequestBody(required = false) Map<String, Object> request,
+			HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		return ResponseEntity
+				.ok(cubeRuntimeService.saveMyView(reportId, componentId, request, cubeViewers.of(httpRequest)));
+	}
+
+	@Operation(summary = "Reset view: this viewer goes back to the one the dashboard's author published")
+	@DeleteMapping(value = "/{reportId}/cube/{componentId}/my-view", consumes = MediaType.ALL_VALUE)
+	public ResponseEntity<Void> resetMyCubeView(@PathVariable String reportId,
+			@PathVariable String componentId, HttpServletRequest httpRequest) throws Exception {
+
+		dashboardAccess.check(reportId, httpRequest);
+		reportAccess.assertReportReadable(reportId, httpRequest);
+
+		cubeRuntimeService.deleteMyView(reportId, componentId, cubeViewers.of(httpRequest));
+		return ResponseEntity.noContent().build();
 	}
 
 	private String extractBracketParams(Map<String, String> params, String prefix) throws Exception {

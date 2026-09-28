@@ -85,6 +85,7 @@ public abstract class CubeOptionsScript extends Script {
         private Map<String, Object> meta = null;
         private String accessFilter = null;
         private int accessFilters = 0;
+        private String currency = null;
         private final List<Map<String, Object>> dimensions = new ArrayList<>();
         private final List<Map<String, Object>> measures = new ArrayList<>();
         private final List<Map<String, Object>> joins = new ArrayList<>();
@@ -105,6 +106,9 @@ public abstract class CubeOptionsScript extends Script {
         public void description(String d) { this.description = d; }
         public void public_(boolean b) { this.public_ = b; }
         public void meta(Map<String, Object> m) { this.meta = m != null ? new LinkedHashMap<>(m) : null; }
+
+        /** The money this cube's amounts are in, as an ISO 4217 code: {@code currency 'EUR'}. */
+        public void currency(String code) { this.currency = code; }
 
         /**
          * The cube's row filter: one SQL condition every SELECT over this cube carries.
@@ -196,6 +200,7 @@ public abstract class CubeOptionsScript extends Script {
             if (public_ != null) out.put("public", public_);
             if (meta != null) out.put("meta", new LinkedHashMap<>(meta));
             if (accessFilter != null) out.put("access_filter", accessFilter);
+            if (currency != null) out.put("currency", currency);
             if (accessFilters > 1) out.put("access_filter_count", accessFilters);
             if (!dimensions.isEmpty()) out.put("dimensions", new ArrayList<>(dimensions));
             if (!measures.isEmpty()) out.put("measures", new ArrayList<>(measures));

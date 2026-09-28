@@ -56,6 +56,9 @@ public class CubesController {
 	@Autowired
 	private CubeFilterOptions cubeFilterOptions;
 
+	@Autowired
+	private CubeRuntimeService cubeRuntimeService;
+
 	/** Who is asking, for a cube whose access_filter names them - the author is a viewer too. */
 	@Autowired
 	private UserVariables userVariables;
@@ -191,6 +194,95 @@ public class CubesController {
 		// same cube's dashboard would not show would be a list of somebody else's values.
 		return Mono.just(cubeFilterOptions.options(picked, request.get("dimension"), connectionId,
 				request.get("search"), userVariables.of(httpRequest)));
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Rows: the author's own copy of the two runtime endpoints
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * The rows one selection asks for, run on a connection — the author's twin of the dashboard's
+	 * {@code /api/reports/{reportId}/cube/{componentId}/query} (W4.8).
+	 *
+	 * <p>Body: the structured query ({@code dimensions}, {@code measures}, {@code segments},
+	 * {@code granularities}, {@code filters}, {@code order}, {@code limit}, {@code totals}), plus
+	 * {@code cubeName} and {@code connectionId}; without a connection the cube's own saved one is
+	 * read, which is what the editor means every time.
+	 *
+	 * <p>Everything after "which cube, which connection" is {@link CubeRuntimeService#rows}: the
+	 * same keys, the same refusals, the same limits, the same totals and the same
+	 * {@code access_filter} bound to whoever is asking. An author editing a cube sees what its
+	 * dashboard will show, which is the only way the two can be compared.
+	 *
+	 * <p>The one thing this answer carries that the dashboard's does not is {@code sql}, the
+	 * statement the rows were read by: an author writes it, a viewer never sees it.
+	 */
+	@PostMapping(value = "/{cubeId}/query", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> queryCube(
+			@PathVariable String cubeId,
+			@RequestBody(required = false) Map<String, Object> request,
+			HttpServletRequest httpRequest) throws Exception {
+
+		Asked asked = asked(cubeId, request);
+		// With the statement it ran: this caller is the author of the cube, who is shown its SQL
+		// everywhere else in the editor too (W4.8's dataLoaded). A viewer's endpoint never does.
+		return Mono.just(cubeRuntimeService.rows(asked.cube, asked.connectionId, asked.request,
+				userVariables.of(httpRequest), true));
+	}
+
+	/**
+	 * The rows behind one number of that selection (W4.6), the author's twin of the dashboard's
+	 * {@code /drill}. Body: {@code { measure, cell, filters, segments, granularities }}, plus
+	 * {@code cubeName} and {@code connectionId} as above.
+	 */
+	@PostMapping(value = "/{cubeId}/drill", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<Map<String, Object>> drillCube(
+			@PathVariable String cubeId,
+			@RequestBody(required = false) Map<String, Object> request,
+			HttpServletRequest httpRequest) throws Exception {
+
+		Asked asked = asked(cubeId, request);
+		return Mono.just(cubeRuntimeService.drillOn(asked.cube, asked.connectionId, asked.request,
+				userVariables.of(httpRequest)));
+	}
+
+	/** Which cube of which file, on which connection, and the body with those three taken out. */
+	private static final class Asked {
+		private CubeOptions cube;
+		private String connectionId;
+		private Map<String, Object> request;
+	}
+
+	/**
+	 * The saved cube a rows request names, picked and checked exactly as the other saved-cube
+	 * endpoints do it: the file is sandbox-checked before it is compiled, the cube inside it is the
+	 * one the body names or the one the file keeps, and the connection is the body's or the cube's.
+	 */
+	private Asked asked(String cubeId, Map<String, Object> request) throws Exception {
+
+		Map<String, Object> body = request != null ? request : Map.of();
+		Map<String, Object> cubeData = cubesService.load(cubeId);
+		String dslCode = (String) cubeData.get("dslCode");
+		// Checked although it was saved earlier: it is about to be compiled and run for this caller.
+		limitsSandbox.check(dslCode);
+
+		Asked asked = new Asked();
+		String cubeName = body.get("cubeName") != null
+				? body.get("cubeName").toString()
+				: (String) cubeData.get("cubeName");
+		asked.cube = CubeSqlGenerator.pickCube(cubesService.parseDsl(dslCode), cubeName);
+
+		asked.connectionId = body.get("connectionId") != null ? body.get("connectionId").toString() : null;
+		if (asked.connectionId == null || asked.connectionId.isBlank()) {
+			asked.connectionId = (String) cubeData.get("connectionId");
+		}
+
+		// The two keys above say where to ask, not what to ask, and the runtime refuses both by
+		// name - so they are taken out here rather than passed on and argued about.
+		asked.request = new LinkedHashMap<>(body);
+		asked.request.remove("cubeName");
+		asked.request.remove("connectionId");
+		return asked;
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════

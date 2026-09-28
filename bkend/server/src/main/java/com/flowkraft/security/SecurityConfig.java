@@ -305,14 +305,14 @@ public class SecurityConfig {
 				// its server-side pivot and the live cubes that dashboard declares. Anything without a
 				// valid token for the report being requested falls through to normal authentication.
 				//
-				// The three cube paths are the same door as /data: what they read is decided by the
+				// The four cube paths are the same door as /data: what they read is decided by the
 				// report's own -cube-widgets.json, so a token for a report opens the cubes that report
 				// publishes and no others. Without them a token-only viewer of a published dashboard
 				// would reach anyRequest().authenticated() and be refused the rows of a cube they are
 				// already looking at.
 				.requestMatchers("/api/reports/*/config", "/api/reports/*/data", "/dashboard/*",
 						"/api/analytics/pivot", "/api/reports/*/cube/*/meta", "/api/reports/*/cube/*/query",
-						"/api/reports/*/cube/*/filter-options")
+						"/api/reports/*/cube/*/filter-options", "/api/reports/*/cube/*/drill")
 				.access(embedTokenAuthorization())
 
 				.anyRequest().authenticated());

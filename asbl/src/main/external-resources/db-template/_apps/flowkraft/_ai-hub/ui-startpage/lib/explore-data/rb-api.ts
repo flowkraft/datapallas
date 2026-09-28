@@ -6,6 +6,7 @@
 // to every script on the page. Never point this at :9090 again.
 
 import type { SchemaInfo, ConnectionInfo, QueryResult } from "./types";
+import type { CubeSelection } from "@/lib/stores/canvas-store";
 
 const RB_BASE = "/api/dp";
 
@@ -225,9 +226,7 @@ export async function fetchCube(cubeId: string): Promise<{ id: string; name: str
 export async function generateCubeSql(
   cubeId: string,
   connectionId: string,
-  selectedDimensions: string[],
-  selectedMeasures: string[],
-  selectedSegments: string[] = [],
+  selection: CubeSelection,
   cubeName?: string | null,
 ): Promise<string> {
   const id = cubeId && cubeId !== "(default)" ? cubeId : "preview";
@@ -236,19 +235,64 @@ export async function generateCubeSql(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       connectionId,
-      selectedDimensions,
-      selectedMeasures,
-      selectedSegments,
+      // The whole selection, in the structured form the backend reads (`CubeSqlGenerator
+      // .buildQuery`). The segments go with it: a cube segment is a WHERE clause, and leaving it
+      // out gave back the SQL for every row. So do the filters, the order and the limit, so the
+      // frozen SQL asks the question the canvas shows.
+      dimensions: selection.dimensions,
+      measures: selection.measures,
+      segments: selection.segments,
+      granularities: selection.granularities,
+      filters: selection.filters,
+      order: selection.order,
+      limit: selection.limit,
       // A file's named cube: which one the renderer is showing. Left out, the saved name stands.
       cubeName: cubeName || null,
     }),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to generate SQL");
-  }
+  if (!res.ok) throw new Error(await cubeErrorOf(res, "Failed to generate SQL"));
   const data = await res.json();
   return data.sql || "";
+}
+
+/**
+ * The values one dimension of a cube may be filtered by, for the field tree's filter popover:
+ * `{values: [[value, label], …], truncated}`.
+ *
+ * The component is handed this call rather than a cube id it could build a URL from, so the canvas
+ * decides what it may ask, the same way a published dashboard's runtime twin does.
+ */
+export async function fetchCubeFilterOptions(
+  cubeId: string,
+  dimension: string,
+  connectionId: string,
+  search: string,
+  cubeName?: string | null,
+): Promise<unknown> {
+  const res = await fetch(`${RB_BASE}/cubes/${encodeURIComponent(cubeId)}/filter-options`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dimension, connectionId, search, cubeName: cubeName || null }),
+  });
+  if (!res.ok) throw new Error(await cubeErrorOf(res, "Failed to load filter values"));
+  return res.json();
+}
+
+/**
+ * What a refused `/api/cubes/*` call said. The controller answers a bad cube with
+ * `{"error": "…"}` — a sentence naming the member and what is wrong with it — and that sentence is
+ * the whole answer, so it is what the screen shows instead of "server error".
+ */
+async function cubeErrorOf(res: Response, fallback: string): Promise<string> {
+  const text = await res.text();
+  try {
+    const body = JSON.parse(text);
+    if (body && typeof body.error === "string" && body.error.trim()) return body.error;
+    if (body && typeof body.message === "string" && body.message.trim()) return body.message;
+  } catch {
+    // Not JSON: whatever the server wrote is still better than nothing.
+  }
+  return text || fallback;
 }
 
 /**

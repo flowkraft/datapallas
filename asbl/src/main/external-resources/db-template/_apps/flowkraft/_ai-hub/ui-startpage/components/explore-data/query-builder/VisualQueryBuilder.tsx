@@ -8,7 +8,9 @@ import type { SchemaInfo } from "@/lib/explore-data/types";
 import { buildSql, columnClassOf, columnKindsOf, extractParamIds, extractParamTypes, sortableColumns } from "@/lib/explore-data/sql-builder";
 import { computedColumnSchemas } from "@/lib/explore-data/computed-columns";
 import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
-import { fetchCubes, fetchCube, parseCubeDsl, generateCubeSql, getConnectionType, type CubeInfo } from "@/lib/explore-data/rb-api";
+import { fetchCubes, fetchCube, parseCubeDsl, generateCubeSql, fetchCubeFilterOptions, getConnectionType, type CubeInfo } from "@/lib/explore-data/rb-api";
+import { seedCubeColumnFormats, selectionOfEvent } from "@/lib/explore-data/cube-selection";
+import type { ColumnSettingsMap } from "@/lib/explore-data/column-settings";
 import { useRbElementReady } from "../widgets/useRbElementReady";
 import { DataStep } from "./DataStep";
 import { ComputeStep } from "./ComputeStep";
@@ -25,7 +27,12 @@ const DEFAULT_QUERY: VisualQuery = {
   limit: 500,
 };
 
+/** A widget that is the cube itself needs room for the field tree and a result under it; grown
+ *  once, on the first check, and the author's own size is kept from then on. */
+const CUBE_WIDGET_MIN_ROWS = 8;
+
 interface VisualQueryBuilderProps {
+  widgetId: string;
   schema: SchemaInfo;
   dataSource: DataSource | null;
   onChange: (ds: DataSource) => void;
@@ -34,7 +41,7 @@ interface VisualQueryBuilderProps {
   connectionId: string | null;
 }
 
-export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, executing, connectionId }: VisualQueryBuilderProps) {
+export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onRun, executing, connectionId }: VisualQueryBuilderProps) {
   const [showSql, setShowSql] = useState(false);
   const [cubes, setCubes] = useState<CubeInfo[]>([]);
   const parametersConfig = useCanvasStore((s) => s.parametersConfig);
@@ -51,6 +58,10 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
   const [cubeConfig, setCubeConfig] = useState<unknown>(null);
   const [cubeLoading, setCubeLoading] = useState(false);
   const [cubeError, setCubeError] = useState<string | null>(null);
+  /** What the last generate-sql said when it refused, shown under the picker instead of nothing. */
+  const [cubeSqlError, setCubeSqlError] = useState<string | null>(null);
+  /** The cube whose saved selection has already been put back into the tree: once per load. */
+  const restoredFor = useRef("");
 
   // Fetch cubes once and filter by current connectionId.
   useEffect(() => {
@@ -111,6 +122,7 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
     const el = cubeRef.current as HTMLElement & {
       cubeConfig?: unknown; connectionId?: string; apiBaseUrl?: string; apiKey?: string;
       cubeName?: string;
+      fetchFilterOptions?: (dimension: string, search: string) => Promise<unknown>;
     };
     const rbConfig = (typeof window !== "undefined"
       ? (window as unknown as { rbConfig?: { apiBaseUrl: string; apiKey: string } }).rbConfig
@@ -120,7 +132,36 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
     el.connectionId = connectionId || "";
     el.apiBaseUrl = rbConfig?.apiBaseUrl || "";
     el.apiKey = rbConfig?.apiKey || "";
-  }, [cubeReady, cubeConfig, connectionId]);
+    // The one call the tree may make: without it a dimension has no filter icon at all, so the
+    // author could not filter on the canvas. The cube id and the connection are this panel's, not
+    // the component's — the same rule the published dashboard's runtime twin follows.
+    const cubeId = query.cubeId || "";
+    el.fetchFilterOptions = (dimension: string, search: string) =>
+      fetchCubeFilterOptions(cubeId, dimension, connectionId || "", search,
+        query.cubeName || cubeFileName.current || "");
+  }, [cubeReady, cubeConfig, connectionId, query.cubeId, query.cubeName]);
+
+  // Put the saved selection back into the tree, once per cube load: the ticks, the grains and the
+  // filter chips a widget was saved with are what it reopens with. `applySelection` is the tree's
+  // own one path — the same call a Show Me hint and a live widget's `initial` come through — so it
+  // ends in `selectionChanged` and the SQL is regenerated from what is on screen.
+  useEffect(() => {
+    if (!cubeReady || !cubeRef.current || !cubeConfig || !query.cubeId) return;
+    const key = query.cubeId;
+    if (restoredFor.current === key) return;
+    restoredFor.current = key;
+    const selection = query.cubeSelection;
+    if (!selection) return;
+    const el = cubeRef.current as HTMLElement & {
+      initialFilters?: unknown[];
+      applySelection?: (selection: unknown) => boolean;
+    };
+    el.initialFilters = selection.filters || [];
+    el.applySelection?.(selection);
+    // The saved selection is this widget's, and it is applied to the tree it was taken from - so
+    // this effect watches the cube, not the selection, and a tick does not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cubeReady, cubeConfig, query.cubeId]);
 
   // Listen for selectionChanged → call generate-sql → update generatedSql on the data source
   // so useWidgetData picks it up and re-runs the query automatically.
@@ -129,48 +170,58 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
     if (!el || !cubeReady || !query.cubeId) return;
 
     const handleSelectionChange = async (e: Event) => {
-      const detail = (e as CustomEvent<{
-        selectedDimensions: string[];
-        selectedMeasures: string[];
-        selectedSegments: string[];
-        cubeName?: string;
-      }>).detail;
-      if (!detail.selectedDimensions.length && !detail.selectedMeasures.length) return;
+      // The whole question the tree is asking, read the one way both hosts of the component read
+      // it (`cube-selection.ts`). An empty tree is not a question.
+      const asked = selectionOfEvent(e);
+      if (!asked) return;
+      const selection = asked.selection;
+      // The cube the renderer is showing travels with the selection, so a file of several
+      // cubes generates SQL for the one on screen — and a saved canvas keeps it.
+      const cubeName = asked.cubeName || cubeFileName.current || "";
+      // What the cube says its measures are, as the widget's own column formats (W4.2): money is
+      // money in the table under it without the author setting anything, and a column they have
+      // settled themselves is never overwritten.
+      const store = useCanvasStore.getState();
+      const displayConfig = store.widgets.find((w) => w.id === widgetId)?.displayConfig ?? {};
+      const seeded = seedCubeColumnFormats(cubeConfig, cubeName, selection.measures,
+        displayConfig.columnSettings as ColumnSettingsMap | undefined);
+      if (seeded) store.updateWidgetDisplayConfig(widgetId, { ...displayConfig, columnSettings: seeded });
       try {
-        // The segments go with the selection: a cube segment is a WHERE clause,
-        // and leaving it out gave back the SQL for every row.
-        // The cube the renderer is showing travels with the selection, so a file of several
-        // cubes generates SQL for the one on screen — and a saved canvas keeps it.
-        const cubeName = detail.cubeName || cubeFileName.current || "";
         const generatedSql = await generateCubeSql(
           query.cubeId!,
           connectionId || "",
-          detail.selectedDimensions,
-          detail.selectedMeasures,
-          detail.selectedSegments || [],
+          selection,
           cubeName,
         );
+        setCubeSqlError(null);
         onChange({
           mode: "visual",
-          visualQuery: { ...query, cubeName: cubeName || undefined },
+          visualQuery: { ...query, cubeName: cubeName || undefined, cubeSelection: selection },
           generatedSql,
         });
-      } catch {
-        // Silent — user can try again by changing selection
+      } catch (err) {
+        // What the server said, under the picker: a cube that cannot answer names the member and
+        // what is wrong with it, and silence left the widget showing the previous SQL's rows with
+        // nothing to explain why the new tick changed nothing.
+        setCubeSqlError(err instanceof Error ? err.message : "Failed to generate SQL");
       }
     };
 
     el.addEventListener("selectionChanged", handleSelectionChange);
     return () => el.removeEventListener("selectionChanged", handleSelectionChange);
-  }, [cubeReady, cubeLoading, query, connectionId, onChange]);
+  }, [cubeReady, cubeLoading, query, connectionId, onChange, cubeConfig, widgetId]);
 
   const updateQuery = useCallback(
     (patch: Partial<VisualQuery>) => {
       const updated = { ...query, ...patch };
       // 4.6b — dialect-aware SQL generation so the cached generatedSql matches
       // what useWidgetData will execute (and what the Finetune tab shows).
+      // A cube's SQL is the server's answer to the field tree, not this builder's, so it is kept
+      // as the last selection generated it: changing something else about the widget — the Show In
+      // Dashboard box — must not blank it, because unchecking later has to leave current SQL
+      // behind. Picking another cube is another tree, and starts with none.
       const newSql = updated.kind === "cube"
-        ? ""
+        ? (updated.cubeId === query.cubeId ? (dataSource?.generatedSql ?? "") : "")
         : buildSql(updated, {
             connectionType: getConnectionType(connectionId),
             columnKinds: columnKindsOf(findTable(schema, refForQuery(updated))?.columns),
@@ -178,15 +229,33 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
           });
       onChange({ mode: "visual", visualQuery: updated, generatedSql: newSql });
     },
-    [query, onChange, connectionId, schema, paramTypes]
+    [query, dataSource, onChange, connectionId, schema, paramTypes]
   );
 
+  /**
+   * The one-time minimum height of a widget that is about to become the cube: the field tree and
+   * about 200px of result under it. It happens on the first check only — `cubeGrown` says it has
+   * — so an author who sized the widget afterwards keeps their size when they check it again.
+   */
+  const growForShownCube = useCallback(() => {
+    const store = useCanvasStore.getState();
+    const widget = store.widgets.find((w) => w.id === widgetId);
+    if (!widget || widget.displayConfig.cubeGrown) return;
+    store.updateWidgetDisplayConfig(widgetId, { ...widget.displayConfig, cubeGrown: true });
+    if (widget.gridPosition.h >= CUBE_WIDGET_MIN_ROWS) return;
+    store.updateWidgetPosition(widgetId, { ...widget.gridPosition, h: CUBE_WIDGET_MIN_ROWS });
+  }, [widgetId]);
+
   const handlePickTable = (table: string) => {
-    updateQuery({ kind: "table", cubeId: undefined, table, computed: [], filters: [], summarize: [], groupBy: [], sort: [] });
+    setCubeSqlError(null);
+    updateQuery({ kind: "table", cubeId: undefined, table, computed: [], filters: [], summarize: [], groupBy: [], sort: [], cubeSelection: undefined, showInDashboard: undefined });
   };
 
   const handlePickCube = (cubeId: string) => {
-    updateQuery({ kind: "cube", cubeId, table: "", computed: [], filters: [], summarize: [], groupBy: [], sort: [] });
+    setCubeSqlError(null);
+    // Another cube is another field tree: the ticks of the one before it mean nothing in it, so
+    // the saved selection goes with the cube it belonged to.
+    updateQuery({ kind: "cube", cubeId, table: "", computed: [], filters: [], summarize: [], groupBy: [], sort: [], cubeSelection: undefined });
   };
 
   return (
@@ -201,6 +270,14 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
         onPickCube={handlePickCube}
       />
 
+      {/* What the server said when it refused the last generate-sql — the sentence naming the
+          member and what is wrong with it, straight from the /api/cubes/* error shape. */}
+      {cubeSqlError && (
+        <div id="cubeSqlError" className="text-xs text-error bg-error/10 border border-error/20 rounded-md p-2 overflow-hidden">
+          {cubeSqlError.split('\n')[0].slice(0, 200)}
+        </div>
+      )}
+
       {/* ── Cube renderer panel ─────────────────────────────────────────
           When a cube is picked, show rb-cube-renderer inline in the right
           panel so the user can select dimensions / measures. Selection
@@ -208,6 +285,28 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
           the canvas. */}
       {isCube && query.cubeId && (
         <div className="space-y-2">
+          {/* Show In Dashboard: the one choice that decides which of the two modes this widget is
+              published as. Unchecked (the default, and every canvas saved until now) the SQL is
+              frozen into the dashboard; checked, the cube itself is published. Each cube widget
+              has its own box, so any number of cubes can be shown. */}
+          <label className="flex items-center gap-2 text-xs text-base-content cursor-pointer">
+            <input
+              id="chkCubeShowInDashboard"
+              type="checkbox"
+              checked={!!query.showInDashboard}
+              onChange={(e) => { if (e.target.checked) growForShownCube(); updateQuery({ showInDashboard: e.target.checked }); }}
+              className="checkbox checkbox-xs"
+            />
+            Show In Dashboard
+          </label>
+          <p className="text-[11px] text-base-content/60">
+            Viewers pick fields and filter in the dashboard. It follows later edits of this cube.
+          </p>
+          {query.showInDashboard ? (
+            <p id="cubeOnCanvasNote" className="text-xs text-base-content/60 py-2">
+              Pick fields in the cube on the canvas.
+            </p>
+          ) : (<>
           {cubeLoading && (
             <div className="flex items-center gap-2 text-xs text-base-content/60 py-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> Loading cube…
@@ -233,6 +332,7 @@ export function VisualQueryBuilder({ schema, dataSource, onChange, onRun, execut
           <p className="text-[11px] text-base-content/60">
             Select dimensions &amp; measures above — the widget on the canvas refreshes automatically.
           </p>
+          </>)}
         </div>
       )}
 

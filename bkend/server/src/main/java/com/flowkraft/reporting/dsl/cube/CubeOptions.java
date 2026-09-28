@@ -50,6 +50,20 @@ public class CubeOptions {
      */
     private int accessFilterCount;
 
+    /**
+     * The money this cube's amounts are in: {@code currency 'EUR'}, an ISO 4217 code.
+     *
+     * <p>It belongs to the cube and not to each measure because a cube reads one database, and a
+     * column of amounts in that database is in one currency; writing it once means a measure only
+     * has to say {@code format 'currency'} and a number is shown as money without every measure
+     * repeating which money.
+     *
+     * <p>The default is {@code USD}, because a formatter has to be handed some code and there is
+     * no way to guess one: the viewer's locale says where the viewer is, not what the numbers are.
+     * A cube whose amounts are not dollars says so in one line.
+     */
+    private String currency = "USD";
+
     // Semantic members
     private List<Map<String, Object>> dimensions = new ArrayList<>();
     private List<Map<String, Object>> measures = new ArrayList<>();
@@ -95,6 +109,9 @@ public class CubeOptions {
 
     public int getAccessFilterCount() { return accessFilterCount; }
     public void setAccessFilterCount(int accessFilterCount) { this.accessFilterCount = accessFilterCount; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
 
     public List<Map<String, Object>> getDimensions() { return dimensions; }
     public void setDimensions(List<Map<String, Object>> dimensions) { this.dimensions = dimensions; }

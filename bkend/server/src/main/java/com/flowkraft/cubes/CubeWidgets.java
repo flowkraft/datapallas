@@ -71,9 +71,12 @@ public final class CubeWidgets {
 	 * @param connectionId the connection its rows are read through — this file's, never a request's
 	 * @param initial      the selection the widget opens with (ticks, filters, order, limit)
 	 * @param display      {@code value}, {@code chart}, {@code table}, or null to let the shape decide
+	 * @param saveView     whether a viewer's own view of this widget is kept between visits (W5);
+	 *                     true unless the file says otherwise, because a dashboard published before
+	 *                     the key existed opens where its viewer left it, like every other one
 	 */
 	public record Widget(String componentId, String cubeId, String cubeName, String connectionId,
-			Map<String, Object> initial, String display) {
+			Map<String, Object> initial, String display, boolean saveView) {
 	}
 
 	/**
@@ -130,7 +133,8 @@ public final class CubeWidgets {
 				: new LinkedHashMap<>();
 
 		return new Widget(componentId, text(entry.get("cubeId")), text(entry.get("cubeName")),
-				text(entry.get("connectionId")), initial, text(entry.get("display")));
+				text(entry.get("connectionId")), initial, text(entry.get("display")),
+				!Boolean.FALSE.equals(entry.get("saveView")));
 	}
 
 	/**

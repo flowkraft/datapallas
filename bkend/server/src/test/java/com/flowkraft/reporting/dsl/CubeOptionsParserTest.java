@@ -114,7 +114,7 @@ public class CubeOptionsParserTest {
 
 		// Drill-down on count measure — click to see underlying orders
 		List<Map<String, Object>> meas = result.getMeasures();
-		assertEquals(3, meas.size());
+		assertEquals(5, meas.size());
 		List<String> drillMembers = (List<String>) meas.get(0).get("drill_members");
 		assertNotNull(drillMembers);
 		assertEquals(3, drillMembers.size());
@@ -125,6 +125,12 @@ public class CubeOptionsParserTest {
 		// Revenue measures with currency format
 		assertEquals("currency", meas.get(1).get("format"));
 		assertEquals("avg", meas.get(2).get("type"));
+
+		// Analysis measures - a share of the total and the same months a year earlier
+		assertEquals(Boolean.TRUE, meas.get(3).get("share_of_total"));
+		assertEquals("percent", meas.get(3).get("format"));
+		assertEquals("1 year",
+				((Map<String, Object>) meas.get(4).get("time_shift")).get("interval"));
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────────
@@ -477,7 +483,7 @@ public class CubeOptionsParserTest {
 
 		// ── Measures ──
 		List<Map<String, Object>> meas = result.getMeasures();
-		assertEquals(4, meas.size());
+		assertEquals(6, meas.size());
 
 		// Drill-down on count
 		List<String> drill = (List<String>) meas.get(0).get("drill_members");
@@ -487,6 +493,13 @@ public class CubeOptionsParserTest {
 		List<Map<String, Object>> filters = (List<Map<String, Object>>) meas.get(3).get("filters");
 		assertEquals(1, filters.size());
 		assertTrue(((String) filters.get(0).get("sql")).contains("web"));
+
+		// Analysis measures - a running total and a year-to-date total over the same base
+		Map<String, Object> running = (Map<String, Object>) meas.get(4).get("rolling_window");
+		assertEquals("unbounded", running.get("trailing"));
+		Map<String, Object> ytd = (Map<String, Object>) meas.get(5).get("rolling_window");
+		assertEquals("to_date", ytd.get("type"));
+		assertEquals("year", ytd.get("granularity"));
 
 		// ── Joins ──
 		assertEquals(2, result.getJoins().size());
@@ -558,9 +571,11 @@ public class CubeOptionsParserTest {
 	// ─────────────────────────────────────────────────────────────────────────────
 	@Test
 	public void testWarningsAndErrorsSayWhatToFix() throws Exception {
-		// The tests' own cubes are written correctly: the only thing they hear is that a key they
-		// use is not read yet. A new warning that fires on a good cube fails here.
-		Set<String> notUsedYet = Set.of("format", "drill_members", "rolling_window");
+		// The tests' own cubes are written correctly, so the only warnings they hear are about the
+		// two keys DataPallas keeps for other tools and does not read. A new warning that fires on
+		// a good cube fails here — and so does a key that says it is "not used yet" once something
+		// uses it: W4 reads format, rolling_window and drill_members, and none of the three may
+		// still be telling the author that nothing does.
 		Set<String> kept = Set.of("meta", "extends");
 		for (Map.Entry<String, String> sample : CubeDslSamples.all().entrySet()) {
 			CubeOptions parsed = CubeOptionsParser.parseGroovyCubeDslCode(sample.getValue());
@@ -568,13 +583,10 @@ public class CubeOptionsParserTest {
 				String key = Objects.toString(warning.get("key"), "");
 				assertEquals("warning", warning.get("level"),
 						sample.getKey() + " is a correct cube, so it has no error: " + warning);
-				assertTrue(notUsedYet.contains(key) || kept.contains(key),
+				assertTrue(kept.contains(key),
 						sample.getKey() + " should say nothing about '" + key + "': " + warning);
-				if (notUsedYet.contains(key)) {
-					assertTrue(warning.get("message").toString().endsWith(key + " is not used yet")
-							|| kept.contains(key),
-							"a key that is not read yet says exactly that: " + warning);
-				}
+				assertFalse(warning.get("message").toString().contains("is not used yet"),
+						"W4 reads these keys, so nothing may still say they are unused: " + warning);
 			}
 		}
 
@@ -598,7 +610,6 @@ public class CubeOptionsParserTest {
 				+ "mean 'has_many'?"), said.toString());
 		assertTrue(said.contains("measure 'Freight': format 'krona' is not a format, so the number is shown "
 				+ "as it is returned."), said.toString());
-		assertTrue(said.contains("measure 'Freight': format is not used yet"), said.toString());
 		assertTrue(said.contains("dimension 'Key2': primary_key is already declared on another dimension, "
 				+ "and the first declared is the key."), said.toString());
 
@@ -617,7 +628,7 @@ public class CubeOptionsParserTest {
 		for (Map<String, Object> warning : file.getWarnings()) {
 			if ("error".equals(warning.get("level"))) errors.add(warning);
 		}
-		assertEquals(8, errors.size(), "One error per broken member: " + errors);
+		assertEquals(11, errors.size(), "One error per broken member: " + errors);
 		List<String> members = new ArrayList<>();
 		for (Map<String, Object> error : errors) {
 			assertEquals("broken", error.get("cube"), "A named cube is checked like any other: " + error);
@@ -626,7 +637,8 @@ public class CubeOptionsParserTest {
 			members.add(error.get("member").toString());
 		}
 		assertEquals(List.of("HalfWhere", "Where", "FarAway", "Sideways", "Median", "Dotted", "Nope",
-				"Nowhere"), members, "Every error case has exactly one member");
+				"ShareOfAnAverage", "ThreeMonths", "Muddled", "Nowhere"), members,
+				"Every error case has exactly one member");
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────────
@@ -718,5 +730,90 @@ public class CubeOptionsParserTest {
 		// which is the usual case and not worth a word.
 		assertTrue(said.stream().noneMatch(line -> line.contains("OrderDate")),
 				"A dimension without filter_options is not mentioned: " + said);
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// #17  The keys the analysis features bring (W4)
+	//      What a number means (format, currency) and how it is read over the
+	//      finished groups (share, window, prior period) - each reaching the parsed
+	//      output as written, and each refused where it cannot mean anything.
+	// ─────────────────────────────────────────────────────────────────────────────
+	@Test
+	public void testAnalysisKeysReachTheParsedCube() throws Exception {
+		String dsl = "cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  currency 'EUR'\n" +
+				"  dimension { name 'OrderDate'; sql '${CUBE}.OrderDate'; type 'time' }\n" +
+				"  dimension { name 'Depot'; type 'geo'; latitude '${CUBE}.Lat'; longitude '${CUBE}.Lng' }\n" +
+				"  measure { name 'Revenue'; sql '${CUBE}.Amount'; type 'sum'; format 'currency'\n" +
+				"            drill_members 'OrderDate' }\n" +
+				"  measure { name 'RevenueShare'; type 'number'; sql '${Revenue}'; share_of_total true; format 'percent' }\n" +
+				"  measure { name 'RevenueRunning'; type 'number'; sql '${Revenue}'; rolling_window trailing: 'unbounded' }\n" +
+				"  measure { name 'RevenueYTD'; type 'number'; sql '${Revenue}'; rolling_window type: 'to_date', granularity: 'year' }\n" +
+				"  measure { name 'RevenuePriorYear'; type 'number'; sql '${Revenue}'; time_shift interval: '1 year' }\n" +
+				"}";
+
+		CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
+		assertTrue(messages(cube, "error").isEmpty(), "Nothing here is wrong: " + messages(cube, "error"));
+
+		// What the numbers are in, for the one formatter every mode uses.
+		assertEquals("EUR", cube.getCurrency(), "The cube's currency is the cube's");
+		assertEquals("currency", measure(cube, "Revenue").get("format"));
+		assertEquals("percent", measure(cube, "RevenueShare").get("format"));
+		assertEquals(List.of("OrderDate"), measure(cube, "Revenue").get("drill_members"));
+
+		// The three ways of reading a measure over the finished groups, each stored as written: the
+		// generator is what turns them into SQL, and it reads exactly these keys.
+		assertEquals(Boolean.TRUE, measure(cube, "RevenueShare").get("share_of_total"));
+		assertEquals(Map.of("trailing", "unbounded"), measure(cube, "RevenueRunning").get("rolling_window"),
+				"The moving form of rolling_window");
+		assertEquals(Map.of("type", "to_date", "granularity", "year"),
+				measure(cube, "RevenueYTD").get("rolling_window"), "and its to-date form");
+		assertEquals(Map.of("interval", "1 year"), measure(cube, "RevenuePriorYear").get("time_shift"));
+
+		// A map point is a pair, and both halves of it are the author's own SQL.
+		Map<String, Object> depot = cube.getDimensions().get(1);
+		assertEquals("${CUBE}.Lat", depot.get("latitude"));
+		assertEquals("${CUBE}.Lng", depot.get("longitude"));
+
+		// A cube that says nothing about money is still in something: a formatter with no currency
+		// to write has to guess, and the answer is the same everywhere instead.
+		assertEquals("USD", CubeOptionsParser.parseGroovyCubeDslCode("cube { sql_table 'Orders' }").getCurrency(),
+				"A cube that does not say is in USD");
+		assertTrue(messages(CubeOptionsParser.parseGroovyCubeDslCode(
+				"cube { sql_table 'Orders'; currency 'euros' }"), "warning").stream()
+						.anyMatch(line -> line.contains("is not a currency code")),
+				"and one that says something that is not a currency code is told so");
+	}
+
+	/** #17, the other half — the two analysis measures a cube cannot mean. */
+	@Test
+	public void testAnalysisKeysThatCannotMeanAnythingAreRefused() throws Exception {
+
+		// A share of an average is not a share of anything: averages do not add up to a total.
+		List<String> ofAnAverage = messages(CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  measure { name 'AvgRevenue'; sql '${CUBE}.Amount'; type 'avg' }\n" +
+				"  measure { name 'AvgShare'; type 'number'; sql '${AvgRevenue}'; share_of_total true }\n" +
+				"}"), "error");
+		assertTrue(ofAnAverage.stream().anyMatch(line -> line.contains("never of an average")),
+				"A share of an average is an error, not a warning: " + ofAnAverage);
+
+		// Only the two window forms the generator writes are offered, and the message says which.
+		List<String> aMovingWindow = messages(CubeOptionsParser.parseGroovyCubeDslCode("cube {\n" +
+				"  sql_table 'Orders'\n" +
+				"  measure { name 'Revenue'; sql '${CUBE}.Amount'; type 'sum' }\n" +
+				"  measure { name 'Revenue3M'; type 'number'; sql '${Revenue}'; rolling_window trailing: '3 month' }\n" +
+				"}"), "error");
+		assertTrue(aMovingWindow.stream().anyMatch(line -> line.contains("which is not built")),
+				"trailing: '3 month' is refused, and the message says what is built: " + aMovingWindow);
+	}
+
+	/** One measure of a parsed cube, by name. */
+	private static Map<String, Object> measure(CubeOptions cube, String name) {
+		for (Map<String, Object> one : cube.getMeasures()) {
+			if (name.equals(one.get("name"))) return one;
+		}
+		throw new AssertionError("No measure called '" + name + "'");
 	}
 }
