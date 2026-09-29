@@ -80,6 +80,20 @@ public abstract class AbstractAssembler {
 
 	}
 
+	// assemble() without compile(). The dev server hot-reloads its CODE from the sources, but its
+	// CONTENT -- samples, templates, scripts, the whole db-template tree -- only exists once it has
+	// been packaged, because preparePackage() is what writes each sample its settings.xml and
+	// reporting.xml. Rebuilding the jars to pick up a changed .groovy or .html is half an hour of
+	// waiting for nothing, so this runs the packaging on the jars that are already built. Nothing in
+	// a release calls it: assemble() is untouched and stays the only way a shipped package is made.
+	public void assembleContentOnly() throws Exception {
+
+		_initialize();
+
+		preparePackage();
+
+	}
+
 	public void install() throws Exception {
 
 		FileUtils.moveFile(new File(targetPathZipFile), new File("dist/" + FilenameUtils.getName(targetPathZipFile)));

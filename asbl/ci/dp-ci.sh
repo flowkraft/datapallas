@@ -811,6 +811,27 @@ start_pinned_dev() {
   echo "stop:           docker stop $PINNED_CONTAINER"
 }
 
+# dp-ci.sh dev --refresh-content: the content half of the dev loop.
+# A dev server hot-reloads its code, but it reads its samples, templates and scripts from
+# testground/e2e -- a copy of the assembled package, made once and never refreshed since. This
+# packages the content again on the jars that are already built (none of the 26-minute rebuild) and
+# copies it over testground/e2e, leaving the running server's own state alone. Content is read per
+# request, so there is nothing to restart afterwards.
+refresh_dev_content() {
+  local container="$1" log rc
+  docker ps --filter "name=^${container}$" --format '{{.Names}}' | grep -q . ||
+    { echo "FAIL  $container is not running -- start it first"; return 1; }
+  mkdir -p "$LOG_DIR"
+  log="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-dev-refresh-content.log"
+  ln -sfn "$log" "$LOG_DIR/refresh-content-latest.log"
+  echo "refreshing the content of $container   (log $log)"
+  docker exec "$container" bash -c "cd '$REPO_IN_CONTAINER'/frend/reporting && npm run custom:dev-refresh-content" >"$log" 2>&1
+  rc=$?
+  tail -3 "$log"
+  [ $rc = 0 ] || echo "FAIL  the content refresh failed -- see $log"
+  return $rc
+}
+
 # -----------------------------------------------------------------------------
 # INSIDE the dp-ci container
 # -----------------------------------------------------------------------------
@@ -1138,8 +1159,11 @@ if [ "${1:-}" = "--inside" ]; then
     # A backend change should cost seconds, not a rebuild. DevTools restarts the context in about two
     # seconds as soon as a class under bkend/server/target/classes changes -- this is what recompiles it.
     # Only in --live: a pinned site is meant to stay exactly where it was pinned.
+    # ... and a content change should cost nothing at all: the server serves samples, templates and
+    # scripts out of testground/e2e, so a file edited under db-template is mirrored straight onto it.
     if [ "${DEV_MODE:-live}" = live ]; then
       (cd frend/reporting && npm run custom:dev-watch-backend) &
+      (cd frend/reporting && npm run custom:dev-watch-content) &
       ai_hub_dev &
     fi
     (cd frend/reporting && npm run custom:start-server-and-ui-web)
@@ -1392,8 +1416,18 @@ if [ "$TASK" = "dev" ]; then
     ""|--live) ;;
     --pinned) DEV_MODE=pinned; PINNED_SHA="${3:-}"
               [ -n "$PINNED_SHA" ] || { echo "usage: $0 dev --pinned <commit>"; exit 2; } ;;
-    *) echo "usage: $0 dev [--live | --pinned <commit>]"; exit 2 ;;
+    # code hot-reloads by itself; content does not, because it is served from a copy of the package
+    --refresh-content) DEV_MODE=refresh ;;
+    *) echo "usage: $0 dev [--live | --pinned <commit> | --refresh-content [--pinned]]"; exit 2 ;;
   esac
+  if [ "$DEV_MODE" = refresh ]; then
+    if [ "${3:-}" = --pinned ]; then
+      REPO_IN_CONTAINER="$PINNED_REPO" refresh_dev_content "$PINNED_CONTAINER"
+    else
+      REPO_IN_CONTAINER="$REPO" refresh_dev_content "$DEV_CONTAINER"
+    fi
+    exit $?
+  fi
   mkdir -p "$LOG_DIR"
   echo "building the $CI_IMAGE tools image (cached after the first time)..."
   docker build -q -t "$CI_IMAGE" "$REPO/asbl/ci" >/dev/null || { echo "FAIL  docker build $CI_IMAGE"; exit 1; }

@@ -123,4 +123,20 @@ public class AssemblerTest {
 
 	}
 
+	// The content half of the dev loop (frend/reporting/scripts-dev/dev-refresh-content.js calls this):
+	// package the content with the jars as they are, so a changed sample or template reaches a running
+	// dev server without the full rebuild prepareForE2E does.
+	@Test
+	public void refreshContentForE2E() throws Exception {
+
+		AbstractAssembler e2eAssembler = new NoExeAssembler();
+
+		e2eAssembler.assembleContentOnly();
+		e2eAssembler.verify();
+
+		System.out.println(
+				"------------------------------------- FINISHED Assembler:E2ENoExeAssembler (content only) ... -------------------------------------");
+
+	}
+
 }
