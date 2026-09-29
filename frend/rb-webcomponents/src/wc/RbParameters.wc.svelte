@@ -1094,6 +1094,15 @@
     color: inherit;
   }
 
+  /* A native <select> paints its dropdown list from its OWN background, and "transparent" there
+     is not the page's colour but the browser's canvas: in a dark theme the list came out white
+     while its options kept `color: inherit`, the page's near-white text, so it read as empty.
+     The list gets the same opaque surface the multi-select modal uses -- still not a colour of
+     our own, still the page's. */
+  select.form-control {
+    background: var(--rb-surface, Canvas);
+  }
+
   .form-control:focus {
     outline: none;
     border-color: var(--rb-accent, var(--color-primary, #2171b5));
