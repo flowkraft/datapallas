@@ -29,6 +29,7 @@
     "variants": [
       {
         "id": "by-quarter",
+        "question": "How much was invoiced each quarter?",
         "text": "The same, by **quarter**.",
         "query": {
           "dimensions": [
@@ -74,6 +75,7 @@
     "variants": [
       {
         "id": "by-country",
+        "question": "Which countries owe us, and which are late?",
         "text": "The same, by **Country**.",
         "query": {
           "dimensions": [

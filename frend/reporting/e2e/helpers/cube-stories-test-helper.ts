@@ -524,8 +524,44 @@ export async function walkEveryHint(frame: Frame, card: CubeCard): Promise<Ask[]
     await expect(inCard(frame, card.id, `#hint-${ask.id}`)).toContainText(ask.question);
   }
 
+  await expectStoriesReadAsStories(frame, card, asks);
+
   for (const ask of asks) await checkOneAsk(frame, card, ask, checks);
   return asks;
+}
+
+/**
+ * The sentences of one card, as a reader reads them (D8).
+ *
+ * The field names their author wrote between `**` are really bold, so the reader is told which
+ * fields answer the question; the asterisks themselves are nowhere on the screen, and neither is
+ * a note written for us rather than for a reader.
+ *
+ * Made to go red: a component that printed `ask.text` as it stands would show `**Units**`, and
+ * `expect(shown).not.toContain('**')` is the line that catches it.
+ */
+export async function expectStoriesReadAsStories(
+  frame: Frame,
+  card: CubeCard,
+  asks: Ask[],
+): Promise<void> {
+  const whole = (await inCard(frame, card.id, '#cubeHints').textContent()) ?? '';
+  expect(whole, `${card.id}: no reader is shown a pair of asterisks`).not.toContain('**');
+  expect(whole, `${card.id}: and no reader is shown a note we left ourselves`)
+    .not.toMatch(/\((new\b|story \d+)/);
+
+  let bolded = 0;
+  for (const ask of asks) {
+    const line = inCard(frame, card.id, `#hint-${ask.id} .rb-hint-text`);
+    const names = [...ask.text.matchAll(/\*\*([^*]+)\*\*/g)].map((pair) => pair[1]);
+    if (names.length === 0) continue;
+    bolded += names.length;
+    expect(
+      await line.locator('strong').allTextContents(),
+      `${card.id} / ${ask.check}: the fields that answer it are bold, in the author's order`,
+    ).toEqual(names);
+  }
+  expect(bolded, `${card.id}: its sentences name the fields that answer them`).toBeGreaterThan(0);
 }
 
 // ── Show SQL, Show Config, and the shape switch ─────────────────────────────────

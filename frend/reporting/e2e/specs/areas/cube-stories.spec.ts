@@ -33,6 +33,7 @@ import {
   CUBE_STORIES_CARDS,
   CUBE_STORIES_REPORT_ID,
   answerCardParams,
+  asksOf,
   cardOf,
   checksOf,
   chooseSqlVendor,
@@ -1137,6 +1138,62 @@ test.describe('Cube Stories — the cube demo page', () => {
       await expectNoCardWarns(theirs);
     } finally {
       await recipient.close();
+    }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────────
+  // The other half of the bold field names (D8): the component writes the sentence as HTML, so
+  // the question is what a sentence that carries markup of its own does. It is escaped first and
+  // only `**...**` becomes a `<strong>`, so `<b>` reaches the reader as four characters.
+  //
+  // The sentence is put there the way the page gets every sentence — in the cube's `/meta`
+  // answer — so this is the component reading a hints file, not a test reaching inside it.
+  //
+  // Made to go red: a `{@html ask.text}` with no escaping would turn `<b>` into bold and
+  // `expect(injected.bolds).toEqual(['Units'])` would find two bold pieces instead of one.
+  // ───────────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) a hints file cannot put markup of its own on the page', async ({ browser }) => {
+    test.setTimeout(10 * 60_000);
+
+    const shop = cardOf('online-sales');
+    const marked = await browser.newPage();
+    try {
+      // One sentence, rewritten on its way to the browser: a pair of asterisks the author meant,
+      // and a `<b>` tag the author did not.
+      await marked.route('**/cube/*/meta', async (route) => {
+        const answer = await route.fetch();
+        const meta = await answer.json();
+        if (Array.isArray(meta?.hints) && meta.hints.length > 0) {
+          meta.hints[0] = {
+            ...meta.hints[0],
+            text: 'Tick **Units** and <b>Country</b> & "Net Sales".',
+            variants: [],
+          };
+        }
+        await route.fulfill({ response: answer, json: meta });
+      });
+
+      await marked.goto(
+        `${BASE_URL}/dashboard/${CUBE_STORIES_REPORT_ID}?token=${encodeURIComponent(shareToken)}`,
+      );
+      const theirs = marked.mainFrame();
+      await expect(theirs.locator('.rb-cube-stories-root')).toBeVisible({ timeout: 60_000 });
+      await waitForCard(theirs, shop.id);
+
+      const first = asksOf(shop)[0];
+      const line = inCard(theirs, shop.id, `#hint-${first.id} .rb-hint-text`);
+      await expect(line).toBeVisible({ timeout: 60_000 });
+      const injected = await line.evaluate((element: Element) => ({
+        shown: (element.textContent ?? '').trim(),
+        bolds: Array.from(element.querySelectorAll('strong, b')).map((one) => (one.textContent ?? '').trim()),
+      }));
+
+      expect(injected.bolds, 'the field name the author wrote in bold, and nothing else, is bold')
+        .toEqual(['Units']);
+      expect(injected.shown, 'the tag the hints file wrote is four characters on the screen')
+        .toBe('Tick Units and <b>Country</b> & "Net Sales".');
+    } finally {
+      await marked.close();
     }
   });
 });

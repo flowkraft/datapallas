@@ -1336,6 +1336,23 @@
     return request;
   }
 
+  /**
+   * A story's sentence, with the field names its author wrote in `**bold**` really bold.
+   *
+   * The text is escaped first and only `**…**` is turned into a `<strong>`, so a hints file can put
+   * no markup of its own on the page: a sentence carrying `<b>` shows those characters as
+   * characters. Nothing else of Markdown is rendered, and an unpaired `**` is left as it was
+   * written — the reader sees the asterisks, which is what a broken sentence deserves.
+   */
+  function boldFieldNames(text: string): string {
+    const escaped = String(text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    return escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  }
+
   // ── Cube Stories: Show SQL, Show Config and Show Me (design part 8) ────────
 
   /**
@@ -2733,7 +2750,9 @@
         {#each hints as ask (ask.id)}
           <div id="hint-{ask.id}" class="rb-hint">
             <div class="rb-hint-question">{ask.question}</div>
-            <div class="rb-hint-text">{ask.text}</div>
+            <!-- The only place this component writes HTML: what `boldFieldNames` returns is
+                 escaped text with `<strong>` in it, and nothing a hints file wrote survives as markup. -->
+            <div class="rb-hint-text">{@html boldFieldNames(ask.text)}</div>
             <button type="button" id="btnShowMe-{ask.id}" class="rb-hint-showme"
                     title="Tick what this question asks for" on:click={() => showMe(ask)}>Show Me</button>
           </div>

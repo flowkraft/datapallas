@@ -1,15 +1,19 @@
 package com.flowkraft.cubes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,8 +28,11 @@ import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
  * <p>CubeSampleSqlExecutesTest proves the samples RUN. This proves only the name. How a cube is modelled
  * is not checked here.
  *
- * <p>The rule has its negative half beside it - broken names the same checker must reject - so it
- * cannot rot into a no-op without anybody noticing.
+ * <p>It also proves the other thing a reader reads on a cube: its stories. Each one asks a question
+ * of its own, in words written for a reader and not for us, and the field names it points at pair up.
+ *
+ * <p>Each rule has its negative half beside it - broken names and broken stories the same checker
+ * must reject - so neither can rot into a no-op without anybody noticing.
  */
 class CubeSampleDesignTest {
 
@@ -42,6 +49,12 @@ class CubeSampleDesignTest {
 			"student-progress", "dd-sales", "dd-finance", "dd-support");
 
 	private static final Pattern XML_NAME = Pattern.compile("<name>\\s*(.*?)\\s*</name>", Pattern.DOTALL);
+
+	/**
+	 * A note left in a question for us rather than for a reader: what the old cubes lacked, or the
+	 * number a plan gave the story. Both were on the page in 52f8f42f (D8).
+	 */
+	private static final Pattern NOTE_TO_US = Pattern.compile("\\((new\\b[^)]*|story \\d+)\\)");
 
 	/**
 	 * The name in cube.xml is what /api/cubes hands the UI, so it is the words the user reads in
@@ -73,6 +86,85 @@ class CubeSampleDesignTest {
 				"A name left behind by a rename");
 		assertNull(complainAboutName("freight-shipments", "Freight Shipments", "Freight Shipments"),
 				"The title itself is the one right answer");
+	}
+
+	/**
+	 * Every story a shipped cube offers is a story a reader can read.
+	 *
+	 * <p>The asks are taken the way a widget takes them, through {@link CubeHints}, so a variant is
+	 * one of them: on the page each ask is a card with a <b>Show Me</b> of its own, and the owner's
+	 * rule is that no reader is asked the same thing twice (D9). A question written for us - the
+	 * "(new: the old cubes had no rep)" kind of note from the cubes redesign, or a plan's own story
+	 * number - is not a question for a reader either (D8), and a sentence whose {@code **} do not
+	 * pair up would show the reader an asterisk where the renderer wanted a bold field name.
+	 */
+	@Test
+	void everyShippedStoryReadsAsAStory() throws Exception {
+		Map<String, String> wrong = new LinkedHashMap<>();
+		for (String cubeId : SHIPPED_CUBES) {
+			CubeFiles files = filesOf(cubeId);
+			// A story may ask its question of a period, and those days are written relative to the
+			// day the data calls today (R7). The demo data's today is pinned here, as everywhere.
+			List<Map<String, Object>> asks = CubeHints.of(files.getHintsFile(), files.getCubeName(),
+					() -> LocalDate.parse("2026-09-30"));
+			assertFalse(asks.isEmpty(), "A shipped cube that answers no question of its own: " + cubeId);
+			String complaint = complainAboutStories(asks);
+			if (complaint != null) {
+				wrong.put(cubeId, complaint);
+			}
+		}
+		assertEquals(Map.of(), wrong, "the stories a reader reads: " + wrong);
+	}
+
+	/** The negative half: the same question twice, a note written for us, and a lonely {@code **}. */
+	@Test
+	void aStoryThatRepeatsItselfOrTalksToUsIsCaught() {
+		assertNotNull(complainAboutStories(List.of(
+				story("What did we sell?", "Tick **Units**."),
+				story("What did we sell?", "Or tick **Net Sales**."))),
+				"the same question on two cards is the defect the owner met");
+		assertNotNull(complainAboutStories(List.of(
+				story("What is actually on the invoices? (new: the lines were in no cube)", "Tick **Units**."))),
+				"a note from the redesign is not a question for a reader");
+		assertNotNull(complainAboutStories(List.of(
+				story("What is on our plate? (story 31)", "Tick **Tickets**."))),
+				"and neither is a plan's story number");
+		assertNotNull(complainAboutStories(List.of(story("What did we sell?", "Tick **Units."))),
+				"an unpaired ** is an asterisk on the reader's screen");
+		assertNotNull(complainAboutStories(List.of(story("", "Tick **Units**."))),
+				"a card with no question says nothing at all");
+		assertNull(complainAboutStories(List.of(
+				story("What did we sell, and where?", "Tick **Units** and **Country**."),
+				story("And what did it leave us?", "Add **Gross Margin** and **Margin %**."))),
+				"two questions, two answers, and every field name in a pair");
+	}
+
+	/** An ask, as far as the story rule is concerned. */
+	private static Map<String, Object> story(String question, String text) {
+		return Map.of("question", question, "text", text);
+	}
+
+	/** What is wrong with the stories of one cube, or null when nothing is. */
+	private String complainAboutStories(List<Map<String, Object>> asks) {
+		Set<String> asked = new LinkedHashSet<>();
+		for (Map<String, Object> ask : asks) {
+			String question = String.valueOf(ask.get("question")).trim();
+			String text = String.valueOf(ask.get("text"));
+			if (question.isEmpty()) {
+				return "a card with no question of its own, whose sentence is '" + text + "'";
+			}
+			if (!asked.add(question)) {
+				return "two cards ask '" + question + "', so a reader reads the same story twice";
+			}
+			Matcher note = NOTE_TO_US.matcher(question);
+			if (note.find()) {
+				return "'" + question + "' carries '" + note.group() + "', which is written for us";
+			}
+			if ((text.split("\\*\\*", -1).length - 1) % 2 != 0) {
+				return "'" + text + "' leaves a ** unpaired, so the reader sees an asterisk";
+			}
+		}
+		return null;
 	}
 
 	/** What is wrong with the name a cube shows the user, or null when nothing is. */

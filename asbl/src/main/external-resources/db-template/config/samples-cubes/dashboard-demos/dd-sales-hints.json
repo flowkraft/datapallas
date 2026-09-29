@@ -13,6 +13,7 @@
     "variants": [
       {
         "id": "with-profit",
+        "question": "What did the sales leave us, next to what they were worth?",
         "text": "Add **Cost**, **Gross Profit** and **Margin %** - what the sales left, next to what they were worth.",
         "query": {
           "dimensions": [],
@@ -42,6 +43,7 @@
     "variants": [
       {
         "id": "by-quarter",
+        "question": "How has the revenue moved, quarter by quarter?",
         "text": "The same, by **quarter**.",
         "query": {
           "dimensions": [

@@ -31,6 +31,7 @@
     "variants": [
       {
         "id": "country-then-city",
+        "question": "Which cities do the shipments go to?",
         "text": "Add **City**: the drill path takes the country with it.",
         "query": {
           "dimensions": [
@@ -62,6 +63,7 @@
     "variants": [
       {
         "id": "by-mode",
+        "question": "What do we spend on each way of shipping?",
         "text": "Swap **Carrier** for **Transport Mode**.",
         "query": {
           "dimensions": [
@@ -75,6 +77,7 @@
       },
       {
         "id": "totals",
+        "question": "What does the freight cost us altogether, on how much weight?",
         "text": "Drop the field for the totals.",
         "query": {
           "dimensions": [],
@@ -90,7 +93,8 @@
   {
     "id": "cost-and-speed-per-mode",
     "fromStory": null,
-    "question": "What does speed cost? (new: air freight arrived with the data touch-up)",
+    "question": "What does speed cost?",
+    "note": "new: air freight arrived with the data touch-up",
     "text": "Tick **Shipments**, **Cost per kg** and **Average Transit Days**, then add **Transport Mode**.",
     "query": {
       "dimensions": [
@@ -122,6 +126,7 @@
     "variants": [
       {
         "id": "spain-and-portugal",
+        "question": "On the Spanish and the Portuguese lanes, what does each mode cost and how long does it take?",
         "text": "Put **Spain** and **Portugal** in the **Country** filter: the same trade-off on the lanes one manager looks after, and every number is of those two countries only. Add or take away a country and the rows follow.",
         "query": {
           "dimensions": [

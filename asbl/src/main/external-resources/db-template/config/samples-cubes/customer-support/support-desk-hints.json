@@ -27,6 +27,7 @@
     "variants": [
       {
         "id": "by-priority",
+        "question": "How urgent is the queue?",
         "text": "The same, by **Priority**.",
         "query": {
           "dimensions": [
@@ -71,6 +72,7 @@
     "variants": [
       {
         "id": "and-still-open",
+        "question": "How many are at risk and still open?",
         "text": "Tick both segments: they are ANDed, each inside its own brackets - 347, not 790.",
         "query": {
           "dimensions": [],
@@ -85,6 +87,7 @@
       },
       {
         "id": "and-still-open-by-priority",
+        "question": "Of the ones still open and at risk, which priorities are they?",
         "text": "Both segments, split by **Priority**.",
         "query": {
           "dimensions": [
@@ -104,7 +107,8 @@
   {
     "id": "breach-by-team",
     "fromStory": null,
-    "question": "Which team is missing the SLA? (new: the old cube had no agent)",
+    "question": "Which team is missing the SLA?",
+    "note": "new: the old cube had no agent",
     "text": "Tick **Tickets**, **Breached Tickets** and **Breach Rate**, then add **Team**.",
     "query": {
       "dimensions": [
@@ -119,6 +123,7 @@
     "variants": [
       {
         "id": "team",
+        "question": "Is Tier 2 missing the SLA?",
         "text": "**Tier 2 only**: add the filter **Team = Tier 2**. The rate is then Tier 2's own, and the filter is the card's - change the team or take it off with its ×.",
         "query": {
           "dimensions": [
@@ -145,7 +150,8 @@
   {
     "id": "breach-by-category",
     "fromStory": null,
-    "question": "And what is breaching? (new)",
+    "question": "And what is breaching?",
+    "note": "new",
     "text": "Tick **Tickets** and **Breach Rate**, then add **Category**.",
     "query": {
       "dimensions": [
@@ -160,7 +166,8 @@
   {
     "id": "time-by-priority",
     "fromStory": null,
-    "question": "How long do tickets take, and how long does the first answer take? (new)",
+    "question": "How long do tickets take, and how long does the first answer take?",
+    "note": "new",
     "text": "Tick **Tickets**, **Average Resolution Hours** and **Average First Response Minutes**, then add **Priority**.",
     "query": {
       "dimensions": [
@@ -202,6 +209,7 @@
     "variants": [
       {
         "id": "by-month",
+        "question": "Month by month, is the desk keeping up with the same month last year?",
         "text": "Read **Opened** by **Month** instead of Priority: each month stands beside the same month a year earlier.",
         "query": {
           "dimensions": [
@@ -230,7 +238,8 @@
   {
     "id": "my-teams-plate",
     "fromStory": 31,
-    "question": "What is on our team's plate this morning, and who is breaching? (story 31)",
+    "question": "What is on our team's plate this morning, and who is breaching?",
+    "note": "story 31",
     "text": "Tick **Tickets**, **Breached Tickets** and **Breach Rate**, then add **Priority**. An agent sees their own team's tickets here and nobody else's: the cube carries the desk's own rule about who reads which rows, and the rule finds the team from the email you signed in with. A support manager, an admin and a report author see the whole desk - which is what this card shows, because that is who is asking.",
     "query": {
       "dimensions": [
@@ -245,6 +254,7 @@
     "variants": [
       {
         "id": "by-agent",
+        "question": "Who is breaching, and what has nobody picked up?",
         "text": "**Who is breaching**: swap **Priority** for **Agent**. Inside a team it names the three or four people on it; whoever sees the whole desk sees all fifteen, and the row with no name is the 41 tickets nobody has picked up yet.",
         "query": {
           "dimensions": [

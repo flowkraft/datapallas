@@ -13,6 +13,7 @@
     "variants": [
       {
         "id": "still-open",
+        "question": "How much of the desk's work is still open?",
         "text": "Add **Open Tickets** - the queue as it stands, next to the work that was done.",
         "query": {
           "dimensions": [],
@@ -40,6 +41,7 @@
     "variants": [
       {
         "id": "by-quarter",
+        "question": "Is the desk taking more tickets, quarter by quarter?",
         "text": "The same, by **quarter**.",
         "query": {
           "dimensions": [
@@ -99,6 +101,7 @@
     "variants": [
       {
         "id": "by-priority",
+        "question": "Are the urgent tickets the unhappy ones?",
         "text": "The same, by **Priority**.",
         "query": {
           "dimensions": [

@@ -17,6 +17,7 @@
     "variants": [
       {
         "id": "totals",
+        "question": "What did the shop sell in all?",
         "text": "Drop the field: an order with ten lines still counts once.",
         "query": {
           "dimensions": [],
@@ -46,6 +47,7 @@
     "variants": [
       {
         "id": "totals",
+        "question": "How many different people bought from us in all?",
         "text": "Drop the field: guest orders count nobody.",
         "query": {
           "dimensions": [],
@@ -89,7 +91,8 @@
   {
     "id": "discount-by-category",
     "fromStory": null,
-    "question": "How deep do the discounts go? (new: the sale read line by line)",
+    "question": "How deep do the discounts go?",
+    "note": "new: the sale read line by line",
     "text": "Tick **Lines**, **Gross Sales**, **Net Sales** and **Average Discount %**, then add **Category** - the line fields and the order fields are in one cube.",
     "query": {
       "dimensions": [
@@ -131,6 +134,7 @@
     "variants": [
       {
         "id": "previous-quarter",
+        "question": "And what did we sell the quarter before that?",
         "text": "Move the **Ordered** filter one quarter back: the same question, the quarter before it.",
         "query": {
           "cubeName": "shop-for-a-period",
@@ -155,6 +159,7 @@
       },
       {
         "id": "same-quarter-last-year",
+        "question": "How does the quarter compare with the same quarter a year ago?",
         "text": "Move it a year back instead: the same quarter, last year, which is what a quarter is really compared with.",
         "query": {
           "cubeName": "shop-for-a-period",
@@ -196,6 +201,7 @@
     "variants": [
       {
         "id": "by-channel",
+        "question": "Which channels carry the business?",
         "text": "Swap **Category** for **Channel**: the same question about how the orders come in.",
         "query": {
           "dimensions": [
@@ -209,6 +215,7 @@
       },
       {
         "id": "germany",
+        "question": "Inside Germany, which categories carry the business?",
         "text": "Add the filter **Country = Germany**: every share is now of Germany's own total, not of the whole shop.",
         "query": {
           "dimensions": [
@@ -252,6 +259,7 @@
     "variants": [
       {
         "id": "in-all",
+        "question": "What does the whole shop sell, and what does it leave?",
         "text": "Drop the field: the totals row. Margin % is then **34.07%**, the margin of the whole shop - not 35.11%, the average of the eight rows.",
         "query": {
           "dimensions": [],

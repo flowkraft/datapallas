@@ -15,6 +15,7 @@
     "variants": [
       {
         "id": "by-term",
+        "question": "How did each term's grades come out?",
         "text": "Add **Term** in front of it: the current term has no scores yet.",
         "query": {
           "dimensions": [
@@ -31,7 +32,8 @@
   {
     "id": "grades-by-program",
     "fromStory": null,
-    "question": "Which programs pass, and which do not? (new: grade and program were in different cubes)",
+    "question": "Which programs pass, and which do not?",
+    "note": "new: grade and program were in different cubes",
     "text": "Tick **Enrollments** and add **Program** and **Grade**.",
     "query": {
       "dimensions": [
@@ -46,7 +48,8 @@
   {
     "id": "score-by-department",
     "fromStory": null,
-    "question": "Which departments score best? (new: the course was in no cube at all)",
+    "question": "Which departments score best?",
+    "note": "new: the course was in no cube at all",
     "text": "Tick **Enrollments** and **Average Score**, then add **Department**.",
     "query": {
       "dimensions": [

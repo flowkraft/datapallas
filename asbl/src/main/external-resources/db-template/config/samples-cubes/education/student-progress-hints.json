@@ -21,7 +21,8 @@
   {
     "id": "course-load",
     "fromStory": null,
-    "question": "How many courses do our students take? (new)",
+    "question": "How many courses do our students take?",
+    "note": "new",
     "text": "Tick **Courses Taken** and **Students**. Courses Taken is a value of each student, so it can be grouped by.",
     "query": {
       "dimensions": [
@@ -35,7 +36,8 @@
   {
     "id": "not-started",
     "fromStory": null,
-    "question": "Who has not started a single course? (new)",
+    "question": "Who has not started a single course?",
+    "note": "new",
     "text": "Tick **First Name**, **Last Name**, **Program** and **Start Year**, with the **Not started** segment.",
     "query": {
       "dimensions": [

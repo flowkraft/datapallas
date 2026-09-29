@@ -18,10 +18,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * The questions a cube was written to answer — its {@code hints.json}, as a widget offers them.
  *
  * <p>A hint is a question, the sentence that says which fields answer it, and the selection itself.
- * Some hints carry variants: the same question asked again with one field swapped, added or
+ * Some hints carry variants: another question of the same cube, with one field swapped, added or
  * dropped. On the page each of them is a <b>Show Me</b> of its own, because each is a different
  * answer, so this class flattens the file into one list of asks — the hint first, then its
- * variants, in the file's order.
+ * variants, in the file's order. Each ask carries its own question, so no reader is asked the
+ * same thing twice.
  *
  * <p>An ask's {@code id} is what the page's markup is built from ({@code #hint-{id}},
  * {@code #btnShowMe-{id}}), and its {@code check} is what
@@ -96,9 +97,12 @@ public final class CubeHints {
 			for (Object variant : listOf(hint.get("variants"))) {
 				Map<String, Object> asked = mapOf(variant);
 				String variantId = text(asked.get("id"));
-				// A variant asks the hint's question again, so it is the hint's question that is
-				// written above it; its own sentence says what changed.
-				asks.add(ask(id + "--" + variantId, id + "/" + variantId, question,
+				// A variant asks a question of its own, because it is a card of its own: no reader
+				// ever sees the same question twice. A file that leaves it out falls back to the
+				// hint's question, which CubeSampleDesignTest forbids in what DataPallas ships.
+				String variantQuestion = text(asked.get("question"));
+				asks.add(ask(id + "--" + variantId, id + "/" + variantId,
+						variantQuestion.isEmpty() ? question : variantQuestion,
 						text(asked.get("text")), dated(mapOf(asked.get("query")), dataToday)));
 			}
 		}

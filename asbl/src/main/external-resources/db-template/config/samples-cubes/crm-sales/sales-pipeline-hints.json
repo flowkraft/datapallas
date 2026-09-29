@@ -14,6 +14,7 @@
     "variants": [
       {
         "id": "count-only",
+        "question": "How many deals are there in all?",
         "text": "Or tick **Deals** on its own.",
         "query": {
           "dimensions": [],
@@ -41,6 +42,7 @@
     "variants": [
       {
         "id": "stage-alone",
+        "question": "Which stages does a deal go through?",
         "text": "Tick **Stage** with no measure at all: the six stages, nothing else.",
         "query": {
           "dimensions": [
@@ -67,6 +69,7 @@
     "variants": [
       {
         "id": "quarter",
+        "question": "How do the deals fall, quarter by quarter?",
         "text": "The same field, read by **Quarter**.",
         "query": {
           "dimensions": [
@@ -79,6 +82,7 @@
       },
       {
         "id": "year",
+        "question": "How many deals did each year bring?",
         "text": "...or by **Year**.",
         "query": {
           "dimensions": [
@@ -91,6 +95,7 @@
       },
       {
         "id": "week",
+        "question": "Which weeks are busy, and which are quiet?",
         "text": "...or by **Week**.",
         "query": {
           "dimensions": [
@@ -147,6 +152,7 @@
     "variants": [
       {
         "id": "totals",
+        "question": "What does the whole pipeline look like, in one row?",
         "text": "Without a field, the same measures give the whole pipeline at once.",
         "query": {
           "dimensions": [],
@@ -165,7 +171,8 @@
   {
     "id": "deal-size-by-tier",
     "fromStory": null,
-    "question": "Do the big accounts buy bigger? (new: the old cubes had no account)",
+    "question": "Do the big accounts buy bigger?",
+    "note": "new: the old cubes had no account",
     "text": "Tick **Deals** and **Average Deal Size**, then add **Account Tier**.",
     "query": {
       "dimensions": [
@@ -180,7 +187,8 @@
   {
     "id": "won-value-by-rep",
     "fromStory": null,
-    "question": "Which rep brings in the most won business? (new: the old cubes had no rep)",
+    "question": "Which rep brings in the most won business?",
+    "note": "new: the old cubes had no rep",
     "text": "Tick **Deals** and **Won Value**, then add **Rep**.",
     "query": {
       "dimensions": [
