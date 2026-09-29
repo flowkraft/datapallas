@@ -22,6 +22,15 @@
 //   - what we spend with each carrier, on how much weight, by transport mode;
 //   - how fast and how dear each mode is: Air costs 0.187 per kg at 2.2 days
 //     against Road's 0.057 at 4.9 — CostPerKg over Mode is the whole answer;
+//   - what a shipment costs on a mode and how long it takes, which is the
+//     trade-off behind a carrier contract: Road costs 86.72 a shipment and
+//     arrives in 4.86 days, Sea 42.42 and 19.35 (AvgCostPerShipment and
+//     AvgTransitDays over Mode, narrowed to the lanes that are yours);
+//   - which shipments a number is made of: clicking a Shipments cell opens
+//     the rows behind it, with the tracking number, the carrier, the depot
+//     it left from, where it is going, when it was booked, the service
+//     level, the weight and the cost - the list the desk rings the carriers
+//     from;
 //   - how long things take (AvgTransitDays), how much room they need (Pallets),
 //     and the named filters delivered, in_transit and air.
 //
@@ -35,6 +44,7 @@ cube {
   sql_table 'cube_demo.logistics_shipments'
   title 'Freight Shipments'
   description 'What we ship, where to, with whom, and what it costs'
+  currency 'EUR'
 
   join {
     name 'cube_demo.logistics_carriers'
@@ -166,6 +176,8 @@ cube {
     title 'Shipments'
     description 'How many shipments there are'
     type 'count'
+    drill_members 'TrackingNo', 'Carrier', 'OriginDepot', 'DestCountry', 'DestCity', 'BookedDate',
+        'ServiceLevel', 'WeightKg', 'ShippingCost'
   }
   measure {
     name 'ShippingCost'
@@ -195,6 +207,14 @@ cube {
     description 'How many days a shipment takes, on average'
     sql '${CUBE}.transit_days'
     type 'avg'
+  }
+  measure {
+    name 'AvgCostPerShipment'
+    title 'Average Cost per Shipment'
+    description 'What one shipment costs, on average'
+    sql '${CUBE}.shipping_cost'
+    type 'avg'
+    format 'currency'
   }
   measure {
     name 'CostPerKg'

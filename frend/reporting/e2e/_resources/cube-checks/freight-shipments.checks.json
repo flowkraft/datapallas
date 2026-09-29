@@ -678,5 +678,118 @@
       ]
     ],
     "source": "SELECT c.transport_mode, COUNT(*),\n       SUM(s.shipping_cost) / NULLIF(SUM(s.weight_kg), 0), AVG(s.transit_days)\nFROM cube_demo.logistics_shipments s\nLEFT JOIN cube_demo.logistics_carriers c ON c.carrier_id = s.carrier_id\nGROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "freight-cost-vs-speed",
+    "rows": [
+      [
+        "Air",
+        40,
+        9836.64,
+        245.92,
+        2.15
+      ],
+      [
+        "Rail",
+        1335,
+        84505.86,
+        63.3,
+        6.29
+      ],
+      [
+        "Road",
+        2080,
+        180380.11,
+        86.72,
+        4.86
+      ],
+      [
+        "Sea",
+        497,
+        21084.84,
+        42.42,
+        19.35
+      ],
+      [
+        null,
+        48,
+        4355.3,
+        90.74,
+        5.5
+      ]
+    ],
+    "source": "SELECT c.transport_mode, COUNT(*), SUM(s.shipping_cost),\n       AVG(s.shipping_cost), AVG(s.transit_days)\nFROM cube_demo.logistics_shipments s\nLEFT JOIN cube_demo.logistics_carriers c ON c.carrier_id = s.carrier_id\nGROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "freight-cost-vs-speed/spain-and-portugal",
+    "rows": [
+      [
+        "Air",
+        2,
+        131.61,
+        65.81,
+        1.0
+      ],
+      [
+        "Rail",
+        147,
+        9398.32,
+        63.93,
+        6.46
+      ],
+      [
+        "Road",
+        247,
+        21180.73,
+        85.75,
+        4.82
+      ],
+      [
+        "Sea",
+        70,
+        2774.49,
+        39.64,
+        18.69
+      ],
+      [
+        null,
+        8,
+        942.22,
+        117.78,
+        null
+      ]
+    ],
+    "source": "SELECT c.transport_mode, COUNT(*), SUM(s.shipping_cost),\n       AVG(s.shipping_cost), AVG(s.transit_days)\nFROM cube_demo.logistics_shipments s\nLEFT JOIN cube_demo.logistics_carriers c ON c.carrier_id = s.carrier_id\nWHERE s.dest_country IN ('Spain', 'Portugal')\nGROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "delayed-shipments",
+    "rows": [
+      [
+        "2026-09-01",
+        "Awaiting Pickup",
+        57
+      ],
+      [
+        "2026-09-01",
+        "Delayed",
+        15
+      ],
+      [
+        "2026-09-01",
+        "Delivered",
+        77
+      ],
+      [
+        "2026-09-01",
+        "In Transit",
+        34
+      ],
+      [
+        "2026-09-01",
+        "Returned",
+        5
+      ]
+    ],
+    "source": "SELECT strftime(DATE_TRUNC('month', s.booked_date), '%Y-%m-01') AS month,\n       s.status, COUNT(*) AS shipments\nFROM cube_demo.logistics_shipments s\nWHERE s.booked_date >= DATE '2026-09-01' AND s.booked_date < DATE '2026-10-01'\nGROUP BY 1, 2\nORDER BY 2"
   }
 ]

@@ -159,6 +159,39 @@ class LockedParamsValidatorTest {
 				() -> validator.validate("canvas-export", Map.of("region", "EU")));
 	}
 
+	/**
+	 * Story 25, the three cases under R4 on the dashboard that ships them: a statement link locks
+	 * the customer it names, it cannot lock a name the page does not declare, and it cannot lock
+	 * the server's own. The customer is a number, so "the whole book" is not a value it takes
+	 * either - that is what leaving it empty means, and an empty lock is no lock at all.
+	 */
+	@Test
+	void story25AStatementLinkLocksTheCustomerItNamesAndNothingElse() throws Exception {
+
+		ReportFullConfigDto stories = new ReportFullConfigDto();
+		stories.parameters = List.of(parameter("customerId", "Integer", Map.of()));
+		when(reportingService.loadReportConfig("g-cube-stories")).thenReturn(stories);
+
+		// Southridge Video SpA, the customer story 25's link is locked to.
+		assertEquals(Map.of("customerId", "26"),
+				validator.validate("g-cube-stories", Map.of("customerId", "26")));
+
+		// The typo, and the whole point of refusing at creation: a link locked to 'customer' would
+		// show every customer's invoices to whoever opened it.
+		IllegalArgumentException noSuchParameter = assertThrows(IllegalArgumentException.class,
+				() -> validator.validate("g-cube-stories", Map.of("customer", "26")));
+		assertEquals("Report 'g-cube-stories' has no parameter 'customer'", noSuchParameter.getMessage());
+
+		IllegalArgumentException builtin = assertThrows(IllegalArgumentException.class,
+				() -> validator.validate("g-cube-stories", Map.of("dp_user_id", "26")));
+		assertTrue(builtin.getMessage().contains("dp_user_id"), builtin.getMessage());
+
+		// A customer is a number: a name typed where the id goes is refused rather than bound.
+		IllegalArgumentException notANumber = assertThrows(IllegalArgumentException.class,
+				() -> validator.validate("g-cube-stories", Map.of("customerId", "Southridge Video SpA")));
+		assertTrue(notANumber.getMessage().contains("whole number"), notANumber.getMessage());
+	}
+
 	@Test
 	void aReportWhoseSpecCannotBeReadIsRefused() throws Exception {
 

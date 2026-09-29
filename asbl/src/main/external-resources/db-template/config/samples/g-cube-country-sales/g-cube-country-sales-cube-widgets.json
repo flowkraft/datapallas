@@ -1,0 +1,23 @@
+{
+  "tabulator_live-shop" : {
+    "cubeId" : "online-sales",
+    "cubeName" : null,
+    "connectionId" : "rbt-sample-northwind-duckdb-4f2",
+    "initial" : {
+      "dimensions" : [ "Channel" ],
+      "measures" : [ "NetSales" ],
+      "filters" : [ {
+        "member" : "Status",
+        "operator" : "notIn",
+        "values" : [ "Cancelled", "Returned" ]
+      } ],
+      "limit" : 500
+    },
+    "paramBindings" : [ {
+      "param" : "country",
+      "member" : "Country",
+      "operator" : "in"
+    } ],
+    "display" : "table"
+  }
+}

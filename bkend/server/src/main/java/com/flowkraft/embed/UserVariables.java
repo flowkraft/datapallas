@@ -80,6 +80,25 @@ public class UserVariables {
 	public static final Set<String> DATE_NAMES = Set.of(TODAY);
 	public static final Set<String> TIMESTAMP_NAMES = Set.of(NOW);
 
+	/**
+	 * The variables this server fills by name, which is not the same question as
+	 * {@link #isBuiltinName}: that one asks whether a name is reserved, and everything beginning
+	 * with {@code dp_} is, on purpose. This one asks whether there is anything behind it - what a
+	 * cube file's author needs to hear before a condition of theirs is bound to nothing, matches
+	 * no row and shows an empty widget.
+	 *
+	 * <p>{@code dp_attr_<name>} is not in the set and is known all the same: what the embedding
+	 * application may say about a viewer is its own list, not this one's.
+	 */
+	public static final Set<String> FIXED_NAMES = Set.of(USER_ID, USER_EMAIL, USER_GROUPS, USER_ROLE,
+			TENANT_ID, USER_TIMEZONE, USER_LOCALE, TODAY, NOW);
+
+	/** True when the server has a value of that name to fill in, attributes included. */
+	public static boolean isKnownBuiltin(String name) {
+		String written = name == null ? "" : name.trim().toLowerCase(java.util.Locale.ROOT);
+		return FIXED_NAMES.contains(written) || written.startsWith(CallerAttributes.PREFIX);
+	}
+
 	private final IamRepository repository;
 
 	/**

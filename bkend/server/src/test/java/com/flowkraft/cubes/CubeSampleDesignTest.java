@@ -36,9 +36,10 @@ class CubeSampleDesignTest {
 	 * disappears has to turn this test red, not shrink its own sweep.
 	 */
 	private static final List<String> SHIPPED_CUBES = List.of("northwind-sales", "northwind-customers",
-			"northwind-hr", "northwind-inventory", "northwind-warehouse", "online-sales", "sales-pipeline",
-			"support-desk", "freight-shipments", "student-enrollments", "customer-invoices", "customer-payments",
-			"invoice-balances", "depot-network", "student-progress");
+			"northwind-hr", "northwind-inventory", "northwind-warehouse", "online-sales", "shop-for-a-period",
+			"sales-pipeline", "support-desk", "freight-shipments", "student-enrollments", "customer-invoices",
+			"customer-payments", "invoice-balances", "customer-statement", "depot-network",
+			"student-progress");
 
 	private static final Pattern XML_NAME = Pattern.compile("<name>\\s*(.*?)\\s*</name>", Pattern.DOTALL);
 

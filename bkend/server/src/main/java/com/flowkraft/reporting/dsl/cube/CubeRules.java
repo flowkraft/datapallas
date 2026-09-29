@@ -10,6 +10,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.sourcekraft.documentburster.common.reportparameters.BuiltinVariables;
+
 /**
  * The one place that knows what a cube may say and which table each field is on.
  *
@@ -42,7 +44,19 @@ public final class CubeRules {
 	 */
 	public static final Map<String, Integer> CUBE_KEYS = keys(
 			"sql_table", 3, "sql", 3, "sql_alias", 3, "extends", 5, "title", 1, "description", 2,
-			"public", 3, "access_filter", 3, "currency", 4, "meta", 5);
+			"public", 3, "access_filter", 3, "currency", 4, "condition", 3,
+			"meta", 5);
+
+	/**
+	 * The keys of one {@code condition} (R1), as the parser stores it: {@code sql} for the raw
+	 * form, {@code member} / {@code operator} / {@code values} for the native one.
+	 *
+	 * <p>The author never writes these — {@code condition '…'} and
+	 * {@code condition 'OrderDate', 'between', fromDate, toDate} are positional — but the tier
+	 * travels with the key here as it does for every other block, and the UI and the docs read it.
+	 */
+	public static final Map<String, Integer> CONDITION_KEYS = keys(
+			"sql", 3, "member", 3, "operator", 3, "values", 3);
 
 	/** The keys of a {@code dimension} block, as the parser stores them, each with its tier. */
 	public static final Map<String, Integer> DIMENSION_KEYS = keys(
@@ -649,6 +663,455 @@ public final class CubeRules {
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
+	// What a cube's conditions may say (R1)
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/** {@code ${name}} or {@code #{name}} — the two placeholder forms the query plumbing binds. */
+	private static final Pattern NAME_PLACEHOLDER = Pattern.compile("[$#]\\{([^}]*)\\}");
+
+	/** A value of a native condition that is a name rather than a literal: {@code ${fromDate}}. */
+	private static final Pattern NAMED_VALUE = Pattern.compile("^[$#]\\{([A-Za-z_][A-Za-z0-9_]*)\\}$");
+
+	/**
+	 * The operators a filter may ask for — the structured query's own names, and the only list of
+	 * them. A native {@code condition} is added to the query exactly as a viewer's filter is, so it
+	 * may say anything a filter may say and nothing else; the generator reads the same list.
+	 */
+	public static final List<String> QUERY_OPERATORS = List.of(
+			"equals", "notEquals", "in", "notIn", "gt", "gte", "lt", "lte", "between", "contains",
+			"set", "notSet");
+
+	/** The words a raw condition may not hold: it is one condition, not a query. */
+	private static final Map<String, String> RAW_REFUSED = Map.of(
+			"GROUP BY", "grouping is the query's, not a condition's",
+			"HAVING", "a condition on a measure is the native form, condition '<Measure>', '<operator>', <value>",
+			"ORDER BY", "the order is the query's, not a condition's");
+
+	/** How many values this operator takes: -1 means one or more. */
+	public static int valuesExpected(String operator) {
+		switch (operator) {
+			case "set":
+			case "notSet":
+				return 0;
+			case "between":
+				return 2;
+			case "in":
+			case "notIn":
+				return -1;
+			default:
+				return 1;
+		}
+	}
+
+	/**
+	 * The dashboard parameters a cube's conditions use, in the order they are written — the names
+	 * whose values the dashboard is asked for, builtins left out (they come from the server).
+	 *
+	 * <p>Read by the runtime, so that a name no dashboard answers is left with no value and its
+	 * condition is dropped by the empty-value rule, rather than a {@code ${name}} reaching a
+	 * statement that is about to run.
+	 */
+	public static Set<String> parameterNames(CubeOptions cube) {
+
+		Set<String> names = new LinkedHashSet<>();
+		for (ConditionUse use : parameterUses(cube))
+			names.addAll(use.parameters());
+		return names;
+	}
+
+	/**
+	 * One condition, as the cube file writes it, and the dashboard parameters it uses.
+	 *
+	 * <p>The condition's own text is kept beside its names because the dashboard's check (R1) has
+	 * to show the author which condition it is talking about: a cube may have several, and a name
+	 * on its own says nothing about where it is used.
+	 */
+	public static final class ConditionUse {
+
+		private final String written;
+		private final String where;
+		private final Set<String> parameters;
+
+		private ConditionUse(String written, String where, Set<String> parameters) {
+			this.written = written;
+			this.where = where;
+			this.parameters = parameters;
+		}
+
+		/** The condition as the cube file writes it. */
+		public String written() {
+			return written;
+		}
+
+		/**
+		 * Where in the cube file that text is, as a sentence names it: {@code the condition "…"} or
+		 * {@code the source SQL "…"}. A cube uses a name in one of two places, and an author reading
+		 * the refusal has to be told which one before they can go and fix it.
+		 */
+		public String where() {
+			return where;
+		}
+
+		/** The dashboard parameters it uses, builtins left out. */
+		public Set<String> parameters() {
+			return parameters;
+		}
+	}
+
+	/**
+	 * The dashboard parameters a cube's source SQL uses — the names inside
+	 * {@code sql 'SELECT … WHERE x >= ${fromDate}'}, which the generator inlines as the cube's FROM
+	 * and which the same binder binds (R1, 18a).
+	 *
+	 * <p>Kept apart from the conditions because one rule differs: a condition with no value is
+	 * dropped whole, while a line of a source SELECT cannot be dropped without changing what the
+	 * cube reads, so a source name with no value is refused instead (R1, 18a).
+	 */
+	public static Set<String> sourceSqlNames(CubeOptions cube) {
+
+		Set<String> names = new LinkedHashSet<>();
+		if (cube == null || cube.getSql() == null)
+			return names;
+
+		Matcher placeholder = NAME_PLACEHOLDER.matcher(cube.getSql());
+		while (placeholder.find()) {
+			String named = placeholder.group(1).trim();
+			if ("CUBE".equals(named) || named.startsWith(BuiltinVariables.PREFIX))
+				continue;
+			names.add(named);
+		}
+		return names;
+	}
+
+	/** A cube's source SQL as a refusal quotes it: one line, and short enough to read. */
+	private static String quoted(String sql) {
+
+		String oneLine = sql.replaceAll("\\s+", " ").trim();
+		return oneLine.length() <= 120 ? oneLine : oneLine.substring(0, 117) + "\u2026";
+	}
+
+	/**
+	 * Every condition of this cube that uses a dashboard parameter, with the names it uses.
+	 *
+	 * <p>Read by the runtime, so that a name no dashboard answers is left with no value and its
+	 * condition is dropped by the empty-value rule, rather than a {@code ${name}} reaching a
+	 * statement that is about to run; and by the dashboard's check, which refuses a name the
+	 * dashboard does not declare.
+	 */
+	@SuppressWarnings("unchecked")
+	public static List<ConditionUse> parameterUses(CubeOptions cube) {
+
+		List<ConditionUse> uses = new ArrayList<>();
+		if (cube == null)
+			return uses;
+
+		for (Map<String, Object> condition : cube.getConditions() == null ? List.<Map<String, Object>>of()
+				: cube.getConditions()) {
+
+			Set<String> names = new LinkedHashSet<>();
+			String written;
+
+			if (condition.containsKey("member")) {
+				List<Object> values = condition.get("values") instanceof List
+						? (List<Object>) condition.get("values")
+						: List.of();
+				for (Object value : values) {
+					Matcher named = NAMED_VALUE.matcher(Objects.toString(value, ""));
+					if (named.matches() && !named.group(1).startsWith(BuiltinVariables.PREFIX))
+						names.add(named.group(1));
+				}
+				written = "condition '" + Objects.toString(condition.get("member"), "") + "', '"
+						+ Objects.toString(condition.get("operator"), "") + "'"
+						+ (values.isEmpty() ? "" : ", " + join(values));
+			} else {
+				written = Objects.toString(condition.get("sql"), "").trim();
+				Matcher placeholder = NAME_PLACEHOLDER.matcher(written);
+				while (placeholder.find()) {
+					String named = placeholder.group(1).trim();
+					if ("CUBE".equals(named) || named.startsWith(BuiltinVariables.PREFIX))
+						continue;
+					names.add(named);
+				}
+			}
+
+			if (!names.isEmpty())
+				uses.add(new ConditionUse(written, "the condition \"" + written + "\"", names));
+		}
+
+		// The cube's source SQL uses names the same way, and the dashboard has to declare them the
+		// same way: one list, so the check and the runtime cannot disagree about where a name is.
+		Set<String> fromSource = sourceSqlNames(cube);
+		if (!fromSource.isEmpty())
+			uses.add(new ConditionUse(cube.getSql(), "the source SQL \"" + quoted(cube.getSql()) + "\"",
+					fromSource));
+
+		return uses;
+	}
+
+	/**
+	 * Everything the author can get wrong about a {@code condition} (R1).
+	 *
+	 * <p>Most of these are errors rather than warnings, because what each one leaves behind is a
+	 * condition that does not hold: a raw condition written with a {@code --} comment comments out
+	 * the rest of the WHERE once it is folded onto one line, a native one naming a member the cube
+	 * has not got cannot be written at all, and a condition naming a dashboard parameter and a
+	 * builtin together is dropped, builtin and all, the moment the viewer clears the parameter.
+	 */
+	private static void conditionWarnings(CubeOptions cube, String cubeName,
+			List<Map<String, Object>> all) {
+
+		List<Map<String, Object>> conditions = cube.getConditions() != null
+				? cube.getConditions()
+				: List.<Map<String, Object>>of();
+
+		for (Map<String, Object> condition : conditions) {
+
+			for (String key : condition.keySet()) {
+				if (CONDITION_KEYS.containsKey(key)) continue;
+				String suggestion = closest(key, CONDITION_KEYS.keySet());
+				all.add(entry(cubeName, "condition", "", key, "warning",
+						"unknown key '" + key + "' in condition"
+								+ (suggestion == null ? "" : " — did you mean '" + suggestion + "'?")));
+			}
+
+			Set<String> parameters = new LinkedHashSet<>();
+			Set<String> builtins = new LinkedHashSet<>();
+			String written;
+
+			if (condition.containsKey("member")) {
+				written = nativeCondition(cube, cubeName, condition, parameters, builtins, all);
+			} else {
+				written = rawCondition(cubeName, condition, parameters, builtins, all);
+			}
+			if (written == null) continue;
+
+			if (!parameters.isEmpty() && !builtins.isEmpty()) {
+				all.add(entry(cubeName, "condition", "", "", "error",
+						bothKindsMessage(cubeName, written, parameters, builtins)));
+			} else if (parameters.isEmpty() && builtins.isEmpty()) {
+				all.add(entry(cubeName, "condition", "", "", "warning",
+						"the condition \"" + written + "\" names no dashboard parameter and no "
+								+ "builtin, so it is a condition on every row this cube ever answers. "
+								+ "A condition like that is an access_filter or a segment."));
+			}
+		}
+	}
+
+	/** The raw form: any SQL a WHERE allows, folded onto one line. Returns it, or null if refused. */
+	private static String rawCondition(String cubeName, Map<String, Object> condition,
+			Set<String> parameters, Set<String> builtins, List<Map<String, Object>> all) {
+
+		String sql = Objects.toString(condition.get("sql"), "").trim();
+		if (sql.isEmpty()) {
+			all.add(entry(cubeName, "condition", "", "sql", "error",
+					"a condition is one SQL condition, or a member, an operator and its values: "
+							+ "write condition '${CUBE}.order_date >= ${fromDate}' or "
+							+ "condition 'OrderDate', 'gte', fromDate."));
+			return null;
+		}
+		String upper = sql.toUpperCase();
+		if (upper.startsWith("WHERE ") || upper.equals("WHERE")) {
+			all.add(entry(cubeName, "condition", "", "sql", "error",
+					"the condition \"" + sql + "\" begins with WHERE. A condition is the condition "
+							+ "itself: the generator writes the WHERE, and ANDs every condition into it."));
+			return null;
+		}
+		if (sql.contains("--")) {
+			all.add(entry(cubeName, "condition", "", "sql", "error",
+					"the condition \"" + sql + "\" holds a -- comment. A condition is read onto one "
+							+ "line, where -- would comment out the rest of the WHERE. Write the "
+							+ "comment as /* … */, or put it above the condition in the cube file."));
+			return null;
+		}
+		for (Map.Entry<String, String> refused : RAW_REFUSED.entrySet()) {
+			if (!upper.contains(refused.getKey())) continue;
+			all.add(entry(cubeName, "condition", "", "sql", "error",
+					"the condition \"" + sql + "\" holds " + refused.getKey() + ": " + refused.getValue()
+							+ "."));
+			return null;
+		}
+		namesUsed(cubeName, sql, sql, parameters, builtins, all);
+		return sql;
+	}
+
+	/** The native form: a member of this cube, an operator, and the values. */
+	private static String nativeCondition(CubeOptions cube, String cubeName,
+			Map<String, Object> condition, Set<String> parameters, Set<String> builtins,
+			List<Map<String, Object>> all) {
+
+		String memberName = Objects.toString(condition.get("member"), "").trim();
+		String operator = Objects.toString(condition.get("operator"), "").trim();
+		List<Object> values = condition.get("values") instanceof List
+				? new ArrayList<>((List<Object>) condition.get("values"))
+				: new ArrayList<>();
+		String written = "condition '" + memberName + "', '" + operator + "'"
+				+ (values.isEmpty() ? "" : ", " + join(values));
+
+		Map<String, Object> measureMember = findMeasure(cube, memberName);
+		Map<String, Object> member = measureMember != null ? measureMember
+				: findDimension(cube, memberName);
+		if (member == null) {
+			Set<String> known = new LinkedHashSet<>();
+			for (Map<String, Object> one : cube.getDimensions() != null ? cube.getDimensions()
+					: List.<Map<String, Object>>of())
+				known.add(Objects.toString(one.get("name"), ""));
+			for (Map<String, Object> one : cube.getMeasures() != null ? cube.getMeasures()
+					: List.<Map<String, Object>>of())
+				known.add(Objects.toString(one.get("name"), ""));
+			String suggestion = closest(memberName, known);
+			all.add(entry(cubeName, "condition", memberName, "member", "error",
+					"the condition " + written + " names '" + memberName + "', which is not a "
+							+ "dimension or a measure of this cube"
+							+ (suggestion == null ? "" : " — did you mean '" + suggestion + "'?") + "."));
+			return null;
+		}
+		String type = measureMember != null ? "number"
+				: Objects.toString(member.get("type"), "").trim().toLowerCase();
+
+		if (!QUERY_OPERATORS.contains(operator)) {
+			String suggestion = closest(operator, new LinkedHashSet<>(QUERY_OPERATORS));
+			all.add(entry(cubeName, "condition", memberName, "operator", "error",
+					"the condition " + written + " asks for '" + operator + "', which is not an "
+							+ "operator" + (suggestion == null ? "" : " — did you mean '" + suggestion
+							+ "'?") + ". It may be one of: " + String.join(", ", QUERY_OPERATORS) + "."));
+			return null;
+		}
+
+		int expected = valuesExpected(operator);
+		if (expected >= 0 && values.size() != expected) {
+			all.add(entry(cubeName, "condition", memberName, "values", "error",
+					"the condition " + written + " gives " + values.size() + " value"
+							+ (values.size() == 1 ? "" : "s") + ", and '" + operator + "' takes "
+							+ expected + "."));
+			return null;
+		}
+		if (expected < 0 && values.isEmpty()) {
+			all.add(entry(cubeName, "condition", memberName, "values", "error",
+					"the condition " + written + " gives no value, and '" + operator + "' takes one "
+							+ "or more."));
+			return null;
+		}
+
+		if ("contains".equals(operator) && !"string".equals(type)) {
+			all.add(entry(cubeName, "condition", memberName, "operator", "error",
+					"the condition " + written + " asks for 'contains' on '" + memberName
+							+ "', which is " + (type.isEmpty() ? "not text" : "of type " + type)
+							+ ". 'contains' looks inside text."));
+			return null;
+		}
+		if ("boolean".equals(type) && List.of("gt", "gte", "lt", "lte", "between", "contains")
+				.contains(operator)) {
+			all.add(entry(cubeName, "condition", memberName, "operator", "error",
+					"the condition " + written + " asks for '" + operator + "' on '" + memberName
+							+ "', which is true or false. Use 'equals' or 'notEquals'."));
+			return null;
+		}
+
+		for (Object value : values) {
+			Matcher named = NAMED_VALUE.matcher(Objects.toString(value, ""));
+			if (!named.matches()) continue;
+			if ("contains".equals(operator)) {
+				all.add(entry(cubeName, "condition", memberName, "values", "error",
+						"the condition " + written + " asks for 'contains' with the value '"
+								+ named.group(1) + "'. 'contains' looks for a value inside the text, "
+								+ "and what is looked for is written here, not filled in by the "
+								+ "viewer: give it the text, or ask for 'equals'."));
+				return null;
+			}
+			name(cubeName, written, named.group(1), parameters, builtins, all);
+		}
+		return written;
+	}
+
+	/** Every {@code ${name}} a raw condition uses, sorted into the two kinds. */
+	private static void namesUsed(String cubeName, String sql, String written,
+			Set<String> parameters, Set<String> builtins, List<Map<String, Object>> all) {
+
+		Matcher placeholder = NAME_PLACEHOLDER.matcher(sql);
+		while (placeholder.find()) {
+			String named = placeholder.group(1).trim();
+			if ("CUBE".equals(named)) continue;
+			name(cubeName, written, named, parameters, builtins, all);
+		}
+	}
+
+	/** One name: a builtin the server fills, or a name the dashboard is expected to declare. */
+	private static void name(String cubeName, String written, String named,
+			Set<String> parameters, Set<String> builtins, List<Map<String, Object>> all) {
+
+		if (named.startsWith(BuiltinVariables.PREFIX)) {
+			// Reserved is not the same as filled in: every dp_ name belongs to the server, and only
+			// the ones it actually has a value for can be written here. A misspelt one would bind to
+			// nothing, match no row, and show an empty widget with nothing said anywhere.
+			if (com.flowkraft.embed.UserVariables.isKnownBuiltin(named)) {
+				builtins.add(named);
+				return;
+			}
+			all.add(entry(cubeName, "condition", "", "", "error",
+					"the condition \"" + written + "\" names '${" + named + "}'. Names beginning with '"
+							+ BuiltinVariables.PREFIX + "' are the server's own, and there is no builtin "
+							+ "of that name."));
+			return;
+		}
+		parameters.add(named);
+	}
+
+	/** The values of a native condition, as the cube file writes them. */
+	private static String join(List<Object> values) {
+		List<String> written = new ArrayList<>();
+		for (Object value : values) {
+			String text = Objects.toString(value, "");
+			Matcher named = NAMED_VALUE.matcher(text);
+			written.add(named.matches() ? named.group(1)
+					: value instanceof Number || value instanceof Boolean ? text : "'" + text + "'");
+		}
+		return String.join(", ", written);
+	}
+
+	/**
+	 * A condition naming a dashboard parameter and a builtin together, written for the author of
+	 * the cube, who may never have read the design: what is wrong, why it is not allowed, and the
+	 * four ways to write it instead.
+	 */
+	private static String bothKindsMessage(String cubeName, String written, Set<String> parameters,
+			Set<String> builtins) {
+
+		String p = String.join(", ", parameters);
+		String dp = String.join(", ", builtins);
+		String cube = cubeName == null || cubeName.isEmpty() ? "this file's cube" : "'" + cubeName + "'";
+
+		return "Cube " + cube + ": the condition \"" + written + "\" uses the dashboard parameter "
+				+ p + " and the builtin " + dp + " together. A condition may use dashboard "
+				+ "parameters or builtins, but not both.\n"
+				+ "\n"
+				+ "Why this is not allowed: a condition that uses a dashboard parameter is left out, "
+				+ "as a whole, when the viewer leaves that parameter empty or picks All. A builtin "
+				+ "(" + BuiltinVariables.PREFIX + "...) usually limits the rows to the person "
+				+ "looking: who they are, their team, their tenant. In the same condition, that "
+				+ "limit would be left out together with the parameter, and the viewer would see "
+				+ "rows the condition was written to hide - with no error and nothing in the log. "
+				+ "Kept apart, the builtin part is always applied and the parameter part only when "
+				+ "it has a value.\n"
+				+ "\n"
+				+ "Do this instead (the rows are the same):\n"
+				+ "1. Parts joined by AND: write two conditions, one with " + p + " and one with "
+				+ dp + ". Conditions are ANDed, so the rows are exactly the same when " + p
+				+ " has a value; when " + p + " is empty only its own part is left out.\n"
+				+ "2. The builtin part decides who may see which rows (owner, team, tenant): move it "
+				+ "to the cube's access_filter. It is applied to every query, total, drill-through "
+				+ "and filter list, and nothing can take it out.\n"
+				+ "3. The builtin only fills in a value, e.g. \"from fromDate until today\": declare "
+				+ "that value as a dashboard parameter with a default (toDate, default today) and "
+				+ "write condition 'OrderDate', 'between', fromDate, toDate. The viewer sees the "
+				+ "date and can change it, and the period still moves with time_shift.\n"
+				+ "4. Parts joined by OR (e.g. owner = " + BuiltinVariables.PREFIX + "user_id OR "
+				+ "region = region): two conditions would be ANDed and would change the meaning, so "
+				+ "there is no split. If the builtin part limits who may see rows, it belongs in "
+				+ "access_filter (2) and the viewer's choice in its own condition. Rows that match "
+				+ "either part, one of them chosen by the viewer, are not supported.";
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
 	// The file's warnings (design part 3)
 	// ═══════════════════════════════════════════════════════════════════════════
 
@@ -707,6 +1170,7 @@ public final class CubeRules {
 		block(cube, file, cubeName, "join", cube.getJoins(), JOIN_KEYS, all);
 		block(cube, file, cubeName, "segment", cube.getSegments(), SEGMENT_KEYS, all);
 		block(cube, file, cubeName, "hierarchy", cube.getHierarchies(), HIERARCHY_KEYS, all);
+		conditionWarnings(cube, cubeName, all);
 
 		// The key belongs to whichever dimension declared it first; the rest are told they are not it.
 		boolean keySeen = false;

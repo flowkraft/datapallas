@@ -80,6 +80,17 @@
     "showHints": true,
     "saveView": false
   },
+  "customer-statement": {
+    "cubeId": "customer-statement",
+    "cubeName": "customer-statement",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "initial": { "dimensions": ["Status"], "measures": ["Invoices", "Invoiced", "Paid", "BalanceDue"] },
+    "display": ["table", "chart"],
+    "showSql": true,
+    "showCode": true,
+    "showHints": true,
+    "saveView": false
+  },
   "northwind-customers": {
     "cubeId": "northwind-customers",
     "cubeName": null,

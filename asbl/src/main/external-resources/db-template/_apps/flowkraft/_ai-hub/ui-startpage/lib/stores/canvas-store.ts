@@ -57,6 +57,26 @@ export interface NumericBucket {
  *  selection the dashboard opens with. A dimension carries its grain in its own name
  *  (`OrderDate.month`); `granularities` says the same thing the way the backend's map form does.
  */
+/** A dashboard parameter, bound to a member of the cube by the author (R1).
+ *
+ *  A cube declares no parameters: the dashboard declares them once, in its
+ *  `{reportId}-report-parameters-spec.groovy`, and the name is the whole link. What the author
+ *  says here is which member the dashboard's `country` narrows, and how - the cube counterpart of
+ *  the Filter step's bind chip. It is kept beside the ticks rather than written into them, so the
+ *  question the tree asks and the dashboard's own filter stay two separate things: the first is
+ *  the author's, the second is the viewer's, and only the export puts them together.
+ */
+export interface CubeParamBinding {
+  /** The dashboard parameter's id, as its spec declares it: `country`. */
+  param: string;
+  /** The parameter holding the upper end, when the operator is `between` (F8's two boxes). */
+  paramTo?: string;
+  /** The cube member it narrows: a dimension, or a measure - which is a HAVING. */
+  member: string;
+  /** How, as the Filter step's chip names it (`in`, `equals`, …). Absent means `in`. */
+  operator?: string;
+}
+
 export interface CubeSelection {
   dimensions: string[];
   measures: string[];
@@ -65,6 +85,9 @@ export interface CubeSelection {
   granularities: Record<string, string>;
   order: { member: string; dir: string }[];
   limit: number | null;
+  /** The dashboard parameters the author bound to members of this cube (R1). Absent on every
+   *  canvas saved before this existed, which therefore generates the SQL it did. */
+  paramBindings?: CubeParamBinding[];
 }
 
 export interface VisualQuery {

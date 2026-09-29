@@ -105,34 +105,46 @@
         "Billing",
         594,
         159,
-        26.77
+        0.2677
       ],
       [
         "Onboarding",
         496,
         131,
-        26.41
+        0.2641
       ],
       [
         "Tier 1",
         670,
         168,
-        25.07
+        0.2507
       ],
       [
         "Tier 2",
         1199,
         500,
-        41.7
+        0.417
       ],
       [
         null,
         41,
         40,
-        97.56
+        0.9756
       ]
     ],
-    "source": "SELECT ag.team, COUNT(*), COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END),\n       100.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0)\nFROM cube_demo.support_tickets t LEFT JOIN cube_demo.support_agents ag ON ag.agent_id = t.agent_id\nGROUP BY 1 ORDER BY 1"
+    "source": "SELECT ag.team, COUNT(*), COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END),\n       ROUND(1.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0), 4)\nFROM cube_demo.support_tickets t\nLEFT JOIN cube_demo.support_agents ag ON ag.agent_id = t.agent_id\nGROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "breach-by-team/team",
+    "rows": [
+      [
+        "Tier 2",
+        1199,
+        500,
+        0.417
+      ]
+    ],
+    "source": "SELECT ag.team, COUNT(*), COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END),\n       ROUND(1.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0), 4)\nFROM cube_demo.support_tickets t\nLEFT JOIN cube_demo.support_agents ag ON ag.agent_id = t.agent_id\nWHERE ag.team = 'Tier 2' GROUP BY 1"
   },
   {
     "hint": "breach-by-category",
@@ -140,34 +152,299 @@
       [
         "Billing",
         566,
-        26.68
+        0.2668
       ],
       [
         "Bug",
         688,
-        35.76
+        0.3576
       ],
       [
         "Feature Request",
         388,
-        27.06
+        0.2706
       ],
       [
         "How-To",
         655,
-        27.33
+        0.2733
       ],
       [
         "Onboarding",
         431,
-        25.75
+        0.2575
       ],
       [
         "Outage",
         272,
-        75.74
+        0.7574
       ]
     ],
-    "source": "SELECT t.category, COUNT(*),\n       100.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0)\nFROM cube_demo.support_tickets t GROUP BY 1 ORDER BY 1"
+    "source": "SELECT t.category, COUNT(*),\n       ROUND(1.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0), 4)\nFROM cube_demo.support_tickets t GROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "time-by-priority",
+    "rows": [
+      [
+        "High",
+        685,
+        11.46,
+        90.92
+      ],
+      [
+        "Low",
+        805,
+        69.93,
+        88.92
+      ],
+      [
+        "Normal",
+        1172,
+        38.32,
+        95.54
+      ],
+      [
+        "Urgent",
+        338,
+        4.52,
+        99.6
+      ]
+    ],
+    "source": "SELECT t.priority, COUNT(*), ROUND(AVG(t.resolution_hours), 2),\n       ROUND(AVG(t.first_response_minutes), 2)\nFROM cube_demo.support_tickets t GROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "support-vs-last-year",
+    "rows": [
+      [
+        "High",
+        314,
+        254,
+        112,
+        66
+      ],
+      [
+        "Low",
+        364,
+        308,
+        116,
+        92
+      ],
+      [
+        "Normal",
+        537,
+        448,
+        191,
+        132
+      ],
+      [
+        "Urgent",
+        179,
+        113,
+        85,
+        42
+      ]
+    ],
+    "source": "SELECT t.priority AS k,\n       COUNT(CASE WHEN t.opened_date >= DATE '2026-01-01' AND t.opened_date < DATE '2026-10-01' THEN 1 END) AS tickets,\n       COUNT(CASE WHEN t.opened_date >= DATE '2025-01-01' AND t.opened_date < DATE '2025-10-01' THEN 1 END) AS tickets_ly,\n       SUM(CASE WHEN t.opened_date >= DATE '2026-01-01' AND t.opened_date < DATE '2026-10-01' THEN t.sla_breached END) AS breached,\n       SUM(CASE WHEN t.opened_date >= DATE '2025-01-01' AND t.opened_date < DATE '2025-10-01' THEN t.sla_breached END) AS breached_ly\nFROM cube_demo.support_tickets t\nGROUP BY 1\nHAVING tickets > 0\nORDER BY 1"
+  },
+  {
+    "hint": "support-vs-last-year/by-month",
+    "rows": [
+      [
+        "2026-01-01",
+        141,
+        79,
+        40,
+        16
+      ],
+      [
+        "2026-02-01",
+        138,
+        119,
+        52,
+        31
+      ],
+      [
+        "2026-03-01",
+        155,
+        128,
+        46,
+        36
+      ],
+      [
+        "2026-04-01",
+        144,
+        118,
+        47,
+        34
+      ],
+      [
+        "2026-05-01",
+        140,
+        137,
+        47,
+        51
+      ],
+      [
+        "2026-06-01",
+        179,
+        131,
+        48,
+        40
+      ],
+      [
+        "2026-07-01",
+        158,
+        137,
+        49,
+        44
+      ],
+      [
+        "2026-08-01",
+        178,
+        136,
+        73,
+        42
+      ],
+      [
+        "2026-09-01",
+        161,
+        138,
+        102,
+        38
+      ]
+    ],
+    "source": "WITH m AS (\n  SELECT DATE_TRUNC('month', t.opened_date) AS mth,\n         COUNT(*) AS tickets, SUM(t.sla_breached) AS breached\n  FROM cube_demo.support_tickets t\n  GROUP BY 1)\nSELECT strftime(this.mth, '%Y-%m-01') AS month,\n       this.tickets, ly.tickets AS tickets_ly,\n       this.breached, ly.breached AS breached_ly\nFROM m this LEFT JOIN m ly ON ly.mth = this.mth - INTERVAL 1 YEAR\nWHERE this.mth >= DATE '2026-01-01' AND this.mth < DATE '2026-10-01'\nORDER BY 1"
+  },
+  {
+    "hint": "my-teams-plate",
+    "rows": [
+      [
+        "High",
+        685,
+        219,
+        0.3197
+      ],
+      [
+        "Low",
+        805,
+        250,
+        0.3106
+      ],
+      [
+        "Normal",
+        1172,
+        380,
+        0.3242
+      ],
+      [
+        "Urgent",
+        338,
+        149,
+        0.4408
+      ]
+    ],
+    "source": "SELECT t.priority, COUNT(*), COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END),\n       ROUND(1.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0), 4)\nFROM cube_demo.support_tickets t\nLEFT JOIN cube_demo.support_agents ag ON ag.agent_id = t.agent_id\nGROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "my-teams-plate/by-agent",
+    "rows": [
+      [
+        "Bruno Khan",
+        173,
+        40,
+        0.2312
+      ],
+      [
+        "Chiara Muller",
+        307,
+        127,
+        0.4137
+      ],
+      [
+        "David Andersson",
+        167,
+        45,
+        0.2695
+      ],
+      [
+        "Fatima Vargas",
+        311,
+        132,
+        0.4244
+      ],
+      [
+        "Felix Rossi",
+        136,
+        35,
+        0.2574
+      ],
+      [
+        "Felix Silva",
+        301,
+        128,
+        0.4252
+      ],
+      [
+        "Grace Lindqvist",
+        136,
+        32,
+        0.2353
+      ],
+      [
+        "Henrik Kim",
+        132,
+        37,
+        0.2803
+      ],
+      [
+        "Henrik Silva",
+        185,
+        48,
+        0.2595
+      ],
+      [
+        "Ines Costa",
+        122,
+        34,
+        0.2787
+      ],
+      [
+        "Jonas Berg",
+        210,
+        63,
+        0.3
+      ],
+      [
+        "Jonas Nowak",
+        144,
+        30,
+        0.2083
+      ],
+      [
+        "Liam O'Connor",
+        156,
+        46,
+        0.2949
+      ],
+      [
+        "Lukas O'Connor",
+        199,
+        48,
+        0.2412
+      ],
+      [
+        "Milan Muller",
+        280,
+        113,
+        0.4036
+      ],
+      [
+        null,
+        41,
+        40,
+        0.9756
+      ]
+    ],
+    "source": "SELECT ag.name, COUNT(*), COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END),\n       ROUND(1.0 * COUNT(CASE WHEN t.sla_breached = 1 THEN 1 END) / NULLIF(COUNT(*), 0), 4)\nFROM cube_demo.support_tickets t\nLEFT JOIN cube_demo.support_agents ag ON ag.agent_id = t.agent_id\nGROUP BY 1 ORDER BY 1"
   }
 ]

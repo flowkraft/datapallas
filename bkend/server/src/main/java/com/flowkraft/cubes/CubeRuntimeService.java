@@ -1,12 +1,16 @@
 package com.flowkraft.cubes;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +27,8 @@ import com.flowkraft.iam.UserSettingsRepository;
 import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.queries.ConnectionFactory;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
+import com.flowkraft.reporting.services.ReportingService;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
 import com.sourcekraft.documentburster.common.db.DatabaseConnectionManager;
 import com.sourcekraft.documentburster.common.db.SqlExecutor;
 
@@ -85,7 +91,11 @@ public class CubeRuntimeService {
 	 * one spelling is enough.
 	 */
 	private static final List<String> QUERY_KEYS = List.of(
-			"dimensions", "measures", "segments", "granularities", "filters", "order", "limit", "totals");
+			"dimensions", "measures", "segments", "granularities", "filters", "order", "limit", "totals",
+			// What the viewer answered the dashboard's parameters with (R1): a map of id to value,
+			// not member names like the rest, and checked against the dashboard's own declarations
+			// before any SQL is written (DashboardParameters).
+			"params");
 
 	/**
 	 * Keys that would move the question off the widget's own cube, connection or database, or hand
@@ -103,6 +113,15 @@ public class CubeRuntimeService {
 
 	@Autowired
 	private LimitsSandbox limitsSandbox;
+
+	/**
+	 * Only for the options of a card's parameters: the one resolver that turns an options SELECT
+	 * into the values a picker shows. Optional, so a test that wires this service by hand and asks
+	 * for a cube whose parameters are plain values needs nothing more; a card whose select is a
+	 * SELECT is served by the application, where it is always there.
+	 */
+	@Autowired(required = false)
+	private ReportingService reportingService;
 
 	/**
 	 * Where a viewer's own view is kept (W5). Optional so that the cube tests, which are about the
@@ -150,6 +169,82 @@ public class CubeRuntimeService {
 	/** The test seam of {@link Database}; nothing in the product calls it. */
 	void useDatabase(Database database) {
 		this.database = database;
+	}
+
+	/**
+	 * Where the data's today comes from, for the parameter defaults and hints a sample writes
+	 * relative to it (R7). Read from {@code cube_demo.demo_info} on the widget's own connection, and
+	 * only when something actually names it.
+	 */
+	@Autowired(required = false)
+	private CubeDataToday dataToday = new CubeDataToday();
+
+	/** The test seam of {@link CubeDataToday}: a pinned day, so the checks' numbers stay true. */
+	void useDataToday(CubeDataToday dataToday) {
+		this.dataToday = dataToday;
+	}
+
+	/**
+	 * The dashboard's parameter values for this request: the viewer's answers over the dashboard's
+	 * defaults, relative dates resolved, every one checked (R1).
+	 *
+	 * <p>Asked of the request the viewer sent, and not of the derived request a totals or a drill
+	 * query is built from, so the number under a table and the rows behind a cell are of the same
+	 * period as the table itself.
+	 */
+	private Map<String, Object> parameterValues(List<ReportParameter> declared, CubeOptions cube,
+			Map<String, Object> asked, String connectionId) {
+		try {
+			return DashboardParameters.values(declared, cube, asked, () -> dataToday.of(connectionId));
+		} catch (IllegalArgumentException refused) {
+			throw badRequest(refused);
+		}
+	}
+
+	/** The same values, for a caller that has the parameters map rather than a whole request. */
+	private Map<String, Object> parameterValuesOf(List<ReportParameter> declared, CubeOptions cube,
+			Map<String, Object> params, String connectionId) {
+		return parameterValues(declared, cube,
+				Map.of(DashboardParameters.REQUEST_KEY, params != null ? params : Map.of()), connectionId);
+	}
+
+	/**
+	 * The dashboard's filter bar, on this widget's own question (R8).
+	 *
+	 * <p>The bindings are the widget entry's, the values are the viewer's, and the result is an
+	 * ordinary filter added to the ones the viewer ticked - ANDed with them, with the cube's
+	 * {@code condition}s and with its {@code access_filter}, never instead of any of them. A
+	 * parameter answered All adds nothing, so the widget then answers every row it would have
+	 * anyway.
+	 *
+	 * <p>The names are checked again afterwards, because a binding names a member the same way a
+	 * request does and an entry pointing at a member the cube no longer has must say so rather
+	 * than quietly filter nothing.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void applyBindings(CubeOptions cube, Map<String, Object> asked,
+			List<CubeParamBindings.Binding> bindings, Map<String, Object> parameters) {
+
+		List<Map<String, Object>> bound = boundFilters(bindings, parameters);
+		if (bound.isEmpty())
+			return;
+
+		List<Object> filters = new ArrayList<>();
+		if (asked.get("filters") instanceof List)
+			filters.addAll((List<Object>) asked.get("filters"));
+		filters.addAll(bound);
+		asked.put("filters", filters);
+		assertEveryNameIsOffered(cube, asked);
+	}
+
+	/** The filters a set of bindings is, with a bad binding answered as a bad request. */
+	private static List<Map<String, Object>> boundFilters(List<CubeParamBindings.Binding> bindings,
+			Map<String, Object> parameters) {
+		try {
+			return CubeParamBindings.filtersFor(bindings, parameters);
+		} catch (IllegalArgumentException refused) {
+			throw badRequest(refused);
+		}
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
@@ -220,8 +315,59 @@ public class CubeRuntimeService {
 		}
 		meta.put("hierarchies", hierarchies);
 
+		// The values the viewer picks before the question is asked (R1). Absent, not empty, on a cube
+		// that asks for none: a card then draws no parameter form at all. Each default is already a
+		// day where the cube wrote one relative to the data's today (R7), so the form opens on the
+		// period the card's text talks about.
+		// Of the page's declarations, the ones this card is about: what its own cube asks for and
+		// what this widget is bound by. A page that declares a customer for one card does not make
+		// every other card ask for a customer.
+		Set<String> boundNames = new LinkedHashSet<>();
+		for (CubeParamBindings.Binding binding : widget.paramBindings()) {
+			boundNames.add(binding.param());
+			if (binding.paramTo() != null)
+				boundNames.add(binding.paramTo());
+		}
+		List<ReportParameter> parameters = DashboardParameters.shown(
+				DashboardParameters.askedBy(declaredFor(reportId, cube), cube, boundNames),
+				() -> dataToday.of(widget.connectionId()));
+		if (!parameters.isEmpty()) {
+			// A select whose options are a SELECT is a list of values, not a sentence of SQL, by
+			// the time it reaches a browser - and the list is read on this cube's own connection,
+			// because that is where the rows the card is about live. The same resolver the
+			// dashboard's own parameter bar goes through (/config), so a card and a page cannot
+			// end up offering two different lists of the same thing.
+			if (reportingService != null)
+				reportingService.resolveParameterSqlOptions(parameters, widget.connectionId());
+			meta.put("parameters", parameters);
+		}
+
 		// What the numbers are in, for the formatter: one cube, one currency (W4.2).
 		meta.put("currency", cube.getCurrency());
+		// Which of those parameters filter this widget, and on which member (R8): the renderer
+		// draws one fixed chip per binding, so a viewer reading "Germany" on the filter bar can see
+		// that this cube is on Germany too. The values are not here - they are the viewer's, and
+		// they travel with the question.
+		if (!widget.paramBindings().isEmpty()) {
+			List<Map<String, Object>> bound = new ArrayList<>();
+			for (CubeParamBindings.Binding binding : widget.paramBindings()) {
+				// A binding the server answers (R9) is not one of them: there is no filter bar
+				// entry behind it and no value to read off, so a chip for it would say a member's
+				// name and nothing else. The filter is applied all the same - it is simply not a
+				// choice anybody made on this page.
+				if (CubeParamBindings.isServerSet(binding.param()))
+					continue;
+				Map<String, Object> shownBinding = new LinkedHashMap<>();
+				shownBinding.put("param", binding.param());
+				if (binding.paramTo() != null)
+					shownBinding.put("paramTo", binding.paramTo());
+				shownBinding.put("member", binding.member());
+				shownBinding.put("operator", binding.operator());
+				bound.add(shownBinding);
+			}
+			if (!bound.isEmpty())
+				meta.put("paramBindings", bound);
+		}
 		meta.put("initial", widget.initial());
 		// Always the list of shapes the author offers, even when they offered one: the switch a
 		// viewer is offered is drawn from it (design part 8, the Table | Chart switch).
@@ -240,8 +386,10 @@ public class CubeRuntimeService {
 			meta.put("warnings", loaded.warnings());
 		}
 		if (widget.showHints()) {
+			// The hints' own dates are relative too (R7), and are resolved here, once, so that Show Me
+			// asks the question the hint means on the data as it was seeded on this machine.
 			meta.put("hints", CubeHints.of(cubesService.filesOf(widget.cubeId()).getHintsFile(),
-					loaded.cubeName()));
+					loaded.cubeName(), () -> dataToday.of(widget.connectionId())));
 		}
 
 		// W5: where this viewer's own view is kept, and — when it is kept here — the view itself,
@@ -295,7 +443,8 @@ public class CubeRuntimeService {
 		Widget widget = CubeWidgets.of(reportId, componentId);
 		Loaded loaded = loaded(widget);
 		assertNoNameIsInError(loaded.errors(), asked(request));
-		Map<String, Object> answer = rows(loaded.cube(), widget.connectionId(), request, userVariables);
+		Map<String, Object> answer = rows(loaded.cube(), widget.connectionId(), request, userVariables,
+				false, declaredFor(reportId, loaded.cube()), widget.paramBindings());
 		log.debug("Live cube '{}' of report '{}' answered {} rows{}", componentId, reportId,
 				((List<?>) answer.get("rows")).size(),
 				Boolean.TRUE.equals(answer.get("truncated")) ? " (cut)" : "");
@@ -315,7 +464,7 @@ public class CubeRuntimeService {
 	 */
 	public Map<String, Object> rows(CubeOptions cube, String connectionId, Map<String, Object> request,
 			Map<String, String> userVariables) throws Exception {
-		return rows(cube, connectionId, request, userVariables, false);
+		return rows(cube, connectionId, request, userVariables, false, List.of());
 	}
 
 	/**
@@ -325,6 +474,28 @@ public class CubeRuntimeService {
 	 */
 	public Map<String, Object> rows(CubeOptions cube, String connectionId, Map<String, Object> request,
 			Map<String, String> userVariables, boolean withSql) throws Exception {
+		return rows(cube, connectionId, request, userVariables, withSql, List.of());
+	}
+
+	/**
+	 * The same rows again, against the parameters one dashboard declares (R1). The author's own
+	 * endpoint declares none — there is no dashboard when a cube is being written — and a name its
+	 * conditions use is then simply left with no value, which drops that condition.
+	 */
+	public Map<String, Object> rows(CubeOptions cube, String connectionId, Map<String, Object> request,
+			Map<String, String> userVariables, boolean withSql, List<ReportParameter> declared)
+			throws Exception {
+		return rows(cube, connectionId, request, userVariables, withSql, declared, List.of());
+	}
+
+	/**
+	 * The same rows again, with the dashboard's filter bar on them (R8). The bindings are the
+	 * widget entry's: {@link #asked} keeps no {@code paramBindings} key, so a request that carries
+	 * one is answered exactly as one that does not.
+	 */
+	public Map<String, Object> rows(CubeOptions cube, String connectionId, Map<String, Object> request,
+			Map<String, String> userVariables, boolean withSql, List<ReportParameter> declared,
+			List<CubeParamBindings.Binding> bindings) throws Exception {
 
 		Map<String, Object> asked = asked(request);
 		assertEveryNameIsOffered(cube, asked);
@@ -337,8 +508,13 @@ public class CubeRuntimeService {
 		// The values of whoever is asking go in here and nowhere earlier: the request said which
 		// question, the session says whose answer. A dp_ name in the request body is not one of
 		// QUERY_KEYS and never reached this far, so there is nothing of the viewer's to overwrite.
+		Map<String, Object> parameters = parameterValues(declared, cube, asked, connectionId);
+		// And what those values filter, on this widget (R8) - before the SQL is written, so the
+		// totals under the table and the rows in it are of the same country.
+		applyBindings(cube, asked, bindings, parameters);
 		CubeQuery query = CubeVariableBinding.bound(
-				generated(cube, asked, database.vendorOf(connectionId)), userVariables);
+				generated(cube, asked, database.vendorOf(connectionId)), userVariables,
+				parameters, DashboardParameters.types(declared));
 		List<Map<String, Object>> rows = database.read(connectionId, query.getSql(), query.getParams(),
 				limit + 1);
 
@@ -351,7 +527,7 @@ public class CubeRuntimeService {
 		}
 
 		if (Boolean.TRUE.equals(asked.get("totals"))) {
-			answer.put("totals", totals(cube, asked, connectionId, userVariables));
+			answer.put("totals", totals(cube, asked, connectionId, userVariables, declared));
 		}
 		return answer;
 	}
@@ -372,7 +548,7 @@ public class CubeRuntimeService {
 	 * which earlier period that is.
 	 */
 	private Map<String, Object> totals(CubeOptions cube, Map<String, Object> asked, String connectionId,
-			Map<String, String> userVariables) throws Exception {
+			Map<String, String> userVariables, List<ReportParameter> declared) throws Exception {
 
 		Map<String, Object> totals = new LinkedHashMap<>();
 
@@ -407,7 +583,8 @@ public class CubeRuntimeService {
 		request.remove("totals");
 
 		CubeQuery query = CubeVariableBinding.bound(
-				generated(cube, request, database.vendorOf(connectionId)), userVariables);
+				generated(cube, request, database.vendorOf(connectionId)), userVariables,
+				parameterValues(declared, cube, asked, connectionId), DashboardParameters.types(declared));
 		List<Map<String, Object>> rows = database.read(connectionId, query.getSql(), query.getParams(), 2);
 
 		Map<String, Object> only = rows.isEmpty() ? Map.of() : rows.get(0);
@@ -474,7 +651,9 @@ public class CubeRuntimeService {
 			Map<String, String> userVariables) throws Exception {
 
 		Widget widget = CubeWidgets.of(reportId, componentId);
-		return drillOn(cubeOf(widget), widget.connectionId(), body, userVariables);
+		CubeOptions cube = cubeOf(widget);
+		return drillOn(cube, widget.connectionId(), body, userVariables, declaredFor(reportId, cube),
+				widget.paramBindings());
 	}
 
 	/**
@@ -484,6 +663,23 @@ public class CubeRuntimeService {
 	 */
 	public Map<String, Object> drillOn(CubeOptions cube, String connectionId, Map<String, Object> body,
 			Map<String, String> userVariables) throws Exception {
+		return drillOn(cube, connectionId, body, userVariables, List.of());
+	}
+
+	/** The same drill, against the parameters one dashboard declares (R1). */
+	public Map<String, Object> drillOn(CubeOptions cube, String connectionId, Map<String, Object> body,
+			Map<String, String> userVariables, List<ReportParameter> declared) throws Exception {
+		return drillOn(cube, connectionId, body, userVariables, declared, List.of());
+	}
+
+	/**
+	 * The same drill with the dashboard's filter bar on it (R8): the rows behind a number are the
+	 * rows that number was made of, so the binding is applied to the query the cell came out of
+	 * and not to the drill afterwards.
+	 */
+	public Map<String, Object> drillOn(CubeOptions cube, String connectionId, Map<String, Object> body,
+			Map<String, String> userVariables, List<ReportParameter> declared,
+			List<CubeParamBindings.Binding> bindings) throws Exception {
 
 		Map<String, Object> drill = body != null ? body : Map.of();
 		// The query the cell came out of, by the same rules as any other request, plus the two keys
@@ -493,6 +689,9 @@ public class CubeRuntimeService {
 		sent.put("cell", drill.get("cell"));
 		assertEveryNameIsOffered(cube, sent);
 		assertOffered(cube, "measure", Objects.toString(sent.get("measure"), ""));
+
+		Map<String, Object> parameters = parameterValues(declared, cube, sent, connectionId);
+		applyBindings(cube, sent, bindings, parameters);
 
 		Map<String, Object> request;
 		try {
@@ -504,7 +703,8 @@ public class CubeRuntimeService {
 		request.put("limit", CubeDrill.LIMIT + 1);
 
 		CubeQuery query = CubeVariableBinding.bound(
-				generated(cube, request, database.vendorOf(connectionId)), userVariables);
+				generated(cube, request, database.vendorOf(connectionId)), userVariables,
+				parameters, DashboardParameters.types(declared));
 		List<Map<String, Object>> rows = database.read(connectionId, query.getSql(), query.getParams(),
 				CubeDrill.LIMIT + 1);
 
@@ -537,13 +737,35 @@ public class CubeRuntimeService {
 	 */
 	public Map<String, Object> filterOptions(String reportId, String componentId, String dimension, String search,
 			Map<String, String> userVariables) throws Exception {
+		return filterOptions(reportId, componentId, dimension, search, userVariables, Map.of());
+	}
+
+	/**
+	 * The same list for a cube with parameters (R1): the values that exist in the period the viewer
+	 * has picked, so the countries offered for a filter are the countries that bought in the chosen
+	 * quarter and not every country the table has ever held.
+	 *
+	 * @param params the viewer's answers to the dashboard's parameters, or empty for its defaults
+	 */
+	public Map<String, Object> filterOptions(String reportId, String componentId, String dimension, String search,
+			Map<String, String> userVariables, Map<String, Object> params) throws Exception {
 
 		Widget widget = CubeWidgets.of(reportId, componentId);
 		CubeOptions cube = cubeOf(widget);
 
 		assertOffered(cube, "dimension", Objects.toString(dimension, ""));
+		// The values offered are the values of the dashboard the viewer is looking at (R8): with
+		// Germany picked, the Category list holds the categories Germany bought, not every
+		// category the shop has ever sold.
+		List<ReportParameter> declared = declaredFor(reportId, cube);
+		List<Map<String, Object>> bound = boundFilters(widget.paramBindings(),
+				parameterValuesOf(declared, cube, params, widget.connectionId()));
+		for (Map<String, Object> filter : bound) {
+			assertMemberOffered(cube, Objects.toString(filter.get("member"), ""));
+		}
 		try {
-			return cubeFilterOptions.options(cube, dimension, widget.connectionId(), search, userVariables);
+			return cubeFilterOptions.options(cube, dimension, widget.connectionId(), search, userVariables,
+					params, declared, bound);
 		} catch (IllegalArgumentException badRequest) {
 			throw badRequest(badRequest);
 		}
@@ -849,6 +1071,22 @@ public class CubeRuntimeService {
 	 * <p>The sandbox check runs first, as it does on every endpoint of this server that compiles a
 	 * DSL — the file is about to be compiled and run for this caller, whoever saved it.
 	 */
+	/**
+	 * The dashboard's declarations, with this cube's conditions checked against them (R1).
+	 *
+	 * <p>Every endpoint that names a report goes through here, so a cube file edited after the
+	 * dashboard was published - a condition given a name the dashboard never declared - says what
+	 * is missing instead of quietly dropping that condition and answering more rows than the
+	 * cube's author wrote it to answer.
+	 */
+	private List<ReportParameter> declaredFor(String reportId, CubeOptions cube) {
+		try {
+			return DashboardParameters.declared(reportId, cube);
+		} catch (IllegalArgumentException undeclared) {
+			throw badRequest(undeclared);
+		}
+	}
+
 	private CubeOptions cubeOf(Widget widget) throws Exception {
 		return loaded(widget).cube();
 	}
@@ -932,11 +1170,33 @@ public class CubeRuntimeService {
 
 		String wanted = vendor.isEmpty() ? database.vendorOf(widget.connectionId()) : CubeSqlDialect.key(vendor);
 
+		CubeOptions cube = loaded.cube();
+		// The SQL a viewer reads is the SQL their question is answered by, the dashboard's filter
+		// bar included (R8) - otherwise View SQL would show a statement that returns other numbers
+		// than the ones on the screen.
+		List<ReportParameter> declaredHere = declaredFor(reportId, cube);
+		applyBindings(cube, asked, widget.paramBindings(),
+				parameterValues(declaredHere, cube, asked, widget.connectionId()));
+		CubeQuery generated = generated(cube, asked, wanted);
+
 		Map<String, Object> answer = new LinkedHashMap<>();
 		answer.put("dialect", wanted);
 		// The inline form, which is what a person reads: the bound form is a statement plus a map
-		// of :cf… values, and nobody learns anything from reading those two apart.
-		answer.put("sql", generated(loaded.cube(), asked, wanted).getSql());
+		// of :cf… values, and nobody learns anything from reading those two apart. Every value the
+		// viewer picked is a literal here - a filter's, a segment's and a parameter's alike - so the
+		// text stands on its own, to be copied into a database tool and run.
+		List<ReportParameter> declared = declaredHere;
+		Map<String, Object> parameters = parameterValues(declared, cube, asked, widget.connectionId());
+		answer.put("sql", CubeVariableBinding
+				.bound(generated, Map.of(), parameters, DashboardParameters.types(declared))
+				.toInlineSql(wanted));
+		// And, for a cube with parameters, the form a published dashboard carries instead: the same
+		// statement with ${fromDate} where the date is, bound at run time by the dashboard's own
+		// parameters (R1, export). The two are shown one under the other, so an author reading the
+		// card can see what Show In Dashboard would freeze.
+		if (!parameters.isEmpty()) {
+			answer.put("exportSql", generated.toInlineSql(wanted));
+		}
 		return answer;
 	}
 

@@ -471,6 +471,36 @@ public class CubeSqlGenerator {
 			whereClauses.add("(" + condition + ")");
 		}
 
+		// Then the cube's own conditions (R1), in the order the cube file writes them. The raw
+		// form is written as it stands, with ${CUBE} expanded and every ${name} left standing -
+		// the same treatment a ${dp_…} gets, and for the same reason: nobody has answered anything
+		// at generation time. The text is therefore the export form a published dashboard binds at
+		// run time, and CubeVariableBinding turns it into the bound form the live cube runs.
+		//
+		// Its own brackets, like a segment's, so an OR inside one cannot swallow the condition next
+		// to it; and one line each, because a dashboard parameter left empty drops its own line out
+		// of the WHERE (SqlParameterLines) and leaves the rest of the question standing. The DSL
+		// folds a condition written over several lines onto one, and CubeRules says what a raw
+		// condition may not hold.
+		//
+		// The native form is not written here at all: it is added to the query as a viewer's filter
+		// on that member is, below, so a condition on a dimension is a WHERE, one on a measure is a
+		// HAVING, and a between on a time dimension is a time filter that time_shift moves.
+		List<Map<String, Object>> cubeConditions = new ArrayList<>();
+		if (cube.getConditions() != null) {
+			for (Map<String, Object> cubeCondition : cube.getConditions()) {
+				if (cubeCondition.containsKey("member")) {
+					cubeConditions.add(cubeCondition);
+					continue;
+				}
+				String condition = Objects.toString(cubeCondition.get("sql"), "").trim();
+				if (condition.isEmpty()) continue;
+				condition = condition.replace("${CUBE}", cubeRef);
+				detectReferencedTables(condition, cube, referencedTables);
+				whereClauses.add("(" + condition + ")");
+			}
+		}
+
 		if (selectedSegments != null && !selectedSegments.isEmpty() && cube.getSegments() != null) {
 			for (String segName : selectedSegments) {
 				Map<String, Object> seg = findMember(cube.getSegments(), segName);
@@ -491,7 +521,13 @@ public class CubeSqlGenerator {
 		// no-double-counting rewrite is in the way. A filter works on a dimension whether or not it
 		// was selected, and brings that dimension's joins exactly as a selected one would.
 		List<Map<String, Object>> measureFilters = new ArrayList<>();
-		for (Map<String, Object> filter : filters) {
+		List<Map<String, Object>> allFilters = new ArrayList<>(cubeConditions);
+		allFilters.addAll(filters);
+		for (int f = 0; f < allFilters.size(); f++) {
+			Map<String, Object> filter = allFilters.get(f);
+			// The cube's own conditions come first in this list, and a prior-period query treats
+			// them differently from the viewer's filters: see the time dimension's expression below.
+			boolean ofTheCube = f < cubeConditions.size();
 
 			// A condition the server wrote out of the cube's own text, not a member and a value:
 			// a drilled measure's own `filters` are SQL, and the rows behind its number are the
@@ -535,9 +571,13 @@ public class CubeSqlGenerator {
 			// the month its chart groups it under.
 			String expr = CubeRules.isTrue(dim.get("sub_query"))
 					? subQueryExpression(dim, member, cube, cubeRef, vendor)
-					// Never shifted: a prior-period query's filters were moved by their values, and
-					// moving the column as well would move the same rows twice.
-					: dimensionExpression(dim, member, null, cube, cubeRef, vendor, referencedTables, null);
+					// A viewer's filter is never shifted: a prior-period query's filters were moved by
+					// their values, and moving the column as well would move the same rows twice. The
+					// cube's own native condition (R1) is the other way round - its value may be a
+					// ${name} nobody has answered yet, which cannot be moved in Java - so the column
+					// moves instead, and the same period one interval earlier is what it asks about.
+					: dimensionExpression(dim, member, null, cube, cubeRef, vendor, referencedTables,
+							ofTheCube ? shift : null);
 			whereClauses.add(filterCondition(expr, member, type, filter, vendor, binder));
 		}
 
@@ -765,9 +805,18 @@ public class CubeSqlGenerator {
 		return totals;
 	}
 
-	/** The operators a value filter may ask for. Anything else is a mistake in the request. */
-	static final List<String> OPERATORS = List.of(
-			"in", "notIn", "between", "gte", "lte", "contains", "set", "notSet");
+	/**
+	 * The operators a value filter may ask for — {@link CubeRules#QUERY_OPERATORS}, the one list,
+	 * which a cube's native {@code condition} (R1) is checked against too. Anything else is a
+	 * mistake in the request.
+	 */
+	static final List<String> OPERATORS = CubeRules.QUERY_OPERATORS;
+
+	/**
+	 * A value that is a name the query plumbing binds later — {@code ${fromDate}} from a cube's
+	 * native {@code condition} (R1), or a builtin — rather than a value to bind now.
+	 */
+	private static final Pattern NAMED_VALUE = Pattern.compile("^[$#]\\{[A-Za-z_][A-Za-z0-9_]*\\}$");
 
 	/**
 	 * The values a query carries, each under a name the SQL refers to.
@@ -833,26 +882,38 @@ public class CubeSqlGenerator {
 			case "notSet":
 				return expr + " IS NULL";
 
+			case "equals":
+			case "notEquals":
+			case "gt":
+			case "gte":
+			case "lt":
+			case "lte": {
+				if (values.isEmpty() || values.get(0) == null) {
+					throw new IllegalArgumentException("The filter on '" + member + "' asks for '" + operator
+							+ "' without a value to compare with.");
+				}
+				return expr + " " + COMPARISONS.get(operator) + " "
+						+ value(values.get(0), type, member, vendor, false, binder);
+			}
+
 			case "in":
 			case "notIn": {
 				if (values.isEmpty()) {
 					throw new IllegalArgumentException("The filter on '" + member + "' asks for '" + operator
 							+ "' without a value to compare with.");
 				}
-				List<Object> typed = new ArrayList<>();
-				for (Object raw : values) typed.add(convert(raw, type, member, vendor, false));
-				return expr + ("in".equals(operator) ? " IN (" : " NOT IN (")
-						+ String.join(", ", binder.bindAll(typed)) + ")";
-			}
-
-			case "gte":
-			case "lte": {
-				if (values.isEmpty() || values.get(0) == null) {
-					throw new IllegalArgumentException("The filter on '" + member + "' asks for '" + operator
-							+ "' without a value to compare with.");
+				String list;
+				if (values.size() == 1 && named(values.get(0)) != null) {
+					// One name rather than one value: the list is the viewer's, and it is spread
+					// into (?, ?, …) when it is bound - `IN (${p})`, the form the published script
+					// and DatabaseHelper.convertToJdbiParameters have always read.
+					list = named(values.get(0));
+				} else {
+					List<Object> typed = new ArrayList<>();
+					for (Object raw : values) typed.add(convert(raw, type, member, vendor, false));
+					list = String.join(", ", binder.bindAll(typed));
 				}
-				return expr + ("gte".equals(operator) ? " >= " : " <= ")
-						+ binder.bind(convert(values.get(0), type, member, vendor, false));
+				return expr + ("in".equals(operator) ? " IN (" : " NOT IN (") + list + ")";
 			}
 
 			case "between": {
@@ -864,14 +925,16 @@ public class CubeSqlGenerator {
 				}
 				List<String> ends = new ArrayList<>();
 				if (from != null) {
-					ends.add(expr + " >= " + binder.bind(convert(from, type, member, vendor, false)));
+					ends.add(expr + " >= " + value(from, type, member, vendor, false, binder));
 				}
 				if (to != null) {
 					// A time range includes the whole last day, and a timestamp column holds the
-					// hours too, so the upper end is the day after, excluded.
-					boolean time = "time".equals(type);
+					// hours too, so the upper end is the day after, excluded. A name is not a day
+					// yet - nobody has answered anything here - so it stays the day itself and the
+					// comparison includes it.
+					boolean time = "time".equals(type) && named(to) == null;
 					ends.add(expr + (time ? " < " : " <= ")
-							+ binder.bind(convert(to, type, member, vendor, time)));
+							+ value(to, type, member, vendor, time, binder));
 				}
 				return "(" + String.join(" AND ", ends) + ")";
 			}
@@ -890,6 +953,33 @@ public class CubeSqlGenerator {
 				throw new IllegalArgumentException("The filter on '" + member + "' asks for '" + operator
 						+ "', which is not an operator. It may be one of: " + String.join(", ", OPERATORS) + ".");
 		}
+	}
+
+	/** The SQL each comparison operator is, the same on every vendor. */
+	private static final Map<String, String> COMPARISONS = Map.of(
+			"equals", "=", "notEquals", "<>", "gt", ">", "gte", ">=", "lt", "<", "lte", "<=");
+
+	/**
+	 * One value of a filter, in the statement: a placeholder for a value that is here now, or the
+	 * {@code ${name}} of one that is not.
+	 *
+	 * <p>A cube's native {@code condition} (R1) names a dashboard parameter or a builtin, and
+	 * nobody has answered either at generation time. The name is written into the SQL exactly as a
+	 * raw condition's is, so the text the generator returns is the export form a published
+	 * dashboard binds at run time, and {@code CubeVariableBinding} turns it into the bound form the
+	 * live cube runs.
+	 */
+	private static String value(Object raw, String type, String member, String vendor,
+			boolean dayAfter, Binder binder) {
+
+		String name = named(raw);
+		return name != null ? name : binder.bind(convert(raw, type, member, vendor, dayAfter));
+	}
+
+	/** {@code ${fromDate}} or {@code ${dp_user_email}} as it stands, or null for a plain value. */
+	private static String named(Object raw) {
+		String text = raw == null ? "" : raw.toString().trim();
+		return NAMED_VALUE.matcher(text).matches() ? text : null;
 	}
 
 	/**
@@ -1328,6 +1418,17 @@ public class CubeSqlGenerator {
 		if (!countsRows(measName, cube, new ArrayDeque<>())) return null;
 
 		Set<String> homes = measureTables(measName, cube, new ArrayDeque<>());
+
+		// A measure that reads a table and a lookup hanging off it - a line and the product it
+		// names - still has one value per row of the line. Read it at that table's grain, so the
+		// lookup's own edge, which is a one_to_many seen from the lookup, is not mistaken for
+		// something that repeats the line.
+		String grain = grainTable(homes, joinByName, requiredJoins);
+		if (grain != null) {
+			homes = new LinkedHashSet<>();
+			homes.add(grain);
+		}
+
 		List<String> starts = new ArrayList<>();
 		if (homes.isEmpty()) {
 			starts.add(MAIN_TABLE);
@@ -1387,6 +1488,74 @@ public class CubeSqlGenerator {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * The one table a measure of several tables is at the grain of: the home from which every
+	 * other home it reads is reached through "to one" edges only, so those tables hold one row per
+	 * row of it and cannot repeat it. Null when the homes do not collapse to one that way, which
+	 * is the measure the rewrite still has to refuse.
+	 */
+	private static String grainTable(
+			Set<String> homes,
+			Map<String, Map<String, Object>> joinByName,
+			Set<String> requiredJoins) {
+
+		if (homes.size() < 2) return null;
+
+		for (String candidate : homes) {
+			boolean holdsThemAll = true;
+			for (String other : homes) {
+				if (candidate.equals(other)) continue;
+				if (!readOncePerRowOf(candidate, other, joinByName, requiredJoins)) {
+					holdsThemAll = false;
+					break;
+				}
+			}
+			if (holdsThemAll) return candidate;
+		}
+		return null;
+	}
+
+	/**
+	 * True when {@code target} is reached from {@code start} through "to one" edges only - the
+	 * same walk as {@link #walkToMany}, kept to the edges that cannot repeat a row.
+	 */
+	private static boolean readOncePerRowOf(
+			String start,
+			String target,
+			Map<String, Map<String, Object>> joinByName,
+			Set<String> requiredJoins) {
+
+		Set<String> nodes = new LinkedHashSet<>();
+		nodes.add(MAIN_TABLE);
+		nodes.addAll(requiredJoins);
+		if (!nodes.contains(start) || !nodes.contains(target)) return false;
+
+		Deque<String> queue = new ArrayDeque<>();
+		Set<String> seen = new LinkedHashSet<>();
+		queue.add(start);
+		seen.add(start);
+
+		while (!queue.isEmpty()) {
+			String node = queue.poll();
+			for (String other : nodes) {
+				if (seen.contains(other)) continue;
+
+				String relationship = null;
+				if (!MAIN_TABLE.equals(other) && node.equals(parentOf(joinByName.get(other)))) {
+					relationship = relationshipOf(joinByName.get(other));   // walked down
+				} else if (!MAIN_TABLE.equals(node) && other.equals(parentOf(joinByName.get(node)))) {
+					relationship = reverseOf(relationshipOf(joinByName.get(node)));  // walked up
+				}
+				if (relationship == null || "one_to_many".equals(relationship)) continue;
+
+				if (other.equals(target)) return true;
+				seen.add(other);
+				queue.add(other);
+			}
+		}
+		return false;
 	}
 
 	/** A join's parent, {@code CUBE} when it declares none — the shape every cube already uses. */

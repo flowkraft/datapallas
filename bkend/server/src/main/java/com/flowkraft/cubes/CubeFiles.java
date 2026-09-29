@@ -30,9 +30,12 @@ import org.apache.commons.lang3.StringUtils;
  * A folder with a cube.xml is a cube folder; any other folder is a domain folder, where each
  * {file}-cube.xml goes with the {file}-cube-config.groovy and {file}-hints.json of the same name.
  * A {file}-cube.xml whose root is {@code <cube>} is the file's unnamed cube, and its id is {file}.
- * One whose root is {@code <cubes>} describes the cubes the DSL file holds under a name, one
- * {@code <cube>} each, with that name in {@code <cubeName>}; each is a cube of its own, with the name
- * as its id. Their hints share the one hints file, each hint's query naming its cube in cubeName.
+ * One whose root is {@code <cubes>} describes the cubes the DSL file holds, one {@code <cube>} each:
+ * one that names itself in {@code <cubeName>} is that named cube of the file, with the name as its
+ * id, and one that names nothing is the file's unnamed cube, with {file} as its id. A file may hold
+ * both - {@code cube { … }} beside {@code cube('sales-for-a-period') { … }} - and then its unnamed
+ * cube keeps the id and the files it always had. Their hints share the one hints file, each hint's
+ * query naming its cube in cubeName, and a hint that names none is the unnamed cube's.
  */
 public final class CubeFiles {
 
@@ -124,7 +127,9 @@ public final class CubeFiles {
 		Matcher each = ONE_CUBE.matcher(xml);
 		while (each.find()) {
 			String named = StringUtils.trimToNull(xmlValue(each.group(1), "cubeName", null));
-			if (named != null) cubes.add(new CubeFiles(named, metadata, each.group(1), dsl, hints, named));
+			// A <cube> that names nothing is the file's unnamed cube, keeping {file} as its id: a
+			// named cube added to a file must not rename the cube that was already in it.
+			cubes.add(new CubeFiles(named != null ? named : file, metadata, each.group(1), dsl, hints, named));
 		}
 		return cubes;
 	}

@@ -93,5 +93,21 @@
         }
       }
     ]
+  },
+  {
+    "id": "billing-ytd",
+    "fromStory": 29,
+    "question": "Where are we year to date, against last year?",
+    "text": "Tick **Invoiced** and **Invoiced Year To Date**, then read **Issued** by **Month**. The year-to-date column adds the months up as they go and starts again every January, so each month end can be read beside the same month end a year earlier.",
+    "query": {
+      "cubeName": "customer-invoices",
+      "dimensions": [
+        "IssueDate.month"
+      ],
+      "measures": [
+        "Invoiced",
+        "InvoicedYTD"
+      ]
+    }
   }
 ]

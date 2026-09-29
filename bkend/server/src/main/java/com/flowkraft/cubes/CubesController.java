@@ -59,6 +59,10 @@ public class CubesController {
 	@Autowired
 	private CubeRuntimeService cubeRuntimeService;
 
+	/** The data's today, for a cube whose parameters default to a period of it (R1, R7). */
+	@Autowired
+	private CubeDataToday dataToday;
+
 	/** Who is asking, for a cube whose access_filter names them - the author is a viewer too. */
 	@Autowired
 	private UserVariables userVariables;
@@ -351,10 +355,19 @@ public class CubesController {
 		// the caller sent. Design time shows the SQL with its values written in, because there is
 		// nothing to bind them to; params go with it, for whoever wants to see what was bound.
 		CubeQuery query = CubeSqlGenerator.buildQuery(picked, request, dbVendor);
+
+		// A name a condition uses is a dashboard's parameter (R1), and design time has no dashboard:
+		// the author is writing the cube, not looking at a published page. Every such name is
+		// therefore left with no value here, which is what a viewer leaving the box empty means and
+		// drops the condition naming it — so the statement an author reads is the one their cube
+		// asks on its own, and the ${name} form is the one Show In Dashboard freezes.
+		CubeQuery shown = CubeVariableBinding.bound(query, Map.of(),
+				DashboardParameters.values(List.of(), picked, request, () -> dataToday.of(connectionId)),
+				Map.of());
 		return Mono.just(Map.<String, Object>of(
-				"sql", query.toInlineSql(dbVendor),
+				"sql", shown.toInlineSql(dbVendor),
 				"dialect", dbVendor,
-				"params", query.getParams()));
+				"params", shown.getParams()));
 	}
 
 	/**

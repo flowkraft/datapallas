@@ -19,6 +19,10 @@
 //   - how often we miss the SLA, as a count and as a rate (BreachedTickets,
 //     BreachRate), and the named filters everyone ticks by name (open,
 //     urgent_or_breached, breached);
+//   - whether the desk is keeping up: Tickets Last Year and Breached
+//     Tickets Last Year read the same days one year back, so a period and
+//     the period before it stand side by side (the year so far: 1,394
+//     tickets against 1,123, and 504 breaches against 332);
 //   - and, now that the agent and the account are in the same cube, the
 //     question the desk actually has: who and what is breaching. The breach
 //     rate is 42% in Tier 2 against 25-27% elsewhere, 76% on Outage against
@@ -33,6 +37,18 @@ cube {
   sql_table 'cube_demo.support_tickets'
   title 'Support Desk'
   description 'Tickets, how long they take, and how often the SLA is missed'
+  currency 'EUR'
+
+  // ── Who sees which rows (story 31) ──
+  // An agent sees their own team's tickets, a support manager sees the desk, and
+  // an admin or an author sees everything. The three lines are the author's SQL;
+  // nothing in the product knows these rules, and the ${dp_} values are bound a
+  // moment before the statement runs, never pasted into this text.
+  access_filter '''${CUBE}.agent_id IN (
+      SELECT a.agent_id FROM cube_demo.support_agents a
+      WHERE a.team = (SELECT b.team FROM cube_demo.support_agents b WHERE b.email = ${dp_user_email}))
+  OR 'support-managers' IN (${dp_user_groups})
+  OR ${dp_user_role} IN ('admin', 'report-author', 'platform-admin')'''
 
   join {
     name 'cube_demo.support_agents'
@@ -188,9 +204,26 @@ cube {
   measure {
     name 'BreachRate'
     title 'Breach Rate'
-    description 'Breached tickets as a percentage of all the tickets in the answer'
-    sql '100.0 * ${BreachedTickets} / NULLIF(${Tickets}, 0)'
+    description "Breached tickets as a share of all the tickets in the answer, a fraction from 0.0 to 1.0 shown as a percentage. PICK THIS WHEN: comparing teams or categories, where the counts alone say nothing because the teams are not the same size. It follows the filters: with Team = Tier 2, it is Tier 2's own rate"
+    sql '1.0 * ${BreachedTickets} / NULLIF(${Tickets}, 0)'
     type 'number'
+    format 'percent'
+  }
+  measure {
+    name 'TicketsLastYear'
+    title 'Tickets Last Year'
+    description 'The same question over the same days one year earlier. PICK THIS WHEN: the answer is about a period - a date filter or a date down the side - and the question is whether it is more or less than last year. Without any date it is one number: the whole of the period asked about, moved back a year'
+    sql '${Tickets}'
+    type 'number'
+    time_shift interval: '1 year'
+  }
+  measure {
+    name 'BreachedTicketsLastYear'
+    title 'Breached Tickets Last Year'
+    description 'The breaches of the same days one year earlier. PICK THIS WHEN: comparing this year with last, where the volume alone does not say whether the desk is keeping up'
+    sql '${BreachedTickets}'
+    type 'number'
+    time_shift interval: '1 year'
   }
   measure {
     name 'Accounts'

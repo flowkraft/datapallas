@@ -11,7 +11,7 @@
 // `X-Frame-Options`, and the share link the docs page holds.
 //
 // Everything inside the iframe is the same helper, on the iframe's Frame: the
-// page's fifteen cards, and every hint of every card clicked and answered.
+// page's cards, and every hint of every card clicked and answered.
 //
 // What it does NOT check is the rows. The demo data is seeded when the
 // installation is made and its dates are moved to the day it was seeded, so

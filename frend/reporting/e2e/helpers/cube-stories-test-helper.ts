@@ -94,9 +94,10 @@ export interface CubeCard {
 }
 
 /**
- * The fifteen cubes DataPallas ships, in the order the page shows them: by
- * business area, and inside an area by the cube's own name. One card per cube
- * id, so the two cubes of `customer-billing` are two cards.
+ * The cubes DataPallas ships, in the order the page shows them: by business
+ * area, and inside an area by the cube's own name. One card per cube id, so
+ * the two cubes of `customer-billing` are two cards, and so are the two of
+ * `online-sales`.
  */
 export const CUBE_STORIES_CARDS: CubeCard[] = [
   { id: 'sales-pipeline',       title: 'Sales Pipeline',               area: 'CRM & Sales',            domain: 'crm-sales',           file: 'sales-pipeline',      cubeName: '' },
@@ -106,12 +107,14 @@ export const CUBE_STORIES_CARDS: CubeCard[] = [
   { id: 'customer-invoices',    title: 'Customer Invoices',            area: 'ERP & Finance',          domain: 'erp-finance',         file: 'customer-billing',    cubeName: 'customer-invoices' },
   { id: 'customer-payments',    title: 'Customer Payments',            area: 'ERP & Finance',          domain: 'erp-finance',         file: 'customer-billing',    cubeName: 'customer-payments' },
   { id: 'invoice-balances',     title: 'Invoice Balances',             area: 'ERP & Finance',          domain: 'erp-finance',         file: 'invoice-balances',    cubeName: '' },
+  { id: 'customer-statement',   title: 'Customer Statement',           area: 'ERP & Finance',          domain: 'erp-finance',         file: 'invoice-balances',    cubeName: 'customer-statement' },
   { id: 'northwind-customers',  title: 'Northwind Customer Management', area: 'Northwind',             domain: 'northwind',           file: 'northwind-customers', cubeName: '' },
   { id: 'northwind-hr',         title: 'Northwind Human Resources',    area: 'Northwind',              domain: 'northwind',           file: 'northwind-hr',        cubeName: '' },
   { id: 'northwind-inventory',  title: 'Northwind Product Inventory',  area: 'Northwind',              domain: 'northwind',           file: 'northwind-inventory', cubeName: '' },
   { id: 'northwind-sales',      title: 'Northwind Sales Analysis',     area: 'Northwind',              domain: 'northwind',           file: 'northwind-sales',     cubeName: '' },
   { id: 'northwind-warehouse',  title: 'Northwind Sales Warehouse',    area: 'Northwind',              domain: 'northwind',           file: 'northwind-warehouse', cubeName: '' },
   { id: 'online-sales',         title: 'Online Sales',                 area: 'Retail & E-commerce',    domain: 'retail-ecommerce',    file: 'online-sales',        cubeName: '' },
+  { id: 'shop-for-a-period',    title: 'Sales for a Period',           area: 'Retail & E-commerce',    domain: 'retail-ecommerce',    file: 'online-sales',        cubeName: 'shop-for-a-period' },
   { id: 'depot-network',        title: 'Depot Network',                area: 'Transport & Logistics',  domain: 'transport-logistics', file: 'depot-network',       cubeName: '' },
   { id: 'freight-shipments',    title: 'Freight Shipments',            area: 'Transport & Logistics',  domain: 'transport-logistics', file: 'freight-shipments',   cubeName: '' },
 ];
@@ -151,6 +154,12 @@ export interface CubeCheck {
   rows: unknown[][];
   refusedOn?: string[];
   source?: string;
+  /**
+   * The answers the card's own question needs for these rows to be the answer (story 25). The
+   * Java vendor loop binds them; here the viewer gives them, in the card's parameter bar - the
+   * same values, reaching the same conditions.
+   */
+  locked?: Record<string, unknown>;
 }
 
 function readJson<T>(file: string): T {
@@ -300,7 +309,7 @@ export function asLists(rows: Array<Record<string, unknown>>): unknown[][] {
 
 // ── Reaching into one card ────────────────────────────────────────────────────
 
-/** Everything is reached inside its card, because fifteen cards carry the same ids. */
+/** Everything is reached inside its card, because every card carries the same ids. */
 export function inCard(frame: Frame, cubeId: string, selector: string): Locator {
   return frame.locator(`#cube-${cubeId} ${selector}`);
 }
@@ -446,6 +455,38 @@ export async function expectTreeShows(frame: Frame, cubeId: string, query: CubeQ
   }
 }
 
+/**
+ * Answer the questions a card asks of its own viewer (story 25's customer select), in the card's
+ * parameter bar. An empty string is an answer too: it is what "all of them" is written as, and
+ * what puts the card back the way the next ask needs it.
+ */
+export async function answerCardParams(
+  frame: Frame,
+  cubeId: string,
+  answers: Record<string, string>,
+): Promise<void> {
+  for (const [name, value] of Object.entries(answers)) {
+    const control = inCard(frame, cubeId, `#cubeCardParams #${name}`);
+    await expect(control, `${cubeId}: the card asks its viewer for ${name}`)
+      .toBeVisible({ timeout: 30_000 });
+    await control.selectOption(value);
+  }
+}
+
+/**
+ * What to answer this card with before one ask: every name any of this card's checks fixes, set
+ * to this check's own value or cleared. A card whose checks fix nothing is left alone, so the
+ * fourteen cards that ask their viewer nothing walk exactly as before.
+ */
+function answersFor(check: CubeCheck, checks: Map<string, CubeCheck>): Record<string, string> {
+  const asked = new Set<string>();
+  for (const one of checks.values()) for (const name of Object.keys(one.locked ?? {})) asked.add(name);
+
+  const answers: Record<string, string> = {};
+  for (const name of asked) answers[name] = String((check.locked ?? {})[name] ?? '');
+  return answers;
+}
+
 /** One ask, end to end: click it, check the tree it filled, check the rows it answered. */
 export async function checkOneAsk(
   frame: Frame,
@@ -456,6 +497,7 @@ export async function checkOneAsk(
   const check = checks.get(ask.check);
   expect(check, `${card.id}: ${ask.check} has a check`).toBeTruthy();
 
+  await answerCardParams(frame, card.id, answersFor(check as CubeCheck, checks));
   await clickShowMe(frame, card.id, ask.id);
   await expectTreeShows(frame, card.id, ask.query);
 
@@ -544,7 +586,7 @@ export function shippedCubeCode(card: CubeCard): string {
 // ── The page as a whole ───────────────────────────────────────────────────────
 
 /**
- * The page a visitor lands on: fifteen cards, each under its business area,
+ * The page a visitor lands on: one card per cube, each under its business area,
  * each with its grain line and its component, and a contents list that reaches
  * every one of them.
  */
@@ -565,7 +607,7 @@ export async function expectTheWholePage(frame: Frame): Promise<void> {
  * No card is showing a warning.
  *
  * The block is drawn only where the parser found something to say, so its
- * absence on all fifteen cards is the claim that every cube DataPallas ships
+ * absence on every card is the claim that every cube DataPallas ships
  * parses clean — the one claim on this page that is about the cubes rather than
  * about the page.
  */
@@ -638,12 +680,24 @@ export async function reseedCubeDemoData(adminFetch: AdminFetch, baseUrl: string
     .toBe(howManyDeals);
 }
 
-/** A share link for the Cube Stories page: the only way this spec opens it. */
-export async function createCubeStoriesShareLink(adminFetch: AdminFetch, baseUrl: string): Promise<string> {
+/**
+ * A share link for the Cube Stories page: the only way this spec opens it.
+ *
+ * With `lockedParams` it is story 25's link - one that answers a question of the page for
+ * whoever opens it, signed into the token and therefore not the recipient's to change.
+ */
+export async function createCubeStoriesShareLink(
+  adminFetch: AdminFetch,
+  baseUrl: string,
+  lockedParams?: Record<string, unknown>,
+): Promise<string> {
   const created = await adminFetch(`${baseUrl}/api/embed/share-link`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reportId: CUBE_STORIES_REPORT_ID }),
+    body: JSON.stringify({
+      reportId: CUBE_STORIES_REPORT_ID,
+      ...(lockedParams ? { lockedParams } : {}),
+    }),
   });
   expect(created.status, 'a share link for the Cube Stories page').toBe(200);
   const { token } = await created.json();

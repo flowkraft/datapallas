@@ -3,11 +3,13 @@ package com.flowkraft.cubes;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +36,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * before the ask leaves here: a live cube answers about the cube its dashboard declares, so the
  * name would be refused by {@code /query} if it were sent back.
  *
+ * <p>A hint may ask its question of a period, by presetting the viewer's own filters in its
+ * query's {@code filters} — a {@code between} on the cube's date dimension is what Show Me over a
+ * quarter is. The days in those filters are written relative to the data's today
+ * ({@code {dataToday}}, R7), never as fixed days, so a hint keeps meaning the same period after
+ * the demo data is re-seeded. They are resolved here, once, on the way out.
+ *
  * <p>Nothing here is vendor-specific, and nothing here runs SQL.
  */
 public final class CubeHints {
@@ -53,6 +61,18 @@ public final class CubeHints {
 	 * @param cubeName  the cube's name inside that file, or null/empty for the file's own cube
 	 */
 	public static List<Map<String, Object>> of(File hintsFile, String cubeName) throws IOException {
+		return of(hintsFile, cubeName, () -> null);
+	}
+
+	/**
+	 * The same asks, with every {@code {dataToday…}} in a hint's parameter answers resolved against
+	 * the day the data itself calls today (R7).
+	 *
+	 * @param dataToday where that day comes from — asked only when a hint actually names it, because
+	 *                  reading it costs a query
+	 */
+	public static List<Map<String, Object>> of(File hintsFile, String cubeName,
+			Supplier<LocalDate> dataToday) throws IOException {
 
 		List<Map<String, Object>> asks = new ArrayList<>();
 		if (hintsFile == null || !hintsFile.isFile())
@@ -69,6 +89,7 @@ public final class CubeHints {
 				continue;
 
 			String id = text(hint.get("id"));
+			query = dated(query, dataToday);
 			String question = text(hint.get("question"));
 			asks.add(ask(id, id, question, text(hint.get("text")), query));
 
@@ -78,10 +99,48 @@ public final class CubeHints {
 				// A variant asks the hint's question again, so it is the hint's question that is
 				// written above it; its own sentence says what changed.
 				asks.add(ask(id + "--" + variantId, id + "/" + variantId, question,
-						text(asked.get("text")), mapOf(asked.get("query"))));
+						text(asked.get("text")), dated(mapOf(asked.get("query")), dataToday)));
 			}
 		}
 		return asks;
+	}
+
+	/**
+	 * The query with the days in its preset filters turned into real days. A relative day is text
+	 * like {@code {dataToday: startOf quarter}}; anything else is left exactly as the file wrote
+	 * it, and a query whose filters hold none comes back as it went in, the same object.
+	 */
+	private static Map<String, Object> dated(Map<String, Object> query, Supplier<LocalDate> dataToday) {
+
+		List<?> filters = listOf(query.get("filters"));
+		if (filters.isEmpty())
+			return query;
+
+		List<Map<String, Object>> resolved = new ArrayList<>();
+		boolean changed = false;
+		for (Object one : filters) {
+			Map<String, Object> filter = mapOf(one);
+			List<?> values = listOf(filter.get("values"));
+			List<Object> days = new ArrayList<>();
+			boolean here = false;
+			for (Object value : values) {
+				if (value instanceof CharSequence && CubeDates.mentions(value.toString())) {
+					value = CubeDates.resolve(value.toString(), dataToday.get());
+					here = true;
+				}
+				days.add(value);
+			}
+			if (here)
+				filter.put("values", days);
+			changed = changed || here;
+			resolved.add(filter);
+		}
+		if (!changed)
+			return query;
+
+		Map<String, Object> dated = new LinkedHashMap<>(query);
+		dated.put("filters", resolved);
+		return dated;
 	}
 
 	private static Map<String, Object> ask(String id, String check, String question, String text,

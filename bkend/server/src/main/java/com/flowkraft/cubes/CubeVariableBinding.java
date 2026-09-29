@@ -12,7 +12,8 @@ import com.flowkraft.embed.UserVariables;
 import com.flowkraft.queries.services.QueriesService;
 
 /**
- * The {@code ${dp_…}} variables of a generated cube query, bound to whoever is asking.
+ * The values a generated cube query still names, bound: the {@code ${dp_…}} builtins of whoever is
+ * asking, and the cube's own parameters (R1).
  *
  * <p>A cube's {@code access_filter} says {@code owner_email = ${dp_user_email}} and the generator
  * writes that token into the WHERE of every SELECT it builds, untouched: nobody is asking at
@@ -73,14 +74,43 @@ public final class CubeVariableBinding {
 	 *                      names are empty values, which match no row
 	 */
 	public static CubeQuery bound(CubeQuery query, Map<String, String> userVariables) {
+		return bound(query, userVariables, Map.of(), Map.of());
+	}
+
+	/**
+	 * The same query with its builtins bound as above <b>and</b> the dashboard's parameters bound to
+	 * the values the viewer answered (R1).
+	 *
+	 * <p>One call, not two, because there is one rule about what a value in a statement becomes and
+	 * it lives in {@link QueriesService#prepare}: a date binds as a date, a multi-select becomes an
+	 * {@code IN} list, All becomes {@code 1=1}, and a parameter with no value takes its own line out
+	 * of the WHERE. Binding the two kinds separately would have meant preparing the statement twice,
+	 * and the second pass would read a statement the first had already rewritten.
+	 *
+	 * <p>The generator leaves a {@code ${param}} standing exactly as it leaves a {@code ${dp_…}}
+	 * standing, so the text it returns is the form a published dashboard binds at run time (the
+	 * export form) and what comes out of here is the form the live cube runs and View SQL shows.
+	 *
+	 * @param parameterValues each declared parameter's value as text, from
+	 *                        {@link DashboardParameters#values} — already checked, and empty where the
+	 *                        viewer left it empty
+	 * @param parameterTypes  each one's declared type, from {@link DashboardParameters#types}
+	 */
+	public static CubeQuery bound(CubeQuery query, Map<String, String> userVariables,
+			Map<String, Object> parameterValues, Map<String, String> parameterTypes) {
 
 		Set<String> named = namedBy(query.getSql());
-		if (named.isEmpty())
+		Map<String, Object> asked = parameterValues != null ? parameterValues : Map.of();
+		if (named.isEmpty() && asked.isEmpty())
 			return query;
 
 		Map<String, String> mine = userVariables != null ? userVariables : Map.of();
 		Map<String, Object> values = new LinkedHashMap<>();
 		Map<String, String> types = new LinkedHashMap<>();
+
+		values.putAll(asked);
+		if (parameterTypes != null)
+			types.putAll(parameterTypes);
 
 		for (String name : named) {
 			values.put(name, Objects.toString(mine.get(name), ""));

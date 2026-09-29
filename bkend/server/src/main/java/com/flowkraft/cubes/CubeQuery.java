@@ -46,7 +46,8 @@ public final class CubeQuery {
 
 	/**
 	 * The same query with every placeholder replaced by the literal its value is written as on this
-	 * database. Longer names go first, so {@code :cf1} never eats the start of {@code :cf1_0}.
+	 * database, whether it is a single value ({@code :cf1}) or a list ({@code <dp_user_groups>}).
+	 * Longer names go first, so {@code :cf1} never eats the start of {@code :cf1_0}.
 	 */
 	public String toInlineSql(String vendor) {
 
@@ -55,7 +56,23 @@ public final class CubeQuery {
 
 		String inlined = sql;
 		for (String name : names) {
-			inlined = inlined.replace(":" + name, CubeSqlDialect.sqlLiteral(params.get(name), vendor));
+			Object value = params.get(name);
+			// A list of values does not bind as `:name`: JDBI writes it as `<name>` between the
+			// brackets the statement already has, which is how an access filter's
+			// `IN (${dp_user_groups})` and a dashboard's multi-select are bound. Written out, it is
+			// the values themselves, comma by comma. A list with nothing in it becomes NULL, so
+			// `IN (NULL)` matches no row where `IN ()` would not parse at all.
+			if (value instanceof List<?> list) {
+				StringBuilder items = new StringBuilder();
+				for (Object item : list) {
+					if (items.length() > 0)
+						items.append(", ");
+					items.append(CubeSqlDialect.sqlLiteral(item, vendor));
+				}
+				inlined = inlined.replace("<" + name + ">", list.isEmpty() ? "NULL" : items.toString());
+				continue;
+			}
+			inlined = inlined.replace(":" + name, CubeSqlDialect.sqlLiteral(value, vendor));
 		}
 
 		return inlined;

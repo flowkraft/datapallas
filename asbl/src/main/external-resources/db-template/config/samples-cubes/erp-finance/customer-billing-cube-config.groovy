@@ -36,6 +36,8 @@
 //   - how much was invoiced and where each invoice stands (Invoices, Invoiced,
 //     AvgInvoice, Status, IssueDate, DueDate);
 //   - to whom (Customer, Country, Customers, PaymentTermsDays, CreditLimit);
+//   - where the year stands, month end by month end (Invoiced YTD: the running
+//     total of Invoiced, restarted every January);
 //   - what was on the invoice (Item, Units, LineAmount);
 //   - the two questions worth asking on their own, with the unpaid and overdue
 //     segments.
@@ -51,6 +53,7 @@ cube('customer-invoices') {
   sql_table 'cube_demo.erp_invoices'
   title 'Customer Invoices'
   description 'What was invoiced, to whom, and where each invoice stands'
+  currency 'EUR'
 
   join {
     name 'cube_demo.erp_customers'
@@ -184,6 +187,17 @@ cube('customer-invoices') {
     type 'count_distinct'
   }
 
+  // ── An analysis measure: read over the finished months, not inside them ──
+  measure {
+    name 'InvoicedYTD'
+    title 'Invoiced Year To Date'
+    description 'Invoiced added up along the year and restarted every January. PICK THIS WHEN: Issued is one of the fields, read by month or quarter, and the question is where the year stands.'
+    sql '${Invoiced}'
+    type 'number'
+    rolling_window type: 'to_date', granularity: 'year'
+    format 'currency'
+  }
+
   segment {
     name 'unpaid'
     title 'Not paid yet'
@@ -228,6 +242,7 @@ cube('customer-payments') {
   sql_table 'cube_demo.erp_payments'
   title 'Customer Payments'
   description 'What came in, how it was paid, and who paid it'
+  currency 'EUR'
 
   join {
     name 'cube_demo.erp_invoices'

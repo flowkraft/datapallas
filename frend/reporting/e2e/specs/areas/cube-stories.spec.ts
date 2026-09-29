@@ -32,6 +32,7 @@ import { Helpers } from '../../utils/helpers';
 import {
   CUBE_STORIES_CARDS,
   CUBE_STORIES_REPORT_ID,
+  answerCardParams,
   cardOf,
   checksOf,
   chooseSqlVendor,
@@ -71,7 +72,7 @@ const asOneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
 const adminFetch: AdminFetch = (url, init = {}) =>
   fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...Helpers.apiKeyHeader() } });
 
-// One page, opened once: fifteen live cubes are a heavy page and every test asks the same page
+// One page, opened once: a page of live cubes is a heavy one and every test asks the same page
 // different questions, in order.
 test.describe.configure({ mode: 'serial' });
 
@@ -109,7 +110,7 @@ test.describe('Cube Stories — the cube demo page', () => {
   // 1. The page itself: the cards, what a card opens up, and the SQL panel.
   //
   // Positive half, the whole chain: a visitor with nothing but a link gets
-  // fifteen cards, each drawing its own rows from its own live cube, with the
+  // one card per cube, each drawing its own rows from its own live cube, with the
   // cube's own definition behind View Code and its SQL — for any of eight
   // databases — behind View SQL.
   //
@@ -336,10 +337,564 @@ test.describe('Cube Stories — the cube demo page', () => {
     test.setTimeout(30 * 60_000);
     // Invoices and Payments are two cubes of one file and two cards here, and each offers only its
     // own questions — the helper asserts that, because a card showing the other cube's hints would
-    // be asking about fields it has not got.
-    for (const id of ['online-sales', 'student-enrollments', 'customer-invoices', 'customer-payments']) {
+    // be asking about fields it has not got. Sales for a Period is the second cube of the Shop's
+    // own file, and the same rule holds for it.
+    for (const id of ['online-sales', 'shop-for-a-period', 'student-enrollments',
+                      'customer-invoices', 'customer-payments']) {
       await walkEveryHint(frame, cardOf(id));
     }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Story 21: the period is the question.
+  //
+  // The hint presets the filter rather than the cube declaring a parameter
+  // (R1, the owner's decision of 2026-09-28): what a hint carries is a filter
+  // like any other, so the viewer can see it as a chip, move it, and take it
+  // off. The two days it presets are written as R7 tokens and resolved by the
+  // server against the data's own today, which is why the quarter it opens on
+  // is the quarter the demo data is in.
+  //
+  // Made to go red: the row comparisons. A preset the page dropped, a chip that
+  // was drawn but filtered nothing, or dates sent as the raw `{dataToday: …}`
+  // text would each leave the card drawing another period's rows — and the
+  // last step would draw a quarter where it must draw every date the cube has.
+  // ───────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) Sales for a Period: the chip the hint leaves, moved and taken off', async () => {
+    test.setTimeout(30 * 60_000);
+    const period = cardOf('shop-for-a-period');
+    const checks = checksOf(period.id);
+
+    // Q3 2026, by category: the quarter the data is in, which the hint asks for in tokens.
+    const quarter = checks.get('sales-for-a-period')!;
+    await clickShowMe(frame, period.id, 'sales-for-a-period');
+    await expect(inCard(frame, period.id, '#chipFilter-OrderDate'),
+      'the period the hint preset is a filter the viewer can see').toBeVisible({ timeout: 15_000 });
+    expect(difference(quarter.rows, await drawnRows(frame, period.id), false),
+      'the rows are the quarter\'s').toBeNull();
+
+    // The quarter before, typed into the chip's own filter rather than clicked on another hint:
+    // the same question, and the rows the previous-quarter hint answers.
+    const before = checks.get('sales-for-a-period/previous-quarter')!;
+    await inCard(frame, period.id, '#btnFilter-OrderDate').click();
+    await inCard(frame, period.id, '#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+    await inCard(frame, period.id, '#OrderDate__from').fill('2026-04-01');
+    await inCard(frame, period.id, '#OrderDate__to').fill('2026-06-30');
+    await inCard(frame, period.id, '#btnFilterApply').click();
+    await expect
+      .poll(async () => difference(before.rows, await drawnRows(frame, period.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // And off with it: no period at all is every order line the cube can see. Still the eight
+    // categories, and not one of them the number the quarter answered.
+    await inCard(frame, period.id, '#btnChipRemove-OrderDate').click();
+    await expect(inCard(frame, period.id, '#chipFilter-OrderDate'),
+      'the filter is gone, not merely emptied').toHaveCount(0, { timeout: 15_000 });
+    await expect
+      .poll(async () => {
+        const rows = await drawnRows(frame, period.id);
+        return rows.length === quarter.rows.length
+          && difference(before.rows, rows, false) !== null
+          && difference(quarter.rows, rows, false) !== null;
+      }, { timeout: 60_000 })
+      .toBe(true);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Story 22: the lanes are the viewer's to pick.
+  //
+  // A logistics manager looks after some destination countries, not all of
+  // them. The hint presets the Country filter with two of them (owner,
+  // 2026-09-28: hint-preset filters, no parameters), and that preset is a
+  // filter like any other: a chip the viewer can see, open, add a country to,
+  // and take off. The countries are bound one value per country and asked as
+  // an IN — `CubeSampleSqlExecutesTest` proves what the other shape would do:
+  // "Spain,Portugal" as ONE value runs, and answers no row at all.
+  //
+  // Made to go red: the row comparisons. A preset the page dropped, a chip
+  // drawn over a filter that filtered nothing, or a list flattened into one
+  // value would each leave the card drawing another set of lanes — and the
+  // last step would draw two countries where it must draw every lane.
+  // ───────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) Freight Cost vs Speed: the countries the hint preset, and one more', async () => {
+    test.setTimeout(30 * 60_000);
+    const lanes  = cardOf('freight-shipments');
+    const checks = checksOf(lanes.id);
+
+    // Spain and Portugal: the manager's own lanes, by transport mode. Road costs about twice
+    // what sea costs per shipment and arrives about four times faster — that is the story.
+    const iberia = checks.get('freight-cost-vs-speed/spain-and-portugal')!;
+    await clickShowMe(frame, lanes.id, 'freight-cost-vs-speed--spain-and-portugal');
+    await expect(inCard(frame, lanes.id, '#chipFilter-DestCountry'),
+      'the countries the hint preset are a filter the viewer can see').toBeVisible({ timeout: 15_000 });
+    expect(difference(iberia.rows, await drawnRows(frame, lanes.id), false),
+      'the rows are those two countries\' lanes').toBeNull();
+
+    // France as well, ticked in the chip's own list: the same question, three countries wide.
+    // (The frozen demo data: 959 shipments, 515 of them by road at 86.61 each in 4.88 days.)
+    const withFrance: unknown[][] = [
+      ['Air', 6, 2399.73, 399.95, 1.83],
+      ['Rail', 299, 18713.34, 62.59, 6.38],
+      ['Road', 515, 44602.65, 86.61, 4.88],
+      ['Sea', 126, 5439.45, 43.17, 18.77],
+      [null, 13, 1442.37, 110.95, null],
+    ];
+    await inCard(frame, lanes.id, '#btnFilter-DestCountry').click();
+    await inCard(frame, lanes.id, '#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+    await inCard(frame, lanes.id, '#DestCountry').click();
+    await inCard(frame, lanes.id, '#DestCountry_cb_France').click();
+    await inCard(frame, lanes.id, '#DestCountry_btnOk').click();
+    await inCard(frame, lanes.id, '#btnFilterApply').click();
+    await expect
+      .poll(async () => difference(withFrance, await drawnRows(frame, lanes.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // And off with it: no country filter at all is every lane the cube can see, which is the
+    // hint's own first answer — the same five modes, and not one of them the number Iberia gave.
+    const everyLane = checks.get('freight-cost-vs-speed')!;
+    await inCard(frame, lanes.id, '#btnChipRemove-DestCountry').click();
+    await expect(inCard(frame, lanes.id, '#chipFilter-DestCountry'),
+      'the filter is gone, not merely emptied').toHaveCount(0, { timeout: 15_000 });
+    await expect
+      .poll(async () => difference(everyLane.rows, await drawnRows(frame, lanes.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+    expect(difference(iberia.rows, await drawnRows(frame, lanes.id), false),
+      'every lane is not the two countries the hint preset').not.toBeNull();
+  });
+
+  test('(cube-stories) Revenue Mix: the share is of what the answer holds', async () => {
+    test.setTimeout(30 * 60_000);
+    const shop   = cardOf('online-sales');
+    const checks = checksOf(shop.id);
+
+    // The whole shop, by category. Displays and Video together carry more than half of it,
+    // and Cables & Power almost none — which is the question a category manager asks.
+    const wholeShop = checks.get('revenue-mix')!;
+    await clickShowMe(frame, shop.id, 'revenue-mix');
+    expect(difference(wholeShop.rows, await drawnRows(frame, shop.id), false),
+      'the shop, category by category, with each share of the shop').toBeNull();
+
+    const shareOf = (rows: unknown[][], category: string): number =>
+      Number(rows.find((row) => row[0] === category)![2]);
+    const drawnShop = await drawnRows(frame, shop.id);
+    const shopShares = drawnShop.reduce((sum, row) => sum + Number(row[2]), 0);
+    expect(shopShares, 'the shares of the whole shop are a whole').toBeCloseTo(1, 3);
+    expect(shareOf(drawnShop, 'Displays'), 'Displays carry about a third').toBeCloseTo(0.3058, 4);
+
+    // The same two measures with one filter more: every share is now of Germany's own total.
+    // A share taken over the unfiltered shop would put Displays at 0.0733 here.
+    const germany = checks.get('revenue-mix/germany')!;
+    await clickShowMe(frame, shop.id, 'revenue-mix--germany');
+    await expect(inCard(frame, shop.id, '#chipFilter-Country'),
+      'the country the hint preset is a filter the viewer can see').toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(async () => difference(germany.rows, await drawnRows(frame, shop.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    const drawnGermany = await drawnRows(frame, shop.id);
+    expect(drawnGermany.reduce((sum, row) => sum + Number(row[2]), 0),
+      "Germany's shares are a whole of Germany").toBeCloseTo(1, 3);
+    expect(shareOf(drawnGermany, 'Displays'),
+      "Germany's Displays, as a share of Germany").toBeCloseTo(0.3047, 4);
+    expect(Math.abs(shareOf(drawnGermany, 'Displays') - 0.0733),
+      'and not as a share of the whole shop, which would be 0.0733').toBeGreaterThan(0.2);
+    expect(difference(wholeShop.rows, drawnGermany, false),
+      'Germany is not the shop in miniature').not.toBeNull();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Story 26: the viewer explores the cube themselves.
+  //
+  // The head of support is in the published dashboard, not in the authoring
+  // tool, and the questions they have — where do we miss SLA, by team, by
+  // category? is anyone not picking tickets up? — are not the ones the card was
+  // published showing. So they tick, and the server answers from the published
+  // cube file (R3, W2's /query).
+  //
+  // The hint "Tier 2 only" presets the Team filter, and a preset is a filter
+  // like any other: a chip the viewer can open, change and take off.
+  //
+  // Made to go red: the row comparisons. A preset that reached the page but not
+  // /query would answer all five teams where the check holds one; a Breach Rate
+  // left on the old 100-scale would draw 41.7 where the check holds 0.417; and
+  // a card that went back to what it was published showing when its own
+  // question was answered again would lose the viewer's ticks (R3).
+  // ───────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) Support Explorer: the teams, the one the hint preset, and the ticks that stay', async () => {
+    test.setTimeout(30 * 60_000);
+    const desk   = cardOf('support-desk');
+    const checks = checksOf(desk.id);
+
+    // Where the SLA is missed, team by team. The row with no team at all is the finding: 41
+    // tickets nobody has picked up, and 40 of them already past their SLA.
+    const byTeam = checks.get('breach-by-team')!;
+    await clickShowMe(frame, desk.id, 'breach-by-team');
+    expect(difference(byTeam.rows, await drawnRows(frame, desk.id), false),
+      'the four teams and the tickets nobody picked up').toBeNull();
+
+    // "Tier 2 only": the hint presets the cube's own Team filter, and the answer is one row.
+    const tierTwo = checks.get('breach-by-team/team')!;
+    await clickShowMe(frame, desk.id, 'breach-by-team--team');
+    await expect(inCard(frame, desk.id, '#chipFilter-Team'),
+      'the team the hint preset is a filter the viewer can see').toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(async () => difference(tierTwo.rows, await drawnRows(frame, desk.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // The viewer adds their own team to the chip's list: the same question, two teams wide, and
+    // Tier 1's rate is nothing like Tier 2's — which is the whole point of asking by team.
+    const withTierOne: unknown[][] = [
+      ['Tier 1', 670, 168, 0.2507],
+      ['Tier 2', 1199, 500, 0.417],
+    ];
+    await inCard(frame, desk.id, '#btnFilter-Team').click();
+    await inCard(frame, desk.id, '#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+    await inCard(frame, desk.id, '#Team').click();
+    await inCard(frame, desk.id, '#Team_cb_Tier_1').click();
+    await inCard(frame, desk.id, '#Team_btnOk').click();
+    await inCard(frame, desk.id, '#btnFilterApply').click();
+    await expect
+      .poll(async () => difference(withTierOne, await drawnRows(frame, desk.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // And off with it: the whole desk again, the hint's own first answer.
+    await inCard(frame, desk.id, '#btnChipRemove-Team').click();
+    await expect(inCard(frame, desk.id, '#chipFilter-Team'),
+      'the filter is gone, not merely emptied').toHaveCount(0, { timeout: 15_000 });
+    await expect
+      .poll(async () => difference(byTeam.rows, await drawnRows(frame, desk.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+    expect(difference(tierTwo.rows, await drawnRows(frame, desk.id), false),
+      'the whole desk is not the one team the hint preset').not.toBeNull();
+
+    // The other half of the question: how long tickets take, and how long their first answer
+    // takes. Urgent tickets are resolved fastest and wait longest to be answered at all.
+    const byPriority = checks.get('time-by-priority')!;
+    await clickShowMe(frame, desk.id, 'time-by-priority');
+    await expect
+      .poll(async () => difference(byPriority.rows, await drawnRows(frame, desk.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // R3, the ticks are the viewer's and survive the card asking its question again. This page
+    // has no Reload button of its own — the card's parameter bar is what re-asks here — so the
+    // statement card is where it can be seen: Show Me, one more dimension ticked by hand, then
+    // another customer chosen. What comes back is that customer's rows on the view the viewer
+    // built, and not the view the card was published showing (Status alone).
+    const statement = cardOf('customer-statement');
+    await clickShowMe(frame, statement.id, 'customer-statement--all-customers');
+    await inCard(frame, statement.id, '#chk-dim-Customer').click();
+    await expectTreeShows(frame, statement.id, {
+      dimensions: ['Status', 'Customer'],
+      measures: ['Invoices', 'Invoiced', 'Paid', 'BalanceDue'],
+    });
+
+    await answerCardParams(frame, statement.id, { customerId: '26' });
+    await expect
+      .poll(async () => {
+        const rows = await drawnRows(frame, statement.id);
+        return rows.length > 0 && rows.every((row) => String(row[1]) === 'Southridge Video SpA');
+      }, { timeout: 60_000 })
+      .toBe(true);
+    await expectTreeShows(frame, statement.id, {
+      dimensions: ['Status', 'Customer'],
+      measures: ['Invoices', 'Invoiced', 'Paid', 'BalanceDue'],
+    });
+
+    // Put the card back the way the next test needs it, and nothing anywhere warned.
+    await answerCardParams(frame, statement.id, { customerId: '' });
+    await expectNoCardWarns(frame);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Story 27: last year is the same days one year back, and it moves with the
+  // filter.
+  //
+  // The COO asks whether the desk is keeping up. The hint opens the year so
+  // far with Tickets and Tickets Last Year side by side; the pair is one
+  // question asked of two periods, so when the viewer moves the Opened chip
+  // both columns move with it.
+  //
+  // Made to go red: a "last year" that was never shifted would repeat this
+  // year's own column, and every row comparison here would fail; a pair that
+  // did not follow the chip would keep the year-so-far numbers when the chip
+  // is moved back, which the last step forbids by name.
+  // ───────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) Support Load vs Last Year: two periods, one question, one chip', async () => {
+    test.setTimeout(30 * 60_000);
+    const desk   = cardOf('support-desk');
+    const checks = checksOf(desk.id);
+
+    // The year so far, by priority: this year, last year, and the breaches of each.
+    const byPriority = checks.get('support-vs-last-year')!;
+    await clickShowMe(frame, desk.id, 'support-vs-last-year');
+    await expect(inCard(frame, desk.id, '#chipFilter-OpenedDate'),
+      'the period the hint preset is a filter the viewer can see').toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(async () => difference(byPriority.rows, await drawnRows(frame, desk.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // The breaches grow faster than the volume — the finding the story is told for.
+    const drawn = await drawnRows(frame, desk.id);
+    const summed = (column: number): number =>
+      drawn.reduce((total, row) => total + Number(row[column]), 0);
+    expect(summed(1) / summed(2), 'the tickets, this year over last').toBeCloseTo(1.241, 2);
+    expect(summed(3) / summed(4), 'the breaches, this year over last').toBeCloseTo(1.518, 2);
+    expect(summed(3) / summed(4), 'and they grow faster than the tickets do')
+      .toBeGreaterThan(summed(1) / summed(2));
+
+    // The same pair read by month: each month beside the same month one year back.
+    const byMonth = checks.get('support-vs-last-year/by-month')!;
+    await clickShowMe(frame, desk.id, 'support-vs-last-year--by-month');
+    await expect
+      .poll(async () => difference(byMonth.rows, await drawnRows(frame, desk.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // And the pair follows the chip. Moved one year back, the "this year" column reads what
+    // the "last year" column read a moment ago, and there is nothing at all before the data
+    // starts for the column beside it.
+    await clickShowMe(frame, desk.id, 'support-vs-last-year');
+    await expect
+      .poll(async () => difference(byPriority.rows, await drawnRows(frame, desk.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+    await inCard(frame, desk.id, '#btnFilter-OpenedDate').click();
+    await inCard(frame, desk.id, '#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
+    await inCard(frame, desk.id, '#OpenedDate__from').fill('2025-01-01');
+    await inCard(frame, desk.id, '#OpenedDate__to').fill('2025-09-30');
+    await inCard(frame, desk.id, '#btnFilterApply').click();
+    await expect
+      .poll(async () => {
+        const moved = await drawnRows(frame, desk.id);
+        if (moved.length !== byPriority.rows.length) return false;
+        return moved.every((row) => {
+          const wasLastYear = byPriority.rows.find((was) => was[0] === row[0]);
+          return wasLastYear !== undefined
+            && Number(row[1]) === Number(wasLastYear[2])
+            && Number(row[3]) === Number(wasLastYear[4])
+            && Number(row[2] ?? 0) === 0
+            && Number(row[4] ?? 0) === 0;
+        });
+      }, { timeout: 60_000 })
+      .toBe(true);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Story 28: a number that can be opened.
+  //
+  // The operations manager reads "15 Delayed" at the morning status review and
+  // needs the fifteen: the tracking numbers, the carriers and the cities, to
+  // ring the carriers and warn the customers. Clicking the Shipments cell of
+  // the Delayed row opens them, and what opens is exactly what was counted -
+  // the month the card is filtered to, and the status of the row that was
+  // clicked, never the whole month.
+  //
+  // Made to go red: the count of the rows in the modal (15, not the month's
+  // 188), the tracking numbers in them, and the nine fields a caller needs.
+  // ───────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) Delayed Shipments: the number opens into the fifteen behind it', async () => {
+    test.setTimeout(30 * 60_000);
+    const freight = cardOf('freight-shipments');
+    const checks  = checksOf(freight.id);
+
+    // This month by status, with the Booked filter the hint preset.
+    const month = checks.get('delayed-shipments')!;
+    await clickShowMe(frame, freight.id, 'delayed-shipments');
+    await expect(inCard(frame, freight.id, '#chipFilter-BookedDate'),
+      'the month the hint preset is a filter the viewer can see').toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(async () => difference(month.rows, await drawnRows(frame, freight.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    const delayed = month.rows.find((row) => row[1] === 'Delayed')!;
+    expect(Number(delayed[2]), 'fifteen shipments are delayed this month').toBe(15);
+
+    // The click: the Shipments number on the Delayed row.
+    const delayedRow = inCard(frame, freight.id, '#cubeRuntimeResult .tabulator-row')
+      .filter({ hasText: 'Delayed' }).first();
+    await expect(delayedRow, 'the Delayed row is drawn').toBeVisible({ timeout: 15_000 });
+    await delayedRow.locator('.tabulator-cell').last().click();
+
+    await expect(inCard(frame, freight.id, '#cubeDrillModal'),
+      'the rows behind the number open').toBeVisible({ timeout: 30_000 });
+    await expect(inCard(frame, freight.id, '#cubeDrillTitle'),
+      'and the modal says which number it opened').toContainText('Delayed', { timeout: 15_000 });
+
+    const behind = async (): Promise<unknown[][]> =>
+      await inCard(frame, freight.id, '#cubeDrillModal rb-tabulator').first()
+        .evaluate((el) => ((el as unknown as { data: Array<Record<string, unknown>> }).data ?? [])
+          .map((row) => Object.values(row)));
+
+    await expect
+      .poll(async () => (await behind()).length, { timeout: 60_000 })
+      .toBe(15);
+
+    const rows = await behind();
+    expect(rows[0].length,
+      'the nine fields the desk rings a carrier with').toBe(9);
+    const tracking = rows.map((row) => String(row[0]));
+    expect(tracking, 'the oldest delay is in the list').toContain('TRK-2026-000231');
+    expect(tracking, 'and the newest').toContain('TRK-2026-003268');
+    expect(new Set(tracking).size, 'fifteen different shipments').toBe(15);
+
+    // One carrier holds a third of them, which is the point of opening the number at all.
+    const perCarrier = new Map<string, number>();
+    for (const row of rows) {
+      const carrier = String(row[1]);
+      perCarrier.set(carrier, (perCarrier.get(carrier) ?? 0) + 1);
+    }
+    expect(perCarrier.get('Swiftline Parcel'), 'Swiftline Parcel is late five times').toBe(5);
+    expect(perCarrier.size, 'seven carriers in all').toBe(7);
+
+    // And it is the fifteen, not the month: 188 shipments were booked in it.
+    expect(rows.length, 'the month is not what opened').toBeLessThan(188);
+    await inCard(frame, freight.id, '#btnDrillClose').click();
+    await expect(inCard(frame, freight.id, '#cubeDrillModal'),
+      'and it closes again').toHaveCount(0, { timeout: 15_000 });
+    await expect
+      .poll(async () => difference(month.rows, await drawnRows(frame, freight.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+  });
+
+  test('(cube-stories) Billing Year to Date: the total restarts every January', async () => {
+    test.setTimeout(30 * 60_000);
+    const billing = cardOf('customer-invoices');
+    const checks  = checksOf(billing.id);
+
+    // Twenty-one months, each with what was invoiced in it and where the year stood after it.
+    const ytd = checks.get('billing-ytd')!;
+    await clickShowMe(frame, billing.id, 'billing-ytd');
+    await expect
+      .poll(async () => difference(ytd.rows, await drawnRows(frame, billing.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    // Made to go red: a running total that never restarts would carry 2025 into 2026 and put
+    // 12,031,529.61 on the January 2026 row instead of the month's own 1,241,086.33, and the
+    // December 2025 row would no longer be the whole of 2025.
+    const drawn  = await drawnRows(frame, billing.id);
+    const rowOf  = (month: string): unknown[] =>
+      drawn.find((row) => String(row[0]).startsWith(month))!;
+    const invoiced = (month: string): number => Number(rowOf(month)[1]);
+    const yearToDate = (month: string): number => Number(rowOf(month)[2]);
+
+    expect(drawn.length, 'twenty-one months of invoices').toBe(21);
+    expect(yearToDate('2026-01'),
+      "January's year to date is January itself").toBeCloseTo(invoiced('2026-01'), 2);
+    expect(yearToDate('2026-01'),
+      'and not the two years run together').toBeLessThan(2_000_000);
+    expect(yearToDate('2025-12'),
+      'December 2025 is the whole of 2025').toBeCloseTo(10_790_443.28, 2);
+    expect(yearToDate('2026-09'),
+      'September 2026 is the year so far').toBeCloseTo(9_621_071.76, 2);
+    expect(yearToDate('2025-09'),
+      'against the same month end a year earlier').toBeCloseTo(7_541_800.54, 2);
+
+    // Each month end of 2026 is ahead of the same month end of 2025, which is the story.
+    for (let m = 1; m <= 9; m++) {
+      const suffix = `-${String(m).padStart(2, '0')}`;
+      expect(yearToDate(`2026${suffix}`), `2026 is ahead at the end of month ${m}`)
+        .toBeGreaterThan(yearToDate(`2025${suffix}`));
+    }
+
+    // And the column really is a running total: each month's is the one before it plus the
+    // month, inside the year and never across it.
+    for (const year of ['2025', '2026']) {
+      const months = drawn
+        .filter((row) => String(row[0]).startsWith(year))
+        .map((row) => String(row[0]).slice(0, 7))
+        .sort();
+      let running = 0;
+      for (const month of months) {
+        running += invoiced(month);
+        expect(yearToDate(month), `${month} is ${year} added up to it`).toBeCloseTo(running, 2);
+      }
+    }
+
+    await expectNoCardWarns(frame);
+  });
+
+  test('(cube-stories) Category Margin: the cube says how every cell is written', async () => {
+    test.setTimeout(30 * 60_000);
+    const shop   = cardOf('online-sales');
+    const checks = checksOf(shop.id);
+
+    // The board pack, category by category: units, money and the two ratios.
+    const board = checks.get('category-margin')!;
+    await clickShowMe(frame, shop.id, 'category-margin');
+    expect(difference(board.rows, await drawnRows(frame, shop.id), false),
+      'the eight categories, with what each one sells and what it leaves').toBeNull();
+
+    // The columns are headed by what the cube calls those measures.
+    await expect(inCard(frame, shop.id, '#cubeRuntimeResult')).toContainText('Gross Margin');
+    await expect(inCard(frame, shop.id, '#cubeRuntimeResult')).toContainText('Margin %');
+
+    // Every cell is written the way the model says: euros as euros, because the cube declares
+    // currency 'EUR'; the ratios as percentages, because they are declared percent; the units
+    // as a plain number. Nothing here is a per-widget setting - a cell with no formatter at all
+    // would read 1092301.89.
+    const cellsOf = async (rowText: string): Promise<string[]> =>
+      (await inCard(frame, shop.id, '#cubeRuntimeResult .tabulator-row')
+        .filter({ hasText: rowText }).first()
+        .locator('.tabulator-cell').allTextContents()).map((text) => text.trim());
+    const displaysCells = await cellsOf('Displays');
+
+    expect(displaysCells[1], 'the units, as a plain number').toBe('1,837');
+    expect(displaysCells[2], 'net sales, in the cube\u2019s own currency').toBe('\u20AC1,092,301.89');
+    expect(displaysCells[2], 'and not the bare number a missing formatter would show')
+      .not.toBe('1092301.89');
+    expect(displaysCells[3], 'what those sales cost').toBe('\u20AC749,529.97');
+    expect(displaysCells[4], 'what they left').toBe('\u20AC342,771.92');
+    expect(displaysCells[5], 'the margin, as a percentage of a fraction').toBe('31.38%');
+    expect(displaysCells[6], 'and what was given away').toBe('3.02%');
+
+    // The finding the board reads: Displays sell the most and leave the least, Audio the most.
+    const drawn = await drawnRows(frame, shop.id);
+    const marginOf = (category: string): number =>
+      Number(drawn.find((row) => row[0] === category)![5]);
+    const netOf = (category: string): number =>
+      Number(drawn.find((row) => row[0] === category)![2]);
+    const categories = drawn.map((row) => String(row[0]));
+    expect(categories.sort((left, right) => netOf(right) - netOf(left))[0],
+      'Displays is the biggest seller').toBe('Displays');
+    expect(categories.sort((left, right) => marginOf(left) - marginOf(right))[0],
+      'and has the thinnest margin of the eight').toBe('Displays');
+    expect(categories.sort((left, right) => marginOf(right) - marginOf(left))[0],
+      'Audio has the fattest').toBe('Audio');
+
+    // Drop the field and the same six measures answer the whole shop. The total Margin % is the
+    // margin of the totals, 34.07%, which the query works out - not 35.11%, the average of the
+    // eight rows a table footer would take.
+    const inAll = checks.get('category-margin/in-all')!;
+    await clickShowMe(frame, shop.id, 'category-margin--in-all');
+    await expect
+      .poll(async () => difference(inAll.rows, await drawnRows(frame, shop.id), false),
+        { timeout: 60_000 })
+      .toBeNull();
+
+    const totalsCells = (await inCard(frame, shop.id, '#cubeRuntimeResult .tabulator-row')
+      .first().locator('.tabulator-cell').allTextContents()).map((text) => text.trim());
+    expect(totalsCells[0], 'the units of the whole shop').toBe('14,438');
+    expect(totalsCells[1], 'and its net sales').toBe('\u20AC3,571,889.64');
+    expect(totalsCells[4], "the shop's margin, worked out by the query").toBe('34.07%');
+
+    const averageOfTheRows = drawn.reduce((sum, row) => sum + Number(row[5]), 0) / drawn.length;
+    expect(averageOfTheRows, 'the average of the eight rows is another number').toBeCloseTo(0.3511, 3);
+    expect(Math.abs(averageOfTheRows - Number((await drawnRows(frame, shop.id))[0][4])),
+      'and the total is not that average').toBeGreaterThan(0.01);
+
+    await expectNoCardWarns(frame);
   });
 
   test('(cube-stories) Show Me on the shipped Northwind samples', async () => {
@@ -402,7 +957,7 @@ test.describe('Cube Stories — the cube demo page', () => {
   // the widget's own database and are still the rows its check says.
   //
   // And the claim the whole page makes about the cubes behind it: not one of
-  // the fifteen has a warning, because the warnings block is drawn only where
+  // them has a warning, because the warnings block is drawn only where
   // the parser found something to say.
   //
   // Made to go red: `toContainText('CoursesTaken')` — a panel that answered a
@@ -437,7 +992,107 @@ test.describe('Cube Stories — the cube demo page', () => {
 
     // Every card on the page, including this one: nothing to warn about.
     await expectNoCardWarns(frame);
-    // And the page is still the fifteen cards it opened as.
+    // And the page is still the cards it opened as.
     await expect(frame.locator('.rb-cube-stories-root .card')).toHaveCount(CUBE_STORIES_CARDS.length);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 4. Story 25, Customer Statement: a card that asks its viewer a question,
+  //    and a link that answers it for them.
+  //
+  // Positive half, the whole chain: the page's own `customerId` is declared
+  // once by the dashboard, asked for by the one card whose cube uses it, and
+  // fixed by a share link - which is the statement a supplier sends a customer.
+  //
+  // Negative half: the recipient of that link edits the customer out of the
+  // URL and still gets the customer the link names; and with no link at all
+  // the same card answers for every customer, which is what an unanswered
+  // question means here. Made to go red: if the URL won, the rows under
+  // Southridge's link would be the `another-customer` check's rows, which are
+  // in this file's assertions by name.
+  // ───────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) Customer Statement: the link answers the card, and the URL cannot', async ({ browser }) => {
+    test.setTimeout(20 * 60_000);
+
+    const statement = cardOf('customer-statement');
+    const checks = checksOf(statement.id);
+    const southridge = checks.get('customer-statement')!;
+    const vanArsdel = checks.get('customer-statement/another-customer')!;
+    const everyCustomer = checks.get('customer-statement/all-customers')!;
+
+    // ── The card asks, and only this card asks ──────────────────────────────
+    await waitForCard(frame, statement.id);
+    const select = inCard(frame, statement.id, '#cubeCardParams #customerId');
+    await expect(select, 'the card asks its viewer which customer').toBeVisible({ timeout: 60_000 });
+    await expect(select, 'and this link fixes nothing, so it is the viewer who answers')
+      .toBeEnabled();
+    await expect(inCard(frame, statement.id, '#cubeCardParams #customerId_lockedNote')).toHaveCount(0);
+
+    for (const card of CUBE_STORIES_CARDS) {
+      if (card.id === statement.id) continue;
+      await expect(
+        inCard(frame, card.id, '#cubeCardParamsBar'),
+        `${card.id} asks nothing: a page-wide question would put a select on every card`,
+      ).toHaveCount(0);
+    }
+
+    // ── Unanswered is every customer, answered is one ───────────────────────
+    await answerCardParams(frame, statement.id, { customerId: '' });
+    await clickShowMe(frame, statement.id, 'customer-statement--all-customers');
+    expect(difference(everyCustomer.rows, await drawnRows(frame, statement.id), false),
+      'nobody picked: the whole book, by status').toBeNull();
+
+    await answerCardParams(frame, statement.id, { customerId: '26' });
+    await clickShowMe(frame, statement.id, 'customer-statement');
+    const picked = await drawnRows(frame, statement.id);
+    expect(difference(southridge.rows, picked, false),
+      "Southridge Video SpA's own statement").toBeNull();
+    expect(difference(everyCustomer.rows, picked, false),
+      'and it is nothing like the whole book').not.toBeNull();
+
+    // ── The same card through a link that has already answered ──────────────
+    const linked = await createCubeStoriesShareLink(adminFetch, BASE_URL, { customerId: 26 });
+    const recipient = await browser.newPage();
+    try {
+      // The recipient edits the URL: another customer, on the query string, on purpose.
+      await recipient.goto(
+        `${BASE_URL}/dashboard/${CUBE_STORIES_REPORT_ID}`
+        + `?token=${encodeURIComponent(linked)}&customerId=7`,
+      );
+      const theirs = recipient.mainFrame();
+      await expect(theirs.locator('.rb-cube-stories-root')).toBeVisible({ timeout: 60_000 });
+      await waitForCard(theirs, statement.id);
+
+      const fixed = inCard(theirs, statement.id, '#cubeCardParams #customerId');
+      await expect(fixed, 'the link has answered, so the control is dead')
+        .toBeDisabled({ timeout: 60_000 });
+      await expect(fixed, 'showing the customer the link names, not the one in the URL')
+        .toHaveValue('26');
+      await expect(inCard(theirs, statement.id, '#cubeCardParams option[value="26"]'))
+        .toContainText('Southridge');
+      await expect(
+        inCard(theirs, statement.id, '#cubeCardParams #customerId_lockedNote'),
+        'and saying why it is dead',
+      ).toContainText('Fixed by this link');
+
+      await clickShowMe(theirs, statement.id, 'customer-statement');
+      const throughTheLink = await drawnRows(theirs, statement.id);
+      expect(difference(southridge.rows, throughTheLink, false),
+        "the link's customer is the one answered for, whatever the URL says").toBeNull();
+      expect(difference(vanArsdel.rows, throughTheLink, false),
+        "and the URL's customer is nowhere in the answer").not.toBeNull();
+
+      // The lock is this card's question, not the page's: every other card is the page
+      // everybody else sees.
+      const shop = cardOf('online-sales');
+      await waitForCard(theirs, shop.id);
+      await clickShowMe(theirs, shop.id, 'revenue-mix');
+      expect(difference(checksOf(shop.id).get('revenue-mix')!.rows,
+        await drawnRows(theirs, shop.id), false),
+        'the shop card answers the same under a link that fixes a customer').toBeNull();
+      await expectNoCardWarns(theirs);
+    } finally {
+      await recipient.close();
+    }
   });
 });

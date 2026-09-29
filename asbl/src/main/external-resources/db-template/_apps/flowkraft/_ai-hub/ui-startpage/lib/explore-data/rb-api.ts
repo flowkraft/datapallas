@@ -110,6 +110,18 @@ export function fetchUserVariables(): Promise<Record<string, string>> {
   return _userVariablesPromise;
 }
 
+/**
+ * The `dp_` names the server sets for this caller, for the bind chip to offer (R9).
+ *
+ * It is the answer to the same `/api/user-variables` the preview fills its values from, so the
+ * chip offers exactly what the server binds - never a list typed a second time in the browser.
+ * Empty when the caller may not ask (a viewer's session, an older backend): then the chip offers
+ * the dashboard's own parameters alone, which is what it did before.
+ */
+export async function fetchBuiltinParamNames(): Promise<string[]> {
+  return Object.keys(await fetchUserVariables());
+}
+
 /** The `dp_` names this SQL asks for, each once. */
 function dpVariablesNamedBy(sql: string): string[] {
   const named = new Set<string>();

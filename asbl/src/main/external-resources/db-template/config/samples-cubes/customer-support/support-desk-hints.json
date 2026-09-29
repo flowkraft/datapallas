@@ -115,7 +115,32 @@
         "BreachedTickets",
         "BreachRate"
       ]
-    }
+    },
+    "variants": [
+      {
+        "id": "team",
+        "text": "**Tier 2 only**: add the filter **Team = Tier 2**. The rate is then Tier 2's own, and the filter is the card's - change the team or take it off with its ×.",
+        "query": {
+          "dimensions": [
+            "Team"
+          ],
+          "measures": [
+            "Tickets",
+            "BreachedTickets",
+            "BreachRate"
+          ],
+          "filters": [
+            {
+              "member": "Team",
+              "operator": "equals",
+              "values": [
+                "Tier 2"
+              ]
+            }
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "breach-by-category",
@@ -131,5 +156,107 @@
         "BreachRate"
       ]
     }
+  },
+  {
+    "id": "time-by-priority",
+    "fromStory": null,
+    "question": "How long do tickets take, and how long does the first answer take? (new)",
+    "text": "Tick **Tickets**, **Average Resolution Hours** and **Average First Response Minutes**, then add **Priority**.",
+    "query": {
+      "dimensions": [
+        "Priority"
+      ],
+      "measures": [
+        "Tickets",
+        "AvgResolutionHours",
+        "AvgFirstResponseMinutes"
+      ]
+    }
+  },
+  {
+    "id": "support-vs-last-year",
+    "fromStory": 27,
+    "question": "Tickets are up - is the desk keeping up? (this year against last)",
+    "text": "**Show Me** opens the year so far - the **Opened** filter at the top - with **Tickets** and **Tickets Last Year** side by side, the breaches beside them, and **Priority** down the side. Last year is the same days one year back, and it moves with the filter: change the dates and both columns change together.",
+    "query": {
+      "dimensions": [
+        "Priority"
+      ],
+      "measures": [
+        "Tickets",
+        "TicketsLastYear",
+        "BreachedTickets",
+        "BreachedTicketsLastYear"
+      ],
+      "filters": [
+        {
+          "member": "OpenedDate",
+          "operator": "between",
+          "values": [
+            "{dataToday: startOf year}",
+            "{dataToday}"
+          ]
+        }
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-month",
+        "text": "Read **Opened** by **Month** instead of Priority: each month stands beside the same month a year earlier.",
+        "query": {
+          "dimensions": [
+            "OpenedDate.month"
+          ],
+          "measures": [
+            "Tickets",
+            "TicketsLastYear",
+            "BreachedTickets",
+            "BreachedTicketsLastYear"
+          ],
+          "filters": [
+            {
+              "member": "OpenedDate",
+              "operator": "between",
+              "values": [
+                "{dataToday: startOf year}",
+                "{dataToday}"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "my-teams-plate",
+    "fromStory": 31,
+    "question": "What is on our team's plate this morning, and who is breaching? (story 31)",
+    "text": "Tick **Tickets**, **Breached Tickets** and **Breach Rate**, then add **Priority**. An agent sees their own team's tickets here and nobody else's: the cube carries the desk's own rule about who reads which rows, and the rule finds the team from the email you signed in with. A support manager, an admin and a report author see the whole desk - which is what this card shows, because that is who is asking.",
+    "query": {
+      "dimensions": [
+        "Priority"
+      ],
+      "measures": [
+        "Tickets",
+        "BreachedTickets",
+        "BreachRate"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-agent",
+        "text": "**Who is breaching**: swap **Priority** for **Agent**. Inside a team it names the three or four people on it; whoever sees the whole desk sees all fifteen, and the row with no name is the 41 tickets nobody has picked up yet.",
+        "query": {
+          "dimensions": [
+            "Agent"
+          ],
+          "measures": [
+            "Tickets",
+            "BreachedTickets",
+            "BreachRate"
+          ]
+        }
+      }
+    ]
   }
 ]

@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -34,10 +35,16 @@ import org.junit.jupiter.api.io.TempDir;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.cubes.CubeDataToday;
+import com.flowkraft.cubes.CubeHints;
 import com.flowkraft.cubes.CubeFilterOptions;
 import com.flowkraft.cubes.CubeFiles;
+import com.flowkraft.cubes.DashboardParameters;
+import com.flowkraft.cubes.CubeQuery;
+import com.flowkraft.reporting.dsl.cube.CubeRules;
 import com.flowkraft.cubes.CubeRuntimeService;
 import com.flowkraft.cubes.CubeSqlGenerator;
+import com.flowkraft.cubes.CubeVariableBinding;
 import com.flowkraft.cubes.CubeWidgets;
 import com.flowkraft.cubes.CubesService;
 import com.flowkraft.exploredata.export.DashboardFileGenerator;
@@ -46,6 +53,8 @@ import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParametersHelper;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindManager.DatabaseVendor;
 import com.sourcekraft.documentburster.common.db.SeedScriptRunner;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindManager;
@@ -111,6 +120,15 @@ class GeneratedSqlAllVendorsTest {
 	/** Resolved from {@code user.dir} (bkend/server), the way CubeSampleSqlExecutesTest does it. */
 	private static final String SAMPLES_CUBES_DIR = "../../asbl/src/main/external-resources/db-template/config/samples-cubes";
 	private static final String CHECKS_DIR = "../../frend/reporting/e2e/_resources/cube-checks";
+	/**
+	 * The dashboards that ship. One of them, the Cube Stories page, declares the parameter story
+	 * 25's cube uses, and a check that is {@code locked} is answered through that declaration - the
+	 * one place a dashboard declares its parameters (R1), read here rather than restated.
+	 */
+	private static final String SAMPLES_DIR = "../../asbl/src/main/external-resources/db-template/config/samples";
+
+	/** The page these checks are the truths of: every card on it is one of the shipped cubes. */
+	private static final String STORIES_DASHBOARD = "g-cube-stories";
 	private static final String AI_HUB_CASES = "../../frend/reporting/e2e/_resources/ai-hub-sql/ai-hub-sql-cases.json";
 	private static final String AI_HUB_SQL = "../../frend/reporting/e2e/_resources/ai-hub-sql/ai-hub-sql.generated.json";
 
@@ -157,8 +175,16 @@ class GeneratedSqlAllVendorsTest {
 			int casesFailed = 0;
 			int viewersChecked = 0;
 			int viewersFailed = 0;
+			int conditionsChecked = 0;
+			int conditionsFailed = 0;
+			int previewChecked = 0;
+			int previewFailed = 0;
 			int parityChecked = 0;
 			int parityFailed = 0;
+			int dashboardChecked = 0;
+			int ownRowsChecked = 0;
+			int ownRowsFailed = 0;
+			int dashboardFailed = 0;
 			filteredPasses = 0;
 
 			try {
@@ -215,6 +241,42 @@ class GeneratedSqlAllVendorsTest {
 							failures.add(problem);
 						}
 					}
+
+					// And the cube's own conditions (R1), answered as a dashboard answers them.
+					for (String problem : runCubeConditions(jdbi, vendor)) {
+						conditionsChecked++;
+						if (problem != null) {
+							conditionsFailed++;
+							failures.add(problem);
+						}
+					}
+
+					// And the author's own dp_ values, sent by the preview and bound by run-sql (R9).
+					for (String problem : runPreviewBuiltins(jdbi, vendor)) {
+						previewChecked++;
+						if (problem != null) {
+							previewFailed++;
+							failures.add(problem);
+						}
+					}
+
+					// And the dashboard's own filter, reaching a frozen tile and a live cube at once (R8).
+					for (String problem : runDashboardFilter(connection, vendor)) {
+						dashboardChecked++;
+						if (problem != null) {
+							dashboardFailed++;
+							failures.add(problem);
+						}
+					}
+
+					// And a binding nobody answers: whoever is looking, on both kinds of tile (R9).
+					for (String problem : runOwnRows(connection, vendor)) {
+						ownRowsChecked++;
+						if (problem != null) {
+							ownRowsFailed++;
+							failures.add(problem);
+						}
+					}
 				}
 			} catch (Exception unreachable) {
 				// One vendor that never starts must not hide the other eight.
@@ -228,9 +290,14 @@ class GeneratedSqlAllVendorsTest {
 
 			perVendor.add(String.format(
 					"%-12s %3d hint checks, %d failed | %2d AI Hub cases, %d failed | %d access filter viewers, %d failed"
-							+ " | %3d two-mode checks (%d with a chip), %d failed | %d s",
+							+ " | %d cube conditions, %d failed | %d preview builtins, %d failed"
+							+ " | %3d two-mode checks (%d with a chip), %d failed"
+							+ " | %d dashboard filter checks, %d failed"
+							+ " | %d own-rows checks, %d failed | %d s",
 					vendor, checked, failed, casesChecked, casesFailed, viewersChecked, viewersFailed,
-					parityChecked, filteredPasses, parityFailed,
+					conditionsChecked, conditionsFailed, previewChecked, previewFailed,
+					parityChecked, filteredPasses, parityFailed, dashboardChecked, dashboardFailed,
+					ownRowsChecked, ownRowsFailed,
 					(System.currentTimeMillis() - started) / 1000));
 		}
 
@@ -266,7 +333,7 @@ class GeneratedSqlAllVendorsTest {
 		for (Ask ask : readAsks()) {
 			if (ask.refusedEverywhere()) continue;
 			try {
-				CubeSqlGenerator.buildQuery(CubeSqlGenerator.pickCube(ask.file, ask.cubeKey()), ask.query, "duckdb");
+				inlineSql(CubeSqlGenerator.pickCube(ask.file, ask.cubeKey()), ask.query, "duckdb");
 			} catch (Exception refused) {
 				complaints.add(ask.cube + " | " + ask.hint + ": " + refused.getMessage());
 			}
@@ -313,6 +380,21 @@ class GeneratedSqlAllVendorsTest {
 	private static final Map<String, String> ACCESS_FILTER_TYPES = Map.of("dp_today", "Date");
 
 	private static final String SUPPORT_DESK = "customer-support/support-desk-cube-config.groovy";
+
+	/**
+	 * Whoever the rest of this test asks as. Story 31 ships an {@code access_filter} on Support
+	 * Desk, so from now on every Support Desk statement carries it and the answer depends on who
+	 * is asking. The hints and their truths are the desk's own numbers, and the own-rows case is
+	 * about what a dashboard's binding narrows - so both ask as an admin, whom the filter's third
+	 * line lets see the whole desk. Who else sees what is what the viewers case above is for.
+	 *
+	 * <p>Every other cube names no {@code ${dp_…}} at all, and for those this map changes nothing.
+	 */
+	private static final Map<String, String> AS_ADMIN = Map.of(
+			"dp_user_id", "The Vendor Loop",
+			"dp_user_email", "loop@support.cube-demo.example",
+			"dp_user_groups", "",
+			"dp_user_role", "admin");
 
 	/** One person asking, and the rows the filter leaves them. */
 	private static final class Viewer {
@@ -470,6 +552,349 @@ class GeneratedSqlAllVendorsTest {
 				+ viewer.values + "\n  SQL: " + sql;
 	}
 
+	// ── the cube's own conditions, answered by a dashboard (R1) ──────────────────
+
+	/** Story 21's cube, the one written to be read between two days the viewer picks. */
+	private static final String ONLINE_SALES = "retail-ecommerce/online-sales-cube-config.groovy";
+	private static final String FOR_A_PERIOD = "shop-for-a-period";
+
+	/** One set of answers to one cube's conditions, and the rows they must leave behind. */
+	private record Answered(String who, String conditions, Map<String, Object> values,
+			Map<String, String> types, List<String> dimensions, List<List<Object>> rows) {
+	}
+
+	/** Two days, declared as days: bound as text, a date comparison answers the wrong rows. */
+	private static final Map<String, String> TWO_DAYS = Map.of("fromDate", "Date", "toDate", "Date");
+
+	/** The same period, written raw over three lines - the other form of the same condition. */
+	private static final String RAW_PERIOD = "  condition '''\n"
+			+ "    cube_demo.shop_orders.order_date\n"
+			+ "      >= ${fromDate}\n"
+			+ "  '''\n"
+			+ "  condition 'cube_demo.shop_orders.order_date <= ${toDate}'\n";
+
+	private static final String Q3_FROM = "2026-07-01";
+	private static final String Q3_TO = "2026-09-30";
+
+	/**
+	 * Story 21's period, asked eight ways, each one a promise only a database can keep.
+	 *
+	 * <p>Q3 2026 is 586,704.92 and all the dates are 3,571,889.64 (the checks next to the e2e hold
+	 * the same numbers, by category). A condition whose value the viewer left empty is dropped and
+	 * the ones next to it stay, which is the difference between 2,985,184.71 and 3,571,889.64; a
+	 * day bound as text rather than as a day is the whole table on some engines and an error on
+	 * others; and a condition on a measure is a HAVING, so it takes categories away rather than
+	 * rows.
+	 */
+	private static final List<Answered> ANSWERED = List.of(
+			new Answered("the native form, the two days the dashboard answered",
+					"  condition 'OrderDate', 'between', fromDate, toDate\n",
+					Map.of("fromDate", Q3_FROM, "toDate", Q3_TO), TWO_DAYS,
+					List.of(), List.of(List.of(586704.92))),
+			new Answered("the raw form, folded over three lines, the same two days",
+					RAW_PERIOD, Map.of("fromDate", Q3_FROM, "toDate", Q3_TO), TWO_DAYS,
+					List.of(), List.of(List.of(586704.92))),
+			new Answered("raw, with the start of the period cleared: that condition alone is dropped",
+					RAW_PERIOD, Map.of("fromDate", "", "toDate", "2026-06-30"), TWO_DAYS,
+					List.of(), List.of(List.of(2985184.71))),
+			new Answered("raw, with both cleared: the cube asks what it asks without them",
+					RAW_PERIOD, Map.of("fromDate", "", "toDate", ""), TWO_DAYS,
+					List.of(), List.of(List.of(3571889.64))),
+			new Answered("equals on a dimension: one category of the quarter",
+					"  condition 'OrderDate', 'between', fromDate, toDate\n"
+							+ "  condition 'Category', 'equals', pickCategory\n",
+					Map.of("fromDate", Q3_FROM, "toDate", Q3_TO, "pickCategory", "Audio"),
+					TWO_DAYS, List.of(), List.of(List.of(63645.39))),
+			new Answered("notEquals: the quarter without it, which is the rest of it",
+					"  condition 'OrderDate', 'between', fromDate, toDate\n"
+							+ "  condition 'Category', 'notEquals', pickCategory\n",
+					Map.of("fromDate", Q3_FROM, "toDate", Q3_TO, "pickCategory", "Audio"),
+					TWO_DAYS, List.of(), List.of(List.of(523059.53))),
+			new Answered("gt and lt, a day either side: the same quarter again",
+					"  condition 'OrderDate', 'gt', dayBefore\n"
+							+ "  condition 'OrderDate', 'lt', dayAfter\n",
+					Map.of("dayBefore", "2026-06-30", "dayAfter", "2026-10-01"),
+					Map.of("dayBefore", "Date", "dayAfter", "Date"),
+					List.of(), List.of(List.of(586704.92))),
+			new Answered("a condition on a measure is a HAVING: the categories at or above it",
+					"  condition 'OrderDate', 'between', fromDate, toDate\n"
+							+ "  condition 'NetSales', 'gte', minSales\n",
+					Map.of("fromDate", Q3_FROM, "toDate", Q3_TO, "minSales", "60000"),
+					Map.of("fromDate", "Date", "toDate", "Date", "minSales", "Number"),
+					List.of("Category"),
+					List.of(List.of("Audio", 63645.39), List.of("Displays", 187885.80),
+							List.of("Networking", 61490.09), List.of("Storage", 79346.68),
+							List.of("Video", 128992.03))));
+
+	/** The conditions of a cube whose only purpose is to hold them: the DSL, not a hand-made map. */
+	private static List<Map<String, Object>> conditionsOf(String written) throws Exception {
+		return CubeOptionsParser
+				.parseGroovyCubeDslCode("cube {\n  sql_table 'cube_demo.shop_order_lines'\n" + written + "}")
+				.getConditions();
+	}
+
+	/**
+	 * Story 21's cube with one set of conditions on it, asked on a real database.
+	 *
+	 * <p>Generated once per set and bound the production way ({@link CubeVariableBinding#bound},
+	 * which is {@code QueriesService.prepare} and then JDBI), because the statement the generator
+	 * writes carries {@code ${fromDate}} on to whoever runs it - that is the export form, the one a
+	 * published dashboard binds - and what the viewer reads is what the database answers once the
+	 * dashboard's values are bound to it. The conditions are set on the parsed cube rather than
+	 * written into the shipped file: the shipped story is read by its hints, with no dashboard
+	 * behind it, and it must stay that way.
+	 *
+	 * @return one entry per set of answers, null where that set's rows were right
+	 */
+	private List<String> runCubeConditions(Jdbi jdbi, String vendor) {
+
+		List<String> answers = new ArrayList<>();
+		for (Answered ask : ANSWERED) {
+			answers.add(askAnswered(jdbi, vendor, ask));
+		}
+		answers.add(askSourceSql(jdbi, vendor));
+		return answers;
+	}
+
+	/**
+	 * A cube that reads from a SELECT of its own, with the viewer's days inside that SELECT (R1,
+	 * 18a). The same binder binds them - the generator inlines the source SQL as the cube's FROM,
+	 * so the name travels into the statement exactly as one in a condition does - and the rows are
+	 * story 21's Q3, which is the only way to tell a bound day from a day that never arrived:
+	 * unbound, this answers every date the demo data holds.
+	 */
+	private static final String FROM_A_SELECT = "cube {\n"
+			+ "  sql '''\n"
+			+ "    SELECT l.qty, l.unit_price, l.discount_pct, p.category, o.status\n"
+			+ "      FROM cube_demo.shop_order_lines l\n"
+			+ "      JOIN cube_demo.shop_orders o ON l.order_id = o.order_id\n"
+			+ "      JOIN cube_demo.shop_products p ON l.product_id = p.product_id\n"
+			+ "     WHERE o.order_date >= ${fromDate} AND o.order_date <= ${toDate}\n"
+			+ "  '''\n"
+			+ "  title 'Sales read from a SELECT'\n"
+			+ "  dimension { name 'Category'; sql '${CUBE}.category'; type 'string' }\n"
+			+ "  measure {\n"
+			+ "    name 'NetSales'\n"
+			+ "    sql '${CUBE}.qty * ${CUBE}.unit_price * (100 - ${CUBE}.discount_pct) * 0.01'\n"
+			+ "    type 'sum'\n"
+			+ "    filters { filter sql: \"${CUBE}.status NOT IN ('Cancelled', 'Returned')\" }\n"
+			+ "  }\n"
+			+ "}\n";
+
+	private String askSourceSql(Jdbi jdbi, String vendor) {
+
+		Answered ask = new Answered("the two days inside the cube's own SELECT", FROM_A_SELECT,
+				Map.of("fromDate", Q3_FROM, "toDate", Q3_TO), TWO_DAYS,
+				List.of(), List.of(List.of(586704.92)));
+
+		String sql;
+		Map<String, Object> binds;
+		try {
+			CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(FROM_A_SELECT);
+			CubeQuery generated = CubeSqlGenerator.buildQuery(cube,
+					Map.of("measures", List.of("NetSales")), vendor);
+			for (String name : ask.values().keySet()) {
+				if (!generated.getSql().contains("${" + name + "}")) {
+					return reportAnswered(vendor, ask, generated.getSql(),
+							"the generated SQL does not carry ${" + name + "} on to whoever runs it");
+				}
+			}
+			CubeQuery bound = CubeVariableBinding.bound(generated, Map.of(), ask.values(), ask.types());
+			sql = bound.getSql();
+			binds = bound.getParams() == null ? Map.of() : bound.getParams();
+		} catch (Exception broken) {
+			return reportAnswered(vendor, ask, "-", "the SQL was not generated: " + broken);
+		}
+
+		List<List<Object>> actual;
+		try {
+			actual = jdbi.withHandle(handle -> {
+				org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+				for (Map.Entry<String, Object> bind : binds.entrySet()) {
+					if (bind.getValue() instanceof List<?> list) query.bindList(bind.getKey(), list);
+					else query.bind(bind.getKey(), bind.getValue());
+				}
+				return query.map((resultSet, context) -> {
+					List<Object> row = new ArrayList<>();
+					for (int column = 1; column <= resultSet.getMetaData().getColumnCount(); column++) {
+						row.add(resultSet.getObject(column));
+					}
+					return row;
+				}).list();
+			});
+		} catch (Exception broken) {
+			return reportAnswered(vendor, ask, sql,
+					"the database refused it: " + broken + " (parameters " + binds + ")");
+		}
+
+		String difference = difference(ask.rows(), actual, false);
+		return difference == null ? null : reportAnswered(vendor, ask, sql, difference);
+	}
+
+	/** One set of answers: generated, bound, run, and compared with the truths behind it. */
+	private String askAnswered(Jdbi jdbi, String vendor, Answered ask) {
+
+		String sql;
+		Map<String, Object> binds;
+		try {
+			File config = new File(existing(SAMPLES_CUBES_DIR, "the shipped sample cubes"), ONLINE_SALES);
+			CubeOptions file = CubeOptionsParser.parseGroovyCubeDslCode(Files.readString(config.toPath()));
+			CubeOptions cube = CubeSqlGenerator.pickCube(file, FOR_A_PERIOD);
+			cube.setConditions(conditionsOf(ask.conditions()));
+
+			Map<String, Object> request = new LinkedHashMap<>();
+			if (!ask.dimensions().isEmpty())
+				request.put("dimensions", ask.dimensions());
+			request.put("measures", List.of("NetSales"));
+
+			CubeQuery generated = CubeSqlGenerator.buildQuery(cube, request, vendor);
+			for (String name : ask.values().keySet()) {
+				if (!generated.getSql().contains("${" + name + "}")) {
+					return reportAnswered(vendor, ask, generated.getSql(),
+							"the generated SQL does not carry ${" + name + "} on to whoever runs it");
+				}
+			}
+
+			CubeQuery bound = CubeVariableBinding.bound(generated, Map.of(), ask.values(), ask.types());
+			sql = bound.getSql();
+			binds = bound.getParams() == null ? Map.of() : bound.getParams();
+		} catch (Exception broken) {
+			return reportAnswered(vendor, ask, "-", "the SQL was not generated: " + broken);
+		}
+
+		List<List<Object>> actual;
+		try {
+			actual = jdbi.withHandle(handle -> {
+				org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+				for (Map.Entry<String, Object> bind : binds.entrySet()) {
+					if (bind.getValue() instanceof List<?> list) query.bindList(bind.getKey(), list);
+					else query.bind(bind.getKey(), bind.getValue());
+				}
+				return query.map((resultSet, context) -> {
+					List<Object> row = new ArrayList<>();
+					for (int column = 1; column <= resultSet.getMetaData().getColumnCount(); column++) {
+						row.add(resultSet.getObject(column));
+					}
+					return row;
+				}).list();
+			});
+		} catch (Exception broken) {
+			return reportAnswered(vendor, ask, sql,
+					"the database refused it: " + broken + " (parameters " + binds + ")");
+		}
+
+		String difference = difference(ask.rows(), actual, false);
+		return difference == null ? null : reportAnswered(vendor, ask, sql, difference);
+	}
+
+	private String reportAnswered(String vendor, Answered ask, String sql, String problem) {
+		return "\n=== " + vendor + " | cube conditions | " + ask.who() + " ===\n  " + problem + "\n  answered with "
+				+ ask.values() + "\n  SQL: " + sql;
+	}
+
+	// ── the preview's builtins, bound the way run-sql binds them (R9) ───────
+
+	/**
+	 * The SQL the canvas preview sends for the author, with the builtins still written in it.
+	 *
+	 * <p>The browser never pastes a value into the text: {@code executeQuery} fills the author's own
+	 * {@code dp_} values from {@code /api/user-variables} and sends them beside the SQL (the
+	 * explore-data Jasmine holds that half down). This is the other half, on a real database: the
+	 * same {@code QueriesService.prepare} that {@code POST /api/queries/run-sql} calls, and then
+	 * JDBI. What it has to show is that the author reads their own rows and nobody else's, and that
+	 * the day they are asking about is bound as a day rather than compared as text.
+	 */
+	private static final String PREVIEW_SQL = "SELECT count(*) AS tickets"
+			+ " FROM cube_demo.support_tickets t"
+			+ " JOIN cube_demo.support_agents a ON a.agent_id = t.agent_id"
+			+ " WHERE a.email = ${dp_user_email} AND t.opened_date <= ${dp_today}";
+
+	/** {@code dp_today} is the one the browser types, exactly as {@code DP_VARIABLE_TYPES} does. */
+	private static final Map<String, String> PREVIEW_TYPES = Map.of("dp_today", "Date");
+
+	/** What {@code executeQuery} puts in the request body: the server's own answer about the author. */
+	private static Map<String, Object> authoring(String email, String today) {
+		Map<String, Object> values = new LinkedHashMap<>();
+		values.put("dp_user_email", email);
+		values.put("dp_today", today);
+		return values;
+	}
+
+	/** Chiara's own tickets, on the frozen demo data: 307 of them, 65 of them by June 2025. */
+	private static final List<Viewer> PREVIEWS = List.of(
+			new Viewer("the author's own tickets, on the day the data ends",
+					authoring(CHIARA, TODAY), List.of(List.of(307))),
+			new Viewer("the same author asking about June 2025 - the day is bound as a day",
+					authoring(CHIARA, "2025-06-30"), List.of(List.of(65))),
+			new Viewer("somebody the support desk has never heard of: no tickets, not everybody's",
+					authoring(NOBODY, TODAY), List.of(List.of(0))));
+
+	/** @return one entry per author asking, null where that author's rows were right */
+	private List<String> runPreviewBuiltins(Jdbi jdbi, String vendor) {
+
+		List<String> answers = new ArrayList<>();
+		for (Viewer author : PREVIEWS) {
+			answers.add(askAsAuthor(jdbi, vendor, author));
+		}
+		return answers;
+	}
+
+	/** One author's preview: prepared as {@code run-sql} prepares it, then run. */
+	private String askAsAuthor(Jdbi jdbi, String vendor, Viewer author) {
+
+		QueriesService.PreparedSql prepared = QueriesService.prepare(PREVIEW_SQL, author.values, PREVIEW_TYPES);
+		String sql = prepared.sql();
+		Map<String, Object> binds = prepared.params() == null ? Map.of() : prepared.params();
+
+		if (!sql.contains(":dp_user_email") || !sql.contains(":dp_today")) {
+			return reportPreview(vendor, author, sql, "the builtins are not bound by name");
+		}
+		if (sql.contains("${")) {
+			return reportPreview(vendor, author, sql, "a placeholder is left in the statement that nobody bound");
+		}
+		String email = String.valueOf(author.values.get("dp_user_email"));
+		if (sql.contains(email)) {
+			return reportPreview(vendor, author, sql, "the email was written into the statement instead of bound");
+		}
+		if (!(binds.get("dp_today") instanceof java.time.LocalDate)) {
+			return reportPreview(vendor, author, sql,
+					"the day was bound as " + (binds.get("dp_today") == null ? "nothing"
+							: binds.get("dp_today").getClass().getSimpleName()) + " rather than as a day");
+		}
+
+		List<List<Object>> actual;
+		try {
+			actual = jdbi.withHandle(handle -> {
+				org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+				for (Map.Entry<String, Object> bind : binds.entrySet()) {
+					if (bind.getValue() instanceof List<?> list) {
+						query.bindList(bind.getKey(), list);
+					} else {
+						query.bind(bind.getKey(), bind.getValue());
+					}
+				}
+				return query.map((resultSet, context) -> {
+					List<Object> row = new ArrayList<>();
+					for (int column = 1; column <= resultSet.getMetaData().getColumnCount(); column++) {
+						row.add(resultSet.getObject(column));
+					}
+					return row;
+				}).list();
+			});
+		} catch (Exception broken) {
+			return reportPreview(vendor, author, sql,
+					"the database refused it: " + broken + " (parameters " + binds + ")");
+		}
+
+		String difference = difference(author.rows, actual, false);
+		return difference == null ? null : reportPreview(vendor, author, sql, difference);
+	}
+
+	private String reportPreview(String vendor, Viewer author, String sql, String problem) {
+		return "\n=== " + vendor + " | preview builtins | " + author.who + " ===\n  " + problem + "\n  sent with "
+				+ author.values + "\n  SQL: " + sql;
+	}
+
 	// ── the hints ────────────────────────────────────────────────────────────────
 
 	/** One hint (or one of its variants): the query it ticks, and the rows it must answer. */
@@ -483,6 +908,12 @@ class GeneratedSqlAllVendorsTest {
 		private final String cubeName;
 		private final Map<String, Object> query;
 		private final List<List<Object>> rows;
+		/**
+		 * The parameters the dashboard has answered when these rows are true, from the check
+		 * (story 25). A check with none is the question nobody has answered: the empty-value rule
+		 * takes the cube's whole condition out, which is what All means.
+		 */
+		private final Map<String, Object> locked;
 
 		/**
 		 * The vendors generate-sql is expected to REFUSE this question on, from the check - never
@@ -493,7 +924,8 @@ class GeneratedSqlAllVendorsTest {
 		private final List<?> refusedOn;
 
 		private Ask(String cube, String hint, CubeOptions file, File dslFile, String cubeName,
-				Map<String, Object> query, List<List<Object>> rows, List<?> refusedOn) {
+				Map<String, Object> query, List<List<Object>> rows, List<?> refusedOn,
+				Map<String, Object> locked) {
 			this.cube = cube;
 			this.hint = hint;
 			this.file = file;
@@ -502,6 +934,7 @@ class GeneratedSqlAllVendorsTest {
 			this.query = query;
 			this.rows = rows;
 			this.refusedOn = refusedOn == null ? List.of() : refusedOn;
+			this.locked = locked == null ? Map.of() : locked;
 		}
 
 		/**
@@ -611,8 +1044,10 @@ class GeneratedSqlAllVendorsTest {
 				@SuppressWarnings("unchecked")
 				List<List<Object>> rows = (List<List<Object>>) check.get("rows");
 				Object refused = check.get("refusedOn");
+				Object locked = check.get("locked");
 				asks.add(new Ask(cube, hint, file, config, cubeFiles.getCubeName(), query, rows,
-						refused instanceof List ? (List<?>) refused : null));
+						refused instanceof List ? (List<?>) refused : null,
+						locked instanceof Map ? asValues((Map<?, ?>) locked) : null));
 			}
 
 			for (String hint : queries.keySet()) {
@@ -625,34 +1060,23 @@ class GeneratedSqlAllVendorsTest {
 		return asks;
 	}
 
-	/** A cube's hints, flattened: {@code <id>} for a hint and {@code <id>/<variant>} for a variant. */
 	/**
-	 * The hints of one cube. The cubes one DSL file holds under a name share one hints file, and
-	 * each hint's query names its cube in cubeName, as a generate-sql request does; a file's
-	 * unnamed cube owns the hints that name none.
+	 * The hints of one cube, flattened: {@code <id>} for a hint and {@code <id>/<variant>} for a
+	 * variant, which is how a check names the hint it holds the rows for.
+	 *
+	 * <p>Read through {@link CubeHints}, the runtime's own reader, so this loop asks what a viewer
+	 * asks: the cubes one DSL file holds under a name share one hints file and each hint's query
+	 * names its cube in cubeName, and a hint that presets a period writes it as an R7 token
+	 * ({@code {dataToday: startOf quarter}}), resolved here against the pinned today. Resolving it
+	 * a second time here would be a second rule about what a hint means.
 	 */
 	private Map<String, Map<String, Object>> queriesOf(File hintsFile, String cubeName) throws Exception {
 
 		Map<String, Map<String, Object>> queries = new LinkedHashMap<>();
-		for (Map<String, Object> hint : JSON.<List<Map<String, Object>>>readValue(hintsFile,
-				new TypeReference<List<Map<String, Object>>>() {
-				})) {
-			String id = Objects.toString(hint.get("id"), "");
+		for (Map<String, Object> ask : CubeHints.of(hintsFile, cubeName, () -> PINNED_TODAY)) {
 			@SuppressWarnings("unchecked")
-			Map<String, Object> query = (Map<String, Object>) hint.get("query");
-			if (!Objects.toString(cubeName, "").equals(Objects.toString(query.get("cubeName"), ""))) continue;
-			queries.put(id, query);
-
-			Object variants = hint.get("variants");
-			if (variants instanceof List) {
-				for (Object each : (List<?>) variants) {
-					@SuppressWarnings("unchecked")
-					Map<String, Object> variant = (Map<String, Object>) each;
-					@SuppressWarnings("unchecked")
-					Map<String, Object> variantQuery = (Map<String, Object>) variant.get("query");
-					queries.put(id + "/" + variant.get("id"), variantQuery);
-				}
-			}
+			Map<String, Object> query = (Map<String, Object>) ask.get("query");
+			queries.put(Objects.toString(ask.get("check"), ""), query);
 		}
 		return queries;
 	}
@@ -668,6 +1092,91 @@ class GeneratedSqlAllVendorsTest {
 
 	// ── one check ────────────────────────────────────────────────────────────────
 
+	/**
+	 * The day the checks are true of. A cube's parameters are relative to the data's own today (R7),
+	 * which the runtime reads from {@code cube_demo.demo_info}; the seeded demo data is frozen, so
+	 * its today is this one, and the rows a check holds are truths about it. Pinned here rather than
+	 * read, so a check that names a period cannot start answering a different question tomorrow.
+	 */
+	private static final LocalDate PINNED_TODAY = LocalDate.of(2026, 9, 30);
+
+	/**
+	 * The SQL a request gets: generated for the vendor - the preview form, literals in the
+	 * statement, which is what {@code generate-sql} answers and what a canvas freezes on a widget.
+	 *
+	 * <p>No dashboard declares anything here, which is design time (R1): a name one of the cube's
+	 * conditions uses is left with no value, so that condition is dropped and the statement is the
+	 * one the cube asks on its own.
+	 */
+	private static String inlineSql(CubeOptions cube, Map<String, Object> query, String vendor) {
+		return inlineSql(cube, query, vendor, Map.of());
+	}
+
+	/**
+	 * The same SQL where the dashboard has answered (story 25, R1): the values are the check's
+	 * {@code locked} ones and the declarations are the Cube Stories page's own, read from the file
+	 * it ships in. So a locked check is bound exactly as the page binds it — a customer id is a
+	 * number because the dashboard declared it one — and not as this test would like it bound.
+	 *
+	 * <p>With nothing locked nothing is declared, which is design time: the name a condition uses
+	 * is left empty, that condition is dropped, and the statement is the one the cube asks on its
+	 * own — the All half of the same story.
+	 */
+	private static String inlineSql(CubeOptions cube, Map<String, Object> query, String vendor,
+			Map<String, Object> locked) {
+
+		CubeQuery generated = CubeSqlGenerator.buildQuery(cube, query, vendor);
+		List<ReportParameter> declared = locked.isEmpty() ? List.of() : storiesParameters();
+
+		Map<String, Object> asked = new LinkedHashMap<>(query);
+		if (!locked.isEmpty())
+			asked.put(DashboardParameters.REQUEST_KEY, locked);
+
+		return CubeVariableBinding.bound(generated, AS_ADMIN,
+				DashboardParameters.values(declared, cube, asked, () -> PINNED_TODAY),
+				DashboardParameters.types(declared))
+				.toInlineSql(vendor);
+	}
+
+	/** The file the Cube Stories page declares its parameters in, as it ships. */
+	private static File storiesSpec() {
+
+		File spec = new File(existing(SAMPLES_DIR, "the shipped dashboards"),
+				STORIES_DASHBOARD + "/" + STORIES_DASHBOARD + DashboardParameters.SUFFIX);
+		if (!spec.isFile()) {
+			throw new IllegalStateException("A cube of this page has a condition in it, and "
+					+ STORIES_DASHBOARD + " declares no parameters: " + spec.getAbsolutePath());
+		}
+		return spec;
+	}
+
+	/** The Cube Stories page's declarations, parsed once from the file that ships with it. */
+	private static List<ReportParameter> storiesParameters() {
+
+		if (STORIES_PARAMETERS.isEmpty()) {
+			File spec = storiesSpec();
+			try {
+				STORIES_PARAMETERS.addAll(ReportParametersHelper
+						.parseGroovyParametersDslCode(Files.readString(spec.toPath())));
+			} catch (Exception unreadable) {
+				throw new IllegalStateException("The Cube Stories page's parameters cannot be read: "
+						+ unreadable, unreadable);
+			}
+		}
+		return STORIES_PARAMETERS;
+	}
+
+	private static final List<ReportParameter> STORIES_PARAMETERS = new ArrayList<>();
+
+	/** A check's {@code locked} object as the request carries it: every value as its own text. */
+	private static Map<String, Object> asValues(Map<?, ?> locked) {
+
+		Map<String, Object> values = new LinkedHashMap<>();
+		for (Map.Entry<?, ?> entry : locked.entrySet())
+			values.put(Objects.toString(entry.getKey(), ""), Objects.toString(entry.getValue(), ""));
+		return values;
+	}
+
 	/** Returns null when the check passes, otherwise the one line that says what went wrong. */
 	private String runCheck(Connection connection, String vendor, Ask ask) {
 
@@ -677,7 +1186,7 @@ class GeneratedSqlAllVendorsTest {
 		try {
 			// The same two calls the generate-sql endpoint makes with dbVendor.
 			CubeOptions cube = CubeSqlGenerator.pickCube(ask.file, ask.cubeKey());
-			sql = CubeSqlGenerator.buildQuery(cube, ask.query, vendor).toInlineSql(vendor);
+			sql = inlineSql(cube, ask.query, vendor, ask.locked);
 		} catch (IllegalArgumentException refusal) {
 			// IllegalArgumentException is what the endpoint answers as a 400.
 			if (mustRefuse) return null;
@@ -819,7 +1328,9 @@ class GeneratedSqlAllVendorsTest {
 		DashboardFileGenerator.GeneratedFiles files;
 		try {
 			CubeOptions cube = CubeSqlGenerator.pickCube(ask.file, ask.cubeKey());
-			frozenSql = CubeSqlGenerator.buildQuery(cube, selection, vendor).toInlineSql(vendor);
+			// With this check's own answers bound in, which is what a canvas freezes: the values
+			// the widget was exported with. Mode 2 is asked the same ones a few lines down.
+			frozenSql = inlineSql(cube, selection, vendor, ask.locked);
 			List<Map<String, Object>> canvas = List.of(cubeWidget("w-frozen", ask, selection, false, frozenSql),
 					cubeWidget("w-live", ask, selection, true, ""));
 			script = ScriptAssembler.assemble(canvas, List.of()).text();
@@ -839,6 +1350,12 @@ class GeneratedSqlAllVendorsTest {
 		if (published.contains("${dp_")) {
 			problems.add(reportParity(vendor, ask, what, published,
 					"the frozen SQL still carries a builtin variable, which only a request can bind"));
+			return new Both(problems, List.of());
+		}
+		if (published.contains("${")) {
+			problems.add(reportParity(vendor, ask, what, published,
+					"the frozen SQL still carries a standing parameter; a canvas freezes a widget's "
+							+ "parameters as the values it was exported with"));
 			return new Both(problems, List.of());
 		}
 
@@ -896,6 +1413,15 @@ class GeneratedSqlAllVendorsTest {
 		Files.createDirectories(reportDir);
 		Files.writeString(reportDir.resolve(PARITY_REPORT + CubeWidgets.SUFFIX), widgetsJson);
 
+		// A cube with a condition in it is only answerable by a dashboard that declares the name
+		// the condition uses (R1), so the parity board declares what the page these truths belong
+		// to declares - the shipped file itself, not a copy of its names. A cube without
+		// conditions writes nothing and the board stays what it was.
+		if (!CubeRules.parameterUses(CubeSqlGenerator.pickCube(ask.file, ask.cubeKey())).isEmpty()) {
+			Files.writeString(reportDir.resolve(PARITY_REPORT + DashboardParameters.SUFFIX),
+					Files.readString(storiesSpec().toPath()));
+		}
+
 		Map<String, Map<String, Object>> declared = JSON.readValue(widgetsJson,
 				new TypeReference<LinkedHashMap<String, Map<String, Object>>>() {
 				});
@@ -913,10 +1439,27 @@ class GeneratedSqlAllVendorsTest {
 		// The seam CubeRuntimeService declares for a test (useDatabase); set by its field, because
 		// that method is the cubes package's own and this loop is not in it.
 		ReflectionTestUtils.setField(runtime, "database", database);
+		// The data's today (R7). The runtime reads it off the connection, and this loop's connections
+		// are throwaway databases the seed scripts made; pinning it is what keeps Mode 2 asking the
+		// same period as Mode 1, which freezes it at PINNED_TODAY.
+		ReflectionTestUtils.setField(runtime, "dataToday", new CubeDataToday() {
+			@Override
+			public LocalDate of(String connectionId) {
+				return PINNED_TODAY;
+			}
+		});
 
-		// What the renderer opens with: the entry's own selection, and nothing the request added.
+		// What the renderer opens with: the entry's own selection, and nothing the request added -
+		// beside the answers the check is of, which are the page's parameters and travel in a
+		// request of their own key. Mode 1 froze its SQL with the very same values, so a value
+		// that reached only one of the two modes is a disagreement here rather than a silent pass.
 		Map<String, Object> request = new LinkedHashMap<>(widget.initial());
-		Map<String, Object> answer = runtime.query(PARITY_REPORT, componentId, request, Map.of());
+		if (!ask.locked.isEmpty())
+			request.put(DashboardParameters.REQUEST_KEY, ask.locked);
+		// Asked by the same person Mode 1 froze its SQL for (AS_ADMIN): who is asking is part of
+		// the question wherever a cube has an access_filter, and the two modes can only be
+		// compared when it is the same person asking both.
+		Map<String, Object> answer = runtime.query(PARITY_REPORT, componentId, request, AS_ADMIN);
 
 		if (!PARITY_CONNECTION.equals(database.readOn)) {
 			problems.add(reportParity(vendor, ask, what, "-", "the live cube read its answer on '"
@@ -933,6 +1476,9 @@ class GeneratedSqlAllVendorsTest {
 	/** The selection, as the canvas holds it: the keys a cube widget carries, and no check's flag. */
 	private static Map<String, Object> selectionOf(Map<String, Object> query) {
 		Map<String, Object> selection = new LinkedHashMap<>();
+		// A period is one of the filters (R1): a cube declares no parameters, so a hint that asks
+		// about a quarter presets the viewer's own filter on the date dimension, and the entry's
+		// initial is what the renderer opens the live widget with.
 		for (String key : List.of("dimensions", "measures", "segments", "granularities", "filters", "order",
 				"limit")) {
 			if (query.get(key) != null) selection.put(key, query.get(key));
@@ -1024,6 +1570,600 @@ class GeneratedSqlAllVendorsTest {
 	private String reportParity(String vendor, Ask ask, String what, String sql, String problem) {
 		return "\n=== " + vendor + " | two modes | " + ask.cube + " | " + ask.hint + what + " ===\n  " + problem
 				+ "\n  SQL: " + sql;
+	}
+
+	// ── the dashboard's own filter, on both kinds of tile at once (R8) ──────────
+
+	/** The dashboard this check publishes to. Nothing of it outlives the check. */
+	private static final String DASHBOARD_REPORT = "country-board";
+
+	/** Story 24's cube: the shop, which every vendor's cube_demo holds. */
+	private static final String SHOP = "online-sales";
+
+	/** One country the viewer can pick, and the shop's net sales for it (the frozen truths). */
+	private record Picked(String country, double netSales) {
+	}
+
+	/** The wildcard is not a country: it is every order, guests included, which is more. */
+	private static final List<Picked> PICKED = List.of(
+			new Picked("Germany", 859422.88), new Picked("*", 3571889.64));
+
+	/**
+	 * The one filter at the top of a dashboard, reaching both kinds of tile (R8, TODO 21a).
+	 *
+	 * <p>Story 24's dashboard in the small: one frozen KPI, whose SQL the canvas froze with
+	 * {@code ${country}} standing in it, and one live cube beside it, which carries the same
+	 * parameter as a binding in its {@code -cube-widgets.json} entry. Both are published by the
+	 * real exporter, onto the same canvas, and then asked on this vendor's own database: the KPI
+	 * by running the published script the way {@code /data} runs it, values bound out of the
+	 * viewer's answers; the cube by asking {@link CubeRuntimeService#query} the way the renderer
+	 * asks it, with the answer in {@code params}. A country manager reads the two side by side, so
+	 * the two must agree - and must both be the country's own number, not the shop's.
+	 *
+	 * <p>The negative half is the same live entry with its binding taken out: Germany is picked
+	 * and the cube answers the whole shop, which is the dashboard nobody notices is wrong.
+	 *
+	 * @return one entry per country asked, null where both tiles answered it the same
+	 */
+	private List<String> runDashboardFilter(Connection connection, String vendor) {
+
+		String propertyBefore = System.getProperty("PORTABLE_EXECUTABLE_DIR");
+		String appPathBefore = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH;
+		List<String> problems = new ArrayList<>();
+		try {
+			File config = new File(existing(SAMPLES_CUBES_DIR, "the shipped sample cubes"), ONLINE_SALES);
+			String dsl = Files.readString(config.toPath());
+
+			Path home = tempDir.resolve("dashboard/" + vendor);
+			Path cubeDir = home.resolve("config/cubes/" + SHOP);
+			Files.createDirectories(cubeDir);
+			Files.writeString(cubeDir.resolve("cube.xml"), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<cube>\n"
+					+ "    <name>" + SHOP + "</name>\n    <description>The shop of a dashboard</description>\n"
+					+ "    <connectionId>" + PARITY_CONNECTION + "</connectionId>\n</cube>\n");
+			Files.writeString(cubeDir.resolve(SHOP + "-cube-config.groovy"), dsl);
+			System.setProperty("PORTABLE_EXECUTABLE_DIR", home.toString());
+			AppPaths.PORTABLE_EXECUTABLE_DIR_PATH = home.toString();
+
+			CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
+			for (Picked picked : PICKED) {
+				problems.add(askBothKinds(connection, vendor, cube, home, picked, true));
+			}
+			// The negative half, asked once: the binding dropped, the country still picked.
+			problems.add(askBothKinds(connection, vendor, cube, home, PICKED.get(0), false));
+		} catch (Exception broken) {
+			problems.add(reportDashboard(vendor, "-", "the dashboard was not published: " + broken));
+		} finally {
+			AppPaths.PORTABLE_EXECUTABLE_DIR_PATH = appPathBefore;
+			if (propertyBefore == null) System.clearProperty("PORTABLE_EXECUTABLE_DIR");
+			else System.setProperty("PORTABLE_EXECUTABLE_DIR", propertyBefore);
+		}
+		return problems;
+	}
+
+	/** One picked country, read off the frozen tile and off the live cube. Null when they agree. */
+	private String askBothKinds(Connection connection, String vendor, CubeOptions cube, Path home,
+			Picked picked, boolean bound) {
+
+		String what = (bound ? "bound, " : "the binding dropped, ") + "country=" + picked.country();
+		String script;
+		DashboardFileGenerator.GeneratedFiles files;
+		try {
+			Map<String, Object> frozen = dashboardSelection(List.of(), true, bound);
+			String frozenSql = CubeSqlGenerator.buildQuery(cube, frozen, vendor).toInlineSql(vendor);
+			List<Map<String, Object>> canvas = List.of(
+					dashboardWidget("w-kpi-net", "number", frozen, false, frozenSql),
+					dashboardWidget("w-live-shop", "tabulator",
+							dashboardSelection(List.of("Channel"), false, bound), true, ""));
+			script = ScriptAssembler.assemble(canvas, DASHBOARD_PARAMETERS).text();
+			files = DashboardFileGenerator.generate(canvas, DASHBOARD_PARAMETERS, DASHBOARD_REPORT,
+					"http://localhost:9090/api", PARITY_CONNECTION);
+		} catch (Exception broken) {
+			return reportDashboard(vendor, what, "the canvas was not published: " + broken);
+		}
+
+		double frozenTotal;
+		try {
+			frozenTotal = frozenTotal(connection, script, Map.of("country", picked.country()));
+		} catch (Exception broken) {
+			return reportDashboard(vendor, what, "the frozen tile refused it: " + broken);
+		}
+
+		double liveTotal;
+		try {
+			liveTotal = liveTotal(connection, vendor, files, home, picked.country());
+		} catch (Exception broken) {
+			return reportDashboard(vendor, what, "the live cube refused it: " + broken);
+		}
+
+		if (!bound) {
+			// Nothing is bound, so both tiles ignore the viewer and answer the whole shop - which
+			// is exactly the failure this whole TODO exists to make visible.
+			double wholeShop = PICKED.get(1).netSales();
+			if (Math.abs(liveTotal - wholeShop) > 0.05 || Math.abs(frozenTotal - wholeShop) > 0.05) {
+				return reportDashboard(vendor, what, "without the binding both tiles answer the whole "
+						+ "shop " + wholeShop + ", and they answered " + frozenTotal + " / " + liveTotal);
+			}
+			if (Math.abs(liveTotal - picked.netSales()) < 0.05) {
+				return reportDashboard(vendor, what,
+						"an unbound cube cannot answer " + picked.country() + "'s own " + picked.netSales());
+			}
+			return null;
+		}
+		if (Math.abs(frozenTotal - picked.netSales()) > 0.05) {
+			return reportDashboard(vendor, what,
+					"the frozen tile answered " + frozenTotal + ", and the story's number is "
+							+ picked.netSales());
+		}
+		if (Math.abs(liveTotal - picked.netSales()) > 0.05) {
+			return reportDashboard(vendor, what,
+					"the live cube answered " + liveTotal + ", and the story's number is " + picked.netSales());
+		}
+		if (Math.abs(frozenTotal - liveTotal) > 0.05) {
+			return reportDashboard(vendor, what, "the two tiles disagree: the KPI reads " + frozenTotal
+					+ " and the cube beside it reads " + liveTotal);
+		}
+		return null;
+	}
+
+	/** The dashboard's one parameter, as the canvas declares it: a country, or the wildcard. */
+	private static final List<Map<String, Object>> DASHBOARD_PARAMETERS = List.of(new LinkedHashMap<>(
+			Map.of("id", "country", "type", "String", "label", "Country", "defaultValue", "*",
+					"constraints", Map.of("required", false), "uiHints", Map.of("control", "text"))));
+
+	/**
+	 * One tile's question. The frozen one carries the parameter's name in a filter, because that
+	 * is what a canvas can freeze; the live one carries the binding instead, and the server adds
+	 * the filter for each viewer. Both exclude the cancelled and the returned, as Net Sales does.
+	 */
+	private static Map<String, Object> dashboardSelection(List<String> dimensions, boolean frozen,
+			boolean bound) {
+
+		List<Map<String, Object>> filters = new ArrayList<>();
+		filters.add(Map.of("member", "Status", "operator", "notIn",
+				"values", List.of("Cancelled", "Returned")));
+		if (frozen && bound)
+			filters.add(Map.of("member", "Country", "operator", "in", "values", List.of("${country}")));
+
+		Map<String, Object> selection = new LinkedHashMap<>();
+		selection.put("dimensions", dimensions);
+		selection.put("measures", List.of("NetSales"));
+		selection.put("segments", List.of());
+		selection.put("filters", filters);
+		selection.put("granularities", Map.of());
+		selection.put("order", List.of());
+		selection.put("limit", 500);
+		if (!frozen && bound)
+			selection.put("paramBindings",
+					List.of(Map.of("param", "country", "member", "Country", "operator", "in")));
+		return selection;
+	}
+
+	/** One widget of the dashboard's canvas, in the shape the AI Hub sends it in. */
+	private static Map<String, Object> dashboardWidget(String id, String type,
+			Map<String, Object> selection, boolean live, String generatedSql) {
+
+		Map<String, Object> visualQuery = new LinkedHashMap<>();
+		visualQuery.put("kind", "cube");
+		visualQuery.put("cubeId", SHOP);
+		visualQuery.put("cubeSelection", selection);
+		if (live) visualQuery.put("showInDashboard", true);
+
+		Map<String, Object> dataSource = new LinkedHashMap<>();
+		dataSource.put("mode", "visual");
+		dataSource.put("visualQuery", visualQuery);
+		dataSource.put("generatedSql", generatedSql);
+
+		Map<String, Object> widget = new LinkedHashMap<>();
+		widget.put("id", id);
+		widget.put("type", type);
+		widget.put("dataSource", dataSource);
+		widget.put("gridPosition", Map.of("x", 0, "y", live ? 4 : 0, "w", 6, "h", 4));
+		widget.put("displayConfig", live ? Map.of()
+				: Map.of("numberField", "NetSales", "numberLabel", "Net Sales", "numberFormat", "currency"));
+		return widget;
+	}
+
+	/**
+	 * The frozen tile's number: the published script run the way {@code /data} runs it, with the
+	 * viewer's answer in the user variables - so the wildcard is dropped by the script's own
+	 * {@code hasCountry} guard rather than by anything this test does.
+	 */
+	private static double frozenTotal(Connection connection, String script,
+			Map<String, Object> userVars) {
+
+		groovy.lang.Binding binding = new groovy.lang.Binding();
+		Map<String, List<Map<String, Object>>> reported = new LinkedHashMap<>();
+		Map<String, Object> values = new LinkedHashMap<>(userVars);
+		binding.setVariable("reported", reported);
+		binding.setVariable("userVarsIn", values);
+		binding.setVariable("connectionIn", notClosing(connection));
+		groovy.lang.GroovyShell shell = new groovy.lang.GroovyShell(binding);
+		binding.setVariable("ctx", shell.evaluate("""
+				def dbSql = new groovy.sql.Sql(connectionIn)
+				def vars = new Expando()
+				vars.get = { k -> null }
+				vars.getUserVariables = { t -> userVarsIn }
+				def ctx = new Expando(dbSql: dbSql, variables: vars, token: '')
+				ctx.reportData = { id, rows -> reported[id] = rows }
+				ctx
+				"""));
+		shell.evaluate(script);
+		if (reported.size() != 1)
+			throw new IllegalStateException("one frozen tile reports one answer, and this reported "
+					+ reported.keySet());
+		List<Map<String, Object>> rows = reported.values().iterator().next();
+		if (rows.isEmpty()) throw new IllegalStateException("the frozen tile reported no rows at all");
+		return ((Number) rows.get(0).values().iterator().next()).doubleValue();
+	}
+
+	/**
+	 * The live cube's number: the exporter's own entry written where the runtime looks for it, and
+	 * the viewer's opening question asked with their answer in {@code params} - which is what the
+	 * renderer sends. The rows are Net Sales by channel, and the total is what the KPI shows.
+	 */
+	private double liveTotal(Connection connection, String vendor,
+			DashboardFileGenerator.GeneratedFiles files, Path home, String country) throws Exception {
+
+		String widgetsJson = files.cubeWidgetsJson();
+		if (widgetsJson.isBlank())
+			throw new IllegalStateException("the exporter declared no live cube for a ticked widget");
+		Path reportDir = home.resolve("config/reports/" + DASHBOARD_REPORT);
+		Files.createDirectories(reportDir);
+		Files.writeString(reportDir.resolve(DASHBOARD_REPORT + CubeWidgets.SUFFIX), widgetsJson);
+		// The parameters, written where every dashboard declares them: a value for a parameter the
+		// dashboard does not declare is no value at all, so the spec is part of this chain too.
+		Files.writeString(reportDir.resolve(DASHBOARD_REPORT + DashboardParameters.SUFFIX),
+				files.parametersSpecGroovy());
+
+		Map<String, Map<String, Object>> declared = JSON.readValue(widgetsJson,
+				new TypeReference<LinkedHashMap<String, Map<String, Object>>>() {
+				});
+		String componentId = declared.keySet().iterator().next();
+		CubeWidgets.Widget widget = CubeWidgets.of(DASHBOARD_REPORT, componentId);
+
+		TheLoopsDatabase database = new TheLoopsDatabase(jdbiOn(connection), vendor);
+		CubeRuntimeService runtime = runtimeOn(database);
+
+		Map<String, Object> request = new LinkedHashMap<>(widget.initial());
+		request.put(DashboardParameters.REQUEST_KEY, Map.of("country", country));
+		Map<String, Object> answer = runtime.query(DASHBOARD_REPORT, componentId, request, Map.of());
+
+		if (!PARITY_CONNECTION.equals(database.readOn))
+			throw new IllegalStateException("the live cube read its answer on '" + database.readOn
+					+ "', and the dashboard declares '" + PARITY_CONNECTION + "'");
+		double total = 0.0;
+		for (Object row : (List<?>) answer.get("rows")) {
+			for (Map.Entry<?, ?> cell : ((Map<?, ?>) row).entrySet()) {
+				if ("NetSales".equals(cell.getKey())) total += ((Number) cell.getValue()).doubleValue();
+			}
+		}
+		return total;
+	}
+
+	/**
+	 * The runtime, wired to one vendor's database: what a dashboard's own server would hand a
+	 * request, with the demo data's today pinned so the checks' numbers stay true.
+	 */
+	private static CubeRuntimeService runtimeOn(TheLoopsDatabase database) {
+
+		CubesService cubesService = new CubesService();
+		LimitsSandbox sandbox = new LimitsSandbox(new LimitsService(null, null));
+		ReflectionTestUtils.setField(cubesService, "limitsSandbox", sandbox);
+		CubeRuntimeService runtime = new CubeRuntimeService();
+		ReflectionTestUtils.setField(runtime, "cubesService", cubesService);
+		ReflectionTestUtils.setField(runtime, "cubeFilterOptions", new CubeFilterOptions());
+		ReflectionTestUtils.setField(runtime, "limitsSandbox", sandbox);
+		ReflectionTestUtils.setField(runtime, "database", database);
+		ReflectionTestUtils.setField(runtime, "dataToday", new CubeDataToday() {
+			@Override
+			public LocalDate of(String connectionId) {
+				return PINNED_TODAY;
+			}
+		});
+		return runtime;
+	}
+
+	// ── a binding nobody answers: whoever is looking, on both tiles (R9) ───────
+
+	/** The dashboard this check publishes to. Nothing of it outlives the check. */
+	private static final String OWN_ROWS_REPORT = "my-tickets";
+
+	/** The shipped Support Desk cube, which every vendor's cube_demo holds. */
+	private static final String DESK = "support-desk";
+
+	/**
+	 * Two agents, each signed in as themselves.
+	 *
+	 * <p>The demo data has no column holding a sign-in name, so the agent's own name stands in for
+	 * one here, exactly as it does in the access filter above; what is being shown is that the
+	 * value comes from the server and reaches both tiles, and that is the same whichever reserved
+	 * name carries it.
+	 */
+	private static final List<String> AGENTS = List.of("Chiara Muller", "Milan Muller");
+
+	/**
+	 * The widget an author binds to whoever is looking (R9), published and then asked by two
+	 * different people on this vendor's own database.
+	 *
+	 * <p>One dashboard, no filter bar at all: the author bound the cube's {@code Agent} to
+	 * {@code dp_user_id}, which nobody answers and nobody can type. The frozen KPI carries
+	 * {@code ${dp_user_id}} in its published SQL and {@code ScriptAssembler} binds it from the
+	 * caller's variables; the live cube carries the binding in its entry and
+	 * {@code CubeVariableBinding} binds it a moment before the statement runs. Both are asked
+	 * twice, once as each agent, and each answer is checked against a count written by hand
+	 * against the demo tables - so the number is the database's and not the generator's opinion
+	 * of itself.
+	 *
+	 * <p>The negative half is the binding taken out: both tiles then answer every agent's tickets,
+	 * which is one person reading another person's rows and the whole reason the binding exists.
+	 *
+	 * @return one entry per person asked, null where they saw their own rows and only those
+	 */
+	private List<String> runOwnRows(Connection connection, String vendor) {
+
+		String propertyBefore = System.getProperty("PORTABLE_EXECUTABLE_DIR");
+		String appPathBefore = AppPaths.PORTABLE_EXECUTABLE_DIR_PATH;
+		List<String> problems = new ArrayList<>();
+		try {
+			File config = new File(existing(SAMPLES_CUBES_DIR, "the shipped sample cubes"), SUPPORT_DESK);
+			String dsl = Files.readString(config.toPath());
+
+			Path home = tempDir.resolve("ownrows/" + vendor);
+			Path cubeDir = home.resolve("config/cubes/" + DESK);
+			Files.createDirectories(cubeDir);
+			Files.writeString(cubeDir.resolve("cube.xml"), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<cube>\n"
+					+ "    <name>" + DESK + "</name>\n    <description>The desk of a dashboard</description>\n"
+					+ "    <connectionId>" + PARITY_CONNECTION + "</connectionId>\n</cube>\n");
+			Files.writeString(cubeDir.resolve(DESK + "-cube-config.groovy"), dsl);
+			System.setProperty("PORTABLE_EXECUTABLE_DIR", home.toString());
+			AppPaths.PORTABLE_EXECUTABLE_DIR_PATH = home.toString();
+
+			CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(dsl);
+			for (String agent : AGENTS) {
+				problems.add(askAsAgent(connection, vendor, cube, home, agent, true));
+			}
+			// The negative half, asked once: the binding dropped, the same person looking.
+			problems.add(askAsAgent(connection, vendor, cube, home, AGENTS.get(0), false));
+		} catch (Exception broken) {
+			problems.add(reportOwnRows(vendor, "-", "the dashboard was not published: " + broken));
+		} finally {
+			AppPaths.PORTABLE_EXECUTABLE_DIR_PATH = appPathBefore;
+			if (propertyBefore == null) System.clearProperty("PORTABLE_EXECUTABLE_DIR");
+			else System.setProperty("PORTABLE_EXECUTABLE_DIR", propertyBefore);
+		}
+		return problems;
+	}
+
+	/** One agent, reading the two tiles. Null when both showed them their own tickets and no more. */
+	private String askAsAgent(Connection connection, String vendor, CubeOptions cube, Path home,
+			String agent, boolean bound) {
+
+		String what = (bound ? "bound, " : "the binding dropped, ") + "dp_user_id=" + agent;
+		// The agent's name is what the dashboard binds; the rest is who they are to the desk's
+		// access filter (story 31), and this case asks as an admin so that the only thing
+		// narrowing the rows is the binding the author wrote.
+		Map<String, Object> asThem = new LinkedHashMap<>(AS_ADMIN);
+		asThem.put("dp_user_id", agent);
+
+		long mine;
+		long everybody;
+		try {
+			mine = ticketsOf(connection, agent);
+			everybody = ticketsOf(connection, null);
+		} catch (Exception broken) {
+			return reportOwnRows(vendor, what, "the demo data would not be counted: " + broken);
+		}
+		if (mine <= 0 || mine >= everybody) {
+			return reportOwnRows(vendor, what, "this check needs an agent who owns some of the "
+					+ "tickets and not all of them, and " + agent + " owns " + mine + " of " + everybody);
+		}
+
+		String script;
+		DashboardFileGenerator.GeneratedFiles files;
+		try {
+			Map<String, Object> frozen = ownRowsSelection(true, bound);
+			String frozenSql = CubeSqlGenerator.buildQuery(cube, frozen, vendor).toInlineSql(vendor);
+			if (bound && !frozenSql.contains("${dp_user_id}")) {
+				return reportOwnRows(vendor, what, "the frozen tile's SQL does not carry the name on "
+						+ "to whoever runs it: " + frozenSql);
+			}
+			List<Map<String, Object>> canvas = List.of(
+					ownRowsWidget("w-kpi-mine", "number", frozen, false, frozenSql),
+					ownRowsWidget("w-live-mine", "tabulator", ownRowsSelection(false, bound), true, ""));
+			script = ScriptAssembler.assemble(canvas, List.of()).text();
+			files = DashboardFileGenerator.generate(canvas, List.of(), OWN_ROWS_REPORT,
+					"http://localhost:9090/api", PARITY_CONNECTION);
+		} catch (Exception broken) {
+			return reportOwnRows(vendor, what, "the canvas was not published: " + broken);
+		}
+
+		double frozenTiles;
+		try {
+			frozenTiles = frozenTotal(connection, script, asThem);
+		} catch (Exception broken) {
+			return reportOwnRows(vendor, what, "the frozen tile refused it: " + broken);
+		}
+
+		double liveTiles;
+		try {
+			liveTiles = ownRowsLive(connection, vendor, files, home, asThem);
+		} catch (Exception broken) {
+			return reportOwnRows(vendor, what, "the live cube refused it: " + broken);
+		}
+
+		if (!bound) {
+			if (Math.abs(frozenTiles - everybody) > 0.5 || Math.abs(liveTiles - everybody) > 0.5) {
+				return reportOwnRows(vendor, what, "without the binding both tiles show every agent's "
+						+ everybody + " tickets, and they showed " + frozenTiles + " / " + liveTiles);
+			}
+			if (Math.abs(liveTiles - mine) < 0.5) {
+				return reportOwnRows(vendor, what,
+						"an unbound cube cannot answer " + agent + "'s own " + mine);
+			}
+			return null;
+		}
+
+		if (Math.abs(frozenTiles - mine) > 0.5) {
+			return reportOwnRows(vendor, what, "the frozen tile showed " + frozenTiles
+					+ " tickets, and " + agent + " owns " + mine);
+		}
+		if (Math.abs(liveTiles - mine) > 0.5) {
+			return reportOwnRows(vendor, what, "the live cube showed " + liveTiles
+					+ " tickets, and " + agent + " owns " + mine);
+		}
+		return null;
+	}
+
+	/**
+	 * How many tickets one agent owns, counted by hand against the demo tables - or every ticket
+	 * on the desk, for {@code null}.
+	 *
+	 * <p>Written out rather than asked of the cube, because "the same generator agrees with
+	 * itself" is not the promise: the promise is that the person reading the tile sees the rows
+	 * the database says are theirs.
+	 *
+	 * <p>Every ticket on the desk is counted without the agents, because the cube keeps a ticket
+	 * whose agent has left: 3,000 tickets, 2,959 of them somebody's.
+	 */
+	private static long ticketsOf(Connection connection, String agent) throws Exception {
+
+		String sql = agent == null
+				? "SELECT COUNT(*) FROM cube_demo.support_tickets"
+				: "SELECT COUNT(*) FROM cube_demo.support_tickets t"
+						+ " JOIN cube_demo.support_agents a ON t.agent_id = a.agent_id"
+						+ " WHERE a.name = ?";
+		try (java.sql.PreparedStatement statement = connection.prepareStatement(sql)) {
+			if (agent != null) statement.setString(1, agent);
+			try (java.sql.ResultSet answer = statement.executeQuery()) {
+				answer.next();
+				return answer.getLong(1);
+			}
+		}
+	}
+
+	/**
+	 * One tile's question: how many tickets, mine. The frozen one carries the reserved name in a
+	 * filter, because that is what a canvas can freeze; the live one carries the binding instead.
+	 */
+	private static Map<String, Object> ownRowsSelection(boolean frozen, boolean bound) {
+
+		List<Map<String, Object>> filters = new ArrayList<>();
+		if (frozen && bound)
+			filters.add(Map.of("member", "Agent", "operator", "equals",
+					"values", List.of("${dp_user_id}")));
+
+		Map<String, Object> selection = new LinkedHashMap<>();
+		selection.put("dimensions", List.of());
+		selection.put("measures", List.of("Tickets"));
+		selection.put("segments", List.of());
+		selection.put("filters", filters);
+		selection.put("granularities", Map.of());
+		selection.put("order", List.of());
+		selection.put("limit", 500);
+		if (!frozen && bound)
+			selection.put("paramBindings",
+					List.of(Map.of("param", "dp_user_id", "member", "Agent", "operator", "equals")));
+		return selection;
+	}
+
+	/** One widget of the canvas, in the shape the AI Hub sends it in. */
+	private static Map<String, Object> ownRowsWidget(String id, String type,
+			Map<String, Object> selection, boolean live, String generatedSql) {
+
+		Map<String, Object> visualQuery = new LinkedHashMap<>();
+		visualQuery.put("kind", "cube");
+		visualQuery.put("cubeId", DESK);
+		visualQuery.put("cubeSelection", selection);
+		if (live) visualQuery.put("showInDashboard", true);
+
+		Map<String, Object> dataSource = new LinkedHashMap<>();
+		dataSource.put("mode", "visual");
+		dataSource.put("visualQuery", visualQuery);
+		dataSource.put("generatedSql", generatedSql);
+
+		Map<String, Object> widget = new LinkedHashMap<>();
+		widget.put("id", id);
+		widget.put("type", type);
+		widget.put("dataSource", dataSource);
+		widget.put("gridPosition", Map.of("x", 0, "y", live ? 4 : 0, "w", 6, "h", 4));
+		widget.put("displayConfig", live ? Map.of()
+				: Map.of("numberField", "Tickets", "numberLabel", "Tickets", "numberFormat", "number"));
+		return widget;
+	}
+
+	/**
+	 * The live cube's number, asked as one person: the exporter's entry written where the runtime
+	 * looks for it, and the caller's reserved values handed over the way {@code UserVariables}
+	 * hands them over - never in the request.
+	 *
+	 * <p>The request also carries a binding of its own and a value for the reserved name, which
+	 * are the two things a viewer would try. Neither is a key the runtime reads, so neither
+	 * changes the number: the entry decides what is bound, and the server decides to what.
+	 */
+	private double ownRowsLive(Connection connection, String vendor,
+			DashboardFileGenerator.GeneratedFiles files, Path home, Map<String, Object> asThem)
+			throws Exception {
+
+		String widgetsJson = files.cubeWidgetsJson();
+		if (widgetsJson.isBlank())
+			throw new IllegalStateException("the exporter declared no live cube for a ticked widget");
+		Path reportDir = home.resolve("config/reports/" + OWN_ROWS_REPORT);
+		Files.createDirectories(reportDir);
+		Files.writeString(reportDir.resolve(OWN_ROWS_REPORT + CubeWidgets.SUFFIX), widgetsJson);
+
+		Map<String, Map<String, Object>> declared = JSON.readValue(widgetsJson,
+				new TypeReference<LinkedHashMap<String, Map<String, Object>>>() {
+				});
+		String componentId = declared.keySet().iterator().next();
+		CubeWidgets.Widget widget = CubeWidgets.of(OWN_ROWS_REPORT, componentId);
+
+		TheLoopsDatabase database = new TheLoopsDatabase(jdbiOn(connection), vendor);
+		CubeRuntimeService runtime = runtimeOn(database);
+
+		Map<String, Object> request = new LinkedHashMap<>(widget.initial());
+		request.put("paramBindings", List.of(Map.of(
+				"param", "dp_user_id", "member", "Agent", "operator", "equals")));
+
+		Map<String, String> whoIsAsking = new LinkedHashMap<>();
+		for (Map.Entry<String, Object> each : asThem.entrySet())
+			whoIsAsking.put(each.getKey(), String.valueOf(each.getValue()));
+		Map<String, Object> answer = runtime.query(OWN_ROWS_REPORT, componentId, request, whoIsAsking);
+
+		if (!PARITY_CONNECTION.equals(database.readOn))
+			throw new IllegalStateException("the live cube read its answer on '" + database.readOn
+					+ "', and the dashboard declares '" + PARITY_CONNECTION + "'");
+		if (database.sql != null && database.sql.contains(String.valueOf(asThem.get("dp_user_id"))))
+			throw new IllegalStateException("the name is written into the statement rather than bound: "
+					+ database.sql);
+		double total = 0.0;
+		for (Object row : (List<?>) answer.get("rows")) {
+			for (Map.Entry<?, ?> cell : ((Map<?, ?>) row).entrySet()) {
+				if ("Tickets".equals(cell.getKey())) total += ((Number) cell.getValue()).doubleValue();
+			}
+		}
+		return total;
+	}
+
+	private String reportOwnRows(String vendor, String what, String problem) {
+		return "\n=== " + vendor + " | own rows | " + DESK + " | " + what + " ===\n  " + problem;
+	}
+
+	/** The one connection of the throwaway database, handed over so a handle cannot close it. */
+	private static Connection notClosing(Connection connection) {
+		return (Connection) java.lang.reflect.Proxy.newProxyInstance(
+				GeneratedSqlAllVendorsTest.class.getClassLoader(), new Class<?>[] { Connection.class },
+				(proxy, method, arguments) -> {
+					if ("close".equals(method.getName())) return null;
+					try {
+						return method.invoke(connection, arguments);
+					} catch (java.lang.reflect.InvocationTargetException wrapped) {
+						throw wrapped.getCause();
+					}
+				});
+	}
+
+	private String reportDashboard(String vendor, String what, String problem) {
+		return "\n=== " + vendor + " | dashboard filter | " + SHOP + " | " + what + " ===\n  " + problem;
 	}
 
 	/** The vendor loop's own database, as the runtime needs one: its connection, its values bound. */

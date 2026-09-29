@@ -19,16 +19,20 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.embed.LockedParams;
+import com.flowkraft.reports.ReportsController;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
 import com.flowkraft.iam.IamDatabase;
 import com.flowkraft.iam.UserSettingsRepository;
 import com.flowkraft.iam.limits.LimitsSandbox;
 import com.flowkraft.iam.limits.LimitsService;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
 
 /**
  * The live cube of a published dashboard: what a viewer sees of it, what they may ask of it, and
@@ -45,6 +49,15 @@ class CubeRuntimeServiceTest {
 	private static final String SAMPLE_DSL =
 			"../../asbl/src/main/external-resources/db-template/config/samples-cubes/northwind/"
 					+ "northwind-sales-cube-config.groovy";
+
+	/**
+	 * The Support Desk sample, also read from its own file: story 31 writes the desk's own rule
+	 * about who may read which rows into it, so the five people below are answered by the rule as
+	 * it ships and not by a copy of it kept here.
+	 */
+	private static final String SUPPORT_DESK_DSL =
+			"../../asbl/src/main/external-resources/db-template/config/samples-cubes/customer-support/"
+					+ "support-desk-cube-config.groovy";
 
 	/** The connection the dashboard declares. Every answer must be read on this one. */
 	private static final String THE_FILES_CONNECTION = "rbt-sample-northwind-sqlite-4f2";
@@ -74,6 +87,7 @@ class CubeRuntimeServiceTest {
 		AppPaths.PORTABLE_EXECUTABLE_DIR_PATH = dir.toString();
 
 		cube("northwind-sales", "Northwind Sales Analysis", Files.readString(Path.of(SAMPLE_DSL)));
+		cube("support-desk", "Support Desk", Files.readString(Path.of(SUPPORT_DESK_DSL)));
 		cube("parts-with-hidden-members", "Parts", """
 				cube {
 				  sql_table '"Parts"'
@@ -106,6 +120,36 @@ class CubeRuntimeServiceTest {
 				}
 				""");
 
+		// R1: a cube with a question in it, in story 25's shape. The name in the condition is the
+		// dashboard's to answer, and a card of this cube is the only card of the page that has to
+		// ask it. With nothing answered the condition goes out of the WHERE, which is what a
+		// statement of every customer means.
+		cube("statement-of-one-customer", "Statement of one customer", """
+				cube {
+				  sql_table '"Orders"'
+				  title 'Statement of one customer'
+				  condition 'CustomerId', 'equals', customerId
+				  dimension {
+				    name 'CustomerId'
+				    title 'Customer'
+				    sql '${CUBE}."CustomerID"'
+				    type 'number'
+				  }
+				  dimension {
+				    name 'ShipCountry'
+				    title 'Country'
+				    sql '${CUBE}."ShipCountry"'
+				    type 'string'
+				  }
+				  measure {
+				    name 'OrderCount'
+				    title 'Orders'
+				    sql '${CUBE}."OrderID"'
+				    type 'count'
+				  }
+				}
+				""");
+
 		cube("orders-of-mine", "My orders", """
 				cube {
 				  sql_table '"Orders"'
@@ -123,6 +167,40 @@ class CubeRuntimeServiceTest {
 				    name 'OrderCount'
 				    title 'Orders'
 				    sql '${CUBE}."OrderID"'
+				    type 'count'
+				  }
+				}
+				""");
+
+		// A cube whose rows belong to somebody, with the owner and the team as members of their
+		// own: what a binding the server answers narrows (R9). No access filter on it, because
+		// that is the other half of the promise and this half must hold on its own.
+		cube("tickets-of-mine", "My tickets", """
+				cube {
+				  sql_table '"Tickets"'
+				  title 'My tickets'
+				  dimension {
+				    name 'OwnerEmail'
+				    title 'Owner Email'
+				    sql '${CUBE}."OwnerEmail"'
+				    type 'string'
+				  }
+				  dimension {
+				    name 'Team'
+				    title 'Team'
+				    sql '${CUBE}."Team"'
+				    type 'string'
+				  }
+				  dimension {
+				    name 'Status'
+				    title 'Status'
+				    sql '${CUBE}."Status"'
+				    type 'string'
+				  }
+				  measure {
+				    name 'Tickets'
+				    title 'Tickets'
+				    sql '${CUBE}."TicketID"'
 				    type 'count'
 				  }
 				}
@@ -173,6 +251,47 @@ class CubeRuntimeServiceTest {
 				]
 				""");
 
+		// The dashboard's own parameters, in the one place a dashboard declares them (R1). The
+		// filter bar at the top of this board offers a country, a region nothing is bound to, and
+		// a floor for the money - and All travels as the wildcard.
+		write("config/reports/sales-board/sales-board-report-parameters-spec.groovy", """
+				reportParameters {
+				    parameter(
+				        id:           'country',
+				        type:         'String',
+				        label:        'Country',
+				        defaultValue: '*'
+				    ) {
+				        ui(control: 'select')
+				    }
+				    parameter(
+				        id:           'region',
+				        type:         'String',
+				        label:        'Region',
+				        defaultValue: '*'
+				    ) {
+				        ui(control: 'select')
+				    }
+				    parameter(
+				        id:           'customerId',
+				        type:         'Integer',
+				        label:        'Customer',
+				        defaultValue: ''
+				    ) {
+				        constraints(required: false)
+				        ui(control: 'select')
+				    }
+				    parameter(
+				        id:           'minSales',
+				        type:         'Double',
+				        label:        'At least',
+				        defaultValue: ''
+				    ) {
+				        ui(control: 'number')
+				    }
+				}
+				""");
+
 		write("config/reports/sales-board/sales-board-cube-widgets.json", """
 				{
 				  "cube1": {
@@ -186,6 +305,12 @@ class CubeRuntimeServiceTest {
 				    "connectionId": "the-other-connection",
 				    "initial": { "measures": ["PartCount"] },
 				    "display": "value"
+				  },
+				  "cube31": {
+				    "cubeId": "support-desk",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Priority"], "measures": ["Tickets", "BreachedTickets", "BreachRate"] },
+				    "display": "table"
 				  },
 				  "cube3": {
 				    "cubeId": "orders-of-mine",
@@ -214,6 +339,69 @@ class CubeRuntimeServiceTest {
 				    "cubeId": "stories-cube",
 				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
 				    "initial": { "dimensions": ["Stage"], "measures": ["Deals"] }
+				  },
+				  "cube7": {
+				    "cubeId": "northwind-sales",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["ShipCountry"], "measures": ["Revenue"] },
+				    "display": "table",
+				    "showSql": true,
+				    "paramBindings": [
+				      { "param": "country", "member": "ShipCountry", "operator": "in" }
+				    ]
+				  },
+				  "cube8": {
+				    "cubeId": "orders-of-mine",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["ShipCountry"], "measures": ["OrderCount"] },
+				    "display": "table",
+				    "paramBindings": [
+				      { "param": "country", "member": "ShipCountry", "operator": "equals" }
+				    ]
+				  },
+				  "cube10": {
+				    "cubeId": "northwind-sales",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["ShipCountry"], "measures": ["Revenue"] },
+				    "display": "table",
+				    "paramBindings": [
+				      { "param": "minSales", "member": "Revenue", "operator": "greater_or_equal" }
+				    ]
+				  },
+				  "cube11": {
+				    "cubeId": "tickets-of-mine",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Status"], "measures": ["Tickets"] },
+				    "display": "table",
+				    "showSql": true,
+				    "paramBindings": [
+				      { "param": "dp_user_email", "member": "OwnerEmail", "operator": "equals" }
+				    ]
+				  },
+				  "cube12": {
+				    "cubeId": "tickets-of-mine",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Status"], "measures": ["Tickets"] },
+				    "display": "table",
+				    "paramBindings": [
+				      { "param": "dp_user_groups", "member": "Team", "operator": "in" }
+				    ]
+				  },
+				  "cube14": {
+				    "cubeId": "statement-of-one-customer",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["ShipCountry"], "measures": ["OrderCount"] },
+				    "display": "table"
+				  },
+				  "cube13": {
+				    "cubeId": "tickets-of-mine",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Status"], "measures": ["Tickets"] },
+				    "display": "table",
+				    "paramBindings": [
+				      { "param": "dp_user_email", "member": "OwnerEmail", "operator": "equals" },
+				      { "param": "region", "member": "Status", "operator": "in" }
+				    ]
 				  }
 				}
 				""");
@@ -262,9 +450,11 @@ class CubeRuntimeServiceTest {
 
 		Map<String, Object> meta = runtime.meta("sales-board", "cube1");
 
+		// No "parameters": this card's cube asks nothing of the page's three, and nothing on the
+		// filter bar is bound to it. The whole key list, with them, is pinned on cube14 below.
 		assertEquals(List.of("componentId", "cubeId", "title", "description", "dimensions", "measures",
-				"segments", "hierarchies", "currency", "initial", "display", "viewStorage", "myView",
-				"myViewDropped"), new ArrayList<>(meta.keySet()));
+				"segments", "hierarchies", "currency", "initial", "display", "viewStorage",
+				"myView", "myViewDropped"), new ArrayList<>(meta.keySet()));
 		assertEquals("Northwind Sales Analysis", meta.get("title"));
 
 		for (Map<String, Object> dimension : members(meta, "dimensions")) {
@@ -956,6 +1146,116 @@ class CubeRuntimeServiceTest {
 	}
 
 	// ═══════════════════════════════════════════════════════════════════════════
+	// Story 31: the shipped Support Desk, and the five people who open it
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * The desk's rule has three lines - your own team, the managers' group, and the roles that see
+	 * everything - and all three are the author's SQL. What the runtime owes them is the same on
+	 * every line: the condition is in the statement with a placeholder where the person goes, and
+	 * the person arrives as a bound value. These five tests are that promise, once per kind of
+	 * person who opens the card; which rows each of them then gets back is the vendor loop's
+	 * access-filter case, which asks real databases.
+	 */
+	private static final String TIER_2 = "chiara.muller@support.cube-demo.example";
+	private static final String BILLING = "jonas.berg@support.cube-demo.example";
+
+	/** An agent of Tier 2: the first line finds their team from the email they signed in with. */
+	@Test
+	void anAgentOfTierTwoIsBoundTheirOwnEmailAndNothingElse() throws Exception {
+
+		runtime.query("sales-board", "cube31", deskAsked(), atTheDesk(TIER_2, "support-agents", "dashboard-viewer"));
+
+		assertTrue(database.sql.contains(":dp_user_email"), database.sql);
+		assertTrue(database.sql.contains("<dp_user_groups>"), "The groups are a bound list: " + database.sql);
+		assertTrue(database.sql.contains(":dp_user_role"), database.sql);
+		assertTrue(database.sql.contains("support_agents"), "The team is read from the desk's own table: " + database.sql);
+		assertFalse(database.sql.contains(TIER_2), "Nobody is written into the SQL: " + database.sql);
+
+		assertEquals(TIER_2, database.params.get("dp_user_email"));
+		assertEquals(List.of("support-agents"), database.params.get("dp_user_groups"));
+		assertEquals("dashboard-viewer", database.params.get("dp_user_role"));
+	}
+
+	/**
+	 * An agent of Billing, asking the very same question: the same statement, to the byte, and
+	 * their own email bound into it. Two agents of two teams share a statement and not an answer.
+	 */
+	@Test
+	void anAgentOfBillingAsksTheSameStatementAndIsBoundTheirOwn() throws Exception {
+
+		runtime.query("sales-board", "cube31", deskAsked(), atTheDesk(TIER_2, "support-agents", "dashboard-viewer"));
+		String forTierTwo = database.sql;
+
+		runtime.query("sales-board", "cube31", deskAsked(), atTheDesk(BILLING, "support-agents", "dashboard-viewer"));
+
+		assertEquals(forTierTwo, database.sql, "The same question is the same statement");
+		assertEquals(BILLING, database.params.get("dp_user_email"));
+		assertFalse(database.sql.contains(BILLING), database.sql);
+		assertFalse(database.sql.contains(TIER_2), database.sql);
+	}
+
+	/** A support manager: the second line lets them in, and it is their group that does it. */
+	@Test
+	void aSupportManagerIsLetInByTheirGroupAndTheGroupIsBoundAsAList() throws Exception {
+
+		runtime.query("sales-board", "cube31", deskAsked(),
+				atTheDesk("marta.klein@support.cube-demo.example", "support-managers,support-agents",
+						"dashboard-viewer"));
+
+		assertTrue(database.sql.contains("'support-managers' IN (<dp_user_groups>)"),
+				"The group the author named is the author's own text, and the viewer's groups are bound: "
+						+ database.sql);
+		assertEquals(List.of("support-managers", "support-agents"), database.params.get("dp_user_groups"));
+	}
+
+	/** An admin: the third line, and the role is bound rather than believed. */
+	@Test
+	void anAdminIsLetInByTheirRoleAndTheRoleIsBound() throws Exception {
+
+		runtime.query("sales-board", "cube31", deskAsked(),
+				atTheDesk("admin@support.cube-demo.example", "", "admin"));
+
+		assertTrue(database.sql.contains(":dp_user_role IN ('admin', 'report-author', 'platform-admin')"),
+				database.sql);
+		assertEquals("admin", database.params.get("dp_user_role"));
+		assertEquals(List.of(""), database.params.get("dp_user_groups"),
+				"A person in no group is IN (''), which matches no row - never IN (), which is not SQL");
+	}
+
+	/**
+	 * A share link (question 3): nobody is behind it, so the four person variables are empty. The
+	 * condition stays in the statement with nothing in it, which shows such a viewer no rows at
+	 * all - the answer a desk of other people's tickets owes a link.
+	 */
+	@Test
+	void aShareLinkHasNobodyBehindItAndTheConditionStays() throws Exception {
+
+		runtime.query("sales-board", "cube31", deskAsked(), atTheDesk("", "", ""));
+
+		assertTrue(database.sql.contains(":dp_user_email"), "The condition is still there: " + database.sql);
+		assertEquals("", database.params.get("dp_user_email"), "Nobody, which matches no agent");
+		assertEquals("", database.params.get("dp_user_role"), "And no role, which is none of the three");
+		assertEquals(List.of(""), database.params.get("dp_user_groups"));
+	}
+
+	/** The card's own question: this morning's plate, by priority. */
+	private static Map<String, Object> deskAsked() {
+		return Map.of("dimensions", List.of("Priority"),
+				"measures", List.of("Tickets", "BreachedTickets", "BreachRate"));
+	}
+
+	/** Who is asking the desk, as {@code UserVariables} hands them over: text, and never a request's. */
+	private static Map<String, String> atTheDesk(String email, String groups, String role) {
+
+		Map<String, String> values = new LinkedHashMap<>();
+		values.put("dp_user_email", email);
+		values.put("dp_user_groups", groups);
+		values.put("dp_user_role", role);
+		return values;
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
 	// Cube Stories: the five opt-ins, /sql and the error rule (design part 8)
 	// ═══════════════════════════════════════════════════════════════════════════
 
@@ -1109,6 +1409,260 @@ class CubeRuntimeServiceTest {
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	/** What {@code UserVariables.of(request)} answers for one signed-in person, as far as this cube asks. */
+	// ═══════════════════════════════════════════════════════════════════════════
+	// R9 — a binding the server answers
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * The author binds this widget to {@code dp_user_email}, and every viewer sees their own rows
+	 * through it - nobody picked anything.
+	 *
+	 * <p>The entry looks exactly like the dashboard's own binding (R8); what differs is who
+	 * answers. A reserved name is nobody's to answer, so the filter's value is the
+	 * {@code ${dp_user_email}} the statement carries on, bound a moment before it runs with the
+	 * value {@code UserVariables} holds for whoever asked - the same map {@code /data} binds, made
+	 * from the session or the credential and never from the request.
+	 */
+	@Test
+	void aBindingTheServerAnswersFollowsWhoeverIsLookingAndNotTheFilterBar() throws Exception {
+
+		runtime.query("sales-board", "cube11", ticketsAsked(Map.of()),
+				asking("anna@example.com", "sales", "4711"));
+		String annas = database.sql;
+
+		assertTrue(annas.contains("OwnerEmail"), "The owner is filtered on: " + annas);
+		assertTrue(annas.contains(":dp_user_email"),
+				"by the name the server fills in, bound: " + annas);
+		assertFalse(annas.contains("anna@example.com"), "and never written in: " + annas);
+		assertEquals("anna@example.com", database.params.get("dp_user_email"),
+				database.params.toString());
+
+		runtime.query("sales-board", "cube11", ticketsAsked(Map.of()),
+				asking("boris@example.com", "support", "4712"));
+
+		assertEquals(annas, database.sql,
+				"The same widget asks the same question of everybody: " + database.sql);
+		assertEquals("boris@example.com", database.params.get("dp_user_email"),
+				"and each one is answered with their own value: " + database.params);
+	}
+
+	/**
+	 * Nobody in particular is still somebody: the filter stays and matches no row.
+	 *
+	 * <p>This is R1's rule for a builtin with nothing behind it, and it is the difference between
+	 * a share link that shows a stranger nothing and one that shows them every owner's rows. A
+	 * dashboard filter answered with All drops out of the question; a reserved name never does,
+	 * because nobody answered All - nobody answered at all.
+	 */
+	@Test
+	void aBindingTheServerAnswersIsNeverDroppedAndAnEmptyValueMatchesNoRow() throws Exception {
+
+		runtime.query("sales-board", "cube11", ticketsAsked(Map.of()), asking("", "", ""));
+
+		assertTrue(database.sql.contains("OwnerEmail"),
+				"A viewer with no email of their own is still filtered: " + database.sql);
+		assertTrue(database.sql.contains(":dp_user_email"), database.sql);
+		assertEquals("", database.params.get("dp_user_email"),
+				"bound to nothing, which matches no row: " + database.params);
+
+		// And a caller the server knows nothing at all about - no map, as a request with no
+		// session and no token arrives - is the same viewer: bound empty, not left out.
+		runtime.query("sales-board", "cube11", ticketsAsked(Map.of()), Map.of());
+		assertTrue(database.sql.contains(":dp_user_email"), database.sql);
+		assertEquals("", database.params.get("dp_user_email"), database.params.toString());
+	}
+
+	/**
+	 * A viewer cannot answer a reserved name, wherever they write it: not in the filter bar's
+	 * values, not as a binding of their own, and not in a filter they tick themselves.
+	 *
+	 * <p>The three are one rule seen from three sides - the value of a {@code dp_} name is the
+	 * server's - and each of the three is a way somebody would try to read another person's rows.
+	 */
+	@Test
+	void aViewerCannotAnswerAReservedNameFromTheRequest() throws Exception {
+
+		// In the filter bar's answers: the dashboard declares no such parameter, and a value for a
+		// parameter that does not exist is a mistake rather than a value (R1). Nothing is read.
+		database.sql = null;
+		ResponseStatusException refused = assertThrows(ResponseStatusException.class,
+				() -> runtime.query("sales-board", "cube11",
+						ticketsAsked(Map.of("dp_user_email", "boris@example.com")),
+						asking("anna@example.com", "sales", "4711")));
+		assertEquals(400, refused.getStatusCode().value());
+		assertTrue(refused.getReason().contains("dp_user_email"), refused.getReason());
+		assertNull(database.sql, "and nothing was read for it: " + database.sql);
+
+		// As a binding in the body: the bindings are the entry's, and a request key the runtime
+		// does not know is dropped with the rest.
+		Map<String, Object> ownBinding = ticketsAsked(Map.of());
+		ownBinding.put("paramBindings", List.of(Map.of(
+				"param", "dp_user_email", "member", "OwnerEmail", "operator", "equals")));
+		runtime.query("sales-board", "cube11", ownBinding, asking("anna@example.com", "sales", "4711"));
+		assertEquals(1, occurrencesOf(database.sql, ":dp_user_email"),
+				"The entry's binding, once, and not the body's as well: " + database.sql);
+		assertEquals("anna@example.com", database.params.get("dp_user_email"),
+				database.params.toString());
+
+		// And written into a filter of their own: the name is still the server's to answer, so
+		// what comes back is this viewer's rows and not the rows of whoever they named.
+		Map<String, Object> ownFilter = ticketsAsked(Map.of());
+		ownFilter.put("filters", List.of(Map.of("member", "OwnerEmail", "operator", "equals",
+				"values", List.of("${dp_user_email}"))));
+		runtime.query("sales-board", "cube11", ownFilter, asking("anna@example.com", "sales", "4711"));
+		assertFalse(database.sql.contains("boris@example.com"), database.sql);
+		assertEquals("anna@example.com", database.params.get("dp_user_email"),
+				"The value is the server's, wherever the name was written: " + database.params);
+	}
+
+	/**
+	 * The teams a person is in are a list, and a list is an {@code IN} - the same {@code IN
+	 * (${dp_user_groups})} a published script and an access filter carry, spread into one
+	 * placeholder per group when it is bound.
+	 */
+	@Test
+	void aServerSetListIsSpreadIntoAnInExactlyAsAnAccessFiltersIs() throws Exception {
+
+		runtime.query("sales-board", "cube12", ticketsAsked(Map.of()),
+				asking("anna@example.com", "sales,billing", "4711"));
+
+		assertTrue(database.sql.contains("Team"), database.sql);
+		assertTrue(database.sql.contains("IN ("), "A list is an IN: " + database.sql);
+		// A list is bound as a list, which is the one placeholder the plumbing spreads into as
+		// many as there are groups - <name> rather than :name, the form DatabaseHelper reads.
+		assertTrue(database.sql.contains("<dp_user_groups>"), database.sql);
+		assertEquals(List.of("sales", "billing"), database.params.get("dp_user_groups"),
+				"each group bound, and not one text with a comma in it: " + database.params);
+
+		// A person in no group is filtered to nothing, which is R1's empty list and not every row.
+		runtime.query("sales-board", "cube12", ticketsAsked(Map.of()),
+				asking("anna@example.com", "", "4711"));
+		assertTrue(database.sql.contains("Team"), "The filter is still there: " + database.sql);
+	}
+
+	/**
+	 * The page draws a chip for what the viewer picked, and there is nothing to pick here.
+	 *
+	 * <p>A fixed chip reading "Owner Email:" with no value beside it would say less than nothing.
+	 * The filter is applied all the same - {@code /meta} says which of the dashboard's own
+	 * parameters narrow this widget, and a reserved name is not one of them.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void metaSaysNothingAboutABindingNobodyAnswers() throws Exception {
+
+		assertNull(runtime.meta("sales-board", "cube11").get("paramBindings"),
+				"Nothing on the filter bar narrows this widget");
+
+		List<Map<String, Object>> bindings =
+				(List<Map<String, Object>>) runtime.meta("sales-board", "cube13").get("paramBindings");
+		assertEquals(1, bindings.size(), "Only the one a viewer answers: " + bindings);
+		assertEquals("region", bindings.get(0).get("param"));
+		assertEquals("Status", bindings.get(0).get("member"));
+	}
+
+	/**
+	 * R1: a card asks for the parameters it is about, and for no others.
+	 *
+	 * <p>A dashboard declares its parameters once, for the whole page, and the Cube Stories page
+	 * is fifteen cards of fifteen cubes. Were {@code /meta} to hand every card the whole list,
+	 * every one of them would draw a form asking which customer - on cards that have no customer
+	 * in them. A card is about a name when its own cube's conditions use it, or when the page
+	 * binds that name to one of its members.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void metaAsksOnlyForTheParametersThisCardIsAbout() throws Exception {
+
+		// The card of a cube with no condition and no binding: the page declares three parameters
+		// and this card asks for none of them, so it draws no form at all.
+		assertNull(runtime.meta("sales-board", "cube1").get("parameters"),
+				"This card has no question of its own to ask");
+
+		// The card whose cube has the question in it.
+		Map<String, Object> ofItsOwnCube = runtime.meta("sales-board", "cube14");
+		assertEquals(List.of("componentId", "cubeId", "title", "description", "dimensions", "measures",
+				"segments", "hierarchies", "parameters", "currency", "initial", "display", "viewStorage",
+				"myView", "myViewDropped"), new ArrayList<>(ofItsOwnCube.keySet()),
+				"and a card that does ask one is the whole of /meta, parameters included");
+		assertEquals(List.of("customerId"), idsOf(ofItsOwnCube),
+				"the name its condition uses, and none of the other three");
+
+		// The card the page filters: the parameter is the viewer's to answer even though this cube
+		// never mentions it, because the chip beside it says what it is filtered by.
+		assertEquals(List.of("country"), idsOf(runtime.meta("sales-board", "cube7")),
+				"what this card is bound by is what it asks for");
+		assertEquals(List.of("minSales"), idsOf(runtime.meta("sales-board", "cube10")));
+
+		// A binding the server answers is nobody's question: dp_user_email is not asked for, and
+		// the parameter beside it still is.
+		assertEquals(List.of("region"), idsOf(runtime.meta("sales-board", "cube13")),
+				"a reserved name is not a question put to the viewer");
+	}
+
+	/** The ids of the parameters one card asks for, in the order the dashboard declares them. */
+	@SuppressWarnings("unchecked")
+	private static List<String> idsOf(Map<String, Object> meta) {
+		List<String> ids = new ArrayList<>();
+		for (ReportParameter parameter : (List<ReportParameter>) meta.getOrDefault("parameters", List.of()))
+			ids.add(parameter.id);
+		return ids;
+	}
+
+	/**
+	 * Both kinds of binding on one widget, ANDed: the dashboard's filter bar narrows what the
+	 * viewer may see, and never widens it.
+	 */
+	@Test
+	void theServersOwnBindingIsAndedWithTheDashboardsAndNeverReplacedByIt() throws Exception {
+
+		runtime.query("sales-board", "cube13", ticketsAsked(Map.of("region", "Open")),
+				asking("anna@example.com", "sales", "4711"));
+
+		assertTrue(database.sql.contains(":dp_user_email"),
+				"The owner is still filtered: " + database.sql);
+		assertTrue(database.sql.contains(":cf"), "and the viewer's status beside it: " + database.sql);
+		assertTrue(database.params.values().toString().contains("Open"), database.params.toString());
+		assertEquals("anna@example.com", database.params.get("dp_user_email"),
+				database.params.toString());
+
+		// All on the filter bar takes the status away and leaves the owner where it was: the one
+		// thing the filter bar cannot do is show this viewer somebody else's rows.
+		runtime.query("sales-board", "cube13", ticketsAsked(Map.of("region", "*")),
+				asking("anna@example.com", "sales", "4711"));
+		assertTrue(database.sql.contains(":dp_user_email"), database.sql);
+		assertFalse(database.sql.contains(":cf"), "and nothing of the status: " + database.sql);
+	}
+
+	/**
+	 * View SQL shows the statement the answer was read with, and a reserved name in it is a name
+	 * and not a value: an author reading it sees the rule, and a viewer reading it learns nothing
+	 * about anybody else.
+	 */
+	@Test
+	void theSqlHandedBackNamesTheServersValueRatherThanHoldingIt() throws Exception {
+
+		Map<String, Object> shown = runtime.sql("sales-board", "cube11", ticketsAsked(Map.of()));
+
+		String sql = String.valueOf(shown.get("sql"));
+		assertTrue(sql.contains("OwnerEmail"), "The owner is filtered on in it too: " + sql);
+		assertFalse(sql.contains("@example.com"), "and nobody's address is in it: " + sql);
+		// The export form beside it is the one a published dashboard would carry: the name
+		// standing, for whoever runs it to bind - the same text `/data` gets.
+		assertTrue(String.valueOf(shown.get("exportSql")).contains("${dp_user_email}"),
+				"The published form names the server's value: " + shown.get("exportSql"));
+	}
+
+	/** A question of the tickets cube, with the dashboard's answers on it. */
+	private static Map<String, Object> ticketsAsked(Map<String, Object> params) {
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("Status"));
+		request.put("measures", List.of("Tickets"));
+		request.put(DashboardParameters.REQUEST_KEY, params);
+		return request;
+	}
+
 	// ════════════════════════════════════════════════════════════════════════════
 	// W5 — my view
 	// ════════════════════════════════════════════════════════════════════════════
@@ -1341,6 +1895,354 @@ class CubeRuntimeServiceTest {
 		ResponseStatusException refused = assertThrows(ResponseStatusException.class,
 				() -> runtime.query("sales-board", componentId, request), request.toString());
 		return refused.getStatusCode().value();
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// R8 — the dashboard's own filter, on a live cube
+	// ═══════════════════════════════════════════════════════════════════════════
+
+	/**
+	 * The country manager picks Germany at the top of the dashboard, and the cube beside the KPIs
+	 * is on Germany too.
+	 *
+	 * <p>What makes it so is the widget's own entry: the author said, once, that this dashboard's
+	 * {@code country} narrows this cube's {@code ShipCountry}. The value the viewer answered is
+	 * bound like every other value a viewer supplies - the statement carries a placeholder and
+	 * the country is nowhere in it.
+	 */
+	@Test
+	void theDashboardsOwnFilterNarrowsTheLiveCubeAndItsValueIsBound() throws Exception {
+
+		runtime.query("sales-board", "cube7", asked(Map.of("country", "Germany")));
+
+		assertTrue(database.sql.contains(":cf"), "The bound filter is a placeholder: " + database.sql);
+		assertFalse(database.sql.contains("Germany"), "and never the country itself: " + database.sql);
+		assertTrue(database.params.values().toString().contains("Germany"),
+				"which is bound beside it: " + database.params);
+		assertTrue(database.sql.contains("ShipCountry"), database.sql);
+	}
+
+	/**
+	 * All is not a filter. The dashboard's wildcard means "every country", and the answer is the
+	 * one the widget gives when nobody has picked anything at all - the same statement, not a
+	 * statement that compares a column with a star.
+	 */
+	@Test
+	void theWildcardIsEveryCountryAndAddsNoFilterAtAll() throws Exception {
+
+		runtime.query("sales-board", "cube7", asked(Map.of("country", "*")));
+		String withAll = database.sql;
+
+		runtime.query("sales-board", "cube7", new LinkedHashMap<>(Map.of(
+				"dimensions", List.of("ShipCountry"), "measures", List.of("Revenue"))));
+		assertEquals(database.sql, withAll, "All asks what nothing picked asks");
+		assertFalse(withAll.contains("*'"), withAll);
+		assertFalse(database.params.values().toString().contains("*"), database.params.toString());
+
+		// And an empty answer - a cleared box - is the same: no value, no filter.
+		runtime.query("sales-board", "cube7", asked(Map.of("country", "")));
+		assertEquals(withAll, database.sql, "A cleared filter filters nothing: " + database.sql);
+	}
+
+	/**
+	 * A dashboard filter nothing on this widget is bound to changes nothing about it. One filter
+	 * bar drives a page of widgets, and each one follows only what its author bound it to - which
+	 * is what lets a dashboard hold a tile that is deliberately not narrowed.
+	 */
+	@Test
+	void aParameterThisWidgetIsNotBoundToIsIgnored() throws Exception {
+
+		runtime.query("sales-board", "cube7", asked(Map.of("region", "EMEA")));
+
+		assertFalse(database.sql.contains(":cf"), "Nothing was bound into it: " + database.sql);
+		assertFalse(database.params.values().toString().contains("EMEA"), database.params.toString());
+
+		// And a widget with no bindings at all is untouched by a filter bar it never reads.
+		runtime.query("sales-board", "cube1", asked(Map.of("country", "Germany")));
+		assertFalse(database.params.values().toString().contains("Germany"),
+				"An unbound widget stays on the whole world: " + database.params);
+	}
+
+	/**
+	 * The binding is the author's, not the viewer's: one sent in the request body is dropped
+	 * before the question is read.
+	 *
+	 * <p>It is the same rule as the cube id and the connection. A viewer who could send a binding
+	 * could bind {@code dp_user_email} to any member they liked, and a share link's locked value
+	 * would be one request away from meaning nothing.
+	 */
+	@Test
+	void aBindingSentInTheRequestIsNotABinding() throws Exception {
+
+		Map<String, Object> request = asked(Map.of("country", "Germany"));
+		request.put("paramBindings", List.of(Map.of(
+				"param", "country", "member", "ShipCity", "operator", "in")));
+
+		runtime.query("sales-board", "cube7", request);
+
+		assertTrue(database.sql.contains("ShipCountry"), database.sql);
+		assertFalse(database.sql.contains("ShipCity"),
+				"The request's own binding was never read: " + database.sql);
+	}
+
+	/**
+	 * The viewer's own filter and the dashboard's are both true at once: Germany, and within it
+	 * the category they ticked. A dashboard filter that replaced the viewer's ticks - or was
+	 * replaced by them - would answer a question nobody asked.
+	 */
+	@Test
+	void theViewersOwnFilterIsAndedWithTheDashboards() throws Exception {
+
+		Map<String, Object> request = asked(Map.of("country", "Germany"));
+		request.put("filters", List.of(Map.of("member", "ProductName", "operator", "equals",
+				"values", List.of("Chai"))));
+
+		runtime.query("sales-board", "cube7", request);
+
+		assertTrue(database.params.values().toString().contains("Germany"), database.params.toString());
+		assertTrue(database.params.values().toString().contains("Chai"), database.params.toString());
+		assertTrue(occurrencesOf(database.sql, ":cf") >= 2,
+				"Two bound values in the one statement: " + database.sql);
+		assertTrue(database.sql.contains("ShipCountry") && database.sql.contains("ProductName"),
+				"on the two members they narrow: " + database.sql);
+	}
+
+	/**
+	 * A cube that only ever shows a person their own rows keeps doing so (AF2, the precedence
+	 * table). The dashboard's filter is ANDed with the {@code access_filter}: it can only ever
+	 * narrow what the viewer may see, never widen it, whatever the filter bar says.
+	 */
+	@Test
+	void theBoundCountryIsAndedWithTheAccessFilterAndNeverInsteadOfIt() throws Exception {
+
+		runtime.query("sales-board", "cube8", askedOf("OrderCount", Map.of("country", "Germany")),
+				asking("anna@example.com", "sales", "4711"));
+
+		assertTrue(database.sql.contains(":dp_user_email"),
+				"The access filter is still in the statement: " + database.sql);
+		assertEquals("anna@example.com", database.params.get("dp_user_email"), database.params.toString());
+		assertTrue(database.params.values().toString().contains("Germany"), database.params.toString());
+		assertTrue(database.sql.contains("ShipCountry"), database.sql);
+
+		// The same widget, asked the same thing with nothing picked: the access filter is there
+		// either way, so the dashboard's country took rows away and gave none back.
+		String withGermany = database.sql;
+		runtime.query("sales-board", "cube8", askedOf("OrderCount", Map.of("country", "*")),
+				asking("anna@example.com", "sales", "4711"));
+		assertTrue(database.sql.contains(":dp_user_email"), database.sql);
+		assertTrue(withGermany.length() > database.sql.length(),
+				"Germany is the unfiltered question with one condition more: " + withGermany);
+
+		// Row 0 of that table: a viewer cannot name themselves in the filter bar either. The name
+		// is not one the dashboard declares, so the request is refused - and nothing is read.
+		database.sql = null;
+		ResponseStatusException refused = assertThrows(ResponseStatusException.class,
+				() -> runtime.query("sales-board", "cube8", askedOf("OrderCount",
+						Map.of("dp_user_id", "boss")), asking("anna@example.com", "sales", "4711")));
+		assertEquals(400, refused.getStatusCode().value());
+		assertTrue(refused.getReason().contains("dp_user_id"), refused.getReason());
+		assertNull(database.sql, "Nothing was read for it: " + database.sql);
+	}
+
+	/**
+	 * A binding on a measure is a HAVING, because that is what a measure filter is (owner,
+	 * 2026-09-28): "only the countries that bought for at least this much" is a question about
+	 * the total, not about a row.
+	 */
+	@Test
+	void aBindingOnAMeasureIsAHavingAndAnEmptyOneIsNoFilter() throws Exception {
+
+		runtime.query("sales-board", "cube10", asked(Map.of("minSales", "400000")));
+
+		String having = database.sql.substring(database.sql.indexOf("HAVING"));
+		assertTrue(database.sql.contains("HAVING"), "The floor is a HAVING: " + database.sql);
+		assertTrue(having.contains(":cf"), "bound there: " + having);
+		assertFalse(database.sql.substring(0, database.sql.indexOf("HAVING")).contains(":cf"),
+				"and nowhere in the WHERE: " + database.sql);
+		assertTrue(database.params.values().toString().contains("400000"), database.params.toString());
+
+		// Nothing typed in the box is not a floor of zero: the question is the unfiltered one.
+		runtime.query("sales-board", "cube10", asked(Map.of("minSales", "")));
+		assertFalse(database.sql.contains("HAVING"), "No floor, no HAVING: " + database.sql);
+	}
+
+	/**
+	 * A share link decides for the viewer (R4). The value locked into the link beats the one the
+	 * dashboard's own filter bar carries, on the live cube exactly as on {@code /data} - which is
+	 * why both read their locks in the same two lines of {@code ReportsController}.
+	 */
+	@Test
+	void aLockedValueBeatsTheDashboardsOwn() throws Exception {
+
+		MockHttpServletRequest locked = new MockHttpServletRequest();
+		locked.setAttribute(LockedParams.REQUEST_ATTRIBUTE, Map.of("country", "Germany"));
+
+		Map<String, Object> body = asked(Map.of("country", "France"));
+		Map<String, Object> asItReachesTheCube = ReflectionTestUtils.invokeMethod(
+				ReportsController.class, "withLockedParams", body, locked);
+
+		runtime.query("sales-board", "cube7", asItReachesTheCube);
+
+		assertTrue(database.params.values().toString().contains("Germany"),
+				"The link's country is the one bound: " + database.params);
+		assertFalse(database.params.values().toString().contains("France"),
+				"and the viewer's own answer is not: " + database.params);
+	}
+
+	/**
+	 * Story 25, the positive half of the chain: a link that answers the card's own question for
+	 * the viewer. The signed answer is read off the request, written over the body's params by the
+	 * controller, and bound - so the statement that runs is the one customer's, whatever the query
+	 * string says. cube14's cube is story 25's shape: a condition on a customer the page declares.
+	 */
+	@Test
+	void story25TheLinksCustomerIsTheOneBoundAndTheUrlsIsNot() throws Exception {
+
+		MockHttpServletRequest linkedToSouthridge = new MockHttpServletRequest();
+		linkedToSouthridge.setAttribute(LockedParams.REQUEST_ATTRIBUTE, Map.of("customerId", "26"));
+
+		// The negative half in the same breath: the recipient edits the URL to another customer.
+		Map<String, Object> body = askedOf("OrderCount", Map.of("customerId", "7"));
+		Map<String, Object> asItReachesTheCube = ReflectionTestUtils.invokeMethod(
+				ReportsController.class, "withLockedParams", body, linkedToSouthridge);
+
+		runtime.query("sales-board", "cube14", asItReachesTheCube);
+
+		assertTrue(database.sql.contains("CustomerID"),
+				"The customer of the link is a condition of the statement: " + database.sql);
+		assertTrue(database.params.values().contains(26L),
+				"bound as the whole number the page declares: " + database.params);
+		assertFalse(database.params.values().contains(7L),
+				"and the customer written into the URL is not bound: " + database.params);
+		assertFalse(database.sql.contains("26"),
+				"never written into the statement: " + database.sql);
+	}
+
+	/**
+	 * Story 25, the other negative half: the same card without a link. Nothing answers the
+	 * question, the condition leaves the statement, and what comes back is every customer - which
+	 * is exactly what a statement of all customers means, and not one customer's rows under
+	 * another's name.
+	 */
+	@Test
+	void story25WithoutALockTheStatementIsOfEveryCustomer() throws Exception {
+
+		MockHttpServletRequest noLink = new MockHttpServletRequest();
+		Map<String, Object> body = askedOf("OrderCount", Map.of("customerId", ""));
+		Map<String, Object> asItReachesTheCube = ReflectionTestUtils.invokeMethod(
+				ReportsController.class, "withLockedParams", body, noLink);
+
+		runtime.query("sales-board", "cube14", asItReachesTheCube);
+
+		assertFalse(database.sql.contains("CustomerID"),
+				"No customer was asked for, so the condition is not in the statement: " + database.sql);
+		assertTrue(database.params.values().isEmpty()
+				|| !database.params.values().contains(26L),
+				"and nothing of the earlier link is left bound: " + database.params);
+	}
+
+	/**
+	 * Story 26, R3: the viewer explores the live cube on a published page - they tick a second
+	 * dimension and add a filter of their own, and both reach the statement, bound. What they
+	 * cannot do is widen it: the link's customer is still the one the condition binds, however
+	 * many ticks and whatever query string arrive with the question.
+	 */
+	@Test
+	void story26TheViewersOwnTicksNarrowAndNeverWidenWhatTheLinkFixed() throws Exception {
+
+		MockHttpServletRequest linkedToSouthridge = new MockHttpServletRequest();
+		linkedToSouthridge.setAttribute(LockedParams.REQUEST_ATTRIBUTE, Map.of("customerId", "26"));
+
+		Map<String, Object> body = askedOf("OrderCount", Map.of("customerId", "7"));
+		body.put("dimensions", List.of("CustomerId", "ShipCountry"));
+		body.put("filters", List.of(Map.of("member", "ShipCountry", "operator", "equals", "values",
+				List.of("Germany"))));
+		Map<String, Object> asItReachesTheCube = ReflectionTestUtils.invokeMethod(
+				ReportsController.class, "withLockedParams", body, linkedToSouthridge);
+
+		runtime.query("sales-board", "cube14", asItReachesTheCube);
+
+		assertTrue(database.params.values().contains("Germany"),
+				"The filter the viewer ticked is bound: " + database.params);
+		assertTrue(database.sql.contains("CustomerID"),
+				"and the link's condition is in the statement beside it: " + database.sql);
+		assertTrue(database.params.values().contains(26L),
+				"bound to the customer the link fixed: " + database.params);
+		assertFalse(database.params.values().contains(7L),
+				"and never to the one the query string asked for: " + database.params);
+
+		// The negative half, one tick further: the viewer tries to answer the card's own question
+		// with a filter instead, on the very member the condition uses. It is ANDed in, like any
+		// other filter of theirs - the condition is still there, and still bound to 26.
+		Map<String, Object> tryingToWiden = askedOf("OrderCount", Map.of("customerId", "7"));
+		tryingToWiden.put("filters", List.of(Map.of("member", "CustomerId", "operator", "equals",
+				"values", List.of("7"))));
+		runtime.query("sales-board", "cube14", ReflectionTestUtils.invokeMethod(
+				ReportsController.class, "withLockedParams", tryingToWiden, linkedToSouthridge));
+
+		assertTrue(database.params.values().contains(26L),
+				"The link's customer is still bound: " + database.params);
+		assertEquals(2, occurrencesOf(database.sql, "CustomerID"),
+				"and their own filter narrows on top of it rather than replacing it: " + database.sql);
+	}
+
+	/**
+	 * What the page needs to draw the fixed chip: which member each binding narrows, said by
+	 * {@code /meta} rather than guessed from the answer.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void metaSaysWhichOfItsMembersTheDashboardsFilterNarrows() throws Exception {
+
+		List<Map<String, Object>> bindings =
+				(List<Map<String, Object>>) runtime.meta("sales-board", "cube7").get("paramBindings");
+
+		assertEquals(1, bindings.size(), String.valueOf(bindings));
+		assertEquals("country", bindings.get(0).get("param"));
+		assertEquals("ShipCountry", bindings.get(0).get("member"));
+		assertEquals("in", bindings.get(0).get("operator"));
+
+		// A widget nothing is bound on says nothing, so the page draws no chip for it.
+		assertNull(runtime.meta("sales-board", "cube1").get("paramBindings"));
+	}
+
+	/** The exported SQL a viewer may read carries the bound filter too, bound and not written in. */
+	@Test
+	void theSqlHandedBackCarriesTheBoundFilter() throws Exception {
+
+		Map<String, Object> shown = runtime.sql("sales-board", "cube7", asked(Map.of("country", "Germany")));
+
+		assertTrue(String.valueOf(shown.get("sql")).contains("ShipCountry"),
+				"The dashboard's filter is in the statement a viewer may read: " + shown.get("sql"));
+		assertTrue(String.valueOf(shown.get("sql")).contains("Germany"),
+				"which is the one the answer was read with: " + shown.get("sql"));
+
+		// It is the shown statement that carries the country, never the statement that ran: the
+		// same question through /query binds it (the first test of this section).
+		runtime.query("sales-board", "cube7", asked(Map.of("country", "Germany")));
+		assertFalse(database.sql.contains("Germany"), database.sql);
+	}
+
+	/** A request with the dashboard's answers on it, in the one key they travel under. */
+	private static Map<String, Object> asked(Map<String, Object> params) {
+		return askedOf("Revenue", params);
+	}
+
+	/** The same, of a cube that answers about something else. */
+	private static Map<String, Object> askedOf(String measure, Map<String, Object> params) {
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", List.of("ShipCountry"));
+		request.put("measures", List.of(measure));
+		request.put(DashboardParameters.REQUEST_KEY, params);
+		return request;
+	}
+
+	private static int occurrencesOf(String text, String part) {
+		int count = 0;
+		for (int at = text.indexOf(part); at >= 0; at = text.indexOf(part, at + 1))
+			count++;
+		return count;
 	}
 
 	@SuppressWarnings("unchecked")

@@ -76,6 +76,49 @@ export function extractParamIds(parameters: { id?: string }[] | null | undefined
   return parameters.map((p) => p.id).filter((id): id is string => typeof id === "string" && id.length > 0);
 }
 
+/** What binding a name writes into a filter's value: the reference itself. */
+export function paramRefOf(name: string): string {
+  return "${" + name + "}";
+}
+
+/** One name the bind chip offers. */
+export interface BindableParam {
+  /** The name, as it is written into the value: `country`, `dp_user_email`. */
+  id: string;
+  /** True for a `dp_` variable: the server sets it, the person looking is not asked. */
+  fromServer: boolean;
+}
+
+/**
+ * The names a filter can be bound to: the dashboard's own parameters first, and after them the
+ * builtin `dp_` variables the server said it sets for this caller (R9).
+ *
+ * The builtins are never a list written here. They are the names
+ * `/api/user-variables` answered with (`fetchBuiltinParamNames`), which is the same
+ * `UserVariables` the server binds them from - one place, so a variable added there is offered
+ * here without anybody remembering to add it twice. A name the dashboard declares wins: nothing
+ * may be offered twice, and a dashboard may not declare a `dp_` name anyway (the server refuses
+ * it on save).
+ */
+export function bindableParams(
+  declared: string[] | null | undefined,
+  fromServer: string[] | null | undefined,
+): BindableParam[] {
+  const offered: BindableParam[] = [];
+  const seen = new Set<string>();
+  for (const id of declared ?? []) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    offered.push({ id, fromServer: false });
+  }
+  for (const id of fromServer ?? []) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    offered.push({ id, fromServer: true });
+  }
+  return offered;
+}
+
 /**
  * The declared type of each parameter, from the same canonical
  * `parametersConfig.parameters` Map the ids come from. It travels with the values

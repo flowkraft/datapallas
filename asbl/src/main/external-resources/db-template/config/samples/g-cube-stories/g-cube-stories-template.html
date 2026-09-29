@@ -190,6 +190,7 @@
       <li><a href="#cube-customer-invoices">Customer Invoices</a></li>
       <li><a href="#cube-customer-payments">Customer Payments</a></li>
       <li><a href="#cube-invoice-balances">Invoice Balances</a></li>
+      <li><a href="#cube-customer-statement">Customer Statement</a></li>
     </ul>
     <p class="area">Northwind</p>
     <ul>
@@ -228,6 +229,7 @@
     <h3 class="card-title">Support Desk</h3>
     <p class="card-description">Tickets, how long they take, and how often the SLA is missed</p>
     <p class="card-grain"><strong>Grain:</strong> One row per ticket (cube_demo.support_tickets)</p>
+    <p class="card-rows"><strong>Who sees which rows:</strong> an agent sees their own team&rsquo;s tickets, and the desk finds the team from the email they signed in with; the <em>support-managers</em> group, an admin and a report author see the whole desk. It is the cube&rsquo;s own rule, written in its SQL, and it is on every answer this card gives &mdash; totals and drill included.</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="support-desk"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
   </div>
@@ -278,6 +280,15 @@
     <p class="card-description">Every invoice with the balance still due on it, unpaid ones on their own</p>
     <p class="card-grain"><strong>Grain:</strong> One row per invoice, with what has been paid against it subtracted (a SQL cube over cube_demo.erp_invoices and cube_demo.erp_payments)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="invoice-balances"
+      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+  </div>
+
+  <div class="card" id="cube-customer-statement">
+    <p class="card-area" id="cube-customer-statement-area">ERP &amp; Finance</p>
+    <h3 class="card-title">Customer Statement</h3>
+    <p class="card-description">The same invoices, as one customer is allowed to see them</p>
+    <p class="card-grain"><strong>Grain:</strong> One row per invoice of the customer the page names, and with nobody named, of every customer (the second cube of the same SQL file)</p>
+    <rb-cube-renderer report-id="g-cube-stories" component-id="customer-statement"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
   </div>
 

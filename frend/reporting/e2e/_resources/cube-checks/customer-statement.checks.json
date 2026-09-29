@@ -1,0 +1,89 @@
+[
+  {
+    "hint": "customer-statement",
+    "locked": {
+      "customerId": "26"
+    },
+    "rows": [
+      [
+        "Open",
+        3,
+        47407.93,
+        0.0,
+        47407.93
+      ],
+      [
+        "Overdue",
+        20,
+        150868.35,
+        15066.71,
+        135801.64
+      ],
+      [
+        "Paid",
+        7,
+        47837.4,
+        47837.4,
+        0.0
+      ]
+    ],
+    "source": "SELECT status, COUNT(*), ROUND(SUM(invoiced), 2), ROUND(SUM(paid), 2),\n       ROUND(SUM(balance_due), 2)\nFROM (SELECT i.customer_id, i.status, i.total_amount AS invoiced, COALESCE(p.paid, 0) AS paid,\n       i.total_amount - COALESCE(p.paid, 0) AS balance_due\nFROM cube_demo.erp_invoices i\nJOIN cube_demo.erp_customers c ON c.customer_id = i.customer_id\nLEFT JOIN (SELECT invoice_id, SUM(amount) AS paid\n           FROM cube_demo.erp_payments GROUP BY invoice_id) p ON p.invoice_id = i.invoice_id)\nWHERE customer_id = 26\nGROUP BY status ORDER BY status"
+  },
+  {
+    "hint": "customer-statement/another-customer",
+    "locked": {
+      "customerId": "7"
+    },
+    "rows": [
+      [
+        "Open",
+        1,
+        18575.47,
+        0.0,
+        18575.47
+      ],
+      [
+        "Overdue",
+        14,
+        182269.13,
+        20868.3,
+        161400.83
+      ],
+      [
+        "Paid",
+        13,
+        86707.61,
+        86707.61,
+        0.0
+      ]
+    ],
+    "source": "SELECT status, COUNT(*), ROUND(SUM(invoiced), 2), ROUND(SUM(paid), 2),\n       ROUND(SUM(balance_due), 2)\nFROM (SELECT i.customer_id, i.status, i.total_amount AS invoiced, COALESCE(p.paid, 0) AS paid,\n       i.total_amount - COALESCE(p.paid, 0) AS balance_due\nFROM cube_demo.erp_invoices i\nJOIN cube_demo.erp_customers c ON c.customer_id = i.customer_id\nLEFT JOIN (SELECT invoice_id, SUM(amount) AS paid\n           FROM cube_demo.erp_payments GROUP BY invoice_id) p ON p.invoice_id = i.invoice_id)\nWHERE customer_id = 7\nGROUP BY status ORDER BY status"
+  },
+  {
+    "hint": "customer-statement/all-customers",
+    "rows": [
+      [
+        "Open",
+        59,
+        547874.85,
+        26913.07,
+        520961.78
+      ],
+      [
+        "Overdue",
+        373,
+        3752935.81,
+        177201.5,
+        3575734.31
+      ],
+      [
+        "Paid",
+        1568,
+        16110704.38,
+        16110704.38,
+        0.0
+      ]
+    ],
+    "source": "SELECT status, COUNT(*), ROUND(SUM(invoiced), 2), ROUND(SUM(paid), 2),\n       ROUND(SUM(balance_due), 2)\nFROM (SELECT i.customer_id, i.status, i.total_amount AS invoiced, COALESCE(p.paid, 0) AS paid,\n       i.total_amount - COALESCE(p.paid, 0) AS balance_due\nFROM cube_demo.erp_invoices i\nJOIN cube_demo.erp_customers c ON c.customer_id = i.customer_id\nLEFT JOIN (SELECT invoice_id, SUM(amount) AS paid\n           FROM cube_demo.erp_payments GROUP BY invoice_id) p ON p.invoice_id = i.invoice_id)\nGROUP BY status ORDER BY status"
+  }
+]

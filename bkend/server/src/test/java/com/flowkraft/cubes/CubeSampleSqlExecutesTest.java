@@ -1,6 +1,8 @@
 package com.flowkraft.cubes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -14,6 +16,7 @@ import java.sql.Statement;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.LinkedHashSet;
@@ -85,9 +88,9 @@ class CubeSampleSqlExecutesTest {
 	 * shippedVendorOf reads it.
 	 */
 	private static final List<String> SAMPLE_CUBES = List.of("northwind-sales", "northwind-customers", "northwind-hr",
-			"northwind-inventory", "northwind-warehouse", "online-sales", "sales-pipeline", "support-desk",
-			"freight-shipments", "student-enrollments", "customer-invoices", "customer-payments",
-			"invoice-balances", "depot-network", "student-progress");
+			"northwind-inventory", "northwind-warehouse", "online-sales", "shop-for-a-period", "sales-pipeline",
+			"support-desk", "freight-shipments", "student-enrollments", "customer-invoices", "customer-payments",
+			"invoice-balances", "customer-statement", "depot-network", "student-progress");
 
 	/**
 	 * Students per Program is a first draft with mistakes in it, on purpose: a measure type that does not exist
@@ -120,6 +123,9 @@ class CubeSampleSqlExecutesTest {
 			}
 			if (file.getNamedOptions() != null) {
 				for (String key : file.getNamedOptions().keySet()) {
+					// A named cube that ships as a cube of its own - one that cube.xml describes and
+					// that SAMPLE_CUBES lists - is swept under its own id, once.
+					if (SAMPLE_CUBES.contains(key)) continue;
 					swept.add(cubeId + "#" + key);
 				}
 			}
@@ -128,6 +134,31 @@ class CubeSampleSqlExecutesTest {
 	}
 
 	private static final Pattern CONNECTION_ID = Pattern.compile("<connectionId>\\s*([^<\\s]+)\\s*</connectionId>");
+
+	/**
+	 * The day the frozen demo data calls today (R7). A cube whose parameters default to a period of
+	 * the data - Sales for a Period defaults to its current quarter - is swept at that day, pinned
+	 * the way the vendor loop pins it, so a sweep asks the same period whenever it runs.
+	 */
+	private static final LocalDate PINNED_TODAY = LocalDate.of(2026, 9, 30);
+
+	/**
+	 * A sweep's SQL: generated for the vendor, then the cube's own parameters (R1) bound to their
+	 * defaults, which is what every caller of the generator does before running the text. A cube
+	 * without parameters comes back untouched; without this one, a parameter filter would reach the
+	 * database as {@code ${fromDate}}, and the sweep would report the cube broken.
+	 */
+	private String sweepSql(CubeOptions cube, List<String> dimensions, List<String> measures,
+			List<String> segments, String vendor) {
+
+		Map<String, Object> request = new LinkedHashMap<>();
+		request.put("dimensions", dimensions);
+		request.put("measures", measures);
+		request.put("segments", segments);
+		return CubeVariableBinding.bound(CubeSqlGenerator.buildQuery(cube, request, vendor), Map.of(),
+				DashboardParameters.values(List.of(), cube, Map.of(), () -> PINNED_TODAY), Map.of())
+				.toInlineSql(vendor);
+	}
 
 	@TempDir
 	Path tempDir;
@@ -158,7 +189,7 @@ class CubeSampleSqlExecutesTest {
 					List<String> segmentNames = namesOf(cube.getSegments());
 
 					for (String dimensionName : dimensionNames) {
-						String sql = CubeSqlGenerator.generateSql(cube, List.of(dimensionName), measureNames, vendor);
+						String sql = sweepSql(cube, List.of(dimensionName), measureNames, List.of(), vendor);
 						executed++;
 						String error = runAndReportError(connection, sql);
 						if (error != null) {
@@ -173,8 +204,8 @@ class CubeSampleSqlExecutesTest {
 					// segment's own expression.
 					if (!dimensionNames.isEmpty()) {
 						for (String segmentName : segmentNames) {
-							String sql = CubeSqlGenerator.generateSql(cube, List.of(dimensionNames.get(0)),
-									measureNames, List.of(segmentName), vendor);
+							String sql = sweepSql(cube, List.of(dimensionNames.get(0)), measureNames,
+									List.of(segmentName), vendor);
 							executed++;
 							String error = runAndReportError(connection, sql);
 							if (error != null) {
@@ -233,7 +264,7 @@ class CubeSampleSqlExecutesTest {
 					List<String> failures = new ArrayList<>();
 
 					for (String dimensionName : namesOf(cube.getDimensions())) {
-						String sql = CubeSqlGenerator.generateSql(cube, List.of(dimensionName), List.of(), vendor);
+						String sql = sweepSql(cube, List.of(dimensionName), List.of(), List.of(), vendor);
 						executed++;
 						String problem = runAndReportDuplicates(connection, sql);
 						if (problem != null) {
@@ -294,7 +325,7 @@ class CubeSampleSqlExecutesTest {
 							String picked = dimensionName + "." + granularity;
 
 							for (List<String> measures : List.of(List.<String>of(), measureNames)) {
-								String sql = CubeSqlGenerator.generateSql(cube, List.of(picked), measures, vendor);
+								String sql = sweepSql(cube, List.of(picked), measures, List.of(), vendor);
 								executed++;
 								String problem = runAndReportPeriodStarts(connection, sql, granularity);
 								if (problem != null) {
@@ -632,11 +663,11 @@ class CubeSampleSqlExecutesTest {
 							Map<String, Double> alone;
 							Map<String, Double> together;
 							try {
-								alone = valuesByDimension(connection, CubeSqlGenerator.generateSql(cube,
-										List.of(dimensionName), List.of(measureName), vendor),
+								alone = valuesByDimension(connection, sweepSql(cube, List.of(dimensionName),
+										List.of(measureName), List.of(), vendor),
 										dimensionName, measureName);
-								together = valuesByDimension(connection, CubeSqlGenerator.generateSql(cube,
-										List.of(dimensionName), allMeasures, vendor),
+								together = valuesByDimension(connection, sweepSql(cube, List.of(dimensionName),
+										allMeasures, List.of(), vendor),
 										dimensionName, measureName);
 							} catch (IllegalArgumentException refusal) {
 								// A refusal is an answer, as long as it is the step 5 one: it names
@@ -655,8 +686,7 @@ class CubeSampleSqlExecutesTest {
 							if (difference != null) {
 								failures.add(measureName + " changes when the other measures are ticked, by "
 										+ dimensionName + ": " + difference + "\n"
-										+ CubeSqlGenerator.generateSql(cube, List.of(dimensionName),
-												allMeasures, vendor));
+										+ sweepSql(cube, List.of(dimensionName), allMeasures, List.of(), vendor));
 							}
 						}
 					}
@@ -1591,6 +1621,741 @@ class CubeSampleSqlExecutesTest {
 						.contains("which is not built"));
 	}
 
+	/**
+	 * Story 22, the lanes one manager looks after: what each transport mode costs per shipment and
+	 * how long it takes, and the one mistake that would leave the question looking right and
+	 * answering nothing.
+	 *
+	 * <p>The hint's Country filter is a LIST: one bound value per country, asked as an IN. Written
+	 * as a single string instead - "Spain,Portugal", the shape a value typed into one box takes -
+	 * the query is still well-formed, still runs, and answers no row at all. That is the whole
+	 * reason the list is bound value by value, and it is why the check beside the e2e goes red
+	 * rather than quietly narrowing to nothing.
+	 */
+	@Test
+	void story22TheLanesAreAListOfCountriesAndNotOneStringWithACommaInIt() throws Exception {
+
+		CubeOptions cube = parseSampleCube("freight-shipments");
+		String vendor = "duckdb";
+		List<String> theTradeOff = List.of("Shipments", "ShippingCost", "AvgCostPerShipment",
+				"AvgTransitDays");
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			// Every lane: one row per mode, and one for the 48 shipments with no carrier yet.
+			List<List<Object>> allLanes = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Mode"), "measures", theTradeOff));
+			assertEquals(5, allLanes.size(),
+					"Four transport modes, and the shipments no carrier has taken: " + allLanes);
+
+			Map<String, List<Object>> byMode = new LinkedHashMap<>();
+			for (List<Object> row : allLanes) byMode.put(String.valueOf(row.get(0)), row);
+
+			// The trade-off itself: road costs about twice what sea costs per shipment, and
+			// arrives about four times faster. Both halves of that sentence are measured here.
+			assertEquals(86.72, number(byMode.get("Road").get(3)), 0.005, "Road, per shipment");
+			assertEquals(4.86, number(byMode.get("Road").get(4)), 0.005, "Road, in days");
+			assertEquals(42.42, number(byMode.get("Sea").get(3)), 0.005, "Sea, per shipment");
+			assertEquals(19.35, number(byMode.get("Sea").get(4)), 0.005, "Sea, in days");
+			assertTrue(number(byMode.get("Road").get(3)) > 2 * number(byMode.get("Sea").get(3)) * 0.95
+					&& number(byMode.get("Sea").get(4)) > 3.5 * number(byMode.get("Road").get(4)),
+					"Road is the dear fast one and sea the cheap slow one: " + allLanes);
+
+			// The manager's own lanes, picked as a list of two countries.
+			assertEquals(474L, oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("Shipments"),
+					"filters", List.of(filterOn("DestCountry", "in", "Spain", "Portugal")))).longValue(),
+					"Spain's 312 shipments and Portugal's 162, together");
+			assertEquals(312L, oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("Shipments"),
+					"filters", List.of(filterOn("DestCountry", "in", "Spain")))).longValue(),
+					"One country alone is not the two");
+
+			// The negative half: the same two countries as ONE value. Nothing is refused, nothing
+			// is wrong with the SQL - and nothing comes back.
+			String asOneString = ask(cube, vendor, "measures", List.of("Shipments"),
+					"filters", List.of(filterOn("DestCountry", "in", "Spain,Portugal")));
+			assertTrue(asOneString.contains("'Spain,Portugal'"),
+					"The comma-joined value is bound as one value:\n" + asOneString);
+			assertEquals(0L, oneNumber(connection, asOneString).longValue(),
+					"No country is called 'Spain,Portugal', so the lanes answer nothing:\n" + asOneString);
+
+			// And with the rows gone, the check the hint answers has nothing left to be right
+			// about: the four modes and their costs are not merely different, they are absent.
+			assertEquals(0L, rowsOf(connection, ask(cube, vendor,
+					"dimensions", List.of("Mode"), "measures", theTradeOff,
+					"filters", List.of(filterOn("DestCountry", "in", "Spain,Portugal")))),
+					"The hint's own query, filtered by that one value, answers no row at all");
+			assertEquals(5L, rowsOf(connection, ask(cube, vendor,
+					"dimensions", List.of("Mode"), "measures", theTradeOff,
+					"filters", List.of(filterOn("DestCountry", "in", "Spain", "Portugal")))),
+					"The list, on the other hand, answers the five rows the check holds");
+		}
+	}
+
+	@Test
+	void story23TheShareIsOfWhatTheAnswerHoldsAndNotOfTheWholeShop() throws Exception {
+
+		CubeOptions cube = parseSampleCube("online-sales");
+		String vendor = "duckdb";
+		List<String> netAndShare = List.of("NetSales", "ShareOfNetSales");
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			// The whole shop, by category: the shares are of the whole shop, because that is what
+			// the answer holds.
+			List<List<Object>> wholeShop = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Category"), "measures", netAndShare));
+			assertEquals(8, wholeShop.size(), "Eight categories: " + wholeShop);
+
+			Map<String, List<Object>> shopByCategory = new LinkedHashMap<>();
+			double wholeShopNet = 0.0;
+			double wholeShopShares = 0.0;
+			for (List<Object> row : wholeShop) {
+				shopByCategory.put(String.valueOf(row.get(0)), row);
+				wholeShopNet += number(row.get(1));
+				wholeShopShares += number(row.get(2));
+			}
+			assertEquals(3571889.64, wholeShopNet, 0.05, "The shop's net sales: " + wholeShop);
+			assertEquals(1.0, wholeShopShares, 0.0005, "The shares are a whole: " + wholeShop);
+			assertEquals(0.3058, number(shopByCategory.get("Displays").get(2)), 0.0001,
+					"Displays carry about a third of the shop");
+			assertEquals(0.0147, number(shopByCategory.get("Cables & Power").get(2)), 0.0001,
+					"Cables & Power carry almost none of it");
+
+			// Germany alone. The same two measures, one filter more - and every share is now of
+			// Germany's own total.
+			List<List<Object>> germany = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Category"), "measures", netAndShare,
+					"filters", List.of(filterOn("Country", "equals", "Germany"))));
+			assertEquals(8, germany.size(), "The same eight categories: " + germany);
+
+			Map<String, List<Object>> germanyByCategory = new LinkedHashMap<>();
+			double germanyNet = 0.0;
+			double germanyShares = 0.0;
+			for (List<Object> row : germany) {
+				germanyByCategory.put(String.valueOf(row.get(0)), row);
+				germanyNet += number(row.get(1));
+				germanyShares += number(row.get(2));
+			}
+			assertEquals(859422.88, germanyNet, 0.05, "Germany's net sales: " + germany);
+			assertEquals(1.0, germanyShares, 0.0005,
+					"Germany's shares are a whole of Germany: " + germany);
+			assertEquals(261897.29, number(germanyByCategory.get("Displays").get(1)), 0.005,
+					"Germany's Displays, in money");
+			assertEquals(0.3047, number(germanyByCategory.get("Displays").get(2)), 0.0001,
+					"Germany's Displays, as a share of Germany");
+
+			// The negative half. A share taken over the unfiltered shop would answer 7.33% here
+			// instead of 30.47%, and the check for the "germany" hint would go red. That wrong
+			// number is worth writing down, so that the right one cannot be mistaken for it.
+			double ofTheWholeShop = number(germanyByCategory.get("Displays").get(1)) / wholeShopNet;
+			assertEquals(0.0733, ofTheWholeShop, 0.0001,
+					"Germany's Displays over the whole shop's net sales");
+			assertTrue(Math.abs(number(germanyByCategory.get("Displays").get(2)) - ofTheWholeShop) > 0.2,
+					"The filtered share is nothing like the share of the whole shop: " + germany);
+
+			// And the filter really is what moves it: Germany's own share of the shop's categories
+			// is not the shop's, category by category.
+			assertTrue(number(shopByCategory.get("Displays").get(2))
+					!= number(germanyByCategory.get("Displays").get(2)),
+					"Germany is not the shop in miniature: " + germany);
+		}
+	}
+
+	/**
+	 * Story 24, the dashboard's own floor: a binding on a measure is a HAVING, and each comparison
+	 * is the comparison it says it is - on a real database, over the frozen rows.
+	 *
+	 * <p>The chain under test is the whole of R8 below the page: the entry's operator name
+	 * ({@code greater_or_equal}) mapped to the cube's ({@code gte}) by {@link CubeParamBindings},
+	 * the viewer's answer turned into a filter, the generator writing it as a HAVING over the
+	 * aggregate, and the rows that come back.
+	 */
+	@Test
+	void story24TheBoundFloorIsAHavingAndEachComparisonIsItself() throws Exception {
+
+		CubeOptions cube = parseSampleCube("online-sales");
+		String vendor = "duckdb";
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			// Nothing typed in the box is not a floor of zero: every category, and no HAVING at all.
+			String unfiltered = byCategory(cube, vendor, bound("minSales", "NetSales",
+					"greater_or_equal", Map.of("minSales", "")));
+			assertFalse(unfiltered.contains("HAVING"), "No floor, no HAVING:\n" + unfiltered);
+			assertEquals(8, table(connection, unfiltered).size(), "All eight categories");
+
+			// At least 400,000: the three categories whose net sales reach it.
+			String atLeast400k = byCategory(cube, vendor, bound("minSales", "NetSales",
+					"greater_or_equal", Map.of("minSales", "400000")));
+			assertTrue(atLeast400k.contains("HAVING"), "A measure filter is a HAVING:\n" + atLeast400k);
+			// This helper writes the standalone form, values and all, because it is the form a
+			// database can be handed; that the runtime binds them instead is proved where the
+			// binder is (CubeRuntimeServiceTest).
+			assertTrue(atLeast400k.indexOf("400000") > atLeast400k.indexOf("HAVING"),
+					"and the floor is in the HAVING, not in the WHERE:\n" + atLeast400k);
+			assertEquals(List.of("Displays", "Video", "Storage"), categories(connection, atLeast400k),
+					"Displays 1,092,301.89, Video 854,714.04 and Storage 468,002.55");
+
+			// Strictly more than Storage's own total leaves Storage out; at least it keeps it in.
+			// The bound is Storage's total to the last place the database holds it in, and not the
+			// story's rounded 468,002.55: the question here is about the boundary itself, and a
+			// bound rounded up past it would answer "Displays, Video" both times and prove nothing.
+			double storage = netOf(connection, unfiltered, "Storage");
+			assertEquals(468002.55, storage, 0.005, "Storage, as the story tells it");
+			String itsOwnTotal = String.valueOf(storage);
+
+			String moreThanStorage = byCategory(cube, vendor, bound("minSales", "NetSales",
+					"greater_than", Map.of("minSales", itsOwnTotal)));
+			assertEquals(List.of("Displays", "Video"), categories(connection, moreThanStorage),
+					"More than Storage's own total is not Storage's own total");
+			String atLeastStorage = byCategory(cube, vendor, bound("minSales", "NetSales",
+					"greater_or_equal", Map.of("minSales", itsOwnTotal)));
+			assertEquals(List.of("Displays", "Video", "Storage"), categories(connection, atLeastStorage));
+			// The negative half: mapping "more than" to "at least" would answer this instead, and the
+			// two answers are one row apart - which is how a viewer would never notice.
+			assertNotEquals(categories(connection, atLeastStorage), categories(connection, moreThanStorage),
+					"Strictly greater and at least are not the same question");
+
+			// And under 100,000 is the other end of the same list.
+			assertEquals(List.of("Cables & Power"), categories(connection, byCategory(cube, vendor,
+					bound("minSales", "NetSales", "less_than", Map.of("minSales", "100000")))),
+					"Cables & Power, at 52,513.78");
+
+			// A dimension binding is a WHERE, and not_equals takes exactly one category away.
+			List<String> withoutDisplays = categories(connection, byCategory(cube, vendor,
+					bound("category", "Category", "not_equals", Map.of("category", "Displays"))));
+			assertEquals(7, withoutDisplays.size(), String.valueOf(withoutDisplays));
+			assertFalse(withoutDisplays.contains("Displays"), String.valueOf(withoutDisplays));
+
+			// All is not a filter, on either kind of member.
+			assertEquals(8, table(connection, byCategory(cube, vendor, bound("category", "Category",
+					"in", Map.of("category", "*")))).size(), "All countries, all categories");
+		}
+	}
+
+	/** The filters one binding is, for one answer - the runtime's own two steps, in one line. */
+	private List<Map<String, Object>> bound(String param, String member, String operator,
+			Map<String, Object> answered) {
+		return CubeParamBindings.filtersFor(
+				CubeParamBindings.of(List.of(Map.of("param", param, "member", member,
+						"operator", operator))),
+				answered);
+	}
+
+	/** Net sales by category, narrowed by whatever the dashboard's filter bar bound. */
+	private String byCategory(CubeOptions cube, String vendor, List<Map<String, Object>> filters) {
+		return ask(cube, vendor, "dimensions", List.of("Category"), "measures", List.of("NetSales"),
+				"filters", filters);
+	}
+
+	/** One category's net sales, as the database holds them - every place of them. */
+	private double netOf(Connection connection, String sql, String category) throws Exception {
+		for (List<Object> row : table(connection, sql)) {
+			if (category.equals(String.valueOf(row.get(0))))
+				return ((Number) row.get(1)).doubleValue();
+		}
+		throw new IllegalStateException("The answer holds no " + category);
+	}
+
+	/** The categories that answer, in the order the query returns them. */
+	private List<String> categories(Connection connection, String sql) throws Exception {
+		List<String> categories = new ArrayList<>();
+		for (List<Object> row : table(connection, sql))
+			categories.add(String.valueOf(row.get(0)));
+		return categories;
+	}
+
+	@Test
+	void story26TheTeamFilterNarrowsTheAnswerAndTheRateIsAShareOfWhatIsLeft() throws Exception {
+
+		CubeOptions cube = parseSampleCube("support-desk");
+		String vendor = "duckdb";
+		List<String> ticketsAndBreaches = List.of("Tickets", "BreachedTickets", "BreachRate");
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			// The whole desk, by team. Four teams and the tickets nobody has picked up, which are
+			// the row the head of support is looking for.
+			List<List<Object>> wholeDesk = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Team"), "measures", ticketsAndBreaches));
+			assertEquals(5, wholeDesk.size(), "Four teams and the unpicked tickets: " + wholeDesk);
+
+			Map<String, List<Object>> byTeam = new LinkedHashMap<>();
+			double deskTickets = 0.0;
+			double deskBreached = 0.0;
+			for (List<Object> row : wholeDesk) {
+				byTeam.put(String.valueOf(row.get(0)), row);
+				deskTickets += number(row.get(1));
+				deskBreached += number(row.get(2));
+				// R2: a rate is a fraction that `format 'percent'` shows as a percentage. A measure
+				// answering 41.7 here would draw 4170% on the card.
+				assertTrue(number(row.get(3)) <= 1.0,
+						"The rate is a share of the answer and not a percentage: " + row);
+			}
+			assertEquals(3000.0, deskTickets, 0.5, "Every ticket is in one of the rows: " + wholeDesk);
+
+			assertEquals(1199.0, number(byTeam.get("Tier 2").get(1)), 0.5, "Tier 2's tickets");
+			assertEquals(500.0, number(byTeam.get("Tier 2").get(2)), 0.5, "and how many of them breached");
+			assertEquals(0.417, number(byTeam.get("Tier 2").get(3)), 0.0001, "which is its rate");
+			assertEquals(41.0, number(byTeam.get("null").get(1)), 0.5,
+					"41 tickets nobody picked up: " + wholeDesk);
+			assertEquals(40.0, number(byTeam.get("null").get(2)), 0.5, "and 40 of them breached");
+			assertEquals(0.9756, number(byTeam.get("null").get(3)), 0.0001, "which is the finding");
+			assertEquals(0.2507, number(byTeam.get("Tier 1").get(3)), 0.0001,
+					"Tier 1, which is the desk's best: " + wholeDesk);
+
+			// The hint's preset filter: the same question with Team = Tier 2, which is the cube's own
+			// filter and the viewer's to change.
+			List<List<Object>> tierTwo = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Team"), "measures", ticketsAndBreaches,
+					"filters", List.of(filterOn("Team", "equals", "Tier 2"))));
+			assertEquals(1, tierTwo.size(), "One team, because that is what was asked for: " + tierTwo);
+			assertEquals(List.of("Tier 2"), List.of(String.valueOf(tierTwo.get(0).get(0))));
+			assertEquals(1199.0, number(tierTwo.get(0).get(1)), 0.5, "Tier 2's own tickets: " + tierTwo);
+			assertEquals(500.0, number(tierTwo.get(0).get(2)), 0.5, "its own breaches");
+			assertEquals(0.417, number(tierTwo.get(0).get(3)), 0.0001, "and its own rate");
+
+			// The negative half. Drop the filter and the same question answers the whole desk: five
+			// rows where the check holds one, so a check written for the preset goes red - and the
+			// desk's own rate, 0.3327, is nothing like Tier 2's.
+			assertNotEquals(wholeDesk.size(), tierTwo.size(),
+					"Without the filter the answer is the whole desk: " + wholeDesk);
+			assertEquals(0.3327, deskBreached / deskTickets, 0.0001,
+					"The desk's rate, which the preset must not be answering: " + wholeDesk);
+			assertTrue(number(tierTwo.get(0).get(3)) - deskBreached / deskTickets > 0.08,
+					"Tier 2 is far above it: " + tierTwo);
+
+			// How long tickets take, next to how long their first answer takes: the two averages are
+			// per ticket, and they do not move together.
+			List<List<Object>> byPriority = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Priority"),
+					"measures", List.of("Tickets", "AvgResolutionHours", "AvgFirstResponseMinutes")));
+			assertEquals(4, byPriority.size(), "Four priorities: " + byPriority);
+
+			Map<String, List<Object>> byName = new LinkedHashMap<>();
+			for (List<Object> row : byPriority) byName.put(String.valueOf(row.get(0)), row);
+
+			assertEquals(4.52, number(byName.get("Urgent").get(2)), 0.005,
+					"Urgent tickets are resolved fastest: " + byPriority);
+			assertEquals(69.93, number(byName.get("Low").get(2)), 0.005, "and Low ones slowest");
+			assertEquals(99.6, number(byName.get("Urgent").get(3)), 0.005,
+					"and yet Urgent waits longest for its first answer: " + byPriority);
+			assertTrue(number(byName.get("Urgent").get(3)) > number(byName.get("Low").get(3)),
+					"which is the finding, and the other way round from the resolution times: "
+							+ byPriority);
+		}
+	}
+
+	@Test
+	void story27LastYearIsTheSameDaysOneYearBackAndNotThisYearAgain() throws Exception {
+
+		CubeOptions cube = parseSampleCube("support-desk");
+		String vendor = "duckdb";
+		List<String> bothYears = List.of("Tickets", "TicketsLastYear", "BreachedTickets",
+				"BreachedTicketsLastYear");
+		// Jan 1 to the data's today, which the fixture pins - the days the hint asks about.
+		Map<String, Object> yearSoFar = filterOn("OpenedDate", "between", "2026-01-01", "2026-09-30");
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			List<List<Object>> byPriority = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Priority"), "measures", bothYears,
+					"filters", List.of(yearSoFar)));
+			assertEquals(4, byPriority.size(), "Four priorities: " + byPriority);
+
+			Map<String, List<Object>> priority = new LinkedHashMap<>();
+			double tickets = 0.0;
+			double ticketsLastYear = 0.0;
+			double breached = 0.0;
+			double breachedLastYear = 0.0;
+			for (List<Object> row : byPriority) {
+				priority.put(String.valueOf(row.get(0)), row);
+				tickets += number(row.get(1));
+				ticketsLastYear += number(row.get(2));
+				breached += number(row.get(3));
+				breachedLastYear += number(row.get(4));
+			}
+			assertEquals(1394.0, tickets, 0.5, "The tickets of the year so far: " + byPriority);
+			assertEquals(1123.0, ticketsLastYear, 0.5, "The same days one year back: " + byPriority);
+			assertEquals(504.0, breached, 0.5, "The breaches of the year so far: " + byPriority);
+			assertEquals(332.0, breachedLastYear, 0.5, "The breaches one year back: " + byPriority);
+
+			// The story the COO is told: the volume is up a quarter, the breaches half again as
+			// much, and Urgent is where both grow fastest.
+			assertEquals(24.1, 100.0 * (tickets - ticketsLastYear) / ticketsLastYear, 0.05,
+					"Tickets, year over year, in %");
+			assertEquals(51.8, 100.0 * (breached - breachedLastYear) / breachedLastYear, 0.05,
+					"Breaches, year over year, in %");
+			assertTrue(100.0 * (breached - breachedLastYear) / breachedLastYear
+					> 2 * (100.0 * (tickets - ticketsLastYear) / ticketsLastYear),
+					"The breaches grow more than twice as fast as the volume: " + byPriority);
+
+			List<Object> urgent = priority.get("Urgent");
+			assertEquals(179.0, number(urgent.get(1)), 0.5, "Urgent this year");
+			assertEquals(113.0, number(urgent.get(2)), 0.5, "Urgent one year back");
+			assertEquals(85.0, number(urgent.get(3)), 0.5, "Urgent breaches this year");
+			assertEquals(42.0, number(urgent.get(4)), 0.5, "Urgent breaches one year back");
+
+			// The negative half. "Last year" has to be the earlier days: a measure that was not
+			// shifted answers this year's own number again, which is the mistake the story is
+			// about, and every group would then show no change at all.
+			assertTrue(Math.abs(tickets - ticketsLastYear) > 200,
+					"Last year is not this year repeated: " + byPriority);
+			for (List<Object> row : byPriority) {
+				assertTrue(number(row.get(1)) != number(row.get(2)),
+						"Nor is it repeated group by group: " + row);
+			}
+			assertEquals(1394.0, number(oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("Tickets"), "filters", List.of(yearSoFar)))), 0.5,
+					"The unshifted count over the same filter, which is what a wrong 'last year' would say");
+
+			// By month, each month stands beside the same month one year earlier - and January
+			// 2025 is the data's first month, with 79 tickets, which is why January's growth is
+			// the largest and is not the story's headline.
+			List<List<Object>> byMonth = table(connection, ask(cube, vendor,
+					"dimensions", List.of("OpenedDate.month"), "measures", bothYears,
+					"filters", List.of(yearSoFar)));
+			assertEquals(9, byMonth.size(), "Nine months, January to September: " + byMonth);
+
+			Map<String, List<Object>> month = new LinkedHashMap<>();
+			for (List<Object> row : byMonth) {
+				month.put(String.valueOf(row.get(0)).substring(0, 7), row);
+			}
+			assertEquals(141.0, number(month.get("2026-01").get(1)), 0.5, "January this year");
+			assertEquals(79.0, number(month.get("2026-01").get(2)), 0.5,
+					"January last year, the data's first month");
+			assertEquals(161.0, number(month.get("2026-09").get(1)), 0.5, "September this year");
+			assertEquals(138.0, number(month.get("2026-09").get(2)), 0.5, "September last year");
+			assertEquals(102.0, number(month.get("2026-09").get(3)), 0.5,
+					"September's breaches, the month the desk fell behind");
+			assertEquals(38.0, number(month.get("2026-09").get(4)), 0.5,
+					"September's breaches one year back");
+
+			double monthlyLastYear = 0.0;
+			for (List<Object> row : byMonth) monthlyLastYear += number(row.get(2));
+			assertEquals(ticketsLastYear, monthlyLastYear, 0.5,
+					"The months of last year add up to the year of last year: " + byMonth);
+
+			// With no date in the question at all, the earlier period is one number: the range the
+			// filter asks about, moved back a year.
+			assertEquals(1123.0, number(oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("TicketsLastYear"), "filters", List.of(yearSoFar)))), 0.5,
+					"One number for the same days one year back");
+		}
+	}
+
+	@Test
+	void story28TheDelayedNumberOpensIntoExactlyTheShipmentsItCounted() throws Exception {
+
+		CubeOptions cube = parseSampleCube("freight-shipments");
+		String vendor = "duckdb";
+		// The month the data is in, which the hint asks for in tokens.
+		Map<String, Object> thisMonth = filterOn("BookedDate", "between", "2026-09-01", "2026-09-30");
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			List<List<Object>> byStatus = table(connection, ask(cube, vendor,
+					"dimensions", List.of("BookedDate.month", "Status"),
+					"measures", List.of("Shipments"), "filters", List.of(thisMonth)));
+			assertEquals(5, byStatus.size(), "Five statuses in the month: " + byStatus);
+
+			double month = 0.0;
+			double delayed = 0.0;
+			for (List<Object> row : byStatus) {
+				month += number(row.get(2));
+				if ("Delayed".equals(String.valueOf(row.get(1)))) delayed = number(row.get(2));
+			}
+			assertEquals(188.0, month, 0.5, "The month's shipments: " + byStatus);
+			assertEquals(15.0, delayed, 0.5, "The delayed ones: " + byStatus);
+
+			// The cell the operations manager clicks: September, Delayed, the Shipments number.
+			Map<String, Object> clicked = new LinkedHashMap<>();
+			clicked.put("dimensions", List.of("BookedDate.month", "Status"));
+			clicked.put("measures", List.of("Shipments"));
+			clicked.put("filters", List.of(thisMonth));
+			clicked.put("measure", "Shipments");
+			clicked.put("cell", Map.of("BookedDate.month", "2026-09-01", "Status", "Delayed"));
+
+			List<List<Object>> behind = table(connection, CubeSqlGenerator
+					.buildQuery(cube, CubeDrill.request(cube, clicked), vendor).toInlineSql(vendor));
+			assertEquals(15, behind.size(), "The rows behind the number are the number: " + behind);
+			assertEquals(9, behind.get(0).size(),
+					"The nine fields the desk needs to ring a carrier: " + behind.get(0));
+
+			// Read as the desk reads them, oldest first: the first one has been late for weeks.
+			List<List<Object>> byDay = new ArrayList<>(behind);
+			byDay.sort(Comparator
+					.comparing((List<Object> row) -> String.valueOf(row.get(5)))
+					.thenComparing(row -> String.valueOf(row.get(0))));
+
+			List<Object> first = byDay.get(0);
+			assertEquals("TRK-2026-000231", String.valueOf(first.get(0)), "The oldest delay");
+			assertEquals("EuroRoad Freight", String.valueOf(first.get(1)), "and its carrier");
+			assertEquals("Hamburg Port Depot", String.valueOf(first.get(2)), "and the depot it left");
+			assertEquals("Poland", String.valueOf(first.get(3)), "and the country it goes to");
+			assertEquals("Gdansk", String.valueOf(first.get(4)), "and the city");
+			assertEquals("2026-09-05", String.valueOf(first.get(5)).substring(0, 10), "and the day it was booked");
+			assertEquals("Standard", String.valueOf(first.get(6)), "and the service level");
+			assertEquals(4392.32, number(first.get(7)), 0.005, "and what it weighs");
+			assertEquals(202.48, number(first.get(8)), 0.005, "and what it cost");
+
+			List<Object> last = byDay.get(byDay.size() - 1);
+			assertEquals("TRK-2026-003268", String.valueOf(last.get(0)), "The newest delay");
+			assertEquals("Nordic Rail Cargo", String.valueOf(last.get(1)), "and its carrier");
+			assertEquals("Warsaw West Hub", String.valueOf(last.get(2)), "and the depot it left");
+			assertEquals("Porto", String.valueOf(last.get(4)), "and the city it goes to");
+			assertEquals("2026-09-29", String.valueOf(last.get(5)).substring(0, 10), "and the day it was booked");
+			assertEquals(2059.08, number(last.get(7)), 0.005, "and what it weighs");
+
+			// The list is worth having because it names who to ring: one carrier holds a third of
+			// the delays.
+			Map<String, Integer> delaysOf = new LinkedHashMap<>();
+			double weighed = 0.0;
+			double cost = 0.0;
+			for (List<Object> row : behind) {
+				delaysOf.merge(String.valueOf(row.get(1)), 1, Integer::sum);
+				weighed += number(row.get(7));
+				cost += number(row.get(8));
+			}
+			assertEquals(7, delaysOf.size(), "Seven carriers are late: " + delaysOf);
+			assertEquals(5, delaysOf.get("Swiftline Parcel"), "Swiftline Parcel, a third of them");
+			assertEquals(3, delaysOf.get("Nordic Rail Cargo"), "Nordic Rail Cargo");
+			assertEquals(2, delaysOf.get("Baltic Sea Carriers"), "Baltic Sea Carriers");
+			assertEquals(2, delaysOf.get("EuroRoad Freight"), "EuroRoad Freight");
+			assertEquals(34584.26, weighed, 0.05, "The weight standing still: " + behind);
+			assertEquals(1577.76, cost, 0.05, "And what it cost to book: " + behind);
+
+			// The negative half. A detail query that keeps the month but drops the status the
+			// viewer clicked answers the whole month - 188 shipments, not the 15 that were under
+			// the number.
+			Map<String, Object> withoutTheStatus = new LinkedHashMap<>(clicked);
+			withoutTheStatus.put("cell", Map.of("BookedDate.month", "2026-09-01"));
+			assertEquals(188, table(connection, CubeSqlGenerator
+					.buildQuery(cube, CubeDrill.request(cube, withoutTheStatus), vendor).toInlineSql(vendor))
+					.size(), "Without the clicked status the drill is the whole month");
+
+			// It is the status that picks the rows, not the modal: the cell beside it opens the 77
+			// the month delivered.
+			Map<String, Object> delivered = new LinkedHashMap<>(clicked);
+			delivered.put("cell", Map.of("BookedDate.month", "2026-09-01", "Status", "Delivered"));
+			assertEquals(77, table(connection, CubeSqlGenerator
+					.buildQuery(cube, CubeDrill.request(cube, delivered), vendor).toInlineSql(vendor))
+					.size(), "The row beside it opens its own rows");
+
+			// Every delay the data holds was booked this month - which is why the desk reads the
+			// month and does not have to read the year.
+			Map<String, Object> everyDelay = new LinkedHashMap<>();
+			everyDelay.put("measure", "Shipments");
+			everyDelay.put("cell", Map.of("Status", "Delayed"));
+			assertEquals(15, table(connection, CubeSqlGenerator
+					.buildQuery(cube, CubeDrill.request(cube, everyDelay), vendor).toInlineSql(vendor))
+					.size(), "Every delay the cube has seen was booked this month");
+		}
+	}
+
+	@Test
+	void story29TheYearToDateRestartsEveryJanuaryAndDoesNotRunOn() throws Exception {
+
+		CubeOptions cube = parseSampleCube("customer-invoices");
+		String vendor = "duckdb";
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			// What the CFO reads at month end: what was invoiced in the month, and where the year
+			// stands after it.
+			List<List<Object>> byMonth = table(connection, ask(cube, vendor,
+					"dimensions", List.of("IssueDate.month"),
+					"measures", List.of("Invoiced", "InvoicedYTD")));
+			assertEquals(21, byMonth.size(), "Twenty-one months of invoices: " + byMonth);
+
+			Map<String, List<Object>> month = new LinkedHashMap<>();
+			List<String> inOrder = new ArrayList<>();
+			for (List<Object> row : byMonth) {
+				String key = String.valueOf(row.get(0)).substring(0, 7);
+				month.put(key, row);
+				inOrder.add(key);
+			}
+			inOrder.sort(Comparator.naturalOrder());
+			assertEquals("2025-01", inOrder.get(0), "The first month the data holds");
+			assertEquals("2026-09", inOrder.get(inOrder.size() - 1), "The last one, the pinned today's");
+
+			// Every month's year-to-date is that year's months added up to it, and nothing earlier.
+			double runningInTheYear = 0.0;
+			String year = "";
+			for (String key : inOrder) {
+				if (!key.substring(0, 4).equals(year)) {
+					year = key.substring(0, 4);
+					runningInTheYear = 0.0;
+				}
+				runningInTheYear += number(month.get(key).get(1));
+				assertEquals(runningInTheYear, number(month.get(key).get(2)), 0.05,
+						"The year to date at " + key + " is " + year + "'s months added up to it");
+			}
+
+			// The numbers the story quotes.
+			assertEquals(1082128.83, number(month.get("2025-09").get(1)), 0.05, "September 2025, invoiced");
+			assertEquals(7541800.54, number(month.get("2025-09").get(2)), 0.05, "Year to date at 2025-09");
+			assertEquals(1014298.00, number(month.get("2026-09").get(1)), 0.05, "September 2026, invoiced");
+			assertEquals(9621071.76, number(month.get("2026-09").get(2)), 0.05, "Year to date at 2026-09");
+			assertEquals(27.6, 100.0 * (number(month.get("2026-09").get(2)) - number(month.get("2025-09").get(2)))
+					/ number(month.get("2025-09").get(2)), 0.05, "Year to date, 2026 against 2025, in %");
+			assertEquals(10790443.28, number(month.get("2025-12").get(2)), 0.05,
+					"The whole of 2025, which is its December year to date");
+
+			// January restarts it: the year to date of the first month of a year is that month.
+			assertEquals(1241086.33, number(month.get("2026-01").get(1)), 0.05, "January 2026, invoiced");
+			assertEquals(number(month.get("2026-01").get(1)), number(month.get("2026-01").get(2)), 0.05,
+					"January's year to date is January itself: " + month.get("2026-01"));
+			assertEquals(number(month.get("2025-01").get(1)), number(month.get("2025-01").get(2)), 0.05,
+					"And so is the January before it: " + month.get("2025-01"));
+
+			// 2026 is ahead of 2025 at every month end the two years share.
+			for (int m = 1; m <= 9; m++) {
+				String suffix = String.format("-%02d", m);
+				assertTrue(number(month.get("2026" + suffix).get(2)) > number(month.get("2025" + suffix).get(2)),
+						"2026 is ahead at the end of month " + m + ": "
+								+ month.get("2026" + suffix) + " against " + month.get("2025" + suffix));
+			}
+
+			// The negative half. A running total that never restarts would carry 2025 into 2026 and
+			// answer 12,031,529.61 at January 2026 - the number the check would go red on, and the
+			// one a CFO would read as a year's invoicing when it is two.
+			double neverRestarts = 0.0;
+			for (String key : inOrder) {
+				neverRestarts += number(month.get(key).get(1));
+				if (key.equals("2026-01")) {
+					break;
+				}
+			}
+			assertEquals(12031529.61, neverRestarts, 0.05,
+					"What a running total that never restarts would say at January 2026");
+			assertTrue(neverRestarts > number(month.get("2026-01").get(2)) * 9,
+					"The restarted total is nothing like it: " + month.get("2026-01"));
+
+			// And the two years really are two: the months add up to each year on their own, never
+			// to one long run.
+			double invoicedInAll = 0.0;
+			for (List<Object> row : byMonth) {
+				invoicedInAll += number(row.get(1));
+			}
+			assertEquals(20411515.04, invoicedInAll, 0.05, "Everything invoiced, both years: " + byMonth);
+			assertEquals(invoicedInAll,
+					number(month.get("2025-12").get(2)) + number(month.get("2026-09").get(2)), 0.05,
+					"which is 2025's year to date at December plus 2026's at September");
+		}
+	}
+
+	@Test
+	void story30TheBoardPackTotalIsTheRatioOfTheTotalsAndTheFormatsAreInTheModel() throws Exception {
+
+		CubeOptions cube = parseSampleCube("online-sales");
+		String vendor = "duckdb";
+		List<String> boardPack = List.of("UnitsSold", "NetSales", "CostOfGoods", "GrossMargin",
+				"MarginPct", "DiscountRate");
+
+		// Half the story is in the model: each measure says how it is shown, once, and the cube
+		// says which currency the money is in. A widget never retypes either.
+		assertEquals("EUR", cube.getCurrency(), "The one currency the shop's amounts are in");
+		Map<String, String> formats = new LinkedHashMap<>();
+		for (Map<String, Object> measure : cube.getMeasures()) {
+			formats.put(String.valueOf(measure.get("name")), String.valueOf(measure.get("format")));
+		}
+		assertEquals("number", formats.get("UnitsSold"), "Units Sold is a plain number");
+		assertEquals("currency", formats.get("NetSales"), "Net Sales is money");
+		assertEquals("currency", formats.get("CostOfGoods"), "Cost of Goods is money");
+		assertEquals("currency", formats.get("GrossMargin"), "Gross Margin is money");
+		assertEquals("percent", formats.get("MarginPct"), "Margin % is a percentage");
+		assertEquals("percent", formats.get("DiscountRate"), "Discount Rate is a percentage");
+
+		try (Connection connection = openFixtureFor(vendor)) {
+
+			List<List<Object>> byCategory = table(connection, ask(cube, vendor,
+					"dimensions", List.of("Category"), "measures", boardPack));
+			assertEquals(8, byCategory.size(), "Eight categories: " + byCategory);
+
+			Map<String, List<Object>> category = new LinkedHashMap<>();
+			double units = 0.0;
+			double net = 0.0;
+			double cost = 0.0;
+			double margin = 0.0;
+			double marginPctOfTheRows = 0.0;
+			for (List<Object> row : byCategory) {
+				category.put(String.valueOf(row.get(0)), row);
+				units += number(row.get(1));
+				net += number(row.get(2));
+				cost += number(row.get(3));
+				margin += number(row.get(4));
+				marginPctOfTheRows += number(row.get(5));
+				// Every row's margin is its own sales less its own cost - nothing is carried over.
+				assertEquals(number(row.get(2)) - number(row.get(3)), number(row.get(4)), 0.05,
+						"Net Sales less Cost of Goods is the Gross Margin of " + row.get(0));
+				assertEquals(number(row.get(4)) / number(row.get(2)), number(row.get(5)), 0.0001,
+						"and Margin % is that margin over those sales: " + row);
+			}
+			marginPctOfTheRows /= byCategory.size();
+
+			// The finding the board is shown: the biggest seller earns the least on what it sells,
+			// and the smallest-but-one earns the most.
+			List<Object> displays = category.get("Displays");
+			List<Object> audio = category.get("Audio");
+			assertEquals(1837.0, number(displays.get(1)), 0.5, "Displays, in units");
+			assertEquals(1092301.89, number(displays.get(2)), 0.05, "Displays, in net sales");
+			assertEquals(749529.97, number(displays.get(3)), 0.05, "what those Displays cost");
+			assertEquals(342771.92, number(displays.get(4)), 0.05, "what they left");
+			assertEquals(0.3138, number(displays.get(5)), 0.0001, "Displays' margin, the thinnest");
+			assertEquals(0.0302, number(displays.get(6)), 0.0001, "and the discount they were sold at");
+			assertEquals(0.3915, number(audio.get(5)), 0.0001, "Audio's margin, the fattest");
+			for (List<Object> row : byCategory) {
+				assertTrue(number(displays.get(2)) >= number(row.get(2)),
+						"Displays sells the most: " + row);
+				assertTrue(number(displays.get(5)) <= number(row.get(5)),
+						"and earns the least on it: " + row);
+				assertTrue(number(audio.get(5)) >= number(row.get(5)),
+						"while Audio earns the most: " + row);
+			}
+
+			// The totals row: the same question with no field, which is where a ratio's total comes
+			// from - the query, over everything.
+			List<List<Object>> inAll = table(connection, ask(cube, vendor, "measures", boardPack));
+			assertEquals(1, inAll.size(), "One row, the whole shop: " + inAll);
+			List<Object> total = inAll.get(0);
+			assertEquals(14438.0, number(total.get(0)), 0.5, "Units in all");
+			assertEquals(3571889.64, number(total.get(1)), 0.05, "Net Sales in all");
+			assertEquals(2355031.84, number(total.get(2)), 0.05, "Cost of Goods in all");
+			assertEquals(1216857.80, number(total.get(3)), 0.05, "Gross Margin in all");
+			assertEquals(0.3407, number(total.get(4)), 0.0001, "Margin % in all");
+			assertEquals(0.0317, number(total.get(5)), 0.0001, "Discount Rate in all");
+
+			// The eight rows add up to the totals row, measure by measure, for the three that add up.
+			assertEquals(number(total.get(0)), units, 0.5, "The units of the rows are the total's");
+			assertEquals(number(total.get(1)), net, 0.05, "and so are the sales");
+			assertEquals(number(total.get(2)), cost, 0.05, "and the costs");
+			assertEquals(number(total.get(3)), margin, 0.05, "and the margins");
+
+			// The negative half. The two ratios do not add up and must not be averaged either: the
+			// mean of the eight Margin % is 35.11%, which is not the shop's 34.07%, and a totals row
+			// worked out over the rows instead of by the query would print it.
+			assertEquals(0.3511, marginPctOfTheRows, 0.0001,
+					"The average of the eight rows' Margin %, which is the wrong total");
+			assertNotEquals(marginPctOfTheRows, number(total.get(4)),
+					"and it is not what the query answers");
+			assertTrue(Math.abs(marginPctOfTheRows - number(total.get(4))) > 0.01,
+					"The two are more than a point apart: " + marginPctOfTheRows + " against " + total.get(4));
+			assertEquals(number(total.get(3)) / number(total.get(1)), number(total.get(4)), 0.0001,
+					"The shop's Margin % is its margin over its sales: " + total);
+
+			// Discount Rate is weighted by what was sold, which is why it is its own measure and not
+			// the line-by-line Average Discount % the cube already had.
+			double averageOfTheLines = number(oneNumber(connection, ask(cube, vendor,
+					"measures", List.of("AvgDiscountPct"))));
+			assertTrue(Math.abs(averageOfTheLines / 100.0 - number(total.get(5))) > 0.002,
+					"The average of the lines (" + averageOfTheLines + "%) is not the weighted rate ("
+							+ number(total.get(5)) + ")");
+		}
+	}
+
 	/** The sentence a refusal says, or a failure naming the SQL it produced instead. */
 	private String refusalOf(SqlThatShouldNotBeWritten attempt) {
 		try {
@@ -1633,8 +2398,22 @@ class CubeSampleSqlExecutesTest {
 		for (int i = 0; i < keysAndValues.length; i += 2) {
 			request.put(keysAndValues[i].toString(), keysAndValues[i + 1]);
 		}
-		return CubeSqlGenerator.buildQuery(cube, request, vendor).toInlineSql(vendor);
+		return CubeVariableBinding.bound(CubeSqlGenerator.buildQuery(cube, request, vendor), AS_ADMIN)
+				.toInlineSql(vendor);
 	}
+
+	/**
+	 * Whoever this test asks as. Story 31 ships an {@code access_filter} on Support Desk, so from
+	 * now on a Support Desk statement carries it and the answer depends on who is asking. These
+	 * tests are about the numbers the desk holds, so they ask as an admin, whom the filter's third
+	 * line lets see the whole desk. A cube without an access filter names no variable, and binding
+	 * hands its query back untouched.
+	 */
+	private static final Map<String, String> AS_ADMIN = Map.of(
+			"dp_user_id", "The Sample Sweep",
+			"dp_user_email", "sweep@support.cube-demo.example",
+			"dp_user_groups", "",
+			"dp_user_role", "admin");
 
 	private Map<String, Object> filterOn(String member, String operator, Object... values) {
 		Map<String, Object> filter = new LinkedHashMap<>();

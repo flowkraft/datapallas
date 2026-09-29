@@ -31,6 +31,7 @@ cube {
   sql_table 'cube_demo.crm_deals'
   title 'Sales Pipeline'
   description 'Deals, what they are worth, and how many of them we win'
+  currency 'EUR'
 
   join {
     name 'cube_demo.crm_accounts'

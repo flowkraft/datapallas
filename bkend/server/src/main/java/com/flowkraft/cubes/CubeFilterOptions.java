@@ -9,11 +9,13 @@ import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.flowkraft.queries.ConnectionFactory;
 import com.flowkraft.queries.SqlOptionRows;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
+import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
 import com.sourcekraft.documentburster.common.db.DatabaseConnectionManager;
 import com.sourcekraft.documentburster.common.db.SqlExecutor;
 import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSettings;
@@ -44,6 +46,13 @@ import com.sourcekraft.documentburster.common.settings.model.ServerDatabaseSetti
  * for a hundred thousand customers. So a cut list comes back with {@code truncated: true}, and the
  * renderer then asks this endpoint again with {@code search} as the viewer types.
  *
+ * <p><b>A cube whose conditions use the dashboard's parameters.</b> The generated query carries
+ * the cube's {@code condition} lines like any other SELECT, so the list offered for a filter is
+ * the list of values that exist <i>in the chosen period</i> — Show Me over a quarter offers the
+ * countries that bought in that quarter. The values come from the caller where the caller has
+ * them, and from the dashboard's own defaults otherwise, which is what the editor's own preview of
+ * the list is.
+ *
  * <p><b>ANSI SQL only — no vendor branch in this file.</b> The generated query gets its vendor
  * forms from {@link CubeSqlDialect} through {@link CubeSqlGenerator}, and the author's SQL is
  * whatever the author wrote.
@@ -61,6 +70,15 @@ public class CubeFilterOptions {
 
 	/** One more than {@link #MAX_VALUES}: reading it is how a cut list is told from a whole one. */
 	private static final int PROBE = MAX_VALUES + 1;
+
+	/** Where the data's today comes from, for a parameter whose default is relative to it (R7). */
+	@Autowired(required = false)
+	private CubeDataToday dataToday = new CubeDataToday();
+
+	/** The test seam of {@link CubeDataToday}: a pinned day, so the checks' numbers stay true. */
+	void useDataToday(CubeDataToday dataToday) {
+		this.dataToday = dataToday;
+	}
 
 	/**
 	 * The options of one dimension of one cube.
@@ -87,6 +105,47 @@ public class CubeFilterOptions {
 	 */
 	public Map<String, Object> options(CubeOptions cube, String dimension, String connectionId, String search,
 			Map<String, String> userVariables) throws Exception {
+		return options(cube, dimension, connectionId, search, userVariables, Map.of());
+	}
+
+	/**
+	 * The same list for a cube with parameters: the values that exist in the period the viewer
+	 * picked.
+	 *
+	 * @param asked the request's own {@code params}, or an empty map to use the cube's defaults
+	 */
+	public Map<String, Object> options(CubeOptions cube, String dimension, String connectionId, String search,
+			Map<String, String> userVariables, Map<String, Object> asked) throws Exception {
+		return options(cube, dimension, connectionId, search, userVariables, asked, List.of());
+	}
+
+	/**
+	 * The same list against the parameters one dashboard declares (R1). The author's own endpoint
+	 * declares none: a name its conditions use is then left with no value, which drops that
+	 * condition and offers the values of every row the cube answers.
+	 */
+	public Map<String, Object> options(CubeOptions cube, String dimension, String connectionId, String search,
+			Map<String, String> userVariables, Map<String, Object> asked, List<ReportParameter> declared)
+			throws Exception {
+		return options(cube, dimension, connectionId, search, userVariables, asked, declared, List.of());
+	}
+
+	/**
+	 * The same list, narrowed by the dashboard's filter bar (R8).
+	 *
+	 * <p>A viewer who has picked Germany is offered the categories Germany bought, not every
+	 * category the shop has ever sold: a list of values that cannot answer a single row is worse
+	 * than a short one. The bound filters come from the widget's own entry, already turned into
+	 * filters by {@code CubeParamBindings}, and are ANDed with this dimension's own
+	 * {@code set} - and with the cube's {@code access_filter}, which the generated query carries
+	 * either way.
+	 *
+	 * <p>An author's own {@code filter_options} SQL is left alone: it is their statement, and this
+	 * server does not rewrite it.
+	 */
+	public Map<String, Object> options(CubeOptions cube, String dimension, String connectionId, String search,
+			Map<String, String> userVariables, Map<String, Object> asked, List<ReportParameter> declared,
+			List<Map<String, Object>> bound) throws Exception {
 
 		Map<String, Object> member = dimensionOf(cube, dimension);
 		String authorSql = Objects.toString(member.get("filter_options"), "").trim();
@@ -109,8 +168,12 @@ public class CubeFilterOptions {
 				return answer(values, readWholeCap || values.size() > MAX_VALUES);
 			}
 
+			Map<String, Object> parameters = DashboardParameters.values(declared, cube,
+					Map.of(DashboardParameters.REQUEST_KEY, asked != null ? asked : Map.of()),
+					() -> dataToday.of(connectionId));
 			CubeQuery query = CubeVariableBinding.bound(CubeSqlGenerator.buildQuery(cube,
-					generatedRequest(dimension, search), vendorOf(connectionId)), userVariables);
+					generatedRequest(dimension, search, bound), vendorOf(connectionId)), userVariables,
+					parameters, DashboardParameters.types(declared));
 			List<Map<String, Object>> rows = executor.queryOn(connectionId, query.getSql(), query.getParams(),
 					PROBE);
 			List<List<String>> values = SqlOptionRows.pairs(rows);
@@ -125,11 +188,20 @@ public class CubeFilterOptions {
 	 * {@code contains}, so the database does the searching while the list is still long.
 	 */
 	static Map<String, Object> generatedRequest(String dimension, String search) {
+		return generatedRequest(dimension, search, List.of());
+	}
+
+	/** The same query with the dashboard's own filters on it (R8), so the list is of what it shows. */
+	static Map<String, Object> generatedRequest(String dimension, String search,
+			List<Map<String, Object>> bound) {
 
 		List<Map<String, Object>> filters = new ArrayList<>();
 		filters.add(Map.of("member", dimension, "operator", "set"));
 		if (search != null && !search.isBlank()) {
 			filters.add(Map.of("member", dimension, "operator", "contains", "values", List.of(search.trim())));
+		}
+		if (bound != null) {
+			filters.addAll(bound);
 		}
 
 		Map<String, Object> request = new LinkedHashMap<>();

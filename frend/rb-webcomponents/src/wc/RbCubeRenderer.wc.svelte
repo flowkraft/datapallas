@@ -87,6 +87,25 @@
    * and an empty one leaves the shape to the selection, as it has always been.
    */
   export let display: string = '';
+  /**
+   * R8: what the viewer answered the dashboard's filter bar with, as `rb-parameters` hands it to
+   * every other widget on the page - `report-params='{"country":"Germany"}'`.
+   *
+   * It is sent with every question this cube asks, and the server decides what it filters, out of
+   * the bindings the widget's own entry declares. A value nothing is bound to changes nothing, and
+   * `*` - what All travels as - is no filter at all.
+   */
+  export let reportParams: any = null;
+  /**
+   * R3: the view this widget was showing a moment ago, carried across the replacement
+   * `rb-parameters` does when the viewer hits Reload.
+   *
+   * The whole page is rebuilt from fresh elements then, and without this the cube would come back
+   * on the view the server last *saved* - which is the one from before the last few ticks, because
+   * saving is debounced. The ticks a person made are not a dashboard parameter and must survive
+   * the parameter being changed.
+   */
+  export let localState: string = '';
 
   const dispatch = createEventDispatcher();
 
@@ -796,6 +815,40 @@
     text: titleOf(member) + ': ' + chipValues(activeFilters[member]),
   }));
 
+  /**
+   * What the dashboard's filter bar is doing to this cube, one chip per binding that has a value
+   * (R8). It has no ×: it is not this widget's filter to remove, and the way to change it is the
+   * filter bar the viewer set it on. A parameter answered All adds no chip, because it adds no
+   * filter either.
+   */
+  $: dashChips = paramBindings
+    .map((binding: any) => ({
+      member: String(binding?.member ?? ''),
+      text: titleOf(String(binding?.member ?? '')) + ': ' + dashValueText(binding),
+    }))
+    // A parameter nobody has answered, and All, add no chip - because they add no filter.
+    .filter((chip: any) => !!chip.member && !chip.text.endsWith(': '))
+    // Said where it comes from: this one is the page's filter, not a tick made here.
+    .map((chip: any) => ({ ...chip, text: chip.text + ' (dashboard)' }));
+
+  /** A binding's value as the chip says it: both ends of a `between`, or the one answer. */
+  function dashValueText(binding: any): string {
+    const from = dashValue(binding?.param);
+    if (String(binding?.operator ?? '') === 'between') {
+      const to = dashValue(binding?.paramTo);
+      if (!from && !to) return '';
+      return from && to ? from + ' \u2192 ' + to : (from ? '\u2265 ' + from : '\u2264 ' + to);
+    }
+    return from;
+  }
+
+  /** One answered value, or '' for All and for nothing - neither of which filters anything. */
+  function dashValue(param: any): string {
+    const value = dashboardParams[String(param ?? '')];
+    const text = Array.isArray(value) ? value.join(', ') : String(value ?? '');
+    return text.trim() === '*' ? '' : text.trim();
+  }
+
   /** Esc closes the popover, and so does a click anywhere outside it: neither applies anything. */
   function onWindowKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' && openFilterFor) closeFilter();
@@ -955,6 +1008,82 @@
   let queryRunning = false;
   let queryQueued = false;
 
+  /** The dashboard's answers, as this widget sends them (R8); empty outside a dashboard. */
+  $: dashboardParams = paramsOf(reportParams);
+
+  /** `report-params` as either an attribute's JSON text or a host's object. */
+  function paramsOf(given: any): Record<string, any> {
+    if (!given) return {};
+    if (typeof given === 'string') {
+      try {
+        const parsed = JSON.parse(given);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch (e) {
+        return {};
+      }
+    }
+    return typeof given === 'object' && !Array.isArray(given) ? given : {};
+  }
+  /** What the widget's entry binds them to, as `/meta` reports it: the chips the viewer sees. */
+  let paramBindings: any[] = [];
+
+  /**
+   * R1: the parameters this card itself asks for, as `/meta` lists them - the names its own cube's
+   * conditions use, and the names this widget is bound by.
+   *
+   * A dashboard declares its parameters once for the whole page. Where the page draws its own
+   * `<rb-parameters>` at the top, those answers arrive as `report-params` and the card must not
+   * ask the same question a second time: `cardParameters` is what is left after taking those away.
+   * On the Cube Stories page, which has no parameter bar, that is the whole of the card's own list
+   * - which is how a statement card can ask "which customer?" while the fourteen cards around it
+   * ask nothing.
+   */
+  let metaParameters: any[] = [];
+
+  /** R4: the ones this share link or embed token has already answered, by the signed value. */
+  let cardLocked: Record<string, any> = {};
+
+  /** What the viewer has answered on this card, by parameter id; a locked one is never theirs. */
+  let cardValues: Record<string, any> = {};
+
+  $: cardParameters = metaParameters.filter(
+    (p: any) => !Object.prototype.hasOwnProperty.call(dashboardParams, String(p?.id ?? '')));
+
+  /**
+   * The answers this card sends: its own, with the page's over them.
+   *
+   * The page's win because a name the page answers is not drawn on the card at all, so the only
+   * way both could hold one is a value left behind by an earlier `/meta` - and the page's is the
+   * live one.
+   */
+  $: answeredParams = { ...cardValues, ...dashboardParams };
+
+  /** The card's form, opened on what the dashboard declared - or on what the link fixed (R4). */
+  function seedCardValues(parameters: any[], locked: Record<string, any>): Record<string, any> {
+    const seeded: Record<string, any> = {};
+    for (const parameter of parameters) {
+      const id = String(parameter?.id ?? '');
+      if (!id) continue;
+      seeded[id] = Object.prototype.hasOwnProperty.call(locked, id)
+        ? locked[id]
+        : (parameter?.defaultValue ?? '');
+    }
+    return seeded;
+  }
+
+  /**
+   * The viewer answered one of this card's parameters: the card asks its question again.
+   *
+   * The locked ones are put back over whatever arrives, so that a form tampered with in the
+   * browser still sends the signed value - and the server writes it over this one again anyway,
+   * which is what makes the lock a lock rather than a politeness.
+   */
+  function onCardParams(event: any) {
+    const answered = event?.detail && typeof event.detail === 'object' ? event.detail : {};
+    cardValues = { ...cardValues, ...answered, ...cardLocked };
+    if (runtime) scheduleQuery();
+  }
+
   $: nothingTicked = selectedMeasures.size === 0 && selectedDimensions.size === 0;
 
   /** The one credential an embedded page can carry, the same one every other rb-* component sends. */
@@ -1055,7 +1184,9 @@
     const response = await fetch(askUrl('filter-options'), {
       method: 'POST',
       headers: askHeaders(),
-      body: JSON.stringify(body),
+      // The values offered are the values of the dashboard as it stands: with Germany picked, the
+      // categories Germany bought (R8).
+      body: JSON.stringify(withDashboardParams(body)),
     });
     return await runtimeAnswer(response, 'The values of this field could not be read');
   }
@@ -1083,6 +1214,12 @@
       codeOpen = false;
       sqlText = '';
       sqlError = '';
+      paramBindings = Array.isArray(meta?.paramBindings) ? meta.paramBindings : [];
+      metaParameters = Array.isArray(meta?.parameters) ? meta.parameters : [];
+      cardLocked = meta?.lockedParameters && typeof meta.lockedParameters === 'object'
+        ? meta.lockedParameters
+        : {};
+      cardValues = seedCardValues(metaParameters, cardLocked);
       cubeConfig = cubeOfMeta(meta);
       // The tree reads the new cube first: `initial` names its fields.
       await tick();
@@ -1198,6 +1335,18 @@
 
   // ── Cube Stories: View SQL, View Code and Show Me (design part 8) ────────
 
+  /**
+   * The same request with the dashboard's values on it (R8).
+   *
+   * Added here and not in `runtimeRequest`, because that one is also what a view is saved as: the
+   * country the viewer picked at the top of the page is the page's, not this widget's, and a view
+   * that remembered it would put a stale country back on the screen tomorrow.
+   */
+  function withDashboardParams(request: any): any {
+    if (!runtime || Object.keys(answeredParams).length === 0) return request;
+    return { ...request, params: { ...answeredParams } };
+  }
+
   /** The vendor the page as a whole is on, so a card read later starts where the others are. */
   function pageVendor(): string {
     try {
@@ -1240,7 +1389,7 @@
     }
     sqlLoading = true;
     try {
-      const request = runtimeRequest();
+      const request = withDashboardParams(runtimeRequest());
       if (sqlVendor) request.dbVendor = sqlVendor;
       const response = await fetch(runtimeUrl('sql'), {
         method: 'POST', headers: runtimeHeaders(), body: JSON.stringify(request),
@@ -1299,6 +1448,18 @@
     viewSaveError = '';
     panelCollapsed = false;
 
+    // R3: the viewer changed the parameter a moment ago and `rb-parameters` rebuilt this element.
+    // What they were looking at then is what they expect back, ahead of the view the server last
+    // saved - which is older, because saving is debounced.
+    const handedOver = handedOverView();
+    if (handedOver?.selection) {
+      panelCollapsed = !!handedOver.collapsed;
+      const dropped: string[] = [];
+      const cleaned = cleanAgainst(meta, handedOver.selection, dropped);
+      viewDropped = dropped;
+      if (list(cleaned.dimensions).length > 0 || list(cleaned.measures).length > 0) return cleaned;
+    }
+
     if (viewStorage === 'account' && meta?.myView?.selection) {
       panelCollapsed = !!meta.myView.collapsed;
       return meta.myView.selection;
@@ -1320,6 +1481,17 @@
     }
 
     return authorDefault;
+  }
+
+  /** The `local-state` this element was handed, or nothing if it was handed none. */
+  function handedOverView(): any {
+    if (!localState) return null;
+    try {
+      const parsed = JSON.parse(localState);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
@@ -1453,9 +1625,9 @@
     && currentViewSignature !== defaultViewSignature;
 
   /** `Cube · Ship Country: Germany`, in chip order, the same text in both panel states. */
-  $: panelHeaderText = filterChips.length === 0
+  $: panelHeaderText = [...dashChips, ...filterChips].length === 0
     ? 'Cube'
-    : 'Cube · ' + filterChips.map((chip) => chip.text).join('; ');
+    : 'Cube · ' + [...dashChips, ...filterChips].map((chip) => chip.text).join('; ');
 
   /**
    * The author's canvas keeps its selection on the widget (W3), and a read-only cube cannot be
@@ -1594,7 +1766,7 @@
       const response = await fetch(askUrl('query'), {
         method: 'POST',
         headers: askHeaders(),
-        body: JSON.stringify(runtimeRequest()),
+        body: JSON.stringify(withDashboardParams(runtimeRequest())),
       });
       const answer = await runtimeAnswer(response, 'This question could not be answered');
       if (!queryQueued) {
@@ -1906,7 +2078,7 @@
       const answer = await runtimeAnswer(await fetch(askUrl('drill'), {
         method: 'POST',
         headers: askHeaders(),
-        body: JSON.stringify(body),
+        body: JSON.stringify(withDashboardParams(body)),
       }), 'The rows behind this number could not be read');
       drillRows = Array.isArray(answer?.rows) ? answer.rows : [];
       drillTruncated = !!answer?.truncated;
@@ -2382,6 +2554,8 @@
       if (!cubeId) cubeId = hostEl.getAttribute('cube-id') || '';
       if (!defaultFields) defaultFields = hostEl.getAttribute('default-fields') || '';
       if (!display) display = hostEl.getAttribute('display') || '';
+      if (!reportParams) reportParams = hostEl.getAttribute('report-params') || '';
+      if (!localState) localState = hostEl.getAttribute('local-state') || '';
       if (!readOnly && hostEl.hasAttribute('read-only')) {
         readOnly = hostEl.getAttribute('read-only') !== 'false';
       }
@@ -2393,6 +2567,9 @@
         try { cubeConfig = JSON.parse(cd); } catch (e) { /* the host will push it as a prop instead */ }
       }
     }
+    // R3: how the element that replaces this one gets the view it is showing now. `rb-parameters`
+    // rebuilds every widget when the viewer changes a parameter, and reads this first.
+    if (hostEl) (hostEl as any).rbLocalState = () => JSON.stringify(currentView());
     mounted = true;
     // Every card of a Cube Stories page hears every other card's choice of database.
     document.addEventListener(SQL_VENDOR_EVENT, onPageSqlVendor);
@@ -2469,10 +2646,30 @@
     {#if !runtime || !panelCollapsed}
     <div id="cubePanelBody">
 
+    <!-- R1: the card's own parameters, above everything they decide. The controls are
+         `<rb-parameters>`'s, the same ones a dashboard's filter bar is made of, so a locked one
+         is shown the one way it is shown everywhere: the value, greyed, and what fixed it. -->
+    {#if runtime && cardParameters.length > 0}
+      <div id="cubeCardParamsBar" class="rb-card-params">
+        <rb-parameters id="cubeCardParams"
+                       parameters={cardParameters}
+                       lockedParameters={cardLocked}
+                       on:valueChange={onCardParams}></rb-parameters>
+      </div>
+    {/if}
+
     <!-- The filters in force, one chip each: what is being looked at, before the tree it came from -->
-    {#if filterChips.length > 0 || viewDiffers}
+    {#if filterChips.length > 0 || dashChips.length > 0 || viewDiffers}
       <div class="rb-chip-bar">
       <div id="cubeFilterChips" class="rb-chips">
+        <!-- R8: the dashboard's own filter, said where this widget's filters are said. No ×: it
+             belongs to the filter bar at the top of the page, which is where it is changed. -->
+        {#each dashChips as chip (chip.member)}
+          <span id="chipDashFilter-{chip.member}" class="rb-chip rb-chip-fixed"
+                title="From this dashboard's filter">
+            <span class="rb-chip-text">{chip.text}</span>
+          </span>
+        {/each}
         {#each filterChips as chip (chip.member)}
           <span id="chipFilter-{chip.member}" class="rb-chip">
             {#if readOnly}
@@ -2948,6 +3145,10 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .rb-card-params {
+    margin: 0 0 10px 0;
+  }
+
   .rb-chip-bar {
     display: flex;
     align-items: center;
@@ -3102,6 +3303,12 @@
     padding: 2px 8px 2px 4px;
     opacity: 0.7;
   }
+  /* The dashboard's own filter: said like the others, but not this widget's to take off. */
+  .rb-chip-fixed {
+    background: #eef2f7;
+    border-style: dashed;
+  }
+
   .rb-chip-x:hover {
     opacity: 1;
     color: #d9534f;

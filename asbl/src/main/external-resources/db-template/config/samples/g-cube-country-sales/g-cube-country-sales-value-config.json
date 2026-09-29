@@ -1,0 +1,12 @@
+{
+  "number_netsales_net" : {
+    "field" : "NetSales",
+    "format" : "currency",
+    "label" : "Net Sales"
+  },
+  "number_units_units" : {
+    "field" : "Units",
+    "format" : "number",
+    "label" : "Units"
+  }
+}

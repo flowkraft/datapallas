@@ -46,6 +46,8 @@ import {
   DATE_OPS,
   NO_VALUE_OPS,
   NUMBER_OPS,
+  CUBE_QUERY_OPERATORS,
+  cubeQueryOperator,
   PARAM_BINDABLE_OPS,
   STRING_OPS,
   matchesAnyFilter,
@@ -1253,6 +1255,28 @@ describe("ANSI — every filter operator the Filter step offers", () => {
       ],
     } as Partial<VisualQuery>)))
       .toContain("SELECT COUNT(closed_on) AS closed_on_count, COUNT(*) AS count");
+  });
+
+  it("gives every operator that can be bound to a parameter its cube query name, in one place", () => {
+    // A cube's native `condition 'OrderDate', 'between', fromDate, toDate` (R1) is added to the
+    // query as a chip's filter is, and the two speak the same comparisons under two spellings.
+    // The map is `CUBE_QUERY_OPERATORS` and nowhere else; the server's own list
+    // (`CubeRules.QUERY_OPERATORS`) is compared with this file by a JUnit, so a name added on one
+    // side and not the other is a red test rather than a condition nobody can write.
+    for (const operator of Array.from(PARAM_BINDABLE_OPS)) {
+      expect(cubeQueryOperator(operator))
+        .withContext(`${operator} can bind a parameter but has no cube form`).toBeDefined();
+    }
+    expect(CUBE_QUERY_OPERATORS["not_equals"]).toBe("notEquals");
+    expect(CUBE_QUERY_OPERATORS["greater_or_equal"]).toBe("gte");
+    expect(CUBE_QUERY_OPERATORS["less_than"]).toBe("lt");
+    // A cube says what a row has: `set` is IS NOT NULL, so the two null checks cross over.
+    expect(CUBE_QUERY_OPERATORS["is_not_null"]).toBe("set");
+    expect(CUBE_QUERY_OPERATORS["is_null"]).toBe("notSet");
+    // The LIKE family and the relative dates have no cube form of their own: a cube writes
+    // `contains`, and a relative period is computed into a `between` before it is asked.
+    expect(cubeQueryOperator("starts_with")).toBeUndefined();
+    expect(cubeQueryOperator("this_quarter")).toBeUndefined();
   });
 
   it("leaves a dashboard parameter verbatim, for every operator that can be bound to one", () => {

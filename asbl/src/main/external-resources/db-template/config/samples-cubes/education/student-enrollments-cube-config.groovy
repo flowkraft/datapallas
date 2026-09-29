@@ -29,6 +29,7 @@ cube {
   sql_table 'cube_demo.school_enrollments'
   title 'Student Enrollments'
   description 'One row per student and course: the term, the grade band and the score'
+  currency 'EUR'
 
   join {
     name 'cube_demo.school_students'

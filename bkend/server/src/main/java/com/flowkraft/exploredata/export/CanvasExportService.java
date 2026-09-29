@@ -3,13 +3,18 @@ package com.flowkraft.exploredata.export;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowkraft.exploredata.ExploreDataService;
 import com.flowkraft.exploredata.ScriptModeWidgets;
+import com.flowkraft.cubes.CubeParamBindings;
+import com.flowkraft.cubes.CubeSqlGenerator;
 import com.flowkraft.cubes.CubeWidgets;
+import com.flowkraft.cubes.CubesService;
+import com.flowkraft.cubes.DashboardParameters;
 import com.flowkraft.embed.ReservedParameterNameException;
 import com.flowkraft.embed.UserVariables;
 import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.reports.ReportsService;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettings;
 import com.sourcekraft.documentburster.common.settings.model.ReportingSettings;
+import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.sourcekraft.documentburster.utils.Utils;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
@@ -28,8 +33,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Orchestrates the full "Save to DataPallas" export pipeline for a canvas.
@@ -71,8 +80,153 @@ public class CanvasExportService {
     @Autowired
     private LimitsService limitsService;
 
+    @Autowired
+    private CubesService cubesService;
+
     @Value("${rb.api.base-url:http://localhost:9090/api}")
     private String rbApiBaseUrl;
+
+    /**
+     * Every name a published live cube's conditions use is a name this dashboard declares, or a
+     * builtin the server fills in (R1).
+     *
+     * <p>The cube file's own checks can only see the form of a condition; which dashboard answers
+     * its names is knowable only where the two meet, which is here and at runtime
+     * ({@code CubeRuntimeService}). Both call the same check, so the author is told the same
+     * thing whether they publish the dashboard or open it.
+     */
+    @SuppressWarnings("unchecked")
+    private void assertCubeConditionsAreDeclared(List<Map<String, Object>> widgets,
+            List<Map<String, Object>> parametersList, String reportId) throws Exception {
+
+        Set<String> declaredNames = new LinkedHashSet<>();
+        for (Map<String, Object> parameter : parametersList) {
+            Object id = parameter == null ? null : parameter.get("id");
+            if (id instanceof String name)
+                declaredNames.add(name);
+        }
+
+        for (Map<String, Object> widget : widgets) {
+            if (!LiveCubeWidgets.isLive(widget))
+                continue;
+
+            Map<String, Object> visualQuery = LiveCubeWidgets.visualQuery(widget);
+            String cubeId = Objects.toString(visualQuery.get("cubeId"), "");
+            if (cubeId.isEmpty())
+                continue;
+
+            Map<String, Object> cubeData = cubesService.load(cubeId);
+            String dslCode = Objects.toString(cubeData.get("dslCode"), "");
+            if (dslCode.isBlank())
+                continue;
+
+            String written = Objects.toString(visualQuery.get("cubeName"), "");
+            String cubeName = written.isEmpty() ? Objects.toString(cubeData.get("cubeName"), null) : written;
+            CubeOptions cube = CubeSqlGenerator.pickCube(cubesService.parseDsl(dslCode), cubeName);
+            DashboardParameters.mustDeclare(reportId, cube, declaredNames);
+            // And the same question about the bindings the author drew on the chip (R8): they are
+            // names too, of a parameter on one side and of a member on the other.
+            assertBindingsAreSound(LiveCubeWidgets.bindingsOf(visualQuery), cube, declaredNames,
+                    Objects.toString(widget.get("id"), null));
+        }
+    }
+
+    /**
+     * Every parameter binding of a live cube widget names a parameter this dashboard declares and
+     * a member this cube offers, compared in a way that member's type allows (R8).
+     *
+     * <p>Refused at export rather than at run time, and refused rather than dropped: a binding
+     * that silently did nothing would leave a dashboard where the filter bar moves every tile but
+     * one, which is the one thing the author cannot see by looking at it.
+     */
+    private void assertBindingsAreSound(List<Map<String, Object>> bindings, CubeOptions cube,
+            Set<String> declaredNames, String widgetId) throws CanvasExportException {
+
+        for (Map<String, Object> binding : bindings) {
+
+            String param = Objects.toString(binding.get("param"), "");
+            String member = Objects.toString(binding.get("member"), "");
+            String operator = Objects.toString(binding.get("operator"), "");
+
+            Map<String, Object> found = offeredMember(cube, member);
+            if (found == null) {
+                throw new CanvasExportException("The dashboard parameter '" + param + "' is bound to '"
+                        + member + "', which this cube does not offer. Its dimensions are: "
+                        + offeredNames(cube.getDimensions()) + ". Its measures are: "
+                        + offeredNames(cube.getMeasures()) + ".", widgetId);
+            }
+
+            for (String name : paramsOf(binding)) {
+                if (!declaredNames.contains(name) && !UserVariables.isBuiltinName(name)) {
+                    throw new CanvasExportException("The binding on '" + member + "' answers to '" + name
+                            + "', which this dashboard does not declare. Its parameters are: "
+                            + String.join(", ", declaredNames) + ".", widgetId);
+                }
+            }
+
+            String queryOperator;
+            try {
+                queryOperator = CubeParamBindings.queryOperator(operator);
+            } catch (IllegalArgumentException refused) {
+                throw new CanvasExportException("The binding of '" + param + "' on '" + member + "' "
+                        + refused.getMessage(), widgetId);
+            }
+            boolean measure = named(cube.getMeasures(), member) != null;
+            List<String> allowed = CubeParamBindings.bindableFor(
+                    Objects.toString(found.get("type"), ""), measure);
+            if (!allowed.contains(queryOperator)) {
+                throw new CanvasExportException("The binding of '" + param + "' asks for '" + operator
+                        + "' on '" + member + "', which is a " + (measure ? "measure"
+                        : Objects.toString(found.get("type"), "string")) + ". It may be compared with: "
+                        + String.join(", ", allowed) + ".", widgetId);
+            }
+            if ("between".equals(queryOperator) && Objects.toString(binding.get("paramTo"), "").isEmpty()) {
+                throw new CanvasExportException("The binding of '" + param + "' on '" + member
+                        + "' asks for 'between', which needs a second parameter for its other end.",
+                        widgetId);
+            }
+        }
+    }
+
+    /** The parameters one binding answers to: its own, and the other end of a {@code between}. */
+    private static List<String> paramsOf(Map<String, Object> binding) {
+
+        List<String> names = new ArrayList<>();
+        for (String key : List.of("param", "paramTo")) {
+            String name = Objects.toString(binding.get(key), "").trim();
+            if (!name.isEmpty()) names.add(name);
+        }
+        return names;
+    }
+
+    /** A dimension or a measure this cube offers under that name, or null - {@code public false}
+     *  hides one from a viewer, and a dashboard's filter bar is a viewer's. */
+    private static Map<String, Object> offeredMember(CubeOptions cube, String name) {
+
+        Map<String, Object> dimension = named(cube.getDimensions(), name);
+        return dimension != null ? dimension : named(cube.getMeasures(), name);
+    }
+
+    private static Map<String, Object> named(List<Map<String, Object>> members, String name) {
+
+        for (Map<String, Object> member : members != null ? members : List.<Map<String, Object>>of()) {
+            if (!Boolean.FALSE.equals(member.get("public"))
+                    && name.equals(Objects.toString(member.get("name"), ""))) {
+                return member;
+            }
+        }
+        return null;
+    }
+
+    private static String offeredNames(List<Map<String, Object>> members) {
+
+        List<String> names = new ArrayList<>();
+        for (Map<String, Object> member : members != null ? members : List.<Map<String, Object>>of()) {
+            if (!Boolean.FALSE.equals(member.get("public")))
+                names.add(Objects.toString(member.get("name"), ""));
+        }
+        return String.join(", ", names);
+    }
 
     // ── Public entry point ────────────────────────────────────────────────────
 
@@ -138,6 +292,12 @@ public class CanvasExportService {
             if (id instanceof String name && UserVariables.isBuiltinName(name))
                 throw new ReservedParameterNameException(name);
         }
+
+        // A cube only uses names (R1): the dashboard has to declare every name its live cubes'
+        // conditions use, or the condition is silently dropped on the published dashboard and the
+        // viewer sees rows it was written to leave out. Checked here, before anything is written,
+        // so a dashboard that could not answer its own cube is never published.
+        assertCubeConditionsAreDeclared(widgets, parametersList, reportId);
 
         // A dashboard built from a script-mode widget runs that Groovy on every view of it, so
         // publishing one is the same act as running it.

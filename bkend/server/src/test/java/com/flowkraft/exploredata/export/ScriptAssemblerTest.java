@@ -290,6 +290,27 @@ class ScriptAssemblerTest {
             List.of("sql", "params", "data", "name", "type", 5L, 1L, 2L, "item", "text"))), run(script, values));
     }
 
+    @Test
+    @DisplayName("Run: a filter the bind chip bound to a builtin is bound by the exported script, declared by nobody")
+    void runAFilterTheChipBoundToABuiltin() throws Exception {
+        // What the canvas writes once the chip offers the server's own names (18c): the widget's
+        // SQL carries ${dp_user_email} and the groups as a list, and the dashboard declares
+        // neither - the server sets them for whoever is looking, so the line is always applied.
+        String script = assemble("SELECT *\nFROM support_tickets\nWHERE agent_email = ${dp_user_email}"
+            + "\nAND team IN (${dp_user_groups})");
+        assertTrue(script.contains(
+              "    // Always applied: dp_user_email is set by the server, and an empty value matches no row\n"
+            + "    sql << 'WHERE agent_email = ?\\n'\n"
+            + "    params << dp_user_email\n"), script);
+        assertFalse(script.contains("hasDp_user_email"), script);
+
+        String chiara = "chiara.muller@support.cube-demo.example";
+        assertEquals(List.of(List.of(
+            "SELECT *\nFROM support_tickets\nWHERE agent_email = ?\nAND team IN (?, ?)\n",
+            List.of(chiara, "Billing", "Tier 2"))),
+            run(script, Map.of("dp_user_email", chiara, "dp_user_groups", "Billing, Tier 2")));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static String assemble(String sql, String... paramIds) throws Exception {

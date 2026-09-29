@@ -5481,6 +5481,183 @@ test.describe('Auth — Server: signing in and out', () => {
   });
 });
 
+// ══════════════════════════════════════════════════════════════════════════
+// § Story 31 — My Team's Tickets: the desk's own rule about who reads which rows
+// ══════════════════════════════════════════════════════════════════════════
+//
+// The Support Desk cube ships an `access_filter` with three lines: an agent sees their own team's
+// tickets, the `support-managers` group sees the desk, and an admin or a report author sees
+// everything. Nothing in the product knows those rules — they are the author's SQL, and the
+// `${dp_}` values in them are bound from the session a moment before the statement runs.
+//
+// Only a running server can say whether the person who signed in is the person the rule is
+// evaluated for, so this is where it is tested: three accounts carrying the emails of real
+// `support_agents` rows, one group named exactly as the rule names it, the same question asked by
+// each, and four different answers. Everything created here is deleted again in `finally`.
+//
+const CUBE_STORIES_DASHBOARD = 'g-cube-stories';
+const SUPPORT_DESK_CARD = 'support-desk';
+
+/** Two agents of the demo desk, by the email their `support_agents` row carries. */
+const TIER_2_AGENT = {
+  username: 'e2e-desk-tier2',
+  password: 'E2eTier2Password123!',
+  email: 'chiara.muller@support.cube-demo.example',
+};
+const BILLING_AGENT = {
+  username: 'e2e-desk-billing',
+  password: 'E2eBillingPassword123!',
+  email: 'jonas.berg@support.cube-demo.example',
+};
+/** Somebody with no row on the desk at all, who is let in by the group instead. */
+const DESK_MANAGER = {
+  username: 'e2e-desk-manager',
+  password: 'E2eManagerPassword123!',
+  email: 'head.of.support@cube-demo.example',
+};
+
+/** The desk as the frozen demo data holds it (.docs/cube-demo-data/truths-stories-21-30.out). */
+const DESK_TICKETS = 3000;
+const TIER_2_TICKETS = 1199;
+const BILLING_TICKETS = 594;
+const DESK_TEAM_ROWS = 5; // four teams and the 41 tickets nobody has picked up
+
+test.describe("Auth — Server: story 31, who sees which tickets", () => {
+
+  /** The card's own question: tickets by team, asked as whoever this cookie is. */
+  async function ticketsByTeam(cookie: string): Promise<{ status: number; rows: any[] }> {
+    const res = await fetch(
+      `${BASE_URL}/api/reports/${CUBE_STORIES_DASHBOARD}/cube/${SUPPORT_DESK_CARD}/query`,
+      {
+        method: 'POST',
+        headers: { Cookie: cookie, ...xsrfHeader(cookie), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dimensions: ['Team'], measures: ['Tickets'] }),
+      },
+    );
+    if (res.status !== 200) return { status: res.status, rows: [] };
+    return { status: res.status, rows: (await res.json()).rows ?? [] };
+  }
+
+  /** The tickets one team's row carries, or 0 when the answer has no such row. */
+  function ticketsOf(rows: any[], team: string): number {
+    const row = rows.find((r) => String(r.Team) === team);
+    return row ? Number(row.Tickets) : 0;
+  }
+
+  test("(story31) an agent is shown their own team's tickets and nobody else's", async () => {
+    const admin = await login(ADMIN.username, ADMIN.password);
+    // The grant is what gets them through the door; the access filter is what happens after it.
+    const readers = await createGroup(admin, 'e2e-desk-readers', {
+      dashboards: [CUBE_STORIES_DASHBOARD],
+      defaultDashboard: CUBE_STORIES_DASHBOARD,
+    });
+
+    try {
+      for (const agent of [TIER_2_AGENT, BILLING_AGENT]) {
+        await createUser(admin, agent.username, agent.password, 'DASHBOARD_VIEWER', agent.email);
+        await setUserGroups(admin, agent.username, [readers]);
+      }
+
+      const tier2 = await login(TIER_2_AGENT.username, TIER_2_AGENT.password);
+      const hers = await ticketsByTeam(tier2);
+      expect(hers.status, 'a granted viewer reaches the card').toBe(200);
+      expect(hers.rows.length, "one team's row and no other: " + JSON.stringify(hers.rows)).toBe(1);
+      expect(String(hers.rows[0].Team), 'the team her email belongs to').toBe('Tier 2');
+      expect(Number(hers.rows[0].Tickets), "Tier 2's tickets, whole").toBe(TIER_2_TICKETS);
+
+      const billing = await login(BILLING_AGENT.username, BILLING_AGENT.password);
+      const his = await ticketsByTeam(billing);
+      expect(his.rows.length, 'the same statement, a different team: ' + JSON.stringify(his.rows)).toBe(1);
+      expect(String(his.rows[0].Team), 'the team his email belongs to').toBe('Billing');
+      expect(Number(his.rows[0].Tickets), "Billing's tickets").toBe(BILLING_TICKETS);
+
+      // The negative half, and the point of the whole story: neither of them can see the desk.
+      expect(ticketsOf(hers.rows, 'Billing'), "Tier 2's agent is shown no Billing ticket").toBe(0);
+      expect(ticketsOf(his.rows, 'Tier 2'), "Billing's agent is shown no Tier 2 ticket").toBe(0);
+      expect(
+        Number(hers.rows[0].Tickets) + Number(his.rows[0].Tickets),
+        'and between them they are still nowhere near the desk',
+      ).toBeLessThan(DESK_TICKETS);
+    } finally {
+      for (const agent of [TIER_2_AGENT, BILLING_AGENT]) {
+        await setUserGroups(admin, agent.username, []);
+        await statusAs(admin, 'DELETE', `/api/iam/users/${agent.username}`);
+      }
+      await deleteGroup(admin, readers);
+    }
+  });
+
+  test('(story31) the support-managers group, and an admin, are shown the whole desk', async () => {
+    const admin = await login(ADMIN.username, ADMIN.password);
+    // Named exactly as the filter's second line names it: the rule reads the group's slug, so a
+    // group called anything else would let this person see their own team only — and this person
+    // has no team, which is what makes the group the only thing that can let them in.
+    const managers = await createGroup(admin, 'support-managers', {
+      dashboards: [CUBE_STORIES_DASHBOARD],
+      defaultDashboard: CUBE_STORIES_DASHBOARD,
+    });
+
+    try {
+      await createUser(
+        admin,
+        DESK_MANAGER.username,
+        DESK_MANAGER.password,
+        'DASHBOARD_VIEWER',
+        DESK_MANAGER.email,
+      );
+      await setUserGroups(admin, DESK_MANAGER.username, [managers]);
+
+      const manager = await login(DESK_MANAGER.username, DESK_MANAGER.password);
+      const desk = await ticketsByTeam(manager);
+      expect(desk.status, 'the group grants the dashboard as well').toBe(200);
+      expect(desk.rows.length, 'four teams and the unpicked tickets: ' + JSON.stringify(desk.rows))
+        .toBe(DESK_TEAM_ROWS);
+      expect(
+        desk.rows.reduce((sum: number, row: any) => sum + Number(row.Tickets), 0),
+        'every ticket on the desk',
+      ).toBe(DESK_TICKETS);
+      expect(ticketsOf(desk.rows, 'Tier 2'), "including the team they are not on").toBe(TIER_2_TICKETS);
+
+      // The third line: a role, not a team and not a group. The administrator is in no group here.
+      const asAdmin = await ticketsByTeam(admin);
+      expect(asAdmin.rows.length, 'an admin is shown the desk too').toBe(DESK_TEAM_ROWS);
+      expect(
+        asAdmin.rows.reduce((sum: number, row: any) => sum + Number(row.Tickets), 0),
+        'all of it',
+      ).toBe(DESK_TICKETS);
+
+      // The negative half of the group line: take the person out of support-managers and the same
+      // account, asking the same question, is left with the first line and an email no agent has.
+      await setUserGroups(admin, DESK_MANAGER.username, []);
+      await updateGroup(admin, managers, {
+        name: 'support-managers',
+        dashboards: [CUBE_STORIES_DASHBOARD],
+      });
+      const stripped = await createGroup(admin, 'e2e-desk-readers', {
+        dashboards: [CUBE_STORIES_DASHBOARD],
+        defaultDashboard: CUBE_STORIES_DASHBOARD,
+      });
+      try {
+        await setUserGroups(admin, DESK_MANAGER.username, [stripped]);
+        const again = await login(DESK_MANAGER.username, DESK_MANAGER.password);
+        const nothing = await ticketsByTeam(again);
+        expect(nothing.status, 'the dashboard is still granted').toBe(200);
+        expect(
+          nothing.rows.length,
+          'but the desk is not theirs any more: ' + JSON.stringify(nothing.rows),
+        ).toBe(0);
+      } finally {
+        await setUserGroups(admin, DESK_MANAGER.username, []);
+        await deleteGroup(admin, stripped);
+      }
+    } finally {
+      await setUserGroups(admin, DESK_MANAGER.username, []);
+      await statusAs(admin, 'DELETE', `/api/iam/users/${DESK_MANAGER.username}`);
+      await deleteGroup(admin, managers);
+    }
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // § Start Here, concluded — the reminder goes away on its own
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1189,4 +1189,258 @@ electronBeforeAfterAllTest(
     },
   );
 
+  electronBeforeAfterAllTest(
+    'should work correctly (22_cube_country_sales_dashboard)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trCUBE-COUNTRY-SALES-DASHBOARD')
+        .waitOnElementToContainText(
+          '#tdCUBE-COUNTRY-SALES-DASHBOARD',
+          'Country Sales Dashboard',
+        );
+
+      // Verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'CUBE-COUNTRY-SALES-DASHBOARD',
+        'northwind.duckdb',
+      );
+
+      // A dashboard sample's "Try It" opens the page in the browser, as sample 18 does.
+      let externalBrowser = null;
+
+      await ft
+        .scrollIntoViewIfNeeded('#trCUBE-COUNTRY-SALES-DASHBOARD')
+        .click('#trCUBE-COUNTRY-SALES-DASHBOARD')
+        .click('#btnSampleTryItCUBE-COUNTRY-SALES-DASHBOARD');
+
+      try {
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        externalBrowser = browser;
+
+        // A brand new browser carries no session; on a Server the dashboard would otherwise be
+        // the login page. On a desktop installation this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
+
+        const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-country-sales';
+
+        await SelfServicePortalsTestHelper.waitForServerReady(page, dashboardUrl, 30, 2000);
+
+        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
+
+        const { expect } = await import('@playwright/test');
+
+        // The page the story describes: two numbers, one chart, one table, and one country
+        // parameter above them all.
+        await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('rb-value')).toHaveCount(2, { timeout: 15000 });
+        await expect(page.locator('rb-chart')).toHaveCount(1, { timeout: 15000 });
+        await expect(page.locator('rb-tabulator')).toHaveCount(1, { timeout: 15000 });
+        await expect(page.locator('rb-parameters')).toHaveCount(1, { timeout: 15000 });
+
+        // Every tile is bound to the same parameter, so asking the data API for a tile with and
+        // without a country is asking the story's two questions.
+        const ask = async (componentId: string, country?: string) =>
+          page.evaluate(async ({ cid, c }) => {
+            const q = c ? `&country=${encodeURIComponent(c)}` : '';
+            const resp = await fetch(`/api/reports/g-cube-country-sales/data?componentId=${cid}${q}`);
+            return resp.json();
+          }, { cid: componentId, c: country });
+
+        // ── The whole shop ──
+        const allNet = await ask('number_netsales_net');
+        expect(Number(allNet.data[0].NetSales), 'the shop, in money').toBeCloseTo(3571889.64, 1);
+        const allUnits = await ask('number_units_units');
+        expect(Number(allUnits.data[0].Units), 'the shop, in units').toBe(14438);
+
+        const allByChannel = new Map<string, number>(
+          (await ask('chart_channel_channel')).data.map(
+            (row: Record<string, unknown>) => [String(row.Channel), Number(row.Orders)],
+          ),
+        );
+        expect(allByChannel.get('Web'), "the shop's Web orders").toBe(1141);
+        expect(allByChannel.get('Mobile App'), "the shop's Mobile App orders").toBe(683);
+        expect(allByChannel.get('Marketplace'), "the shop's Marketplace orders").toBe(390);
+        expect(allByChannel.get('Phone'), "the shop's Phone orders").toBe(182);
+
+        // ── One country ──
+        const germanyNet = await ask('number_netsales_net', 'Germany');
+        expect(Number(germanyNet.data[0].NetSales), "Germany, in money").toBeCloseTo(859422.88, 1);
+        const germanyUnits = await ask('number_units_units', 'Germany');
+        expect(Number(germanyUnits.data[0].Units), 'Germany, in units').toBe(3508);
+
+        const germanyByChannel = new Map<string, number>(
+          (await ask('chart_channel_channel', 'Germany')).data.map(
+            (row: Record<string, unknown>) => [String(row.Channel), Number(row.Orders)],
+          ),
+        );
+        expect(germanyByChannel.get('Web'), "Germany's Web orders").toBe(295);
+        expect(germanyByChannel.get('Mobile App'), "Germany's Mobile App orders").toBe(164);
+        expect(germanyByChannel.get('Marketplace'), "Germany's Marketplace orders").toBe(94);
+        expect(germanyByChannel.get('Phone'), "Germany's Phone orders").toBe(43);
+
+        // The table is the same answer, category by category, and it adds up to the number above
+        // it — Germany's total, not the shop's.
+        const germanyRows = (await ask('tabulator_net-category', 'Germany')).data as Record<string, unknown>[];
+        expect(germanyRows.length, "Germany's categories").toBe(8);
+        const germanyByCategory = new Map<string, number>(
+          germanyRows.map((row) => [String(row.Category), Number(row.NetSales)]),
+        );
+        expect(germanyByCategory.get('Displays'), "Germany's Displays").toBeCloseTo(261897.29, 1);
+        expect(germanyByCategory.get('Video'), "Germany's Video").toBeCloseTo(204407.62, 1);
+        expect(germanyByCategory.get('Cables & Power'), "Germany's Cables & Power").toBeCloseTo(12210.33, 1);
+        expect(
+          germanyRows.reduce((sum, row) => sum + Number(row.NetSales), 0),
+          "the categories add up to Germany",
+        ).toBeCloseTo(859422.88, 1);
+
+        // The negative half: a bound tile is not an unbound one. If the binding were dropped, the
+        // country would change nothing and these two answers would be the same number.
+        expect(
+          Number(germanyNet.data[0].NetSales),
+          'the country is what the tile asks about',
+        ).not.toBeCloseTo(Number(allNet.data[0].NetSales), 1);
+        expect(
+          Number(germanyNet.data[0].NetSales) < Number(allNet.data[0].NetSales),
+          'and one country is less than every country',
+        ).toBe(true);
+
+        // And the same through the parameter bar the viewer actually uses: pick Germany, reload,
+        // and the drawn number is Germany's.
+        await page.selectOption('#country', 'Germany');
+        await page.click('#btnReloadDashboard');
+        await expect(page.locator('#btnConfirmReload')).toBeVisible({ timeout: 5000 });
+        await page.click('#btnConfirmReload');
+        await expect
+          .poll(async () => (await page.locator('rb-value').first().innerText()).replace(/[^0-9]/g, ''),
+            { timeout: 60000 })
+          .toContain('859');
+
+        // ── The live Shop cube beside them (R8, TODO 21a) ──
+        // The fifth tile is the cube itself: the same country manager ticks their own
+        // breakdowns in it, and the one country at the top must reach it like every other tile.
+        await expect(page.locator('rb-cube-renderer'), 'the dashboard carries one live cube')
+          .toHaveCount(1, { timeout: 15000 });
+
+        // Germany is picked (the reload above), so the cube says so where its own filters are
+        // said. The chip has no ×: this filter belongs to the bar at the top of the page.
+        await expect(page.locator('#chipDashFilter-Country'), "the dashboard's filter, on the cube")
+          .toContainText('Country: Germany (dashboard)', { timeout: 60000 });
+        await expect(page.locator('#btnChipRemove-Country'), 'and it is not the viewer\'s to remove')
+          .toHaveCount(0);
+
+        // What the live cube answers, asked the way the renderer asks it: the viewer's answer
+        // travels in `params`, and the binding that turns it into a filter lives in the
+        // dashboard's own -cube-widgets.json entry, never in this request.
+        const askCube = async (
+          params: Record<string, string>,
+          dimensions: string[],
+          filters: unknown[] = [],
+          token = '',
+        ) =>
+          page.evaluate(async ({ p, d, f, t }) => {
+            const url = `/api/reports/g-cube-country-sales/cube/tabulator_live-shop/query${
+              t ? `?token=${encodeURIComponent(t)}` : ''
+            }`;
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                dimensions: d,
+                measures: ['NetSales'],
+                filters: f,
+                params: p,
+              }),
+            });
+            return resp.json();
+          }, { p: params, d: dimensions, f: filters, t: token });
+
+        const netSalesOf = (answer: any): number =>
+          (answer.rows as Record<string, unknown>[]).reduce(
+            (sum, row) => sum + Number(row.NetSales),
+            0,
+          );
+
+        // Germany, by channel: the same 859,422.88 the KPI above it shows, so the two kinds of
+        // tile are one dashboard and not two.
+        const germanyLive = await askCube({ country: 'Germany' }, ['Channel']);
+        expect(netSalesOf(germanyLive), "the live cube is on Germany too").toBeCloseTo(859422.88, 1);
+        expect((germanyLive.rows as unknown[]).length, "Germany's four channels").toBe(4);
+
+        // The viewer's own filter is ANDed with the dashboard's, never instead of it: Germany's
+        // Displays, and not every country's 1,092,301.89.
+        const germanyDisplays = await askCube({ country: 'Germany' }, ['Category'], [
+          { member: 'Category', operator: 'equals', values: ['Displays'] },
+        ]);
+        expect(netSalesOf(germanyDisplays), "Germany's Displays").toBeCloseTo(261897.29, 1);
+        expect(netSalesOf(germanyDisplays), 'and not every country\'s Displays')
+          .not.toBeCloseTo(1092301.89, 1);
+
+        // All is not a country: it adds no filter at all, and the cube is the whole shop again.
+        const allLive = await askCube({ country: '*' }, ['Channel']);
+        expect(netSalesOf(allLive), 'All is the whole shop').toBeCloseTo(3571889.64, 1);
+
+        // A tick the viewer made survives the filter bar: the widget is replaced when the
+        // dashboard reloads, and the view it was looking at is carried across (R3).
+        await page.check('#chk-dim-Category');
+        await expect(page.locator('#chk-dim-Category')).toBeChecked({ timeout: 15000 });
+        await page.selectOption('#country', 'France');
+        await page.click('#btnReloadDashboard');
+        await expect(page.locator('#btnConfirmReload')).toBeVisible({ timeout: 5000 });
+        await page.click('#btnConfirmReload');
+        await expect(page.locator('#chipDashFilter-Country'), 'the cube follows the new country')
+          .toContainText('Country: France (dashboard)', { timeout: 60000 });
+        await expect(page.locator('#chk-dim-Category'), 'and the tick the viewer made is still theirs')
+          .toBeChecked({ timeout: 30000 });
+
+        const franceLive = await askCube({ country: 'France' }, ['Channel']);
+        expect(netSalesOf(franceLive), 'France is a country of its own, not Germany')
+          .not.toBeCloseTo(859422.88, 1);
+        expect(netSalesOf(franceLive), 'nor is it the whole shop')
+          .not.toBeCloseTo(3571889.64, 1);
+        expect(netSalesOf(franceLive), 'and it is some of the shop').toBeGreaterThan(0);
+
+        // ── A share link locked to Germany ──
+        // The recipient cannot pick a country, and neither kind of tile lets them ask for one.
+        const share = await page.evaluate(async () => {
+          const resp = await fetch('/api/embed/share-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reportId: 'g-cube-country-sales',
+              lockedParams: { country: 'Germany' },
+            }),
+          });
+          return { status: resp.status, body: await resp.json() };
+        });
+        expect(share.status, 'locking a declared parameter to a value it has').toBe(200);
+
+        await page.goto(
+          `${dashboardUrl}?token=${encodeURIComponent(share.body.token)}`,
+          { timeout: 30000, waitUntil: 'networkidle' },
+        );
+        await expect(page.locator('#country'), 'the locked parameter cannot be picked')
+          .toBeDisabled({ timeout: 30000 });
+        await expect(page.locator('#chipDashFilter-Country'), 'and the cube is on the locked country')
+          .toContainText('Country: Germany (dashboard)', { timeout: 60000 });
+
+        // And asking louder does not widen it: the lock beats what the request says.
+        const lockedAsksForFrance = await askCube(
+          { country: 'France' }, ['Channel'], [], share.body.token,
+        );
+        expect(netSalesOf(lockedAsksForFrance), 'the lock beats the dashboard value')
+          .toBeCloseTo(859422.88, 1);
+      } finally {
+        if (externalBrowser) {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
+        }
+      }
+    },
+  );
+
 });

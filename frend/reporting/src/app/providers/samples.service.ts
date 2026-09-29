@@ -855,6 +855,35 @@ export class SamplesService {
       capReportGenerationMailMerge: true,
       activeClicked: false,
     },
+    {
+      id: 'CUBE-COUNTRY-SALES-DASHBOARD',
+      name: '22. Country Sales Dashboard (cube, dashboard filter)',
+      visibility: 'visible',
+      jobType: 'dashboard',
+      input: {
+        data: ['file:db/sample-northwind-duckdb/northwind.duckdb'],
+        dataUrl: [],
+        numberOfPages: -1,
+        tokens: [],
+      },
+      step1: 'dashboard',
+      step2: '',
+      step3: '',
+      output: {
+        data: [],
+        folder: '',
+      },
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive dashboard (no output files)`,
+      configurationFilePath: `config/samples/g-cube-country-sales/settings.xml`,
+      configurationFileName: 'g-cube-country-sales',
+      notes: ``,
+      recipientType: '',
+      documentType: 'dashboard',
+      capReportSplitting: false,
+      capReportDistribution: false,
+      capReportGenerationMailMerge: true,
+      activeClicked: false,
+    },
   ];
 
   samplesNotYetImplemented: Array<SampleInfo> = [

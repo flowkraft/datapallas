@@ -238,59 +238,269 @@
         "Accessories",
         1057,
         158504.59,
-        153972.81,
+        121968.24,
         3.43
       ],
       [
         "Audio",
         1103,
         493929.6,
-        478916.34,
+        383439.71,
         3.44
       ],
       [
         "Cables & Power",
         1011,
         69776.63,
-        67275.71,
+        52513.78,
         3.9
       ],
       [
         "Displays",
         1023,
         1372315.49,
-        1327891.11,
+        1092301.89,
         3.47
       ],
       [
         "Networking",
         1103,
         503372.46,
-        488667.09,
+        378412.22,
         3.22
       ],
       [
         "Peripherals",
         1078,
         283328.86,
-        273880.25,
+        220537.22,
         4.2
       ],
       [
         "Storage",
         1035,
         619752.32,
-        601482.22,
+        468002.55,
         3.71
       ],
       [
         "Video",
         1090,
         1116942.73,
-        1078496.33,
+        854714.04,
         3.94
       ]
     ],
-    "source": "SELECT p.category, COUNT(*), SUM(l.qty * l.unit_price),\n       SUM(l.qty * l.unit_price * (1 - l.discount_pct / 100.0)), AVG(l.discount_pct)\nFROM cube_demo.shop_order_lines l\nLEFT JOIN cube_demo.shop_products p ON p.product_id = l.product_id\nGROUP BY 1 ORDER BY 1"
+    "source": "SELECT p.category, COUNT(*), SUM(l.qty * l.unit_price),\n       SUM(CASE WHEN o.status NOT IN ('Cancelled', 'Returned')\n                THEN l.qty * l.unit_price * (100 - l.discount_pct) / 100.0 END),\n       AVG(l.discount_pct)\nFROM cube_demo.shop_order_lines l\nJOIN cube_demo.shop_orders o ON o.order_id = l.order_id\nLEFT JOIN cube_demo.shop_products p ON p.product_id = l.product_id\nGROUP BY 1 ORDER BY 1"
+  },
+  {
+    "hint": "revenue-mix",
+    "rows": [
+      [
+        "Displays",
+        1092301.89,
+        0.3058
+      ],
+      [
+        "Video",
+        854714.04,
+        0.2393
+      ],
+      [
+        "Storage",
+        468002.55,
+        0.131
+      ],
+      [
+        "Audio",
+        383439.71,
+        0.1073
+      ],
+      [
+        "Networking",
+        378412.22,
+        0.1059
+      ],
+      [
+        "Peripherals",
+        220537.22,
+        0.0617
+      ],
+      [
+        "Accessories",
+        121968.24,
+        0.0341
+      ],
+      [
+        "Cables & Power",
+        52513.78,
+        0.0147
+      ]
+    ],
+    "source": "SELECT k, net, ROUND(net / SUM(net) OVER (), 4) AS share\nFROM (SELECT p.category AS k, ROUND(SUM(CASE WHEN o.status NOT IN ('Cancelled','Returned')\n           THEN l.qty * l.unit_price * (100 - l.discount_pct) / 100.0 END), 2) AS net\nFROM cube_demo.shop_order_lines l\nJOIN cube_demo.shop_orders o ON o.order_id = l.order_id\nJOIN cube_demo.shop_products p ON p.product_id = l.product_id\nLEFT JOIN cube_demo.shop_customers c ON c.customer_id = o.customer_id\nGROUP BY 1)\nORDER BY net DESC"
+  },
+  {
+    "hint": "revenue-mix/by-channel",
+    "rows": [
+      [
+        "Web",
+        1691088.01,
+        0.4734
+      ],
+      [
+        "Mobile App",
+        1012739.76,
+        0.2835
+      ],
+      [
+        "Marketplace",
+        584251.23,
+        0.1636
+      ],
+      [
+        "Phone",
+        283810.63,
+        0.0795
+      ]
+    ],
+    "source": "SELECT k, net, ROUND(net / SUM(net) OVER (), 4) AS share\nFROM (SELECT o.channel AS k, ROUND(SUM(CASE WHEN o.status NOT IN ('Cancelled','Returned')\n           THEN l.qty * l.unit_price * (100 - l.discount_pct) / 100.0 END), 2) AS net\nFROM cube_demo.shop_order_lines l\nJOIN cube_demo.shop_orders o ON o.order_id = l.order_id\nJOIN cube_demo.shop_products p ON p.product_id = l.product_id\nLEFT JOIN cube_demo.shop_customers c ON c.customer_id = o.customer_id\nGROUP BY 1)\nORDER BY net DESC"
+  },
+  {
+    "hint": "revenue-mix/germany",
+    "rows": [
+      [
+        "Displays",
+        261897.29,
+        0.3047
+      ],
+      [
+        "Video",
+        204407.62,
+        0.2378
+      ],
+      [
+        "Storage",
+        109929.77,
+        0.1279
+      ],
+      [
+        "Audio",
+        96327.05,
+        0.1121
+      ],
+      [
+        "Networking",
+        91180.58,
+        0.1061
+      ],
+      [
+        "Peripherals",
+        55304.05,
+        0.0644
+      ],
+      [
+        "Accessories",
+        28166.2,
+        0.0328
+      ],
+      [
+        "Cables & Power",
+        12210.33,
+        0.0142
+      ]
+    ],
+    "source": "SELECT k, net, ROUND(net / SUM(net) OVER (), 4) AS share\nFROM (SELECT p.category AS k, ROUND(SUM(CASE WHEN o.status NOT IN ('Cancelled','Returned')\n           THEN l.qty * l.unit_price * (100 - l.discount_pct) / 100.0 END), 2) AS net\nFROM cube_demo.shop_order_lines l\nJOIN cube_demo.shop_orders o ON o.order_id = l.order_id\nJOIN cube_demo.shop_products p ON p.product_id = l.product_id\nLEFT JOIN cube_demo.shop_customers c ON c.customer_id = o.customer_id\nWHERE c.country = 'Germany'\nGROUP BY 1)\nORDER BY net DESC"
+  },
+  {
+    "hint": "category-margin",
+    "rows": [
+      [
+        "Displays",
+        1837,
+        1092301.89,
+        749529.97,
+        342771.92,
+        0.3138,
+        0.0302
+      ],
+      [
+        "Video",
+        1877,
+        854714.04,
+        555207.18,
+        299506.86,
+        0.3504,
+        0.0338
+      ],
+      [
+        "Storage",
+        1707,
+        468002.55,
+        317998.0,
+        150004.55,
+        0.3205,
+        0.0311
+      ],
+      [
+        "Audio",
+        1860,
+        383439.71,
+        233312.34,
+        150127.37,
+        0.3915,
+        0.0305
+      ],
+      [
+        "Networking",
+        1824,
+        378412.22,
+        250394.66,
+        128017.56,
+        0.3383,
+        0.0312
+      ],
+      [
+        "Peripherals",
+        1843,
+        220537.22,
+        137447.37,
+        83089.85,
+        0.3768,
+        0.0355
+      ],
+      [
+        "Accessories",
+        1851,
+        121968.24,
+        76911.02,
+        45057.22,
+        0.3694,
+        0.0303
+      ],
+      [
+        "Cables & Power",
+        1639,
+        52513.78,
+        34231.3,
+        18282.48,
+        0.3481,
+        0.0363
+      ]
+    ],
+    "source": "SELECT p.category,\n       SUM(l.qty) AS units,\n       ROUND(SUM(l.qty * l.unit_price * (100 - l.discount_pct) / 100.0), 2) AS net_sales,\n       ROUND(SUM(l.qty * p.cost_price), 2) AS cost_of_goods,\n       ROUND(SUM(l.qty * l.unit_price * (100 - l.discount_pct) / 100.0)\n             - SUM(l.qty * p.cost_price), 2) AS gross_margin,\n       ROUND(1 - SUM(l.qty * p.cost_price)\n                 / SUM(l.qty * l.unit_price * (100 - l.discount_pct) / 100.0), 4) AS margin,\n       ROUND(SUM(l.qty * l.unit_price * l.discount_pct / 100.0)\n             / SUM(l.qty * l.unit_price), 4) AS discount_rate\nFROM cube_demo.shop_order_lines l\nJOIN cube_demo.shop_orders o ON o.order_id = l.order_id\nJOIN cube_demo.shop_products p ON p.product_id = l.product_id\nWHERE o.status NOT IN ('Cancelled','Returned')\nGROUP BY 1\nORDER BY net_sales DESC"
+  },
+  {
+    "hint": "category-margin/in-all",
+    "rows": [
+      [
+        14438,
+        3571889.64,
+        2355031.84,
+        1216857.8,
+        0.3407,
+        0.0317
+      ]
+    ],
+    "source": "SELECT\n       SUM(l.qty) AS units,\n       ROUND(SUM(l.qty * l.unit_price * (100 - l.discount_pct) / 100.0), 2) AS net_sales,\n       ROUND(SUM(l.qty * p.cost_price), 2) AS cost_of_goods,\n       ROUND(SUM(l.qty * l.unit_price * (100 - l.discount_pct) / 100.0)\n             - SUM(l.qty * p.cost_price), 2) AS gross_margin,\n       ROUND(1 - SUM(l.qty * p.cost_price)\n                 / SUM(l.qty * l.unit_price * (100 - l.discount_pct) / 100.0), 4) AS margin,\n       ROUND(SUM(l.qty * l.unit_price * l.discount_pct / 100.0)\n             / SUM(l.qty * l.unit_price), 4) AS discount_rate\nFROM cube_demo.shop_order_lines l\nJOIN cube_demo.shop_orders o ON o.order_id = l.order_id\nJOIN cube_demo.shop_products p ON p.product_id = l.product_id\nWHERE o.status NOT IN ('Cancelled','Returned')"
   }
 ]

@@ -218,6 +218,39 @@ class CubeWidgetExportTest {
 		return String.valueOf(declared.values().iterator().next().get("display"));
 	}
 
+	@Test
+	@DisplayName("A period the author picked is a filter, and no parameter value is written into the widget")
+	@SuppressWarnings("unchecked")
+	void thePeriodTravelsAsAFilterAndNoParametersAreWritten() throws Exception {
+
+		Map<String, Object> shown = cubeWidget("w-live", "chart", true, "");
+		Map<String, Object> picked = new LinkedHashMap<>(selection());
+		picked.put("filters", List.of(Map.of("member", "OrderDate", "operator", "between",
+				"values", List.of("2026-07-01", "2026-09-30"))));
+		// What an older canvas may still send: a cube declares no parameters (R1), so this is not
+		// the widget's to keep — the dashboard's own parameters spec is the one place they live.
+		picked.put("params", Map.of("fromDate", "2026-07-01", "toDate", "2026-09-30"));
+		((Map<String, Object>) ((Map<String, Object>) shown.get("dataSource")).get("visualQuery"))
+				.put("cubeSelection", picked);
+
+		DashboardFileGenerator.GeneratedFiles files = DashboardFileGenerator.generate(
+				List.of(shown), List.of(), REPORT_ID, "http://localhost:9090/api", CONNECTION);
+		Map<String, Map<String, Object>> declared = JSON.readValue(files.cubeWidgetsJson(),
+				new TypeReference<LinkedHashMap<String, Map<String, Object>>>() {
+				});
+		String componentId = declared.keySet().iterator().next();
+		Files.createDirectories(dir.resolve("config/reports/" + REPORT_ID));
+		Files.writeString(dir.resolve("config/reports/" + REPORT_ID + "/" + REPORT_ID + CubeWidgets.SUFFIX),
+				files.cubeWidgetsJson());
+
+		Map<String, Object> initial = CubeWidgets.of(REPORT_ID, componentId).initial();
+		// The period is part of the question, and it travels as what it is: the viewer's own filter
+		// on the date dimension, which the viewer can then move.
+		assertEquals(List.of(Map.of("member", "OrderDate", "operator", "between",
+				"values", List.of("2026-07-01", "2026-09-30"))), initial.get("filters"));
+		assertNull(initial.get("params"), "a cube widget carries no parameter values (R1)");
+	}
+
 	/** One cube widget of a canvas, in the shape the AI Hub sends it in. */
 	private static Map<String, Object> cubeWidget(String id, String type, boolean showInDashboard,
 			String generatedSql) {

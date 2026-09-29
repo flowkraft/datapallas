@@ -5466,4 +5466,433 @@ return ctx.dbSql.rows(sql)`,
     }
   });
 
+
+  // ──────────────────────────────────────────────────
+  // D40 — the bind chip offers the values the server sets
+  //       (Phase 4, TODO 18c: builtins in the visual query builder)
+  //
+  // A filter row in the Visual builder could only ever be bound to a parameter
+  // the dashboard itself declares. Everything the server knows about whoever is
+  // looking - their email, their groups, their tenant, today - had to be typed
+  // into the SQL by hand, in the Finetune tab, by somebody who knew the names.
+  //
+  // The chip now offers both: the dashboard's own parameters first, then, under
+  // "Set by the server", every name `/api/dp/user-variables` returns for the
+  // person signed in. The names are the server's list, never a second copy kept
+  // in the browser, so a name the server adds (a `dp_attr_*`) shows up here
+  // without a line changing.
+  //
+  // Binding writes the same `${name}` text a hand-typed one writes, so the
+  // generated SQL is one ANSI text on every vendor and the value never appears
+  // in it: the server fills it in when the widget runs (R9).
+  //
+  // The two halves, over the frozen `cube_demo` support desk (15 agents,
+  // 3000 tickets, none of them opened after 2026-09-29):
+  //   - bound to `dp_user_email`, `email <> ${dp_user_email}` answers 15: the
+  //     server's value really arrived, because a value that never arrived binds
+  //     NULL and `<>` then answers nobody;
+  //   - the same value with `email = ${dp_user_email}` answers 0: whoever is
+  //     signed in is not one of the demo's support agents - the filter is a
+  //     real filter, not a pass-through;
+  //   - bound to `dp_today`, the tickets opened on or before today are exactly
+  //     as many as the same query answers for the real calendar day, and the
+  //     day is bound as a day, not as text.
+  //
+  // Same shape as D24, D27-D39: a temporary duckdb connection pointed at a COPY
+  // of the shipped `northwind.duckdb`, which carries the `cube_demo` schema, so
+  // no shipped file is ever written to.
+  // ──────────────────────────────────────────────────
+  test('(explore-data) D40 — the bind chip offers the values the server sets', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName       = 'D40 — the values the server sets';
+    const connectionName   = 'BuiltinsInTheChip';
+    const connectionVendor = 'duckdb';
+    const connectionCode   = toConnectionCode(connectionName, connectionVendor);
+    const copyFolder       = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-duckdb-test`;
+
+    await ConnectionsTestHelper.createAndAssertNewDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+    await ConnectionsTestHelper.readUpdateAndAssertDatabaseConnection(
+      new FluentTester(electronPage!), connectionName, connectionVendor,
+    );
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await selectConnection(page, connectionName, connectionVendor);
+
+      await expect(page.locator('[id="btnTable-cube_demo.support_agents"]')).toBeVisible({ timeout: 15_000 });
+
+      // One parameter of the dashboard's own, so both groups of the chip are
+      // there to tell apart: this one is asked of the person looking, the
+      // others are known about them without asking.
+      await addFilterBarParam(page,
+        "reportParameters {\n" +
+        "  parameter(id: 'team', type: String, label: 'Team', defaultValue: 'Tier 1') {\n" +
+        "    constraints(required: false)\n" +
+        "  }\n" +
+        "}"
+      );
+
+      // What the server says it knows about whoever is signed in. The chip's
+      // second group is this list, so the test never carries a copy of it.
+      const fromTheServer: Record<string, string> = await page.evaluate(async () => {
+        const r = await fetch('/api/dp/user-variables');
+        return (await r.json()) as Record<string, string>;
+      });
+      expect(Object.keys(fromTheServer)).toEqual(
+        expect.arrayContaining(['dp_user_id', 'dp_user_email', 'dp_user_groups', 'dp_user_role',
+                                'dp_tenant_id', 'dp_today', 'dp_now']));
+      const me = fromTheServer['dp_user_email'];
+      expect(me.length).toBeGreaterThan(0);
+
+      // ── everybody but me: the chip's own offer, and the value behind it ──
+      await addVisualWidget(page, 'cube_demo.support_agents', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', '*');
+        await addVisualFilter(page, 0, 'email', 'not_equals');
+
+        // The dashboard's parameter first, and not inside the server's group.
+        const declared = await page.locator('#selectBindParam-0 > option')
+          .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value).filter((v) => v));
+        expect(declared).toContain('team');
+        expect(declared).not.toContain('dp_user_email');
+
+        // Then the server's, every one of them, in the order the server gave.
+        const group = page.locator('#selectBindParam-0 optgroup[label="Set by the server"]');
+        await expect(group).toHaveCount(1);
+        const offered = await group.locator('option')
+          .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
+        expect(offered).toEqual(Object.keys(fromTheServer));
+
+        await bindVisualFilterToParam(page, 0, 'dp_user_email');
+      });
+
+      const everybodyElseSql = await visualSql();
+      // The bound name is written the way a hand-typed one is written, and the
+      // value the server knows is nowhere in the text.
+      expect(everybodyElseSql).toContain('"email" <> ${dp_user_email}');
+      expect(everybodyElseSql).not.toContain("'${dp_user_email}'");
+      expect(everybodyElseSql).not.toContain(me);
+
+      // ── me: the same value, the opposite question ──
+      await addVisualWidget(page, 'cube_demo.support_agents', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', '*');
+        await addVisualFilter(page, 0, 'email', 'equals');
+        await bindVisualFilterToParam(page, 0, 'dp_user_email');
+      });
+      const meSql = await visualSql();
+      expect(meSql).toContain('"email" = ${dp_user_email}');
+      expect(meSql).not.toContain(me);
+
+      // ── the tickets opened on or before today, the day the server says ──
+      await addVisualWidget(page, 'cube_demo.support_tickets', 'tabulator', async () => {
+        await addAggregation(page, 0, 'COUNT', '*');
+        await addVisualFilter(page, 0, 'opened_date', 'less_or_equal');
+        await bindVisualFilterToParam(page, 0, 'dp_today');
+      });
+      const todaySql = await visualSql();
+      expect(todaySql).toContain('${dp_today}');
+      expect(todaySql).not.toContain(fromTheServer['dp_today']);
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 4, h: 4 },  // tabulator — every agent but me
+        { x: 4, y: 0, w: 4, h: 4 },  // tabulator — me, if the desk knows me
+        { x: 8, y: 0, w: 4, h: 4 },  // tabulator — the tickets opened by today
+      ]);
+
+      // ── the canvas path, the one a widget calls, with the server's values ──
+      const onCanvas = async (sql: string, params: Record<string, string>,
+                              paramTypes: Record<string, string> = {}): Promise<number> =>
+        page.evaluate(async ({ connectionId, sql: text, params: p, paramTypes: t }) => {
+          const r = await fetch('/api/dp/queries/run-sql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId, sql: text, params: p, paramTypes: t }),
+          });
+          const payload = await r.json();
+          const rows = payload.data as Record<string, unknown>[];
+          return Number(Object.values(rows[0])[0]);
+        }, { connectionId: connectionCode, sql, params, paramTypes });
+
+      // All 15 agents are somebody else: the value arrived, because a value
+      // that never arrived is NULL and `<>` would answer 0.
+      expect(await onCanvas(everybodyElseSql, { dp_user_email: me })).toBe(15);
+      // And none of them is me: the filter filters.
+      expect(await onCanvas(meSql, { dp_user_email: me })).toBe(0);
+
+      // The day is a day. Every one of the 3000 tickets was opened on or before
+      // 2026-09-29, so today - whenever this runs after that - answers all of
+      // them, and so does the real calendar day asked for on its own.
+      const today = fromTheServer['dp_today'];
+      const byToday = await onCanvas(todaySql, { dp_today: today }, { dp_today: 'Date' });
+      expect(byToday).toBe(3000);
+      expect(await onCanvas(todaySql, { dp_today: '2025-06-30' }, { dp_today: 'Date' })).toBe(712);
+
+      const d40CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d40Url } = await publishDashboard(page);
+      const d40Ids = await getCanvasComponentIds(page, d40CanvasId);
+      const d40ReportCode = d40Url.split('/').pop()!;
+
+      await page.goto(d40Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-tabulator')).toHaveCount(3, { timeout: 20_000 });
+
+      // ── the published dashboard, which nobody hands any value to: the
+      //    server fills the builtins in for whoever opens it ──
+      const gridIds = d40Ids['tabulator'] ?? [];
+      expect(gridIds.length).toBe(3);
+      const published = async (componentId: string): Promise<number> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          const rows = payload.data as Record<string, unknown>[];
+          return Number(Object.values(rows[0])[0]);
+        }, { rc: d40ReportCode, cid: componentId });
+
+      expect(await published(gridIds[0])).toBe(15);
+      expect(await published(gridIds[1])).toBe(0);
+      expect(await published(gridIds[2])).toBe(3000);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+      await ConnectionsTestHelper.deleteAndAssertDatabaseConnection(
+        new FluentTester(electronPage!), `${connectionCode}\\.xml`, connectionVendor,
+      );
+      await new FluentTester(electronPage!).deleteFolder(copyFolder);
+    }
+  });
+
+
+  // ──────────────────────────────────────────────────
+  // D41 — a cube's dashboard filter, followed by the server
+  //       (Phase 4, TODO 21b: builtins in paramBindings, R9)
+  //
+  // D40 bound a raw table's filter to a value the server sets. A cube widget
+  // has no filter of that shape: what it carries is a binding - member,
+  // operator, parameter - and until now the parameter had to be one the
+  // dashboard declares and the viewer answers in the filter bar.
+  //
+  // It can now be a name the server sets instead. The author picks it under
+  // "Set by the server" in the same chip; nobody answers it, nobody sees it in
+  // the filter bar, and nobody can type it: the value is the server's, for
+  // whoever is looking, on both kinds of tile.
+  //
+  //   - frozen (Mode 1): the generated SQL carries `${dp_user_id}` and the
+  //     dashboard's own script binds it when the tile runs;
+  //   - live (Mode 2): the binding lives in the published
+  //     `-cube-widgets.json` entry and is bound a moment before the statement
+  //     runs, ANDed with whatever the viewer ticked.
+  //
+  // The two halves, over the frozen `cube_demo` support desk (3000 tickets,
+  // 2959 of them somebody's, 15 agents):
+  //   - `Agent <> dp_user_id` answers 2959: the server's value really arrived,
+  //     because a value that never arrived binds NULL and `<>` then answers
+  //     nobody;
+  //   - `Agent = dp_user_id` answers 0: whoever is signed in is not one of the
+  //     demo's agents, so the binding is a real filter and not a pass-through;
+  //   - the live tile answers the same 2959, and neither a `dp_user_id` sent
+  //     in the request nor a binding sent in its body moves it by one ticket.
+  //
+  // The shipped sample duckdb connection is read, never written, exactly as
+  // D23 reads it: the cube is the shipped Support Desk and no file is touched.
+  // ──────────────────────────────────────────────────
+  test('(explore-data) D41 — a cube tile that follows whoever is looking', async () => {
+    test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+    const canvasName           = 'D41 — the tickets that are mine';
+    const cubeId               = 'support-desk';
+    const sampleConnectionCode = 'rbt-sample-northwind-duckdb-4f2';
+
+    // The shipped sample connection and its cubes are hidden until asked for.
+    await page.goto(AI_HUB_BASE_URL);
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(async () => {
+      const res = await fetch('/api/dp/system/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: { showsamples: true } }),
+      });
+      if (!res.ok) throw new Error(`enable showsamples failed: ${res.status} ${await res.text()}`);
+    });
+
+    /** The SQL the Visual builder shows for the widget being edited. */
+    const visualSql = async (): Promise<string> => {
+      await clickDataTab(page);
+      await page.locator('#btnToggleVisualSql').click();
+      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
+      const sql = await page.locator('#preVisualSql').innerText();
+      await page.locator('#btnToggleVisualSql').click();
+      return sql;
+    };
+
+    /** One row of the cube's Dashboard filter chip: member, operator, parameter. */
+    const bindCube = async (i: number, member: string, operator: string, param: string) => {
+      await clickDataTab(page);
+      await page.locator('#btnAddCubeBind').click();
+      await page.locator(`#selectCubeBindMember-${i}`).waitFor({ state: 'visible', timeout: 5_000 });
+      await page.locator(`#selectCubeBindMember-${i}`).selectOption(member);
+      await page.locator(`#selectCubeBindOp-${i}`).selectOption(operator);
+      await page.locator(`#selectCubeBindParam-${i}`).selectOption(param);
+    };
+
+    try {
+      await createFreshCanvas(page, DATA_CANVAS_URL, canvasName);
+      await page.locator('#selectConnection').waitFor({ state: 'visible', timeout: 10_000 });
+      await page.locator('#selectConnection').selectOption(sampleConnectionCode);
+      await page.locator('#schemaBrowserTablesList').waitFor({ state: 'visible', timeout: 15_000 });
+
+      // One parameter of the dashboard's own, so both groups of the chip are there to tell
+      // apart: this one is asked of the person looking, the other is known about them.
+      await addFilterBarParam(page,
+        "reportParameters {\n" +
+        "  parameter(id: 'team', type: String, label: 'Team', defaultValue: 'Tier 1') {\n" +
+        "    constraints(required: false)\n" +
+        "  }\n" +
+        "}"
+      );
+
+      // What the server says it knows about whoever is signed in. The chip's second group is
+      // this list, so the test never carries a copy of it.
+      const fromTheServer: Record<string, string> = await page.evaluate(async () => {
+        const r = await fetch('/api/dp/user-variables');
+        return (await r.json()) as Record<string, string>;
+      });
+      const me = fromTheServer['dp_user_id'];
+      expect(me.length).toBeGreaterThan(0);
+
+      // ── every agent but me, frozen ──
+      await addCubeToCanvas(page, cubeId);
+      await selectCubeFields(page, [], ['Tickets']);
+      await switchToWidget(page, 'number');
+      await bindCube(0, 'Agent', 'not_equals', 'dp_user_id');
+
+      // The dashboard's own parameter first, and not inside the server's group.
+      const declared = await page.locator('#selectCubeBindParam-0 > option')
+        .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value).filter((v) => v));
+      expect(declared).toContain('team');
+      expect(declared).not.toContain('dp_user_id');
+
+      // Then the server's, every one of them, in the order the server gave.
+      const group = page.locator('#selectCubeBindParam-0 optgroup[label="Set by the server"]');
+      await expect(group).toHaveCount(1);
+      const offered = await group.locator('option')
+        .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
+      expect(offered).toEqual(Object.keys(fromTheServer));
+
+      // The bound name is written the way a hand-typed one is written, and the value the
+      // server knows is nowhere in the text: it arrives when the tile runs, not before.
+      const everybodyElseSql = await visualSql();
+      expect(everybodyElseSql).toContain('${dp_user_id}');
+      expect(everybodyElseSql).not.toContain("'${dp_user_id}'");
+      expect(everybodyElseSql).not.toContain(me);
+
+      // ── me, frozen: the same value, the opposite question ──
+      await addCubeToCanvas(page, cubeId);
+      await selectCubeFields(page, [], ['Tickets']);
+      await switchToWidget(page, 'number');
+      await bindCube(0, 'Agent', 'equals', 'dp_user_id');
+      const meSql = await visualSql();
+      expect(meSql).toContain('${dp_user_id}');
+      expect(meSql).not.toContain(me);
+
+      // ── every agent but me, live: the same binding on the other kind of tile ──
+      await addCubeToCanvas(page, cubeId);
+      await selectCubeFields(page, ['Team'], ['Tickets']);
+      await switchToWidget(page, 'tabulator');
+      await clickDataTab(page);
+      await page.locator('#chkCubeShowInDashboard').check();
+      await bindCube(0, 'Agent', 'not_equals', 'dp_user_id');
+
+      await layoutWidgetsByDrag(page, [
+        { x: 0, y: 0, w: 6,  h: 3 },  // number    — every agent but me
+        { x: 6, y: 0, w: 6,  h: 3 },  // number    — me, if the desk knows me
+        { x: 0, y: 3, w: 12, h: 8 },  // tabulator — the live cube, everybody but me
+      ]);
+
+      const d41CanvasId = page.url().split('/').pop()!;
+      const { dashboardUrl: d41Url } = await publishDashboard(page);
+      const d41Ids = await getCanvasComponentIds(page, d41CanvasId);
+      const d41ReportCode = d41Url.split('/').pop()!;
+
+      await page.goto(d41Url);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('rb-value')).toHaveCount(2, { timeout: 20_000 });
+      await expect(page.locator('rb-cube-renderer'), 'the dashboard carries one live cube')
+        .toHaveCount(1, { timeout: 20_000 });
+
+      // A binding nobody answers is not a filter anybody sees: the filter bar holds the
+      // dashboard's own parameter and nothing else, and the cube shows no chip for it.
+      await expect(page.locator('#team'), "the dashboard's own parameter is asked")
+        .toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('#dp_user_id'), 'and a reserved name is not')
+        .toHaveCount(0);
+      await expect(page.locator('#chipDashFilter-Agent'), 'nor is there a chip nobody chose')
+        .toHaveCount(0, { timeout: 30_000 });
+
+      // ── the frozen tiles, which nobody hands any value to ──
+      const numberIds = d41Ids['number'] ?? [];
+      expect(numberIds.length).toBe(2);
+      const frozen = async (componentId: string): Promise<number> =>
+        page.evaluate(async ({ rc, cid }) => {
+          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const payload = await r.json();
+          const rows = payload.data as Record<string, unknown>[];
+          return Number(Object.values(rows[0])[0]);
+        }, { rc: d41ReportCode, cid: componentId });
+
+      // All 2959 tickets that have an agent belong to somebody else: the value arrived,
+      // because a value that never arrived is NULL and `<>` would answer 0.
+      expect(await frozen(numberIds[0]), 'every ticket but mine').toBe(2959);
+      // And none of them is mine: the binding filters.
+      expect(await frozen(numberIds[1]), 'and none of them is mine').toBe(0);
+
+      // ── the live tile, asked the way the renderer asks it ──
+      const liveId = (d41Ids['tabulator'] ?? [])[0];
+      const askCube = async (body: Record<string, unknown>): Promise<number> =>
+        page.evaluate(async ({ rc, cid, b }) => {
+          const r = await fetch(`/api/reports/${rc}/cube/${cid}/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dimensions: ['Team'], measures: ['Tickets'], filters: [], ...b }),
+          });
+          const payload = await r.json();
+          return (payload.rows as Record<string, unknown>[])
+            .reduce((sum, row) => sum + Number(row.Tickets), 0);
+        }, { rc: d41ReportCode, cid: liveId, b: body });
+
+      expect(await askCube({}), 'the live cube reads the same binding').toBe(2959);
+
+      // The negative half, twice. A viewer who sends the reserved name is not answering it:
+      // the server never reads it off a request, and the number does not move.
+      expect(await askCube({ params: { dp_user_id: 'Chiara Muller' } }),
+        'a reserved name sent in the request is not a value the server takes').toBe(2959);
+      // Nor is a binding sent in the body a binding: the published entry decides what is
+      // bound, and this request would otherwise show one agent's own tickets.
+      expect(await askCube({
+        paramBindings: [{ param: 'dp_user_id', member: 'Agent', operator: 'equals' }],
+        params: { dp_user_id: 'Chiara Muller' },
+      }), 'and a binding sent in the body is not one either').toBe(2959);
+
+      // The viewer's own ticks are ANDed with it, never instead of it: one team's tickets
+      // are some of the 2959 and not all of them.
+      const oneTeam = await askCube({
+        filters: [{ member: 'Team', operator: 'equals', values: ['Tier 1'] }],
+      });
+      expect(oneTeam, 'one team is some of the desk').toBeGreaterThan(0);
+      expect(oneTeam, 'and not the whole of it').toBeLessThan(2959);
+    } finally {
+      await deleteCanvasViaUI(page, canvasName);
+    }
+  });
+
 });

@@ -1,5 +1,6 @@
 package com.flowkraft.exploredata.export;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +85,11 @@ final class LiveCubeWidgets {
             entry.put("cubeName", cubeName.isEmpty() ? null : cubeName);
             entry.put("connectionId", connectionId != null ? connectionId : "");
             entry.put("initial", initialOf(visualQuery));
+            // Which of the dashboard's parameters filter this widget, and on which member (R8).
+            // Written here rather than sent at run time for the same reason the cube id is: the
+            // author decides what the filter bar means, the viewer only answers it.
+            List<Map<String, Object>> bindings = bindingsOf(visualQuery);
+            if (!bindings.isEmpty()) entry.put("paramBindings", bindings);
             entry.put("display", displayOf(widget));
             out.put(componentIdOf.apply(widget), entry);
         }
@@ -94,9 +100,13 @@ final class LiveCubeWidgets {
 
     /**
      * The selection the dashboard opens with, taken from what the author left on the canvas: the
-     * ticks, the grains, the filters (so the canvas filters become the starting chips), the order
-     * and the limit. It is the same structured query the field tree reports and the runtime reads,
-     * so what the author sees on the canvas is what a viewer opens.
+     * ticks, the grains, the filters (so the canvas filters become the starting chips), the order,
+     * the limit. It is the same structured query the field tree reports and the runtime reads, so
+     * what the author sees on the canvas is what a viewer opens.
+     *
+     * <p>No parameter values are written here (R1): a cube declares none, and the values its
+     * conditions use are the dashboard's own, declared once in its parameters spec and answered by
+     * the dashboard's {@code rb-parameters} at run time.
      */
     private static Map<String, Object> initialOf(Map<String, Object> visualQuery) {
 
@@ -114,8 +124,47 @@ final class LiveCubeWidgets {
         return initial;
     }
 
+    /**
+     * The parameter bindings the author left on the canvas, as the entry writes them: the
+     * parameter, the member, the comparison, and - for a {@code between} - the parameter of the
+     * other end.
+     *
+     * <p>They are read off {@code cubeSelection.paramBindings}, which is the one place the canvas
+     * keeps them (TODO 21), and written out in the entry's own order. Whether each of them is a
+     * member this cube has and a parameter this dashboard declares is checked before the export
+     * writes anything ({@code CanvasExportService}), because a dashboard whose filter bar silently
+     * drove nothing would look exactly like one that worked.
+     */
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> visualQuery(Map<String, Object> widget) {
+    static List<Map<String, Object>> bindingsOf(Map<String, Object> visualQuery) {
+
+        List<Map<String, Object>> bindings = new ArrayList<>();
+        if (!(visualQuery.get("cubeSelection") instanceof Map<?, ?> picked)) return bindings;
+        if (!(picked.get("paramBindings") instanceof List<?> declared)) return bindings;
+
+        for (Object each : declared) {
+            if (!(each instanceof Map<?, ?> bound)) continue;
+            Map<String, Object> binding = (Map<String, Object>) bound;
+
+            String param = text(binding.get("param"));
+            String member = text(binding.get("member"));
+            if (param.isEmpty() || member.isEmpty()) continue;
+
+            Map<String, Object> written = new LinkedHashMap<>();
+            written.put("param", param);
+            String paramTo = text(binding.get("paramTo"));
+            if (!paramTo.isEmpty()) written.put("paramTo", paramTo);
+            written.put("member", member);
+            String operator = text(binding.get("operator"));
+            written.put("operator", operator.isEmpty() ? "in" : operator);
+            bindings.add(written);
+        }
+        return bindings;
+    }
+
+    /** Where a canvas widget keeps its cube query — read here, so nobody looks it up elsewhere. */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> visualQuery(Map<String, Object> widget) {
         Object dataSource = widget.get("dataSource");
         if (dataSource instanceof Map<?, ?> ds && ds.get("visualQuery") instanceof Map<?, ?> vq)
             return (Map<String, Object>) vq;

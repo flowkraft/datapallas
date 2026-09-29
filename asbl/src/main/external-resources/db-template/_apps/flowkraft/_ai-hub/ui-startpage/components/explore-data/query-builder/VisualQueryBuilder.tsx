@@ -2,19 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // lucide-react removed
-import type { VisualQuery, DataSource } from "@/lib/stores/canvas-store";
+import type { CubeParamBinding, CubeSelection, VisualQuery, DataSource } from "@/lib/stores/canvas-store";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import type { SchemaInfo } from "@/lib/explore-data/types";
 import { buildSql, columnClassOf, columnKindsOf, extractParamIds, extractParamTypes, sortableColumns } from "@/lib/explore-data/sql-builder";
 import { computedColumnSchemas } from "@/lib/explore-data/computed-columns";
 import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
-import { fetchCubes, fetchCube, parseCubeDsl, generateCubeSql, fetchCubeFilterOptions, getConnectionType, type CubeInfo } from "@/lib/explore-data/rb-api";
-import { seedCubeColumnFormats, selectionOfEvent } from "@/lib/explore-data/cube-selection";
+import { fetchCubes, fetchCube, parseCubeDsl, generateCubeSql, fetchCubeFilterOptions, fetchBuiltinParamNames, getConnectionType, type CubeInfo } from "@/lib/explore-data/rb-api";
+import { cubeBindableMembers, seedCubeColumnFormats, selectionOfEvent, selectionWithBindings } from "@/lib/explore-data/cube-selection";
 import type { ColumnSettingsMap } from "@/lib/explore-data/column-settings";
 import { useRbElementReady } from "../widgets/useRbElementReady";
 import { DataStep } from "./DataStep";
 import { ComputeStep } from "./ComputeStep";
 import { FilterStep } from "./FilterStep";
+import { CubeBindStep } from "./CubeBindStep";
 import { SummarizeStep } from "./SummarizeStep";
 import { SortStep } from "./SortStep";
 
@@ -46,6 +47,17 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
   const [cubes, setCubes] = useState<CubeInfo[]>([]);
   const parametersConfig = useCanvasStore((s) => s.parametersConfig);
   const availableParams = extractParamIds(parametersConfig?.parameters);
+  // And the `dp_` names the server sets for whoever is looking (R9): the bind chip offers them
+  // next to the dashboard's own. One fetch, shared with the preview's own values, and an empty
+  // answer (a session that may not ask) simply leaves the chip as it was.
+  const [builtinParams, setBuiltinParams] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchBuiltinParamNames()
+      .then((names) => { if (!cancelled) setBuiltinParams(names); })
+      .catch(() => { if (!cancelled) setBuiltinParams([]); });
+    return () => { cancelled = true; };
+  }, []);
   // Their declared types too: a filter bound to a Date parameter means the
   // whole day it names, so the preview SQL has to be written with them (F8).
   const paramTypes = useMemo(() => extractParamTypes(parametersConfig?.parameters), [parametersConfig]);
@@ -172,12 +184,12 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
     const handleSelectionChange = async (e: Event) => {
       // The whole question the tree is asking, read the one way both hosts of the component read
       // it (`cube-selection.ts`). An empty tree is not a question.
-      const asked = selectionOfEvent(e);
-      if (!asked) return;
-      const selection = asked.selection;
+      const reported = selectionOfEvent(e);
+      if (!reported) return;
+      const selection = reported.selection;
       // The cube the renderer is showing travels with the selection, so a file of several
       // cubes generates SQL for the one on screen — and a saved canvas keeps it.
-      const cubeName = asked.cubeName || cubeFileName.current || "";
+      const cubeName = reported.cubeName || cubeFileName.current || "";
       // What the cube says its measures are, as the widget's own column formats (W4.2): money is
       // money in the table under it without the author setting anything, and a column they have
       // settled themselves is never overwritten.
@@ -186,17 +198,25 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
       const seeded = seedCubeColumnFormats(cubeConfig, cubeName, selection.measures,
         displayConfig.columnSettings as ColumnSettingsMap | undefined);
       if (seeded) store.updateWidgetDisplayConfig(widgetId, { ...displayConfig, columnSettings: seeded });
+      // The bindings are the author's, not the tree's: `selectionChanged` says nothing about
+      // them, so they travel from the saved widget into the new question. The SQL is generated
+      // with them as filters - which is what puts `${country}` into the frozen text - while the
+      // widget keeps them apart, so reopening it puts only the author's own chips back.
+      const bindings = query.cubeSelection?.paramBindings;
+      const asked: CubeSelection = bindings?.length
+        ? { ...selection, paramBindings: bindings }
+        : selection;
       try {
         const generatedSql = await generateCubeSql(
           query.cubeId!,
           connectionId || "",
-          selection,
+          selectionWithBindings(selection, bindings),
           cubeName,
         );
         setCubeSqlError(null);
         onChange({
           mode: "visual",
-          visualQuery: { ...query, cubeName: cubeName || undefined, cubeSelection: selection },
+          visualQuery: { ...query, cubeName: cubeName || undefined, cubeSelection: asked },
           generatedSql,
         });
       } catch (err) {
@@ -251,6 +271,41 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
     updateQuery({ kind: "table", cubeId: undefined, table, computed: [], filters: [], summarize: [], groupBy: [], sort: [], cubeSelection: undefined, showInDashboard: undefined });
   };
 
+  /**
+   * A binding added, changed or removed. It is kept on the widget's selection and the SQL is
+   * generated again through the same call the tree's own change goes through, so the frozen text
+   * follows the chip without the author touching the tree.
+   */
+  const changeCubeBindings = async (paramBindings: CubeParamBinding[]) => {
+    const saved = query.cubeSelection;
+    const selection: CubeSelection = saved
+      ? { ...saved, paramBindings }
+      : { dimensions: [], measures: [], segments: [], filters: [], granularities: {}, order: [],
+          limit: null, paramBindings };
+    const cubeName = query.cubeName || cubeFileName.current || "";
+    const asked = selectionWithBindings({ ...selection, paramBindings: undefined }, paramBindings);
+    // Nothing ticked yet is not a question: the binding is kept, and the SQL follows the first tick.
+    if (!selection.dimensions.length && !selection.measures.length) {
+      onChange({
+        mode: "visual",
+        visualQuery: { ...query, cubeName: cubeName || undefined, cubeSelection: selection },
+        generatedSql: dataSource?.generatedSql ?? "",
+      });
+      return;
+    }
+    try {
+      const generatedSql = await generateCubeSql(query.cubeId!, connectionId || "", asked, cubeName);
+      setCubeSqlError(null);
+      onChange({
+        mode: "visual",
+        visualQuery: { ...query, cubeName: cubeName || undefined, cubeSelection: selection },
+        generatedSql,
+      });
+    } catch (err) {
+      setCubeSqlError(err instanceof Error ? err.message : "Failed to generate SQL");
+    }
+  };
+
   const handlePickCube = (cubeId: string) => {
     setCubeSqlError(null);
     // Another cube is another field tree: the ticks of the one before it mean nothing in it, so
@@ -302,6 +357,18 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
           <p className="text-[11px] text-base-content/60">
             Viewers pick fields and filter in the dashboard. It follows later edits of this cube.
           </p>
+          {/* Which dashboard filter narrows this cube (R1, R8). The table query's bind chip puts
+              a `${param}` into a filter's value box; a cube widget has no value box, so the
+              author says which member the dashboard's own filter narrows. It is the same control
+              either way it is published: unchecked, the frozen SQL carries the name; checked, the
+              entry carries the binding and the live cube follows the dashboard. */}
+          <CubeBindStep
+            members={cubeBindableMembers(cubeConfig, query.cubeName || cubeFileName.current || "")}
+            bindings={query.cubeSelection?.paramBindings ?? []}
+            onChange={changeCubeBindings}
+            availableParams={availableParams}
+            builtinParams={builtinParams}
+          />
           {query.showInDashboard ? (
             <p id="cubeOnCanvasNote" className="text-xs text-base-content/60 py-2">
               Pick fields in the cube on the canvas.
@@ -349,7 +416,7 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
               onChange={(computed) => updateQuery({ computed })}
             />
           )}
-          <FilterStep columns={columnsWithComputed} filters={query.filters} match={query.filterMatch ?? "all"} onMatchChange={(filterMatch) => updateQuery({ filterMatch })} availableParams={availableParams} onChange={(filters) => updateQuery({ filters })} />
+          <FilterStep columns={columnsWithComputed} filters={query.filters} match={query.filterMatch ?? "all"} onMatchChange={(filterMatch) => updateQuery({ filterMatch })} availableParams={availableParams} builtinParams={builtinParams} onChange={(filters) => updateQuery({ filters })} />
           <SummarizeStep
             columns={columns}
             aggregateColumns={columnsWithComputed}

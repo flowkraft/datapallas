@@ -1,5 +1,7 @@
 package com.flowkraft.reporting.dsl.cube;
 
+import com.sourcekraft.documentburster.common.reportparameters.ParamRef;
+
 import groovy.lang.Script;
 import groovy.lang.Closure;
 
@@ -91,6 +93,7 @@ public abstract class CubeOptionsScript extends Script {
         private final List<Map<String, Object>> joins = new ArrayList<>();
         private final List<Map<String, Object>> segments = new ArrayList<>();
         private final List<Map<String, Object>> hierarchies = new ArrayList<>();
+        private final List<Map<String, Object>> conditions = new ArrayList<>();
 
         // ${CUBE} self-reference placeholder — survives into output
         public String getCUBE() { return "${CUBE}"; }
@@ -121,6 +124,73 @@ public abstract class CubeOptionsScript extends Script {
         public void access_filter(String condition) {
             accessFilters++;
             if (accessFilter == null) accessFilter = condition;
+        }
+
+        /**
+         * One condition on the rows this cube answers over, in two forms (R1).
+         *
+         * <p>A cube declares no parameters of its own: a dashboard declares them, in one place, its
+         * {@code -report-parameters-spec.groovy}, and a cube only <i>uses</i> the names — the same
+         * link an SQL widget has always had. The builtin {@code dp_} names come from the server.
+         *
+         * <p><b>Raw:</b> {@code condition '${CUBE}.order_date >= ${fromDate}'} — any SQL a WHERE
+         * allows. It may be written over several lines, and is read into one, because a parameter
+         * with no value drops its own line out of the WHERE and leaves the rest of the question
+         * standing ({@code SqlParameterLines}, and the published script's {@code has<P>} guard).
+         *
+         * <p><b>Native:</b> {@code condition 'OrderDate', 'between', fromDate, toDate} — a member
+         * of this cube, one of the structured query's own operator names, and its values. A bare
+         * name is a reference to a dashboard parameter or a builtin, exactly as {@code min:
+         * fromDate} is in the parameters DSL; it is kept as the {@code ${name}} the binder reads.
+         * A value in quotes is a literal.
+         *
+         * <p><b>Which form to write.</b> The native one is added to the query exactly as the
+         * viewer's own filter on that member is, so it knows what the member is: a condition on a
+         * measure becomes a HAVING, and a range on a time dimension moves with a
+         * {@code time_shift} measure, which asks the same period one interval earlier. The raw
+         * one is SQL text and moves with nothing: written against a date column beside a
+         * {@code time_shift} measure, the earlier period is asked the very same dates. Write the
+         * native form for anything a member can say, and the raw one for what it cannot.
+         */
+        public void condition(String sql) {
+            Map<String, Object> condition = new LinkedHashMap<>();
+            condition.put("sql", folded(sql));
+            conditions.add(condition);
+        }
+
+        public void condition(String member, String operator, Object... values) {
+            Map<String, Object> condition = new LinkedHashMap<>();
+            condition.put("member", member);
+            condition.put("operator", operator);
+            List<Object> named = new ArrayList<>();
+            if (values != null) {
+                for (Object value : values) named.add(value instanceof ParamRef
+                        ? "${" + ((ParamRef) value).name + "}"
+                        : value);
+            }
+            condition.put("values", named);
+            conditions.add(condition);
+        }
+
+        /**
+         * A bare name inside the cube body — {@code fromDate}, {@code dp_user_email} — as a
+         * reference to it, the way the parameters DSL reads {@code min: fromDate}. Groovy asks the
+         * delegate for it before it fails, which is what makes the native {@code condition} read
+         * like the question it is.
+         */
+        public Object propertyMissing(String name) {
+            return new ParamRef(name);
+        }
+
+        /**
+         * The condition on one line: every run of whitespace, newlines included, becomes one space.
+         *
+         * <p>Written over several lines a condition reads better, and bound it has to be one line:
+         * the empty-value rule works line by line. Folding here is the one place that happens, so
+         * the text {@code CubeRules} checks and the text the generator writes are the same text.
+         */
+        private static String folded(String sql) {
+            return sql == null ? null : sql.trim().replaceAll("\\s+", " ");
         }
 
         // Dimension — closure form
@@ -207,6 +277,7 @@ public abstract class CubeOptionsScript extends Script {
             if (!joins.isEmpty()) out.put("joins", new ArrayList<>(joins));
             if (!segments.isEmpty()) out.put("segments", new ArrayList<>(segments));
             if (!hierarchies.isEmpty()) out.put("hierarchies", new ArrayList<>(hierarchies));
+            if (!conditions.isEmpty()) out.put("conditions", new ArrayList<>(conditions));
             return out;
         }
     }

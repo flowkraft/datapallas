@@ -2,7 +2,7 @@
 
 // lucide-react removed
 import type { ColumnSchema } from "@/lib/explore-data/types";
-import { columnClassOf, isParamRef } from "@/lib/explore-data/sql-builder";
+import { bindableParams, columnClassOf, isParamRef, paramRefOf, type BindableParam } from "@/lib/explore-data/sql-builder";
 // The operator lists live next to the generator (`lib/explore-data/filter-operators.ts`),
 // so a test can walk every operator this step offers and check that the
 // generator writes SQL for it. This step only picks the list for the column's
@@ -68,9 +68,40 @@ interface FilterStepProps {
   onMatchChange?: (match: FilterMatch) => void;
   /** Parameter IDs defined in the canvas filterDsl — drives the "bind to param" toggle. */
   availableParams?: string[];
+  /** The `dp_` names the server sets for whoever is looking, offered next to them (R9). The
+   *  names come from the server itself (`fetchBuiltinParamNames`), never from a list here. */
+  builtinParams?: string[];
 }
 
-export function FilterStep({ columns, filters, onChange, match = "all", onMatchChange, availableParams = [] }: FilterStepProps) {
+export function FilterStep({ columns, filters, onChange, match = "all", onMatchChange, availableParams = [], builtinParams = [] }: FilterStepProps) {
+  /** Everything a filter can be bound to: the dashboard's own first, the server's after them. */
+  const offers = bindableParams(availableParams, builtinParams);
+
+  /** What the chip says about one of them, so a builtin never reads as a dashboard filter. */
+  const offerTitle = (offer: BindableParam) =>
+    offer.fromServer
+      ? `Bind to ${paramRefOf(offer.id)} — set by the server for whoever is looking`
+      : `Bind to dashboard filter ${paramRefOf(offer.id)}`;
+
+  /** The options of the bind dropdown: two groups, and the server's said to be the server's. */
+  const offerOptions = () => {
+    const declared = offers.filter((offer) => !offer.fromServer);
+    const server = offers.filter((offer) => offer.fromServer);
+    return (
+      <>
+        {declared.map((offer) => (
+          <option key={offer.id} value={offer.id}>{offer.id}</option>
+        ))}
+        {server.length > 0 && (
+          <optgroup label="Set by the server">
+            {server.map((offer) => (
+              <option key={offer.id} value={offer.id}>{offer.id}</option>
+            ))}
+          </optgroup>
+        )}
+      </>
+    );
+  };
   const addFilter = () => {
     onChange([...filters, { column: columns[0]?.columnName || "", operator: "equals", value: "" }]);
   };
@@ -107,7 +138,7 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
   };
 
   const bindParam = (i: number, paramId: string, field: "value" | "valueTo" = "value") => {
-    updateFilter(i, { [field]: `\${${paramId}}` });
+    updateFilter(i, { [field]: paramRefOf(paramId) });
   };
 
   /** One box of a `between` filter: the parameter it is bound to, or the input
@@ -140,13 +171,13 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
           placeholder={placeholder}
           className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
         />
-        {availableParams.length > 0 && (
-          availableParams.length === 1 ? (
+        {offers.length > 0 && (
+          offers.length === 1 ? (
             <button
               id={`btnBindParam${id}-${i}`}
               type="button"
-              title={`Bind to dashboard filter \${${availableParams[0]}}`}
-              onClick={() => bindParam(i, availableParams[0], field)}
+              title={offerTitle(offers[0])}
+              onClick={() => bindParam(i, offers[0].id, field)}
               className="text-[11px] font-mono text-base-content/60 hover:text-primary hover:bg-primary/10 px-1 py-0.5 rounded shrink-0 leading-none"
             >
               {'${}'}
@@ -157,12 +188,10 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
               value=""
               onChange={(e) => { if (e.target.value) bindParam(i, e.target.value, field); }}
               className="text-[11px] font-mono bg-base-100 border border-base-300 rounded px-1 py-0.5 text-base-content/60 hover:text-primary shrink-0"
-              title="Bind to a dashboard filter parameter"
+              title="Bind to a dashboard filter, or to a value the server sets"
             >
               <option value="">{'${}'}</option>
-              {availableParams.map((prm) => (
-                <option key={prm} value={prm}>{prm}</option>
-              ))}
+              {offerOptions()}
             </select>
           )
         )}
@@ -201,7 +230,7 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
         const col = columns.find((c) => c.columnName === f.column);
         const ops = getOperatorsForColumn(col);
         const boundToParam = !NO_VALUE_OPS.includes(f.operator) && isParamRef(f.value);
-        const canBind = availableParams.length > 0 && PARAM_BINDABLE_OPS.has(f.operator) && !boundToParam;
+        const canBind = offers.length > 0 && PARAM_BINDABLE_OPS.has(f.operator) && !boundToParam;
 
         return (
           <div key={i} className="flex items-center gap-1.5 ml-6">
@@ -265,12 +294,12 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
                   />
                   {/* Param bind toggle — only shown when params exist and operator supports it */}
                   {canBind && (
-                    availableParams.length === 1 ? (
+                    offers.length === 1 ? (
                       <button
                         id={`btnBindParam-${i}`}
                         type="button"
-                        title={`Bind to dashboard filter \${${availableParams[0]}}`}
-                        onClick={() => bindParam(i, availableParams[0])}
+                        title={offerTitle(offers[0])}
+                        onClick={() => bindParam(i, offers[0].id)}
                         className="text-[11px] font-mono text-base-content/60 hover:text-primary hover:bg-primary/10 px-1 py-0.5 rounded shrink-0 leading-none"
                       >
                         {'${}'}
@@ -281,12 +310,10 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
                         value=""
                         onChange={(e) => { if (e.target.value) bindParam(i, e.target.value); }}
                         className="text-[11px] font-mono bg-base-100 border border-base-300 rounded px-1 py-0.5 text-base-content/60 hover:text-primary shrink-0"
-                        title="Bind to a dashboard filter parameter"
+                        title="Bind to a dashboard filter, or to a value the server sets"
                       >
                         <option value="">{'${}'}</option>
-                        {availableParams.map((p) => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
+                        {offerOptions()}
                       </select>
                     )
                   )}

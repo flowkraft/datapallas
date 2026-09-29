@@ -94,6 +94,31 @@ class CubeFilesTest {
 		assertNull(CubeFiles.find(dir.toFile(), ""));
 	}
 
+	@Test
+	void aNamedCubeSitsBesideTheFilesUnnamedCubeWithoutRenamingIt() throws Exception {
+		// The Shop file's layout: the cube that was always there, unnamed, and a variant of it under
+		// a name. A named cube added to a file must not rename the cube already in it - its id is
+		// what its hints, its checks and its card are keyed on.
+		write("retail-ecommerce/online-sales-cube.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<cubes>\n"
+				+ "    <cube>\n        <name>Online Sales</name>\n"
+				+ "        <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>\n    </cube>\n"
+				+ "    <cube>\n        <cubeName>shop-for-a-period</cubeName>\n"
+				+ "        <name>Sales for a Period</name>\n"
+				+ "        <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>\n    </cube>\n</cubes>\n");
+		write("retail-ecommerce/online-sales-cube-config.groovy", "cube { }\ncube('shop-for-a-period') { }");
+
+		CubeFiles shop = CubeFiles.find(dir.toFile(), "online-sales");
+		CubeFiles period = CubeFiles.find(dir.toFile(), "shop-for-a-period");
+
+		assertNull(shop.getCubeName(), "The file's unnamed cube, keeping its id");
+		assertEquals("Online Sales", shop.metadata("name", null));
+		assertEquals("shop-for-a-period", period.getCubeName());
+		assertEquals("Sales for a Period", period.metadata("name", null), "Each cube its own metadata");
+		assertEquals(shop.getDslFile(), period.getDslFile(), "One DSL file");
+		assertEquals(shop.getHintsFile(), period.getHintsFile(), "One hints file");
+		assertEquals(List.of("online-sales", "shop-for-a-period"), idsOf(CubeFiles.scan(dir.toFile())));
+	}
+
 	private static List<String> idsOf(List<CubeFiles> cubes) {
 		List<String> ids = new ArrayList<>();
 		for (CubeFiles cube : cubes) ids.add(cube.getId());

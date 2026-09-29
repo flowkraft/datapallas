@@ -1162,6 +1162,58 @@ public class NoExeAssembler extends AbstractAssembler {
 				new File(packageDirPath + "/" + topFolderName
 						+ "/samples/reports/cubes/g-cube-stories-template.html"));
 
+		// 21. g-cube-country-sales (Country Sales Dashboard - the dashboard filter drives every tile)
+
+		String countrySalesSampleDir = packageDirPath + "/" + topFolderName + "/config/samples/g-cube-country-sales";
+		String countrySalesSettingsFilePath = countrySalesSampleDir + "/settings.xml";
+		String countrySalesReportingFilePath = countrySalesSampleDir + "/reporting.xml";
+
+		// copy base settings and tweak for this sample
+		FileUtils.copyFile(new File(packageDirPath + "/" + topFolderName + "/config/burst/settings.xml"),
+				new File(countrySalesSettingsFilePath));
+		content = FileUtils.readFileToString(new File(countrySalesSettingsFilePath), "UTF-8");
+
+		content = content.replaceAll("(?s)<template\\s*/>|<template>\\s*(?:My Reports|Bursting)\\s*</template>",
+				"<template>CountrySalesDashboard</template>");
+		content = content.replaceAll(
+				"(?s)<reportdistribution\\s*/>|<reportdistribution>\\s*true\\s*</reportdistribution>",
+				"<reportdistribution>false</reportdistribution>");
+		content = content.replaceAll(
+				"(?s)<reportgenerationmailmerge\\s*/>|<reportgenerationmailmerge>\\s*false\\s*</reportgenerationmailmerge>",
+				"<reportgenerationmailmerge>true</reportgenerationmailmerge>");
+		content = content.replaceAll(
+				"(?s)<burstfilename>.*?</burstfilename>",
+				"<burstfilename>dashboard.html</burstfilename>");
+
+		FileUtils.writeStringToFile(new File(countrySalesSettingsFilePath), content, "UTF-8");
+
+		// prepare reporting.xml
+		FileUtils.copyFile(new File(packageDirPath + "/" + topFolderName + "/config/_defaults/reporting.xml"),
+				new File(countrySalesReportingFilePath));
+		content = FileUtils.readFileToString(new File(countrySalesReportingFilePath), "UTF-8");
+
+		content = content.replaceAll("(?si)<type\\s*>\\s*ds\\.csvfile\\s*</type>", "<type>ds.dashboard</type>");
+		// the DuckDB Northwind sample, which is where the cube_demo shop tables live
+		content = content.replaceAll("(?s)<conncode\\s*/>|<conncode>\\s*</conncode>",
+				"<conncode>rbt-sample-northwind-duckdb-4f2</conncode>");
+		content = content.replaceAll("(?s)<scriptname\\s*/>|<scriptname>\\s*</scriptname>",
+				"<scriptname>g-cube-country-sales-script.groovy</scriptname>");
+		// the dashboard's one parameter: the country every tile is bound to
+		content = content.replaceAll("(?s)<scriptnameparamsspec\\s*/>|<scriptnameparamsspec>\\s*</scriptnameparamsspec>",
+				"<scriptnameparamsspec>g-cube-country-sales-report-parameters-spec.groovy</scriptnameparamsspec>");
+		content = content.replaceAll("(?s)output\\.none", "output.dashboard");
+		content = content.replaceAll("(?s)<documentpath\\s*/>|<documentpath>\\s*</documentpath>",
+				"<documentpath>samples/reports/cubes/g-cube-country-sales-template.html</documentpath>");
+
+		FileUtils.writeStringToFile(new File(countrySalesReportingFilePath), content, "UTF-8");
+
+		// move the dashboard HTML template from config/samples into samples/reports/cubes; the
+		// widget sidecars stay beside settings.xml, which is where the server reads them from
+		FileUtils.moveFile(
+				new File(countrySalesSampleDir + "/g-cube-country-sales-template.html"),
+				new File(packageDirPath + "/" + topFolderName
+						+ "/samples/reports/cubes/g-cube-country-sales-template.html"));
+
 		// SAMPLES END
 
 		// FREND SAMPLES START

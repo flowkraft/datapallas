@@ -102,5 +102,169 @@
         "AvgDiscountPct"
       ]
     }
+  },
+  {
+    "id": "sales-for-a-period",
+    "fromStory": 21,
+    "question": "What did we sell last quarter, by category?",
+    "text": "This cube reads the sale line by line inside a period. **Show Me** opens it on the quarter the data is in - the **Ordered** filter at the top - with **Units** and **Net Sales** ticked and **Category** down the side, and every number is of those dates only.",
+    "query": {
+      "cubeName": "shop-for-a-period",
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "Units",
+        "NetSales"
+      ],
+      "filters": [
+        {
+          "member": "OrderDate",
+          "operator": "between",
+          "values": [
+            "{dataToday: startOf quarter}",
+            "{dataToday: endOf quarter}"
+          ]
+        }
+      ]
+    },
+    "variants": [
+      {
+        "id": "previous-quarter",
+        "text": "Move the **Ordered** filter one quarter back: the same question, the quarter before it.",
+        "query": {
+          "cubeName": "shop-for-a-period",
+          "dimensions": [
+            "Category"
+          ],
+          "measures": [
+            "Units",
+            "NetSales"
+          ],
+          "filters": [
+            {
+              "member": "OrderDate",
+              "operator": "between",
+              "values": [
+                "{dataToday: minus 1 quarter, startOf quarter}",
+                "{dataToday: minus 1 quarter, endOf quarter}"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "same-quarter-last-year",
+        "text": "Move it a year back instead: the same quarter, last year, which is what a quarter is really compared with.",
+        "query": {
+          "cubeName": "shop-for-a-period",
+          "dimensions": [
+            "Category"
+          ],
+          "measures": [
+            "Units",
+            "NetSales"
+          ],
+          "filters": [
+            {
+              "member": "OrderDate",
+              "operator": "between",
+              "values": [
+                "{dataToday: minus 1 year, startOf quarter}",
+                "{dataToday: minus 1 year, endOf quarter}"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "revenue-mix",
+    "fromStory": 23,
+    "question": "Which categories carry the business?",
+    "text": "Tick **Net Sales** and **Share of Net Sales**, then add **Category**. The share is each category's part of the net sales in the answer, and it adds up to 100%.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "NetSales",
+        "ShareOfNetSales"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-channel",
+        "text": "Swap **Category** for **Channel**: the same question about how the orders come in.",
+        "query": {
+          "dimensions": [
+            "Channel"
+          ],
+          "measures": [
+            "NetSales",
+            "ShareOfNetSales"
+          ]
+        }
+      },
+      {
+        "id": "germany",
+        "text": "Add the filter **Country = Germany**: every share is now of Germany's own total, not of the whole shop.",
+        "query": {
+          "dimensions": [
+            "Category"
+          ],
+          "measures": [
+            "NetSales",
+            "ShareOfNetSales"
+          ],
+          "filters": [
+            {
+              "member": "Country",
+              "operator": "equals",
+              "values": [
+                "Germany"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "category-margin",
+    "fromStory": 30,
+    "question": "The board pack: what does each category sell, and what does it leave?",
+    "text": "Tick **Units Sold**, **Net Sales**, **Cost of Goods**, **Gross Margin**, **Margin %** and **Discount Rate**, then add **Category**. Every cell is shown the way the cube says: euros as euros, the two ratios as percentages, the units as a plain number.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "UnitsSold",
+        "NetSales",
+        "CostOfGoods",
+        "GrossMargin",
+        "MarginPct",
+        "DiscountRate"
+      ]
+    },
+    "variants": [
+      {
+        "id": "in-all",
+        "text": "Drop the field: the totals row. Margin % is then **34.07%**, the margin of the whole shop - not 35.11%, the average of the eight rows.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "UnitsSold",
+            "NetSales",
+            "CostOfGoods",
+            "GrossMargin",
+            "MarginPct",
+            "DiscountRate"
+          ]
+        }
+      }
+    ]
   }
 ]

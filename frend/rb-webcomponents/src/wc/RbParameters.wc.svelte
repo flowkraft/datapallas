@@ -660,15 +660,34 @@
     if (!hostElement) return;
     const root = hostElement.closest('.rb-dashboard-root') || (hostElement.getRootNode() as Element | Document) || document;
     const paramsJson = JSON.stringify(values);
-    const components = (root as Element | Document).querySelectorAll('rb-tabulator, rb-chart, rb-pivot-table, rb-value, rb-trend, rb-map, rb-sankey, rb-gauge, rb-progress, rb-detail');
+    const components = (root as Element | Document).querySelectorAll('rb-tabulator, rb-chart, rb-pivot-table, rb-value, rb-trend, rb-map, rb-sankey, rb-gauge, rb-progress, rb-detail, rb-cube-renderer');
     components.forEach((el: Element) => {
       const fresh = document.createElement(el.tagName.toLowerCase());
       for (const attr of Array.from(el.attributes)) {
         fresh.setAttribute(attr.name, attr.value);
       }
       fresh.setAttribute('report-params', paramsJson);
+      // A widget a person can tick things on is showing something it was not published showing,
+      // and that is not this element's to throw away: it says what it is showing, and the
+      // element that takes its place opens there.
+      const localState = localStateOf(el);
+      if (localState) fresh.setAttribute('local-state', localState);
       el.parentNode?.replaceChild(fresh, el);
     });
+  }
+
+  // What a widget is showing right now, if it says: a cube renderer hands over the ticks the
+  // viewer made, which nothing else knows about. A widget that offers nothing hands over nothing.
+  function localStateOf(el: Element): string {
+    const say = (el as any).rbLocalState;
+    if (typeof say !== 'function') return '';
+    try {
+      const state = say.call(el);
+      return typeof state === 'string' ? state : '';
+    } catch (e) {
+      // A widget that cannot say where it is still gets replaced: it opens on its saved view.
+      return '';
+    }
   }
 
   // Submit: user explicitly requests data refresh with current param values

@@ -71,6 +71,19 @@ public class CubeOptions {
     private List<Map<String, Object>> segments = new ArrayList<>();
     private List<Map<String, Object>> hierarchies = new ArrayList<>();
 
+    /**
+     * The cube's own conditions (R1): one {@code condition} per entry, each either raw
+     * ({@code {sql: "…"}}, already folded onto one line) or native
+     * ({@code {member: …, operator: …, values: […]}}).
+     *
+     * <p>A cube declares no parameters: a dashboard declares them, and a condition only uses the
+     * names. The generator writes each one into the WHERE — a native one on a measure into the
+     * HAVING — of every SELECT over this cube and leaves each {@code ${name}} standing, exactly as
+     * it leaves a {@code ${dp_…}} standing: the values are bound afterwards, and a dashboard
+     * parameter with no value takes its own line with it.
+     */
+    private List<Map<String, Object>> conditions = new ArrayList<>();
+
     // Named blocks for multi-cube reports
     private Map<String, CubeOptions> namedOptions = new LinkedHashMap<>();
 
@@ -127,6 +140,9 @@ public class CubeOptions {
 
     public List<Map<String, Object>> getHierarchies() { return hierarchies; }
     public void setHierarchies(List<Map<String, Object>> hierarchies) { this.hierarchies = hierarchies; }
+
+    public List<Map<String, Object>> getConditions() { return conditions; }
+    public void setConditions(List<Map<String, Object>> conditions) { this.conditions = conditions; }
 
     public Map<String, CubeOptions> getNamedOptions() { return namedOptions; }
     public void setNamedOptions(Map<String, CubeOptions> namedOptions) { this.namedOptions = namedOptions; }

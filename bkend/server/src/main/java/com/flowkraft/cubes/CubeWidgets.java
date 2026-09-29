@@ -89,10 +89,17 @@ public final class CubeWidgets {
 	 *                     found wrong with it (design part 8: View Code)
 	 * @param showHints    whether the cube's {@code hints.json} travels with the field tree, so the
 	 *                     widget can offer the questions the cube was written to answer
+	 * @param paramBindings which of the dashboard's parameters filter this widget, and on which
+	 *                     member (R8). Declared here rather than sent, for the same reason the
+	 *                     cube id is: a viewer answers the filter bar, and the author decides what
+	 *                     those answers mean. Empty on every dashboard published before the key
+	 *                     existed, which then follows the filter bar only through the names its
+	 *                     own {@code condition}s use (R1)
 	 */
 	public record Widget(String componentId, String cubeId, String cubeName, String connectionId,
 			Map<String, Object> initial, List<String> display, boolean saveView,
-			boolean showSql, boolean showCode, boolean showHints) {
+			boolean showSql, boolean showCode, boolean showHints,
+			List<CubeParamBindings.Binding> paramBindings) {
 	}
 
 	/**
@@ -153,7 +160,23 @@ public final class CubeWidgets {
 				!Boolean.FALSE.equals(entry.get("saveView")),
 				Boolean.TRUE.equals(entry.get("showSql")),
 				Boolean.TRUE.equals(entry.get("showCode")),
-				Boolean.TRUE.equals(entry.get("showHints")));
+				Boolean.TRUE.equals(entry.get("showHints")),
+				bindingsOf(componentId, entry.get("paramBindings")));
+	}
+
+	/**
+	 * The bindings this entry declares, with the widget named in whatever the refusal says: the
+	 * author reads it while looking at a dashboard of several widgets, and "the binding of
+	 * 'country' names no member" alone would not say which tile to open.
+	 */
+	private static List<CubeParamBindings.Binding> bindingsOf(String componentId, Object declared) {
+		try {
+			return CubeParamBindings.of(declared);
+		} catch (IllegalArgumentException refused) {
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+					"The live cube '" + componentId + "' of this dashboard is declared with a parameter "
+							+ "binding that cannot be read. " + refused.getMessage(), refused);
+		}
 	}
 
 	/**
@@ -200,7 +223,7 @@ public final class CubeWidgets {
 	 * path. An id that tries to leave its folder is refused rather than cleaned up: there is no
 	 * legitimate request it could be.
 	 */
-	private static String safeId(String reportId) {
+	static String safeId(String reportId) {
 
 		String id = Objects.toString(reportId, "").trim();
 		if (id.isEmpty() || id.contains("/") || id.contains("\\") || id.contains("..")) {

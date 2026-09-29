@@ -114,5 +114,57 @@
         }
       }
     ]
+  },
+  {
+    "id": "customer-statement",
+    "fromStory": 25,
+    "question": "What do I owe you, and what is overdue?",
+    "text": "Pick **Southridge Video SpA** above the fields, then tick **Invoices**, **Invoiced**, **Paid** and **Balance Due**, and add **Status**.",
+    "query": {
+      "cubeName": "customer-statement",
+      "dimensions": [
+        "Status"
+      ],
+      "measures": [
+        "Invoices",
+        "Invoiced",
+        "Paid",
+        "BalanceDue"
+      ]
+    },
+    "variants": [
+      {
+        "id": "another-customer",
+        "text": "Pick **VanArsdel GmbH** instead: the same statement, another customer.",
+        "query": {
+          "cubeName": "customer-statement",
+          "dimensions": [
+            "Status"
+          ],
+          "measures": [
+            "Invoices",
+            "Invoiced",
+            "Paid",
+            "BalanceDue"
+          ]
+        }
+      },
+      {
+        "id": "all-customers",
+        "text": "Pick **All customers**: with nobody named, the statement is the credit controller's - the same four numbers over the whole book.",
+        "query": {
+          "cubeName": "customer-statement",
+          "dimensions": [
+            "Status"
+          ],
+          "measures": [
+            "Invoices",
+            "Invoiced",
+            "Paid",
+            "BalanceDue"
+          ]
+        }
+      }
+    ]
   }
 ]

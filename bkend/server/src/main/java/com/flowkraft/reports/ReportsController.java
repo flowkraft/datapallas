@@ -414,7 +414,18 @@ public class ReportsController {
 		reportAccess.assertReportReadable(reportId, httpRequest);
 
 		// W5: the answer carries this viewer's own view, so the first render is already theirs.
-		return Mono.just(cubeRuntimeService.meta(reportId, componentId, cubeViewers.of(httpRequest)));
+		Map<String, Object> meta = cubeRuntimeService.meta(reportId, componentId, cubeViewers.of(httpRequest));
+
+		// R4: which of this card's parameters this link has already answered. The card draws them
+		// as the page's own parameter bar does - the value shown, the control disabled, "Fixed by
+		// this link" under it - and the value it draws is the signed one, read here and not from
+		// the query string. What is drawn and what is filtered therefore cannot disagree: the
+		// question below goes through the same override a few dozen lines down.
+		Map<String, Object> locked = LockedParams.of(httpRequest);
+		if (!locked.isEmpty() && meta.containsKey("parameters"))
+			meta.put("lockedParameters", locked);
+
+		return Mono.just(meta);
 	}
 
 	@Operation(summary = "The rows one selection of a dashboard's live cube asks for")
@@ -428,7 +439,8 @@ public class ReportsController {
 
 		// Row 0 of the precedence table again, and the same call /data makes a few lines above: the
 		// live cube learns who is asking from the session or the credential, never from the request.
-		return Mono.just(cubeRuntimeService.query(reportId, componentId, request, userVariables.of(httpRequest)));
+		return Mono.just(cubeRuntimeService.query(reportId, componentId,
+				withLockedParams(request, httpRequest), userVariables.of(httpRequest)));
 	}
 
 	@Operation(summary = "The SQL one selection of a dashboard's live cube would be answered by")
@@ -443,7 +455,8 @@ public class ReportsController {
 		// The same two doors as the rows, although no row is read: what the SQL says about the
 		// cube is as much this dashboard's as the numbers are. Whether this widget shows it at
 		// all is the author's own showSql, and CubeRuntimeService answers 403 when it is off.
-		return Mono.just(cubeRuntimeService.sql(reportId, componentId, request));
+		return Mono.just(cubeRuntimeService.sql(reportId, componentId,
+				withLockedParams(request, httpRequest)));
 	}
 
 	@Operation(summary = "The rows behind one number of a dashboard's live cube")
@@ -457,7 +470,8 @@ public class ReportsController {
 
 		// The rows behind a number are rows, so they pass the same door and carry the same
 		// access_filter as the number did: a viewer drills into their own rows and nobody else's.
-		return Mono.just(cubeRuntimeService.drill(reportId, componentId, request, userVariables.of(httpRequest)));
+		return Mono.just(cubeRuntimeService.drill(reportId, componentId,
+				withLockedParams(request, httpRequest), userVariables.of(httpRequest)));
 	}
 
 	@Operation(summary = "The values one dimension of a dashboard's live cube may be filtered by")
@@ -472,8 +486,55 @@ public class ReportsController {
 		Map<String, Object> asked = request != null ? request : Map.of();
 		String dimension = asked.get("dimension") != null ? asked.get("dimension").toString() : null;
 		String search = asked.get("search") != null ? asked.get("search").toString() : null;
+		// A cube whose conditions use the dashboard's parameters offers the values of the period
+		// the viewer is looking at, so the popover sends the same params the table was asked
+		// with (R1).
+		Map<String, Object> params = lockedOver(asked.get("params") instanceof Map
+				? castParams(asked.get("params")) : Map.of(), httpRequest);
 		return Mono.just(cubeRuntimeService.filterOptions(reportId, componentId, dimension, search,
-				userVariables.of(httpRequest)));
+				userVariables.of(httpRequest), params));
+	}
+
+	/** The body's own {@code params} map, as a map — the request is JSON, so the keys are names. */
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> castParams(Object params) {
+		return (Map<String, Object>) params;
+	}
+
+	/**
+	 * The body a live cube is answered from, with a share link's or an embed token's locked
+	 * parameters written over whatever it says (R4).
+	 *
+	 * <p>The same rule as {@code /data} a few dozen lines above, and the same reason: the value is
+	 * read from the signed token and not from the request, so editing the page's JavaScript
+	 * changes nothing. A dashboard shared with one country locked to Germany shows Germany on its
+	 * frozen tiles and on its live cube alike — the two must not disagree, and the way to be sure
+	 * they cannot is that both read the lock from the same place.
+	 */
+	private static Map<String, Object> withLockedParams(Map<String, Object> request,
+			HttpServletRequest httpRequest) {
+
+		Map<String, Object> locked = LockedParams.of(httpRequest);
+		if (locked.isEmpty())
+			return request;
+
+		Map<String, Object> body = request != null ? new LinkedHashMap<>(request) : new LinkedHashMap<>();
+		body.put("params", lockedOver(
+				body.get("params") instanceof Map ? castParams(body.get("params")) : Map.of(), httpRequest));
+		return body;
+	}
+
+	/** The viewer's answers with the locked ones over them; the map itself is never changed. */
+	private static Map<String, Object> lockedOver(Map<String, Object> params,
+			HttpServletRequest httpRequest) {
+
+		Map<String, Object> locked = LockedParams.of(httpRequest);
+		if (locked.isEmpty())
+			return params;
+
+		Map<String, Object> answered = new LinkedHashMap<>(params != null ? params : Map.of());
+		locked.forEach((name, value) -> answered.put(name, LockedParams.asQueryValue(value)));
+		return answered;
 	}
 
 	// ── W5: the viewer's own view of one live cube ──

@@ -1,5 +1,7 @@
 package com.flowkraft.reporting.dsl.common;
 
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -74,7 +76,10 @@ public final class BlockFormRules {
     public static final Map<String, PluralRule> REPORTPARAMETERS = Map.of(
         "parameters", new NamedArgsBlock(
             "parameter",
-            Set.of("constraints", "uiHints"),
+            // Ordered: a sub-block set with no order is emitted in whatever order the JVM
+            // iterates it in, so the same dashboard exported twice wrote two different
+            // parameters specs (seen on story 24's sample, TODO 21).
+            new LinkedHashSet<>(List.of("constraints", "uiHints")),
             Map.of("uiHints", "ui"),
             false  // wrap=false — items are direct children of reportParameters block
         )

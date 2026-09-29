@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<cube>
-    <name>Invoice Balances</name>
-    <description>A cube on your own SQL: every invoice with the balance still due on it, with an unpaid segment for the credit controller's question. Runs on the cube_demo demo data.</description>
-    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
-</cube>
+<cubes>
+    <cube>
+        <name>Invoice Balances</name>
+        <description>A cube on your own SQL: every invoice with the balance still due on it, with an unpaid segment for the credit controller's question. Runs on the cube_demo demo data.</description>
+        <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+    </cube>
+    <cube>
+        <cubeName>customer-statement</cubeName>
+        <name>Customer Statement</name>
+        <description>The same invoices, as one customer is allowed to see them: which customer is the dashboard's to answer, and a share link can lock it. Runs on the cube_demo demo data.</description>
+        <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+    </cube>
+</cubes>

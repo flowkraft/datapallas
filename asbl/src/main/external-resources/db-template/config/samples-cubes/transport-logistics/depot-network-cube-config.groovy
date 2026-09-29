@@ -30,6 +30,7 @@ cube {
   sql_table 'cube_demo.logistics_depots'
   title 'Depot Network'
   description 'Where our depots are, how big they are, and how many shipments leave from each'
+  currency 'EUR'
 
   join {
     name 'cube_demo.logistics_shipments'

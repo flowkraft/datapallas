@@ -89,6 +89,8 @@ public class CubeOptionsParser {
         if (map.containsKey("joins")) opts.setJoins((List<Map<String, Object>>) map.get("joins"));
         if (map.containsKey("segments")) opts.setSegments((List<Map<String, Object>>) map.get("segments"));
         if (map.containsKey("hierarchies")) opts.setHierarchies((List<Map<String, Object>>) map.get("hierarchies"));
+        // The cube's own conditions, raw and native (R1)
+        if (map.containsKey("conditions")) opts.setConditions((List<Map<String, Object>>) map.get("conditions"));
         return opts;
     }
 }

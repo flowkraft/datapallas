@@ -139,6 +139,87 @@ export const PARAM_BINDABLE_OPS = new Set([
   "between",
 ]);
 
+/**
+ * The name a cube's structured query gives each of these operators, in one
+ * place (R1).
+ *
+ * The Filter step, the canvas and a cube speak about the same comparisons with
+ * two sets of names: the chip says `not_equals` and `greater_or_equal`, a cube
+ * query says `notEquals` and `gte` (`CubeRules.QUERY_OPERATORS` on the server,
+ * which is also what a cube file's native `condition` is checked against). The
+ * two lists are mapped here and nowhere else, so an operator added to the chip
+ * either has a cube form or is visibly missing one, instead of being spelled a
+ * second way in whichever file needed it.
+ *
+ * An operator with no entry has no cube form: the LIKE family, which a cube
+ * writes as `contains`, and the relative dates, whose two bounds are computed
+ * and sent as a `between`.
+ */
+export const CUBE_QUERY_OPERATORS: Readonly<Record<string, string>> = {
+  equals: "equals",
+  not_equals: "notEquals",
+  greater_than: "gt",
+  greater_or_equal: "gte",
+  less_than: "lt",
+  less_or_equal: "lte",
+  in: "in",
+  not_in: "notIn",
+  between: "between",
+  contains: "contains",
+  // A cube says what the row has, not what it lacks: `set` is IS NOT NULL.
+  is_null: "notSet",
+  is_not_null: "set",
+};
+
+/**
+ * The operators a cube widget's bind chip offers, in the order a number's list writes them.
+ *
+ * It is the Filter step's own bindable list (`PARAM_BINDABLE_OPS`), narrowed to what a cube can
+ * be asked: an operator with no cube form is not offered. `between` is in it, and binds one
+ * parameter per end exactly as the table chip does - the chip's row shows a second parameter
+ * dropdown for the upper end (owner, 2026-09-28).
+ */
+export const CUBE_BINDABLE_OPS: OperatorDef[] = [...NUMBER_OPS, ...STRING_OPS].filter(
+  (operator, index, all) =>
+    PARAM_BINDABLE_OPS.has(operator.value)
+    && CUBE_QUERY_OPERATORS[operator.value] !== undefined
+    && all.findIndex((first) => first.value === operator.value) === index,
+);
+
+/** True when a binding with this operator takes two parameters, one per end. */
+export function bindingTakesTwoEnds(operator: string): boolean {
+  return operator === "between";
+}
+
+/**
+ * The operators this member can be bound with, narrowed by what it is (owner, 2026-09-28).
+ *
+ * A measure is a number: all nine, and the filter is a HAVING. A date is ordered but not a list
+ * anyone types; a boolean is one of two things, so only `=` says anything; everything else - text,
+ * a geography, a dimension whose type the cube leaves out - is compared or listed, never ordered,
+ * because `>` on a country name is not a question the author means to ask.
+ *
+ * `CubeParamBindings.bindableFor` on the server is the same narrowing, over the same names, and
+ * refuses the export of a binding this would not have offered.
+ */
+export function cubeBindableOpsFor(type: string | undefined, isMeasure: boolean): OperatorDef[] {
+  const kind = String(type ?? "").trim().toLowerCase();
+  const allowed = isMeasure || kind === "number"
+    ? CUBE_BINDABLE_OPS.map((operator) => operator.value)
+    : kind === "time"
+      ? ["equals", "not_equals", "greater_than", "greater_or_equal", "less_than", "less_or_equal",
+         "between"]
+      : kind === "boolean"
+        ? ["equals"]
+        : ["equals", "not_equals", "in", "not_in"];
+  return CUBE_BINDABLE_OPS.filter((operator) => allowed.includes(operator.value));
+}
+
+/** The cube query's name for a chip operator, or undefined when it has none. */
+export function cubeQueryOperator(operator: string): string | undefined {
+  return CUBE_QUERY_OPERATORS[operator];
+}
+
 /** True when this operator compares against a value the user types. */
 export function operatorTakesValue(operator: string): boolean {
   return !NO_VALUE_OPS.includes(operator);

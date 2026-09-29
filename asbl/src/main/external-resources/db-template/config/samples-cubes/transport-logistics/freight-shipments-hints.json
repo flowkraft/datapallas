@@ -102,5 +102,74 @@
         "AvgTransitDays"
       ]
     }
+  },
+  {
+    "id": "freight-cost-vs-speed",
+    "fromStory": 22,
+    "question": "On my lanes, what does each transport mode cost per shipment, and how long does it take?",
+    "text": "Tick **Shipments**, **Shipping Cost**, **Average Cost per Shipment** and **Average Transit Days**, then add **Transport Mode**. **Show Me** opens it on every lane; the **Country** filter at the top is yours to narrow, and it takes as many countries as you pick.",
+    "query": {
+      "dimensions": [
+        "Mode"
+      ],
+      "measures": [
+        "Shipments",
+        "ShippingCost",
+        "AvgCostPerShipment",
+        "AvgTransitDays"
+      ]
+    },
+    "variants": [
+      {
+        "id": "spain-and-portugal",
+        "text": "Put **Spain** and **Portugal** in the **Country** filter: the same trade-off on the lanes one manager looks after, and every number is of those two countries only. Add or take away a country and the rows follow.",
+        "query": {
+          "dimensions": [
+            "Mode"
+          ],
+          "measures": [
+            "Shipments",
+            "ShippingCost",
+            "AvgCostPerShipment",
+            "AvgTransitDays"
+          ],
+          "filters": [
+            {
+              "member": "DestCountry",
+              "operator": "in",
+              "values": [
+                "Spain",
+                "Portugal"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "delayed-shipments",
+    "fromStory": 28,
+    "question": "What is delayed this month, and which shipments are they?",
+    "text": "**Show Me** opens this month by status - the **Booked** filter at the top. Then click the **Shipments** number on the **Delayed** row: the rows behind it open, one shipment a line, with its tracking number, its carrier, the depot it left from, where it is going and what it weighs.",
+    "query": {
+      "dimensions": [
+        "BookedDate.month",
+        "Status"
+      ],
+      "measures": [
+        "Shipments"
+      ],
+      "filters": [
+        {
+          "member": "BookedDate",
+          "operator": "between",
+          "values": [
+            "{dataToday: startOf month}",
+            "{dataToday: endOf month}"
+          ]
+        }
+      ]
+    }
   }
 ]
