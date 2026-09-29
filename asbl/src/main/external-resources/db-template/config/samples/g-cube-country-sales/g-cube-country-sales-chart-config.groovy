@@ -1,6 +1,20 @@
 chart('chart_channel_channel') {
   type 'bar'
-  title 'Orders by Channel'
-  xField 'Channel'
-  yFields 'Orders'
+  data {
+    labelField 'Channel'
+    datasets {
+      dataset {
+        field 'Orders'
+        label 'Orders'
+      }
+    }
+  }
+  options {
+    plugins {
+      title {
+        display true
+        text 'Orders by Channel'
+      }
+    }
+  }
 }

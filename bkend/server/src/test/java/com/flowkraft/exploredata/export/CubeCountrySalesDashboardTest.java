@@ -2,6 +2,7 @@ package com.flowkraft.exploredata.export;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.flowkraft.cubes.CubeQuery;
 import com.flowkraft.cubes.CubeSqlGenerator;
+import com.flowkraft.reporting.dsl.chart.ChartOptions;
+import com.flowkraft.reporting.dsl.chart.ChartOptionsParser;
 import com.flowkraft.reporting.dsl.cube.CubeOptions;
 import com.flowkraft.reporting.dsl.cube.CubeOptionsParser;
 import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
@@ -125,32 +129,70 @@ class CubeCountrySalesDashboardTest {
 		return widget;
 	}
 
-	/** The four tiles of the story: the two KPIs, the channels and the categories. */
+	/**
+	 * The four tiles of the story: the two KPIs, the channels and the categories. Each one answers a
+	 * question the country manager has about the country they picked - how much it sold (Net Sales),
+	 * how much of it went out of the door (Units), where the orders came from (Channel) and what was
+	 * bought (Category) - and they are ordered as the reader reads them, the money first.
+	 *
+	 * <p>The chart's {@code dslConfig} is the chart DSL's own shape, which is the shape the canvas
+	 * writes: a {@code data} block with the column the bars are labelled by and one dataset per
+	 * column plotted, and the title where Chart.js keeps it. Written any other way - {@code title},
+	 * {@code xField}, {@code yFields} - the names fall into the options map, Chart.js ignores them,
+	 * and the chart is drawn with no dataset at all: labels on an empty axis (D3).
+	 */
 	private static List<Map<String, Object>> canvas(boolean bound) throws Exception {
 		return List.of(
 				widget("w-kpi-net", "number", selection(List.of(), List.of("NetSales"), bound),
 						ordered("numberField", "NetSales", "numberLabel", "Net Sales",
 								"numberFormat", "currency"),
-						0, 0, 3, 2),
+						0, 1, 3, 2),
 				widget("w-kpi-units", "number", selection(List.of(), List.of("Units"), bound),
 						ordered("numberField", "Units", "numberLabel", "Units", "numberFormat", "number"),
-						3, 0, 3, 2),
+						3, 1, 3, 2),
 				widget("w-orders-channel", "chart",
 						selection(List.of("Channel"), List.of("Orders"), bound),
 						ordered("chartTitle", "Orders by Channel", "xFields", List.of("Channel"),
 								"yFields", List.of("Orders"),
-								"dslConfig", ordered("type", "bar", "title", "Orders by Channel",
-										"xField", "Channel", "yFields", List.of("Orders"))),
-						0, 2, 6, 4),
+								"dslConfig", ordered("type", "bar",
+										"data", ordered("labelField", "Channel",
+												"datasets", List.of(ordered("field", "Orders",
+														"label", "Orders"))),
+										"options", ordered("plugins", ordered("title",
+												ordered("display", true,
+														"text", "Orders by Channel"))))),
+						0, 3, 6, 4),
 				widget("w-net-category", "tabulator",
 						selection(List.of("Category"), List.of("NetSales"), bound),
 						ordered("dslConfig", ordered("layout", "fitColumns", "autoColumns", true)),
-						6, 2, 6, 4));
+						6, 3, 6, 4));
 	}
 
 	/**
-	 * The dashboard as it ships: the four frozen tiles, and the Shop cube itself beside them
-	 * (R8, TODO 21a).
+	 * The title the page opens with, the way a user puts one there: a text widget at the top of the
+	 * canvas, above the parameter bar's own row.
+	 *
+	 * <p>It says what the page is for and what it answers, so a reader who arrives at it by a share
+	 * link - with no sample list and no menu around it - knows what they are looking at. A text
+	 * widget carries no query of any kind, so it has no data source: the exporter reads its markdown
+	 * and nothing else.
+	 */
+	private static Map<String, Object> titleWidget() {
+		Map<String, Object> widget = new LinkedHashMap<>();
+		widget.put("id", "w-title");
+		widget.put("type", "text");
+		widget.put("gridPosition", Map.of("x", 0, "y", 0, "w", 12, "h", 1));
+		widget.put("displayConfig", ordered("textContent",
+				"# Country Sales\n\n"
+						+ "What the country you picked sold: the money and the units, the channels its"
+						+ " orders came through, the categories that earned it - and the shop cube"
+						+ " itself, for the questions this page does not answer."));
+		return widget;
+	}
+
+	/**
+	 * The dashboard as it ships: its title, the four frozen tiles, and the Shop cube itself beside
+	 * them (R8, TODO 21a).
 	 *
 	 * The country manager gets both kinds at once - numbers they read, and a cube they tick their
 	 * own breakdowns in - and the one `country` at the top drives them the same way. The frozen
@@ -158,7 +200,9 @@ class CubeCountrySalesDashboardTest {
 	 * the server applies it to every question the viewer asks.
 	 */
 	private static List<Map<String, Object>> shippedCanvas(boolean bound) throws Exception {
-		List<Map<String, Object>> widgets = new ArrayList<>(canvas(bound));
+		List<Map<String, Object>> widgets = new ArrayList<>();
+		widgets.add(titleWidget());
+		widgets.addAll(canvas(bound));
 		widgets.add(liveCube(bound));
 		return widgets;
 	}
@@ -185,7 +229,7 @@ class CubeCountrySalesDashboardTest {
 		}
 		Map<String, Object> widget = widget("w-live-shop", "tabulator", selection,
 				ordered("dslConfig", ordered("layout", "fitColumns", "autoColumns", true)),
-				0, 6, 12, 6);
+				0, 7, 12, 6);
 		@SuppressWarnings("unchecked")
 		Map<String, Object> dataSource = (Map<String, Object>) widget.get("dataSource");
 		@SuppressWarnings("unchecked")
@@ -264,6 +308,15 @@ class CubeCountrySalesDashboardTest {
 		assertEquals(shipped(REPORT_ID + "-chart-config.groovy"), files.chartConfigGroovy());
 		assertEquals(shipped(REPORT_ID + "-tabulator-config.groovy"), files.tabulatorConfigGroovy());
 		assertEquals(shipped(REPORT_ID + "-value-config.json"), files.valueConfigJson());
+
+		// The page opens with what it is: the title widget's heading and the line under it, above
+		// everything else the reader sees. A dashboard reached by a share link has nothing else to
+		// say so (D2).
+		assertTrue(files.templateHtml().contains("<h1>Country Sales</h1>"), files.templateHtml());
+		assertTrue(files.templateHtml().contains("What the country you picked sold"),
+				files.templateHtml());
+		assertTrue(files.templateHtml().indexOf("Country Sales</h1>")
+				< files.templateHtml().indexOf("<rb-value"), files.templateHtml());
 
 		// Both modes on one dashboard: four tiles carry frozen SQL, and the fifth is the cube.
 		assertEquals(shipped(REPORT_ID + "-cube-widgets.json"), files.cubeWidgetsJson());
@@ -354,6 +407,88 @@ class CubeCountrySalesDashboardTest {
 			assertTrue(Math.abs(money(germany, "number_netsales_net", "NetSales") - 859422.88) > 1.0,
 					"an unbound tile cannot pass the Germany check");
 		}
+	}
+
+	@Test
+	@DisplayName("The shipped chart plots a column its own SQL returns, and says so in its title")
+	void aChartWithNoDatasetPlotsNothing() throws Exception {
+
+		Map<String, List<Map<String, Object>>> reported;
+		try (Connection connection = duckdb()) {
+			reported = answers(canvas(true), ALL, connection);
+		}
+
+		// The positive half: the file the sample ships, parsed by the chart DSL the runtime parses it
+		// with, plots a column the widget's SQL really returned - so there is something to draw.
+		assertChartsPlotColumnsTheirSqlReturns(shipped(REPORT_ID + "-chart-config.groovy"), reported);
+
+		// And the reader is told what they are looking at, where Chart.js looks for it.
+		ChartOptions chart = ChartOptionsParser
+				.parseGroovyChartDslCode(shipped(REPORT_ID + "-chart-config.groovy"))
+				.getNamedOptions().get("chart_channel_channel");
+		assertEquals("Orders by Channel", titleOf(chart), String.valueOf(chart.getOptions()));
+
+		// The negative half, and the defect the owner met: `title`, `xField` and `yFields` are not
+		// chart DSL keywords, so they fall into the options map where Chart.js ignores them and the
+		// chart is built with no dataset at all - four channel names on an empty 0-1 axis. This is
+		// the assertion that would have caught it.
+		String asItWasShipped = "chart('chart_channel_channel') {\n"
+				+ "  type 'bar'\n"
+				+ "  title 'Orders by Channel'\n"
+				+ "  xField 'Channel'\n"
+				+ "  yFields 'Orders'\n"
+				+ "}\n";
+		AssertionError red = assertThrows(AssertionError.class,
+				() -> assertChartsPlotColumnsTheirSqlReturns(asItWasShipped, reported));
+		assertTrue(red.getMessage().contains("nothing is plotted"), red.getMessage());
+	}
+
+	/**
+	 * Every chart a dashboard ships plots at least one column the widget's own SQL returned, and
+	 * labels the bars by one too.
+	 *
+	 * <p>This is the check the sample's equality assertion cannot make: that one compares the
+	 * shipped file with the generator's output, so a chart configured with keys the DSL does not
+	 * know is compared with itself and stays green while the reader sees an empty axis.
+	 */
+	private static void assertChartsPlotColumnsTheirSqlReturns(String chartConfigGroovy,
+			Map<String, List<Map<String, Object>>> reported) throws Exception {
+
+		Map<String, ChartOptions> charts = ChartOptionsParser
+				.parseGroovyChartDslCode(chartConfigGroovy).getNamedOptions();
+		assertFalse(charts.isEmpty(), "the chart config declares no chart at all");
+
+		for (Map.Entry<String, ChartOptions> entry : charts.entrySet()) {
+			String componentId = entry.getKey();
+			ChartOptions chart = entry.getValue();
+
+			List<Map<String, Object>> rows = reported.get(componentId);
+			if (rows == null || rows.isEmpty())
+				throw new AssertionError(componentId + " was asked and answered nothing: "
+						+ reported.keySet());
+			Set<String> columns = rows.get(0).keySet();
+
+			if (chart.getDatasets().isEmpty())
+				throw new AssertionError(componentId + " has no dataset, so nothing is plotted;"
+						+ " its SQL returns " + columns);
+			for (Map<String, Object> dataset : chart.getDatasets())
+				assertTrue(columns.contains(String.valueOf(dataset.get("field"))),
+						componentId + " plots '" + dataset.get("field")
+								+ "', which its SQL does not return: " + columns);
+			assertTrue(columns.contains(String.valueOf(chart.getLabelField())),
+					componentId + " labels its bars by '" + chart.getLabelField()
+							+ "', which its SQL does not return: " + columns);
+		}
+	}
+
+	/** A chart's title, where Chart.js keeps it: {@code options.plugins.title.text}. */
+	@SuppressWarnings("unchecked")
+	private static String titleOf(ChartOptions chart) {
+		Object plugins = chart.getOptions().get("plugins");
+		if (!(plugins instanceof Map<?, ?> pluginsMap)) return "";
+		Object title = ((Map<String, Object>) pluginsMap).get("title");
+		if (!(title instanceof Map<?, ?> titleMap)) return "";
+		return String.valueOf(((Map<String, Object>) titleMap).get("text"));
 	}
 
 	// ── The two paths ────────────────────────────────────────────────────────────

@@ -28,7 +28,7 @@ const SAMPLE_IDS: DashboardComponentIds = {
  * Shared dashboard assertion helper.
  *
  * When `componentIds` is omitted the function also validates the HTML template
- * ("Northwind Sales Dashboard" text, rb-value / rb-chart counts) — this is only
+ * (its title and purpose line, rb-value / rb-chart counts) — this is only
  * meaningful for the shipped g-dashboard sample whose HTML template is fixed.
  *
  * When `componentIds` is provided the HTML template checks are skipped and the
@@ -50,8 +50,10 @@ export async function assertDashboardRendersCorrectly(
 
   // ── 1. Header & layout (g-dashboard sample HTML template only) ──
   if (!componentIds) {
-    await expect(page.locator('text=Northwind Sales Dashboard')).toBeVisible({ timeout: 30000 });
-    await expect(page.locator('text=Wholesale distribution')).toBeVisible({ timeout: 10000 });
+    // The page says what it is for before it says anything else (D2).
+    await expect(page.locator('.dash-title')).toHaveText('Sales Performance', { timeout: 30000 });
+    await expect(page.locator('.dash-subtitle'))
+      .toContainText('revenue, orders and average order value', { timeout: 10000 });
     await expect(page.locator('rb-value')).toHaveCount(4, { timeout: 15000 });
     await expect(page.locator('rb-chart')).toHaveCount(2, { timeout: 15000 });
     await expect(page.locator('rb-tabulator')).toHaveCount(1, { timeout: 15000 });

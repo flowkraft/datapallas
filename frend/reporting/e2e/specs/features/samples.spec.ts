@@ -1066,8 +1066,11 @@ electronBeforeAfterAllTest(
         // Assert rb-dashboard web component is present
         await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 10000 });
 
-        // Assert pivot table header and component are visible
-        await expect(page.locator('text=Northwind Sales PivotTable')).toBeVisible({ timeout: 30000 });
+        // Assert pivot table header and component are visible. The heading says what the page
+        // is for rather than naming the data behind it (D2).
+        await expect(page.locator('.dash-title')).toHaveText('Sales Explorer', { timeout: 30000 });
+        await expect(page.locator('.dash-subtitle'))
+          .toContainText('Ask your own question of the sales', { timeout: 10000 });
         await expect(page.locator('rb-pivot-table')).toHaveCount(1, { timeout: 15000 });
       } finally {
         if (externalBrowser) {
@@ -1165,6 +1168,9 @@ electronBeforeAfterAllTest(
         // The sample is the page: every cube DataPallas ships, each card with the questions its
         // cube was written to answer.
         await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 10000 });
+        // Its own title already says what the page is for, and stays as it is (D2).
+        await expect(page.locator('.dash-title')).toHaveText('Cube Stories', { timeout: 30000 });
+        await expect(page.locator('.dash-subtitle')).toContainText('tick a field', { timeout: 10000 });
         await expect(frame.locator('.rb-cube-stories-root .card'))
           .toHaveCount(CUBE_STORIES_CARDS.length, { timeout: 60000 });
         for (const card of CUBE_STORIES_CARDS) {
@@ -1242,6 +1248,45 @@ electronBeforeAfterAllTest(
         await expect(page.locator('rb-chart')).toHaveCount(1, { timeout: 15000 });
         await expect(page.locator('rb-tabulator')).toHaveCount(1, { timeout: 15000 });
         await expect(page.locator('rb-parameters')).toHaveCount(1, { timeout: 15000 });
+
+        // The page opens with what it is: a reader who arrives by a share link has no sample
+        // list around them to tell them (D2). The title sits above the Country filter, the way
+        // every other shipped dashboard opens.
+        await expect(page.locator('.text-block h1')).toHaveText('Country Sales', { timeout: 15000 });
+        await expect(page.locator('.text-block p'))
+          .toContainText('What the country you picked sold', { timeout: 10000 });
+        const titleAboveFilter = await page.evaluate(() => {
+          const title = document.querySelector('.text-block h1');
+          const params = document.querySelector('rb-parameters');
+          if (!title || !params) return false;
+          return title.getBoundingClientRect().top < params.getBoundingClientRect().top;
+        });
+        expect(titleAboveFilter, 'the title is above the Country filter').toBe(true);
+
+        // And the chart draws something: the published chart config carries a dataset on a
+        // column the tile's own SQL returns, and its title where Chart.js reads it. Shipped as
+        // it was, it had no dataset at all and the four channel names stood on an empty axis
+        // (D3).
+        const chart = await page.evaluate(async () => {
+          const resp = await fetch('/api/reports/g-cube-country-sales/config');
+          const config = await resp.json();
+          return config.namedChartOptions?.['chart_channel_channel'] ?? null;
+        });
+        expect(chart, 'the dashboard publishes a chart config for the channels').toBeTruthy();
+        expect(chart.labelField, 'the bars are labelled by the channel').toBe('Channel');
+        expect(
+          (chart.datasets ?? []).map((dataset: Record<string, unknown>) => dataset.field),
+          'and one dataset plots the orders',
+        ).toEqual(['Orders']);
+        expect(chart.options?.plugins?.title?.text, 'the chart own title')
+          .toBe('Orders by Channel');
+        // And it is drawn: the chart component really put a canvas on the page.
+        const drawn = await page.evaluate(() => {
+          const host = document.querySelector('rb-chart') as HTMLElement & { shadowRoot?: ShadowRoot };
+          const canvas = host?.shadowRoot?.querySelector('canvas') ?? host?.querySelector('canvas');
+          return canvas ? 1 : 0;
+        });
+        expect(drawn, 'the chart is drawn at all').toBe(1);
 
         // Every tile is bound to the same parameter, so asking the data API for a tile with and
         // without a country is asking the story's two questions.
