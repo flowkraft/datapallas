@@ -1,0 +1,161 @@
+{
+  "id": "dd-profit-margin",
+  "index": 16,
+  "title": "Profit & Margin",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "dateFrom": "2024-10-01",
+    "dateTo": "2026-09-30",
+    "category": "All"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-gross-margin",
+      "label": "Gross margin %",
+      "format": "percent",
+      "value": 32.91,
+      "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-gross-profit",
+      "label": "Gross profit",
+      "format": "currency",
+      "value": 14228209.67,
+      "sql": "SELECT round(sum(l.line_amount - l.line_cost), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-discounts-given",
+      "label": "Discounts given",
+      "format": "currency",
+      "value": 4305404.09,
+      "sql": "SELECT round(sum(l.qty * l.unit_price * l.discount_pct / 100.0), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "chart-margin-q4-2025",
+      "label": "Q4 2025 margin %",
+      "format": "percent",
+      "value": 29.03,
+      "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025 AND quarter(o.order_ts) = 4"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "category-smart-home",
+      "params": {
+        "dateFrom": "2024-10-01",
+        "dateTo": "2026-09-30",
+        "category": "Smart Home"
+      },
+      "changed": {
+        "category": "Smart Home"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-gross-margin",
+          "label": "Gross margin %",
+          "format": "percent",
+          "value": 50.14,
+          "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND p2.category = 'Smart Home'"
+        },
+        {
+          "widget": "kpi-gross-profit",
+          "label": "Gross profit",
+          "format": "currency",
+          "value": 2819862.68,
+          "sql": "SELECT round(sum(l.line_amount - l.line_cost), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND p2.category = 'Smart Home'"
+        },
+        {
+          "widget": "kpi-discounts-given",
+          "label": "Discounts given",
+          "format": "currency",
+          "value": 518339.04,
+          "sql": "SELECT round(sum(l.qty * l.unit_price * l.discount_pct / 100.0), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND p2.category = 'Smart Home'"
+        },
+        {
+          "widget": "chart-margin-q4-2025",
+          "label": "Q4 2025 margin %",
+          "format": "percent",
+          "value": 46.52,
+          "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025 AND quarter(o.order_ts) = 4 AND p2.category = 'Smart Home'"
+        }
+      ]
+    },
+    {
+      "id": "dates-q4-2025",
+      "params": {
+        "dateFrom": "2025-10-01",
+        "dateTo": "2025-12-31",
+        "category": "All"
+      },
+      "changed": {
+        "dateFrom": "2025-10-01",
+        "dateTo": "2025-12-31"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-gross-margin",
+          "label": "Gross margin %",
+          "format": "percent",
+          "value": 29.03,
+          "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-10-01' AND o.order_ts < DATE '2025-12-31' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-gross-profit",
+          "label": "Gross profit",
+          "format": "currency",
+          "value": 2348311.88,
+          "sql": "SELECT round(sum(l.line_amount - l.line_cost), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-10-01' AND o.order_ts < DATE '2025-12-31' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-discounts-given",
+          "label": "Discounts given",
+          "format": "currency",
+          "value": 1364669.72,
+          "sql": "SELECT round(sum(l.qty * l.unit_price * l.discount_pct / 100.0), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-10-01' AND o.order_ts < DATE '2025-12-31' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "chart-margin-q4-2025",
+          "label": "Q4 2025 margin %",
+          "format": "percent",
+          "value": 29.03,
+          "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025 AND quarter(o.order_ts) = 4"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "pivot-margin-by-category-quarter",
+      "bucket": "category x quarter",
+      "threshold": 100,
+      "observed": 227,
+      "rule": "every cell of the margin heatmap stands on real order lines",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY p2.category, date_trunc('quarter', o.order_ts))"
+    },
+    {
+      "widget": "pivot-margin-by-category-quarter",
+      "bucket": "category x quarter",
+      "threshold": 100,
+      "observed": 869,
+      "rule": "every cell of the margin heatmap stands on real order lines",
+      "over": "category-smart-home",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-10-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND p2.category = 'Smart Home' GROUP BY p2.category, date_trunc('quarter', o.order_ts))"
+    },
+    {
+      "widget": "pivot-margin-by-category-quarter",
+      "bucket": "category x quarter",
+      "threshold": 100,
+      "observed": 580,
+      "rule": "every cell of the margin heatmap stands on real order lines",
+      "over": "dates-q4-2025",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.products p2 USING (product_id) WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-10-01' AND o.order_ts < DATE '2025-12-31' + INTERVAL 1 DAY GROUP BY p2.category, date_trunc('quarter', o.order_ts))"
+    }
+  ]
+}

@@ -7,7 +7,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -174,23 +176,43 @@ public final class NorthwindFixture {
 				.resolve("asbl").resolve("src").resolve("main").resolve("external-resources")
 				.resolve("db-template").resolve("db").resolve("scripts");
 
-		Path script = shipped.resolve("cube-demo-data.groovy");
-		Path rows = shipped.resolve("cube-demo-data");
-		if (!Files.exists(script) || !Files.isDirectory(rows)) {
+		// Every shipped demo seed and the folder of rows named after it, the pair NorthwindManager
+		// looks for, so the fixture's DuckDB file holds the demo data exactly as the shipped one
+		// does.
+		List<Path> demoScripts = new ArrayList<>();
+		if (Files.isDirectory(shipped)) {
+			try (java.util.stream.Stream<Path> files = Files.list(shipped)) {
+				for (Path file : files.collect(java.util.stream.Collectors.toList())) {
+					if (file.getFileName().toString().endsWith("-demo-data.groovy")) {
+						demoScripts.add(file);
+					}
+				}
+			}
+		}
+		if (demoScripts.isEmpty()) {
 			throw new IllegalStateException("The Northwind fixture builds the DuckDB sample the way the "
-					+ "packager does, which loads the cube_demo demo data from " + script
-					+ " and its cube-demo-data/ folder. One of them is missing.");
+					+ "packager does, which loads the demo data from the *-demo-data.groovy scripts in "
+					+ shipped + ". There are none.");
 		}
 
 		Files.createDirectories(destination);
-		Files.copy(script, destination.resolve(script.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+		for (Path script : demoScripts) {
 
-		Path rowsDestination = destination.resolve(rows.getFileName());
-		Files.createDirectories(rowsDestination);
-		try (java.util.stream.Stream<Path> files = Files.list(rows)) {
-			for (Path file : files.collect(java.util.stream.Collectors.toList())) {
-				Files.copy(file, rowsDestination.resolve(file.getFileName()),
-						StandardCopyOption.REPLACE_EXISTING);
+			Path rows = shipped.resolve(script.getFileName().toString().replace(".groovy", ""));
+			if (!Files.isDirectory(rows)) {
+				throw new IllegalStateException("The shipped seed " + script.getFileName()
+						+ " reads its rows from " + rows + ", which is missing.");
+			}
+
+			Files.copy(script, destination.resolve(script.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+
+			Path rowsDestination = destination.resolve(rows.getFileName());
+			Files.createDirectories(rowsDestination);
+			try (java.util.stream.Stream<Path> files = Files.list(rows)) {
+				for (Path file : files.collect(java.util.stream.Collectors.toList())) {
+					Files.copy(file, rowsDestination.resolve(file.getFileName()),
+							StandardCopyOption.REPLACE_EXISTING);
+				}
 			}
 		}
 	}
@@ -212,13 +234,13 @@ public final class NorthwindFixture {
 		Files.createDirectories(buildSqliteDir);
 		Files.createDirectories(buildDuckDbDir);
 
-		// The shipped seed script and its rows go next to the sample folders, where
-		// NorthwindManager looks for them, so the fixture's DuckDB file holds the cube_demo demo
-		// data exactly as the shipped one does.
+		// The shipped seed scripts and their rows go next to the sample folders, where
+		// NorthwindManager looks for them, so the fixture's DuckDB file holds the demo data
+		// exactly as the shipped one does.
 		copySeedScripts(tempRoot.resolve("build").resolve("scripts"));
 
 		try (NorthwindManager manager = new NorthwindManager()) {
-			manager.setCubeDemoSeedParams(CUBE_DEMO_SEED_PARAMS);
+			manager.setDemoSeedParams(CUBE_DEMO_SEED_PARAMS);
 			manager.startDatabase(NorthwindManager.DatabaseVendor.SQLITE, buildSqliteDir.toString());
 			manager.startDatabase(NorthwindManager.DatabaseVendor.DUCKDB, buildDuckDbDir.toString());
 		}

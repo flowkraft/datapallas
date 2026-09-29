@@ -1,0 +1,195 @@
+{
+  "id": "dd-fulfillment",
+  "index": 20,
+  "title": "Fulfillment & Delivery",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "dateFrom": "2026-07-02",
+    "dateTo": "2026-09-30",
+    "carrier": []
+  },
+  "kpis": [
+    {
+      "widget": "gauge-on-time-delivery",
+      "label": "On-time delivery %",
+      "format": "percent",
+      "value": 93.9,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE <= o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-average-days-to-deliver",
+      "label": "Average days to deliver",
+      "format": "number",
+      "value": 4.14,
+      "sql": "SELECT round(avg(date_diff('day', o.order_ts::DATE, o.delivered_ts::DATE)), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-late-orders",
+      "label": "Late orders",
+      "format": "number",
+      "value": 138,
+      "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.delivered_ts::DATE > o.promised_date"
+    },
+    {
+      "widget": "chart-late-by-carrier-swiftpost",
+      "label": "SwiftPost late %, all deliveries",
+      "format": "percent",
+      "value": 12.3,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier = 'SwiftPost'"
+    },
+    {
+      "widget": "chart-late-by-carrier-others",
+      "label": "The other carriers late %, all deliveries",
+      "format": "percent",
+      "value": 4.28,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier <> 'SwiftPost'"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "carrier-swiftpost",
+      "params": {
+        "dateFrom": "2026-07-02",
+        "dateTo": "2026-09-30",
+        "carrier": [
+          "SwiftPost"
+        ]
+      },
+      "changed": {
+        "carrier": [
+          "SwiftPost"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "gauge-on-time-delivery",
+          "label": "On-time delivery %",
+          "format": "percent",
+          "value": 87.62,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE <= o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.carrier IN ('SwiftPost')"
+        },
+        {
+          "widget": "kpi-average-days-to-deliver",
+          "label": "Average days to deliver",
+          "format": "number",
+          "value": 4.5,
+          "sql": "SELECT round(avg(date_diff('day', o.order_ts::DATE, o.delivered_ts::DATE)), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.carrier IN ('SwiftPost')"
+        },
+        {
+          "widget": "kpi-late-orders",
+          "label": "Late orders",
+          "format": "number",
+          "value": 78,
+          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.carrier IN ('SwiftPost') AND o.delivered_ts::DATE > o.promised_date"
+        },
+        {
+          "widget": "chart-late-by-carrier-swiftpost",
+          "label": "SwiftPost late %, all deliveries",
+          "format": "percent",
+          "value": 12.3,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier = 'SwiftPost'"
+        },
+        {
+          "widget": "chart-late-by-carrier-others",
+          "label": "The other carriers late %, all deliveries",
+          "format": "percent",
+          "value": 4.28,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier <> 'SwiftPost'"
+        }
+      ]
+    },
+    {
+      "id": "dates-last-12-months",
+      "params": {
+        "dateFrom": "2025-10-01",
+        "dateTo": "2026-09-30",
+        "carrier": []
+      },
+      "changed": {
+        "dateFrom": "2025-10-01",
+        "dateTo": "2026-09-30"
+      },
+      "kpis": [
+        {
+          "widget": "gauge-on-time-delivery",
+          "label": "On-time delivery %",
+          "format": "percent",
+          "value": 93.39,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE <= o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2025-10-01' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-average-days-to-deliver",
+          "label": "Average days to deliver",
+          "format": "number",
+          "value": 4.22,
+          "sql": "SELECT round(avg(date_diff('day', o.order_ts::DATE, o.delivered_ts::DATE)), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2025-10-01' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-late-orders",
+          "label": "Late orders",
+          "format": "number",
+          "value": 720,
+          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2025-10-01' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.delivered_ts::DATE > o.promised_date"
+        },
+        {
+          "widget": "chart-late-by-carrier-swiftpost",
+          "label": "SwiftPost late %, all deliveries",
+          "format": "percent",
+          "value": 12.3,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier = 'SwiftPost'"
+        },
+        {
+          "widget": "chart-late-by-carrier-others",
+          "label": "The other carriers late %, all deliveries",
+          "format": "percent",
+          "value": 4.28,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier <> 'SwiftPost'"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "map-late-by-country",
+      "bucket": "country with a rate, deliveries in the period",
+      "threshold": 60,
+      "observed": 68,
+      "rule": "a rate per country on a map: 60 deliveries per coloured country; below that the country has no rate and stays uncoloured",
+      "over": "defaults",
+      "sql": "SELECT coalesce(min(n), 0) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY o.country_code HAVING count(*) >= 60)"
+    },
+    {
+      "widget": "map-late-by-country",
+      "bucket": "country with a rate, deliveries in the period",
+      "threshold": 60,
+      "observed": 65,
+      "rule": "a rate per country on a map: 60 deliveries per coloured country; below that the country has no rate and stays uncoloured",
+      "over": "carrier-swiftpost",
+      "sql": "SELECT coalesce(min(n), 0) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.carrier IN ('SwiftPost') GROUP BY o.country_code HAVING count(*) >= 60)"
+    },
+    {
+      "widget": "chart-late-by-carrier",
+      "bucket": "carrier, deliveries in the period",
+      "threshold": 1000,
+      "observed": 3167,
+      "rule": "a rate that carries a finding: 1,000 deliveries per carrier",
+      "over": "dates-last-12-months",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2025-10-01' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY o.carrier)"
+    },
+    {
+      "widget": "map-late-by-country",
+      "bucket": "country with a rate, deliveries in the period",
+      "threshold": 60,
+      "observed": 246,
+      "rule": "a rate per country on a map: 60 deliveries per coloured country; below that the country has no rate and stays uncoloured",
+      "over": "dates-last-12-months",
+      "sql": "SELECT coalesce(min(n), 0) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2025-10-01' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY o.country_code HAVING count(*) >= 60)"
+    }
+  ]
+}

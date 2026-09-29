@@ -1,0 +1,106 @@
+{
+  "id": "dd-seasonality",
+  "index": 6,
+  "title": "Seasonality & Peak Times",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "channel": "All"
+  },
+  "kpis": [
+    {
+      "widget": "pivot-weekday-hour-peak",
+      "label": "Busiest weekday and hour",
+      "format": "text",
+      "value": "Monday 20",
+      "sql": "SELECT dayname(o.order_ts) || ' ' || lpad(hour(o.order_ts)::VARCHAR, 2, '0') FROM dash_demo.orders o WHERE true GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+    },
+    {
+      "widget": "chart-orders-by-month-of-year-peak",
+      "label": "Busiest month of the year",
+      "format": "number",
+      "value": 11,
+      "sql": "SELECT month(o.order_ts) FROM dash_demo.orders o WHERE true GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+    },
+    {
+      "widget": "chart-orders-by-month-november-multiple",
+      "label": "November against an average month, 2025",
+      "format": "number",
+      "value": 2.32,
+      "sql": "SELECT round((SELECT count(*) FROM dash_demo.orders o WHERE year(o.order_ts) = 2025 AND month(o.order_ts) = 11) * 12.0 / (SELECT count(*) FROM dash_demo.orders o WHERE year(o.order_ts) = 2025), 2)"
+    },
+    {
+      "widget": "chart-by-day-of-month-payday",
+      "label": "Orders on the 25th-27th against the daily average",
+      "format": "percent",
+      "value": 125.14,
+      "sql": "SELECT round(100.0 * avg(d.n / a.avg_n), 2) FROM (SELECT date_trunc('month', o.order_ts) AS m, day(o.order_ts) AS dd, count(*) AS n FROM dash_demo.orders o WHERE true GROUP BY 1, 2) d JOIN (SELECT m, avg(n) AS avg_n FROM (SELECT date_trunc('month', o.order_ts) AS m, day(o.order_ts) AS dd, count(*) AS n FROM dash_demo.orders o WHERE true GROUP BY 1, 2) GROUP BY 1) a USING (m) WHERE d.dd BETWEEN 25 AND 27"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "channel-sales-rep",
+      "params": {
+        "channel": "sales_rep"
+      },
+      "changed": {
+        "channel": "sales_rep"
+      },
+      "kpis": [
+        {
+          "widget": "pivot-weekday-hour-peak",
+          "label": "Busiest weekday and hour",
+          "format": "text",
+          "value": "Monday 13",
+          "sql": "SELECT dayname(o.order_ts) || ' ' || lpad(hour(o.order_ts)::VARCHAR, 2, '0') FROM dash_demo.orders o WHERE true AND o.channel = 'sales_rep' GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-orders-by-month-of-year-peak",
+          "label": "Busiest month of the year",
+          "format": "number",
+          "value": 11,
+          "sql": "SELECT month(o.order_ts) FROM dash_demo.orders o WHERE true AND o.channel = 'sales_rep' GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-orders-by-month-november-multiple",
+          "label": "November against an average month, 2025",
+          "format": "number",
+          "value": 2.2,
+          "sql": "SELECT round((SELECT count(*) FROM dash_demo.orders o WHERE year(o.order_ts) = 2025 AND month(o.order_ts) = 11 AND o.channel = 'sales_rep') * 12.0 / (SELECT count(*) FROM dash_demo.orders o WHERE year(o.order_ts) = 2025 AND o.channel = 'sales_rep'), 2)"
+        },
+        {
+          "widget": "chart-by-day-of-month-payday",
+          "label": "Orders on the 25th-27th against the daily average",
+          "format": "percent",
+          "value": 129.82,
+          "sql": "SELECT round(100.0 * avg(d.n / a.avg_n), 2) FROM (SELECT date_trunc('month', o.order_ts) AS m, day(o.order_ts) AS dd, count(*) AS n FROM dash_demo.orders o WHERE true AND o.channel = 'sales_rep' GROUP BY 1, 2) d JOIN (SELECT m, avg(n) AS avg_n FROM (SELECT date_trunc('month', o.order_ts) AS m, day(o.order_ts) AS dd, count(*) AS n FROM dash_demo.orders o WHERE true AND o.channel = 'sales_rep' GROUP BY 1, 2) GROUP BY 1) a USING (m) WHERE d.dd BETWEEN 25 AND 27"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "pivot-weekday-hour",
+      "bucket": "weekday x hour cell, on average",
+      "threshold": 50,
+      "observed": 142.86,
+      "rule": "a weekday x hour heatmap needs 50 per cell on average (night cells may be low)",
+      "over": "defaults",
+      "sql": "SELECT round(count(*) / 168.0, 2) FROM dash_demo.orders o WHERE true"
+    },
+    {
+      "widget": "chart-average-by-day-of-month",
+      "bucket": "day of the month, over the 33 months",
+      "threshold": 500,
+      "observed": 746,
+      "rule": "an average per day of the month needs 500 orders in each day's total",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE true AND day(o.order_ts) <= 28 GROUP BY day(o.order_ts))"
+    }
+  ]
+}

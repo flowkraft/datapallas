@@ -1,0 +1,164 @@
+{
+  "id": "dd-customer-growth",
+  "index": 9,
+  "title": "Customer Base & Growth",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "segment": "All",
+    "acquisitionChannel": []
+  },
+  "kpis": [
+    {
+      "widget": "kpi-customers",
+      "label": "Customers",
+      "format": "number",
+      "value": 5000,
+      "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true"
+    },
+    {
+      "widget": "kpi-new-in-30-days",
+      "label": "New in the last 30 days",
+      "format": "number",
+      "value": 137,
+      "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date > DATE '2026-09-30' - INTERVAL 30 DAY AND c.signup_date <= DATE '2026-09-30'"
+    },
+    {
+      "widget": "kpi-repeat-buyers",
+      "label": "Repeat buyers %",
+      "format": "percent",
+      "value": 60.34,
+      "sql": "SELECT round(100.0 * count(CASE WHEN n > 1 THEN 1 END) / count(*), 2) FROM (SELECT c.customer_id, (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled') AS n FROM dash_demo.customers c WHERE true)"
+    },
+    {
+      "widget": "chart-segment-mix-largest",
+      "label": "Largest segment",
+      "format": "text",
+      "value": "Consumer",
+      "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "segment-enterprise",
+      "params": {
+        "segment": "Enterprise",
+        "acquisitionChannel": []
+      },
+      "changed": {
+        "segment": "Enterprise"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-customers",
+          "label": "Customers",
+          "format": "number",
+          "value": 282,
+          "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise'"
+        },
+        {
+          "widget": "kpi-new-in-30-days",
+          "label": "New in the last 30 days",
+          "format": "number",
+          "value": 8,
+          "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise' AND c.signup_date > DATE '2026-09-30' - INTERVAL 30 DAY AND c.signup_date <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-repeat-buyers",
+          "label": "Repeat buyers %",
+          "format": "percent",
+          "value": 64.89,
+          "sql": "SELECT round(100.0 * count(CASE WHEN n > 1 THEN 1 END) / count(*), 2) FROM (SELECT c.customer_id, (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled') AS n FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise')"
+        },
+        {
+          "widget": "chart-segment-mix-largest",
+          "label": "Largest segment",
+          "format": "text",
+          "value": "Enterprise",
+          "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise' GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": "channel-referral",
+      "params": {
+        "segment": "All",
+        "acquisitionChannel": [
+          "referral"
+        ]
+      },
+      "changed": {
+        "acquisitionChannel": [
+          "referral"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "kpi-customers",
+          "label": "Customers",
+          "format": "number",
+          "value": 898,
+          "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral')"
+        },
+        {
+          "widget": "kpi-new-in-30-days",
+          "label": "New in the last 30 days",
+          "format": "number",
+          "value": 30,
+          "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral') AND c.signup_date > DATE '2026-09-30' - INTERVAL 30 DAY AND c.signup_date <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-repeat-buyers",
+          "label": "Repeat buyers %",
+          "format": "percent",
+          "value": 59.91,
+          "sql": "SELECT round(100.0 * count(CASE WHEN n > 1 THEN 1 END) / count(*), 2) FROM (SELECT c.customer_id, (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled') AS n FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral'))"
+        },
+        {
+          "widget": "chart-segment-mix-largest",
+          "label": "Largest segment",
+          "format": "text",
+          "value": "Consumer",
+          "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral') GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-new-customers-per-month-by-channel",
+      "bucket": "month x channel, partner and email folded into Other",
+      "threshold": 20,
+      "observed": 3,
+      "rule": "each series of a split line",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2024-01-01' GROUP BY date_trunc('month', c.signup_date), CASE WHEN c.acquisition_channel IN ('partner', 'email') THEN 'Other' ELSE c.acquisition_channel END)",
+      "shortfall": true
+    },
+    {
+      "widget": "chart-new-customers-per-month-by-channel",
+      "bucket": "month",
+      "threshold": 20,
+      "observed": 1,
+      "rule": "each series of a split or filtered line",
+      "over": "segment-enterprise",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise' AND c.signup_date >= DATE '2024-01-01' GROUP BY date_trunc('month', c.signup_date))",
+      "shortfall": true
+    },
+    {
+      "widget": "chart-new-customers-per-month-by-channel",
+      "bucket": "month",
+      "threshold": 20,
+      "observed": 8,
+      "rule": "each series of a split or filtered line",
+      "over": "channel-referral",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral') AND c.signup_date >= DATE '2024-01-01' GROUP BY date_trunc('month', c.signup_date))",
+      "shortfall": true
+    }
+  ]
+}

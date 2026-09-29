@@ -1,0 +1,176 @@
+{
+  "id": "dd-product-performance",
+  "index": 5,
+  "title": "Product Performance",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "category": "All",
+    "topN": 10
+  },
+  "kpis": [
+    {
+      "widget": "kpi-products",
+      "label": "Products in scope",
+      "format": "number",
+      "value": 200,
+      "sql": "SELECT count(*) FROM dash_demo.products p WHERE true"
+    },
+    {
+      "widget": "chart-top-by-margin-first",
+      "label": "Best product by gross margin",
+      "format": "text",
+      "value": "AeroDesk Pro",
+      "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1"
+    },
+    {
+      "widget": "chart-bubble-aerodesk-return-rate",
+      "label": "AeroDesk Pro return rate from April 2026",
+      "format": "percent",
+      "value": 17.5,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')"
+    },
+    {
+      "widget": "chart-scatter-low-rated-units-pct",
+      "label": "Units per product, rated under 3.5 against the rest",
+      "format": "percent",
+      "value": 57.64,
+      "sql": "SELECT round(100.0 * (sum(CASE WHEN p.rating < 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating < 3.5 THEN p.product_id END)) / (sum(CASE WHEN p.rating >= 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating >= 3.5 THEN p.product_id END)), 2) FROM dash_demo.products p JOIN dash_demo.order_lines l USING (product_id)"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "top-n-5",
+      "params": {
+        "category": "All",
+        "topN": 5
+      },
+      "changed": {
+        "topN": 5
+      },
+      "kpis": [
+        {
+          "widget": "kpi-products",
+          "label": "Products in scope",
+          "format": "number",
+          "value": 200,
+          "sql": "SELECT count(*) FROM dash_demo.products p WHERE true"
+        },
+        {
+          "widget": "chart-top-by-margin-first",
+          "label": "Best product by gross margin",
+          "format": "text",
+          "value": "AeroDesk Pro",
+          "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-bubble-aerodesk-return-rate",
+          "label": "AeroDesk Pro return rate from April 2026",
+          "format": "percent",
+          "value": 17.5,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')"
+        },
+        {
+          "widget": "chart-scatter-low-rated-units-pct",
+          "label": "Units per product, rated under 3.5 against the rest",
+          "format": "percent",
+          "value": 57.64,
+          "sql": "SELECT round(100.0 * (sum(CASE WHEN p.rating < 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating < 3.5 THEN p.product_id END)) / (sum(CASE WHEN p.rating >= 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating >= 3.5 THEN p.product_id END)), 2) FROM dash_demo.products p JOIN dash_demo.order_lines l USING (product_id)"
+        }
+      ]
+    },
+    {
+      "id": "category-office-furniture",
+      "params": {
+        "category": "Office Furniture",
+        "topN": 5
+      },
+      "changed": {
+        "category": "Office Furniture",
+        "topN": 5
+      },
+      "kpis": [
+        {
+          "widget": "kpi-products",
+          "label": "Products in scope",
+          "format": "number",
+          "value": 30,
+          "sql": "SELECT count(*) FROM dash_demo.products p WHERE true AND p.category = 'Office Furniture'"
+        },
+        {
+          "widget": "chart-top-by-margin-first",
+          "label": "Best product by gross margin",
+          "format": "text",
+          "value": "AeroDesk Pro",
+          "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' AND p.category = 'Office Furniture' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-bubble-aerodesk-return-rate",
+          "label": "AeroDesk Pro return rate from April 2026",
+          "format": "percent",
+          "value": 17.5,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')"
+        },
+        {
+          "widget": "chart-scatter-low-rated-units-pct",
+          "label": "Units per product, rated under 3.5 against the rest",
+          "format": "percent",
+          "value": 57.64,
+          "sql": "SELECT round(100.0 * (sum(CASE WHEN p.rating < 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating < 3.5 THEN p.product_id END)) / (sum(CASE WHEN p.rating >= 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating >= 3.5 THEN p.product_id END)), 2) FROM dash_demo.products p JOIN dash_demo.order_lines l USING (product_id)"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-top-n-by-margin",
+      "bucket": "product",
+      "threshold": 50,
+      "observed": 199,
+      "rule": "a top-N or bottom-N list needs 5xN candidates",
+      "over": "defaults",
+      "sql": "SELECT count(DISTINCT l.product_id) FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled'"
+    },
+    {
+      "widget": "named-guarantee-aerodesk-orders-a-month",
+      "bucket": "month from April 2026",
+      "threshold": 30,
+      "observed": 33,
+      "rule": "AeroDesk Pro sells in at least 30 orders every month from April 2026",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro') GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "named-guarantee-aerodesk-orders-a-month-before",
+      "bucket": "month before April 2026",
+      "threshold": 20,
+      "observed": 23,
+      "rule": "and at least 20 a month before",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.order_ts < DATE '2026-04-01' AND o.order_ts >= DATE '2024-01-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro') GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "chart-top-n-by-margin",
+      "bucket": "product",
+      "threshold": 25,
+      "observed": 199,
+      "rule": "a top-N or bottom-N list needs 5xN candidates",
+      "over": "top-n-5",
+      "sql": "SELECT count(DISTINCT l.product_id) FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled'"
+    },
+    {
+      "widget": "chart-top-n-by-margin",
+      "bucket": "product",
+      "threshold": 25,
+      "observed": 30,
+      "rule": "a top-N or bottom-N list needs 5xN candidates",
+      "over": "category-office-furniture",
+      "sql": "SELECT count(DISTINCT l.product_id) FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' AND p.category = 'Office Furniture'"
+    }
+  ]
+}

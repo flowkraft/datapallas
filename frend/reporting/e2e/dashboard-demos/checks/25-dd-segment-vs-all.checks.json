@@ -1,0 +1,205 @@
+{
+  "id": "dd-segment-vs-all",
+  "index": 25,
+  "title": "Segment vs Everyone",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "country": "Poland"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-aov-here",
+      "label": "AOV here",
+      "format": "currency",
+      "value": 1944.91,
+      "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country = 'Poland'"
+    },
+    {
+      "widget": "kpi-aov-everywhere",
+      "label": "AOV everywhere",
+      "format": "currency",
+      "value": 2756.55,
+      "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'"
+    },
+    {
+      "widget": "kpi-return-rate-here",
+      "label": "Return rate here",
+      "format": "percent",
+      "value": 5.93,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Poland'"
+    },
+    {
+      "widget": "kpi-return-rate-everywhere",
+      "label": "Return rate everywhere",
+      "format": "percent",
+      "value": 5.97,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o"
+    },
+    {
+      "widget": "chart-category-share-here-top",
+      "label": "Largest category here",
+      "format": "text",
+      "value": "Laptops",
+      "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Poland' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1"
+    },
+    {
+      "widget": "chart-channel-mix-here-mobile-app",
+      "label": "Mobile app share of orders here",
+      "format": "percent",
+      "value": 21.37,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Poland'"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "country-germany",
+      "params": {
+        "country": "Germany"
+      },
+      "changed": {
+        "country": "Germany"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-aov-here",
+          "label": "AOV here",
+          "format": "currency",
+          "value": 3094.77,
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country = 'Germany'"
+        },
+        {
+          "widget": "kpi-aov-everywhere",
+          "label": "AOV everywhere",
+          "format": "currency",
+          "value": 2756.55,
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'"
+        },
+        {
+          "widget": "kpi-return-rate-here",
+          "label": "Return rate here",
+          "format": "percent",
+          "value": 6.58,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Germany'"
+        },
+        {
+          "widget": "kpi-return-rate-everywhere",
+          "label": "Return rate everywhere",
+          "format": "percent",
+          "value": 5.97,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o"
+        },
+        {
+          "widget": "chart-category-share-here-top",
+          "label": "Largest category here",
+          "format": "text",
+          "value": "Laptops",
+          "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Germany' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-channel-mix-here-mobile-app",
+          "label": "Mobile app share of orders here",
+          "format": "percent",
+          "value": 20.96,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Germany'"
+        }
+      ]
+    },
+    {
+      "id": "country-japan",
+      "params": {
+        "country": "Japan"
+      },
+      "changed": {
+        "country": "Japan"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-aov-here",
+          "label": "AOV here",
+          "format": "currency",
+          "value": 3847.79,
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country = 'Japan'"
+        },
+        {
+          "widget": "kpi-aov-everywhere",
+          "label": "AOV everywhere",
+          "format": "currency",
+          "value": 2756.55,
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'"
+        },
+        {
+          "widget": "kpi-return-rate-here",
+          "label": "Return rate here",
+          "format": "percent",
+          "value": 5.84,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Japan'"
+        },
+        {
+          "widget": "kpi-return-rate-everywhere",
+          "label": "Return rate everywhere",
+          "format": "percent",
+          "value": 5.97,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o"
+        },
+        {
+          "widget": "chart-category-share-here-top",
+          "label": "Largest category here",
+          "format": "text",
+          "value": "Laptops",
+          "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Japan' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-channel-mix-here-mobile-app",
+          "label": "Mobile app share of orders here",
+          "format": "percent",
+          "value": 25.06,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Japan'"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-quarterly-index",
+      "bucket": "quarter",
+      "threshold": 30,
+      "observed": 100,
+      "rule": "a quarterly line for one segment needs 30 per quarter, which is why this demo is quarterly and not monthly",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country = 'Poland' GROUP BY date_trunc('quarter', o.order_ts))"
+    },
+    {
+      "widget": "filter-country-options",
+      "bucket": "country offered for comparison, orders in the whole period",
+      "threshold": 400,
+      "observed": 588,
+      "rule": "the select offers only countries with at least 400 orders (HAVING COUNT(*) >= 400)",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id GROUP BY g.country HAVING count(*) >= 400)"
+    },
+    {
+      "widget": "chart-quarterly-index",
+      "bucket": "quarter",
+      "threshold": 30,
+      "observed": 190,
+      "rule": "a quarterly line for one segment needs 30 per quarter, which is why this demo is quarterly and not monthly",
+      "over": "country-germany",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country = 'Germany' GROUP BY date_trunc('quarter', o.order_ts))"
+    },
+    {
+      "widget": "chart-quarterly-index",
+      "bucket": "quarter",
+      "threshold": 30,
+      "observed": 43,
+      "rule": "a quarterly line for one segment needs 30 per quarter, which is why this demo is quarterly and not monthly",
+      "over": "country-japan",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country = 'Japan' GROUP BY date_trunc('quarter', o.order_ts))"
+    }
+  ]
+}

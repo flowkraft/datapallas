@@ -1,0 +1,217 @@
+{
+  "id": "dd-inventory",
+  "index": 19,
+  "title": "Inventory & Stock Health",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "warehouse": "All",
+    "belowReorderOnly": true,
+    "category": []
+  },
+  "kpis": [
+    {
+      "widget": "kpi-stock-value",
+      "label": "Stock value",
+      "format": "currency",
+      "value": 77966532.24,
+      "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true"
+    },
+    {
+      "widget": "kpi-skus-below-reorder",
+      "label": "SKUs below reorder level",
+      "format": "number",
+      "value": 14,
+      "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE sl.qty_on_hand < sl.reorder_level"
+    },
+    {
+      "widget": "kpi-slow-mover-value",
+      "label": "Slow-mover value, no sale in 90 days",
+      "format": "currency",
+      "value": 62110.83,
+      "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY)"
+    },
+    {
+      "widget": "table-stock-rows",
+      "label": "Rows in the stock table",
+      "format": "number",
+      "value": 14,
+      "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND sl.qty_on_hand < sl.reorder_level"
+    },
+    {
+      "widget": "chart-space-used-rotterdam",
+      "label": "Rotterdam DC, % of capacity",
+      "format": "percent",
+      "value": 94.0,
+      "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "warehouse-rotterdam",
+      "params": {
+        "warehouse": "Rotterdam DC",
+        "belowReorderOnly": true,
+        "category": []
+      },
+      "changed": {
+        "warehouse": "Rotterdam DC"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-stock-value",
+          "label": "Stock value",
+          "format": "currency",
+          "value": 31969768.6,
+          "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND sl.warehouse_id = (SELECT warehouse_id FROM dash_demo.warehouses WHERE name = 'Rotterdam DC')"
+        },
+        {
+          "widget": "kpi-skus-below-reorder",
+          "label": "SKUs below reorder level",
+          "format": "number",
+          "value": 4,
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE sl.qty_on_hand < sl.reorder_level AND sl.warehouse_id = (SELECT warehouse_id FROM dash_demo.warehouses WHERE name = 'Rotterdam DC')"
+        },
+        {
+          "widget": "kpi-slow-mover-value",
+          "label": "Slow-mover value, no sale in 90 days",
+          "format": "currency",
+          "value": 6800.67,
+          "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY) AND sl.warehouse_id = (SELECT warehouse_id FROM dash_demo.warehouses WHERE name = 'Rotterdam DC')"
+        },
+        {
+          "widget": "table-stock-rows",
+          "label": "Rows in the stock table",
+          "format": "number",
+          "value": 4,
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND sl.warehouse_id = (SELECT warehouse_id FROM dash_demo.warehouses WHERE name = 'Rotterdam DC') AND sl.qty_on_hand < sl.reorder_level"
+        },
+        {
+          "widget": "chart-space-used-rotterdam",
+          "label": "Rotterdam DC, % of capacity",
+          "format": "percent",
+          "value": 94.0,
+          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+        }
+      ]
+    },
+    {
+      "id": "below-reorder-off",
+      "params": {
+        "warehouse": "All",
+        "belowReorderOnly": false,
+        "category": []
+      },
+      "changed": {
+        "belowReorderOnly": false
+      },
+      "kpis": [
+        {
+          "widget": "kpi-stock-value",
+          "label": "Stock value",
+          "format": "currency",
+          "value": 77966532.24,
+          "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true"
+        },
+        {
+          "widget": "kpi-skus-below-reorder",
+          "label": "SKUs below reorder level",
+          "format": "number",
+          "value": 14,
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE sl.qty_on_hand < sl.reorder_level"
+        },
+        {
+          "widget": "kpi-slow-mover-value",
+          "label": "Slow-mover value, no sale in 90 days",
+          "format": "currency",
+          "value": 62110.83,
+          "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY)"
+        },
+        {
+          "widget": "table-stock-rows",
+          "label": "Rows in the stock table",
+          "format": "number",
+          "value": 1000,
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true"
+        },
+        {
+          "widget": "chart-space-used-rotterdam",
+          "label": "Rotterdam DC, % of capacity",
+          "format": "percent",
+          "value": 94.0,
+          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+        }
+      ]
+    },
+    {
+      "id": "category-office-and-smart-home",
+      "params": {
+        "warehouse": "All",
+        "belowReorderOnly": true,
+        "category": [
+          "Office Furniture",
+          "Smart Home"
+        ]
+      },
+      "changed": {
+        "category": [
+          "Office Furniture",
+          "Smart Home"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "kpi-stock-value",
+          "label": "Stock value",
+          "format": "currency",
+          "value": 12391869.03,
+          "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND pr.category IN ('Office Furniture', 'Smart Home')"
+        },
+        {
+          "widget": "kpi-skus-below-reorder",
+          "label": "SKUs below reorder level",
+          "format": "number",
+          "value": 4,
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE sl.qty_on_hand < sl.reorder_level AND pr.category IN ('Office Furniture', 'Smart Home')"
+        },
+        {
+          "widget": "kpi-slow-mover-value",
+          "label": "Slow-mover value, no sale in 90 days",
+          "format": "currency",
+          "value": null,
+          "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY) AND pr.category IN ('Office Furniture', 'Smart Home')"
+        },
+        {
+          "widget": "table-stock-rows",
+          "label": "Rows in the stock table",
+          "format": "number",
+          "value": 4,
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND pr.category IN ('Office Furniture', 'Smart Home') AND sl.qty_on_hand < sl.reorder_level"
+        },
+        {
+          "widget": "chart-space-used-rotterdam",
+          "label": "Rotterdam DC, % of capacity",
+          "format": "percent",
+          "value": 94.0,
+          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "named-guarantee-below-reorder",
+      "bucket": "SKUs below reorder level",
+      "threshold": 14,
+      "observed": 14,
+      "rule": "at least 14 SKUs below reorder, so the default list is a real day's work",
+      "over": "defaults",
+      "sql": "SELECT count(*) FROM dash_demo.stock_levels sl WHERE sl.qty_on_hand < sl.reorder_level"
+    }
+  ]
+}

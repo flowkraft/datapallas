@@ -1,0 +1,204 @@
+{
+  "id": "dd-invoices",
+  "index": 13,
+  "title": "Invoices & Billing",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "status": [],
+    "customerId": "All",
+    "customerLabel": "All",
+    "issuedFrom": "2026-01-01",
+    "issuedTo": "2026-09-30"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-billed-this-month",
+      "label": "Billed this month",
+      "format": "currency",
+      "value": 1098189.32,
+      "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE date_trunc('month', issue_date) = date_trunc('month', DATE '2026-09-30')"
+    },
+    {
+      "widget": "kpi-collected-this-month",
+      "label": "Collected this month",
+      "format": "currency",
+      "value": 827603.01,
+      "sql": "SELECT round(sum(amount), 2) FROM dash_demo.invoice_payments WHERE date_trunc('month', paid_date) = date_trunc('month', DATE '2026-09-30')"
+    },
+    {
+      "widget": "kpi-open-amount",
+      "label": "Open amount",
+      "format": "currency",
+      "value": 1637606.29,
+      "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status IN ('open', 'overdue', 'partially_paid')"
+    },
+    {
+      "widget": "kpi-overdue-amount",
+      "label": "Overdue amount",
+      "format": "currency",
+      "value": 201658.32,
+      "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status = 'overdue'"
+    },
+    {
+      "widget": "table-invoices-in-scope",
+      "label": "Invoices in scope",
+      "format": "number",
+      "value": 3237,
+      "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "chart-billed-by-source-order-share",
+      "label": "Billed from trade orders %",
+      "format": "percent",
+      "value": 98.62,
+      "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "status-overdue",
+      "params": {
+        "status": [
+          "overdue"
+        ],
+        "customerId": "All",
+        "customerLabel": "All",
+        "issuedFrom": "2026-01-01",
+        "issuedTo": "2026-09-30"
+      },
+      "changed": {
+        "status": [
+          "overdue"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "kpi-billed-this-month",
+          "label": "Billed this month",
+          "format": "currency",
+          "value": 1098189.32,
+          "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE date_trunc('month', issue_date) = date_trunc('month', DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-collected-this-month",
+          "label": "Collected this month",
+          "format": "currency",
+          "value": 827603.01,
+          "sql": "SELECT round(sum(amount), 2) FROM dash_demo.invoice_payments WHERE date_trunc('month', paid_date) = date_trunc('month', DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-open-amount",
+          "label": "Open amount",
+          "format": "currency",
+          "value": 1637606.29,
+          "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status IN ('open', 'overdue', 'partially_paid')"
+        },
+        {
+          "widget": "kpi-overdue-amount",
+          "label": "Overdue amount",
+          "format": "currency",
+          "value": 201658.32,
+          "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status = 'overdue'"
+        },
+        {
+          "widget": "table-invoices-in-scope",
+          "label": "Invoices in scope",
+          "format": "number",
+          "value": 38,
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.status IN ('overdue')"
+        },
+        {
+          "widget": "chart-billed-by-source-order-share",
+          "label": "Billed from trade orders %",
+          "format": "percent",
+          "value": 97.47,
+          "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.status IN ('overdue')"
+        }
+      ]
+    },
+    {
+      "id": "customer-helix",
+      "params": {
+        "status": [],
+        "customerId": 1017,
+        "customerLabel": "Helix Retail Group",
+        "issuedFrom": "2026-01-01",
+        "issuedTo": "2026-09-30"
+      },
+      "changed": {
+        "customerId": 1017,
+        "customerLabel": "Helix Retail Group"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-billed-this-month",
+          "label": "Billed this month",
+          "format": "currency",
+          "value": 1098189.32,
+          "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE date_trunc('month', issue_date) = date_trunc('month', DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-collected-this-month",
+          "label": "Collected this month",
+          "format": "currency",
+          "value": 827603.01,
+          "sql": "SELECT round(sum(amount), 2) FROM dash_demo.invoice_payments WHERE date_trunc('month', paid_date) = date_trunc('month', DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-open-amount",
+          "label": "Open amount",
+          "format": "currency",
+          "value": 1637606.29,
+          "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status IN ('open', 'overdue', 'partially_paid')"
+        },
+        {
+          "widget": "kpi-overdue-amount",
+          "label": "Overdue amount",
+          "format": "currency",
+          "value": 201658.32,
+          "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status = 'overdue'"
+        },
+        {
+          "widget": "table-invoices-in-scope",
+          "label": "Invoices in scope",
+          "format": "number",
+          "value": 29,
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.customer_id = 1017"
+        },
+        {
+          "widget": "chart-billed-by-source-order-share",
+          "label": "Billed from trade orders %",
+          "format": "percent",
+          "value": 100.0,
+          "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.customer_id = 1017"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-billed-per-month-by-status",
+      "bucket": "month",
+      "threshold": 300,
+      "observed": 308,
+      "rule": "a monthly bar of events, company totals",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY date_trunc('month', i.issue_date))"
+    },
+    {
+      "widget": "chart-top-10-customers-by-billed",
+      "bucket": "customer",
+      "threshold": 50,
+      "observed": 738,
+      "rule": "a top-N list needs 5xN candidates (N = 10)",
+      "over": "defaults",
+      "sql": "SELECT count(DISTINCT i.customer_id) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY"
+    }
+  ]
+}

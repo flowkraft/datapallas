@@ -1,0 +1,197 @@
+{
+  "id": "dd-metric-deep-dive",
+  "index": 24,
+  "title": "One Metric, Every Angle",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "metric": "Revenue"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-metric-ytd",
+      "label": "The chosen metric, year to date",
+      "format": "number",
+      "value": 18326301.98,
+      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30'"
+    },
+    {
+      "widget": "kpi-metric-last-year",
+      "label": "The chosen metric, the same period last year",
+      "format": "number",
+      "value": 15632222.51,
+      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01'"
+    },
+    {
+      "widget": "kpi-vs-last-year",
+      "label": "vs last year %",
+      "format": "percent",
+      "value": 17.23,
+      "sql": "SELECT round(100.0 * ((SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30') / (SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01') - 1), 2)"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "metric-orders",
+      "params": {
+        "metric": "Orders"
+      },
+      "changed": {
+        "metric": "Orders"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-metric-ytd",
+          "label": "The chosen metric, year to date",
+          "format": "number",
+          "value": 7056,
+          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-metric-last-year",
+          "label": "The chosen metric, the same period last year",
+          "format": "number",
+          "value": 5558,
+          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01'"
+        },
+        {
+          "widget": "kpi-vs-last-year",
+          "label": "vs last year %",
+          "format": "percent",
+          "value": 26.95,
+          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01') - 1), 2)"
+        }
+      ]
+    },
+    {
+      "id": "metric-new-customers",
+      "params": {
+        "metric": "New customers"
+      },
+      "changed": {
+        "metric": "New customers"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-metric-ytd",
+          "label": "The chosen metric, year to date",
+          "format": "number",
+          "value": 1185,
+          "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2026-01-01' AND c.signup_date <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-metric-last-year",
+          "label": "The chosen metric, the same period last year",
+          "format": "number",
+          "value": 988,
+          "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2025-01-01' AND c.signup_date < DATE '2025-10-01'"
+        },
+        {
+          "widget": "kpi-vs-last-year",
+          "label": "vs last year %",
+          "format": "percent",
+          "value": 19.94,
+          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2026-01-01' AND c.signup_date <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2025-01-01' AND c.signup_date < DATE '2025-10-01') - 1), 2)"
+        }
+      ]
+    },
+    {
+      "id": "metric-tickets",
+      "params": {
+        "metric": "Tickets"
+      },
+      "changed": {
+        "metric": "Tickets"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-metric-ytd",
+          "label": "The chosen metric, year to date",
+          "format": "number",
+          "value": 4158,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2026-01-01' AND t.opened_ts <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-metric-last-year",
+          "label": "The chosen metric, the same period last year",
+          "format": "number",
+          "value": 3783,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-01-01' AND t.opened_ts < DATE '2025-10-01'"
+        },
+        {
+          "widget": "kpi-vs-last-year",
+          "label": "vs last year %",
+          "format": "percent",
+          "value": 9.91,
+          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2026-01-01' AND t.opened_ts <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-01-01' AND t.opened_ts < DATE '2025-10-01') - 1), 2)"
+        }
+      ]
+    },
+    {
+      "id": "metric-payroll-cost",
+      "params": {
+        "metric": "Payroll cost"
+      },
+      "changed": {
+        "metric": "Payroll cost"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-metric-ytd",
+          "label": "The chosen metric, year to date",
+          "format": "number",
+          "value": 9336144.13,
+          "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2026-01-01' AND pl.period_month <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-metric-last-year",
+          "label": "The chosen metric, the same period last year",
+          "format": "number",
+          "value": 8672735.83,
+          "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2025-01-01' AND pl.period_month < DATE '2025-10-01'"
+        },
+        {
+          "widget": "kpi-vs-last-year",
+          "label": "vs last year %",
+          "format": "percent",
+          "value": 7.65,
+          "sql": "SELECT round(100.0 * ((SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2026-01-01' AND pl.period_month <= DATE '2026-09-30') / (SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2025-01-01' AND pl.period_month < DATE '2025-10-01') - 1), 2)"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-metric-over-time",
+      "bucket": "month",
+      "threshold": 300,
+      "observed": 322,
+      "rule": "a monthly line of events, company totals",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-01-01' GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "chart-metric-over-time",
+      "bucket": "month",
+      "threshold": 300,
+      "observed": 322,
+      "rule": "a monthly line of events, company totals",
+      "over": "metric-orders",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2024-01-01' GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "chart-metric-over-time",
+      "bucket": "month",
+      "threshold": 300,
+      "observed": 356,
+      "rule": "a monthly line of events, company totals",
+      "over": "metric-tickets",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2024-01-01' GROUP BY date_trunc('month', t.opened_ts))"
+    }
+  ]
+}

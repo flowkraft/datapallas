@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Demo Finance</name>
+    <description>The invoices: what was billed, what is still open, what is overdue, by issue month, status, customer segment and country. Runs on the dash_demo dashboards demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>

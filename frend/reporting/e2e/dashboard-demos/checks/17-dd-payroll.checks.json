@@ -1,0 +1,133 @@
+{
+  "id": "dd-payroll",
+  "index": 17,
+  "title": "Payroll Cost",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "period": "2026-09",
+    "department": []
+  },
+  "kpis": [
+    {
+      "widget": "kpi-payroll-cost",
+      "label": "Payroll cost in the period",
+      "format": "currency",
+      "value": 1025353.39,
+      "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01'"
+    },
+    {
+      "widget": "kpi-average-gross-pay",
+      "label": "Average gross pay",
+      "format": "currency",
+      "value": 3846.1,
+      "sql": "SELECT round(avg(pl.gross_pay), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01'"
+    },
+    {
+      "widget": "kpi-overtime-hours",
+      "label": "Overtime hours",
+      "format": "number",
+      "value": 230.6,
+      "sql": "SELECT round(sum(pl.overtime_hours), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01'"
+    },
+    {
+      "widget": "chart-warehouse-overtime-november-december",
+      "label": "Warehouse overtime in November and December against the rest",
+      "format": "number",
+      "value": 2.98,
+      "sql": "SELECT round((SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) IN (11, 12)) / (SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) NOT IN (11, 12)), 2)"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "department-warehouse",
+      "params": {
+        "period": "2026-09",
+        "department": [
+          "Warehouse"
+        ]
+      },
+      "changed": {
+        "department": [
+          "Warehouse"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "kpi-payroll-cost",
+          "label": "Payroll cost in the period",
+          "format": "currency",
+          "value": 185763.88,
+          "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01' AND d.name IN ('Warehouse')"
+        },
+        {
+          "widget": "kpi-average-gross-pay",
+          "label": "Average gross pay",
+          "format": "currency",
+          "value": 3185.17,
+          "sql": "SELECT round(avg(pl.gross_pay), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01' AND d.name IN ('Warehouse')"
+        },
+        {
+          "widget": "kpi-overtime-hours",
+          "label": "Overtime hours",
+          "format": "number",
+          "value": 181.3,
+          "sql": "SELECT round(sum(pl.overtime_hours), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01' AND d.name IN ('Warehouse')"
+        },
+        {
+          "widget": "chart-warehouse-overtime-november-december",
+          "label": "Warehouse overtime in November and December against the rest",
+          "format": "number",
+          "value": 2.98,
+          "sql": "SELECT round((SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) IN (11, 12)) / (SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) NOT IN (11, 12)), 2)"
+        }
+      ]
+    },
+    {
+      "id": "period-2025-11",
+      "params": {
+        "period": "2025-11",
+        "department": []
+      },
+      "changed": {
+        "period": "2025-11"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-payroll-cost",
+          "label": "Payroll cost in the period",
+          "format": "currency",
+          "value": 1021863.15,
+          "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2025-11-01'"
+        },
+        {
+          "widget": "kpi-average-gross-pay",
+          "label": "Average gross pay",
+          "format": "currency",
+          "value": 3948.08,
+          "sql": "SELECT round(avg(pl.gross_pay), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2025-11-01'"
+        },
+        {
+          "widget": "kpi-overtime-hours",
+          "label": "Overtime hours",
+          "format": "number",
+          "value": 596.4,
+          "sql": "SELECT round(sum(pl.overtime_hours), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2025-11-01'"
+        },
+        {
+          "widget": "chart-warehouse-overtime-november-december",
+          "label": "Warehouse overtime in November and December against the rest",
+          "format": "number",
+          "value": 2.98,
+          "sql": "SELECT round((SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) IN (11, 12)) / (SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) NOT IN (11, 12)), 2)"
+        }
+      ]
+    }
+  ],
+  "density": []
+}

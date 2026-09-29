@@ -1,0 +1,131 @@
+{
+  "id": "dd-table-profile",
+  "index": 23,
+  "title": "Table Profile",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "tableName": "support_tickets",
+    "columnName": "priority"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-rows",
+      "label": "Rows",
+      "format": "number",
+      "value": 14000,
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets"
+    },
+    {
+      "widget": "kpi-columns",
+      "label": "Columns",
+      "format": "number",
+      "value": 15,
+      "sql": "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = 'support_tickets'"
+    },
+    {
+      "widget": "chart-distribution-distinct-values",
+      "label": "Distinct values of the column",
+      "format": "number",
+      "value": 4,
+      "sql": "SELECT count(DISTINCT priority) FROM dash_demo.support_tickets"
+    },
+    {
+      "widget": "chart-distribution-largest-bucket",
+      "label": "Largest bucket of the column",
+      "format": "text",
+      "value": "normal",
+      "sql": "SELECT priority::VARCHAR FROM dash_demo.support_tickets GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 1"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "orders-total-amount",
+      "params": {
+        "tableName": "orders",
+        "columnName": "total_amount"
+      },
+      "changed": {
+        "tableName": "orders",
+        "columnName": "total_amount"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-rows",
+          "label": "Rows",
+          "format": "number",
+          "value": 24000,
+          "sql": "SELECT count(*) FROM dash_demo.orders"
+        },
+        {
+          "widget": "kpi-columns",
+          "label": "Columns",
+          "format": "number",
+          "value": 18,
+          "sql": "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = 'orders'"
+        },
+        {
+          "widget": "chart-distribution-distinct-values",
+          "label": "Distinct values of the column",
+          "format": "number",
+          "value": 23162,
+          "sql": "SELECT count(DISTINCT total_amount) FROM dash_demo.orders"
+        },
+        {
+          "widget": "chart-distribution-largest-bucket",
+          "label": "Largest bucket of the column",
+          "format": "text",
+          "value": "1499.83",
+          "sql": "SELECT total_amount::VARCHAR FROM dash_demo.orders GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": "customers-segment",
+      "params": {
+        "tableName": "customers",
+        "columnName": "segment"
+      },
+      "changed": {
+        "tableName": "customers",
+        "columnName": "segment"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-rows",
+          "label": "Rows",
+          "format": "number",
+          "value": 5000,
+          "sql": "SELECT count(*) FROM dash_demo.customers"
+        },
+        {
+          "widget": "kpi-columns",
+          "label": "Columns",
+          "format": "number",
+          "value": 12,
+          "sql": "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = 'customers'"
+        },
+        {
+          "widget": "chart-distribution-distinct-values",
+          "label": "Distinct values of the column",
+          "format": "number",
+          "value": 3,
+          "sql": "SELECT count(DISTINCT segment) FROM dash_demo.customers"
+        },
+        {
+          "widget": "chart-distribution-largest-bucket",
+          "label": "Largest bucket of the column",
+          "format": "text",
+          "value": "Consumer",
+          "sql": "SELECT segment::VARCHAR FROM dash_demo.customers GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 1"
+        }
+      ]
+    }
+  ],
+  "density": []
+}

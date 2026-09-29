@@ -1,0 +1,105 @@
+[
+  {
+    "id": "billed-total",
+    "fromStory": null,
+    "question": "What have we invoiced?",
+    "text": "Tick **Billed** - the amount and the tax together, as the invoice was sent.",
+    "query": {
+      "dimensions": [],
+      "measures": [
+        "Billed",
+        "Invoices"
+      ]
+    }
+  },
+  {
+    "id": "billed-by-year",
+    "fromStory": null,
+    "question": "How much was invoiced each year?",
+    "text": "Tick **Billed** and **Invoices**, then add **Issued**, grouped by year.",
+    "query": {
+      "dimensions": [
+        "IssuedAt.year"
+      ],
+      "measures": [
+        "Billed",
+        "Invoices"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-quarter",
+        "text": "The same, by **quarter**.",
+        "query": {
+          "dimensions": [
+            "IssuedAt.quarter"
+          ],
+          "measures": [
+            "Billed",
+            "Invoices"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "invoices-by-status",
+    "fromStory": null,
+    "question": "Where do the invoices stand?",
+    "text": "Tick **Invoices** and **Billed**, then add **Status**.",
+    "query": {
+      "dimensions": [
+        "Status"
+      ],
+      "measures": [
+        "Invoices",
+        "Billed"
+      ]
+    }
+  },
+  {
+    "id": "receivables-by-segment",
+    "fromStory": null,
+    "question": "Who owes us, and who is late?",
+    "text": "Tick **Open Amount** and **Overdue Amount**, then add **Segment**.",
+    "query": {
+      "dimensions": [
+        "Segment"
+      ],
+      "measures": [
+        "OpenAmount",
+        "OverdueAmount"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-country",
+        "text": "The same, by **Country**.",
+        "query": {
+          "dimensions": [
+            "Country"
+          ],
+          "measures": [
+            "OpenAmount",
+            "OverdueAmount"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "billed-by-source",
+    "fromStory": null,
+    "question": "How much of the billing is the care plan, and how much is the orders?",
+    "text": "Tick **Billed** and **Invoices**, then add **Source**.",
+    "query": {
+      "dimensions": [
+        "Source"
+      ],
+      "measures": [
+        "Billed",
+        "Invoices"
+      ]
+    }
+  }
+]

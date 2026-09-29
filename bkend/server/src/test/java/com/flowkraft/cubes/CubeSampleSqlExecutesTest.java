@@ -85,12 +85,14 @@ class CubeSampleSqlExecutesTest {
 	 * files are - the domain folder it shares (northwind, crm-sales, ...), and for customer-invoices and
 	 * customer-payments one set of customer-billing files that holds both, each under its name. The cube_demo ten run on the DuckDB
 	 * sample, whose cube_demo schema holds their demo data; the Northwind five say in their own cube.xml which engine they ship on, and
-	 * shippedVendorOf reads it.
+	 * shippedVendorOf reads it. The three dashboards cubes (dd-sales, dd-finance, dd-support) run on
+	 * that same DuckDB sample, whose dash_demo schema holds the dashboards demo data.
 	 */
 	private static final List<String> SAMPLE_CUBES = List.of("northwind-sales", "northwind-customers", "northwind-hr",
 			"northwind-inventory", "northwind-warehouse", "online-sales", "shop-for-a-period", "sales-pipeline",
 			"support-desk", "freight-shipments", "student-enrollments", "customer-invoices", "customer-payments",
-			"invoice-balances", "customer-statement", "depot-network", "student-progress");
+			"invoice-balances", "customer-statement", "depot-network", "student-progress",
+			"dd-sales", "dd-finance", "dd-support");
 
 	/**
 	 * Students per Program is a first draft with mistakes in it, on purpose: a measure type that does not exist

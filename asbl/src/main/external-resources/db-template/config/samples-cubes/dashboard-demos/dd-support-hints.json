@@ -1,0 +1,115 @@
+[
+  {
+    "id": "tickets-total",
+    "fromStory": null,
+    "question": "How many tickets has the desk taken?",
+    "text": "Tick **Tickets**.",
+    "query": {
+      "dimensions": [],
+      "measures": [
+        "Tickets"
+      ]
+    },
+    "variants": [
+      {
+        "id": "still-open",
+        "text": "Add **Open Tickets** - the queue as it stands, next to the work that was done.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Tickets",
+            "OpenTickets"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "tickets-by-year",
+    "fromStory": null,
+    "question": "Is the desk taking more tickets than it used to?",
+    "text": "Tick **Tickets** and add **Opened**, grouped by year.",
+    "query": {
+      "dimensions": [
+        "OpenedAt.year"
+      ],
+      "measures": [
+        "Tickets"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-quarter",
+        "text": "The same, by **quarter**.",
+        "query": {
+          "dimensions": [
+            "OpenedAt.quarter"
+          ],
+          "measures": [
+            "Tickets"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "tickets-by-team",
+    "fromStory": null,
+    "question": "How is the work split between the teams?",
+    "text": "Tick **Tickets** and **Open Tickets**, then add **Team**.",
+    "query": {
+      "dimensions": [
+        "Team"
+      ],
+      "measures": [
+        "Tickets",
+        "OpenTickets"
+      ]
+    }
+  },
+  {
+    "id": "first-response-by-channel",
+    "fromStory": null,
+    "question": "Which channel waits longest for a first answer?",
+    "text": "Tick **Tickets** and **Average First Response Minutes**, then add **Channel**.",
+    "query": {
+      "dimensions": [
+        "Channel"
+      ],
+      "measures": [
+        "Tickets",
+        "AvgFirstResponseMinutes"
+      ]
+    }
+  },
+  {
+    "id": "csat-by-category",
+    "fromStory": null,
+    "question": "What are customers least happy about?",
+    "text": "Tick **Average CSAT** and **Tickets**, then add **Category** - only the tickets somebody scored count in the average.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "AvgCsat",
+        "Tickets"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-priority",
+        "text": "The same, by **Priority**.",
+        "query": {
+          "dimensions": [
+            "Priority"
+          ],
+          "measures": [
+            "AvgCsat",
+            "Tickets"
+          ]
+        }
+      }
+    ]
+  }
+]

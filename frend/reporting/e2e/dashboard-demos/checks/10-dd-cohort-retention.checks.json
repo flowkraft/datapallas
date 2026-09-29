@@ -1,0 +1,157 @@
+{
+  "id": "dd-cohort-retention",
+  "index": 10,
+  "title": "Cohort Retention",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "customerType": "all"
+  },
+  "kpis": [
+    {
+      "widget": "number-average-6-month-retention",
+      "label": "Average 6-month retention",
+      "format": "percent",
+      "value": 42.49,
+      "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2024-01-01' AND c.signup_date < DATE '2026-04-01'"
+    },
+    {
+      "widget": "pivot-cohorts",
+      "label": "Cohorts on the heatmap",
+      "format": "number",
+      "value": 51,
+      "sql": "SELECT count(DISTINCT date_trunc('month', c.signup_date)) FROM dash_demo.customers c WHERE true"
+    },
+    {
+      "widget": "chart-retention-curve-before",
+      "label": "6-month retention, cohorts before March 2025",
+      "format": "percent",
+      "value": 41.54,
+      "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2024-03-01' AND c.signup_date < DATE '2025-01-01'"
+    },
+    {
+      "widget": "chart-retention-curve-after",
+      "label": "6-month retention, cohorts after March 2025",
+      "format": "percent",
+      "value": 48.16,
+      "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2025-03-01' AND c.signup_date < DATE '2026-01-01'"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "customer-type-business",
+      "params": {
+        "customerType": "business"
+      },
+      "changed": {
+        "customerType": "business"
+      },
+      "kpis": [
+        {
+          "widget": "number-average-6-month-retention",
+          "label": "Average 6-month retention",
+          "format": "percent",
+          "value": 37.14,
+          "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2024-01-01' AND c.signup_date < DATE '2026-04-01' AND c.customer_type = 'business'"
+        },
+        {
+          "widget": "pivot-cohorts",
+          "label": "Cohorts on the heatmap",
+          "format": "number",
+          "value": 17,
+          "sql": "SELECT count(DISTINCT date_trunc('quarter', c.signup_date)) FROM dash_demo.customers c WHERE true AND c.customer_type = 'business'"
+        },
+        {
+          "widget": "chart-retention-curve-before",
+          "label": "6-month retention, cohorts before March 2025",
+          "format": "percent",
+          "value": 41.09,
+          "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2024-03-01' AND c.signup_date < DATE '2025-01-01' AND c.customer_type = 'business'"
+        },
+        {
+          "widget": "chart-retention-curve-after",
+          "label": "6-month retention, cohorts after March 2025",
+          "format": "percent",
+          "value": 39.43,
+          "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2025-03-01' AND c.signup_date < DATE '2026-01-01' AND c.customer_type = 'business'"
+        }
+      ]
+    },
+    {
+      "id": "customer-type-consumer",
+      "params": {
+        "customerType": "consumer"
+      },
+      "changed": {
+        "customerType": "consumer"
+      },
+      "kpis": [
+        {
+          "widget": "number-average-6-month-retention",
+          "label": "Average 6-month retention",
+          "format": "percent",
+          "value": 43.99,
+          "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2024-01-01' AND c.signup_date < DATE '2026-04-01' AND c.customer_type = 'consumer'"
+        },
+        {
+          "widget": "pivot-cohorts",
+          "label": "Cohorts on the heatmap",
+          "format": "number",
+          "value": 51,
+          "sql": "SELECT count(DISTINCT date_trunc('month', c.signup_date)) FROM dash_demo.customers c WHERE true AND c.customer_type = 'consumer'"
+        },
+        {
+          "widget": "chart-retention-curve-before",
+          "label": "6-month retention, cohorts before March 2025",
+          "format": "percent",
+          "value": 41.66,
+          "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2024-03-01' AND c.signup_date < DATE '2025-01-01' AND c.customer_type = 'consumer'"
+        },
+        {
+          "widget": "chart-retention-curve-after",
+          "label": "6-month retention, cohorts after March 2025",
+          "format": "percent",
+          "value": 50.56,
+          "sql": "SELECT round(100.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled' AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH AND o.order_ts < c.signup_date + INTERVAL 7 MONTH) THEN 1 END) / count(*), 2) FROM dash_demo.customers c WHERE c.signup_date >= DATE '2025-03-01' AND c.signup_date < DATE '2026-01-01' AND c.customer_type = 'consumer'"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "pivot-cohort-rows",
+      "bucket": "signup cohort",
+      "threshold": 100,
+      "observed": 86,
+      "rule": "a cohort row needs 100 people (monthly consumer cohorts, quarterly business cohorts)",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2024-01-01' GROUP BY date_trunc('month', c.signup_date))",
+      "shortfall": true
+    },
+    {
+      "widget": "pivot-cohort-rows",
+      "bucket": "signup cohort",
+      "threshold": 100,
+      "observed": 51,
+      "rule": "a cohort row needs 100 people (monthly consumer cohorts, quarterly business cohorts)",
+      "over": "customer-type-business",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.customers c WHERE true AND c.customer_type = 'business' AND c.signup_date >= DATE '2024-01-01' GROUP BY date_trunc('quarter', c.signup_date))",
+      "shortfall": true
+    },
+    {
+      "widget": "pivot-cohort-rows",
+      "bucket": "signup cohort",
+      "threshold": 100,
+      "observed": 66,
+      "rule": "a cohort row needs 100 people (monthly consumer cohorts, quarterly business cohorts)",
+      "over": "customer-type-consumer",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.customers c WHERE true AND c.customer_type = 'consumer' AND c.signup_date >= DATE '2024-01-01' GROUP BY date_trunc('month', c.signup_date))",
+      "shortfall": true
+    }
+  ]
+}

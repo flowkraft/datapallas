@@ -1,0 +1,255 @@
+{
+  "id": "dd-sales-overview",
+  "index": 2,
+  "title": "Sales Overview",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "dateFrom": "2025-01-01",
+    "dateTo": "2026-09-30",
+    "country": "All",
+    "channel": []
+  },
+  "kpis": [
+    {
+      "widget": "kpi-revenue",
+      "label": "Revenue",
+      "format": "currency",
+      "value": 43660173.5,
+      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-orders",
+      "label": "Orders",
+      "format": "number",
+      "value": 16483,
+      "sql": "SELECT count(*) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-average-order-value",
+      "label": "Average order value",
+      "format": "currency",
+      "value": 2648.8,
+      "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-customers-who-ordered",
+      "label": "Customers who ordered",
+      "format": "number",
+      "value": 3115,
+      "sql": "SELECT count(DISTINCT o.customer_id) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "country-germany",
+      "params": {
+        "dateFrom": "2025-01-01",
+        "dateTo": "2026-09-30",
+        "country": "Germany",
+        "channel": []
+      },
+      "changed": {
+        "country": "Germany"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-revenue",
+          "label": "Revenue",
+          "format": "currency",
+          "value": 7756048.11,
+          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND g.country = 'Germany'"
+        },
+        {
+          "widget": "kpi-orders",
+          "label": "Orders",
+          "format": "number",
+          "value": 2611,
+          "sql": "SELECT count(*) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND g.country = 'Germany'"
+        },
+        {
+          "widget": "kpi-average-order-value",
+          "label": "Average order value",
+          "format": "currency",
+          "value": 2970.53,
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND g.country = 'Germany'"
+        },
+        {
+          "widget": "kpi-customers-who-ordered",
+          "label": "Customers who ordered",
+          "format": "number",
+          "value": 510,
+          "sql": "SELECT count(DISTINCT o.customer_id) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND g.country = 'Germany'"
+        }
+      ]
+    },
+    {
+      "id": "channel-mobile-app",
+      "params": {
+        "dateFrom": "2025-01-01",
+        "dateTo": "2026-09-30",
+        "country": "All",
+        "channel": [
+          "mobile_app"
+        ]
+      },
+      "changed": {
+        "channel": [
+          "mobile_app"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "kpi-revenue",
+          "label": "Revenue",
+          "format": "currency",
+          "value": 4905531.46,
+          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.channel IN ('mobile_app')"
+        },
+        {
+          "widget": "kpi-orders",
+          "label": "Orders",
+          "format": "number",
+          "value": 3842,
+          "sql": "SELECT count(*) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.channel IN ('mobile_app')"
+        },
+        {
+          "widget": "kpi-average-order-value",
+          "label": "Average order value",
+          "format": "currency",
+          "value": 1276.82,
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.channel IN ('mobile_app')"
+        },
+        {
+          "widget": "kpi-customers-who-ordered",
+          "label": "Customers who ordered",
+          "format": "number",
+          "value": 1688,
+          "sql": "SELECT count(DISTINCT o.customer_id) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.channel IN ('mobile_app')"
+        }
+      ]
+    },
+    {
+      "id": "dates-q2-2026",
+      "params": {
+        "dateFrom": "2026-04-01",
+        "dateTo": "2026-06-30",
+        "country": "All",
+        "channel": []
+      },
+      "changed": {
+        "dateFrom": "2026-04-01",
+        "dateTo": "2026-06-30"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-revenue",
+          "label": "Revenue",
+          "format": "currency",
+          "value": 6898971.56,
+          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-04-01' AND o.order_ts < DATE '2026-06-30' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-orders",
+          "label": "Orders",
+          "format": "number",
+          "value": 2594,
+          "sql": "SELECT count(*) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-04-01' AND o.order_ts < DATE '2026-06-30' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-average-order-value",
+          "label": "Average order value",
+          "format": "currency",
+          "value": 2659.59,
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-04-01' AND o.order_ts < DATE '2026-06-30' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-customers-who-ordered",
+          "label": "Customers who ordered",
+          "format": "number",
+          "value": 1326,
+          "sql": "SELECT count(DISTINCT o.customer_id) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-04-01' AND o.order_ts < DATE '2026-06-30' + INTERVAL 1 DAY"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-revenue-per-month",
+      "bucket": "month",
+      "threshold": 300,
+      "observed": 433,
+      "rule": "a monthly line of events, company totals",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "table-top-products",
+      "bucket": "product",
+      "threshold": 100,
+      "observed": 199,
+      "rule": "a top-N list needs 5xN candidates (N = 20)",
+      "over": "defaults",
+      "sql": "SELECT count(DISTINCT l.product_id) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "chart-revenue-per-month",
+      "bucket": "month",
+      "threshold": 20,
+      "observed": 59,
+      "rule": "each series of a split or filtered line",
+      "over": "country-germany",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND g.country = 'Germany' GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "table-top-products",
+      "bucket": "product",
+      "threshold": 100,
+      "observed": 199,
+      "rule": "a top-N list needs 5xN candidates (N = 20)",
+      "over": "country-germany",
+      "sql": "SELECT count(DISTINCT l.product_id) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND g.country = 'Germany'"
+    },
+    {
+      "widget": "chart-revenue-per-month",
+      "bucket": "month",
+      "threshold": 20,
+      "observed": 69,
+      "rule": "each series of a split or filtered line",
+      "over": "channel-mobile-app",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.channel IN ('mobile_app') GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "table-top-products",
+      "bucket": "product",
+      "threshold": 100,
+      "observed": 199,
+      "rule": "a top-N list needs 5xN candidates (N = 20)",
+      "over": "channel-mobile-app",
+      "sql": "SELECT count(DISTINCT l.product_id) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.channel IN ('mobile_app')"
+    },
+    {
+      "widget": "chart-revenue-per-month",
+      "bucket": "month",
+      "threshold": 20,
+      "observed": 820,
+      "rule": "each series of a split or filtered line",
+      "over": "dates-q2-2026",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-04-01' AND o.order_ts < DATE '2026-06-30' + INTERVAL 1 DAY GROUP BY date_trunc('month', o.order_ts))"
+    },
+    {
+      "widget": "table-top-products",
+      "bucket": "product",
+      "threshold": 100,
+      "observed": 199,
+      "rule": "a top-N list needs 5xN candidates (N = 20)",
+      "over": "dates-q2-2026",
+      "sql": "SELECT count(DISTINCT l.product_id) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-04-01' AND o.order_ts < DATE '2026-06-30' + INTERVAL 1 DAY"
+    }
+  ]
+}

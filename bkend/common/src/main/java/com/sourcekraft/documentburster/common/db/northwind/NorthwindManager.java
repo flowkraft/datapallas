@@ -468,47 +468,65 @@ public class NorthwindManager implements AutoCloseable {
 	}
 
 	/**
-	 * What to ask the cube_demo seed script for: {@code today} (the day the data should end on, as
+	 * What to ask the demo seed scripts for: {@code today} (the day the data should end on, as
 	 * {@code yyyy-MM-dd}) and {@code wipe}. A package build and an installed product leave this
 	 * null, so the sample is current on the day it was made and an existing one is left alone; a
 	 * test sets both, so a truth about the data stays a truth and a reused file never keeps stale
-	 * rows.
+	 * rows. Every script gets the same two, and its own {@code dataDir}.
 	 */
-	private Map<String, String> cubeDemoSeedParams;
+	private Map<String, String> demoSeedParams;
 
-	public void setCubeDemoSeedParams(Map<String, String> params) {
-		this.cubeDemoSeedParams = params;
+	public void setDemoSeedParams(Map<String, String> params) {
+		this.demoSeedParams = params;
 	}
 
 	/**
-	 * Loads the Cube Stories demo data into the DuckDB sample, with the script that ships next to
-	 * the sample databases. A data folder with no scripts/ sibling is not an error: Northwind is
-	 * built as before, without the cube_demo schema. A seed that fails is thrown, like a warehouse
+	 * Loads the demo data into the DuckDB sample, with the scripts that ship next to the sample
+	 * databases: every {@code *-demo-data.groovy} in the scripts folder, in name order, so
+	 * cube-demo-data.groovy runs before dashboards-demo-data.groovy. Each one reads its rows from
+	 * the folder named after it ({@code cube-demo-data/}, {@code dashboards-demo-data/}). A data
+	 * folder with no scripts/ sibling, or one holding no such script, is not an error: Northwind
+	 * is built as before, without the demo schemas. A seed that fails is thrown, like a warehouse
 	 * error, so a package build or a test fails loudly instead of shipping half the data.
 	 */
-	private void seedCubeDemoData(Path hostDataPath, String duckdbPath) throws Exception {
+	private void seedDemoData(Path hostDataPath, String duckdbPath) throws Exception {
 
-		Path script = hostDataPath.getParent().resolve("scripts").resolve("cube-demo-data.groovy");
-		if (!Files.exists(script)) {
-			log.warn("No cube_demo seed script at {} - the DuckDB sample is built without the "
-					+ "cube_demo demo data", script.toAbsolutePath());
+		Path scripts = hostDataPath.getParent().resolve("scripts");
+		List<Path> demoScripts = new ArrayList<>();
+		if (Files.isDirectory(scripts)) {
+			try (java.util.stream.Stream<Path> files = Files.list(scripts)) {
+				for (Path file : files.collect(java.util.stream.Collectors.toList())) {
+					if (file.getFileName().toString().endsWith("-demo-data.groovy")) {
+						demoScripts.add(file);
+					}
+				}
+			}
+		}
+		if (demoScripts.isEmpty()) {
+			log.warn("No *-demo-data.groovy seed script in {} - the DuckDB sample is built without "
+					+ "the demo data", scripts.toAbsolutePath());
 			return;
 		}
+		demoScripts.sort((left, right) -> left.getFileName().toString().compareTo(right.getFileName().toString()));
 
-		// The script reads its rows from the installation unless it is told otherwise, and at build
-		// time there is no installation: the rows are in the folder being packaged, next to the
-		// script.
-		Map<String, String> params = new LinkedHashMap<>();
-		if (cubeDemoSeedParams != null) {
-			params.putAll(cubeDemoSeedParams);
-		}
-		params.put("dataDir", script.getParent().resolve("cube-demo-data").toAbsolutePath().toString());
-
-		log.info("Loading the cube_demo demo data into {} with {}", duckdbPath, script);
 		try (Connection duckConn = DriverManager.getConnection("jdbc:duckdb:" + duckdbPath)) {
-			SeedScriptRunner.run(duckConn, DatabaseVendor.DUCKDB.name(), script, params);
+			for (Path script : demoScripts) {
+
+				// A script reads its rows from the installation unless it is told otherwise, and at
+				// build time there is no installation: the rows are in the folder being packaged,
+				// named after the script, next to it.
+				String rows = script.getFileName().toString().replace(".groovy", "");
+				Map<String, String> params = new LinkedHashMap<>();
+				if (demoSeedParams != null) {
+					params.putAll(demoSeedParams);
+				}
+				params.put("dataDir", scripts.resolve(rows).toAbsolutePath().toString());
+
+				log.info("Loading the demo data of {} into {}", script.getFileName(), duckdbPath);
+				SeedScriptRunner.run(duckConn, DatabaseVendor.DUCKDB.name(), script, params);
+				log.info("{} loaded", script.getFileName());
+			}
 		}
-		log.info("cube_demo demo data loaded");
 	}
 
 	/**
@@ -563,12 +581,12 @@ public class NorthwindManager implements AutoCloseable {
 
             log.info("DuckDB data warehouse created successfully");
 
-            // The Cube Stories demo data (schema cube_demo) is loaded by the shipped seed script
-            // from the shipped rows, so the sample database a user gets is built the same way
-            // wherever it is built: by the packager, by 'system service database start', or by
-            // the tests' fixture. The script sits in the db/ folder's scripts/ sibling, the same
+            // The demo data (schemas cube_demo and dash_demo) is loaded by the shipped seed
+            // scripts from the shipped rows, so the sample database a user gets is built the same
+            // way wherever it is built: by the packager, by 'system service database start', or by
+            // the tests' fixture. The scripts sit in the db/ folder's scripts/ sibling, the same
             // parent this branch already uses to find the SQLite sample.
-            seedCubeDemoData(hostDataPath, duckdbPath);
+            seedDemoData(hostDataPath, duckdbPath);
 
             // The DataZeus academy datasets at scale S, so the lessons' data ships in the sample.
             seedAcademyDatasets(vendor, hostDataPath);

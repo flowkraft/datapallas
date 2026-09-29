@@ -97,8 +97,9 @@ import com.sourcekraft.documentburster.common.db.northwind.NorthwindFixture;
  * hold on every database. The two legs that need no container (SQLite, DuckDB) keep using copies
  * of the shipped sample files, which already carry Northwind.
  *
- * <p>Two samples cannot run everywhere, and {@link #whyNot} says so in one line rather than
- * skipping quietly: {@code northwind-warehouse} reads {@code vw_sales_detail}, the star schema,
+ * <p>Some samples cannot run everywhere, and {@link #whyNot} says so in one line rather than
+ * skipping quietly: the three dashboards cubes read {@code dash_demo}, which the dashboards demo
+ * seed builds on DuckDB only, so they run on that leg alone; {@code northwind-warehouse} reads {@code vw_sales_detail}, the star schema,
  * which only the DuckDB and ClickHouse creators build; and {@code northwind-sales} reads
  * {@code Order Details}, which ClickHouse's Northwind names {@code OrderDetails}. Every such
  * exception is printed with the run summary.
@@ -961,6 +962,12 @@ class GeneratedSqlAllVendorsTest {
 	 * the loop starts, so they are always asked.
 	 */
 	private static String whyNot(String cube, String vendor) {
+		// The dashboards cubes read dash_demo, and that schema is built by
+		// dashboards-demo-data.groovy, which is DuckDB only: on every other vendor the tables are
+		// simply not there, so the question cannot be asked rather than answered wrongly.
+		if (cube.startsWith("dd-") && !"duckdb".equals(vendor)) {
+			return "it reads dash_demo, which the dashboards demo seed builds on DuckDB only";
+		}
 		if (!cube.startsWith("northwind-")) return null;
 		if ("northwind-warehouse".equals(cube) && !List.of("duckdb", "clickhouse").contains(vendor)) {
 			return "it reads vw_sales_detail, the star schema, which only the DuckDB and ClickHouse "

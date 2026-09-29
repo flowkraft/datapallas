@@ -1,0 +1,160 @@
+{
+  "id": "dd-customer-360",
+  "index": 11,
+  "title": "Customer 360",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "customerId": 1017,
+    "customerLabel": "Helix Retail Group"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-lifetime-revenue",
+      "label": "Lifetime revenue",
+      "format": "currency",
+      "value": 1599136.32,
+      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.customer_id = 1017"
+    },
+    {
+      "widget": "kpi-orders",
+      "label": "Orders",
+      "format": "number",
+      "value": 143,
+      "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = 1017"
+    },
+    {
+      "widget": "kpi-open-invoices",
+      "label": "Open invoices",
+      "format": "number",
+      "value": 4,
+      "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1017 AND status IN ('open', 'overdue', 'partially_paid')"
+    },
+    {
+      "widget": "kpi-open-tickets",
+      "label": "Open tickets",
+      "format": "number",
+      "value": 82,
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1017 AND status <> 'resolved'"
+    },
+    {
+      "widget": "kpi-care-plan-mrr",
+      "label": "Care plan MRR",
+      "format": "currency",
+      "value": 0.0,
+      "sql": "SELECT round(coalesce(sum(mrr), 0), 2) FROM dash_demo.subscriptions WHERE customer_id = 1017 AND cancel_date IS NULL"
+    },
+    {
+      "widget": "table-tickets",
+      "label": "Tickets",
+      "format": "number",
+      "value": 88,
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1017"
+    },
+    {
+      "widget": "table-invoices",
+      "label": "Invoices",
+      "format": "number",
+      "value": 140,
+      "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1017"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "customer-isabel-novak",
+      "params": {
+        "customerId": 1028,
+        "customerLabel": "Isabel Novak"
+      },
+      "changed": {
+        "customerId": 1028,
+        "customerLabel": "Isabel Novak"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-lifetime-revenue",
+          "label": "Lifetime revenue",
+          "format": "currency",
+          "value": 19395.44,
+          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.customer_id = 1028"
+        },
+        {
+          "widget": "kpi-orders",
+          "label": "Orders",
+          "format": "number",
+          "value": 8,
+          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = 1028"
+        },
+        {
+          "widget": "kpi-open-invoices",
+          "label": "Open invoices",
+          "format": "number",
+          "value": 0,
+          "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1028 AND status IN ('open', 'overdue', 'partially_paid')"
+        },
+        {
+          "widget": "kpi-open-tickets",
+          "label": "Open tickets",
+          "format": "number",
+          "value": 1,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1028 AND status <> 'resolved'"
+        },
+        {
+          "widget": "kpi-care-plan-mrr",
+          "label": "Care plan MRR",
+          "format": "currency",
+          "value": 26.0,
+          "sql": "SELECT round(coalesce(sum(mrr), 0), 2) FROM dash_demo.subscriptions WHERE customer_id = 1028 AND cancel_date IS NULL"
+        },
+        {
+          "widget": "table-tickets",
+          "label": "Tickets",
+          "format": "number",
+          "value": 2,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1028"
+        },
+        {
+          "widget": "table-invoices",
+          "label": "Invoices",
+          "format": "number",
+          "value": 0,
+          "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1028"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "named-guarantee-helix-orders",
+      "bucket": "the default customer's orders",
+      "threshold": 100,
+      "observed": 143,
+      "rule": "Helix Retail Group has at least 100 orders",
+      "over": "defaults",
+      "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = 1017"
+    },
+    {
+      "widget": "named-guarantee-helix-invoices",
+      "bucket": "the default customer's invoices",
+      "threshold": 40,
+      "observed": 140,
+      "rule": "at least 40 invoices",
+      "over": "defaults",
+      "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1017"
+    },
+    {
+      "widget": "named-guarantee-helix-tickets",
+      "bucket": "the default customer's tickets",
+      "threshold": 12,
+      "observed": 88,
+      "rule": "at least 12 tickets",
+      "over": "defaults",
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1017"
+    }
+  ]
+}

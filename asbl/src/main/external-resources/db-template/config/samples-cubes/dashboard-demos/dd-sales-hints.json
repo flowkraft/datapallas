@@ -1,0 +1,118 @@
+[
+  {
+    "id": "revenue-total",
+    "fromStory": null,
+    "question": "What have we sold?",
+    "text": "Tick **Revenue** - the cancelled orders are already left out.",
+    "query": {
+      "dimensions": [],
+      "measures": [
+        "Revenue"
+      ]
+    },
+    "variants": [
+      {
+        "id": "with-profit",
+        "text": "Add **Cost**, **Gross Profit** and **Margin %** - what the sales left, next to what they were worth.",
+        "query": {
+          "dimensions": [],
+          "measures": [
+            "Revenue",
+            "Cost",
+            "GrossProfit",
+            "MarginPct"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "revenue-by-year",
+    "fromStory": null,
+    "question": "How has the revenue moved year by year?",
+    "text": "Tick **Revenue** and add **Ordered**, grouped by year.",
+    "query": {
+      "dimensions": [
+        "OrderedAt.year"
+      ],
+      "measures": [
+        "Revenue"
+      ]
+    },
+    "variants": [
+      {
+        "id": "by-quarter",
+        "text": "The same, by **quarter**.",
+        "query": {
+          "dimensions": [
+            "OrderedAt.quarter"
+          ],
+          "measures": [
+            "Revenue"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "orders-by-channel",
+    "fromStory": null,
+    "question": "Which channel brings the orders, and which brings the money?",
+    "text": "Tick **Orders** and **Revenue**, then add **Channel** - an order with four lines still counts once.",
+    "query": {
+      "dimensions": [
+        "Channel"
+      ],
+      "measures": [
+        "Orders",
+        "Revenue"
+      ]
+    }
+  },
+  {
+    "id": "margin-by-category",
+    "fromStory": null,
+    "question": "Which categories are worth selling?",
+    "text": "Tick **Revenue**, **Gross Profit** and **Margin %**, then add **Category** - the margin is each category's own.",
+    "query": {
+      "dimensions": [
+        "Category"
+      ],
+      "measures": [
+        "Revenue",
+        "GrossProfit",
+        "MarginPct"
+      ]
+    }
+  },
+  {
+    "id": "units-by-country",
+    "fromStory": null,
+    "question": "Where do the goods go?",
+    "text": "Tick **Units** and **Revenue**, then add **Country**.",
+    "query": {
+      "dimensions": [
+        "Country"
+      ],
+      "measures": [
+        "Qty",
+        "Revenue"
+      ]
+    }
+  },
+  {
+    "id": "revenue-by-segment",
+    "fromStory": null,
+    "question": "Which kind of customer is carrying the revenue?",
+    "text": "Tick **Revenue** and **Orders**, then add **Segment**.",
+    "query": {
+      "dimensions": [
+        "Segment"
+      ],
+      "measures": [
+        "Revenue",
+        "Orders"
+      ]
+    }
+  }
+]

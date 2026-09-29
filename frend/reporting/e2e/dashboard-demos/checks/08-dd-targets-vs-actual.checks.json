@@ -1,0 +1,169 @@
+{
+  "id": "dd-targets-vs-actual",
+  "index": 8,
+  "title": "Targets vs Actual",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "year": 2026,
+    "region": "All"
+  },
+  "kpis": [
+    {
+      "widget": "progress-emea",
+      "label": "EMEA vs target",
+      "format": "percent",
+      "value": 103.0,
+      "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'EMEA'"
+    },
+    {
+      "widget": "progress-na",
+      "label": "NA vs target",
+      "format": "percent",
+      "value": 101.0,
+      "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'NA'"
+    },
+    {
+      "widget": "progress-apac",
+      "label": "APAC vs target",
+      "format": "percent",
+      "value": 85.0,
+      "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'APAC'"
+    },
+    {
+      "widget": "progress-latam",
+      "label": "LATAM vs target",
+      "format": "percent",
+      "value": 100.5,
+      "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'LATAM'"
+    },
+    {
+      "widget": "gauge-ytd-attainment",
+      "label": "YTD attainment",
+      "format": "percent",
+      "value": 99.93,
+      "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "region-apac",
+      "params": {
+        "year": 2026,
+        "region": "APAC"
+      },
+      "changed": {
+        "region": "APAC"
+      },
+      "kpis": [
+        {
+          "widget": "progress-emea",
+          "label": "EMEA vs target",
+          "format": "percent",
+          "value": 103.0,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'EMEA'"
+        },
+        {
+          "widget": "progress-na",
+          "label": "NA vs target",
+          "format": "percent",
+          "value": 101.0,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'NA'"
+        },
+        {
+          "widget": "progress-apac",
+          "label": "APAC vs target",
+          "format": "percent",
+          "value": 85.0,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'APAC'"
+        },
+        {
+          "widget": "progress-latam",
+          "label": "LATAM vs target",
+          "format": "percent",
+          "value": 100.5,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'LATAM'"
+        },
+        {
+          "widget": "gauge-ytd-attainment",
+          "label": "YTD attainment",
+          "format": "percent",
+          "value": 85.0,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2026 AND t.region = 'APAC'"
+        }
+      ]
+    },
+    {
+      "id": "year-2025",
+      "params": {
+        "year": 2025,
+        "region": "All"
+      },
+      "changed": {
+        "year": 2025
+      },
+      "kpis": [
+        {
+          "widget": "progress-emea",
+          "label": "EMEA vs target",
+          "format": "percent",
+          "value": 101.58,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2025 AND t.region = 'EMEA'"
+        },
+        {
+          "widget": "progress-na",
+          "label": "NA vs target",
+          "format": "percent",
+          "value": 100.68,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2025 AND t.region = 'NA'"
+        },
+        {
+          "widget": "progress-apac",
+          "label": "APAC vs target",
+          "format": "percent",
+          "value": 98.18,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2025 AND t.region = 'APAC'"
+        },
+        {
+          "widget": "progress-latam",
+          "label": "LATAM vs target",
+          "format": "percent",
+          "value": 100.0,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2025 AND t.region = 'LATAM'"
+        },
+        {
+          "widget": "gauge-ytd-attainment",
+          "label": "YTD attainment",
+          "format": "percent",
+          "value": 100.89,
+          "sql": "SELECT round(100.0 * sum(a.actual) / sum(t.revenue_target), 2) FROM dash_demo.sales_targets t LEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region, sum(o.total_amount) AS actual FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1, 2) a ON a.m = t.month AND a.region = t.region WHERE year(t.month) = 2025"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "pivot-variance-by-region-month",
+      "bucket": "region x month cell, on average",
+      "threshold": 50,
+      "observed": 196.86,
+      "rule": "a heatmap needs 50 per cell on average",
+      "over": "defaults",
+      "sql": "SELECT round(count(*) / (count(DISTINCT g.region) * count(DISTINCT date_trunc('month', o.order_ts))), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2026"
+    },
+    {
+      "widget": "pivot-variance-by-region-month",
+      "bucket": "region x month cell, on average",
+      "threshold": 50,
+      "observed": 195.75,
+      "rule": "a heatmap needs 50 per cell on average",
+      "over": "year-2025",
+      "sql": "SELECT round(count(*) / (count(DISTINCT g.region) * count(DISTINCT date_trunc('month', o.order_ts))), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025"
+    }
+  ]
+}

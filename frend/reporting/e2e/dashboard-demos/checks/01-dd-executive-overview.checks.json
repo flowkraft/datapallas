@@ -1,0 +1,153 @@
+{
+  "id": "dd-executive-overview",
+  "index": 1,
+  "title": "Executive Overview",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "year": 2026
+  },
+  "kpis": [
+    {
+      "widget": "kpi-revenue",
+      "label": "Revenue",
+      "format": "currency",
+      "value": 18399330.71,
+      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2026"
+    },
+    {
+      "widget": "kpi-orders",
+      "label": "Orders",
+      "format": "number",
+      "value": 7087,
+      "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2026"
+    },
+    {
+      "widget": "kpi-new-customers",
+      "label": "New customers",
+      "format": "number",
+      "value": 1185,
+      "sql": "SELECT count(*) FROM dash_demo.customers WHERE year(signup_date) = 2026"
+    },
+    {
+      "widget": "kpi-dso",
+      "label": "DSO, days",
+      "format": "number",
+      "value": 45.87,
+      "sql": "SELECT 365.0 * (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date <= DATE '2026-09-30' AND (last_paid_date IS NULL OR last_paid_date > DATE '2026-09-30')) / (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date > DATE '2026-09-30' - INTERVAL 365 DAY AND issue_date <= DATE '2026-09-30')"
+    },
+    {
+      "widget": "kpi-on-time",
+      "label": "On-time delivery %",
+      "format": "percent",
+      "value": 93.37,
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE <= o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND year(o.delivered_ts) = 2026"
+    },
+    {
+      "widget": "kpi-headcount",
+      "label": "Headcount",
+      "format": "number",
+      "value": 209,
+      "sql": "SELECT count(*) FROM dash_demo.employees WHERE hire_date <= DATE '2026-09-30' AND (termination_date IS NULL OR termination_date > DATE '2026-09-30')"
+    },
+    {
+      "widget": "kpi-gross-margin",
+      "label": "Gross margin %",
+      "format": "percent",
+      "value": 35.57,
+      "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2026"
+    },
+    {
+      "widget": "kpi-sla-met",
+      "label": "SLA met %",
+      "format": "percent",
+      "value": 90.61,
+      "sql": "SELECT round(100.0 * count(CASE WHEN NOT sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets WHERE year(opened_ts) = 2026"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "year-2025",
+      "params": {
+        "year": 2025
+      },
+      "changed": {
+        "year": 2025
+      },
+      "kpis": [
+        {
+          "widget": "kpi-revenue",
+          "label": "Revenue",
+          "format": "currency",
+          "value": 25260842.79,
+          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025"
+        },
+        {
+          "widget": "kpi-orders",
+          "label": "Orders",
+          "format": "number",
+          "value": 9396,
+          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025"
+        },
+        {
+          "widget": "kpi-new-customers",
+          "label": "New customers",
+          "format": "number",
+          "value": 1348,
+          "sql": "SELECT count(*) FROM dash_demo.customers WHERE year(signup_date) = 2025"
+        },
+        {
+          "widget": "kpi-dso",
+          "label": "DSO, days",
+          "format": "number",
+          "value": 59.57,
+          "sql": "SELECT 365.0 * (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date <= DATE '2025-12-31' AND (last_paid_date IS NULL OR last_paid_date > DATE '2025-12-31')) / (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date > DATE '2025-12-31' - INTERVAL 365 DAY AND issue_date <= DATE '2025-12-31')"
+        },
+        {
+          "widget": "kpi-on-time",
+          "label": "On-time delivery %",
+          "format": "percent",
+          "value": 93.35,
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE <= o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND year(o.delivered_ts) = 2025"
+        },
+        {
+          "widget": "kpi-headcount",
+          "label": "Headcount",
+          "format": "number",
+          "value": 206,
+          "sql": "SELECT count(*) FROM dash_demo.employees WHERE hire_date <= DATE '2025-12-31' AND (termination_date IS NULL OR termination_date > DATE '2025-12-31')"
+        },
+        {
+          "widget": "kpi-gross-margin",
+          "label": "Gross margin %",
+          "format": "percent",
+          "value": 32.51,
+          "sql": "SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025"
+        },
+        {
+          "widget": "kpi-sla-met",
+          "label": "SLA met %",
+          "format": "percent",
+          "value": 90.94,
+          "sql": "SELECT round(100.0 * count(CASE WHEN NOT sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets WHERE year(opened_ts) = 2025"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-revenue-vs-target",
+      "bucket": "month",
+      "threshold": 300,
+      "observed": 536,
+      "rule": "a monthly bar or line of events, company totals",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2026 GROUP BY date_trunc('month', o.order_ts))"
+    }
+  ]
+}

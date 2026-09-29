@@ -1,0 +1,160 @@
+{
+  "id": "dd-headcount",
+  "index": 18,
+  "title": "Headcount & Attrition",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "department": "All",
+    "country": "All"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-headcount",
+      "label": "Headcount",
+      "format": "number",
+      "value": 209,
+      "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.hire_date <= DATE '2026-09-30' AND (e.termination_date IS NULL OR e.termination_date > DATE '2026-09-30')"
+    },
+    {
+      "widget": "kpi-hires-ytd",
+      "label": "Hires YTD",
+      "format": "number",
+      "value": 16,
+      "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.hire_date >= DATE '2026-01-01' AND e.hire_date <= DATE '2026-09-30'"
+    },
+    {
+      "widget": "kpi-leavers-ytd",
+      "label": "Leavers YTD",
+      "format": "number",
+      "value": 13,
+      "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.termination_date >= DATE '2026-01-01' AND e.termination_date <= DATE '2026-09-30'"
+    },
+    {
+      "widget": "chart-attrition-in-scope",
+      "label": "Attrition %",
+      "format": "percent",
+      "value": 8.61,
+      "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.termination_date >= DATE '2026-09-30' - INTERVAL 365 DAY AND e.termination_date <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.hire_date <= DATE '2026-09-30' AND (e.termination_date IS NULL OR e.termination_date > DATE '2026-09-30')), 2)"
+    },
+    {
+      "widget": "chart-boxplot-support-pay-gap",
+      "label": "Customer Support pay against the same level elsewhere",
+      "format": "percent",
+      "value": 91.24,
+      "sql": "SELECT round(100.0 * avg(CASE WHEN department_id = 6 THEN base_salary_annual END) / avg(CASE WHEN department_id <> 6 THEN base_salary_annual END), 2) FROM dash_demo.employees WHERE level IN ('L1', 'L2', 'L3')"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "department-customer-support",
+      "params": {
+        "department": "Customer Support",
+        "country": "All"
+      },
+      "changed": {
+        "department": "Customer Support"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-headcount",
+          "label": "Headcount",
+          "format": "number",
+          "value": 26,
+          "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND d.name = 'Customer Support' AND e.hire_date <= DATE '2026-09-30' AND (e.termination_date IS NULL OR e.termination_date > DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-hires-ytd",
+          "label": "Hires YTD",
+          "format": "number",
+          "value": 5,
+          "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND d.name = 'Customer Support' AND e.hire_date >= DATE '2026-01-01' AND e.hire_date <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-leavers-ytd",
+          "label": "Leavers YTD",
+          "format": "number",
+          "value": 6,
+          "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND d.name = 'Customer Support' AND e.termination_date >= DATE '2026-01-01' AND e.termination_date <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "chart-attrition-in-scope",
+          "label": "Attrition %",
+          "format": "percent",
+          "value": 26.92,
+          "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND d.name = 'Customer Support' AND e.termination_date >= DATE '2026-09-30' - INTERVAL 365 DAY AND e.termination_date <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND d.name = 'Customer Support' AND e.hire_date <= DATE '2026-09-30' AND (e.termination_date IS NULL OR e.termination_date > DATE '2026-09-30')), 2)"
+        },
+        {
+          "widget": "chart-boxplot-support-pay-gap",
+          "label": "Customer Support pay against the same level elsewhere",
+          "format": "percent",
+          "value": 91.24,
+          "sql": "SELECT round(100.0 * avg(CASE WHEN department_id = 6 THEN base_salary_annual END) / avg(CASE WHEN department_id <> 6 THEN base_salary_annual END), 2) FROM dash_demo.employees WHERE level IN ('L1', 'L2', 'L3')"
+        }
+      ]
+    },
+    {
+      "id": "country-germany",
+      "params": {
+        "department": "All",
+        "country": "Germany"
+      },
+      "changed": {
+        "country": "Germany"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-headcount",
+          "label": "Headcount",
+          "format": "number",
+          "value": 68,
+          "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.city_id IN (SELECT city_id FROM dash_demo.geo_cities WHERE country = 'Germany') AND e.hire_date <= DATE '2026-09-30' AND (e.termination_date IS NULL OR e.termination_date > DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-hires-ytd",
+          "label": "Hires YTD",
+          "format": "number",
+          "value": 2,
+          "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.city_id IN (SELECT city_id FROM dash_demo.geo_cities WHERE country = 'Germany') AND e.hire_date >= DATE '2026-01-01' AND e.hire_date <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "kpi-leavers-ytd",
+          "label": "Leavers YTD",
+          "format": "number",
+          "value": 1,
+          "sql": "SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.city_id IN (SELECT city_id FROM dash_demo.geo_cities WHERE country = 'Germany') AND e.termination_date >= DATE '2026-01-01' AND e.termination_date <= DATE '2026-09-30'"
+        },
+        {
+          "widget": "chart-attrition-in-scope",
+          "label": "Attrition %",
+          "format": "percent",
+          "value": 4.41,
+          "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.city_id IN (SELECT city_id FROM dash_demo.geo_cities WHERE country = 'Germany') AND e.termination_date >= DATE '2026-09-30' - INTERVAL 365 DAY AND e.termination_date <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE true AND e.city_id IN (SELECT city_id FROM dash_demo.geo_cities WHERE country = 'Germany') AND e.hire_date <= DATE '2026-09-30' AND (e.termination_date IS NULL OR e.termination_date > DATE '2026-09-30')), 2)"
+        },
+        {
+          "widget": "chart-boxplot-support-pay-gap",
+          "label": "Customer Support pay against the same level elsewhere",
+          "format": "percent",
+          "value": 91.24,
+          "sql": "SELECT round(100.0 * avg(CASE WHEN department_id = 6 THEN base_salary_annual END) / avg(CASE WHEN department_id <> 6 THEN base_salary_annual END), 2) FROM dash_demo.employees WHERE level IN ('L1', 'L2', 'L3')"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-attrition-by-department",
+      "bucket": "department bar, departments under 8 leavers folded into Other departments",
+      "threshold": 8,
+      "observed": 12,
+      "rule": "each attrition bar stands on at least 8 leavers over the period",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.employees e JOIN dash_demo.departments d USING (department_id) WHERE e.termination_date IS NOT NULL GROUP BY CASE WHEN (SELECT count(*) FROM dash_demo.employees e2 WHERE e2.department_id = e.department_id AND e2.termination_date IS NOT NULL) >= 8 THEN d.name ELSE 'Other departments' END)"
+    }
+  ]
+}

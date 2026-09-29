@@ -38,11 +38,12 @@ import java.time.LocalDate
 // the user, or anything else.
 final boolean WIPE_ALL_DATA = false
 
-// The version of the rows this script ships with, bumped whenever the .psv files change. 1 was the
-// data Phase 1 shipped; 2 is the data after the Phase 1b touch-ups. A database holding an older
-// version is NOT reloaded on its own - that would break the promise above - the script only says a
-// newer one exists.
-final int DATA_VERSION = 2
+// The version of the rows this script ships with, bumped whenever the .psv files change, or the
+// tables they are loaded into do. 1 was the data Phase 1 shipped; 2 is the data after the Phase 1b
+// touch-ups; 3 is the same rows in tables that declare their keys and indexes. A database holding
+// an older version is NOT reloaded on its own - that would break the promise above - the script
+// only says a newer one exists.
+final int DATA_VERSION = 3
 
 // ── where the rows are ───────────────────────────────────────────────────────
 
@@ -155,6 +156,61 @@ def TABLES = [
     erp_payments       : 'payment_id:INT,invoice_id:INT,paid_date:DATE,method:TEXT,amount:DEC',
 ]
 
+// ── the keys and the indexes ────────────────────────────────────────────────
+// One list, next to the tables above, and the only place either is written down. The key is the
+// table's id, or the pair a line table is keyed by; an index goes on every column another table is
+// joined on that is not already a key's first column. Without them MariaDB joins these tables row
+// by row: one cube query over shop_orders x shop_order_lines took 20-25 seconds there.
+
+def KEYS = [
+    crm_accounts       : 'account_id',
+    crm_sales_reps     : 'rep_id',
+    crm_deals          : 'deal_id',
+    support_agents     : 'agent_id',
+    support_tickets    : 'ticket_id',
+    school_students    : 'student_id',
+    school_courses     : 'course_id',
+    school_enrollments : 'enrollment_id',
+    logistics_carriers : 'carrier_id',
+    logistics_depots   : 'depot_id',
+    logistics_shipments: 'shipment_id',
+    shop_customers     : 'customer_id',
+    shop_products      : 'product_id',
+    shop_orders        : 'order_id',
+    shop_order_lines   : 'order_id,line_no',
+    erp_customers      : 'customer_id',
+    erp_invoices       : 'invoice_id',
+    erp_invoice_lines  : 'invoice_id,line_no',
+    erp_payments       : 'payment_id',
+]
+
+def INDEXES = [
+    crm_deals          : 'account_id,rep_id',
+    support_tickets    : 'account_id,agent_id',
+    school_enrollments : 'student_id,course_id',
+    logistics_shipments: 'carrier_id,origin_depot_id',
+    shop_orders        : 'customer_id',
+    shop_order_lines   : 'product_id',
+    erp_invoices       : 'customer_id',
+    erp_payments       : 'invoice_id',
+]
+
+// An index name is ix_<table>_<column>, which older Oracle versions allow 30 characters for. Two
+// steps shorten a longer one, in this order: the column loses its trailing _id, then the table
+// loses the domain word it starts with. ix_logistics_shipments_origin_depot_id becomes
+// ix_shipments_origin_depot that way, and the names stay readable and distinct.
+def indexName = { String table, String column ->
+    String name = 'ix_' + table + '_' + column
+    if (name.length() > 30 && column.endsWith('_id')) {
+        name = 'ix_' + table + '_' + column.substring(0, column.length() - 3)
+    }
+    if (name.length() > 30 && table.contains('_')) {
+        name = 'ix_' + table.substring(table.indexOf('_') + 1) + '_' +
+                (column.endsWith('_id') ? column.substring(0, column.length() - 3) : column)
+    }
+    return name
+}
+
 // The ten columns that hold a NULL. ClickHouse needs to be told, column by column; every other
 // database lets any column be empty.
 def NULLABLE = [
@@ -166,6 +222,29 @@ def NULLABLE = [
     'logistics_shipments.transit_days',
     'shop_orders.customer_id',
 ] as Set
+
+// Db2 refuses a primary key on a nullable column, so a key column may never be listed above, and
+// two indexes may never end up with the same name. Both are mistakes in the lists, so the script
+// says so before it touches the database.
+KEYS.each { String table, String spec ->
+    spec.split(',').collect { it.trim() }.each { String column ->
+        if (NULLABLE.contains(table + '.' + column)) {
+            throw new IllegalStateException("cube-demo-data.groovy keys cube_demo." + table
+                    + " by " + column + ", which is listed as nullable.")
+        }
+    }
+}
+Set<String> indexNames = [] as Set
+INDEXES.each { String table, String spec ->
+    spec.split(',').collect { it.trim() }.each { String column ->
+        String name = indexName(table, column)
+        if (name.length() > 30 || !indexNames.add(name)) {
+            throw new IllegalStateException("cube-demo-data.groovy cannot name the index on "
+                    + table + '.' + column + ": '" + name + "' is longer than 30 characters or "
+                    + "is already taken.")
+        }
+    }
+}
 
 // A year written inside a text column follows the day it belongs to, so an invoice raised in
 // January still reads INV-<that January's year>-00001.
@@ -385,8 +464,15 @@ TABLES.each { String table, String spec ->
 
     dropTable(table)
 
+    // The key columns are NOT NULL because Db2 wants them that way, and the key itself is ANSI:
+    // PRIMARY KEY (<columns>) inside the CREATE TABLE, which every vendor here takes but
+    // ClickHouse, which has no unique key at all.
+    List<String> keyColumns = KEYS[table].split(',').collect { it.trim() }
     String ddl = 'CREATE TABLE cube_demo.' + table + ' (' +
-            [names, kinds].transpose().collect { n, k -> n + ' ' + columnType(table, n, k) }.join(', ') +
+            [names, kinds].transpose().collect { n, k ->
+                n + ' ' + columnType(table, n, k) + (!isClickHouse && keyColumns.contains(n) ? ' NOT NULL' : '')
+            }.join(', ') +
+            (isClickHouse ? '' : ', PRIMARY KEY (' + keyColumns.join(', ') + ')') +
             ')'
     if (isClickHouse) {
         // ClickHouse has no table without an engine, and MergeTree wants a sort key: the id column
@@ -419,6 +505,26 @@ TABLES.each { String table, String spec ->
 }
 
 log.info("=== cube_demo demo data: {} rows in {} tables ===", loaded, TABLES.size())
+
+// ── the indexes ──────────────────────────────────────────────────────────────
+// After the rows, because a bulk load is faster into a table that has none. On SQLite the attached
+// schema qualifies the index rather than the table. ClickHouse is left alone: MergeTree's sort key
+// is its index.
+if (isClickHouse) {
+    log.info("cube_demo: ClickHouse sorts each table by its id, so no index is created")
+} else {
+    int made = 0
+    INDEXES.each { String table, String spec ->
+        spec.split(',').collect { it.trim() }.each { String column ->
+            String name = indexName(table, column)
+            exec(isSqlite
+                    ? 'CREATE INDEX cube_demo.' + name + ' ON ' + table + ' (' + column + ')'
+                    : 'CREATE INDEX ' + name + ' ON cube_demo.' + table + ' (' + column + ')')
+            made++
+        }
+    }
+    log.info("=== cube_demo demo data: {} indexes on {} tables ===", made, INDEXES.size())
+}
 
 // ── the marker: what was loaded, and when ────────────────────────────────────────
 // One row, written after the 19 tables: the day the rows were generated for, the day they were

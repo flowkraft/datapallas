@@ -1,0 +1,164 @@
+{
+  "id": "dd-receivables-aging",
+  "index": 14,
+  "title": "Receivables Aging & Collections",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "minAmount": 0,
+    "accountManagerId": "All",
+    "accountManagerLabel": "All"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-overdue-90-plus",
+      "label": "Overdue 90+ days",
+      "format": "currency",
+      "value": 170829.65,
+      "sql": "SELECT round(coalesce(sum(i.amount + i.tax_amount), 0), 2) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.due_date < DATE '2026-09-30' - INTERVAL 90 DAY"
+    },
+    {
+      "widget": "gauge-current-not-overdue",
+      "label": "Current, not overdue %",
+      "format": "percent",
+      "value": 87.22,
+      "sql": "SELECT round(100.0 * sum(CASE WHEN i.due_date >= DATE '2026-09-30' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0"
+    },
+    {
+      "widget": "trend-dso",
+      "label": "DSO, days",
+      "format": "number",
+      "value": 45.87,
+      "sql": "SELECT 365.0 * (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date <= DATE '2026-09-30' AND (last_paid_date IS NULL OR last_paid_date > DATE '2026-09-30')) / (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date > DATE '2026-09-30' - INTERVAL 365 DAY AND issue_date <= DATE '2026-09-30')"
+    },
+    {
+      "widget": "kpi-customers-overdue",
+      "label": "Customers overdue",
+      "format": "number",
+      "value": 43,
+      "sql": "SELECT count(DISTINCT i.customer_id) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.due_date < DATE '2026-09-30'"
+    },
+    {
+      "widget": "table-overdue-invoices",
+      "label": "Overdue invoices listed",
+      "format": "number",
+      "value": 46,
+      "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.due_date < DATE '2026-09-30'"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "min-amount-10000",
+      "params": {
+        "minAmount": 10000,
+        "accountManagerId": "All",
+        "accountManagerLabel": "All"
+      },
+      "changed": {
+        "minAmount": 10000
+      },
+      "kpis": [
+        {
+          "widget": "kpi-overdue-90-plus",
+          "label": "Overdue 90+ days",
+          "format": "currency",
+          "value": 170829.65,
+          "sql": "SELECT round(coalesce(sum(i.amount + i.tax_amount), 0), 2) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 10000 AND i.due_date < DATE '2026-09-30' - INTERVAL 90 DAY"
+        },
+        {
+          "widget": "gauge-current-not-overdue",
+          "label": "Current, not overdue %",
+          "format": "percent",
+          "value": 81.85,
+          "sql": "SELECT round(100.0 * sum(CASE WHEN i.due_date >= DATE '2026-09-30' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 10000"
+        },
+        {
+          "widget": "trend-dso",
+          "label": "DSO, days",
+          "format": "number",
+          "value": 45.87,
+          "sql": "SELECT 365.0 * (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date <= DATE '2026-09-30' AND (last_paid_date IS NULL OR last_paid_date > DATE '2026-09-30')) / (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date > DATE '2026-09-30' - INTERVAL 365 DAY AND issue_date <= DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-customers-overdue",
+          "label": "Customers overdue",
+          "format": "number",
+          "value": 1,
+          "sql": "SELECT count(DISTINCT i.customer_id) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 10000 AND i.due_date < DATE '2026-09-30'"
+        },
+        {
+          "widget": "table-overdue-invoices",
+          "label": "Overdue invoices listed",
+          "format": "number",
+          "value": 4,
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 10000 AND i.due_date < DATE '2026-09-30'"
+        }
+      ]
+    },
+    {
+      "id": "account-manager-busiest",
+      "params": {
+        "minAmount": 0,
+        "accountManagerId": 2014,
+        "accountManagerLabel": "Marta Meyer"
+      },
+      "changed": {
+        "accountManagerId": 2014,
+        "accountManagerLabel": "Marta Meyer"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-overdue-90-plus",
+          "label": "Overdue 90+ days",
+          "format": "currency",
+          "value": 0.0,
+          "sql": "SELECT round(coalesce(sum(i.amount + i.tax_amount), 0), 2) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.customer_id IN (SELECT customer_id FROM dash_demo.customers c WHERE c.account_manager_id = 2014) AND i.due_date < DATE '2026-09-30' - INTERVAL 90 DAY"
+        },
+        {
+          "widget": "gauge-current-not-overdue",
+          "label": "Current, not overdue %",
+          "format": "percent",
+          "value": 96.69,
+          "sql": "SELECT round(100.0 * sum(CASE WHEN i.due_date >= DATE '2026-09-30' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.customer_id IN (SELECT customer_id FROM dash_demo.customers c WHERE c.account_manager_id = 2014)"
+        },
+        {
+          "widget": "trend-dso",
+          "label": "DSO, days",
+          "format": "number",
+          "value": 45.87,
+          "sql": "SELECT 365.0 * (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date <= DATE '2026-09-30' AND (last_paid_date IS NULL OR last_paid_date > DATE '2026-09-30')) / (SELECT sum(amount + tax_amount) FROM dash_demo.invoices WHERE issue_date > DATE '2026-09-30' - INTERVAL 365 DAY AND issue_date <= DATE '2026-09-30')"
+        },
+        {
+          "widget": "kpi-customers-overdue",
+          "label": "Customers overdue",
+          "format": "number",
+          "value": 5,
+          "sql": "SELECT count(DISTINCT i.customer_id) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.customer_id IN (SELECT customer_id FROM dash_demo.customers c WHERE c.account_manager_id = 2014) AND i.due_date < DATE '2026-09-30'"
+        },
+        {
+          "widget": "table-overdue-invoices",
+          "label": "Overdue invoices listed",
+          "format": "number",
+          "value": 5,
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.customer_id IN (SELECT customer_id FROM dash_demo.customers c WHERE c.account_manager_id = 2014) AND i.due_date < DATE '2026-09-30'"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "named-guarantee-overdue-customers",
+      "bucket": "customers with an overdue invoice",
+      "threshold": 10,
+      "observed": 43,
+      "rule": "at least 10 overdue customers, so the top 10 is a real top 10",
+      "over": "defaults",
+      "sql": "SELECT count(DISTINCT i.customer_id) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.due_date < DATE '2026-09-30'"
+    }
+  ]
+}

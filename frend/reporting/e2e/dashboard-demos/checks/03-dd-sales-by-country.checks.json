@@ -1,0 +1,205 @@
+{
+  "id": "dd-sales-by-country",
+  "index": 3,
+  "title": "Sales by Country",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "region": "All",
+    "countries": []
+  },
+  "kpis": [
+    {
+      "widget": "kpi-revenue",
+      "label": "Revenue in scope",
+      "format": "currency",
+      "value": 64756820.89,
+      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled'"
+    },
+    {
+      "widget": "kpi-orders",
+      "label": "Orders in scope",
+      "format": "number",
+      "value": 23492,
+      "sql": "SELECT count(*) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled'"
+    },
+    {
+      "widget": "chart-top-country-by-revenue",
+      "label": "Largest market",
+      "format": "text",
+      "value": "Germany",
+      "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY sum(o.total_amount) DESC LIMIT 1"
+    },
+    {
+      "widget": "chart-top-country-by-order-value",
+      "label": "Largest average order",
+      "format": "text",
+      "value": "Japan",
+      "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY avg(o.total_amount) DESC LIMIT 1"
+    },
+    {
+      "widget": "table-growth-fastest",
+      "label": "Fastest growing country",
+      "format": "text",
+      "value": "Canada",
+      "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY 1 HAVING count(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN 1 END) >= 150 ORDER BY sum(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN o.total_amount ELSE 0 END) / sum(CASE WHEN o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01' THEN o.total_amount ELSE 0 END) DESC LIMIT 1"
+    },
+    {
+      "widget": "table-growth-fastest-pct",
+      "label": "Its growth %",
+      "format": "percent",
+      "value": 49.3,
+      "sql": "SELECT max(gr) FROM (SELECT 100.0 * (sum(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN o.total_amount ELSE 0 END) / sum(CASE WHEN o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01' THEN o.total_amount ELSE 0 END) - 1) AS gr FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' GROUP BY g.country HAVING count(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN 1 END) >= 150)"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "region-apac",
+      "params": {
+        "region": "APAC",
+        "countries": []
+      },
+      "changed": {
+        "region": "APAC"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-revenue",
+          "label": "Revenue in scope",
+          "format": "currency",
+          "value": 8050397.3,
+          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.region = 'APAC'"
+        },
+        {
+          "widget": "kpi-orders",
+          "label": "Orders in scope",
+          "format": "number",
+          "value": 2905,
+          "sql": "SELECT count(*) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.region = 'APAC'"
+        },
+        {
+          "widget": "chart-top-country-by-revenue",
+          "label": "Largest market",
+          "format": "text",
+          "value": "Japan",
+          "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.region = 'APAC' GROUP BY 1 ORDER BY sum(o.total_amount) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-top-country-by-order-value",
+          "label": "Largest average order",
+          "format": "text",
+          "value": "Japan",
+          "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.region = 'APAC' GROUP BY 1 ORDER BY avg(o.total_amount) DESC LIMIT 1"
+        },
+        {
+          "widget": "table-growth-fastest",
+          "label": "Fastest growing country",
+          "format": "text",
+          "value": "Japan",
+          "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.region = 'APAC' GROUP BY 1 HAVING count(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN 1 END) >= 150 ORDER BY sum(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN o.total_amount ELSE 0 END) / sum(CASE WHEN o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01' THEN o.total_amount ELSE 0 END) DESC LIMIT 1"
+        },
+        {
+          "widget": "table-growth-fastest-pct",
+          "label": "Its growth %",
+          "format": "percent",
+          "value": 40.07,
+          "sql": "SELECT max(gr) FROM (SELECT 100.0 * (sum(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN o.total_amount ELSE 0 END) / sum(CASE WHEN o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01' THEN o.total_amount ELSE 0 END) - 1) AS gr FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.region = 'APAC' GROUP BY g.country HAVING count(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN 1 END) >= 150)"
+        }
+      ]
+    },
+    {
+      "id": "countries-poland-germany",
+      "params": {
+        "region": "All",
+        "countries": [
+          "Poland",
+          "Germany"
+        ]
+      },
+      "changed": {
+        "countries": [
+          "Poland",
+          "Germany"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "kpi-revenue",
+          "label": "Revenue in scope",
+          "format": "currency",
+          "value": 15288064.37,
+          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country IN ('Poland', 'Germany')"
+        },
+        {
+          "widget": "kpi-orders",
+          "label": "Orders in scope",
+          "format": "number",
+          "value": 5663,
+          "sql": "SELECT count(*) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country IN ('Poland', 'Germany')"
+        },
+        {
+          "widget": "chart-top-country-by-revenue",
+          "label": "Largest market",
+          "format": "text",
+          "value": "Germany",
+          "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country IN ('Poland', 'Germany') GROUP BY 1 ORDER BY sum(o.total_amount) DESC LIMIT 1"
+        },
+        {
+          "widget": "chart-top-country-by-order-value",
+          "label": "Largest average order",
+          "format": "text",
+          "value": "Germany",
+          "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country IN ('Poland', 'Germany') GROUP BY 1 ORDER BY avg(o.total_amount) DESC LIMIT 1"
+        },
+        {
+          "widget": "table-growth-fastest",
+          "label": "Fastest growing country",
+          "format": "text",
+          "value": "Poland",
+          "sql": "SELECT g.country FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country IN ('Poland', 'Germany') GROUP BY 1 HAVING count(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN 1 END) >= 150 ORDER BY sum(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN o.total_amount ELSE 0 END) / sum(CASE WHEN o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01' THEN o.total_amount ELSE 0 END) DESC LIMIT 1"
+        },
+        {
+          "widget": "table-growth-fastest-pct",
+          "label": "Its growth %",
+          "format": "percent",
+          "value": 47.66,
+          "sql": "SELECT max(gr) FROM (SELECT 100.0 * (sum(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN o.total_amount ELSE 0 END) / sum(CASE WHEN o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01' THEN o.total_amount ELSE 0 END) - 1) AS gr FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country IN ('Poland', 'Germany') GROUP BY g.country HAVING count(CASE WHEN o.order_ts >= DATE '2026-01-01' THEN 1 END) >= 150)"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "table-country-growth",
+      "bucket": "country, year to date",
+      "threshold": 150,
+      "observed": 167,
+      "rule": "a growth % per row needs 150 in the current period; smaller countries fold into 'Other countries', which is why the fold is measured, not the raw smallest country",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT CASE WHEN count(*) >= 150 THEN g.country ELSE 'Other countries' END AS bucket, count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' GROUP BY g.country)"
+    },
+    {
+      "widget": "table-country-growth",
+      "bucket": "country, year to date",
+      "threshold": 150,
+      "observed": 167,
+      "rule": "a growth % per row needs 150 in the current period; smaller countries fold into 'Other countries', which is why the fold is measured, not the raw smallest country",
+      "over": "region-apac",
+      "sql": "SELECT min(n) FROM (SELECT CASE WHEN count(*) >= 150 THEN g.country ELSE 'Other countries' END AS bucket, count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.region = 'APAC' AND o.order_ts >= DATE '2026-01-01' GROUP BY g.country)"
+    },
+    {
+      "widget": "table-country-growth",
+      "bucket": "country, year to date",
+      "threshold": 150,
+      "observed": 668,
+      "rule": "a growth % per row needs 150 in the current period; smaller countries fold into 'Other countries', which is why the fold is measured, not the raw smallest country",
+      "over": "countries-poland-germany",
+      "sql": "SELECT min(n) FROM (SELECT CASE WHEN count(*) >= 150 THEN g.country ELSE 'Other countries' END AS bucket, count(*) AS n FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE o.status <> 'cancelled' AND g.country IN ('Poland', 'Germany') AND o.order_ts >= DATE '2026-01-01' GROUP BY g.country)"
+    }
+  ]
+}

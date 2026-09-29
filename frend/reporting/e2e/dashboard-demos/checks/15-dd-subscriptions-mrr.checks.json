@@ -1,0 +1,124 @@
+{
+  "id": "dd-subscriptions-mrr",
+  "index": 15,
+  "title": "Subscriptions: MRR & Churn",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "plan": []
+  },
+  "kpis": [
+    {
+      "widget": "trend-mrr",
+      "label": "MRR",
+      "format": "currency",
+      "value": 99781.43,
+      "sql": "SELECT round(sum(s.mrr), 2) FROM dash_demo.subscriptions s WHERE s.cancel_date IS NULL"
+    },
+    {
+      "widget": "kpi-active-subscribers",
+      "label": "Active subscribers",
+      "format": "number",
+      "value": 2930,
+      "sql": "SELECT count(*) FROM dash_demo.subscriptions s WHERE s.cancel_date IS NULL"
+    },
+    {
+      "widget": "gauge-churn-last-month",
+      "label": "Churn last month %",
+      "format": "percent",
+      "value": 1.34,
+      "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-09-01') / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-09-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-09-01')), 2)"
+    },
+    {
+      "widget": "chart-churn-february-2026",
+      "label": "Churn in February 2026 %",
+      "format": "percent",
+      "value": 2.43,
+      "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-02-01') / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-02-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-02-01')), 2)"
+    },
+    {
+      "widget": "chart-waterfall-expansion-12-months",
+      "label": "Expansion MRR, last 12 months",
+      "format": "currency",
+      "value": 8102.58,
+      "sql": "SELECT round(sum(ch.mrr_delta), 2) FROM dash_demo.subscription_changes ch JOIN dash_demo.subscriptions s USING (subscription_id) WHERE ch.change_type = 'expansion' AND ch.change_date > DATE '2026-09-30' - INTERVAL 12 MONTH"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "plan-pro",
+      "params": {
+        "plan": [
+          "Pro"
+        ]
+      },
+      "changed": {
+        "plan": [
+          "Pro"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "trend-mrr",
+          "label": "MRR",
+          "format": "currency",
+          "value": 32386.38,
+          "sql": "SELECT round(sum(s.mrr), 2) FROM dash_demo.subscriptions s WHERE s.cancel_date IS NULL AND s.plan IN ('Pro')"
+        },
+        {
+          "widget": "kpi-active-subscribers",
+          "label": "Active subscribers",
+          "format": "number",
+          "value": 686,
+          "sql": "SELECT count(*) FROM dash_demo.subscriptions s WHERE s.cancel_date IS NULL AND s.plan IN ('Pro')"
+        },
+        {
+          "widget": "gauge-churn-last-month",
+          "label": "Churn last month %",
+          "format": "percent",
+          "value": 1.14,
+          "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-09-01' AND s.plan IN ('Pro')) / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-09-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-09-01') AND s.plan IN ('Pro')), 2)"
+        },
+        {
+          "widget": "chart-churn-february-2026",
+          "label": "Churn in February 2026 %",
+          "format": "percent",
+          "value": 3.79,
+          "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-02-01' AND s.plan IN ('Pro')) / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-02-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-02-01') AND s.plan IN ('Pro')), 2)"
+        },
+        {
+          "widget": "chart-waterfall-expansion-12-months",
+          "label": "Expansion MRR, last 12 months",
+          "format": "currency",
+          "value": 2227.26,
+          "sql": "SELECT round(sum(ch.mrr_delta), 2) FROM dash_demo.subscription_changes ch JOIN dash_demo.subscriptions s USING (subscription_id) WHERE ch.change_type = 'expansion' AND ch.change_date > DATE '2026-09-30' - INTERVAL 12 MONTH AND s.plan IN ('Pro')"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "chart-mrr-by-plan",
+      "bucket": "month x plan, subscriptions active in the month",
+      "threshold": 20,
+      "observed": 88,
+      "rule": "each series of a split area chart",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT m, s.plan, count(*) AS n FROM (SELECT unnest(generate_series(DATE '2025-10-01', DATE '2026-09-01', INTERVAL 1 MONTH))::DATE AS m) months, dash_demo.subscriptions s WHERE true AND s.start_date <= m AND (s.cancel_date IS NULL OR s.cancel_date > m) GROUP BY 1, 2)"
+    },
+    {
+      "widget": "pivot-subscriber-cohorts",
+      "bucket": "signup cohort",
+      "threshold": 100,
+      "observed": 123,
+      "rule": "a cohort row needs 100 subscribers",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.subscriptions s WHERE true AND s.start_date >= DATE '2025-01-01' GROUP BY date_trunc('quarter', s.start_date))"
+    }
+  ]
+}

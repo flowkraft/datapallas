@@ -39,8 +39,8 @@ class CubeDemoRunOnceTest {
 	/** A second day, so a reload can be told from a run that did nothing by {@code seeded_on}. */
 	private static final String ANOTHER_TODAY = "2027-01-31";
 
-	/** The version of the rows the script ships with. */
-	private static final int DATA_VERSION = 2;
+	/** The version of the rows, and of the tables they go into, that the script ships with. */
+	private static final int DATA_VERSION = 3;
 
 	/** The row every test changes to see whether a run reloaded or left the data alone. */
 	private static final String SHIPPED_NAME = "Orbit Accessories Pro";

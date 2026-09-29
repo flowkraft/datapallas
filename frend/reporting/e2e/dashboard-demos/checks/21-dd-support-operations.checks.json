@@ -1,0 +1,174 @@
+{
+  "id": "dd-support-operations",
+  "index": 21,
+  "title": "Support Operations",
+  "dataToday": "2026-09-30",
+  "seed": {
+    "script": "dashboards-demo-data.groovy",
+    "wipe": true,
+    "today": "2026-09-30"
+  },
+  "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
+  "defaults": {
+    "priority": [],
+    "team": "All"
+  },
+  "kpis": [
+    {
+      "widget": "kpi-open-tickets",
+      "label": "Open tickets",
+      "format": "number",
+      "value": 12552,
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.status <> 'resolved'"
+    },
+    {
+      "widget": "kpi-opened-last-7-days",
+      "label": "Opened in the last 7 days",
+      "format": "number",
+      "value": 127,
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts > DATE '2026-09-30' - INTERVAL 7 DAY AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+    },
+    {
+      "widget": "kpi-average-first-response",
+      "label": "Average first response, minutes",
+      "format": "number",
+      "value": 836.55,
+      "sql": "SELECT round(avg(date_diff('minute', t.opened_ts, t.first_response_ts)), 2) FROM dash_demo.support_tickets t WHERE true AND t.first_response_ts IS NOT NULL"
+    },
+    {
+      "widget": "gauge-sla-met",
+      "label": "SLA met %",
+      "format": "percent",
+      "value": 90.66,
+      "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true"
+    },
+    {
+      "widget": "chart-urgent-sla-breaches-june-2026",
+      "label": "Urgent SLA breaches in June 2026 against the rest",
+      "format": "number",
+      "value": 3.05,
+      "sql": "SELECT round((SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) = DATE '2026-06-01') / (SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) <> DATE '2026-06-01'), 2)"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "priority-urgent",
+      "params": {
+        "priority": [
+          "urgent"
+        ],
+        "team": "All"
+      },
+      "changed": {
+        "priority": [
+          "urgent"
+        ]
+      },
+      "kpis": [
+        {
+          "widget": "kpi-open-tickets",
+          "label": "Open tickets",
+          "format": "number",
+          "value": 1032,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.priority IN ('urgent') AND t.status <> 'resolved'"
+        },
+        {
+          "widget": "kpi-opened-last-7-days",
+          "label": "Opened in the last 7 days",
+          "format": "number",
+          "value": 12,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.priority IN ('urgent') AND t.opened_ts > DATE '2026-09-30' - INTERVAL 7 DAY AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-average-first-response",
+          "label": "Average first response, minutes",
+          "format": "number",
+          "value": 146.33,
+          "sql": "SELECT round(avg(date_diff('minute', t.opened_ts, t.first_response_ts)), 2) FROM dash_demo.support_tickets t WHERE true AND t.priority IN ('urgent') AND t.first_response_ts IS NOT NULL"
+        },
+        {
+          "widget": "gauge-sla-met",
+          "label": "SLA met %",
+          "format": "percent",
+          "value": 90.77,
+          "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.priority IN ('urgent')"
+        },
+        {
+          "widget": "chart-urgent-sla-breaches-june-2026",
+          "label": "Urgent SLA breaches in June 2026 against the rest",
+          "format": "number",
+          "value": 3.05,
+          "sql": "SELECT round((SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) = DATE '2026-06-01') / (SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) <> DATE '2026-06-01'), 2)"
+        }
+      ]
+    },
+    {
+      "id": "team-billing",
+      "params": {
+        "priority": [],
+        "team": "Billing"
+      },
+      "changed": {
+        "team": "Billing"
+      },
+      "kpis": [
+        {
+          "widget": "kpi-open-tickets",
+          "label": "Open tickets",
+          "format": "number",
+          "value": 3179,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Billing') AND t.status <> 'resolved'"
+        },
+        {
+          "widget": "kpi-opened-last-7-days",
+          "label": "Opened in the last 7 days",
+          "format": "number",
+          "value": 24,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Billing') AND t.opened_ts > DATE '2026-09-30' - INTERVAL 7 DAY AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+        },
+        {
+          "widget": "kpi-average-first-response",
+          "label": "Average first response, minutes",
+          "format": "number",
+          "value": 842.33,
+          "sql": "SELECT round(avg(date_diff('minute', t.opened_ts, t.first_response_ts)), 2) FROM dash_demo.support_tickets t WHERE true AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Billing') AND t.first_response_ts IS NOT NULL"
+        },
+        {
+          "widget": "gauge-sla-met",
+          "label": "SLA met %",
+          "format": "percent",
+          "value": 90.2,
+          "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Billing')"
+        },
+        {
+          "widget": "chart-urgent-sla-breaches-june-2026",
+          "label": "Urgent SLA breaches in June 2026 against the rest",
+          "format": "number",
+          "value": 3.05,
+          "sql": "SELECT round((SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) = DATE '2026-06-01') / (SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) <> DATE '2026-06-01'), 2)"
+        }
+      ]
+    }
+  ],
+  "density": [
+    {
+      "widget": "pivot-tickets-weekday-hour",
+      "bucket": "weekday x hour cell, on average",
+      "threshold": 50,
+      "observed": 83.33,
+      "rule": "a weekday x hour heatmap needs 50 per cell on average",
+      "over": "defaults",
+      "sql": "SELECT round(count(*) / 168.0, 2) FROM dash_demo.support_tickets t WHERE true"
+    },
+    {
+      "widget": "chart-created-vs-resolved-per-week",
+      "bucket": "week",
+      "threshold": 100,
+      "observed": 84,
+      "rule": "a weekly line, company totals",
+      "over": "defaults",
+      "sql": "SELECT min(n) FROM (SELECT count(*) AS n FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2024-01-08' AND t.opened_ts < DATE '2026-09-28' GROUP BY date_trunc('week', t.opened_ts))",
+      "shortfall": true
+    }
+  ]
+}

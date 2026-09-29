@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cube>
+    <name>Demo Support</name>
+    <description>The support tickets: how many, how many are still open, how long the first answer takes and how happy the customer was, by opened month, channel, category, priority and team. Runs on the dash_demo dashboards demo data.</description>
+    <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
+</cube>
