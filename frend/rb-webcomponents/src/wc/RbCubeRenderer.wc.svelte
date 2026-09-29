@@ -2835,6 +2835,8 @@
     <!-- The questions this cube was written to answer, each one click away (design part 8) -->
     {#if offersStories}
       <div class="rb-cube-half rb-cube-stories">
+      <div id="cubeStoriesHeading" class="rb-stories-heading"
+           title="Ideas for what to ask this cube: press Show Me and the fields it needs are ticked for you">Stories</div>
       <div id="cubeHints" class="rb-hints">
         {#each hints as ask (ask.id)}
           <div id="hint-{ask.id}" class="rb-hint" class:rb-hint-asked={ask.id === askedId}>
@@ -3205,11 +3207,21 @@
     }
   }
 
+  /* One word over the questions, weighted like `Measures` and the other folder headings on the
+     field half, so a reader sees two named columns rather than a list beside some cards. */
+  .rb-stories-heading {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 4px;
+    margin: 0;
+    cursor: help;
+  }
+
   .rb-hints {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin: 8px 0;
+    margin: 4px 0 8px;
   }
 
   .rb-hint {
