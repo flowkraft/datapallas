@@ -77,6 +77,9 @@ CONTAINER=dp-ci
 DEV_CONTAINER=datapallas-dev                          # dp-dev; the bkstg reverse proxy reaches it by this name
 DEV_NETWORK=bridge_current_host_cross_containers_net  # the reverse proxy's network
 DEV_PORT=14201                                        # TCP forwarder to `ng serve` (localhost:4201) in that container
+AI_HUB_PORT=3000                                      # `next dev` for the AI Hub start page, in --live only
+PLAY_CONTAINER=datapallas-play                        # dp-dev-pinned; the reverse proxy reaches it by this name
+PLAY_REPO=/var/kraft-internalsystems/projects/dp-play/reportburster   # the pinned clone, never this checkout
 SERVER_IMAGE_REPO=flowkraft/datapallas-server
 
 # A publish target: the site's compose folder (docker-compose.yml + .env with DATAPALLAS_IMAGE=...), its data
@@ -769,6 +772,43 @@ start_dev_container() {
   echo "log:     $log   (also $LOG_DIR/dev-latest.log)"
 }
 
+# The pinned dev site: a SEPARATE clone parked at one commit, its own container, its own maven repo,
+# so nothing another agent commits can change what is being tested. The clone is built by
+# asbl/ci/dp-dev-pinned.sh -- taken from THIS checkout, not from the pinned tree, so pinning to a
+# commit older than this feature still works. The pinned tree is only ever read and built.
+start_pinned_dev() {
+  local sha="$1" log
+  mkdir -p "$(dirname "$PLAY_REPO")" "$LOG_DIR"
+  if [ ! -d "$PLAY_REPO/.git" ]; then
+    echo "cloning $REPO -> $PLAY_REPO (once)"
+    git clone -q "$REPO" "$PLAY_REPO" || return 1
+  fi
+  git -C "$PLAY_REPO" remote set-url origin "$REPO" 2>/dev/null
+  git -C "$PLAY_REPO" fetch -q origin || return 1
+  git -C "$PLAY_REPO" rev-parse --verify -q "$sha^{commit}" >/dev/null ||
+    { echo "FAIL  $sha is not a commit in $PLAY_REPO"; return 1; }
+  if [ -n "$(git -C "$PLAY_REPO" status --porcelain)" ]; then
+    echo "FAIL  $PLAY_REPO has local changes -- look at them before they are lost"; return 1
+  fi
+  git -C "$PLAY_REPO" checkout -q --detach "$sha" || return 1
+  echo "pinned at $(git -C "$PLAY_REPO" log --oneline -1)"
+  log="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-dev-pinned-$sha.log"
+  ln -sfn "$log" "$LOG_DIR/dev-pinned-latest.log"
+  docker rm -f "$PLAY_CONTAINER" >/dev/null 2>&1
+  docker run -d --name "$PLAY_CONTAINER" --network "$DEV_NETWORK" --ulimit core=0 \
+    -v "$PLAY_REPO":"$PLAY_REPO" -w "$PLAY_REPO" \
+    -v "$REPO/asbl/ci":/dp-ci-driver:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v dp-play-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \
+    -v "$LOG_DIR":"$LOG_DIR" \
+    -e REPO="$PLAY_REPO" -e TASK=dev -e DEV_MODE=pinned -e SHA="$sha" -e LOG="$log" \
+    "$CI_IMAGE" bash /dp-ci-driver/dp-dev-pinned.sh >/dev/null || return 1
+  echo "dp-dev-pinned:  $PLAY_CONTAINER started on $sha"
+  echo "log:            $log   (also $LOG_DIR/dev-pinned-latest.log)"
+  echo "it answers at https://dp-dev-pinned.bkstg.flowkraft.com once the assembly and the UI are built"
+  echo "stop:           docker stop $PLAY_CONTAINER"
+}
+
 # -----------------------------------------------------------------------------
 # INSIDE the dp-ci container
 # -----------------------------------------------------------------------------
@@ -1093,7 +1133,29 @@ if [ "${1:-}" = "--inside" ]; then
     # because every DataPallas is. The browser reaching it through ng serve holds no installation key, so it
     # meets the login screen and signs in as a real account, exactly like a browser pointed at a Server.
     # DataPallas.security.enabled=false is the only way to relax that, and nothing reachable should use it.
+    # A backend change should cost seconds, not a rebuild. DevTools restarts the context in about two
+    # seconds as soon as a class under bkend/server/target/classes changes -- this is what recompiles it.
+    # Only in --live: a pinned site is meant to stay exactly where it was pinned.
+    if [ "${DEV_MODE:-live}" = live ]; then
+      (cd frend/reporting && npm run custom:dev-watch-backend) &
+      ai_hub_dev &
+    fi
     (cd frend/reporting && npm run custom:start-server-and-ui-web)
+  }
+
+  # The AI Hub start page run as `next dev`, so it hot-reloads from its sources like the rest of the UI.
+  # Packaging still builds it the production way; this is only the dev lane. Never fatal: a dev server
+  # without the start page is still a usable dev server.
+  ai_hub_dev() {
+    local d="$REPO/asbl/src/main/external-resources/db-template/_apps/flowkraft/_ai-hub/ui-startpage"
+    [ -d "$d" ] || { echo "ai-hub: no sources at $d, next dev not started"; return 0; }
+    cd "$d" || return 0
+    # better-sqlite3 has no prebuilt binary for this image and compiles here; the tools image carries
+    # make/g++/python3 for exactly that.
+    npm install --legacy-peer-deps --no-package-lock ||
+      { echo "ai-hub: npm install failed, next dev not started"; return 0; }
+    echo "ai-hub: next dev on port $AI_HUB_PORT"
+    npm run dev
   }
 
   # A unique tag per build, so a publish can name exactly this image (DockerAssembler re-points
@@ -1317,9 +1379,26 @@ fi
 
 cd "$REPO" || exit 1
 if [ "$TASK" = "dev" ]; then
+  # Two dev sites. They differ only in WHICH checkout their container runs, never in the code:
+  #   --live          THIS checkout, hot-reloading, and whatever anyone else commits into it meanwhile
+  #                   -> https://dp-dev-live.bkstg.flowkraft.com  (dp-dev is an alias for it)
+  #   --pinned <sha>  a separate clone parked at one commit, so a test session cannot move under you
+  #                   -> https://dp-dev-pinned.bkstg.flowkraft.com
+  # --live is the default: that is what a plain "dp-ci.sh dev" has always meant.
+  DEV_MODE=live; PINNED_SHA=""
+  case "${2:-}" in
+    ""|--live) ;;
+    --pinned) DEV_MODE=pinned; PINNED_SHA="${3:-}"
+              [ -n "$PINNED_SHA" ] || { echo "usage: $0 dev --pinned <commit>"; exit 2; } ;;
+    *) echo "usage: $0 dev [--live | --pinned <commit>]"; exit 2 ;;
+  esac
   mkdir -p "$LOG_DIR"
   echo "building the $CI_IMAGE tools image (cached after the first time)..."
   docker build -q -t "$CI_IMAGE" "$REPO/asbl/ci" >/dev/null || { echo "FAIL  docker build $CI_IMAGE"; exit 1; }
+  if [ "$DEV_MODE" = pinned ]; then
+    start_pinned_dev "$PINNED_SHA" || { echo "FAIL  could not start the pinned dev site"; exit 1; }
+    exit 0
+  fi
   start_dev_container || { echo "FAIL  docker run $DEV_CONTAINER"; exit 1; }
   echo "stop:    docker stop $DEV_CONTAINER"
   exit 0

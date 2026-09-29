@@ -52,3 +52,12 @@ ARG CFT_VERSION=138.0.7204.183
 RUN curl -fsSL -o /tmp/cft.zip "https://storage.googleapis.com/chrome-for-testing-public/${CFT_VERSION}/linux64/chrome-linux64.zip" \
  && mkdir -p /opt/chrome-for-testing && unzip -q /tmp/cft.zip -d /opt/chrome-for-testing && rm /tmp/cft.zip \
  && /opt/chrome-for-testing/chrome-linux64/chrome --version | grep -q "${CFT_VERSION}"
+
+# node-gyp toolchain. The AI Hub start page depends on better-sqlite3, which has no prebuilt binary for
+# this image and falls back to compiling, so its `npm install` died with "gyp ERR! stack Error: not
+# found: make". That is what failed the AI Hub build step, and it is also what `next dev` needs to run
+# the start page from its sources. Appended as its own layer on purpose: putting it in the first
+# apt-get above would invalidate every cached layer below it, including the Chrome download.
+RUN apt-get update && apt-get install -y --no-install-recommends make g++ python3 \
+ && rm -rf /var/lib/apt/lists/* \
+ && make --version >/dev/null && g++ --version >/dev/null && python3 --version >/dev/null

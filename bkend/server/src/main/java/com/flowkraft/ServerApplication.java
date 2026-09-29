@@ -42,7 +42,12 @@ public class ServerApplication implements ExitCodeGenerator {
             appBuilder.run(args);
         }
 
-        System.setProperty("spring.devtools.restart.enabled", "false");
+        // Deliberately NOT disabling spring.devtools.restart here. DevTools is declared
+        // <optional>/<runtime>, and the Spring Boot Maven plugin leaves it out of the packaged
+        // rb-server.jar, so in a shipped DataPallas it is not on the classpath at all and there
+        // is nothing to switch off. The only thing the old line did was kill the dev restart
+        // loop: with it gone, a recompiled class under bkend/server/target/classes restarts the
+        // context in a few seconds instead of needing a full rebuild of the dev server.
     }
 
     private static long getPid() {
