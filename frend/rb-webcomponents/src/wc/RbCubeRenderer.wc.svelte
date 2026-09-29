@@ -3207,13 +3207,13 @@
     }
   }
 
-  /* One word over the questions, weighted like `Measures` and the other folder headings on the
-     field half, so a reader sees two named columns rather than a list beside some cards. */
+  /* One word over the questions, a size above the field half's own headings: the tree is a list a
+     reader scans, and this is the half they are invited to start from. */
   .rb-stories-heading {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     padding: 0 4px;
-    margin: 0;
+    margin: 0 0 2px;
     cursor: help;
   }
 
