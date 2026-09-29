@@ -88,7 +88,7 @@ public class DashboardFileGenerator {
             generateGaugeConfig(byType(widgets, "gauge")),
             generateJsonSidecar(byType(widgets, "trend"),    "dateField", "valueField", "format", "label"),
             generateJsonSidecar(byType(widgets, "progress"), "field", "goal", "label", "format", "color"),
-            generateJsonSidecar(byType(widgets, "detail"),   "hiddenColumns", "rowIndex"),
+            generateDetailConfig(byType(widgets, "detail")),
             // The live cubes this dashboard declares - the file the runtime reads its cube, its
             // cube name and its connection from, and never from a request.
             LiveCubeWidgets.json(widgets, DashboardFileGenerator::componentId, connectionId)
@@ -134,6 +134,12 @@ public class DashboardFileGenerator {
                "  <style>\n" +
                "    .rb-dashboard-root {\n" +
                "      all: initial;\n" +
+               "      /* `all: initial` resets every inherited property, and color-scheme is one of them: the\n" +
+               "         colours below put the page back, but the browser was left painting NATIVE controls on\n" +
+               "         the light canvas. In a dark theme a <select>'s dropdown list came out white while its\n" +
+               "         options kept the page's near-white text, so the list read as empty. The scheme follows\n" +
+               "         the page again -- the page's, whichever it is, never a colour named here. */\n" +
+               "      color-scheme: inherit;\n" +
                "      display: block;\n" +
                "      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;\n" +
                "      box-sizing: border-box;\n" +
@@ -381,15 +387,179 @@ public class DashboardFileGenerator {
             if (dslConfig instanceof Map<?, ?> map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> opts = (Map<String, Object>) map;
-                return BlockFormEmitter.emitNamed("tabulator", id, opts, BlockFormRules.TABULATOR, true);
+                return BlockFormEmitter.emitNamed("tabulator", id, withColumnFormats(opts, cfg),
+                    BlockFormRules.TABULATOR, true);
             }
             // Empty fallback — widget never opened in canvas, so no Map yet.
             // Render an empty auto-columns table so it at least shows data.
             Map<String, Object> opts = new LinkedHashMap<>();
             opts.put("layout", "fitColumns");
             opts.put("autoColumns", true);
-            return BlockFormEmitter.emitNamed("tabulator", id, opts, BlockFormRules.TABULATOR, true);
+            return BlockFormEmitter.emitNamed("tabulator", id, withColumnFormats(opts, cfg),
+                BlockFormRules.TABULATOR, true);
         }).collect(Collectors.joining("\n\n"));
+    }
+
+    // ── What a column was settled to be (W4.2) ──────────────────────────────
+
+    /**
+     * The table's own DSL, with the formats its columns were settled to (W4.2).
+     *
+     * <p>The canvas formats a table from what the cube declares - a measure the model says is
+     * money is money in the table under it - and keeps that in
+     * {@code displayConfig.columnSettings}. It formats with a JavaScript function, and a function
+     * is not something a published file can carry: so the published table showed the number as the
+     * database wrote it, 261897.2895 - four decimals and no currency - beside a KPI of the same
+     * measure reading EUR 261,897.29.
+     *
+     * <p>What each column was settled to is therefore written into the table's own DSL, as the
+     * formatter Tabulator itself takes. The published page needs nothing else to read it, and the
+     * author can read it and change it in the file afterwards. A column that already says how it
+     * is formatted is left exactly as it is: this fills in what nobody has said, nothing else.
+     */
+    private static Map<String, Object> withColumnFormats(Map<String, Object> dslConfig,
+            Map<String, Object> displayConfig) {
+
+        Map<String, Map<String, Object>> settled = settledColumns(displayConfig);
+        if (settled.isEmpty()) return dslConfig;
+
+        Map<String, Object> out = new LinkedHashMap<>(dslConfig);
+
+        // A column list the author wrote is their own choice of what the table shows, so the
+        // formats go onto the columns they listed and no column is added to it.
+        if (out.get("columns") instanceof List<?> columns && !columns.isEmpty()) {
+            out.put("columns", formatted(columns, settled, false));
+            return out;
+        }
+
+        // With no list, Tabulator makes the columns from the data and reads the per-field
+        // definitions beside it - which it takes keyed by field as well as listed.
+        Object definitions = out.get("autoColumnsDefinitions");
+        if (definitions instanceof Map<?, ?> byField) {
+            Map<String, Object> merged = new LinkedHashMap<>();
+            asMap(byField).forEach((field, definition) ->
+                merged.put(field, withFormat(asMap(definition), settled.get(field))));
+            settled.forEach((field, settings) -> {
+                if (merged.containsKey(field)) return;
+                Map<String, Object> format = tabulatorFormat(settings);
+                if (format != null) merged.put(field, format);
+            });
+            out.put("autoColumnsDefinitions", merged);
+            return out;
+        }
+        List<?> listed = definitions instanceof List<?> l ? l : List.of();
+        List<Object> withFormats = formatted(listed, settled, true);
+        if (!withFormats.isEmpty()) out.put("autoColumnsDefinitions", withFormats);
+        return out;
+    }
+
+    /**
+     * The definitions, each with the format of the column it is for - and, when {@code addMissing}
+     * is set, one more for every settled column none of them names yet.
+     */
+    private static List<Object> formatted(List<?> definitions,
+            Map<String, Map<String, Object>> settled, boolean addMissing) {
+
+        List<Object> out = new ArrayList<>();
+        Set<String> named = new LinkedHashSet<>();
+        for (Object definition : definitions) {
+            Map<String, Object> entry = asMap(definition);
+            String field = Objects.toString(entry.get("field"), "");
+            named.add(field);
+            out.add(withFormat(entry, settled.get(field)));
+        }
+        if (!addMissing) return out;
+        for (Map.Entry<String, Map<String, Object>> column : settled.entrySet()) {
+            if (named.contains(column.getKey())) continue;
+            Map<String, Object> format = tabulatorFormat(column.getValue());
+            if (format == null) continue;
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("field", column.getKey());
+            entry.putAll(format);
+            out.add(entry);
+        }
+        return out;
+    }
+
+    /** One definition, with its column's format - unless it already carries one of its own. */
+    private static Map<String, Object> withFormat(Map<String, Object> definition,
+            Map<String, Object> settings) {
+
+        if (settings == null || definition.containsKey("formatter")) return definition;
+        Map<String, Object> format = tabulatorFormat(settings);
+        if (format == null) return definition;
+        Map<String, Object> out = new LinkedHashMap<>(definition);
+        format.forEach(out::putIfAbsent);
+        return out;
+    }
+
+    /**
+     * One column's format as Tabulator says it: {@code money} for money and for a plain number,
+     * and {@code percent} for a share - which Tabulator has no formatter of its own for and
+     * {@code <rb-tabulator>} adds, so that a published table says a percent the one way the whole
+     * page says it. A column the cube declares nothing about is left to the table.
+     */
+    private static Map<String, Object> tabulatorFormat(Map<String, Object> settings) {
+
+        String style = Objects.toString(settings.get("numberStyle"), "");
+        Integer decimals = settings.get("decimals") instanceof Number n ? n.intValue() : null;
+        Map<String, Object> params = new LinkedHashMap<>();
+        Map<String, Object> format = new LinkedHashMap<>();
+
+        switch (style) {
+            case "currency" -> {
+                params.put("symbol", currencySymbol(Objects.toString(settings.get("currency"), "")));
+                params.put("thousand", ",");
+                params.put("decimal", ".");
+                params.put("precision", decimals != null ? (Object) decimals : (Object) 2);
+                format.put("formatter", "money");
+                format.put("formatterParams", params);
+            }
+            case "decimal" -> {
+                params.put("symbol", "");
+                params.put("thousand", ",");
+                params.put("decimal", ".");
+                // `false` is Tabulator's "do not round": the thousands are marked and the number
+                // is otherwise left as it came back, so a count reads 14,438 and a rate keeps the
+                // decimals it was computed to. A column given a number of decimals gets that.
+                params.put("precision", decimals != null ? (Object) decimals : (Object) Boolean.FALSE);
+                format.put("formatter", "money");
+                format.put("formatterParams", params);
+            }
+            case "percent" -> format.put("formatter", "percent");
+            default -> {
+                return null;
+            }
+        }
+        // A number lines up on the right, as it does in the canvas the author built this in.
+        format.put("hozAlign", "right");
+        format.put("headerHozAlign", "right");
+        return format;
+    }
+
+    /**
+     * The sign a currency is written with, or its code when it has none of its own. A column
+     * settled as money that names no currency is read in the one the canvas falls back to.
+     */
+    private static String currencySymbol(String code) {
+        String iso = code.isBlank() ? "USD" : code;
+        try {
+            return Currency.getInstance(iso).getSymbol(Locale.US);
+        } catch (IllegalArgumentException notACurrency) {
+            return iso;
+        }
+    }
+
+    /** What the canvas settled this widget's columns to be, by column name. */
+    private static Map<String, Map<String, Object>> settledColumns(Map<String, Object> displayConfig) {
+        Map<String, Map<String, Object>> out = new LinkedHashMap<>();
+        asMap(displayConfig.get("columnSettings")).forEach((field, settings) ->
+            out.put(field, asMap(settings)));
+        return out;
+    }
+
+    private static Map<String, Object> asMap(Object value) {
+        return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
     }
 
     // ── Pivot Config (Groovy DSL) ─────────────────────────────────────────────
@@ -617,6 +787,53 @@ public class DashboardFileGenerator {
     }
 
     // ── Generic JSON Sidecar ──────────────────────────────────────────────────
+
+    /**
+     * The detail tile's sidecar: beside the columns it hides and the row it opens on, what its
+     * columns were settled to be (W4.2), in the shape {@code <rb-detail>} reads formats in. Same
+     * reason as the table's: the canvas formats with a function, and a function cannot be
+     * published.
+     */
+    private static String generateDetailConfig(List<Map<String, Object>> details) throws Exception {
+        if (details.isEmpty()) return "";
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (Map<String, Object> w : details) {
+            Map<String, Object> cfg = displayConfig(w);
+            Map<String, Object> entry = new LinkedHashMap<>();
+            for (String key : List.of("hiddenColumns", "rowIndex")) {
+                Object v = cfg.get(key);
+                if (v != null && !v.toString().isEmpty()) entry.put(key, v);
+            }
+            Map<String, Object> formats = new LinkedHashMap<>();
+            settledColumns(cfg).forEach((field, settings) -> {
+                Map<String, Object> spec = detailFormat(settings);
+                if (spec != null) formats.put(field, spec);
+            });
+            if (!formats.isEmpty()) entry.put("columnFormats", formats);
+            out.put(componentId(w), entry);
+        }
+        return JSON.writerWithDefaultPrettyPrinter().writeValueAsString(out) + "\n";
+    }
+
+    /** One column's format in the shape {@code <rb-detail>} takes: its kind, and what that kind
+     *  needs to be written. */
+    private static Map<String, Object> detailFormat(Map<String, Object> settings) {
+        Map<String, Object> spec = new LinkedHashMap<>();
+        switch (Objects.toString(settings.get("numberStyle"), "")) {
+            case "currency" -> {
+                spec.put("kind", "currency");
+                String code = Objects.toString(settings.get("currency"), "");
+                spec.put("currency", code.isBlank() ? "USD" : code);
+            }
+            case "percent" -> spec.put("kind", "percentage");
+            case "decimal" -> spec.put("kind", "number");
+            default -> {
+                return null;
+            }
+        }
+        if (settings.get("decimals") instanceof Number n) spec.put("decimals", n.intValue());
+        return spec;
+    }
 
     private static String generateJsonSidecar(List<Map<String, Object>> widgets, String... forwardKeys) throws Exception {
         if (widgets.isEmpty()) return "";

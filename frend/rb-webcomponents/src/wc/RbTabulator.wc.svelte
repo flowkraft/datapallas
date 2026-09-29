@@ -1,6 +1,22 @@
 <svelte:options customElement={{ tag: "rb-tabulator", shadow: "none" }} />
 
 <script context="module" lang="ts">
+  import { TabulatorFull } from 'tabulator-tables';
+  import { formatMeasure } from '../shared/cube-format';
+
+  // One formatter of our own, beside Tabulator's own.
+  //
+  // A published table can only carry its formatter's NAME -- the canvas formats with a function,
+  // and a function is not something a file can hold -- so a column can be published only with a
+  // format Tabulator can be asked for by name. It has `money`, which writes money and plain
+  // numbers, and it has nothing for a share of them. `percent` is that missing one, and it is no
+  // rule of its own: it is the rule the whole page reads a cube's percents by, the one in
+  // shared/cube-format, where a percent is a fraction -- 0.0811 is 8.11%, the same figure
+  // rb-value and the cube's own table show beside this one.
+  (TabulatorFull as any).extendModule('format', 'formatters', {
+    percent: (cell: { getValue: () => unknown }) => formatMeasure(cell.getValue(), 'percent'),
+  });
+
   // Module-level: shared across all <rb-tabulator> instances on the page.
   // Deduplicates config requests when N components share the same report-id.
   const _cfgCache = new Map<string, Promise<any>>();

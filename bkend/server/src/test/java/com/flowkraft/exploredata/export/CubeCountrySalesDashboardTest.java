@@ -164,8 +164,21 @@ class CubeCountrySalesDashboardTest {
 						0, 3, 6, 4),
 				widget("w-net-category", "tabulator",
 						selection(List.of("Category"), List.of("NetSales"), bound),
-						ordered("dslConfig", ordered("layout", "fitColumns", "autoColumns", true)),
+						ordered("dslConfig", ordered("layout", "fitColumns", "autoColumns", true),
+								"columnSettings", settledAsMoney()),
 						6, 3, 6, 4));
+	}
+
+	/**
+	 * What the canvas settles Net Sales to be, the moment the author picks it (W4.2): the cube
+	 * declares the measure money and declares itself read in EUR, so the column is money in EUR -
+	 * in the table on the canvas, and, since the exporter writes it into the table's own DSL, in
+	 * the published one too. Nobody typed it; it is the cube's own word, carried.
+	 *
+	 * <p>The canvas seeds this on every widget built on a cube. Only the tables read it back.
+	 */
+	private static Map<String, Object> settledAsMoney() {
+		return ordered("NetSales", ordered("numberStyle", "currency", "currency", "EUR"));
 	}
 
 	/**
@@ -228,7 +241,8 @@ class CubeCountrySalesDashboardTest {
 			selection.put("filters", filters);
 		}
 		Map<String, Object> widget = widget("w-live-shop", "tabulator", selection,
-				ordered("dslConfig", ordered("layout", "fitColumns", "autoColumns", true)),
+				ordered("dslConfig", ordered("layout", "fitColumns", "autoColumns", true),
+						"columnSettings", settledAsMoney()),
 				0, 7, 12, 6);
 		@SuppressWarnings("unchecked")
 		Map<String, Object> dataSource = (Map<String, Object>) widget.get("dataSource");
