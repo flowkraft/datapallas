@@ -3,6 +3,12 @@
   <style>
     .rb-dashboard-root {
       all: initial;
+      /* `all: initial` resets every inherited property, and color-scheme is one of them: the
+         colours below put the page back, but the browser was left painting NATIVE controls on
+         the light canvas. In a dark theme a <select>'s dropdown list came out white while its
+         options kept the page's near-white text, so the list read as empty. The scheme follows
+         the page again -- the page's, whichever it is, never a colour named here. */
+      color-scheme: inherit;
       display: block;
       font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
       box-sizing: border-box;
