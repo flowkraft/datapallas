@@ -118,8 +118,8 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
-      <div className="fixed top-0 right-0 z-50 h-full w-96 bg-base-100 border-l border-base-300 shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div id="overlayColumnSettings" className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+      <div id="panelColumnSettings" className="fixed top-0 right-0 z-50 h-full w-96 bg-base-100 border-l border-base-300 shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
           <div className="min-w-0">
@@ -146,6 +146,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
             <label className="block">
               <span className="text-xs text-base-content/60">Column title</span>
               <input
+                id="txtColumnTitle"
                 type="text"
                 value={current.columnTitle ?? ""}
                 onChange={(e) => patch({ columnTitle: e.target.value || undefined })}
@@ -157,6 +158,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
             <label className="block">
               <span className="text-xs text-base-content/60">Display as</span>
               <select
+                id="selectColumnViewAs"
                 value={current.viewAs ?? "auto"}
                 onChange={(e) => patch({ viewAs: e.target.value === "auto" ? undefined : (e.target.value as FormatKind) })}
                 className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -179,6 +181,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
               <label className="block">
                 <span className="text-xs text-base-content/60">Style</span>
                 <select
+                  id="selectColumnNumberStyle"
                   value={current.numberStyle ?? (effectiveKind === "currency" ? "currency" : effectiveKind === "percentage" ? "percent" : "decimal")}
                   onChange={(e) => patch({ numberStyle: e.target.value as NumberStyle })}
                   className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -195,6 +198,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                   <label className="block">
                     <span className="text-xs text-base-content/60">Unit of currency</span>
                     <select
+                      id="selectColumnCurrency"
                       value={effectiveSpec.currency ?? "USD"}
                       onChange={(e) => patch({ currency: e.target.value })}
                       className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -207,6 +211,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                   <label className="block">
                     <span className="text-xs text-base-content/60">Currency label style</span>
                     <select
+                      id="selectColumnCurrencyStyle"
                       value={effectiveSpec.currencyStyle ?? "symbol"}
                       onChange={(e) => patch({ currencyStyle: e.target.value as CurrencyStyle })}
                       className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -223,6 +228,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                 <label className="block">
                   <span className="text-xs text-base-content/60">Decimals</span>
                   <input
+                    id="numColumnDecimals"
                     type="number"
                     min={0}
                     max={20}
@@ -235,6 +241,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                 <label className="block">
                   <span className="text-xs text-base-content/60">Scale ×</span>
                   <input
+                    id="numColumnScale"
                     type="number"
                     step="any"
                     value={current.scale ?? ""}
@@ -249,6 +256,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                 <label className="block">
                   <span className="text-xs text-base-content/60">Prefix</span>
                   <input
+                    id="txtColumnPrefix"
                     type="text"
                     value={current.prefix ?? ""}
                     onChange={(e) => patch({ prefix: e.target.value || undefined })}
@@ -259,6 +267,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
                 <label className="block">
                   <span className="text-xs text-base-content/60">Suffix</span>
                   <input
+                    id="txtColumnSuffix"
                     type="text"
                     value={current.suffix ?? ""}
                     onChange={(e) => patch({ suffix: e.target.value || undefined })}
@@ -270,6 +279,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
 
               <label className="flex items-center gap-2">
                 <input
+                  id="chkColumnCompact"
                   type="checkbox"
                   checked={current.compact === true}
                   onChange={(e) => patch({ compact: e.target.checked || undefined })}
@@ -287,6 +297,7 @@ export function ColumnSettingsDialog({ open, onClose, column, settings, onChange
               <label className="block">
                 <span className="text-xs text-base-content/60">Granularity</span>
                 <select
+                  id="selectColumnDateUnit"
                   value={current.dateUnit ?? "auto"}
                   onChange={(e) => patch({ dateUnit: e.target.value === "auto" ? undefined : (e.target.value as DateUnit) })}
                   className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"

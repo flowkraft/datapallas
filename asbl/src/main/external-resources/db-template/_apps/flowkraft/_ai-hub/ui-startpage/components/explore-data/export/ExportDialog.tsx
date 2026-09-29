@@ -94,11 +94,11 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
   return createPortal(
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
+      <div id="overlayExportDialog" className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
 
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-base-100 border border-base-300 rounded-xl shadow-xl w-full max-w-sm flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div id="dlgExportDialog" className="bg-base-100 border border-base-300 rounded-xl shadow-xl w-full max-w-sm flex flex-col" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
             <h2 className="text-base font-semibold text-base-content">
@@ -123,7 +123,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
             {!state.connectionId && (
               <p className="text-xs text-warning bg-warning/10 border border-warning/20 rounded-md px-3 py-2">
-                Select a database connection first (in any widget&apos;s Data tab)
+                Pick a connection in the left panel (Data Source) first
               </p>
             )}
             {!hasWidgets && (
@@ -137,7 +137,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                 <div>
                   Dashboard published!{" "}
-                  <a href={result.dashboardUrl} target="_blank" rel="noopener noreferrer"
+                  <a id="lnkViewPublishedDashboard" href={result.dashboardUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-success underline">
                     View dashboard <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                   </a>

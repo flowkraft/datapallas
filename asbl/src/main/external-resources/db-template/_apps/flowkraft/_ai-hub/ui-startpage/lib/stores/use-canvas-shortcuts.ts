@@ -38,8 +38,10 @@ export function useCanvasShortcuts({ onUndo, onRedo }: ShortcutHandlers) {
         onUndo();
       }
 
-      // Ctrl+Shift+Z — redo
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
+      // Ctrl+Shift+Z — redo. With Shift held the browser reports the key as "Z",
+      // so this branch has to compare without case; the undo branch above never
+      // sees Shift and is left exactly as it is.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && e.shiftKey) {
         e.preventDefault();
         onRedo();
       }

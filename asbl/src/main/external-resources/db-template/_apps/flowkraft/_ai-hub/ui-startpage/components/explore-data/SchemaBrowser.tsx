@@ -260,6 +260,7 @@ export function SchemaBrowser({
             {/* Heroicon: magnifying-glass */}
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-base-content/60 pointer-events-none"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
             <input
+              id="txtSchemaSearch"
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -268,6 +269,7 @@ export function SchemaBrowser({
             />
             {search && (
               <button
+                id="btnClearSchemaSearch"
                 type="button"
                 onClick={() => setSearch("")}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-base-200 text-base-content/60 hover:text-base-content"
@@ -299,6 +301,7 @@ export function SchemaBrowser({
             {filteredCubes.length > 0 && (
               <div>
                 <button
+                  id="btnToggleCubesGroup"
                   type="button"
                   onClick={() => setCubesOpen((v) => !v)}
                   className="w-full flex items-center gap-1 text-[10px] font-semibold text-base-content/60 uppercase tracking-wider mb-1 hover:text-base-content transition-colors"
@@ -322,6 +325,7 @@ export function SchemaBrowser({
                             title={cube.description}
                           >
                             <input
+                              id={`chkPickCube-${cube.id}`}
                               type="checkbox"
                               checked={checked}
                               onChange={() => toggleCubeCheck(cube.id)}
@@ -366,6 +370,7 @@ export function SchemaBrowser({
                                 Yes
                               </button>
                               <button
+                                id={`btnCancelAddCube-${cube.id}`}
                                 type="button"
                                 onClick={() => setPendingAdd(null)}
                                 className="text-base-content hover:underline"
@@ -386,6 +391,7 @@ export function SchemaBrowser({
             {filteredTables.length > 0 && (
               <div>
                 <button
+                  id="btnToggleTablesGroup"
                   type="button"
                   onClick={() => setTablesOpen((v) => !v)}
                   className="w-full flex items-center gap-1 text-[10px] font-semibold text-base-content/60 uppercase tracking-wider mb-1 hover:text-base-content transition-colors"
@@ -522,6 +528,7 @@ function TableNode({
       <div className={`flex items-center gap-1 px-1 py-1 rounded-md hover:bg-base-200 transition-colors group ${isPicker && checked ? "bg-primary/5" : ""}`}>
         {isPicker && (
           <input
+            id={`chkPickTable-${refKey}`}
             type="checkbox"
             checked={checked ?? false}
             onChange={onPickTable}
@@ -529,6 +536,7 @@ function TableNode({
           />
         )}
         <button
+          id={`btnToggleTableColumns-${refKey}`}
           type="button"
           onClick={onToggleExpand}
           className="p-0.5 text-base-content/60 hover:text-base-content"

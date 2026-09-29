@@ -1026,6 +1026,10 @@
     }
     loading = false;
   }
+  // TODO 5h: an id must be a single whitespace-free token, and a dashboard can hold more
+  // than one pivot, so every control id is prefixed with this component's id when it has one.
+  const pvtIdToken = (v: unknown) => String(v).replace(/[^A-Za-z0-9_-]+/g, '_');
+  $: pvtId = (name: string) => (componentId ? `${componentId}_${name}` : name);
 </script>
 
 <!-- ============================================================================ -->
@@ -1071,6 +1075,7 @@
               <button 
                 type="button"
                 class="pvtDropdownValue pvtDropdownCurrent {openDropdown === 'renderer' ? 'pvtDropdownCurrentOpen' : ''}"
+                id={pvtId('btnPivotRenderer')}
                 on:click|stopPropagation={() => openDropdown = openDropdown === 'renderer' ? false : 'renderer'}
               >
                 <span class="pvtDropdownIcon">{openDropdown === 'renderer' ? '×' : '▾'}</span>
@@ -1082,6 +1087,7 @@
                     <button 
                       type="button"
                       class="pvtDropdownValue {name === rendererName ? 'pvtDropdownActiveValue' : ''}"
+                      id={pvtId(`btnPivotRenderer-${pvtIdToken(name)}`)}
                       on:click|stopPropagation={() => setRenderer(name)}
                     >
                       {name}
@@ -1105,19 +1111,20 @@
               >
                 <span class="pvtAttr {hasActiveFilter(attr) ? 'pvtFilteredAttribute' : ''}">
                   {attr}
-                  <button type="button" class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
+                  <button type="button" id={pvtId(`btnPivotFilter-${pvtIdToken(attr)}`)} class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
                 </span>
                 
                 {#if openFilterBox === attr}
                   <div 
                     class="pvtFilterBox" 
+                    id={pvtId(`dlgPivotFilter-${pvtIdToken(attr)}`)}
                     style="z-index: {zIndices[attr] || maxZIndex}"
                     on:click|stopPropagation={() => moveToTop(attr)}
                     on:keydown|stopPropagation={(e) => { if (e.key === 'Escape') openFilterBox = null; }}
                     role="dialog" tabindex="-1"
                     aria-label="Filter {attr}"
                   >
-                    <button type="button" class="pvtCloseX" on:click|stopPropagation={() => openFilterBox = null}>×</button>
+                    <button type="button" id={pvtId(`btnClosePivotFilter-${pvtIdToken(attr)}`)} class="pvtCloseX" on:click|stopPropagation={() => openFilterBox = null}>×</button>
                     <h4>{attr}</h4>
                     
                     {#if Object.keys(attrValues[attr] || {}).length < menuLimit}
@@ -1125,12 +1132,13 @@
                         <input 
                           type="text" 
                           class="pvtSearch" 
+                          id={pvtId(`txtPivotFilterSearch-${pvtIdToken(attr)}`)}
                           placeholder="Filter values"
                           bind:value={filterText}
                         />
                         <br />
-                        <button type="button" class="pvtButton" on:click={() => selectAllFiltered(attr)}>Select All</button>
-                        <button type="button" class="pvtButton" on:click={() => deselectAllFiltered(attr)}>Deselect All</button>
+                        <button type="button" id={pvtId(`btnPivotFilterSelectAll-${pvtIdToken(attr)}`)} class="pvtButton" on:click={() => selectAllFiltered(attr)}>Select All</button>
+                        <button type="button" id={pvtId(`btnPivotFilterDeselectAll-${pvtIdToken(attr)}`)} class="pvtButton" on:click={() => deselectAllFiltered(attr)}>Deselect All</button>
                       </p>
                       
                       <div class="pvtCheckContainer">
@@ -1138,9 +1146,10 @@
                           <button 
                             type="button"
                             class="pvtCheckItem {isValueFiltered(attr, value) ? '' : 'selected'}"
+                            id={pvtId(`btnPivotFilterValue-${pvtIdToken(attr)}-${pvtIdToken(value)}`)}
                             on:click={() => toggleValue(attr, value)}
                           >
-                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions --><span class="pvtOnly" on:click|stopPropagation={() => selectOnly(attr, value)}>only</span>
+                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions --><span id={pvtId(`btnPivotFilterOnly-${pvtIdToken(attr)}-${pvtIdToken(value)}`)} class="pvtOnly" on:click|stopPropagation={() => selectOnly(attr, value)}>only</span>
                             <span class="pvtOnlySpacer">&nbsp;</span>
                             {value === '' ? '(blank)' : value}
                           </button>
@@ -1163,6 +1172,7 @@
               <button 
                 type="button"
                 class="pvtDropdownValue pvtDropdownCurrent {openDropdown === 'aggregator' ? 'pvtDropdownCurrentOpen' : ''}"
+                id={pvtId('btnPivotAggregator')}
                 on:click|stopPropagation={() => openDropdown = openDropdown === 'aggregator' ? false : 'aggregator'}
               >
                 <span class="pvtDropdownIcon">{openDropdown === 'aggregator' ? '×' : '▾'}</span>
@@ -1174,6 +1184,7 @@
                     <button 
                       type="button"
                       class="pvtDropdownValue {name === aggregatorName ? 'pvtDropdownActiveValue' : ''}"
+                      id={pvtId(`btnPivotAggregator-${pvtIdToken(name)}`)}
                       on:click|stopPropagation={() => setAggregator(name)}
                     >
                       {name}
@@ -1184,8 +1195,8 @@
             </div>
             
             <!-- Sort buttons -->
-            <button type="button" class="pvtRowOrder" on:click={toggleRowOrder}>{sortIcons[rowOrder].rowSymbol}</button>
-            <button type="button" class="pvtColOrder" on:click={toggleColOrder}>{sortIcons[colOrder].colSymbol}</button>
+            <button type="button" id={pvtId('btnPivotRowOrder')} class="pvtRowOrder" on:click={toggleRowOrder}>{sortIcons[rowOrder].rowSymbol}</button>
+            <button type="button" id={pvtId('btnPivotColOrder')} class="pvtColOrder" on:click={toggleColOrder}>{sortIcons[colOrder].colSymbol}</button>
             
             <!-- Value selectors -->
             {#if numValsAllowed > 0}
@@ -1195,6 +1206,7 @@
                   <button 
                     type="button"
                     class="pvtDropdownValue pvtDropdownCurrent {openDropdown === `val${i}` ? 'pvtDropdownCurrentOpen' : ''}"
+                    id={pvtId(`btnPivotVal-${i}`)}
                     on:click|stopPropagation={() => openDropdown = openDropdown === `val${i}` ? false : `val${i}`}
                   >
                     <span class="pvtDropdownIcon">{openDropdown === `val${i}` ? '×' : '▾'}</span>
@@ -1206,6 +1218,7 @@
                         <button 
                           type="button"
                           class="pvtDropdownValue {opt === vals[i] ? 'pvtDropdownActiveValue' : ''}"
+                          id={pvtId(`btnPivotVal-${i}-${pvtIdToken(opt)}`)}
                           on:click|stopPropagation={() => setVal(i, opt)}
                         >
                           {opt}
@@ -1229,19 +1242,20 @@
               <li draggable="true" on:dragstart={(e) => onDragStart(e, attr)}>
                 <span class="pvtAttr {hasActiveFilter(attr) ? 'pvtFilteredAttribute' : ''}">
                   {attr}
-                  <button type="button" class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
+                  <button type="button" id={pvtId(`btnPivotFilter-${pvtIdToken(attr)}`)} class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
                 </span>
                 
                 {#if openFilterBox === attr}
                   <div 
                     class="pvtFilterBox" 
+                    id={pvtId(`dlgPivotFilter-${pvtIdToken(attr)}`)}
                     style="z-index: {zIndices[attr] || maxZIndex}"
                     on:click|stopPropagation={() => moveToTop(attr)}
                     on:keydown|stopPropagation={(e) => { if (e.key === 'Escape') openFilterBox = null; }}
                     role="dialog" tabindex="-1"
                     aria-label="Filter {attr}"
                   >
-                    <button type="button" class="pvtCloseX" on:click|stopPropagation={() => openFilterBox = null}>×</button>
+                    <button type="button" id={pvtId(`btnClosePivotFilter-${pvtIdToken(attr)}`)} class="pvtCloseX" on:click|stopPropagation={() => openFilterBox = null}>×</button>
                     <h4>{attr}</h4>
                     
                     {#if Object.keys(attrValues[attr] || {}).length < menuLimit}
@@ -1249,12 +1263,13 @@
                         <input 
                           type="text" 
                           class="pvtSearch" 
+                          id={pvtId(`txtPivotFilterSearch-${pvtIdToken(attr)}`)}
                           placeholder="Filter values"
                           bind:value={filterText}
                         />
                         <br />
-                        <button type="button" class="pvtButton" on:click={() => selectAllFiltered(attr)}>Select All</button>
-                        <button type="button" class="pvtButton" on:click={() => deselectAllFiltered(attr)}>Deselect All</button>
+                        <button type="button" id={pvtId(`btnPivotFilterSelectAll-${pvtIdToken(attr)}`)} class="pvtButton" on:click={() => selectAllFiltered(attr)}>Select All</button>
+                        <button type="button" id={pvtId(`btnPivotFilterDeselectAll-${pvtIdToken(attr)}`)} class="pvtButton" on:click={() => deselectAllFiltered(attr)}>Deselect All</button>
                       </p>
                       
                       <div class="pvtCheckContainer">
@@ -1262,9 +1277,10 @@
                           <button 
                             type="button"
                             class="pvtCheckItem {isValueFiltered(attr, value) ? '' : 'selected'}"
+                            id={pvtId(`btnPivotFilterValue-${pvtIdToken(attr)}-${pvtIdToken(value)}`)}
                             on:click={() => toggleValue(attr, value)}
                           >
-                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions --><span class="pvtOnly" on:click|stopPropagation={() => selectOnly(attr, value)}>only</span>
+                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions --><span id={pvtId(`btnPivotFilterOnly-${pvtIdToken(attr)}-${pvtIdToken(value)}`)} class="pvtOnly" on:click|stopPropagation={() => selectOnly(attr, value)}>only</span>
                             <span class="pvtOnlySpacer">&nbsp;</span>
                             {value === '' ? '(blank)' : value}
                           </button>
@@ -1291,19 +1307,20 @@
               <li draggable="true" on:dragstart={(e) => onDragStart(e, attr)}>
                 <span class="pvtAttr {hasActiveFilter(attr) ? 'pvtFilteredAttribute' : ''}">
                   {attr}
-                  <button type="button" class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
+                  <button type="button" id={pvtId(`btnPivotFilter-${pvtIdToken(attr)}`)} class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
                 </span>
                 
                 {#if openFilterBox === attr}
                   <div 
                     class="pvtFilterBox" 
+                    id={pvtId(`dlgPivotFilter-${pvtIdToken(attr)}`)}
                     style="z-index: {zIndices[attr] || maxZIndex}"
                     on:click|stopPropagation={() => moveToTop(attr)}
                     on:keydown|stopPropagation={(e) => { if (e.key === 'Escape') openFilterBox = null; }}
                     role="dialog" tabindex="-1"
                     aria-label="Filter {attr}"
                   >
-                    <button type="button" class="pvtCloseX" on:click|stopPropagation={() => openFilterBox = null}>×</button>
+                    <button type="button" id={pvtId(`btnClosePivotFilter-${pvtIdToken(attr)}`)} class="pvtCloseX" on:click|stopPropagation={() => openFilterBox = null}>×</button>
                     <h4>{attr}</h4>
                     
                     {#if Object.keys(attrValues[attr] || {}).length < menuLimit}
@@ -1311,12 +1328,13 @@
                         <input 
                           type="text" 
                           class="pvtSearch" 
+                          id={pvtId(`txtPivotFilterSearch-${pvtIdToken(attr)}`)}
                           placeholder="Filter values"
                           bind:value={filterText}
                         />
                         <br />
-                        <button type="button" class="pvtButton" on:click={() => selectAllFiltered(attr)}>Select All</button>
-                        <button type="button" class="pvtButton" on:click={() => deselectAllFiltered(attr)}>Deselect All</button>
+                        <button type="button" id={pvtId(`btnPivotFilterSelectAll-${pvtIdToken(attr)}`)} class="pvtButton" on:click={() => selectAllFiltered(attr)}>Select All</button>
+                        <button type="button" id={pvtId(`btnPivotFilterDeselectAll-${pvtIdToken(attr)}`)} class="pvtButton" on:click={() => deselectAllFiltered(attr)}>Deselect All</button>
                       </p>
                       
                       <div class="pvtCheckContainer">
@@ -1324,9 +1342,10 @@
                           <button 
                             type="button"
                             class="pvtCheckItem {isValueFiltered(attr, value) ? '' : 'selected'}"
+                            id={pvtId(`btnPivotFilterValue-${pvtIdToken(attr)}-${pvtIdToken(value)}`)}
                             on:click={() => toggleValue(attr, value)}
                           >
-                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions --><span class="pvtOnly" on:click|stopPropagation={() => selectOnly(attr, value)}>only</span>
+                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions --><span id={pvtId(`btnPivotFilterOnly-${pvtIdToken(attr)}-${pvtIdToken(value)}`)} class="pvtOnly" on:click|stopPropagation={() => selectOnly(attr, value)}>only</span>
                             <span class="pvtOnlySpacer">&nbsp;</span>
                             {value === '' ? '(blank)' : value}
                           </button>
@@ -1352,6 +1371,7 @@
               <button 
                 type="button"
                 class="pvtDropdownValue pvtDropdownCurrent {openDropdown === 'renderer' ? 'pvtDropdownCurrentOpen' : ''}"
+                id={pvtId('btnPivotRenderer')}
                 on:click|stopPropagation={() => openDropdown = openDropdown === 'renderer' ? false : 'renderer'}
               >
                 <span class="pvtDropdownIcon">{openDropdown === 'renderer' ? '×' : '▾'}</span>
@@ -1363,6 +1383,7 @@
                     <button 
                       type="button"
                       class="pvtDropdownValue {name === rendererName ? 'pvtDropdownActiveValue' : ''}"
+                      id={pvtId(`btnPivotRenderer-${pvtIdToken(name)}`)}
                       on:click|stopPropagation={() => setRenderer(name)}
                     >
                       {name}
@@ -1378,6 +1399,7 @@
               <button 
                 type="button"
                 class="pvtDropdownValue pvtDropdownCurrent {openDropdown === 'aggregator' ? 'pvtDropdownCurrentOpen' : ''}"
+                id={pvtId('btnPivotAggregator')}
                 on:click|stopPropagation={() => openDropdown = openDropdown === 'aggregator' ? false : 'aggregator'}
               >
                 <span class="pvtDropdownIcon">{openDropdown === 'aggregator' ? '×' : '▾'}</span>
@@ -1389,6 +1411,7 @@
                     <button 
                       type="button"
                       class="pvtDropdownValue {name === aggregatorName ? 'pvtDropdownActiveValue' : ''}"
+                      id={pvtId(`btnPivotAggregator-${pvtIdToken(name)}`)}
                       on:click|stopPropagation={() => setAggregator(name)}
                     >
                       {name}
@@ -1397,8 +1420,8 @@
                 </div>
               {/if}
             </div>
-            <button type="button" class="pvtRowOrder" on:click={toggleRowOrder}>{sortIcons[rowOrder].rowSymbol}</button>
-            <button type="button" class="pvtColOrder" on:click={toggleColOrder}>{sortIcons[colOrder].colSymbol}</button>
+            <button type="button" id={pvtId('btnPivotRowOrder')} class="pvtRowOrder" on:click={toggleRowOrder}>{sortIcons[rowOrder].rowSymbol}</button>
+            <button type="button" id={pvtId('btnPivotColOrder')} class="pvtColOrder" on:click={toggleColOrder}>{sortIcons[colOrder].colSymbol}</button>
             {#if numValsAllowed > 0}
               <br />
               {#each Array(numValsAllowed) as _, i}
@@ -1406,6 +1429,7 @@
                   <button
                     type="button"
                     class="pvtDropdownValue pvtDropdownCurrent {openDropdown === `val${i}` ? 'pvtDropdownCurrentOpen' : ''}"
+                    id={pvtId(`btnPivotVal-${i}`)}
                     on:click|stopPropagation={() => openDropdown = openDropdown === `val${i}` ? false : `val${i}`}
                   >
                     <span class="pvtDropdownIcon">{openDropdown === `val${i}` ? '×' : '▾'}</span>
@@ -1417,6 +1441,7 @@
                         <button
                           type="button"
                           class="pvtDropdownValue {opt === vals[i] ? 'pvtDropdownActiveValue' : ''}"
+                          id={pvtId(`btnPivotVal-${i}-${pvtIdToken(opt)}`)}
                           on:click|stopPropagation={() => setVal(i, opt)}
                         >
                           {opt}
@@ -1439,7 +1464,7 @@
               <li draggable="true" on:dragstart={(e) => onDragStart(e, attr)}>
                 <span class="pvtAttr {hasActiveFilter(attr) ? 'pvtFilteredAttribute' : ''}">
                   {attr}
-                  <button type="button" class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
+                  <button type="button" id={pvtId(`btnPivotFilter-${pvtIdToken(attr)}`)} class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
                 </span>
               </li>
             {/each}
@@ -1456,7 +1481,7 @@
               <li draggable="true" on:dragstart={(e) => onDragStart(e, attr)}>
                 <span class="pvtAttr {hasActiveFilter(attr) ? 'pvtFilteredAttribute' : ''}">
                   {attr}
-                  <button type="button" class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
+                  <button type="button" id={pvtId(`btnPivotFilter-${pvtIdToken(attr)}`)} class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
                 </span>
               </li>
             {/each}
@@ -1471,7 +1496,7 @@
               <li draggable="true" on:dragstart={(e) => onDragStart(e, attr)}>
                 <span class="pvtAttr {hasActiveFilter(attr) ? 'pvtFilteredAttribute' : ''}">
                   {attr}
-                  <button type="button" class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
+                  <button type="button" id={pvtId(`btnPivotFilter-${pvtIdToken(attr)}`)} class="pvtTriangle" on:click|stopPropagation={() => toggleFilterBox(attr)}>▾</button>
                 </span>
               </li>
             {/each}

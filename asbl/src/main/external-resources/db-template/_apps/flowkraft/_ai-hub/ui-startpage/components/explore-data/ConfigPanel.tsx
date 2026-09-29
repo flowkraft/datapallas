@@ -796,6 +796,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
           <div className="space-y-2">
             <label className="text-xs font-medium text-base-content/60">URL</label>
             <input
+              id="txtIframeUrl"
               type="url"
               value={(selectedWidget.displayConfig.iframeUrl as string) || ""}
               onChange={(e) => handleDisplayChange({ ...selectedWidget.displayConfig, iframeUrl: e.target.value })}
@@ -804,6 +805,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
             />
             <label className="text-xs font-medium text-base-content/60 mt-2 block">Title (a11y)</label>
             <input
+              id="txtIframeTitle"
               value={(selectedWidget.displayConfig.iframeTitle as string) || ""}
               onChange={(e) => handleDisplayChange({ ...selectedWidget.displayConfig, iframeTitle: e.target.value })}
               placeholder="Embedded content"
@@ -814,6 +816,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
               <span className="ml-1 text-[10px] font-normal text-base-content/60">(space-separated tokens)</span>
             </label>
             <input
+              id="txtIframeSandbox"
               value={(selectedWidget.displayConfig.iframeSandbox as string) ?? "allow-scripts allow-same-origin allow-popups allow-forms"}
               onChange={(e) => handleDisplayChange({ ...selectedWidget.displayConfig, iframeSandbox: e.target.value })}
               placeholder="allow-scripts allow-same-origin"
@@ -841,6 +844,7 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
                     No columns yet. Pick a table in the Data tab, or click Run to load the columns.
                   </p>
                   <button
+                    id="btnDetectColumnsFilterPane"
                     type="button"
                     onClick={detectColumnsFromQuery}
                     disabled={widgetQueryLoading || !connectionId || !selectedWidget.dataSource}

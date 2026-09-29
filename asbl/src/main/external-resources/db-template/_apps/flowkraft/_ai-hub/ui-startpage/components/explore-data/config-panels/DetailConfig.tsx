@@ -31,6 +31,7 @@ export function DetailConfig({ config, columns, onChange }: DetailConfigProps) {
           {columns.map((c) => (
             <label key={c.columnName} className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-base-200 rounded cursor-pointer">
               <input
+                id={`cbDetailColumn-${c.columnName}`}
                 type="checkbox"
                 checked={!hidden.includes(c.columnName)}
                 onChange={() => toggle(c.columnName)}

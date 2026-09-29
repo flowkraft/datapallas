@@ -7,7 +7,7 @@ import { executeQuery, executeScript, fetchSchema, getConnectionType, hasConnect
 import { columnKindsOf, extractParamTypes, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { asTableRef, findTable, tableKey, type TableRef } from "@/lib/explore-data/table-ref";
 import { temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
-import { LAST_EXEC } from "@/lib/explore-data/widget-exec-cache";
+import { LAST_EXEC, shouldReExecute, type LastExec } from "@/lib/explore-data/widget-exec-cache";
 
 // Per-table schema cache: keyed by `${connectionId}\u0000${tableKey(ref)}`, so a
 // table outside the default schema has its own entry instead of sharing one with
@@ -58,8 +58,10 @@ async function getTableSchema(connectionId: string, table: TableRef | string): P
  *
  * Re-execution triggers:
  *   - visual mode: any change to connectionId/dataSource/filterVersion
- *   - sql / ai-sql: executeVersion increments (bumped by QueryBuilder.handleRun)
- *   - script: scriptExecuteVersion increments (bumped by handleRunScript)
+ *   - sql / ai-sql: executeVersion increments (bumped by QueryBuilder.handleRun),
+ *     or a filter value changes and the SQL carries a placeholder
+ *   - script: scriptExecuteVersion increments (bumped by handleRunScript), or
+ *     any filter value changes
  */
 export function useWidgetData(widgetId: string) {
   const widget = useCanvasStore((s) => s.widgets.find((w) => w.id === widgetId));
@@ -142,14 +144,24 @@ export function useWidgetData(widgetId: string) {
     const mode = dataSource.mode;
     const prev = LAST_EXEC.get(widgetId);
 
-    // Script mode — version-gated re-execution.
+    // Script mode — re-executed when Run is clicked, and on every dashboard
+    // filter change. A script is handed the whole filter map
+    // (`executeScript(..., filterValues)`), and which of those values a Groovy
+    // script reads cannot be told from its text, so every change re-runs it —
+    // which is also what the published dashboard does on every reload. Without
+    // this the author reads stale numbers in the editor until they click Run.
     if (mode === "script") {
       const currentVersion = dataSource.scriptExecuteVersion ?? 0;
-      if (prev && prev.mode === "script" && prev.scriptVersion === currentVersion) {
+      const next: LastExec = {
+        mode: "script",
+        scriptVersion: currentVersion,
+        filterSnapshot: JSON.stringify(filterValues ?? {}),
+      };
+      if (!shouldReExecute(prev, next)) {
         console.log('[useWidgetData] SKIP-script widgetId=' + widgetId + ' ver=' + currentVersion);
         return;
       }
-      LAST_EXEC.set(widgetId, { mode: "script", scriptVersion: currentVersion });
+      LAST_EXEC.set(widgetId, next);
 
       const script = dataSource.script;
       if (!script) { clearWidgetQueryLoading(widgetId); return; }
@@ -193,22 +205,22 @@ export function useWidgetData(widgetId: string) {
       const currentVersion = dataSource.executeVersion ?? 0;
       const usesParams = raw.includes("${") || raw.includes("#{");
       const filterSnapshot = usesParams ? JSON.stringify(filterValues ?? {}) : "";
-      if (prev && prev.mode === mode &&
-          prev.executeVersion === currentVersion &&
-          prev.filterSnapshot === filterSnapshot) {
+      const next: LastExec = { mode, executeVersion: currentVersion, filterSnapshot };
+      if (!shouldReExecute(prev, next)) {
         console.log('[useWidgetData] SKIP-sql widgetId=' + widgetId + ' ver=' + currentVersion);
         return;
       }
-      LAST_EXEC.set(widgetId, { mode, executeVersion: currentVersion, filterSnapshot });
+      LAST_EXEC.set(widgetId, next);
     }
 
     if (mode === "visual") {
       const filterSnapshot = JSON.stringify(filterValues ?? {});
-      if (prev && prev.mode === "visual" && prev.sql === raw && prev.filterSnapshot === filterSnapshot) {
+      const next: LastExec = { mode: "visual", sql: raw, filterSnapshot };
+      if (!shouldReExecute(prev, next)) {
         console.log('[useWidgetData] SKIP-visual widgetId=' + widgetId);
         return;
       }
-      LAST_EXEC.set(widgetId, { mode: "visual", sql: raw, filterSnapshot });
+      LAST_EXEC.set(widgetId, next);
     }
 
     let cancelled = false;

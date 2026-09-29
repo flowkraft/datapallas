@@ -105,8 +105,14 @@ export default function DataCanvasListPage() {
           {canvases.map((canvas) => {
             const state = JSON.parse(canvas.state || "{}");
             const widgetCount = state.widgets?.length || 0;
+            // The published report code is its own column on the canvas, returned at the top
+            // level of the DTO — autosave writes only { widgets, parametersConfig } into `state`,
+            // so it is never in there. Read it the same way the editor page does.
+            const exportedReportCode = (canvas as { exportedReportCode?: string | null })
+              .exportedReportCode;
             return (
               <div
+                id={`canvasCard-${canvas.id}`}
                 key={canvas.id}
                 onClick={() => router.push(`/explore-data/${canvas.id}`)}
                 className="group relative border border-base-300 rounded-xl p-5 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all bg-base-100"
@@ -117,12 +123,12 @@ export default function DataCanvasListPage() {
                   </h3>
                   {/* Share — only for canvases that have actually been published, since a share
                       link points at /dashboard/{reportId} and that only exists after Publish. */}
-                  {state.exportedReportCode && (
+                  {exportedReportCode && (
                     <button
                       id={`btnShareCanvas-${canvas.id}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setToShare(state.exportedReportCode as string);
+                        setToShare(exportedReportCode as string);
                       }}
                       aria-label={`Share dashboard ${canvas.name}`}
                       title="Let people without an account open this dashboard"
@@ -132,6 +138,7 @@ export default function DataCanvasListPage() {
                     </button>
                   )}
                   <button
+                    id={`btnDeleteCanvas-${canvas.id}`}
                     onClick={(e) => handleDeleteClick(canvas, e)}
                     aria-label={`Delete canvas ${canvas.name}`}
                     className="absolute top-4 right-4 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-error/10 text-base-content/60 hover:text-error transition-all"
@@ -152,10 +159,12 @@ export default function DataCanvasListPage() {
 
       {toDelete && (
         <div
+          id="overlayDeleteCanvas"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
           onClick={() => !deleting && setToDelete(null)}
         >
           <div
+            id="dlgDeleteCanvas"
             className="bg-base-100 border border-base-300 rounded-xl shadow-lg w-full max-w-sm mx-4 p-5"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
@@ -178,6 +187,7 @@ export default function DataCanvasListPage() {
             </div>
             <div className="flex items-center justify-end gap-2 mt-4">
               <button
+                id="btnCancelDeleteCanvas"
                 type="button"
                 onClick={() => setToDelete(null)}
                 disabled={deleting}

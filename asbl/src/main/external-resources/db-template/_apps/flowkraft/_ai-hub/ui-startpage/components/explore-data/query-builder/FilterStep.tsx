@@ -152,6 +152,7 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
         <div title={value} className="flex items-center gap-1 min-w-0 flex-1 bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
           <span className="text-xs font-mono text-primary truncate flex-1">{value}</span>
           <button
+            id={`btnUnbindFilterBetween${id}-${i}`}
             type="button"
             onClick={() => updateFilter(i, { [field]: "" })}
             className="text-primary/50 hover:text-primary shrink-0"
@@ -269,6 +270,7 @@ export function FilterStep({ columns, filters, onChange, match = "all", onMatchC
                 <div title={f.value} className="flex items-center gap-1 min-w-0 flex-1 bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
                   <span className="text-xs font-mono text-primary truncate flex-1">{f.value}</span>
                   <button
+                    id={`btnUnbindFilterValue-${i}`}
                     type="button"
                     onClick={() => updateFilter(i, { value: "" })}
                     className="text-primary/50 hover:text-primary shrink-0"

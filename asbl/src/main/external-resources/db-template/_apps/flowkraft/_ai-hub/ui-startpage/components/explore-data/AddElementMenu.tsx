@@ -34,7 +34,7 @@ export function AddElementMenu() {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div id="overlayAddElementMenu" className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute top-full left-0 mt-1 z-20 w-56 rounded-md border border-base-300 bg-base-100 shadow-lg overflow-hidden">
             {ITEMS.map((item) => {
               const Icon = item.icon;

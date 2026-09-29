@@ -43,7 +43,14 @@ function paramLabel(parameter: ReportParameter): string {
   return parameter.label || parameter.id;
 }
 
-/** The multi-select control sends its selection as a CSV string (or '*' for "All"). */
+/**
+ * The multi-select control sends its selection as a CSV string (or '*' for "All").
+ *
+ * LOGIC-MIRROR of the alias table in `frend/rb-webcomponents/src/shared/parameter-controls.ts`,
+ * which is where the control names live: this app only ever loads the reader as a built UMD
+ * bundle, so it cannot import that module. Only the multi-select matters here, so both of its
+ * spellings are spelt out; a new alias for it goes in both places.
+ */
 function isMultiValue(parameter: ReportParameter): boolean {
   const control = String(
     parameter.uiHints?.control ?? parameter.uiHints?.widget ?? parameter.type ?? "",
@@ -265,7 +272,7 @@ export function ShareDialog({ open, onClose, reportId }: ShareDialogProps) {
   // rather than the viewport (clipped off the top) while canvas widgets painted straight over it —
   // taking the Close button with them.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div id="overlayShareDialog" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         id="shareDialog"
         className="w-full max-w-2xl rounded-xl bg-base-100 p-6 shadow-xl"

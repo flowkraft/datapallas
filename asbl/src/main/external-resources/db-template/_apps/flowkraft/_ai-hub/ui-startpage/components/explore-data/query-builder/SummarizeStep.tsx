@@ -384,6 +384,7 @@ export function SummarizeStep({
                       <>
                         <span className="text-[10px] text-base-content/60">bin:</span>
                         <select
+                          id={`selectNumericBin-${col}`}
                           value={currentNumBins == null ? "none" : String(currentNumBins)}
                           onChange={(e) => {
                             const v = e.target.value;

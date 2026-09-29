@@ -857,8 +857,8 @@ export async function addFilterBarParam(
   captureBeforeDone?: () => Promise<void>,
 ): Promise<void> {
   await page.locator('#btnConfigureFilters').click();
-  await page.locator('#btnDslToggle').waitFor({ state: 'visible', timeout: 5_000 });
-  await page.locator('#btnDslToggle').click();
+  await page.locator('#btnFilterDslToggle').waitFor({ state: 'visible', timeout: 5_000 });
+  await page.locator('#btnFilterDslToggle').click();
   const dslEditor = page.locator('#filterDslEditorContainer .cm-content');
   await dslEditor.waitFor({ state: 'visible', timeout: 5_000 });
   await dslEditor.click();

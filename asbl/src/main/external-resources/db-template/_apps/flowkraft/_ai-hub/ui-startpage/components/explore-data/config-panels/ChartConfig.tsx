@@ -152,6 +152,33 @@ function readLegend(map: ChartDslOptions): "auto" | "show" | "hide" {
   return "auto";
 }
 
+/** Read whether the bars stack (`options.scales.y.stacked`; absent means they do not). */
+export function readStacked(map: ChartDslOptions): boolean {
+  const opts = map.options as Record<string, unknown> | undefined;
+  const scales = opts?.scales as Record<string, unknown> | undefined;
+  const y = scales?.y as Record<string, unknown> | undefined;
+  return y?.stacked === true;
+}
+
+/** Update options.scales.{x,y}.stacked immutably, pruning what it empties. */
+export function setStackedOption(map: ChartDslOptions, stacked: boolean): ChartDslOptions {
+  const opts = { ...((map.options as Record<string, unknown> | undefined) ?? {}) };
+  const scales = { ...((opts.scales as Record<string, unknown> | undefined) ?? {}) };
+  for (const axis of ["x", "y"] as const) {
+    const one = { ...((scales[axis] as Record<string, unknown> | undefined) ?? {}) };
+    if (stacked) one.stacked = true;
+    else delete one.stacked;
+    if (Object.keys(one).length > 0) scales[axis] = one;
+    else delete scales[axis];
+  }
+  if (Object.keys(scales).length > 0) opts.scales = scales;
+  else delete opts.scales;
+  const next: ChartDslOptions = { ...map };
+  if (Object.keys(opts).length > 0) next.options = opts;
+  else delete next.options;
+  return next;
+}
+
 /** Update options.plugins.* immutably. */
 function setPluginOption(map: ChartDslOptions, key: "title" | "legend", value: unknown): ChartDslOptions {
   const opts = { ...((map.options as Record<string, unknown> | undefined) ?? {}) };
@@ -178,6 +205,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
   const palette = (map.palette as string | undefined) ?? "default";
 
   const hasSeriesSplit = xFields.length >= 2;
+  const stacked = readStacked(map);
 
   const replaceAt = (arr: string[], idx: number, value: string): string[] => {
     if (!value) return arr.filter((_, i) => i !== idx);
@@ -218,6 +246,10 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
       setDslMap(config, setPluginOption(map, "legend", { display: v === "show" }), onChange);
     }
   };
+
+  // Stacking is two Chart.js keys, written into the same Map the published page
+  // reads, so the bars stack in the Canvas and on the dashboard by one route.
+  const setStacked = (on: boolean) => setDslMap(config, setStackedOption(map, on), onChange);
 
   const setPalette = (id: string) => {
     const next: ChartDslOptions = { ...map };
@@ -284,6 +316,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
             Size <span className="text-emerald-500">(measure)</span>
           </span>
           <select
+            id="selectChartBubbleSize"
             value={bubbleSizeField}
             onChange={(e) => setBubbleSizeField(e.target.value)}
             className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -349,6 +382,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
           ))}
           {xFields.length < 2 && dimensions.length + measures.length > 0 && (
             <button
+              id="btnAddChartXAxis"
               type="button"
               onClick={() => {
                 const used = new Set(xFields);
@@ -408,6 +442,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
           ))}
           {!hasSeriesSplit && measures.length + dimensions.length > 0 && (
             <button
+              id="btnAddChartYAxis"
               type="button"
               onClick={() => {
                 const used = new Set(yFields);
@@ -460,6 +495,28 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
         </div>
       </div>
 
+      {chartType === "bar" && hasSeriesSplit && (
+        <div>
+          <span className="text-xs text-base-content/60">Stacked bars</span>
+          <div className="flex mt-1 rounded-md overflow-hidden border border-base-300 text-xs">
+            {([["on", true], ["off", false]] as const).map(([label, value]) => (
+              <button
+                key={label}
+                id={`btnChartStacked-${label}`}
+                onClick={() => setStacked(value)}
+                className={`flex-1 py-1.5 capitalize transition-colors ${
+                  stacked === value
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-base-content/60 hover:bg-base-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <span className="text-xs text-base-content/60">Color palette</span>
         <div className="grid grid-cols-5 gap-1 mt-1">
@@ -467,6 +524,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
             const selected = palette === id;
             return (
               <button
+                id={`btnChartPalette-${id}`}
                 key={id}
                 onClick={() => setPalette(id)}
                 title={label}

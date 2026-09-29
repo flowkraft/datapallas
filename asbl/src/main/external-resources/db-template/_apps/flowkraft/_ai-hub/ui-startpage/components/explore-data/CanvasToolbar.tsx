@@ -122,6 +122,7 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
         {editMode && onUndo && onRedo && (
           <>
             <button
+              id="btnCanvasUndo"
               onClick={onUndo}
               disabled={!canUndo}
               className="p-1.5 rounded-md text-base-content/60 hover:bg-base-200 transition-colors disabled:opacity-30"
@@ -131,6 +132,7 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>
             </button>
             <button
+              id="btnCanvasRedo"
               onClick={onRedo}
               disabled={!canRedo}
               className="p-1.5 rounded-md text-base-content/60 hover:bg-base-200 transition-colors disabled:opacity-30"
@@ -162,6 +164,7 @@ export function CanvasToolbar({ canvasId, onSave, onUndo, onRedo, canUndo, canRe
 
         {/* Full-screen preview */}
         <button
+          id="btnFullScreenPreview"
           onClick={() => router.push(`/explore-data/${canvasId}/preview`)}
           className="p-1.5 rounded-md text-base-content/60 hover:bg-base-200 transition-colors"
           title="Full-screen preview"

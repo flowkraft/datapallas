@@ -290,10 +290,12 @@
     return x && typeof x === 'object' && 'name' in x;
   }
 
-  // Get control type from parameter. Reads either `uiHints.control` (DSL-author
-  // convention, kebab-case e.g. `multi-select`) OR `uiHints.widget` (the
-  // FilterBarConfigPanel UI dropdown convention, no hyphens e.g. `multiselect`)
-  // and normalises common aliases so both styles render the same control.
+  // Get control type from parameter. The alias table lives in one place,
+  // `src/shared/parameter-controls.ts`, which reads either `uiHints.control`
+  // (DSL-author convention, kebab-case e.g. `multi-select`) OR `uiHints.widget`
+  // (the FilterBarConfigPanel dropdown convention, no hyphens e.g.
+  // `multiselect`, `datepicker`, `checkbox`), so both styles draw the same
+  // control and a control this file cannot draw says so in the console.
   function getControlType(p: ParamMeta): string {
     return controlTypeOf(p as any);
   }
@@ -878,6 +880,29 @@
               title={p.description || ''}
               on:change={(e) => handleChange(p, e)}
             />
+          {:else if getControlType(p) === 'radio'}
+            <!-- Playwright getById targets — one stable id per option, the same convention the
+                 multi-select uses for its checkboxes:
+                   <p.id>              the group itself (also what the form-group <label for> names)
+                   <p.id>_rb_<value>   per-option radio (value sanitised via safeId)
+                 The options come from loadOptions(p), so a fixed list and a SQL-backed one both
+                 work, and a change goes through the same handleChange the select uses — so
+                 valueChange, validation, Reload and the backend binding are untouched. -->
+            <div class="rb-radio-group" id={p.id}>
+              {#each loadOptions(p) as o (o.value)}
+                <label class="rb-radio-row" for={p.id + '_rb_' + safeId(o.value)}>
+                  <input type="radio"
+                         id={p.id + '_rb_' + safeId(o.value)}
+                         name={p.id}
+                         value={o.value}
+                         disabled={isLocked(p)}
+                         checked={String(formValues[p.id] ?? '') === String(o.value)}
+                         title={p.description || ''}
+                         on:change={(e) => handleChange(p, e)} />
+                  <span>{o.label}</span>
+                </label>
+              {/each}
+            </div>
           {:else if getControlType(p) === 'multi-select'}
             <!-- Playwright getById targets — every actionable element has a stable id:
                    <p.id>                  trigger button (also matches the form-group <label for>)
@@ -905,7 +930,7 @@
                    on:click={() => cancelMulti(p)}
                    on:keydown={(e) => { if (e.key === 'Escape') cancelMulti(p); }}
                    role="presentation">
-                <div class="rb-multi-modal" role="dialog" aria-modal="true"
+                <div class="rb-multi-modal" id={p.id + '_modal'} role="dialog" aria-modal="true"
                      on:click|stopPropagation
                      on:keydown|stopPropagation>
                   <div class="rb-multi-modal-title">Choose {paramLabel(p)}</div>
@@ -1233,6 +1258,25 @@
     background: color-mix(in srgb, currentColor 8%, transparent);
   }
   .rb-multi-row input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+  }
+  /* Laid out inline and wrapping, so four or five options still fit the filter bar. */
+  .rb-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    padding: 2px 0;
+  }
+  .rb-radio-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: normal;
+    margin-bottom: 0;
+  }
+  .rb-radio-row input[type="radio"] {
     width: 1rem;
     height: 1rem;
   }

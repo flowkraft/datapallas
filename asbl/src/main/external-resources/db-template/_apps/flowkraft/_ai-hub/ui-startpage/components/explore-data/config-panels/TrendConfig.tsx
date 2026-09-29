@@ -85,6 +85,7 @@ export function TrendConfig({ config, columns, shape, onChange }: TrendConfigPro
       <div>
         <span className="text-xs text-base-content/60">Format</span>
         <select
+          id="selectTrendFormat"
           value={format}
           onChange={(e) => onChange({ ...config, format: e.target.value })}
           className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"

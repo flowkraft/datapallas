@@ -204,11 +204,12 @@ export function FilterBarConfigPanel({ open, onClose }: FilterBarConfigPanelProp
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" onClick={onClose} />
+      <div id="overlayFilterBarConfig" className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" onClick={onClose} />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
+          id="dlgFilterBarConfig"
           className="bg-base-100 border border-base-300 ring-1 ring-border/60 rounded-xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
@@ -255,7 +256,7 @@ export function FilterBarConfigPanel({ open, onClose }: FilterBarConfigPanelProp
             <div className="pt-2 border-t border-base-300/50 space-y-2">
               <div className="flex items-center justify-between">
                 <button
-                  id="btnDslToggle"
+                  id="btnFilterDslToggle"
                   onClick={() => setDslOpen((v) => !v)}
                   className="flex items-center gap-1.5 text-xs text-base-content/60 hover:text-base-content transition-colors"
                 >

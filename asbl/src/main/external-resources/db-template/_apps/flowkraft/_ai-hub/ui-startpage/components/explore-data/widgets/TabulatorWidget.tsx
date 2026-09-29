@@ -140,7 +140,11 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
     const columns = visible.map(({ field, col, effective }) => {
       const def = acDefByField.get(field);
       const rightAlign = effective.kind === "currency" || effective.kind === "number" || effective.kind === "percentage" || effective.kind === "coordinate";
-      const title = (typeof def?.title === "string" ? def.title : field);
+      // The gear dialog's own label wins, the way it does in the Detail widget; with
+      // none set this falls back to the Display tab's title and then the field name,
+      // so a column no one has opened the gear on renders exactly as before.
+      const settingsTitle = columnSettings[field]?.columnTitle;
+      const title = settingsTitle || (typeof def?.title === "string" ? def.title : field);
       return {
         title,
         field,
@@ -193,10 +197,19 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
         column={activeMeta?.col ?? null}
         settings={activeField ? columnSettings[activeField] : undefined}
         sampleValue={activeMeta?.sample}
-        onChange={() => {
-          // Column-settings persistence will be wired into setPath in a follow-up.
-          // For now the dialog edits are not persisted; visibility/title edits
-          // happen through the Display tab UI panel.
+        onChange={(next) => {
+          // The same store write the Detail widget's gear dialog makes: the settings
+          // live in `displayConfig.columnSettings`, keyed by field, and an empty one
+          // is deleted rather than stored, so a column nobody has touched keeps no key.
+          if (!widget || !activeField) return;
+          const prev = (widget.displayConfig.columnSettings as ColumnSettingsMap | undefined) ?? {};
+          const updated: ColumnSettingsMap = { ...prev };
+          if (next === undefined) delete updated[activeField];
+          else updated[activeField] = next;
+          updateWidgetDisplayConfig(widget.id, {
+            ...widget.displayConfig,
+            columnSettings: updated,
+          });
         }}
       />
     </div>

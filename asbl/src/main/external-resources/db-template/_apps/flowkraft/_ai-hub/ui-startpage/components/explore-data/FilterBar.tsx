@@ -146,6 +146,7 @@ export function FilterBar() {
           })}
           {!hasFilters && editMode && (
             <div
+              id="btnConfigureFilterBar"
               onClick={() => setConfigOpen(true)}
               className="flex items-center gap-2 text-xs font-bold text-base-content cursor-pointer hover:text-primary transition-colors select-none"
             >

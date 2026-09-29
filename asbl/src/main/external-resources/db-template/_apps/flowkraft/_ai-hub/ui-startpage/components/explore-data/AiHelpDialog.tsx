@@ -139,6 +139,7 @@ export function AiHelpDialog({
             <span className="font-semibold text-sm text-base-content">AI Prompt Builder</span>
           </div>
           <button
+            id="btnDismissAiHelp"
             onClick={onClose}
             className="text-base-content/60 hover:text-base-content transition-colors"
           >
@@ -170,6 +171,7 @@ export function AiHelpDialog({
           {/* "Pick more tables" — only for table kind (SQL from table / Script from table) */}
           {kind === "table" && (
             <button
+              id="btnAiHelpPickTables"
               type="button"
               onClick={() => setShowTablePicker(true)}
               className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border border-base-300 bg-base-100 hover:bg-base-200 text-base-content transition-colors shrink-0"
@@ -221,6 +223,7 @@ export function AiHelpDialog({
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-base-content">Ready-to-copy prompt</label>
               <textarea
+                id="txtAiHelpPrompt"
                 readOnly
                 value={prompt}
                 rows={12}
@@ -237,6 +240,7 @@ export function AiHelpDialog({
           <p className="text-[10px] text-base-content/60">
             Paste into{" "}
             <a
+              id="lnkAiHelpAssistant"
               href={copilotUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -281,6 +285,7 @@ export function AiHelpDialog({
             <div className="flex items-center justify-between p-3 border-b border-base-300 shrink-0">
               <span className="font-semibold text-sm text-base-content">Pick Tables</span>
               <button
+                id="btnCloseAiHelpTablePicker"
                 onClick={() => setShowTablePicker(false)}
                 className="text-base-content/60 hover:text-base-content transition-colors"
               >

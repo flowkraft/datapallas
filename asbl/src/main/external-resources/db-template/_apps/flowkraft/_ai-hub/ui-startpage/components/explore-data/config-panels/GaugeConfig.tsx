@@ -128,6 +128,7 @@ export function GaugeConfig({ config, columns, onChange }: GaugeConfigProps) {
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-base-content/60">Color bands (up to…)</span>
           <button
+            id="btnResetGaugeBands"
             onClick={() => onChange({ ...config, gaugeBands: DEFAULT_BANDS })}
             className="text-[10px] text-base-content/60 hover:text-base-content transition-colors"
           >

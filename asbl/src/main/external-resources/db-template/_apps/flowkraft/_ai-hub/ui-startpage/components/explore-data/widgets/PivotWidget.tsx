@@ -192,6 +192,7 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
             A pivot needs rows, columns, and values. Pick a sensible default, or configure in the Display tab.
           </p>
           <button
+            id={`btnAutoPivotLayout-${widgetId}`}
             type="button"
             onClick={handleAutoLayout}
             disabled={autoBusy}
@@ -220,6 +221,7 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
         <div className="shrink-0 mx-2 mt-2 mb-1 px-2.5 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[11px] text-base-content flex items-center gap-2">
           <span className="truncate flex-1">One dimension + one measure reads more clearly as a Chart.</span>
           <button
+            id={`btnConvertPivotToChart-${widgetId}`}
             type="button"
             onClick={() => changeWidgetRenderMode(widget.id, "chart")}
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-base-100 border border-base-300 hover:bg-base-200 transition-colors font-medium"

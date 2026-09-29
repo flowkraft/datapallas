@@ -91,6 +91,7 @@ export function SankeyConfig({ config, columns, onChange, cardinality }: SankeyC
             const selected = palette === id;
             return (
               <button
+                id={`btnSankeyPalette-${id}`}
                 key={id}
                 onClick={() => onChange({ ...config, sankeyPalette: id })}
                 title={label}

@@ -43,6 +43,7 @@ export function DslExampleDialog({ open, onClose, componentType, example }: DslE
         <div className="flex items-center justify-between p-4 border-b border-base-300 shrink-0">
           <span className="font-semibold text-sm text-base-content">{title}</span>
           <button
+            id="btnDismissDslExample"
             onClick={onClose}
             className="text-base-content/60 hover:text-base-content transition-colors"
           >
@@ -73,6 +74,7 @@ export function DslExampleDialog({ open, onClose, componentType, example }: DslE
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 p-4 border-t border-base-300 shrink-0">
           <button
+            id="btnCopyDslExample"
             onClick={handleCopy}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-content hover:bg-primary/90 transition-colors"
           >
@@ -83,6 +85,7 @@ export function DslExampleDialog({ open, onClose, componentType, example }: DslE
             {copied ? "Copied!" : "Copy to Clipboard"}
           </button>
           <button
+            id="btnCloseDslExample"
             onClick={onClose}
             className="px-4 py-1.5 rounded-md text-xs font-medium border border-base-300 bg-base-100 hover:bg-base-200 text-base-content transition-colors"
           >

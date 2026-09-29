@@ -192,6 +192,7 @@ export function PivotConfig({ config, columns, onChange }: PivotConfigProps) {
         <div>
           <span className="text-xs text-base-content/60">Aggregation</span>
           <select
+            id="selectPivotAggregation"
             value={aggregator}
             onChange={(e) => setAggregator(e.target.value)}
             className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -245,7 +246,7 @@ function FieldZone({
           <span className="text-[9px] text-base-content/40">({accept}s)</span>
         </span>
         {showSort && fields.length > 0 && onCycleAxis && (
-          <AxisSortToggle order={axisDir} onClick={onCycleAxis} />
+          <AxisSortToggle zoneId={zoneId} order={axisDir} onClick={onCycleAxis} />
         )}
       </div>
       <div
@@ -316,6 +317,7 @@ function DraggableChip({
       className={chipClass(columnByName[field])}
     >
       <button
+        id={`btnDragPivotField-${field}`}
         {...listeners}
         {...attributes}
         className="cursor-grab active:cursor-grabbing flex items-center text-base-content/60 hover:text-base-content"
@@ -335,6 +337,7 @@ function DraggableSourceChip({ col }: { col: ColumnSchema }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: col.columnName });
   return (
     <button
+      id={`btnDragPivotSource-${col.columnName}`}
       ref={setNodeRef}
       {...listeners}
       {...attributes}
@@ -363,12 +366,13 @@ function FieldChip({
   );
 }
 
-function AxisSortToggle({ order, onClick }: { order?: AxisOrder; onClick: () => void }) {
+function AxisSortToggle({ zoneId, order, onClick }: { zoneId: string; order?: AxisOrder; onClick: () => void }) {
   const label = order === "ascending" ? "Sort A→Z"
               : order === "descending" ? "Sort Z→A"
               : "Default order (click to sort A→Z)";
   return (
     <button
+      id={`btnPivotSortAxis-${zoneId}`}
       onClick={onClick}
       className={`flex items-center gap-0.5 text-[10px] px-1 py-0.5 transition-colors ${
         order ? "text-primary" : "text-base-content/30 hover:text-base-content/60"

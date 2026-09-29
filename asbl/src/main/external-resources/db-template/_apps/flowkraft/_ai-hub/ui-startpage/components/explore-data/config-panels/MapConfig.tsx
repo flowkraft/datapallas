@@ -87,6 +87,7 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
         <div>
           <span className="text-xs text-base-content/60">Region</span>
           <select
+            id="selectMapRegion"
             value={region}
             onChange={(e) => onChange(clearAutoFlag({ ...config, region: e.target.value }, "region"))}
             className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -108,6 +109,7 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
             )}
           </span>
           <select
+            id="selectMapDimension"
             value={dimension}
             onChange={(e) => onChange(clearAutoFlag({ ...config, dimension: e.target.value }, "dimension"))}
             className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -126,6 +128,7 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
           <div>
             <span className="text-xs text-base-content/60">Latitude</span>
             <select
+              id="selectMapLatField"
               value={latField}
               onChange={(e) => onChange({ ...config, latField: e.target.value })}
               className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -139,6 +142,7 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
           <div>
             <span className="text-xs text-base-content/60">Longitude</span>
             <select
+              id="selectMapLonField"
               value={lonField}
               onChange={(e) => onChange({ ...config, lonField: e.target.value })}
               className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -161,6 +165,7 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
           )}
         </span>
         <select
+          id="selectMapMetric"
           value={metric}
           onChange={(e) => onChange(clearAutoFlag({ ...config, metric: e.target.value }, "metric"))}
           className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"

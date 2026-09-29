@@ -339,6 +339,20 @@
   $: themeMode = isInheritTheme ? 'inherit' : (DARK_THEMES.has(theme) ? 'dark' : 'light');
 
   // only once tableBuilt has fired do we sync data/columns
+  // TODO 5h: Tabulator draws its own footer, so the reader's page controls get their ids
+  // from here, right after it renders, and again on every render because Tabulator rebuilds
+  // the footer when the page changes. Ids only — no class, listener, order or option changes.
+  function tagPagerControls(): void {
+    if (!container) return;
+    const pagerId = (name: string) => (componentId ? `${componentId}_${name}` : name);
+    container.querySelectorAll('.tabulator-footer .tabulator-page').forEach((el) => {
+      const page = (el as HTMLElement).getAttribute('data-page');
+      if (page) (el as HTMLElement).id = pagerId(`btnTabulatorPage-${page}`);
+    });
+    const size = container.querySelector('.tabulator-footer .tabulator-page-size');
+    if (size) (size as HTMLElement).id = pagerId('selectTabulatorPageSize');
+  }
+
   function updateTable() {
     if (!isReady || !table) return;
 
@@ -601,7 +615,9 @@
         dispatch('ready', { table });
         // sync any props that arrived before build
         updateTable();
+        tagPagerControls();
       });
+      table.on('renderComplete', tagPagerControls);
       table.on('rowClick', (e, row) => dispatch('rowClick', { event: e, row, rowData: row.getData() }));
       // One cell, not the whole row: a cube's drill-through is a question about the number that
       // was clicked, so the field it belongs to travels with the row it is in.

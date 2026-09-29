@@ -66,6 +66,7 @@ export default function CanvasPreviewPage({ params }: PageProps) {
       <div className="h-10 shrink-0 border-b border-base-300 bg-base-100/80 backdrop-blur-sm flex items-center justify-between px-4">
         <span className="text-sm font-semibold text-base-content">{store.name}</span>
         <button
+          id="btnClosePreview"
           onClick={() => router.push(`/explore-data/${canvasId}`)}
           className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-base-content/60 hover:bg-base-200 transition-colors"
         >

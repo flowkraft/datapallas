@@ -62,6 +62,7 @@ export class WidgetErrorBoundary extends Component<WidgetErrorBoundaryProps, Wid
               <div className="text-xs font-medium text-base-content">This widget crashed</div>
               <div className="mt-1 text-[11px] text-base-content/60 break-words">{message}</div>
               <button
+                id={`btnRetryWidget-${this.props.resetKey ?? ""}`}
                 type="button"
                 onClick={this.handleReset}
                 className="mt-2 inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium text-base-content hover:bg-base-200 border border-base-300"

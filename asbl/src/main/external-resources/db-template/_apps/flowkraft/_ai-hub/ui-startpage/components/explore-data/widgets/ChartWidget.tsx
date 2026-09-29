@@ -26,6 +26,11 @@ import {
 import { inferColumnsFromRow } from "@/lib/explore-data/widget-defaults";
 import { useDslConfig } from "@/lib/hooks/use-dsl-config";
 import type { ChartDslOptions, ChartDataBlock } from "@/lib/explore-data/dsl-sync/chart-mapping";
+import {
+  applyDatasetDslKeys,
+  buildCanvasChartOptions,
+  canvasChartDefaults,
+} from "@/lib/explore-data/dsl-sync/canvas-chart-options";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 
 /**
@@ -491,9 +496,11 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
       && keys.includes(effectiveSeriesField);
 
     if (wantsSeries) {
-      el.data = buildChartJsDataWithSeries(rows, xField!, effectiveSeriesField!, yFields[0], chartType, paletteColors);
+      const built = buildChartJsDataWithSeries(rows, xField!, effectiveSeriesField!, yFields[0], chartType, paletteColors);
+      el.data = { ...built, datasets: applyDatasetDslKeys(built.datasets, dslMap, true) };
     } else {
-      el.data = buildChartJsData(rows, xField!, yFields, chartType, paletteColors);
+      const built = buildChartJsData(rows, xField!, yFields, chartType, paletteColors);
+      el.data = { ...built, datasets: applyDatasetDslKeys(built.datasets, dslMap, false) };
     }
     el.type = chartType;
     // Grouped bar: multi-measure or two-categorical bar charts should be
@@ -510,35 +517,14 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
 
     const isPieType = chartType === "doughnut" || chartType === "pie";
 
-    el.options = {
-      maintainAspectRatio: false,
-      animation: false,                          // clutter cut: instant updates
-      plugins: {
-        title: {
-          display: Boolean(chartTitle),
-          text: chartTitle,
-        },
-        legend: {
-          display: legendDisplay,
-          ...(isPieType && legendDisplay ? { position: "right" } : {}),
-        },
-      },
-      // Pie/doughnut charts have no cartesian axes — omitting scales prevents
-      // Chart.js from rendering phantom axis numbers around the chart.
-      ...(!isPieType && {
-        scales: {
-          x: {
-            grid: { display: false },
-            stacked: isGroupedBar ? false : undefined,
-          },
-          y: {
-            grid: { color: "rgba(0,0,0,0.06)" },
-            title: { display: false },
-            stacked: isGroupedBar ? false : undefined,
-          },
-        },
-      }),
-    };
+    // The Canvas renders FROM the DSL Map: its own defaults stand only where the
+    // Map is silent, so a `scales.y.stacked`, a second axis, a tick format or a
+    // tooltip option written in the DSL draws here exactly as it draws once the
+    // dashboard is published (`canvas-chart-options.ts`).
+    el.options = buildCanvasChartOptions(
+      dslMap,
+      canvasChartDefaults({ chartTitle, legendDisplay, isPieType, isGroupedBar }),
+    );
   }, [ready, result, widget?.displayConfig, vq?.groupBy, vq?.groupByBuckets, vq?.sort, showAutoSummarizePrompt]);
 
   // ─── Render branches ──────────────────────────────────────────────────────
@@ -557,6 +543,7 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
             A chart needs rows to be grouped and summarized. Pick defaults, or configure manually in the Data tab.
           </p>
           <button
+            id={`btnAutoSummarize-${widgetId}`}
             type="button"
             onClick={handleAutoSummarize}
             disabled={autoBusy}
@@ -570,6 +557,7 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
           </button>
           {autoErr && <p className="mt-2 text-[11px] text-error">{autoErr}</p>}
           <button
+            id={`btnShowAsNumber-${widgetId}`}
             type="button"
             onClick={() => widget && changeWidgetRenderMode(widget.id, "number")}
             className="block mx-auto mt-2 text-[11px] text-base-content/60 hover:text-base-content"
@@ -608,6 +596,7 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
             showing top {TOP_N_DEFAULT} of {TOP_N_DEFAULT + hiddenCount} — + {hiddenCount} more hidden
           </span>
           <button
+            id={`btnChartShowAll-${widgetId}`}
             type="button"
             onClick={() => updateWidgetDisplayConfig(widget.id, { ...(widget.displayConfig || {}), chartShowAll: true })}
             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-base-200 text-base-content/80 font-medium shrink-0"
@@ -622,6 +611,7 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
         <div className="shrink-0 px-2 py-0.5 text-[10px] text-base-content/60 bg-base-200/40 border-t border-base-300/50 flex items-center justify-between gap-2">
           <span className="truncate">showing all bars (no top-N limit)</span>
           <button
+            id={`btnChartShowTopN-${widgetId}`}
             type="button"
             onClick={() => updateWidgetDisplayConfig(widget.id, { ...(widget.displayConfig || {}), chartShowAll: false })}
             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-base-200 text-base-content/80 font-medium shrink-0"

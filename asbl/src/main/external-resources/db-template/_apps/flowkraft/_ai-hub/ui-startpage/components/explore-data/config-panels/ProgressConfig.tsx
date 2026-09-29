@@ -60,6 +60,7 @@ export function ProgressConfig({ config, columns, onChange }: ProgressConfigProp
       <div>
         <span className="text-xs text-base-content/60">Format</span>
         <select
+          id="selectProgressFormat"
           value={format}
           onChange={(e) => onChange({ ...config, format: e.target.value })}
           className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -73,6 +74,7 @@ export function ProgressConfig({ config, columns, onChange }: ProgressConfigProp
       <div>
         <span className="text-xs text-base-content/60">Label</span>
         <input
+          id="inputProgressLabel"
           value={label}
           onChange={(e) => onChange({ ...config, label: e.target.value })}
           placeholder="Auto from field name"

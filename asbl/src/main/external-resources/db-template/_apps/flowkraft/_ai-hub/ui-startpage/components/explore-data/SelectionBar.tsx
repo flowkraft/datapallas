@@ -23,6 +23,7 @@ export function SelectionBar() {
         >
           <span className="font-medium">{s.field}:</span> {s.value}
           <button
+            id={`btnRemoveSelection-${i}`}
             onClick={() => toggleSelection(s.field, s.value)}
             className="p-0.5 rounded-full hover:bg-primary/20 transition-colors"
           >
@@ -31,6 +32,7 @@ export function SelectionBar() {
         </span>
       ))}
       <button
+        id="btnClearSelections"
         onClick={clearSelections}
         className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] text-base-content/60 hover:bg-base-200 transition-colors"
       >

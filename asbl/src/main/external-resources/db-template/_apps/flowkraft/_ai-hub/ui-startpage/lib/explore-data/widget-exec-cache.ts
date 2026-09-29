@@ -17,6 +17,26 @@ export interface LastExec {
   filterSnapshot?: string; // JSON of filter values at last execution
 }
 
+/**
+ * Whether a widget has to run again — one rule for a script, a SQL and a visual
+ * widget alike: it runs again when anything the last execution was keyed on
+ * changed, and it is skipped when nothing did.
+ *
+ * The skip is what keeps the effect from looping: it re-runs on every store
+ * change, and without this it would fetch on each one.
+ *
+ * `next` carries only the keys its mode uses (a script has a `scriptVersion`, a
+ * visual widget has its built `sql`), so a key neither side sets is `undefined`
+ * on both and decides nothing.
+ */
+export function shouldReExecute(prev: LastExec | undefined, next: LastExec): boolean {
+  if (!prev || prev.mode !== next.mode) return true;
+  return prev.executeVersion !== next.executeVersion
+    || prev.scriptVersion !== next.scriptVersion
+    || prev.sql !== next.sql
+    || prev.filterSnapshot !== next.filterSnapshot;
+}
+
 export const LAST_EXEC: Map<string, LastExec> = new Map();
 
 export function clearWidgetExecCache(): void {

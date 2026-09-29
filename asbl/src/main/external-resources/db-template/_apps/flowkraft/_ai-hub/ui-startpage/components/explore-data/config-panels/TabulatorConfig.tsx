@@ -131,6 +131,7 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
       <div>
         <span className="text-xs text-base-content/60">Layout</span>
         <select
+          id="selectTabulatorLayout"
           value={layout}
           onChange={(e) => setMapKey("layout", e.target.value)}
           className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
@@ -165,6 +166,7 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
             <div className="mt-2">
               <span className="text-xs text-base-content/60">Rows per page</span>
               <input
+                id="inputTabulatorPageSize"
                 type="number"
                 min={5}
                 max={500}
@@ -182,6 +184,7 @@ export function TabulatorConfig({ config, columns, onChange, rowCount }: Tabulat
       <div>
         <span className="text-xs text-base-content/60">Theme</span>
         <select
+          id="selectTabulatorTheme"
           value={theme}
           onChange={(e) => setMapKey("theme", e.target.value)}
           className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"

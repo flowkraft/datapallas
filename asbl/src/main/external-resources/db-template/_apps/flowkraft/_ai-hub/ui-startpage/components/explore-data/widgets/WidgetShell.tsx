@@ -96,6 +96,7 @@ export function WidgetShell({ widgetId, type }: WidgetShellProps) {
   if (type === "divider") {
     return (
       <div
+        id={`widgetDivider-${widgetId}`}
         className={`relative h-full flex items-center px-2 rounded-md ${
           showSelected ? "ring-2 ring-primary/30" : "hover:ring-1 hover:ring-foreground/10"
         }${editMode ? " react-grid-drag-handle" : ""}`}
@@ -105,6 +106,7 @@ export function WidgetShell({ widgetId, type }: WidgetShellProps) {
         <hr className="w-full border-t border-base-300" />
         {editMode && isSelected && (
           <button
+            id={`btnDeleteDivider-${widgetId}`}
             onClick={(e) => { e.stopPropagation(); removeWidget(widgetId); }}
             className="absolute top-0 right-0 p-0.5 rounded hover:bg-error/10 text-base-content/60 hover:text-error transition-colors bg-base-100/80"
           >
@@ -170,7 +172,7 @@ export function WidgetShell({ widgetId, type }: WidgetShellProps) {
             <div className="flex items-center justify-center h-full p-2">
               <div className="text-center">
                 <Icon className={`w-8 h-8 mx-auto mb-1.5 ${meta.color} opacity-20`} />
-                <p className="text-[11px] text-base-content/60">Edit text in the Display tab</p>
+                <p className="text-[11px] text-base-content/60">Edit the text in the panel on the right</p>
               </div>
             </div>
           )

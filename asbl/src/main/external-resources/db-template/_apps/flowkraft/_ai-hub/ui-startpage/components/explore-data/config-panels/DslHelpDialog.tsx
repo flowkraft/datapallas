@@ -87,6 +87,7 @@ export function DslHelpDialog({
             <span className="font-semibold text-sm text-base-content">{title}</span>
           </div>
           <button
+            id="btnDismissDslHelp"
             onClick={onClose}
             className="text-base-content/60 hover:text-base-content transition-colors"
           >
@@ -99,6 +100,7 @@ export function DslHelpDialog({
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-base-content">What do you need?</label>
             <textarea
+              id="txtDslRequirement"
               value={requirement}
               onChange={(e) => setRequirement(e.target.value)}
               placeholder={`Describe how you want to configure this — e.g. "Show country column with search filter, sort alphabetically, highlight rows where value > 1000"`}
@@ -108,6 +110,7 @@ export function DslHelpDialog({
           </div>
 
           <button
+            id="btnBuildDslPrompt"
             onClick={handleBuild}
             disabled={!requirement.trim() || building}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-content hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -129,6 +132,7 @@ export function DslHelpDialog({
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-base-content">Ready-to-copy prompt</label>
               <textarea
+                id="txtDslPrompt"
                 readOnly
                 value={prompt}
                 rows={14}
@@ -147,6 +151,7 @@ export function DslHelpDialog({
             </p>
             {aiUrl && (
               <a
+                id="lnkDslAiUrl"
                 href={aiUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -160,6 +165,7 @@ export function DslHelpDialog({
           <div className="flex items-center gap-2 shrink-0">
             {prompt && (
               <button
+                id="btnCopyDslPrompt"
                 onClick={handleCopy}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-base-300 bg-base-100 hover:bg-base-200 text-base-content transition-colors"
               >
@@ -171,6 +177,7 @@ export function DslHelpDialog({
               </button>
             )}
             <button
+              id="btnCloseDslHelp"
               onClick={onClose}
               className="px-3 py-1.5 rounded-md text-xs font-medium border border-base-300 bg-base-100 hover:bg-base-200 text-base-content transition-colors"
             >
