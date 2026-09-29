@@ -78,8 +78,8 @@ DEV_CONTAINER=datapallas-dev                          # dp-dev; the bkstg revers
 DEV_NETWORK=bridge_current_host_cross_containers_net  # the reverse proxy's network
 DEV_PORT=14201                                        # TCP forwarder to `ng serve` (localhost:4201) in that container
 AI_HUB_PORT=3000                                      # `next dev` for the AI Hub start page, in --live only
-PLAY_CONTAINER=datapallas-play                        # dp-dev-pinned; the reverse proxy reaches it by this name
-PLAY_REPO=/var/kraft-internalsystems/projects/dp-play/reportburster   # the pinned clone, never this checkout
+PINNED_CONTAINER=datapallas-pinned                    # dp-dev-pinned; the reverse proxy reaches it by this name
+PINNED_REPO=/var/kraft-internalsystems/projects/dp-pinned/reportburster  # the pinned clone, never this checkout
 SERVER_IMAGE_REPO=flowkraft/datapallas-server
 
 # A publish target: the site's compose folder (docker-compose.yml + .env with DATAPALLAS_IMAGE=...), its data
@@ -778,35 +778,37 @@ start_dev_container() {
 # commit older than this feature still works. The pinned tree is only ever read and built.
 start_pinned_dev() {
   local sha="$1" log
-  mkdir -p "$(dirname "$PLAY_REPO")" "$LOG_DIR"
-  if [ ! -d "$PLAY_REPO/.git" ]; then
-    echo "cloning $REPO -> $PLAY_REPO (once)"
-    git clone -q "$REPO" "$PLAY_REPO" || return 1
+  mkdir -p "$(dirname "$PINNED_REPO")" "$LOG_DIR"
+  if [ ! -d "$PINNED_REPO/.git" ]; then
+    echo "cloning $REPO -> $PINNED_REPO (once)"
+    git clone -q "$REPO" "$PINNED_REPO" || return 1
   fi
-  git -C "$PLAY_REPO" remote set-url origin "$REPO" 2>/dev/null
-  git -C "$PLAY_REPO" fetch -q origin || return 1
-  git -C "$PLAY_REPO" rev-parse --verify -q "$sha^{commit}" >/dev/null ||
-    { echo "FAIL  $sha is not a commit in $PLAY_REPO"; return 1; }
-  if [ -n "$(git -C "$PLAY_REPO" status --porcelain)" ]; then
-    echo "FAIL  $PLAY_REPO has local changes -- look at them before they are lost"; return 1
+  git -C "$PINNED_REPO" remote set-url origin "$REPO" 2>/dev/null
+  git -C "$PINNED_REPO" fetch -q origin || return 1
+  git -C "$PINNED_REPO" rev-parse --verify -q "$sha^{commit}" >/dev/null ||
+    { echo "FAIL  $sha is not a commit in $PINNED_REPO"; return 1; }
+  # Only TRACKED changes matter: a checkout would lose those. Build output that is merely untracked
+  # (frend/reporting/src/assets/web-components/themes.css, for one) survives it and must not block.
+  if [ -n "$(git -C "$PINNED_REPO" status --porcelain --untracked-files=no)" ]; then
+    echo "FAIL  $PINNED_REPO has local changes -- look at them before they are lost"; return 1
   fi
-  git -C "$PLAY_REPO" checkout -q --detach "$sha" || return 1
-  echo "pinned at $(git -C "$PLAY_REPO" log --oneline -1)"
+  git -C "$PINNED_REPO" checkout -q --detach "$sha" || return 1
+  echo "pinned at $(git -C "$PINNED_REPO" log --oneline -1)"
   log="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-dev-pinned-$sha.log"
   ln -sfn "$log" "$LOG_DIR/dev-pinned-latest.log"
-  docker rm -f "$PLAY_CONTAINER" >/dev/null 2>&1
-  docker run -d --name "$PLAY_CONTAINER" --network "$DEV_NETWORK" --ulimit core=0 \
-    -v "$PLAY_REPO":"$PLAY_REPO" -w "$PLAY_REPO" \
+  docker rm -f "$PINNED_CONTAINER" >/dev/null 2>&1
+  docker run -d --name "$PINNED_CONTAINER" --network "$DEV_NETWORK" --ulimit core=0 \
+    -v "$PINNED_REPO":"$PINNED_REPO" -w "$PINNED_REPO" \
     -v "$REPO/asbl/ci":/dp-ci-driver:ro \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v dp-play-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \
+    -v dp-pinned-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \
     -v "$LOG_DIR":"$LOG_DIR" \
-    -e REPO="$PLAY_REPO" -e TASK=dev -e DEV_MODE=pinned -e SHA="$sha" -e LOG="$log" \
+    -e REPO="$PINNED_REPO" -e TASK=dev -e DEV_MODE=pinned -e SHA="$sha" -e LOG="$log" \
     "$CI_IMAGE" bash /dp-ci-driver/dp-dev-pinned.sh >/dev/null || return 1
-  echo "dp-dev-pinned:  $PLAY_CONTAINER started on $sha"
+  echo "dp-dev-pinned:  $PINNED_CONTAINER started on $sha"
   echo "log:            $log   (also $LOG_DIR/dev-pinned-latest.log)"
   echo "it answers at https://dp-dev-pinned.bkstg.flowkraft.com once the assembly and the UI are built"
-  echo "stop:           docker stop $PLAY_CONTAINER"
+  echo "stop:           docker stop $PINNED_CONTAINER"
 }
 
 # -----------------------------------------------------------------------------
