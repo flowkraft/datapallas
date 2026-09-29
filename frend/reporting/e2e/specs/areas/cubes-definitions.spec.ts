@@ -432,7 +432,7 @@ cube('orders') {
         .elementShouldContainText('#cubeSqlResult', 'City')
         .click('#btnCloseCubeSqlModal')
         .waitOnElementToBecomeInvisible('#cubeSqlResult')
-        // ── U3: "Show everything" is the same tree, so a tick survives it ──
+        // ── U3: "Field details" is the same tree, so a tick survives it ──
         .click('#chk-show-everything')
         .elementCheckBoxShouldBeSelected('#chk-dim-City')
         // Nothing is saved: the file was only ever previewed.

@@ -111,8 +111,8 @@ test.describe('Cube Stories — the cube demo page', () => {
   //
   // Positive half, the whole chain: a visitor with nothing but a link gets
   // one card per cube, each drawing its own rows from its own live cube, with the
-  // cube's own definition behind View Code and its SQL — for any of eight
-  // databases — behind View SQL.
+  // cube's own definition behind Show Config and its SQL — for any of eight
+  // databases — behind Show SQL.
   //
   // Negative half: Show Me REPLACES the selection rather than adding to it; a
   // selection naming a field the cube has not got changes nothing and says so;
@@ -247,7 +247,51 @@ test.describe('Cube Stories — the cube demo page', () => {
     const sqlOnOracle = await sqlText(frame, deals.id);
     expect(sqlOnOracle, 'another database is another statement').not.toBe(sqlOnDuckDb);
     await expect(inCard(frame, deals.id, '#cubeRuntimeSql')).toContainText('Oracle');
-    // View SQL writes a statement; it does not run one. The rows on the screen are still the ones
+    // ── The chrome of the tile: where the detail toggle sits, and the two boxes ──
+    // Both boxes are closed again here, so the buttons read what a reader first sees.
+    const chrome = await inCard(frame, sales.id, 'rb-cube-renderer').evaluate((host: Element) => {
+      const root: ParentNode = (host as HTMLElement).shadowRoot ?? host;
+      const toggle = root.querySelector('#chk-show-everything');
+      const fields = Array.from(root.querySelectorAll('.rb-tree-field'));
+      const lastField = fields.length > 0 ? fields[fields.length - 1] : null;
+      const result = root.querySelector('#cubeRuntimeResult');
+      const follows = (first: Element | null, second: Element | null) =>
+        !!first && !!second
+        && !!(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return {
+        fields: fields.length,
+        toggleAfterTheTree: follows(lastField, toggle),
+        toggleBeforeTheAnswer: follows(toggle, result),
+        buttons: Array.from(root.querySelectorAll('.rb-opened-buttons button'))
+          .map((button) => (button.textContent ?? '').trim()),
+      };
+    });
+    expect(chrome.fields, 'the tree has fields to be detailed').toBeGreaterThan(0);
+    expect(chrome.toggleAfterTheTree, 'the detail toggle is under the last field of the tree')
+      .toBe(true);
+    expect(chrome.toggleBeforeTheAnswer,
+      'and above the answer, not under it and under the SQL box (D12)').toBe(true);
+    expect(chrome.buttons,
+      "the cube's own definition first, then the statement (D13)")
+      .toEqual(['Show Config', 'Show SQL']);
+
+    // Ticking it adds the second level of detail the toggle is for, and nothing else moves.
+    await expect(inCard(frame, sales.id, '.rb-facts'),
+      "the cube's own facts are the detail, not what the tile opens with").toHaveCount(0);
+    await inCard(frame, sales.id, '#chk-show-everything').check();
+    await expect(inCard(frame, sales.id, '#chk-show-everything')).toBeChecked({ timeout: 15_000 });
+    await expect(inCard(frame, sales.id, '.rb-facts'), 'and ticking it shows them')
+      .toBeVisible({ timeout: 15_000 });
+    await inCard(frame, sales.id, '#chk-show-everything').uncheck();
+    await expect(inCard(frame, sales.id, '.rb-facts')).toHaveCount(0);
+
+    // The words the owner read as an author's, not a reader's, are on no tile of the page (D13).
+    await expect(frame.locator('.rb-cube-stories-root').locator('text=View SQL'),
+      'no tile says View SQL any more').toHaveCount(0);
+    await expect(frame.locator('.rb-cube-stories-root').locator('text=View Code'),
+      'and none says View Code').toHaveCount(0);
+
+    // Show SQL writes a statement; it does not run one. The rows on the screen are still the ones
     // the widget's own connection answered.
     expect(difference(rowsBefore, await drawnRows(frame, deals.id), false)).toBeNull();
 

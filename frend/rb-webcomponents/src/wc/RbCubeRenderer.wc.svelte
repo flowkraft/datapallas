@@ -6,7 +6,7 @@
    *
    * One tree, two levels of detail. The default view shows only what is ticked or chosen
    * (the design's tier 1), most needed first: Measures, then the main table with its joined
-   * tables collapsed, then Filters and Drill paths. "Show everything" is the same tree with the
+   * tables collapsed, then Filters and Drill paths. "Field details" is the same tree with the
    * same ids and the same tick boxes, plus one detail line per field and a small triangle for the
    * settings that need more than a line. Nothing is a second layout, so a tick never disappears
    * when the view changes.
@@ -963,7 +963,7 @@
 
   // ── Cube Stories: what the widget's author turned on (design part 8) ──────
 
-  /** The databases View SQL offers, as `/meta` gives them; empty unless `showSql` is on. */
+  /** The databases Show SQL offers, as `/meta` gives them; empty unless `showSql` is on. */
   let sqlDialects: Array<{ key: string; label: string }> = [];
   /** The database the SQL is written for; every card on the page follows the last one chosen. */
   let sqlVendor = '';
@@ -973,7 +973,7 @@
   let sqlText = '';
   let sqlError = '';
   let sqlLoading = false;
-  /** The cube's own DSL text, only where the author turned View Code on. */
+  /** The cube's own DSL text, only where the author turned Show Config on. */
   let cubeCode = '';
   let codeOpen = false;
   /** The questions the cube was written to answer: its hints, and each variant as one of its own. */
@@ -1264,7 +1264,7 @@
   /**
    * The warnings the tree reads, out of what `/meta` was allowed to say. Every member the server
    * marked `error: true` is one error entry, so a broken field is drawn in the error style and
-   * cannot be ticked on every dashboard, opt-ins or not. Where View Code is on, the parser's own
+   * cannot be ticked on every dashboard, opt-ins or not. Where Show Config is on, the parser's own
    * list comes too, and its words are the ones shown, because they say what is actually wrong.
    *
    * <p>A live cube is one cube, so every entry belongs to the unnamed one: `errorOf` matches on
@@ -1336,7 +1336,7 @@
     return request;
   }
 
-  // ── Cube Stories: View SQL, View Code and Show Me (design part 8) ────────
+  // ── Cube Stories: Show SQL, Show Config and Show Me (design part 8) ────────
 
   /**
    * The same request with the dashboard's values on it (R8).
@@ -1627,10 +1627,21 @@
   $: viewDiffers = runtime && viewStorage !== 'none' && viewLoaded
     && currentViewSignature !== defaultViewSignature;
 
-  /** `Cube · Ship Country: Germany`, in chip order, the same text in both panel states. */
+  /**
+   * What the panel is called: the cube's own title, never the bare word `Cube`, which named
+   * neither the cube nor the panel. A cube with no title at all falls back to the name the file
+   * gives it, and only a cube with neither is described by what the panel does.
+   */
+  $: cubeHeading = String(activeCube?.title || activeCube?.name || selectedCubeName || '').trim();
+
+  /**
+   * `Online Sales · Ship Country: Germany`, in chip order, the same text in both panel states.
+   * With nothing filtering it, the line says what the panel is for instead.
+   */
   $: panelHeaderText = [...dashChips, ...filterChips].length === 0
-    ? 'Cube'
-    : 'Cube · ' + [...dashChips, ...filterChips].map((chip) => chip.text).join('; ');
+    ? (cubeHeading ? cubeHeading + ' · pick what to see' : 'Pick what to see')
+    : (cubeHeading ? cubeHeading + ' · ' : '')
+      + [...dashChips, ...filterChips].map((chip) => chip.text).join('; ');
 
   /**
    * The author's canvas keeps its selection on the widget (W3), and a read-only cube cannot be
@@ -2354,7 +2365,7 @@
     return lines.join('\n');
   }
 
-  // ── "Show everything": the detail line and the settings under the triangle ───
+  // ── "Field details": the detail line and the settings under the triangle ───
 
   /** The one extra line every field gets: its name, its type and its SQL. */
   function detailLine(member: any, kind: string): string {
@@ -2397,7 +2408,7 @@
     return String(value);
   }
 
-  /** The cube's own facts, shown above the tree in "Show everything" (tier 3). */
+  /** The cube's own facts, shown above the tree in "Field details" (tier 3). */
   function cubeFacts(cube: any): Array<{ label: string; value: string }> {
     const facts: Array<{ label: string; value: string }> = [];
     if (!cube) return facts;
@@ -2415,7 +2426,7 @@
     return facts;
   }
 
-  /** A join's wiring, on its folder line in "Show everything". */
+  /** A join's wiring, on its folder line in "Field details". */
   function joinWiring(j: any): string {
     const parts: string[] = [];
     if (j?.relationship) parts.push(String(j.relationship));
@@ -2458,7 +2469,7 @@
 
   /**
    * One tree, drawn from one list: a folder's children are only in the list while it is open, so
-   * the default view and "Show everything" are the same rows with the same ids.
+   * the default view and "Field details" are the same rows with the same ids.
    */
   function buildRows(
     cube: any,
@@ -2625,10 +2636,6 @@
       <p class="rb-cube-desc">Every cube in this file is hidden.</p>
     {/if}
 
-    {#if activeCube.description}
-      <p class="rb-cube-desc">{activeCube.description}</p>
-    {/if}
-
     {#if facts.length > 0}
       <div class="rb-facts">
         {#each facts as fact}
@@ -2645,6 +2652,13 @@
         <span class="rb-panel-chevron">{panelCollapsed ? '▸' : '▾'}</span>
         <span class="rb-panel-text">{panelHeaderText}</span>
       </button>
+    {/if}
+
+    <!-- What this cube is: the sentence its author wrote, under the name of the cube and at the
+         size of the text around it. It used to be the smallest and faintest line on the card,
+         under everything, where a reader never saw it. -->
+    {#if activeCube.description}
+      <p class="rb-cube-about">{activeCube.description}</p>
     {/if}
 
     {#if !runtime || !panelCollapsed}
@@ -2702,7 +2716,7 @@
            title={viewSaveReason}>{viewSaveError}</div>
     {/if}
 
-    <!-- What the parser found wrong with this cube, errors first (View Code's other half) -->
+    <!-- What the parser found wrong with this cube, errors first (Show Config's other half) -->
     {#if shownWarnings.length > 0}
       <div id="cubeRuntimeWarnings" class="rb-warnings">
         {#each shownWarnings as warning}
@@ -2880,6 +2894,16 @@
 
     {/if}
 
+    <!-- The second level of detail of the tree above, directly under the last field it adds it
+         to. It used to be drawn last of all, which in a live tile put it under the answer and
+         under the SQL box, far from the only thing it changes. -->
+    {#if !readOnly}
+      <label class="rb-show-toggle" title="Types, settings and the cube's own facts">
+        <input id="chk-show-everything" type="checkbox" bind:checked={showEverything} />
+        Field details
+      </label>
+    {/if}
+
     <!-- Selection summary -->
     {#if selectedDimensions.size > 0 || selectedMeasures.size > 0 || selectedSegments.size > 0}
       <p class="rb-cube-hint" style="margin-top: 8px; text-align: center;">
@@ -2962,18 +2986,26 @@
     <!-- What the author opened up: the SQL of this question, and the cube's own DSL -->
     {#if runtime && (sqlDialects.length > 0 || cubeCode)}
       <div class="rb-opened-up">
+        <!-- The cube's own definition first, then the statement this selection would be
+             answered by, and each box opens in that same order. -->
         <div class="rb-opened-buttons">
-          {#if sqlDialects.length > 0}
-            <button type="button" id="cubeRuntimeViewSql" class="rb-opened-button"
-                    aria-expanded={sqlOpen}
-                    on:click={() => (sqlOpen = !sqlOpen)}>{sqlOpen ? 'Hide SQL' : 'View SQL'}</button>
-          {/if}
           {#if cubeCode}
             <button type="button" id="cubeRuntimeViewCode" class="rb-opened-button"
                     aria-expanded={codeOpen}
-                    on:click={() => (codeOpen = !codeOpen)}>{codeOpen ? 'Hide Code' : 'View Code'}</button>
+                    on:click={() => (codeOpen = !codeOpen)}>{codeOpen ? 'Hide Config' : 'Show Config'}</button>
+          {/if}
+          {#if sqlDialects.length > 0}
+            <button type="button" id="cubeRuntimeViewSql" class="rb-opened-button"
+                    aria-expanded={sqlOpen}
+                    on:click={() => (sqlOpen = !sqlOpen)}>{sqlOpen ? 'Hide SQL' : 'Show SQL'}</button>
           {/if}
         </div>
+
+        {#if codeOpen && cubeCode}
+          <div id="cubeRuntimeCode" class="rb-opened-panel">
+            <pre class="rb-opened-text">{cubeCode}</pre>
+          </div>
+        {/if}
 
         {#if sqlOpen && sqlDialects.length > 0}
           <div id="cubeRuntimeSql" class="rb-opened-panel">
@@ -3001,22 +3033,9 @@
             {/if}
           </div>
         {/if}
-
-        {#if codeOpen && cubeCode}
-          <div id="cubeRuntimeCode" class="rb-opened-panel">
-            <pre class="rb-opened-text">{cubeCode}</pre>
-          </div>
-        {/if}
       </div>
     {/if}
 
-    <!-- Show everything: the same tree, with the detail line and the settings -->
-    {#if !readOnly}
-      <label class="rb-show-toggle">
-        <input id="chk-show-everything" type="checkbox" bind:checked={showEverything} />
-        Show everything
-      </label>
-    {/if}
   {/if}
 
   <!-- W4.6: the rows behind the number that was clicked -->
@@ -3340,6 +3359,14 @@
     font-size: 11px;
   }
 
+  /* What the cube is: as readable as the field names under it (D6). `.rb-cube-desc` stays what
+     it was, the class of the small notes. */
+  .rb-cube-about {
+    margin: 4px 0 8px 0;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
   /* ── The field tree ── */
   .rb-tree {
     user-select: none;
@@ -3410,7 +3437,7 @@
     margin-left: 6px;
   }
 
-  /* ── "Show everything": the detail line and the settings ── */
+  /* ── "Field details": the detail line and the settings ── */
   .rb-detail {
     color: color-mix(in oklab, currentColor 55%, transparent);
     font-family: 'Courier New', monospace;
@@ -3472,8 +3499,8 @@
     gap: 6px;
     margin-top: 8px;
     padding: 4px 0;
-    font-size: 11px;
-    color: color-mix(in oklab, currentColor 60%, transparent);
+    font-size: 12px;
+    color: color-mix(in oklab, currentColor 80%, transparent);
     cursor: pointer;
     border-top: 1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
   }

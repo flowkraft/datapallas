@@ -1379,6 +1379,17 @@ electronBeforeAfterAllTest(
         await expect(page.locator('#btnChipRemove-Country'), 'and it is not the viewer\'s to remove')
           .toHaveCount(0);
 
+        // And the panel that carries them is headed by the cube, not by the word `Cube`: the
+        // reader is told which of the shop's cubes they are about to ask (D5).
+        await expect(page.locator('#cubePanelHeader'), 'the tile names its cube and its filter')
+          .toHaveText('\u25be Online Sales \u00b7 Country: Germany (dashboard)', { timeout: 60000 });
+
+        // The cube says what it is, once, where the reader looks for it (D6).
+        await expect(page.locator('.rb-cube-about'))
+          .toHaveText('Orders, shipping fees and sales, by country and by product category');
+        await expect(page.locator('.rb-cube-desc'), 'not in the class of the small notes')
+          .toHaveCount(0);
+
         // What the live cube answers, asked the way the renderer asks it: the viewer's answer
         // travels in `params`, and the binding that turns it into a filter lives in the
         // dashboard's own -cube-widgets.json entry, never in this request.

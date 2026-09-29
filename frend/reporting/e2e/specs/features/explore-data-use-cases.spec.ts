@@ -3337,9 +3337,10 @@ return ctx.dbSql.rows(sql)`,
       await page.locator('#btnFilterApply').click();
       await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany');
 
-      // The header says what the data is filtered by, in the viewer's own words.
-      await expect(page.locator('#cubePanelHeader')).toHaveText('▾ Cube · Ship Country: Germany',
-        { timeout: 30_000 });
+      // The header says which cube this is and what the data is filtered by, in the viewer's
+      // own words. The cube's title is its own, out of its definition (D5).
+      await expect(page.locator('#cubePanelHeader'))
+        .toHaveText('▾ Northwind Sales Analysis · Ship Country: Germany', { timeout: 30_000 });
 
       // One click folds the cube away and leaves the data where it was.
       await page.locator('#cubePanelHeader').click();
@@ -3361,8 +3362,8 @@ return ctx.dbSql.rows(sql)`,
       // F5: the dashboard opens as this viewer left it, from that saved view.
       await page.reload();
       await page.waitForLoadState('networkidle');
-      await expect(page.locator('#cubePanelHeader')).toHaveText('▸ Cube · Ship Country: Germany',
-        { timeout: 30_000 });
+      await expect(page.locator('#cubePanelHeader'))
+        .toHaveText('▸ Northwind Sales Analysis · Ship Country: Germany', { timeout: 30_000 });
       await expect(page.locator('#cubePanelBody')).toHaveCount(0);
       await expect(d25Result).toContainText('Beverages', { timeout: 30_000 });
 
@@ -3372,11 +3373,14 @@ return ctx.dbSql.rows(sql)`,
 
       // A view that is no longer the author's says so, and can be given back.
       await page.locator('#btnChipRemove-ShipCountry').click();
-      await expect(page.locator('#cubePanelHeader')).toHaveText('▾ Cube', { timeout: 30_000 });
+      // With nothing filtering it, the line says which cube it is and what the panel is for.
+      await expect(page.locator('#cubePanelHeader'))
+        .toHaveText('▾ Northwind Sales Analysis · pick what to see', { timeout: 30_000 });
       await page.locator('#lnkCubeResetView').click();
       await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany',
         { timeout: 30_000 });
-      await expect(page.locator('#cubePanelHeader')).toHaveText('▾ Cube · Ship Country: Germany');
+      await expect(page.locator('#cubePanelHeader'))
+        .toHaveText('▾ Northwind Sales Analysis · Ship Country: Germany');
       // Nothing is left in the store: the next default the author publishes is
       // the one this viewer will open.
       await page.waitForTimeout(3_000);

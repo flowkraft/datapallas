@@ -528,7 +528,7 @@ export async function walkEveryHint(frame: Frame, card: CubeCard): Promise<Ask[]
   return asks;
 }
 
-// ── View SQL, View Code, and the shape switch ─────────────────────────────────
+// ── Show SQL, Show Config, and the shape switch ─────────────────────────────────
 
 export async function openSql(frame: Frame, cubeId: string): Promise<void> {
   const button = inCard(frame, cubeId, '#cubeRuntimeViewSql');
@@ -575,7 +575,7 @@ export async function hideCode(frame: Frame, cubeId: string): Promise<void> {
   await expect(inCard(frame, cubeId, '#cubeRuntimeCode')).toHaveCount(0, { timeout: 20_000 });
 }
 
-/** The cube's own definition, as the repo holds it — what View Code must be showing. */
+/** The cube's own definition, as the repo holds it — what Show Config must be showing. */
 export function shippedCubeCode(card: CubeCard): string {
   return fs.readFileSync(
     path.join(SAMPLES_CUBES_PATH, card.domain, `${card.file}-cube-config.groovy`),
@@ -600,6 +600,24 @@ export async function expectTheWholePage(frame: Frame): Promise<void> {
     await expect(frame.locator(`#cube-${card.id}-area`)).toHaveText(card.area);
     await expect(inCard(frame, card.id, '.card-grain')).toContainText('Grain:');
     await expect(frame.locator(`.contents a[href="#cube-${card.id}"]`)).toHaveCount(1);
+
+    // The tile says which cube it is, in the cube's own title, and never the bare word `Cube`,
+    // which named neither the cube nor the panel (D5).
+    await expect(inCard(frame, card.id, '#cubePanelHeader'), `the ${card.id} tile names its cube`)
+      .toContainText(card.title, { timeout: 60_000 });
+    const header = ((await inCard(frame, card.id, '#cubePanelHeader').textContent()) ?? '')
+      .replace(/[\u25b8\u25be\s]+/g, ' ').trim();
+    expect(header, `the ${card.id} tile is not headed by the word Cube`).not.toMatch(/^Cube\b/);
+
+    // What the cube is, said once and where it is read: the component's own line, under the
+    // header, and the page no longer repeats it in a small grey paragraph of its own (D6).
+    await expect(inCard(frame, card.id, '.rb-cube-about'), `what the ${card.id} cube is`)
+      .toHaveCount(1);
+    await expect(inCard(frame, card.id, '.rb-cube-about')).not.toBeEmpty();
+    await expect(inCard(frame, card.id, '.rb-cube-desc'),
+      'the description is not drawn in the class of the small notes').toHaveCount(0);
+    await expect(inCard(frame, card.id, '.card-description'),
+      `and the ${card.id} card does not say it a second time`).toHaveCount(0);
   }
 }
 

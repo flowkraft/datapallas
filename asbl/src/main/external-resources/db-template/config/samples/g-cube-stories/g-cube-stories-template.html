@@ -132,11 +132,6 @@
       color: var(--accent);
       margin: 0 0 4px 0;
     }
-    .rb-cube-stories-root .card-description {
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin: 4px 0 0 0;
-    }
     .rb-cube-stories-root .card-grain {
       font-size: 12px;
       color: var(--text-secondary);
@@ -164,9 +159,9 @@
     <strong>Every cube DataPallas ships, live.</strong> Each card below is one cube of the semantic
     layer, with the questions it was written to answer. Click <strong>Show Me</strong> on a question
     and the fields it needs are ticked for you; tick your own and the answer follows. Each card also
-    offers <strong>View SQL</strong>, the statement your selection would be answered by &mdash; for any
-    of the databases DataPallas writes SQL for, not only the one the rows come from &mdash; and
-    <strong>View Code</strong>, the cube&rsquo;s own definition.
+    offers <strong>Show Config</strong>, the cube&rsquo;s own definition, and <strong>Show SQL</strong>,
+    the statement your selection would be answered by &mdash; for any of the databases DataPallas
+    writes SQL for, not only the one the rows come from.
     <a href="https://datapallas.com/docs/semantic-layer/cube-stories" target="_blank">Read more &rarr;</a>
   </div>
   <!-- Contents -->
@@ -216,7 +211,6 @@
   <div class="card" id="cube-sales-pipeline">
     <p class="card-area" id="cube-sales-pipeline-area">CRM &amp; Sales</p>
     <h3 class="card-title">Sales Pipeline</h3>
-    <p class="card-description">Deals, what they are worth, and how many of them we win</p>
     <p class="card-grain"><strong>Grain:</strong> One row per deal, with the account it is for and the rep who owns it (cube_demo.crm_deals)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="sales-pipeline"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -227,7 +221,6 @@
   <div class="card" id="cube-support-desk">
     <p class="card-area" id="cube-support-desk-area">Customer Support</p>
     <h3 class="card-title">Support Desk</h3>
-    <p class="card-description">Tickets, how long they take, and how often the SLA is missed</p>
     <p class="card-grain"><strong>Grain:</strong> One row per ticket (cube_demo.support_tickets)</p>
     <p class="card-rows"><strong>Who sees which rows:</strong> an agent sees their own team&rsquo;s tickets, and the desk finds the team from the email they signed in with; the <em>support-managers</em> group, an admin and a report author see the whole desk. It is the cube&rsquo;s own rule, written in its SQL, and it is on every answer this card gives &mdash; totals and drill included.</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="support-desk"
@@ -239,7 +232,6 @@
   <div class="card" id="cube-student-enrollments">
     <p class="card-area" id="cube-student-enrollments-area">Education</p>
     <h3 class="card-title">Student Enrollments</h3>
-    <p class="card-description">One row per student and course: the term, the grade band and the score</p>
     <p class="card-grain"><strong>Grain:</strong> One row per enrollment, a student on a course (cube_demo.school_enrollments)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="student-enrollments"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -248,7 +240,6 @@
   <div class="card" id="cube-student-progress">
     <p class="card-area" id="cube-student-progress-area">Education</p>
     <h3 class="card-title">Student Progress</h3>
-    <p class="card-description">One row per student: the program, the start year, the courses taken and the average score</p>
     <p class="card-grain"><strong>Grain:</strong> One row per student (cube_demo.school_students)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="student-progress"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -259,7 +250,6 @@
   <div class="card" id="cube-customer-invoices">
     <p class="card-area" id="cube-customer-invoices-area">ERP &amp; Finance</p>
     <h3 class="card-title">Customer Invoices</h3>
-    <p class="card-description">What was invoiced, to whom, and where each invoice stands</p>
     <p class="card-grain"><strong>Grain:</strong> One row per invoice, with its lines and its customer (cube_demo.erp_invoices)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="customer-invoices"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -268,7 +258,6 @@
   <div class="card" id="cube-customer-payments">
     <p class="card-area" id="cube-customer-payments-area">ERP &amp; Finance</p>
     <h3 class="card-title">Customer Payments</h3>
-    <p class="card-description">What came in, how it was paid, and who paid it</p>
     <p class="card-grain"><strong>Grain:</strong> One row per payment (cube_demo.erp_payments)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="customer-payments"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -277,7 +266,6 @@
   <div class="card" id="cube-invoice-balances">
     <p class="card-area" id="cube-invoice-balances-area">ERP &amp; Finance</p>
     <h3 class="card-title">Invoice Balances</h3>
-    <p class="card-description">Every invoice with the balance still due on it, unpaid ones on their own</p>
     <p class="card-grain"><strong>Grain:</strong> One row per invoice, with what has been paid against it subtracted (a SQL cube over cube_demo.erp_invoices and cube_demo.erp_payments)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="invoice-balances"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -286,7 +274,6 @@
   <div class="card" id="cube-customer-statement">
     <p class="card-area" id="cube-customer-statement-area">ERP &amp; Finance</p>
     <h3 class="card-title">Customer Statement</h3>
-    <p class="card-description">The same invoices, as one customer is allowed to see them</p>
     <p class="card-grain"><strong>Grain:</strong> One row per invoice of the customer the page names, and with nobody named, of every customer (the second cube of the same SQL file)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="customer-statement"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -297,7 +284,6 @@
   <div class="card" id="cube-northwind-customers">
     <p class="card-area" id="cube-northwind-customers-area">Northwind</p>
     <h3 class="card-title">Northwind Customer Management</h3>
-    <p class="card-description">Customer base, order activity and revenue analysis for CRM and sales-ops</p>
     <p class="card-grain"><strong>Grain:</strong> One row per customer (Northwind "Customers")</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-customers"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -306,7 +292,6 @@
   <div class="card" id="cube-northwind-hr">
     <p class="card-area" id="cube-northwind-hr-area">Northwind</p>
     <h3 class="card-title">Northwind Human Resources</h3>
-    <p class="card-description">Workforce composition, tenure, age, and territory coverage</p>
     <p class="card-grain"><strong>Grain:</strong> One row per employee (Northwind "Employees")</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-hr"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -315,7 +300,6 @@
   <div class="card" id="cube-northwind-inventory">
     <p class="card-area" id="cube-northwind-inventory-area">Northwind</p>
     <h3 class="card-title">Northwind Product Inventory</h3>
-    <p class="card-description">Product catalog with stock levels, categories and suppliers</p>
     <p class="card-grain"><strong>Grain:</strong> One row per product (Northwind "Products")</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-inventory"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -324,7 +308,6 @@
   <div class="card" id="cube-northwind-sales">
     <p class="card-area" id="cube-northwind-sales-area">Northwind</p>
     <h3 class="card-title">Northwind Sales Analysis</h3>
-    <p class="card-description">Sales transactions by customer, employee, product, time and geography</p>
     <p class="card-grain"><strong>Grain:</strong> One row per order (Northwind "Orders")</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-sales"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -333,7 +316,6 @@
   <div class="card" id="cube-northwind-warehouse">
     <p class="card-area" id="cube-northwind-warehouse-area">Northwind</p>
     <h3 class="card-title">Northwind Sales Warehouse</h3>
-    <p class="card-description">OLAP sales analysis with pre-computed measures over the DuckDB data warehouse</p>
     <p class="card-grain"><strong>Grain:</strong> One row per order line, already joined (the DuckDB view vw_sales_detail)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-warehouse"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -344,7 +326,6 @@
   <div class="card" id="cube-online-sales">
     <p class="card-area" id="cube-online-sales-area">Retail &amp; E-commerce</p>
     <h3 class="card-title">Online Sales</h3>
-    <p class="card-description">Orders, shipping fees and sales, by country and by product category</p>
     <p class="card-grain"><strong>Grain:</strong> One row per order (cube_demo.shop_orders)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="online-sales"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -355,7 +336,6 @@
   <div class="card" id="cube-depot-network">
     <p class="card-area" id="cube-depot-network-area">Transport &amp; Logistics</p>
     <h3 class="card-title">Depot Network</h3>
-    <p class="card-description">Where our depots are, how big they are, and how many shipments leave from each</p>
     <p class="card-grain"><strong>Grain:</strong> One row per depot (cube_demo.logistics_depots)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="depot-network"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>
@@ -364,7 +344,6 @@
   <div class="card" id="cube-freight-shipments">
     <p class="card-area" id="cube-freight-shipments-area">Transport &amp; Logistics</p>
     <h3 class="card-title">Freight Shipments</h3>
-    <p class="card-description">What we ship, where to, with whom, and what it costs</p>
     <p class="card-grain"><strong>Grain:</strong> One row per shipment (cube_demo.logistics_shipments)</p>
     <rb-cube-renderer report-id="g-cube-stories" component-id="freight-shipments"
       api-base-url="http://localhost:9090/api"></rb-cube-renderer>

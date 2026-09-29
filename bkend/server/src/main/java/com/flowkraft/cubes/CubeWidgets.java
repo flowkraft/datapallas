@@ -84,9 +84,9 @@ public final class CubeWidgets {
 	 *                     true unless the file says otherwise, because a dashboard published before
 	 *                     the key existed opens where its viewer left it, like every other one
 	 * @param showSql      whether a viewer may see the SQL this widget's questions are answered by,
-	 *                     for the database of their choice (design part 8: View SQL, {@code /sql})
+	 *                     for the database of their choice (design part 8: Show SQL, {@code /sql})
 	 * @param showCode     whether a viewer may see the cube's own DSL text, and what the parser
-	 *                     found wrong with it (design part 8: View Code)
+	 *                     found wrong with it (design part 8: Show Config)
 	 * @param showHints    whether the cube's {@code hints.json} travels with the field tree, so the
 	 *                     widget can offer the questions the cube was written to answer
 	 * @param paramBindings which of the dashboard's parameters filter this widget, and on which
