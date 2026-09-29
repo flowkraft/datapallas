@@ -436,9 +436,27 @@
     return (activeCube?.dimensions || []).find((d: any) => d?.name === name);
   }
 
+  /**
+   * What one asked-for dimension is: its name, and the key it is ticked under - `Country`, or
+   * `OrderDate.month` when a grain was named, or the grain a tick gives a date. The key is `''`
+   * when this cube has no such dimension, and both are `''` when nothing was asked for; what that
+   * means is left to each caller.
+   */
+  function askedDimension(entry: any, grains: Record<string, string>): { name: string; key: string } {
+    const said = typeof entry === 'string' ? entry : String(entry?.name ?? '');
+    const dot = said.indexOf('.');
+    const name = dot > 0 ? said.slice(0, dot) : said;
+    if (!name) return { name: '', key: '' };
+    const dim = dimensionByName(name);
+    if (!dim) return { name, key: '' };
+    const grain = dot > 0
+      ? said.slice(dot + 1)
+      : String((entry && typeof entry === 'object' ? entry.granularity : '') ?? '') || grains[name] || '';
+    return { name, key: grain ? name + '.' + grain : defaultKeyOf(dim) };
+  }
+
   function toggleDimension(dim: any) {
     if (errorOf('dimension', dim.name)) return;
-    lastAskedId = '';
     const keys = keysOfDimension(dim.name);
     if (keys.length > 0) {
       for (const key of keys) selectedDimensions.delete(key);
@@ -451,7 +469,6 @@
   }
 
   function setGranularity(dim: any, granularity: string) {
-    lastAskedId = '';
     for (const key of keysOfDimension(dim.name)) selectedDimensions.delete(key);
     selectedDimensions.add(granularity ? dim.name + '.' + granularity : dim.name);
     selectedDimensions = new Set(selectedDimensions);
@@ -460,7 +477,6 @@
 
   function toggleMeasure(meas: any) {
     if (errorOf('measure', meas.name)) return;
-    lastAskedId = '';
     if (selectedMeasures.has(meas.name)) {
       selectedMeasures.delete(meas.name);
     } else {
@@ -472,7 +488,6 @@
 
   function toggleSegment(seg: any) {
     if (errorOf('segment', seg.name)) return;
-    lastAskedId = '';
     if (selectedSegments.has(seg.name)) {
       selectedSegments.delete(seg.name);
     } else {
@@ -497,7 +512,6 @@
    */
   function toggleLevel(h: any, index: number) {
     const levels = levelsOf(h);
-    lastAskedId = '';
     const name = levels[index];
     const dim = dimensionByName(name);
     if (!dim || errorOf('dimension', name)) return;
@@ -1467,16 +1481,48 @@
    */
   function showMe(ask: any) {
     runtimeError = '';
-    lastAskedId = String(ask?.id ?? '');
     applySelection(ask?.query);
   }
 
   /**
-   * The story whose Show Me was pressed last, marked on the right while the fields it ticked are
-   * lit on the left. A tick by hand takes the mark off, because the selection is then the reader's
-   * own and no longer the story's.
+   * The story the ticks on the left are asking, marked on the right - whatever put them there: a
+   * Show Me, the view this reader saved, or the question the author published the tile with. It is
+   * read from what is ticked rather than remembered from the last press, because a reader who
+   * opens the page tomorrow sees the ticks and not the press. A tick of their own takes the mark
+   * off by itself: the selection is theirs then, and no longer the story's.
+   *
+   * What is compared is what a story asks a reader to tick - the fields, and the grain a date is
+   * read at. Not the filters, which the dashboard adds to every question on the page, and not the
+   * order or the number of rows, which no tick box shows.
    */
-  let lastAskedId = '';
+  $: askedId = storyAsked(hints, selectedDimensions, selectedMeasures, activeCube);
+
+  /** The first story asking exactly what is ticked, or `''` when none of them is. */
+  function storyAsked(asks: any[], dimensionKeys: Set<string>, measureNames: Set<string>,
+      _cube: any): string {
+    for (const ask of asks || []) {
+      const query = ask?.query;
+      if (!query || typeof query !== 'object') continue;
+      const grains = query.granularities && typeof query.granularities === 'object'
+        ? query.granularities : {};
+      const keys = listOf(query.dimensions).map((entry: any) => askedDimension(entry, grains).key);
+      if (keys.some((key: string) => !key)) continue;   // a story this cube cannot ask
+      const measures = listOf(query.measures)
+        .map((entry: any) => (typeof entry === 'string' ? entry : String(entry?.name ?? '')));
+      if (sameAsTicked(keys, dimensionKeys) && sameAsTicked(measures, measureNames)) {
+        return String(ask?.id ?? '');
+      }
+    }
+    return '';
+  }
+
+  /** Is that list of names, in whatever order, exactly what is ticked? */
+  function sameAsTicked(asked: string[], ticked: Set<string>): boolean {
+    const wanted = new Set(asked.filter(Boolean));
+    if (wanted.size !== ticked.size) return false;
+    for (const one of wanted) if (!ticked.has(one)) return false;
+    return true;
+  }
 
   /**
    * Whether this tile has stories to put beside its cube (D9). Without them - a read-only tile, or
@@ -2249,19 +2295,13 @@
       }
     }
 
+    // A time dimension asked for without a grain gets the grain a tick gives it.
     const dimensionKeys: string[] = [];
     for (const entry of listOf(asked.dimensions)) {
-      const said = typeof entry === 'string' ? entry : String(entry?.name ?? '');
-      const dot = said.indexOf('.');
-      const name = dot > 0 ? said.slice(0, dot) : said;
+      const { name, key } = askedDimension(entry, grains);
       if (!name) continue;
-      const dim = dimensionByName(name);
-      if (!dim || errorOf('dimension', name)) return refuseSelection('dimension', name);
-      const grain = dot > 0
-        ? said.slice(dot + 1)
-        : String((entry && typeof entry === 'object' ? entry.granularity : '') ?? '') || grains[name] || '';
-      // A time dimension asked for without a grain gets the grain a tick gives it.
-      dimensionKeys.push(grain ? name + '.' + grain : defaultKeyOf(dim));
+      if (!key || errorOf('dimension', name)) return refuseSelection('dimension', name);
+      dimensionKeys.push(key);
     }
 
     const measureNames: string[] = [];
@@ -2797,7 +2837,7 @@
       <div class="rb-cube-half rb-cube-stories">
       <div id="cubeHints" class="rb-hints">
         {#each hints as ask (ask.id)}
-          <div id="hint-{ask.id}" class="rb-hint" class:rb-hint-asked={ask.id === lastAskedId}>
+          <div id="hint-{ask.id}" class="rb-hint" class:rb-hint-asked={ask.id === askedId}>
             <div class="rb-hint-question">{ask.question}</div>
             <!-- The only place this component writes HTML: what `boldFieldNames` returns is
                  escaped text with `<strong>` in it, and nothing a hints file wrote survives as markup. -->
@@ -3178,7 +3218,7 @@
     padding: 8px 10px;
   }
 
-  /* The story the reader asked last, marked while its fields are the ticked ones. */
+  /* The story the ticks are asking, marked while its fields are the ticked ones. */
   .rb-hint-asked {
     border-color: color-mix(in oklab, currentColor 45%, transparent);
     background: color-mix(in oklab, currentColor 6%, transparent);
