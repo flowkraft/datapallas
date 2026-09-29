@@ -21,6 +21,12 @@ public class ChartOptions {
 	private List<Map<String,Object>> datasets = new ArrayList<>(); // Series/dataset configurations
 	private List<Map<String,Object>> data = new ArrayList<>(); // Optional data override
 	private Map<String, ChartOptions> namedOptions = new LinkedHashMap<>(); // Named blocks for aggregator reports
+	/**
+	 * What the parser did not recognise at chart level, each {@code {chart, block, key, level,
+	 * message}} - the cube DSL's warning shape. Empty for every chart written the way the DSL asks,
+	 * which is every shipped one.
+	 */
+	private List<Map<String,Object>> warnings = new ArrayList<>();
 
 	public String getType() { return type; }
 	public void setType(String type) { this.type = type; }
@@ -45,4 +51,7 @@ public class ChartOptions {
 
 	public Map<String, ChartOptions> getNamedOptions() { return namedOptions; }
 	public void setNamedOptions(Map<String, ChartOptions> namedOptions) { this.namedOptions = namedOptions; }
+
+	public List<Map<String, Object>> getWarnings() { return warnings; }
+	public void setWarnings(List<Map<String, Object>> warnings) { this.warnings = warnings; }
 }

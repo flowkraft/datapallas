@@ -269,8 +269,8 @@
 <style>
   .rb-gauge-root { width: 100%; height: 100%; position: relative; min-height: 140px; }
   .rb-gauge-loading, .rb-gauge-error { padding: 1rem; text-align: center; font-size: 12px; }
-  .rb-gauge-loading { color: #666; }
-  .rb-gauge-error { color: #dc3545; background: #fff5f5; border: 1px solid #dc3545; border-radius: 4px; }
+  .rb-gauge-loading { color: var(--color-base-content, #666); }
+  .rb-gauge-error { color: var(--color-error, #dc3545); background: var(--color-base-100, #fff5f5); border: 1px solid var(--color-error, #dc3545); border-radius: 4px; }
 </style>
 
 {#if selfFetchLoading}

@@ -49,6 +49,19 @@ import java.util.*;
  * <p><b>Important:</b> {@code labelField}, {@code seriesField}, and
  * {@code datasets} live ONLY inside the {@code data { }} block — top-level
  * setters were removed in the unification refactor. Do not re-add them.
+ *
+ * <h2>Unknown chart-level keys are kept, and said out loud</h2>
+ *
+ * <p>Principle 3 above is why a chart-level name the DSL does not know still works: it goes into
+ * {@code options}, where a future Chart.js property belongs. The cost showed up as a defect (D3):
+ * {@code chart('x') { type 'bar'; title '...'; xField 'Channel'; yFields 'Orders' }} parsed without
+ * complaint, produced no dataset at all, and drew an empty axis - every one of those three names is
+ * a Chart.js option that Chart.js itself ignores. Nothing told the author.
+ *
+ * <p>So each such name is also recorded in {@link #getWarnings()}, with what the DSL wanted instead
+ * where the mistake is a known one. They are warnings and never errors: the key is still put where
+ * it was put before, so nothing that parses today parses differently, and a property Chart.js gains
+ * tomorrow still works with no change here - it just says so.
  */
 public abstract class ChartOptionsScript extends Script {
 
@@ -66,6 +79,9 @@ public abstract class ChartOptionsScript extends Script {
 	/** Named blocks: id → options map (populated by {@link #chart(String, Closure)}). */
 	private final Map<String, Map<String, Object>> namedOptions = new LinkedHashMap<>();
 
+	/** Named blocks: id → the chart-level names that block used and the DSL does not know. */
+	private final Map<String, List<Map<String, Object>>> namedWarnings = new LinkedHashMap<>();
+
 	// DSL root — unnamed (default)
 	public void chart(Closure<?> body) {
 		NamedChartDelegate delegate = new NamedChartDelegate();
@@ -82,11 +98,30 @@ public abstract class ChartOptionsScript extends Script {
 		body.setResolveStrategy(Closure.DELEGATE_FIRST);
 		body.call();
 		namedOptions.put(id, delegate.getOptions());
+		namedWarnings.put(id, delegate.warningsFor(id));
 	}
 
 	/** Return final options map for the unnamed form (empty if none was declared). */
 	public Map<String, Object> getOptions() {
 		return unnamedDelegate != null ? unnamedDelegate.getOptions() : new LinkedHashMap<>();
+	}
+
+	/**
+	 * What the unnamed {@code chart { ... }} block wrote that this DSL does not know, each
+	 * {@code {chart, block, key, level, message}} - the same shape the cube DSL's warnings have, so
+	 * whatever shows one can show the other.
+	 *
+	 * <p>Deliberately not part of {@link #getOptions()}: that map is emitted back as DSL code and
+	 * has to round-trip byte for byte, and a warning is something said about the code, not part of
+	 * it.
+	 */
+	public List<Map<String, Object>> getWarnings() {
+		return unnamedDelegate != null ? unnamedDelegate.warningsFor("") : new ArrayList<>();
+	}
+
+	/** The same, per named {@code chart('id') { ... }} block. */
+	public Map<String, List<Map<String, Object>>> getNamedWarnings() {
+		return namedWarnings;
 	}
 
 	/**
@@ -127,6 +162,36 @@ public abstract class ChartOptionsScript extends Script {
 	/** Return named options map (id → options) for aggregator reports */
 	public Map<String, Map<String, Object>> getNamedOptions() {
 		return namedOptions;
+	}
+
+	/**
+	 * What to say about one chart-level name the DSL does not know.
+	 *
+	 * <p>The three named here are the ones that were actually written (D3, sample 22's "Orders by
+	 * Channel" chart, which drew an empty axis): each of them has a place in this DSL, and the
+	 * message is that place rather than a complaint. Anything else gets the general sentence, which
+	 * is still enough to see that a key is doing nothing.
+	 */
+	static String unknownKeyMessage(String key) {
+		switch (key) {
+		case "title":
+			return "title is not a chart-level key: a chart's title is "
+					+ "options { plugins { title { display true; text '...' } } }. It was kept as a "
+					+ "Chart.js option, where Chart.js ignores it, so the chart has no title.";
+		case "xField":
+			return "xField is not a chart-level key: the column the labels come from is "
+					+ "data { labelField '...' }. It was kept as a Chart.js option, where Chart.js "
+					+ "ignores it.";
+		case "yField":
+		case "yFields":
+			return key + " is not a chart-level key: the columns a chart plots are "
+					+ "data { datasets { dataset { field '...' } } }. It was kept as a Chart.js "
+					+ "option, where Chart.js ignores it, so this chart plots nothing.";
+		default:
+			return key + " is not a chart-level key of this DSL. It was kept as a Chart.js option, "
+					+ "which is right for a Chart.js property and does nothing at all for a name "
+					+ "Chart.js has not got either.";
+		}
 	}
 
 	@Override
@@ -257,6 +322,8 @@ public abstract class ChartOptionsScript extends Script {
 	 * so multiple named blocks don't interfere with each other or the unnamed default.
 	 */
 	private static class NamedChartDelegate {
+		/** Chart-level names that fell through to methodMissing, in the order they were written. */
+		private final List<String> unknownKeys = new ArrayList<>();
 		private String type = null;
 		private String labelField = null;
 		private String seriesField = null;
@@ -316,12 +383,31 @@ public abstract class ChartOptionsScript extends Script {
 		}
 
 		public Object methodMissing(String name, Object args) {
+			// Kept exactly where it was kept before - a Chart.js property this DSL has never heard of
+			// is still a Chart.js property. What is new is that the author is told (see the class
+			// javadoc, "Unknown chart-level keys are kept, and said out loud").
 			if (args instanceof Object[] && ((Object[]) args).length > 0) {
 				this.options.put(name, ((Object[]) args)[0]);
 			} else {
 				this.options.put(name, args);
 			}
+			this.unknownKeys.add(name);
 			return null;
+		}
+
+		/** One warning per chart-level name this block used and the DSL does not know. */
+		List<Map<String, Object>> warningsFor(String chartId) {
+			List<Map<String, Object>> out = new ArrayList<>();
+			for (String key : unknownKeys) {
+				Map<String, Object> warning = new LinkedHashMap<>();
+				warning.put("chart", chartId == null ? "" : chartId);
+				warning.put("block", "chart");
+				warning.put("key", key);
+				warning.put("level", "warning");
+				warning.put("message", unknownKeyMessage(key));
+				out.add(warning);
+			}
+			return out;
 		}
 
 		public Map<String, Object> getOptions() {

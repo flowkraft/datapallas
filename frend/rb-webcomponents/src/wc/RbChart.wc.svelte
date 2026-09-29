@@ -59,6 +59,17 @@
   // Full chart configuration from DSL (type, labelField, datasets, options)
   let chartConfig: any = null;
 
+  /**
+   * What the chart DSL could not make sense of in this chart's own configuration.
+   *
+   * The parser keeps the list (see ChartOptionsScript, "Unknown chart-level keys are kept, and said
+   * out loud"); a chart written the way the DSL asks has none, which is every shipped chart. Shown
+   * under the chart rather than instead of it: the chart still draws whatever it can, and the note
+   * is for whoever wrote the configuration.
+   */
+  $: chartWarnings = ((chartConfig?.warnings ?? []) as Array<{ key?: string; message?: string }>)
+    .filter((warning) => warning && warning.message);
+
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
   let chart: any = null;
@@ -884,21 +895,36 @@
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2; background: rgba(255,255,255,0.6);
   }
   .rb-chart-spinner {
-    width: 32px; height: 32px; border: 4px solid #ddd; border-top-color: #007bff; border-radius: 50%; animation: spin 1s linear infinite;
+    width: 32px; height: 32px; border: 4px solid var(--color-base-300, #ddd); border-top-color: var(--color-primary, #007bff); border-radius: 50%; animation: spin 1s linear infinite;
   }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .rb-loading {
     padding: 1rem;
     text-align: center;
-    color: #666;
+    color: var(--color-base-content, #666);
   }
   .rb-error {
     padding: 1rem;
     text-align: center;
-    color: #dc3545;
-    background: #fff5f5;
-    border: 1px solid #dc3545;
+    color: var(--color-error, #dc3545);
+    background: var(--color-base-100, #fff5f5);
+    border: 1px solid var(--color-error, #dc3545);
     border-radius: 4px;
+  }
+  /* A note about the configuration, not a failure of the chart: quieter than .rb-error. */
+  .rb-chart-warnings {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--color-base-content, #334155);
+    background: var(--color-base-200, #f8fafc);
+    border-left: 3px solid var(--color-warning, #d97706);
+    border-radius: 0 4px 4px 0;
+  }
+  .rb-chart-warnings ul {
+    margin: 0;
+    padding-left: 1.1rem;
   }
 </style>
 
@@ -914,3 +940,13 @@
   {/if}
   <canvas bind:this={canvas}></canvas>
 </div>
+{#if chartWarnings.length > 0}
+  <div class="rb-chart-warnings"
+       id={componentId ? `widgetChartWarnings-${componentId}` : undefined}>
+    <ul>
+      {#each chartWarnings as warning}
+        <li>{warning.message}</li>
+      {/each}
+    </ul>
+  </div>
+{/if}

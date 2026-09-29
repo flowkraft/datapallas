@@ -6,8 +6,8 @@
       display: block;
       font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
       box-sizing: border-box;
-      color: #1e293b;
-      background: #f8fafc;
+      color: var(--color-base-content, #1e293b);
+      background: var(--color-base-200, #f8fafc);
       padding: 24px;
     }
     .rb-cube-stories-root *, .rb-cube-stories-root *::before, .rb-cube-stories-root *::after {
@@ -15,12 +15,12 @@
     }
 
     .rb-cube-stories-root {
-      --accent: #4e79a7;
-      --accent-dark: #2c5282;
-      --surface: #ffffff;
-      --border: #e2e8f0;
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
+      --accent: var(--color-primary, #4e79a7);
+      --accent-dark: var(--color-primary, #2c5282);
+      --surface: var(--color-base-100, #ffffff);
+      --border: var(--color-base-300, #e2e8f0);
+      --text-primary: var(--color-base-content, #0f172a);
+      --text-secondary: var(--color-base-content, #475569);
       --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
       --radius: 10px;
     }
@@ -48,7 +48,7 @@
     }
 
     .rb-cube-stories-root .info-bar {
-      background: #f0f4f8;
+      background: var(--color-base-200, #f0f4f8);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 14px 20px;
@@ -65,51 +65,54 @@
       text-decoration: underline;
     }
 
-    /* The contents list: every card of the page, by business area. */
-    .rb-cube-stories-root .contents {
+    /* The industries, as an accordion: one panel open at a time (D14). The bars carry the
+       page's own surface, border and accent, so they follow the theme like everything else. */
+    .rb-cube-stories-root .industry {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 28px;
       box-shadow: var(--shadow);
-      font-size: 13px;
+      margin-bottom: 12px;
+      padding: 0 16px;
     }
-    .rb-cube-stories-root .contents h2 {
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--text-secondary);
-      margin: 0 0 10px 0;
-    }
-    .rb-cube-stories-root .contents ul {
+    .rb-cube-stories-root .industry > summary {
+      cursor: pointer;
       list-style: none;
-      margin: 0 0 10px 0;
-      padding: 0;
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px 14px;
-    }
-    .rb-cube-stories-root .contents .area {
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 10px 0 4px 0;
-    }
-    .rb-cube-stories-root .contents a {
-      color: var(--accent-dark);
-      text-decoration: none;
-      border-bottom: 1px dotted var(--accent);
-    }
-
-    /* One business area, and one card per cube inside it. */
-    .rb-cube-stories-root .area-heading {
+      align-items: baseline;
+      gap: 10px;
+      padding: 14px 0;
       font-size: 15px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.8px;
       color: var(--accent-dark);
-      margin: 32px 0 12px 0;
     }
+    .rb-cube-stories-root .industry > summary::-webkit-details-marker {
+      display: none;
+    }
+    /* The one thing the bar has to say beyond its name: open, or closed. */
+    .rb-cube-stories-root .industry > summary::before {
+      content: "\25b8";
+      font-size: 12px;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+    .rb-cube-stories-root .industry[open] > summary::before {
+      transform: rotate(90deg);
+    }
+    .rb-cube-stories-root .industry-count {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: none;
+      color: var(--text-secondary);
+    }
+    .rb-cube-stories-root .industry .card:last-child {
+      margin-bottom: 16px;
+    }
+
+    /* One card per cube, inside its industry's panel. */
     .rb-cube-stories-root .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -137,7 +140,7 @@
       color: var(--text-secondary);
       margin: 8px 0 16px 0;
       padding: 6px 10px;
-      background: #f0f4f8;
+      background: var(--color-base-200, #f0f4f8);
       border-left: 3px solid var(--accent);
       border-radius: 0 6px 6px 0;
     }
@@ -152,6 +155,8 @@
       <h1 class="dash-title">Cube Stories</h1>
       <p class="dash-subtitle">One card per cube &mdash; tick a field, see the answer, see the SQL</p>
     </div>
+    <!-- One database for the whole page: every card's Show SQL is written for the one picked here. -->
+    <rb-sql-vendor></rb-sql-vendor>
   </div>
 
   <!-- What this page is -->
@@ -161,191 +166,166 @@
     and the fields it needs are ticked for you; tick your own and the answer follows. Each card also
     offers <strong>Show Config</strong>, the cube&rsquo;s own definition, and <strong>Show SQL</strong>,
     the statement your selection would be answered by &mdash; for any of the databases DataPallas
-    writes SQL for, not only the one the rows come from.
+    writes SQL for, not only the one the rows come from. Pick it once, top right, and every card on
+    the page is written for it.
     <a href="https://datapallas.com/docs/semantic-layer/cube-stories" target="_blank">Read more &rarr;</a>
   </div>
-  <!-- Contents -->
-  <div class="contents">
-    <h2>On this page</h2>
-    <p class="area">CRM &amp; Sales</p>
-    <ul>
-      <li><a href="#cube-sales-pipeline">Sales Pipeline</a></li>
-    </ul>
-    <p class="area">Customer Support</p>
-    <ul>
-      <li><a href="#cube-support-desk">Support Desk</a></li>
-    </ul>
-    <p class="area">Education</p>
-    <ul>
-      <li><a href="#cube-student-enrollments">Student Enrollments</a></li>
-      <li><a href="#cube-student-progress">Student Progress</a></li>
-    </ul>
-    <p class="area">ERP &amp; Finance</p>
-    <ul>
-      <li><a href="#cube-customer-invoices">Customer Invoices</a></li>
-      <li><a href="#cube-customer-payments">Customer Payments</a></li>
-      <li><a href="#cube-invoice-balances">Invoice Balances</a></li>
-      <li><a href="#cube-customer-statement">Customer Statement</a></li>
-    </ul>
-    <p class="area">Northwind</p>
-    <ul>
-      <li><a href="#cube-northwind-customers">Northwind Customer Management</a></li>
-      <li><a href="#cube-northwind-hr">Northwind Human Resources</a></li>
-      <li><a href="#cube-northwind-inventory">Northwind Product Inventory</a></li>
-      <li><a href="#cube-northwind-sales">Northwind Sales Analysis</a></li>
-      <li><a href="#cube-northwind-warehouse">Northwind Sales Warehouse</a></li>
-    </ul>
-    <p class="area">Retail &amp; E-commerce</p>
-    <ul>
-      <li><a href="#cube-online-sales">Online Sales</a></li>
-    </ul>
-    <p class="area">Transport &amp; Logistics</p>
-    <ul>
-      <li><a href="#cube-depot-network">Depot Network</a></li>
-      <li><a href="#cube-freight-shipments">Freight Shipments</a></li>
-    </ul>
-  </div>
+  <!-- The industries: seven panels, one open at a time. Opening one closes the rest,
+       which `name="industries"` asks the browser for and no script here does. -->
+  <details name="industries" class="industry" id="industry-crm-sales" open>
+    <summary>CRM &amp; Sales <span class="industry-count">1 cube</span></summary>
 
-  <h2 class="area-heading">CRM &amp; Sales</h2>
+    <div class="card" id="cube-sales-pipeline">
+      <p class="card-area" id="cube-sales-pipeline-area">CRM &amp; Sales</p>
+      <h3 class="card-title">Sales Pipeline</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per deal, with the account it is for and the rep who owns it (cube_demo.crm_deals)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="sales-pipeline"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
+  </details>
 
-  <div class="card" id="cube-sales-pipeline">
-    <p class="card-area" id="cube-sales-pipeline-area">CRM &amp; Sales</p>
-    <h3 class="card-title">Sales Pipeline</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per deal, with the account it is for and the rep who owns it (cube_demo.crm_deals)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="sales-pipeline"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+  <details name="industries" class="industry" id="industry-erp-finance">
+    <summary>ERP &amp; Finance <span class="industry-count">4 cubes</span></summary>
 
-  <h2 class="area-heading">Customer Support</h2>
+    <div class="card" id="cube-customer-invoices">
+      <p class="card-area" id="cube-customer-invoices-area">ERP &amp; Finance</p>
+      <h3 class="card-title">Customer Invoices</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per invoice, with its lines and its customer (cube_demo.erp_invoices)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="customer-invoices"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <div class="card" id="cube-support-desk">
-    <p class="card-area" id="cube-support-desk-area">Customer Support</p>
-    <h3 class="card-title">Support Desk</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per ticket (cube_demo.support_tickets)</p>
-    <p class="card-rows"><strong>Who sees which rows:</strong> an agent sees their own team&rsquo;s tickets, and the desk finds the team from the email they signed in with; the <em>support-managers</em> group, an admin and a report author see the whole desk. It is the cube&rsquo;s own rule, written in its SQL, and it is on every answer this card gives &mdash; totals and drill included.</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="support-desk"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-customer-payments">
+      <p class="card-area" id="cube-customer-payments-area">ERP &amp; Finance</p>
+      <h3 class="card-title">Customer Payments</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per payment (cube_demo.erp_payments)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="customer-payments"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <h2 class="area-heading">Education</h2>
+    <div class="card" id="cube-invoice-balances">
+      <p class="card-area" id="cube-invoice-balances-area">ERP &amp; Finance</p>
+      <h3 class="card-title">Invoice Balances</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per invoice, with what has been paid against it subtracted (a SQL cube over cube_demo.erp_invoices and cube_demo.erp_payments)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="invoice-balances"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <div class="card" id="cube-student-enrollments">
-    <p class="card-area" id="cube-student-enrollments-area">Education</p>
-    <h3 class="card-title">Student Enrollments</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per enrollment, a student on a course (cube_demo.school_enrollments)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="student-enrollments"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-customer-statement">
+      <p class="card-area" id="cube-customer-statement-area">ERP &amp; Finance</p>
+      <h3 class="card-title">Customer Statement</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per invoice of the customer the page names, and with nobody named, of every customer (the second cube of the same SQL file)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="customer-statement"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
+  </details>
 
-  <div class="card" id="cube-student-progress">
-    <p class="card-area" id="cube-student-progress-area">Education</p>
-    <h3 class="card-title">Student Progress</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per student (cube_demo.school_students)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="student-progress"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+  <details name="industries" class="industry" id="industry-retail-ecommerce">
+    <summary>Retail &amp; E-commerce <span class="industry-count">1 cube</span></summary>
 
-  <h2 class="area-heading">ERP &amp; Finance</h2>
+    <div class="card" id="cube-online-sales">
+      <p class="card-area" id="cube-online-sales-area">Retail &amp; E-commerce</p>
+      <h3 class="card-title">Online Sales</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per order (cube_demo.shop_orders)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="online-sales"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
+  </details>
 
-  <div class="card" id="cube-customer-invoices">
-    <p class="card-area" id="cube-customer-invoices-area">ERP &amp; Finance</p>
-    <h3 class="card-title">Customer Invoices</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per invoice, with its lines and its customer (cube_demo.erp_invoices)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="customer-invoices"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+  <details name="industries" class="industry" id="industry-transport-logistics">
+    <summary>Transport &amp; Logistics <span class="industry-count">2 cubes</span></summary>
 
-  <div class="card" id="cube-customer-payments">
-    <p class="card-area" id="cube-customer-payments-area">ERP &amp; Finance</p>
-    <h3 class="card-title">Customer Payments</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per payment (cube_demo.erp_payments)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="customer-payments"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-depot-network">
+      <p class="card-area" id="cube-depot-network-area">Transport &amp; Logistics</p>
+      <h3 class="card-title">Depot Network</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per depot (cube_demo.logistics_depots)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="depot-network"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <div class="card" id="cube-invoice-balances">
-    <p class="card-area" id="cube-invoice-balances-area">ERP &amp; Finance</p>
-    <h3 class="card-title">Invoice Balances</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per invoice, with what has been paid against it subtracted (a SQL cube over cube_demo.erp_invoices and cube_demo.erp_payments)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="invoice-balances"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-freight-shipments">
+      <p class="card-area" id="cube-freight-shipments-area">Transport &amp; Logistics</p>
+      <h3 class="card-title">Freight Shipments</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per shipment (cube_demo.logistics_shipments)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="freight-shipments"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
+  </details>
 
-  <div class="card" id="cube-customer-statement">
-    <p class="card-area" id="cube-customer-statement-area">ERP &amp; Finance</p>
-    <h3 class="card-title">Customer Statement</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per invoice of the customer the page names, and with nobody named, of every customer (the second cube of the same SQL file)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="customer-statement"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+  <details name="industries" class="industry" id="industry-customer-support">
+    <summary>Customer Support <span class="industry-count">1 cube</span></summary>
 
-  <h2 class="area-heading">Northwind</h2>
+    <div class="card" id="cube-support-desk">
+      <p class="card-area" id="cube-support-desk-area">Customer Support</p>
+      <h3 class="card-title">Support Desk</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per ticket (cube_demo.support_tickets)</p>
+      <p class="card-rows"><strong>Who sees which rows:</strong> an agent sees their own team&rsquo;s tickets, and the desk finds the team from the email they signed in with; the <em>support-managers</em> group, an admin and a report author see the whole desk. It is the cube&rsquo;s own rule, written in its SQL, and it is on every answer this card gives &mdash; totals and drill included.</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="support-desk"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
+  </details>
 
-  <div class="card" id="cube-northwind-customers">
-    <p class="card-area" id="cube-northwind-customers-area">Northwind</p>
-    <h3 class="card-title">Northwind Customer Management</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per customer (Northwind "Customers")</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-customers"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+  <details name="industries" class="industry" id="industry-education">
+    <summary>Education <span class="industry-count">2 cubes</span></summary>
 
-  <div class="card" id="cube-northwind-hr">
-    <p class="card-area" id="cube-northwind-hr-area">Northwind</p>
-    <h3 class="card-title">Northwind Human Resources</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per employee (Northwind "Employees")</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-hr"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-student-enrollments">
+      <p class="card-area" id="cube-student-enrollments-area">Education</p>
+      <h3 class="card-title">Student Enrollments</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per enrollment, a student on a course (cube_demo.school_enrollments)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="student-enrollments"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <div class="card" id="cube-northwind-inventory">
-    <p class="card-area" id="cube-northwind-inventory-area">Northwind</p>
-    <h3 class="card-title">Northwind Product Inventory</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per product (Northwind "Products")</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-inventory"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-student-progress">
+      <p class="card-area" id="cube-student-progress-area">Education</p>
+      <h3 class="card-title">Student Progress</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per student (cube_demo.school_students)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="student-progress"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
+  </details>
 
-  <div class="card" id="cube-northwind-sales">
-    <p class="card-area" id="cube-northwind-sales-area">Northwind</p>
-    <h3 class="card-title">Northwind Sales Analysis</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per order (Northwind "Orders")</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-sales"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+  <details name="industries" class="industry" id="industry-northwind">
+    <summary>Northwind <span class="industry-count">5 cubes</span></summary>
 
-  <div class="card" id="cube-northwind-warehouse">
-    <p class="card-area" id="cube-northwind-warehouse-area">Northwind</p>
-    <h3 class="card-title">Northwind Sales Warehouse</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per order line, already joined (the DuckDB view vw_sales_detail)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-warehouse"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-northwind-customers">
+      <p class="card-area" id="cube-northwind-customers-area">Northwind</p>
+      <h3 class="card-title">Northwind Customer Management</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per customer (Northwind "Customers")</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-customers"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <h2 class="area-heading">Retail &amp; E-commerce</h2>
+    <div class="card" id="cube-northwind-hr">
+      <p class="card-area" id="cube-northwind-hr-area">Northwind</p>
+      <h3 class="card-title">Northwind Human Resources</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per employee (Northwind "Employees")</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-hr"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <div class="card" id="cube-online-sales">
-    <p class="card-area" id="cube-online-sales-area">Retail &amp; E-commerce</p>
-    <h3 class="card-title">Online Sales</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per order (cube_demo.shop_orders)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="online-sales"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-northwind-inventory">
+      <p class="card-area" id="cube-northwind-inventory-area">Northwind</p>
+      <h3 class="card-title">Northwind Product Inventory</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per product (Northwind "Products")</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-inventory"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <h2 class="area-heading">Transport &amp; Logistics</h2>
+    <div class="card" id="cube-northwind-sales">
+      <p class="card-area" id="cube-northwind-sales-area">Northwind</p>
+      <h3 class="card-title">Northwind Sales Analysis</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per order (Northwind "Orders")</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-sales"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
 
-  <div class="card" id="cube-depot-network">
-    <p class="card-area" id="cube-depot-network-area">Transport &amp; Logistics</p>
-    <h3 class="card-title">Depot Network</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per depot (cube_demo.logistics_depots)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="depot-network"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
-
-  <div class="card" id="cube-freight-shipments">
-    <p class="card-area" id="cube-freight-shipments-area">Transport &amp; Logistics</p>
-    <h3 class="card-title">Freight Shipments</h3>
-    <p class="card-grain"><strong>Grain:</strong> One row per shipment (cube_demo.logistics_shipments)</p>
-    <rb-cube-renderer report-id="g-cube-stories" component-id="freight-shipments"
-      api-base-url="http://localhost:9090/api"></rb-cube-renderer>
-  </div>
+    <div class="card" id="cube-northwind-warehouse">
+      <p class="card-area" id="cube-northwind-warehouse-area">Northwind</p>
+      <h3 class="card-title">Northwind Sales Warehouse</h3>
+      <p class="card-grain"><strong>Grain:</strong> One row per order line, already joined (the DuckDB view vw_sales_detail)</p>
+      <rb-cube-renderer report-id="g-cube-stories" component-id="northwind-warehouse"
+        api-base-url="http://localhost:9090/api"></rb-cube-renderer>
+    </div>
+  </details>
 </div>

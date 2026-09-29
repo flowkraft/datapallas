@@ -1187,6 +1187,52 @@ electronBeforeAfterAllTest(
         expect(dealsAndValue, 'the Deals cube has a check for its first hint').toBeTruthy();
         const wrong = difference(dealsAndValue.rows, await drawnRows(frame, deals.id), false);
         expect(wrong, `the Deals card: ${wrong ?? ''}`).toBeNull();
+
+        // ── D10: the dashboard is the same product as the application that published it ──
+        // The owner met this defect as two screenshots side by side: the application in its dark
+        // theme, and the dashboard it had just published in light colours. So the assertion is the
+        // two pages together - whatever theme the application is on, the dashboard opens on it.
+        const appTheme = await firstPage.locator('html').getAttribute('data-theme');
+        expect(appTheme, 'the application is on a theme of its own').toBeTruthy();
+        await expect(page.locator('html'), 'and the dashboard it published is on the same one')
+          .toHaveAttribute('data-theme', appTheme as string);
+
+        // The palettes that theme name refers to are served next to the bundle, from the same
+        // daisyUI the application compiles its own themes with.
+        await expect(page.locator('link[href="/rb-webcomponents/themes.css"]'),
+          'the page links the theme palettes').toHaveCount(1);
+        const palettes = await page.request.get('http://localhost:9090/rb-webcomponents/themes.css');
+        expect(palettes.ok(), 'and they are really served').toBe(true);
+        expect(await palettes.text(), 'including the theme this application is on')
+          .toContain(`[data-theme="${appTheme}"]`);
+
+        // And the colours follow: the page's own background is the theme's, not the light one this
+        // template used to carry. The probe asks the browser what the variable resolves to here,
+        // so the test says nothing about any single theme's colours.
+        const [background, base200, oldLightDefault] = await page.evaluate(() => {
+          const probe = document.createElement('div');
+          probe.style.background = 'var(--color-base-200)';
+          document.body.appendChild(probe);
+          const resolved = getComputedStyle(probe).backgroundColor;
+          probe.style.background = 'rgb(248, 250, 252)';
+          const light = getComputedStyle(probe).backgroundColor;
+          const root = getComputedStyle(document.querySelector('.rb-cube-stories-root')!).backgroundColor;
+          probe.remove();
+          return [root, resolved, light];
+        });
+        expect(background, "the dashboard's background is the theme's").toBe(base200);
+        expect(background, 'and never the light one the template used to hard-code')
+          .not.toBe(oldLightDefault);
+
+        // The other half of the same change: a component embedded on somebody else's site has no
+        // theme and no palettes, and must look exactly as it did. That is what every fallback in
+        // the bundle is for, so none of them may be missing.
+        const bundle = await page.request.get(
+          'http://localhost:9090/rb-webcomponents/rb-webcomponents.umd.js');
+        expect(bundle.ok(), 'the bundle is served').toBe(true);
+        const noFallback = (await bundle.text()).match(/var\(--color-[a-z0-9-]+\)/g) ?? [];
+        expect(noFallback, 'every theme variable in the bundle carries the old colour as a fallback')
+          .toEqual([]);
       } finally {
         if (externalBrowser) {
           await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
@@ -1390,6 +1436,80 @@ electronBeforeAfterAllTest(
         await expect(page.locator('.rb-cube-desc'), 'not in the class of the small notes')
           .toHaveCount(0);
 
+        // ── D11: the page's database picker, and a page with nothing to pick for ──
+        // The dashboard carries the picker once, at the top right of the page, and never inside a
+        // tile. This tile does not show its SQL, so there is nothing to write for any database and
+        // the picker shows nothing at all: the element is the page's, its contents are the cubes'.
+        await expect(page.locator('.rb-page-bar rb-sql-vendor'),
+          'one database picker, in the page bar').toHaveCount(1);
+        await expect(page.locator('#cubeRuntimeSqlVendor'),
+          'and no select inside the cube tile').toHaveCount(0);
+        await expect(page.locator('#cubeSqlVendor'),
+          'a dashboard whose cube shows no SQL has nothing to pick a database for').toHaveCount(0);
+
+        // ── D7: the five stories this dashboard chose, in D9's layout ──
+        // A reader opening a dashboard cold is told what the cube can answer, in this dashboard's
+        // own words: five of the Online Sales cube's ten questions, the ones that still mean
+        // something once a country is picked at the top of the page, each with its variants under
+        // it. The entry names them, in this order, and the order is the author's.
+        await expect(page.locator('#cubeHints'), 'the tile offers its stories')
+          .toHaveCount(1, { timeout: 60000 });
+        const storyIds = await page.locator('#cubeHints .rb-hint').evaluateAll((cards) =>
+          cards.map((card) => card.id));
+        expect(storyIds, 'exactly these five ids, in this order, with their variants under them')
+          .toEqual([
+            'hint-revenue-mix',
+            'hint-revenue-mix--by-channel',
+            'hint-sales-by-month',
+            'hint-sales-by-city',
+            'hint-discount-by-category',
+            'hint-category-margin',
+            'hint-category-margin--in-all',
+          ]);
+        // Each one is a question a reader reads, with a Show Me of its own.
+        await expect(page.locator('#hint-sales-by-month'), 'the new month-by-month story')
+          .toContainText('Month by month: are we selling more?');
+        await expect(page.locator('#hint-sales-by-city'), 'and the new city story')
+          .toContainText('Which cities buy the most?');
+        await expect(page.locator('#btnShowMe-sales-by-month')).toBeVisible();
+        await expect(page.locator('#btnShowMe-sales-by-city')).toBeVisible();
+
+        // The negative half, twice over. The stories this dashboard left out are offered nowhere -
+        // the two that group by Country would answer in one row now that a country is picked, the
+        // period story belongs to the file's other cube, and two more repeat the tiles above.
+        for (const left of ['sales-by-country', 'customers-by-country', 'what-sells',
+          'customers-by-category', 'sales-for-a-period']) {
+          await expect(page.locator(`#hint-${left}`), `${left} is not one of this dashboard's five`)
+            .toHaveCount(0);
+        }
+        // And the one story that would fight the filter bar is dropped by the server, although its
+        // own hint is offered: `revenue-mix` is on the tile, its `germany` variant is not, because
+        // a Show Me that filtered Germany while the reader picked another country is a broken
+        // promise. Drop that rule and this is the line that goes red.
+        await expect(page.locator('#hint-revenue-mix--germany'),
+          'no story presets a filter on the member the dashboard binds').toHaveCount(0);
+
+        // D9's layout, on this tile too: the cube on one half, its stories on the other, and the
+        // answer under both.
+        await expect(page.locator('.rb-cube-halves.rb-cube-split'), 'the tile is split in two')
+          .toHaveCount(1);
+        const twoHalves = await page.evaluate(() => {
+          const box = (selector: string) => {
+            const found = document.querySelector(selector);
+            return found ? found.getBoundingClientRect() : null;
+          };
+          return { fields: box('.rb-cube-fields'), stories: box('.rb-cube-stories'),
+            result: box('#cubeRuntimeResult') };
+        });
+        expect(twoHalves.fields, 'the cube has its half').not.toBeNull();
+        expect(twoHalves.stories, 'and the stories theirs').not.toBeNull();
+        expect(twoHalves.stories!.left, 'the stories are beside the cube, not under it')
+          .toBeGreaterThanOrEqual(twoHalves.fields!.right - 1);
+        expect(twoHalves.result!.top, 'and the answer is under both of them')
+          .toBeGreaterThanOrEqual(Math.max(twoHalves.fields!.bottom, twoHalves.stories!.bottom) - 1);
+        await expect(page.locator('.rb-tree .rb-tree-field').first(),
+          'the cube is still there to tick').toBeVisible({ timeout: 60000 });
+
         // What the live cube answers, asked the way the renderer asks it: the viewer's answer
         // travels in `params`, and the binding that turns it into a filter lives in the
         // dashboard's own -cube-widgets.json entry, never in this request.
@@ -1493,6 +1613,42 @@ electronBeforeAfterAllTest(
         await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
         await expect(page.locator('#chk-dim-Channel'), "the viewer's own view came back")
           .toBeChecked({ timeout: 30000 });
+
+        // ── D7: a Show Me on this tile answers, and answers with the right numbers ──
+        // No country is picked on this fresh load (All is the default, and All adds no filter), so
+        // what the month-by-month story answers is the whole shop - which is exactly what its
+        // check pins, computed over the frozen cube_demo rows by
+        // .docs/cube-demo-data/truths_stories_22.py. The click is the whole test: nothing here
+        // fills the tree by hand.
+        await expect(page.locator('#btnShowMe-sales-by-month')).toBeVisible({ timeout: 60000 });
+        const monthAnswered = page.waitForResponse(
+          (r) => r.url().includes('/cube/tabulator_live-shop/query') && r.request().method() === 'POST',
+          { timeout: 90000 },
+        );
+        await page.click('#btnShowMe-sales-by-month');
+        expect((await monthAnswered).status(), "the page's own question was answered").toBe(200);
+
+        // The tree says what the story said: Ordered, read by month, with the two measures ticked
+        // and nothing else left over from the view this viewer was on (Channel was ticked above).
+        await expect(page.locator('#chk-dim-OrderDate'), 'Ordered is ticked')
+          .toBeChecked({ timeout: 60000 });
+        await expect(page.locator('#gran-OrderDate'), 'and read by month').toHaveValue('month');
+        await expect(page.locator('#chk-meas-Orders')).toBeChecked();
+        await expect(page.locator('#chk-meas-NetSales')).toBeChecked();
+        await expect(page.locator('#chk-dim-Channel'), 'Show Me replaces the selection')
+          .not.toBeChecked();
+
+        // And the rows drawn under both halves are the rows the check pins, to the penny.
+        const monthCheck = checksOf('online-sales').get('sales-by-month');
+        expect(monthCheck, 'the story carries a check of its own').toBeTruthy();
+        await expect
+          .poll(async () => (await page.locator('#cubeRuntimeResult rb-tabulator').first()
+            .evaluate((el: any) => (el.data ?? []).length)), { timeout: 60000 })
+          .toBe(monthCheck!.rows.length);
+        const monthDrawn = await page.locator('#cubeRuntimeResult rb-tabulator').first()
+          .evaluate((el: any) => (el.data ?? []).map((row: Record<string, unknown>) => Object.values(row)));
+        expect(difference(monthCheck!.rows, monthDrawn, false),
+          'the rows of the month-by-month story, month by month').toBeNull();
 
         // ── A share link locked to Germany ──
         // The recipient cannot pick a country, and neither kind of tile lets them ask for one.

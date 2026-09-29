@@ -244,6 +244,11 @@ class CubeRuntimeServiceTest {
 				      { "id": "by-owner", "text": "The same, by owner.",
 				        "query": { "dimensions": ["Owner"], "measures": ["Deals"] } }
 				    ] },
+				  { "id": "deals-of-one-owner",
+				    "question": "What is one owner's own pipeline?",
+				    "text": "The same, for one owner alone.",
+				    "query": { "dimensions": ["Stage"], "measures": ["Deals"],
+				      "filters": [ { "member": "Owner", "operator": "equals", "values": ["Ada"] } ] } },
 				  { "id": "deals-of-another-cube",
 				    "question": "A question about another cube of the same file",
 				    "text": "Not this widget's.",
@@ -339,6 +344,23 @@ class CubeRuntimeServiceTest {
 				    "cubeId": "stories-cube",
 				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
 				    "initial": { "dimensions": ["Stage"], "measures": ["Deals"] }
+				  },
+				  "cube15": {
+				    "cubeId": "stories-cube",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Stage"], "measures": ["Deals"] },
+				    "display": "table",
+				    "showHints": ["deals-of-one-owner", "deals-by-stage"]
+				  },
+				  "cube16": {
+				    "cubeId": "stories-cube",
+				    "connectionId": "rbt-sample-northwind-sqlite-4f2",
+				    "initial": { "dimensions": ["Stage"], "measures": ["Deals"] },
+				    "display": "table",
+				    "showHints": true,
+				    "paramBindings": [
+				      { "param": "country", "member": "Owner", "operator": "equals" }
+				    ]
 				  },
 				  "cube7": {
 				    "cubeId": "northwind-sales",
@@ -1299,12 +1321,13 @@ class CubeRuntimeServiceTest {
 		List<Map<String, Object>> asks =
 				(List<Map<String, Object>>) runtime.meta("sales-board", "cube5").get("hints");
 
-		assertEquals(List.of("deals-by-stage", "deals-by-stage--by-owner"),
+		assertEquals(List.of("deals-by-stage", "deals-by-stage--by-owner", "deals-of-one-owner"),
 				asks.stream().map(ask -> ask.get("id")).toList());
-		assertEquals(List.of("deals-by-stage", "deals-by-stage/by-owner"),
+		assertEquals(List.of("deals-by-stage", "deals-by-stage/by-owner", "deals-of-one-owner"),
 				asks.stream().map(ask -> ask.get("check")).toList());
 
-		// A variant asks the hint's question again; its own sentence says what changed.
+		// A variant asks a question of its own, and this file writes none for it, so it falls back
+		// to the hint's - which is what a shipped cube may not do (CubeSampleDesignTest).
 		assertEquals("How many deals are at each stage?", asks.get(1).get("question"));
 		assertEquals("The same, by owner.", asks.get(1).get("text"));
 		assertEquals(Map.of("dimensions", List.of("Owner"), "measures", List.of("Deals")),
@@ -1314,6 +1337,63 @@ class CubeRuntimeServiceTest {
 		// ask carries a cubeName - /query refuses that key, so a Show Me that sent it would fail.
 		assertFalse(asks.toString().contains("deals-of-another-cube"));
 		assertFalse(asks.toString().contains("cubeName"), asks.toString());
+	}
+
+	/**
+	 * A tile may name the stories it offers, in its own order.
+	 *
+	 * <p>A dashboard is about something: sample 22 is one country's sales, and the five stories it
+	 * offers are the ones that mean something there, top to bottom as the author listed them - not
+	 * as the cube's file happens to. Naming a hint names its variants too, because a variant is one
+	 * more answer to the same Show Me, and the file's order inside the hint is kept.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void aTileOffersTheStoriesItNamedInTheOrderItNamedThem() throws Exception {
+
+		List<Map<String, Object>> named =
+				(List<Map<String, Object>>) runtime.meta("sales-board", "cube15").get("hints");
+
+		assertEquals(List.of("deals-of-one-owner", "deals-by-stage", "deals-by-stage--by-owner"),
+				named.stream().map(ask -> ask.get("id")).toList(),
+				"exactly these ids, in this order");
+
+		// The negative half: the same cube on a tile that named none offers every story it has, in
+		// the file's own order - the other way round from the list above, so an order nobody
+		// applied could not pass both.
+		List<Map<String, Object>> all =
+				(List<Map<String, Object>>) runtime.meta("sales-board", "cube5").get("hints");
+		assertEquals(List.of("deals-by-stage", "deals-by-stage--by-owner", "deals-of-one-owner"),
+				all.stream().map(ask -> ask.get("id")).toList());
+	}
+
+	/**
+	 * A story that presets a filter on a member the dashboard binds is not offered at all.
+	 *
+	 * <p>The viewer answered the filter bar at the top of the page; a Show Me that filtered that
+	 * same member to something else would either lose to their answer or overrule it, and be a
+	 * broken promise either way. Only the dashboard knows what is bound, so the server decides it -
+	 * and grouping by that member is untouched, because reading the answer by it is not fighting
+	 * it.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void aStoryThatWouldFightTheFilterBarIsNotOffered() throws Exception {
+
+		List<Map<String, Object>> bound =
+				(List<Map<String, Object>>) runtime.meta("sales-board", "cube16").get("hints");
+
+		assertEquals(List.of("deals-by-stage", "deals-by-stage--by-owner"),
+				bound.stream().map(ask -> ask.get("id")).toList(),
+				"the story that filters Owner is dropped, the one that groups by it is not");
+		assertFalse(bound.toString().contains("deals-of-one-owner"), bound.toString());
+
+		// The negative half: the very same cube and the very same story on a tile the dashboard
+		// binds nothing on - cube5 - is offered, so what dropped it is the binding and nothing
+		// else.
+		List<Map<String, Object>> unbound =
+				(List<Map<String, Object>>) runtime.meta("sales-board", "cube5").get("hints");
+		assertTrue(unbound.toString().contains("deals-of-one-owner"), unbound.toString());
 	}
 
 	/**
@@ -1368,7 +1448,7 @@ class CubeRuntimeServiceTest {
 		Map<String, Object> onOracle = runtime.sql("sales-board", "cube5", request);
 		assertEquals("oracle", onOracle.get("dialect"));
 		assertNotEquals(onItsOwn.get("sql"), onOracle.get("sql"),
-				"Another database is another SQL, or the vendor select says nothing");
+				"Another database is another SQL, or the page's vendor picker says nothing");
 
 		assertNull(database.readOn, "Nothing is read: View SQL is not a second way to the rows");
 	}

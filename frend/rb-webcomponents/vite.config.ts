@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve, dirname } from "path";
+import { existsSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { transform } from "esbuild";
 import { terser } from "rollup-plugin-terser";
@@ -29,6 +30,45 @@ function minifyEs() {
   };
 }
 
+/**
+ * Puts daisyUI's own theme palettes in the bundle's folder, as `themes.css`.
+ *
+ * A published dashboard is served this file as `/rb-webcomponents/themes.css` and wears the theme
+ * the application is on, which is a daisyUI theme name on `<html>` (D10). The file is daisyUI's,
+ * taken from the version the application compiles its own themes with, so the palettes have one
+ * source and none of them is ever copied by hand. It holds nothing but the `[data-theme=...]`
+ * blocks, so a page that links it looks exactly as it did until something names a theme.
+ *
+ * daisyUI is the application's dependency, not this bundle's - the components themselves draw with
+ * `currentColor` and variables and need no framework. A build that cannot find it would ship a
+ * dashboard that is light whatever the application is set to, silently, so it fails instead.
+ */
+function daisyUiThemes() {
+  const candidates = [
+    resolve(__dirname, "node_modules/daisyui/themes.css"),
+    resolve(__dirname, "../reporting/node_modules/daisyui/themes.css"),
+  ];
+  return {
+    name: "daisyUiThemes",
+    generateBundle() {
+      const from = candidates.find((candidate) => existsSync(candidate));
+      if (!from) {
+        throw new Error(
+          "daisyUI's themes.css was not found - looked in " +
+            candidates.join(" and ") +
+            ". Run npm install in frend/reporting first: a dashboard needs those palettes to " +
+            "follow the theme the application is on."
+        );
+      }
+      (this as any).emitFile({
+        type: "asset",
+        fileName: "themes.css",
+        source: readFileSync(from, "utf8"),
+      });
+    },
+  };
+}
+
 export default defineConfig(({ command }) => {
   if (command === "build") {
     return {
@@ -44,6 +84,7 @@ export default defineConfig(({ command }) => {
             customElement: true,
           },
         }),
+        daisyUiThemes(), // the app's theme palettes, beside the bundle, for published dashboards
         minifyEs(), // extra minification plugin using esbuild
         terser({
           compress: {

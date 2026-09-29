@@ -94,10 +94,14 @@ export interface CubeCard {
 }
 
 /**
- * The cubes DataPallas ships, in the order the page shows them: by business
- * area, and inside an area by the cube's own name. One card per cube id, so
- * the two cubes of `customer-billing` are two cards, and so are the two of
- * `online-sales`.
+ * The cubes DataPallas ships, by business area and inside an area by the cube's
+ * own name. One card per cube id, so the two cubes of `customer-billing` are
+ * two cards, and so are the two of `online-sales`.
+ *
+ * The order here is not the page's: since D14 the page shows its industries as
+ * an accordion, in the owner's order, and that order lives in
+ * `CUBE_STORIES_PANELS` below, which is also what says which cards a panel
+ * holds.
  */
 export const CUBE_STORIES_CARDS: CubeCard[] = [
   { id: 'sales-pipeline',       title: 'Sales Pipeline',               area: 'CRM & Sales',            domain: 'crm-sales',           file: 'sales-pipeline',      cubeName: '' },
@@ -118,6 +122,48 @@ export const CUBE_STORIES_CARDS: CubeCard[] = [
   { id: 'depot-network',        title: 'Depot Network',                area: 'Transport & Logistics',  domain: 'transport-logistics', file: 'depot-network',       cubeName: '' },
   { id: 'freight-shipments',    title: 'Freight Shipments',            area: 'Transport & Logistics',  domain: 'transport-logistics', file: 'freight-shipments',   cubeName: '' },
 ];
+
+/** One industry panel of the page: its bar, and the cards inside it. */
+export interface CubeStoriesPanel {
+  /** `#industry-<slug>`, and the `domain` its cubes are shipped under. */
+  slug: string;
+  /** What the bar says, as a reader reads it. */
+  name: string;
+  /** The small count next to the name. */
+  cubes: string;
+  /** The cards in the panel, in the page's order. */
+  cards: string[];
+}
+
+/**
+ * The seven industries, in the order the owner asked for (D14), each with the
+ * cards it holds. The first one is open when the page loads and the other six
+ * are closed; opening one closes the rest, which is the browser's own
+ * behaviour for a `<details name="industries">` group.
+ *
+ * `online-sales` is the only Retail card the page has: the second cube of that
+ * file, `shop-for-a-period`, is in `CUBE_STORIES_CARDS` above but has no card
+ * on the page and no widget in the sample's config.
+ */
+export const CUBE_STORIES_PANELS: CubeStoriesPanel[] = [
+  { slug: 'crm-sales',           name: 'CRM & Sales',           cubes: '1 cube',  cards: ['sales-pipeline'] },
+  { slug: 'erp-finance',         name: 'ERP & Finance',         cubes: '4 cubes', cards: ['customer-invoices', 'customer-payments', 'invoice-balances', 'customer-statement'] },
+  { slug: 'retail-ecommerce',    name: 'Retail & E-commerce',   cubes: '1 cube',  cards: ['online-sales'] },
+  { slug: 'transport-logistics', name: 'Transport & Logistics', cubes: '2 cubes', cards: ['depot-network', 'freight-shipments'] },
+  { slug: 'customer-support',    name: 'Customer Support',      cubes: '1 cube',  cards: ['support-desk'] },
+  { slug: 'education',           name: 'Education',             cubes: '2 cubes', cards: ['student-enrollments', 'student-progress'] },
+  { slug: 'northwind',           name: 'Northwind',             cubes: '5 cubes', cards: ['northwind-customers', 'northwind-hr', 'northwind-inventory', 'northwind-sales', 'northwind-warehouse'] },
+];
+
+/** Every card the page draws, in the page's own order. */
+export const CUBE_STORIES_PAGE_CARDS: string[] = CUBE_STORIES_PANELS.flatMap((panel) => panel.cards);
+
+/** The panel a card sits in. */
+export function panelOf(cubeId: string): CubeStoriesPanel {
+  const found = CUBE_STORIES_PANELS.find((panel) => panel.cards.includes(cubeId));
+  if (!found) throw new Error(`no panel of the Cube Stories page holds ${cubeId}`);
+  return found;
+}
 
 export function cardOf(cubeId: string): CubeCard {
   const found = CUBE_STORIES_CARDS.find((c) => c.id === cubeId);
@@ -318,8 +364,41 @@ export function cardRoot(frame: Frame, cubeId: string): Locator {
   return frame.locator(`#cube-${cubeId}`);
 }
 
+/**
+ * The panel a card is in, open - and, because the panels are one group, the six
+ * others closed with it.
+ *
+ * This is the visitor's way in: the bar is clicked. A panel that is already
+ * open is left alone rather than clicked shut.
+ */
+export async function openIndustry(frame: Frame, slug: string): Promise<void> {
+  const panel = frame.locator(`#industry-${slug}`);
+  await expect(panel, `the ${slug} panel is on the page`).toBeVisible({ timeout: 60_000 });
+  if (!(await panel.evaluate((el) => (el as HTMLDetailsElement).open))) {
+    await panel.locator('summary').click();
+  }
+  await expect
+    .poll(async () => panel.evaluate((el) => (el as HTMLDetailsElement).open), { timeout: 15_000 })
+    .toBe(true);
+}
+
+/**
+ * The card's own panel, open, without asking a test to know which one that is.
+ *
+ * A card in a closed panel is not visible, and every helper here reaches a card
+ * by its id, so this is where the accordion is dealt with: once, for all of
+ * them. A page that lays its cards out flat has no panel to open and is left
+ * exactly as it is.
+ */
+export async function openCardsPanel(frame: Frame, cubeId: string): Promise<void> {
+  const panel = frame.locator(`.industry:has(#cube-${cubeId})`);
+  if ((await panel.count()) === 0) return;
+  await panel.first().evaluate((el) => { (el as HTMLDetailsElement).open = true; });
+}
+
 /** The card is on the page, its component has mounted and its first answer is drawn. */
 export async function waitForCard(frame: Frame, cubeId: string, timeout = 60_000): Promise<void> {
+  await openCardsPanel(frame, cubeId);
   await expect(cardRoot(frame, cubeId)).toBeVisible({ timeout });
   await expect(inCard(frame, cubeId, 'rb-cube-renderer')).toHaveCount(1, { timeout });
   await expect(inCard(frame, cubeId, '#cubeRuntimeResult')).toBeVisible({ timeout });
@@ -588,10 +667,15 @@ export async function sqlText(frame: Frame, cubeId: string, timeout = 30_000): P
   return ((await panel.textContent()) ?? '').trim();
 }
 
-/** Choose a database in this card's picker and wait for the statement to change. */
+/**
+ * Choose a database in the page's picker and wait for this card's statement to change.
+ *
+ * One picker for the page (D11): the card named here is the one whose SQL box is watched, not the
+ * one the choice is made in - there is no select inside a card any more.
+ */
 export async function chooseSqlVendor(frame: Frame, cubeId: string, vendor: string): Promise<void> {
   const before = await inCard(frame, cubeId, '#cubeRuntimeSql').textContent();
-  await inCard(frame, cubeId, '#cubeRuntimeSqlVendor').selectOption(vendor);
+  await frame.locator('#cubeSqlVendor').selectOption(vendor);
   await expect
     .poll(async () => inCard(frame, cubeId, '#cubeRuntimeSql').textContent(), { timeout: 30_000 })
     .not.toBe(before);
@@ -622,20 +706,59 @@ export function shippedCubeCode(card: CubeCard): string {
 // ── The page as a whole ───────────────────────────────────────────────────────
 
 /**
- * The page a visitor lands on: one card per cube, each under its business area,
- * each with its grain line and its component, and a contents list that reaches
- * every one of them.
+ * The page a visitor lands on (D14): seven industry bars in the owner's order,
+ * CRM & Sales open with Sales Pipeline inside it, the other six closed - and
+ * then, panel by panel, one card per cube, each with its area, its grain line
+ * and its component.
+ *
+ * Both halves are asserted, because a panel that only looks closed is the
+ * defect this replaced: the cards of the six closed panels really are not
+ * visible while another one is open.
+ *
+ * Made to go red: a page that drew the panels in today's alphabetical order, a
+ * second panel left open on load, a `<details>` written without the group name
+ * (all seven could then be open at once), or a card that ended up in the wrong
+ * industry.
  */
 export async function expectTheWholePage(frame: Frame): Promise<void> {
   await expect(frame.locator('.rb-cube-stories-root')).toBeVisible({ timeout: 60_000 });
-  await expect(frame.locator('.rb-cube-stories-root .card')).toHaveCount(CUBE_STORIES_CARDS.length, { timeout: 60_000 });
+  await expect(frame.locator('.rb-cube-stories-root .industry'), 'seven industries')
+    .toHaveCount(CUBE_STORIES_PANELS.length, { timeout: 60_000 });
+  await expect(frame.locator('.rb-cube-stories-root .card'))
+    .toHaveCount(CUBE_STORIES_PAGE_CARDS.length, { timeout: 60_000 });
 
-  for (const card of CUBE_STORIES_CARDS) {
+  // The bars, in the page's order, each saying which industry it is and how many cubes it holds.
+  expect(
+    await frame.locator('.rb-cube-stories-root .industry').evaluateAll(
+      (panels) => panels.map((panel) => panel.id)),
+    'the industries are in the order the owner asked for',
+  ).toEqual(CUBE_STORIES_PANELS.map((panel) => `industry-${panel.slug}`));
+  for (const panel of CUBE_STORIES_PANELS) {
+    const summary = frame.locator(`#industry-${panel.slug} > summary`);
+    await expect(summary, `the ${panel.slug} bar names its industry`).toContainText(panel.name);
+    await expect(summary.locator('.industry-count'), `and how many cubes are in it`)
+      .toHaveText(panel.cubes);
+  }
+
+  // On load: the first panel open with its cube, and nothing of the other six on the screen.
+  const [first, ...closed] = CUBE_STORIES_PANELS;
+  await expectOnlyThisPanelIsOpen(frame, first);
+
+  // Then each in turn, the visitor's way: click the bar, and its cards are the page.
+  for (const panel of [...closed, first]) {
+    await openIndustry(frame, panel.slug);
+    await expectOnlyThisPanelIsOpen(frame, panel);
+  }
+
+  for (const cubeId of CUBE_STORIES_PAGE_CARDS) {
+    const card = cardOf(cubeId);
+    await openCardsPanel(frame, card.id);
     await expect(cardRoot(frame, card.id), `the ${card.id} card is on the page`).toBeVisible();
     await expect(inCard(frame, card.id, '.card-title')).toHaveText(card.title);
     await expect(frame.locator(`#cube-${card.id}-area`)).toHaveText(card.area);
     await expect(inCard(frame, card.id, '.card-grain')).toContainText('Grain:');
-    await expect(frame.locator(`.contents a[href="#cube-${card.id}"]`)).toHaveCount(1);
+    await expect(frame.locator(`#industry-${panelOf(card.id).slug} #cube-${card.id}`),
+      `and it is in the ${panelOf(card.id).name} panel`).toHaveCount(1);
 
     // The tile says which cube it is, in the cube's own title, and never the bare word `Cube`,
     // which named neither the cube nor the panel (D5).
@@ -658,6 +781,38 @@ export async function expectTheWholePage(frame: Frame): Promise<void> {
 }
 
 /**
+ * One industry open, and the six others closed with their cards off the screen.
+ *
+ * The named assertion of D14 when it is called with the first panel: "CRM &
+ * Sales open with Sales Pipeline visible and the other six closed".
+ */
+export async function expectOnlyThisPanelIsOpen(
+  frame: Frame,
+  open: CubeStoriesPanel,
+): Promise<void> {
+  for (const panel of CUBE_STORIES_PANELS) {
+    const shouldBeOpen = panel.slug === open.slug;
+    await expect
+      .poll(
+        async () => frame.locator(`#industry-${panel.slug}`)
+          .evaluate((el) => (el as HTMLDetailsElement).open),
+        { timeout: 15_000 },
+      )
+      .toBe(shouldBeOpen);
+    for (const cubeId of panel.cards) {
+      const card = cardRoot(frame, cubeId);
+      if (shouldBeOpen) {
+        await expect(card, `${cubeId} is on the screen with its industry open`)
+          .toBeVisible({ timeout: 60_000 });
+      } else {
+        await expect(card, `${cubeId} is not on the screen while ${open.name} is the open one`)
+          .not.toBeVisible();
+      }
+    }
+  }
+}
+
+/**
  * No card is showing a warning.
  *
  * The block is drawn only where the parser found something to say, so its
@@ -667,6 +822,7 @@ export async function expectTheWholePage(frame: Frame): Promise<void> {
  */
 export async function expectNoCardWarns(frame: Frame): Promise<void> {
   for (const card of CUBE_STORIES_CARDS) {
+    await openCardsPanel(frame, card.id);
     await expect(
       inCard(frame, card.id, '#cubeRuntimeWarnings'),
       `the ${card.id} cube parses clean`,

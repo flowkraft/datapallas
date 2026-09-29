@@ -6,8 +6,8 @@
       display: block;
       font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
       box-sizing: border-box;
-      color: #1e293b;
-      background: #f8fafc;
+      color: var(--color-base-content, #1e293b);
+      background: var(--color-base-200, #f8fafc);
       padding: 24px;
     }
     .rb-pivottable-root *, .rb-pivottable-root *::before, .rb-pivottable-root *::after {
@@ -15,12 +15,12 @@
     }
 
     .rb-pivottable-root {
-      --accent: #4e79a7;
-      --accent-dark: #2c5282;
-      --surface: #ffffff;
-      --border: #e2e8f0;
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
+      --accent: var(--color-primary, #4e79a7);
+      --accent-dark: var(--color-primary, #2c5282);
+      --surface: var(--color-base-100, #ffffff);
+      --border: var(--color-base-300, #e2e8f0);
+      --text-primary: var(--color-base-content, #0f172a);
+      --text-secondary: var(--color-base-content, #475569);
       --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
       --radius: 10px;
     }
@@ -56,7 +56,7 @@
     }
 
     .rb-pivottable-root .info-bar {
-      background: #f0f4f8;
+      background: var(--color-base-200, #f0f4f8);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 14px 20px;

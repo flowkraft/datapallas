@@ -377,6 +377,74 @@
     dashboardContainer.removeEventListener('submit', handleDashboardParamSubmit as EventListener);
     dashboardContainer.addEventListener('valueChange', handleDashboardParamChange as EventListener);
     dashboardContainer.addEventListener('submit', handleDashboardParamSubmit as EventListener);
+
+    // A link to something inside a collapsed section has to open that section, on load and every
+    // time the hash changes afterwards.
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('hashchange', openHashTarget);
+      window.addEventListener('hashchange', openHashTarget);
+    }
+    // `toggle` does not bubble, so a panel anywhere in the dashboard is heard on the way down.
+    dashboardContainer.removeEventListener('toggle', handlePanelOpened, true);
+    dashboardContainer.addEventListener('toggle', handlePanelOpened, true);
+    openHashTarget();
+  }
+
+  /**
+   * A tile in a panel that was closed gets its size when the panel opens.
+   *
+   * A widget that mounted inside a closed `<details>` measured a box of no size, and charts and
+   * tables draw themselves to the box they measured. Both redraw when their container changes size,
+   * and both take a window resize as the signal to look again, so that is what an opened panel
+   * sends - once, on the frame the panel is laid out in, for whatever is inside it.
+   */
+  function handlePanelOpened(event: Event) {
+    const panel = event.target as HTMLElement | null;
+    if (!panel || panel.tagName !== 'DETAILS' || !(panel as HTMLDetailsElement).open) return;
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  }
+
+  /**
+   * A link to a card inside a collapsed panel opens that panel, then scrolls to the card.
+   *
+   * A dashboard may lay its content out in `<details>` panels - sample 21's industries do, one open
+   * at a time - and a URL like `#cube-online-sales` names a card inside one of them. A browser will
+   * not scroll to something in a closed panel, so the visitor lands at the top of the page instead
+   * of on the card the link promised them. Nothing in that is particular to one dashboard, and a
+   * dashboard template carries no script of its own, so it is done here, once, for every dashboard.
+   *
+   * Outermost panel first: opening one panel of a group (`<details name="...">`) closes its
+   * siblings, so an inner panel opened before its parent would be shut again by the parent's own
+   * group.
+   */
+  function openHashTarget() {
+    if (typeof window === 'undefined' || !dashboardContainer) return;
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+
+    let target: HTMLElement | null = null;
+    try {
+      target = dashboardContainer.querySelector<HTMLElement>(`#${CSS.escape(decodeURIComponent(id))}`);
+    } catch {
+      return; // a hash that is not an id at all is not ours to act on
+    }
+    if (!target) return;
+
+    const panels: HTMLDetailsElement[] = [];
+    for (
+      let panel = target.closest('details');
+      panel && dashboardContainer.contains(panel);
+      panel = panel.parentElement?.closest('details') ?? null
+    ) {
+      panels.unshift(panel);
+    }
+    for (const panel of panels) panel.open = true;
+
+    // The card is laid out only once the panel is open, and its widget grows into the space after
+    // that, so the scroll waits for the frame the opened panel is drawn in.
+    const scrollTo = target;
+    window.requestAnimationFrame(() => scrollTo.scrollIntoView({ block: 'start' }));
   }
 
   function handleDashboardParamChange(e: CustomEvent) {
@@ -413,6 +481,10 @@
       dashboardContainer.removeEventListener('valueChange', handleDashboardParamChange as EventListener);
       dashboardContainer.removeEventListener('submit', handleDashboardParamSubmit as EventListener);
     }
+    if (dashboardContainer) {
+      dashboardContainer.removeEventListener('toggle', handlePanelOpened, true);
+    }
+    if (typeof window !== 'undefined') window.removeEventListener('hashchange', openHashTarget);
   });
 
   // Helpers for aggregator reports — extract named component IDs from config
@@ -625,14 +697,14 @@
     align-items: center;
     gap: 8px;
     padding: 16px;
-    color: #666;
+    color: var(--color-base-content, #666);
   }
 
   .rb-report-spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid #e0e0e0;
-    border-top-color: #3b82f6;
+    border: 2px solid var(--color-base-300, #e0e0e0);
+    border-top-color: var(--color-primary, #3b82f6);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -643,10 +715,10 @@
   
   .rb-report-error {
     padding: 12px 16px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: var(--color-base-100, #fef2f2);
+    border: 1px solid var(--color-error, #fecaca);
     border-radius: 4px;
-    color: #b91c1c;
+    color: var(--color-error, #b91c1c);
     margin-bottom: 16px;
   }
   
@@ -709,10 +781,10 @@
   
   .rb-report-no-content {
     padding: 16px;
-    background: #fef3c7;
-    border: 1px solid #fcd34d;
+    background: var(--color-base-100, #fef3c7);
+    border: 1px solid var(--color-warning, #fcd34d);
     border-radius: 4px;
-    color: #92400e;
+    color: var(--color-warning, #92400e);
   }
   
   .rb-report-print-toolbar {

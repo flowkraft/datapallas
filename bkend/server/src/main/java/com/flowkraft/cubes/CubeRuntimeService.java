@@ -377,8 +377,8 @@ public class CubeRuntimeService {
 		// off: a viewer's page cannot then draw a View SQL it would have nothing to fill.
 		if (widget.showSql()) {
 			meta.put("sqlDialects", CubeSqlDialect.DIALECTS);
-			// The database the rows actually come from, which the vendor select starts on and the
-			// line above the SQL names: "SQL for Oracle, the data comes from the DuckDB demo data".
+			// The database the rows actually come from, which the page's vendor picker starts on and
+			// the line above the SQL names: "SQL for Oracle · the rows come from DuckDB".
 			meta.put("dbVendor", database.vendorOf(widget.connectionId()));
 		}
 		if (widget.showCode()) {
@@ -388,8 +388,12 @@ public class CubeRuntimeService {
 		if (widget.showHints()) {
 			// The hints' own dates are relative too (R7), and are resolved here, once, so that Show Me
 			// asks the question the hint means on the data as it was seeded on this machine.
-			meta.put("hints", CubeHints.of(cubesService.filesOf(widget.cubeId()).getHintsFile(),
-					loaded.cubeName(), () -> dataToday.of(widget.connectionId())));
+			List<Map<String, Object>> asks = CubeHints.of(cubesService.filesOf(widget.cubeId()).getHintsFile(),
+					loaded.cubeName(), () -> dataToday.of(widget.connectionId()));
+			// Which of them this tile offers, in its order, and none that would fight the filter
+			// bar this tile is bound to (D7): the entry knows the cube, the dashboard knows itself.
+			meta.put("hints", CubeHints.offered(asks, widget.hintIds(),
+					widget.paramBindings().stream().map(CubeParamBindings.Binding::member).toList()));
 		}
 
 		// W5: where this viewer's own view is kept, and — when it is kept here — the view itself,
@@ -1139,7 +1143,7 @@ public class CubeRuntimeService {
 	 * reading it learns what the cube means, not what the data is.
 	 *
 	 * <p>This is the one runtime call that takes a {@code dbVendor}, and it takes it because that
-	 * is the whole point of the vendor select beside it: the same question, written for Oracle,
+	 * is the whole point of the page's vendor picker: the same question, written for Oracle,
 	 * for PostgreSQL, for SQLite. It still cannot move the question off this widget's cube — the
 	 * cube and the connection come from the dashboard's declaration as everywhere else, and every
 	 * other key {@link #asked} refuses is refused here too. Without {@code dbVendor} the answer is

@@ -13,9 +13,11 @@ import RbGauge from "./RbGauge.wc.svelte";
 import RbTrend from "./RbTrend.wc.svelte";
 import RbProgress from "./RbProgress.wc.svelte";
 import RbDetail from "./RbDetail.wc.svelte";
+// One database picker for a whole page of cubes, in its header (D11).
+import RbSqlVendor from "./RbSqlVendor.wc.svelte";
 
 // Export them so they can be imported elsewhere if desired
-export { RbTabulator, RbChart, RbPivotTable, RbParameters, RbReport, RbValue, RbFilterPane, RbCubeRenderer, RbMap, RbSankey, RbGauge, RbTrend, RbProgress, RbDetail };
+export { RbTabulator, RbChart, RbPivotTable, RbParameters, RbReport, RbValue, RbFilterPane, RbCubeRenderer, RbMap, RbSankey, RbGauge, RbTrend, RbProgress, RbDetail, RbSqlVendor };
 
 // rb-dashboard is a semantic alias for rb-report
 const RbReportClass = customElements.get('rb-report');

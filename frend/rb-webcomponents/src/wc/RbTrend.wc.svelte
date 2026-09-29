@@ -238,8 +238,8 @@
 <style>
   .rb-trend-root { width: 100%; height: 100%; position: relative; }
   .rb-trend-loading, .rb-trend-error { padding: 1rem; text-align: center; font-size: 12px; }
-  .rb-trend-loading { color: #666; }
-  .rb-trend-error { color: #dc3545; background: #fff5f5; border: 1px solid #dc3545; border-radius: 4px; }
+  .rb-trend-loading { color: var(--color-base-content, #666); }
+  .rb-trend-error { color: var(--color-error, #dc3545); background: var(--color-base-100, #fff5f5); border: 1px solid var(--color-error, #dc3545); border-radius: 4px; }
 </style>
 
 {#if selfFetchLoading}

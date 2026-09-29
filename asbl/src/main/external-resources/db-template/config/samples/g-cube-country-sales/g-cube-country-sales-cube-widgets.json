@@ -13,6 +13,7 @@
       } ],
       "limit" : 500
     },
+    "showHints" : [ "revenue-mix", "sales-by-month", "sales-by-city", "discount-by-category", "category-margin" ],
     "paramBindings" : [ {
       "param" : "country",
       "member" : "Country",

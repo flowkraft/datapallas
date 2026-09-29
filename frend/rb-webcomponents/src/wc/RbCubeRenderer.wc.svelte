@@ -438,6 +438,7 @@
 
   function toggleDimension(dim: any) {
     if (errorOf('dimension', dim.name)) return;
+    lastAskedId = '';
     const keys = keysOfDimension(dim.name);
     if (keys.length > 0) {
       for (const key of keys) selectedDimensions.delete(key);
@@ -450,6 +451,7 @@
   }
 
   function setGranularity(dim: any, granularity: string) {
+    lastAskedId = '';
     for (const key of keysOfDimension(dim.name)) selectedDimensions.delete(key);
     selectedDimensions.add(granularity ? dim.name + '.' + granularity : dim.name);
     selectedDimensions = new Set(selectedDimensions);
@@ -458,6 +460,7 @@
 
   function toggleMeasure(meas: any) {
     if (errorOf('measure', meas.name)) return;
+    lastAskedId = '';
     if (selectedMeasures.has(meas.name)) {
       selectedMeasures.delete(meas.name);
     } else {
@@ -469,6 +472,7 @@
 
   function toggleSegment(seg: any) {
     if (errorOf('segment', seg.name)) return;
+    lastAskedId = '';
     if (selectedSegments.has(seg.name)) {
       selectedSegments.delete(seg.name);
     } else {
@@ -493,6 +497,7 @@
    */
   function toggleLevel(h: any, index: number) {
     const levels = levelsOf(h);
+    lastAskedId = '';
     const name = levels[index];
     const dim = dimensionByName(name);
     if (!dim || errorOf('dimension', name)) return;
@@ -980,6 +985,10 @@
   let hints: any[] = [];
   /** The name a page's cards agree on, so one vendor choice moves all of them at once. */
   const SQL_VENDOR_EVENT = 'rb-cube-sql-vendor';
+  /** What this card can write, and where its rows come from, for the page's own picker to show. */
+  const SQL_VENDOR_OFFER = 'rb-cube-sql-vendor-offer';
+  /** The picker asking for that offer again, because it mounted after this card did. */
+  const SQL_VENDOR_ASK = 'rb-cube-sql-vendor-ask';
 
   // ── W5: my view ────────────────────────────────────────────────────────────
 
@@ -1213,6 +1222,8 @@
       sqlVendor = pageVendor() || dataVendor || (sqlDialects[0]?.key ?? '');
       cubeCode = String(meta?.code ?? '');
       hints = Array.isArray(meta?.hints) ? meta.hints : [];
+      // The page's picker shows what this cube offers, whether it mounted before this card or after.
+      offerSqlVendors();
       sqlOpen = false;
       codeOpen = false;
       sqlText = '';
@@ -1296,7 +1307,7 @@
     return shapes;
   }
 
-  /** `/meta`'s `sqlDialects`, as the vendor select shows them: the key it sends, the name read. */
+  /** `/meta`'s `sqlDialects`, as the page's picker shows them: the key it sends, the name read. */
   function dialectsOf(declared: any): Array<{ key: string; label: string }> {
     if (!Array.isArray(declared)) return [];
     return declared
@@ -1367,26 +1378,38 @@
     return { ...request, params: { ...answeredParams } };
   }
 
-  /** The vendor the page as a whole is on, so a card read later starts where the others are. */
+  /**
+   * The vendor the page as a whole is on, so a card read later starts where the others are.
+   *
+   * The page keeps it on its own element and nowhere else: a new page load has no choice on it, so
+   * the SQL starts on the database the rows really come from, however many times somebody picked
+   * Oracle yesterday (D11).
+   */
   function pageVendor(): string {
-    try {
-      return window.localStorage.getItem(SQL_VENDOR_EVENT) || '';
-    } catch (e) {
-      // A browser that keeps nothing still shows SQL: the card just starts on its own database.
-      return '';
-    }
+    return String(document.documentElement.dataset.rbCubeSqlVendor ?? '');
   }
 
   /**
-   * One choice of database, on every card of the page. The Cube Stories page holds a card per cube
-   * and nobody wants to say "Oracle" fifteen times, so the select tells the whole page through a
-   * `rb-cube-sql-vendor` event on the document, and every other card follows it. The page itself
-   * runs no script: the cards agree among themselves.
+   * What this card can write, told to the page once its cube is read.
+   *
+   * The card draws no picker of its own - one page, one choice, one control - but it is the card
+   * that knows what there is to choose from: the dialects of its `/meta` and the database its rows
+   * come from. `<rb-sql-vendor>` shows them; nothing else on the page has to know a cube exists.
    */
-  function pickSqlVendor(vendor: string) {
-    sqlVendor = vendor;
-    try { window.localStorage.setItem(SQL_VENDOR_EVENT, vendor); } catch (e) { /* kept nowhere */ }
-    document.dispatchEvent(new CustomEvent(SQL_VENDOR_EVENT, { detail: { vendor } }));
+  function offerSqlVendors() {
+    if (sqlDialects.length === 0) return;
+    document.dispatchEvent(new CustomEvent(SQL_VENDOR_OFFER,
+      { detail: { vendor: dataVendor, dialects: sqlDialects } }));
+  }
+
+  /** The picker mounted after this card and is asking what there is to choose from. */
+  function onPageSqlVendorAsk() {
+    offerSqlVendors();
+  }
+
+  /** A database by the name a reader knows it by, or its key where the cube names one we do not. */
+  function vendorLabel(key: string): string {
+    return sqlDialects.find((d) => d.key === key)?.label ?? key;
   }
 
   /** Another card's choice, or this one's echo of it: follow it, and the SQL is written again. */
@@ -1444,8 +1467,23 @@
    */
   function showMe(ask: any) {
     runtimeError = '';
+    lastAskedId = String(ask?.id ?? '');
     applySelection(ask?.query);
   }
+
+  /**
+   * The story whose Show Me was pressed last, marked on the right while the fields it ticked are
+   * lit on the left. A tick by hand takes the mark off, because the selection is then the reader's
+   * own and no longer the story's.
+   */
+  let lastAskedId = '';
+
+  /**
+   * Whether this tile has stories to put beside its cube (D9). Without them - a read-only tile, or
+   * a cube whose author wrote no hints - there is no second half and the field tree has the tile
+   * to itself, as it always had.
+   */
+  $: offersStories = hints.length > 0 && !readOnly;
 
   /** The errors and the notes the parser left on this cube, errors first (design part 8). */
   $: shownWarnings = [...(cubeConfig?.warnings ?? [])]
@@ -2603,12 +2641,15 @@
     // rebuilds every widget when the viewer changes a parameter, and reads this first.
     if (hostEl) (hostEl as any).rbLocalState = () => JSON.stringify(currentView());
     mounted = true;
-    // Every card of a Cube Stories page hears every other card's choice of database.
+    // Every card of a Cube Stories page hears the page's choice of database, and answers the
+    // page's picker when it asks what there is to choose from.
     document.addEventListener(SQL_VENDOR_EVENT, onPageSqlVendor);
+    document.addEventListener(SQL_VENDOR_ASK, onPageSqlVendorAsk);
   });
 
   onDestroy(() => {
     document.removeEventListener(SQL_VENDOR_EVENT, onPageSqlVendor);
+    document.removeEventListener(SQL_VENDOR_ASK, onPageSqlVendorAsk);
   });
 
   // The host may set the two runtime props instead of the attributes, and after the first render:
@@ -2744,11 +2785,19 @@
       </div>
     {/if}
 
+    <!-- D9: the cube on one half, its stories on the other, and the answer under both. A reader
+         presses Show Me on the right, and the ticks on the left and the rows below both change in
+         front of them instead of somewhere off the screen. The stories are written first here so
+         that where the halves stack - a phone, or a tile in a narrow column - the questions are
+         read before the field list. -->
+    <div class="rb-cube-halves" class:rb-cube-split={offersStories}>
+
     <!-- The questions this cube was written to answer, each one click away (design part 8) -->
-    {#if hints.length > 0 && !readOnly}
+    {#if offersStories}
+      <div class="rb-cube-half rb-cube-stories">
       <div id="cubeHints" class="rb-hints">
         {#each hints as ask (ask.id)}
-          <div id="hint-{ask.id}" class="rb-hint">
+          <div id="hint-{ask.id}" class="rb-hint" class:rb-hint-asked={ask.id === lastAskedId}>
             <div class="rb-hint-question">{ask.question}</div>
             <!-- The only place this component writes HTML: what `boldFieldNames` returns is
                  escaped text with `<strong>` in it, and nothing a hints file wrote survives as markup. -->
@@ -2758,10 +2807,12 @@
           </div>
         {/each}
       </div>
+      </div>
     {/if}
 
     <!-- read-only (W4.8): the answer without the asking - no tree, and so no icon and no grain -->
     {#if !readOnly}
+    <div class="rb-cube-half rb-cube-fields">
     <div class="rb-tree">
       {#each rows as row}
         {#if row.kind === 'folder'}
@@ -2911,19 +2962,19 @@
       {/each}
     </div>
 
-    {/if}
-
     <!-- The second level of detail of the tree above, directly under the last field it adds it
          to. It used to be drawn last of all, which in a live tile put it under the answer and
          under the SQL box, far from the only thing it changes. -->
-    {#if !readOnly}
       <label class="rb-show-toggle" title="Types, settings and the cube's own facts">
         <input id="chk-show-everything" type="checkbox" bind:checked={showEverything} />
         Field details
       </label>
+    </div>
     {/if}
 
-    <!-- Selection summary -->
+    </div>
+
+    <!-- Selection summary: what the two halves add up to, under both of them -->
     {#if selectedDimensions.size > 0 || selectedMeasures.size > 0 || selectedSegments.size > 0}
       <p class="rb-cube-hint" style="margin-top: 8px; text-align: center;">
         {selectedDimensions.size} dimension{selectedDimensions.size !== 1 ? 's' : ''},
@@ -3028,17 +3079,12 @@
 
         {#if sqlOpen && sqlDialects.length > 0}
           <div id="cubeRuntimeSql" class="rb-opened-panel">
+            <!-- No select here: the database is the page's choice, made once in its header by
+                 `<rb-sql-vendor>`, and this line says which one this box is written for. -->
             <div class="rb-opened-head">
-              <select id="cubeRuntimeSqlVendor" class="rb-cube-select" value={sqlVendor}
-                      title="The database this SQL is written for"
-                      on:change={(e) => pickSqlVendor((e.currentTarget as HTMLSelectElement).value)}>
-                {#each sqlDialects as dialect}
-                  <option value={dialect.key}>{dialect.label}</option>
-                {/each}
-              </select>
               <span class="rb-cube-hint">
-                SQL for {sqlDialects.find((d) => d.key === sqlVendor)?.label ?? sqlVendor}
-                {#if dataVendor} &middot; the data comes from the {dataVendor} demo data{/if}
+                SQL for {vendorLabel(sqlVendor)}
+                {#if dataVendor} &middot; the rows come from {vendorLabel(dataVendor)}{/if}
               </span>
             </div>
             {#if sqlError}
@@ -3081,6 +3127,44 @@
 
 <style>
   /* Cube Stories: the hints, the shape switch, and the two panels the author opened up */
+  /*
+   * D9: the cube on the left half and its stories on the right, with the answer under both. The
+   * halves are a grid rather than two floats so that the markup can keep the stories first, for
+   * where the two stack; each is capped and scrolls on its own, so a forty-field tree cannot push
+   * the answer off the screen.
+   */
+  .rb-cube-halves {
+    display: grid;
+    gap: 12px;
+    align-items: start;
+  }
+  .rb-cube-split {
+    grid-template-columns: 1fr 1fr;
+  }
+  .rb-cube-split .rb-cube-fields {
+    grid-area: 1 / 1;
+  }
+  .rb-cube-split .rb-cube-stories {
+    grid-area: 1 / 2;
+  }
+  .rb-cube-split .rb-cube-half {
+    max-height: 460px;
+    overflow: auto;
+  }
+  @media (max-width: 720px) {
+    .rb-cube-split {
+      grid-template-columns: 1fr;
+    }
+    .rb-cube-split .rb-cube-fields,
+    .rb-cube-split .rb-cube-stories {
+      grid-area: auto;
+    }
+    .rb-cube-split .rb-cube-half {
+      max-height: none;
+      overflow: visible;
+    }
+  }
+
   .rb-hints {
     display: flex;
     flex-direction: column;
@@ -3092,6 +3176,12 @@
     border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
     border-radius: 6px;
     padding: 8px 10px;
+  }
+
+  /* The story the reader asked last, marked while its fields are the ticked ones. */
+  .rb-hint-asked {
+    border-color: color-mix(in oklab, currentColor 45%, transparent);
+    background: color-mix(in oklab, currentColor 6%, transparent);
   }
 
   .rb-hint-question {
@@ -3266,7 +3356,7 @@
     opacity: 1;
   }
   .rb-filter-icon.rb-filter-on {
-    color: #d9534f;
+    color: var(--color-error, #d9534f);
   }
   .rb-filter-popover {
     border: 1px solid color-mix(in oklab, currentColor 20%, transparent);
@@ -3287,7 +3377,7 @@
     margin-top: 6px;
   }
   .rb-filter-bad {
-    color: #d9534f;
+    color: var(--color-error, #d9534f);
     opacity: 1;
   }
   /* W2: the answer, under the tree it was asked from */
@@ -3309,8 +3399,8 @@
     font-size: 12px;
   }
   .rb-filter-apply {
-    background: var(--rb-accent, #2171b5);
-    color: var(--rb-accent-text, #fff);
+    background: var(--rb-accent, var(--color-primary, #2171b5));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
     border: none;
   }
   .rb-filter-clear {
@@ -3347,13 +3437,13 @@
   }
   /* The dashboard's own filter: said like the others, but not this widget's to take off. */
   .rb-chip-fixed {
-    background: #eef2f7;
+    background: var(--color-base-200, #eef2f7);
     border-style: dashed;
   }
 
   .rb-chip-x:hover {
     opacity: 1;
-    color: #d9534f;
+    color: var(--color-error, #d9534f);
   }
 
   .rb-cube-root {
@@ -3444,7 +3534,7 @@
   }
   /* A field the generator would refuse: shown, explained in its tooltip, and not tickable */
   .rb-refused {
-    color: #d9534f;
+    color: var(--color-error, #d9534f);
     text-decoration: line-through;
   }
   .rb-hier-row {

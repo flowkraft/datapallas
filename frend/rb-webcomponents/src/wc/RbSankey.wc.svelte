@@ -282,8 +282,8 @@
 <style>
   .rb-sankey-root { width: 100%; height: 100%; position: relative; min-height: 240px; overflow: hidden; }
   .rb-sankey-loading, .rb-sankey-error { padding: 1rem; text-align: center; font-size: 12px; }
-  .rb-sankey-loading { color: #666; }
-  .rb-sankey-error { color: #dc3545; background: #fff5f5; border: 1px solid #dc3545; border-radius: 4px; }
+  .rb-sankey-loading { color: var(--color-base-content, #666); }
+  .rb-sankey-error { color: var(--color-error, #dc3545); background: var(--color-base-100, #fff5f5); border: 1px solid var(--color-error, #dc3545); border-radius: 4px; }
 </style>
 
 {#if selfFetchLoading}

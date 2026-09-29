@@ -424,8 +424,8 @@
 <style>
   .rb-detail-root { width: 100%; height: 100%; position: relative; overflow: auto; }
   .rb-detail-loading, .rb-detail-error { padding: 1rem; text-align: center; font-size: 12px; }
-  .rb-detail-loading { color: #666; }
-  .rb-detail-error { color: #dc3545; background: #fff5f5; border: 1px solid #dc3545; border-radius: 4px; }
+  .rb-detail-loading { color: var(--color-base-content, #666); }
+  .rb-detail-error { color: var(--color-error, #dc3545); background: var(--color-base-100, #fff5f5); border: 1px solid var(--color-error, #dc3545); border-radius: 4px; }
 </style>
 
 {#if selfFetchLoading}

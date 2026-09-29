@@ -42,14 +42,21 @@ public class ChartOptionsParser {
 		Map<String, Object> map = script.getOptions();
 		ChartOptions out = new ChartOptions();
 		populateChartOptions(out, map);
+		// Said out loud rather than thrown: a chart whose author wrote `title` at chart level still
+		// renders exactly as it did, and now says why it has no title. See ChartOptionsScript.
+		out.setWarnings(script.getWarnings());
 
 		// Extract named blocks for aggregator reports
 		Map<String, Map<String, Object>> namedRaw = script.getNamedOptions();
 		if (namedRaw != null && !namedRaw.isEmpty()) {
 			Map<String, ChartOptions> named = new java.util.LinkedHashMap<>();
+			Map<String, java.util.List<Map<String, Object>>> namedWarnings = script.getNamedWarnings();
 			for (Map.Entry<String, Map<String, Object>> entry : namedRaw.entrySet()) {
 				ChartOptions co = new ChartOptions();
 				populateChartOptions(co, entry.getValue());
+				if (namedWarnings != null && namedWarnings.containsKey(entry.getKey())) {
+					co.setWarnings(namedWarnings.get(entry.getKey()));
+				}
 				named.put(entry.getKey(), co);
 			}
 			out.setNamedOptions(named);

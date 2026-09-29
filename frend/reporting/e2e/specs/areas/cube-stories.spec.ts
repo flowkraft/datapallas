@@ -31,10 +31,12 @@ import { test, expect, type Page, type Frame } from '@playwright/test';
 import { Helpers } from '../../utils/helpers';
 import {
   CUBE_STORIES_CARDS,
+  CUBE_STORIES_PANELS,
   CUBE_STORIES_REPORT_ID,
   answerCardParams,
   asksOf,
   cardOf,
+  cardRoot,
   checksOf,
   chooseSqlVendor,
   clickShowMe,
@@ -43,12 +45,14 @@ import {
   drawnRows,
   embedTokenOf,
   expectNoCardWarns,
+  expectOnlyThisPanelIsOpen,
   expectTheWholePage,
   expectTreeShows,
   hideCode,
   inCard,
   openCode,
   openSql,
+  panelOf,
   reseedCubeDemoData,
   revokeCubeStoriesShareLinks,
   shippedCubeCode,
@@ -231,15 +235,24 @@ test.describe('Cube Stories — the cube demo page', () => {
     }
     expect(askedWhileSorting, 'sorting a column asks the server nothing').toBe(0);
 
-    // ── The SQL panel: eight databases, and the choice is the page's ────────
+    // ── The SQL panel: eight databases, and one picker for the whole page ────────
     await openSql(frame, deals.id);
-    await expect(inCard(frame, deals.id, '#cubeRuntimeSqlVendor option')).toHaveCount(EVERY_VENDOR.length);
-    expect(await inCard(frame, deals.id, '#cubeRuntimeSqlVendor option')
+    // D11: the choice is made once, in the page header, and nowhere inside a card.
+    await expect(frame.locator('#cubeSqlVendor'), 'one database picker for the page')
+      .toHaveCount(1);
+    await expect(frame.locator('.dash-header #cubeSqlVendor'),
+      'and it is in the page header, with the title').toHaveCount(1);
+    await expect(frame.locator('#cubeRuntimeSqlVendor'),
+      'no select inside any cube').toHaveCount(0);
+    await expect(frame.locator('#cubeSqlVendor option')).toHaveCount(EVERY_VENDOR.length);
+    expect(await frame.locator('#cubeSqlVendor option')
       .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value)))
       .toEqual(EVERY_VENDOR);
-    await expect(inCard(frame, deals.id, '#cubeRuntimeSqlVendor'),
-      'the panel starts on the database the rows really come from').toHaveValue('duckdb');
+    await expect(frame.locator('#cubeSqlVendor'),
+      'the page starts on the database the rows really come from').toHaveValue('duckdb');
     await expect(inCard(frame, deals.id, '#cubeRuntimeSql')).toContainText('DuckDB');
+    await expect(inCard(frame, deals.id, '#cubeRuntimeSql'),
+      'and the box says where the rows come from, by name').toContainText('the rows come from DuckDB');
 
     const sqlOnDuckDb = await sqlText(frame, deals.id);
     const rowsBefore = await drawnRows(frame, deals.id);
@@ -300,11 +313,14 @@ test.describe('Cube Stories — the cube demo page', () => {
     const tickets = cardOf('support-desk');
     await waitForCard(frame, tickets.id);
     await openSql(frame, tickets.id);
-    await expect(inCard(frame, tickets.id, '#cubeRuntimeSqlVendor')).toHaveValue('oracle');
+    await expect(frame.locator('#cubeSqlVendor')).toHaveValue('oracle');
     await expect(inCard(frame, tickets.id, '#cubeRuntimeSql')).toContainText('Oracle');
+    await expect(inCard(frame, tickets.id, '#cubeRuntimeSql'),
+      'a card written for Oracle still says where its rows come from')
+      .toContainText('the rows come from DuckDB');
 
     await chooseSqlVendor(frame, deals.id, 'duckdb');
-    await expect(inCard(frame, tickets.id, '#cubeRuntimeSqlVendor')).toHaveValue('duckdb');
+    await expect(inCard(frame, tickets.id, '#cubeRuntimeSql')).toContainText('DuckDB');
 
     // ── A card with nothing ticked says what to do ──────────────────────────
     for (const measure of ['Deals', 'DealValue']) {
@@ -348,10 +364,20 @@ test.describe('Cube Stories — the cube demo page', () => {
     expect(smuggled.status()).toBe(plain.status());
     expect((await smuggled.json()).rows).toEqual((await plain.json()).rows);
 
+    // D11: a choice lives in the page and is gone with it. Oracle is picked here, and the page
+    // that comes back is on DuckDB - where the rows really come from - and not on what somebody
+    // picked once.
+    await chooseSqlVendor(frame, deals.id, 'oracle');
+    await expect(frame.locator('#cubeSqlVendor')).toHaveValue('oracle');
+
     // Put the page back the way it opens, for the walks that follow.
     await page.reload();
     frame = page.mainFrame();
     await expect(frame.locator('.rb-cube-stories-root')).toBeVisible({ timeout: 60_000 });
+    await waitForCard(frame, deals.id);
+    await expect(frame.locator('#cubeSqlVendor'),
+      "a fresh page is on the rows' own database, whatever was picked before the reload")
+      .toHaveValue('duckdb');
   });
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -370,6 +396,45 @@ test.describe('Cube Stories — the cube demo page', () => {
   // fields, or demo data seeded for the wrong day would each change the rows a
   // card draws, and `difference` names the first row that does not answer.
   // ────────────────────────────────────────────────────────────────────────────
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // D14: a link into a closed industry.
+  //
+  // The page lists 16 cards behind seven bars, so a link to one card - from the
+  // samples list, from a shared URL, from the page's own address bar - is a link
+  // into a panel that is closed. What the visitor asked for is the card, so the
+  // panel opens and the card is where they can see it, both when the page loads
+  // on that address and when the hash changes under an open page.
+  //
+  // Made to go red: nothing opening the panel at all (the browser will not
+  // scroll to a card inside a closed `<details>`, so the visitor lands at the
+  // top of the page), or a page that opened it on load only and left a later
+  // link doing nothing.
+  // ─────────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) a #cube link opens that cube\'s industry', async () => {
+    test.setTimeout(10 * 60_000);
+    const shared = `${BASE_URL}/dashboard/${CUBE_STORIES_REPORT_ID}?token=${encodeURIComponent(shareToken)}`;
+
+    // Loading on the address: Retail & E-commerce, the third bar, open at Online Sales.
+    await page.goto(`${shared}#cube-online-sales`);
+    frame = page.mainFrame();
+    await expect(frame.locator('.rb-cube-stories-root')).toBeVisible({ timeout: 60_000 });
+    await expectOnlyThisPanelIsOpen(frame, panelOf('online-sales'));
+    await expect(cardRoot(frame, 'online-sales'), 'the card the link named is on the screen')
+      .toBeInViewport({ timeout: 30_000 });
+
+    // The same link followed on the open page: a hash change, not a load, and Education opens
+    // while Retail & E-commerce closes - one panel at a time, whichever way it was opened.
+    await page.evaluate(() => { window.location.hash = '#cube-student-progress'; });
+    await expectOnlyThisPanelIsOpen(frame, panelOf('student-progress'));
+    await expect(cardRoot(frame, 'student-progress')).toBeInViewport({ timeout: 30_000 });
+
+    // And back to the page a visitor lands on, for whatever runs after this.
+    await page.goto(shared);
+    frame = page.mainFrame();
+    await expect(frame.locator('.rb-cube-stories-root')).toBeVisible({ timeout: 60_000 });
+    await expectOnlyThisPanelIsOpen(frame, CUBE_STORIES_PANELS[0]);
+  });
 
   test('(cube-stories) Show Me on Deals, Tickets, Shipments and Depots', async () => {
     test.setTimeout(30 * 60_000);
@@ -1022,7 +1087,7 @@ test.describe('Cube Stories — the cube demo page', () => {
     expect(difference(clickHouseCannot.rows, rowsOnItsOwnDatabase, false)).toBeNull();
 
     await openSql(frame, progress.id);
-    await inCard(frame, progress.id, '#cubeRuntimeSqlVendor').selectOption('clickhouse');
+    await frame.locator('#cubeSqlVendor').selectOption('clickhouse');
     const refusal = inCard(frame, progress.id, '#cubeRuntimeSqlError');
     await expect(refusal, 'a database that cannot answer it says so, in a sentence')
       .toBeVisible({ timeout: 30_000 });
@@ -1032,7 +1097,7 @@ test.describe('Cube Stories — the cube demo page', () => {
 
     // The data is untouched: the SQL panel is about SQL, and these rows came from DuckDB.
     expect(difference(rowsOnItsOwnDatabase, await drawnRows(frame, progress.id), false)).toBeNull();
-    await inCard(frame, progress.id, '#cubeRuntimeSqlVendor').selectOption('duckdb');
+    await frame.locator('#cubeSqlVendor').selectOption('duckdb');
     await expect(refusal).toHaveCount(0, { timeout: 30_000 });
 
     // Every card on the page, including this one: nothing to warn about.
@@ -1152,6 +1217,92 @@ test.describe('Cube Stories — the cube demo page', () => {
   // Made to go red: a `{@html ask.text}` with no escaping would turn `<b>` into bold and
   // `expect(injected.bolds).toEqual(['Units'])` would find two bold pieces instead of one.
   // ───────────────────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  // D9: the cube on one half, its stories on the other, the answer under both.
+  //
+  // Positive half: on the Sales Pipeline card the field tree and its details toggle are in the
+  // left column and the questions in the right one, side by side, with the answer under both; a
+  // Show Me pressed on the right ticks fields on the left and the rows under both change to that
+  // story's rows, and the story pressed is marked while they are its rows.
+  //
+  // Negative half: a tick by hand takes the mark off, because the selection is then the reader's.
+  // (A tile with no stories has no right column at all: sample 22's live tile, in samples.spec.)
+  //
+  // Made to go red: `expect(difference(stage.rows, afterShowMe, false)).toBeNull()` — the columns
+  // could be side by side and the tile still be the old one if pressing Show Me on the right left
+  // the rows below untouched, which is the defect the owner described.
+  // ────────────────────────────────────────────────────────────────────────────
+  test('(cube-stories) the cube on one half, its stories on the other, the answer under both', async () => {
+    test.setTimeout(10 * 60_000);
+
+    const pipeline = cardOf('sales-pipeline');
+    await waitForCard(frame, pipeline.id);
+
+    const laidOut = async () => inCard(frame, pipeline.id, 'rb-cube-renderer').evaluate((host: Element) => {
+      const root: ParentNode = (host as HTMLElement).shadowRoot ?? host;
+      const box = (selector: string) => {
+        const element = root.querySelector(selector);
+        if (!element) return null;
+        const rect = (element as HTMLElement).getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      };
+      const fields = root.querySelector('.rb-cube-fields');
+      const stories = root.querySelector('.rb-cube-stories');
+      return {
+        fields: box('.rb-cube-fields'),
+        stories: box('.rb-cube-stories'),
+        result: box('#cubeRuntimeResult'),
+        treeOnTheLeft: !!fields?.querySelector('.rb-tree-field'),
+        toggleOnTheLeft: !!fields?.querySelector('#chk-show-everything'),
+        questionsOnTheRight: !!stories?.querySelector('#cubeHints .rb-hint'),
+        marked: Array.from(root.querySelectorAll('.rb-hint-asked')).map((one) => one.id),
+      };
+    });
+
+    const halves = await laidOut();
+    expect(halves.fields, 'the cube has a half of its own').not.toBeNull();
+    expect(halves.stories, 'and its stories have the other half').not.toBeNull();
+    expect(halves.treeOnTheLeft, 'the field tree is in the cube half').toBe(true);
+    expect(halves.toggleOnTheLeft, 'and so is the toggle that details it (D12)').toBe(true);
+    expect(halves.questionsOnTheRight, 'the questions are in the stories half').toBe(true);
+    expect(halves.stories!.left, 'the stories are to the right of the cube, not under it')
+      .toBeGreaterThanOrEqual(halves.fields!.right - 1);
+    expect(Math.abs(halves.stories!.top - halves.fields!.top),
+      'and they start level with each other, both in view at once').toBeLessThan(8);
+    expect(halves.result, 'the answer is drawn').not.toBeNull();
+    expect(halves.result!.top, 'the answer is under both halves, full width')
+      .toBeGreaterThanOrEqual(Math.max(halves.fields!.bottom, halves.stories!.bottom) - 1);
+    expect(halves.result!.bottom - halves.fields!.top,
+      'and the cube, its stories and its answer fit in a screen together').toBeLessThan(1080);
+
+    // ── Show Me on the right changes the ticks on the left and the rows below ──
+    const checks = checksOf(pipeline.id);
+    const stage = checks.get('deals-by-stage')!;
+    const value = checks.get('deals-and-value')!;
+
+    await clickShowMe(frame, pipeline.id, 'deals-and-value');
+    expect(difference(value.rows, await drawnRows(frame, pipeline.id), false),
+      'the card answers the first story asked').toBeNull();
+
+    await clickShowMe(frame, pipeline.id, 'deals-by-stage');
+    await expectTreeShows(frame, pipeline.id, asksOf(pipeline).find((a) => a.check === 'deals-by-stage')!.query);
+    const afterShowMe = await drawnRows(frame, pipeline.id);
+    expect(difference(stage.rows, afterShowMe, false),
+      'a story pressed on the right is answered under both halves').toBeNull();
+    expect(difference(value.rows, afterShowMe, false),
+      'and the rows really changed: they are no longer the story before it').not.toBeNull();
+
+    const asked = await laidOut();
+    expect(asked.marked, 'the story the reader asked last is the marked one')
+      .toEqual(['hint-deals-by-stage']);
+
+    // ── A tick by hand: the selection is the reader's own, so the mark goes ────
+    await inCard(frame, pipeline.id, '#meas-Deals').click();
+    await expect
+      .poll(async () => (await laidOut()).marked.length, { timeout: 30_000 })
+      .toBe(0);
+  });
+
   test('(cube-stories) a hints file cannot put markup of its own on the page', async ({ browser }) => {
     test.setTimeout(10 * 60_000);
 

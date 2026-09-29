@@ -147,6 +147,12 @@ export interface VisualQuery {
   // cube's SQL into the published dashboard, as before; checked publishes the cube itself, so a
   // viewer picks fields and filters in the dashboard and sees whatever the cube says that day.
   showInDashboard?: boolean;
+  // Which of the cube's stories a live tile offers beside its field tree. Absent (every canvas
+  // saved until now) offers none; `true` offers every story the cube's hints file holds; a list of
+  // hint ids offers exactly those, in that order - which is how one dashboard about one country
+  // offers the five stories that mean something there rather than all of the cube's. It travels
+  // into the published `-cube-widgets.json` under the same one key, `showHints`.
+  showHints?: boolean | string[];
 }
 
 export interface DataSource {

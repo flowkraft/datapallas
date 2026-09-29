@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,6 +108,67 @@ public final class CubeHints {
 			}
 		}
 		return asks;
+	}
+
+	/**
+	 * The asks one tile offers: the ones it named, in its order, and none that would fight the
+	 * dashboard it is on.
+	 *
+	 * <p><b>The tile's own five.</b> A tile may name the stories it offers ({@code showHints} as a
+	 * list) because a dashboard is not a cube catalogue: sample 22 is about one country's sales and
+	 * offers the five stories that mean something there, in the order a reader reads them. A tile
+	 * that named none gets them all, which is what sample 21 does. Naming an id the cube has not
+	 * got is not an error here — the cube's file is where the stories live, and a tile that outlived
+	 * a story it named simply offers one fewer.
+	 *
+	 * <p><b>Never against the filter bar.</b> A story that presets a filter on a member the
+	 * dashboard already binds to one of its parameters is dropped: the viewer picked Belgium at the
+	 * top of the page, and a Show Me that filtered Germany would either lose to that filter or
+	 * overrule it, and be a broken promise either way. This is why it is the server that decides
+	 * and not the file: the file knows the cube, only the dashboard knows what is bound.
+	 *
+	 * @param asks         the cube's asks, as {@link #of} flattened them
+	 * @param offered      the ids the tile named, in its order; empty for all of them
+	 * @param boundMembers the cube members the dashboard's own parameters filter (R8)
+	 */
+	public static List<Map<String, Object>> offered(List<Map<String, Object>> asks,
+			List<String> offered, Collection<String> boundMembers) {
+
+		List<Map<String, Object>> kept = new ArrayList<>();
+		for (Map<String, Object> ask : asks) {
+			if (!filtersAny(mapOf(ask.get("query")), boundMembers))
+				kept.add(ask);
+		}
+		if (offered == null || offered.isEmpty())
+			return kept;
+
+		List<Map<String, Object>> chosen = new ArrayList<>();
+		for (String id : offered) {
+			for (Map<String, Object> ask : kept) {
+				String check = text(ask.get("check"));
+				// The hint itself and every variant of it: `hint` and `hint/variant`, in file order.
+				if (check.equals(id) || check.startsWith(id + "/"))
+					chosen.add(ask);
+			}
+		}
+		return chosen;
+	}
+
+	/** Whether this query presets a filter on one of those members, whatever its granularity. */
+	private static boolean filtersAny(Map<String, Object> query, Collection<String> members) {
+
+		if (members == null || members.isEmpty())
+			return false;
+		for (Object one : listOf(query.get("filters"))) {
+			String member = text(mapOf(one).get("member"));
+			int dot = member.indexOf('.');
+			String plain = dot < 0 ? member : member.substring(0, dot);
+			for (String bound : members) {
+				if (plain.equalsIgnoreCase(text(bound)))
+					return true;
+			}
+		}
+		return false;
 	}
 
 	/**

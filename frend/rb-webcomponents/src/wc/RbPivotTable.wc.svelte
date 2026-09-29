@@ -1786,7 +1786,7 @@ button.pvtButton:hover {
   border-color: var(--rb-pivot-border, color-mix(in srgb, currentColor 28%, transparent));
 }
 .pvtError {
-  color: #e15759;
+  color: var(--color-error, #e15759);
   padding: 20px;
   text-align: center;
 }
@@ -1805,23 +1805,23 @@ button.pvtButton:hover {
   .rb-loading {
     padding: 1rem;
     text-align: center;
-    color: #666;
+    color: var(--color-base-content, #666);
   }
   .rb-error {
     padding: 1rem;
     text-align: center;
-    color: #dc3545;
-    background: #fff5f5;
-    border: 1px solid #dc3545;
+    color: var(--color-error, #dc3545);
+    background: var(--color-base-100, #fff5f5);
+    border: 1px solid var(--color-error, #dc3545);
     border-radius: 4px;
   }
   .rb-server-info {
     padding: 0.5rem 1rem;
     text-align: center;
     font-size: 0.875rem;
-    color: #059669;
-    background: #ecfdf5;
-    border: 1px solid #10b981;
+    color: var(--color-success, #059669);
+    background: var(--color-base-100, #ecfdf5);
+    border: 1px solid var(--color-success, #10b981);
     border-radius: 4px;
     margin-bottom: 0.5rem;
   }

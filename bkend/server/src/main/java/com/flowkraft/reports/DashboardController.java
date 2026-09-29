@@ -1,6 +1,7 @@
 package com.flowkraft.reports;
 
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,8 @@ import com.flowkraft.embed.EmbedTokenService;
 import com.flowkraft.embed.ShareTokenService;
 import com.flowkraft.iam.dashboards.DashboardAccess;
 import com.flowkraft.iam.limits.ReportAccess;
+import com.flowkraft.system.services.SystemService;
+import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettingsInternal;
 
 import jakarta.servlet.http.HttpServletRequest;
 import reactor.core.publisher.Mono;
@@ -48,6 +51,14 @@ import reactor.core.publisher.Mono;
  * not taken: it would be one more door open to an unauthenticated caller for something a reload
  * already does exactly once an hour. The cost is that a recipient's filter selections reset with the
  * reload, which is the honest price of a page that never shows stale-credential errors.
+ *
+ * <h2>The page wears the application's theme</h2>
+ * A dashboard opened here is the same product as the application that published it, so it is the
+ * same colours. The theme name is the one the application boots with - the server setting
+ * {@code documentburster.settings.theme} - written onto {@code <html>} as {@code data-theme}, with
+ * daisyUI's own palettes served next to the bundle as {@code /rb-webcomponents/themes.css}. Taking
+ * it from the server rather than from the browser is what lets a share-link visitor, who has no
+ * preference of ours stored anywhere, see the dashboard the way its author sees it.
  */
 @RestController
 public class DashboardController {
@@ -63,6 +74,18 @@ public class DashboardController {
 
 	@Autowired
 	private ReportAccess reportAccess;
+
+	@Autowired
+	private SystemService systemService;
+
+	/**
+	 * The theme a dashboard wears when the application has stored none: the same value the
+	 * application itself starts on, {@code DP_DEFAULT_THEME} in {@code theme-defaults.ts}.
+	 */
+	static final String DEFAULT_THEME = "dark";
+
+	/** What a daisyUI theme name looks like, and the only thing allowed onto the page. */
+	private static final Pattern THEME_NAME = Pattern.compile("[a-z][a-z0-9-]{0,31}");
 
 	@GetMapping(value = "/dashboard/{reportCode}", produces = MediaType.TEXT_HTML_VALUE)
 	public Mono<ResponseEntity<String>> viewDashboard(@PathVariable String reportCode,
@@ -99,15 +122,21 @@ public class DashboardController {
 		long renewAfterSeconds = Math.max(60, EmbedTokenService.DEFAULT_TTL_SECONDS - 120);
 
 		String html = "<!DOCTYPE html>\n"
-				+ "<html lang=\"en\">\n"
+				+ htmlOpenTag(pageTheme()) + "\n"
 				+ "<head>\n"
 				+ "  <meta charset=\"UTF-8\">\n"
 				+ "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
 				// Keep the share token out of anything the browser sends onward.
 				+ "  <meta name=\"referrer\" content=\"no-referrer\">\n"
 				+ "  <title>" + escapeHtml(reportCode) + "</title>\n"
+				// The palettes the data-theme above names: daisyUI's own file, from the version the
+				// application compiles its themes with, shipped beside the bundle. A page that cannot
+				// fetch it falls back to the colours every stylesheet here carries next to its variables.
+				+ "  <link rel=\"stylesheet\" href=\"/rb-webcomponents/themes.css\">\n"
 				+ "  <script src=\"/rb-webcomponents/rb-webcomponents.umd.js\"></script>\n"
-				+ "  <style>html, body { margin: 0; padding: 0; height: 100%; }</style>\n"
+				+ "  <style>html, body { margin: 0; padding: 0; height: 100%;"
+				+ " background: var(--color-base-200, #ffffff);"
+				+ " color: var(--color-base-content, #1e293b); }</style>\n"
 				+ "</head>\n"
 				+ "<body>\n"
 				+ "  <rb-dashboard\n"
@@ -130,6 +159,44 @@ public class DashboardController {
 				+ "</html>";
 
 		return Mono.just(ResponseEntity.ok().header("Content-Type", "text/html").body(html));
+	}
+
+	/**
+	 * The theme the application is on, or the same default it starts on when nothing is stored.
+	 *
+	 * <p>Unreadable settings are not a reason to refuse a dashboard, so a failure here is the default
+	 * theme and a served page, not a stack trace on somebody's screen.
+	 */
+	private String pageTheme() {
+		try {
+			DocumentBursterSettingsInternal settings = systemService.loadInternalSettings();
+			return themeName(settings != null && settings.settings != null ? settings.settings.theme : null);
+		} catch (Exception themeUnreadable) {
+			return DEFAULT_THEME;
+		}
+	}
+
+	/**
+	 * The page's opening tag, carrying the theme every colour on it is written against.
+	 *
+	 * <p>Static and small on purpose: what a reader wants to check about this page is that the theme
+	 * the application stored is the theme the page asks for, and that nothing else arrives with it.
+	 */
+	static String htmlOpenTag(String theme) {
+		return "<html lang=\"en\" data-theme=\"" + escapeHtml(themeName(theme)) + "\">";
+	}
+
+	/**
+	 * A stored value, once it is a theme name and nothing else.
+	 *
+	 * <p>The shape is daisyUI's: a lower-case letter, then letters, digits and dashes. Anything else
+	 * - an empty setting, a file edited by hand, a quote with an event handler after it - is not a
+	 * theme, so the page wears the default rather than carrying it into its own markup. The escaping
+	 * downstream is the second lock on the same door.
+	 */
+	static String themeName(String stored) {
+		String trimmed = stored == null ? "" : stored.trim();
+		return THEME_NAME.matcher(trimmed).matches() ? trimmed : DEFAULT_THEME;
 	}
 
 	/**

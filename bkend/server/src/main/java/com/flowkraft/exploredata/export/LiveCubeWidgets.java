@@ -29,8 +29,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <p>The file written here is the one {@link com.flowkraft.cubes.CubeWidgets} reads, and it is the
  * lock of the live cube: the cube, the cube's name inside its file and the connection all come from
  * it and never from a viewer's request. So it says exactly those three things, plus the selection
- * the widget opens with and how its result is drawn — and nothing a request could point elsewhere
- * with.
+ * the widget opens with, the stories it offers and how its result is drawn — and nothing a request
+ * could point elsewhere with.
  *
  * <p>Nothing here writes SQL, and nothing here is vendor-specific.
  */
@@ -85,6 +85,13 @@ final class LiveCubeWidgets {
             entry.put("cubeName", cubeName.isEmpty() ? null : cubeName);
             entry.put("connectionId", connectionId != null ? connectionId : "");
             entry.put("initial", initialOf(visualQuery));
+            // The stories this tile offers beside the field tree, in the author's own order: one
+            // key, `true` for all of the cube's or a list of the ones this dashboard is about.
+            // Written as the author left it and read back by CubeWidgets, which is the only place
+            // that decides what it means; a tile that asked for none says nothing here.
+            Object stories = visualQuery.get("showHints");
+            if (Boolean.TRUE.equals(stories) || (stories instanceof List<?> named && !named.isEmpty()))
+                entry.put("showHints", stories);
             // Which of the dashboard's parameters filter this widget, and on which member (R8).
             // Written here rather than sent at run time for the same reason the cube id is: the
             // author decides what the filter bar means, the viewer only answers it.

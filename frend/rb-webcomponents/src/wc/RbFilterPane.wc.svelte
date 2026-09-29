@@ -441,9 +441,9 @@
     padding: 12px;
     text-align: center;
     font-size: 12px;
-    color: #64748b;
+    color: var(--color-base-content, #64748b);
   }
-  .pane-error { color: #dc2626; }
+  .pane-error { color: var(--color-error, #dc2626); }
   .pane-footer {
     font-size: 11px;
     color: color-mix(in srgb, currentColor 60%, transparent);

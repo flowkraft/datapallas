@@ -112,11 +112,23 @@ public class DashboardFileGenerator {
             }
         }
 
+        // D11: one database picker for the page, where a page has a cube tile to write SQL for.
+        // It is the tiles that say what there is to choose from, so a dashboard whose cubes show no
+        // SQL draws the element and it shows nothing at all.
+        String vendorHtml = sorted.stream().noneMatch(LiveCubeWidgets::isLive) ? "" :
+            "    <div class=\"rb-page-bar\">\n" +
+            "      <rb-sql-vendor></rb-sql-vendor>\n" +
+            "    </div>";
+
         String paramsHtml = !hasParameters ? "" :
             String.format("    <div id=\"parameterBarContainer\" class=\"params-bar\">\n" +
                           "      <rb-parameters report-id=\"%s\" api-base-url=\"%s\" show-reload=\"true\"></rb-parameters>\n" +
                           "    </div>", reportId, apiBaseUrl);
 
+        // Every colour below is a daisyUI variable with the colour it used to be as its fallback, so
+        // one dashboard file serves both places it is opened: inside a DataPallas page, where <html>
+        // names a theme and the palette comes from it, and on somebody else's site or straight off
+        // disk, where nothing names a theme and the page looks exactly as it did (D10).
         return "<meta charset=\"utf-8\">\n" +
                "<div class=\"rb-dashboard-root\">\n" +
                "  <style>\n" +
@@ -125,8 +137,8 @@ public class DashboardFileGenerator {
                "      display: block;\n" +
                "      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;\n" +
                "      box-sizing: border-box;\n" +
-               "      color: #1e293b;\n" +
-               "      background: #f8fafc;\n" +
+               "      color: var(--color-base-content, #1e293b);\n" +
+               "      background: var(--color-base-200, #f8fafc);\n" +
                "      padding: 24px;\n" +
                "    }\n" +
                "    .rb-dashboard-root *, .rb-dashboard-root *::before, .rb-dashboard-root *::after {\n" +
@@ -139,8 +151,8 @@ public class DashboardFileGenerator {
                "      grid-auto-rows: minmax(80px, auto);\n" +
                "    }\n" +
                "    .rb-dashboard-root .grid-item {\n" +
-               "      background: #ffffff;\n" +
-               "      border: 1px solid #e2e8f0;\n" +
+               "      background: var(--color-base-100, #ffffff);\n" +
+               "      border: 1px solid var(--color-base-300, #e2e8f0);\n" +
                "      border-radius: 8px;\n" +
                "      padding: 16px;\n" +
                "      overflow: hidden;\n" +
@@ -150,8 +162,8 @@ public class DashboardFileGenerator {
                "      flex-direction: column;\n" +
                "      align-items: flex-start;\n" +
                "      justify-content: center;\n" +
-               "      background: #ffffff;\n" +
-               "      border: 1px solid #e2e8f0;\n" +
+               "      background: var(--color-base-100, #ffffff);\n" +
+               "      border: 1px solid var(--color-base-300, #e2e8f0);\n" +
                "      border-radius: 10px;\n" +
                "      padding: 20px 22px;\n" +
                "      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);\n" +
@@ -164,11 +176,11 @@ public class DashboardFileGenerator {
                "      position: absolute;\n" +
                "      top: 0; left: 0; right: 0;\n" +
                "      height: 3px;\n" +
-               "      background: #0f766e;\n" +
+               "      background: var(--color-primary, #0f766e);\n" +
                "    }\n" +
                "    .rb-dashboard-root .kpi-card {\n" +
-               "      background: #ffffff;\n" +
-               "      border: 1px solid #e2e8f0;\n" +
+               "      background: var(--color-base-100, #ffffff);\n" +
+               "      border: 1px solid var(--color-base-300, #e2e8f0);\n" +
                "      border-radius: 10px;\n" +
                "      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);\n" +
                "      position: relative;\n" +
@@ -179,47 +191,53 @@ public class DashboardFileGenerator {
                "      font-weight: 600;\n" +
                "      text-transform: uppercase;\n" +
                "      letter-spacing: 0.6px;\n" +
-               "      color: #94a3b8;\n" +
+               "      color: var(--color-base-content, #94a3b8);\n" +
                "      margin: 0 0 6px 0;\n" +
                "    }\n" +
                "    .rb-dashboard-root .number-value {\n" +
                "      font-size: 28px;\n" +
                "      font-weight: 800;\n" +
-               "      color: #064e3b;\n" +
+               "      color: var(--color-primary, #064e3b);\n" +
                "      margin: 0;\n" +
                "      line-height: 1.1;\n" +
                "    }\n" +
                "    .rb-dashboard-root .text-block {\n" +
                "      font-size: 14px;\n" +
                "      line-height: 1.6;\n" +
-               "      color: #334155;\n" +
+               "      color: var(--color-base-content, #334155);\n" +
                "    }\n" +
-               "    .rb-dashboard-root .text-block h1 { font-size: 1.75em; font-weight: 700; margin: 0 0 0.5em; color: #0f172a; }\n" +
-               "    .rb-dashboard-root .text-block h2 { font-size: 1.4em; font-weight: 700; margin: 0 0 0.5em; color: #0f172a; }\n" +
-               "    .rb-dashboard-root .text-block h3 { font-size: 1.15em; font-weight: 600; margin: 0 0 0.4em; color: #0f172a; }\n" +
+               "    .rb-dashboard-root .text-block h1 { font-size: 1.75em; font-weight: 700; margin: 0 0 0.5em; color: var(--color-base-content, #0f172a); }\n" +
+               "    .rb-dashboard-root .text-block h2 { font-size: 1.4em; font-weight: 700; margin: 0 0 0.5em; color: var(--color-base-content, #0f172a); }\n" +
+               "    .rb-dashboard-root .text-block h3 { font-size: 1.15em; font-weight: 600; margin: 0 0 0.4em; color: var(--color-base-content, #0f172a); }\n" +
                "    .rb-dashboard-root .text-block p { margin: 0 0 0.75em; }\n" +
                "    .rb-dashboard-root .text-block ul { list-style: disc; padding-left: 1.5em; margin: 0 0 0.75em; }\n" +
                "    .rb-dashboard-root .text-block ol { list-style: decimal; padding-left: 1.5em; margin: 0 0 0.75em; }\n" +
                "    .rb-dashboard-root .text-block li { margin-bottom: 0.25em; }\n" +
-               "    .rb-dashboard-root .text-block a { color: #2563eb; text-decoration: underline; }\n" +
+               "    .rb-dashboard-root .text-block a { color: var(--color-primary, #2563eb); text-decoration: underline; }\n" +
                "    .rb-dashboard-root .text-block strong { font-weight: 600; }\n" +
                "    .rb-dashboard-root .text-block em { font-style: italic; }\n" +
-               "    .rb-dashboard-root .text-block code { background: #f1f5f9; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }\n" +
-               "    .rb-dashboard-root .text-block pre { background: #f1f5f9; padding: 0.75em; border-radius: 4px; overflow: auto; margin: 0 0 0.75em; }\n" +
+               "    .rb-dashboard-root .text-block code { background: var(--color-base-200, #f1f5f9); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.9em; }\n" +
+               "    .rb-dashboard-root .text-block pre { background: var(--color-base-200, #f1f5f9); padding: 0.75em; border-radius: 4px; overflow: auto; margin: 0 0 0.75em; }\n" +
                "    .rb-dashboard-root .text-block pre code { background: transparent; padding: 0; }\n" +
                "    .rb-dashboard-root .text-block table { border-collapse: collapse; width: 100%; margin: 0 0 0.75em; }\n" +
-               "    .rb-dashboard-root .text-block th { border: 1px solid #e2e8f0; padding: 0.4em 0.6em; background: #f8fafc; font-weight: 600; text-align: left; }\n" +
-               "    .rb-dashboard-root .text-block td { border: 1px solid #e2e8f0; padding: 0.4em 0.6em; }\n" +
-               "    .rb-dashboard-root .text-block blockquote { border-left: 3px solid #e2e8f0; padding-left: 0.75em; color: #64748b; margin: 0 0 0.75em; }\n" +
+               "    .rb-dashboard-root .text-block th { border: 1px solid var(--color-base-300, #e2e8f0); padding: 0.4em 0.6em; background: var(--color-base-200, #f8fafc); font-weight: 600; text-align: left; }\n" +
+               "    .rb-dashboard-root .text-block td { border: 1px solid var(--color-base-300, #e2e8f0); padding: 0.4em 0.6em; }\n" +
+               "    .rb-dashboard-root .text-block blockquote { border-left: 3px solid var(--color-base-300, #e2e8f0); padding-left: 0.75em; color: var(--color-base-content, #64748b); margin: 0 0 0.75em; }\n" +
                "    .rb-dashboard-root .divider {\n" +
                "      border: none;\n" +
-               "      border-top: 1px solid #e2e8f0;\n" +
+               "      border-top: 1px solid var(--color-base-300, #e2e8f0);\n" +
                "      margin: 8px 0;\n" +
                "    }\n" +
                "    .rb-dashboard-root .params-bar {\n" +
                "      margin-bottom: 20px;\n" +
                "    }\n" +
+               "    .rb-dashboard-root .rb-page-bar {\n" +
+               "      display: flex;\n" +
+               "      justify-content: flex-end;\n" +
+               "      margin-bottom: 12px;\n" +
+               "    }\n" +
                "  </style>\n\n" +
+               (vendorHtml.isBlank() ? "" : vendorHtml + "\n") +
                (paramsHtml.isBlank() ? "" : paramsHtml + "\n") +
                "  <div class=\"dashboard-grid\">\n" +
                components +

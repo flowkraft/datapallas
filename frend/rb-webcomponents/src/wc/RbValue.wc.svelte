@@ -249,7 +249,7 @@
     opacity: 0.4;
   }
   .rb-value-error {
-    color: #dc2626;
+    color: var(--color-error, #dc2626);
     cursor: help;
   }
 </style>

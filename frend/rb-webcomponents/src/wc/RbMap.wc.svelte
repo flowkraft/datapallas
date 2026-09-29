@@ -562,7 +562,7 @@
       const div = document.createElement("div");
       div.className = "rb-map-runtime-error rb-map-error";
       div.textContent = msg;
-      div.style.cssText = "position:absolute;top:0;left:0;right:0;padding:1rem;background:#fff5f5;color:#dc3545;border:1px solid #dc3545;z-index:1000;font-size:12px;";
+      div.style.cssText = "position:absolute;top:0;left:0;right:0;padding:1rem;background:var(--color-base-100, #fff5f5);color:var(--color-error, #dc3545);border:1px solid var(--color-error, #dc3545);z-index:1000;font-size:12px;";
       container.appendChild(div);
     }
   }
@@ -678,8 +678,8 @@
     text-align: center;
     font-size: 12px;
   }
-  .rb-map-loading { color: #666; }
-  .rb-map-error { color: #dc3545; background: #fff5f5; border: 1px solid #dc3545; border-radius: 4px; }
+  .rb-map-loading { color: var(--color-base-content, #666); }
+  .rb-map-error { color: var(--color-error, #dc3545); background: var(--color-base-100, #fff5f5); border: 1px solid var(--color-error, #dc3545); border-radius: 4px; }
   /* Leaflet tiles should fill the container */
   :global(.leaflet-container) { background: transparent; font-family: inherit; }
   /* Overlay chrome (tooltips, popups, zoom controls) — Leaflet's CDN CSS hardcodes

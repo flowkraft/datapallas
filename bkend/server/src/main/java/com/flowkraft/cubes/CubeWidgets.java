@@ -89,6 +89,11 @@ public final class CubeWidgets {
 	 *                     found wrong with it (design part 8: Show Config)
 	 * @param showHints    whether the cube's {@code hints.json} travels with the field tree, so the
 	 *                     widget can offer the questions the cube was written to answer
+	 * @param hintIds      which of them, in the order the tile offers them, when the author named
+	 *                     them rather than asking for all of them; empty means every story the cube
+	 *                     has. One key says both ({@code "showHints": true} or
+	 *                     {@code "showHints": ["revenue-mix", …]}), because a tile either offers
+	 *                     stories or does not, and naming them is how many it offers
 	 * @param paramBindings which of the dashboard's parameters filter this widget, and on which
 	 *                     member (R8). Declared here rather than sent, for the same reason the
 	 *                     cube id is: a viewer answers the filter bar, and the author decides what
@@ -98,7 +103,7 @@ public final class CubeWidgets {
 	 */
 	public record Widget(String componentId, String cubeId, String cubeName, String connectionId,
 			Map<String, Object> initial, List<String> display, boolean saveView,
-			boolean showSql, boolean showCode, boolean showHints,
+			boolean showSql, boolean showCode, boolean showHints, List<String> hintIds,
 			List<CubeParamBindings.Binding> paramBindings) {
 	}
 
@@ -160,8 +165,35 @@ public final class CubeWidgets {
 				!Boolean.FALSE.equals(entry.get("saveView")),
 				Boolean.TRUE.equals(entry.get("showSql")),
 				Boolean.TRUE.equals(entry.get("showCode")),
-				Boolean.TRUE.equals(entry.get("showHints")),
+				offersHints(entry.get("showHints")), hintIdsOf(entry.get("showHints")),
 				bindingsOf(componentId, entry.get("paramBindings")));
+	}
+
+	/**
+	 * Whether this tile offers stories at all: {@code true}, or a list naming the ones it offers.
+	 * A list written empty is no stories, which is what the key's absence means too.
+	 */
+	private static boolean offersHints(Object declared) {
+		return Boolean.TRUE.equals(declared) || !hintIdsOf(declared).isEmpty();
+	}
+
+	/**
+	 * The story ids this tile names, in its own order, or empty when it asked for all of them.
+	 *
+	 * <p>The order is the author's: on sample 22 the five stories chosen for that dashboard are
+	 * read top to bottom as the entry lists them, not as the cube's own file happens to.
+	 */
+	private static List<String> hintIdsOf(Object declared) {
+
+		List<String> ids = new ArrayList<>();
+		if (declared instanceof List) {
+			for (Object one : (List<?>) declared) {
+				String id = text(one);
+				if (id != null && !ids.contains(id))
+					ids.add(id);
+			}
+		}
+		return ids;
 	}
 
 	/**

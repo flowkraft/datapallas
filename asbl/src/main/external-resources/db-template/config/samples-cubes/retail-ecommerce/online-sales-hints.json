@@ -89,6 +89,37 @@
     }
   },
   {
+    "id": "sales-by-month",
+    "fromStory": null,
+    "question": "Month by month: are we selling more?",
+    "text": "Tick **Orders** and **Net Sales**, then add **Ordered** and read it by **Month**.",
+    "query": {
+      "dimensions": [
+        "OrderDate.month"
+      ],
+      "measures": [
+        "Orders",
+        "NetSales"
+      ]
+    }
+  },
+  {
+    "id": "sales-by-city",
+    "fromStory": null,
+    "question": "Which cities buy the most?",
+    "text": "Tick **Orders**, **Customers** and **Net Sales**, then add **City**. The city is the customer's, so the orders placed without an account answer with an empty **City** - and with nobody counted under **Customers**.",
+    "query": {
+      "dimensions": [
+        "City"
+      ],
+      "measures": [
+        "Orders",
+        "Customers",
+        "NetSales"
+      ]
+    }
+  },
+  {
     "id": "discount-by-category",
     "fromStory": null,
     "question": "How deep do the discounts go?",
@@ -259,8 +290,8 @@
     "variants": [
       {
         "id": "in-all",
-        "question": "What does the whole shop sell, and what does it leave?",
-        "text": "Drop the field: the totals row. Margin % is then **34.07%**, the margin of the whole shop - not 35.11%, the average of the eight rows.",
+        "question": "And what does it all come to, in one row?",
+        "text": "Drop the field: the totals row. Margin % is then the margin of everything in the answer, worked out by the query - not the average of the rows above it, which is a different number. Read over the whole shop it is **34.07%**, where the average of the eight rows is 35.11%.",
         "query": {
           "dimensions": [],
           "measures": [
