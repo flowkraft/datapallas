@@ -21,6 +21,7 @@
   // One formatter for every host: the table, the single value, the chart and the time labels all
   // show a number the way the cube declares it (W4.2), so two hosts cannot disagree about it.
   import { formatCell, formatMeasure, DEFAULT_CURRENCY } from '../shared/cube-format';
+  import { refusalMessage, withCsrfHeader } from '../shared/session-request';
 
   // Props
   export let cubeConfig: any = null;
@@ -1090,7 +1091,9 @@
   function runtimeHeaders(): Record<string, string> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (embedToken) headers['X-Embed-Token'] = embedToken;
-    return headers;
+    // Without a token of its own this is the browser's own session asking, and a session write
+    // carries the CSRF token the server issued or the server turns it away (D4).
+    return withCsrfHeader(headers);
   }
 
   /** `…/reports/{reportId}/cube/{componentId}/{what}`: the three runtime endpoints, and no other. */
@@ -1104,7 +1107,7 @@
     if (runtime) return runtimeHeaders();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (apiKey) headers['X-API-Key'] = apiKey;
-    return headers;
+    return withCsrfHeader(headers);
   }
 
   /** The same three questions, asked of the dashboard's cube (W2) or of the author's own (W4.8). */
@@ -1120,7 +1123,7 @@
     if (!response.ok) {
       // The status travels with the message: the `error` event says `code` (W4.8), and a host that
       // tells a refusal from a failure apart can only do so if it is told which this was.
-      const refused: any = new Error(String(answer?.error || what + ' (' + response.status + ').'));
+      const refused: any = new Error(refusalMessage(answer, response.status, what));
       refused.code = response.status;
       throw refused;
     }
@@ -1675,7 +1678,7 @@
       });
       if (!response.ok) {
         const answer = await response.json().catch(() => null);
-        viewSaveReason = String(answer?.error || ('HTTP ' + response.status));
+        viewSaveReason = refusalMessage(answer, response.status, 'Your view was not saved');
         return false;
       }
       return true;
@@ -1695,7 +1698,8 @@
         headers: runtimeHeaders(),
       });
       if (!response.ok && response.status !== 404) {
-        viewSaveReason = 'HTTP ' + response.status;
+        viewSaveReason = refusalMessage(await response.json().catch(() => null), response.status,
+          'Your view was not reset');
         return false;
       }
       return true;

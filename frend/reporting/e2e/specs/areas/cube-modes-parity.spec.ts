@@ -263,15 +263,13 @@ test.describe('Cube widgets — the two publishing modes', () => {
       expect(meta.initial.filters[0].member).toBe('ShipCountry');
       expect(meta.initial.filters[0].values).toEqual(['Germany']);
 
-      const liveAnswer = await page.evaluate(async ({ rid, cid, selection }) => {
-        const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(selection),
-        });
-        if (!r.ok) throw new Error(`live query failed: ${r.status} ${await r.text()}`);
-        return r.json();
-      }, { rid: live.reportId, cid: componentId, selection: meta.initial });
+      // A live cube is asked with POST, and a POST on this browser's own session carries the
+      // CSRF token the server issued (D4) - as the tile itself now does.
+      const liveAsked = await Helpers.sessionFetch(
+        page, `/api/reports/${live.reportId}/cube/${componentId}/query`, { body: meta.initial });
+      if (liveAsked.status !== 200)
+        throw new Error(`live query failed: ${liveAsked.status} ${JSON.stringify(liveAsked.body)}`);
+      const liveAnswer = liveAsked.body;
       // A cut answer is not an answer to compare: it would say less for a reason
       // that has nothing to do with the two modes.
       expect(liveAnswer.truncated).toBe(false);
@@ -284,19 +282,13 @@ test.describe('Cube widgets — the two publishing modes', () => {
       // The two agree because Germany is in both answers, not because it is in
       // neither: the same live cube, asked the same question without the chip,
       // answers more rows and more money.
-      const everywhere = await page.evaluate(async ({ rid, cid, selection }) => {
-        const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(selection),
-        });
-        if (!r.ok) throw new Error(`live query failed: ${r.status} ${await r.text()}`);
-        return r.json();
-      }, {
-        rid: live.reportId,
-        cid: componentId,
-        selection: { dimensions: meta.initial.dimensions, measures: meta.initial.measures },
-      });
+      const askedWithoutTheChip = await Helpers.sessionFetch(
+        page, `/api/reports/${live.reportId}/cube/${componentId}/query`,
+        { body: { dimensions: meta.initial.dimensions, measures: meta.initial.measures } });
+      if (askedWithoutTheChip.status !== 200)
+        throw new Error(`live query failed: ${askedWithoutTheChip.status} `
+          + JSON.stringify(askedWithoutTheChip.body));
+      const everywhere = askedWithoutTheChip.body;
       expect(asRows(everywhere.rows)).not.toEqual(mode1);
       expect(totalOf(everywhere.rows, 'Revenue'))
         .toBeGreaterThan(totalOf(frozenAnswer.data, 'Revenue'));

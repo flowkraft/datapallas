@@ -314,6 +314,46 @@ export class Helpers {
   }
 
   /**
+   * A write sent from inside a signed-in page, the way the page itself sends one.
+   *
+   * <p>POST, PUT and DELETE on a browser session go through the CSRF filter before anything else:
+   * the server puts a token in the XSRF-TOKEN cookie (readable, on purpose) and refuses any write
+   * that does not send it back as X-XSRF-TOKEN. A `page.evaluate` fetch that leaves it off is
+   * refused with 403 and no rows - which is exactly the defect the web components had (D4), and a
+   * test that asks that way would be testing its own omission.
+   *
+   * <p>Requests carrying an API key, an embed token or a share token are exempt and do not come
+   * through here.
+   */
+  static async sessionFetch(
+    page: Page,
+    url: string,
+    init: { method?: string; body?: unknown } = {},
+  ): Promise<{ status: number; body: any }> {
+    return page.evaluate(
+      async ({ u, m, b }) => {
+        const token = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['X-XSRF-TOKEN'] = decodeURIComponent(token);
+        const resp = await fetch(u, {
+          method: m,
+          headers,
+          body: b === undefined ? undefined : JSON.stringify(b),
+        });
+        const text = await resp.text();
+        let parsed: any = text;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          /* a refusal can be plain text; the status is what the caller checks */
+        }
+        return { status: resp.status, body: parsed };
+      },
+      { u: url, m: init.method ?? 'POST', b: init.body },
+    );
+  }
+
+  /**
    * The installation's API key as a request header, for REST calls made outside the browser session.
    * A DataPallas Server refuses machine callers without it; Desktop ignores the header, so the same call
    * works on both. ApiKeyManager writes the file at boot; clean state keeps it (plan §4 D5).

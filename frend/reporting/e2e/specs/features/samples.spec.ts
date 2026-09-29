@@ -1343,22 +1343,20 @@ electronBeforeAfterAllTest(
           filters: unknown[] = [],
           token = '',
         ) =>
-          page.evaluate(async ({ p, d, f, t }) => {
-            const url = `/api/reports/g-cube-country-sales/cube/tabulator_live-shop/query${
-              t ? `?token=${encodeURIComponent(t)}` : ''
-            }`;
-            const resp = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                dimensions: d,
+          (await Helpers.sessionFetch(
+            page,
+            `/api/reports/g-cube-country-sales/cube/tabulator_live-shop/query${
+              token ? `?token=${encodeURIComponent(token)}` : ''
+            }`,
+            {
+              body: {
+                dimensions,
                 measures: ['NetSales'],
-                filters: f,
-                params: p,
-              }),
-            });
-            return resp.json();
-          }, { p: params, d: dimensions, f: filters, t: token });
+                filters,
+                params,
+              },
+            },
+          )).body;
 
         const netSalesOf = (answer: any): number =>
           (answer.rows as Record<string, unknown>[]).reduce(
@@ -1405,18 +1403,48 @@ electronBeforeAfterAllTest(
           .not.toBeCloseTo(3571889.64, 1);
         expect(netSalesOf(franceLive), 'and it is some of the shop').toBeGreaterThan(0);
 
+        // ── D4: a signed-in viewer's own questions are answered, not refused ──
+        // Every question this tile asks is a POST, and a POST that rides on a browser session is
+        // refused unless it carries back the token the server put in the XSRF-TOKEN cookie. Until
+        // the components sent it, a signed-in reader met a red "Forbidden" where the rows belong
+        // and "Your view was not saved" under every tick - while the tiles above, which read with
+        // GET, looked perfectly well. So: a fresh load, one tick, and what is drawn.
+        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
+        await expect(page.locator('rb-cube-renderer')).toHaveCount(1, { timeout: 15000 });
+
+        // What the cube answers for that tick, taken from the cube itself rather than written
+        // here: whatever the shop's channels are called, one of them has to be on the screen.
+        const everyChannel = await askCube({ country: '*' }, ['Channel']);
+        const aChannel = String((everyChannel.rows as Record<string, unknown>[])[0].Channel);
+
+        await page.check('#chk-dim-Channel');
+        await expect(page.locator('#cubeRuntimeResult'), 'the live tile answers a signed-in viewer')
+          .toContainText(aChannel, { timeout: 60000 });
+
+        // The negative half, in the reader's own terms: neither red line is anywhere on the tile.
+        // Both are one refusal each - the rows' POST and the view's PUT - and either one of them
+        // coming back would put its text here.
+        await new FluentTester(page)
+          .elementShouldNotContainText('rb-cube-renderer', 'Forbidden')
+          .elementShouldNotContainText('rb-cube-renderer', 'Your view was not saved');
+        await expect(page.locator('#cubeRuntimeError'), 'nothing was refused where the rows go')
+          .toHaveCount(0);
+        await expect(page.locator('#cubeViewSaveError'), 'and nothing was refused where the view is saved')
+          .toHaveCount(0);
+
+        // And the view really was saved: a fresh load of the page opens on the tick this viewer
+        // made, which nothing but the PUT having been accepted can have put there.
+        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
+        await expect(page.locator('#chk-dim-Channel'), "the viewer's own view came back")
+          .toBeChecked({ timeout: 30000 });
+
         // ── A share link locked to Germany ──
         // The recipient cannot pick a country, and neither kind of tile lets them ask for one.
-        const share = await page.evaluate(async () => {
-          const resp = await fetch('/api/embed/share-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              reportId: 'g-cube-country-sales',
-              lockedParams: { country: 'Germany' },
-            }),
-          });
-          return { status: resp.status, body: await resp.json() };
+        const share = await Helpers.sessionFetch(page, '/api/embed/share-link', {
+          body: {
+            reportId: 'g-cube-country-sales',
+            lockedParams: { country: 'Germany' },
+          },
         });
         expect(share.status, 'locking a declared parameter to a value it has').toBe(200);
 

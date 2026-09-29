@@ -18,6 +18,7 @@
 
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { withCsrfHeader } from '../shared/session-request';
 
   // ============================================================================
   // Two usage modes:
@@ -122,7 +123,9 @@
     // and unlocks one report. It works for report mode only — direct mode (connection-id +
     // table-name) goes through run-sql, which stays an authoring capability.
     if (embedToken) h['X-Embed-Token'] = embedToken;
-    return h;
+    // Otherwise this is the browser's own session asking, and run-sql is a write: it carries the
+    // CSRF token the server issued, through the one helper every component writes through (D4).
+    return withCsrfHeader(h);
   }
 
   // Read attributes from host element (web component mode)

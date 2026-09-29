@@ -4,6 +4,7 @@
  */
 
 import type { PivotEngine } from './pivot-types';
+import { withCsrfHeader } from '../../shared/session-request';
 
 // Server-side request/response types matching Java DTOs
 export interface ServerPivotRequest {
@@ -91,10 +92,12 @@ export class PivotApiClient {
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
+        // A pivot is a POST, so on the browser's own session it carries the CSRF token the
+        // server issued - the same helper every other component writes through (D4).
+        headers: withCsrfHeader({
           'Content-Type': 'application/json',
           ...(embedToken ? { 'X-Embed-Token': embedToken } : {}),
-        },
+        }),
         body: JSON.stringify(request),
         signal: abortController.signal,
       });
