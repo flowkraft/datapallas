@@ -10,24 +10,24 @@
   },
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
-    "team": "All",
+    "team": "",
     "dateFrom": "2025-10-01",
     "dateTo": "2026-09-30"
   },
   "kpis": [
     {
       "widget": "trend-csat",
-      "label": "CSAT",
+      "label": "CSAT in the last month of the window",
       "format": "number",
-      "value": 3.99,
-      "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+      "value": 4.0,
+      "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND date_trunc('month', t.opened_ts) = date_trunc('month', DATE '2026-09-30')"
     },
     {
       "widget": "progress-team-sla",
-      "label": "Team SLA %",
+      "label": "Team SLA against its target",
       "format": "percent",
-      "value": 90.91,
-      "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+      "value": 101.01,
+      "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*) / (SELECT k.target FROM dash_demo.kpi_targets k WHERE k.area = 'Support' AND k.kpi = 'sla_met') * 100.0, 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
     },
     {
       "widget": "kpi-reopened",
@@ -37,18 +37,27 @@
       "sql": "SELECT round(100.0 * count(CASE WHEN t.reopened THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
     },
     {
-      "widget": "chart-csat-by-channel-best",
-      "label": "Best CSAT channel",
+      "widget": "chart-csat-by-channel",
+      "label": "Best CSAT channel: the tallest bar",
       "format": "text",
       "value": "chat",
-      "sql": "SELECT t.channel FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY 1 ORDER BY avg(t.csat_score) DESC LIMIT 1"
+      "sql": "SELECT t.channel FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY GROUP BY 1 ORDER BY avg(t.csat_score) DESC LIMIT 1",
+      "column": "AvgCsat",
+      "reading": "argmax",
+      "labels": [
+        "Channel"
+      ]
     },
     {
-      "widget": "chart-csat-by-channel-chat",
-      "label": "Chat CSAT, all tickets",
+      "widget": "chart-csat-by-channel",
+      "label": "Chat CSAT in the window",
       "format": "number",
-      "value": 4.41,
-      "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE t.channel = 'chat'"
+      "value": 4.4,
+      "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.channel = 'chat'",
+      "column": "AvgCsat",
+      "row": {
+        "Channel": "chat"
+      }
     }
   ],
   "interactions": [
@@ -65,17 +74,17 @@
       "kpis": [
         {
           "widget": "trend-csat",
-          "label": "CSAT",
+          "label": "CSAT in the last month of the window",
           "format": "number",
-          "value": 3.98,
-          "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical')"
+          "value": 4.11,
+          "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical') AND date_trunc('month', t.opened_ts) = date_trunc('month', DATE '2026-09-30')"
         },
         {
           "widget": "progress-team-sla",
-          "label": "Team SLA %",
+          "label": "Team SLA against its target",
           "format": "percent",
-          "value": 91.5,
-          "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical')"
+          "value": 101.67,
+          "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*) / (SELECT k.target FROM dash_demo.kpi_targets k WHERE k.area = 'Support' AND k.kpi = 'sla_met') * 100.0, 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical')"
         },
         {
           "widget": "kpi-reopened",
@@ -85,18 +94,27 @@
           "sql": "SELECT round(100.0 * count(CASE WHEN t.reopened THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical')"
         },
         {
-          "widget": "chart-csat-by-channel-best",
-          "label": "Best CSAT channel",
+          "widget": "chart-csat-by-channel",
+          "label": "Best CSAT channel: the tallest bar",
           "format": "text",
           "value": "chat",
-          "sql": "SELECT t.channel FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical') GROUP BY 1 ORDER BY avg(t.csat_score) DESC LIMIT 1"
+          "sql": "SELECT t.channel FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical') GROUP BY 1 ORDER BY avg(t.csat_score) DESC LIMIT 1",
+          "column": "AvgCsat",
+          "reading": "argmax",
+          "labels": [
+            "Channel"
+          ]
         },
         {
-          "widget": "chart-csat-by-channel-chat",
-          "label": "Chat CSAT, all tickets",
+          "widget": "chart-csat-by-channel",
+          "label": "Chat CSAT in the window",
           "format": "number",
-          "value": 4.41,
-          "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE t.channel = 'chat'"
+          "value": 4.39,
+          "sql": "SELECT round(avg(t.csat_score), 2) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-10-01' AND t.opened_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Technical') AND t.channel = 'chat'",
+          "column": "AvgCsat",
+          "row": {
+            "Channel": "chat"
+          }
         }
       ]
     }

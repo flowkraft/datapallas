@@ -1,0 +1,8 @@
+{
+  "progress_dd01-kpi-revenue-vs-target" : {
+    "field" : "pct_of_target",
+    "goal" : 1,
+    "label" : "Revenue vs annual target",
+    "format" : "percent"
+  }
+}

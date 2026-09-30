@@ -1,0 +1,584 @@
+<meta charset="utf-8">
+<div class="rb-dashboard-demos-root">
+  <style>
+    .rb-dashboard-demos-root {
+      all: initial;
+      /* `all: initial` resets every inherited property, and color-scheme is one of them: the
+         colours below put the page back, but the browser was left painting NATIVE controls on
+         the light canvas. Every card here holds a filter bar with <select>s of its own, so the
+         scheme follows the page again -- the page's, whichever it is, never a colour named here. */
+      color-scheme: inherit;
+      display: block;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      box-sizing: border-box;
+      color: var(--color-base-content, #1e293b);
+      background: var(--color-base-200, #f8fafc);
+      padding: 24px;
+    }
+    .rb-dashboard-demos-root *, .rb-dashboard-demos-root *::before, .rb-dashboard-demos-root *::after {
+      box-sizing: inherit;
+    }
+
+    .rb-dashboard-demos-root {
+      --accent: var(--color-primary, #4e79a7);
+      --accent-dark: var(--color-primary, #2c5282);
+      --surface: var(--color-base-100, #ffffff);
+      --border: var(--color-base-300, #e2e8f0);
+      --text-primary: var(--color-base-content, #0f172a);
+      --text-secondary: var(--color-base-content, #475569);
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --radius: 10px;
+    }
+
+    .rb-dashboard-demos-root .dash-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--accent);
+    }
+    .rb-dashboard-demos-root .dash-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+      margin: 0;
+    }
+    .rb-dashboard-demos-root .dash-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 4px 0 0 0;
+      font-weight: 400;
+    }
+
+    .rb-dashboard-demos-root .info-bar {
+      background: var(--color-base-200, #f0f4f8);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .rb-dashboard-demos-root .info-bar strong {
+      color: var(--text-primary);
+    }
+    .rb-dashboard-demos-root .info-bar a {
+      color: var(--accent-dark);
+      text-decoration: underline;
+    }
+
+    /* The contents list: the eight areas, with their dashboards under them. A page this long is
+       read by jumping, so the links are the first thing under the info bar. */
+    .rb-dashboard-demos-root .contents {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      font-size: 13px;
+    }
+    .rb-dashboard-demos-root .contents-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 8px 0;
+    }
+    .rb-dashboard-demos-root .contents ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rb-dashboard-demos-root .contents > ul > li {
+      margin-bottom: 8px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .rb-dashboard-demos-root .contents ul ul {
+      margin: 4px 0 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 14px;
+      font-weight: 400;
+    }
+    .rb-dashboard-demos-root .contents a {
+      color: var(--accent-dark);
+      text-decoration: none;
+    }
+    .rb-dashboard-demos-root .contents a:hover {
+      text-decoration: underline;
+    }
+
+    /* One heading per area, above that area's cards. */
+    .rb-dashboard-demos-root .area-heading {
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent-dark);
+      margin: 32px 0 12px 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* One card per dashboard: what it answers, the dashboard itself, and how it was built. */
+    .rb-dashboard-demos-root .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .rb-dashboard-demos-root .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    .rb-dashboard-demos-root .card-area {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 4px 0;
+    }
+    .rb-dashboard-demos-root .card-description {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 4px 0 0 0;
+    }
+    .rb-dashboard-demos-root .card-grain {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 8px 0 16px 0;
+      padding: 6px 10px;
+      background: var(--color-base-200, #f0f4f8);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 6px 6px 0;
+    }
+    .rb-dashboard-demos-root .card-grain strong {
+      color: var(--text-primary);
+    }
+    .rb-dashboard-demos-root .card-links {
+      font-size: 13px;
+      margin: 0 0 12px 0;
+    }
+    .rb-dashboard-demos-root .card-links a {
+      color: var(--accent-dark);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .rb-dashboard-demos-root .card-links a:hover {
+      text-decoration: underline;
+    }
+    /* The card keeps the dashboard's own height while it is still on its way, so the page does
+       not jump under the reader as the dashboards arrive one by one. */
+    .rb-dashboard-demos-root .card-dashboard {
+      margin: 0 0 12px 0;
+    }
+  </style>
+
+  <!-- Header -->
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title">Dashboard Demos</h1>
+      <p class="dash-subtitle">One company, every department: 25 dashboards built in the Data Canvas</p>
+    </div>
+  </div>
+
+  <!-- What this page is -->
+  <div class="info-bar">
+    <strong>Twenty-five dashboards of one company, live.</strong> Each card below is a whole
+    dashboard, built in the Data Canvas and published like any of your own &mdash; the filters are
+    live, so change one and the tiles answer again. Above each dashboard&rsquo;s filter bar are the
+    questions it was built to answer: click <strong>Show Me</strong> and the filters it needs are
+    set for you, and <strong>Reset</strong> puts the dashboard back. Every card also says
+    <strong>how it was built</strong>, step by step, in the Canvas.
+    <a href="https://datapallas.com/docs/dashboard-demos" target="_blank">Read more &rarr;</a>
+  </div>
+
+  <!-- On this page: the eight areas and their dashboards, generated from the index. -->
+  <nav class="contents">
+    <p class="contents-title">On this page</p>
+    <ul>
+    <!-- BEGIN contents: generated from config/samples/dashboard-demos.json. Do not edit by hand. -->
+      <li><a href="#area-a">A &middot; The company at a glance</a>
+        <ul>
+          <li><a href="#dd-executive-overview">Executive Overview</a></li>
+        </ul>
+      </li>
+      <li><a href="#area-b">B &middot; Sales</a>
+        <ul>
+          <li><a href="#dd-sales-overview">Sales Overview</a></li>
+          <li><a href="#dd-sales-by-country">Sales by Country</a></li>
+          <li><a href="#dd-sales-channels">Sales Channels</a></li>
+          <li><a href="#dd-product-performance">Product Performance</a></li>
+          <li><a href="#dd-seasonality">Seasonality &amp; Peak Times</a></li>
+          <li><a href="#dd-sales-pipeline">Sales Pipeline</a></li>
+          <li><a href="#dd-targets-vs-actual">Targets vs Actual</a></li>
+        </ul>
+      </li>
+      <li><a href="#area-c">C &middot; Customers</a>
+        <ul>
+          <li><a href="#dd-customer-growth">Customer Base &amp; Growth</a></li>
+          <li><a href="#dd-cohort-retention">Cohort Retention</a></li>
+          <li><a href="#dd-customer-360">Customer 360</a></li>
+        </ul>
+      </li>
+      <li><a href="#area-d">D &middot; Digital</a>
+        <ul>
+          <li><a href="#dd-web-funnel">Website Traffic &amp; Conversion</a></li>
+        </ul>
+      </li>
+      <li><a href="#area-e">E &middot; Finance</a>
+        <ul>
+          <li><a href="#dd-invoices">Invoices &amp; Billing</a></li>
+          <li><a href="#dd-receivables-aging">Receivables Aging &amp; Collections</a></li>
+          <li><a href="#dd-subscriptions-mrr">Subscriptions: MRR &amp; Churn</a></li>
+          <li><a href="#dd-profit-margin">Profit &amp; Margin</a></li>
+        </ul>
+      </li>
+      <li><a href="#area-f">F &middot; People</a>
+        <ul>
+          <li><a href="#dd-payroll">Payroll Cost</a></li>
+          <li><a href="#dd-headcount">Headcount &amp; Attrition</a></li>
+        </ul>
+      </li>
+      <li><a href="#area-g">G &middot; Operations</a>
+        <ul>
+          <li><a href="#dd-inventory">Inventory &amp; Stock Health</a></li>
+          <li><a href="#dd-fulfillment">Fulfillment &amp; Delivery</a></li>
+          <li><a href="#dd-support-operations">Support Operations</a></li>
+          <li><a href="#dd-support-quality">Support Quality &amp; Agents</a></li>
+        </ul>
+      </li>
+      <li><a href="#area-h">H &middot; The analyst's toolkit</a>
+        <ul>
+          <li><a href="#dd-table-profile">Table Profile</a></li>
+          <li><a href="#dd-metric-deep-dive">One Metric, Every Angle</a></li>
+          <li><a href="#dd-segment-vs-all">Segment vs Everyone</a></li>
+        </ul>
+      </li>
+    <!-- END contents -->
+    </ul>
+  </nav>
+
+  <!-- BEGIN cards: generated from config/samples/dashboard-demos.json. Do not edit by hand. -->
+  <h2 class="area-heading" id="area-a">A &middot; The company at a glance</h2>
+
+  <div class="card" id="dd-executive-overview">
+    <p class="card-area" id="dd-executive-overview-area">A &middot; The company at a glance</p>
+    <h3 class="card-title">Executive Overview</h3>
+    <p class="card-description">Which area needs attention this week?</p>
+    <p class="card-grain"><strong>Who:</strong> The CEO, every Monday. &middot; <strong>Decision:</strong> Which area needs attention this week. &middot; <strong>Finding:</strong> Revenue is up about 18% on the same nine months last year, and everything is on target except APAC sales and receivables.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-executive-overview" href="/dashboard/g-dd-executive-overview">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1360px">
+      <rb-dashboard report-id="g-dd-executive-overview" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-executive-overview" href="https://datapallas.com/docs/dashboard-demos/dd-executive-overview" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+  <h2 class="area-heading" id="area-b">B &middot; Sales</h2>
+
+  <div class="card" id="dd-sales-overview">
+    <p class="card-area" id="dd-sales-overview-area">B &middot; Sales</p>
+    <h3 class="card-title">Sales Overview</h3>
+    <p class="card-description">Is sales on its growth path, and what carries it?</p>
+    <p class="card-grain"><strong>Who:</strong> The head of sales, Monday morning. &middot; <strong>Decision:</strong> Is sales on its growth path, and which categories, channels, countries and products carry it. &middot; <strong>Finding:</strong> Every month this year except August runs above the same month a year earlier, most of them by about a quarter; Smart Home, the newest category, has already all but caught Office Furniture for third place.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-sales-overview" href="/dashboard/g-dd-sales-overview">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1520px">
+      <rb-dashboard report-id="g-dd-sales-overview" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-sales-overview" href="https://datapallas.com/docs/dashboard-demos/dd-sales-overview" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-sales-by-country">
+    <p class="card-area" id="dd-sales-by-country-area">B &middot; Sales</p>
+    <h3 class="card-title">Sales by Country</h3>
+    <p class="card-description">Where should we invest next?</p>
+    <p class="card-grain"><strong>Who:</strong> The country managers. &middot; <strong>Decision:</strong> Where to invest next: which markets carry the revenue, which carry the big orders, and which grow. &middot; <strong>Finding:</strong> Germany is the largest market, Canada grows fastest (about +49%), and Japan has the largest orders.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-sales-by-country" href="/dashboard/g-dd-sales-by-country">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1440px">
+      <rb-dashboard report-id="g-dd-sales-by-country" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-sales-by-country" href="https://datapallas.com/docs/dashboard-demos/dd-sales-by-country" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-sales-channels">
+    <p class="card-area" id="dd-sales-channels-area">B &middot; Sales</p>
+    <h3 class="card-title">Sales Channels</h3>
+    <p class="card-description">Which channel gets the next euro of effort?</p>
+    <p class="card-grain"><strong>Who:</strong> The e-commerce and trade sales leads, deciding the next year's channel budget. &middot; <strong>Decision:</strong> Which channel gets the next euro of effort: marketplace fees, the app, the web shop or the reps. &middot; <strong>Finding:</strong> The mobile app has grown from about 14% to about 28% of orders since 2024 while the marketplace has shrunk from 19% to 12%. Marketplace orders come back about twice as often as web orders (10.7% against 5.6%), and Smart Home sells mostly through the app.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-sales-channels" href="/dashboard/g-dd-sales-channels">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1360px">
+      <rb-dashboard report-id="g-dd-sales-channels" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-sales-channels" href="https://datapallas.com/docs/dashboard-demos/dd-sales-channels" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-product-performance">
+    <p class="card-area" id="dd-product-performance-area">B &middot; Sales</p>
+    <h3 class="card-title">Product Performance</h3>
+    <p class="card-description">Which products should we push, fix or delist?</p>
+    <p class="card-grain"><strong>Who:</strong> The category manager. &middot; <strong>Decision:</strong> Which products to push, which to fix and which to delist. &middot; <strong>Finding:</strong> Products rated under 3.5 stars sell about 40% fewer units per product; the AeroDesk Pro standing desk (3.2 stars) has a 17.5% return rate since April 2026.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-product-performance" href="/dashboard/g-dd-product-performance">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1360px">
+      <rb-dashboard report-id="g-dd-product-performance" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-product-performance" href="https://datapallas.com/docs/dashboard-demos/dd-product-performance" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-seasonality">
+    <p class="card-area" id="dd-seasonality-area">B &middot; Sales</p>
+    <h3 class="card-title">Seasonality &amp; Peak Times</h3>
+    <p class="card-description">When do we staff up, and when do we run campaigns?</p>
+    <p class="card-grain"><strong>Who:</strong> The operations planner and marketing. &middot; <strong>Decision:</strong> When to staff up and when to run campaigns. &middot; <strong>Finding:</strong> Orders peak on Monday evenings, 19:00-21:00, with Monday 20:00 the busiest hour of the week, while sales-rep orders peak on Monday at 13:00. November is about 2.3 times an average month and the Black Friday days run about 4 times an average day; the 25th to the 27th of any month bring about 25% more orders than an average day, and August runs a third below an average month.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-seasonality" href="/dashboard/g-dd-seasonality">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1360px">
+      <rb-dashboard report-id="g-dd-seasonality" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-seasonality" href="https://datapallas.com/docs/dashboard-demos/dd-seasonality" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-sales-pipeline">
+    <p class="card-area" id="dd-sales-pipeline-area">B &middot; Sales</p>
+    <h3 class="card-title">Sales Pipeline</h3>
+    <p class="card-description">Will we make this quarter, and is next quarter safe?</p>
+    <p class="card-grain"><strong>Who:</strong> The sales director, every week. &middot; <strong>Decision:</strong> Will we make this quarter, is next quarter safe, and which deals and sources need attention. &middot; <strong>Finding:</strong> Referral deals win about twice as often as paid-search deals (51% against 25%), and next quarter's pipeline covers 2.1 times its quota.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-sales-pipeline" href="/dashboard/g-dd-sales-pipeline">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1280px">
+      <rb-dashboard report-id="g-dd-sales-pipeline" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-sales-pipeline" href="https://datapallas.com/docs/dashboard-demos/dd-sales-pipeline" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-targets-vs-actual">
+    <p class="card-area" id="dd-targets-vs-actual-area">B &middot; Sales</p>
+    <h3 class="card-title">Targets vs Actual</h3>
+    <p class="card-description">Which region is behind plan, and since when?</p>
+    <p class="card-grain"><strong>Who:</strong> The CFO and the regional directors, at month end. &middot; <strong>Decision:</strong> Which region is behind plan, and since when. &middot; <strong>Finding:</strong> EMEA is at 103% of target and APAC at 85%, with NA and LATAM on plan.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-targets-vs-actual" href="/dashboard/g-dd-targets-vs-actual">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1120px">
+      <rb-dashboard report-id="g-dd-targets-vs-actual" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-targets-vs-actual" href="https://datapallas.com/docs/dashboard-demos/dd-targets-vs-actual" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+  <h2 class="area-heading" id="area-c">C &middot; Customers</h2>
+
+  <div class="card" id="dd-customer-growth">
+    <p class="card-area" id="dd-customer-growth-area">C &middot; Customers</p>
+    <h3 class="card-title">Customer Base &amp; Growth</h3>
+    <p class="card-description">Which acquisition channels to fund, and do new customers come back?</p>
+    <p class="card-grain"><strong>Who:</strong> The marketing lead. &middot; <strong>Decision:</strong> Which acquisition channels to fund, and whether new customers come back. &middot; <strong>Finding:</strong> Referral signups more than doubled after the loyalty programme of March 2025, from about 13 a month to about 29.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-customer-growth" href="/dashboard/g-dd-customer-growth">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1600px">
+      <rb-dashboard report-id="g-dd-customer-growth" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-customer-growth" href="https://datapallas.com/docs/dashboard-demos/dd-customer-growth" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-cohort-retention">
+    <p class="card-area" id="dd-cohort-retention-area">C &middot; Customers</p>
+    <h3 class="card-title">Cohort Retention</h3>
+    <p class="card-description">Did what we changed make customers stay longer?</p>
+    <p class="card-grain"><strong>Who:</strong> The CFO and the growth team, every quarter. &middot; <strong>Decision:</strong> Did what we changed make customers stay longer. &middot; <strong>Finding:</strong> Cohorts from March 2025 still have 48% of their customers ordering around month 6, about 7 points more than the cohorts before it.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-cohort-retention" href="/dashboard/g-dd-cohort-retention">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1120px">
+      <rb-dashboard report-id="g-dd-cohort-retention" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-cohort-retention" href="https://datapallas.com/docs/dashboard-demos/dd-cohort-retention" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-customer-360">
+    <p class="card-area" id="dd-customer-360-area">C &middot; Customers</p>
+    <h3 class="card-title">Customer 360</h3>
+    <p class="card-description">What should I raise on this call?</p>
+    <p class="card-grain"><strong>Who:</strong> An account manager, before a call. &middot; <strong>Decision:</strong> What to raise on the call: the money owed, the open issues, what they buy. &middot; <strong>Finding:</strong> Helix Retail Group has bought 1.6M over 31 months and pays on time 136 times out of 140 - but four invoices are overdue, the oldest of them 985 days past due.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-customer-360" href="/dashboard/g-dd-customer-360">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1280px">
+      <rb-dashboard report-id="g-dd-customer-360" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-customer-360" href="https://datapallas.com/docs/dashboard-demos/dd-customer-360" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+  <h2 class="area-heading" id="area-d">D &middot; Digital</h2>
+
+  <div class="card" id="dd-web-funnel">
+    <p class="card-area" id="dd-web-funnel-area">D &middot; Digital</p>
+    <h3 class="card-title">Website Traffic &amp; Conversion</h3>
+    <p class="card-description">Is the site converting, where do visitors drop, and which sources pay back?</p>
+    <p class="card-grain"><strong>Who:</strong> The digital marketing lead, daily. &middot; <strong>Decision:</strong> Is the site converting, where do visitors drop, and which traffic sources pay back. &middot; <strong>Finding:</strong> Mobile checkout to purchase fell from about 62% to 41% in June 2026 - a checkout bug - and was back at 62% in August; email visitors convert at 6.1%, about twice paid social's 2.7%.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-web-funnel" href="/dashboard/g-dd-web-funnel">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1600px">
+      <rb-dashboard report-id="g-dd-web-funnel" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-web-funnel" href="https://datapallas.com/docs/dashboard-demos/dd-web-funnel" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+  <h2 class="area-heading" id="area-e">E &middot; Finance</h2>
+
+  <div class="card" id="dd-invoices">
+    <p class="card-area" id="dd-invoices-area">E &middot; Finance</p>
+    <h3 class="card-title">Invoices &amp; Billing</h3>
+    <p class="card-description">Is this month's billing complete and collected, and what is still open?</p>
+    <p class="card-grain"><strong>Who:</strong> The accountant, at month end. &middot; <strong>Decision:</strong> Is this month's billing complete and collected, and what is still open. &middot; <strong>Finding:</strong> September billing is 1,098,189.32 - 98.9% of it from trade orders and 1.1% from Care plans - against 827,603.01 collected; 12.3% of the 1,637,606.29 still open is overdue.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-invoices" href="/dashboard/g-dd-invoices">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1120px">
+      <rb-dashboard report-id="g-dd-invoices" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-invoices" href="https://datapallas.com/docs/dashboard-demos/dd-invoices" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-receivables-aging">
+    <p class="card-area" id="dd-receivables-aging-area">E &middot; Finance</p>
+    <h3 class="card-title">Receivables Aging &amp; Collections</h3>
+    <p class="card-description">Whom do I call today, and is collection getting worse?</p>
+    <p class="card-grain"><strong>Who:</strong> The credit controller, daily. &middot; <strong>Decision:</strong> Whom to call today, and whether collection is getting worse. &middot; <strong>Finding:</strong> Helix Retail Group owes 170,829.65 past 90 days - four invoices, and the whole of the 90+ bucket; DSO averages 50.3 days over 2026 against 43.4 in 2025.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-receivables-aging" href="/dashboard/g-dd-receivables-aging">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1200px">
+      <rb-dashboard report-id="g-dd-receivables-aging" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-receivables-aging" href="https://datapallas.com/docs/dashboard-demos/dd-receivables-aging" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-subscriptions-mrr">
+    <p class="card-area" id="dd-subscriptions-mrr-area">E &middot; Finance</p>
+    <h3 class="card-title">Subscriptions: MRR &amp; Churn</h3>
+    <p class="card-description">Is recurring revenue growing, and is churn under control after the price change?</p>
+    <p class="card-grain"><strong>Who:</strong> The head of subscriptions, monthly. &middot; <strong>Decision:</strong> Whether recurring revenue is growing, and whether churn is under control after the price change. &middot; <strong>Finding:</strong> February 2026 was the worst month of the year for retention - every cohort kept less of itself, and price is the reason 86 subscribers gave when they left - yet MRR is at a new high of 99,781.43, with 8,102.58 of it won back by expansion over the last 12 months.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-subscriptions-mrr" href="/dashboard/g-dd-subscriptions-mrr">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1280px">
+      <rb-dashboard report-id="g-dd-subscriptions-mrr" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-subscriptions-mrr" href="https://datapallas.com/docs/dashboard-demos/dd-subscriptions-mrr" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-profit-margin">
+    <p class="card-area" id="dd-profit-margin-area">E &middot; Finance</p>
+    <h3 class="card-title">Profit &amp; Margin</h3>
+    <p class="card-description">Is discounting worth what it costs in margin?</p>
+    <p class="card-grain"><strong>Who:</strong> The CFO, quarterly board pack. &middot; <strong>Decision:</strong> Whether discounting is worth what it costs in margin. &middot; <strong>Finding:</strong> Q4 discounting costs about six points of margin every year: the discount rate runs near 6% for three quarters and 14.5% in Q4, and margin falls from 33.49% to 27.94% in 2024 and from 35.35% to 29.03% in 2025 - every category gives ground, Laptops most of all.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-profit-margin" href="/dashboard/g-dd-profit-margin">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1200px">
+      <rb-dashboard report-id="g-dd-profit-margin" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-profit-margin" href="https://datapallas.com/docs/dashboard-demos/dd-profit-margin" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+  <h2 class="area-heading" id="area-f">F &middot; People</h2>
+
+  <div class="card" id="dd-payroll">
+    <p class="card-area" id="dd-payroll-area">F &middot; People</p>
+    <h3 class="card-title">Payroll Cost</h3>
+    <p class="card-description">Is payroll growing because of more people or higher pay, and where does overtime cost money?</p>
+    <p class="card-grain"><strong>Who:</strong> The HR and finance controller, monthly. &middot; <strong>Decision:</strong> Whether payroll is growing because of more people or higher pay, and where overtime costs money. &middot; <strong>Finding:</strong> Payroll grew because Engineering hired: 20 engineers joined in 2025 against 4 who left, 40 people became 56, and of the 17,000.63 a month the department costs more than a year ago, 23,530.06 is the extra people and -6,529.43 is pay - the new engineers came in below its average. Overtime is the other pressure and it is the warehouse's: about 180 hours a month, then 539.9 in November 2025 and 531.3 in December, 2.98 times the rest of the year.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-payroll" href="/dashboard/g-dd-payroll">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1120px">
+      <rb-dashboard report-id="g-dd-payroll" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-payroll" href="https://datapallas.com/docs/dashboard-demos/dd-payroll" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-headcount">
+    <p class="card-area" id="dd-headcount-area">F &middot; People</p>
+    <h3 class="card-title">Headcount &amp; Attrition</h3>
+    <p class="card-description">Where do people leave, and what would have to change to keep them?</p>
+    <p class="card-grain"><strong>Who:</strong> The HR director, quarterly. &middot; <strong>Decision:</strong> Where people leave, and what to change to keep them. &middot; <strong>Finding:</strong> Customer Support is where people leave: 17.5% a year against 9.64% for the company over the 33 months, 12 leavers from a team that averaged 25 people, and the shortest median tenure of any department at 3.1 years - 8 of its 26 people have been there under a year. Pay is the likely reason: at L1, where 10 of those 26 sit, it pays 81.7% of what everyone else at that level is paid, a median of 27,891 against 32,270; pooled over L1 to L3 it is 92.02%.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-headcount" href="/dashboard/g-dd-headcount">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1120px">
+      <rb-dashboard report-id="g-dd-headcount" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-headcount" href="https://datapallas.com/docs/dashboard-demos/dd-headcount" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+  <h2 class="area-heading" id="area-g">G &middot; Operations</h2>
+
+  <div class="card" id="dd-inventory">
+    <p class="card-area" id="dd-inventory-area">G &middot; Operations</p>
+    <h3 class="card-title">Inventory &amp; Stock Health</h3>
+    <p class="card-description">What do we reorder today, where does it fit, and what stock should we clear?</p>
+    <p class="card-grain"><strong>Who:</strong> The purchasing manager, daily. &middot; <strong>Decision:</strong> What to reorder today, where it fits, and what stock to clear. &middot; <strong>Finding:</strong> 14 SKUs are below their reorder level, 4 of them in Rotterdam, and Rotterdam is the warehouse with no room left: 94% of capacity against 71% in Frankfurt and 52% in Sao Paulo. 62,110.83 sits in 9 slow movers that have not sold in 90 days, none of them worth more than 6,979.31 on its own, and every one of them is in a different building - so the money to free is spread thin while the space problem is in one place.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-inventory" href="/dashboard/g-dd-inventory">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1200px">
+      <rb-dashboard report-id="g-dd-inventory" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-inventory" href="https://datapallas.com/docs/dashboard-demos/dd-inventory" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-fulfillment">
+    <p class="card-area" id="dd-fulfillment-area">G &middot; Operations</p>
+    <h3 class="card-title">Fulfillment &amp; Delivery</h3>
+    <p class="card-description">Is lateness a carrier problem or a country problem, and which orders do we chase?</p>
+    <p class="card-grain"><strong>Who:</strong> The logistics manager, daily and at the carrier review. &middot; <strong>Decision:</strong> Whether lateness is a carrier problem or a country problem, and which orders to chase. &middot; <strong>Finding:</strong> Lateness is a carrier, not a country: SwiftPost is late 12.3% of the time against 4.28% for the other two over every delivery on the books - 12.38% against 4.25% and 3.05% in the last 90 days - and it is the worse carrier in all 18 countries where it delivers at least 60 parcels a year, from 7.56% in the Netherlands to 20% in Sweden. When it is late the parcel arrives 3.51 days late, against about a day and a half for the others, which is why its delivery-days box has the long tail.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-fulfillment" href="/dashboard/g-dd-fulfillment">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1200px">
+      <rb-dashboard report-id="g-dd-fulfillment" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-fulfillment" href="https://datapallas.com/docs/dashboard-demos/dd-fulfillment" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-support-operations">
+    <p class="card-area" id="dd-support-operations-area">G &middot; Operations</p>
+    <h3 class="card-title">Support Operations</h3>
+    <p class="card-description">Who works when, and which tickets do we pick up today?</p>
+    <p class="card-grain"><strong>Who:</strong> The support lead, at the daily stand-up. &middot; <strong>Decision:</strong> Who works when, and which tickets get picked up today. &middot; <strong>Finding:</strong> Mondays 09:00-11:00 are the peak - 1,059 tickets in those three cells against 83.33 for an average hour of the week - and urgent SLA breaches spiked in June 2026 with the checkout bug: 26.32% of that month's urgent tickets breached against 8.64% in every other month, 3.05 times the rate. The queue itself is small and slightly growing: 127 open, of which 40 are urgent or high and the oldest has been waiting 45 days, and over the 142 full weeks 13,868 tickets came in against 13,770 resolved.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-support-operations" href="/dashboard/g-dd-support-operations">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1680px">
+      <rb-dashboard report-id="g-dd-support-operations" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-support-operations" href="https://datapallas.com/docs/dashboard-demos/dd-support-operations" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-support-quality">
+    <p class="card-area" id="dd-support-quality-area">G &middot; Operations</p>
+    <h3 class="card-title">Support Quality &amp; Agents</h3>
+    <p class="card-description">Which channel should we steer customers to, and which agents need coaching?</p>
+    <p class="card-grain"><strong>Who:</strong> The head of support, at the monthly review. &middot; <strong>Decision:</strong> Which channel to steer customers to, and which agents to coach. &middot; <strong>Finding:</strong> Chat leaves people happiest and no faster: CSAT 4.4 on chat against 4.07 on the phone, 3.83 by email and 3.67 on the web form, while a ticket takes 60 to 63 hours to resolve whichever channel it arrives on - chat's median, 62.63 hours, is the longest of the four against the web form's 60.28. So chat buys satisfaction, not speed. Every team clears the 90% SLA target, from 90.5% in Billing to 91.5% in Technical, and the 32 agents sit between 3.86 and 4.13 CSAT, so there is no one to single out for coaching.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-support-quality" href="/dashboard/g-dd-support-quality">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1280px">
+      <rb-dashboard report-id="g-dd-support-quality" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-support-quality" href="https://datapallas.com/docs/dashboard-demos/dd-support-quality" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+  <h2 class="area-heading" id="area-h">H &middot; The analyst's toolkit</h2>
+
+  <div class="card" id="dd-table-profile">
+    <p class="card-area" id="dd-table-profile-area">H &middot; The analyst's toolkit</p>
+    <h3 class="card-title">Table Profile</h3>
+    <p class="card-description">Can I trust this table, and which of its columns can I use?</p>
+    <p class="card-grain"><strong>Who:</strong> The analyst meeting a new table. &middot; <strong>Decision:</strong> Whether the table can be trusted, and which columns can be used. &middot; <strong>Finding:</strong> Pick any table and you know it in half a minute: support_tickets holds 14,000 rows over 15 columns, 476 of them opened in the last 30 days, and 4 columns have gaps - order_id is empty on 52.64% of tickets, because a ticket need not be about an order, and csat_score on 58.33%, because most people never answer the survey. Its priority column is 51.56% normal and 8.21% urgent. Point the same page at orders.total_amount and the chart turns into twenty ranges over 23,162 distinct amounts, 20,782 orders inside the first one.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-table-profile" href="/dashboard/g-dd-table-profile">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1280px">
+      <rb-dashboard report-id="g-dd-table-profile" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-table-profile" href="https://datapallas.com/docs/dashboard-demos/dd-table-profile" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-metric-deep-dive">
+    <p class="card-area" id="dd-metric-deep-dive-area">H &middot; The analyst's toolkit</p>
+    <h3 class="card-title">One Metric, Every Angle</h3>
+    <p class="card-description">Is each of the company's five metrics where it should be, and what drives it?</p>
+    <p class="card-grain"><strong>Who:</strong> The COO, at the monthly business review, walking through the five metrics one at a time. &middot; <strong>Decision:</strong> Whether each metric is where it should be, and what drives it. &middot; <strong>Finding:</strong> Revenue is 17.5% up on the same span of last year and orders 27.55% up, while tickets grow 10.32% - support scales with the business rather than with the order book. Orders growing faster than revenue is the other half of that sentence: the average order is smaller than it was. November is the biggest month of the year for both, 8,273,224.34 and 3,165 orders against a May second place of 5,920,290.39, while payroll peaks in March and new customers in September. Germany leads all five metrics, revenue 3,651,821.21 of the 18,326,301.98 year to date.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-metric-deep-dive" href="/dashboard/g-dd-metric-deep-dive">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1200px">
+      <rb-dashboard report-id="g-dd-metric-deep-dive" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-metric-deep-dive" href="https://datapallas.com/docs/dashboard-demos/dd-metric-deep-dive" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <div class="card" id="dd-segment-vs-all">
+    <p class="card-area" id="dd-segment-vs-all-area">H &middot; The analyst's toolkit</p>
+    <h3 class="card-title">Segment vs Everyone</h3>
+    <p class="card-description">Is my country different from the company as a whole, and where?</p>
+    <p class="card-grain"><strong>Who:</strong> A country manager: &quot;is my country different?&quot; &middot; <strong>Decision:</strong> What to do differently in my market: assortment, channel, price. &middot; <strong>Finding:</strong> Poland is a smaller basket and a faster market: 1,944.91 an order against 2,756.55 everywhere, returns no different at 5.93% against 5.97%, but quarterly revenue at 208.67 against the company's 139.44 since the start of 2024. It buys more Smart Home, 12.2% of its revenue against 10.58%, and a little more on the app, 21.37% of its orders against 20.55% - the assortment difference is real, the channel difference is under a point.</p>
+    <p class="card-links"><a id="lnkOpenAlone-dd-segment-vs-all" href="/dashboard/g-dd-segment-vs-all">Open on its own &rarr;</a></p>
+    <div class="card-dashboard" style="min-height: 1200px">
+      <rb-dashboard report-id="g-dd-segment-vs-all" api-base-url="/api" lazy show-stories></rb-dashboard>
+    </div>
+    <p class="card-links"><a id="lnkHowBuilt-dd-segment-vs-all" href="https://datapallas.com/docs/dashboard-demos/dd-segment-vs-all" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+  </div>
+
+  <!-- END cards -->
+</div>

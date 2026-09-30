@@ -1,0 +1,268 @@
+{
+  "id": "g-dd-targets-vs-actual",
+  "name": "Targets vs Actual",
+  "description": "Month end against plan: the four regions side by side, then the chosen region's year against its target and its attainment, and the variance of every region and month in one grid.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-targets-vs-actual",
+  "state": {
+    "id": "g-dd-targets-vs-actual",
+    "name": "Targets vs Actual",
+    "description": "Month end against plan: the four regions side by side, then the chosen region's year against its target and its attainment, and the variance of every region and month in one grid.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd08-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Targets vs Actual\n\nEMEA is at 103% of target and APAC at 85%, with NA and LATAM on plan."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd08-progress-emea",
+        "type": "progress",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(a.actual) / sum(t.revenue_target), 4) AS pct_of_target\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\n  AND t.region = 'EMEA'"
+        },
+        "displayConfig": {
+          "field": "pct_of_target",
+          "goal": 1,
+          "label": "EMEA vs target",
+          "format": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd08-progress-na",
+        "type": "progress",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(a.actual) / sum(t.revenue_target), 4) AS pct_of_target\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\n  AND t.region = 'NA'"
+        },
+        "displayConfig": {
+          "field": "pct_of_target",
+          "goal": 1,
+          "label": "NA vs target",
+          "format": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd08-progress-apac",
+        "type": "progress",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(a.actual) / sum(t.revenue_target), 4) AS pct_of_target\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\n  AND t.region = 'APAC'"
+        },
+        "displayConfig": {
+          "field": "pct_of_target",
+          "goal": 1,
+          "label": "APAC vs target",
+          "format": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd08-progress-latam",
+        "type": "progress",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(a.actual) / sum(t.revenue_target), 4) AS pct_of_target\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\n  AND t.region = 'LATAM'"
+        },
+        "displayConfig": {
+          "field": "pct_of_target",
+          "goal": 1,
+          "label": "LATAM vs target",
+          "format": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd08-chart-monthly-revenue-vs-target",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 3,
+          "w": 8,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT strftime(t.month, '%Y-%m') AS month,\n       round(sum(a.actual), 2) AS actual,\n       round(sum(t.revenue_target), 2) AS revenue_target\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\n  AND t.region = ${region}\nGROUP BY 1\nORDER BY 1"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "combo",
+            "data": {
+              "labelField": "month",
+              "datasets": [
+                {
+                  "field": "actual",
+                  "label": "Actual"
+                },
+                {
+                  "field": "revenue_target",
+                  "label": "Target"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Monthly revenue vs target"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd08-gauge-ytd-attainment",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 8,
+          "y": 3,
+          "w": 4,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(a.actual) / sum(t.revenue_target), 4) AS pct_of_target\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\n  AND t.region = ${region}"
+        },
+        "displayConfig": {
+          "field": "pct_of_target",
+          "min": 0,
+          "max": 1.5,
+          "label": "YTD attainment",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 1,
+              "color": "#c62828"
+            },
+            {
+              "to": 1.5,
+              "color": "#2e7d32"
+            }
+          ]
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd08-pivot-variance-by-region-month",
+        "type": "pivot",
+        "gridPosition": {
+          "x": 0,
+          "y": 7,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT t.region AS region,\n       strftime(t.month, '%Y-%m') AS month,\n       round(100.0 * (coalesce(a.actual, 0) - t.revenue_target)\n                   / t.revenue_target, 2) AS variance_pct\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\nORDER BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "rows": [
+              "region"
+            ],
+            "cols": [
+              "month"
+            ],
+            "vals": [
+              "variance_pct"
+            ],
+            "aggregatorName": "Sum",
+            "rendererName": "Table Heatmap",
+            "rowOrder": "value_z_to_a",
+            "colOrder": "key_a_to_z",
+            "rowTotals": false,
+            "colTotals": false
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "year",
+          "type": "Date",
+          "label": "Year",
+          "defaultValue": "{dataToday:startOf year}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT DISTINCT CAST(date_trunc('year', month) AS VARCHAR) AS value, CAST(year(month) AS VARCHAR) AS label FROM dash_demo.sales_targets ORDER BY value DESC"
+          }
+        },
+        {
+          "id": "region",
+          "type": "String",
+          "label": "Region",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "radio",
+            "options": "SELECT '' AS value, '-- All regions --' AS label UNION ALL SELECT DISTINCT region AS value, region AS label FROM dash_demo.sales_targets ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-targets-vs-actual",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

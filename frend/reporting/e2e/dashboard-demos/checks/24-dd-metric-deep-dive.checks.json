@@ -21,18 +21,11 @@
       "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30'"
     },
     {
-      "widget": "kpi-metric-last-year",
-      "label": "The chosen metric, the same period last year",
-      "format": "number",
-      "value": 15632222.51,
-      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01'"
-    },
-    {
       "widget": "kpi-vs-last-year",
       "label": "vs last year %",
       "format": "percent",
-      "value": 17.23,
-      "sql": "SELECT round(100.0 * ((SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30') / (SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01') - 1), 2)"
+      "value": 17.5,
+      "sql": "SELECT round(100.0 * ((SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30') / (SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts <= DATE '2026-09-30' - INTERVAL 1 YEAR) - 1), 2)"
     }
   ],
   "interactions": [
@@ -53,18 +46,11 @@
           "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30'"
         },
         {
-          "widget": "kpi-metric-last-year",
-          "label": "The chosen metric, the same period last year",
-          "format": "number",
-          "value": 5558,
-          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01'"
-        },
-        {
           "widget": "kpi-vs-last-year",
           "label": "vs last year %",
           "format": "percent",
-          "value": 26.95,
-          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts < DATE '2025-10-01') - 1), 2)"
+          "value": 27.55,
+          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2026-01-01' AND o.order_ts <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.order_ts >= DATE '2025-01-01' AND o.order_ts <= DATE '2026-09-30' - INTERVAL 1 YEAR) - 1), 2)"
         }
       ]
     },
@@ -85,18 +71,11 @@
           "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2026-01-01' AND c.signup_date <= DATE '2026-09-30'"
         },
         {
-          "widget": "kpi-metric-last-year",
-          "label": "The chosen metric, the same period last year",
-          "format": "number",
-          "value": 988,
-          "sql": "SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2025-01-01' AND c.signup_date < DATE '2025-10-01'"
-        },
-        {
           "widget": "kpi-vs-last-year",
           "label": "vs last year %",
           "format": "percent",
           "value": 19.94,
-          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2026-01-01' AND c.signup_date <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2025-01-01' AND c.signup_date < DATE '2025-10-01') - 1), 2)"
+          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2026-01-01' AND c.signup_date <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.customers c WHERE true AND c.signup_date >= DATE '2025-01-01' AND c.signup_date <= DATE '2026-09-30' - INTERVAL 1 YEAR) - 1), 2)"
         }
       ]
     },
@@ -117,18 +96,11 @@
           "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2026-01-01' AND t.opened_ts <= DATE '2026-09-30'"
         },
         {
-          "widget": "kpi-metric-last-year",
-          "label": "The chosen metric, the same period last year",
-          "format": "number",
-          "value": 3783,
-          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-01-01' AND t.opened_ts < DATE '2025-10-01'"
-        },
-        {
           "widget": "kpi-vs-last-year",
           "label": "vs last year %",
           "format": "percent",
-          "value": 9.91,
-          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2026-01-01' AND t.opened_ts <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-01-01' AND t.opened_ts < DATE '2025-10-01') - 1), 2)"
+          "value": 10.32,
+          "sql": "SELECT round(100.0 * ((SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2026-01-01' AND t.opened_ts <= DATE '2026-09-30') / (SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.opened_ts >= DATE '2025-01-01' AND t.opened_ts <= DATE '2026-09-30' - INTERVAL 1 YEAR) - 1), 2)"
         }
       ]
     },
@@ -149,18 +121,11 @@
           "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2026-01-01' AND pl.period_month <= DATE '2026-09-30'"
         },
         {
-          "widget": "kpi-metric-last-year",
-          "label": "The chosen metric, the same period last year",
-          "format": "number",
-          "value": 8672735.83,
-          "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2025-01-01' AND pl.period_month < DATE '2025-10-01'"
-        },
-        {
           "widget": "kpi-vs-last-year",
           "label": "vs last year %",
           "format": "percent",
           "value": 7.65,
-          "sql": "SELECT round(100.0 * ((SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2026-01-01' AND pl.period_month <= DATE '2026-09-30') / (SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2025-01-01' AND pl.period_month < DATE '2025-10-01') - 1), 2)"
+          "sql": "SELECT round(100.0 * ((SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2026-01-01' AND pl.period_month <= DATE '2026-09-30') / (SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) FROM dash_demo.payroll_lines pl WHERE true AND pl.period_month >= DATE '2025-01-01' AND pl.period_month <= DATE '2026-09-30' - INTERVAL 1 YEAR) - 1), 2)"
         }
       ]
     }

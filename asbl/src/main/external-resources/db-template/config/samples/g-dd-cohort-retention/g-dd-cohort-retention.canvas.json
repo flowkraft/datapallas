@@ -1,0 +1,152 @@
+{
+  "id": "g-dd-cohort-retention",
+  "name": "Cohort Retention",
+  "description": "Every signup cohort against how long it kept ordering, at its own grain: the heatmap cohort by cohort, the curve before and after March 2025, and the one number for the board pack.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-cohort-retention",
+  "state": {
+    "id": "g-dd-cohort-retention",
+    "name": "Cohort Retention",
+    "description": "Every signup cohort against how long it kept ordering, at its own grain: the heatmap cohort by cohort, the curve before and after March 2025, and the one number for the board pack.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd10-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Cohort Retention\n\nCohorts from March 2025 still have 48% of their customers ordering around month 6, about 7 points more than the cohorts before it.\n\nA cohort counts as retained at a period when it ordered in the window around it: the month either side for the monthly cohorts, the quarter either side for the quarterly business ones. Business accounts are read by quarter because they are fewer and larger - a monthly business cohort is small enough for one account to move a cell by three points."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd10-pivot-cohorts",
+        "type": "pivot",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 12,
+          "h": 6
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH base AS (\n  SELECT c.customer_id AS customer_id,\n         c.signup_date AS signup_date,\n         CASE WHEN ${customerType} = 'business'\n              THEN CAST(year(c.signup_date) AS VARCHAR) || ' Q' || CAST(quarter(c.signup_date) AS VARCHAR)\n              ELSE strftime(date_trunc('month', c.signup_date), '%Y-%m') END AS cohort,\n         CASE WHEN ${customerType} = 'business' THEN 3 ELSE 1 END AS step\n  FROM dash_demo.customers c\n  WHERE true\n  AND (${customerType} = 'all' OR c.customer_type = ${customerType})\n),\nperiods AS (SELECT unnest(range(1, 13)) AS n)\nSELECT b.cohort AS cohort,\n       lpad(CAST(p.n AS VARCHAR), 2, '0') AS periods_since_signup,\n       round(100.0 * count(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o\n                                  WHERE o.customer_id = b.customer_id\n                                    AND o.status <> 'cancelled'\n                                    AND o.order_ts >= b.signup_date + (p.n - 1) * b.step * INTERVAL 1 MONTH\n                                    AND o.order_ts < b.signup_date + (p.n + 1) * b.step * INTERVAL 1 MONTH)\n                                THEN b.customer_id END)\n                   / count(DISTINCT b.customer_id), 2) AS retention_pct\nFROM base b\nCROSS JOIN periods p\nGROUP BY 1, 2\nORDER BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "rows": [
+              "cohort"
+            ],
+            "cols": [
+              "periods_since_signup"
+            ],
+            "vals": [
+              "retention_pct"
+            ],
+            "aggregatorName": "Sum",
+            "rendererName": "Table Heatmap",
+            "rowOrder": "key_a_to_z",
+            "colOrder": "key_a_to_z",
+            "rowTotals": false,
+            "colTotals": false
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd10-chart-retention-curve",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 7,
+          "w": 8,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH base AS (\n  SELECT c.customer_id AS customer_id,\n         c.signup_date AS signup_date,\n         1 AS step,\n         CASE WHEN c.signup_date < DATE '2025-03-01' THEN 'before March 2025'\n              ELSE 'from March 2025' END AS cohort_group\n  FROM dash_demo.customers c\n  WHERE ((c.signup_date >= DATE '2024-03-01' AND c.signup_date < DATE '2025-01-01')\n      OR (c.signup_date >= DATE '2025-03-01' AND c.signup_date < DATE '2026-01-01'))\n  AND (${customerType} = 'all' OR c.customer_type = ${customerType})\n),\nperiods AS (SELECT unnest(range(1, 13)) AS n)\nSELECT p.n AS month_since_signup,\n       b.cohort_group AS cohort_group,\n       round(100.0 * count(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o\n                                  WHERE o.customer_id = b.customer_id\n                                    AND o.status <> 'cancelled'\n                                    AND o.order_ts >= b.signup_date + (p.n - 1) * b.step * INTERVAL 1 MONTH\n                                    AND o.order_ts < b.signup_date + (p.n + 1) * b.step * INTERVAL 1 MONTH)\n                                THEN b.customer_id END)\n                   / count(DISTINCT b.customer_id), 2) AS retention_pct\nFROM base b\nCROSS JOIN periods p\nGROUP BY 1, 2\nORDER BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "month_since_signup",
+              "seriesField": "cohort_group",
+              "datasets": [
+                {
+                  "field": "retention_pct",
+                  "label": "Still ordering %"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Retention curve: the ten months either side of March 2025"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd10-number-average-6-month-retention",
+        "type": "number",
+        "gridPosition": {
+          "x": 8,
+          "y": 7,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(1.0 * count(CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o\n                                           WHERE o.customer_id = c.customer_id\n                                             AND o.status <> 'cancelled'\n                                             AND o.order_ts >= c.signup_date + INTERVAL 5 MONTH\n                                             AND o.order_ts < c.signup_date + INTERVAL 7 MONTH)\n                          THEN 1 END) / count(*), 4) AS retention_pct\nFROM dash_demo.customers c\nWHERE c.signup_date >= DATE '2024-01-01'\n  AND c.signup_date < DATE '2026-04-01'\n  AND (${customerType} = 'all' OR c.customer_type = ${customerType})"
+        },
+        "displayConfig": {
+          "numberField": "retention_pct",
+          "numberLabel": "Average 6-month retention",
+          "numberFormat": "percent"
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "customerType",
+          "type": "String",
+          "label": "Customer type",
+          "defaultValue": "all",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "radio",
+            "options": "SELECT 'all' AS value, 'All' AS label UNION ALL SELECT DISTINCT customer_type AS value, customer_type AS label FROM dash_demo.customers ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-cohort-retention",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

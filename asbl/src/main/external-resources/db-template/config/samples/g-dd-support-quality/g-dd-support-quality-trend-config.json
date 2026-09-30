@@ -1,0 +1,8 @@
+{
+  "trend_month_csat" : {
+    "dateField" : "month",
+    "valueField" : "avg_csat",
+    "format" : "number",
+    "label" : "CSAT per month"
+  }
+}

@@ -1,0 +1,416 @@
+{
+  "id": "g-dd-profit-margin",
+  "name": "Profit & Margin",
+  "description": "Gross margin, gross profit and the discounts given over the last eight quarters, revenue against margin month by month on two axes, the steps from list price to gross profit, and margin by category and quarter.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-profit-margin",
+  "state": {
+    "id": "g-dd-profit-margin",
+    "name": "Profit & Margin",
+    "description": "Gross margin, gross profit and the discounts given over the last eight quarters, revenue against margin month by month on two axes, the steps from list price to gross profit, and margin by category and quarter.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd16-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Profit & Margin\n\nQ4 discounting costs about six points of margin every year: the discount rate runs near 6% for three quarters and 14.5% in Q4, and margin falls from 33.49% to 27.94% in 2024 and from 35.35% to 29.03% in 2025 - every category gives ground, Laptops most of all.\n\nThe board pack, in reading order: what the margin is, what it left and how much of it was given away; then margin against revenue month by month, on a second axis, so the Q4 dips show themselves; then where the money goes between the price on the label and the profit, and which categories dip in Q4. The period is the board's - the last eight quarters, so both Q4s are on the page - and **category** isolates the one the board asks about."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd16-kpi-gross-margin",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "kind": "cube",
+            "cubeId": "dd-sales",
+            "table": "",
+            "filters": [],
+            "summarize": [],
+            "groupBy": [],
+            "sort": [],
+            "limit": 500,
+            "cubeSelection": {
+              "dimensions": [],
+              "measures": [
+                "MarginPct"
+              ],
+              "segments": [],
+              "filters": [
+                {
+                  "member": "OrderedAt",
+                  "operator": "lt",
+                  "values": [
+                    "${dateTo__next_day}"
+                  ]
+                }
+              ],
+              "granularities": {},
+              "order": [],
+              "limit": null,
+              "paramBindings": [
+                {
+                  "param": "dateFrom",
+                  "member": "OrderedAt",
+                  "operator": "greater_or_equal"
+                },
+                {
+                  "param": "category",
+                  "member": "Category",
+                  "operator": "equals"
+                }
+              ]
+            }
+          },
+          "generatedSql": "SELECT\n  1.0 * ((CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_amount END) AS DECIMAL(31,4))) - (CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_cost END) AS DECIMAL(31,4)))) / NULLIF((CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_amount END) AS DECIMAL(31,4))), 0) AS \"MarginPct\"\nFROM dash_demo.order_lines\nLEFT JOIN dash_demo.orders ON dash_demo.order_lines.order_id = dash_demo.orders.order_id\nLEFT JOIN dash_demo.products ON dash_demo.order_lines.product_id = dash_demo.products.product_id\nWHERE dash_demo.orders.order_ts < ${dateTo__next_day}\n  AND dash_demo.orders.order_ts >= ${dateFrom}\n  AND dash_demo.products.category = ${category}"
+        },
+        "displayConfig": {
+          "numberField": "MarginPct",
+          "numberLabel": "Gross margin %",
+          "numberFormat": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd16-kpi-gross-profit",
+        "type": "number",
+        "gridPosition": {
+          "x": 4,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "kind": "cube",
+            "cubeId": "dd-sales",
+            "table": "",
+            "filters": [],
+            "summarize": [],
+            "groupBy": [],
+            "sort": [],
+            "limit": 500,
+            "cubeSelection": {
+              "dimensions": [],
+              "measures": [
+                "GrossProfit"
+              ],
+              "segments": [],
+              "filters": [
+                {
+                  "member": "OrderedAt",
+                  "operator": "lt",
+                  "values": [
+                    "${dateTo__next_day}"
+                  ]
+                }
+              ],
+              "granularities": {},
+              "order": [],
+              "limit": null,
+              "paramBindings": [
+                {
+                  "param": "dateFrom",
+                  "member": "OrderedAt",
+                  "operator": "greater_or_equal"
+                },
+                {
+                  "param": "category",
+                  "member": "Category",
+                  "operator": "equals"
+                }
+              ]
+            }
+          },
+          "generatedSql": "SELECT\n  (CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_amount END) AS DECIMAL(31,4))) - (CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_cost END) AS DECIMAL(31,4))) AS \"GrossProfit\"\nFROM dash_demo.order_lines\nLEFT JOIN dash_demo.orders ON dash_demo.order_lines.order_id = dash_demo.orders.order_id\nLEFT JOIN dash_demo.products ON dash_demo.order_lines.product_id = dash_demo.products.product_id\nWHERE dash_demo.orders.order_ts < ${dateTo__next_day}\n  AND dash_demo.orders.order_ts >= ${dateFrom}\n  AND dash_demo.products.category = ${category}"
+        },
+        "displayConfig": {
+          "numberField": "GrossProfit",
+          "numberLabel": "Gross profit",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd16-kpi-discounts-given",
+        "type": "number",
+        "gridPosition": {
+          "x": 8,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(l.qty * l.unit_price * l.discount_pct / 100.0), 2) AS discounts_given\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND o.order_ts >= ${dateFrom}\n  AND o.order_ts < ${dateTo__next_day}\n  AND p.category = ${category}"
+        },
+        "displayConfig": {
+          "numberField": "discounts_given",
+          "numberLabel": "Discounts given",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd16-chart-revenue-and-margin-per-month",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 3,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT strftime(date_trunc('month', o.order_ts), '%Y-%m') AS month,\n       round(sum(l.line_amount), 2) AS revenue,\n       round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2) AS margin_pct\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND o.order_ts >= ${dateFrom}\n  AND o.order_ts < ${dateTo__next_day}\n  AND p.category = ${category}\nGROUP BY month\nORDER BY month"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "combo",
+            "data": {
+              "labelField": "month",
+              "datasets": [
+                {
+                  "field": "revenue",
+                  "label": "Revenue"
+                },
+                {
+                  "field": "margin_pct",
+                  "label": "Margin %",
+                  "yAxisID": "y1"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Revenue and margin % per month"
+                }
+              },
+              "scales": {
+                "y": {
+                  "position": "left",
+                  "title": {
+                    "display": true,
+                    "text": "Revenue"
+                  }
+                },
+                "y1": {
+                  "position": "right",
+                  "title": {
+                    "display": true,
+                    "text": "Margin %"
+                  },
+                  "grid": {
+                    "drawOnChartArea": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd16-chart-waterfall-list-price-to-gross-profit",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 7,
+          "w": 6,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Where the money goes between the price on the label and the profit left: the discount given away,\n// then what the goods cost. The three steps run from the running total before them, so the level the\n// last one lands on is the gross profit the r1 tile shows.\ndbSql.rows(\"\"\"WITH scope AS (\n  SELECT l.qty * l.unit_price AS list_amount,\n         l.qty * l.unit_price * l.discount_pct / 100.0 AS discount_amount,\n         l.line_amount AS revenue,\n         l.line_cost AS cost\n  FROM dash_demo.order_lines l\n  JOIN dash_demo.orders o ON o.order_id = l.order_id\n  JOIN dash_demo.products p ON p.product_id = l.product_id\n  WHERE o.status <> 'cancelled'\n    AND o.order_ts >= CAST(? AS DATE)\n    AND o.order_ts < CAST(? AS DATE) + INTERVAL 1 DAY\n    AND (? = '' OR p.category = ?)\n)\nSELECT 1 AS ord, 'Revenue at list price' AS step, round(sum(list_amount), 2) AS amount FROM scope\nUNION ALL SELECT 2, 'Discounts', -round(sum(discount_amount), 2) FROM scope\nUNION ALL SELECT 3, 'Cost of goods sold', -round(sum(cost), 2) FROM scope\nORDER BY ord\"\"\", [dateFrom, dateTo, category, category])"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "waterfall",
+            "data": {
+              "labelField": "step",
+              "datasets": [
+                {
+                  "field": "amount",
+                  "label": "From list price to gross profit"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "From list price to gross profit: discounts and cost of goods"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd16-pivot-margin-by-category-quarter",
+        "type": "pivot",
+        "gridPosition": {
+          "x": 6,
+          "y": 7,
+          "w": 6,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "kind": "cube",
+            "cubeId": "dd-sales",
+            "table": "",
+            "filters": [],
+            "summarize": [],
+            "groupBy": [],
+            "sort": [],
+            "limit": 500,
+            "cubeSelection": {
+              "dimensions": [
+                "Category",
+                "OrderedAt"
+              ],
+              "measures": [
+                "MarginPct"
+              ],
+              "segments": [],
+              "filters": [
+                {
+                  "member": "OrderedAt",
+                  "operator": "lt",
+                  "values": [
+                    "${dateTo__next_day}"
+                  ]
+                }
+              ],
+              "granularities": {
+                "OrderedAt": "quarter"
+              },
+              "order": [
+                {
+                  "member": "Category",
+                  "dir": "asc"
+                },
+                {
+                  "member": "OrderedAt",
+                  "dir": "asc"
+                }
+              ],
+              "limit": 500,
+              "paramBindings": [
+                {
+                  "param": "dateFrom",
+                  "member": "OrderedAt",
+                  "operator": "greater_or_equal"
+                },
+                {
+                  "param": "category",
+                  "member": "Category",
+                  "operator": "equals"
+                }
+              ]
+            }
+          },
+          "generatedSql": "SELECT\n  dash_demo.products.category AS \"Category\",\n  CAST(DATE_TRUNC('quarter', dash_demo.orders.order_ts) AS DATE) AS \"OrderedAt\",\n  1.0 * ((CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_amount END) AS DECIMAL(31,4))) - (CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_cost END) AS DECIMAL(31,4)))) / NULLIF((CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_amount END) AS DECIMAL(31,4))), 0) AS \"MarginPct\"\nFROM dash_demo.order_lines\nLEFT JOIN dash_demo.orders ON dash_demo.order_lines.order_id = dash_demo.orders.order_id\nLEFT JOIN dash_demo.products ON dash_demo.order_lines.product_id = dash_demo.products.product_id\nWHERE dash_demo.orders.order_ts < ${dateTo__next_day}\n  AND dash_demo.orders.order_ts >= ${dateFrom}\n  AND dash_demo.products.category = ${category}\nGROUP BY\n  dash_demo.products.category,\n  CAST(DATE_TRUNC('quarter', dash_demo.orders.order_ts) AS DATE)\nORDER BY\n  \"Category\" ASC,\n  \"OrderedAt\" ASC\nLIMIT 500"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "rows": [
+              "Category"
+            ],
+            "cols": [
+              "OrderedAt"
+            ],
+            "vals": [
+              "MarginPct"
+            ],
+            "aggregatorName": "Average",
+            "rendererName": "Table Heatmap",
+            "rowOrder": "key_a_to_z",
+            "colOrder": "key_a_to_z",
+            "rowTotals": false,
+            "colTotals": false
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "dateFrom",
+          "type": "Date",
+          "label": "From",
+          "defaultValue": "{dataToday:minus 7 quarter, startOf quarter}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "dateTo",
+          "type": "Date",
+          "label": "To",
+          "defaultValue": "{dataToday}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "category",
+          "type": "String",
+          "label": "Category",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT '' AS value, '-- All categories --' AS label UNION ALL SELECT DISTINCT p.category AS value, p.category AS label FROM dash_demo.products p ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-profit-margin",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

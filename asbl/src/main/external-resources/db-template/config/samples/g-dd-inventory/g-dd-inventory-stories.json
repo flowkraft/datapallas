@@ -1,0 +1,32 @@
+[
+  {
+    "id": "warehouse-rotterdam",
+    "question": "Rotterdam has no room - what is in it?",
+    "text": "Pick Rotterdam DC: 31,969,768.60 of stock, 4 of the 14 reorder lines, and a single bar at 94% - the fullest of the five. Only 6,800.67 of its stock is slow-moving, one networking SKU, so clearing dead stock will not make the room: the two accessories lines at the top of its list, 1,080 and 718 units to order, are what needs somewhere to go.",
+    "params": {
+      "warehouse": "Rotterdam DC"
+    },
+    "check": "warehouse-rotterdam"
+  },
+  {
+    "id": "below-reorder-off",
+    "question": "And everything we hold, not just what is short?",
+    "text": "Untick Below reorder level only: the table goes from 14 rows to all 1,000, the whole stock book. Nothing else on the page moves - the stock value was always all of it, and 14 SKUs are below their level whether or not the list is showing only them.",
+    "params": {
+      "belowReorderOnly": false
+    },
+    "check": "below-reorder-off"
+  },
+  {
+    "id": "category-office-and-smart-home",
+    "question": "Just the buying area I look after?",
+    "text": "Pick Office Furniture and Smart Home: 12,391,869.03 of stock and 4 lines to order, three of them Smart Home. Slow-mover value comes back empty, and that is the answer - not one SKU in either category has gone 90 days without a sale, so there is nothing here to clear. Space used does not narrow: a building's fill is all of its stock.",
+    "params": {
+      "category": [
+        "Office Furniture",
+        "Smart Home"
+      ]
+    },
+    "check": "category-office-and-smart-home"
+  }
+]

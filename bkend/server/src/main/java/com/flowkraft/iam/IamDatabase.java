@@ -285,6 +285,9 @@ public class IamDatabase {
 			// when missing on the same terms as locked_params: a link handed out before the attribute
 			// bag existed carries none, which reads as "says nothing about the viewer".
 			addColumnIfMissing(conn, "share_token", "attributes", "TEXT");
+		// The dashboards a shared page embeds, fixed when the link was created. A link stored before
+		// this column opens exactly its own report, which is what it always did.
+		addColumnIfMissing(conn, "share_token", "embedded_reports", "TEXT");
 
 			// Where a person is and what they read in. A dashboard filtered on ${dp_today} has to mean
 			// the caller's today, and a Tokyo viewer's today is not a Lisbon viewer's today, so the zone

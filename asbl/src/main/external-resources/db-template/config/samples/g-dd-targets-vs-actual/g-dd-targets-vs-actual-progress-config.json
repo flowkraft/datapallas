@@ -1,0 +1,26 @@
+{
+  "progress_dd08-progress-emea" : {
+    "field" : "pct_of_target",
+    "goal" : 1,
+    "label" : "EMEA vs target",
+    "format" : "percent"
+  },
+  "progress_dd08-progress-na" : {
+    "field" : "pct_of_target",
+    "goal" : 1,
+    "label" : "NA vs target",
+    "format" : "percent"
+  },
+  "progress_dd08-progress-apac" : {
+    "field" : "pct_of_target",
+    "goal" : 1,
+    "label" : "APAC vs target",
+    "format" : "percent"
+  },
+  "progress_dd08-progress-latam" : {
+    "field" : "pct_of_target",
+    "goal" : 1,
+    "label" : "LATAM vs target",
+    "format" : "percent"
+  }
+}

@@ -4,8 +4,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,6 +82,27 @@ public class LockedParamsValidator {
 		}
 
 		return locked;
+	}
+
+	/**
+	 * The parameter names a report declares, for deciding which of a page's locks mean anything to a
+	 * dashboard embedded in it.
+	 *
+	 * <p>Here rather than anywhere else because this class already knows how a report's declared
+	 * parameters are read, down to which names are never one of them. Two readers of the same thing
+	 * would be two answers to "is {@code region} a filter of this dashboard", and the one that said
+	 * yes would decide what a viewer sees.
+	 *
+	 * @return the declared names, or empty when the report's spec cannot be read at all - which is
+	 *         "unknown", not "none": a caller narrowing locks with an empty answer would drop every
+	 *         lock and show more than the link allows, so it must keep them all instead
+	 */
+	public Optional<Set<String>> declaredParameterNamesOf(String reportId) {
+		try {
+			return Optional.of(new LinkedHashSet<>(declaredParameters(reportId).keySet()));
+		} catch (RuntimeException e) {
+			return Optional.empty();
+		}
 	}
 
 	// ============================================================

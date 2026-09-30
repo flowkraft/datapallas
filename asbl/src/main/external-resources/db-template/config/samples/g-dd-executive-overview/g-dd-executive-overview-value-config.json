@@ -1,0 +1,18 @@
+{
+  "number_mrr_mrr" : {
+    "format" : "currency",
+    "label" : "MRR"
+  },
+  "number_dso_days_dso" : {
+    "format" : "number",
+    "label" : "DSO, days"
+  },
+  "number_headcount_headcount" : {
+    "format" : "number",
+    "label" : "Headcount"
+  },
+  "number_gross_margin_pct_margin" : {
+    "format" : "percent",
+    "label" : "Gross margin %"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "number_overdue_90_plus_plus" : {
+    "format" : "currency",
+    "label" : "Overdue 90+ days"
+  },
+  "number_customers_overdue_overdue" : {
+    "format" : "number",
+    "label" : "Customers overdue"
+  }
+}

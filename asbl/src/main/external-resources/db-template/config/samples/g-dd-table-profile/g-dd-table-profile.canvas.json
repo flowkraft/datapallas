@@ -1,0 +1,245 @@
+{
+  "id": "g-dd-table-profile",
+  "name": "Table Profile",
+  "description": "Any table of the demo schema, profiled: its rows, its columns, how many rows arrived in the last 30 days and how many columns have gaps; then every column with its type, the role its name suggests, its nulls, its distinct values and its range; then the distribution of the one column in question.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-table-profile",
+  "state": {
+    "id": "g-dd-table-profile",
+    "name": "Table Profile",
+    "description": "Any table of the demo schema, profiled: its rows, its columns, how many rows arrived in the last 30 days and how many columns have gaps; then every column with its type, the role its name suggests, its nulls, its distinct values and its range; then the distribution of the one column in question.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd23-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Table Profile\n\nPick any table and you know it in half a minute: support_tickets holds 14,000 rows over 15 columns, 476 of them opened in the last 30 days, and 4 columns have gaps - order_id is empty on 52.64% of tickets, because a ticket need not be about an order, and csat_score on 58.33%, because most people never answer the survey. Its priority column is 51.56% normal and 8.21% urgent. Point the same page at orders.total_amount and the chart turns into twenty ranges over 23,162 distinct amounts, 20,782 orders inside the first one.\n\nSize, freshness and gaps first, then what every column holds, then the one column you asked about. **Type a table and a column** - the page is the only one where the table itself is a filter, and every tile checks both names against `information_schema` before it builds a query, so a name that is not there shows nothing rather than running. **Rows added in the last 30 days** is empty for a table with no column that records a beginning, and the distribution chart draws twenty ranges for a numeric column and the twenty commonest values for any other."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd23-kpi-rows",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Whitelisted, never trusted: the name must be a table of dash_demo before it goes\n// anywhere near a query, because it lands in FROM where no bind can carry it.\nif (!dbSql.firstRow(\"SELECT 1 FROM information_schema.tables WHERE table_schema = 'dash_demo' AND table_name = ?\", [tableName])) return []\ndbSql.rows(\"\"\"SELECT count(*) AS row_count\nFROM dash_demo.${tableName}\"\"\", [])"
+        },
+        "displayConfig": {
+          "numberField": "row_count",
+          "numberLabel": "Rows",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd23-kpi-columns",
+        "type": "number",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Whitelisted, never trusted: the name must be a table of dash_demo before it goes\n// anywhere near a query, because it lands in FROM where no bind can carry it.\nif (!dbSql.firstRow(\"SELECT 1 FROM information_schema.tables WHERE table_schema = 'dash_demo' AND table_name = ?\", [tableName])) return []\ndbSql.rows(\"\"\"SELECT count(*) AS column_count\nFROM information_schema.columns\nWHERE table_schema = 'dash_demo'\n  AND table_name = ?\"\"\", [tableName])"
+        },
+        "displayConfig": {
+          "numberField": "column_count",
+          "numberLabel": "Columns",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd23-kpi-rows-added-last-30-days",
+        "type": "number",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Whitelisted, never trusted: the name must be a table of dash_demo before it goes\n// anywhere near a query, because it lands in FROM where no bind can carry it.\nif (!dbSql.firstRow(\"SELECT 1 FROM information_schema.tables WHERE table_schema = 'dash_demo' AND table_name = ?\", [tableName])) return []\n// The first date or timestamp column whose name speaks of a beginning. A table with\n// none of them has no freshness to show, and the tile stays empty.\ndef created = dbSql.firstRow(\"SELECT column_name FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = ? AND data_type IN ('DATE', 'TIMESTAMP') AND (column_name LIKE '%created%' OR column_name LIKE '%opened%' OR column_name LIKE '%signup%' OR column_name LIKE '%issue%' OR column_name LIKE '%order_ts%' OR column_name LIKE '%hire%' OR column_name LIKE '%period%' OR column_name LIKE '%started%') ORDER BY ordinal_position LIMIT 1\", [tableName])?.column_name\nif (created == null) return []\ndbSql.rows(\"\"\"SELECT count(*) AS rows_added\nFROM dash_demo.${tableName}\nWHERE ${created} >= (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 30 DAY\n  AND ${created} <= (SELECT a.as_of FROM dash_demo.as_of a)\"\"\", [])"
+        },
+        "displayConfig": {
+          "numberField": "rows_added",
+          "numberLabel": "Rows added in the last 30 days",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd23-kpi-columns-with-nulls",
+        "type": "number",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Whitelisted, never trusted: the name must be a table of dash_demo before it goes\n// anywhere near a query, because it lands in FROM where no bind can carry it.\nif (!dbSql.firstRow(\"SELECT 1 FROM information_schema.tables WHERE table_schema = 'dash_demo' AND table_name = ?\", [tableName])) return []\ndbSql.rows(\"\"\"SELECT count(*) AS columns_with_nulls\nFROM (SUMMARIZE dash_demo.${tableName})\nWHERE null_percentage > 0\"\"\", [])"
+        },
+        "displayConfig": {
+          "numberField": "columns_with_nulls",
+          "numberLabel": "Columns with NULLs",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd23-table-column-profile",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Whitelisted, never trusted: the name must be a table of dash_demo before it goes\n// anywhere near a query, because it lands in FROM where no bind can carry it.\nif (!dbSql.firstRow(\"SELECT 1 FROM information_schema.tables WHERE table_schema = 'dash_demo' AND table_name = ?\", [tableName])) return []\ndbSql.rows(\"\"\"SELECT s.column_name AS column_name,\n       s.column_type AS column_type,\n       CASE WHEN right(s.column_name, 3) = '_id' THEN 'key'\n            WHEN s.column_type IN ('DATE', 'TIMESTAMP') THEN 'when'\n            WHEN s.column_type = 'BOOLEAN' THEN 'flag'\n            WHEN s.column_name LIKE '%amount%' OR s.column_name LIKE '%price%'\n                 OR s.column_name LIKE '%cost%' OR s.column_name LIKE '%pay%'\n                 OR s.column_name LIKE '%qty%' OR s.column_name LIKE '%score%'\n                 OR s.column_name LIKE '%limit%' OR s.column_name LIKE '%fee%' THEN 'measure'\n            ELSE 'attribute'\n       END AS role_guessed_from_the_name,\n       s.null_percentage AS null_percentage,\n       s.approx_unique AS distinct_values_approx,\n       s.min AS smallest,\n       s.avg AS average,\n       s.max AS largest\nFROM (SUMMARIZE dash_demo.${tableName}) s\nJOIN information_schema.columns c\n  ON c.table_schema = 'dash_demo' AND c.table_name = ? AND c.column_name = s.column_name\nORDER BY c.ordinal_position\"\"\", [tableName])"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 10,
+            "theme": "modern"
+          },
+          "columnSettings": {
+            "column_name": {
+              "columnTitle": "Column"
+            },
+            "column_type": {
+              "columnTitle": "Type"
+            },
+            "role_guessed_from_the_name": {
+              "columnTitle": "Role, guessed"
+            },
+            "null_percentage": {
+              "columnTitle": "Nulls %"
+            },
+            "distinct_values_approx": {
+              "columnTitle": "Distinct, approximate"
+            },
+            "smallest": {
+              "columnTitle": "Min"
+            },
+            "average": {
+              "columnTitle": "Average"
+            },
+            "largest": {
+              "columnTitle": "Max"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd23-chart-distribution",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 9,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Whitelisted, never trusted: the name must be a table of dash_demo before it goes\n// anywhere near a query, because it lands in FROM where no bind can carry it.\nif (!dbSql.firstRow(\"SELECT 1 FROM information_schema.tables WHERE table_schema = 'dash_demo' AND table_name = ?\", [tableName])) return []\nif (!dbSql.firstRow(\"SELECT 1 FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = ? AND column_name = ?\", [tableName, columnName])) return []\ndbSql.rows(\"\"\"WITH v AS (\n  SELECT CAST(${columnName} AS VARCHAR) AS txt,\n         TRY_CAST(CAST(${columnName} AS VARCHAR) AS DOUBLE) AS num\n  FROM dash_demo.${tableName}\n),\nshape AS (\n  SELECT count(txt) AS filled, count(num) AS numeric_rows,\n         count(DISTINCT txt) AS distinct_values,\n         min(num) AS lo, max(num) AS hi\n  FROM v\n),\nbucketed AS (\n  SELECT CASE WHEN s.numeric_rows = s.filled AND s.distinct_values > 20\n              THEN least(19, CAST(floor((v.num - s.lo) / nullif(s.hi - s.lo, 0) * 20) AS INTEGER))\n         END AS bin,\n         v.txt AS txt, v.num AS num, s.lo AS lo, s.hi AS hi\n  FROM v, shape s\n  WHERE v.txt IS NOT NULL\n)\nSELECT CASE WHEN b.bin IS NULL THEN b.txt\n            ELSE printf('%.2f - %.2f',\n                        b.lo + (b.hi - b.lo) * b.bin / 20.0,\n                        b.lo + (b.hi - b.lo) * (b.bin + 1) / 20.0)\n       END AS bucket,\n       count(*) AS rows_in_bucket\nFROM bucketed b\nGROUP BY bucket, b.bin\nORDER BY b.bin NULLS LAST, rows_in_bucket DESC, bucket\nLIMIT 20\"\"\", [])"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "bucket",
+              "datasets": [
+                {
+                  "field": "rows_in_bucket",
+                  "label": "Rows"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Distribution of the chosen column"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "tableName",
+          "type": "String",
+          "label": "Table",
+          "defaultValue": "support_tickets",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT table_name AS value, table_name AS label FROM information_schema.tables WHERE table_schema = 'dash_demo' ORDER BY label"
+          }
+        },
+        {
+          "id": "columnName",
+          "type": "String",
+          "label": "Column",
+          "defaultValue": "priority",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "text"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-table-profile",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

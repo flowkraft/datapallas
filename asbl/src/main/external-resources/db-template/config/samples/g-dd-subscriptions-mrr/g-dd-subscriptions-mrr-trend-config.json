@@ -1,0 +1,8 @@
+{
+  "trend_month_mrr" : {
+    "dateField" : "month",
+    "valueField" : "mrr",
+    "format" : "currency",
+    "label" : "MRR per month"
+  }
+}

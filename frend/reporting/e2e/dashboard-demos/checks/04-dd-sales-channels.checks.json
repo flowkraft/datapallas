@@ -14,39 +14,37 @@
   },
   "kpis": [
     {
-      "widget": "kpi-revenue",
-      "label": "Revenue",
-      "format": "currency",
-      "value": 60899560.42,
-      "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.status <> 'returned'"
-    },
-    {
-      "widget": "chart-revenue-mix-marketplace",
+      "widget": "chart-revenue-mix-by-channel",
       "label": "Marketplace share of revenue",
       "format": "percent",
       "value": 15.25,
-      "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'marketplace' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.status <> 'returned'"
+      "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'marketplace' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.status <> 'returned'",
+      "column": "share_pct",
+      "row": {
+        "channel": "marketplace"
+      }
     },
     {
-      "widget": "chart-revenue-mix-mobile-app",
+      "widget": "chart-revenue-mix-by-channel",
       "label": "Mobile app share of revenue",
       "format": "percent",
       "value": 10.67,
-      "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'mobile_app' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.status <> 'returned'"
+      "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'mobile_app' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.status <> 'returned'",
+      "column": "share_pct",
+      "row": {
+        "channel": "mobile_app"
+      }
     },
     {
-      "widget": "chart-average-order-value-marketplace",
+      "widget": "chart-average-order-value-per-channel",
       "label": "Marketplace average order",
       "format": "currency",
       "value": 2861.32,
-      "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.status <> 'returned' AND o.channel = 'marketplace'"
-    },
-    {
-      "widget": "kpi-mobile-app-share-of-orders-q3-2026",
-      "label": "Mobile app share of orders, Q3 2026",
-      "format": "percent",
-      "value": 28.07,
-      "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-07-01'"
+      "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.status <> 'returned' AND o.channel = 'marketplace'",
+      "column": "avg_order_value",
+      "row": {
+        "channel": "marketplace"
+      }
     }
   ],
   "interactions": [
@@ -60,39 +58,37 @@
       },
       "kpis": [
         {
-          "widget": "kpi-revenue",
-          "label": "Revenue",
-          "format": "currency",
-          "value": 64756820.89,
-          "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'"
-        },
-        {
-          "widget": "chart-revenue-mix-marketplace",
+          "widget": "chart-revenue-mix-by-channel",
           "label": "Marketplace share of revenue",
           "format": "percent",
           "value": 16.02,
-          "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'marketplace' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'"
+          "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'marketplace' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'",
+          "column": "share_pct",
+          "row": {
+            "channel": "marketplace"
+          }
         },
         {
-          "widget": "chart-revenue-mix-mobile-app",
+          "widget": "chart-revenue-mix-by-channel",
           "label": "Mobile app share of revenue",
           "format": "percent",
           "value": 10.61,
-          "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'mobile_app' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'"
+          "sql": "SELECT round(100.0 * sum(CASE WHEN o.channel = 'mobile_app' THEN o.total_amount ELSE 0 END) / sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled'",
+          "column": "share_pct",
+          "row": {
+            "channel": "mobile_app"
+          }
         },
         {
-          "widget": "chart-average-order-value-marketplace",
+          "widget": "chart-average-order-value-per-channel",
           "label": "Marketplace average order",
           "format": "currency",
           "value": 2854.62,
-          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.channel = 'marketplace'"
-        },
-        {
-          "widget": "kpi-mobile-app-share-of-orders-q3-2026",
-          "label": "Mobile app share of orders, Q3 2026",
-          "format": "percent",
-          "value": 28.07,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-07-01'"
+          "sql": "SELECT round(avg(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.channel = 'marketplace'",
+          "column": "avg_order_value",
+          "row": {
+            "channel": "marketplace"
+          }
         }
       ]
     }

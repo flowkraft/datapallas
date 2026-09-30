@@ -12,5 +12,5 @@
       ]
     }
   },
-  "include": ["**.spec.ts", "**.tests.ts"]
+  "include": ["**/*.spec.ts", "**/*.tests.ts"]
 }

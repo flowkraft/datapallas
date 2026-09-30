@@ -1,0 +1,332 @@
+{
+  "id": "g-dd-executive-overview",
+  "name": "Executive Overview",
+  "description": "The CEO's Monday page: one headline number per area, the year's revenue against its plan month by month, and the list of areas off target. Written as SQL, because every number is its own definition; the off-target table asks the ten questions itself.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-executive-overview",
+  "state": {
+    "id": "g-dd-executive-overview",
+    "name": "Executive Overview",
+    "description": "The CEO's Monday page: one headline number per area, the year's revenue against its plan month by month, and the list of areas off target. Written as SQL, because every number is its own definition; the off-target table asks the ten questions itself.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd01-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Executive Overview\n\nRevenue is up about 18% on the same nine months last year, and everything is on target except APAC sales and receivables."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-revenue",
+        "type": "trend",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT date_trunc('year', o.order_ts) AS year_start,\n       round(sum(o.total_amount), 2) AS revenue\nFROM dash_demo.orders o\nWHERE o.status <> 'cancelled'\n  AND year(o.order_ts) >= year(least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))) - 1\n  AND CAST(o.order_ts AS DATE) <= CASE WHEN year(o.order_ts) = year(least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))) THEN least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) ELSE least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 1 YEAR END\nGROUP BY 1\nORDER BY 1"
+        },
+        "displayConfig": {
+          "dateField": "year_start",
+          "valueField": "revenue",
+          "format": "currency",
+          "label": "Revenue YTD vs last year"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-revenue-vs-target",
+        "type": "progress",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round((SELECT sum(o.total_amount) FROM dash_demo.orders o\n                WHERE o.status <> 'cancelled'\n                  AND year(o.order_ts) = year(CAST(${year} AS DATE)))\n       / (SELECT sum(t.revenue_target) FROM dash_demo.sales_targets t\n          WHERE year(t.month) = year(CAST(${year} AS DATE))), 4) AS pct_of_target"
+        },
+        "displayConfig": {
+          "field": "pct_of_target",
+          "goal": 1,
+          "label": "Revenue vs annual target",
+          "format": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-mrr",
+        "type": "number",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(s.mrr), 2) AS mrr\nFROM dash_demo.subscriptions s\nWHERE s.start_date <= least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n  AND (s.cancel_date IS NULL OR s.cancel_date > least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)))"
+        },
+        "displayConfig": {
+          "numberField": "mrr",
+          "numberLabel": "MRR",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-dso",
+        "type": "number",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(365.0\n       * (SELECT sum(i.amount + i.tax_amount) FROM dash_demo.invoices i\n          WHERE i.issue_date <= least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n            AND (i.last_paid_date IS NULL OR i.last_paid_date > least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))))\n       / (SELECT sum(i.amount + i.tax_amount) FROM dash_demo.invoices i\n          WHERE i.issue_date > least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 365 DAY\n            AND i.issue_date <= least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))), 2) AS dso_days"
+        },
+        "displayConfig": {
+          "numberField": "dso_days",
+          "numberLabel": "DSO, days",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-on-time",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 0,
+          "y": 3,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(1.0 * count(CASE WHEN CAST(o.delivered_ts AS DATE) <= o.promised_date THEN 1 END) / count(*), 4) AS on_time_pct\nFROM dash_demo.orders o\nWHERE o.delivered_ts IS NOT NULL\n  AND year(o.delivered_ts) = year(CAST(${year} AS DATE))"
+        },
+        "displayConfig": {
+          "field": "on_time_pct",
+          "min": 0,
+          "max": 1,
+          "label": "On-time delivery %",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 0.925,
+              "color": "#c62828"
+            },
+            {
+              "to": 1,
+              "color": "#2e7d32"
+            }
+          ]
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-headcount",
+        "type": "number",
+        "gridPosition": {
+          "x": 3,
+          "y": 3,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) AS headcount\nFROM dash_demo.employees e\nWHERE e.hire_date <= least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n  AND (e.termination_date IS NULL OR e.termination_date > least(make_date(year(CAST(${year} AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)))"
+        },
+        "displayConfig": {
+          "numberField": "headcount",
+          "numberLabel": "Headcount",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-gross-margin",
+        "type": "number",
+        "gridPosition": {
+          "x": 6,
+          "y": 3,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(l.line_amount - l.line_cost) / sum(l.line_amount), 4) AS gross_margin_pct\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o USING (order_id)\nWHERE o.status <> 'cancelled'\n  AND year(o.order_ts) = year(CAST(${year} AS DATE))"
+        },
+        "displayConfig": {
+          "numberField": "gross_margin_pct",
+          "numberLabel": "Gross margin %",
+          "numberFormat": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-kpi-sla-met",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 9,
+          "y": 3,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(1.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 4) AS sla_met_pct\nFROM dash_demo.support_tickets t\nWHERE year(t.opened_ts) = year(CAST(${year} AS DATE))"
+        },
+        "displayConfig": {
+          "field": "sla_met_pct",
+          "min": 0,
+          "max": 1,
+          "label": "SLA met %",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 0.9,
+              "color": "#c62828"
+            },
+            {
+              "to": 1,
+              "color": "#2e7d32"
+            }
+          ]
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-chart-revenue-vs-target",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 6,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT strftime(a.month, '%Y-%m') AS month,\n       round(a.revenue, 2) AS revenue,\n       round(t.revenue_target, 2) AS revenue_target\nFROM (SELECT date_trunc('month', o.order_ts) AS month, sum(o.total_amount) AS revenue\n      FROM dash_demo.orders o\n      WHERE o.status <> 'cancelled'\n        AND year(o.order_ts) = year(CAST(${year} AS DATE))\n      GROUP BY 1) a\nLEFT JOIN (SELECT s.month AS month, sum(s.revenue_target) AS revenue_target\n           FROM dash_demo.sales_targets s\n           WHERE year(s.month) = year(CAST(${year} AS DATE))\n           GROUP BY 1) t ON t.month = a.month\nORDER BY a.month"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "month",
+              "datasets": [
+                {
+                  "field": "revenue",
+                  "label": "Revenue",
+                  "type": "bar"
+                },
+                {
+                  "field": "revenue_target",
+                  "label": "Target",
+                  "type": "line"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Revenue actual vs target per month"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-divider",
+        "type": "divider",
+        "gridPosition": {
+          "x": 0,
+          "y": 10,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {},
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd01-table-off-target",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 0,
+          "y": 11,
+          "w": 12,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// One row per area: the KPI the board judges it on, its target from kpi_targets, and on or off\n// track. Ten KPIs are ten different questions, which is why this widget asks them itself instead of\n// being one query.\ndef selectedYear = (year && year.length() >= 4) ? (year.substring(0, 4) as Integer)\n        : (dbSql.firstRow(\"SELECT year(as_of) AS y FROM dash_demo.as_of\").y as Integer)\n\n// The day the year is read at: its last day, or the data's today while the year is still running.\ndef cutoff = dbSql.firstRow(\"SELECT least(make_date(?, 12, 31), (SELECT as_of FROM dash_demo.as_of)) AS d\",\n        [selectedYear]).d\n\ndef one = { String sql, List binds -> def row = dbSql.firstRow(sql, binds); row == null ? null : row[0] }\n\n// Revenue against plan, per region, from the monthly targets.\ndef attainment = [:]\ndbSql.eachRow(\"\"\"SELECT t.region AS region,\n       round(100.0 * sum(o.actual) / sum(t.revenue_target), 2) AS pct\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m, g.region AS region, sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g USING (city_id)\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2) o ON o.m = t.month AND o.region = t.region\nWHERE year(t.month) = ?\nGROUP BY 1\"\"\", [selectedYear]) { row -> attainment[row.region] = row.pct }\n\ndef grossMargin = one(\"\"\"SELECT round(100.0 * sum(l.line_amount - l.line_cost) / sum(l.line_amount), 2)\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o USING (order_id)\nWHERE o.status <> 'cancelled'\n  AND year(o.order_ts) = ?\"\"\", [selectedYear])\n\ndef dso = one(\"\"\"SELECT round(365.0\n       * (SELECT sum(amount + tax_amount) FROM dash_demo.invoices\n          WHERE issue_date <= ? AND (last_paid_date IS NULL OR last_paid_date > ?))\n       / (SELECT sum(amount + tax_amount) FROM dash_demo.invoices\n          WHERE issue_date > ? - INTERVAL 365 DAY AND issue_date <= ?), 2)\"\"\",\n        [cutoff, cutoff, cutoff, cutoff])\n\ndef onTime = one(\"\"\"SELECT round(100.0 * count(CASE WHEN CAST(delivered_ts AS DATE) <= promised_date THEN 1 END) / count(*), 2)\nFROM dash_demo.orders\nWHERE delivered_ts IS NOT NULL\n  AND year(delivered_ts) = ?\"\"\", [selectedYear])\n\ndef slaMet = one(\"\"\"SELECT round(100.0 * count(CASE WHEN NOT sla_breached THEN 1 END) / count(*), 2)\nFROM dash_demo.support_tickets\nWHERE year(opened_ts) = ?\"\"\", [selectedYear])\n\n// Churn: the average of the months in which a subscription was cancelled, each against the\n// subscriptions that were live when that month began.\ndef churn = one(\"\"\"SELECT round(avg(pct), 2) FROM (\n    SELECT 100.0 * count(*) /\n           (SELECT count(*) FROM dash_demo.subscriptions s2\n            WHERE s2.start_date < m AND (s2.cancel_date IS NULL OR s2.cancel_date >= m)) AS pct\n    FROM (SELECT DISTINCT date_trunc('month', cancel_date) AS m FROM dash_demo.subscriptions\n          WHERE year(cancel_date) = ?) months\n    JOIN dash_demo.subscriptions s ON date_trunc('month', s.cancel_date) = months.m\n    GROUP BY m)\"\"\", [selectedYear])\n\n// Attrition: the people who left over the twelve months to the cutoff, against the people employed at it.\ndef attrition = one(\"\"\"SELECT round(100.0 * (SELECT count(*) FROM dash_demo.employees\n       WHERE termination_date >= ? - INTERVAL 365 DAY AND termination_date <= ?)\n     / (SELECT count(*) FROM dash_demo.employees\n        WHERE hire_date <= ? AND (termination_date IS NULL OR termination_date > ?)), 2)\"\"\",\n        [cutoff, cutoff, cutoff, cutoff])\n\ndef measured = [\n    'EMEA|revenue_vs_plan'      : attainment['EMEA'],\n    'NA|revenue_vs_plan'        : attainment['NA'],\n    'APAC|revenue_vs_plan'      : attainment['APAC'],\n    'LATAM|revenue_vs_plan'     : attainment['LATAM'],\n    'Company|gross_margin'      : grossMargin,\n    'Finance|days_sales_outstanding': dso,\n    'Operations|on_time_delivery'   : onTime,\n    'Support|sla_met'           : slaMet,\n    'Company|monthly_churn'     : churn,\n    'People|yearly_attrition'   : attrition,\n]\n\ndef rows = []\ndbSql.eachRow(\"SELECT area, kpi, target, direction, unit FROM dash_demo.kpi_targets\") { target ->\n    def actual = measured[target.area + '|' + target.kpi]\n    def higherIsBetter = target.direction == 'higher_is_better'\n    def onTrack = actual == null ? null\n            : (higherIsBetter ? actual >= target.target : actual <= target.target)\n    rows << [\n        'Area'   : target.area,\n        'KPI'    : target.kpi.replace('_', ' '),\n        'Actual' : actual,\n        'Target' : target.target,\n        'Unit'   : target.unit,\n        'Status' : onTrack == null ? 'no reading' : (onTrack ? 'on track' : 'off target'),\n    ]\n}\n\n// The areas off target first: they are what the reader came for.\nrows.sort { a, b -> (a.Status == 'off target' ? 0 : 1) <=> (b.Status == 'off target' ? 0 : 1) ?: a.Area <=> b.Area }\nrows"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "theme": "modern"
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "year",
+          "type": "Date",
+          "label": "Year",
+          "defaultValue": "{dataToday:startOf year}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT DISTINCT CAST(date_trunc('year', order_ts) AS VARCHAR) AS value, CAST(year(order_ts) AS VARCHAR) AS label FROM dash_demo.orders ORDER BY value DESC"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-executive-overview",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

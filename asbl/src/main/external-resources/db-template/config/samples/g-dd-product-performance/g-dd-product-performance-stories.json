@@ -1,0 +1,21 @@
+[
+  {
+    "id": "top-n-5",
+    "question": "What does the Monday meeting need?",
+    "text": "Set How many to 5: the push list and the review list are five products each, short enough to read out.",
+    "params": {
+      "topN": 5
+    },
+    "check": "top-n-5"
+  },
+  {
+    "id": "category-office-furniture",
+    "question": "What is wrong in Office Furniture?",
+    "text": "Pick Office Furniture and 5: the table falls to its 30 products and the AeroDesk Pro stands alone in the bubble chart, at a 17.5% return rate since April.",
+    "params": {
+      "category": "Office Furniture",
+      "topN": 5
+    },
+    "check": "category-office-furniture"
+  }
+]

@@ -1,5 +1,7 @@
 package com.flowkraft.security;
 
+import java.util.Set;
+
 import org.springframework.security.web.header.HeaderWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,10 +14,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * reporting tool wants: a dashboard of somebody's own numbers has no business being framed by a
  * page they did not open. That stays true of every response here but one.
  *
- * <p>The exception is the Cube Stories page (design part 8). It is a published sample dashboard
- * shown on datapallas.com inside an iframe, through an ordinary share link, so the docs page can
- * show the cube component working on the real backend. For that one path {@code X-Frame-Options}
- * is not sent at all — it has no origin list, so it could only say DENY or SAMEORIGIN, neither of
+ * <p>The exceptions are the two sample pages shown on datapallas.com (design part 8): Cube Stories
+ * and the Dashboard Demos gallery. Both are published sample dashboards shown inside an iframe,
+ * through an ordinary share link, so the docs pages can show the components working on the real
+ * backend. For those paths {@code X-Frame-Options} is not sent at all — it has no origin list, so it could only say DENY or SAMEORIGIN, neither of
  * which lets the site frame the page — and a {@code frame-ancestors} policy names the two origins
  * that may: DataPallas itself, and the site.
  *
@@ -27,8 +29,13 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 public final class DashboardFraming implements HeaderWriter {
 
-	/** The one page that may be framed: the Cube Stories sample dashboard. */
-	static final String FRAMED_PATH = "/dashboard/g-cube-stories";
+	/**
+	 * The pages that may be framed: the Cube Stories sample dashboard, and the Dashboard Demos
+	 * gallery. Exact paths, and a closed list: a page is framed because it was put on the site on
+	 * purpose, never because of what it is named or where it lives.
+	 */
+	static final Set<String> FRAMED_PATHS = Set.of("/dashboard/g-cube-stories",
+			"/dashboard/g-dashboard-demos");
 
 	/** Who may frame it: DataPallas itself, and the two spellings of the site. */
 	static final String FRAME_ANCESTORS = "frame-ancestors 'self' https://datapallas.com "
@@ -49,16 +56,17 @@ public final class DashboardFraming implements HeaderWriter {
 	}
 
 	/**
-	 * Whether this request is for the one framed page. The comparison is on the whole path, so
-	 * {@code /dashboard/g-cube-stories-copy} and {@code /api/reports/g-cube-stories/data} are not
-	 * it; a trailing slash is, because a browser following a link may add one.
+	 * Whether this request is for one of the framed pages. The comparison is on the whole path, so
+	 * {@code /dashboard/g-cube-stories-copy}, {@code /dashboard/g-dashboard-demos-copy} and
+	 * {@code /api/reports/g-cube-stories/data} are not it; a trailing slash is, because a browser
+	 * following a link may add one.
 	 */
 	static boolean framesAllowed(HttpServletRequest request) {
 
 		String path = pathOf(request);
 		if (path.endsWith("/") && path.length() > 1)
 			path = path.substring(0, path.length() - 1);
-		return FRAMED_PATH.equals(path);
+		return FRAMED_PATHS.contains(path);
 	}
 
 	/** The path as this application knows it, with whatever it is deployed under taken off. */

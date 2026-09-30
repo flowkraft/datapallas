@@ -35,18 +35,15 @@
       "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-09-01') / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-09-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-09-01')), 2)"
     },
     {
-      "widget": "chart-churn-february-2026",
-      "label": "Churn in February 2026 %",
-      "format": "percent",
-      "value": 2.43,
-      "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-02-01') / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-02-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-02-01')), 2)"
-    },
-    {
-      "widget": "chart-waterfall-expansion-12-months",
+      "widget": "chart-waterfall-mrr-movement",
       "label": "Expansion MRR, last 12 months",
       "format": "currency",
       "value": 8102.58,
-      "sql": "SELECT round(sum(ch.mrr_delta), 2) FROM dash_demo.subscription_changes ch JOIN dash_demo.subscriptions s USING (subscription_id) WHERE ch.change_type = 'expansion' AND ch.change_date > DATE '2026-09-30' - INTERVAL 12 MONTH"
+      "sql": "SELECT round(sum(ch.mrr_delta), 2) FROM dash_demo.subscription_changes ch JOIN dash_demo.subscriptions s USING (subscription_id) WHERE ch.change_type = 'expansion' AND ch.change_date > DATE '2026-09-30' - INTERVAL 12 MONTH",
+      "column": "mrr_delta",
+      "row": {
+        "movement": "Expansion"
+      }
     }
   ],
   "interactions": [
@@ -85,18 +82,15 @@
           "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-09-01' AND s.plan IN ('Pro')) / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-09-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-09-01') AND s.plan IN ('Pro')), 2)"
         },
         {
-          "widget": "chart-churn-february-2026",
-          "label": "Churn in February 2026 %",
-          "format": "percent",
-          "value": 3.79,
-          "sql": "SELECT round(100.0 * (SELECT count(*) FROM dash_demo.subscriptions s WHERE date_trunc('month', s.cancel_date) = DATE '2026-02-01' AND s.plan IN ('Pro')) / (SELECT count(*) FROM dash_demo.subscriptions s WHERE s.start_date < DATE '2026-02-01' AND (s.cancel_date IS NULL OR s.cancel_date >= DATE '2026-02-01') AND s.plan IN ('Pro')), 2)"
-        },
-        {
-          "widget": "chart-waterfall-expansion-12-months",
+          "widget": "chart-waterfall-mrr-movement",
           "label": "Expansion MRR, last 12 months",
           "format": "currency",
           "value": 2227.26,
-          "sql": "SELECT round(sum(ch.mrr_delta), 2) FROM dash_demo.subscription_changes ch JOIN dash_demo.subscriptions s USING (subscription_id) WHERE ch.change_type = 'expansion' AND ch.change_date > DATE '2026-09-30' - INTERVAL 12 MONTH AND s.plan IN ('Pro')"
+          "sql": "SELECT round(sum(ch.mrr_delta), 2) FROM dash_demo.subscription_changes ch JOIN dash_demo.subscriptions s USING (subscription_id) WHERE ch.change_type = 'expansion' AND ch.change_date > DATE '2026-09-30' - INTERVAL 12 MONTH AND s.plan IN ('Pro')",
+          "column": "mrr_delta",
+          "row": {
+            "movement": "Expansion"
+          }
         }
       ]
     }

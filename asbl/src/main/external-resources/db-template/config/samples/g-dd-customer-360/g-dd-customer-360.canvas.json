@@ -1,0 +1,297 @@
+{
+  "id": "g-dd-customer-360",
+  "name": "Customer 360",
+  "description": "One customer's whole record on one page: the profile, the money owed, the tickets still on the account, the care plan, how they order month by month, what they buy, and the two lists the call will touch.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-customer-360",
+  "state": {
+    "id": "g-dd-customer-360",
+    "name": "Customer 360",
+    "description": "One customer's whole record on one page: the profile, the money owed, the tickets still on the account, the care plan, how they order month by month, what they buy, and the two lists the call will touch.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd11-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Customer 360\n\nHelix Retail Group has bought 1.6M over 31 months and pays on time 136 times out of 140 - but four invoices are overdue, the oldest of them 985 days past due.\n\nOne record, read across departments: the profile and what is open at the top, how the relationship is going in the middle, and at the bottom the two lists the call will touch."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-detail-customer-profile",
+        "type": "detail",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 4,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Who the account is, for the top of the call: the record itself, where it is, and who owns it.\ndbSql.rows(\"\"\"SELECT c.name AS customer,\n       c.company_name AS company,\n       c.customer_type AS type,\n       c.segment AS segment,\n       c.acquisition_channel AS acquired_through,\n       c.signup_date AS customer_since,\n       (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id) AS orders,\n       g.city AS city,\n       g.country AS country,\n       c.payment_terms_days AS payment_terms_days,\n       c.credit_limit AS credit_limit,\n       e.name AS account_manager\nFROM dash_demo.customers c\nJOIN dash_demo.geo_cities g ON g.city_id = c.city_id\nLEFT JOIN dash_demo.employees e ON e.employee_id = c.account_manager_id\nWHERE c.customer_id = ?\"\"\", [customerId as Integer])"
+        },
+        "displayConfig": {
+          "columnSettings": {
+            "credit_limit": {
+              "columnTitle": "Credit limit"
+            },
+            "payment_terms_days": {
+              "columnTitle": "Payment terms (days)"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-kpi-lifetime-revenue",
+        "type": "number",
+        "gridPosition": {
+          "x": 4,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Everything the account has bought that was not cancelled.\ndbSql.rows(\"\"\"SELECT round(sum(o.total_amount), 2) AS lifetime_revenue\nFROM dash_demo.orders o\nWHERE o.status <> 'cancelled'\n  AND o.customer_id = ?\"\"\", [customerId as Integer])"
+        },
+        "displayConfig": {
+          "numberField": "lifetime_revenue",
+          "numberLabel": "Lifetime revenue",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-kpi-open-invoices",
+        "type": "number",
+        "gridPosition": {
+          "x": 8,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// The money owed: issued and not settled.\ndbSql.rows(\"\"\"SELECT count(*) AS open_invoices\nFROM dash_demo.invoices\nWHERE status IN ('open', 'overdue', 'partially_paid')\n  AND customer_id = ?\"\"\", [customerId as Integer])"
+        },
+        "displayConfig": {
+          "numberField": "open_invoices",
+          "numberLabel": "Open invoices",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-kpi-tickets-not-closed",
+        "type": "number",
+        "gridPosition": {
+          "x": 4,
+          "y": 3,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// Still on the account: open, pending, or resolved and not yet closed out.\ndbSql.rows(\"\"\"SELECT count(*) AS tickets_not_closed\nFROM dash_demo.support_tickets\nWHERE status <> 'closed'\n  AND customer_id = ?\"\"\", [customerId as Integer])"
+        },
+        "displayConfig": {
+          "numberField": "tickets_not_closed",
+          "numberLabel": "Tickets not closed",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-kpi-care-plan-mrr",
+        "type": "number",
+        "gridPosition": {
+          "x": 8,
+          "y": 3,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// What the account pays every month for its care plan, if it has one.\ndbSql.rows(\"\"\"SELECT round(coalesce(sum(mrr), 0), 2) AS care_plan_mrr\nFROM dash_demo.subscriptions\nWHERE cancel_date IS NULL\n  AND customer_id = ?\"\"\", [customerId as Integer])"
+        },
+        "displayConfig": {
+          "numberField": "care_plan_mrr",
+          "numberLabel": "Care plan MRR",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-chart-orders-per-month",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 5,
+          "w": 8,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT date_trunc('month', o.order_ts) AS month,\n       count(*) AS orders,\n       round(sum(o.total_amount), 2) AS revenue\nFROM dash_demo.orders o\nWHERE o.status <> 'cancelled'\n  AND o.customer_id = ${customerId}\nGROUP BY 1\nORDER BY 1"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "combo",
+            "data": {
+              "labelField": "month",
+              "datasets": [
+                {
+                  "field": "orders",
+                  "label": "Orders"
+                },
+                {
+                  "field": "revenue",
+                  "label": "Revenue"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Orders per month"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-chart-spend-by-category",
+        "type": "chart",
+        "gridPosition": {
+          "x": 8,
+          "y": 5,
+          "w": 4,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT p.category AS category,\n       round(sum(l.line_amount), 2) AS spend\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND o.customer_id = ${customerId}\nGROUP BY 1\nORDER BY spend DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "doughnut",
+            "data": {
+              "labelField": "category",
+              "datasets": [
+                {
+                  "field": "spend",
+                  "label": "Spend"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Spend by category"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-table-last-20-orders",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 0,
+          "y": 9,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.order_id AS order_id,\n       CAST(o.order_ts AS DATE) AS ordered,\n       o.channel AS channel,\n       o.status AS status,\n       o.carrier AS carrier,\n       o.promised_date AS promised,\n       CAST(o.delivered_ts AS DATE) AS delivered,\n       round(o.total_amount, 2) AS total_amount\nFROM dash_demo.orders o\nWHERE o.customer_id = ${customerId}\nORDER BY o.order_ts DESC\nLIMIT 20"
+        },
+        "displayConfig": {
+          "columnSettings": {
+            "total_amount": {
+              "columnTitle": "Total"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd11-table-tickets",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 6,
+          "y": 9,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT t.ticket_id AS ticket_id,\n       CAST(t.opened_ts AS DATE) AS opened,\n       t.category AS category,\n       t.priority AS priority,\n       t.status AS status,\n       t.channel AS channel,\n       t.sla_breached AS sla_breached,\n       t.csat_score AS csat\nFROM dash_demo.support_tickets t\nWHERE t.customer_id = ${customerId}\nORDER BY t.opened_ts DESC"
+        },
+        "displayConfig": {
+          "columnSettings": {
+            "sla_breached": {
+              "columnTitle": "SLA breached"
+            },
+            "csat": {
+              "columnTitle": "CSAT"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "customerId",
+          "type": "Integer",
+          "label": "Customer",
+          "defaultValue": 1017,
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "select",
+            "searchable": true,
+            "options": "SELECT c.customer_id AS value, c.name AS label FROM dash_demo.customers c ORDER BY c.name, c.customer_id"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-customer-360",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

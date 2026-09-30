@@ -1,0 +1,6 @@
+{
+  "number_estimated_sessions_sessions" : {
+    "format" : "number",
+    "label" : "Estimated sessions (sampled 1 in 8)"
+  }
+}

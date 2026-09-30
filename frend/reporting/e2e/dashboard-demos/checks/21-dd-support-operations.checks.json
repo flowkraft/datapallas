@@ -11,15 +11,15 @@
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
     "priority": [],
-    "team": "All"
+    "team": ""
   },
   "kpis": [
     {
       "widget": "kpi-open-tickets",
       "label": "Open tickets",
       "format": "number",
-      "value": 12552,
-      "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.status <> 'resolved'"
+      "value": 127,
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.status IN ('open', 'pending')"
     },
     {
       "widget": "kpi-opened-last-7-days",
@@ -41,13 +41,6 @@
       "format": "percent",
       "value": 90.66,
       "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true"
-    },
-    {
-      "widget": "chart-urgent-sla-breaches-june-2026",
-      "label": "Urgent SLA breaches in June 2026 against the rest",
-      "format": "number",
-      "value": 3.05,
-      "sql": "SELECT round((SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) = DATE '2026-06-01') / (SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) <> DATE '2026-06-01'), 2)"
     }
   ],
   "interactions": [
@@ -57,7 +50,7 @@
         "priority": [
           "urgent"
         ],
-        "team": "All"
+        "team": ""
       },
       "changed": {
         "priority": [
@@ -69,8 +62,8 @@
           "widget": "kpi-open-tickets",
           "label": "Open tickets",
           "format": "number",
-          "value": 1032,
-          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.priority IN ('urgent') AND t.status <> 'resolved'"
+          "value": 7,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.priority IN ('urgent') AND t.status IN ('open', 'pending')"
         },
         {
           "widget": "kpi-opened-last-7-days",
@@ -92,13 +85,6 @@
           "format": "percent",
           "value": 90.77,
           "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.priority IN ('urgent')"
-        },
-        {
-          "widget": "chart-urgent-sla-breaches-june-2026",
-          "label": "Urgent SLA breaches in June 2026 against the rest",
-          "format": "number",
-          "value": 3.05,
-          "sql": "SELECT round((SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) = DATE '2026-06-01') / (SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) <> DATE '2026-06-01'), 2)"
         }
       ]
     },
@@ -116,8 +102,8 @@
           "widget": "kpi-open-tickets",
           "label": "Open tickets",
           "format": "number",
-          "value": 3179,
-          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Billing') AND t.status <> 'resolved'"
+          "value": 26,
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets t WHERE true AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Billing') AND t.status IN ('open', 'pending')"
         },
         {
           "widget": "kpi-opened-last-7-days",
@@ -139,13 +125,6 @@
           "format": "percent",
           "value": 90.2,
           "sql": "SELECT round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) FROM dash_demo.support_tickets t WHERE true AND t.agent_id IN (SELECT agent_id FROM dash_demo.support_agents WHERE team = 'Billing')"
-        },
-        {
-          "widget": "chart-urgent-sla-breaches-june-2026",
-          "label": "Urgent SLA breaches in June 2026 against the rest",
-          "format": "number",
-          "value": 3.05,
-          "sql": "SELECT round((SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) = DATE '2026-06-01') / (SELECT 100.0 * count(CASE WHEN t.sla_breached THEN 1 END) / count(*) FROM dash_demo.support_tickets t WHERE t.priority = 'urgent' AND date_trunc('month', t.opened_ts) <> DATE '2026-06-01'), 2)"
         }
       ]
     }

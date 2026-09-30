@@ -1,0 +1,322 @@
+{
+  "id": "g-dd-fulfillment",
+  "name": "Fulfillment & Delivery",
+  "description": "On-time delivery over a chosen window with the weekly trend, the average days to deliver and the late orders behind it; the late rate and the spread of delivery days per carrier; the late rate per country, blank where there are too few deliveries to rate; and the late orders themselves, worst first.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-fulfillment",
+  "state": {
+    "id": "g-dd-fulfillment",
+    "name": "Fulfillment & Delivery",
+    "description": "On-time delivery over a chosen window with the weekly trend, the average days to deliver and the late orders behind it; the late rate and the spread of delivery days per carrier; the late rate per country, blank where there are too few deliveries to rate; and the late orders themselves, worst first.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd20-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Fulfillment & Delivery\n\nLateness is a carrier, not a country: SwiftPost is late 12.3% of the time against 4.28% for the other two over every delivery on the books - 12.38% against 4.25% and 3.05% in the last 90 days - and it is the worse carrier in all 18 countries where it delivers at least 60 parcels a year, from 7.56% in the Netherlands to 20% in Sweden. When it is late the parcel arrives 3.51 days late, against about a day and a half for the others, which is why its delivery-days box has the long tail.\n\nAre we on time and which way it is going, then whether it is one carrier and how late its parcels are, then the map and the list: the map is flat when lateness is not a country problem, and the list is what to chase. **A country with fewer than 60 deliveries in the window has no rate and stays uncoloured** - one late parcel in three is not a fact. The window defaults to the last 90 days, the carrier review period."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-gauge-on-time-delivery",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(CASE WHEN o.delivered_ts::DATE <= o.promised_date THEN 1 END)\n             / count(*)::DOUBLE, 4) AS on_time_rate\nFROM dash_demo.orders o\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})"
+        },
+        "displayConfig": {
+          "field": "on_time_rate",
+          "min": 0.8,
+          "max": 1,
+          "label": "On-time delivery",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 0.9,
+              "color": "#ef8c8c"
+            },
+            {
+              "to": 0.95,
+              "color": "#f9d45c"
+            },
+            {
+              "to": 1,
+              "color": "#88bf4d"
+            }
+          ]
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-kpi-average-days-to-deliver",
+        "type": "number",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(avg(date_diff('day', o.order_ts::DATE, o.delivered_ts::DATE)), 2) AS average_days_to_deliver\nFROM dash_demo.orders o\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})"
+        },
+        "displayConfig": {
+          "numberField": "average_days_to_deliver",
+          "numberLabel": "Average days to deliver",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-kpi-late-orders",
+        "type": "number",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) AS late_orders\nFROM dash_demo.orders o\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\n  AND o.delivered_ts::DATE > o.promised_date"
+        },
+        "displayConfig": {
+          "numberField": "late_orders",
+          "numberLabel": "Late orders",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-trend-on-time-per-week",
+        "type": "trend",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT date_trunc('week', o.delivered_ts)::DATE AS week,\n       round(count(CASE WHEN o.delivered_ts::DATE <= o.promised_date THEN 1 END)\n             / count(*)::DOUBLE, 4) AS on_time_rate\nFROM dash_demo.orders o\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\nGROUP BY week\nORDER BY week"
+        },
+        "displayConfig": {
+          "dateField": "week",
+          "valueField": "on_time_rate",
+          "format": "percent",
+          "label": "On-time % per week"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-chart-late-by-carrier",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.carrier AS carrier,\n       round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) AS late_pct\nFROM dash_demo.orders o\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\nGROUP BY o.carrier\nORDER BY late_pct DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "carrier",
+              "datasets": [
+                {
+                  "field": "late_pct",
+                  "label": "Late %"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Late % by carrier"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-chart-boxplot-delivery-days-by-carrier",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 4,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.carrier AS carrier,\n       date_diff('day', o.order_ts::DATE, o.delivered_ts::DATE) AS delivery_days\nFROM dash_demo.orders o\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\nORDER BY o.carrier, delivery_days"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "boxplot",
+            "data": {
+              "labelField": "carrier",
+              "datasets": [
+                {
+                  "field": "delivery_days",
+                  "label": "Days to deliver"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Delivery days by carrier"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-map-late-by-country",
+        "type": "map",
+        "gridPosition": {
+          "x": 0,
+          "y": 8,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT g.country AS country,\n       CASE WHEN count(*) >= 60\n            THEN round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2)\n       END AS late_pct\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\nGROUP BY g.country\nORDER BY g.country"
+        },
+        "displayConfig": {
+          "mapType": "region",
+          "region": "world_countries",
+          "dimension": "country",
+          "metric": "late_pct"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd20-table-late-orders",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 6,
+          "y": 8,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.order_id AS order_id,\n       o.carrier AS carrier,\n       g.country AS country,\n       o.promised_date AS promised_date,\n       o.delivered_ts::DATE AS delivered_date,\n       date_diff('day', o.promised_date, o.delivered_ts::DATE) AS days_late\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\n  AND o.delivered_ts::DATE > o.promised_date\nORDER BY days_late DESC, o.delivered_ts DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 10,
+            "theme": "modern"
+          },
+          "columnSettings": {
+            "order_id": {
+              "columnTitle": "Order"
+            },
+            "promised_date": {
+              "columnTitle": "Promised"
+            },
+            "delivered_date": {
+              "columnTitle": "Delivered"
+            },
+            "days_late": {
+              "columnTitle": "Days late"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "dateFrom",
+          "type": "Date",
+          "label": "From",
+          "defaultValue": "{dataToday:minus 90 days}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "dateTo",
+          "type": "Date",
+          "label": "To",
+          "defaultValue": "{dataToday}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "carrier",
+          "type": "String",
+          "label": "Carrier",
+          "defaultValue": [],
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "multiselect",
+            "options": "SELECT DISTINCT o.carrier AS value, o.carrier AS label FROM dash_demo.orders o WHERE o.carrier IS NOT NULL ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-fulfillment",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

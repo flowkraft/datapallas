@@ -23,11 +23,15 @@
       "sql": "SELECT count(*) * (SELECT web_session_sample_rate FROM dash_demo.as_of) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
     },
     {
-      "widget": "kpi-sampled-sessions",
+      "widget": "chart-funnel",
       "label": "Sessions in the sample",
       "format": "number",
       "value": 28175,
-      "sql": "SELECT count(*) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+      "sql": "SELECT count(*) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY",
+      "column": "sessions",
+      "row": {
+        "step": "Session"
+      }
     },
     {
       "widget": "gauge-conversion-rate",
@@ -37,18 +41,26 @@
       "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
     },
     {
-      "widget": "chart-funnel-reached-checkout",
+      "widget": "chart-funnel",
       "label": "Reached checkout %",
       "format": "percent",
       "value": 6.85,
-      "sql": "SELECT round(100.0 * count(CASE WHEN s.reached_checkout THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+      "sql": "SELECT round(100.0 * count(CASE WHEN s.reached_checkout THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY",
+      "column": "pct_of_sessions",
+      "row": {
+        "step": "Reached checkout"
+      }
     },
     {
-      "widget": "chart-mobile-checkout-conversion",
-      "label": "Checkout to purchase %",
+      "widget": "chart-mobile-checkout-per-month",
+      "label": "Checkout to purchase %, June 2026",
       "format": "percent",
-      "value": 56.09,
-      "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / nullif(count(CASE WHEN s.reached_checkout THEN 1 END), 0), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY"
+      "value": 46.74,
+      "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / nullif(count(CASE WHEN s.reached_checkout THEN 1 END), 0), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2025-10-01' AND s.started_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND date_trunc('month', s.started_ts) = DATE '2026-06-01'",
+      "column": "checkout_to_purchase_pct",
+      "row": {
+        "month": "2026-06"
+      }
     }
   ],
   "interactions": [
@@ -77,11 +89,15 @@
           "sql": "SELECT count(*) * (SELECT web_session_sample_rate FROM dash_demo.as_of) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile')"
         },
         {
-          "widget": "kpi-sampled-sessions",
+          "widget": "chart-funnel",
           "label": "Sessions in the sample",
           "format": "number",
           "value": 2576,
-          "sql": "SELECT count(*) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile')"
+          "sql": "SELECT count(*) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile')",
+          "column": "sessions",
+          "row": {
+            "step": "Session"
+          }
         },
         {
           "widget": "gauge-conversion-rate",
@@ -91,18 +107,26 @@
           "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile')"
         },
         {
-          "widget": "chart-funnel-reached-checkout",
+          "widget": "chart-funnel",
           "label": "Reached checkout %",
           "format": "percent",
           "value": 8.81,
-          "sql": "SELECT round(100.0 * count(CASE WHEN s.reached_checkout THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile')"
+          "sql": "SELECT round(100.0 * count(CASE WHEN s.reached_checkout THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile')",
+          "column": "pct_of_sessions",
+          "row": {
+            "step": "Reached checkout"
+          }
         },
         {
-          "widget": "chart-mobile-checkout-conversion",
-          "label": "Checkout to purchase %",
+          "widget": "chart-mobile-checkout-per-month",
+          "label": "Checkout to purchase %, June 2026",
           "format": "percent",
-          "value": 40.97,
-          "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / nullif(count(CASE WHEN s.reached_checkout THEN 1 END), 0), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile')"
+          "value": 40.91,
+          "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / nullif(count(CASE WHEN s.reached_checkout THEN 1 END), 0), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('mobile') AND date_trunc('month', s.started_ts) = DATE '2026-06-01'",
+          "column": "checkout_to_purchase_pct",
+          "row": {
+            "month": "2026-06"
+          }
         }
       ]
     },
@@ -131,11 +155,15 @@
           "sql": "SELECT count(*) * (SELECT web_session_sample_rate FROM dash_demo.as_of) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop')"
         },
         {
-          "widget": "kpi-sampled-sessions",
+          "widget": "chart-funnel",
           "label": "Sessions in the sample",
           "format": "number",
           "value": 1492,
-          "sql": "SELECT count(*) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop')"
+          "sql": "SELECT count(*) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop')",
+          "column": "sessions",
+          "row": {
+            "step": "Session"
+          }
         },
         {
           "widget": "gauge-conversion-rate",
@@ -145,18 +173,26 @@
           "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop')"
         },
         {
-          "widget": "chart-funnel-reached-checkout",
+          "widget": "chart-funnel",
           "label": "Reached checkout %",
           "format": "percent",
           "value": 6.84,
-          "sql": "SELECT round(100.0 * count(CASE WHEN s.reached_checkout THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop')"
+          "sql": "SELECT round(100.0 * count(CASE WHEN s.reached_checkout THEN 1 END) / count(*), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop')",
+          "column": "pct_of_sessions",
+          "row": {
+            "step": "Reached checkout"
+          }
         },
         {
-          "widget": "chart-mobile-checkout-conversion",
-          "label": "Checkout to purchase %",
+          "widget": "chart-mobile-checkout-per-month",
+          "label": "Checkout to purchase %, June 2026",
           "format": "percent",
-          "value": 54.9,
-          "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / nullif(count(CASE WHEN s.reached_checkout THEN 1 END), 0), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop')"
+          "value": 55.17,
+          "sql": "SELECT round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / nullif(count(CASE WHEN s.reached_checkout THEN 1 END), 0), 2) FROM dash_demo.web_sessions s WHERE true AND s.started_ts >= DATE '2026-06-01' AND s.started_ts < DATE '2026-07-31' + INTERVAL 1 DAY AND s.device IN ('desktop') AND date_trunc('month', s.started_ts) = DATE '2026-06-01'",
+          "column": "checkout_to_purchase_pct",
+          "row": {
+            "month": "2026-06"
+          }
         }
       ]
     }

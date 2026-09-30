@@ -1,0 +1,23 @@
+[
+  {
+    "id": "carrier-swiftpost",
+    "question": "Is it one carrier?",
+    "text": "Pick SwiftPost: the gauge drops from 93.9% to 87.62%, 78 of the 138 late orders are its own, and the average delivery takes 4.5 days against 4.14 for everyone. Its box has the long tail - a quarter of its parcels take 6 days or more, where the other two carriers' upper quartile is 5. On the map only four countries keep a rate: one carrier in one quarter does not deliver 60 parcels to most places. All four are worse than the page-wide rate they had, 7.92% to 18.42%, so the lateness travels with the carrier rather than with the country.",
+    "params": {
+      "carrier": [
+        "SwiftPost"
+      ]
+    },
+    "check": "carrier-swiftpost"
+  },
+  {
+    "id": "dates-last-12-months",
+    "question": "And over the year, not the quarter?",
+    "text": "Widen the window to the last 12 months: 93.39% on time, 720 late orders, 4.22 days to deliver - the quarter was no worse than the year. SwiftPost is at 12.57% late against 4.42% and 3.91%, on 3,167 of its own deliveries, so the gap is the carrier's normal and not a bad three months.",
+    "params": {
+      "dateFrom": "{dataToday:minus 11 months, startOf month}",
+      "dateTo": "{dataToday}"
+    },
+    "check": "dates-last-12-months"
+  }
+]

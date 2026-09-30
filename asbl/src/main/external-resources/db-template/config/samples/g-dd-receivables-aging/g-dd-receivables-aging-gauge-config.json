@@ -1,0 +1,19 @@
+{
+  "gauge_current_not_overdue_overdue" : {
+    "field" : "current_not_overdue",
+    "min" : 0,
+    "max" : 1,
+    "label" : "Current, not overdue",
+    "format" : "percent",
+    "bands" : [ {
+      "to" : 0.8,
+      "color" : "#ef8c8c"
+    }, {
+      "to" : 0.9,
+      "color" : "#f9d45c"
+    }, {
+      "to" : 1,
+      "color" : "#88bf4d"
+    } ]
+  }
+}

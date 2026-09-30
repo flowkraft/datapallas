@@ -1,0 +1,16 @@
+{
+  "number_marginpct_margin" : {
+    "field" : "MarginPct",
+    "format" : "percent",
+    "label" : "Gross margin %"
+  },
+  "number_grossprofit_profit" : {
+    "field" : "GrossProfit",
+    "format" : "currency",
+    "label" : "Gross profit"
+  },
+  "number_discounts_given_given" : {
+    "format" : "currency",
+    "label" : "Discounts given"
+  }
+}

@@ -10,7 +10,7 @@
   },
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
-    "warehouse": "All",
+    "warehouse": "",
     "belowReorderOnly": true,
     "category": []
   },
@@ -37,18 +37,23 @@
       "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY)"
     },
     {
-      "widget": "table-stock-rows",
+      "widget": "table-stock-by-sku",
       "label": "Rows in the stock table",
       "format": "number",
       "value": 14,
-      "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND sl.qty_on_hand < sl.reorder_level"
+      "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND sl.qty_on_hand < sl.reorder_level",
+      "reading": "rows"
     },
     {
-      "widget": "chart-space-used-rotterdam",
+      "widget": "chart-space-used-by-warehouse",
       "label": "Rotterdam DC, % of capacity",
       "format": "percent",
       "value": 94.0,
-      "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+      "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'",
+      "column": "capacity_pct",
+      "row": {
+        "warehouse": "Rotterdam DC"
+      }
     }
   ],
   "interactions": [
@@ -85,25 +90,30 @@
           "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY) AND sl.warehouse_id = (SELECT warehouse_id FROM dash_demo.warehouses WHERE name = 'Rotterdam DC')"
         },
         {
-          "widget": "table-stock-rows",
+          "widget": "table-stock-by-sku",
           "label": "Rows in the stock table",
           "format": "number",
           "value": 4,
-          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND sl.warehouse_id = (SELECT warehouse_id FROM dash_demo.warehouses WHERE name = 'Rotterdam DC') AND sl.qty_on_hand < sl.reorder_level"
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND sl.warehouse_id = (SELECT warehouse_id FROM dash_demo.warehouses WHERE name = 'Rotterdam DC') AND sl.qty_on_hand < sl.reorder_level",
+          "reading": "rows"
         },
         {
-          "widget": "chart-space-used-rotterdam",
+          "widget": "chart-space-used-by-warehouse",
           "label": "Rotterdam DC, % of capacity",
           "format": "percent",
           "value": 94.0,
-          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'",
+          "column": "capacity_pct",
+          "row": {
+            "warehouse": "Rotterdam DC"
+          }
         }
       ]
     },
     {
       "id": "below-reorder-off",
       "params": {
-        "warehouse": "All",
+        "warehouse": "",
         "belowReorderOnly": false,
         "category": []
       },
@@ -133,25 +143,30 @@
           "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY)"
         },
         {
-          "widget": "table-stock-rows",
+          "widget": "table-stock-by-sku",
           "label": "Rows in the stock table",
           "format": "number",
           "value": 1000,
-          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true"
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true",
+          "reading": "rows"
         },
         {
-          "widget": "chart-space-used-rotterdam",
+          "widget": "chart-space-used-by-warehouse",
           "label": "Rotterdam DC, % of capacity",
           "format": "percent",
           "value": 94.0,
-          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'",
+          "column": "capacity_pct",
+          "row": {
+            "warehouse": "Rotterdam DC"
+          }
         }
       ]
     },
     {
       "id": "category-office-and-smart-home",
       "params": {
-        "warehouse": "All",
+        "warehouse": "",
         "belowReorderOnly": true,
         "category": [
           "Office Furniture",
@@ -187,18 +202,23 @@
           "sql": "SELECT round(sum(sl.qty_on_hand * pr.unit_cost), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE (sl.last_sold_date IS NULL OR sl.last_sold_date < DATE '2026-09-30' - INTERVAL 90 DAY) AND pr.category IN ('Office Furniture', 'Smart Home')"
         },
         {
-          "widget": "table-stock-rows",
+          "widget": "table-stock-by-sku",
           "label": "Rows in the stock table",
           "format": "number",
           "value": 4,
-          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND pr.category IN ('Office Furniture', 'Smart Home') AND sl.qty_on_hand < sl.reorder_level"
+          "sql": "SELECT count(*) FROM dash_demo.stock_levels sl JOIN dash_demo.products pr USING (product_id) WHERE true AND pr.category IN ('Office Furniture', 'Smart Home') AND sl.qty_on_hand < sl.reorder_level",
+          "reading": "rows"
         },
         {
-          "widget": "chart-space-used-rotterdam",
+          "widget": "chart-space-used-by-warehouse",
           "label": "Rotterdam DC, % of capacity",
           "format": "percent",
           "value": 94.0,
-          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'"
+          "sql": "SELECT round(100.0 * sum(sl.qty_on_hand) / max(w.capacity_units), 2) FROM dash_demo.stock_levels sl JOIN dash_demo.warehouses w USING (warehouse_id) WHERE w.name = 'Rotterdam DC'",
+          "column": "capacity_pct",
+          "row": {
+            "warehouse": "Rotterdam DC"
+          }
         }
       ]
     }

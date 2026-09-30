@@ -1,0 +1,19 @@
+{
+  "gauge_sla_met_rate_met" : {
+    "field" : "sla_met_rate",
+    "min" : 0.75,
+    "max" : 1,
+    "label" : "SLA met",
+    "format" : "percent",
+    "bands" : [ {
+      "to" : 0.85,
+      "color" : "#ef8c8c"
+    }, {
+      "to" : 0.9,
+      "color" : "#f9d45c"
+    }, {
+      "to" : 1,
+      "color" : "#88bf4d"
+    } ]
+  }
+}

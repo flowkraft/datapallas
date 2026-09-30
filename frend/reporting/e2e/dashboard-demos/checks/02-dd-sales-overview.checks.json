@@ -12,7 +12,8 @@
   "defaults": {
     "dateFrom": "2025-01-01",
     "dateTo": "2026-09-30",
-    "country": "All",
+    "country": "",
+    "countryLabel": "All",
     "channel": []
   },
   "kpis": [
@@ -51,11 +52,13 @@
       "params": {
         "dateFrom": "2025-01-01",
         "dateTo": "2026-09-30",
-        "country": "Germany",
+        "country": "DE",
+        "countryLabel": "Germany",
         "channel": []
       },
       "changed": {
-        "country": "Germany"
+        "country": "DE",
+        "countryLabel": "Germany"
       },
       "kpis": [
         {
@@ -93,7 +96,8 @@
       "params": {
         "dateFrom": "2025-01-01",
         "dateTo": "2026-09-30",
-        "country": "All",
+        "country": "",
+        "countryLabel": "All",
         "channel": [
           "mobile_app"
         ]
@@ -139,7 +143,8 @@
       "params": {
         "dateFrom": "2026-04-01",
         "dateTo": "2026-06-30",
-        "country": "All",
+        "country": "",
+        "countryLabel": "All",
         "channel": []
       },
       "changed": {

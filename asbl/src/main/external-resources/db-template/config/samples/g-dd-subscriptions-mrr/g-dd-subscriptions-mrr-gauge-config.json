@@ -1,0 +1,19 @@
+{
+  "gauge_churn_last_month_month" : {
+    "field" : "churn_last_month",
+    "min" : 0,
+    "max" : 0.05,
+    "label" : "Churn last month",
+    "format" : "percent",
+    "bands" : [ {
+      "to" : 0.01,
+      "color" : "#88bf4d"
+    }, {
+      "to" : 0.02,
+      "color" : "#f9d45c"
+    }, {
+      "to" : 0.05,
+      "color" : "#ef8c8c"
+    } ]
+  }
+}

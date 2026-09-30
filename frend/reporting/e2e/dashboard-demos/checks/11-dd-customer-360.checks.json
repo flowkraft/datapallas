@@ -22,11 +22,12 @@
       "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.customer_id = 1017"
     },
     {
-      "widget": "kpi-orders",
+      "widget": "detail-customer-profile",
       "label": "Orders",
       "format": "number",
       "value": 143,
-      "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = 1017"
+      "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = 1017",
+      "column": "orders"
     },
     {
       "widget": "kpi-open-invoices",
@@ -36,11 +37,11 @@
       "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1017 AND status IN ('open', 'overdue', 'partially_paid')"
     },
     {
-      "widget": "kpi-open-tickets",
-      "label": "Open tickets",
+      "widget": "kpi-tickets-not-closed",
+      "label": "Tickets not closed",
       "format": "number",
-      "value": 82,
-      "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1017 AND status <> 'resolved'"
+      "value": 6,
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1017 AND status <> 'closed'"
     },
     {
       "widget": "kpi-care-plan-mrr",
@@ -54,14 +55,8 @@
       "label": "Tickets",
       "format": "number",
       "value": 88,
-      "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1017"
-    },
-    {
-      "widget": "table-invoices",
-      "label": "Invoices",
-      "format": "number",
-      "value": 140,
-      "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1017"
+      "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1017",
+      "reading": "rows"
     }
   ],
   "interactions": [
@@ -84,11 +79,12 @@
           "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND o.customer_id = 1028"
         },
         {
-          "widget": "kpi-orders",
+          "widget": "detail-customer-profile",
           "label": "Orders",
           "format": "number",
           "value": 8,
-          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = 1028"
+          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = 1028",
+          "column": "orders"
         },
         {
           "widget": "kpi-open-invoices",
@@ -98,11 +94,11 @@
           "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1028 AND status IN ('open', 'overdue', 'partially_paid')"
         },
         {
-          "widget": "kpi-open-tickets",
-          "label": "Open tickets",
+          "widget": "kpi-tickets-not-closed",
+          "label": "Tickets not closed",
           "format": "number",
           "value": 1,
-          "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1028 AND status <> 'resolved'"
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1028 AND status <> 'closed'"
         },
         {
           "widget": "kpi-care-plan-mrr",
@@ -116,14 +112,8 @@
           "label": "Tickets",
           "format": "number",
           "value": 2,
-          "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1028"
-        },
-        {
-          "widget": "table-invoices",
-          "label": "Invoices",
-          "format": "number",
-          "value": 0,
-          "sql": "SELECT count(*) FROM dash_demo.invoices WHERE customer_id = 1028"
+          "sql": "SELECT count(*) FROM dash_demo.support_tickets WHERE customer_id = 1028",
+          "reading": "rows"
         }
       ]
     }

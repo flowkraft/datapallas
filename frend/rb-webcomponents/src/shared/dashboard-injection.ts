@@ -11,9 +11,20 @@
  * half a dashboard with nothing to explain it.
  *
  * <p>So the host's credential and the host's API base are written onto the widgets as the template
- * is injected. There is exactly one dashboard on the page and exactly one report it may read, which
- * is what makes this safe to do wholesale: the token the widgets receive unlocks that one report
- * and nothing else, and a widget that names a different report is told so rather than left blank.
+ * is injected. The token the widgets receive unlocks what the page's own credential unlocks and
+ * nothing else — that is the server's decision, not this file's — and a widget that names a report
+ * the credential does not open is refused there rather than left blank.
+ *
+ * <h2>Dashboards inside the dashboard</h2>
+ * A gallery page is a template whose tiles are other dashboards. A nested `<rb-dashboard>` is a host
+ * of its own: it fetches its own config and data, from its own attributes, so it needs the page's
+ * credential for the same reason every widget does, and gets it on the same terms. It is given the
+ * `embed-token` and, only when it carries none of its own, the `api-base-url`; nothing else, because
+ * the page's parameter values belong to the page's own filter bar and not to a dashboard that has
+ * one of its own. Whether the credential actually opens it was settled when the credential was made:
+ * a link or a token opens the report it was made for and the dashboards that report's page embedded
+ * then. Writing the token onto a tag therefore widens nothing — a tag added to the page in a browser
+ * gets the same token and is refused all the same.
  *
  * <h2>Why the API base is overridden rather than defaulted</h2>
  * A template carries the API base that was true on the author's machine when the dashboard was
@@ -39,8 +50,11 @@ export interface DashboardHostContext {
 /** The widgets that take `report-params`; the others ignore it, so they are not given it. */
 const PARAMETERISED_WIDGETS = ['tabulator', 'chart', 'pivot-table', 'value'];
 
-/** The host element itself never appears inside its own template, and must never be fed to itself. */
-const NOT_A_WIDGET = ['report', 'dashboard'];
+/**
+ * Not widgets but hosts: a dashboard embedded in a dashboard, and a report embedded in one. They take
+ * the credential and the API base, and nothing else a widget takes.
+ */
+const NESTED_HOSTS = ['report', 'dashboard'];
 
 const WIDGET_OPEN_TAG = /<rb-([a-z0-9-]+)((?:"[^"]*"|'[^']*'|[^>])*?)(\/?)>/gi;
 
@@ -54,7 +68,15 @@ export function prepareDashboardHtml(template: string, host: DashboardHostContex
 
   return template.replace(WIDGET_OPEN_TAG, (whole, tagRest: string, attrs: string, selfClosing: string) => {
     const tag = String(tagRest).toLowerCase();
-    if (NOT_A_WIDGET.indexOf(tag) >= 0) return whole;
+
+    if (NESTED_HOSTS.indexOf(tag) >= 0) {
+      let nested = attrs;
+      if (host.embedToken) nested = withAttribute(nested, 'embed-token', host.embedToken, false);
+      // Only when it has none: an embedded dashboard authored against another installation says so
+      // deliberately, whereas a widget's stale base is the author's own machine leaking into the page.
+      if (host.apiBaseUrl) nested = withAttribute(nested, 'api-base-url', host.apiBaseUrl, false);
+      return '<rb-' + tagRest + nested + selfClosing + '>';
+    }
 
     const widgetReportId = attributeValue(attrs, 'report-id');
 

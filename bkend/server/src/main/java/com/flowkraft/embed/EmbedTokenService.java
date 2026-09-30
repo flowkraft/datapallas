@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -137,6 +138,26 @@ public class EmbedTokenService {
 	 */
 	public String mint(String reportId, long ttlSeconds, Map<String, Object> lockedParams,
 			Map<String, String> attributes, String timezone, String locale) {
+		return mint(reportId, ttlSeconds, lockedParams, attributes, timezone, locale, null);
+	}
+
+	/**
+	 * Mint a token that also opens the dashboards the report's published page embeds.
+	 *
+	 * <p>A gallery page is one report whose template is mostly other dashboards, and a token that
+	 * opened only the page would leave every tile inside it refused. The list travels inside the signed
+	 * payload, as the {@code emb} claim, for exactly the reason the locks do: a viewer who adds a
+	 * report id to it breaks the signature, and the server admits nothing it does not read from the
+	 * token. It is fixed when the token is minted - {@link EmbeddedReports} reads the template here and
+	 * nowhere on the request path - so a page edited afterwards never widens a token already handed
+	 * out.
+	 *
+	 * @param embeddedReports the report ids of the page's own {@code <rb-dashboard>} tags, as
+	 *                        {@link EmbeddedReports} returns them; null or empty mints exactly the
+	 *                        token the overload above does
+	 */
+	public String mint(String reportId, long ttlSeconds, Map<String, Object> lockedParams,
+			Map<String, String> attributes, String timezone, String locale, List<String> embeddedReports) {
 
 		if (StringUtils.isBlank(reportId))
 			throw new IllegalArgumentException("reportId is required");
@@ -156,6 +177,8 @@ public class EmbedTokenService {
 			claims.set("lp", MAPPER.valueToTree(lockedParams));
 		if (!checkedAttributes.isEmpty())
 			claims.set("at", MAPPER.valueToTree(checkedAttributes));
+		if (embeddedReports != null && !embeddedReports.isEmpty())
+			claims.set("emb", MAPPER.valueToTree(embeddedReports));
 		if (StringUtils.isNotBlank(timezone))
 			claims.put("tz", timezone.trim());
 		if (StringUtils.isNotBlank(locale))
@@ -235,6 +258,13 @@ public class EmbedTokenService {
 					})
 					: Map.of();
 
+			JsonNode embedded = claims.get("emb");
+			List<String> embeddedReports = embedded != null && embedded.isArray()
+					? MAPPER.convertValue(embedded, new com.fasterxml.jackson.core.type.TypeReference<
+							java.util.ArrayList<String>>() {
+					})
+					: List.of();
+
 			// A zone or a tag that has stopped being one - a JDK that dropped it, a token minted by an
 			// older host - is dropped rather than failing the read: the tenant's answer is a worse
 			// "today" than the token's, and a dashboard nobody can open is worse than both.
@@ -243,7 +273,7 @@ public class EmbedTokenService {
 
 			return Optional.of(new Claims(reportId, lockedParams, attributes,
 					Preferences.isValidZone(timezone) ? timezone.trim() : null,
-					Preferences.isValidLocale(locale) ? locale.trim() : null));
+					Preferences.isValidLocale(locale) ? locale.trim() : null, List.copyOf(embeddedReports)));
 
 		} catch (Exception e) {
 			return Optional.empty();
@@ -276,16 +306,23 @@ public class EmbedTokenService {
 	}
 
 	/**
-	 * What a verified token says: the report it opens, and the parameter values that report is read
-	 * with. Locks are empty for a token that carries none, never null, so a caller never has to ask
-	 * twice whether a token locks anything.
+	 * What a verified token says: the report it opens, the dashboards that report's page embeds, and
+	 * the parameter values they are read with. Locks and embedded reports are empty for a token that
+	 * carries none, never null, so a caller never has to ask twice whether a token locks or opens
+	 * anything more.
 	 */
 	public record Claims(String reportId, Map<String, Object> lockedParams, Map<String, String> attributes,
-			String timezone, String locale) {
+			String timezone, String locale, List<String> embeddedReports) {
 
 		/** A token that says nothing about its viewer beyond the report and its locks. */
 		public Claims(String reportId, Map<String, Object> lockedParams) {
 			this(reportId, lockedParams, Map.of(), null, null);
+		}
+
+		/** A token for one report alone: it embeds nothing, as every token did before {@code emb}. */
+		public Claims(String reportId, Map<String, Object> lockedParams, Map<String, String> attributes,
+				String timezone, String locale) {
+			this(reportId, lockedParams, attributes, timezone, locale, List.of());
 		}
 	}
 }

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "channel-sales-rep",
+    "question": "When do the sales reps sell?",
+    "text": "Pick the sales_rep channel: the heatmap's dark cells move off Monday evening to Monday at 13:00, office hours, and the payday bump grows to 130% of an average day.",
+    "params": {
+      "channel": "sales_rep"
+    },
+    "check": "channel-sales-rep"
+  }
+]

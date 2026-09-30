@@ -1,0 +1,18 @@
+{
+  "number_row_count_rows" : {
+    "format" : "number",
+    "label" : "Rows"
+  },
+  "number_column_count_columns" : {
+    "format" : "number",
+    "label" : "Columns"
+  },
+  "number_rows_added_days" : {
+    "format" : "number",
+    "label" : "Rows added in the last 30 days"
+  },
+  "number_columns_with_nulls_nulls" : {
+    "format" : "number",
+    "label" : "Columns with NULLs"
+  }
+}

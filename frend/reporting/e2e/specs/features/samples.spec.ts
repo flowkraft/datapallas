@@ -17,6 +17,16 @@ import {
   drawnRows,
   waitForCard,
 } from '../../helpers/cube-stories-test-helper';
+import {
+  DEMOS,
+  GALLERY_REPORT_ID,
+} from '../../helpers/dashboard-demos/demo-catalog';
+import {
+  assertDemoDashboard,
+  scrollCardIntoView,
+  watchForErrors,
+} from '../../helpers/dashboard-demos/published-dashboard-checks';
+import { assertStoriesAreOffered } from '../../helpers/dashboard-demos-test-helper';
 
 //DONE2
 test.describe('', async () => {
@@ -1675,6 +1685,117 @@ electronBeforeAfterAllTest(
         );
         expect(netSalesOf(lockedAsksForFrance), 'the lock beats the dashboard value')
           .toBeCloseTo(859422.88, 1);
+      } finally {
+        if (externalBrowser) {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
+        }
+      }
+    },
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Sample 23: Dashboard Demos — 25 dashboards on one page.
+  //
+  // Light, as sample 21's is: it walks the sample the way the person in front of the
+  // installation does (the list, the Learn More modal, Try It, the page in a browser) and
+  // checks that the Gallery a visitor meets is the page the index describes. What each of
+  // the 25 dashboards shows, the filters, the stories, the links and the sharing are
+  // `specs/areas/dashboard-demos.spec.ts`.
+  //
+  // It is sample 23 and not 22: 22 is Country Sales Dashboard, above.
+  // ═══════════════════════════════════════════════════════════════════════════
+  electronBeforeAfterAllTest(
+    'should work correctly (23_dashboard_demos)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trDASHBOARD-DEMOS')
+        .waitOnElementToContainText('#tdDASHBOARD-DEMOS', 'Dashboard Demos');
+
+      // Verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(ft, 'DASHBOARD-DEMOS', 'northwind.duckdb');
+
+      // A dashboard sample's "Try It" opens the page in the browser, as sample 22's does.
+      let externalBrowser = null;
+
+      await ft
+        .scrollIntoViewIfNeeded('#trDASHBOARD-DEMOS')
+        .click('#trDASHBOARD-DEMOS')
+        .click('#btnSampleTryItDASHBOARD-DEMOS');
+
+      try {
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        externalBrowser = browser;
+
+        // A brand new browser carries no session; on a Server the dashboard would otherwise be
+        // the login page. On a desktop installation this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
+
+        const galleryUrl = `http://localhost:9090/dashboard/${GALLERY_REPORT_ID}`;
+
+        await SelfServicePortalsTestHelper.waitForServerReady(page, galleryUrl, 30, 2000);
+
+        // Nothing the page does may go wrong while this test uses it.
+        const watch = watchForErrors(page);
+
+        await page.goto(galleryUrl, { timeout: 120000, waitUntil: 'networkidle' });
+
+        const { expect } = await import('@playwright/test');
+
+        // The page says what it is, to a reader who arrives with no sample list around them.
+        await expect(page.locator('.rb-dashboard-demos-root')).toBeVisible({ timeout: 60000 });
+        await expect(page.locator('.rb-dashboard-demos-root .dash-title'))
+          .toContainText('Dashboard Demos', { timeout: 30000 });
+
+        // The contents list above the cards: one entry per demo, in the index's order.
+        const contents = await page
+          .locator('.rb-dashboard-demos-root nav a[href^="#dd-"]')
+          .evaluateAll((links) => links.map((link) => (link as HTMLAnchorElement).hash));
+        expect(contents, 'the contents list names every demo, in order')
+          .toEqual(DEMOS.map((demo) => `#${demo.id}`));
+
+        // And the cards themselves, each carrying its own dashboard.
+        const cards = await page
+          .locator('.rb-dashboard-demos-root .card')
+          .evaluateAll((divs) => divs.map((div) => div.id));
+        expect(cards, 'one card per demo, in the index\'s order')
+          .toEqual(DEMOS.map((demo) => demo.id));
+
+        for (const demo of DEMOS)
+          await expect(
+            page.locator(`#${demo.id} rb-dashboard[report-id="${demo.reportId}"]`),
+            `${demo.id}'s card carries its own dashboard`,
+          ).toHaveCount(1);
+
+        // Every card says how it was built, below its dashboard, on a page of its own.
+        for (const demo of DEMOS) {
+          const built = page.locator(`#lnkHowBuilt-${demo.id}`);
+          await expect(built, `${demo.id} says how it was built`)
+            .toHaveAttribute('href', demo.howItWasBuiltUrl);
+          await expect(built, 'and that page opens beside the Gallery, not over it')
+            .toHaveAttribute('target', '_blank');
+          const below = await page.evaluate((id) => {
+            const dashboard = document.querySelector(`#${id} rb-dashboard`);
+            const link = document.querySelector(`#lnkHowBuilt-${id}`);
+            if (!dashboard || !link) return false;
+            return link.getBoundingClientRect().top >= dashboard.getBoundingClientRect().top;
+          }, demo.id);
+          expect(below, `${demo.id}'s "how it was built" sits below its dashboard`).toBe(true);
+        }
+
+        // The first card, in full: the dashboard loaded, showing the numbers its checks hold it
+        // to, and offering the questions its stories file asks. The other 24 are walked the same
+        // way in `specs/areas/dashboard-demos.spec.ts`.
+        const first = DEMOS[0];
+        const card = await scrollCardIntoView(page, first);
+        await assertStoriesAreOffered(card, first);
+        await assertDemoDashboard(card, first);
+
+        watch.assertNone('the Dashboard Demos gallery');
       } finally {
         if (externalBrowser) {
           await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);

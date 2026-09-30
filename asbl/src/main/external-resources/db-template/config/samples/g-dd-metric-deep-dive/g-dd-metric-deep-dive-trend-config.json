@@ -1,0 +1,8 @@
+{
+  "trend_month_month" : {
+    "dateField" : "month",
+    "valueField" : "value",
+    "format" : "number",
+    "label" : "Per month"
+  }
+}

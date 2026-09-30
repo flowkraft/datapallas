@@ -1,0 +1,8 @@
+{
+  "trend_year_start_revenue" : {
+    "dateField" : "year_start",
+    "valueField" : "revenue",
+    "format" : "currency",
+    "label" : "Revenue YTD vs last year"
+  }
+}

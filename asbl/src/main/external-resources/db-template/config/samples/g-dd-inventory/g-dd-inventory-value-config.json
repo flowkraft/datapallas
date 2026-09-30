@@ -1,0 +1,14 @@
+{
+  "number_stock_value_value" : {
+    "format" : "currency",
+    "label" : "Stock value"
+  },
+  "number_skus_below_reorder_reorder" : {
+    "format" : "number",
+    "label" : "SKUs below reorder level"
+  },
+  "number_slow_mover_value_value" : {
+    "format" : "currency",
+    "label" : "Slow-mover value, no sale in 90 days"
+  }
+}

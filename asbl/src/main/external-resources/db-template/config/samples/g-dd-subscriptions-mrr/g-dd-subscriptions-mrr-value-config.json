@@ -1,0 +1,6 @@
+{
+  "number_active_subscribers_subscribers" : {
+    "format" : "number",
+    "label" : "Active subscribers"
+  }
+}

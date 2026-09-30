@@ -1,0 +1,23 @@
+[
+  {
+    "id": "region-apac",
+    "question": "What does the APAC territory look like?",
+    "text": "Pick APAC in Region: Japan tops the map and the order-value list at once, and the growth table is the four APAC markets.",
+    "params": {
+      "region": "APAC"
+    },
+    "check": "region-apac"
+  },
+  {
+    "id": "countries-poland-germany",
+    "question": "How does Poland compare with Germany?",
+    "text": "Pick Poland and Germany in Countries: Germany carries the revenue and the larger orders, Poland grows faster - the two markets one page apart.",
+    "params": {
+      "countries": [
+        "Poland",
+        "Germany"
+      ]
+    },
+    "check": "countries-poland-germany"
+  }
+]

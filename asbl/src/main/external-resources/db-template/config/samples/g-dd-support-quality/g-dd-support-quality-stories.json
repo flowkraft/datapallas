@@ -1,0 +1,18 @@
+[
+  {
+    "id": "team-technical",
+    "question": "And my technical team?",
+    "text": "Pick Technical: the SLA reads 101.67% of its target, the best of the four teams, CSAT ends the year at 4.11 and only 5.15% of its tickets come back against 5.87% for support as a whole. The channel order does not move - chat 4.39, then phone, email and the web form - so the channel story is support's, not one team's.",
+    "params": {
+      "team": "Technical"
+    },
+    "check": "team-technical"
+  },
+  {
+    "id": "leaderboard-by-csat",
+    "question": "Who needs coaching?",
+    "text": "Click the CSAT column: the leaderboard sorts by satisfaction instead of volume, and the answer is that nobody stands out. Nora Ito tops it at 4.13 and Giulia Oliveira closes it at 3.86 - 32 agents inside a quarter of a point - so the page sends you back to the channel chart, where the gap is three quarters of a point wide.",
+    "params": {},
+    "check": "defaults"
+  }
+]

@@ -1,0 +1,178 @@
+{
+  "id": "g-dd-sales-by-country",
+  "name": "Sales by Country",
+  "description": "The country managers' page: revenue by country on the map, the markets with the largest orders, where inside each market the orders come from, and who grows. Every tile joins geo_cities, so every tile is hand-written SQL.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-sales-by-country",
+  "state": {
+    "id": "g-dd-sales-by-country",
+    "name": "Sales by Country",
+    "description": "The country managers' page: revenue by country on the map, the markets with the largest orders, where inside each market the orders come from, and who grows. Every tile joins geo_cities, so every tile is hand-written SQL.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd03-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Sales by Country\n\nGermany is the largest market, Canada grows fastest (about +49%), and Japan has the largest orders."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd03-map-revenue-by-country",
+        "type": "map",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 8,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT g.country AS country,\n       round(sum(o.total_amount), 2) AS revenue\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.status <> 'cancelled'\n  AND g.region = ${region}\n  AND g.country IN (${countries})\nGROUP BY 1\nORDER BY revenue DESC"
+        },
+        "displayConfig": {
+          "mapType": "region",
+          "region": "world_countries",
+          "dimension": "country",
+          "metric": "revenue"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd03-chart-average-order-value-by-country",
+        "type": "chart",
+        "gridPosition": {
+          "x": 8,
+          "y": 1,
+          "w": 4,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT g.country AS country,\n       round(avg(o.total_amount), 2) AS average_order_value\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.status <> 'cancelled'\n  AND g.region = ${region}\n  AND g.country IN (${countries})\nGROUP BY 1\nORDER BY average_order_value DESC\nLIMIT 10"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "row",
+            "data": {
+              "labelField": "country",
+              "datasets": [
+                {
+                  "field": "average_order_value",
+                  "label": "Average order"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Average order value by country, top 10"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd03-map-orders-by-city",
+        "type": "map",
+        "gridPosition": {
+          "x": 0,
+          "y": 6,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT g.city AS city,\n       g.country AS country,\n       g.latitude AS latitude,\n       g.longitude AS longitude,\n       count(*) AS orders\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.status <> 'cancelled'\n  AND g.region = ${region}\n  AND g.country IN (${countries})\nGROUP BY 1, 2, 3, 4\nORDER BY orders DESC"
+        },
+        "displayConfig": {
+          "mapType": "pin",
+          "latField": "latitude",
+          "lonField": "longitude",
+          "dimension": "city",
+          "metric": "orders"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd03-table-country-growth",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 0,
+          "y": 11,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT bucket AS country,\n       round(revenue_this_year, 2) AS revenue_this_year,\n       round(revenue_same_period_last_year, 2) AS revenue_same_period_last_year,\n       round(100.0 * (revenue_this_year / nullif(revenue_same_period_last_year, 0) - 1), 2) AS growth_pct\nFROM (SELECT CASE WHEN c.orders_this_year >= 150 THEN c.country ELSE 'Other countries' END AS bucket,\n             sum(c.revenue_this_year) AS revenue_this_year,\n             sum(c.revenue_same_period_last_year) AS revenue_same_period_last_year\n      FROM (SELECT g.country AS country,\n                   count(CASE WHEN o.order_ts >= date_trunc('year', (SELECT a.as_of FROM dash_demo.as_of a)) THEN 1 END) AS orders_this_year,\n                   sum(CASE WHEN o.order_ts >= date_trunc('year', (SELECT a.as_of FROM dash_demo.as_of a)) THEN o.total_amount ELSE 0 END) AS revenue_this_year,\n                   sum(CASE WHEN o.order_ts >= date_trunc('year', (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 1 YEAR AND o.order_ts < (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 1 YEAR + INTERVAL 1 DAY THEN o.total_amount ELSE 0 END) AS revenue_same_period_last_year\n            FROM dash_demo.orders o\n            JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n            WHERE o.status <> 'cancelled'\n              AND g.region = ${region}\n              AND g.country IN (${countries})\n            GROUP BY 1) c\n      GROUP BY 1) f\nORDER BY CASE WHEN bucket = 'Other countries' THEN 1 ELSE 0 END, growth_pct DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 10,
+            "theme": "modern"
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "region",
+          "type": "String",
+          "label": "Region",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "radio",
+            "options": "SELECT '' AS value, '-- All regions --' AS label UNION ALL SELECT DISTINCT region AS value, region AS label FROM dash_demo.geo_cities ORDER BY label"
+          }
+        },
+        {
+          "id": "countries",
+          "type": "String",
+          "label": "Countries",
+          "defaultValue": [],
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "multiselect",
+            "options": "SELECT DISTINCT country AS value, country AS label FROM dash_demo.geo_cities ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-sales-by-country",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

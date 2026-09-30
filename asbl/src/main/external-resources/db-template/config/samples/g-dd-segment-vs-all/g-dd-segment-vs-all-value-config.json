@@ -1,0 +1,18 @@
+{
+  "number_aov_here_here" : {
+    "format" : "currency",
+    "label" : "Average order here"
+  },
+  "number_aov_everywhere_everywhere" : {
+    "format" : "currency",
+    "label" : "Average order everywhere"
+  },
+  "number_return_rate_here_here" : {
+    "format" : "percent",
+    "label" : "Return rate here"
+  },
+  "number_return_rate_everywhere_everywhere" : {
+    "format" : "percent",
+    "label" : "Return rate everywhere"
+  }
+}

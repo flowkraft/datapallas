@@ -1,0 +1,8 @@
+{
+  "trend_week_week" : {
+    "dateField" : "week",
+    "valueField" : "on_time_rate",
+    "format" : "percent",
+    "label" : "On-time % per week"
+  }
+}

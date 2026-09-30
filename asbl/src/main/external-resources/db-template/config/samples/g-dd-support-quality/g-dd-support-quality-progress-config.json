@@ -1,0 +1,8 @@
+{
+  "progress_dd22-progress-team-sla" : {
+    "field" : "pct_of_target",
+    "goal" : 1,
+    "label" : "Team SLA vs target",
+    "format" : "percent"
+  }
+}

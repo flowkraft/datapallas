@@ -1,8 +1,10 @@
 package com.flowkraft.embed;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +23,12 @@ import jakarta.servlet.http.HttpServletRequest;
  * anybody, create a session, or grant a role. An embed token therefore cannot reach connections, the
  * filesystem API, {@code run-sql}, the DSL parser, or even a different report — a caller holding a
  * token for {@code sales-summary} asking for {@code payroll} is refused.
+ *
+ * <p>"That report" means one report and the dashboards its page embedded when the credential was
+ * made, because a gallery page whose tiles are other dashboards would otherwise render with every
+ * tile refused. The list is carried <em>by the credential</em> - signed into the token, stored with
+ * the link - and {@link #admits} is the only place that reads it. So nothing a request says can widen
+ * it, and editing a page afterwards cannot widen a credential somebody already holds.
  *
  * <p>When no usable token is present the decision falls through to the delegate (normal
  * authentication), so a signed-in user keeps reading reports exactly as before.
@@ -84,14 +92,46 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 
 	private final EmbedTokenService embedTokenService;
 	private final ShareTokenService shareTokenService;
+	private final LockedParamsValidator lockedParamsValidator;
 	private final AuthorizationManager<RequestAuthorizationContext> delegate;
 
 	public EmbedTokenAuthorizationManager(EmbedTokenService embedTokenService,
 			ShareTokenService shareTokenService,
 			AuthorizationManager<RequestAuthorizationContext> delegate) {
+		this(embedTokenService, shareTokenService, null, delegate);
+	}
+
+	/**
+	 * @param lockedParamsValidator asked which parameters an embedded dashboard declares, so a page's
+	 *                              locks reach it by name; null keeps every lock for every report the
+	 *                              credential opens, which is narrower and never wider
+	 */
+	public EmbedTokenAuthorizationManager(EmbedTokenService embedTokenService,
+			ShareTokenService shareTokenService, LockedParamsValidator lockedParamsValidator,
+			AuthorizationManager<RequestAuthorizationContext> delegate) {
 		this.embedTokenService = embedTokenService;
 		this.shareTokenService = shareTokenService;
+		this.lockedParamsValidator = lockedParamsValidator;
 		this.delegate = delegate;
+	}
+
+	/**
+	 * The one rule about which report a credential opens: its own, or one the page it was made for
+	 * embedded at that moment.
+	 *
+	 * <p>Every check in this class goes through here, and so does {@code DashboardController}, because
+	 * two comparisons of a requested report id with a credential's would be two answers, and the wider
+	 * one would decide. It reads nothing from disk and nothing from the request: the list comes from
+	 * the signed token or the stored link, so a {@code reportId} added to a query string, or an
+	 * {@code <rb-dashboard>} added to the page in a browser, admits nothing.
+	 */
+	public static boolean admits(String grantedReportId, List<String> embeddedReports, String requestedReportId) {
+
+		if (grantedReportId == null || requestedReportId == null)
+			return false;
+
+		return grantedReportId.equals(requestedReportId)
+				|| (embeddedReports != null && embeddedReports.contains(requestedReportId));
 	}
 
 	@Override
@@ -107,7 +147,8 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 			Optional<EmbedTokenService.Claims> claims = embedClaimsFor(request, requestedReportId.get());
 			if (claims.isPresent()) {
 				TokenRequest.mark(request, requestedReportId.get());
-				attachLocks(request, claims.get().lockedParams());
+				attachLocks(request, claims.get().lockedParams(), claims.get().reportId(),
+						requestedReportId.get());
 				attachCaller(request, claims.get().attributes(), claims.get().timezone(), claims.get().locale());
 				return new AuthorizationDecision(true);
 			}
@@ -119,11 +160,13 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 			if (shareToken != null && !shareToken.isBlank() && shareTokenService != null) {
 
 				Optional<ShareTokenService.SharedReport> shared = shareTokenService.resolve(shareToken)
-						.filter(report -> requestedReportId.get().equals(report.reportId()));
+						.filter(report -> admits(report.reportId(), report.embeddedReports(),
+								requestedReportId.get()));
 
 				if (shared.isPresent()) {
 					TokenRequest.mark(request, requestedReportId.get());
-					attachLocks(request, shared.get().lockedParams());
+					attachLocks(request, shared.get().lockedParams(), shared.get().reportId(),
+							requestedReportId.get());
 					attachCaller(request, shared.get().attributes(), null, null);
 					return new AuthorizationDecision(true);
 				}
@@ -142,9 +185,44 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 	 * here authorised never gets the attribute, and a controller that finds no attribute overrides
 	 * nothing — which is the right answer for everyone who is simply signed in.
 	 */
-	private void attachLocks(HttpServletRequest request, Map<String, Object> lockedParams) {
-		if (lockedParams != null && !lockedParams.isEmpty())
-			request.setAttribute(LockedParams.REQUEST_ATTRIBUTE, lockedParams);
+	private void attachLocks(HttpServletRequest request, Map<String, Object> lockedParams,
+			String grantedReportId, String requestedReportId) {
+
+		Map<String, Object> locks = locksFor(lockedParams, grantedReportId, requestedReportId);
+		if (locks != null && !locks.isEmpty())
+			request.setAttribute(LockedParams.REQUEST_ATTRIBUTE, locks);
+	}
+
+	/**
+	 * The page's locks as they reach one of the dashboards it embeds: by name, keeping the ones that
+	 * dashboard declares as filters and dropping the rest.
+	 *
+	 * <p>A page shared with {@code region} locked to EU shows EU in every embedded dashboard that has
+	 * a {@code region} filter — the same value in the filter bar and in the data, because both read
+	 * this. A dashboard with no {@code region} filter is told nothing about it, which is the honest
+	 * answer: a lock on a filter it does not have could only be drawn as a control it does not have.
+	 *
+	 * <p>The credential's own report keeps every lock untouched, and so does an embedded report whose
+	 * declared parameters cannot be read at all — dropping locks widens what a viewer sees, so the
+	 * unknown case keeps them.
+	 */
+	private Map<String, Object> locksFor(Map<String, Object> lockedParams, String grantedReportId,
+			String requestedReportId) {
+
+		if (lockedParams == null || lockedParams.isEmpty() || requestedReportId.equals(grantedReportId)
+				|| lockedParamsValidator == null)
+			return lockedParams;
+
+		Optional<Set<String>> declared = lockedParamsValidator.declaredParameterNamesOf(requestedReportId);
+		if (declared.isEmpty())
+			return lockedParams;
+
+		Map<String, Object> narrowed = new LinkedHashMap<>();
+		lockedParams.forEach((name, value) -> {
+			if (declared.get().contains(name))
+				narrowed.put(name, value);
+		});
+		return narrowed;
 	}
 
 	/**
@@ -181,14 +259,18 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 		return requestedReportId.isPresent() && embedClaimsFor(request, requestedReportId.get()).isPresent();
 	}
 
-	/** @return the claims of a header token that is valid <em>for this report</em>, locks included. */
+	/**
+	 * @return the claims of a header token that is valid <em>for this report</em> — its own, or one its
+	 *         page embeds ({@link #admits}) — locks included.
+	 */
 	private Optional<EmbedTokenService.Claims> embedClaimsFor(HttpServletRequest request, String reportId) {
 
 		String embedToken = request.getHeader(EMBED_TOKEN_HEADER);
 		if (embedToken == null || embedToken.isBlank())
 			return Optional.empty();
 
-		return embedTokenService.verify(embedToken).filter(claims -> reportId.equals(claims.reportId()));
+		return embedTokenService.verify(embedToken)
+				.filter(claims -> admits(claims.reportId(), claims.embeddedReports(), reportId));
 	}
 
 	private Optional<String> reportIdOf(HttpServletRequest request) {

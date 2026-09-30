@@ -1,0 +1,20 @@
+[
+  {
+    "id": "min-amount-10000",
+    "question": "Which arrears are worth a call?",
+    "text": "Raise Minimum amount to 10,000: four invoices and one customer are left - Helix Retail Group, and the whole 90+ bucket at 170,829.65. Current cover falls to 81.85%, because what the filter keeps is the large, late debt.",
+    "params": {
+      "minAmount": 10000
+    },
+    "check": "min-amount-10000"
+  },
+  {
+    "id": "account-manager-busiest",
+    "question": "And one manager's own book?",
+    "text": "Pick Marta Meyer, who carries the most accounts: 96.69% of her book is current, five customers are overdue and nothing is past 90 days, so her top 10 is a short list of small arrears. DSO does not move - it is the company's, not hers.",
+    "params": {
+      "accountManagerId": 2014
+    },
+    "check": "account-manager-busiest"
+  }
+]

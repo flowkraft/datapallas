@@ -1,0 +1,323 @@
+{
+  "id": "g-dd-subscriptions-mrr",
+  "name": "Subscriptions: MRR & Churn",
+  "description": "Recurring revenue month by month with the subscriber base behind it, last month's churn, what moved MRR over the last 12 months and why subscribers left, which plans carry the revenue, and how much of itself each signup cohort keeps month over month.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-subscriptions-mrr",
+  "state": {
+    "id": "g-dd-subscriptions-mrr",
+    "name": "Subscriptions: MRR & Churn",
+    "description": "Recurring revenue month by month with the subscriber base behind it, last month's churn, what moved MRR over the last 12 months and why subscribers left, which plans carry the revenue, and how much of itself each signup cohort keeps month over month.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd15-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Subscriptions: MRR & Churn\n\nFebruary 2026 was the worst month of the year for retention - every cohort kept less of itself, and price is the reason 86 subscribers gave when they left - yet MRR is at a new high of 99,781.43, with 8,102.58 of it won back by expansion over the last 12 months.\n\nRecurring revenue from the top: where MRR is and which way it is going, how many subscribers carry it, and how many left last month. Then what moved MRR over the year and why people left; then which plans hold the revenue, and whether the price change hit the older cohorts as well as the new ones. Pick one or more **plans** to read a single price point: the price change did not hit every plan alike."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd15-trend-mrr",
+        "type": "trend",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 5,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH months AS (\n  SELECT CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - to_months(CAST(g.i AS INTEGER)) AS DATE) AS month\n  FROM generate_series(0, 11) AS g(i)\n),\nmonth_end AS (\n  SELECT month,\n         CAST(least(month + to_months(1) - to_days(1), (SELECT a.as_of FROM dash_demo.as_of a)) AS DATE) AS read_at\n  FROM months\n)\nSELECT m.month AS month,\n       round(sum(s.mrr), 2) AS mrr\nFROM month_end m\nJOIN dash_demo.subscriptions s\n  ON s.start_date <= m.read_at\n AND (s.cancel_date IS NULL OR s.cancel_date > m.read_at)\nWHERE true\n  AND s.plan IN (${plan})\nGROUP BY m.month\nORDER BY m.month"
+        },
+        "displayConfig": {
+          "dateField": "month",
+          "valueField": "mrr",
+          "format": "currency",
+          "label": "MRR per month"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd15-kpi-active-subscribers",
+        "type": "number",
+        "gridPosition": {
+          "x": 5,
+          "y": 1,
+          "w": 4,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) AS active_subscribers\nFROM dash_demo.subscriptions s\nWHERE true\n  AND s.plan IN (${plan})\n  AND s.cancel_date IS NULL"
+        },
+        "displayConfig": {
+          "numberField": "active_subscribers",
+          "numberLabel": "Active subscribers",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd15-gauge-churn-last-month",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(*) FILTER (WHERE date_trunc('month', s.cancel_date) = date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)))\n             / count(*)::DOUBLE, 4) AS churn_last_month\nFROM dash_demo.subscriptions s\nWHERE true\n  AND s.plan IN (${plan})\n  AND s.start_date < date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a))\n  AND (s.cancel_date IS NULL OR s.cancel_date >= date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)))"
+        },
+        "displayConfig": {
+          "field": "churn_last_month",
+          "min": 0,
+          "max": 0.05,
+          "label": "Churn last month",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 0.01,
+              "color": "#ef8c8c"
+            },
+            {
+              "to": 0.02,
+              "color": "#f9d45c"
+            },
+            {
+              "to": 0.05,
+              "color": "#88bf4d"
+            }
+          ],
+          "gaugeBandsReverse": true
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd15-chart-waterfall-mrr-movement",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 8,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// What moved MRR over the last 12 months, in the order a reader follows: what came in, what grew,\n// what came back, what shrank, what left. The plan filter arrives as the comma-separated text of the\n// plans the viewer chose, so it is read into rows first - with nothing chosen there are no rows and\n// every plan counts.\ndbSql.rows(\"\"\"WITH chosen AS (\n  SELECT trim(p) AS plan\n  FROM unnest(string_split(?, ',')) AS t(p)\n  WHERE trim(p) <> ''\n)\nSELECT CASE ch.change_type\n         WHEN 'new' THEN 'New'\n         WHEN 'expansion' THEN 'Expansion'\n         WHEN 'reactivation' THEN 'Reactivation'\n         WHEN 'contraction' THEN 'Contraction'\n         ELSE 'Churn' END AS movement,\n       round(sum(ch.mrr_delta), 2) AS mrr_delta\nFROM dash_demo.subscription_changes ch\nJOIN dash_demo.subscriptions s ON s.subscription_id = ch.subscription_id\nWHERE ch.change_date > (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 12 MONTH\n  AND (NOT EXISTS (SELECT 1 FROM chosen) OR s.plan IN (SELECT plan FROM chosen))\nGROUP BY movement\nORDER BY CASE movement\n           WHEN 'New' THEN 1\n           WHEN 'Expansion' THEN 2\n           WHEN 'Reactivation' THEN 3\n           WHEN 'Contraction' THEN 4\n           ELSE 5 END\"\"\", [plan])"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "waterfall",
+            "data": {
+              "labelField": "movement",
+              "datasets": [
+                {
+                  "field": "mrr_delta",
+                  "label": "MRR movement"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "MRR movement over the last 12 months"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd15-chart-churn-reasons",
+        "type": "chart",
+        "gridPosition": {
+          "x": 8,
+          "y": 4,
+          "w": 4,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "subscriptions",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "plan",
+                "operator": "in",
+                "value": "${plan}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "COUNT",
+                "field": "subscription_id"
+              }
+            ],
+            "groupBy": [
+              "cancel_reason"
+            ],
+            "sort": [
+              {
+                "column": "subscription_id_count",
+                "direction": "DESC"
+              }
+            ],
+            "limit": 500
+          },
+          "generatedSql": "SELECT \"cancel_reason\", COUNT(\"subscription_id\") AS \"subscription_id_count\"\nFROM \"dash_demo\".\"subscriptions\"\nWHERE \"status\" = 'cancelled'\n  AND \"plan\" IN (${plan})\nGROUP BY \"cancel_reason\"\nORDER BY COUNT(\"subscription_id\") DESC\nLIMIT 500"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "cancel_reason",
+              "datasets": [
+                {
+                  "field": "subscription_id_count",
+                  "label": "Subscribers"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Churn reasons"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd15-chart-mrr-by-plan",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 9,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH months AS (\n  SELECT CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - to_months(CAST(g.i AS INTEGER)) AS DATE) AS month\n  FROM generate_series(0, 11) AS g(i)\n),\nmonth_end AS (\n  SELECT month,\n         CAST(least(month + to_months(1) - to_days(1), (SELECT a.as_of FROM dash_demo.as_of a)) AS DATE) AS read_at\n  FROM months\n)\nSELECT strftime(m.month, '%Y-%m') AS month,\n       s.plan AS plan,\n       round(sum(s.mrr), 2) AS mrr\nFROM month_end m\nJOIN dash_demo.subscriptions s\n  ON s.start_date <= m.read_at\n AND (s.cancel_date IS NULL OR s.cancel_date > m.read_at)\nWHERE true\n  AND s.plan IN (${plan})\nGROUP BY m.month, s.plan\nORDER BY m.month, s.plan"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "area",
+            "data": {
+              "labelField": "month",
+              "seriesField": "plan",
+              "datasets": [
+                {
+                  "field": "mrr",
+                  "label": "MRR"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "MRR by plan"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd15-pivot-subscriber-cohorts",
+        "type": "pivot",
+        "gridPosition": {
+          "x": 6,
+          "y": 9,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH months AS (\n  SELECT CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - to_months(CAST(g.i AS INTEGER)) AS DATE) AS month\n  FROM generate_series(0, 11) AS g(i)\n)\nSELECT year(s.start_date) || ' Q' || quarter(s.start_date) AS cohort,\n       strftime(m.month, '%Y-%m') AS month,\n       round(100.0 * count(*) FILTER (WHERE s.cancel_date IS NULL\n                                        OR s.cancel_date >= m.month + to_months(1))\n             / count(*), 1) AS retained_pct\nFROM months m\nJOIN dash_demo.subscriptions s\n  ON s.start_date < m.month\n AND (s.cancel_date IS NULL OR s.cancel_date >= m.month)\nWHERE true\n  AND s.plan IN (${plan})\n  AND s.start_date >= DATE '2025-01-01'\nGROUP BY cohort, m.month\nORDER BY cohort, m.month"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "rows": [
+              "cohort"
+            ],
+            "cols": [
+              "month"
+            ],
+            "vals": [
+              "retained_pct"
+            ],
+            "aggregatorName": "Average",
+            "rendererName": "Table Heatmap",
+            "rowOrder": "key_a_to_z",
+            "colOrder": "key_a_to_z",
+            "rowTotals": false,
+            "colTotals": false
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "plan",
+          "type": "String",
+          "label": "Plan",
+          "defaultValue": [],
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "multiselect",
+            "options": "SELECT DISTINCT s.plan AS value, s.plan AS label FROM dash_demo.subscriptions s ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-subscriptions-mrr",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

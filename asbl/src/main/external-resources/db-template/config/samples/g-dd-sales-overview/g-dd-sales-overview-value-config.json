@@ -1,0 +1,23 @@
+{
+  "number_total_amount_revenue" : {
+    "field" : "total_amount_sum",
+    "format" : "currency",
+    "label" : "Revenue"
+  },
+  "number_order_id_orders" : {
+    "field" : "order_id_count",
+    "format" : "number",
+    "label" : "Orders"
+  },
+  "number_total_amount_value" : {
+    "field" : "total_amount_avg",
+    "format" : "currency",
+    "label" : "Average order value",
+    "decimals" : 2
+  },
+  "number_customer_id_ordered" : {
+    "field" : "customer_id_count_distinct",
+    "format" : "number",
+    "label" : "Customers who ordered"
+  }
+}

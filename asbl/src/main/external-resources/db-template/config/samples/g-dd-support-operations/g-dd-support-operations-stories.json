@@ -1,0 +1,22 @@
+[
+  {
+    "id": "priority-urgent",
+    "question": "What is urgent right now?",
+    "text": "Pick Urgent: 7 tickets open, 12 opened this week, and the first answer takes 146.33 minutes against 836.55 for everything - urgent really is answered first. SLA met barely moves, 90.77% against 90.66%, so urgent tickets are not the ones being missed. None of the 7 has been waiting more than 30 days: the backlog bars stop at the 8-to-30-day band, and the list is 7 rows long.",
+    "params": {
+      "priority": [
+        "urgent"
+      ]
+    },
+    "check": "priority-urgent"
+  },
+  {
+    "id": "team-billing",
+    "question": "And my billing team?",
+    "text": "Pick Billing: 26 of the 127 open tickets, 24 in this week, SLA met 90.2% and a first answer at 842.33 minutes - the team is the company. The heatmap keeps its Monday-morning shape on a quarter of the volume, so the rota argument holds for one team as it does for the desk, and 9 of the 26 are urgent or high.",
+    "params": {
+      "team": "Billing"
+    },
+    "check": "team-billing"
+  }
+]

@@ -29,18 +29,24 @@
       "sql": "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = 'support_tickets'"
     },
     {
-      "widget": "chart-distribution-distinct-values",
-      "label": "Distinct values of the column",
+      "widget": "chart-distribution",
+      "label": "Bars in the distribution chart",
       "format": "number",
       "value": 4,
-      "sql": "SELECT count(DISTINCT priority) FROM dash_demo.support_tickets"
+      "sql": "SELECT count(*) FROM (WITH v AS ( SELECT CAST(priority AS VARCHAR) AS txt, TRY_CAST(CAST(priority AS VARCHAR) AS DOUBLE) AS num FROM dash_demo.support_tickets ), shape AS ( SELECT count(txt) AS filled, count(num) AS numeric_rows, count(DISTINCT txt) AS distinct_values, min(num) AS lo, max(num) AS hi FROM v ), bucketed AS ( SELECT CASE WHEN s.numeric_rows = s.filled AND s.distinct_values > 20 THEN least(19, CAST(floor((v.num - s.lo) / nullif(s.hi - s.lo, 0) * 20) AS INTEGER)) END AS bin, v.txt AS txt, v.num AS num, s.lo AS lo, s.hi AS hi FROM v, shape s WHERE v.txt IS NOT NULL ) SELECT CASE WHEN b.bin IS NULL THEN b.txt ELSE printf('%.2f - %.2f', b.lo + (b.hi - b.lo) * b.bin / 20.0, b.lo + (b.hi - b.lo) * (b.bin + 1) / 20.0) END AS bucket, count(*) AS rows_in_bucket FROM bucketed b GROUP BY bucket, b.bin ORDER BY b.bin NULLS LAST, rows_in_bucket DESC, bucket LIMIT 20)",
+      "reading": "rows"
     },
     {
-      "widget": "chart-distribution-largest-bucket",
-      "label": "Largest bucket of the column",
+      "widget": "chart-distribution",
+      "label": "The tallest bar of the distribution chart",
       "format": "text",
       "value": "normal",
-      "sql": "SELECT priority::VARCHAR FROM dash_demo.support_tickets GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 1"
+      "sql": "SELECT bucket FROM (WITH v AS ( SELECT CAST(priority AS VARCHAR) AS txt, TRY_CAST(CAST(priority AS VARCHAR) AS DOUBLE) AS num FROM dash_demo.support_tickets ), shape AS ( SELECT count(txt) AS filled, count(num) AS numeric_rows, count(DISTINCT txt) AS distinct_values, min(num) AS lo, max(num) AS hi FROM v ), bucketed AS ( SELECT CASE WHEN s.numeric_rows = s.filled AND s.distinct_values > 20 THEN least(19, CAST(floor((v.num - s.lo) / nullif(s.hi - s.lo, 0) * 20) AS INTEGER)) END AS bin, v.txt AS txt, v.num AS num, s.lo AS lo, s.hi AS hi FROM v, shape s WHERE v.txt IS NOT NULL ) SELECT CASE WHEN b.bin IS NULL THEN b.txt ELSE printf('%.2f - %.2f', b.lo + (b.hi - b.lo) * b.bin / 20.0, b.lo + (b.hi - b.lo) * (b.bin + 1) / 20.0) END AS bucket, count(*) AS rows_in_bucket FROM bucketed b GROUP BY bucket, b.bin ORDER BY b.bin NULLS LAST, rows_in_bucket DESC, bucket LIMIT 20) ORDER BY rows_in_bucket DESC, bucket LIMIT 1",
+      "column": "rows_in_bucket",
+      "reading": "argmax",
+      "labels": [
+        "bucket"
+      ]
     }
   ],
   "interactions": [
@@ -70,18 +76,24 @@
           "sql": "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = 'orders'"
         },
         {
-          "widget": "chart-distribution-distinct-values",
-          "label": "Distinct values of the column",
+          "widget": "chart-distribution",
+          "label": "Bars in the distribution chart",
           "format": "number",
-          "value": 23162,
-          "sql": "SELECT count(DISTINCT total_amount) FROM dash_demo.orders"
+          "value": 19,
+          "sql": "SELECT count(*) FROM (WITH v AS ( SELECT CAST(total_amount AS VARCHAR) AS txt, TRY_CAST(CAST(total_amount AS VARCHAR) AS DOUBLE) AS num FROM dash_demo.orders ), shape AS ( SELECT count(txt) AS filled, count(num) AS numeric_rows, count(DISTINCT txt) AS distinct_values, min(num) AS lo, max(num) AS hi FROM v ), bucketed AS ( SELECT CASE WHEN s.numeric_rows = s.filled AND s.distinct_values > 20 THEN least(19, CAST(floor((v.num - s.lo) / nullif(s.hi - s.lo, 0) * 20) AS INTEGER)) END AS bin, v.txt AS txt, v.num AS num, s.lo AS lo, s.hi AS hi FROM v, shape s WHERE v.txt IS NOT NULL ) SELECT CASE WHEN b.bin IS NULL THEN b.txt ELSE printf('%.2f - %.2f', b.lo + (b.hi - b.lo) * b.bin / 20.0, b.lo + (b.hi - b.lo) * (b.bin + 1) / 20.0) END AS bucket, count(*) AS rows_in_bucket FROM bucketed b GROUP BY bucket, b.bin ORDER BY b.bin NULLS LAST, rows_in_bucket DESC, bucket LIMIT 20)",
+          "reading": "rows"
         },
         {
-          "widget": "chart-distribution-largest-bucket",
-          "label": "Largest bucket of the column",
+          "widget": "chart-distribution",
+          "label": "The tallest bar of the distribution chart",
           "format": "text",
-          "value": "1499.83",
-          "sql": "SELECT total_amount::VARCHAR FROM dash_demo.orders GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 1"
+          "value": "22.52 - 4906.49",
+          "sql": "SELECT bucket FROM (WITH v AS ( SELECT CAST(total_amount AS VARCHAR) AS txt, TRY_CAST(CAST(total_amount AS VARCHAR) AS DOUBLE) AS num FROM dash_demo.orders ), shape AS ( SELECT count(txt) AS filled, count(num) AS numeric_rows, count(DISTINCT txt) AS distinct_values, min(num) AS lo, max(num) AS hi FROM v ), bucketed AS ( SELECT CASE WHEN s.numeric_rows = s.filled AND s.distinct_values > 20 THEN least(19, CAST(floor((v.num - s.lo) / nullif(s.hi - s.lo, 0) * 20) AS INTEGER)) END AS bin, v.txt AS txt, v.num AS num, s.lo AS lo, s.hi AS hi FROM v, shape s WHERE v.txt IS NOT NULL ) SELECT CASE WHEN b.bin IS NULL THEN b.txt ELSE printf('%.2f - %.2f', b.lo + (b.hi - b.lo) * b.bin / 20.0, b.lo + (b.hi - b.lo) * (b.bin + 1) / 20.0) END AS bucket, count(*) AS rows_in_bucket FROM bucketed b GROUP BY bucket, b.bin ORDER BY b.bin NULLS LAST, rows_in_bucket DESC, bucket LIMIT 20) ORDER BY rows_in_bucket DESC, bucket LIMIT 1",
+          "column": "rows_in_bucket",
+          "reading": "argmax",
+          "labels": [
+            "bucket"
+          ]
         }
       ]
     },
@@ -111,18 +123,24 @@
           "sql": "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'dash_demo' AND table_name = 'customers'"
         },
         {
-          "widget": "chart-distribution-distinct-values",
-          "label": "Distinct values of the column",
+          "widget": "chart-distribution",
+          "label": "Bars in the distribution chart",
           "format": "number",
           "value": 3,
-          "sql": "SELECT count(DISTINCT segment) FROM dash_demo.customers"
+          "sql": "SELECT count(*) FROM (WITH v AS ( SELECT CAST(segment AS VARCHAR) AS txt, TRY_CAST(CAST(segment AS VARCHAR) AS DOUBLE) AS num FROM dash_demo.customers ), shape AS ( SELECT count(txt) AS filled, count(num) AS numeric_rows, count(DISTINCT txt) AS distinct_values, min(num) AS lo, max(num) AS hi FROM v ), bucketed AS ( SELECT CASE WHEN s.numeric_rows = s.filled AND s.distinct_values > 20 THEN least(19, CAST(floor((v.num - s.lo) / nullif(s.hi - s.lo, 0) * 20) AS INTEGER)) END AS bin, v.txt AS txt, v.num AS num, s.lo AS lo, s.hi AS hi FROM v, shape s WHERE v.txt IS NOT NULL ) SELECT CASE WHEN b.bin IS NULL THEN b.txt ELSE printf('%.2f - %.2f', b.lo + (b.hi - b.lo) * b.bin / 20.0, b.lo + (b.hi - b.lo) * (b.bin + 1) / 20.0) END AS bucket, count(*) AS rows_in_bucket FROM bucketed b GROUP BY bucket, b.bin ORDER BY b.bin NULLS LAST, rows_in_bucket DESC, bucket LIMIT 20)",
+          "reading": "rows"
         },
         {
-          "widget": "chart-distribution-largest-bucket",
-          "label": "Largest bucket of the column",
+          "widget": "chart-distribution",
+          "label": "The tallest bar of the distribution chart",
           "format": "text",
           "value": "Consumer",
-          "sql": "SELECT segment::VARCHAR FROM dash_demo.customers GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 1"
+          "sql": "SELECT bucket FROM (WITH v AS ( SELECT CAST(segment AS VARCHAR) AS txt, TRY_CAST(CAST(segment AS VARCHAR) AS DOUBLE) AS num FROM dash_demo.customers ), shape AS ( SELECT count(txt) AS filled, count(num) AS numeric_rows, count(DISTINCT txt) AS distinct_values, min(num) AS lo, max(num) AS hi FROM v ), bucketed AS ( SELECT CASE WHEN s.numeric_rows = s.filled AND s.distinct_values > 20 THEN least(19, CAST(floor((v.num - s.lo) / nullif(s.hi - s.lo, 0) * 20) AS INTEGER)) END AS bin, v.txt AS txt, v.num AS num, s.lo AS lo, s.hi AS hi FROM v, shape s WHERE v.txt IS NOT NULL ) SELECT CASE WHEN b.bin IS NULL THEN b.txt ELSE printf('%.2f - %.2f', b.lo + (b.hi - b.lo) * b.bin / 20.0, b.lo + (b.hi - b.lo) * (b.bin + 1) / 20.0) END AS bucket, count(*) AS rows_in_bucket FROM bucketed b GROUP BY bucket, b.bin ORDER BY b.bin NULLS LAST, rows_in_bucket DESC, bucket LIMIT 20) ORDER BY rows_in_bucket DESC, bucket LIMIT 1",
+          "column": "rows_in_bucket",
+          "reading": "argmax",
+          "labels": [
+            "bucket"
+          ]
         }
       ]
     }

@@ -42,18 +42,27 @@
       "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o"
     },
     {
-      "widget": "chart-category-share-here-top",
+      "widget": "chart-category-share-here-vs-everyone",
       "label": "Largest category here",
       "format": "text",
       "value": "Laptops",
-      "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Poland' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1"
+      "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Poland' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1",
+      "column": "share_here_pct",
+      "reading": "argmax",
+      "labels": [
+        "category"
+      ]
     },
     {
-      "widget": "chart-channel-mix-here-mobile-app",
+      "widget": "chart-channel-mix-here",
       "label": "Mobile app share of orders here",
       "format": "percent",
       "value": 21.37,
-      "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Poland'"
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Poland'",
+      "column": "share_pct",
+      "row": {
+        "channel": "mobile_app"
+      }
     }
   ],
   "interactions": [
@@ -95,18 +104,27 @@
           "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o"
         },
         {
-          "widget": "chart-category-share-here-top",
+          "widget": "chart-category-share-here-vs-everyone",
           "label": "Largest category here",
           "format": "text",
           "value": "Laptops",
-          "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Germany' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1"
+          "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Germany' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1",
+          "column": "share_here_pct",
+          "reading": "argmax",
+          "labels": [
+            "category"
+          ]
         },
         {
-          "widget": "chart-channel-mix-here-mobile-app",
+          "widget": "chart-channel-mix-here",
           "label": "Mobile app share of orders here",
           "format": "percent",
           "value": 20.96,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Germany'"
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Germany'",
+          "column": "share_pct",
+          "row": {
+            "channel": "mobile_app"
+          }
         }
       ]
     },
@@ -148,18 +166,27 @@
           "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o"
         },
         {
-          "widget": "chart-category-share-here-top",
+          "widget": "chart-category-share-here-vs-everyone",
           "label": "Largest category here",
           "format": "text",
           "value": "Laptops",
-          "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Japan' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1"
+          "sql": "SELECT pr.category FROM dash_demo.order_lines l JOIN dash_demo.orders o USING (order_id) JOIN dash_demo.geo_cities g ON g.city_id = o.city_id JOIN dash_demo.products pr USING (product_id) WHERE o.status <> 'cancelled' AND g.country = 'Japan' GROUP BY 1 ORDER BY sum(l.line_amount) DESC LIMIT 1",
+          "column": "share_here_pct",
+          "reading": "argmax",
+          "labels": [
+            "category"
+          ]
         },
         {
-          "widget": "chart-channel-mix-here-mobile-app",
+          "widget": "chart-channel-mix-here",
           "label": "Mobile app share of orders here",
           "format": "percent",
           "value": 25.06,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Japan'"
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.channel = 'mobile_app' THEN 1 END) / count(*), 2) FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id WHERE true AND g.country = 'Japan'",
+          "column": "share_pct",
+          "row": {
+            "channel": "mobile_app"
+          }
         }
       ]
     }

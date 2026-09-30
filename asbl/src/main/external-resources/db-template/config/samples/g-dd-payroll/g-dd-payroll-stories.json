@@ -1,0 +1,22 @@
+[
+  {
+    "id": "department-warehouse",
+    "question": "Where do the overtime hours sit?",
+    "text": "Read Warehouse on its own: 185,763.88 of the month's cost, an average gross pay of 3,185.17 - the lowest of any department - and 181.3 of the company's 230.6 overtime hours. Its bill is flat on last year, 46.52 more a month: it lost a person (-3,951.43) and paid the rest more (+3,997.95).",
+    "params": {
+      "department": [
+        "Warehouse"
+      ]
+    },
+    "check": "department-warehouse"
+  },
+  {
+    "id": "period-2025-11",
+    "question": "And a November, when the warehouse works nights?",
+    "text": "Move the period to November 2025: 1,021,863.15 of cost, an average gross pay of 3,948.08, and 596.4 overtime hours against 230.6 in September 2026 - 539.9 of them the warehouse's and 56.5 Customer Support's. Against November 2024 the table catches Engineering mid-hire: 11 more people, 60,470.85 more a month, 49,810.70 of it the people and 10,660.15 the pay.",
+    "params": {
+      "period": "2025-11"
+    },
+    "check": "period-2025-11"
+  }
+]

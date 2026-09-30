@@ -1,0 +1,14 @@
+{
+  "number_payroll_cost_cost" : {
+    "format" : "currency",
+    "label" : "Payroll cost in the period"
+  },
+  "number_average_gross_pay_pay" : {
+    "format" : "currency",
+    "label" : "Average gross pay"
+  },
+  "number_overtime_hours_hours" : {
+    "format" : "number",
+    "label" : "Overtime hours"
+  }
+}

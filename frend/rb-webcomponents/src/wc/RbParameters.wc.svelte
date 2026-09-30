@@ -7,6 +7,10 @@
   // Which control each declared type is filled in with lives in its own module, so `npm test`
   // can ask it directly - see src/shared/parameter-controls.test.ts.
   import { controlTypeOf, defaultForType } from '../shared/parameter-controls';
+  // Starting values a link carries, and the address bar kept on the view that is on screen. This
+  // component is the only one that reads or writes the URL for parameters - see
+  // src/shared/url-start-values.ts for the rules.
+  import { startValuesFromUrl, urlWithValues, acceptedValues } from '../shared/url-start-values';
 
   // ParamRef type for cross-field references
   interface ParamRef {
@@ -212,7 +216,8 @@
     initForm();
   }
 
-  function initForm() {
+  // `fromUrl` is false only for Reset, which means "the defaults", not "what the link asked for".
+  function initForm(fromUrl: boolean = true) {
     //console.log('[rb-parameters] initForm START, params count:', parameters?.length);
     formValues = {};
     touched = {};
@@ -234,6 +239,21 @@
         multiPage[p.id] = 0;
       }
     });
+
+    // Starting values the page URL carries: a link can hold a view. They are seeded HERE, before
+    // the first emit, so the dashboard loads once - showing what the link asked for - instead of
+    // once with the defaults and once again with the link's values. A locked parameter ignores
+    // them: its value is the link's own, and the server enforces that whatever the browser sends.
+    if (fromUrl && typeof window !== 'undefined' && window.location) {
+      const fromLink = startValuesFromUrl(
+        window.location.search, window.location.pathname, reportId, parameters as any,
+      );
+      Object.keys(fromLink).forEach(id => {
+        const p = parameters.find(x => x.id === id);
+        if (!p || isLocked(p)) return;
+        formValues[id] = fromLink[id];
+      });
+    }
 
     validateAll(true); // Force emit on init
     emitValues(true);
@@ -484,6 +504,7 @@
     touched[p.id] = true;
     validateAll();
     emitValues();
+    syncUrl();
   }
 
   function cancelMulti(p: ParamMeta) {
@@ -637,6 +658,7 @@
     // Re-validate this param and any that reference it
     validateAll();
     emitValues();
+    syncUrl();
   }
 
   // Handle blur for touched state
@@ -655,6 +677,23 @@
     dispatch('valueChange', values);
     // Emit as CustomEvent for Angular/vanilla JS consumers
     emitHostEvent('valueChange', values);
+  }
+
+  /**
+   * The address bar, kept on the view that is on screen: `replaceState` only - no new history
+   * entry, no reload, no request. Only what the reader actually chose is written, never a locked
+   * parameter, and every other query parameter stays exactly as it was.
+   *
+   * On a host application's page that embeds `<rb-dashboard>`, the host owns its URL:
+   * `urlWithValues` gives the href back unchanged there (reading still works).
+   */
+  function syncUrl() {
+    if (typeof window === 'undefined' || !window.location) return;
+    if (typeof window.history?.replaceState !== 'function') return;
+    if (!parameters || parameters.length === 0) return;
+    const href = window.location.href;
+    const next = urlWithValues(href, reportId, parameters as any, formValues, lockedParameters);
+    if (next && next !== href) window.history.replaceState(window.history.state, '', next);
   }
 
   // Replace all sibling rb-* components with fresh elements carrying the given params
@@ -753,9 +792,43 @@
     return isValid;
   }
 
-  // Reset form to defaults
+  // Reset form to defaults. The address bar follows: a value back at its default takes its key
+  // away, so a dashboard nobody touched leaves the URL as it is today.
   export function reset() {
-    initForm();
+    initForm(false);
+    syncUrl();
+  }
+
+  /**
+   * Set filter values in place, exactly as if the reader had picked them.
+   *
+   * This is what a story's "Show Me" calls (`<rb-dashboard show-stories>`, TODO 5j): the values go
+   * through the same acceptance check as the ones a page URL carries - declared parameters only, a
+   * value outside a select's options ignored with one warning, and a locked parameter left at the
+   * link's value, which the server enforces anyway. The address bar then holds the view on screen,
+   * so the reader can copy the link to the story they were shown.
+   *
+   * Nothing is reloaded here: the caller says when, with `reloadNow()`.
+   */
+  export function setValues(values: { [id: string]: any }) {
+    const accepted = acceptedValues(parameters as any, values || {}, lockedParameters);
+    Object.keys(accepted).forEach(id => {
+      formValues[id] = accepted[id];
+      touched[id] = true;
+    });
+    formValues = formValues;
+    touched = touched;
+    validateAll();
+    emitValues();
+    syncUrl();
+  }
+
+  /**
+   * Reload the widgets with the values the form holds now - the path `#btnReloadDashboard` runs,
+   * without asking first. Show Me and Reset are the reader's answer to that question already.
+   */
+  export function reloadNow() {
+    confirmReload();
   }
 
   // Public method to re-fetch config (for Refresh button)

@@ -1,0 +1,335 @@
+{
+  "id": "g-dd-receivables-aging",
+  "name": "Receivables Aging & Collections",
+  "description": "The receivables book as a call list: what is past 90 days, how much is still current, how DSO has moved over two years, how old the debt is and in which segment, the ten customers who owe most and every overdue invoice with its days overdue.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-receivables-aging",
+  "state": {
+    "id": "g-dd-receivables-aging",
+    "name": "Receivables Aging & Collections",
+    "description": "The receivables book as a call list: what is past 90 days, how much is still current, how DSO has moved over two years, how old the debt is and in which segment, the ten customers who owe most and every overdue invoice with its days overdue.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd14-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Receivables Aging & Collections\n\nHelix Retail Group owes 170,829.65 past 90 days - four invoices, and the whole of the 90+ bucket; DSO averages 50.3 days over 2026 against 43.4 in 2025.\n\nThe call list is read from the top: how bad it is and which way it is going, then how old the debt is and in which segment, then the customers to call and their invoices. Raise **Minimum amount** to leave only the arrears worth a call, and pick an account manager to work one book at a time. DSO is a company number and does not follow either filter."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-kpi-overdue-90-plus",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(coalesce(sum(i.amount + i.tax_amount), 0), 2) AS overdue_90_plus\nFROM dash_demo.invoices i\nJOIN dash_demo.customers c ON c.customer_id = i.customer_id\nWHERE i.status IN ('open', 'overdue', 'partially_paid')\n  AND i.amount + i.tax_amount >= ${minAmount}\n  AND c.account_manager_id = ${accountManagerId}\n  AND i.due_date < (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 90 DAY"
+        },
+        "displayConfig": {
+          "numberField": "overdue_90_plus",
+          "numberLabel": "Overdue 90+ days",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-gauge-current-not-overdue",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(CASE WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a)\n                      THEN i.amount + i.tax_amount ELSE 0 END)\n             / sum(i.amount + i.tax_amount), 4) AS current_not_overdue\nFROM dash_demo.invoices i\nJOIN dash_demo.customers c ON c.customer_id = i.customer_id\nWHERE i.status IN ('open', 'overdue', 'partially_paid')\n  AND i.amount + i.tax_amount >= ${minAmount}\n  AND c.account_manager_id = ${accountManagerId}"
+        },
+        "displayConfig": {
+          "field": "current_not_overdue",
+          "min": 0,
+          "max": 1,
+          "label": "Current, not overdue",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 0.8,
+              "color": "#ef8c8c"
+            },
+            {
+              "to": 0.9,
+              "color": "#f9d45c"
+            },
+            {
+              "to": 1,
+              "color": "#88bf4d"
+            }
+          ]
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-trend-dso",
+        "type": "trend",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "script",
+          "script": "// DSO per month: receivables still outstanding at the end of the month, over the credit sales of\n// the year to that day, times 365 days. Two sums read at 24 different days is not one grouped query,\n// which is why this widget asks it itself. It is a company number: the page's two filters pick whom\n// to call today and do not change how long the company waits to be paid.\ndbSql.rows(\"\"\"WITH months AS (\n  SELECT CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a))\n              - to_months(CAST(s.i AS INTEGER)) AS DATE) AS month\n  FROM generate_series(0, 23) AS s(i)\n),\nmonth_end AS (\n  SELECT month,\n         CAST(least(month + to_months(1) - to_days(1),\n                    (SELECT a.as_of FROM dash_demo.as_of a)) AS DATE) AS read_at\n  FROM months\n)\nSELECT m.month AS month,\n       round(365.0\n             * (SELECT sum(i.amount + i.tax_amount) FROM dash_demo.invoices i\n                WHERE i.issue_date <= m.read_at\n                  AND (i.last_paid_date IS NULL OR i.last_paid_date > m.read_at))\n             / (SELECT sum(i.amount + i.tax_amount) FROM dash_demo.invoices i\n                WHERE i.issue_date > m.read_at - to_days(365)\n                  AND i.issue_date <= m.read_at), 2) AS dso_days\nFROM month_end m\nORDER BY m.month\"\"\", [])"
+        },
+        "displayConfig": {
+          "dateField": "month",
+          "valueField": "dso_days",
+          "format": "number",
+          "label": "DSO per month, days"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-kpi-customers-overdue",
+        "type": "number",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(DISTINCT i.customer_id) AS customers_overdue\nFROM dash_demo.invoices i\nJOIN dash_demo.customers c ON c.customer_id = i.customer_id\nWHERE i.status IN ('open', 'overdue', 'partially_paid')\n  AND i.amount + i.tax_amount >= ${minAmount}\n  AND c.account_manager_id = ${accountManagerId}\n  AND i.due_date < (SELECT a.as_of FROM dash_demo.as_of a)"
+        },
+        "displayConfig": {
+          "numberField": "customers_overdue",
+          "numberLabel": "Customers overdue",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-chart-aging-buckets",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH aged AS (\n  SELECT CASE WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) THEN 0\n              WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 30 DAY THEN 1\n              WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 60 DAY THEN 2\n              WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 90 DAY THEN 3\n              ELSE 4 END AS ord,\n         c.segment AS segment,\n         i.amount + i.tax_amount AS owed\n  FROM dash_demo.invoices i\n  JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n  WHERE i.status IN ('open', 'overdue', 'partially_paid')\n    AND i.amount + i.tax_amount >= ${minAmount}\n    AND c.account_manager_id = ${accountManagerId}\n)\nSELECT CASE ord WHEN 0 THEN 'Current' WHEN 1 THEN '1-30 days' WHEN 2 THEN '31-60 days'\n         WHEN 3 THEN '61-90 days' ELSE '90+ days' END AS bucket,\n       round(sum(owed), 2) AS owed,\n       count(*) AS invoices\nFROM aged\nGROUP BY ord\nORDER BY ord"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "bucket",
+              "datasets": [
+                {
+                  "field": "owed",
+                  "label": "Owed"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Aging buckets: current, 1-30, 31-60, 61-90, 90+"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-chart-aging-by-segment",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 4,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH aged AS (\n  SELECT CASE WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) THEN 0\n              WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 30 DAY THEN 1\n              WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 60 DAY THEN 2\n              WHEN i.due_date >= (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 90 DAY THEN 3\n              ELSE 4 END AS ord,\n         c.segment AS segment,\n         i.amount + i.tax_amount AS owed\n  FROM dash_demo.invoices i\n  JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n  WHERE i.status IN ('open', 'overdue', 'partially_paid')\n    AND i.amount + i.tax_amount >= ${minAmount}\n    AND c.account_manager_id = ${accountManagerId}\n)\nSELECT CASE ord WHEN 0 THEN 'Current' WHEN 1 THEN '1-30 days' WHEN 2 THEN '31-60 days'\n         WHEN 3 THEN '61-90 days' ELSE '90+ days' END AS bucket,\n       segment AS segment,\n       round(sum(owed), 2) AS owed\nFROM aged\nGROUP BY ord, segment\nORDER BY ord, segment"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "bucket",
+              "seriesField": "segment",
+              "datasets": [
+                {
+                  "field": "owed",
+                  "label": "Owed"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Aging by segment"
+                }
+              },
+              "scales": {
+                "x": {
+                  "stacked": true
+                },
+                "y": {
+                  "stacked": true
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-chart-top-10-overdue-customers",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 8,
+          "w": 5,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT c.name AS customer,\n       round(sum(i.amount + i.tax_amount), 2) AS owed\nFROM dash_demo.invoices i\nJOIN dash_demo.customers c ON c.customer_id = i.customer_id\nWHERE i.status IN ('open', 'overdue', 'partially_paid')\n  AND i.amount + i.tax_amount >= ${minAmount}\n  AND c.account_manager_id = ${accountManagerId}\n  AND i.due_date < (SELECT a.as_of FROM dash_demo.as_of a)\nGROUP BY c.name\nORDER BY owed DESC\nLIMIT 10"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "row",
+            "data": {
+              "labelField": "customer",
+              "datasets": [
+                {
+                  "field": "owed",
+                  "label": "Owed"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Top 10 overdue customers"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd14-table-overdue-invoices",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 5,
+          "y": 8,
+          "w": 7,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT i.invoice_no AS invoice_no,\n       c.name AS customer,\n       i.issue_date AS issued,\n       i.due_date AS due,\n       CAST((SELECT a.as_of FROM dash_demo.as_of a) - i.due_date AS INTEGER) AS days_overdue,\n       round(i.amount + i.tax_amount, 2) AS owed,\n       i.status AS status\nFROM dash_demo.invoices i\nJOIN dash_demo.customers c ON c.customer_id = i.customer_id\nWHERE i.status IN ('open', 'overdue', 'partially_paid')\n  AND i.amount + i.tax_amount >= ${minAmount}\n  AND c.account_manager_id = ${accountManagerId}\n  AND i.due_date < (SELECT a.as_of FROM dash_demo.as_of a)\nORDER BY days_overdue DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 12,
+            "theme": "midnight"
+          },
+          "columnSettings": {
+            "invoice_no": {
+              "columnTitle": "Invoice"
+            },
+            "days_overdue": {
+              "columnTitle": "Days overdue"
+            },
+            "owed": {
+              "columnTitle": "Owed"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "minAmount",
+          "type": "Double",
+          "label": "Minimum amount",
+          "defaultValue": 0,
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "text"
+          }
+        },
+        {
+          "id": "accountManagerId",
+          "type": "Integer",
+          "label": "Account manager",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT '' AS value, '-- All managers --' AS label UNION ALL SELECT CAST(e.employee_id AS VARCHAR) AS value, e.name AS label FROM dash_demo.employees e WHERE EXISTS (SELECT 1 FROM dash_demo.customers c WHERE c.account_manager_id = e.employee_id) ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-receivables-aging",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

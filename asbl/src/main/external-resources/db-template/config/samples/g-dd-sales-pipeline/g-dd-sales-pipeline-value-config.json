@@ -1,0 +1,14 @@
+{
+  "number_open_pipeline_pipeline" : {
+    "format" : "currency",
+    "label" : "Open pipeline"
+  },
+  "number_weighted_pipeline_pipeline" : {
+    "format" : "currency",
+    "label" : "Weighted pipeline"
+  },
+  "number_next_quarter_cover_cover" : {
+    "format" : "number",
+    "label" : "Next quarter's pipeline / its quota"
+  }
+}

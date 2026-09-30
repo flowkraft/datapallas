@@ -1,0 +1,10 @@
+{
+  "number_metric_ytd_ytd" : {
+    "format" : "number",
+    "label" : "Year to date"
+  },
+  "number_vs_last_year_year" : {
+    "format" : "percent",
+    "label" : "vs last year"
+  }
+}

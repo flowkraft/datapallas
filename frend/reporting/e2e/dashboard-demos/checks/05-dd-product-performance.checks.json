@@ -10,44 +10,45 @@
   },
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
-    "category": "All",
+    "category": "",
+    "categoryLabel": "All",
     "topN": 10
   },
   "kpis": [
     {
-      "widget": "kpi-products",
+      "widget": "table-all-products",
       "label": "Products in scope",
       "format": "number",
       "value": 200,
-      "sql": "SELECT count(*) FROM dash_demo.products p WHERE true"
+      "sql": "SELECT count(*) FROM dash_demo.products p WHERE true",
+      "reading": "rows"
     },
     {
-      "widget": "chart-top-by-margin-first",
+      "widget": "chart-top-n-by-margin",
       "label": "Best product by gross margin",
       "format": "text",
       "value": "AeroDesk Pro",
-      "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1"
+      "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1",
+      "column": "product"
     },
     {
-      "widget": "chart-bubble-aerodesk-return-rate",
+      "widget": "chart-discount-vs-return-rate",
       "label": "AeroDesk Pro return rate from April 2026",
       "format": "percent",
       "value": 17.5,
-      "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')"
-    },
-    {
-      "widget": "chart-scatter-low-rated-units-pct",
-      "label": "Units per product, rated under 3.5 against the rest",
-      "format": "percent",
-      "value": 57.64,
-      "sql": "SELECT round(100.0 * (sum(CASE WHEN p.rating < 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating < 3.5 THEN p.product_id END)) / (sum(CASE WHEN p.rating >= 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating >= 3.5 THEN p.product_id END)), 2) FROM dash_demo.products p JOIN dash_demo.order_lines l USING (product_id)"
+      "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')",
+      "column": "return_rate_pct",
+      "row": {
+        "product": "AeroDesk Pro"
+      }
     }
   ],
   "interactions": [
     {
       "id": "top-n-5",
       "params": {
-        "category": "All",
+        "category": "",
+        "categoryLabel": "All",
         "topN": 5
       },
       "changed": {
@@ -55,32 +56,31 @@
       },
       "kpis": [
         {
-          "widget": "kpi-products",
+          "widget": "table-all-products",
           "label": "Products in scope",
           "format": "number",
           "value": 200,
-          "sql": "SELECT count(*) FROM dash_demo.products p WHERE true"
+          "sql": "SELECT count(*) FROM dash_demo.products p WHERE true",
+          "reading": "rows"
         },
         {
-          "widget": "chart-top-by-margin-first",
+          "widget": "chart-top-n-by-margin",
           "label": "Best product by gross margin",
           "format": "text",
           "value": "AeroDesk Pro",
-          "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1"
+          "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1",
+          "column": "product"
         },
         {
-          "widget": "chart-bubble-aerodesk-return-rate",
+          "widget": "chart-discount-vs-return-rate",
           "label": "AeroDesk Pro return rate from April 2026",
           "format": "percent",
           "value": 17.5,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')"
-        },
-        {
-          "widget": "chart-scatter-low-rated-units-pct",
-          "label": "Units per product, rated under 3.5 against the rest",
-          "format": "percent",
-          "value": 57.64,
-          "sql": "SELECT round(100.0 * (sum(CASE WHEN p.rating < 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating < 3.5 THEN p.product_id END)) / (sum(CASE WHEN p.rating >= 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating >= 3.5 THEN p.product_id END)), 2) FROM dash_demo.products p JOIN dash_demo.order_lines l USING (product_id)"
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')",
+          "column": "return_rate_pct",
+          "row": {
+            "product": "AeroDesk Pro"
+          }
         }
       ]
     },
@@ -88,40 +88,41 @@
       "id": "category-office-furniture",
       "params": {
         "category": "Office Furniture",
+        "categoryLabel": "Office Furniture",
         "topN": 5
       },
       "changed": {
         "category": "Office Furniture",
+        "categoryLabel": "Office Furniture",
         "topN": 5
       },
       "kpis": [
         {
-          "widget": "kpi-products",
+          "widget": "table-all-products",
           "label": "Products in scope",
           "format": "number",
           "value": 30,
-          "sql": "SELECT count(*) FROM dash_demo.products p WHERE true AND p.category = 'Office Furniture'"
+          "sql": "SELECT count(*) FROM dash_demo.products p WHERE true AND p.category = 'Office Furniture'",
+          "reading": "rows"
         },
         {
-          "widget": "chart-top-by-margin-first",
+          "widget": "chart-top-n-by-margin",
           "label": "Best product by gross margin",
           "format": "text",
           "value": "AeroDesk Pro",
-          "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' AND p.category = 'Office Furniture' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1"
+          "sql": "SELECT p.name FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) JOIN dash_demo.orders o USING (order_id) WHERE o.status <> 'cancelled' AND p.category = 'Office Furniture' GROUP BY 1 ORDER BY sum(l.line_amount - l.line_cost) DESC LIMIT 1",
+          "column": "product"
         },
         {
-          "widget": "chart-bubble-aerodesk-return-rate",
+          "widget": "chart-discount-vs-return-rate",
           "label": "AeroDesk Pro return rate from April 2026",
           "format": "percent",
           "value": 17.5,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')"
-        },
-        {
-          "widget": "chart-scatter-low-rated-units-pct",
-          "label": "Units per product, rated under 3.5 against the rest",
-          "format": "percent",
-          "value": 57.64,
-          "sql": "SELECT round(100.0 * (sum(CASE WHEN p.rating < 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating < 3.5 THEN p.product_id END)) / (sum(CASE WHEN p.rating >= 3.5 THEN l.qty ELSE 0 END) * 1.0 / count(DISTINCT CASE WHEN p.rating >= 3.5 THEN p.product_id END)), 2) FROM dash_demo.products p JOIN dash_demo.order_lines l USING (product_id)"
+          "sql": "SELECT round(100.0 * count(CASE WHEN o.status = 'returned' THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.order_ts >= DATE '2026-04-01' AND EXISTS (SELECT 1 FROM dash_demo.order_lines l JOIN dash_demo.products p USING (product_id) WHERE l.order_id = o.order_id AND p.name = 'AeroDesk Pro')",
+          "column": "return_rate_pct",
+          "row": {
+            "product": "AeroDesk Pro"
+          }
         }
       ]
     }

@@ -11,7 +11,7 @@
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
     "minAmount": 0,
-    "accountManagerId": "All",
+    "accountManagerId": "",
     "accountManagerLabel": "All"
   },
   "kpis": [
@@ -48,7 +48,8 @@
       "label": "Overdue invoices listed",
       "format": "number",
       "value": 46,
-      "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.due_date < DATE '2026-09-30'"
+      "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.due_date < DATE '2026-09-30'",
+      "reading": "rows"
     }
   ],
   "interactions": [
@@ -56,7 +57,7 @@
       "id": "min-amount-10000",
       "params": {
         "minAmount": 10000,
-        "accountManagerId": "All",
+        "accountManagerId": "",
         "accountManagerLabel": "All"
       },
       "changed": {
@@ -96,7 +97,8 @@
           "label": "Overdue invoices listed",
           "format": "number",
           "value": 4,
-          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 10000 AND i.due_date < DATE '2026-09-30'"
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 10000 AND i.due_date < DATE '2026-09-30'",
+          "reading": "rows"
         }
       ]
     },
@@ -145,7 +147,8 @@
           "label": "Overdue invoices listed",
           "format": "number",
           "value": 5,
-          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.customer_id IN (SELECT customer_id FROM dash_demo.customers c WHERE c.account_manager_id = 2014) AND i.due_date < DATE '2026-09-30'"
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE i.status IN ('open', 'overdue', 'partially_paid') AND i.amount + i.tax_amount >= 0 AND i.customer_id IN (SELECT customer_id FROM dash_demo.customers c WHERE c.account_manager_id = 2014) AND i.due_date < DATE '2026-09-30'",
+          "reading": "rows"
         }
       ]
     }

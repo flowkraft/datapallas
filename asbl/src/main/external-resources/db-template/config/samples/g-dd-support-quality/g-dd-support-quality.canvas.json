@@ -1,0 +1,324 @@
+{
+  "id": "g-dd-support-quality",
+  "name": "Support Quality & Agents",
+  "description": "CSAT month by month, the SLA against the target in kpi_targets and how often a ticket is reopened; then each channel's resolution times and its satisfaction side by side; then the agents, with their volume, average resolution, CSAT and SLA.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-support-quality",
+  "state": {
+    "id": "g-dd-support-quality",
+    "name": "Support Quality & Agents",
+    "description": "CSAT month by month, the SLA against the target in kpi_targets and how often a ticket is reopened; then each channel's resolution times and its satisfaction side by side; then the agents, with their volume, average resolution, CSAT and SLA.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd22-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Support Quality & Agents\n\nChat leaves people happiest and no faster: CSAT 4.4 on chat against 4.07 on the phone, 3.83 by email and 3.67 on the web form, while a ticket takes 60 to 63 hours to resolve whichever channel it arrives on - chat's median, 62.63 hours, is the longest of the four against the web form's 60.28. So chat buys satisfaction, not speed. Every team clears the 90% SLA target, from 90.5% in Billing to 91.5% in Technical, and the 32 agents sit between 3.86 and 4.13 CSAT, so there is no one to single out for coaching.\n\nQuality over time first - CSAT month by month, the SLA against its target from `kpi_targets`, and how often a ticket comes back - then the two sides of a channel's service, how fast it resolves and how happy it leaves people, and last the agents themselves. **Click the CSAT column** to sort the leaderboard by satisfaction instead of volume. The boxplot counts resolved tickets only: an open ticket has no resolution time. The window defaults to the last 12 months, the monthly review's own year."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd22-trend-csat",
+        "type": "trend",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 4,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT date_trunc('month', t.opened_ts)::DATE AS month,\n       round(avg(t.csat_score), 2) AS avg_csat\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.opened_ts >= ${dateFrom}\n  AND t.opened_ts < ${dateTo__next_day}\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\nGROUP BY month\nORDER BY month"
+        },
+        "displayConfig": {
+          "dateField": "month",
+          "valueField": "avg_csat",
+          "format": "number",
+          "label": "CSAT per month"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd22-progress-team-sla",
+        "type": "progress",
+        "gridPosition": {
+          "x": 4,
+          "y": 1,
+          "w": 4,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*)::DOUBLE\n             * 100.0 / (SELECT k.target FROM dash_demo.kpi_targets k WHERE k.area = 'Support' AND k.kpi = 'sla_met'), 4) AS pct_of_target\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.opened_ts >= ${dateFrom}\n  AND t.opened_ts < ${dateTo__next_day}\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})"
+        },
+        "displayConfig": {
+          "field": "pct_of_target",
+          "goal": 1,
+          "label": "Team SLA vs target",
+          "format": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd22-kpi-reopened",
+        "type": "number",
+        "gridPosition": {
+          "x": 8,
+          "y": 1,
+          "w": 4,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(CASE WHEN t.reopened THEN 1 END) / count(*)::DOUBLE, 4) AS reopened_rate\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.opened_ts >= ${dateFrom}\n  AND t.opened_ts < ${dateTo__next_day}\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})"
+        },
+        "displayConfig": {
+          "numberField": "reopened_rate",
+          "numberLabel": "Reopened %",
+          "numberFormat": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd22-chart-boxplot-resolution-hours-by-channel",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT t.channel AS channel,\n       round(date_diff('minute', t.opened_ts, t.resolved_ts) / 60.0, 2) AS resolution_hours\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.opened_ts >= ${dateFrom}\n  AND t.opened_ts < ${dateTo__next_day}\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\n  AND t.resolved_ts IS NOT NULL\nORDER BY t.channel, resolution_hours"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "boxplot",
+            "data": {
+              "labelField": "channel",
+              "datasets": [
+                {
+                  "field": "resolution_hours",
+                  "label": "Hours to resolve"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Resolution hours by channel"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd22-chart-csat-by-channel",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 4,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "kind": "cube",
+            "cubeId": "dd-support",
+            "table": "",
+            "filters": [],
+            "summarize": [],
+            "groupBy": [],
+            "sort": [],
+            "limit": 500,
+            "cubeSelection": {
+              "dimensions": [
+                "Channel"
+              ],
+              "measures": [
+                "AvgCsat"
+              ],
+              "segments": [],
+              "filters": [
+                {
+                  "member": "OpenedAt",
+                  "operator": "lt",
+                  "values": [
+                    "${dateTo__next_day}"
+                  ]
+                }
+              ],
+              "granularities": {},
+              "order": [
+                {
+                  "member": "AvgCsat",
+                  "dir": "desc"
+                }
+              ],
+              "limit": null,
+              "paramBindings": [
+                {
+                  "param": "team",
+                  "member": "Team",
+                  "operator": "equals"
+                },
+                {
+                  "param": "dateFrom",
+                  "member": "OpenedAt",
+                  "operator": "greater_or_equal"
+                }
+              ]
+            }
+          },
+          "generatedSql": "SELECT\n  dash_demo.support_tickets.channel AS \"Channel\",\n  CAST(AVG(CAST(dash_demo.support_tickets.csat_score AS DECIMAL(31,4))) AS DECIMAL(31,4)) AS \"AvgCsat\"\nFROM dash_demo.support_tickets\nLEFT JOIN dash_demo.support_agents ON dash_demo.support_tickets.agent_id = dash_demo.support_agents.agent_id\nWHERE dash_demo.support_tickets.opened_ts < ${dateTo__next_day}\n  AND dash_demo.support_agents.team = ${team}\n  AND dash_demo.support_tickets.opened_ts >= ${dateFrom}\nGROUP BY\n  dash_demo.support_tickets.channel\nORDER BY\n  \"AvgCsat\" DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "Channel",
+              "datasets": [
+                {
+                  "field": "AvgCsat",
+                  "label": "CSAT"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "CSAT by channel"
+                },
+                "legend": {
+                  "display": false
+                }
+              },
+              "scales": {
+                "y": {
+                  "suggestedMin": 3,
+                  "suggestedMax": 5
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd22-table-agent-leaderboard",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 0,
+          "y": 8,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT sa.name AS agent,\n       sa.team AS team,\n       count(*) AS tickets,\n       round(avg(date_diff('minute', t.opened_ts, t.resolved_ts) / 60.0), 2) AS avg_resolution_hours,\n       round(avg(t.csat_score), 2) AS avg_csat,\n       round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) AS sla_met_pct\nFROM dash_demo.support_tickets t\nJOIN dash_demo.support_agents sa ON sa.agent_id = t.agent_id\nWHERE true\n  AND t.opened_ts >= ${dateFrom}\n  AND t.opened_ts < ${dateTo__next_day}\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\nGROUP BY sa.name, sa.team\nORDER BY tickets DESC, agent"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 10,
+            "theme": "bulma"
+          },
+          "columnSettings": {
+            "agent": {
+              "columnTitle": "Agent"
+            },
+            "team": {
+              "columnTitle": "Team"
+            },
+            "tickets": {
+              "columnTitle": "Tickets"
+            },
+            "avg_resolution_hours": {
+              "columnTitle": "Average resolution, hours"
+            },
+            "avg_csat": {
+              "columnTitle": "CSAT"
+            },
+            "sla_met_pct": {
+              "columnTitle": "SLA met %"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "team",
+          "type": "String",
+          "label": "Team",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "radio",
+            "options": "SELECT '' AS value, '-- All teams --' AS label UNION ALL SELECT DISTINCT sa.team AS value, sa.team AS label FROM dash_demo.support_agents sa ORDER BY label"
+          }
+        },
+        {
+          "id": "dateFrom",
+          "type": "Date",
+          "label": "From",
+          "defaultValue": "{dataToday:minus 11 months, startOf month}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "dateTo",
+          "type": "Date",
+          "label": "To",
+          "defaultValue": "{dataToday}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-support-quality",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

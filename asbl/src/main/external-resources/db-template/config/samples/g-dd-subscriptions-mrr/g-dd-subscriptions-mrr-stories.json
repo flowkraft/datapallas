@@ -1,0 +1,13 @@
+[
+  {
+    "id": "plan-pro",
+    "question": "And the plan the price change hit hardest?",
+    "text": "Read Pro on its own: 686 subscribers paying 32,386.38 a month, 27,412.58 of MRR won new over the year against 2,436.20 lost to churn, and 1.14% of the plan left last month. Price is the reason 21 of its 61 leavers gave.",
+    "params": {
+      "plan": [
+        "Pro"
+      ]
+    },
+    "check": "plan-pro"
+  }
+]

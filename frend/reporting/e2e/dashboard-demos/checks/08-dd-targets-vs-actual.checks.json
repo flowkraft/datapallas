@@ -10,8 +10,9 @@
   },
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
-    "year": 2026,
-    "region": "All"
+    "year": "2026-01-01",
+    "yearLabel": "2026",
+    "region": ""
   },
   "kpis": [
     {
@@ -54,7 +55,8 @@
     {
       "id": "region-apac",
       "params": {
-        "year": 2026,
+        "year": "2026-01-01",
+        "yearLabel": "2026",
         "region": "APAC"
       },
       "changed": {
@@ -101,11 +103,13 @@
     {
       "id": "year-2025",
       "params": {
-        "year": 2025,
-        "region": "All"
+        "year": "2025-01-01",
+        "yearLabel": "2025",
+        "region": ""
       },
       "changed": {
-        "year": 2025
+        "year": "2025-01-01",
+        "yearLabel": "2025"
       },
       "kpis": [
         {

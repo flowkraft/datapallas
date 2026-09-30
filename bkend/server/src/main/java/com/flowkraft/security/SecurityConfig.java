@@ -26,6 +26,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 import com.flowkraft.embed.EmbedTokenAuthorizationManager;
 import com.flowkraft.embed.EmbedTokenService;
+import com.flowkraft.embed.LockedParamsValidator;
 import com.flowkraft.embed.ShareTokenService;
 import com.flowkraft.iam.IamUserDetailsService;
 import com.flowkraft.iam.federation.FederatedLoginConfig;
@@ -77,6 +78,10 @@ public class SecurityConfig {
 
 	@Autowired
 	private ShareTokenService shareTokenService;
+
+	/** Asked which parameters an embedded dashboard declares, so a shared page's locks reach it by name. */
+	@Autowired
+	private LockedParamsValidator lockedParamsValidator;
 
 	/**
 	 * Escape hatch for development and for diagnosing a locked-out install. Setting this to false
@@ -205,7 +210,7 @@ public class SecurityConfig {
 	}
 
 	private EmbedTokenAuthorizationManager embedTokenAuthorization() {
-		return new EmbedTokenAuthorizationManager(embedTokenService, shareTokenService,
+		return new EmbedTokenAuthorizationManager(embedTokenService, shareTokenService, lockedParamsValidator,
 				AuthenticatedAuthorizationManager.authenticated());
 	}
 

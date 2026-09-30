@@ -1,0 +1,291 @@
+{
+  "id": "g-dd-product-performance",
+  "name": "Product Performance",
+  "description": "The category manager's page: the two relations that decide a product's fate - how its rating moves its units, and how its discount moves its returns - then the push list, the review list and the full product table for the meeting.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-product-performance",
+  "state": {
+    "id": "g-dd-product-performance",
+    "name": "Product Performance",
+    "description": "The category manager's page: the two relations that decide a product's fate - how its rating moves its units, and how its discount moves its returns - then the push list, the review list and the full product table for the meeting.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd05-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Product Performance\n\nProducts rated under 3.5 stars sell about 40% fewer units per product; the AeroDesk Pro standing desk (3.2 stars) has a 17.5% return rate since April 2026."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd05-chart-rating-vs-units",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT p.rating AS rating,\n       sum(l.qty) AS units,\n       p.name AS product\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND p.category = ${category}\nGROUP BY 1, 3\nORDER BY rating"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "scatter",
+            "data": {
+              "labelField": "rating",
+              "datasets": [
+                {
+                  "field": "units",
+                  "label": "Units sold"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Rating against units sold, one dot per product"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd05-chart-discount-vs-return-rate",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT p.name AS product,\n       round(avg(l.discount_pct), 2) AS discount_pct,\n       round(100.0 * count(DISTINCT CASE WHEN o.status = 'returned' THEN o.order_id END)\n             / count(DISTINCT o.order_id), 2) AS return_rate_pct,\n       round(sum(l.line_amount), 2) AS revenue,\n       round(4 + 20.0 * sum(l.line_amount) / max(sum(l.line_amount)) OVER (), 1) AS bubble_size\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.order_ts >= date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 5 MONTH\n  AND p.category = ${category}\nGROUP BY 1\nORDER BY return_rate_pct DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bubble",
+            "data": {
+              "labelField": "discount_pct",
+              "datasets": [
+                {
+                  "field": "return_rate_pct",
+                  "label": "Return rate %"
+                }
+              ]
+            },
+            "options": {
+              "bubbleSizeField": "bubble_size",
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Discount % against return rate, sized by revenue, last six months"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd05-chart-top-n-by-margin",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 5,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT p.name AS product,\n       round(sum(l.line_amount - l.line_cost), 2) AS gross_margin\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND p.category = ${category}\nGROUP BY 1\nORDER BY gross_margin DESC\nLIMIT ${topN}"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "row",
+            "data": {
+              "labelField": "product",
+              "datasets": [
+                {
+                  "field": "gross_margin",
+                  "label": "Gross margin"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Top by gross margin"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd05-chart-bottom-n-by-margin",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 5,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT p.name AS product,\n       round(sum(l.line_amount - l.line_cost), 2) AS gross_margin\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND p.category = ${category}\nGROUP BY 1\nORDER BY gross_margin ASC\nLIMIT ${topN}"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "row",
+            "data": {
+              "labelField": "product",
+              "datasets": [
+                {
+                  "field": "gross_margin",
+                  "label": "Gross margin"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Bottom by gross margin"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd05-table-all-products",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 0,
+          "y": 9,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "products",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "category",
+                "operator": "equals",
+                "value": "${category}"
+              }
+            ],
+            "summarize": [],
+            "groupBy": [],
+            "sort": [
+              {
+                "column": "name",
+                "direction": "asc"
+              }
+            ],
+            "limit": 500
+          },
+          "generatedSql": "SELECT *\nFROM \"dash_demo\".\"products\"\nWHERE \"category\" = ${category}\nORDER BY CASE WHEN \"name\" IS NULL THEN 1 ELSE 0 END, \"name\" asc\nLIMIT 500"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 25,
+            "theme": "modern",
+            "autoColumnsDefinitions": [
+              {
+                "field": "product_id",
+                "visible": false
+              },
+              {
+                "field": "subcategory",
+                "visible": false
+              }
+            ]
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "category",
+          "type": "String",
+          "label": "Category",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT '' AS value, '-- All categories --' AS label UNION ALL SELECT DISTINCT category AS value, category AS label FROM dash_demo.products ORDER BY label"
+          }
+        },
+        {
+          "id": "topN",
+          "type": "Integer",
+          "label": "How many",
+          "defaultValue": 10,
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "select",
+            "options": [
+              {
+                "value": 5,
+                "label": "5"
+              },
+              {
+                "value": 10,
+                "label": "10"
+              },
+              {
+                "value": 25,
+                "label": "25"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-product-performance",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

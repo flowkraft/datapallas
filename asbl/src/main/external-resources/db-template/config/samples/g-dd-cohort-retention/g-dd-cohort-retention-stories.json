@@ -1,0 +1,20 @@
+[
+  {
+    "id": "customer-type-business",
+    "question": "How do the trade accounts read?",
+    "text": "Pick business: the heatmap switches to 17 quarterly cohorts, and the average 6-month retention is 37% - the accounts order in bigger, rarer batches.",
+    "params": {
+      "customerType": "business"
+    },
+    "check": "customer-type-business"
+  },
+  {
+    "id": "customer-type-consumer",
+    "question": "And the consumers on their own?",
+    "text": "Pick consumer: 51 monthly cohorts, 44% average 6-month retention, and the gap between the two curves is nine points - the programme is a consumer story.",
+    "params": {
+      "customerType": "consumer"
+    },
+    "check": "customer-type-consumer"
+  }
+]

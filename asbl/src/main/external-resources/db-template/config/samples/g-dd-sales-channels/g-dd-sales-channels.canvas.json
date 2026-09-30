@@ -1,0 +1,193 @@
+{
+  "id": "g-dd-sales-channels",
+  "name": "Sales Channels",
+  "description": "The channel budget page: the revenue mix today, what an order is worth in each channel, where the mix is moving month by month, and what each channel sells. One checkbox switches every tile between revenue net of returns and gross.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-sales-channels",
+  "state": {
+    "id": "g-dd-sales-channels",
+    "name": "Sales Channels",
+    "description": "The channel budget page: the revenue mix today, what an order is worth in each channel, where the mix is moving month by month, and what each channel sells. One checkbox switches every tile between revenue net of returns and gross.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd04-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Sales Channels\n\nThe mobile app has grown from about 14% to about 28% of orders since 2024 while the marketplace has shrunk from 19% to 12%. Marketplace orders come back about twice as often as web orders (10.7% against 5.6%), and Smart Home sells mostly through the app."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd04-chart-revenue-mix-by-channel",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.channel AS channel,\n       round(sum(o.total_amount), 2) AS revenue,\n       round(100.0 * sum(o.total_amount) / sum(sum(o.total_amount)) OVER (), 2) AS share_pct\nFROM dash_demo.orders o\nWHERE o.status <> 'cancelled'\n  AND (o.status <> 'returned' OR ${includeReturns})\nGROUP BY 1\nORDER BY revenue DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "pie",
+            "data": {
+              "labelField": "channel",
+              "datasets": [
+                {
+                  "field": "revenue",
+                  "label": "Revenue"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Revenue mix by channel"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd04-chart-average-order-value-per-channel",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.channel AS channel,\n       round(avg(o.total_amount), 2) AS avg_order_value,\n       count(*) AS orders\nFROM dash_demo.orders o\nWHERE o.status <> 'cancelled'\n  AND (o.status <> 'returned' OR ${includeReturns})\nGROUP BY 1\nORDER BY avg_order_value DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "channel",
+              "datasets": [
+                {
+                  "field": "avg_order_value",
+                  "label": "Average order"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Average order value per channel"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd04-chart-channel-share-per-month",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 5,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT date_trunc('month', o.order_ts) AS month,\n       o.channel AS channel,\n       round(100.0 * count(*)\n             / sum(count(*)) OVER (PARTITION BY date_trunc('month', o.order_ts)), 2) AS share_pct\nFROM dash_demo.orders o\nWHERE o.status <> 'cancelled'\n  AND (o.status <> 'returned' OR ${includeReturns})\nGROUP BY 1, 2\nORDER BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "area",
+            "data": {
+              "labelField": "month",
+              "seriesField": "channel",
+              "datasets": [
+                {
+                  "field": "share_pct",
+                  "label": "Share of orders %"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Channel share of orders per month"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd04-sankey-channel-to-category",
+        "type": "sankey",
+        "gridPosition": {
+          "x": 0,
+          "y": 9,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.channel AS channel,\n       p.category AS category,\n       round(sum(l.line_amount), 2) AS revenue\nFROM dash_demo.orders o\nJOIN dash_demo.order_lines l ON l.order_id = o.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND (o.status <> 'returned' OR ${includeReturns})\nGROUP BY 1, 2\nORDER BY revenue DESC"
+        },
+        "displayConfig": {
+          "sourceField": "channel",
+          "targetField": "category",
+          "valueField": "revenue",
+          "label": "Channel → category revenue"
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "includeReturns",
+          "type": "Boolean",
+          "label": "Include returns",
+          "defaultValue": false,
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "checkbox"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-sales-channels",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

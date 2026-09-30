@@ -34,13 +34,6 @@
       "format": "number",
       "value": 230.6,
       "sql": "SELECT round(sum(pl.overtime_hours), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01'"
-    },
-    {
-      "widget": "chart-warehouse-overtime-november-december",
-      "label": "Warehouse overtime in November and December against the rest",
-      "format": "number",
-      "value": 2.98,
-      "sql": "SELECT round((SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) IN (11, 12)) / (SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) NOT IN (11, 12)), 2)"
     }
   ],
   "interactions": [
@@ -78,13 +71,6 @@
           "format": "number",
           "value": 181.3,
           "sql": "SELECT round(sum(pl.overtime_hours), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2026-09-01' AND d.name IN ('Warehouse')"
-        },
-        {
-          "widget": "chart-warehouse-overtime-november-december",
-          "label": "Warehouse overtime in November and December against the rest",
-          "format": "number",
-          "value": 2.98,
-          "sql": "SELECT round((SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) IN (11, 12)) / (SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) NOT IN (11, 12)), 2)"
         }
       ]
     },
@@ -118,13 +104,6 @@
           "format": "number",
           "value": 596.4,
           "sql": "SELECT round(sum(pl.overtime_hours), 2) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) JOIN dash_demo.departments d USING (department_id) WHERE date_trunc('month', pl.period_month) = DATE '2025-11-01'"
-        },
-        {
-          "widget": "chart-warehouse-overtime-november-december",
-          "label": "Warehouse overtime in November and December against the rest",
-          "format": "number",
-          "value": 2.98,
-          "sql": "SELECT round((SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) IN (11, 12)) / (SELECT avg(pl.overtime_hours) FROM dash_demo.payroll_lines pl JOIN dash_demo.employees e USING (employee_id) WHERE e.department_id = 7 AND month(pl.period_month) NOT IN (11, 12)), 2)"
         }
       ]
     }

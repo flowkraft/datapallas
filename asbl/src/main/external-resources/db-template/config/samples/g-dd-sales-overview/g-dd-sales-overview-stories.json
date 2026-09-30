@@ -1,0 +1,11 @@
+[
+  {
+    "id": "germany",
+    "question": "How is Germany doing?",
+    "text": "Germany is the biggest single market — nearly a fifth of the revenue — and its average order runs above the company's.",
+    "params": {
+      "country": "DE"
+    },
+    "check": "country-germany"
+  }
+]

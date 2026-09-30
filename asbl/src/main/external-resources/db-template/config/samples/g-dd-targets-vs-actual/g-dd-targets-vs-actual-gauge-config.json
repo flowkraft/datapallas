@@ -1,0 +1,16 @@
+{
+  "gauge_pct_of_target_attainment" : {
+    "field" : "pct_of_target",
+    "min" : 0,
+    "max" : 1.5,
+    "label" : "YTD attainment",
+    "format" : "percent",
+    "bands" : [ {
+      "to" : 1,
+      "color" : "#c62828"
+    }, {
+      "to" : 1.5,
+      "color" : "#2e7d32"
+    } ]
+  }
+}

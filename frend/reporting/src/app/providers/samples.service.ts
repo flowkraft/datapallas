@@ -884,6 +884,35 @@ export class SamplesService {
       capReportGenerationMailMerge: true,
       activeClicked: false,
     },
+    {
+      id: 'DASHBOARD-DEMOS',
+      name: '23. Dashboard Demos (25 dashboards, one page)',
+      visibility: 'visible',
+      jobType: 'dashboard',
+      input: {
+        data: ['file:db/sample-northwind-duckdb/northwind.duckdb'],
+        dataUrl: [],
+        numberOfPages: -1,
+        tokens: [],
+      },
+      step1: 'dashboard',
+      step2: '',
+      step3: '',
+      output: {
+        data: [],
+        folder: '',
+      },
+      outputHtmlHardcoded: `${iconSvg('th-large')} 25 interactive dashboards on one page (no output files)`,
+      configurationFilePath: `config/samples/g-dashboard-demos/settings.xml`,
+      configurationFileName: 'g-dashboard-demos',
+      notes: ``,
+      recipientType: '',
+      documentType: 'dashboard',
+      capReportSplitting: false,
+      capReportDistribution: false,
+      capReportGenerationMailMerge: true,
+      activeClicked: false,
+    },
   ];
 
   samplesNotYetImplemented: Array<SampleInfo> = [

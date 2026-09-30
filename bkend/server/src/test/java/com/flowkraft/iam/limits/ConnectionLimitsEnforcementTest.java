@@ -47,6 +47,7 @@ import com.flowkraft.common.AppPaths;
 import com.flowkraft.connections.ConnectionsController;
 import com.flowkraft.connections.ConnectionsService;
 import com.flowkraft.embed.EmbedController;
+import com.flowkraft.embed.EmbeddedReports;
 import com.flowkraft.embed.EmbedTokenService;
 import com.flowkraft.embed.LockedParamsValidator;
 import com.flowkraft.embed.ShareTokenService;
@@ -516,19 +517,19 @@ class ConnectionLimitsEnforcementTest {
 		assertThrows(ReportNotRunnableException.class,
 				() -> controller.mintToken(Map.of("reportId", UNRUNNABLE_REPORT, "ttlSeconds", 3600)));
 
-		verify(tokens, never()).mint(anyString(), anyLong(), any(), any(), any(), any());
+		verify(tokens, never()).mint(anyString(), anyLong(), any(), any(), any(), any(), any());
 	}
 
 	@Test
 	void mintingAnEmbedTokenForAReportTheCallerMayRunStillWorks() {
 		EmbedTokenService tokens = mock(EmbedTokenService.class);
-		when(tokens.mint(anyString(), anyLong(), any(), any(), any(), any())).thenReturn("a-token");
+		when(tokens.mint(anyString(), anyLong(), any(), any(), any(), any(), any())).thenReturn("a-token");
 
 		ResponseEntity<?> minted = embedController(tokens, mock(ShareTokenService.class), UNRUNNABLE_REPORT)
 				.mintToken(Map.of("reportId", "sales-report"));
 
 		assertEquals(HttpStatus.OK, minted.getStatusCode());
-		verify(tokens, times(1)).mint(anyString(), anyLong(), any(), any(), any(), any());
+		verify(tokens, times(1)).mint(anyString(), anyLong(), any(), any(), any(), any(), any());
 	}
 
 	@Test
@@ -539,19 +540,19 @@ class ConnectionLimitsEnforcementTest {
 		assertThrows(ReportNotRunnableException.class,
 				() -> controller.createShareLink(Map.of("reportId", UNRUNNABLE_REPORT, "expiresInDays", 30)));
 
-		verify(links, never()).createShareToken(anyString(), any(), any(), any());
+		verify(links, never()).createShareToken(anyString(), any(), any(), any(), any());
 	}
 
 	@Test
 	void aShareLinkForAReportItsAuthorMayOpenIsStillCreated() {
 		ShareTokenService links = mock(ShareTokenService.class);
-		when(links.createShareToken(anyString(), any(), any(), any())).thenReturn("a-share-token");
+		when(links.createShareToken(anyString(), any(), any(), any(), any())).thenReturn("a-share-token");
 
 		ResponseEntity<?> created = embedController(mock(EmbedTokenService.class), links, UNRUNNABLE_REPORT)
 				.createShareLink(Map.of("reportId", "sales-report"));
 
 		assertEquals(HttpStatus.OK, created.getStatusCode());
-		verify(links, times(1)).createShareToken(anyString(), any(), any(), any());
+		verify(links, times(1)).createShareToken(anyString(), any(), any(), any(), any());
 	}
 
 	@Test
@@ -769,6 +770,9 @@ class ConnectionLimitsEnforcementTest {
 		ReflectionTestUtils.setField(controller, "embedTokenService", tokens);
 		ReflectionTestUtils.setField(controller, "shareTokenService", links);
 		ReflectionTestUtils.setField(controller, "lockedParamsValidator", validator);
+		// The page embeds nothing here: this test is about who may mint or share at all, and an empty
+		// list is what every report that is not a gallery answers.
+		ReflectionTestUtils.setField(controller, "embeddedReports", mock(EmbeddedReports.class));
 		ReflectionTestUtils.setField(controller, "reportAccess", refusing(refusedReport));
 		return controller;
 	}

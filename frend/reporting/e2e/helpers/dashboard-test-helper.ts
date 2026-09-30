@@ -215,7 +215,7 @@ export async function assertDashboardRendersCorrectly(
   }
 }
 
-type WidgetState = {
+export type WidgetState = {
   id: string;
   type: string;
   displayConfig?: Record<string, unknown>;
@@ -271,13 +271,25 @@ export async function getCanvasComponentIds(
   const state = JSON.parse(canvas.state);
   const ids: Record<string, string[]> = {};
   for (const w of state.widgets as WidgetState[]) {
-    const stripped = w.id.replace(/^w-/, '');
-    const slug = inferSemanticSlug(w.type, w);
-    const compId = slug
-      ? `${w.type}_${slug}_${stripped.substring(stripped.lastIndexOf('-') + 1)}`
-      : `${w.type}_${stripped}`;
     if (!ids[w.type]) ids[w.type] = [];
-    ids[w.type].push(compId);
+    ids[w.type].push(canvasComponentId(w));
   }
   return ids;
+}
+
+/**
+ * The name a canvas widget's own files call it, which is the `component-id` in the published
+ * template and the key its rows come back under.
+ *
+ * The formula lives here, in one place: `getCanvasComponentIds` above reads it off a running
+ * server, and the Dashboard Demos read it off the shipped `.canvas.json` with no server at all
+ * (`helpers/dashboard-demos/demo-catalog.ts`). Both must be the same name the dashboard uses, so
+ * neither may carry a copy of the rule.
+ */
+export function canvasComponentId(w: WidgetState): string {
+  const stripped = w.id.replace(/^w-/, '');
+  const slug = inferSemanticSlug(w.type, w);
+  return slug
+    ? `${w.type}_${slug}_${stripped.substring(stripped.lastIndexOf('-') + 1)}`
+    : `${w.type}_${stripped}`;
 }

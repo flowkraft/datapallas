@@ -1,0 +1,295 @@
+{
+  "id": "g-dd-headcount",
+  "name": "Headcount & Attrition",
+  "description": "Headcount with the hires and leavers of the year, headcount month by month, the attrition rate each department runs over the 33 months with the leavers behind it, what the same level is paid inside Customer Support and outside it, and how long the people who are here have stayed.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-headcount",
+  "state": {
+    "id": "g-dd-headcount",
+    "name": "Headcount & Attrition",
+    "description": "Headcount with the hires and leavers of the year, headcount month by month, the attrition rate each department runs over the 33 months with the leavers behind it, what the same level is paid inside Customer Support and outside it, and how long the people who are here have stayed.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd18-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Headcount & Attrition\n\nCustomer Support is where people leave: 17.5% a year against 9.64% for the company over the 33 months, 12 leavers from a team that averaged 25 people, and the shortest median tenure of any department at 3.1 years - 8 of its 26 people have been there under a year. Pay is the likely reason: at L1, where 10 of those 26 sit, it pays 81.7% of what everyone else at that level is paid, a median of 27,891 against 32,270; pooled over L1 to L3 it is 92.02%.\n\nThe size and the flow first: how many people there are, how many joined this year and how many left. Then the shape of it - headcount month by month, and the attrition rate each department runs over the 33 months, annualised, with the leavers it stands on in brackets. The bottom row is the two likely reasons side by side: what the same level is paid inside Customer Support and outside it, and how long people stay. Pick a **department** or a **country** to narrow the page; the salary boxes stay company-wide, because they are the comparison itself."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd18-kpi-headcount",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) AS headcount\nFROM dash_demo.employees e\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nJOIN dash_demo.geo_cities g ON g.city_id = e.city_id\nWHERE true\n  AND d.name = ${department}\n  AND g.country = ${country}\n  AND e.hire_date <= (SELECT a.as_of FROM dash_demo.as_of a)\n  AND (e.termination_date IS NULL OR e.termination_date > (SELECT a.as_of FROM dash_demo.as_of a))"
+        },
+        "displayConfig": {
+          "numberField": "headcount",
+          "numberLabel": "Headcount",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd18-kpi-hires-ytd",
+        "type": "number",
+        "gridPosition": {
+          "x": 4,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) AS hires_ytd\nFROM dash_demo.employees e\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nJOIN dash_demo.geo_cities g ON g.city_id = e.city_id\nWHERE true\n  AND d.name = ${department}\n  AND g.country = ${country}\n  AND e.hire_date >= CAST(date_trunc('year', (SELECT a.as_of FROM dash_demo.as_of a)) AS DATE)\n  AND e.hire_date <= (SELECT a.as_of FROM dash_demo.as_of a)"
+        },
+        "displayConfig": {
+          "numberField": "hires_ytd",
+          "numberLabel": "Hires YTD",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd18-kpi-leavers-ytd",
+        "type": "number",
+        "gridPosition": {
+          "x": 8,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) AS leavers_ytd\nFROM dash_demo.employees e\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nJOIN dash_demo.geo_cities g ON g.city_id = e.city_id\nWHERE true\n  AND d.name = ${department}\n  AND g.country = ${country}\n  AND e.termination_date >= CAST(date_trunc('year', (SELECT a.as_of FROM dash_demo.as_of a)) AS DATE)\n  AND e.termination_date <= (SELECT a.as_of FROM dash_demo.as_of a)"
+        },
+        "displayConfig": {
+          "numberField": "leavers_ytd",
+          "numberLabel": "Leavers YTD",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd18-chart-headcount-over-time",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 3,
+          "w": 8,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH months AS (\n  SELECT CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - to_months(CAST(x.i AS INTEGER)) AS DATE) AS month\n  FROM generate_series(0, 32) AS x(i)\n)\nSELECT strftime(m.month, '%Y-%m') AS month,\n       count(*) AS headcount\nFROM months m\nJOIN dash_demo.employees e\n  ON e.hire_date <= m.month + to_months(1) - to_days(1)\n AND (e.termination_date IS NULL OR e.termination_date > m.month + to_months(1) - to_days(1))\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nJOIN dash_demo.geo_cities g ON g.city_id = e.city_id\nWHERE true\n  AND d.name = ${department}\n  AND g.country = ${country}\nGROUP BY m.month\nORDER BY m.month"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "month",
+              "datasets": [
+                {
+                  "field": "headcount",
+                  "label": "Headcount"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Headcount over time"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd18-chart-attrition-by-department",
+        "type": "chart",
+        "gridPosition": {
+          "x": 8,
+          "y": 3,
+          "w": 4,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH scope AS (\n  SELECT e.department_id AS department_id,\n         d.name AS department,\n         e.hire_date AS hire_date,\n         e.termination_date AS termination_date\n  FROM dash_demo.employees e\n  JOIN dash_demo.departments d ON d.department_id = e.department_id\n  JOIN dash_demo.geo_cities g ON g.city_id = e.city_id\n  WHERE true\n    AND d.name = ${department}\n    AND g.country = ${country}\n),\ngrouped AS (\n  SELECT CASE WHEN (SELECT count(*) FROM dash_demo.employees e2\n                    WHERE e2.department_id = s.department_id\n                      AND e2.termination_date IS NOT NULL) >= 8\n              THEN s.department ELSE 'Other departments' END AS department,\n         s.hire_date AS hire_date,\n         s.termination_date AS termination_date\n  FROM scope s\n),\nmonths AS (\n  SELECT CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - to_months(CAST(x.i AS INTEGER)) AS DATE) AS month\n  FROM generate_series(0, 32) AS x(i)\n),\nheads AS (\n  SELECT gr.department AS department, m.month AS month, count(*) AS heads\n  FROM months m\n  JOIN grouped gr\n    ON gr.hire_date <= m.month + to_months(1) - to_days(1)\n   AND (gr.termination_date IS NULL OR gr.termination_date > m.month + to_months(1) - to_days(1))\n  GROUP BY gr.department, m.month\n),\naverage_heads AS (\n  SELECT department, avg(heads) AS avg_heads FROM heads GROUP BY department\n),\nleavers AS (\n  SELECT department, count(*) AS leavers\n  FROM grouped\n  WHERE termination_date >= CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - to_months(32) AS DATE)\n    AND termination_date <= (SELECT a.as_of FROM dash_demo.as_of a)\n  GROUP BY department\n)\nSELECT a.department || ' (' || coalesce(l.leavers, 0) || ')' AS department,\n       round(100.0 * coalesce(l.leavers, 0) / a.avg_heads * 12.0 / 33.0, 2) AS attrition_pct\nFROM average_heads a\nLEFT JOIN leavers l ON l.department = a.department\nORDER BY attrition_pct DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "department",
+              "datasets": [
+                {
+                  "field": "attrition_pct",
+                  "label": "Attrition % a year"
+                }
+              ]
+            },
+            "options": {
+              "indexAxis": "y",
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Attrition a year, over the 33 months (leavers in brackets)"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd18-chart-boxplot-salary-by-level",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 7,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT e.level || ' - ' || CASE WHEN d.name = 'Customer Support'\n                                THEN 'Customer Support' ELSE 'Everyone else' END AS level_and_side,\n       e.base_salary_annual AS base_salary_annual\nFROM dash_demo.employees e\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nJOIN dash_demo.geo_cities g ON g.city_id = e.city_id\nWHERE true\n  AND g.country = ${country}\n  AND e.hire_date <= (SELECT a.as_of FROM dash_demo.as_of a)\n  AND (e.termination_date IS NULL OR e.termination_date > (SELECT a.as_of FROM dash_demo.as_of a))\n  AND e.level IN ('L1', 'L2', 'L3')\nORDER BY level_and_side, base_salary_annual"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "boxplot",
+            "data": {
+              "labelField": "level_and_side",
+              "datasets": [
+                {
+                  "field": "base_salary_annual",
+                  "label": "Base salary"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Salary by level: Customer Support against everyone else"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd18-chart-tenure-bins",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 7,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT CASE WHEN (SELECT a.as_of FROM dash_demo.as_of a) - e.hire_date < 365 THEN '0-1 years'\n            WHEN (SELECT a.as_of FROM dash_demo.as_of a) - e.hire_date < 730 THEN '1-2 years'\n            WHEN (SELECT a.as_of FROM dash_demo.as_of a) - e.hire_date < 1095 THEN '2-3 years'\n            WHEN (SELECT a.as_of FROM dash_demo.as_of a) - e.hire_date < 1825 THEN '3-5 years'\n            WHEN (SELECT a.as_of FROM dash_demo.as_of a) - e.hire_date < 3650 THEN '5-10 years'\n            ELSE '10+ years' END AS tenure,\n       count(*) AS people\nFROM dash_demo.employees e\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nJOIN dash_demo.geo_cities g ON g.city_id = e.city_id\nWHERE true\n  AND d.name = ${department}\n  AND g.country = ${country}\n  AND e.hire_date <= (SELECT a.as_of FROM dash_demo.as_of a)\n  AND (e.termination_date IS NULL OR e.termination_date > (SELECT a.as_of FROM dash_demo.as_of a))\nGROUP BY tenure\nORDER BY min((SELECT a.as_of FROM dash_demo.as_of a) - e.hire_date)"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "tenure",
+              "datasets": [
+                {
+                  "field": "people",
+                  "label": "People"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "How long people have stayed"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "department",
+          "type": "String",
+          "label": "Department",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT '' AS value, '-- All departments --' AS label UNION ALL SELECT d.name AS value, d.name AS label FROM dash_demo.departments d ORDER BY label"
+          }
+        },
+        {
+          "id": "country",
+          "type": "String",
+          "label": "Country",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT '' AS value, '-- All countries --' AS label UNION ALL SELECT DISTINCT g.country AS value, g.country AS label FROM dash_demo.employees e JOIN dash_demo.geo_cities g ON g.city_id = e.city_id ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-headcount",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

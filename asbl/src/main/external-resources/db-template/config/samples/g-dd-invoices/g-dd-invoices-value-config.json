@@ -1,0 +1,19 @@
+{
+  "number_billed_this_month_month" : {
+    "format" : "currency",
+    "label" : "Billed this month"
+  },
+  "number_collected_this_month_month" : {
+    "format" : "currency",
+    "label" : "Collected this month"
+  },
+  "number_openamount_amount" : {
+    "field" : "OpenAmount",
+    "format" : "currency",
+    "label" : "Open amount"
+  },
+  "number_overdue_amount_amount" : {
+    "format" : "currency",
+    "label" : "Overdue amount"
+  }
+}

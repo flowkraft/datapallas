@@ -1,0 +1,8 @@
+{
+  "trend_month_dso" : {
+    "dateField" : "month",
+    "valueField" : "dso_days",
+    "format" : "number",
+    "label" : "DSO per month, days"
+  }
+}

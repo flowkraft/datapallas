@@ -1,0 +1,15 @@
+{
+  "number_customer_id_count_customers" : {
+    "field" : "customer_id_count",
+    "format" : "number",
+    "label" : "Customers"
+  },
+  "number_new_customers_days" : {
+    "format" : "number",
+    "label" : "New in the last 30 days"
+  },
+  "number_repeat_buyer_pct_buyers" : {
+    "format" : "percent",
+    "label" : "Repeat buyers"
+  }
+}

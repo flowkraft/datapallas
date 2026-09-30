@@ -1050,6 +1050,11 @@
       "NOTES": {
         "INNER-HTML": "This sample is the <strong>cube demo page</strong>: one card for every cube DataPallas ships, live. Each card shows the cube's fields, the questions it was written to answer &mdash; click <strong>Show Me</strong> and the fields a question needs are ticked for you &mdash; and the answer as a <strong>table or a chart</strong>. Each card also offers <strong>View SQL</strong>, the statement your selection would be answered by, for <em>any</em> of the databases DataPallas writes SQL for, and <strong>View Code</strong>, the cube's own definition. Nothing you tick here is saved: the page opens the same way for everybody. <br/><br/>Click <strong>Try It</strong> to open the page in your browser."
       }
+    },
+    "DASHBOARD-DEMOS": {
+      "NOTES": {
+        "INNER-HTML": "This sample is the <strong>dashboard gallery</strong>: <strong>25 dashboards</strong> on one page, every one of them built in the <a href='https://datapallas.com/docs/bi-analytics/data-canvas' target='_blank'>Data Canvas</a> and shipped exactly as it was saved. They run on one company's demo data &mdash; sales, customers, finance, people, operations and support &mdash; so the same numbers are read across the whole set. Each card says <strong>who asks the question</strong>, the <strong>decision</strong> it leads to and <strong>what it shows</strong>, offers the questions the dashboard was written to answer &mdash; click <strong>Show Me</strong> and its filters are set for you &mdash; and links to <strong>how it was built</strong> and to the dashboard on its own page. Nothing you pick here is saved: the page opens the same way for everybody. <br/><br/>Click <strong>Try It</strong> to open the gallery in your browser."
+      }
     }
   }
 }

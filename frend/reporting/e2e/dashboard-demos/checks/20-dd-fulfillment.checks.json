@@ -35,20 +35,6 @@
       "format": "number",
       "value": 138,
       "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.delivered_ts::DATE > o.promised_date"
-    },
-    {
-      "widget": "chart-late-by-carrier-swiftpost",
-      "label": "SwiftPost late %, all deliveries",
-      "format": "percent",
-      "value": 12.3,
-      "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier = 'SwiftPost'"
-    },
-    {
-      "widget": "chart-late-by-carrier-others",
-      "label": "The other carriers late %, all deliveries",
-      "format": "percent",
-      "value": 4.28,
-      "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier <> 'SwiftPost'"
     }
   ],
   "interactions": [
@@ -87,20 +73,6 @@
           "format": "number",
           "value": 78,
           "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2026-07-02' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.carrier IN ('SwiftPost') AND o.delivered_ts::DATE > o.promised_date"
-        },
-        {
-          "widget": "chart-late-by-carrier-swiftpost",
-          "label": "SwiftPost late %, all deliveries",
-          "format": "percent",
-          "value": 12.3,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier = 'SwiftPost'"
-        },
-        {
-          "widget": "chart-late-by-carrier-others",
-          "label": "The other carriers late %, all deliveries",
-          "format": "percent",
-          "value": 4.28,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier <> 'SwiftPost'"
         }
       ]
     },
@@ -136,20 +108,6 @@
           "format": "number",
           "value": 720,
           "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.delivered_ts >= DATE '2025-10-01' AND o.delivered_ts < DATE '2026-09-30' + INTERVAL 1 DAY AND o.delivered_ts::DATE > o.promised_date"
-        },
-        {
-          "widget": "chart-late-by-carrier-swiftpost",
-          "label": "SwiftPost late %, all deliveries",
-          "format": "percent",
-          "value": 12.3,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier = 'SwiftPost'"
-        },
-        {
-          "widget": "chart-late-by-carrier-others",
-          "label": "The other carriers late %, all deliveries",
-          "format": "percent",
-          "value": 4.28,
-          "sql": "SELECT round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) FROM dash_demo.orders o WHERE o.delivered_ts IS NOT NULL AND o.carrier <> 'SwiftPost'"
         }
       ]
     }

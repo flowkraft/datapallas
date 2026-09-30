@@ -170,9 +170,16 @@ public class ScriptAssembler {
         // read it as one. The value itself comes from DateParameters - the conversion the canvas path
         // derives it with too, so a published dashboard and the canvas it came from ask the same
         // question.
+        // Every query this dashboard runs, whichever way the author wrote it: a widget built on the
+        // canvas asks its question through the SQL the builder generated for it, so a date range
+        // drawn in the builder names its own day-after there and nowhere else. Read through
+        // resolveSql, the one place that knows where a widget's SQL is - reading `sql` alone left a
+        // visual date range with `${to__next_day}` standing in the statement.
         StringBuilder everyQuery = new StringBuilder();
         for (Map<String, Object> w : widgets) {
-            everyQuery.append(dsField(w, "sql")).append('\n').append(dsField(w, "script")).append('\n');
+            String query = resolveSql(w);
+            everyQuery.append(query != null ? query : "").append('\n')
+                      .append(dsField(w, "script")).append('\n');
         }
         List<String> withDerived = new ArrayList<>(paramNames);
         for (String name : paramNames) {
@@ -516,8 +523,12 @@ public class ScriptAssembler {
      * the TypeScript {@code getCanvasComponentIds()} helper.
      * When a semantic slug can be inferred from widget data (field name, table name, etc.)
      * the format is {@code type_slug_suffix}; otherwise falls back to {@code type_strippedId}.
+     *
+     * <p>Package-private rather than private so a test in this package can name a widget the way
+     * the dashboard names it: the Dashboard Demos' claims are written against widget ids, and the
+     * rows a published dashboard reports are keyed by this.
      */
-    private static String componentId(Map<String, Object> widget) {
+    static String componentId(Map<String, Object> widget) {
         String type    = str(widget, "type");
         String id      = str(widget, "id");
         String stripped = id.replaceFirst("^w-", "");

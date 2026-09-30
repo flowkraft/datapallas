@@ -1,0 +1,28 @@
+[
+  {
+    "id": "mobile-june-july-2026",
+    "question": "What happened on mobile in June?",
+    "text": "Filter to mobile over June and July 2026: the checkout line reads 41% where it held 62% every other month, and the funnel's last step falls with it. That is the checkout bug, on 110 mobile sessions reaching checkout in June alone.",
+    "params": {
+      "device": [
+        "mobile"
+      ],
+      "dateFrom": "{dataToday:minus 3 months, startOf month}",
+      "dateTo": "{dataToday:minus 2 months, endOf month}"
+    },
+    "check": "mobile-june-july-2026"
+  },
+  {
+    "id": "desktop-june-july-2026",
+    "question": "Was desktop hit too?",
+    "text": "The same days on desktop: 55% checkout to purchase, no drop at all. The bug was mobile checkout, which is why the page keeps a device filter.",
+    "params": {
+      "device": [
+        "desktop"
+      ],
+      "dateFrom": "{dataToday:minus 3 months, startOf month}",
+      "dateTo": "{dataToday:minus 2 months, endOf month}"
+    },
+    "check": "desktop-june-july-2026"
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "year-2025",
+    "question": "How did last year close?",
+    "text": "Pick last year in Year: every number becomes that year's close, read at 31 December instead of today.",
+    "params": {
+      "year": "{dataToday:minus 1 year, startOf year}"
+    },
+    "check": "year-2025"
+  }
+]

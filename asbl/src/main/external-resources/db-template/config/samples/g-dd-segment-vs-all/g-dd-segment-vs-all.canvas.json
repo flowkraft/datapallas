@@ -1,0 +1,263 @@
+{
+  "id": "g-dd-segment-vs-all",
+  "name": "Segment vs Everyone",
+  "description": "One country against the whole company: the average order and the return rate side by side, the revenue share of every category here and everywhere, the quarterly revenue index of both starting at 100, and how this market's orders arrive.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-segment-vs-all",
+  "state": {
+    "id": "g-dd-segment-vs-all",
+    "name": "Segment vs Everyone",
+    "description": "One country against the whole company: the average order and the return rate side by side, the revenue share of every category here and everywhere, the quarterly revenue index of both starting at 100, and how this market's orders arrive.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd25-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Segment vs Everyone\n\nPoland is a smaller basket and a faster market: 1,944.91 an order against 2,756.55 everywhere, returns no different at 5.93% against 5.97%, but quarterly revenue at 208.67 against the company's 139.44 since the start of 2024. It buys more Smart Home, 12.2% of its revenue against 10.58%, and a little more on the app, 21.37% of its orders against 20.55% - the assortment difference is real, the channel difference is under a point.\n\nEvery tile on this page is a pair: the country on the left, the whole company beside it, so the second number in each pair does not move when the filter does. The index starts both lines at 100 in their own first quarter and is **quarterly, not monthly** - Japan places about 15 orders a month, which draws a jagged line, and about 70 a quarter, which draws a readable one. The select offers **only countries with at least 400 orders**, so the comparison is like for like; the smaller countries are in every other demo. Returns and the channel mix count every order placed, the basket and the category shares what was sold."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd25-kpi-aov-here",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(avg(o.total_amount), 2) AS aov_here\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.status <> 'cancelled'\n  AND g.country = ${country}"
+        },
+        "displayConfig": {
+          "numberField": "aov_here",
+          "numberLabel": "Average order here",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd25-kpi-aov-everywhere",
+        "type": "number",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(avg(o.total_amount), 2) AS aov_everywhere\nFROM dash_demo.orders o\nWHERE o.status <> 'cancelled'"
+        },
+        "displayConfig": {
+          "numberField": "aov_everywhere",
+          "numberLabel": "Average order everywhere",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd25-kpi-return-rate-here",
+        "type": "number",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(CASE WHEN o.status = 'returned' THEN 1 END)\n             / count(*)::DOUBLE, 4) AS return_rate_here\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE true\n  AND g.country = ${country}"
+        },
+        "displayConfig": {
+          "numberField": "return_rate_here",
+          "numberLabel": "Return rate here",
+          "numberFormat": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd25-kpi-return-rate-everywhere",
+        "type": "number",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(CASE WHEN o.status = 'returned' THEN 1 END)\n             / count(*)::DOUBLE, 4) AS return_rate_everywhere\nFROM dash_demo.orders o"
+        },
+        "displayConfig": {
+          "numberField": "return_rate_everywhere",
+          "numberLabel": "Return rate everywhere",
+          "numberFormat": "percent"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd25-chart-category-share-here-vs-everyone",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH per_category AS (\n  SELECT pr.category AS category,\n         sum(CASE WHEN g.country = ${country} THEN l.line_amount ELSE 0 END) AS here,\n         sum(l.line_amount) AS everywhere\n  FROM dash_demo.order_lines l\n  JOIN dash_demo.orders o ON o.order_id = l.order_id\n  JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n  JOIN dash_demo.products pr ON pr.product_id = l.product_id\n  WHERE o.status <> 'cancelled'\n  GROUP BY pr.category\n)\nSELECT c.category AS category,\n       round(100.0 * c.here / sum(c.here) OVER (), 2) AS share_here_pct,\n       round(100.0 * c.everywhere / sum(c.everywhere) OVER (), 2) AS share_everywhere_pct\nFROM per_category c\nORDER BY share_here_pct DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "category",
+              "datasets": [
+                {
+                  "field": "share_here_pct",
+                  "label": "Here, % of revenue"
+                },
+                {
+                  "field": "share_everywhere_pct",
+                  "label": "Everywhere, % of revenue"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Category share: here vs everyone"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd25-chart-quarterly-index",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 8,
+          "w": 8,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH per_quarter AS (\n  SELECT date_trunc('quarter', o.order_ts)::DATE AS quarter,\n         sum(CASE WHEN g.country = ${country} THEN o.total_amount ELSE 0 END) AS here,\n         sum(o.total_amount) AS everywhere\n  FROM dash_demo.orders o\n  JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n  WHERE o.status <> 'cancelled'\n  GROUP BY quarter\n)\nSELECT q.quarter AS quarter,\n       round(100.0 * q.here / first_value(q.here) OVER (ORDER BY q.quarter), 2) AS index_here,\n       round(100.0 * q.everywhere / first_value(q.everywhere) OVER (ORDER BY q.quarter), 2) AS index_everywhere\nFROM per_quarter q\nORDER BY q.quarter"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "quarter",
+              "datasets": [
+                {
+                  "field": "index_here",
+                  "label": "Here"
+                },
+                {
+                  "field": "index_everywhere",
+                  "label": "Everywhere"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Quarterly revenue index, here vs everyone, first quarter = 100"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd25-chart-channel-mix-here",
+        "type": "chart",
+        "gridPosition": {
+          "x": 8,
+          "y": 8,
+          "w": 4,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.channel AS channel,\n       round(100.0 * count(*) / sum(count(*)) OVER (), 2) AS share_pct\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE true\n  AND g.country = ${country}\nGROUP BY o.channel\nORDER BY share_pct DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "pie",
+            "data": {
+              "labelField": "channel",
+              "datasets": [
+                {
+                  "field": "share_pct",
+                  "label": "% of orders"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Channel mix here"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "country",
+          "type": "String",
+          "label": "Country",
+          "defaultValue": "Poland",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT g.country AS value, g.country AS label FROM dash_demo.orders o JOIN dash_demo.geo_cities g ON g.city_id = o.city_id GROUP BY g.country HAVING count(*) >= 400 ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-segment-vs-all",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

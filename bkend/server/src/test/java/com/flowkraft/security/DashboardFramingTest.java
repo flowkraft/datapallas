@@ -40,6 +40,29 @@ class DashboardFramingTest {
 	}
 
 	@Test
+	@DisplayName("The Dashboard Demos page names the same origins, and sends no X-Frame-Options")
+	void dashboardDemosIsFramable() {
+
+		MockHttpServletResponse response = headersFor("/dashboard/g-dashboard-demos");
+
+		assertEquals("frame-ancestors 'self' https://datapallas.com https://www.datapallas.com",
+				response.getHeader("Content-Security-Policy"));
+		assertNull(response.getHeader("X-Frame-Options"));
+	}
+
+	@Test
+	@DisplayName("A dashboard of the Gallery is not itself framable")
+	void aGalleryDashboardIsDenied() {
+
+		// The Gallery page is the only door: one of the dashboards it shows, and a page whose id
+		// merely starts with the Gallery's, are two other pages.
+		assertEquals("DENY", headersFor("/dashboard/g-dd-sales-overview").getHeader("X-Frame-Options"));
+		assertNull(headersFor("/dashboard/g-dd-sales-overview").getHeader("Content-Security-Policy"));
+		assertEquals("DENY", headersFor("/dashboard/g-dashboard-demos-copy").getHeader("X-Frame-Options"));
+		assertNull(headersFor("/dashboard/g-dashboard-demos-copy").getHeader("Content-Security-Policy"));
+	}
+
+	@Test
 	@DisplayName("A trailing slash is the same page")
 	void trailingSlashIsTheSamePage() {
 

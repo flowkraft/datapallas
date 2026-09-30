@@ -1,0 +1,29 @@
+[
+  {
+    "id": "metric-orders",
+    "question": "Orders, then - are we selling more or just dearer?",
+    "text": "Switch the radio to Orders: 7,056 year to date, 27.55% up on the same span last year, against revenue's 17.5% - we are selling more, at a smaller average order. The breakdown changes with the metric: web takes 3,666 of the orders, the app 1,854, the marketplace 864. November is the month of the year, 3,165 orders, and Germany is first again with 1,167.",
+    "params": {
+      "metric": "Orders"
+    },
+    "check": "metric-orders"
+  },
+  {
+    "id": "metric-tickets",
+    "question": "And is support keeping up?",
+    "text": "Switch to Tickets: 4,158 year to date, 10.32% up - about a third of the rate the orders grew at, which is the whole point of the page. Delivery leads with 1,100, billing 735, how-to 655. The season is different too: tickets peak in July and August, 1,320 and 1,313, where revenue peaks in November.",
+    "params": {
+      "metric": "Tickets"
+    },
+    "check": "metric-tickets"
+  },
+  {
+    "id": "metric-payroll-cost",
+    "question": "What about the cost side?",
+    "text": "Switch to Payroll cost: 9,336,144.13 year to date, 7.65% up - the slowest of the five, so the company is growing faster than its wage bill. Engineering is 2,371,417.56 of it, Sales 1,939,915.17, the warehouse 1,677,267.15, and March is the biggest month of the year at 3,124,057.37. Germany carries 2,872,901.59, the Netherlands 1,327,801.31 - the two countries the offices are in.",
+    "params": {
+      "metric": "Payroll cost"
+    },
+    "check": "metric-payroll-cost"
+  }
+]

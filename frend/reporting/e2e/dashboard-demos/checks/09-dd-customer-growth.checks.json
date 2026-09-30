@@ -10,7 +10,7 @@
   },
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
-    "segment": "All",
+    "segment": "",
     "acquisitionChannel": []
   },
   "kpis": [
@@ -36,11 +36,16 @@
       "sql": "SELECT round(100.0 * count(CASE WHEN n > 1 THEN 1 END) / count(*), 2) FROM (SELECT c.customer_id, (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled') AS n FROM dash_demo.customers c WHERE true)"
     },
     {
-      "widget": "chart-segment-mix-largest",
+      "widget": "chart-segment-mix",
       "label": "Largest segment",
       "format": "text",
       "value": "Consumer",
-      "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+      "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true GROUP BY 1 ORDER BY count(*) DESC LIMIT 1",
+      "column": "customer_id_count",
+      "reading": "argmax",
+      "labels": [
+        "segment"
+      ]
     }
   ],
   "interactions": [
@@ -76,18 +81,23 @@
           "sql": "SELECT round(100.0 * count(CASE WHEN n > 1 THEN 1 END) / count(*), 2) FROM (SELECT c.customer_id, (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled') AS n FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise')"
         },
         {
-          "widget": "chart-segment-mix-largest",
+          "widget": "chart-segment-mix",
           "label": "Largest segment",
           "format": "text",
           "value": "Enterprise",
-          "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise' GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+          "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true AND c.segment = 'Enterprise' GROUP BY 1 ORDER BY count(*) DESC LIMIT 1",
+          "column": "customer_id_count",
+          "reading": "argmax",
+          "labels": [
+            "segment"
+          ]
         }
       ]
     },
     {
       "id": "channel-referral",
       "params": {
-        "segment": "All",
+        "segment": "",
         "acquisitionChannel": [
           "referral"
         ]
@@ -120,11 +130,16 @@
           "sql": "SELECT round(100.0 * count(CASE WHEN n > 1 THEN 1 END) / count(*), 2) FROM (SELECT c.customer_id, (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id AND o.status <> 'cancelled') AS n FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral'))"
         },
         {
-          "widget": "chart-segment-mix-largest",
+          "widget": "chart-segment-mix",
           "label": "Largest segment",
           "format": "text",
           "value": "Consumer",
-          "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral') GROUP BY 1 ORDER BY count(*) DESC LIMIT 1"
+          "sql": "SELECT c.segment FROM dash_demo.customers c WHERE true AND c.acquisition_channel IN ('referral') GROUP BY 1 ORDER BY count(*) DESC LIMIT 1",
+          "column": "customer_id_count",
+          "reading": "argmax",
+          "labels": [
+            "segment"
+          ]
         }
       ]
     }

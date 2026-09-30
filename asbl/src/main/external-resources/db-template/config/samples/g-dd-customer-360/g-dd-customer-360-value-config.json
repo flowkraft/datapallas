@@ -1,0 +1,18 @@
+{
+  "number_lifetime_revenue_revenue" : {
+    "format" : "currency",
+    "label" : "Lifetime revenue"
+  },
+  "number_open_invoices_invoices" : {
+    "format" : "number",
+    "label" : "Open invoices"
+  },
+  "number_tickets_not_closed_closed" : {
+    "format" : "number",
+    "label" : "Tickets not closed"
+  },
+  "number_care_plan_mrr_mrr" : {
+    "format" : "currency",
+    "label" : "Care plan MRR"
+  }
+}

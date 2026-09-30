@@ -1,0 +1,21 @@
+[
+  {
+    "id": "category-smart-home",
+    "question": "Which categories pay for the discounting?",
+    "text": "Read Smart Home on its own: 50.14% margin and 2,819,862.68 of profit, with 518,339.04 given away in discounts. Its own Q4 still costs it - 46.52% in Q4 2025 against 51.36% in Q3 - but Laptops, at 12.62% over the eight quarters and 6.6% in Q4 2025, is where the discounting is paid for.",
+    "params": {
+      "category": "Smart Home"
+    },
+    "check": "category-smart-home"
+  },
+  {
+    "id": "dates-q4-2025",
+    "question": "And what did last Q4 cost?",
+    "text": "Narrow the period to Q4 2025: margin 29.03% against 32.91% over the eight quarters, 2,348,311.88 of profit, and 1,364,669.72 of discounts - 14.4% of the list price against about 6% in the three quarters around it.",
+    "params": {
+      "dateFrom": "{dataToday:minus 3 quarters, startOf quarter}",
+      "dateTo": "{dataToday:minus 3 quarters, endOf quarter}"
+    },
+    "check": "dates-q4-2025"
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "map_dd09-map-customers-by-country" : {
+    "mapType" : "region",
+    "region" : "world_countries",
+    "dimension" : "country_code",
+    "metric" : "customer_id_count"
+  }
+}

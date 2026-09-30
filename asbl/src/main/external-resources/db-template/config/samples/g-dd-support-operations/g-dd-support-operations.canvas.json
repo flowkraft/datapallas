@@ -1,0 +1,434 @@
+{
+  "id": "g-dd-support-operations",
+  "name": "Support Operations",
+  "description": "The open queue, the tickets that came in this week and how long the first answer takes, with the SLA met against its target; when tickets arrive, by weekday and hour; whether the weekly backlog grows, and how old the queue is by priority; and the open urgent and high tickets, oldest first.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-support-operations",
+  "state": {
+    "id": "g-dd-support-operations",
+    "name": "Support Operations",
+    "description": "The open queue, the tickets that came in this week and how long the first answer takes, with the SLA met against its target; when tickets arrive, by weekday and hour; whether the weekly backlog grows, and how old the queue is by priority; and the open urgent and high tickets, oldest first.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd21-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Support Operations\n\nMondays 09:00-11:00 are the peak - 1,059 tickets in those three cells against 83.33 for an average hour of the week - and urgent SLA breaches spiked in June 2026 with the checkout bug: 26.32% of that month's urgent tickets breached against 8.64% in every other month, 3.05 times the rate. The queue itself is small and slightly growing: 127 open, of which 40 are urgent or high and the oldest has been waiting 45 days, and over the 142 full weeks 13,868 tickets came in against 13,770 resolved.\n\nHow much is open, what came in this week and how fast we answer, then when the load comes - which sets the rota - then whether the backlog grows and where it sits, then the tickets to assign this morning. **Open means the queue as it stands**: a ticket nobody has resolved or closed yet. The weekly line shows whole weeks only, so the last three days of a part week do not read as a collapse."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-kpi-open-tickets",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "kind": "cube",
+            "cubeId": "dd-support",
+            "table": "",
+            "filters": [],
+            "summarize": [],
+            "groupBy": [],
+            "sort": [],
+            "limit": 500,
+            "cubeSelection": {
+              "dimensions": [],
+              "measures": [
+                "OpenTickets"
+              ],
+              "segments": [],
+              "filters": [],
+              "granularities": {},
+              "order": [],
+              "limit": null,
+              "paramBindings": [
+                {
+                  "param": "priority",
+                  "member": "Priority",
+                  "operator": "in"
+                },
+                {
+                  "param": "team",
+                  "member": "Team",
+                  "operator": "equals"
+                }
+              ]
+            }
+          },
+          "generatedSql": "SELECT\n  COUNT(CASE WHEN (dash_demo.support_tickets.status IN ('open', 'pending')) THEN 1 END) AS \"OpenTickets\"\nFROM dash_demo.support_tickets\nLEFT JOIN dash_demo.support_agents ON dash_demo.support_tickets.agent_id = dash_demo.support_agents.agent_id\nWHERE dash_demo.support_tickets.priority IN (${priority})\n  AND dash_demo.support_agents.team = ${team}"
+        },
+        "displayConfig": {
+          "numberField": "OpenTickets",
+          "numberLabel": "Open tickets",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-kpi-opened-last-7-days",
+        "type": "number",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) AS opened_last_7_days\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\n  AND t.opened_ts > (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 7 DAY\n  AND t.opened_ts < (SELECT a.as_of FROM dash_demo.as_of a) + INTERVAL 1 DAY"
+        },
+        "displayConfig": {
+          "numberField": "opened_last_7_days",
+          "numberLabel": "Opened in the last 7 days",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-kpi-average-first-response",
+        "type": "number",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "kind": "cube",
+            "cubeId": "dd-support",
+            "table": "",
+            "filters": [],
+            "summarize": [],
+            "groupBy": [],
+            "sort": [],
+            "limit": 500,
+            "cubeSelection": {
+              "dimensions": [],
+              "measures": [
+                "AvgFirstResponseMinutes"
+              ],
+              "segments": [],
+              "filters": [],
+              "granularities": {},
+              "order": [],
+              "limit": null,
+              "paramBindings": [
+                {
+                  "param": "priority",
+                  "member": "Priority",
+                  "operator": "in"
+                },
+                {
+                  "param": "team",
+                  "member": "Team",
+                  "operator": "equals"
+                }
+              ]
+            }
+          },
+          "generatedSql": "SELECT\n  CAST(AVG(CAST(date_diff('minute', dash_demo.support_tickets.opened_ts, dash_demo.support_tickets.first_response_ts) AS DECIMAL(31,4))) AS DECIMAL(31,4)) AS \"AvgFirstResponseMinutes\"\nFROM dash_demo.support_tickets\nLEFT JOIN dash_demo.support_agents ON dash_demo.support_tickets.agent_id = dash_demo.support_agents.agent_id\nWHERE dash_demo.support_tickets.priority IN (${priority})\n  AND dash_demo.support_agents.team = ${team}"
+        },
+        "displayConfig": {
+          "numberField": "AvgFirstResponseMinutes",
+          "numberLabel": "Average first response, minutes",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-gauge-sla-met",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*)::DOUBLE, 4) AS sla_met_rate\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})"
+        },
+        "displayConfig": {
+          "field": "sla_met_rate",
+          "min": 0.75,
+          "max": 1,
+          "label": "SLA met",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 0.85,
+              "color": "#ef8c8c"
+            },
+            {
+              "to": 0.9,
+              "color": "#f9d45c"
+            },
+            {
+              "to": 1,
+              "color": "#88bf4d"
+            }
+          ]
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-pivot-tickets-weekday-hour",
+        "type": "pivot",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT CAST(isodow(t.opened_ts) AS VARCHAR) || ' ' || strftime(t.opened_ts, '%a') AS weekday,\n       lpad(CAST(hour(t.opened_ts) AS VARCHAR), 2, '0') AS hour_of_day,\n       count(*) AS tickets\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\nGROUP BY 1, 2\nORDER BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "rows": [
+              "weekday"
+            ],
+            "cols": [
+              "hour_of_day"
+            ],
+            "vals": [
+              "tickets"
+            ],
+            "aggregatorName": "Sum",
+            "rendererName": "Table Heatmap",
+            "rowOrder": "key_a_to_z",
+            "colOrder": "key_a_to_z",
+            "rowTotals": true,
+            "colTotals": false
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-chart-created-vs-resolved-per-week",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 9,
+          "w": 8,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT week,\n       sum(created) AS created,\n       sum(resolved) AS resolved\nFROM (\n  SELECT date_trunc('week', t.opened_ts)::DATE AS week, 1 AS created, 0 AS resolved\n  FROM dash_demo.support_tickets t\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\n    AND t.opened_ts >= (SELECT date_trunc('week', min(t2.opened_ts)) + INTERVAL 7 DAY FROM dash_demo.support_tickets t2)\n    AND t.opened_ts < date_trunc('week', (SELECT a.as_of FROM dash_demo.as_of a))\n  UNION ALL\n  SELECT date_trunc('week', t.resolved_ts)::DATE AS week, 0 AS created, 1 AS resolved\n  FROM dash_demo.support_tickets t\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\n    AND t.resolved_ts IS NOT NULL\n    AND t.resolved_ts >= (SELECT date_trunc('week', min(t2.opened_ts)) + INTERVAL 7 DAY FROM dash_demo.support_tickets t2)\n    AND t.resolved_ts < date_trunc('week', (SELECT a.as_of FROM dash_demo.as_of a))\n)\nGROUP BY week\nORDER BY week"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "week",
+              "datasets": [
+                {
+                  "field": "created",
+                  "label": "Created"
+                },
+                {
+                  "field": "resolved",
+                  "label": "Resolved"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Created vs resolved per week"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-chart-open-backlog-by-priority",
+        "type": "chart",
+        "gridPosition": {
+          "x": 8,
+          "y": 9,
+          "w": 4,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT CASE WHEN date_diff('day', t.opened_ts, (SELECT a.as_of FROM dash_demo.as_of a)) <= 2 THEN '1 up to 2 days'\n            WHEN date_diff('day', t.opened_ts, (SELECT a.as_of FROM dash_demo.as_of a)) <= 7 THEN '2 3 to 7 days'\n            WHEN date_diff('day', t.opened_ts, (SELECT a.as_of FROM dash_demo.as_of a)) <= 30 THEN '3 8 to 30 days'\n            ELSE '4 over 30 days' END AS age_band,\n       t.priority AS priority,\n       count(*) AS open_tickets\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\n  AND t.status IN ('open', 'pending')\nGROUP BY 1, 2\nORDER BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "age_band",
+              "seriesField": "priority",
+              "datasets": [
+                {
+                  "field": "open_tickets",
+                  "label": "Open tickets"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Open backlog by priority"
+                }
+              },
+              "scales": {
+                "x": {
+                  "stacked": true
+                },
+                "y": {
+                  "stacked": true
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd21-table-open-urgent-and-high",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 0,
+          "y": 13,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT t.ticket_id AS ticket_id,\n       t.priority AS priority,\n       t.status AS status,\n       t.channel AS channel,\n       t.category AS category,\n       sa.name AS agent,\n       t.opened_ts::DATE AS opened_date,\n       date_diff('day', t.opened_ts, (SELECT a.as_of FROM dash_demo.as_of a)) AS days_waiting\nFROM dash_demo.support_tickets t\nLEFT JOIN dash_demo.support_agents sa ON sa.agent_id = t.agent_id\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\n  AND t.status IN ('open', 'pending')\n  AND t.priority IN ('urgent', 'high')\nORDER BY days_waiting DESC, t.ticket_id"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 10,
+            "theme": "bootstrap5"
+          },
+          "columnSettings": {
+            "ticket_id": {
+              "columnTitle": "Ticket"
+            },
+            "opened_date": {
+              "columnTitle": "Opened"
+            },
+            "days_waiting": {
+              "columnTitle": "Days waiting"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "priority",
+          "type": "String",
+          "label": "Priority",
+          "defaultValue": [],
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "multiselect",
+            "options": [
+              {
+                "value": "urgent",
+                "label": "Urgent"
+              },
+              {
+                "value": "high",
+                "label": "High"
+              },
+              {
+                "value": "normal",
+                "label": "Normal"
+              },
+              {
+                "value": "low",
+                "label": "Low"
+              }
+            ]
+          }
+        },
+        {
+          "id": "team",
+          "type": "String",
+          "label": "Team",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": [
+              {
+                "value": "",
+                "label": "-- All teams --"
+              },
+              {
+                "value": "Tier 1",
+                "label": "Tier 1"
+              },
+              {
+                "value": "Technical",
+                "label": "Technical"
+              },
+              {
+                "value": "Billing",
+                "label": "Billing"
+              },
+              {
+                "value": "Returns",
+                "label": "Returns"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-support-operations",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "include-returns-on",
+    "question": "How does the mix look before returns?",
+    "text": "Tick Include returns: the marketplace's share rises from about 15% to 16% - its orders come back about twice as often as the web's, so gross flatters it and net is what the business keeps.",
+    "params": {
+      "includeReturns": true
+    },
+    "check": "include-returns-on"
+  }
+]

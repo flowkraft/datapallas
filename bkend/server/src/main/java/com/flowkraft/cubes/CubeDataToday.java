@@ -2,6 +2,8 @@ package com.flowkraft.cubes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,16 +36,23 @@ import com.sourcekraft.documentburster.common.db.SqlExecutor;
  * the one failure nobody would notice: the numbers would be right on the day the data was seeded and
  * would drift away from the checks afterwards, a day at a time.
  *
- * <p><b>ANSI SQL only.</b> {@code SELECT data_today, shift_days FROM cube_demo.demo_info} is the
- * whole statement, and it reads the same on all nine databases.
+ * <p><b>ANSI SQL only.</b> {@code SELECT data_today, shift_days FROM <marker>} is the whole
+ * statement, and it reads the same on all nine databases.
  */
 @Component
 public class CubeDataToday {
 
 	private static final Logger log = LoggerFactory.getLogger(CubeDataToday.class);
 
-	/** The one row, on whichever database the cube's connection is. */
-	static final String SQL = "SELECT data_today, shift_days FROM cube_demo.demo_info";
+	/**
+	 * The one row, on whichever database the connection is, looked for in each demo's marker table
+	 * in turn: the cubes' {@code cube_demo.demo_info} first, then the dashboards'
+	 * {@code dash_demo.as_of}, which holds the same two columns (A-data, Decision 4). A connection
+	 * carries one of them or neither, so the first that reads is the answer.
+	 */
+	static final List<String> MARKERS = Collections.unmodifiableList(Arrays.asList(
+			"SELECT data_today, shift_days FROM cube_demo.demo_info",
+			"SELECT data_today, shift_days FROM dash_demo.as_of"));
 
 	/**
 	 * The day the data on this connection calls today.
@@ -54,15 +63,32 @@ public class CubeDataToday {
 	 */
 	public LocalDate of(String connectionId) {
 
-		List<Map<String, Object>> rows;
+		List<Map<String, Object>> rows = null;
+		String lastComplaint = null;
 		try (DatabaseConnectionManager dbManager = ConnectionFactory.newConnectionManager()) {
-			rows = new SqlExecutor(dbManager).queryOn(connectionId, SQL, null, 1);
-		} catch (Exception cannotRead) {
-			throw refuse(connectionId, cannotRead.getMessage());
+			SqlExecutor sqlExec = new SqlExecutor(dbManager);
+			for (String marker : MARKERS) {
+				try {
+					rows = sqlExec.queryOn(connectionId, marker, null, 1);
+				} catch (Exception notThisOne) {
+					// A connection holds one demo's marker table, not both: a table that is not
+					// there is the next one's turn, and only the last complaint is worth repeating.
+					lastComplaint = notThisOne.getMessage();
+					rows = null;
+					continue;
+				}
+				if (rows != null && !rows.isEmpty())
+					break;
+				lastComplaint = "the table is there and has no row in it";
+				rows = null;
+			}
+		} catch (Exception cannotConnect) {
+			throw refuse(connectionId, cannotConnect.getMessage());
 		}
 
 		if (rows == null || rows.isEmpty())
-			throw refuse(connectionId, "the table is there and has no row in it");
+			throw refuse(connectionId, lastComplaint == null ? "neither marker table could be read"
+					: lastComplaint);
 
 		Map<String, Object> row = rows.get(0);
 		LocalDate generated = day(value(row, "data_today"));
@@ -139,7 +165,7 @@ public class CubeDataToday {
 	private static IllegalArgumentException refuse(String connectionId, String why) {
 		return new IllegalArgumentException("The demo data's today could not be read on connection '"
 				+ connectionId + "': " + why + ". A sample cube's relative dates ({dataToday:…}) come "
-				+ "from cube_demo.demo_info, never from this machine's clock, so the connection has to "
-				+ "be one the demo data was installed on.");
+				+ "from cube_demo.demo_info or dash_demo.as_of, never from this machine's clock, so the "
+				+ "connection has to be one the demo data was installed on.");
 	}
 }

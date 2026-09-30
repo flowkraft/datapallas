@@ -1,0 +1,16 @@
+{
+  "number_opentickets_tickets" : {
+    "field" : "OpenTickets",
+    "format" : "number",
+    "label" : "Open tickets"
+  },
+  "number_opened_last_7_days_days" : {
+    "format" : "number",
+    "label" : "Opened in the last 7 days"
+  },
+  "number_avgfirstresponseminutes_response" : {
+    "field" : "AvgFirstResponseMinutes",
+    "format" : "number",
+    "label" : "Average first response, minutes"
+  }
+}

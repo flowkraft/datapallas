@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.flowkraft.embed.EmbedTokenAuthorizationManager;
 import com.flowkraft.embed.EmbedTokenService;
 import com.flowkraft.embed.ShareTokenService;
 import com.flowkraft.iam.dashboards.DashboardAccess;
@@ -104,17 +105,26 @@ public class DashboardController {
 		if (token != null && !token.isBlank()) {
 			Optional<ShareTokenService.SharedReport> shared = shareTokenService.resolve(token);
 
-			// A token for a different dashboard is as good as no token — one link opens one report.
-			if (shared.isEmpty() || !shared.get().reportId().equals(reportCode))
+			// A token for a different dashboard is as good as no token — one link opens the report it
+			// was made for and the dashboards that report's page embedded then, and the one place that
+			// decides it is EmbedTokenAuthorizationManager.admits.
+			if (shared.isEmpty() || !EmbedTokenAuthorizationManager.admits(shared.get().reportId(),
+					shared.get().embeddedReports(), reportCode))
 				return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
 						.header("Content-Type", "text/html")
 						.body(notFoundHtml()));
 
-			// The page's components read with an embed token, so a link that locks parameters has to
-			// sign those locks into it. This is where the durable credential hands over to the
-			// short-lived one, and the locks have to survive the handover or they stop at the door.
+			// The page's components read with an embed token, so a link that locks parameters, or says
+			// who its recipient is, has to sign both into it. This is where the durable credential
+			// hands over to the short-lived one, and everything the link carries has to survive the
+			// handover or it stops at the door: the locks, the attributes the widgets filter with
+			// (${dp_attr_...}), and the dashboards the page embeds.
+			// Minted from the list stored with the link, never from a fresh read of the template: the
+			// reload this page does before its token expires therefore keeps opening exactly what the
+			// link opened when it was created.
 			embedToken = embedTokenService.mint(reportCode, EmbedTokenService.DEFAULT_TTL_SECONDS,
-					shared.get().lockedParams());
+					shared.get().lockedParams(), shared.get().attributes(), null, null,
+					shared.get().embeddedReports());
 		}
 
 		// Two minutes' margin, so the page is replaced before anything it holds can be refused, and

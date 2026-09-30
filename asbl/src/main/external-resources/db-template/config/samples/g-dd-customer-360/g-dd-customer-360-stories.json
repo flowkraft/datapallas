@@ -1,0 +1,11 @@
+[
+  {
+    "id": "customer-isabel-novak",
+    "question": "And a small consumer account?",
+    "text": "Pick Isabel Novak: 19,395.44 over eight orders, nothing owed, one ticket still on the account and a 26.00 care plan - the same page, a record small enough to read in one look.",
+    "params": {
+      "customerId": 1028
+    },
+    "check": "customer-isabel-novak"
+  }
+]

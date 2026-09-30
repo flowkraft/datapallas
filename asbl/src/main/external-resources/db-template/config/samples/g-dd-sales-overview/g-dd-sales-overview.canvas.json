@@ -1,0 +1,616 @@
+{
+  "id": "g-dd-sales-overview",
+  "name": "Sales Overview",
+  "description": "The head of sales' Monday page: revenue, orders, average order value and buyers over the chosen period, then the split by month, category, channel, country and product. Built visually, except the two tiles that split by category or product.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-sales-overview",
+  "state": {
+    "id": "g-dd-sales-overview",
+    "name": "Sales Overview",
+    "description": "The head of sales' Monday page: revenue, orders, average order value and buyers over the chosen period, then the split by month, category, channel, country and product. Built visually, except the two tiles that split by category or product.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd02-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Sales Overview\n\nEvery month this year except August runs above the same month a year earlier, most of them by about a quarter; Smart Home, the newest category, has already all but caught Office Furniture for third place."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-kpi-revenue",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "not_equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "order_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "country_code",
+                "operator": "equals",
+                "value": "${country}"
+              },
+              {
+                "column": "channel",
+                "operator": "in",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "SUM",
+                "field": "total_amount"
+              }
+            ],
+            "groupBy": [],
+            "sort": [],
+            "limit": 1
+          },
+          "generatedSql": "SELECT CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) AS \"total_amount_sum\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
+        },
+        "displayConfig": {
+          "numberField": "total_amount",
+          "numberFormat": "currency",
+          "numberLabel": "Revenue"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-kpi-orders",
+        "type": "number",
+        "gridPosition": {
+          "x": 3,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "not_equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "order_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "country_code",
+                "operator": "equals",
+                "value": "${country}"
+              },
+              {
+                "column": "channel",
+                "operator": "in",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "COUNT",
+                "field": "order_id"
+              }
+            ],
+            "groupBy": [],
+            "sort": [],
+            "limit": 1
+          },
+          "generatedSql": "SELECT COUNT(\"order_id\") AS \"order_id_count\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
+        },
+        "displayConfig": {
+          "numberField": "order_id",
+          "numberFormat": "number",
+          "numberLabel": "Orders"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-kpi-average-order-value",
+        "type": "number",
+        "gridPosition": {
+          "x": 6,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "not_equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "order_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "country_code",
+                "operator": "equals",
+                "value": "${country}"
+              },
+              {
+                "column": "channel",
+                "operator": "in",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "AVG",
+                "field": "total_amount"
+              }
+            ],
+            "groupBy": [],
+            "sort": [],
+            "limit": 1
+          },
+          "generatedSql": "SELECT CAST(AVG(CAST(\"total_amount\" AS DECIMAL(31,4))) AS DECIMAL(31,4)) AS \"total_amount_avg\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
+        },
+        "displayConfig": {
+          "numberField": "total_amount",
+          "numberFormat": "currency",
+          "numberLabel": "Average order value",
+          "numberDecimals": 2
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-kpi-customers-who-ordered",
+        "type": "number",
+        "gridPosition": {
+          "x": 9,
+          "y": 1,
+          "w": 3,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "not_equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "order_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "country_code",
+                "operator": "equals",
+                "value": "${country}"
+              },
+              {
+                "column": "channel",
+                "operator": "in",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "COUNT_DISTINCT",
+                "field": "customer_id"
+              }
+            ],
+            "groupBy": [],
+            "sort": [],
+            "limit": 1
+          },
+          "generatedSql": "SELECT COUNT(DISTINCT \"customer_id\") AS \"customer_id_count_distinct\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
+        },
+        "displayConfig": {
+          "numberField": "customer_id",
+          "numberFormat": "number",
+          "numberLabel": "Customers who ordered"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-chart-revenue-per-month",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 3,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "not_equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "order_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "country_code",
+                "operator": "equals",
+                "value": "${country}"
+              },
+              {
+                "column": "channel",
+                "operator": "in",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "SUM",
+                "field": "total_amount"
+              }
+            ],
+            "groupBy": [
+              "order_ts"
+            ],
+            "sort": [
+              {
+                "column": "order_ts",
+                "direction": "ASC"
+              }
+            ],
+            "limit": 500,
+            "groupByBuckets": {
+              "order_ts": "month"
+            }
+          },
+          "generatedSql": "SELECT *\nFROM (\n  SELECT strftime(\"order_ts\", '%Y-%m') AS \"order_ts\", CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) AS \"total_amount_sum\"\n  FROM \"dash_demo\".\"orders\"\n  WHERE \"status\" <> 'cancelled'\n    AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n    AND \"country_code\" = ${country}\n    AND \"channel\" IN (${channel})\n  GROUP BY strftime(\"order_ts\", '%Y-%m')\n) grouped_rows\nORDER BY CASE WHEN \"order_ts\" IS NULL THEN 1 ELSE 0 END, \"order_ts\" ASC\nLIMIT 500"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "order_ts",
+              "datasets": [
+                {
+                  "field": "total_amount_sum",
+                  "label": "Revenue"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Revenue per month"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-chart-revenue-by-category",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 7,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT p.category AS category,\n       ROUND(SUM(l.line_amount), 2) AS revenue\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND o.order_ts >= ${dateFrom}\n  AND o.order_ts < ${dateTo__next_day}\n  AND o.country_code = ${country}\n  AND o.channel IN (${channel})\nGROUP BY p.category\nORDER BY revenue DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "row",
+            "data": {
+              "labelField": "category",
+              "datasets": [
+                {
+                  "field": "revenue",
+                  "label": "Revenue"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Revenue by category"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-chart-revenue-by-channel",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 7,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "not_equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "order_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "country_code",
+                "operator": "equals",
+                "value": "${country}"
+              },
+              {
+                "column": "channel",
+                "operator": "in",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "SUM",
+                "field": "total_amount"
+              }
+            ],
+            "groupBy": [
+              "channel"
+            ],
+            "sort": [
+              {
+                "column": "total_amount_sum",
+                "direction": "DESC"
+              }
+            ],
+            "limit": 50
+          },
+          "generatedSql": "SELECT \"channel\", CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) AS \"total_amount_sum\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nGROUP BY \"channel\"\nORDER BY CASE WHEN CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) IS NULL THEN 1 ELSE 0 END, CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) DESC\nLIMIT 50"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "row",
+            "data": {
+              "labelField": "channel",
+              "datasets": [
+                {
+                  "field": "total_amount_sum",
+                  "label": "Revenue"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Revenue by channel"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-map-revenue-by-country",
+        "type": "map",
+        "gridPosition": {
+          "x": 0,
+          "y": 11,
+          "w": 6,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "status",
+                "operator": "not_equals",
+                "value": "cancelled"
+              },
+              {
+                "column": "order_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "country_code",
+                "operator": "equals",
+                "value": "${country}"
+              },
+              {
+                "column": "channel",
+                "operator": "in",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "SUM",
+                "field": "total_amount"
+              }
+            ],
+            "groupBy": [
+              "country_code"
+            ],
+            "sort": [
+              {
+                "column": "total_amount_sum",
+                "direction": "DESC"
+              }
+            ],
+            "limit": 500
+          },
+          "generatedSql": "SELECT \"country_code\", CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) AS \"total_amount_sum\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nGROUP BY \"country_code\"\nORDER BY CASE WHEN CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) IS NULL THEN 1 ELSE 0 END, CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) DESC\nLIMIT 500"
+        },
+        "displayConfig": {
+          "mapType": "region",
+          "region": "world_countries",
+          "dimension": "country_code",
+          "metric": "total_amount_sum"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd02-table-top-products",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 6,
+          "y": 11,
+          "w": 6,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT p.name AS product,\n       p.category AS category,\n       SUM(l.qty) AS quantity,\n       ROUND(SUM(l.line_amount), 2) AS revenue\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND o.order_ts >= ${dateFrom}\n  AND o.order_ts < ${dateTo__next_day}\n  AND o.country_code = ${country}\n  AND o.channel IN (${channel})\nGROUP BY p.name, p.category\nORDER BY revenue DESC\nLIMIT 20"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": true,
+            "paginationSize": 10,
+            "theme": "modern"
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "dateFrom",
+          "type": "Date",
+          "label": "From",
+          "defaultValue": "{dataToday:minus 1 year, startOf year}",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "dateTo",
+          "type": "Date",
+          "label": "To",
+          "defaultValue": "{dataToday}",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "country",
+          "type": "String",
+          "label": "Country",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT '' AS value, '-- All countries --' AS label UNION ALL SELECT DISTINCT country_code AS value, country AS label FROM dash_demo.geo_cities ORDER BY label"
+          }
+        },
+        {
+          "id": "channel",
+          "type": "String",
+          "label": "Channel",
+          "defaultValue": [],
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "multiselect",
+            "options": "SELECT DISTINCT channel AS value, channel AS label FROM dash_demo.orders ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-sales-overview",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

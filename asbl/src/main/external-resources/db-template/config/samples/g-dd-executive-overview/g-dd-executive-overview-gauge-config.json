@@ -1,0 +1,30 @@
+{
+  "gauge_on_time_pct_time" : {
+    "field" : "on_time_pct",
+    "min" : 0,
+    "max" : 1,
+    "label" : "On-time delivery %",
+    "format" : "percent",
+    "bands" : [ {
+      "to" : 0.925,
+      "color" : "#c62828"
+    }, {
+      "to" : 1,
+      "color" : "#2e7d32"
+    } ]
+  },
+  "gauge_sla_met_pct_met" : {
+    "field" : "sla_met_pct",
+    "min" : 0,
+    "max" : 1,
+    "label" : "SLA met %",
+    "format" : "percent",
+    "bands" : [ {
+      "to" : 0.9,
+      "color" : "#c62828"
+    }, {
+      "to" : 1,
+      "color" : "#2e7d32"
+    } ]
+  }
+}

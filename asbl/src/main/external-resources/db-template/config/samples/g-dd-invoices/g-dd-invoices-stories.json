@@ -1,0 +1,22 @@
+[
+  {
+    "id": "status-overdue",
+    "question": "What is overdue?",
+    "text": "Set status to overdue: 38 invoices and 76,112.38 issued this year, and the monthly stack shows where they sit - one April invoice of 45,283.71 is the oldest and the largest of them. The four numbers do not move, because they are the position and not the filtered slice.",
+    "params": {
+      "status": [
+        "overdue"
+      ]
+    },
+    "check": "status-overdue"
+  },
+  {
+    "id": "customer-helix",
+    "question": "And the largest account?",
+    "text": "Pick Helix Retail Group: 29 invoices and 356,433.95 billed this year, all of it from trade orders, so the doughnut goes to one slice - more than double the next account on the page.",
+    "params": {
+      "customerId": 1017
+    },
+    "check": "customer-helix"
+  }
+]

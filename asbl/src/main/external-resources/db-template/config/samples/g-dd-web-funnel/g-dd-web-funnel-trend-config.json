@@ -1,0 +1,8 @@
+{
+  "trend_started_ts_week" : {
+    "dateField" : "started_ts",
+    "valueField" : "session_id_count",
+    "format" : "number",
+    "label" : "Sessions per week (sampled 1 in 8)"
+  }
+}

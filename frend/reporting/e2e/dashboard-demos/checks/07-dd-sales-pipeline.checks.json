@@ -10,7 +10,7 @@
   },
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
-    "repEmployeeId": "All",
+    "repEmployeeId": "",
     "repLabel": "All",
     "closeFrom": "2026-07-01",
     "closeTo": "2026-09-30"
@@ -31,11 +31,12 @@
       "sql": "SELECT round(sum(c.amount * c.probability_pct / 100.0), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'"
     },
     {
-      "widget": "kpi-open-deals",
+      "widget": "table-open-deals",
       "label": "Open deals in the window",
       "format": "number",
       "value": 10,
-      "sql": "SELECT count(*) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'"
+      "sql": "SELECT count(*) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'",
+      "reading": "rows"
     },
     {
       "widget": "gauge-quota-attainment",
@@ -54,65 +55,66 @@
   ],
   "interactions": [
     {
-      "id": "rep-best-attainment",
+      "id": "rep-mateo-meyer",
       "params": {
-        "repEmployeeId": 2001,
-        "repLabel": "Katarzyna Nowak",
+        "repEmployeeId": 2023,
+        "repLabel": "Mateo Meyer",
         "closeFrom": "2026-07-01",
         "closeTo": "2026-09-30"
       },
       "changed": {
-        "repEmployeeId": 2001,
-        "repLabel": "Katarzyna Nowak"
+        "repEmployeeId": 2023,
+        "repLabel": "Mateo Meyer"
       },
       "kpis": [
         {
           "widget": "kpi-open-pipeline",
           "label": "Open pipeline",
           "format": "currency",
-          "value": null,
-          "sql": "SELECT round(sum(c.amount), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.owner_employee_id = 2001 AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'"
+          "value": 66294.0,
+          "sql": "SELECT round(sum(c.amount), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.owner_employee_id = 2023 AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'"
         },
         {
           "widget": "kpi-weighted-pipeline",
           "label": "Weighted pipeline",
           "format": "currency",
-          "value": null,
-          "sql": "SELECT round(sum(c.amount * c.probability_pct / 100.0), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.owner_employee_id = 2001 AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'"
+          "value": 23582.95,
+          "sql": "SELECT round(sum(c.amount * c.probability_pct / 100.0), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.owner_employee_id = 2023 AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'"
         },
         {
-          "widget": "kpi-open-deals",
+          "widget": "table-open-deals",
           "label": "Open deals in the window",
           "format": "number",
-          "value": 0,
-          "sql": "SELECT count(*) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.owner_employee_id = 2001 AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'"
+          "value": 3,
+          "sql": "SELECT count(*) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.owner_employee_id = 2023 AND c.expected_close_date >= DATE '2026-07-01' AND c.expected_close_date <= DATE '2026-09-30'",
+          "reading": "rows"
         },
         {
           "widget": "gauge-quota-attainment",
           "label": "Quota attainment this quarter",
           "format": "percent",
-          "value": 140.39,
-          "sql": "SELECT round(100.0 * (SELECT sum(c.amount) FROM dash_demo.crm_opportunities c WHERE c.stage = 'won' AND c.closed_date >= DATE '2026-07-01' AND c.closed_date <= DATE '2026-09-30' AND c.owner_employee_id = 2001) / (SELECT sum(q.quota) FROM dash_demo.rep_quotas q WHERE q.quarter_start = DATE '2026-07-01' AND q.employee_id = 2001), 2)"
+          "value": 94.93,
+          "sql": "SELECT round(100.0 * (SELECT sum(c.amount) FROM dash_demo.crm_opportunities c WHERE c.stage = 'won' AND c.closed_date >= DATE '2026-07-01' AND c.closed_date <= DATE '2026-09-30' AND c.owner_employee_id = 2023) / (SELECT sum(q.quota) FROM dash_demo.rep_quotas q WHERE q.quarter_start = DATE '2026-07-01' AND q.employee_id = 2023), 2)"
         },
         {
           "widget": "kpi-next-quarter-cover",
           "label": "Next quarter's pipeline against its quota",
           "format": "number",
-          "value": 2.1,
-          "sql": "SELECT round((SELECT sum(c.amount) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-10-01' AND c.expected_close_date < DATE '2027-01-01') / (SELECT sum(quota) FROM dash_demo.rep_quotas WHERE quarter_start = DATE '2026-10-01'), 2)"
+          "value": 2.13,
+          "sql": "SELECT round((SELECT sum(c.amount) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.owner_employee_id = 2023 AND c.expected_close_date >= DATE '2026-10-01' AND c.expected_close_date < DATE '2027-01-01') / (SELECT sum(quota) FROM dash_demo.rep_quotas WHERE quarter_start = DATE '2026-10-01' AND employee_id = 2023), 2)"
         }
       ]
     },
     {
-      "id": "close-window-september",
+      "id": "close-window-final-days",
       "params": {
-        "repEmployeeId": "All",
+        "repEmployeeId": "",
         "repLabel": "All",
-        "closeFrom": "2026-09-01",
+        "closeFrom": "2026-09-28",
         "closeTo": "2026-09-30"
       },
       "changed": {
-        "closeFrom": "2026-09-01",
+        "closeFrom": "2026-09-28",
         "closeTo": "2026-09-30"
       },
       "kpis": [
@@ -120,22 +122,23 @@
           "widget": "kpi-open-pipeline",
           "label": "Open pipeline",
           "format": "currency",
-          "value": 212470.0,
-          "sql": "SELECT round(sum(c.amount), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-09-01' AND c.expected_close_date <= DATE '2026-09-30'"
+          "value": 106121.0,
+          "sql": "SELECT round(sum(c.amount), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-09-28' AND c.expected_close_date <= DATE '2026-09-30'"
         },
         {
           "widget": "kpi-weighted-pipeline",
           "label": "Weighted pipeline",
           "format": "currency",
-          "value": 56625.0,
-          "sql": "SELECT round(sum(c.amount * c.probability_pct / 100.0), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-09-01' AND c.expected_close_date <= DATE '2026-09-30'"
+          "value": 16622.45,
+          "sql": "SELECT round(sum(c.amount * c.probability_pct / 100.0), 2) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-09-28' AND c.expected_close_date <= DATE '2026-09-30'"
         },
         {
-          "widget": "kpi-open-deals",
+          "widget": "table-open-deals",
           "label": "Open deals in the window",
           "format": "number",
-          "value": 10,
-          "sql": "SELECT count(*) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-09-01' AND c.expected_close_date <= DATE '2026-09-30'"
+          "value": 6,
+          "sql": "SELECT count(*) FROM dash_demo.crm_opportunities c WHERE c.stage NOT IN ('won', 'lost') AND c.expected_close_date >= DATE '2026-09-28' AND c.expected_close_date <= DATE '2026-09-30'",
+          "reading": "rows"
         },
         {
           "widget": "gauge-quota-attainment",

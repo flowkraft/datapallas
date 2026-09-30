@@ -6,6 +6,11 @@ import java.io.File;
 import java.io.FileFilter;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -1214,6 +1219,10 @@ public class NoExeAssembler extends AbstractAssembler {
 				new File(packageDirPath + "/" + topFolderName
 						+ "/samples/reports/cubes/g-cube-country-sales-template.html"));
 
+		// 22. Dashboard Demos (the 25 demos of the Gallery, and the Gallery page itself)
+
+		_assembleDashboardDemos();
+
 		// SAMPLES END
 
 		// FREND SAMPLES START
@@ -1638,6 +1647,119 @@ public class NoExeAssembler extends AbstractAssembler {
 		System.out.println(
 				"------------------------------------- DONE_11:NoExeAssembler _generateSampleNorthwindDatabase() ... -------------------------------------");
 
+	}
+
+	/**
+	 * Sample 22: the 25 Dashboard Demos and the Gallery page that embeds them.
+	 *
+	 * <p><b>One loop, not 26 blocks.</b> Every demo is described once, in
+	 * {@code config/samples/dashboard-demos.json} - the same index the Gallery's cards, the e2e
+	 * catalog and the skill's reference are generated from - so a demo added there ships without a
+	 * line being written here.
+	 */
+	private void _assembleDashboardDemos() throws Exception {
+
+		String samplesDirPath = packageDirPath + "/" + topFolderName + "/config/samples";
+		String templatesDirPath = packageDirPath + "/" + topFolderName + "/samples/reports/dashboard-demos";
+
+		// The index is the object the product reads (`DashboardDemos.all()`): its `demos` array, in
+		// the order the Gallery shows them.
+		Map<String, Object> index = new ObjectMapper().readValue(
+				new File(samplesDirPath + "/dashboard-demos.json"),
+				new TypeReference<Map<String, Object>>() {
+				});
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> demos = (List<Map<String, Object>>) index.get("demos");
+		assertThat(demos).isNotEmpty();
+
+		for (Map<String, Object> demo : demos)
+			_assembleDashboardDemo(String.valueOf(demo.get("reportId")), String.valueOf(demo.get("title")),
+					samplesDirPath, templatesDirPath);
+
+		// And the Gallery itself, which is a published dashboard like any other: one long page whose
+		// cards embed the 25.
+		_assembleDashboardDemo("g-dashboard-demos", "Dashboard Demos", samplesDirPath, templatesDirPath);
+	}
+
+	/**
+	 * One published dashboard of sample 22: its settings, its reporting and its moved template.
+	 *
+	 * <p>What the pair says is what the other dashboard samples say - no distribution, mailmerge on
+	 * (the script datasource needs it), {@code ds.dashboard}, {@code dashboard.html} - on the
+	 * connection this dashboard's own canvas names, with its own script and, where it ships one, its
+	 * parameters spec; and the template is moved out of {@code config/samples} into
+	 * {@code samples/reports/dashboard-demos} the way {@code g-dashboard}'s is.
+	 */
+	private void _assembleDashboardDemo(String reportId, String title, String samplesDirPath,
+			String templatesDirPath) throws Exception {
+
+		String sampleDirPath = samplesDirPath + "/" + reportId;
+		String settingsFilePath = sampleDirPath + "/settings.xml";
+		String reportingFilePath = sampleDirPath + "/reporting.xml";
+
+		// copy base settings and tweak for this sample
+		FileUtils.copyFile(new File(packageDirPath + "/" + topFolderName + "/config/burst/settings.xml"),
+				new File(settingsFilePath));
+		String content = FileUtils.readFileToString(new File(settingsFilePath), "UTF-8");
+
+		content = content.replaceAll("(?s)<template\\s*/>|<template>\\s*(?:My Reports|Bursting)\\s*</template>",
+				"<template>" + _friendlyTemplateName(title) + "</template>");
+		content = content.replaceAll(
+				"(?s)<reportdistribution\\s*/>|<reportdistribution>\\s*true\\s*</reportdistribution>",
+				"<reportdistribution>false</reportdistribution>");
+		content = content.replaceAll(
+				"(?s)<reportgenerationmailmerge\\s*/>|<reportgenerationmailmerge>\\s*false\\s*</reportgenerationmailmerge>",
+				"<reportgenerationmailmerge>true</reportgenerationmailmerge>");
+		content = content.replaceAll("(?s)<burstfilename>.*?</burstfilename>",
+				"<burstfilename>dashboard.html</burstfilename>");
+
+		FileUtils.writeStringToFile(new File(settingsFilePath), content, "UTF-8");
+
+		// prepare reporting.xml
+		FileUtils.copyFile(new File(packageDirPath + "/" + topFolderName + "/config/_defaults/reporting.xml"),
+				new File(reportingFilePath));
+		content = FileUtils.readFileToString(new File(reportingFilePath), "UTF-8");
+
+		content = content.replaceAll("(?si)<type\\s*>\\s*ds\\.csvfile\\s*</type>", "<type>ds.dashboard</type>");
+		content = content.replaceAll("(?s)<conncode\\s*/>|<conncode>\\s*</conncode>",
+				"<conncode>" + _dashboardDemoConnection(sampleDirPath, reportId) + "</conncode>");
+		content = content.replaceAll("(?s)<scriptname\\s*/>|<scriptname>\\s*</scriptname>",
+				"<scriptname>" + reportId + "-script.groovy</scriptname>");
+		if (new File(sampleDirPath + "/" + reportId + "-report-parameters-spec.groovy").exists())
+			content = content.replaceAll(
+					"(?s)<scriptnameparamsspec\\s*/>|<scriptnameparamsspec>\\s*</scriptnameparamsspec>",
+					"<scriptnameparamsspec>" + reportId + "-report-parameters-spec.groovy</scriptnameparamsspec>");
+		content = content.replaceAll("(?s)output\\.none", "output.dashboard");
+		content = content.replaceAll("(?s)<documentpath\\s*/>|<documentpath>\\s*</documentpath>",
+				"<documentpath>samples/reports/dashboard-demos/" + reportId + "-template.html</documentpath>");
+
+		FileUtils.writeStringToFile(new File(reportingFilePath), content, "UTF-8");
+
+		// move the dashboard HTML template from config/samples into samples/reports/dashboard-demos;
+		// the canvas and the stories file stay beside settings.xml, which is where the server and the
+		// e2e read them from
+		FileUtils.moveFile(new File(sampleDirPath + "/" + reportId + "-template.html"),
+				new File(templatesDirPath + "/" + reportId + "-template.html"));
+	}
+
+	/** The connection this dashboard's canvas was built on, which is the one its tiles query. */
+	private String _dashboardDemoConnection(String sampleDirPath, String reportId) throws Exception {
+
+		File canvas = new File(sampleDirPath + "/" + reportId + ".canvas.json");
+		if (!canvas.exists())
+			return "rbt-sample-northwind-duckdb-4f2";
+
+		Map<String, Object> exploration = new ObjectMapper().readValue(canvas,
+				new TypeReference<Map<String, Object>>() {
+				});
+		String connection = String.valueOf(exploration.get("connection_id"));
+		assertThat(connection).isNotEmpty();
+		return connection;
+	}
+
+	/** The name the Configuration screen lists this sample under: its title, as one word. */
+	private String _friendlyTemplateName(String title) {
+		return title.replaceAll("[^A-Za-z0-9]", "");
 	}
 
 	private void _generateSampleNorthwindDatabase() throws Exception {

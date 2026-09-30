@@ -1,0 +1,7 @@
+{
+  "sankey_channel_category" : {
+    "sourceField" : "channel",
+    "targetField" : "category",
+    "valueField" : "revenue"
+  }
+}

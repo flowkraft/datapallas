@@ -1,0 +1,20 @@
+[
+  {
+    "id": "rep-mateo-meyer",
+    "question": "How is one rep doing?",
+    "text": "Pick Mateo Meyer: the four tiles fall to his own numbers - 66,294 open, 23,583 weighted, 95% of his quota, 2.13 times his next quarter - and the table lists his three deals.",
+    "params": {
+      "repEmployeeId": "2023"
+    },
+    "check": "rep-mateo-meyer"
+  },
+  {
+    "id": "close-window-final-days",
+    "question": "What still has to close this week?",
+    "text": "Move Closing from to the 28th: the window is the last three days of the quarter, six deals worth 106,121, and the quota gauge does not move because it is about the quarter, not the window.",
+    "params": {
+      "closeFrom": "{dataToday:startOf week}"
+    },
+    "check": "close-window-final-days"
+  }
+]

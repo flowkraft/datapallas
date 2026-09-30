@@ -3,6 +3,7 @@ package com.flowkraft.reporting.services;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,6 +24,8 @@ import com.flowkraft.samples.SamplesFrendOnlyService;
 
 import com.flowkraft.reports.ReportsService;
 import com.flowkraft.common.AppPaths;
+import com.flowkraft.cubes.CubeDataToday;
+import com.flowkraft.cubes.CubeDates;
 import com.flowkraft.queries.ConnectionFactory;
 import com.flowkraft.queries.SqlOptionRows;
 import com.flowkraft.reporting.dtos.ReportFullConfigDto;
@@ -51,6 +54,14 @@ public class ReportingService {
 
 	@Autowired
 	SamplesFrendOnlyService samplesFrendOnlyService;
+
+	/** The data's today, read from the data. Held as a field so a test can pin the day. */
+	private CubeDataToday cubeDataToday = new CubeDataToday();
+
+	/** The test seam of {@link CubeDataToday}: a pinned day, so the checks' numbers stay true. */
+	void useDataToday(CubeDataToday dataToday) {
+		this.cubeDataToday = dataToday;
+	}
 
 	public ReportDataResult fetchData(String configurationFilePath, Map<String, String> parameters, boolean testMode)
 			throws Exception {
@@ -146,6 +157,21 @@ public class ReportingService {
 			}
 		}
 
+		// The questions this dashboard was written to answer, read as the file holds them: the
+		// component shows each story's question and text, and sets its params through the same
+		// validation a reader's own typing goes through. No file - no field, and the answer is the
+		// one this report gave before.
+		Path storiesPath = itemDir.resolve(reportCode + "-stories.json");
+		if (Files.exists(storiesPath)) {
+			try {
+				config.stories = new ObjectMapper().readTree(Files.readString(storiesPath));
+			} catch (Exception e) {
+				// A stories file nobody can parse is not a reason to refuse the dashboard: it opens
+				// without its stories, exactly as a dashboard that ships none does.
+				log.warn("Could not read stories file " + storiesPath + ": " + e.getMessage());
+			}
+		}
+
 		// Load parameters DSL
 		Path paramsPath = itemDir.resolve(reportCode + "-report-parameters-spec.groovy");
 		log.debug("Parameters DSL path: " + paramsPath + " exists=" + Files.exists(paramsPath));
@@ -159,6 +185,7 @@ public class ReportingService {
 
 			// Resolve SQL-based parameter options (e.g., options: "SELECT DISTINCT ...")
 			if (config.hasParameters && reportingConnCode != null && !reportingConnCode.isEmpty()) {
+				resolveRelativeParameterDefaults(config.parameters, reportingConnCode);
 				resolveParameterSqlOptions(config.parameters, reportingConnCode);
 			}
 		}
@@ -716,6 +743,35 @@ public class ReportingService {
 		} catch (NumberFormatException e) {
 			return String.valueOf(a).compareToIgnoreCase(String.valueOf(b));
 		}
+	}
+
+	/**
+	 * The samples' relative date defaults, turned into days before the dashboard is served.
+	 *
+	 * <p>A default written as {@code {dataToday:startOf year}} means the day the data on this
+	 * connection calls today, not the day this machine's clock calls today, so that a dashboard
+	 * opens on a window its data is actually in however long ago the data was seeded. The live-cube
+	 * endpoints already resolve those tokens; a dashboard's configuration is served from here, and
+	 * without this the reader would be shown the token itself as the value of a date field.
+	 *
+	 * <p>A report whose defaults hold no token reads nothing: the marker table is only looked for
+	 * when a token asks for it, so an ordinary report on a customer's connection is untouched. When
+	 * one does ask and the day cannot be read, {@link CubeDataToday} refuses, with the message that
+	 * says which connection and what to do — a date field quietly showing {@code {dataToday}} would
+	 * be the worse answer.
+	 */
+	void resolveRelativeParameterDefaults(List<ReportParameter> parameters, String connectionCode) {
+
+		boolean anyRelative = false;
+		for (ReportParameter param : parameters)
+			anyRelative = anyRelative || CubeDates.mentions(param.defaultValue);
+
+		if (!anyRelative)
+			return;
+
+		LocalDate dataToday = cubeDataToday.of(connectionCode);
+		for (ReportParameter param : parameters)
+			param.defaultValue = CubeDates.resolve(param.defaultValue, dataToday);
 	}
 
 	public void resolveParameterSqlOptions(List<ReportParameter> parameters, String connectionCode) throws Exception {

@@ -1,0 +1,8 @@
+{
+  "trend_signup_date_month" : {
+    "dateField" : "signup_date",
+    "valueField" : "customer_id_count",
+    "format" : "number",
+    "label" : "New customers per month"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "number_retention_pct_retention" : {
+    "format" : "percent",
+    "label" : "Average 6-month retention"
+  }
+}

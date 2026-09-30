@@ -1,0 +1,300 @@
+{
+  "id": "g-dd-payroll",
+  "name": "Payroll Cost",
+  "description": "What a month of payroll costs, the average gross pay and the overtime hours behind it, the cost per month by department, what the bill is made of, the warehouse's overtime season, and each department's change on last year split into more people and higher pay.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-payroll",
+  "state": {
+    "id": "g-dd-payroll",
+    "name": "Payroll Cost",
+    "description": "What a month of payroll costs, the average gross pay and the overtime hours behind it, the cost per month by department, what the bill is made of, the warehouse's overtime season, and each department's change on last year split into more people and higher pay.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd17-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Payroll Cost\n\nPayroll grew because Engineering hired: 20 engineers joined in 2025 against 4 who left, 40 people became 56, and of the 17,000.63 a month the department costs more than a year ago, 23,530.06 is the extra people and -6,529.43 is pay - the new engineers came in below its average. Overtime is the other pressure and it is the warehouse's: about 180 hours a month, then 539.9 in November 2025 and 531.3 in December, 2.98 times the rest of the year.\n\nThe month first: what it cost, what a person was paid on average, and how many overtime hours it took. Then the trend the month sits in, department by department, and what the bill is made of. The last row is the answer the board asks for - more people, or higher pay - department by department against the same month a year earlier. Pick a **period** to move the month, and one or more **departments** to read a single team. Bonus is paid in March and December, so in any other month its slice of the doughnut is zero."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd17-kpi-payroll-cost",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) AS payroll_cost\nFROM dash_demo.payroll_lines pl\nJOIN dash_demo.employees e ON e.employee_id = pl.employee_id\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nWHERE true\n  AND strftime(pl.period_month, '%Y-%m') = ${period}\n  AND d.name IN (${department})"
+        },
+        "displayConfig": {
+          "numberField": "payroll_cost",
+          "numberLabel": "Payroll cost in the period",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd17-kpi-average-gross-pay",
+        "type": "number",
+        "gridPosition": {
+          "x": 4,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(avg(pl.gross_pay), 2) AS average_gross_pay\nFROM dash_demo.payroll_lines pl\nJOIN dash_demo.employees e ON e.employee_id = pl.employee_id\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nWHERE true\n  AND strftime(pl.period_month, '%Y-%m') = ${period}\n  AND d.name IN (${department})"
+        },
+        "displayConfig": {
+          "numberField": "average_gross_pay",
+          "numberLabel": "Average gross pay",
+          "numberFormat": "currency"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd17-kpi-overtime-hours",
+        "type": "number",
+        "gridPosition": {
+          "x": 8,
+          "y": 1,
+          "w": 4,
+          "h": 2
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(sum(pl.overtime_hours), 2) AS overtime_hours\nFROM dash_demo.payroll_lines pl\nJOIN dash_demo.employees e ON e.employee_id = pl.employee_id\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nWHERE true\n  AND strftime(pl.period_month, '%Y-%m') = ${period}\n  AND d.name IN (${department})"
+        },
+        "displayConfig": {
+          "numberField": "overtime_hours",
+          "numberLabel": "Overtime hours",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd17-chart-cost-per-month-by-department",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 3,
+          "w": 8,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT strftime(pl.period_month, '%Y-%m') AS month,\n       d.name AS department,\n       round(sum(pl.gross_pay + pl.employer_taxes + pl.benefits), 2) AS total_cost\nFROM dash_demo.payroll_lines pl\nJOIN dash_demo.employees e ON e.employee_id = pl.employee_id\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nWHERE true\n  AND d.name IN (${department})\nGROUP BY month, department\nORDER BY month, department"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "month",
+              "seriesField": "department",
+              "datasets": [
+                {
+                  "field": "total_cost",
+                  "label": "Cost"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Cost per month by department"
+                }
+              },
+              "scales": {
+                "x": {
+                  "stacked": true
+                },
+                "y": {
+                  "stacked": true
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd17-chart-cost-components",
+        "type": "chart",
+        "gridPosition": {
+          "x": 8,
+          "y": 3,
+          "w": 4,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH scope AS (\n  SELECT pl.base_pay AS base_pay,\n         pl.bonus AS bonus,\n         pl.overtime_pay AS overtime_pay,\n         pl.employer_taxes AS employer_taxes,\n         pl.benefits AS benefits\n  FROM dash_demo.payroll_lines pl\n  JOIN dash_demo.employees e ON e.employee_id = pl.employee_id\n  JOIN dash_demo.departments d ON d.department_id = e.department_id\n  WHERE true\n    AND strftime(pl.period_month, '%Y-%m') = ${period}\n    AND d.name IN (${department})\n),\ntotals AS (\n  SELECT round(sum(base_pay), 2) AS base_pay,\n         round(sum(bonus), 2) AS bonus,\n         round(sum(overtime_pay), 2) AS overtime_pay,\n         round(sum(employer_taxes), 2) AS employer_taxes,\n         round(sum(benefits), 2) AS benefits\n  FROM scope\n)\nSELECT component, amount\nFROM (SELECT 1 AS ord, 'Base pay' AS component, base_pay AS amount FROM totals\n      UNION ALL SELECT 2, 'Bonus', bonus FROM totals\n      UNION ALL SELECT 3, 'Overtime', overtime_pay FROM totals\n      UNION ALL SELECT 4, 'Employer taxes', employer_taxes FROM totals\n      UNION ALL SELECT 5, 'Benefits', benefits FROM totals)\nORDER BY ord"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "doughnut",
+            "data": {
+              "labelField": "component",
+              "datasets": [
+                {
+                  "field": "amount",
+                  "label": "Amount"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "What the cost is made of"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd17-chart-warehouse-overtime-hours",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 7,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT strftime(pl.period_month, '%Y-%m') AS month,\n       round(sum(pl.overtime_hours), 1) AS overtime_hours\nFROM dash_demo.payroll_lines pl\nJOIN dash_demo.employees e ON e.employee_id = pl.employee_id\nJOIN dash_demo.departments d ON d.department_id = e.department_id\nWHERE d.name = 'Warehouse'\nGROUP BY month\nORDER BY month"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "month",
+              "datasets": [
+                {
+                  "field": "overtime_hours",
+                  "label": "Overtime hours"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Warehouse overtime hours per month"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd17-table-cost-change-by-department",
+        "type": "tabulator",
+        "gridPosition": {
+          "x": 6,
+          "y": 7,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH lines AS (\n  SELECT d.name AS department,\n         date_trunc('month', pl.period_month) AS month,\n         pl.gross_pay + pl.employer_taxes + pl.benefits AS cost\n  FROM dash_demo.payroll_lines pl\n  JOIN dash_demo.employees e ON e.employee_id = pl.employee_id\n  JOIN dash_demo.departments d ON d.department_id = e.department_id\n  WHERE true\n    AND date_trunc('month', pl.period_month) IN (CAST(${period} || '-01' AS DATE), CAST(${period} || '-01' AS DATE) - INTERVAL 12 MONTH)\n    AND d.name IN (${department})\n),\nper_month AS (\n  SELECT department, month, sum(cost) AS cost, count(*) AS people\n  FROM lines\n  GROUP BY department, month\n),\npaired AS (\n  SELECT n.department AS department,\n         n.people AS people_now,\n         p.people AS people_last_year,\n         n.cost AS cost_now,\n         p.cost AS cost_last_year\n  FROM per_month n\n  JOIN per_month p\n    ON p.department = n.department\n   AND p.month = n.month - INTERVAL 12 MONTH\n)\nSELECT department,\n       people_now - people_last_year AS people_change,\n       round(cost_now - cost_last_year, 2) AS cost_change,\n       round((people_now - people_last_year) * (cost_last_year / people_last_year), 2) AS from_more_people,\n       round((cost_now / people_now - cost_last_year / people_last_year) * people_now, 2) AS from_higher_pay\nFROM paired\nORDER BY cost_change DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "layout": "fitColumns",
+            "autoColumns": true,
+            "pagination": false,
+            "theme": "midnight"
+          },
+          "columnSettings": {
+            "department": {
+              "columnTitle": "Department"
+            },
+            "people_change": {
+              "columnTitle": "People"
+            },
+            "cost_change": {
+              "columnTitle": "Cost change"
+            },
+            "from_more_people": {
+              "columnTitle": "From more people"
+            },
+            "from_higher_pay": {
+              "columnTitle": "From higher pay"
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "period",
+          "type": "String",
+          "label": "Period",
+          "defaultValue": "2026-09",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT DISTINCT strftime(pl.period_month, '%Y-%m') AS value, strftime(pl.period_month, '%Y-%m') AS label FROM dash_demo.payroll_lines pl ORDER BY value DESC"
+          }
+        },
+        {
+          "id": "department",
+          "type": "String",
+          "label": "Department",
+          "defaultValue": [],
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "multiselect",
+            "options": "SELECT d.name AS value, d.name AS label FROM dash_demo.departments d ORDER BY d.name"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-payroll",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

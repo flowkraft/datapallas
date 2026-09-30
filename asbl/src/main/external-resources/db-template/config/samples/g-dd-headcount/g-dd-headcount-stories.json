@@ -1,0 +1,20 @@
+[
+  {
+    "id": "department-customer-support",
+    "question": "Which team is losing people?",
+    "text": "Read Customer Support on its own: 26 people, 5 hired this year and 6 gone, and a single bar at 17.5% a year on 12 leavers - against 14.77% for the warehouse and 6.2% for every other department together. Its tenure bars lean to the left, 8 of the 26 under a year. The salary boxes do not narrow with the department: they are the comparison itself, and at L1 they are 27,891 against 32,270.",
+    "params": {
+      "department": "Customer Support"
+    },
+    "check": "department-customer-support"
+  },
+  {
+    "id": "country-germany",
+    "question": "And the largest country?",
+    "text": "Read Germany: 68 people, 2 hired this year and 1 gone, and 12 leavers over the 33 months - 7.21% a year, against 9.64% company-wide. Here the warehouse leads at 11.62% on 4 leavers, support runs at 7.64% on one, and the median tenure is 5.1 years against 3.1 in support. The pay gap is narrower too: 93.48% at L1 to L3.",
+    "params": {
+      "country": "Germany"
+    },
+    "check": "country-germany"
+  }
+]

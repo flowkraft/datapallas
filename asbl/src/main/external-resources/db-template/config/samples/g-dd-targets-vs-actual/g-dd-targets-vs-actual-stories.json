@@ -1,0 +1,20 @@
+[
+  {
+    "id": "region-apac",
+    "question": "Who is behind, and does the director still see the rest?",
+    "text": "Pick APAC on the radio: the chart and the gauge fall to APAC's own year, 85% of plan, while the four bars stay where they are, so the director still reads EMEA at 103%.",
+    "params": {
+      "region": "APAC"
+    },
+    "check": "region-apac"
+  },
+  {
+    "id": "year-2025",
+    "question": "Is the gap this year's?",
+    "text": "Switch the year to 2025: all four regions land within two points of plan, APAC included at 98%, so the gap opened this year.",
+    "params": {
+      "year": "{dataToday:minus 1 year, startOf year}"
+    },
+    "check": "year-2025"
+  }
+]

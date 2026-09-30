@@ -137,10 +137,23 @@ describe('a shared dashboard hands its credential to the widgets inside it', () 
     assert.equal((prepared.match(/<rb-chart/g) || []).length, 1);
   });
 
-  test('the dashboard element itself is never fed to itself', () => {
+  test('a dashboard inside the dashboard is handed the credential, and nothing else', () => {
     const prepared = prepareDashboardHtml('<rb-dashboard report-id="another"></rb-dashboard>', sharedPage());
 
-    assert.equal(prepared, '<rb-dashboard report-id="another"></rb-dashboard>');
+    assert.equal(valueOf(prepared, 'rb-dashboard', 'embed-token'), TOKEN);
+    assert.equal(valueOf(prepared, 'rb-dashboard', 'api-base-url'), '/api');
+    assert.ok(!prepared.includes('report-params'));
+    // Refused or admitted is the server's decision, made when the credential was made: the page
+    // never draws a note over a tile the credential may well open.
+    assert.ok(!prepared.includes('rb-widget-not-shared'));
+  });
+
+  test('an embedded dashboard keeps the API base it was authored with', () => {
+    const prepared = prepareDashboardHtml(
+      '<rb-dashboard report-id="another" api-base-url="https://elsewhere/api"></rb-dashboard>', sharedPage());
+
+    assert.equal(valueOf(prepared, 'rb-dashboard', 'api-base-url'), 'https://elsewhere/api');
+    assert.equal(valueOf(prepared, 'rb-dashboard', 'embed-token'), TOKEN);
   });
 
   test('a credential with a quote in it cannot break out of its attribute', () => {

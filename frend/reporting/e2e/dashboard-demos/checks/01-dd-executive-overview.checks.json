@@ -10,7 +10,8 @@
   },
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
-    "year": 2026
+    "year": "2026-01-01",
+    "yearLabel": "2026"
   },
   "kpis": [
     {
@@ -19,20 +20,6 @@
       "format": "currency",
       "value": 18399330.71,
       "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2026"
-    },
-    {
-      "widget": "kpi-orders",
-      "label": "Orders",
-      "format": "number",
-      "value": 7087,
-      "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2026"
-    },
-    {
-      "widget": "kpi-new-customers",
-      "label": "New customers",
-      "format": "number",
-      "value": 1185,
-      "sql": "SELECT count(*) FROM dash_demo.customers WHERE year(signup_date) = 2026"
     },
     {
       "widget": "kpi-dso",
@@ -74,10 +61,12 @@
     {
       "id": "year-2025",
       "params": {
-        "year": 2025
+        "year": "2025-01-01",
+        "yearLabel": "2025"
       },
       "changed": {
-        "year": 2025
+        "year": "2025-01-01",
+        "yearLabel": "2025"
       },
       "kpis": [
         {
@@ -86,20 +75,6 @@
           "format": "currency",
           "value": 25260842.79,
           "sql": "SELECT round(sum(o.total_amount), 2) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025"
-        },
-        {
-          "widget": "kpi-orders",
-          "label": "Orders",
-          "format": "number",
-          "value": 9396,
-          "sql": "SELECT count(*) FROM dash_demo.orders o WHERE o.status <> 'cancelled' AND year(o.order_ts) = 2025"
-        },
-        {
-          "widget": "kpi-new-customers",
-          "label": "New customers",
-          "format": "number",
-          "value": 1348,
-          "sql": "SELECT count(*) FROM dash_demo.customers WHERE year(signup_date) = 2025"
         },
         {
           "widget": "kpi-dso",

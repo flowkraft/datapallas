@@ -3,6 +3,9 @@ package com.flowkraft.reporting.dtos;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
+
 import com.sourcekraft.documentburster.common.reportparameters.ReportParameter;
 
 /**
@@ -126,4 +129,15 @@ public class ReportFullConfigDto {
 
     /** Raw HTML template content for dashboard mode (only populated when outputType = "output.dashboard") */
     public String dashboardTemplate;
+
+    /**
+     * The questions this dashboard was written to answer, as its {@code <reportCode>-stories.json}
+     * holds them - {@code [{id, question, text, params, check}]} - read as it is and passed through.
+     * A cube's hints travel with its metadata the same way.
+     *
+     * Absent, not null, when the report's folder holds no stories file: every dashboard that has
+     * none answers exactly as it did before. &lt;rb-dashboard show-stories&gt; is the only reader.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public JsonNode stories;
 }

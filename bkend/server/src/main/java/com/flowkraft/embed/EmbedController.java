@@ -1,5 +1,7 @@
 package com.flowkraft.embed;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,13 @@ public class EmbedController {
 
 	@Autowired
 	private LockedParamsValidator lockedParamsValidator;
+
+	/**
+	 * Which dashboards the page embeds, read here - while the credential is made - and never while a
+	 * request is served. That is what makes what a link or a token opens fixed for its life.
+	 */
+	@Autowired
+	private EmbeddedReports embeddedReports;
 
 	/**
 	 * The two layers, asked of the person minting. The class comment above promises that minting takes
@@ -91,9 +100,17 @@ public class EmbedController {
 			String timezone = text(request.get("tz"));
 			String locale = text(request.get("locale"));
 
-			String token = embedTokenService.mint(reportId, ttlSeconds, lockedParams, attributes, timezone, locale);
+			// A gallery page is mostly other dashboards: the token opens the ones this caller could
+			// mint a token for on their own, and says which it left out. A host application reading
+			// the template again on its next mint therefore picks up a changed page by itself.
+			List<String> omitted = new ArrayList<>();
+			List<String> embedded = shareableEmbeddedReports(reportId, omitted);
+
+			String token = embedTokenService.mint(reportId, ttlSeconds, lockedParams, attributes, timezone, locale,
+					embedded);
 			return ResponseEntity.ok(Map.of("token", token, "expiresInSeconds", ttlSeconds,
-					"lockedParams", lockedParams, "attrs", attributes));
+					"lockedParams", lockedParams, "attrs", attributes,
+					"embeddedReports", embedded, "omittedEmbeddedReports", omitted));
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}
@@ -154,15 +171,54 @@ public class EmbedController {
 			// find out.
 			Map<String, String> attributes = CallerAttributes.validated(request.get("attributes"));
 
-			String token = shareTokenService.createShareToken(reportId, expiresInDays, lockedParams, attributes);
+			// What this link opens besides the page itself, decided once, now. Removing a dashboard
+			// from the page later does not take it out of links already made: revoke the link and
+			// create a new one - the list above shows which links exist.
+			List<String> omitted = new ArrayList<>();
+			List<String> embedded = shareableEmbeddedReports(reportId, omitted);
+
+			String token = shareTokenService.createShareToken(reportId, expiresInDays, lockedParams, attributes,
+					embedded);
 			return ResponseEntity.ok(Map.of(
 					"token", token,
 					"url", "/dashboard/" + reportId + "?token=" + token,
 					"lockedParams", lockedParams,
-					"attributes", attributes));
+					"attributes", attributes,
+					"embeddedReports", embedded,
+					"omittedEmbeddedReports", omitted));
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
 		}
+	}
+
+	/**
+	 * The dashboards the page embeds that this caller could share on their own.
+	 *
+	 * <p>Who may share what is decided per report here — {@code ReportAccess.assertReportRunnable}
+	 * asks the caller's report grants and their connection limits about that one report — so a page
+	 * embedding a dashboard its sharer may not open themselves must not become a way to hand it out.
+	 * Such a dashboard is left out of the list and named in the answer, because a link that silently
+	 * opens less than the page shows is a screen of refused tiles nobody can explain. A caller who is
+	 * not limited at all keeps every embedded dashboard.
+	 *
+	 * @param omitted filled with what was left out, in the page's own order
+	 */
+	private List<String> shareableEmbeddedReports(String reportId, List<String> omitted) {
+
+		List<String> shareable = new ArrayList<>();
+
+		for (String embedded : embeddedReports.of(reportId)) {
+			try {
+				reportAccess.assertReportRunnable(embedded);
+				shareable.add(embedded);
+			} catch (RuntimeException refused) {
+				// Refused for this caller, whatever the reason: not their report, a connection they do
+				// not have, or a report that has stopped existing.
+				omitted.add(embedded);
+			}
+		}
+
+		return shareable;
 	}
 
 	/** A request body value as text, or null when it is absent or blank - which means "not said". */

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "country-germany",
+    "question": "And the biggest market - is it the average?",
+    "text": "Pick Germany: 3,094.77 an order against 2,756.55 everywhere, so the biggest market is also a dearer basket, and returns are the highest of the three at 6.58% against 5.97%. Its category shares sit almost on top of the company's - Laptops 28.49% against 28.28%, Smart Home 10.04% against 10.58% - which is what being a third of the order book does. It still grows faster than the whole: 171.96 against 139.44.",
+    "params": {
+      "country": "Germany"
+    },
+    "check": "country-germany"
+  },
+  {
+    "id": "country-japan",
+    "question": "And a market on the other side of the world?",
+    "text": "Pick Japan: the dearest basket of the three at 3,847.79, returns the lowest at 5.84%, and the fastest growth on the page - 215.58 against the company's 139.44. Its mix is the one that differs: a quarter of its orders arrive on the app, 25.06% against 20.55% everywhere, and the web is 48.83% against 54.87%. This is the demo's quarterly line at work - 770 orders over eleven quarters, about 70 a quarter, which is readable where a monthly line would be noise.",
+    "params": {
+      "country": "Japan"
+    },
+    "check": "country-japan"
+  }
+]

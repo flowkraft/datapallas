@@ -1,0 +1,428 @@
+{
+  "id": "g-dd-web-funnel",
+  "name": "Website Traffic & Conversion",
+  "description": "The site's traffic and its funnel over a chosen window: estimated sessions, the conversion rate, where visitors drop, the checkout line that caught a June bug, when visitors come, and which traffic sources pay back.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-web-funnel",
+  "state": {
+    "id": "g-dd-web-funnel",
+    "name": "Website Traffic & Conversion",
+    "description": "The site's traffic and its funnel over a chosen window: estimated sessions, the conversion rate, where visitors drop, the checkout line that caught a June bug, when visitors come, and which traffic sources pay back.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd12-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Website Traffic & Conversion\n\nMobile checkout to purchase fell from about 62% to 41% in June 2026 - a checkout bug - and was back at 62% in August; email visitors convert at 6.1%, about twice paid social's 2.7%.\n\n**Sessions are sampled 1 in 8**, the way an analytics tool samples them: the table holds 60,000 of about 480,000 real sessions, and the rate is stored with the data. Counts on this page are estimated - the sample times the rate - and every label that shows one says so. Rates are worked out inside the sample, so they do not depend on the rate at all."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-kpi-estimated-sessions",
+        "type": "number",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 4,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT count(*) * (SELECT a.web_session_sample_rate FROM dash_demo.as_of a) AS estimated_sessions\nFROM dash_demo.web_sessions s\nWHERE true\n  AND s.started_ts >= ${dateFrom}\n  AND s.started_ts < ${dateTo__next_day}\n  AND s.device IN (${device})"
+        },
+        "displayConfig": {
+          "numberField": "estimated_sessions",
+          "numberLabel": "Estimated sessions (sampled 1 in 8)",
+          "numberFormat": "number"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-gauge-conversion-rate",
+        "type": "gauge",
+        "gridPosition": {
+          "x": 4,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT round(count(CASE WHEN s.purchased THEN 1 END) * 1.0 / count(*), 4) AS conversion_rate\nFROM dash_demo.web_sessions s\nWHERE true\n  AND s.started_ts >= ${dateFrom}\n  AND s.started_ts < ${dateTo__next_day}\n  AND s.device IN (${device})"
+        },
+        "displayConfig": {
+          "field": "conversion_rate",
+          "min": 0,
+          "max": 0.08,
+          "label": "Conversion rate",
+          "gaugeFormat": "percent",
+          "gaugeBands": [
+            {
+              "to": 0.03,
+              "color": "#ef8c8c"
+            },
+            {
+              "to": 0.05,
+              "color": "#f9d45c"
+            },
+            {
+              "to": 0.08,
+              "color": "#88bf4d"
+            }
+          ]
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-trend-sessions-per-week",
+        "type": "trend",
+        "gridPosition": {
+          "x": 7,
+          "y": 1,
+          "w": 5,
+          "h": 3
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "web_sessions",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "started_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "device",
+                "operator": "in",
+                "value": "${device}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "COUNT",
+                "field": "session_id"
+              }
+            ],
+            "groupBy": [
+              "started_ts"
+            ],
+            "sort": [
+              {
+                "column": "started_ts",
+                "direction": "ASC"
+              }
+            ],
+            "limit": 500,
+            "groupByBuckets": {
+              "started_ts": "week"
+            }
+          },
+          "generatedSql": "SELECT *\nFROM (\n  SELECT strftime(\"started_ts\", '%G-W%V') AS \"started_ts\", COUNT(\"session_id\") AS \"session_id_count\"\n  FROM \"dash_demo\".\"web_sessions\"\n  WHERE \"started_ts\" >= ${dateFrom} AND \"started_ts\" < ${dateTo__next_day}\n    AND \"device\" IN (${device})\n  GROUP BY strftime(\"started_ts\", '%G-W%V')\n) grouped_rows\nORDER BY CASE WHEN \"started_ts\" IS NULL THEN 1 ELSE 0 END, \"started_ts\" ASC\nLIMIT 500"
+        },
+        "displayConfig": {
+          "dateField": "started_ts",
+          "valueField": "session_id_count",
+          "format": "number",
+          "label": "Sessions per week (sampled 1 in 8)"
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-chart-funnel",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 4,
+          "w": 6,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH scope AS (\n  SELECT s.reached_product AS reached_product,\n         s.reached_cart AS reached_cart,\n         s.reached_checkout AS reached_checkout,\n         s.purchased AS purchased\n  FROM dash_demo.web_sessions s\n  WHERE true\n    AND s.started_ts >= ${dateFrom}\n    AND s.started_ts < ${dateTo__next_day}\n    AND s.device IN (${device})\n),\nsteps AS (\n  SELECT 1 AS ord, 'Session' AS step, count(*) AS sessions FROM scope\n  UNION ALL SELECT 2, 'Reached product', count(CASE WHEN reached_product THEN 1 END) FROM scope\n  UNION ALL SELECT 3, 'Reached cart', count(CASE WHEN reached_cart THEN 1 END) FROM scope\n  UNION ALL SELECT 4, 'Reached checkout', count(CASE WHEN reached_checkout THEN 1 END) FROM scope\n  UNION ALL SELECT 5, 'Purchased', count(CASE WHEN purchased THEN 1 END) FROM scope\n)\nSELECT step AS step,\n       sessions AS sessions,\n       round(100.0 * sessions / (SELECT max(sessions) FROM steps), 2) AS pct_of_sessions\nFROM steps\nORDER BY ord"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "funnel",
+            "data": {
+              "labelField": "step",
+              "datasets": [
+                {
+                  "field": "sessions",
+                  "label": "Sessions (sampled 1 in 8)"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Session to product to cart to checkout to purchase"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-chart-sessions-per-week-by-device",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 4,
+          "w": 6,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "web_sessions",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "started_ts",
+                "operator": "between",
+                "value": "${dateFrom}",
+                "valueTo": "${dateTo}"
+              },
+              {
+                "column": "device",
+                "operator": "in",
+                "value": "${device}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "COUNT",
+                "field": "session_id"
+              }
+            ],
+            "groupBy": [
+              "started_ts",
+              "device"
+            ],
+            "sort": [
+              {
+                "column": "started_ts",
+                "direction": "ASC"
+              }
+            ],
+            "limit": 500,
+            "groupByBuckets": {
+              "started_ts": "week"
+            }
+          },
+          "generatedSql": "SELECT *\nFROM (\n  SELECT strftime(\"started_ts\", '%G-W%V') AS \"started_ts\", \"device\", COUNT(\"session_id\") AS \"session_id_count\"\n  FROM \"dash_demo\".\"web_sessions\"\n  WHERE \"started_ts\" >= ${dateFrom} AND \"started_ts\" < ${dateTo__next_day}\n    AND \"device\" IN (${device})\n  GROUP BY strftime(\"started_ts\", '%G-W%V'), \"device\"\n) grouped_rows\nORDER BY CASE WHEN \"started_ts\" IS NULL THEN 1 ELSE 0 END, \"started_ts\" ASC\nLIMIT 500"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "started_ts",
+              "seriesField": "device",
+              "datasets": [
+                {
+                  "field": "session_id_count",
+                  "label": "Sessions"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Sessions per week by device (sampled 1 in 8)"
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-chart-mobile-checkout-per-month",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 9,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT strftime(date_trunc('month', s.started_ts), '%Y-%m') AS month,\n       round(100.0 * count(CASE WHEN s.purchased THEN 1 END)\n             / nullif(count(CASE WHEN s.reached_checkout THEN 1 END), 0), 2) AS checkout_to_purchase_pct,\n       count(CASE WHEN s.reached_checkout THEN 1 END) AS reached_checkout\nFROM dash_demo.web_sessions s\nWHERE true\n  AND s.started_ts >= ${dateFrom}\n  AND s.started_ts < ${dateTo__next_day}\n  AND s.device IN (${device})\nGROUP BY 1\nORDER BY 1"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "month",
+              "datasets": [
+                {
+                  "field": "checkout_to_purchase_pct",
+                  "label": "Checkout to purchase %"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Checkout to purchase % per month - filter to mobile for the June story"
+                }
+              },
+              "legend": {
+                "display": false
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-pivot-sessions-weekday-hour",
+        "type": "pivot",
+        "gridPosition": {
+          "x": 6,
+          "y": 9,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT CAST(isodow(s.started_ts) AS VARCHAR) || ' ' || strftime(s.started_ts, '%a') AS weekday,\n       lpad(CAST(hour(s.started_ts) AS VARCHAR), 2, '0') AS hour_of_day,\n       count(*) AS sessions\nFROM dash_demo.web_sessions s\nWHERE true\n  AND s.started_ts >= ${dateFrom}\n  AND s.started_ts < ${dateTo__next_day}\n  AND s.device IN (${device})\nGROUP BY 1, 2\nORDER BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "rows": [
+              "weekday"
+            ],
+            "cols": [
+              "hour_of_day"
+            ],
+            "vals": [
+              "sessions"
+            ],
+            "aggregatorName": "Sum",
+            "rendererName": "Table Heatmap",
+            "rowOrder": "key_a_to_z",
+            "colOrder": "key_a_to_z",
+            "rowTotals": true,
+            "colTotals": false
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd12-chart-conversion-by-traffic-source",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 13,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT s.traffic_source AS traffic_source,\n       round(100.0 * count(CASE WHEN s.purchased THEN 1 END) / count(*), 2) AS conversion_pct,\n       count(CASE WHEN s.purchased THEN 1 END) AS purchasing_sessions\nFROM dash_demo.web_sessions s\nWHERE true\n  AND s.started_ts >= ${dateFrom}\n  AND s.started_ts < ${dateTo__next_day}\n  AND s.device IN (${device})\nGROUP BY 1\nORDER BY conversion_pct DESC"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "traffic_source",
+              "datasets": [
+                {
+                  "field": "conversion_pct",
+                  "label": "Conversion %"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Conversion rate by traffic source"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "dateFrom",
+          "type": "Date",
+          "label": "From",
+          "defaultValue": "{dataToday:minus 11 months, startOf month}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "dateTo",
+          "type": "Date",
+          "label": "To",
+          "defaultValue": "{dataToday}",
+          "constraints": {
+            "required": true
+          },
+          "uiHints": {
+            "control": "datepicker"
+          }
+        },
+        {
+          "id": "device",
+          "type": "String",
+          "label": "Device",
+          "defaultValue": [],
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "multiselect",
+            "options": "SELECT DISTINCT device AS value, device AS label FROM dash_demo.web_sessions ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-web-funnel",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

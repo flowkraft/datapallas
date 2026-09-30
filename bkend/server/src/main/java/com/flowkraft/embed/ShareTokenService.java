@@ -38,6 +38,10 @@ import com.flowkraft.iam.model.Tenant;
  * working links. There is no way to display an existing link again for the same reason: reissue it.
  *
  * <h2>How the two compose</h2>
+ * <p>A link opens the report it was made for and the dashboards that report's page embedded at that
+ * moment ({@link EmbeddedReports}), stored with it. Nothing else, and never more later: what a link
+ * opens is as fixed as what it locks.
+ *
  * The share token is validated when the dashboard page is requested. The page then embeds a normal
  * one-hour embed token for the components, so the durable secret stays in the URL and never reaches
  * the data-fetching layer. Revoking the row breaks the link on the next page load.
@@ -94,6 +98,25 @@ public class ShareTokenService {
 	 */
 	public String createShareToken(String reportId, Integer expiresInDays, Map<String, Object> lockedParams,
 			Map<String, String> attributes) {
+		return createShareToken(reportId, expiresInDays, lockedParams, attributes, null);
+	}
+
+	/**
+	 * Create a share link that also opens the dashboards the report's published page embeds.
+	 *
+	 * <p>A gallery page is one report whose template is mostly other dashboards, so a link that opened
+	 * only the page would show a screen of refused tiles. The list is read once, here, and stored with
+	 * the link: what a link opens is therefore fixed for its life, exactly as its locks are. Editing
+	 * the page afterwards - taking a dashboard off it, or adding one - changes nothing about a link
+	 * somebody already holds. Revoke it and create a new one; the share dialog lists them.
+	 *
+	 * @param embeddedReports the report ids of the page's own {@code <rb-dashboard>} tags, as
+	 *                        {@link EmbeddedReports} returns them; null or empty creates exactly the
+	 *                        link the overload above does, and so does every link created before this
+	 *                        column existed
+	 */
+	public String createShareToken(String reportId, Integer expiresInDays, Map<String, Object> lockedParams,
+			Map<String, String> attributes, List<String> embeddedReports) {
 
 		if (StringUtils.isBlank(reportId))
 			throw new IllegalArgumentException("reportId is required");
@@ -106,8 +129,8 @@ public class ShareTokenService {
 		String expiresAt = (expiresInDays == null || expiresInDays <= 0) ? null
 				: "datetime('now', '+" + expiresInDays + " days')";
 
-		String sql = "INSERT INTO share_token (tenant_id, resource_type, resource_id, token_hash, locked_params, attributes, expires_at, created_at) "
-				+ "VALUES (?, ?, ?, ?, ?, ?, " + (expiresAt == null ? "NULL" : expiresAt) + ", datetime('now'))";
+		String sql = "INSERT INTO share_token (tenant_id, resource_type, resource_id, token_hash, locked_params, attributes, embedded_reports, expires_at, created_at) "
+				+ "VALUES (?, ?, ?, ?, ?, ?, ?, " + (expiresAt == null ? "NULL" : expiresAt) + ", datetime('now'))";
 
 		try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, tenantId);
@@ -116,6 +139,7 @@ public class ShareTokenService {
 			ps.setString(4, hash(token));
 			ps.setString(5, LockedParams.toJson(lockedParams));
 			ps.setString(6, CallerAttributes.toJson(attributes));
+			ps.setString(7, EmbeddedReports.toJson(embeddedReports));
 			ps.executeUpdate();
 		} catch (SQLException e) {
 			throw new IllegalStateException("Could not create the share link", e);
@@ -142,7 +166,7 @@ public class ShareTokenService {
 		if (StringUtils.isBlank(token))
 			return Optional.empty();
 
-		String sql = "SELECT resource_id, locked_params, attributes FROM share_token WHERE token_hash = ? AND resource_type = ? "
+		String sql = "SELECT resource_id, locked_params, attributes, embedded_reports FROM share_token WHERE token_hash = ? AND resource_type = ? "
 				+ "AND (expires_at IS NULL OR expires_at > datetime('now'))";
 
 		try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -152,7 +176,8 @@ public class ShareTokenService {
 				return rs.next()
 						? Optional.of(new SharedReport(rs.getString("resource_id"),
 								LockedParams.fromJson(rs.getString("locked_params")),
-								CallerAttributes.fromJson(rs.getString("attributes"))))
+								CallerAttributes.fromJson(rs.getString("attributes")),
+								EmbeddedReports.fromJson(rs.getString("embedded_reports"))))
 						: Optional.empty();
 			}
 		} catch (SQLException e) {
@@ -166,7 +191,7 @@ public class ShareTokenService {
 	public List<ShareLink> listShareLinks(String reportId) {
 
 		List<ShareLink> links = new ArrayList<>();
-		String sql = "SELECT id, resource_id, locked_params, attributes, expires_at, created_at FROM share_token "
+		String sql = "SELECT id, resource_id, locked_params, attributes, embedded_reports, expires_at, created_at FROM share_token "
 				+ "WHERE resource_type = ? AND resource_id = ? ORDER BY created_at DESC";
 
 		try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -177,6 +202,7 @@ public class ShareTokenService {
 					links.add(new ShareLink(rs.getLong("id"), rs.getString("resource_id"),
 							LockedParams.fromJson(rs.getString("locked_params")),
 							CallerAttributes.fromJson(rs.getString("attributes")),
+							EmbeddedReports.fromJson(rs.getString("embedded_reports")),
 							rs.getString("expires_at"), rs.getString("created_at")));
 			}
 		} catch (SQLException e) {
@@ -225,7 +251,7 @@ public class ShareTokenService {
 	 * answer.
 	 */
 	public record ShareLink(long id, String reportId, Map<String, Object> lockedParams,
-			Map<String, String> attributes, String expiresAt, String createdAt) {
+			Map<String, String> attributes, List<String> embeddedReports, String expiresAt, String createdAt) {
 	}
 
 	/**
@@ -233,11 +259,17 @@ public class ShareTokenService {
 	 * and the attributes {@code ${dp_attr_<name>}} reads. All three travel together, because a caller
 	 * that resolved the report without them would open the dashboard unrestricted.
 	 */
-	public record SharedReport(String reportId, Map<String, Object> lockedParams, Map<String, String> attributes) {
+	public record SharedReport(String reportId, Map<String, Object> lockedParams, Map<String, String> attributes,
+			List<String> embeddedReports) {
 
 		/** A link that locks what it locks and says nothing about who opened it. */
 		public SharedReport(String reportId, Map<String, Object> lockedParams) {
-			this(reportId, lockedParams, Map.of());
+			this(reportId, lockedParams, Map.of(), List.of());
+		}
+
+		/** A link to one dashboard alone: it embeds nothing, as every stored link did before the column. */
+		public SharedReport(String reportId, Map<String, Object> lockedParams, Map<String, String> attributes) {
+			this(reportId, lockedParams, attributes, List.of());
 		}
 	}
 }

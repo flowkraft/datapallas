@@ -11,7 +11,7 @@
   "note": "Computed by checks_dashboards_demo.py from the frozen .psv rows, with the same definitions truths.out uses. Each value carries the SQL it came from; Phase B2 holds every widget to these numbers.",
   "defaults": {
     "status": [],
-    "customerId": "All",
+    "customerId": "",
     "customerLabel": "All",
     "issuedFrom": "2026-01-01",
     "issuedTo": "2026-09-30"
@@ -46,18 +46,23 @@
       "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status = 'overdue'"
     },
     {
-      "widget": "table-invoices-in-scope",
+      "widget": "table-invoices",
       "label": "Invoices in scope",
       "format": "number",
       "value": 3237,
-      "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY"
+      "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY",
+      "reading": "rows"
     },
     {
-      "widget": "chart-billed-by-source-order-share",
+      "widget": "chart-billed-by-source",
       "label": "Billed from trade orders %",
       "format": "percent",
       "value": 98.62,
-      "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY"
+      "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY",
+      "column": "billed_sum_pct",
+      "row": {
+        "source": "order"
+      }
     }
   ],
   "interactions": [
@@ -67,7 +72,7 @@
         "status": [
           "overdue"
         ],
-        "customerId": "All",
+        "customerId": "",
         "customerLabel": "All",
         "issuedFrom": "2026-01-01",
         "issuedTo": "2026-09-30"
@@ -107,18 +112,23 @@
           "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status = 'overdue'"
         },
         {
-          "widget": "table-invoices-in-scope",
+          "widget": "table-invoices",
           "label": "Invoices in scope",
           "format": "number",
           "value": 38,
-          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.status IN ('overdue')"
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.status IN ('overdue')",
+          "reading": "rows"
         },
         {
-          "widget": "chart-billed-by-source-order-share",
+          "widget": "chart-billed-by-source",
           "label": "Billed from trade orders %",
           "format": "percent",
           "value": 97.47,
-          "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.status IN ('overdue')"
+          "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.status IN ('overdue')",
+          "column": "billed_sum_pct",
+          "row": {
+            "source": "order"
+          }
         }
       ]
     },
@@ -165,18 +175,23 @@
           "sql": "SELECT round(sum(amount + tax_amount), 2) FROM dash_demo.invoices WHERE status = 'overdue'"
         },
         {
-          "widget": "table-invoices-in-scope",
+          "widget": "table-invoices",
           "label": "Invoices in scope",
           "format": "number",
           "value": 29,
-          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.customer_id = 1017"
+          "sql": "SELECT count(*) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.customer_id = 1017",
+          "reading": "rows"
         },
         {
-          "widget": "chart-billed-by-source-order-share",
+          "widget": "chart-billed-by-source",
           "label": "Billed from trade orders %",
           "format": "percent",
           "value": 100.0,
-          "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.customer_id = 1017"
+          "sql": "SELECT round(100.0 * sum(CASE WHEN i.source = 'order' THEN i.amount + i.tax_amount ELSE 0 END) / sum(i.amount + i.tax_amount), 2) FROM dash_demo.invoices i WHERE true AND i.issue_date >= DATE '2026-01-01' AND i.issue_date < DATE '2026-09-30' + INTERVAL 1 DAY AND i.customer_id = 1017",
+          "column": "billed_sum_pct",
+          "row": {
+            "source": "order"
+          }
         }
       ]
     }

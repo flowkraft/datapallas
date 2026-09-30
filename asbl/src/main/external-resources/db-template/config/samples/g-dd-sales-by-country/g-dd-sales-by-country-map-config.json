@@ -1,0 +1,15 @@
+{
+  "map_dd03-map-revenue-by-country" : {
+    "mapType" : "region",
+    "region" : "world_countries",
+    "dimension" : "country",
+    "metric" : "revenue"
+  },
+  "map_dd03-map-orders-by-city" : {
+    "mapType" : "pin",
+    "dimension" : "city",
+    "metric" : "orders",
+    "latField" : "latitude",
+    "lonField" : "longitude"
+  }
+}

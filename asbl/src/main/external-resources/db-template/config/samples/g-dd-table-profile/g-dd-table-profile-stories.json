@@ -1,0 +1,22 @@
+[
+  {
+    "id": "orders-total-amount",
+    "question": "And a number column, on the biggest table?",
+    "text": "Ask for orders and total_amount: 24,000 rows over 18 columns, 927 of them ordered in the last 30 days, and 3 columns with gaps - device on 9.07% of orders, shipped_ts and delivered_ts on the orders still in flight. The chart changes shape with the column: 23,162 distinct amounts cannot be twenty three thousand bars, so it draws twenty ranges, and 20,782 of the 24,000 orders fall in the first one - under 4,906. The long tail is 19 ranges wide and holds the rest.",
+    "params": {
+      "tableName": "orders",
+      "columnName": "total_amount"
+    },
+    "check": "orders-total-amount"
+  },
+  {
+    "id": "customers-segment",
+    "question": "Why are a quarter of the columns empty here?",
+    "text": "Ask for customers and segment: 5,000 rows, 12 columns, and 4 of them empty on exactly 78% of rows - company_name, payment_terms_days, credit_limit and account_manager_id. That is not damage: 78% of the customers are consumers, and those four columns belong to a business account. The segment chart says the same thing from the other side - 3,900 Consumer against 818 SMB and 282 Enterprise.",
+    "params": {
+      "tableName": "customers",
+      "columnName": "segment"
+    },
+    "check": "customers-segment"
+  }
+]

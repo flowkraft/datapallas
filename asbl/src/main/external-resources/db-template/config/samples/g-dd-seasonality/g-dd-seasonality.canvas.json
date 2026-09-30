@@ -1,0 +1,245 @@
+{
+  "id": "g-dd-seasonality",
+  "name": "Seasonality & Peak Times",
+  "description": "Three planning horizons, one per row: the week for staff hours and ad hours, the year and the month for the campaign calendar including the payday window, and the one peak that needs its own plan, sized day by day from last year.",
+  "connection_id": "rbt-sample-northwind-duckdb-4f2",
+  "exported_report_code": "g-dd-seasonality",
+  "state": {
+    "id": "g-dd-seasonality",
+    "name": "Seasonality & Peak Times",
+    "description": "Three planning horizons, one per row: the week for staff hours and ad hours, the year and the month for the campaign calendar including the payday window, and the one peak that needs its own plan, sized day by day from last year.",
+    "connectionId": "rbt-sample-northwind-duckdb-4f2",
+    "widgets": [
+      {
+        "id": "w-dd06-text-title",
+        "type": "text",
+        "gridPosition": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 1
+        },
+        "dataSource": null,
+        "displayConfig": {
+          "textContent": "## Seasonality & Peak Times\n\nOrders peak on Monday evenings, 19:00-21:00, with Monday 20:00 the busiest hour of the week, while sales-rep orders peak on Monday at 13:00. November is about 2.3 times an average month and the Black Friday days run about 4 times an average day; the 25th to the 27th of any month bring about 25% more orders than an average day, and August runs a third below an average month."
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd06-pivot-weekday-hour",
+        "type": "pivot",
+        "gridPosition": {
+          "x": 0,
+          "y": 1,
+          "w": 12,
+          "h": 5
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT dayname(o.order_ts) AS weekday,\n       lpad(hour(o.order_ts)::VARCHAR, 2, '0') AS hour_of_day,\n       count(*) AS orders\nFROM dash_demo.orders o\nWHERE o.channel = ${channel}\nGROUP BY 1, 2"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "rows": [
+              "weekday"
+            ],
+            "cols": [
+              "hour_of_day"
+            ],
+            "vals": [
+              "orders"
+            ],
+            "aggregatorName": "Sum",
+            "rendererName": "Table Heatmap",
+            "rowOrder": "value_z_to_a",
+            "colOrder": "key_a_to_z",
+            "rowTotals": false,
+            "colTotals": false
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd06-chart-orders-by-month-of-year",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 6,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "visual",
+          "visualQuery": {
+            "table": "orders",
+            "tableSchema": "dash_demo",
+            "filters": [
+              {
+                "column": "channel",
+                "operator": "equals",
+                "value": "${channel}"
+              }
+            ],
+            "summarize": [
+              {
+                "aggregation": "COUNT",
+                "field": "order_id"
+              }
+            ],
+            "groupBy": [
+              "order_ts"
+            ],
+            "sort": [
+              {
+                "column": "order_ts",
+                "direction": "ASC"
+              }
+            ],
+            "limit": 12,
+            "groupByBuckets": {
+              "order_ts": "month-of-year"
+            }
+          },
+          "generatedSql": "SELECT *\nFROM (\n  SELECT CAST(month(\"order_ts\") AS INTEGER) AS \"order_ts\", COUNT(\"order_id\") AS \"order_id_count\"\n  FROM \"dash_demo\".\"orders\"\n  WHERE \"channel\" = ${channel}\n  GROUP BY CAST(month(\"order_ts\") AS INTEGER)\n) grouped_rows\nORDER BY CASE WHEN \"order_ts\" IS NULL THEN 1 ELSE 0 END, \"order_ts\" ASC\nLIMIT 12"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "order_ts",
+              "datasets": [
+                {
+                  "field": "order_id_count",
+                  "label": "Orders"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Orders by month of year"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd06-chart-average-by-day-of-month",
+        "type": "chart",
+        "gridPosition": {
+          "x": 6,
+          "y": 6,
+          "w": 6,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "WITH per_day AS (\n  SELECT date_trunc('month', o.order_ts) AS month,\n         day(o.order_ts) AS day_of_month,\n         count(*) AS n\n  FROM dash_demo.orders o\n  WHERE o.channel = ${channel}\n  GROUP BY 1, 2\n), month_average AS (\n  SELECT month, avg(n) AS avg_n FROM per_day GROUP BY 1\n)\nSELECT p.day_of_month AS day_of_month,\n       round(avg(p.n), 2) AS avg_orders,\n       round(100.0 * avg(p.n / m.avg_n), 4) AS pct_of_daily_average\nFROM per_day p\nJOIN month_average m USING (month)\nGROUP BY 1\nORDER BY 1"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "bar",
+            "data": {
+              "labelField": "day_of_month",
+              "datasets": [
+                {
+                  "field": "avg_orders",
+                  "label": "Average orders"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Average orders per day, by day of month"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      },
+      {
+        "id": "w-dd06-chart-daily-orders-black-friday",
+        "type": "chart",
+        "gridPosition": {
+          "x": 0,
+          "y": 10,
+          "w": 12,
+          "h": 4
+        },
+        "dataSource": {
+          "mode": "sql",
+          "sql": "SELECT o.order_ts::DATE AS day,\n       count(*) AS orders\nFROM dash_demo.orders o\nWHERE o.order_ts >= date_trunc('year', (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 2 MONTH\n  AND o.order_ts < date_trunc('year', (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 16 DAY\n  AND o.channel = ${channel}\nGROUP BY 1\nORDER BY 1"
+        },
+        "displayConfig": {
+          "dslConfig": {
+            "type": "line",
+            "data": {
+              "labelField": "day",
+              "datasets": [
+                {
+                  "field": "orders",
+                  "label": "Orders"
+                }
+              ]
+            },
+            "options": {
+              "plugins": {
+                "title": {
+                  "display": true,
+                  "text": "Daily orders around last year's Black Friday, 1 November - 15 December"
+                },
+                "legend": {
+                  "display": false
+                }
+              }
+            }
+          }
+        },
+        "columns": null,
+        "shape": null
+      }
+    ],
+    "queryResults": {},
+    "parametersConfig": {
+      "parameters": [
+        {
+          "id": "channel",
+          "type": "String",
+          "label": "Channel",
+          "defaultValue": "",
+          "constraints": {
+            "required": false
+          },
+          "uiHints": {
+            "control": "select",
+            "options": "SELECT '' AS value, '-- All channels --' AS label UNION ALL SELECT DISTINCT channel AS value, channel AS label FROM dash_demo.orders ORDER BY label"
+          }
+        }
+      ]
+    },
+    "filterValues": {},
+    "filterVersion": 0,
+    "selectedWidgetId": null,
+    "editMode": false,
+    "exportedReportCode": "g-dd-seasonality",
+    "exploreSelections": [],
+    "exploreFieldStates": {},
+    "exploreVersion": 0
+  }
+}

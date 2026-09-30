@@ -27,6 +27,27 @@
   
   /** Optional: Custom label for the print button (default: 'Print') */
   export let printButtonLabel: string = 'Print';
+
+  /**
+   * Optional: wait for the reader to scroll here before asking for anything.
+   *
+   * A page that shows many dashboards at once - the Dashboard Demos gallery shows 25 - would
+   * otherwise make every config and data call, and draw every chart, on open. With `lazy`, this
+   * dashboard's config is fetched once the element comes within one screen of the viewport, and
+   * from then on it behaves exactly as it does without the attribute. Nothing changes for a page
+   * that does not set it.
+   */
+  export let lazy: boolean = false;
+
+  /**
+   * Optional: list the questions this dashboard was written to answer, above its filter bar.
+   *
+   * The dashboard's own config carries them (`stories`, from its `<report id>-stories.json`), and
+   * each one is a Show Me that sets this dashboard's filters to the story's values and reloads this
+   * dashboard alone - like a cube's hints, and with the same look. Without the attribute nothing
+   * changes: a demo's own page, and every existing dashboard, look exactly as they do today.
+   */
+  export let showStories: boolean = false;
   
   // ============================================================================
   // Internal State
@@ -45,6 +66,10 @@
   let dashboardContainer: HTMLDivElement;
   let currentDashboardParams: Record<string, any> = {};
 
+  /** The stories the config carries, and the one the reader asked last (marked, as a cube marks it). */
+  let stories: any[] = [];
+  let lastAskedId: string | null = null;
+
   // Track previous entityCode to detect changes
   let prevEntityCode: string = '';
   
@@ -61,6 +86,13 @@
 
   // Counter to force re-render of named components on param re-submit
   let fetchCounter = 0;
+
+  // Lazy mode: has the dashboard come within one screen of the viewport yet? Without `lazy` there
+  // is nothing to wait for, so it starts true and every watcher below reads as it did before.
+  // Read here, not in `onMount`, so a page that passes `lazy` as a prop (rather than as an
+  // attribute) also waits: the watchers below run once during init, before `onMount`.
+  let scrolledTo = !lazy;
+  let lazyObserver: IntersectionObserver | null = null;
   
   // ============================================================================
   // Lifecycle
@@ -80,6 +112,16 @@
       if (!apiKey) apiKey = hostElement.getAttribute('api-key') || '';
       if (!embedToken) embedToken = hostElement.getAttribute('embed-token') || '';
       if (!entityCode) entityCode = hostElement.getAttribute('entity-code') || '';
+      // A boolean attribute: `lazy` and `lazy="true"` both mean yes, as `show-print-button` does.
+      if (hostElement.hasAttribute('lazy')) {
+        const lazyAttr = hostElement.getAttribute('lazy');
+        lazy = lazyAttr === '' || lazyAttr === 'true';
+      }
+      // A boolean attribute, read like `lazy`: `show-stories` and `show-stories="true"` both mean yes.
+      if (hostElement.hasAttribute('show-stories')) {
+        const storiesAttr = hostElement.getAttribute('show-stories');
+        showStories = storiesAttr === '' || storiesAttr === 'true';
+      }
       if (hostElement.hasAttribute('show-print-button')) {
         const printAttr = hostElement.getAttribute('show-print-button');
         showPrintButton = printAttr === '' || printAttr === 'true';
@@ -93,6 +135,14 @@
     
     // console.log('[RbReport] onMount - after attribute read: reportId:', reportId, 'apiBaseUrl:', apiBaseUrl, 'entityCode:', entityCode);
     
+    if (lazy) {
+      // Nothing is asked for yet: the watchers below wait for `scrolledTo`, which the observer
+      // sets once. This returns instead of fetching, so an offscreen dashboard costs one observer.
+      scrolledTo = false;
+      startLazyWatch(hostElement);
+      return;
+    }
+
     if (reportId && apiBaseUrl) {
       // In entity mode, skip config loading and directly fetch data with entityCode
       if (entityCode) {
@@ -107,15 +157,40 @@
     }
   });
   
+  /**
+   * One screen of margin, so a dashboard is asked for just before the reader reaches it and the
+   * widgets are there by the time it is on screen. Inside the datapallas.com iframe this watches
+   * the frame's own viewport - the one the reader scrolls.
+   *
+   * Where there is no `IntersectionObserver` - an old browser, a page rendered without a viewport -
+   * the dashboard loads at once, exactly as without the attribute: one that never loaded would be
+   * worse than one loaded early.
+   */
+  function startLazyWatch(element: Element | null) {
+    if (!element || typeof IntersectionObserver === 'undefined') {
+      scrolledTo = true;
+      return;
+    }
+    const screen = typeof window !== 'undefined' && window.innerHeight ? window.innerHeight : 800;
+    lazyObserver = new IntersectionObserver(entries => {
+      if (!entries.some(e => e.isIntersecting)) return;
+      // Once: from here on this dashboard behaves exactly as one without the attribute.
+      scrolledTo = true;
+      lazyObserver?.disconnect();
+      lazyObserver = null;
+    }, { rootMargin: `${screen}px 0px` });
+    lazyObserver.observe(element);
+  }
+
   // Watch for prop changes
-  $: if (reportId && apiBaseUrl && !configLoaded && !entityCode) {
+  $: if (reportId && apiBaseUrl && scrolledTo && !configLoaded && !entityCode) {
     // console.log('[RbReport] prop watcher triggered - loadConfig()');
     loadConfig();
   }
   
   // Watch for entityCode changes - fetch data directly in entity mode
   // Use prevEntityCode to detect actual changes and re-fetch
-  $: if (reportId && apiBaseUrl && entityCode && entityCode !== prevEntityCode) {
+  $: if (reportId && apiBaseUrl && scrolledTo && entityCode && entityCode !== prevEntityCode) {
     // console.log('[RbReport] entityCode watcher triggered - entityCode:', entityCode, 'prevEntityCode:', prevEntityCode);
     prevEntityCode = entityCode;
     dataLoaded = false; // Reset to allow fresh fetch
@@ -150,6 +225,10 @@
       
       config = await response.json();
       configLoaded = true;
+
+      // The questions this dashboard was written to answer, if its folder ships them. A dashboard
+      // with no stories file answers without the field, and this stays empty.
+      stories = Array.isArray(config.stories) ? config.stories : [];
 
       // Dashboard mode: config includes raw HTML template with embedded web components
       if (config.dashboardTemplate) {
@@ -447,6 +526,50 @@
     window.requestAnimationFrame(() => scrollTo.scrollIntoView({ block: 'start' }));
   }
 
+  /**
+   * The filter bar of THIS dashboard: the `rb-parameters` the template puts inside it.
+   *
+   * A story sets that one bar and reloads that one dashboard - on the Gallery, 25 dashboards sit on
+   * one page, and none of them is any other's to touch. A nested `<rb-dashboard>` brings its own
+   * bar, so the first one inside this container is this dashboard's own.
+   */
+  function ownParameters(): any {
+    return dashboardContainer?.querySelector('rb-parameters') as any;
+  }
+
+  /** Whether there is anything to show: the attribute, and stories in the config. */
+  $: offersStories = showStories && stories.length > 0;
+
+  /**
+   * Show Me: the story's values, set as if the reader had picked them, and this dashboard reloaded.
+   *
+   * `setValues` is where the validation lives (`shared/url-start-values.ts`, shared with the values
+   * a page URL carries): an unknown name or a value outside a filter's options is ignored with one
+   * warning, and a locked parameter keeps the link's value. The page does not navigate.
+   */
+  function showMe(story: any) {
+    const params = ownParameters();
+    if (!params || typeof params.setValues !== 'function') {
+      console.warn('[RbReport] Show Me: this dashboard has no filter bar to set');
+      return;
+    }
+    lastAskedId = story?.id ?? null;
+    params.setValues(story?.params || {});
+    params.reloadNow();
+  }
+
+  /** Reset: this dashboard's own defaults, and the same reload. */
+  function resetStories() {
+    const params = ownParameters();
+    if (!params || typeof params.reset !== 'function') {
+      console.warn('[RbReport] Reset: this dashboard has no filter bar to reset');
+      return;
+    }
+    lastAskedId = null;
+    params.reset();
+    params.reloadNow();
+  }
+
   function handleDashboardParamChange(e: CustomEvent) {
     currentDashboardParams = e.detail || {};
 
@@ -485,6 +608,8 @@
       dashboardContainer.removeEventListener('toggle', handlePanelOpened, true);
     }
     if (typeof window !== 'undefined') window.removeEventListener('hashchange', openHashTarget);
+    lazyObserver?.disconnect();
+    lazyObserver = null;
   });
 
   // Helpers for aggregator reports — extract named component IDs from config
@@ -559,6 +684,26 @@
     </div>
   {/if}
   
+  <!-- The questions this dashboard was written to answer, above its filter bar: a cube's hints,
+       for a dashboard. Plain text, never `{@html}` - a stories file writes no markup. -->
+  {#if configLoaded && dashboardTemplate && !error && offersStories}
+    <div id="stories-{reportId}" class="rb-hints">
+      {#each stories as story (story.id)}
+        <div id="story-{reportId}-{story.id}" class="rb-hint" class:rb-hint-asked={story.id === lastAskedId}>
+          <div class="rb-hint-question">{story.question}</div>
+          <div class="rb-hint-text">{story.text}</div>
+          <button type="button" id="btnShowMe-{reportId}-{story.id}" class="rb-hint-showme"
+                  title="Set the filters this question asks for" on:click={() => showMe(story)}>Show Me</button>
+        </div>
+      {/each}
+      <!-- One Reset for the dashboard, not one per story: it puts every filter back to its default. -->
+      <div class="rb-hint-reset">
+        <button type="button" id="btnStoryReset-{reportId}" class="rb-hint-showme"
+                title="Put the filters back to their defaults" on:click={resetStories}>Reset</button>
+      </div>
+    </div>
+  {/if}
+
   <!-- Dashboard Mode: Inject HTML with live web components into DOM -->
   {#if configLoaded && dashboardTemplate && !error}
     <div class="rb-report-dashboard" id="widgetReport" bind:this={dashboardContainer}></div>
@@ -761,6 +906,48 @@
   
   .rb-report-dashboard {
     width: 100%;
+  }
+
+  /* The stories, in the look `RbCubeRenderer` gives a cube's hints (`rb-hints`, `rb-hint`,
+     `rb-hint-showme`), copied here so the Gallery and Cube Stories look alike. */
+  .rb-hints {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 8px 0;
+  }
+
+  .rb-hint {
+    border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  /* The story the reader asked last, marked while its values are the ones on screen. */
+  .rb-hint-asked {
+    border-color: color-mix(in oklab, currentColor 45%, transparent);
+    background: color-mix(in oklab, currentColor 6%, transparent);
+  }
+
+  .rb-hint-question {
+    font-weight: 600;
+  }
+
+  .rb-hint-text {
+    font-size: 12px;
+    color: color-mix(in oklab, currentColor 70%, transparent);
+    margin: 2px 0 6px;
+  }
+
+  .rb-hint-showme {
+    border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    padding: 3px 10px;
+    cursor: pointer;
   }
 
   .rb-report-entity-html {

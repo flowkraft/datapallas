@@ -1,0 +1,6 @@
+{
+  "number_reopened_rate_reopened" : {
+    "format" : "percent",
+    "label" : "Reopened %"
+  }
+}

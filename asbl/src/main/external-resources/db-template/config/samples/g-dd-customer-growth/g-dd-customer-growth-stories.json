@@ -1,0 +1,22 @@
+[
+  {
+    "id": "segment-enterprise",
+    "question": "Do the big accounts behave differently?",
+    "text": "Pick Enterprise on the radio: 282 customers, 8 of them new in the last 30 days, and 65% of them buy more than once against 60% of everyone.",
+    "params": {
+      "segment": "Enterprise"
+    },
+    "check": "segment-enterprise"
+  },
+  {
+    "id": "channel-referral",
+    "question": "What did the loyalty programme bring?",
+    "text": "Keep referral alone in the channel list: 898 customers, and the line shows the step in March 2025 on its own.",
+    "params": {
+      "acquisitionChannel": [
+        "referral"
+      ]
+    },
+    "check": "channel-referral"
+  }
+]
