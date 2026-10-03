@@ -608,12 +608,36 @@ e2e_count() {
 # E2E_CHROMIUM_EXECUTABLE (the target IS Electron, so the engine under test is the product's own).
 # gulp's _refreshEnv() overwrites PATH from the registry before it checks for java and mvn, so the
 # toolchain has to be on the Machine PATH for this to work at all - see plan 6.8/6.8.1.
+# Put the VM's checkout on origin/main before a Windows run, so it tests pushed code and says which. Strictly a
+# fast-forward: never reset, clean or checkout -- (plan §0.3). A tree with local changes or a history that cannot
+# fast-forward stops the run and changes nothing. The Linux lane tests this host's working tree as it is, so a
+# difference between the two (unpushed or uncommitted work here) is printed, not hidden.
+win_sync_repo() {
+  local vm host dirty
+  win_ssh "git -C $WIN_REPO fetch -q origin" >/dev/null 2>&1 ||
+    { echo "FAIL  the VM could not fetch origin (no network to GitHub?) - not running on code of unknown age." >&2; return 2; }
+  dirty=$(win_ssh "git -C $WIN_REPO status --porcelain --untracked-files=no" 2>&1 | tr -d '\r')
+  [ -z "$dirty" ] || {
+    echo "FAIL  the VM's checkout has local changes to tracked files; nothing was touched:" >&2
+    printf '%s\n' "$dirty" | head -10 >&2; return 2; }
+  win_ssh "git -C $WIN_REPO merge -q --ff-only origin/main" >/dev/null 2>&1 ||
+    { echo "FAIL  the VM's checkout cannot fast-forward to origin/main (diverged or not on main); nothing was changed." >&2; return 2; }
+  vm=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+  host=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)
+  echo "WIN_E2E_COMMIT=$vm"
+  [ "$vm" = "$host" ] || echo "WARN  this host is at $host, the VM tests $vm: the Linux lane and this one are not testing the same commit." >&2
+  [ -z "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ] ||
+    echo "WARN  this host has uncommitted changes; the VM cannot see them." >&2
+  return 0
+}
+
 win_e2e() {
   local mode=targeted out code retries spec gexp dockerv
   [ -n "${WIN_REPO:-}" ] || {
     echo "FAIL  WIN_REPO is not set: add it to $WIN_CI_CONF (the VM's checkout, e.g. C:\\...\\rb)." >&2
     return 2
   }
+  win_sync_repo || return $?
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
   # On Windows the target is Electron, so BOTH specs the Linux lane excludes belong in the full run:
   # let-me-update-migrate-configuration is Electron-only (it returns at once on web) and
@@ -1363,9 +1387,11 @@ if [ "$TASK" = "win" ]; then
     poll)  shift 2; win_run_poll "$@"; exit $? ;;
     stop)  shift 2; win_run_stop "$@"; exit $? ;;
     e2e)   shift 2; win_e2e "$@"; exit $? ;;
+    sync)  win_sync_repo; exit $? ;;
     *)     echo "usage: $0 win check | $0 win ssh <words...> | $0 win ps < script.ps1"
            echo "       $0 win run <step> <windows-working-dir> <command...>   (runs on the desktop, waits)"
            echo "       $0 win poll <step> [offset] | $0 win stop <step>"
+           echo "       $0 win sync         (fast-forward the VM's checkout to origin/main; win e2e does this first)"
            echo "       $0 win e2e          (Electron e2e on the desktop; E2E_SPEC/E2E_GREP = targeted)"; exit 2 ;;
   esac
 fi

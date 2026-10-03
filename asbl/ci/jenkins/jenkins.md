@@ -97,7 +97,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `jenkins.md` | this document |
 | `seed.groovy` | Job DSL: creates the folder and every job. The source of truth for the jobs |
 | `<job>.Jenkinsfile` | one per job: starts its script on the host over SSH |
-| `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` as a detached host process (pid in `win-e2e.pid`), log `<ts>-win-e2e-<sha>.log`, ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`) |
+| `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` as a detached host process (pid in `win-e2e.pid`), log `<ts>-win-e2e-<sha>.log`, ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`). Before every run the VM's checkout is fast-forwarded to `origin/main` (`dp-ci.sh win sync`; stops on local changes) and the commit tested is printed as `WIN_E2E_COMMIT` |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
 | `plugins.txt` | the one plugin needed beyond a standard install (`job-dsl`) |
 
