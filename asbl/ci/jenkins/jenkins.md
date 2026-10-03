@@ -97,7 +97,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `jenkins.md` | this document |
 | `seed.groovy` | Job DSL: creates the folder and every job. The source of truth for the jobs |
 | `<job>.Jenkinsfile` | one per job: starts its script on the host over SSH |
-| `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` as a detached host process (pid in `win-e2e.pid`), log `<ts>-win-e2e-<sha>.log`, ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`). Before every run the VM's checkout is fast-forwarded to `origin/main` (`dp-ci.sh win sync`; stops on local changes) and the commit tested is printed as `WIN_E2E_COMMIT` |
+| `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` as a detached host process (pid in `win-e2e.pid`), log `<ts>-win-e2e-<sha>.log`, ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`). Before every run the VM's checkout is fast-forwarded to `origin/main` (`dp-ci.sh win sync`; stops on local changes), the commit tested is printed as `WIN_E2E_COMMIT`, and the VM's package is rebuilt with `asbl/pack-prepare-for-e2e.bat` unless it was built from that commit (`WIN_E2E_PACKAGE=`; `dp-ci.sh win prepare` does both without the tests) |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
 | `plugins.txt` | the one plugin needed beyond a standard install (`job-dsl`) |
 
@@ -114,6 +114,22 @@ file, and `apps/cvs/custom-jenkins/home` is Jenkins' live data (credentials incl
 4. **Seed job** (see "The seed job" below): the only job made by hand. Freestyle, named `seed`, source = this repository, branch `main`,
    one build step "Process Job DSLs" with `asbl/ci/jenkins/seed.groovy`. Run it after any change to the jobs.
 5. **Executors**: one on the built-in node, so only one build runs at a time.
+
+## An e2e always tests the commit it names
+
+The e2e does not run the tree as it is: its testground is a copy of the package `asbl/target/package/verified-db-noexe`
+(the AI Hub apps, `db-template`, config, scripts); only the Java jars and the Angular UI are rebuilt from source on every
+run. A package from an older commit therefore tests old code under a new commit's name (found 2026-10-03: a 22 Sep package
+on the Windows VM was still sending `LIMIT 500` to SQL Server). So the package carries a stamp,
+`asbl/target/package/.built-from`, with the commit it was built from, and both lanes rebuild it before the tests unless the
+stamp is exactly the commit under test (a tree with uncommitted changes always rebuilds):
+
+| Lane | Rebuild step | Log line |
+|---|---|---|
+| Linux (`dp-ci.sh e2e`) | `prepare_package`: `mvn clean install -pl asbl -am -DskipTests` + `AssemblerTest#prepareForE2E` (= `pack-prepare-for-e2e.bat`, no JUnit, no image) | `package: built from ...` |
+| Windows VM (`dp-ci.sh win e2e`) | `win_prepare_package`: runs `asbl\pack-prepare-for-e2e.bat` unchanged on the desktop | `WIN_E2E_PACKAGE=current/stale/built` |
+
+`dp-ci.sh build` writes the same stamp after it assembles, so an e2e straight after a build does not rebuild again.
 
 ## Rules
 

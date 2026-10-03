@@ -7,8 +7,9 @@
 #                                   e2e via the SAME gulp flow as `npm run custom:start-server-and-e2e-web`
 #                                   (targeted when E2E_SPEC/E2E_GREP are set; both empty = the full suite without
 #                                   auth-authorization-server and let-me-update-migrate-configuration, which run
-#                                   separately); needs the NoExe package of a previous build
-#                                   (asbl/target/package/verified-db-noexe). E2E_SPEC is a regex on the file path:
+#                                   separately). First it makes sure the NoExe package (asbl/target/package/verified-db-noexe, which the
+#                                   testground is copied from: _apps, db-template, config) is built from THIS commit, and rebuilds it
+#                                   (= asbl/pack-prepare-for-e2e.bat, no JUnit, no image) when it is not. E2E_SPEC is a regex on the file path:
 #                                   anchor it to run one file, e.g. E2E_SPEC='/variables\.spec\.ts$'.
 #                                   Optional: E2E_TARGET=web|electron|docker-server (default web), E2E_TIMEOUT_SECS (default 72000 = 20 h).
 #                                   docker-server runs the tests against what datapallas-server-docker.zip ships (plan §3 O13):
@@ -631,6 +632,30 @@ win_sync_repo() {
   return 0
 }
 
+# The Windows twin of prepare_package: the VM's package (asbl\\target\\package) is what its testground is copied
+# from, and nothing else rebuilds it. Runs asbl\\pack-prepare-for-e2e.bat UNCHANGED, on the desktop, when the
+# stamp left by the last successful run is not the VM's commit.
+win_prepare_package() {
+  local vm built pkg="$WIN_REPO\\asbl\\target\\package"
+  vm=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+  [ -n "$vm" ] || { echo "FAIL  could not read the VM's commit" >&2; return 2; }
+  built=$(win_ssh "type $pkg\\.built-from" 2>/dev/null | tr -d '\r' | tail -1)
+  if [ "$built" = "$vm" ] && win_ssh "if exist $pkg\\verified-db-noexe\\DataPallas echo yes" 2>/dev/null | grep -q yes; then
+    echo "WIN_E2E_PACKAGE=current ($vm)"
+    return 0
+  fi
+  echo "WIN_E2E_PACKAGE=stale (built from '${built:-nothing}', the VM is at $vm) - running pack-prepare-for-e2e.bat on the desktop"
+  win_ssh "if exist $pkg\\.built-from del /q $pkg\\.built-from" >/dev/null 2>&1
+  # mvn writes to the bat's own log, so that file growing is the proof of life
+  WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-prepare-for-e2e.log" WIN_RUN_TIMEOUT=7200 WIN_RUN_STALL=2400 \
+    win_run prepare "$WIN_REPO\\asbl" 'pack-prepare-for-e2e.bat' || {
+      echo "!!! the prepare step failed; its log is asbl\\pack-prepare-for-e2e.log on the VM" >&2; return 1; }
+  win_ssh "if not exist $pkg\\verified-db-noexe\\DataPallas exit /b 1" >/dev/null 2>&1 ||
+    { echo "!!! the prepare step did not produce verified-db-noexe" >&2; return 1; }
+  win_ssh ">\"$pkg\\.built-from\" echo $vm" >/dev/null 2>&1
+  echo "WIN_E2E_PACKAGE=built ($vm)"
+}
+
 win_e2e() {
   local mode=targeted out code retries spec gexp dockerv
   [ -n "${WIN_REPO:-}" ] || {
@@ -638,6 +663,7 @@ win_e2e() {
     return 2
   }
   win_sync_repo || return $?
+  win_prepare_package || return $?
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
   # On Windows the target is Electron, so BOTH specs the Linux lane excludes belong in the full run:
   # let-me-update-migrate-configuration is Electron-only (it returns at once on web) and
@@ -918,6 +944,29 @@ if [ "${1:-}" = "--inside" ]; then
   # Same as pack-datapallas.bat STEP 2.
   mvn_build() {
     mvn -B clean install -pl asbl -am -DskipTests -U
+  }
+
+  # What the e2e runs is the product as it is PACKAGED, not as it is in the tree: the testground is a copy of
+  # asbl/target/package/verified-db-noexe (the AI Hub apps, db-template, config, scripts), and only the Java
+  # jars and the Angular UI are rebuilt from source on every run. A package from an older commit therefore
+  # tests old code under a new commit's name (2026-10-03: a 22 Sep package, still sending `LIMIT 500` to SQL
+  # Server, was run as if it were current). So the package carries a stamp of the commit it was built from, and an
+  # e2e rebuilds it whenever the stamp is not this commit. A tree with uncommitted changes is never "current".
+  # prepare_package is asbl/pack-prepare-for-e2e.bat: clean + install without tests + AssemblerTest#prepareForE2E.
+  PKG_STAMP=asbl/target/package/.built-from
+  package_stamp() { mkdir -p "$(dirname "$PKG_STAMP")" && printf '%s\n' "$SHA" > "$PKG_STAMP"; }
+  prepare_package() {
+    local built; built=$(cat "$PKG_STAMP" 2>/dev/null)
+    if [ "${SHA%-dirty}" = "$SHA" ] && [ "$built" = "$SHA" ] && [ -d asbl/target/package/verified-db-noexe/DataPallas ]; then
+      echo "package: built from $SHA, the commit under test - nothing to rebuild"
+      return 0
+    fi
+    echo "package: built from '${built:-nothing}', commit under test is $SHA - rebuilding it (pack-prepare-for-e2e.bat)"
+    rm -f "$PKG_STAMP"
+    mvn_build &&
+    mvn -B test -pl asbl -Dtest=AssemblerTest#prepareForE2E || return 1
+    [ -d asbl/target/package/verified-db-noexe/DataPallas ] || { echo "!!! the prepare step did not produce verified-db-noexe"; return 1; }
+    package_stamp
   }
 
   # Same as pack-datapallas.bat STEP 3, Linux entry point. NoExeAssembler runs the backend build
@@ -1352,13 +1401,15 @@ if [ "${1:-}" = "--inside" ]; then
     exit 0
   fi
   if [ "$TASK" = "e2e" ]; then
-    step 3 e2e_web
+    step 3 prepare_package
+    step 4 e2e_web
     echo ""
     echo "PIPELINE_RESULT=SUCCESS  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     exit 0
   fi
   step 3 mvn_build
   step 4 assemble
+  package_stamp
   step 5 tag_image
   echo ""
   echo "PIPELINE_RESULT=SUCCESS  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -1388,10 +1439,12 @@ if [ "$TASK" = "win" ]; then
     stop)  shift 2; win_run_stop "$@"; exit $? ;;
     e2e)   shift 2; win_e2e "$@"; exit $? ;;
     sync)  win_sync_repo; exit $? ;;
+    prepare) win_sync_repo && win_prepare_package; exit $? ;;
     *)     echo "usage: $0 win check | $0 win ssh <words...> | $0 win ps < script.ps1"
            echo "       $0 win run <step> <windows-working-dir> <command...>   (runs on the desktop, waits)"
            echo "       $0 win poll <step> [offset] | $0 win stop <step>"
            echo "       $0 win sync         (fast-forward the VM's checkout to origin/main; win e2e does this first)"
+           echo "       $0 win prepare      (sync, then rebuild the VM's package when it is not from the VM's commit; win e2e does this too)"
            echo "       $0 win e2e          (Electron e2e on the desktop; E2E_SPEC/E2E_GREP = targeted)"; exit 2 ;;
   esac
 fi
@@ -1470,8 +1523,6 @@ SHA=$(git rev-parse --short HEAD)
 
 E2E_FLAGS=""
 if [ "$TASK" = "e2e" ]; then
-  [ -d "$REPO/asbl/target/package/verified-db-noexe/DataPallas" ] ||
-    { echo "FAIL  e2e needs asbl/target/package/verified-db-noexe from a previous build — run: $0 build"; exit 1; }
   # host network: specs start app containers whose published ports must answer on localhost
   E2E_FLAGS="--network host --shm-size=2g"
 fi
