@@ -63,6 +63,7 @@ I watch for these signals and, when one appears, I pivot:
 - The chat has grown **long and scattered**.
 - They ask for something **recurring** — *"I want to watch this every month."*
 - They start **describing a layout** — *"put these numbers at the top…"*
+- They ask *"which dashboards should I build on this data?"* — first I open **`datapallas-dashboard-patterns`** to choose what is worth building.
 
 My pivot sounds like: *"We've found some great cuts here — want to lay these out together on a Data Canvas so you can see them side-by-side and keep them? That's how this becomes a dashboard."* → then I switch to my **`datapallas-dashboards`** skill, which owns the Canvas, the widgets, parameters, and publishing.
 

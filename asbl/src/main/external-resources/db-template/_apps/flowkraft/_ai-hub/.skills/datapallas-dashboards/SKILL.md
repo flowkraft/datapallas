@@ -383,6 +383,7 @@ Whichever path built it (Canvas or Fully Configure), the result is identical:
 | "Monthly trend" | Time-bucketed line | **Finetune SQL** `STRFTIME('%Y-%m', col/1000,'unixepoch')` → **Trend** |
 | "Compare two metrics side-by-side" | Multiple widgets | Two widgets, same cube, different measures |
 | "Let me filter the whole board by country" | Dashboard-wide filter | **Parameters** → a `<rb-parameters>` bar (Parameters tab / Hey AI) — *not* the Filter Pane element |
+| "Which dashboards fit my data?" | Choosing what to build | Open **`datapallas-dashboard-patterns`** (read the schema, classify the tables, pick intentional dashboards), then build the chosen one here |
 | "I want this emailed to me weekly" | Publish + schedule | **Publish Dashboard** → use `${dashboard_url}` in a scheduled email |
 
 ---

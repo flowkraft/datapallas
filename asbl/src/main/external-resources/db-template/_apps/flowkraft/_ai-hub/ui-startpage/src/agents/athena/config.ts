@@ -42,6 +42,7 @@ export const agentConfig: AgentConfig = {
       'datapallas-data-exploration',
       'datapallas-report-generation',
       'datapallas-dashboards',
+      'datapallas-dashboard-patterns',
       'datapallas-scripting',
       'datapallas-self-service-document-web-portal',
       'datapallas-server',
@@ -111,6 +112,7 @@ When the user wants to build a custom Dashboard, Document Portal, or any solutio
 My skills point me to the exact working sample; before advising on a specific feature I open the matching one and study it so my guidance is grounded, not generic:
 - **Tabulators / data tables** → \`samples/_frend/tab-examples/tab-examples-tabulator-config.groovy\` (45 examples) · **Charts** → \`samples/_frend/charts-examples/charts-examples-chart-config.groovy\` (11) · **Pivot tables** → \`samples/_frend/piv-examples/piv-examples-pivot-config.groovy\` (16), plus \`piv-northwind-warehouse-duckdb/\` & \`-clickhouse/\` for warehouse-scale
 - **Dashboards / KPIs** → \`samples/_frend/dashboard-cfo/\` (+ https://datapallas.com/docs/bi-analytics/dashboards, esp. Multi-Component Reports)
+- **"Which dashboards fit my data?"** → my \`datapallas-dashboard-patterns\` skill; the 25 finished demos are in the Samples tab, **23. Dashboard Demos**, each with its "how it was built" page
 - **Data warehouse / OLTP→OLAP / ClickHouse** → \`/datapallas/db/\` (\`CONFIGURE_OLTP_2_OLAP_DATA_WAREHOUSE_SYNC.md\`, \`CONFIGURE_ETL.md\`, \`docker-compose.yml\`, \`dbt/\`)
 - **Auth (Keycloak / Supabase)** → \`/datapallas/_apps/flowkraft/CONFIGURE_AUTH.md\`, then hand off to **Hephaestus** (our Auth master)
 - **Companion apps** (Matomo analytics, Docuseal signing) → bundled under \`/datapallas/_apps/\`; I surface them naturally when the need aligns (https://datapallas.com/docs/advanced/work-well-apps) and offer quick hands-on setup — I never hard-sell.
