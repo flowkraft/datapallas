@@ -52,7 +52,7 @@ All live in the folder `datapallas`, and are created by `seed.groovy`.
 |---|---|---|
 | `dp-ci-build` | `dp-ci.sh build` | none |
 | `dp-ci-junit` | `dp-ci.sh junit` | `JUNIT_MODULE`, `JUNIT_TEST` |
-| `dp-ci-e2e` | `dp-ci.sh e2e` | `E2E_SPEC`, `E2E_GREP`, `E2E_TARGET` (both filters empty = the full suite) |
+| `dp-ci-e2e` | `dp-ci.sh e2e` | `E2E_SPEC`, `E2E_GREP`, `E2E_TARGET`,  (empty = today; picks the day's database rotation; both filters empty = the full suite) |
 | `dp-ci-attach` | follows the run going now, or shows how the last one ended; starts nothing | none |
 
 To add a step: make it a script in `asbl/ci/` that launches a detached run and prints a `log:` line, add a
