@@ -52,8 +52,8 @@ All live in the folder `datapallas`, and are created by `seed.groovy`.
 |---|---|---|
 | `dp-ci-build` | `dp-ci.sh build` | none |
 | `dp-ci-junit` | `dp-ci.sh junit` | `JUNIT_MODULE`, `JUNIT_TEST` |
-| `dp-ci-e2e` | `dp-ci.sh e2e` | `E2E_SPEC`, `E2E_GREP`, `E2E_TARGET`, `E2E_ROTATION_DATE` (empty = today; the day's database rotation, e.g. 2026-09-22 = sqlserver) (both filters empty = the full suite) |
-| `dp-ci-attach` | follows the run going now, or shows how the last one ended; starts nothing | none |
+| `dp-ci-e2e` | `dp-ci.sh e2e`, or `dp-ci.sh win e2e` for `electron-windows-vm` | `E2E_SPEC`, `E2E_GREP`, `E2E_TARGET` (`web`, `electron-linux`, `electron-windows-vm`, `docker-server`), `E2E_ROTATION_DATE` (empty = today; the day's database rotation, e.g. 2026-09-22 = sqlserver) (both filters empty = the full suite) |
+| `dp-ci-attach` | follows the run going now, or shows how the last one ended; starts nothing | `LANE` (`linux` = the dp-ci container, `windows` = the Windows VM e2e) |
 
 To add a step: make it a script in `asbl/ci/` that launches a detached run and prints a `log:` line, add a
 `<name>.Jenkinsfile` here (copy `dp-ci-build.Jenkinsfile`), add an entry to `seed.groovy`, push, run `seed`.
@@ -97,6 +97,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `jenkins.md` | this document |
 | `seed.groovy` | Job DSL: creates the folder and every job. The source of truth for the jobs |
 | `<job>.Jenkinsfile` | one per job: starts its script on the host over SSH |
+| `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` as a detached host process (pid in `win-e2e.pid`), log `<ts>-win-e2e-<sha>.log`, ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`) |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
 | `plugins.txt` | the one plugin needed beyond a standard install (`job-dsl`) |
 

@@ -12,6 +12,7 @@
 #
 #   FOLLOW_CONTAINER   the run's container (default dp-ci)
 #   FOLLOW_LOG_LINK    where `attach` finds the newest log (default <LOG_DIR>/latest.log)
+#   FOLLOW_PIDFILE     the run is a process, not a container (the Windows e2e driver): alive while this pid is
 #
 # Exit: 0 when the log ends with PIPELINE_RESULT=SUCCESS, 1 when the run failed, 2 on misuse or no run.
 set -uo pipefail
@@ -19,7 +20,11 @@ set -uo pipefail
 CONTAINER="${FOLLOW_CONTAINER:-dp-ci}"
 LOG_LINK="${FOLLOW_LOG_LINK:-/var/kraft-internalsystems/logs/datapallas-ci/latest.log}"
 
-running() { [ -n "$(docker ps -q --filter "name=^${CONTAINER}$")" ]; }
+PIDFILE="${FOLLOW_PIDFILE:-}"
+running() {
+  if [ -n "$PIDFILE" ]; then kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; return; fi
+  [ -n "$(docker ps -q --filter "name=^${CONTAINER}$")" ]
+}
 
 case "${1:-}" in
   run)

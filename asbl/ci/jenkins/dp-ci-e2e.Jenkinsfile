@@ -22,7 +22,16 @@ pipeline {
         sh '''#!/bin/bash
 set -o pipefail
 q() { printf '%q' "$1"; }
-ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC") E2E_GREP=$(q "$E2E_GREP") E2E_TARGET=$(q "$E2E_TARGET") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e"
+case "$E2E_TARGET" in
+  electron-windows-vm)
+    # the Windows VM lane: dp-ci.sh win e2e, started by win-e2e.sh and followed by its pid
+    RUN="FOLLOW_PIDFILE=/var/kraft-internalsystems/logs/datapallas-ci/win-e2e.pid bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh" ;;
+  electron-linux)
+    RUN="E2E_TARGET=electron bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e" ;;
+  *)
+    RUN="E2E_TARGET=$(q "$E2E_TARGET") bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e" ;;
+esac
+ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC") E2E_GREP=$(q "$E2E_GREP") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") $RUN"
 '''
       }
     }

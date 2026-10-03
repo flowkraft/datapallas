@@ -22,7 +22,11 @@ pipeline {
         sh '''#!/bin/bash
 set -o pipefail
 q() { printf '%q' "$1"; }
-ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && bash asbl/ci/jenkins/follow-ci.sh attach"
+if [ "$LANE" = windows ]; then
+  ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && FOLLOW_PIDFILE=/var/kraft-internalsystems/logs/datapallas-ci/win-e2e.pid FOLLOW_LOG_LINK=/var/kraft-internalsystems/logs/datapallas-ci/win-e2e-latest.log bash asbl/ci/jenkins/follow-ci.sh attach"
+else
+  ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && bash asbl/ci/jenkins/follow-ci.sh attach"
+fi
 '''
       }
     }

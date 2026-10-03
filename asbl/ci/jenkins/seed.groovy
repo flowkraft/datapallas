@@ -30,13 +30,15 @@ def jobs = [
     params: [
       E2E_SPEC  : [text: 'Regex on the spec file path; anchor it to run one file, e.g. /variables\\.spec\\.ts$ . Empty = no file filter'],
       E2E_GREP  : [text: 'Regex on the test titles. Empty = no title filter'],
-      E2E_TARGET: [choices: ['web', 'electron', 'docker-server'], text: 'What the tests run against'],
+      E2E_TARGET: [choices: ['web', 'electron-linux', 'electron-windows-vm', 'docker-server'], text: 'What the tests run against. electron-windows-vm = the real Windows desktop of the VM'],
       E2E_ROTATION_DATE: [text: 'YYYY-MM-DD: whose day\'s database rotation to run (2026-09-22 = sqlserver + duckdb). Empty = today'],
     ],
   ],
   'dp-ci-attach': [
     about: 'Follow the run that is going now (or show how the last one ended). Starts nothing: use it to watch a run started elsewhere.',
-    params: [:],
+    params: [
+      LANE: [choices: ['linux', 'windows'], text: 'linux = the dp-ci container (build, junit, e2e); windows = the e2e on the Windows VM'],
+    ],
   ],
 ]
 
