@@ -65,6 +65,38 @@ All live in the folder `datapallas`, and are created by `seed.groovy`.
 To add a step: make it a script in `asbl/ci/` that launches a detached run and prints a `log:` line, add a
 `<name>.Jenkinsfile` here (copy `dp-ci-build.Jenkinsfile`), add an entry to `seed.groovy`, push, run `seed`.
 
+## The seed job (hidden from the dashboard)
+
+`seed` is the one job made by hand. It reads `asbl/ci/jenkins/seed.groovy` from GitHub `main` and creates or
+updates every job in the folder `datapallas`. **It is not automatic**: nothing triggers it. It runs only when it
+is started, by the owner or by an agent, and only needs to run when `seed.groovy` has changed.
+
+It is kept out of sight on purpose. The default dashboard view is `DataPallas`, which lists only the folder
+`datapallas`; the built-in `All` view was removed. The job itself is untouched and still there.
+
+- **Open it:** `https://jenkins.bkstg.flowkraft.com/job/seed/` (type the address; the dashboard does not list it).
+- **Run it:** the **Build Now** button on that page, or by the API as below.
+- **When:** after any change to `seed.groovy` (a job added or removed, a parameter or description changed).
+  Not needed when a `Jenkinsfile` or a script changes: those are read at the start of every build.
+- **Safe to repeat:** running it again with nothing changed creates nothing and deletes nothing; the build
+  history of the jobs is kept. It rewrites each job's definition to what `seed.groovy` says, so a change made to
+  a job in the UI is undone. It never deletes a job: one removed from `seed.groovy` stays until it is deleted
+  in the UI.
+- **Approval:** every new version of `seed.groovy` must be approved once, in *Manage Jenkins -> In-process
+  Script Approval*, otherwise the build fails with "script not yet approved for use". Approve, run it again.
+- **Rebuilding Jenkins from nothing:** create `seed` first (freestyle job, source = this repository, branch
+  `main`, sparse checkout `asbl/ci/jenkins`, one build step "Process Job DSLs" with
+  `asbl/ci/jenkins/seed.groovy`), approve the script, run it. That restores every job.
+
+**By the API (what an agent does).** The service user is `ci-agent`; its token is in the root-only file
+`/root/jenkins-ci.env` on the host (never in the repository, never printed). From the host, with `curl` run
+inside the Jenkins container (`docker exec ints-jenkins curl ...`, user and token from that file given through
+a root-only curl config file), fetch a crumb from `/crumbIssuer/api/json` and POST to `/job/seed/build`.
+Poll `/job/seed/lastBuild/api/json` for `building` and `result`; the log is `/job/seed/lastBuild/consoleText`.
+
+**Bring the `All` view back** (if the owner wants every job listed again): the `+` next to the view tabs on the
+dashboard, a *List View* that includes all jobs, or `seed` appears again in any view that matches it.
+
 ## Files in this folder
 
 | File | What it is |
@@ -86,7 +118,7 @@ file, and `apps/cvs/custom-jenkins/home` is Jenkins' live data (credentials incl
    on the host (done).
 3. **SSH key for Jenkins**: generated into the Jenkins home, public half added to the host's
    `authorized_keys` (done 2026-10-03).
-4. **Seed job**: the only job made by hand. Freestyle, named `seed`, source = this repository, branch `main`,
+4. **Seed job** (see "The seed job" below): the only job made by hand. Freestyle, named `seed`, source = this repository, branch `main`,
    one build step "Process Job DSLs" with `asbl/ci/jenkins/seed.groovy`. Run it after any change to the jobs.
 5. **Executors**: one on the built-in node, so only one build runs at a time.
 6. **The persistence proof** above.
