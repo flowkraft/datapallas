@@ -39,7 +39,7 @@ function SaveStatusIndicator() {
   }, [status]);
 
   const render = (icon: React.ReactNode, text: string, extraCls: string, title?: string) => (
-    <div className={`flex items-center gap-1.5 text-[11px] ${extraCls}`} title={title}>
+    <div id="saveStatus" className={`flex items-center gap-1.5 text-[11px] ${extraCls}`} title={title}>
       {icon}
       <span>{text}</span>
     </div>

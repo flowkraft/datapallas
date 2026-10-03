@@ -38,7 +38,7 @@ import {
   loadChecks,
   paramsItDeclares,
   declaredParams,
-  widgetsOf,
+  widgetsFor,
   type Demo,
   type DemoChecks,
   type DemoWidget,
@@ -478,7 +478,7 @@ export async function assertDemoDashboard(
 
   // The tiles it has, counted by tag: a widget that stopped being exported is a page with a hole
   // in it, and no claim below would notice on its own.
-  const widgets = widgetsOf(demo.id);
+  const widgets = widgetsFor(demo);
   for (const [type, tag] of Object.entries(TAG_OF)) {
     const expected = widgets.filter((w) => w.type === type).length;
     if (expected === 0) continue;
@@ -529,7 +529,7 @@ export async function assertClaims(
   when: string,
 ): Promise<void> {
   for (const kpi of kpis) {
-    const widget = widgetsOf(demo.id).find((w) => w.key === kpi.widget);
+    const widget = widgetsFor(demo).find((w) => w.key === kpi.widget);
     expect(widget, `${demo.id} has the widget '${kpi.widget}' its checks name`).toBeTruthy();
     const tile = tileOf(root, widget as DemoWidget);
 

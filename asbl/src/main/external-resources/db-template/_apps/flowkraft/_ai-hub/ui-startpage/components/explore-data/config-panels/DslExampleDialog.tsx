@@ -53,7 +53,7 @@ export function DslExampleDialog({ open, onClose, componentType, example }: DslE
 
         {/* Code editor — read-only, Groovy DSL */}
         <div className="flex-1 overflow-hidden p-4">
-          <div className="border border-base-300 rounded-md overflow-hidden">
+          <div id="dslExampleContainer" className="border border-base-300 rounded-md overflow-hidden">
             {CodeMirror && (
               <CodeMirror
                 value={example}

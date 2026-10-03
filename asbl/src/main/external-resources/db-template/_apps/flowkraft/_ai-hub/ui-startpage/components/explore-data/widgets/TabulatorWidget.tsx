@@ -37,7 +37,7 @@ function formatterFor(col: ColumnSchema, spec: FormatSpec): (cell: TabCell) => s
   return (cell) => formatCellHtml(cell.getValue(), col, spec);
 }
 
-function headerFormatterFor(title: string, field: string, onSettings: (f: string) => void): () => HTMLElement {
+function headerFormatterFor(widgetId: string, title: string, field: string, onSettings: (f: string) => void): () => HTMLElement {
   return () => {
     const wrap = document.createElement("div");
     wrap.className = "rb-th-wrap";
@@ -50,6 +50,8 @@ function headerFormatterFor(title: string, field: string, onSettings: (f: string
 
     const btn = document.createElement("button");
     btn.type = "button";
+    // The gear is drawn here, not by React, so it takes its id here: one per widget and column.
+    btn.id = `btnColumnSettings-${widgetId}-${field}`;
     btn.setAttribute("aria-label", `Settings for ${field}`);
     btn.title = "Column settings";
     btn.style.cssText = "flex:0 0 auto;padding:2px;border:none;background:transparent;color:color-mix(in oklab, var(--color-base-content) 60%, transparent);cursor:pointer;border-radius:3px;line-height:0;opacity:0.5;";
@@ -149,7 +151,7 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
         title,
         field,
         formatter: formatterFor(col, effective),
-        titleFormatter: headerFormatterFor(title, field, setActiveField),
+        titleFormatter: headerFormatterFor(widgetId, title, field, setActiveField),
         hozAlign: rightAlign ? "right" : undefined,
         headerHozAlign: rightAlign ? "right" : undefined,
       };

@@ -172,7 +172,7 @@ export function WidgetShell({ widgetId, type }: WidgetShellProps) {
             <div className="flex items-center justify-center h-full p-2">
               <div className="text-center">
                 <Icon className={`w-8 h-8 mx-auto mb-1.5 ${meta.color} opacity-20`} />
-                <p className="text-[11px] text-base-content/60">Edit the text in the panel on the right</p>
+                <p id={`txtTextEmptyHint-${widgetId}`} className="text-[11px] text-base-content/60">Edit the text in the panel on the right</p>
               </div>
             </div>
           )

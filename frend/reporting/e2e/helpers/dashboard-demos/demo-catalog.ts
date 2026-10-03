@@ -68,6 +68,13 @@ export interface Demo {
   finding: string;
   heightPx: number;
   howItWasBuiltUrl: string;
+  /**
+   * Set when the dashboard under test is one a recipe REBUILT in the Canvas (TODO 12) and not the
+   * shipped one: its widgets, named the way the checks name them. Its component ids differ from
+   * the shipped ones (the formula reads the widget id's last part), so the claims must look the
+   * tiles up here. Everything else about the demo (its checks, its filters) is the same by parity.
+   */
+  rebuilt?: DemoWidget[];
 }
 
 /** One claim about one tile: the value a reader must see, and how that value is read off it. */
@@ -229,6 +236,30 @@ export function widgetsOf(id: string): DemoWidget[] {
     componentId: canvasComponentId(w),
     displayConfig: (w.displayConfig ?? {}) as Record<string, unknown>,
   }));
+}
+
+/**
+ * The widgets a rebuilt canvas holds, under the keys the shipped demo's widgets have: the Nth
+ * rebuilt widget takes the key of the Nth shipped one (parity has already proved they match by
+ * order and type), and its own canvas id and component id.
+ */
+export function rebuiltWidgetsOf(id: string, rebuiltState: { widgets?: WidgetState[] }): DemoWidget[] {
+  const shipped = widgetsOf(id);
+  const widgets = rebuiltState.widgets ?? [];
+  if (widgets.length !== shipped.length)
+    throw new Error(`${id}: the rebuilt canvas has ${widgets.length} widgets, the shipped one ${shipped.length}`);
+  return widgets.map((w, i) => ({
+    id: w.id,
+    key: shipped[i].key,
+    type: w.type,
+    componentId: canvasComponentId(w),
+    displayConfig: (w.displayConfig ?? {}) as Record<string, unknown>,
+  }));
+}
+
+/** The widgets of the dashboard under test: the rebuilt ones when it is one, else the shipped ones. */
+export function widgetsFor(demo: Demo): DemoWidget[] {
+  return demo.rebuilt ?? widgetsOf(demo.id);
 }
 
 /** The widget a claim names. */

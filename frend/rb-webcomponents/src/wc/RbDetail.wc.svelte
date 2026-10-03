@@ -320,6 +320,8 @@
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "rb-col-settings";
+          // The gear is drawn here, so it takes its id here (the Canvas draws one Detail at a time).
+          btn.id = componentId ? `${componentId}_btnColumnSettings-${key}` : `btnColumnSettings-${key}`;
           btn.dataset.field = key;
           btn.setAttribute("aria-label", "Column settings for " + key);
           btn.title = "Column settings";

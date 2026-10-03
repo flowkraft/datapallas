@@ -456,7 +456,7 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
             </button>
           )}
           {hasSeriesSplit && yFields.length > 1 && (
-            <p className="text-[10px] text-amber-600">
+            <p id="chartSeriesSplitWarning" className="text-[10px] text-amber-600">
               Series-split is active — only the first metric renders. Remove the series breakout to use multiple metrics.
             </p>
           )}

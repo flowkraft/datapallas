@@ -232,7 +232,7 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
         </div>
       )}
       {/* @ts-expect-error - Web component custom element */}
-      <rb-pivot-table ref={ref} style={{ display: "block", width: "100%", flex: 1, overflow: "auto" }} />
+      <rb-pivot-table id={`widgetViz-${widget.id}`} ref={ref} style={{ display: "block", width: "100%", flex: 1, overflow: "auto" }} />
     </div>
   );
 }

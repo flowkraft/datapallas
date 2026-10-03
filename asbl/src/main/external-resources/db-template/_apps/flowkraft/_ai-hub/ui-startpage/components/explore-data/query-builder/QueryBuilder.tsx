@@ -220,14 +220,14 @@ export function QueryBuilder({ widgetId, dataSource, onChange, connectionId }: Q
 
           {/* Error */}
           {error && (
-            <div className="text-xs text-error bg-error/10 border border-error/20 rounded-md p-2 overflow-hidden">
+            <div id="queryErrorLine" className="text-xs text-error bg-error/10 border border-error/20 rounded-md p-2 overflow-hidden">
               Query error: {error.split('\n')[0].slice(0, 200)}
             </div>
           )}
 
           {/* Result count */}
           {queryResult && (
-            <div className={`text-xs font-medium transition-colors duration-300 ${justRan ? "text-green-600" : "text-base-content/60"}`}>
+            <div id="queryRowCount" className={`text-xs font-medium transition-colors duration-300 ${justRan ? "text-green-600" : "text-base-content/60"}`}>
               ✓ {queryResult.rowCount} row{queryResult.rowCount !== 1 ? "s" : ""} returned
             </div>
           )}

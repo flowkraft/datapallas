@@ -63,7 +63,7 @@ export function DslCustomizer({ dsl, onChange, componentType, columns = [], samp
       title={syncError ?? "DSL parse error"}
     >
       <span className="w-1.5 h-1.5 rounded-full bg-error" />
-      <span className="text-error">DSL error</span>
+      <span id="dslSyncError" className="text-error">DSL error</span>
     </span>
   ) : null;
 

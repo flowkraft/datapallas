@@ -1306,3 +1306,310 @@ export async function publishDashboard(
 
   return { reportId: body.reportId, dashboardUrl: body.dashboardUrl };
 }
+
+
+// ── Display settings and dialogs the Dashboard Demos' recipes need (TODO 10) ──────
+//
+// One function per thing a person does in the Display tab, in the style of `setNumberFormat`
+// above: open the tab, drive the control by its id, come back to the Data tab. Each is the only
+// place that knows its control; `helpers/dashboard-demos/recipe-runner.ts` composes them.
+
+/** Open Display tab, pick the Number widget's value field, return to Data tab. */
+export async function setNumberField(
+  page: Page,
+  field: string,
+  captureBeforeReturn?: () => Promise<void>,
+): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  const select = page.locator('#selectNumberField');
+  await select.waitFor({ state: 'visible', timeout: 10_000 });
+  await select.selectOption(field);
+  await page.waitForTimeout(300);
+  if (captureBeforeReturn) await captureBeforeReturn();
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/** Open Display tab, set the Trend widget's date, value, format and label, return to Data tab. */
+export async function setTrendConfig(
+  page: Page,
+  opts: { date?: string; value?: string; format?: string; label?: string },
+  captureBeforeReturn?: () => Promise<void>,
+): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  await page.locator('#configPanel-trend').waitFor({ state: 'visible', timeout: 10_000 });
+  if (opts.date !== undefined) await page.locator('#selectTrendDate').selectOption(opts.date);
+  if (opts.value !== undefined) await page.locator('#selectTrendValue').selectOption(opts.value);
+  if (opts.format !== undefined) await page.locator('#selectTrendFormat').selectOption(opts.format);
+  if (opts.label !== undefined) await page.locator('#inputTrendLabel').fill(opts.label);
+  await page.waitForTimeout(400);
+  if (captureBeforeReturn) await captureBeforeReturn();
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/** Open Display tab, set the Progress widget's goal (`setProgressGoal` is `{ goal }`) and the rest. */
+export async function setProgressConfig(
+  page: Page,
+  opts: { field?: string; goal?: number; format?: string; label?: string },
+  captureBeforeReturn?: () => Promise<void>,
+): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  await page.locator('#configPanel-progress').waitFor({ state: 'visible', timeout: 10_000 });
+  if (opts.field !== undefined) await page.locator('#selectProgressField').selectOption(opts.field);
+  if (opts.goal !== undefined) await page.locator('#inputProgressGoal').fill(String(opts.goal));
+  if (opts.format !== undefined) await page.locator('#selectProgressFormat').selectOption(opts.format);
+  if (opts.label !== undefined) await page.locator('#inputProgressLabel').fill(opts.label);
+  await page.waitForTimeout(400);
+  if (captureBeforeReturn) await captureBeforeReturn();
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/** The goal of a Progress widget alone. */
+export async function setProgressGoal(page: Page, goal: number): Promise<void> {
+  await setProgressConfig(page, { goal });
+}
+
+/** Open Display tab, pick the Gauge widget's value field, return to Data tab. */
+export async function setGaugeField(page: Page, field: string): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  const select = page.locator('#selectGaugeField');
+  await select.waitFor({ state: 'visible', timeout: 10_000 });
+  await select.selectOption(field);
+  await page.waitForTimeout(300);
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/** Open Display tab and pick the Map type (`region`, `pin` or `grid`). */
+export async function setMapType(page: Page, type: 'region' | 'pin' | 'grid'): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  await page.locator(`#btnMapType-${type}`).waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator(`#btnMapType-${type}`).click();
+  await page.waitForTimeout(300);
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/** Open Display tab, configure the Map widget: its type, then the fields that type shows. */
+export async function setMapConfig(
+  page: Page,
+  opts: {
+    type: 'region' | 'pin' | 'grid';
+    region?: string;
+    dimension?: string;
+    metric?: string;
+    latField?: string;
+    lonField?: string;
+  },
+  captureBeforeReturn?: () => Promise<void>,
+): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  await page.locator(`#btnMapType-${opts.type}`).waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator(`#btnMapType-${opts.type}`).click();
+  if (opts.region !== undefined) await page.locator('#selectMapRegion').selectOption(opts.region);
+  if (opts.dimension !== undefined) await page.locator('#selectMapDimension').selectOption(opts.dimension);
+  if (opts.latField !== undefined) await page.locator('#selectMapLatField').selectOption(opts.latField);
+  if (opts.lonField !== undefined) await page.locator('#selectMapLonField').selectOption(opts.lonField);
+  if (opts.metric !== undefined) await page.locator('#selectMapMetric').selectOption(opts.metric);
+  await page.waitForTimeout(400);
+  if (captureBeforeReturn) await captureBeforeReturn();
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/** Open Display tab, pick the Sankey widget's source, target and value columns. */
+export async function setSankeyFields(
+  page: Page,
+  opts: { source?: string; target?: string; value?: string },
+  captureBeforeReturn?: () => Promise<void>,
+): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  await page.locator('#configPanel-sankey').waitFor({ state: 'visible', timeout: 10_000 });
+  if (opts.source !== undefined) await page.locator('#selectSankeySource').selectOption(opts.source);
+  if (opts.target !== undefined) await page.locator('#selectSankeyTarget').selectOption(opts.target);
+  if (opts.value !== undefined) await page.locator('#selectSankeyValue').selectOption(opts.value);
+  await page.waitForTimeout(400);
+  if (captureBeforeReturn) await captureBeforeReturn();
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/** The Tabulator theme alone (`'' | midnight | simple | modern | bootstrap5 | bulma`). */
+export async function setTabulatorTheme(page: Page, theme: string): Promise<void> {
+  await setTabulatorOptions(page, { theme });
+}
+
+/**
+ * Open Display tab and set the Tabulator widget's layout, pagination, rows per page and theme, in
+ * the order the panel shows them. The page size box exists only while pagination is on, so
+ * pagination is set first.
+ */
+export async function setTabulatorOptions(
+  page: Page,
+  opts: { layout?: string; pagination?: boolean; pageSize?: number; theme?: string },
+  captureBeforeReturn?: () => Promise<void>,
+): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  await page.locator('#configPanel-tabulator').waitFor({ state: 'visible', timeout: 10_000 });
+  if (opts.layout !== undefined) await page.locator('#selectTabulatorLayout').selectOption(opts.layout);
+  if (opts.pagination !== undefined) {
+    await page.locator(`#btnTabulatorPagination-${opts.pagination ? 'on' : 'off'}`).click();
+  }
+  if (opts.pageSize !== undefined) {
+    const box = page.locator('#inputTabulatorPageSize');
+    await box.waitFor({ state: 'visible', timeout: 5_000 });
+    await box.fill(String(opts.pageSize));
+  }
+  if (opts.theme !== undefined) await page.locator('#selectTabulatorTheme').selectOption(opts.theme);
+  await page.waitForTimeout(400);
+  if (captureBeforeReturn) await captureBeforeReturn();
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(300);
+}
+
+/**
+ * Replace the current widget's DSL through the Display tab's "Customize with DSL" pane and give the
+ * serialize → parse round trip and the autosave time to land (useDslSync 600 ms + autosave 1.2 s).
+ * Used for what the pickers cannot say: a chart's series names, a pivot's fields.
+ */
+export async function setWidgetDsl(page: Page, dsl: string): Promise<void> {
+  await page.locator('#btnDisplayTab').click();
+  await page.waitForTimeout(500);
+  await openDslEditor(page);
+  const editor = page.locator('#dslEditorContainer .cm-content');
+  await editor.click();
+  await page.keyboard.press('Control+a');
+  await enterTextIntoEditor(page, dsl);
+  await page.waitForTimeout(3_000);
+  await page.locator('#btnDataTab').click();
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Open the column settings of one field of a Tabulator or Detail widget (the gear drawn in its
+ * header / next to its key), give the column a title, close the panel.
+ *
+ * The gear is drawn by the widget, not by React, so it carries its id from the code that draws it:
+ * `btnColumnSettings-<widgetId>-<field>` in a Tabulator header, `btnColumnSettings-<field>` in a Detail.
+ */
+export async function setColumnTitle(
+  page: Page,
+  gearId: string,
+  title: string,
+): Promise<void> {
+  const gear = page.locator(`[id="${gearId}"]`);
+  await gear.waitFor({ state: 'visible', timeout: 15_000 });
+  await gear.click();
+  const input = page.locator('#txtColumnTitle');
+  await input.waitFor({ state: 'visible', timeout: 5_000 });
+  await input.fill(title);
+  await page.waitForTimeout(300);
+  await page.locator('#btnDoneColumnSettings').click();
+  await page.locator('#panelColumnSettings').waitFor({ state: 'hidden', timeout: 5_000 });
+  await page.waitForTimeout(300);
+}
+
+/**
+ * Hand the cube renderer of the selected widget the whole question: ticks, grains, order, limit and
+ * the filters written on the cube. This is the renderer's own `applySelection`, the call a saved
+ * widget and a hint's Show Me come through, so the tree ends up ticked exactly as a person's clicks
+ * would leave it and `selectionChanged` regenerates the SQL. It is used because order, limit and a
+ * filter that holds a `${…}` value have no tick-box of their own.
+ */
+export async function applyCubeSelection(
+  page: Page,
+  selection: {
+    dimensions: string[];
+    measures: string[];
+    segments?: string[];
+    filters?: Array<{ member: string; operator: string; values: string[] }>;
+    granularities?: Record<string, string>;
+    order?: Array<{ member: string; dir: string }>;
+    limit?: number | null;
+  },
+): Promise<void> {
+  await page.locator('rb-cube-renderer').first().waitFor({ state: 'visible', timeout: 15_000 });
+  const accepted = await page.evaluate((ask) => {
+    const el = document.querySelector('rb-cube-renderer') as
+      (HTMLElement & { applySelection?: (s: unknown) => boolean }) | null;
+    if (!el || typeof el.applySelection !== 'function') return false;
+    return el.applySelection({
+      dimensions: ask.dimensions,
+      measures: ask.measures,
+      segments: ask.segments ?? [],
+      filters: ask.filters ?? [],
+      granularities: ask.granularities ?? {},
+      order: ask.order ?? [],
+      limit: ask.limit ?? null,
+    }) !== false;
+  }, selection);
+  if (!accepted) throw new Error(`the cube renderer refused the selection ${JSON.stringify(selection)}`);
+  // generateCubeSql round-trip + useWidgetData query + render.
+  await page.waitForTimeout(3_000);
+}
+
+/**
+ * Bind one member of the selected cube widget to a dashboard filter (the "Dashboard filter" rows
+ * under the cube picker). `index` is the row's position; `paramTo` is the upper end of a `between`.
+ */
+export async function bindCubeMember(
+  page: Page,
+  index: number,
+  binding: { member: string; operator: string; param: string; paramTo?: string },
+): Promise<void> {
+  await page.locator('#btnAddCubeBind').click();
+  await page.locator(`#selectCubeBindMember-${index}`).selectOption(binding.member);
+  await page.locator(`#selectCubeBindOp-${index}`).selectOption(binding.operator);
+  await page.locator(`#selectCubeBindParam-${index}`).selectOption(binding.param);
+  if (binding.paramTo !== undefined) {
+    await page.locator(`#selectCubeBindParamTo-${index}`).selectOption(binding.paramTo);
+  }
+  await page.waitForTimeout(1_500);
+}
+
+/**
+ * Fill the Dashboard Filters dialog's form, one row per filter: add it, name it (the id follows the
+ * label), pick its type and control, give it a default, its options and whether it is required.
+ * Opens the dialog and closes it with Done, as `addFilterBarParam` does for the DSL pane.
+ *
+ * The row's own ids change as its label is typed (`inputParamLabel-param1` becomes
+ * `inputParamLabel-region`), so each row is found under the name it starts with, then under the
+ * name its label gives it.
+ */
+export async function addFilterBarParamsByForm(
+  page: Page,
+  params: Array<{
+    label: string;
+    type?: string;
+    widget?: string;
+    defaultValue?: string;
+    options?: string;
+    required?: boolean;
+  }>,
+  captureBeforeDone?: () => Promise<void>,
+): Promise<void> {
+  await page.locator('#btnConfigureFilters').click();
+  await page.locator('#btnAddParameter').waitFor({ state: 'visible', timeout: 5_000 });
+  for (let i = 0; i < params.length; i++) {
+    const p = params[i];
+    await page.locator('#btnAddParameter').click();
+    await page.locator(`#inputParamLabel-param${i + 1}`).fill(p.label);
+    const id = p.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'param';
+    if (p.type !== undefined) await page.locator(`#selectParamType-${id}`).selectOption(p.type);
+    if (p.widget !== undefined) await page.locator(`#selectParamWidget-${id}`).selectOption(p.widget);
+    if (p.options !== undefined) await page.locator(`#inputParamOptions-${id}`).fill(p.options);
+    if (p.defaultValue !== undefined) await page.locator(`#inputParamDefault-${id}`).fill(p.defaultValue);
+    if (p.required !== undefined) await page.locator(`#inputParamRequired-${id}`).setChecked(p.required);
+    await page.waitForTimeout(200);
+  }
+  if (captureBeforeDone) {
+    await page.waitForTimeout(300);
+    await captureBeforeDone();
+  }
+  await page.locator('#btnDoneFilters').click();
+  await page.waitForTimeout(1_500);
+  await page.locator('rb-parameters').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.waitForTimeout(500);
+}

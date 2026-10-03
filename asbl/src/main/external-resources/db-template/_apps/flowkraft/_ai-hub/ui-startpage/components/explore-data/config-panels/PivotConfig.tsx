@@ -250,6 +250,7 @@ function FieldZone({
         )}
       </div>
       <div
+        id={`pivotZone-${zoneId}`}
         ref={setNodeRef}
         className={[
           "mt-1 min-h-[36px] border border-dashed rounded-md p-1.5 flex flex-wrap gap-1 transition-colors",
@@ -281,6 +282,7 @@ function AvailableZone({ fields }: { fields: ColumnSchema[] }) {
     <div>
       <span className="text-xs text-base-content/60">Available fields</span>
       <div
+        id="pivotZone-available"
         ref={setNodeRef}
         className={[
           "mt-1 min-h-[36px] border border-dashed rounded-md p-1.5 flex flex-wrap gap-1 transition-colors",

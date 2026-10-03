@@ -1094,7 +1094,7 @@
           {/if}
 
           {#if touched[p.id] && errors[p.id]?.length > 0}
-            <div class="text-danger validation-errors">
+            <div class="text-danger validation-errors" id={p.id + '_errors'}>
               {#each errors[p.id] as err}
                 <div>{err}</div>
               {/each}

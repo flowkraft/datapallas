@@ -445,7 +445,7 @@ export function SchemaBrowser({
               filteredTables.length === 0 &&
               filteredCubes.length === 0 &&
               ((schema?.tables.length ?? 0) > 0 || cubes.length > 0) && (
-                <div className="p-3 rounded-md border border-dashed border-base-300 bg-base-100/50 text-[11px] text-base-content/60">
+                <div id="schemaNoMatch" className="p-3 rounded-md border border-dashed border-base-300 bg-base-100/50 text-[11px] text-base-content/60">
                   No tables or cubes match &ldquo;{search}&rdquo;.
                 </div>
               )}
@@ -586,6 +586,7 @@ function TableNode({
             const dotColor = kind === "measure" ? "bg-emerald-500" : "bg-blue-500";
             return (
               <div
+                id={`schemaColumn-${refKey}-${col.columnName}`}
                 key={col.columnName}
                 className="flex items-center gap-1.5 px-1.5 py-0.5 text-[11px] text-base-content/60"
                 title={`${col.columnName} (${col.typeName})`}
