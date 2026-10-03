@@ -77,9 +77,9 @@ public class JasperLegacyRestRendererTest {
 	public void aDatabaseDataPallasStartedIsReachedByContainerName() {
 		// it publishes 5432 on the host and shares the 'datapallas' network with the renderer, so the
 		// renderer dials it directly and no host port - and no host firewall - is in the way (plan §4 F2n)
-		assertEquals("jdbc:postgresql://rb-northwind-postgres:5432/northwind",
+		assertEquals("jdbc:postgresql://dp-northwind-postgres:5432/northwind",
 				JasperLegacyRestRenderer.toRendererReachableUrl("jdbc:postgresql://localhost:5432/northwind",
-						(host, port) -> new String[] { "rb-northwind-postgres", "5432" }));
+						(host, port) -> new String[] { "dp-northwind-postgres", "5432" }));
 	}
 
 	@Test

@@ -22,7 +22,7 @@ import com.sourcekraft.documentburster.utils.Utils;
  * the user saved against their own machine has to be re-addressed. Two ways out, in this order:
  *
  * 1. the container that publishes that port is on the shared 'datapallas' network, so it can be reached
- *    by name on its own port ("rb-northwind-mariadb:3306"). Nothing leaves the Docker networks, so no
+ *    by name on its own port ("dp-northwind-mariadb:3306"). Nothing leaves the Docker networks, so no
  *    firewall on the host - the customer's or a CI host's - is in the way (plan §4 F2n);
  * 2. nothing publishes it, so it is a service of the customer's own machine: "host.docker.internal:&lt;port&gt;",
  *    the route that has always been used. That one does pass the host's firewall, as any host service does.

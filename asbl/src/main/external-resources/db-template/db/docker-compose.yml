@@ -1,7 +1,10 @@
+# Compose project name (volumes are <project>_<volume>, e.g. dp-db_db2_data), fixed so it does not depend on the folder name.
+name: dp-db
+
 services:
   postgres:
     image: postgres:16.2
-    container_name: rb-northwind-postgres
+    container_name: dp-northwind-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -23,7 +26,7 @@ services:
 
   mysql:
     image: mysql:8.3.0
-    container_name: rb-northwind-mysql
+    container_name: dp-northwind-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DB}
@@ -42,7 +45,7 @@ services:
       
   mariadb:
     image: mariadb:11.3.2
-    container_name: rb-northwind-mariadb
+    container_name: dp-northwind-mariadb
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_PASSWORD}
       MARIADB_DATABASE: ${MARIADB_DB}
@@ -62,7 +65,7 @@ services:
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2019-latest
-    container_name: rb-northwind-sqlserver
+    container_name: dp-northwind-sqlserver
     environment:
       ACCEPT_EULA: Y
       MSSQL_SA_PASSWORD: ${SQLSERVER_PASSWORD}
@@ -96,7 +99,7 @@ services:
 
   oracle:
     image: gvenzl/oracle-xe:21-slim-faststart
-    container_name: rb-northwind-oracle
+    container_name: dp-northwind-oracle
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-oracle}
       APP_USER: ${ORACLE_USER:-oracle}
@@ -116,7 +119,7 @@ services:
 
   db2:
     image: icr.io/db2_community/db2:11.5.9.0
-    container_name: rb-northwind-db2
+    container_name: dp-northwind-db2
     privileged: true
     environment:
       LICENSE: accept
@@ -138,7 +141,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.3-alpine
-    container_name: rb-northwind-clickhouse
+    container_name: dp-northwind-clickhouse
     environment:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
@@ -159,7 +162,7 @@ services:
 
   timescaledb:
     image: timescale/timescaledb:latest-pg16
-    container_name: rb-timeseries-timescaledb
+    container_name: dp-timeseries-timescaledb
     environment:
       POSTGRES_USER: ${TIMESCALE_USER}
       POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD}
@@ -181,7 +184,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: rb-cache-redis
+    container_name: dp-cache-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -278,7 +281,7 @@ services:
   #   build:
   #     context: ./dbt
   #     dockerfile: Dockerfile
-  #   container_name: rb-northwind-dbt
+  #   container_name: dp-northwind-dbt
   #   depends_on:
   #     clickhouse:
   #       condition: service_healthy

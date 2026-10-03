@@ -13,8 +13,8 @@ public class ContainerAddressesTest {
 
 	/** `docker ps --format "{{.Names}}\t{{.Ports}}\t{{.Networks}}"`, as Docker prints it. */
 	private static final String DOCKER_PS = String.join("\n",
-			"rb-northwind-postgres\t0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp\tdatapallas",
-			"rb-northwind-mariadb\t0.0.0.0:3307->3306/tcp, [::]:3307->3306/tcp\tdatapallas",
+			"dp-northwind-postgres\t0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp\tdatapallas",
+			"dp-northwind-mariadb\t0.0.0.0:3307->3306/tcp, [::]:3307->3306/tcp\tdatapallas",
 			"datapallas-server\t0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp\tdatapallas",
 			"someone-elses-postgres\t0.0.0.0:6543->5432/tcp\tbridge",
 			"an-app-on-two-networks\t0.0.0.0:8440->8440/tcp\tai-hub-network,datapallas",
@@ -22,12 +22,12 @@ public class ContainerAddressesTest {
 
 	@Test
 	void theContainerPublishingThePortIsFoundByNameAndItsOwnPort() {
-		assertThat(ContainerAddresses.parse(DOCKER_PS, "3307")).isEqualTo("rb-northwind-mariadb:3306");
+		assertThat(ContainerAddresses.parse(DOCKER_PS, "3307")).isEqualTo("dp-northwind-mariadb:3306");
 	}
 
 	@Test
 	void aPortThatIsPublishedUnchangedStillGivesTheContainerName() {
-		assertThat(ContainerAddresses.parse(DOCKER_PS, "5432")).isEqualTo("rb-northwind-postgres:5432");
+		assertThat(ContainerAddresses.parse(DOCKER_PS, "5432")).isEqualTo("dp-northwind-postgres:5432");
 	}
 
 	@Test
