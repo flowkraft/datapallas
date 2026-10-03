@@ -646,6 +646,14 @@ win_prepare_package() {
   fi
   echo "WIN_E2E_PACKAGE=stale (built from '${built:-nothing}', the VM is at $vm) - running pack-prepare-for-e2e.bat on the desktop"
   win_ssh "if exist $pkg\\.built-from del /q $pkg\\.built-from" >/dev/null 2>&1
+  # A build killed by an earlier run (win_run_stop only ends the step's own cmd.exe) can leave Maven and its test JVM
+  # alive, holding the files this step deletes: the 2026-10-03 rerun then "finished" in 3 minutes with exit 0 and no
+  # package. Only processes of the CI's private toolchain (C:\ci\tools) are touched.
+  win_ps >/dev/null 2>&1 <<'PS'
+Get-CimInstance Win32_Process -Filter "Name='java.exe'" |
+  Where-Object { $_.CommandLine -like '*C:\ci\tools\*' } |
+  ForEach-Object { & taskkill /pid $_.ProcessId /t /f 2>&1 | Out-Null }
+PS
   # mvn writes to the bat's own log, so that file growing is the proof of life. The step runs the product's whole
   # JUnit suite (NoExeAssembler's `mvn clean install` has no -DskipTests) and one test class is quiet for 13+
   # minutes, so the silence budget is the same as the cap: 40 minutes of it killed the first run (2026-10-03).
