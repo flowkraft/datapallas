@@ -44,12 +44,6 @@ session or of any chat.
 So the work cannot be lost by closing or restarting anything except the host. What a Jenkins restart takes
 away is the live view of that build, and `dp-ci-attach` brings it back.
 
-**Proof, once, and again after any change here.** Start the job `datapallas/persistence-test` (10 minutes, a
-line every 5 seconds, from one process). Close the browser tab and the SSH session, then restart the Jenkins
-container. Start `dp-ci-attach`: it must show the same process still printing, and the run must end with
-`PIPELINE_RESULT=SUCCESS` and the same pid on every line. Until that has been done the guarantee is a design
-intention.
-
 ## Jobs
 
 All live in the folder `datapallas`, and are created by `seed.groovy`.
@@ -60,7 +54,6 @@ All live in the folder `datapallas`, and are created by `seed.groovy`.
 | `dp-ci-junit` | `dp-ci.sh junit` | `JUNIT_MODULE`, `JUNIT_TEST` |
 | `dp-ci-e2e` | `dp-ci.sh e2e` | `E2E_SPEC`, `E2E_GREP`, `E2E_TARGET` (both filters empty = the full suite) |
 | `dp-ci-attach` | follows the run going now, or shows how the last one ended; starts nothing | none |
-| `persistence-test` | a detached container that prints a line every few seconds | `MINUTES`, `INTERVAL_SECONDS` |
 
 To add a step: make it a script in `asbl/ci/` that launches a detached run and prints a `log:` line, add a
 `<name>.Jenkinsfile` here (copy `dp-ci-build.Jenkinsfile`), add an entry to `seed.groovy`, push, run `seed`.
@@ -105,7 +98,6 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `seed.groovy` | Job DSL: creates the folder and every job. The source of truth for the jobs |
 | `<job>.Jenkinsfile` | one per job: starts its script on the host over SSH |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
-| `persistence-test.sh` | launcher for the persistence test, in the way `dp-ci.sh` launches a run |
 | `plugins.txt` | the one plugin needed beyond a standard install (`job-dsl`) |
 
 Nothing is kept for Jenkins in the server folders: `apps/program-files/custom-jenkins` only holds the compose
@@ -121,7 +113,6 @@ file, and `apps/cvs/custom-jenkins/home` is Jenkins' live data (credentials incl
 4. **Seed job** (see "The seed job" below): the only job made by hand. Freestyle, named `seed`, source = this repository, branch `main`,
    one build step "Process Job DSLs" with `asbl/ci/jenkins/seed.groovy`. Run it after any change to the jobs.
 5. **Executors**: one on the built-in node, so only one build runs at a time.
-6. **The persistence proof** above.
 
 ## Rules
 

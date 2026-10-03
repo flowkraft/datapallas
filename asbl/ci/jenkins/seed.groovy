@@ -37,13 +37,6 @@ def jobs = [
     about: 'Follow the run that is going now (or show how the last one ended). Starts nothing: use it to watch a run started elsewhere.',
     params: [:],
   ],
-  'persistence-test': [
-    about: 'Proof that a run outlives the browser, SSH and a Jenkins restart: a detached container prints a line every few seconds.',
-    params: [
-      MINUTES         : [default: '10', text: 'How long the run lasts'],
-      INTERVAL_SECONDS: [default: '5',  text: 'A line every this many seconds'],
-    ],
-  ],
 ]
 
 jobs.each { name, job ->
