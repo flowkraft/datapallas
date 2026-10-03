@@ -473,6 +473,18 @@ export async function assertDemoDashboard(
   demo: Demo,
   checks: DemoChecks = loadChecks(demo.id),
 ): Promise<void> {
+  await assertDemoDrawn(root, demo);
+  await assertClaims(root, demo, checks.defaults, checks.kpis, 'at its defaults');
+  await assertUniqueIds(root);
+}
+
+/**
+ * The first two of those things, with no claim about a number: the tiles are all there, and each one
+ * has drawn real content. It is all a page can promise about a dashboard whose data was seeded on
+ * another day (the public installation, `dashboard-demos.public.ts`), where a claim's number is the
+ * local run's and not the page's.
+ */
+export async function assertDemoDrawn(root: Locator, demo: Demo): Promise<void> {
   const dashboard = root.locator('rb-dashboard');
   await expect(dashboard, `${demo.id} is on the page`).toBeVisible({ timeout: 60_000 });
 
@@ -516,8 +528,6 @@ export async function assertDemoDashboard(
     }
   }
 
-  await assertClaims(root, demo, checks.defaults, checks.kpis, 'at its defaults');
-  await assertUniqueIds(root);
 }
 
 /** Every claim of one set of filter values, read off the tile and out of the answer behind it. */

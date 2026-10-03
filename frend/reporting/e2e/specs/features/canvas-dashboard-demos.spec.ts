@@ -15,7 +15,9 @@
 // How to run (the owner does; written and type-checked, never run by the phase that wrote it):
 //   E2E_SPEC='canvas-dashboard-demos' bash asbl/ci/dp-ci.sh e2e
 //   E2E_SPEC='canvas-dashboard-demos' E2E_GREP='DD14' bash asbl/ci/dp-ci.sh e2e        (one demo)
-//   E2E_DD_SCREENSHOTS=1 ... (the "How it was built" pictures: taken by Phase D's build-shots.ts)
+//   E2E_DD_SCREENSHOTS=1 E2E_SPEC='canvas-dashboard-demos' bash asbl/ci/dp-ci.sh e2e
+//       (also takes the "How it was built" pictures, build-shots.ts: into the docs site's
+//        public/images/docs/dashboard-demos/<nn>-<id>/, with a steps.json beside them)
 //
 // Needs the web components staged first: npm run custom:compile-and-stage-web-components.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -36,7 +38,8 @@ import {
   watchForErrors,
 } from '../../helpers/dashboard-demos/published-dashboard-checks';
 import { assertSameCanvas, stateOf } from '../../helpers/dashboard-demos/canvas-parity';
-import { runRecipe, shotsEnabled } from '../../helpers/dashboard-demos/recipe-runner';
+import { runRecipe } from '../../helpers/dashboard-demos/recipe-runner';
+import { createBuildShots } from '../../helpers/dashboard-demos/build-shots';
 import type { Recipe } from '../../helpers/dashboard-demos/recipe';
 import {
   AI_HUB_APP_ID,
@@ -93,9 +96,6 @@ test.describe('Dashboard Demos rebuilt in the Canvas', () => {
     // The sample connection the demos live on is hidden until this preference is on.
     showedSamplesBefore = await readShowSamples(page);
     await setShowSamples(page, true);
-    if (shotsEnabled()) {
-      console.warn('E2E_DD_SCREENSHOTS is set: the pictures are taken by Phase D (build-shots.ts); this run takes none.');
-    }
   });
 
   test.afterAll(async () => {
@@ -117,7 +117,10 @@ test.describe('Dashboard Demos rebuilt in the Canvas', () => {
       try {
         await withFreshCanvas(page, canvasName, async (canvasId) => {
           // 1. Everything done through the UI, as a person does it.
-          const published = await runRecipe(page, recipe);
+          // With E2E_DD_SCREENSHOTS=1 the same run leaves the demo's "How it was built" pictures (build-shots.ts).
+          const shots = createBuildShots(page, recipe, demo);
+          await shots.start();
+          const published = await runRecipe(page, recipe, { capture: shots.capture });
           reportId = published.reportId;
           expect(canvasIdOf(page), 'the recipe stayed on its canvas').toBe(canvasId);
 
@@ -140,6 +143,9 @@ test.describe('Dashboard Demos rebuilt in the Canvas', () => {
 
           // 4. Publishing again changes nothing about where it lives (DD02 only, the demo with a title to change).
           if (demo.id === 'dd-sales-overview') await rePublishKeepsTheReport(canvasId, published.reportId, canvasName);
+
+          // 5. The last pictures: the published dashboard, and a story answered on it.
+          await shots.finish(published);
         });
       } finally {
         if (reportId) await deleteReportAsAdmin(reportId);
