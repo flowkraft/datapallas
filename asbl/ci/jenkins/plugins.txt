@@ -1,0 +1,7 @@
+# Plugins this setup needs beyond a standard install. One per line, `name:latest`.
+# Installed by hand once, or with `jenkins-plugin-cli --plugin-file plugins.txt` inside the container.
+#
+# Already present on the current Jenkins and used here: workflow-aggregator (Pipeline), workflow-job,
+# cloudbees-folder, ssh-slaves (SSH agent nodes), git, credentials, durable-task, timestamper,
+# build-timeout, ws-cleanup, matrix-auth.
+job-dsl:latest
