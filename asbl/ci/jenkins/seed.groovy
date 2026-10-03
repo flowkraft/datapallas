@@ -5,8 +5,8 @@
 // Jenkinsfile runs a plain script from asbl/ci on the host over SSH: the very scripts that are run by hand,
 // in the very same CI container. No secrets in here: the repository is public.
 
-def repo   = 'https://github.com/flowkraft/datapallas.git'
-def branch = '*/main'
+def repoUrl    = 'https://github.com/flowkraft/datapallas.git'
+def repoBranch = '*/main'
 
 folder('datapallas') {
   description('DataPallas CI. The jobs are defined in asbl/ci/jenkins/seed.groovy: change them there, not here.')
@@ -62,8 +62,8 @@ jobs.each { name, job ->
       cpsScm {
         scm {
           git {
-            remote { url(repo) }
-            branch(branch)
+            remote { url(repoUrl) }
+            branch(repoBranch)
           }
         }
         scriptPath("asbl/ci/jenkins/${name}.Jenkinsfile")
