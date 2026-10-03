@@ -646,8 +646,10 @@ win_prepare_package() {
   fi
   echo "WIN_E2E_PACKAGE=stale (built from '${built:-nothing}', the VM is at $vm) - running pack-prepare-for-e2e.bat on the desktop"
   win_ssh "if exist $pkg\\.built-from del /q $pkg\\.built-from" >/dev/null 2>&1
-  # mvn writes to the bat's own log, so that file growing is the proof of life
-  WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-prepare-for-e2e.log" WIN_RUN_TIMEOUT=7200 WIN_RUN_STALL=2400 \
+  # mvn writes to the bat's own log, so that file growing is the proof of life. The step runs the product's whole
+  # JUnit suite (NoExeAssembler's `mvn clean install` has no -DskipTests) and one test class is quiet for 13+
+  # minutes, so the silence budget is the same as the cap: 40 minutes of it killed the first run (2026-10-03).
+  WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-prepare-for-e2e.log" WIN_RUN_TIMEOUT=14400 WIN_RUN_STALL=7200 \
     win_run prepare "$WIN_REPO\\asbl" 'pack-prepare-for-e2e.bat' || {
       echo "!!! the prepare step failed; its log is asbl\\pack-prepare-for-e2e.log on the VM" >&2; return 1; }
   win_ssh "if not exist $pkg\\verified-db-noexe\\DataPallas exit /b 1" >/dev/null 2>&1 ||
@@ -1117,6 +1119,10 @@ if [ "${1:-}" = "--inside" ]; then
       [ -n "$tag" ] && { echo "docker-server: image of the newest successful build $(basename "$f") -> $tag"; break; }
     done
     [ -n "${tag:-}" ] || { echo "!!! docker-server: no successful build log with an IMAGE_TAG line — run 'dp-ci.sh build' first"; return 1; }
+    # The image must come from the commit under test: the tag is <version>-<commit>. An image from an older
+    # build would test old code under this commit's name (nothing is built here, so the only safe answer is no).
+    [ "${tag#*-}" = "$SHA" ] ||
+      { echo "!!! docker-server: the image was built from '${tag#*-}', the commit under test is '$SHA' — run 'dp-ci.sh build' (job dp-ci-build) first"; return 1; }
     image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
       { echo "!!! docker-server: image $SERVER_IMAGE_REPO:$tag is not on this host — run 'dp-ci.sh build' first"; return 1; }
     [ -s "$zip" ] || { echo "!!! docker-server: $zip is missing — run 'dp-ci.sh build' first"; return 1; }
