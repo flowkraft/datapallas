@@ -61,7 +61,7 @@
 		<pdfbox.version>2.0.34</pdfbox.version>
 		<bouncycastle.version>1.46</bouncycastle.version>
 		<icu4j.version>67.1</icu4j.version>
-		<groovy.all.version>4.0.27</groovy.all.version>
+		<groovy.all.version>6.0.0</groovy.all.version>
 		<jackson.version>2.19.1</jackson.version>
 		<jersey.version>2.47</jersey.version>
 		<freemarker.version>2.3.30</freemarker.version>
