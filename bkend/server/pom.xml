@@ -462,6 +462,26 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- SpotBugs + find-sec-bugs, run on demand by `mvn spotbugs:spotbugs` (asbl/ci/dp-ci.sh quality); same configuration as the root pom, which this module does not inherit. Report only. -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.8.5.0</version>
+				<configuration>
+					<effort>Default</effort>
+					<threshold>Medium</threshold>
+					<xmlOutput>true</xmlOutput>
+					<failOnError>false</failOnError>
+					<maxHeap>2048</maxHeap>
+					<plugins>
+						<plugin>
+							<groupId>com.h3xstream.findsecbugs</groupId>
+							<artifactId>findsecbugs-plugin</artifactId>
+							<version>1.13.0</version>
+						</plugin>
+					</plugins>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

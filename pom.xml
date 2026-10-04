@@ -890,6 +890,28 @@
 						<quiet>true</quiet>
 					</configuration>
 				</plugin>
+				<!-- SpotBugs + find-sec-bugs (bug finder with a security rule set), run on demand by `mvn spotbugs:spotbugs` (asbl/ci/dp-ci.sh quality), not
+				     part of the build. Report only: failOnError false, and the goal `check` (which fails) is never used. The old <reporting> entry of the shared pom
+				     (for `mvn site`) is untouched. bkend/server has another parent and carries the same configuration itself. -->
+				<plugin>
+					<groupId>com.github.spotbugs</groupId>
+					<artifactId>spotbugs-maven-plugin</artifactId>
+					<version>${maven.spotbugs.plugin.version}</version>
+					<configuration>
+						<effort>Default</effort>
+						<threshold>Medium</threshold>
+						<xmlOutput>true</xmlOutput>
+						<failOnError>false</failOnError>
+						<maxHeap>2048</maxHeap>
+						<plugins>
+							<plugin>
+								<groupId>com.h3xstream.findsecbugs</groupId>
+								<artifactId>findsecbugs-plugin</artifactId>
+								<version>1.13.0</version>
+							</plugin>
+						</plugins>
+					</configuration>
+				</plugin>
 				<!-- Coverage of the unit tests. Declared (without a version) by each Java module that has tests; the report
 				     is bound to the test phase so that `mvn test` writes target/site/jacoco (jacoco.xml + html). Never gating.
 				     bkend/server has another parent and carries the same configuration itself. -->

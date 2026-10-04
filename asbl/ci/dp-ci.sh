@@ -1482,6 +1482,17 @@ if [ "${1:-}" = "--inside" ]; then
     quality_prettier_check prettier-aihub "$QUALITY_AIHUB" . || rc=1
     return $rc
   }
+  # SpotBugs + find-sec-bugs (J16) over the four Java modules (classes from quality_prepare): report only, the goal is `spotbugs`, never `check`.
+  # Each module's target/spotbugsXml.xml is copied as <module>.xml next to the run log.
+  quality_spotbugs() {
+    local out m rc=0; out=$(quality_out spotbugs) || return 1
+    mvn -B spotbugs:spotbugs -pl bkend/common,bkend/update,bkend/reporting,bkend/server || rc=1
+    for m in common update reporting server; do
+      if [ -f "bkend/$m/target/spotbugsXml.xml" ]; then cp "bkend/$m/target/spotbugsXml.xml" "$out/$m.xml"
+      else echo "quality: spotbugs: no report for $m"; rc=1; fi
+    done
+    return $rc
+  }
   # the tools of the quality plan, one line each, in this order; each adds its report under quality_out and never fails the run
   quality_tools() {
     quality_tool javadoc quality_javadoc
@@ -1490,6 +1501,7 @@ if [ "${1:-}" = "--inside" ]; then
     quality_tool eslint-aihub quality_eslint_aihub
     quality_tool prettier-angular quality_prettier_angular
     quality_tool prettier-aihub quality_prettier_aihub
+    quality_tool spotbugs quality_spotbugs
   }
   quality_result() {
     local n=0 ok=0 s

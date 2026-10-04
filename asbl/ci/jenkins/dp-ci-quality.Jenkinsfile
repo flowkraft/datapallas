@@ -57,6 +57,8 @@ exit 0
         recordIssues(tool: esLint(pattern: 'reports/prettier-angular/eslint.xml', id: 'prettier-angular', name: 'Prettier Angular'), enabledForFailure: true, skipBlames: true)
         recordIssues(tool: esLint(pattern: 'reports/prettier-aihub/eslint.xml', id: 'prettier-aihub', name: 'Prettier AI Hub'), enabledForFailure: true, skipBlames: true)
         archiveArtifacts artifacts: 'reports/prettier-*/prettier-check.txt', allowEmptyArchive: true
+        // SpotBugs + find-sec-bugs (J16): the findings of the four Java modules, one Warnings Next Generation result (category, priority, file).
+        recordIssues(tool: spotBugs(pattern: 'reports/spotbugs/*.xml', useRankAsPriority: true, id: 'spotbugs', name: 'SpotBugs'), enabledForFailure: true, skipBlames: true)
         // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }
