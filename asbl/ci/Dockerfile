@@ -6,7 +6,7 @@
 # its own host path. Docker images are built by the HOST daemon through the
 # mounted /var/run/docker.sock.
 # =============================================================================
-FROM maven:3.9.9-eclipse-temurin-17
+FROM maven:3-eclipse-temurin-24
 
 RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
     apt-get update && apt-get install -y --no-install-recommends \
