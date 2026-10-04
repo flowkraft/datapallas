@@ -47,7 +47,10 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC")
         sh '''#!/bin/bash
 rm -rf reports; mkdir -p reports
 q() { printf '%q' "$1"; }
-ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/jenkins/pull-reports.sh $REPORT_PATHS" | tar xzf - -C reports || echo "Reports: nothing pulled"
+# the Windows lane has its own newest-log link, and its step log (dp-ci.sh win e2e) names the files <log>-step-playwright...
+LOGDIR=/var/kraft-internalsystems/logs/datapallas-ci; LOGLINK=$LOGDIR/latest.log; RP="$REPORT_PATHS"
+if [ "$E2E_TARGET" = electron-windows-vm ]; then LOGLINK=$LOGDIR/win-e2e-latest.log; RP="@run/-step-playwright.xml @run/-step-playwright-html"; fi
+ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && CI_LOG_LINK=$(q "$LOGLINK") bash asbl/ci/jenkins/pull-reports.sh $RP" | tar xzf - -C reports || echo "Reports: nothing pulled"
 # the run's files are named after its log (<ts>-e2e-<sha>-playwright...): give them the fixed names the publishers need
 for f in reports/*-playwright.xml; do [ -e "$f" ] && mv "$f" reports/playwright.xml; done
 for d in reports/*-playwright-html; do [ -e "$d" ] && rm -rf reports/playwright-html && mv "$d" reports/playwright-html; done
