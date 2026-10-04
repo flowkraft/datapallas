@@ -47,7 +47,7 @@
 		<html-exporter.version>0.5.5</html-exporter.version>
 		<fop.version>2.11</fop.version>
 		<picocli.version>4.7.7</picocli.version>
-		<commons.email.version>1.5</commons.email.version>
+		<commons.email.version>1.6.0</commons.email.version>
 		<commons.vfs.version>2.6.0</commons.vfs.version>
 		<hikaricp.version>6.3.0</hikaricp.version>
 		<commons.net.version>3.7</commons.net.version>
