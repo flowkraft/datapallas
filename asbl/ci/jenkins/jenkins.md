@@ -127,6 +127,49 @@ The Robot UAT (`asbl/src/uat/run-tests.bat`, results in `asbl/src/uat/results/`:
 The Jenkins side is ready: when a UAT step of the lane copies `results/` to the host as `<step log of the run, without .log>-robot` (like `-playwright-html` next to it),
 `dp-ci-e2e` with `E2E_TARGET=electron-windows-vm` pulls it and shows it with the Robot Framework plugin. Until then nothing is shown and nothing fails.
 
+## Quality reports (one place to look)
+
+Every tool below is **non-gating**: it shows a report on the build page and never changes a build's result. Nothing in this section has been run yet (the plan only configured it);
+the first-run checklist is at the end. Jenkins folder `datapallas`, each job's build page: https://jenkins.bkstg.flowkraft.com/job/datapallas/.
+
+| Tool | Job | Where to click on the build page |
+|---|---|---|
+| JUnit (Surefire XML of every Java module) | `dp-ci-junit` | "Test Result" (counts, failed tests, trend) |
+| JaCoCo coverage | `dp-ci-junit` | "Coverage" (percentages, trend); "JaCoCo common / reporting / server" (HTML with the source of each class) |
+| Error Prone + NullAway (javac warnings) | `dp-ci-junit` | "Error Prone" warnings table |
+| Playwright | `dp-ci-e2e` | "Test Result" (JUnit XML) and "Playwright report" (HTML: steps, screenshots, trace) |
+| Robot Framework UAT (Windows lane) | `dp-ci-e2e` with `E2E_TARGET=electron-windows-vm` | "Robot Results" (nothing until a UAT step of the lane produces it) |
+| springdoc OpenAPI + Swagger UI | `dp-ci-e2e` with `E2E_TARGET=docker-server` | "Swagger UI (OpenAPI)" and the archived `openapi.json` |
+| Trivy (image CVEs, HIGH and CRITICAL) | `dp-ci-build` | "Trivy" warnings table; the same table is in the console log |
+| Javadoc | `dp-ci-quality` | "Javadoc" |
+| Compodoc | `dp-ci-quality` | "Compodoc" |
+| ESLint (Angular, AI Hub) | `dp-ci-quality` | "ESLint Angular", "ESLint AI Hub" |
+| Prettier (Angular, AI Hub) | `dp-ci-quality` | "Prettier Angular", "Prettier AI Hub" tables; the full file list is in the console and `QUALITY_RESULT` (`unformatted-<app>=N`) |
+| SpotBugs + find-sec-bugs | `dp-ci-quality` | "SpotBugs" |
+| Spotless | `dp-ci-quality` | "Spotless" (table per Java file; the raw output is an archived artifact) |
+| PMD complexity, CPD | `dp-ci-quality` | "PMD complexity", "Duplicated code" |
+| ESLint complexity (Angular, AI Hub) | `dp-ci-quality` | "Complexity Angular", "Complexity AI Hub" |
+| Dependabot, CodeQL | GitHub, not Jenkins | see "GitHub: Dependabot and CodeQL" |
+
+`dp-ci-quality` ends its console log with a `QUALITY_RESULT` line: how many tools ran, which ended with a non-zero code (`<tool>=rcN`) and some counts.
+
+### First-run checklist for the owner
+
+1. The one-time Jenkins steps below, in order: install the plugins, relax the CSP, restart Jenkins, run `seed` (and approve the new `seed.groovy`), then the GitHub settings.
+2. Run **`dp-ci-junit`** first: JaCoCo and Error Prone change the Java compile, so this is where a mistake shows first. If the compile breaks, remove the block marked "Error Prone + NullAway" in the poms.
+3. Run **`dp-ci-quality`**, then **`dp-ci-build`** (Trivy), then **`dp-ci-e2e`** (Playwright; for the OpenAPI page use `E2E_TARGET=docker-server`, after a build of the same commit).
+4. Open each table above once. An empty table next to a fine console log means the parser does not fit that tool's output: the raw output is archived or in the console, tell an agent which.
+
+### The least certain changes (never run)
+
+- **Error Prone + NullAway**: touches every Java compile (Linux and the Windows package build); the `-J` flags, the forked javac of the server and the Maven-console parser are all unproven.
+- **The Spotless converter** (`spotless-to-checkstyle.py`): written from the documented message format, tried only on a hand-written sample.
+- **The AI Hub ESLint flat configs** (lint, Prettier, complexity) and the checkstyle formatter installed in the CI scratch copy; also the `sonarjs` plugin version in each app.
+- **Trivy**: the install in the CI image and the Warnings Next Generation `trivy` parser fit the JSON.
+- **The Robot pull**: no UAT step produces the report yet (W9); only the Jenkins side exists.
+- **The PMD plugin version** (3.26.0, PMD 7) and the rule names, and the CPD parser.
+- **OpenAPI / Swagger UI**: `/v3/api-docs` may need a login on the secured backend; the page needs the CSP relaxation, and the Playwright trace viewer may not open from Jenkins.
+
 ## One-time steps for the owner (Jenkins side of the quality plan)
 
 The quality plan only writes files in the repository. These steps change the running Jenkins and are done by the owner, once, in this order,
