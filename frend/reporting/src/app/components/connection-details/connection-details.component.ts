@@ -940,14 +940,15 @@ export class ConnectionDetailsComponent implements OnInit {
   private ambiguousFor: any[] | null = null;
   private ambiguousNames = new Set<string>();
 
-  /** Table names that occur in more than one schema of the loaded database (memoised per loaded table list). */
+  /** Lower-cased table names that occur in more than one schema of the loaded database (memoised per loaded table list). */
   private getAmbiguousNames(): Set<string> {
     const tables: any[] = this.rawSchemaData?.tables || [];
     if (this.ambiguousFor !== tables) {
       const schemasByName = new Map<string, Set<string>>();
       for (const t of tables) {
-        if (!schemasByName.has(t.tableName)) schemasByName.set(t.tableName, new Set());
-        schemasByName.get(t.tableName)!.add(t.schemaName || '');
+        const name = String(t.tableName).toLowerCase(); // node ids are lower-cased: Orders and orders collide
+        if (!schemasByName.has(name)) schemasByName.set(name, new Set());
+        schemasByName.get(name)!.add(t.schemaName || '');
       }
       this.ambiguousNames = new Set(
         [...schemasByName].filter(([, schemas]) => schemas.size > 1).map(([name]) => name),
@@ -958,12 +959,14 @@ export class ConnectionDetailsComponent implements OnInit {
   }
 
   /**
-   * Identity of a table in the schema trees. The bare table name, except where the same name
-   * lives in more than one schema ("schema__table" then), so the node ids that tests and users
-   * know stay as they are wherever the name is unique. "__" keeps the key valid in a CSS id.
+   * Identity of a table in the schema trees. The bare table name, except for a table that is NOT in the
+   * connection's default schema while the same name lives in more than one schema ("schema__table" then).
+   * The default schema's tables and every unique name keep the ids that tests and users know, the same rule
+   * the backend states for SchemaInfo.defaultSchema. "__" keeps the key valid in a CSS id.
    */
   private tableKey(t: { tableName?: string; schemaName?: string | null }): string {
-    return t.schemaName && this.getAmbiguousNames().has(t.tableName as string)
+    const inDefaultSchema = !t.schemaName || t.schemaName === this.rawSchemaData?.defaultSchema;
+    return !inDefaultSchema && this.getAmbiguousNames().has(String(t.tableName).toLowerCase())
       ? `${t.schemaName}__${t.tableName}`
       : (t.tableName as string);
   }

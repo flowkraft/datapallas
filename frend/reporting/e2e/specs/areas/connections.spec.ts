@@ -654,6 +654,8 @@ test.describe('', async () => {
         .click('#btnClearLogs')
         .clickYesDoThis()
         .waitOnElementToBecomeDisabled('#btnClearLogs')
+        // See step 6: wait for the stats push that says the logs are empty.
+        .sleep(Constants.DELAY_ONE_SECOND)
         .waitOnElementToBecomeVisible('#btnSendTestEmail')
         .waitOnElementToBecomeEnabled('#btnSendTestEmail')
         .click('#btnSendTestEmail')
@@ -685,6 +687,9 @@ test.describe('', async () => {
         .click('#btnClearLogs')
         .clickYesDoThis()
         .waitOnElementToBecomeDisabled('#btnClearLogs')
+        // The button is disabled while the clear request runs, before the stats push (every 250 ms) has told
+        // the page the logs are empty; Send Test Email refuses with "Log files are not empty" until it has.
+        .sleep(Constants.DELAY_ONE_SECOND)
         .waitOnElementToBecomeEnabled('#btnSendTestEmail')
         .click('#btnSendTestEmail')
         .clickYesDoThis()
@@ -706,6 +711,9 @@ test.describe('', async () => {
         .click('#btnClearLogs')
         .clickYesDoThis()
         .waitOnElementToBecomeDisabled('#btnClearLogs')
+        // The button is disabled while the clear request runs, before the stats push (every 250 ms) has told
+        // the page the logs are empty; Send Test Email refuses with "Log files are not empty" until it has.
+        .sleep(Constants.DELAY_ONE_SECOND)
         .waitOnElementToBecomeEnabled('#btnSendTestEmail')
         .click('#btnSendTestEmail')
         .clickYesDoThis()
