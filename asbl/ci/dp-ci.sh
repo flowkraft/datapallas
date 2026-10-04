@@ -1422,8 +1422,21 @@ if [ "${1:-}" = "--inside" ]; then
     tar -C "$src" --exclude=./node_modules --exclude=./.next -cf - . | tar -C "$QUALITY_AIHUB" -xf - &&
     (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force)
   }
+  # Javadoc (J18) of the two library modules: the site of each module under one index page. Comments with doclint errors do not stop it.
+  quality_javadoc() {
+    local out m; out=$(quality_out javadoc) || return 1
+    mvn -B javadoc:javadoc -pl bkend/common,bkend/reporting || return 1
+    { echo '<!doctype html><meta charset="utf-8"><title>DataPallas Javadoc</title><h1>DataPallas Javadoc</h1><ul>'
+      for m in common reporting; do
+        if [ -d "bkend/$m/target/site/apidocs" ]; then
+          mkdir -p "$out/$m" && cp -a "bkend/$m/target/site/apidocs/." "$out/$m/" && echo "<li><a href=\"$m/index.html\">$m</a></li>"
+        else echo "<li>$m: no Javadoc was generated</li>"; fi
+      done
+      echo '</ul>'; } > "$out/index.html"
+  }
+  # the tools of the quality plan, one line each, in this order; each adds its report under quality_out and never fails the run
   quality_tools() {
-    :   # the tools are added here by the quality plan, in order, e.g.:  quality_tool javadoc quality_javadoc
+    quality_tool javadoc quality_javadoc
   }
   quality_result() {
     local n=0 ok=0 s

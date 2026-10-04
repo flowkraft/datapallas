@@ -877,6 +877,19 @@
 						</execution>
 					</executions>
 				</plugin>
+				<!-- Javadoc site of the Java modules, run on demand by `mvn javadoc:javadoc` (asbl/ci/dp-ci.sh quality), not part of the build.
+				     The shared pom's <reporting> section still names javadoc 2.8 for `mvn site`; this version is the one the command line uses.
+				     doclint none + failOnError false: comments with doclint errors do not stop the site from being generated; they are not fixed. -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-javadoc-plugin</artifactId>
+					<version>3.11.2</version>
+					<configuration>
+						<doclint>none</doclint>
+						<failOnError>false</failOnError>
+						<quiet>true</quiet>
+					</configuration>
+				</plugin>
 				<!-- Coverage of the unit tests. Declared (without a version) by each Java module that has tests; the report
 				     is bound to the test phase so that `mvn test` writes target/site/jacoco (jacoco.xml + html). Never gating.
 				     bkend/server has another parent and carries the same configuration itself. -->

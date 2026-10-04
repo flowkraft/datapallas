@@ -10,4 +10,3 @@ htmlpublisher:latest
 coverage:latest
 warnings-ng:latest
 robot:latest
-javadoc:latest

@@ -44,7 +44,9 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/je
 for d in reports/*-quality-*; do [ -e "$d" ] && t="${d##*-quality-}" && rm -rf "reports/$t" && mv "$d" "reports/$t"; done
 exit 0
 '''
-        // The publisher steps of the tools (Javadoc, Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
+        // Javadoc (J18): the site of bkend/common and bkend/reporting under one index page (HTML Publisher; needs the JavaScript decision of jenkins.md).
+        publishHTML(target: [reportName: 'Javadoc', reportDir: 'reports/javadoc', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: true])
+        // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }
   }
