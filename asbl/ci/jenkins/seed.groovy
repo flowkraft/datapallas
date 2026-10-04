@@ -66,6 +66,6 @@ jobs.each { name, job ->
         lightweight(true)
       }
     }
-    logRotator { numToKeep(30) }
+    logRotator { numToKeep(200) }
   }
 }
