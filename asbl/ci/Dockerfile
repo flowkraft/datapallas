@@ -61,3 +61,9 @@ RUN curl -fsSL -o /tmp/cft.zip "https://storage.googleapis.com/chrome-for-testin
 RUN apt-get update && apt-get install -y --no-install-recommends make g++ python3 \
  && rm -rf /var/lib/apt/lists/* \
  && make --version >/dev/null && g++ --version >/dev/null && python3 --version >/dev/null
+
+# Trivy (J15): scans the Docker image that `dp-ci.sh build` has just built, through the mounted host Docker socket (report only, never gating).
+# Its own layer at the end, so the layers above stay cached. The vulnerability database is downloaded by trivy at scan time.
+ARG TRIVY_VERSION=0.58.1
+RUN curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v${TRIVY_VERSION} \
+ && trivy --version | grep -q "${TRIVY_VERSION}"

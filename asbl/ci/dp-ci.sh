@@ -1287,6 +1287,18 @@ if [ "${1:-}" = "--inside" ]; then
     echo "IMAGE_TAG=$VERSION-$SHA"
   }
 
+  # Trivy (J15): scans the image tag_image has just tagged. Report only: JSON for Jenkins (<log>-trivy/trivy.json, pulled by the dp-ci-build job)
+  # plus the HIGH/CRITICAL table in this log. Never fails the build (a scan or database-download problem is printed and the run goes on).
+  trivy_scan() {
+    local out img="$SERVER_IMAGE_REPO:$VERSION-$SHA"
+    out="${LOG%.log}-trivy"; mkdir -p "$out" || return 0
+    trivy image --quiet --severity HIGH,CRITICAL --format json --output "$out/trivy.json" "$img" ||
+      echo "trivy: JSON scan of $img failed (not gating)"
+    trivy image --quiet --severity HIGH,CRITICAL --format table "$img" ||
+      echo "trivy: table scan of $img failed (not gating)"
+    return 0
+  }
+
   # --- publish (plan §4 B1/B2): summary -> refuse/dry-run -> [--reset] .env + compose up -> smoke -> rollback on failure
   # Every step on the site goes through on_target, so a local site and one on another host run the same code.
   on_target() {
@@ -1554,6 +1566,7 @@ if [ "${1:-}" = "--inside" ]; then
   step 4 assemble
   package_stamp
   step 5 tag_image
+  step 6 trivy_scan
   echo ""
   echo "PIPELINE_RESULT=SUCCESS  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   exit 0
