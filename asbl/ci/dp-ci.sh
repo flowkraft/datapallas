@@ -1532,8 +1532,28 @@ if [ "$TASK" = "dev" ]; then
   echo "stop:    docker stop $DEV_CONTAINER"
   exit 0
 fi
+# An e2e tests the newest pushed code, whichever lane runs it: put this host's checkout on origin/main first (the
+# Windows lane does the same on the VM, win_sync_repo). Strictly a fast-forward; changes to tracked files, or a history
+# that cannot fast-forward, stop the run and change nothing. Commits not pushed yet are tested as they are (and said so).
+sync_host_repo() {
+  local dirty ahead
+  git fetch -q origin || { echo "FAIL  could not fetch origin - not running on code of unknown age." >&2; return 2; }
+  dirty=$(git status --porcelain --untracked-files=no)
+  [ -z "$dirty" ] || { echo "FAIL  this checkout has local changes to tracked files; nothing was touched:" >&2
+    printf '%s\n' "$dirty" | head -10 >&2; return 2; }
+  git merge -q --ff-only origin/main >/dev/null 2>&1 ||
+    ahead=$(git rev-list --count origin/main..HEAD)
+  if [ -n "$ahead" ]; then
+    [ "$(git rev-list --count HEAD..origin/main)" = 0 ] ||
+      { echo "FAIL  this checkout and origin/main have diverged; nothing was changed." >&2; return 2; }
+    echo "WARN  $ahead commit(s) here are not pushed; testing them as they are." >&2
+  fi
+  return 0
+}
+if [ "$TASK" = e2e ]; then sync_host_repo || exit 2; fi
 SHA=$(git rev-parse --short HEAD)
 [ -z "$(git status --porcelain)" ] || SHA="$SHA-dirty"
+echo "E2E_COMMIT=$SHA"
 
 E2E_FLAGS=""
 if [ "$TASK" = "e2e" ]; then
