@@ -1,0 +1,34 @@
+# CodeQL (J14): GitHub's code scanning of the Java backend and the TypeScript/JavaScript apps. Runs on GitHub, nothing runs in Jenkins.
+# Results: https://github.com/flowkraft/datapallas/security/code-scanning (see asbl/ci/jenkins/jenkins.md, "GitHub: Dependabot and CodeQL").
+# build-mode none: CodeQL reads the sources, so no Maven build is needed here. Report only, nothing in this workflow gates a merge.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [java-kotlin, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

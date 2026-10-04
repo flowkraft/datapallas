@@ -1,0 +1,27 @@
+# Dependabot (J14): weekly update pull requests for every dependency set of the repo. GitHub runs it; nothing runs in Jenkins.
+# Its page: https://github.com/flowkraft/datapallas/network/updates (see asbl/ci/jenkins/jenkins.md, "GitHub: Dependabot and CodeQL").
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /frend/reporting
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /asbl/src/main/external-resources/db-template/_apps/flowkraft/_ai-hub/ui-startpage
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: docker
+    directory: /asbl/ci
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

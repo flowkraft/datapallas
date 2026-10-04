@@ -143,7 +143,20 @@ at a moment when no build is running or queued:
    report, because it needs a service worker; the report itself, the screenshots and the error text do.
 3. **Restart Jenkins** (this applies steps 1 and 2): `docker compose up -d --force-recreate` in the folder of that compose file, or Manage Jenkins -> Restart safely.
 4. **Run `seed`** (see "The seed job") once the quality plan has added the job `dp-ci-quality` to `seed.groovy`, and approve the new `seed.groovy` in In-process Script Approval.
-5. **GitHub**: any setting that is not a file in the repository (the quality plan lists them below, if there are any).
+5. **GitHub** (settings that are not files): Settings -> Advanced Security (Code security): make sure **Dependency graph** and **Dependabot alerts** are on (Dependabot version updates then
+   work from `.github/dependabot.yml`), and that **Code scanning** is *not* also switched on as "default setup", because the workflow `.github/workflows/codeql.yml` is the advanced setup and the two
+   conflict. The repository is public, so code scanning is free.
+
+## GitHub: Dependabot and CodeQL
+
+Two tools of the quality plan run on GitHub, not in Jenkins; their files are in the repository and their results are read on GitHub:
+
+| Tool | File | Where to look |
+|---|---|---|
+| Dependabot (weekly update pull requests: Maven, the Angular app, the AI Hub app, the CI image, GitHub Actions) | `.github/dependabot.yml` | https://github.com/flowkraft/datapallas/network/updates and the pull requests labelled `dependencies` |
+| CodeQL (Java and TypeScript/JavaScript code scanning, on push to `main`, on pull requests and weekly) | `.github/workflows/codeql.yml` | https://github.com/flowkraft/datapallas/security/code-scanning |
+
+Both are report only: nothing here gates a merge or a Jenkins build.
 
 ## Setting it up
 
