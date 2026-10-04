@@ -1,0 +1,18 @@
+{
+  "root": true,
+  "ignorePatterns": ["app/**/*", "dist/**/*", "release/**/*"],
+  "overrides": [
+    {
+      "files": ["*.ts"],
+      "parser": "@typescript-eslint/parser",
+      "plugins": ["sonarjs"],
+      "rules": {
+        "complexity": "warn",
+        "max-depth": "warn",
+        "max-lines-per-function": "warn",
+        "max-params": "warn",
+        "sonarjs/cognitive-complexity": "warn"
+      }
+    }
+  ]
+}

@@ -66,6 +66,9 @@ exit 0
         // PMD + CPD (J17): complexity and size ("PMD complexity") and copy-paste detection ("Duplicated code"), each its own table with a trend.
         recordIssues(tool: pmdParser(pattern: 'reports/pmd/*.xml', id: 'pmd-complexity', name: 'PMD complexity'), enabledForFailure: true, skipBlames: true)
         recordIssues(tool: cpd(pattern: 'reports/cpd/*.xml', id: 'cpd', name: 'Duplicated code'), enabledForFailure: true, skipBlames: true)
+        // ESLint complexity rules (own result, not mixed with the lint problems): same checkstyle XML as the other ESLint tables.
+        recordIssues(tool: esLint(pattern: 'reports/complexity-angular/eslint.xml', id: 'complexity-angular', name: 'Complexity Angular'), enabledForFailure: true, skipBlames: true)
+        recordIssues(tool: esLint(pattern: 'reports/complexity-aihub/eslint.xml', id: 'complexity-aihub', name: 'Complexity AI Hub'), enabledForFailure: true, skipBlames: true)
         // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }

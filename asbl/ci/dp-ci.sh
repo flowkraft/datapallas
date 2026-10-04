@@ -1465,7 +1465,7 @@ HTML
     local src=asbl/src/main/external-resources/db-template/_apps/flowkraft/_ai-hub/ui-startpage
     rm -rf "$QUALITY_AIHUB" && mkdir -p "$QUALITY_AIHUB" &&
     tar -C "$src" --exclude=./node_modules --exclude=./.next -cf - . | tar -C "$QUALITY_AIHUB" -xf - &&
-    (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force eslint-formatter-checkstyle eslint-plugin-prettier prettier @typescript-eslint/parser)
+    (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force eslint-formatter-checkstyle eslint-plugin-prettier prettier eslint-plugin-sonarjs @typescript-eslint/parser)
   }
   # Javadoc (J18) of the two library modules: the site of each module under one index page. Comments with doclint errors do not stop it.
   quality_javadoc() {
@@ -1525,6 +1525,10 @@ HTML
     quality_prettier_check prettier-aihub "$QUALITY_AIHUB" . || rc=1
     return $rc
   }
+  # ESLint complexity rules (own result, separate from the lint problems): complexity, max-depth, max-lines-per-function, max-params and
+  # sonarjs/cognitive-complexity as warnings, defaults, in checkstyle XML (same helper and shape as the Prettier table).
+  quality_complexity_angular() { quality_eslint complexity-angular frend/reporting npx eslint --no-eslintrc -c .eslintrc.complexity.json -f checkstyle "src/**/*.ts"; }
+  quality_complexity_aihub() { quality_eslint complexity-aihub "$QUALITY_AIHUB" npx eslint -c eslint.complexity.config.mjs -f checkstyle .; }
   # SpotBugs + find-sec-bugs (J16) over the four Java modules (classes from quality_prepare): report only, the goal is `spotbugs`, never `check`.
   # Each module's target/spotbugsXml.xml is copied as <module>.xml next to the run log.
   quality_spotbugs() {
@@ -1569,6 +1573,8 @@ HTML
     quality_tool spotbugs quality_spotbugs
     quality_tool spotless quality_spotless
     quality_tool pmd quality_pmd
+    quality_tool complexity-angular quality_complexity_angular
+    quality_tool complexity-aihub quality_complexity_aihub
   }
   quality_result() {
     local n=0 ok=0 s

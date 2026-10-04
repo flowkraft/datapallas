@@ -225,6 +225,7 @@
     "eslint-plugin-jsdoc": "39.3.3",
     "eslint-plugin-prefer-arrow": "1.2.3",
     "eslint-plugin-prettier": "^5.2.0",
+    "eslint-plugin-sonarjs": "~1.0.4",
     "eslint-plugin-storybook": "10.4.0",
     "esm": "3.2.25",
     "find-process": "1.4.7",
