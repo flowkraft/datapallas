@@ -15,7 +15,7 @@ pipeline {
     DP_HOST = 'root@172.19.0.1'
     DP_REPO = '/var/kraft-internalsystems/projects/all-repos/src/products/reportburster'
     // space-separated paths (globs allowed), relative to DP_REPO, pulled into ./reports by the Reports stage; see jenkins.md, "Reports"
-    REPORT_PATHS = ''
+    REPORT_PATHS = 'bkend/*/target/surefire-reports'
   }
 
   stages {
@@ -40,6 +40,9 @@ rm -rf reports; mkdir -p reports
 q() { printf '%q' "$1"; }
 ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/jenkins/pull-reports.sh $REPORT_PATHS" | tar xzf - -C reports || echo "Reports: nothing pulled"
 '''
+        // JUnit (J9): Surefire's XML of every module = the test counts, the failed tests and the trend graph on the build page.
+        // skipMarkingBuildUnstable: the report is shown, it never changes the result (the run's own result stands).
+        junit testResults: 'reports/bkend/*/target/surefire-reports/TEST-*.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
       }
     }
   }
