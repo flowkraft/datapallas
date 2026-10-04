@@ -1536,7 +1536,7 @@ fi
 # Windows lane does the same on the VM, win_sync_repo). Strictly a fast-forward; changes to tracked files, or a history
 # that cannot fast-forward, stop the run and change nothing. Commits not pushed yet are tested as they are (and said so).
 sync_host_repo() {
-  local dirty ahead
+  local dirty ahead=""
   git fetch -q origin || { echo "FAIL  could not fetch origin - not running on code of unknown age." >&2; return 2; }
   dirty=$(git status --porcelain --untracked-files=no)
   [ -z "$dirty" ] || { echo "FAIL  this checkout has local changes to tracked files; nothing was touched:" >&2
