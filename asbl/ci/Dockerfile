@@ -64,6 +64,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends make g++ python
 
 # Trivy (J15): scans the Docker image that `dp-ci.sh build` has just built, through the mounted host Docker socket (report only, never gating).
 # Its own layer at the end, so the layers above stay cached. The vulnerability database is downloaded by trivy at scan time.
-ARG TRIVY_VERSION=0.58.1
+ARG TRIVY_VERSION=0.70.0
 RUN curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v${TRIVY_VERSION} \
  && trivy --version | grep -q "${TRIVY_VERSION}"
