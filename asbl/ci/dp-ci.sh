@@ -1105,6 +1105,7 @@ if [ "${1:-}" = "--inside" ]; then
       # Playwright runs in the foreground here, so its own exit code is the verdict; the dev chain prints
       # the line below through gulp instead.
       echo "Main Playwright process exited with code ${PIPESTATUS[0]}" >> "$out"
+      e2e_openapi
       docker_server_down
     else
       (cd frend/reporting && timeout --kill-after=60 "${E2E_TIMEOUT_SECS:-72000}" \
@@ -1118,6 +1119,36 @@ if [ "${1:-}" = "--inside" ]; then
       "passed=$(e2e_count passed "$out") failed=$(e2e_count failed "$out") flaky=$(e2e_count flaky "$out")" \
       "skipped=$(e2e_count skipped "$out") didnotrun=$(e2e_count "did not run" "$out") exit=${code:-none} target=$target"
     [ "$code" = "0" ]
+  }
+
+  # springdoc OpenAPI + Swagger UI (J11): while the shipped server is still up at the end of a docker-server run, save its /v3/api-docs as
+  # openapi.json and build a static Swagger UI page next to it (swagger-ui-dist from npm, fetched here), in <log>-openapi, which the dp-ci-e2e
+  # job pulls and publishes next to the Playwright report. Never fails the run: a missing document or an npm problem is printed and the run goes on.
+  e2e_openapi() {
+    local out tmp code files="swagger-ui.css swagger-ui-bundle.js swagger-ui-standalone-preset.js favicon-32x32.png"
+    out="${LOG%.log}-openapi"; mkdir -p "$out" || return 0
+    code=$(curl -s -m 60 -o "$out/openapi.json" -w '%{http_code}' "$DOCKER_SERVER_URL/v3/api-docs" 2>/dev/null)
+    echo "openapi: GET $DOCKER_SERVER_URL/v3/api-docs -> ${code:-no answer}"
+    [ "$code" = 200 ] || { echo "openapi: no document saved (the endpoint needs a login, or the server has no springdoc); not gating"; rm -f "$out/openapi.json"; return 0; }
+    tmp=$(mktemp -d) &&
+    (cd "$tmp" && npm pack swagger-ui-dist@5 --silent >/dev/null && tar xzf swagger-ui-dist-*.tgz && for f in $files; do cp "package/$f" "$out/"; done) ||
+      { echo "openapi: could not get swagger-ui-dist from npm; openapi.json is kept without the page"; rm -rf "$tmp"; return 0; }
+    rm -rf "$tmp"
+    cat > "$out/swagger-initializer.js" <<'JS'
+window.onload = function () {
+  window.ui = SwaggerUIBundle({ url: 'openapi.json', dom_id: '#swagger-ui', deepLinking: true,
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset], layout: 'StandaloneLayout' });
+};
+JS
+    cat > "$out/index.html" <<'HTML'
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>DataPallas API (Swagger UI)</title>
+<link rel="stylesheet" href="swagger-ui.css"></head>
+<body><div id="swagger-ui"></div>
+<script src="swagger-ui-bundle.js"></script><script src="swagger-ui-standalone-preset.js"></script><script src="swagger-initializer.js"></script></body></html>
+HTML
+    echo "openapi: saved $out/openapi.json and the Swagger UI page"
+    return 0
   }
 
   # E2E_TARGET=docker-server (plan §3 O13, §4 F2a G0): the tests run against the product as it ships — the
