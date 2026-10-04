@@ -59,6 +59,10 @@ exit 0
         archiveArtifacts artifacts: 'reports/prettier-*/prettier-check.txt', allowEmptyArchive: true
         // SpotBugs + find-sec-bugs (J16): the findings of the four Java modules, one Warnings Next Generation result (category, priority, file).
         recordIssues(tool: spotBugs(pattern: 'reports/spotbugs/*.xml', useRankAsPriority: true, id: 'spotbugs', name: 'SpotBugs'), enabledForFailure: true, skipBlames: true)
+        // Spotless (J17): one warning per Java file and hunk, from spotless-to-checkstyle.py (written from the documented message format; confirm on the first run).
+        // The raw `mvn spotless:check` output is kept as an artifact, and the file list is in the console and in QUALITY_RESULT (spotless-files=N) if the table is empty.
+        recordIssues(tool: checkStyle(pattern: 'reports/spotless/spotless.xml', id: 'spotless', name: 'Spotless'), enabledForFailure: true, skipBlames: true)
+        archiveArtifacts artifacts: 'reports/spotless/spotless-check.txt', allowEmptyArchive: true
         // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }

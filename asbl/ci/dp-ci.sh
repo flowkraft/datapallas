@@ -1505,6 +1505,17 @@ if [ "${1:-}" = "--inside" ]; then
     done
     return $rc
   }
+  # Spotless (J17) over the four Java modules: `spotless:check` only, never `apply`. Spotless prints its violations in the Maven console, so
+  # spotless-to-checkstyle.py (stdlib python, runs here in the container) turns that output into checkstyle XML for Jenkins. The console list and the
+  # count in QUALITY_RESULT are the fallback if the converter does not match the real output.
+  quality_spotless() {
+    local out txt; out=$(quality_out spotless) || return 1; txt="$out/spotless-check.txt"
+    mvn -B -fae spotless:check -pl bkend/common,bkend/update,bkend/reporting,bkend/server > "$txt" 2>&1
+    grep -E 'format violations|^\[ERROR\]\s+\S.*\.java\s*$' "$txt" || true
+    quality_count spotless-files "$(grep -cE '^\[ERROR\]\s+\S.*\.java\s*$' "$txt")"
+    python3 asbl/ci/jenkins/spotless-to-checkstyle.py "$txt" "$out/spotless.xml" "$REPO"
+    grep -q 'spotless-maven-plugin' "$txt" || { echo "quality: spotless: the plugin did not run; its output:"; tail -5 "$txt"; return 1; }
+  }
   # the tools of the quality plan, one line each, in this order; each adds its report under quality_out and never fails the run
   quality_tools() {
     quality_tool javadoc quality_javadoc
@@ -1514,6 +1525,7 @@ if [ "${1:-}" = "--inside" ]; then
     quality_tool prettier-angular quality_prettier_angular
     quality_tool prettier-aihub quality_prettier_aihub
     quality_tool spotbugs quality_spotbugs
+    quality_tool spotless quality_spotless
   }
   quality_result() {
     local n=0 ok=0 s
