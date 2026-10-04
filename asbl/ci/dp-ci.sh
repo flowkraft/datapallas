@@ -1547,6 +1547,17 @@ HTML
     python3 asbl/ci/jenkins/spotless-to-checkstyle.py "$txt" "$out/spotless.xml" "$REPO"
     grep -q 'spotless-maven-plugin' "$txt" || { echo "quality: spotless: the plugin did not run; its output:"; tail -5 "$txt"; return 1; }
   }
+  # PMD complexity + CPD copy-paste detection (J17) over the four Java modules (classes from quality_prepare): report only, pmd.xml and cpd.xml
+  # of each module are copied as <module>.xml into the pmd and cpd folders.
+  quality_pmd() {
+    local pout cout m rc=0; pout=$(quality_out pmd) || return 1; cout=$(quality_out cpd) || return 1
+    mvn -B -fae pmd:pmd pmd:cpd -pl bkend/common,bkend/update,bkend/reporting,bkend/server || rc=1
+    for m in common update reporting server; do
+      if [ -f "bkend/$m/target/pmd.xml" ]; then cp "bkend/$m/target/pmd.xml" "$pout/$m.xml"; else echo "quality: pmd: no pmd.xml for $m"; rc=1; fi
+      if [ -f "bkend/$m/target/cpd.xml" ]; then cp "bkend/$m/target/cpd.xml" "$cout/$m.xml"; else echo "quality: pmd: no cpd.xml for $m"; rc=1; fi
+    done
+    return $rc
+  }
   # the tools of the quality plan, one line each, in this order; each adds its report under quality_out and never fails the run
   quality_tools() {
     quality_tool javadoc quality_javadoc
@@ -1557,6 +1568,7 @@ HTML
     quality_tool prettier-aihub quality_prettier_aihub
     quality_tool spotbugs quality_spotbugs
     quality_tool spotless quality_spotless
+    quality_tool pmd quality_pmd
   }
   quality_result() {
     local n=0 ok=0 s

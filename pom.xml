@@ -25,6 +25,8 @@
 		<!-- JaCoCo (coverage, shown in Jenkins). argLine is empty here so the surefire argLine of the shared pom can say
 		     @{argLine}: JaCoCo's prepare-agent fills it with the agent, and without JaCoCo it stays empty. -->
 		<jacoco.version>0.8.13</jacoco.version>
+		<!-- overrides the shared parent's 3.8, which cannot read Java 17 (PMD 7 inside) -->
+		<maven.pmd.plugin.version>3.26.0</maven.pmd.plugin.version>
 		<argLine></argLine>
 
 		<!-- upgraded -->
@@ -910,6 +912,21 @@
 								<version>1.13.0</version>
 							</plugin>
 						</plugins>
+					</configuration>
+				</plugin>
+				<!-- PMD (complexity ruleset) + CPD (copy-paste detection), run on demand by `mvn pmd:pmd pmd:cpd` (asbl/ci/dp-ci.sh quality), not part of the build. Report only: failOnViolation false.
+				     The shared parent's maven-pmd-plugin (legacy <reporting>, `mvn site`) reads the property maven.pmd.plugin.version, overridden above (3.8 cannot read Java 17). -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-pmd-plugin</artifactId>
+					<version>${maven.pmd.plugin.version}</version>
+					<configuration>
+						<rulesets>
+							<ruleset>${project.basedir}/../../asbl/ci/quality/pmd-complexity.xml</ruleset>
+						</rulesets>
+						<failOnViolation>false</failOnViolation>
+						<printFailingErrors>false</printFailingErrors>
+						<minimumTokens>100</minimumTokens>
 					</configuration>
 				</plugin>
 				<!-- Spotless (google-java-format), run on demand by `mvn spotless:check` (asbl/ci/dp-ci.sh quality), not part of the build and never `spotless:apply`

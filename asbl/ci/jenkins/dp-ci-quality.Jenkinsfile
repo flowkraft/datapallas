@@ -63,6 +63,9 @@ exit 0
         // The raw `mvn spotless:check` output is kept as an artifact, and the file list is in the console and in QUALITY_RESULT (spotless-files=N) if the table is empty.
         recordIssues(tool: checkStyle(pattern: 'reports/spotless/spotless.xml', id: 'spotless', name: 'Spotless'), enabledForFailure: true, skipBlames: true)
         archiveArtifacts artifacts: 'reports/spotless/spotless-check.txt', allowEmptyArchive: true
+        // PMD + CPD (J17): complexity and size ("PMD complexity") and copy-paste detection ("Duplicated code"), each its own table with a trend.
+        recordIssues(tool: pmdParser(pattern: 'reports/pmd/*.xml', id: 'pmd-complexity', name: 'PMD complexity'), enabledForFailure: true, skipBlames: true)
+        recordIssues(tool: cpd(pattern: 'reports/cpd/*.xml', id: 'cpd', name: 'Duplicated code'), enabledForFailure: true, skipBlames: true)
         // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }

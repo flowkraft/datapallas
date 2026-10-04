@@ -482,6 +482,21 @@
 					</plugins>
 				</configuration>
 			</plugin>
+			<!-- PMD (complexity ruleset) + CPD (copy-paste detection), run on demand by `mvn pmd:pmd pmd:cpd` (asbl/ci/dp-ci.sh quality), not part of the build. Report only: failOnViolation false.
+			     The shared parent's maven-pmd-plugin (legacy <reporting>, `mvn site`) reads the property maven.pmd.plugin.version, overridden in the root pom (3.8 cannot read Java 17). bkend/server has another parent and carries the same configuration itself. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
+				<version>3.26.0</version>
+				<configuration>
+					<rulesets>
+						<ruleset>${project.basedir}/../../asbl/ci/quality/pmd-complexity.xml</ruleset>
+					</rulesets>
+					<failOnViolation>false</failOnViolation>
+					<printFailingErrors>false</printFailingErrors>
+					<minimumTokens>100</minimumTokens>
+				</configuration>
+			</plugin>
 			<!-- Spotless (google-java-format), run on demand by `mvn spotless:check` (asbl/ci/dp-ci.sh quality); same configuration as the root pom, which this module does not inherit. Never `spotless:apply` in CI. -->
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
