@@ -179,7 +179,7 @@
     "@angular-eslint/template-parser": "18.4.3",
     "@angular/cli": "19.2.26",
     "@angular/compiler-cli": "19.2.22",
-    "@chromatic-com/storybook": "5.2.1",
+    "@chromatic-com/storybook": "5.4.0",
     "@compodoc/compodoc": "1.1.23",
     "@ngx-translate/core": "17.0.0",
     "@ngx-translate/http-loader": "8.0.0",
