@@ -48,6 +48,10 @@ exit 0
         publishHTML(target: [reportName: 'Javadoc', reportDir: 'reports/javadoc', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: true])
         // Compodoc (J18): the documentation site of the Angular app.
         publishHTML(target: [reportName: 'Compodoc', reportDir: 'reports/compodoc', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: true])
+        // ESLint (J13): the problems of the Angular app and of the AI Hub, one Warnings Next Generation result each (count, trend, list per file).
+        // skipBlames: the sources are not in the workspace (the run is on the host). Never gating: no quality gate is set.
+        recordIssues(tool: esLint(pattern: 'reports/eslint-angular/eslint.xml', id: 'eslint-angular', name: 'ESLint Angular'), enabledForFailure: true, skipBlames: true)
+        recordIssues(tool: esLint(pattern: 'reports/eslint-aihub/eslint.xml', id: 'eslint-aihub', name: 'ESLint AI Hub'), enabledForFailure: true, skipBlames: true)
         // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }

@@ -1420,7 +1420,7 @@ if [ "${1:-}" = "--inside" ]; then
     local src=asbl/src/main/external-resources/db-template/_apps/flowkraft/_ai-hub/ui-startpage
     rm -rf "$QUALITY_AIHUB" && mkdir -p "$QUALITY_AIHUB" &&
     tar -C "$src" --exclude=./node_modules --exclude=./.next -cf - . | tar -C "$QUALITY_AIHUB" -xf - &&
-    (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force)
+    (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force eslint-formatter-checkstyle)
   }
   # Javadoc (J18) of the two library modules: the site of each module under one index page. Comments with doclint errors do not stop it.
   quality_javadoc() {
@@ -1440,10 +1440,24 @@ if [ "${1:-}" = "--inside" ]; then
     local out; out=$(quality_out compodoc) || return 1
     (cd frend/reporting && npx compodoc -p src/tsconfig.app.json -d "$out" --silent)
   }
+  # ESLint (J13): problems only, written as checkstyle XML, which Warnings Next Generation reads. ESLint exits 1 when it finds problems, so the
+  # test of success is a complete XML, not the exit code. The Angular app keeps ESLint 8 and its .eslintrc.json (package.json script lint:report);
+  # the AI Hub (ESLint 9, eslint.config.mjs) runs in the scratch copy, where the checkstyle formatter (removed from ESLint 9) is installed.
+  quality_eslint() {  # quality_eslint <name> <folder> <command...>
+    local name="$1" dir="$2" out; shift 2
+    out=$(quality_out "$name") || return 1
+    (cd "$dir" && "$@" > "$out/eslint.xml" 2> "$out/eslint.err"; true)
+    grep -q '</checkstyle>' "$out/eslint.xml" && return 0
+    echo "quality: $name produced no complete checkstyle XML; its stderr:"; tail -5 "$out/eslint.err"; return 1
+  }
+  quality_eslint_angular() { quality_eslint eslint-angular frend/reporting npm run --silent lint:report; }
+  quality_eslint_aihub() { quality_eslint eslint-aihub "$QUALITY_AIHUB" npx eslint -f checkstyle .; }
   # the tools of the quality plan, one line each, in this order; each adds its report under quality_out and never fails the run
   quality_tools() {
     quality_tool javadoc quality_javadoc
     quality_tool compodoc quality_compodoc
+    quality_tool eslint-angular quality_eslint_angular
+    quality_tool eslint-aihub quality_eslint_aihub
   }
   quality_result() {
     local n=0 ok=0 s
