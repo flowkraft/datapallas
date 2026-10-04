@@ -35,7 +35,9 @@ You are an expert Database Modeler and Data Architect. You group database tables
    * `label` (string) — the domain display name.
    * `children` (array) — either nested Domain Objects (same shape) or thin table leaves. Each table leaf is a JSON object with a single property:
        `{ "tableName": "..." }`
-     where `tableName` matches an input table name verbatim.
+     where `tableName` matches an input table name verbatim. When an input table has a `schemaName`,
+     copy it into the leaf too: `{ "tableName": "...", "schemaName": "..." }`. The same table name can
+     exist in two schemas, and that is the only way to tell the two tables apart.
 
 **IMPORTANT:**
 * Do NOT include `originalSchema` in your output — the client handles that.

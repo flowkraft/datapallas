@@ -267,12 +267,14 @@ export class StarterPacksComponent implements OnInit, OnDestroy {
           const id = (pack.id || '').toLowerCase();
 
           if (!id) return false;
-          // Check for exact match or rb-{id} or -{id} suffix
-          if (name === id || name === `rb-${id}` || name.endsWith(`-${id}`)) return true;
-          // Also match Docker container naming convention: rb-{packName}-{target}
+          // Check for exact match or -{id} suffix. No fixed container prefix: the db-template compose names its
+          // containers dp-* (they were rb-* before), and a prefix written here silently stops matching on the next rename.
+          if (name === id || name.endsWith(`-${id}`)) return true;
+          // Also match the Docker container naming convention {prefix}-{packName}-{target}, whatever the prefix
+          // (dp-northwind-mysql, dp-timeseries-timescaledb, dp-cache-redis, and the rb-* of older installs)
           const packName = (pack.packName || '').toLowerCase();
           const target = (pack.target || '').toLowerCase();
-          if (packName && target && name === `rb-${packName}-${target}`) return true;
+          if (packName && target && (name === `${packName}-${target}` || name.endsWith(`-${packName}-${target}`))) return true;
 
           return false;
         });

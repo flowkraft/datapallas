@@ -2395,10 +2395,12 @@ CustomerCustomerDemo }|--|| CustomerDemographics : "CustomerTypeID"
         .waitOnElementToBecomeVisible('#appSpinner_flowkraft-data-canvas')
         .waitOnElementToContainText('#appState_flowkraft-data-canvas', 'starting')
         .consoleLog('[T19] AI Hub is starting...')
-        // Wait for running state
-        .waitOnElementToBecomeEnabled('#btnStartStop_flowkraft-data-canvas')
-        .waitOnElementToContainText('#appState_flowkraft-data-canvas', 'running')
-        .waitOnElementToContainText('#btnStartStop_flowkraft-data-canvas', 'Stop')
+        // Wait for running state. The first start builds the AI Hub images (baibot compiles Rust: ~10 min
+        // measured on a cold host), exactly what a real user waits for, so the wait is the app's own
+        // budget - the one startApp uses - not the 100 s default of a warm start.
+        .waitOnElementToBecomeEnabled('#btnStartStop_flowkraft-data-canvas', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToContainText('#appState_flowkraft-data-canvas', 'running', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToContainText('#btnStartStop_flowkraft-data-canvas', 'Stop', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
         .consoleLog('[T19] AI Hub is running.');
 
       // Step 5: Assert ai-manager dropdown shows running state
@@ -2422,10 +2424,10 @@ CustomerCustomerDemo }|--|| CustomerDemographics : "CustomerTypeID"
         .waitOnElementToBecomeVisible('#appSpinner_flowkraft-data-canvas')
         .waitOnElementToContainText('#appState_flowkraft-data-canvas', 'stopping')
         .consoleLog('[T19] AI Hub is stopping...')
-        // Wait for stopped state
-        .waitOnElementToBecomeEnabled('#btnStartStop_flowkraft-data-canvas')
-        .waitOnElementToContainText('#appState_flowkraft-data-canvas', 'stopped')
-        .waitOnElementToContainText('#btnStartStop_flowkraft-data-canvas', 'Start')
+        // Wait for stopped state (compose gives each database a 60 s shutdown window, nine containers)
+        .waitOnElementToBecomeEnabled('#btnStartStop_flowkraft-data-canvas', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToContainText('#appState_flowkraft-data-canvas', 'stopped', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
+        .waitOnElementToContainText('#btnStartStop_flowkraft-data-canvas', 'Start', Constants.DELAY_FIVE_THOUSANDS_SECONDS)
         .consoleLog('[T19] AI Hub is stopped.');
 
       // Step 7: Assert ai-manager dropdown shows stopped state again

@@ -937,6 +937,42 @@ export class ConnectionDetailsComponent implements OnInit {
     this.cdRef.detectChanges();
   }
 
+  private ambiguousFor: any[] | null = null;
+  private ambiguousNames = new Set<string>();
+
+  /** Table names that occur in more than one schema of the loaded database (memoised per loaded table list). */
+  private getAmbiguousNames(): Set<string> {
+    const tables: any[] = this.rawSchemaData?.tables || [];
+    if (this.ambiguousFor !== tables) {
+      const schemasByName = new Map<string, Set<string>>();
+      for (const t of tables) {
+        if (!schemasByName.has(t.tableName)) schemasByName.set(t.tableName, new Set());
+        schemasByName.get(t.tableName)!.add(t.schemaName || '');
+      }
+      this.ambiguousNames = new Set(
+        [...schemasByName].filter(([, schemas]) => schemas.size > 1).map(([name]) => name),
+      );
+      this.ambiguousFor = tables;
+    }
+    return this.ambiguousNames;
+  }
+
+  /**
+   * Identity of a table in the schema trees. The bare table name, except where the same name
+   * lives in more than one schema ("schema__table" then), so the node ids that tests and users
+   * know stay as they are wherever the name is unique. "__" keeps the key valid in a CSS id.
+   */
+  private tableKey(t: { tableName?: string; schemaName?: string | null }): string {
+    return t.schemaName && this.getAmbiguousNames().has(t.tableName as string)
+      ? `${t.schemaName}__${t.tableName}`
+      : (t.tableName as string);
+  }
+
+  /** True if one of the node keys names this table: by its key, or by the bare name (a leaf pasted without its schema). */
+  private tableKeyMatches(keys: string[], table: any): boolean {
+    return keys.includes(this.tableKey(table)) || keys.includes(table.tableName);
+  }
+
   launchAiCopilotForDomainSchemaGeneration(): void {
     if (!this.rawSchemaData || !this.rawSchemaData.tables) {
       this.messagesService.showError(
@@ -953,6 +989,7 @@ export class ConnectionDetailsComponent implements OnInit {
     // Compare: Northwind full dump ~300 KB → slim summary ~2 KB.
     const slimSummary = this.rawSchemaData.tables.map((t: any) => ({
       tableName: t.tableName,
+      schemaName: t.schemaName,
       tableType: t.tableType,
       primaryKeyColumns: t.primaryKeyColumns || [],
       refs: (t.foreignKeys || [])
@@ -1026,16 +1063,18 @@ export class ConnectionDetailsComponent implements OnInit {
       return;
     }
 
+    // A table is identified by its node key (schema-qualified where the schema is
+    // known), not by its label: two schemas can hold a table of the same name.
     let selectedTableNames: string[] = [];
 
     if (this.isDatabaseSchemaTabActive) {
       selectedTableNames = selectedTableObjects
-        .map((item) => item.label) // item.label is the table name
-        .filter((label) => !!label);
+        .map((item) => item.key || item.label)
+        .filter((k) => !!k);
     } else if (this.isDomainGroupedSchemaTabActive) {
       selectedTableNames = selectedTableObjects
-        .map((node: any) => node.label)
-        .filter((name: string) => !!name);
+        .map((node: any) => node.key || node.label)
+        .filter((k: string) => !!k);
     }
 
     //console.log(`selectedTableNames: ${selectedTableNames}`);
@@ -1053,7 +1092,7 @@ export class ConnectionDetailsComponent implements OnInit {
     let relevantTableData: any[] = [];
 
     relevantTableData = this.rawSchemaData.tables.filter(
-      (table) => selectedTableNames.includes(table.tableName)
+      (table) => this.tableKeyMatches(selectedTableNames, table)
     );
 
     if (relevantTableData.length === 0) {
@@ -1075,9 +1114,11 @@ export class ConnectionDetailsComponent implements OnInit {
 
       // Helper: check if a node (or any of its children) matches a table name.
       // Handles both database schema (node IS the table) and domain-grouped (node is a domain group, children are tables).
-      const nodeMatchesTable = (node: any, tableName: string): boolean =>
-        node.key === tableName || node.label === tableName ||
-        (node.children || []).some((c: any) => c.key === tableName || c.label === tableName);
+      const nodeMatchesTable = (node: any, table: any): boolean => {
+        const keys = [node.key || node.label];
+        for (const c of node.children || []) keys.push(c.key || c.label);
+        return this.tableKeyMatches(keys, table);
+      };
 
       // Helper: collect table names from a node (direct or via children for domain-grouped)
       const getTableNames = (node: any): string[] => {
@@ -1091,13 +1132,13 @@ export class ConnectionDetailsComponent implements OnInit {
 
       // Build full-detail tables (all columns included)
       const fullDetailData = relevantTableData.filter(
-        (table: any) => fieldState.fullDetailTables.some((n) => nodeMatchesTable(n, table.tableName)),
+        (table: any) => fieldState.fullDetailTables.some((n) => nodeMatchesTable(n, table)),
       );
 
       // Build partial-detail tables (only checked columns/tables)
       const partialDetailData: any[] = [];
       for (const entry of fieldState.partialDetailTables) {
-        const selectedChildNames = entry.selectedChildren.map((c: any) => c.label || c.key);
+        const selectedChildNames = entry.selectedChildren.map((c: any) => c.key || c.label);
 
         // Check if children are tables (domain-grouped) or columns (database schema)
         const firstChild = entry.selectedChildren[0];
@@ -1106,13 +1147,13 @@ export class ConnectionDetailsComponent implements OnInit {
         if (childrenAreTables) {
           // Domain-grouped: selected children are table nodes — include them with full details
           const matchedTables = relevantTableData.filter(
-            (t: any) => selectedChildNames.includes(t.tableName),
+            (t: any) => this.tableKeyMatches(selectedChildNames, t),
           );
           partialDetailData.push(...matchedTables);
         } else {
           // Database schema: selected children are column nodes — filter columns
           const rawTable = relevantTableData.find(
-            (t: any) => t.tableName === entry.node.key || t.tableName === entry.node.label,
+            (t: any) => this.tableKeyMatches([entry.node.key || entry.node.label], t),
           );
           if (!rawTable) continue;
 
@@ -1453,6 +1494,7 @@ export class ConnectionDetailsComponent implements OnInit {
     // clutter for anything bigger than a toy schema.
     const slimTables = this.rawSchemaData.tables.map((t: any) => ({
       tableName: t.tableName,
+      schemaName: t.schemaName,
       tableType: t.tableType,
       primaryKeyColumns: t.primaryKeyColumns || [],
       foreignKeys: t.foreignKeys || [],
@@ -1933,13 +1975,13 @@ export class ConnectionDetailsComponent implements OnInit {
 
         // build hierarchical nodes for UI (PickList)
         const nodes = (parsed.tables || []).map((tbl: any) => ({
-          key: tbl.tableName,
+          key: this.tableKey(tbl),
           label: tbl.tableName,
           icon: 'table',
-          title: 'Type: ' + (tbl.tableType || 'TABLE'),
+          title: (tbl.schemaName ? 'Schema: ' + tbl.schemaName + ' - ' : '') + 'Type: ' + (tbl.tableType || 'TABLE'),
           data: tbl, // Store original table data in the UI node if needed by PickList or other UI features
           children: (tbl.columns || []).map((col: any) => ({
-            key: tbl.tableName + '_' + col.columnName,
+            key: this.tableKey(tbl) + '_' + col.columnName,
             label: col.columnName,
             icon:
               tbl.primaryKeyColumns &&
@@ -2078,9 +2120,14 @@ export class ConnectionDetailsComponent implements OnInit {
     if (!Array.isArray(rawTables) || rawTables.length === 0) return parsed;
 
     // Build an index by tableName for O(1) lookups.
+    // Indexed by the schema-qualified key; the bare name is a fallback for a leaf
+    // that does not say its schema (first table of that name wins).
     const tableByName = new Map<string, any>();
     for (const t of rawTables) {
-      if (t && typeof t.tableName === 'string') tableByName.set(t.tableName, t);
+      if (t && typeof t.tableName === 'string') {
+        tableByName.set(this.tableKey(t), t);
+        if (!tableByName.has(t.tableName)) tableByName.set(t.tableName, t);
+      }
     }
     if (tableByName.size === 0) return parsed;
 
@@ -2094,7 +2141,9 @@ export class ConnectionDetailsComponent implements OnInit {
       if (!leaf || typeof leaf !== 'object') return leaf;
       const name = leaf.tableName ?? leaf.name;
       if (typeof name !== 'string') return leaf;
-      const cache = tableByName.get(name);
+      const cache =
+        tableByName.get(this.tableKey({ tableName: name, schemaName: leaf.schemaName })) ??
+        tableByName.get(name);
       if (!cache) return leaf; // Unknown table — pass through.
 
       let out: any = leaf;
@@ -2708,9 +2757,10 @@ export class ConnectionDetailsComponent implements OnInit {
               // flattenGroupNodes mode can re-group it back into the right
               // domain when the user moves it from target back to source.
               const tableNode: any = {
-                key: table.tableName,
+                key: this.tableKey(table),
                 label: table.tableName,
                 icon: 'table',
+                title: table.schemaName ? 'Schema: ' + table.schemaName : undefined,
                 children: [],
                 originalParentKey: domainNode.key,
                 originalParentLabel: domainNode.label,
@@ -2720,7 +2770,7 @@ export class ConnectionDetailsComponent implements OnInit {
               const columns = table.columns || table.children || [];
               if (Array.isArray(columns)) {
                 tableNode.children = columns.map((column) => ({
-                  key: `${tableNode.label}_${column.name || column.columnName}`,
+                  key: `${tableNode.key}_${column.name || column.columnName}`,
                   label: column.name || column.columnName,
                   icon: column.isPrimaryKey
                     ? 'key'

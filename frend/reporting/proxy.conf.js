@@ -3,6 +3,12 @@ module.exports = {
     target: "http://localhost:9090",
     secure: false,
     changeOrigin: true,
+    // The live job and log updates reach the browser over /api/ws (SockJS + STOMP). Without ws: true the dev
+    // server does not forward the WebSocket upgrade, SockJS falls back to HTTP polling, and its POSTs
+    // (xhr_send, which carry the STOMP SUBSCRIBE) cannot carry the CSRF header, so they get 403 and the
+    // browser never receives a message. Every other way of running DataPallas reaches the server directly
+    // and keeps the real WebSocket; this makes the dev server do the same.
+    ws: true,
     logLevel: "debug",
   },
   "/rb-webcomponents": {
