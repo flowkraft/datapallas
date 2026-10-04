@@ -153,6 +153,7 @@ frend/reporting/e2e/cb-debug/
 **/cloudbeaver-trace*.zip
 
 frend/reporting/documentation.json
+frend/reporting/documentation/
 
 log.txt
 

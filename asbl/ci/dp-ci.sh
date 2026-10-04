@@ -1434,9 +1434,16 @@ if [ "${1:-}" = "--inside" ]; then
       done
       echo '</ul>'; } > "$out/index.html"
   }
+  # Compodoc (J18): the documentation site of the Angular app (modules, components, services, routes, doc coverage). The package.json
+  # script `compodoc` does the same into frend/reporting/documentation (git-ignored); here the site goes next to the run log instead.
+  quality_compodoc() {
+    local out; out=$(quality_out compodoc) || return 1
+    (cd frend/reporting && npx compodoc -p src/tsconfig.app.json -d "$out" --silent)
+  }
   # the tools of the quality plan, one line each, in this order; each adds its report under quality_out and never fails the run
   quality_tools() {
     quality_tool javadoc quality_javadoc
+    quality_tool compodoc quality_compodoc
   }
   quality_result() {
     local n=0 ok=0 s

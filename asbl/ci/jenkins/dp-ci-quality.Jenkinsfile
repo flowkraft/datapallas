@@ -46,6 +46,8 @@ exit 0
 '''
         // Javadoc (J18): the site of bkend/common and bkend/reporting under one index page (HTML Publisher; needs the JavaScript decision of jenkins.md).
         publishHTML(target: [reportName: 'Javadoc', reportDir: 'reports/javadoc', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: true])
+        // Compodoc (J18): the documentation site of the Angular app.
+        publishHTML(target: [reportName: 'Compodoc', reportDir: 'reports/compodoc', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: true])
         // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }
