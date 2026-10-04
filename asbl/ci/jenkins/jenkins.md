@@ -52,6 +52,7 @@ All live in the folder `datapallas`, and are created by `seed.groovy`.
 |---|---|---|
 | `dp-ci-build` | `dp-ci.sh build` | none |
 | `dp-ci-junit` | `dp-ci.sh junit` | `JUNIT_MODULE`, `JUNIT_TEST` |
+| `dp-ci-quality` | `dp-ci.sh quality`: compiles the Java modules, installs the npm dependencies, runs the quality tools; no package, no tests, never gating | none |
 | `dp-ci-e2e` | `dp-ci.sh e2e`, or `dp-ci.sh win e2e` for `electron-windows-vm` | `E2E_SPEC`, `E2E_GREP`, `E2E_TARGET` (`web`, `electron-linux`, `electron-windows-vm`, `docker-server`), `E2E_ROTATION_DATE` (empty = today; the day's database rotation, e.g. 2026-09-22 = sqlserver) (both filters empty = the full suite) |
 | `dp-ci-attach` | follows the run going now, or shows how the last one ended; starts nothing | `LANE` (`linux` = the dp-ci container, `windows` = the Windows VM e2e) |
 

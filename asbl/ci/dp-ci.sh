@@ -33,6 +33,11 @@
 #   JUNIT_MODULE=<bkend/common|bkend/reporting|bkend/server> JUNIT_TEST=<surefire -Dtest pattern> bash asbl/ci/dp-ci.sh junit
 #                                   JUnit gate: one class/pattern (e.g. 'Jasper*Test', 'ReportsServiceTest#method') or,
 #                                   with JUNIT_TEST empty, every test of the module; JUNIT_MODULE empty = all three
+#   bash asbl/ci/dp-ci.sh quality   The quality tools (lint, bug finder, format check, docs), shown by the Jenkins job dp-ci-quality. Compiles the
+#                                   Java modules without tests and installs the npm dependencies of the two frontends (the AI Hub in a scratch copy,
+#                                   never in the tree), then runs each tool one after the other. No package, no tests. Never gating: a tool that
+#                                   fails is recorded and the run goes on. Each tool leaves its report as <log>-quality-<tool> next to the run log.
+#                                   Ends with one parsable line: QUALITY_RESULT tools=N ok=N failed=N <tool>=<ok|rcN> ... exit=0
 #   bash asbl/ci/dp-ci.sh dev       (re)start dp-dev = https://dp-dev.bkstg.flowkraft.com: the dev web server
 #                                   (`npm run custom:start-server-and-ui-web`) in frend/reporting/testground/e2e,
 #                                   from the repo as it is, in container datapallas-dev. build/e2e/junit stop it
@@ -1392,6 +1397,40 @@ if [ "${1:-}" = "--inside" ]; then
     return 1
   }
 
+  # ---- quality: the tools of the quality plan, one `quality_tool <name> <command...>` line each in quality_tools ----
+  QUALITY_STATES=""
+  # where a tool leaves its report: <run log without .log>-quality-<tool>, which Jenkins pulls (asbl/ci/jenkins/pull-reports.sh, @run/)
+  quality_out() { local d="${LOG%.log}-quality-$1"; mkdir -p "$d" && printf '%s\n' "$d"; }
+  # runs one tool and never fails the run: the state is recorded for the QUALITY_RESULT line (reports are shown, not enforced)
+  quality_tool() {
+    local name="$1" rc; shift
+    echo ""; echo "--- quality: $name ---"
+    "$@"; rc=$?
+    if [ "$rc" -eq 0 ]; then QUALITY_STATES="$QUALITY_STATES $name=ok"
+    else echo "quality: $name ended with rc=$rc (recorded, not gating)"; QUALITY_STATES="$QUALITY_STATES $name=rc$rc"; fi
+    return 0
+  }
+  # SpotBugs and Javadoc need the compiled classes of the four Java modules; ESLint, Prettier and Compodoc need node_modules.
+  # The AI Hub app is copied to a scratch folder first, so no node_modules or lock file ever lands in the tree
+  # (db-template is packaged); QUALITY_AIHUB is that copy.
+  QUALITY_AIHUB=/tmp/dp-quality/ai-hub
+  quality_prepare() {
+    mvn -B install -pl bkend/common,bkend/update,bkend/reporting,bkend/server -am -DskipTests || return 1
+    npm_install || return 1
+    local src=asbl/src/main/external-resources/db-template/_apps/flowkraft/_ai-hub/ui-startpage
+    rm -rf "$QUALITY_AIHUB" && mkdir -p "$QUALITY_AIHUB" &&
+    tar -C "$src" --exclude=./node_modules --exclude=./.next -cf - . | tar -C "$QUALITY_AIHUB" -xf - &&
+    (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force)
+  }
+  quality_tools() {
+    :   # the tools are added here by the quality plan, in order, e.g.:  quality_tool javadoc quality_javadoc
+  }
+  quality_result() {
+    local n=0 ok=0 s
+    for s in $QUALITY_STATES; do n=$((n + 1)); case "$s" in *=ok) ok=$((ok + 1)) ;; esac; done
+    echo "QUALITY_RESULT tools=$n ok=$ok failed=$((n - ok))$QUALITY_STATES exit=0"
+  }
+
   echo "PIPELINE_START $(date -u +%Y-%m-%dT%H:%M:%SZ)  task=$TASK  commit=$SHA  version=$VERSION"
   case "$TASK" in
     publish-*)
@@ -1407,6 +1446,14 @@ if [ "${1:-}" = "--inside" ]; then
       ;;
   esac
   step 1 maven_setup
+  if [ "$TASK" = "quality" ]; then
+    step 2 quality_prepare
+    step 3 quality_tools
+    echo ""
+    quality_result
+    echo "PIPELINE_RESULT=SUCCESS  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    exit 0
+  fi
   if [ "$TASK" = "junit" ]; then
     step 2 junit_tests
     echo ""
@@ -1439,9 +1486,9 @@ fi
 # -----------------------------------------------------------------------------
 TASK="${1:-}"
 case "$TASK" in
-  build|e2e|junit|dev|win|publish-demo-bkstg|publish-demo-datapallas.com) ;;
+  build|e2e|junit|quality|dev|win|publish-demo-bkstg|publish-demo-datapallas.com) ;;
   # release: reserved for the real software release (plan §3 O7)
-  *) echo "usage: $0 build|e2e|junit|dev|win <check|ssh|ps|run|poll|stop|e2e>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
+  *) echo "usage: $0 build|e2e|junit|quality|dev|win <check|ssh|ps|run|poll|stop|e2e>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
 esac
 
 # The Windows lane runs here on the host, before any container exists: it only talks to the VM over

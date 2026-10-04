@@ -18,6 +18,10 @@ def jobs = [
     about: 'JUnit, packages and the Docker image of the working tree on the server (dp-ci.sh build).',
     params: [:],
   ],
+  'dp-ci-quality': [
+    about: 'The quality tools (lint, bug finder, format check, documentation) of the working tree on the server (dp-ci.sh quality). No package, no tests; never gating.',
+    params: [:],
+  ],
   'dp-ci-junit': [
     about: 'The JUnit gate (dp-ci.sh junit): one module and test pattern, or everything when both are empty.',
     params: [
