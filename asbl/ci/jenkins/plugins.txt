@@ -5,3 +5,9 @@
 # cloudbees-folder, ssh-slaves (SSH agent nodes), git, credentials, durable-task, timestamper,
 # build-timeout, ws-cleanup, matrix-auth.
 job-dsl:latest
+# Added by the quality plan (plan-quality-code.md), to show the quality reports in the build pages:
+htmlpublisher:latest
+coverage:latest
+warnings-ng:latest
+robot:latest
+javadoc:latest

@@ -99,10 +99,43 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `<job>.Jenkinsfile` | one per job: starts its script on the host over SSH |
 | `win-e2e.sh` | launcher for the Windows VM e2e: starts `dp-ci.sh win e2e` as a detached host process (pid in `win-e2e.pid`), log `<ts>-win-e2e-<sha>.log`, ends with `PIPELINE_RESULT=`. The tests themselves run on the VM as a scheduled task; a reboot of the host kills only the driver (then `dp-ci.sh win poll e2e`). Before every run the VM's checkout is fast-forwarded to `origin/main` (`dp-ci.sh win sync`; stops on local changes), the commit tested is printed as `WIN_E2E_COMMIT`, and the VM's package is rebuilt with `asbl/pack-prepare-for-e2e.bat` unless it was built from that commit (`WIN_E2E_PACKAGE=`; `dp-ci.sh win prepare` does both without the tests) |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
-| `plugins.txt` | the one plugin needed beyond a standard install (`job-dsl`) |
+| `plugins.txt` | the plugins needed beyond a standard install: `job-dsl`, and the report publishers of the quality plan (`htmlpublisher`, `coverage`, `warnings-ng`, `robot`, `javadoc`) |
+| `pull-reports.sh` | on the host: streams the report files of a run as a tar.gz, which the `Reports` stage of a Jenkinsfile unpacks into the build's workspace (see "Reports") |
 
 Nothing is kept for Jenkins in the server folders: `apps/program-files/custom-jenkins` only holds the compose
 file, and `apps/cvs/custom-jenkins/home` is Jenkins' live data (credentials included), never edited by hand.
+
+## Reports
+
+The CI runs on the host in a detached container, so its reports (test XML, coverage, lint results, HTML sites) are files on the host.
+A Jenkins build only has its own workspace, so every job that has reports ends with a `Reports` stage:
+
+1. `Run on the host` runs the script as before. A red run is recorded (`catchError`), not thrown, so the next stage still runs.
+2. `Reports` runs `pull-reports.sh` on the host over the same SSH as the run and unpacks the stream into `reports/` in the workspace.
+   The paths come from `REPORT_PATHS` in the Jenkinsfile (space-separated, globs allowed, relative to the repository root, e.g. `bkend/*/target/surefire-reports`).
+   A missing path is skipped. It never fails the build.
+3. The publisher steps of the tools (`junit`, Coverage, Warnings Next Generation, HTML Publisher, Robot Framework) read from `reports/`.
+   They are added one tool at a time by the quality-tools work. Every tool is non-gating: it shows a report, it never fails a build.
+
+The plugins are listed in `plugins.txt`. `pull-reports.sh` is read from the host checkout like `dp-ci.sh`, so a change to it needs no Jenkins step; a change to `seed.groovy` needs `seed`.
+
+## One-time steps for the owner (Jenkins side of the quality plan)
+
+The quality plan only writes files in the repository. These steps change the running Jenkins and are done by the owner, once, in this order,
+at a moment when no build is running or queued:
+
+1. **Install the plugins** listed at the end of `plugins.txt`: Manage Jenkins -> Plugins -> Available -> `htmlpublisher` (HTML Publisher), `coverage` (Coverage),
+   `warnings-ng` (Warnings Next Generation), `robot` (Robot Framework), `javadoc` (Javadoc). (By command line instead:
+   `docker cp asbl/ci/jenkins/plugins.txt ints-jenkins:/tmp/plugins.txt && docker exec ints-jenkins jenkins-plugin-cli --plugin-file /tmp/plugins.txt --plugin-download-directory /var/jenkins_home/plugins`.)
+2. **Let Jenkins show JavaScript in published HTML reports.** By default Jenkins serves workspace and published HTML with a strict Content-Security-Policy that blocks scripts, which breaks
+   the Playwright report, the Javadoc and Compodoc sites and Swagger UI. Decision (an agent's design, the owner may change it): relax the policy for the whole Jenkins, because it sits behind Authelia and
+   every report is produced by our own CI. In `/var/kraft-internalsystems/apps/program-files/custom-jenkins/docker-compose.yml` add to the Jenkins `JAVA_OPTS` (or create it under `environment`):
+   `-Dhudson.model.DirectoryBrowserSupport.CSP="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; worker-src 'self' blob:"`.
+   Instead of this, the reports could be served as static files by nginx behind Authelia; that is more work and not needed to start. Not verified: the Playwright *trace viewer* may still not open from a Jenkins-served
+   report, because it needs a service worker; the report itself, the screenshots and the error text do.
+3. **Restart Jenkins** (this applies steps 1 and 2): `docker compose up -d --force-recreate` in the folder of that compose file, or Manage Jenkins -> Restart safely.
+4. **Run `seed`** (see "The seed job") once the quality plan has added the job `dp-ci-quality` to `seed.groovy`, and approve the new `seed.groovy` in In-process Script Approval.
+5. **GitHub**: any setting that is not a file in the repository (the quality plan lists them below, if there are any).
 
 ## Setting it up
 
