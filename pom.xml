@@ -22,6 +22,11 @@
 
 		<revision>16.5.0</revision>
 
+		<!-- JaCoCo (coverage, shown in Jenkins). argLine is empty here so the surefire argLine of the shared pom can say
+		     @{argLine}: JaCoCo's prepare-agent fills it with the agent, and without JaCoCo it stays empty. -->
+		<jacoco.version>0.8.13</jacoco.version>
+		<argLine></argLine>
+
 		<!-- upgraded -->
 		<commons.beanutils.version>1.9.4</commons.beanutils.version>
 		<commons.collections.version>4.4</commons.collections.version>
@@ -868,6 +873,29 @@
 							<goals>
 								<goal>copy-dependencies</goal>
 								<goal>analyze-only</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				<!-- Coverage of the unit tests. Declared (without a version) by each Java module that has tests; the report
+				     is bound to the test phase so that `mvn test` writes target/site/jacoco (jacoco.xml + html). Never gating.
+				     bkend/server has another parent and carries the same configuration itself. -->
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>${jacoco.version}</version>
+					<executions>
+						<execution>
+							<id>jacoco-prepare-agent</id>
+							<goals>
+								<goal>prepare-agent</goal>
+							</goals>
+						</execution>
+						<execution>
+							<id>jacoco-report</id>
+							<phase>test</phase>
+							<goals>
+								<goal>report</goal>
 							</goals>
 						</execution>
 					</executions>

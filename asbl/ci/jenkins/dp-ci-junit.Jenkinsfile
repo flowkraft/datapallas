@@ -15,7 +15,7 @@ pipeline {
     DP_HOST = 'root@172.19.0.1'
     DP_REPO = '/var/kraft-internalsystems/projects/all-repos/src/products/reportburster'
     // space-separated paths (globs allowed), relative to DP_REPO, pulled into ./reports by the Reports stage; see jenkins.md, "Reports"
-    REPORT_PATHS = 'bkend/*/target/surefire-reports'
+    REPORT_PATHS = 'bkend/*/target/surefire-reports bkend/*/target/site/jacoco'
   }
 
   stages {
@@ -43,6 +43,11 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/je
         // JUnit (J9): Surefire's XML of every module = the test counts, the failed tests and the trend graph on the build page.
         // skipMarkingBuildUnstable: the report is shown, it never changes the result (the run's own result stands).
         junit testResults: 'reports/bkend/*/target/surefire-reports/TEST-*.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
+        // JaCoCo (J12): coverage per module (percentages and trend, no quality gate = never changes the result), and the JaCoCo HTML with the source of each class.
+        recordCoverage(tools: [[parser: 'JACOCO', pattern: 'reports/bkend/*/target/site/jacoco/jacoco.xml']], sourceCodeRetention: 'NEVER')
+        publishHTML(target: [reportName: 'JaCoCo common', reportDir: 'reports/bkend/common/target/site/jacoco', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: false])
+        publishHTML(target: [reportName: 'JaCoCo reporting', reportDir: 'reports/bkend/reporting/target/site/jacoco', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: false])
+        publishHTML(target: [reportName: 'JaCoCo server', reportDir: 'reports/bkend/server/target/site/jacoco', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: false])
       }
     }
   }

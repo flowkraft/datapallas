@@ -18,6 +18,8 @@
         <revision>16.5.0</revision>
         <!-- Spring Boot's managed Log4j version, kept equal to log4j.version in the shared pom (xtra-tools/bild/common-scripts/maven/pom.xml) -->
         <log4j2.version>2.26.1</log4j2.version>
+        <!-- JaCoCo (coverage, shown in Jenkins): same version and bindings as the root pom, which this module does not inherit -->
+        <jacoco.version>0.8.13</jacoco.version>
     </properties>
 
 	<groupId>com.flowkraft</groupId>
@@ -440,6 +442,26 @@
 		<finalName>${project.artifactId}</finalName>
 
 		<plugins>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<id>jacoco-prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>jacoco-report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

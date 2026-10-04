@@ -25,6 +25,10 @@
 	<build>
 		<finalName>${project.artifactId}</finalName>
 		<plugins>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+			</plugin>
 			<!--
 				Publishes src/test/java as rb-common:test-jar so the other modules can
 				reuse the shared test fixtures (see NorthwindFixture). Without this the
