@@ -49,16 +49,25 @@ rm -rf reports; mkdir -p reports
 q() { printf '%q' "$1"; }
 # the Windows lane has its own newest-log link, and its step log (dp-ci.sh win e2e) names the files <log>-step-playwright...
 LOGDIR=/var/kraft-internalsystems/logs/datapallas-ci; LOGLINK=$LOGDIR/latest.log; RP="$REPORT_PATHS"
-if [ "$E2E_TARGET" = electron-windows-vm ]; then LOGLINK=$LOGDIR/win-e2e-latest.log; RP="@run/-step-playwright.xml @run/-step-playwright-html"; fi
+if [ "$E2E_TARGET" = electron-windows-vm ]; then LOGLINK=$LOGDIR/win-e2e-latest.log; RP="@run/-step-playwright.xml @run/-step-playwright-html @run/-step-robot"; fi
 ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && CI_LOG_LINK=$(q "$LOGLINK") bash asbl/ci/jenkins/pull-reports.sh $RP" | tar xzf - -C reports || echo "Reports: nothing pulled"
 # the run's files are named after its log (<ts>-e2e-<sha>-playwright...): give them the fixed names the publishers need
 for f in reports/*-playwright.xml; do [ -e "$f" ] && mv "$f" reports/playwright.xml; done
 for d in reports/*-playwright-html; do [ -e "$d" ] && rm -rf reports/playwright-html && mv "$d" reports/playwright-html; done
+for d in reports/*-robot; do [ -e "$d" ] && rm -rf reports/robot && mv "$d" reports/robot; done
 exit 0
 '''
         // Playwright (J1): the JUnit XML = test counts and trend; the HTML report = every test with its steps, screenshots and trace.
         // Non-gating: neither step changes the result. keepAll false keeps only the latest report (traces are large).
         junit testResults: 'reports/playwright.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
+        // Robot Framework UAT (J10), Windows lane: a UAT step of the lane (W9, not there yet) leaves asbl/src/uat/results (output.xml, log.html, report.html)
+        // as <step log>-robot next to its log; it is then shown with the Robot plugin: pass/fail trend, links to the report and the log.
+        // Nothing is shown (and nothing fails) while no run has produced it. Thresholds 0 = never marks the build unstable.
+        script {
+          if (fileExists('reports/robot/output.xml')) {
+            robot outputPath: 'reports/robot', outputFileName: 'output.xml', logFileName: 'log.html', reportFileName: 'report.html', passThreshold: 0.0, unstableThreshold: 0.0, otherFiles: '**/*.png'
+          }
+        }
         publishHTML(target: [reportName: 'Playwright report', reportDir: 'reports/playwright-html', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: true])
       }
     }

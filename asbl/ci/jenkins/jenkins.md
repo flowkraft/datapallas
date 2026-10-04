@@ -120,6 +120,12 @@ A Jenkins build only has its own workspace, so every job that has reports ends w
 
 The plugins are listed in `plugins.txt`. `pull-reports.sh` is read from the host checkout like `dp-ci.sh`, so a change to it needs no Jenkins step; a change to `seed.groovy` needs `seed`.
 
+### Robot UAT reports (Windows lane)
+
+The Robot UAT (`asbl/src/uat/run-tests.bat`, results in `asbl/src/uat/results/`: `output.xml`, `log.html`, `report.html`) is not run by `dp-ci.sh win` yet (the lane's header lists it as W9).
+The Jenkins side is ready: when a UAT step of the lane copies `results/` to the host as `<step log of the run, without .log>-robot` (like `-playwright-html` next to it),
+`dp-ci-e2e` with `E2E_TARGET=electron-windows-vm` pulls it and shows it with the Robot Framework plugin. Until then nothing is shown and nothing fails.
+
 ## One-time steps for the owner (Jenkins side of the quality plan)
 
 The quality plan only writes files in the repository. These steps change the running Jenkins and are done by the owner, once, in this order,
