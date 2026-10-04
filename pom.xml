@@ -92,7 +92,7 @@
 
 		<lettuce.version>7.4.0.RELEASE</lettuce.version>
 
-		<datafaker.version>2.5.4</datafaker.version>
+		<datafaker.version>2.7.0</datafaker.version>
 
 		<!--DATABASE END -->
 
