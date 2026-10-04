@@ -46,9 +46,17 @@ const config = {
   // Linux CI (asbl/ci/dp-ci.sh): E2E_RETRIES (2 on a full run); unset = 0, as before
   retries: Number(process.env.E2E_RETRIES) || 0,
   // Linux CI (asbl/ci/dp-ci.sh): E2E_JSON_REPORT also writes every result, with its errors and attachment paths,
-  // to that file; unset = Playwright's default reporter, as before.
+  // to that file; unset = Playwright's default reporter, as before. Next to it, named after it, go the HTML report
+  // (<name>-html, with the traces) and the JUnit XML (<name>.xml) that Jenkins shows (asbl/ci/jenkins/jenkins.md, "Reports").
   ...(process.env.E2E_JSON_REPORT
-    ? { reporter: [['list'], ['json', { outputFile: process.env.E2E_JSON_REPORT }]] }
+    ? {
+        reporter: [
+          ['list'],
+          ['json', { outputFile: process.env.E2E_JSON_REPORT }],
+          ['html', { open: 'never', outputFolder: process.env.E2E_JSON_REPORT.replace(/\.json$/, '-html') }],
+          ['junit', { outputFile: process.env.E2E_JSON_REPORT.replace(/\.json$/, '.xml') }],
+        ],
+      }
     : {}),
   // E2E_REPEAT_EACH=3 proves a flaky test fixed (plan §4 D0); unset = 1, as before
   repeatEach: Number(process.env.E2E_REPEAT_EACH) || 1,

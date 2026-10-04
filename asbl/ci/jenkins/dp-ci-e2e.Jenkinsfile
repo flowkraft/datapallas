@@ -15,7 +15,7 @@ pipeline {
     DP_HOST = 'root@172.19.0.1'
     DP_REPO = '/var/kraft-internalsystems/projects/all-repos/src/products/reportburster'
     // space-separated paths (globs allowed), relative to DP_REPO, pulled into ./reports by the Reports stage; see jenkins.md, "Reports"
-    REPORT_PATHS = ''
+    REPORT_PATHS = '@run/-playwright.xml @run/-playwright-html'
   }
 
   stages {
@@ -48,7 +48,15 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC")
 rm -rf reports; mkdir -p reports
 q() { printf '%q' "$1"; }
 ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/jenkins/pull-reports.sh $REPORT_PATHS" | tar xzf - -C reports || echo "Reports: nothing pulled"
+# the run's files are named after its log (<ts>-e2e-<sha>-playwright...): give them the fixed names the publishers need
+for f in reports/*-playwright.xml; do [ -e "$f" ] && mv "$f" reports/playwright.xml; done
+for d in reports/*-playwright-html; do [ -e "$d" ] && rm -rf reports/playwright-html && mv "$d" reports/playwright-html; done
+exit 0
 '''
+        // Playwright (J1): the JUnit XML = test counts and trend; the HTML report = every test with its steps, screenshots and trace.
+        // Non-gating: neither step changes the result. keepAll false keeps only the latest report (traces are large).
+        junit testResults: 'reports/playwright.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
+        publishHTML(target: [reportName: 'Playwright report', reportDir: 'reports/playwright-html', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: true])
       }
     }
   }

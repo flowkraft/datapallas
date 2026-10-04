@@ -318,6 +318,7 @@ win_pull() {  # win_pull <remote-path> <local-path>   (remote path in C:/forward
       -o StrictHostKeyChecking="${WIN_HOST_KEY_CHECKING:-accept-new}" \
       -o UserKnownHostsFile="$WIN_KNOWN_HOSTS" \
       -o ConnectTimeout="$WIN_CONNECT_TIMEOUT" \
+      ${WIN_SCP_EXTRA:-} \
       "$WIN_USER@$WIN_HOST:$1" "$2"
 }
 
@@ -765,6 +766,9 @@ win_e2e() {
   # that died before Playwright wrote its report still has a verdict to print.
   win_pull "$(printf '%s' "$WIN_RUNS\\e2e\\playwright.json" | tr '\\' '/')" "${out%.log}-playwright.json" \
     2>/dev/null && echo "WIN_E2E_REPORT=${out%.log}-playwright.json"
+  # the same two reports as the Linux lane, for Jenkins: the HTML report (a folder, scp -r) and the JUnit XML
+  win_pull "$(printf '%s' "$WIN_RUNS\\e2e\\playwright.xml" | tr '\\' '/')" "${out%.log}-playwright.xml" 2>/dev/null
+  WIN_SCP_EXTRA=-r win_pull "$(printf '%s' "$WIN_RUNS\\e2e\\playwright-html" | tr '\\' '/')" "${out%.log}-playwright-html" 2>/dev/null
   win_pull "$(printf '%s' "$WIN_REPO\\frend\\reporting\\testground\\e2e\\logs\\info.log" | tr '\\' '/')" \
     "${out%.log}-info.log" 2>/dev/null && echo "WIN_E2E_INFOLOG=${out%.log}-info.log"
 
