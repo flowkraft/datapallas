@@ -55,7 +55,7 @@
 		<mail.version>1.6.7</mail.version>
 		<twilio.version>6.3.0</twilio.version>
 		<failsafe.version>2.4.0</failsafe.version>
-		<ant.version>1.10.15</ant.version>
+		<ant.version>1.10.18</ant.version>
 		<zt-zip.version>1.17</zt-zip.version>
 		<zt-exec.version>1.12</zt-exec.version>
 		<pdfbox.version>2.0.34</pdfbox.version>
