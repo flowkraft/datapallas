@@ -1399,6 +1399,8 @@ if [ "${1:-}" = "--inside" ]; then
 
   # ---- quality: the tools of the quality plan, one `quality_tool <name> <command...>` line each in quality_tools ----
   QUALITY_STATES=""
+  QUALITY_COUNTS=""   # numbers a tool reports, e.g. unformatted-<app>=N, appended to the QUALITY_RESULT line
+  quality_count() { QUALITY_COUNTS="$QUALITY_COUNTS $1=$2"; }
   # where a tool leaves its report: <run log without .log>-quality-<tool>, which Jenkins pulls (asbl/ci/jenkins/pull-reports.sh, @run/)
   quality_out() { local d="${LOG%.log}-quality-$1"; mkdir -p "$d" && printf '%s\n' "$d"; }
   # runs one tool and never fails the run: the state is recorded for the QUALITY_RESULT line (reports are shown, not enforced)
@@ -1420,7 +1422,7 @@ if [ "${1:-}" = "--inside" ]; then
     local src=asbl/src/main/external-resources/db-template/_apps/flowkraft/_ai-hub/ui-startpage
     rm -rf "$QUALITY_AIHUB" && mkdir -p "$QUALITY_AIHUB" &&
     tar -C "$src" --exclude=./node_modules --exclude=./.next -cf - . | tar -C "$QUALITY_AIHUB" -xf - &&
-    (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force eslint-formatter-checkstyle)
+    (cd "$QUALITY_AIHUB" && npm install --no-save --no-package-lock --force eslint-formatter-checkstyle eslint-plugin-prettier prettier @typescript-eslint/parser)
   }
   # Javadoc (J18) of the two library modules: the site of each module under one index page. Comments with doclint errors do not stop it.
   quality_javadoc() {
@@ -1452,17 +1454,47 @@ if [ "${1:-}" = "--inside" ]; then
   }
   quality_eslint_angular() { quality_eslint eslint-angular frend/reporting npm run --silent lint:report; }
   quality_eslint_aihub() { quality_eslint eslint-aihub "$QUALITY_AIHUB" npx eslint -f checkstyle .; }
+  # Prettier (formatter), report only, never --write. Two views of the same fact, per app:
+  #   - the table: the differences as ESLint warnings (rule prettier/prettier, eslint-plugin-prettier) in checkstyle XML, shown by Warnings NG as
+  #     its own source, separate from the lint problems; only the files ESLint can parse (TypeScript, JavaScript, Angular templates);
+  #   - the safety net: `prettier --check` over the whole app (it also sees CSS, SCSS, JSON, Markdown ...): the list goes to the console and to
+  #     prettier-check.txt, the number into QUALITY_RESULT as unformatted-<app>=N.
+  quality_prettier_check() {  # quality_prettier_check <name> <folder> <prettier path/glob...>
+    local name="$1" dir="$2" out n; shift 2
+    out=$(quality_out "$name") || return 1
+    (cd "$dir" && npx prettier --check "$@" > "$out/prettier-check.txt" 2>&1; true)
+    grep -q -E 'Checking formatting|Code style issues|All matched files' "$out/prettier-check.txt" ||
+      { echo "quality: $name: prettier did not run; its output:"; tail -5 "$out/prettier-check.txt"; return 1; }
+    grep -E '^\[warn\] ' "$out/prettier-check.txt" | grep -v 'Code style issues' || true
+    n=$(grep -E '^\[warn\] ' "$out/prettier-check.txt" | grep -vc 'Code style issues')
+    quality_count "unformatted-${name#prettier-}" "$n"
+    echo "quality: $name: $n file(s) not formatted"
+  }
+  quality_prettier_angular() {
+    local rc=0
+    quality_eslint prettier-angular frend/reporting npx eslint --no-eslintrc -c .eslintrc.prettier.json -f checkstyle "src/**/*.ts" "src/**/*.html" || rc=1
+    quality_prettier_check prettier-angular frend/reporting "src/**/*.{ts,html,scss,css,json}" || rc=1
+    return $rc
+  }
+  quality_prettier_aihub() {
+    local rc=0
+    quality_eslint prettier-aihub "$QUALITY_AIHUB" npx eslint -c eslint.prettier.config.mjs -f checkstyle . || rc=1
+    quality_prettier_check prettier-aihub "$QUALITY_AIHUB" . || rc=1
+    return $rc
+  }
   # the tools of the quality plan, one line each, in this order; each adds its report under quality_out and never fails the run
   quality_tools() {
     quality_tool javadoc quality_javadoc
     quality_tool compodoc quality_compodoc
     quality_tool eslint-angular quality_eslint_angular
     quality_tool eslint-aihub quality_eslint_aihub
+    quality_tool prettier-angular quality_prettier_angular
+    quality_tool prettier-aihub quality_prettier_aihub
   }
   quality_result() {
     local n=0 ok=0 s
     for s in $QUALITY_STATES; do n=$((n + 1)); case "$s" in *=ok) ok=$((ok + 1)) ;; esac; done
-    echo "QUALITY_RESULT tools=$n ok=$ok failed=$((n - ok))$QUALITY_STATES exit=0"
+    echo "QUALITY_RESULT tools=$n ok=$ok failed=$((n - ok))$QUALITY_STATES$QUALITY_COUNTS exit=0"
   }
 
   echo "PIPELINE_START $(date -u +%Y-%m-%dT%H:%M:%SZ)  task=$TASK  commit=$SHA  version=$VERSION"

@@ -1,0 +1,18 @@
+{
+  "root": true,
+  "ignorePatterns": ["app/**/*", "dist/**/*", "release/**/*"],
+  "overrides": [
+    {
+      "files": ["*.ts"],
+      "parser": "@typescript-eslint/parser",
+      "plugins": ["prettier"],
+      "rules": { "prettier/prettier": "warn" }
+    },
+    {
+      "files": ["*.html"],
+      "parser": "@angular-eslint/template-parser",
+      "plugins": ["prettier"],
+      "rules": { "prettier/prettier": ["warn", { "parser": "angular" }] }
+    }
+  ]
+}

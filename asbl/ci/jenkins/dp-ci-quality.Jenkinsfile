@@ -52,6 +52,11 @@ exit 0
         // skipBlames: the sources are not in the workspace (the run is on the host). Never gating: no quality gate is set.
         recordIssues(tool: esLint(pattern: 'reports/eslint-angular/eslint.xml', id: 'eslint-angular', name: 'ESLint Angular'), enabledForFailure: true, skipBlames: true)
         recordIssues(tool: esLint(pattern: 'reports/eslint-aihub/eslint.xml', id: 'eslint-aihub', name: 'ESLint AI Hub'), enabledForFailure: true, skipBlames: true)
+        // Prettier (formatter): the formatting differences as a table per app (ESLint rule prettier/prettier, own result, separate from the lint problems),
+        // and the full list of `prettier --check` (it also sees CSS, JSON ...) as a downloadable file next to the build; the count is in QUALITY_RESULT.
+        recordIssues(tool: esLint(pattern: 'reports/prettier-angular/eslint.xml', id: 'prettier-angular', name: 'Prettier Angular'), enabledForFailure: true, skipBlames: true)
+        recordIssues(tool: esLint(pattern: 'reports/prettier-aihub/eslint.xml', id: 'prettier-aihub', name: 'Prettier AI Hub'), enabledForFailure: true, skipBlames: true)
+        archiveArtifacts artifacts: 'reports/prettier-*/prettier-check.txt', allowEmptyArchive: true
         // The publisher steps of the other tools ( Compodoc, ESLint, Prettier, SpotBugs, Spotless) are added below by the quality plan, one tool at a time.
       }
     }

@@ -1,0 +1,10 @@
+# what ESLint ignores (.eslintrc.json) and what is generated
+app/
+dist/
+release/
+documentation/
+testground/
+test-results/
+.angular/
+node_modules/
+package-lock.json
