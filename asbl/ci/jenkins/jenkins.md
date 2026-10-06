@@ -155,7 +155,7 @@ the first-run checklist is at the end. Jenkins folder `datapallas`, each job's b
 
 ### First-run checklist for the owner
 
-1. The one-time Jenkins steps below, in order: install the plugins, relax the CSP, restart Jenkins, run `seed` (and approve the new `seed.groovy`), then the GitHub settings.
+1. The one-time Jenkins steps below, in order: install the plugins, relax the CSP, restart Jenkins, run `seed` (and approve the new `seed.groovy`).
 2. Run **`dp-ci-junit`** first: JaCoCo and Error Prone change the Java compile, so this is where a mistake shows first. If the compile breaks, remove the block marked "Error Prone + NullAway" in the poms.
 3. Run **`dp-ci-quality`**, then **`dp-ci-build`** (Trivy), then **`dp-ci-e2e`** (Playwright; for the OpenAPI page use `E2E_TARGET=docker-server`, after a build of the same commit).
 4. Open each table above once. An empty table next to a fine console log means the parser does not fit that tool's output: the raw output is archived or in the console, tell an agent which.
@@ -186,9 +186,6 @@ at a moment when no build is running or queued:
    report, because it needs a service worker; the report itself, the screenshots and the error text do.
 3. **Restart Jenkins** (this applies steps 1 and 2): `docker compose up -d --force-recreate` in the folder of that compose file, or Manage Jenkins -> Restart safely.
 4. **Run `seed`** (see "The seed job") once the quality plan has added the job `dp-ci-quality` to `seed.groovy`, and approve the new `seed.groovy` in In-process Script Approval.
-5. **GitHub** (settings that are not files): Settings -> Advanced Security (Code security): make sure **Dependency graph** and **Dependabot alerts** are on (Dependabot version updates then
-   work from `.github/dependabot.yml`), and that **Code scanning** is *not* also switched on as "default setup", because the workflow `.github/workflows/codeql.yml` is the advanced setup and the two
-   conflict. The repository is public, so code scanning is free.
 
 ## GitHub: Dependabot and CodeQL
 
