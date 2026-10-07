@@ -250,10 +250,14 @@ test.describe('Cube widgets — the two publishing modes', () => {
       await page.goto(live.dashboardUrl);
       await page.waitForLoadState('networkidle');
       await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
-      // Ticked, this widget IS the cube: the field tree, not a drawn result.
+      // Ticked, this widget IS the cube: the field tree, not a drawn result. The cube draws its own
+      // answer with a tabulator inside its renderer (RbCubeRenderer, #cubeRuntimeResult), so what
+      // must be gone is the dashboard's own tabulator widget, the frozen-SQL one: every tabulator
+      // left on the page is the renderer's.
       await expect(page.locator('rb-cube-renderer')).toHaveCount(1, { timeout: 20_000 });
-      await expect(page.locator('rb-tabulator')).toHaveCount(0);
       await expect(page.locator('#cubeRuntimeResult')).toContainText('Beverages', { timeout: 30_000 });
+      expect(await page.locator('rb-tabulator').count())
+        .toBe(await page.locator('rb-cube-renderer rb-tabulator').count());
 
       // The dashboard opens on the author's own selection, so that selection is
       // what the live cube is asked — the entry the exporter wrote, read back.
