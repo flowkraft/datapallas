@@ -2209,8 +2209,14 @@ export class FluentTester implements PromiseLike<void> {
         // Echo the CSRF token as the app does (api.service.ts): the Server rejects a session POST
         // without it; the desktop sets no XSRF-TOKEN cookie, so nothing is added there.
         const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
+        // credentials: 'include', as api.service.ts does: on the web target the page is the dev
+        // server (localhost:4201) and the backend another origin (localhost:9090), and a cross-origin
+        // fetch sends no cookie by default, so the signed-in session would not be on the request and
+        // an ADMIN-only endpoint answers 403. The backend's CORS allows credentials from
+        // http://localhost:* and from the packaged app (Constants.ALLOWED_ORIGIN_PATTERNS).
         const res = await fetch(fetchUrl, {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}),
