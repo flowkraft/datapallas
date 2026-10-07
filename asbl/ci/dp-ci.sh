@@ -80,7 +80,13 @@ REPO=$(cd "$(dirname "$0")/../.." && pwd)
 LOG_DIR=/var/kraft-internalsystems/logs/datapallas-ci
 CI_IMAGE=datapallas-ci
 CONTAINER=dp-ci
-DEV_CONTAINER=datapallas-dev                          # dp-dev; the bkstg reverse proxy reaches it by this name
+DEV_CONTAINER=${DP_DEV_CONTAINER:-datapallas-dev}      # dp-dev; the bkstg reverse proxy reaches it by this name
+# A private dev site of one agent runs from that agent's own clone (its dp-ci.sh) with its own container, so it never collides with dp-dev:
+#   DP_DEV_CONTAINER=datapallas-dev-kate DP_DEV_URL=https://dp-kate.bkstg.flowkraft.com DP_DEV_M2=dp-kate-m2 bash asbl/ci/dp-ci.sh dev
+# (log: <LOG_DIR>/dev-kate-latest.log, stop: docker stop datapallas-dev-kate). The defaults are the shared dp-dev.
+DEV_URL=${DP_DEV_URL:-https://dp-dev.bkstg.flowkraft.com}
+DEV_M2=${DP_DEV_M2:-dp-ci-m2}
+DEV_LOG_LINK=${DEV_CONTAINER#datapallas-}-latest.log   # datapallas-dev -> dev-latest.log
 DEV_NETWORK=bridge_current_host_cross_containers_net  # the reverse proxy's network
 DEV_PORT=14201                                        # TCP forwarder to `ng serve` (localhost:4201) in that container
 AI_HUB_PORT=3000                                      # `next dev` for the AI Hub start page, in --live only
@@ -828,17 +834,17 @@ start_dev_container() {
   sha=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)
   [ -z "$(git -C "$REPO" status --porcelain 2>/dev/null)" ] || sha="$sha-dirty"
   log="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-dev-$sha.log"
-  ln -sfn "$log" "$LOG_DIR/dev-latest.log"
+  ln -sfn "$log" "$LOG_DIR/$DEV_LOG_LINK"
   docker rm -f "$DEV_CONTAINER" >/dev/null 2>&1
   docker run -d --rm --name "$DEV_CONTAINER" --network "$DEV_NETWORK" --ulimit core=0 \
     -v "$REPO":"$REPO" -w "$REPO" \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v dp-ci-m2:/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \
+    -v "$DEV_M2":/root/.m2 -v dp-ci-npm:/root/.npm -v dp-ci-cache:/root/.cache \
     -v "$LOG_DIR":"$LOG_DIR" \
     -e REPO="$REPO" -e TASK=dev -e SHA="$sha" -e LOG="$log" \
     "$CI_IMAGE" bash "$REPO/asbl/ci/dp-ci.sh" --inside >/dev/null || return 1
-  echo "dp-dev:  $DEV_CONTAINER started, https://dp-dev.bkstg.flowkraft.com answers once the backend and UI have compiled (a few minutes)"
-  echo "log:     $log   (also $LOG_DIR/dev-latest.log)"
+  echo "dp-dev:  $DEV_CONTAINER started, $DEV_URL answers once the backend and UI have compiled (a few minutes)"
+  echo "log:     $log   (also $LOG_DIR/$DEV_LOG_LINK)"
 }
 
 # The pinned dev site: a SEPARATE clone parked at one commit, its own container, its own maven repo,
