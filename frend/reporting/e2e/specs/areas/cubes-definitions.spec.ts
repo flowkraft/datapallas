@@ -146,9 +146,13 @@ test.describe('', async () => {
 
       const ft = new FluentTester(firstPage);
 
-      // Use the pre-existing northwind-customers sample cube — no create/cleanup needed.
+      // Use the pre-existing northwind-customers sample cube — no create/cleanup needed. The list
+      // shows 5 cubes a page and there are 20, so the cube is found the way a user finds it: by
+      // typing its name in the search box (it matches name and description, not the folder id).
       // Business question: "How many customers do we have by country?" (Country + CustomerCount)
       ft.gotoCubeDefinitions()
+        .click('#cubesSearch')
+        .typeText('Northwind Customer Management')
         .waitOnElementToBecomeVisible('#northwind-customers')
         .clickAndSelectTableRow('#northwind-customers')
         .waitOnElementToBecomeEnabled('#btnEditCube')
@@ -199,6 +203,8 @@ test.describe('', async () => {
       // the modal behind it holds one checkbox per value (`#ShipCountry_cb_Germany`) and its own OK.
       // Germany is in that list only if the options endpoint really read the column.
       ft.gotoCubeDefinitions()
+        .click('#cubesSearch')
+        .typeText('Northwind Sales Analysis')
         .waitOnElementToBecomeVisible('#northwind-sales')
         .clickAndSelectTableRow('#northwind-sales')
         .waitOnElementToBecomeEnabled('#btnEditCube')
@@ -284,7 +290,9 @@ test.describe('', async () => {
       ft.gotoCubeDefinitions();
 
       for (const [cubeId, cubeTitle] of samples) {
-        ft.waitOnElementToBecomeVisible(`#${cubeId}`)
+        ft.click('#cubesSearch')
+          .typeText(cubeTitle)
+          .waitOnElementToBecomeVisible(`#${cubeId}`)
           .elementShouldContainText(`#${cubeId}`, cubeTitle)
           .elementShouldNotContainText(`#${cubeId}`, cubeId);
       }
@@ -308,6 +316,8 @@ test.describe('', async () => {
       // The northwind-sales sample ships on SQLite, so the month bucket is
       // `date(…, 'start of month')` — the string this test reads.
       ft.gotoCubeDefinitions()
+        .click('#cubesSearch')
+        .typeText('Northwind Sales Analysis')
         .waitOnElementToBecomeVisible('#northwind-sales')
         .clickAndSelectTableRow('#northwind-sales')
         .waitOnElementToBecomeEnabled('#btnEditCube')
