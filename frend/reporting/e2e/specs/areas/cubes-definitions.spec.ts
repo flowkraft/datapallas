@@ -172,7 +172,9 @@ test.describe('', async () => {
         .elementShouldContainText('#cubeSqlResult', 'SELECT')
         .elementShouldContainText('#cubeSqlResult', 'Customers')
         .elementShouldContainText('#cubeSqlResult', 'Country')
-        .elementShouldContainText('#cubeSqlResult', 'count')
+        // The measure CustomerCount is a distinct count of customers, written under its own name.
+        .elementShouldContainText('#cubeSqlResult', 'COUNT(DISTINCT')
+        .elementShouldContainText('#cubeSqlResult', 'AS "CustomerCount"')
         .click('#btnCloseCubeSqlModal')
         .waitOnElementToBecomeInvisible('#cubeSqlResult')
         // Close modal without saving (sample cube is read-only)
