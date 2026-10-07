@@ -36,6 +36,7 @@ import {
   addCubeToCanvas,
   openCubeFolders,
   switchToWidget,
+  clickWidgetHeader,
 } from '../../helpers/explore-data-test-helper';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -236,6 +237,9 @@ test.describe('Cube widgets — the two publishing modes', () => {
       // publishes to its own dashboard and the second export rewrites the first.
       await page.goto(`${DATA_CANVAS_URL}/${canvasId}`);
       await page.waitForLoadState('networkidle');
+      // A canvas opens with nothing selected on purpose (loadCanvas), and the box lives in the
+      // config panel of the selected widget: the author picks the widget, as they would.
+      await clickWidgetHeader(page, 'tabulator');
       await page.locator('#chkCubeShowInDashboard').waitFor({ state: 'visible', timeout: 30_000 });
       await page.locator('#chkCubeShowInDashboard').check();
       await expect(page.locator('#cubeOnCanvasNote')).toBeVisible({ timeout: 10_000 });
