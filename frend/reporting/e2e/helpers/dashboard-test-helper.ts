@@ -24,12 +24,25 @@ const SAMPLE_IDS: DashboardComponentIds = {
   orderExplorer:   'orderExplorer',
 };
 
+/** What the page says it is: the title and a piece of the purpose line under it. */
+export interface DashboardHeader {
+  title: string;
+  subtitle: string;
+}
+
+/** The shipped g-dashboard sample's own title and purpose line. */
+const SAMPLE_HEADER: DashboardHeader = {
+  title: 'Sales Performance',
+  subtitle: 'revenue, orders and average order value',
+};
+
 /**
  * Shared dashboard assertion helper.
  *
  * When `componentIds` is omitted the function also validates the HTML template
- * (its title and purpose line, rb-value / rb-chart counts) — this is only
- * meaningful for the shipped g-dashboard sample whose HTML template is fixed.
+ * (its title and purpose line, rb-value / rb-chart counts). The counts and the
+ * default ids are the shipped g-dashboard sample's; a dashboard built to the same
+ * layout but with its own wording passes its own `header`.
  *
  * When `componentIds` is provided the HTML template checks are skipped and the
  * data API is called with the supplied dynamic IDs instead. All data-level
@@ -44,6 +57,7 @@ export async function assertDashboardRendersCorrectly(
   reportCode: string,
   country?: string,
   componentIds?: DashboardComponentIds,
+  header: DashboardHeader = SAMPLE_HEADER,
 ) {
   const ids = componentIds ?? SAMPLE_IDS;
   const countryParam = country ? `&country=${encodeURIComponent(country)}` : '';
@@ -51,9 +65,9 @@ export async function assertDashboardRendersCorrectly(
   // ── 1. Header & layout (g-dashboard sample HTML template only) ──
   if (!componentIds) {
     // The page says what it is for before it says anything else (D2).
-    await expect(page.locator('.dash-title')).toHaveText('Sales Performance', { timeout: 30000 });
+    await expect(page.locator('.dash-title')).toHaveText(header.title, { timeout: 30000 });
     await expect(page.locator('.dash-subtitle'))
-      .toContainText('revenue, orders and average order value', { timeout: 10000 });
+      .toContainText(header.subtitle, { timeout: 10000 });
     await expect(page.locator('rb-value')).toHaveCount(4, { timeout: 15000 });
     await expect(page.locator('rb-chart')).toHaveCount(2, { timeout: 15000 });
     await expect(page.locator('rb-tabulator')).toHaveCount(1, { timeout: 15000 });

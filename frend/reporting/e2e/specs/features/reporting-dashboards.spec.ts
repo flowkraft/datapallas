@@ -7,7 +7,7 @@ import { ConfTemplatesTestHelper } from '../../helpers/areas/conf-templates-test
 import _ from 'lodash';
 import { ConnectionsTestHelper } from '../../helpers/areas/connections-test-helper';
 import { SelfServicePortalsTestHelper } from '../../helpers/areas/self-service-portals-test-helper';
-import { assertDashboardRendersCorrectly } from '../../helpers/dashboard-test-helper';
+import { assertDashboardRendersCorrectly, type DashboardHeader } from '../../helpers/dashboard-test-helper';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // This test follows and asserts the step-by-step tutorial described at:
@@ -452,6 +452,13 @@ const DASHBOARD_HTML = `<meta charset="utf-8">
 
 const DASHBOARD_BASE_URL = 'http://localhost:9090';
 
+// This dashboard is built to the shipped sample's layout and component ids, with its own wording
+// (the header of the template above): the shared assertions read it from here, not from the sample.
+const MY_DASHBOARD_HEADER: DashboardHeader = {
+  title: 'Northwind Sales Dashboard',
+  subtitle: 'Wholesale distribution - revenue, customers & product performance',
+};
+
 // ── Test Suite ──
 
 test.describe('DataPallas - Dashboard Report E2E', async () => {
@@ -623,7 +630,7 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
           await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 10000 });
 
           // Run shared dashboard assertions — default "-- All --" (unfiltered)
-          await assertDashboardRendersCorrectly(page, 'my-dashboard');
+          await assertDashboardRendersCorrectly(page, 'my-dashboard', undefined, undefined, MY_DASHBOARD_HEADER);
 
           // ── Exercise the country parameter filter ──
 
@@ -644,7 +651,7 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
           await page.waitForTimeout(5000);
 
           // Assert Germany-filtered data across all components
-          await assertDashboardRendersCorrectly(page, 'my-dashboard', 'Germany');
+          await assertDashboardRendersCorrectly(page, 'my-dashboard', 'Germany', undefined, MY_DASHBOARD_HEADER);
         } finally {
           await SelfServicePortalsTestHelper.closeExternalBrowser(browser);
         }
@@ -672,7 +679,7 @@ test.describe('DataPallas - Dashboard Report E2E', async () => {
           });
 
           // Run shared dashboard assertions (DOM + API)
-          await assertDashboardRendersCorrectly(page, 'my-dashboard');
+          await assertDashboardRendersCorrectly(page, 'my-dashboard', undefined, undefined, MY_DASHBOARD_HEADER);
         } finally {
           await SelfServicePortalsTestHelper.closeExternalBrowser(browser);
         }
