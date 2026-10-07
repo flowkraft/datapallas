@@ -10,7 +10,7 @@ import { assertDashboardRendersCorrectly } from '../../helpers/dashboard-test-he
 import { SelfServicePortalsTestHelper } from '../../helpers/areas/self-service-portals-test-helper';
 import { Helpers } from '../../utils/helpers';
 import {
-  CUBE_STORIES_CARDS,
+  CUBE_STORIES_PAGE_CARDS,
   cardOf,
   checksOf,
   difference,
@@ -1182,9 +1182,9 @@ electronBeforeAfterAllTest(
         await expect(page.locator('.dash-title')).toHaveText('Cube Stories', { timeout: 30000 });
         await expect(page.locator('.dash-subtitle')).toContainText('tick a field', { timeout: 10000 });
         await expect(frame.locator('.rb-cube-stories-root .card'))
-          .toHaveCount(CUBE_STORIES_CARDS.length, { timeout: 60000 });
-        for (const card of CUBE_STORIES_CARDS) {
-          await expect(frame.locator(`#cube-${card.id} #cubeHints .rb-hint`).first())
+          .toHaveCount(CUBE_STORIES_PAGE_CARDS.length, { timeout: 60000 });
+        for (const cubeId of CUBE_STORIES_PAGE_CARDS) {
+          await expect(frame.locator(`#cube-${cubeId} #cubeHints .rb-hint`).first())
             .toBeVisible({ timeout: 60000 });
         }
 
@@ -1302,7 +1302,10 @@ electronBeforeAfterAllTest(
         await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 10000 });
         await expect(page.locator('rb-value')).toHaveCount(2, { timeout: 15000 });
         await expect(page.locator('rb-chart')).toHaveCount(1, { timeout: 15000 });
-        await expect(page.locator('rb-tabulator')).toHaveCount(1, { timeout: 15000 });
+        // The live shop cube beside them draws its answer with a tabulator of its own, so the
+        // page's one table is the tile that is bound to the categories.
+        await expect(page.locator('rb-tabulator[component-id="tabulator_net-category"]'))
+          .toHaveCount(1, { timeout: 15000 });
         await expect(page.locator('rb-parameters')).toHaveCount(1, { timeout: 15000 });
 
         // The page opens with what it is: a reader who arrives by a share link has no sample
