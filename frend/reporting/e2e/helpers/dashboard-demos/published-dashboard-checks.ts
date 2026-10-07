@@ -403,6 +403,21 @@ function holds(row: Record<string, unknown>, wanted: Record<string, unknown>): b
   return true;
 }
 
+/**
+ * What a tile writes as its reading, apart from the other things it writes beside it. A trend writes
+ * its label, its value and "x% vs prior"; a gauge writes its value and label inside its svg, where
+ * the tile's own text does not reach; a progress bar writes "value / goal" and then a percent.
+ */
+async function writtenReading(tile: Locator, tag: string): Promise<string> {
+  if (tag === 'rb-trend') return tile.locator('.rb-trend-inner > div').nth(1).innerText();
+  if (tag === 'rb-gauge') return (await tile.locator('svg text').first().textContent()) ?? '';
+  if (tag === 'rb-progress') {
+    const lines = (await tile.innerText()).split('\n');
+    return (lines.find((line) => line.includes(' / ')) ?? '').split(' / ')[0];
+  }
+  return tile.innerText();
+}
+
 /** The number a tile has written out, as a number: what the reader reads, commas and all. */
 function asNumber(text: string): number | null {
   const bare = text.replace(/[^0-9.,\-]/g, '').replace(/,/g, '');
@@ -556,11 +571,7 @@ export async function assertClaims(
     //    map draws its answer instead of writing it, and the claim about those is the answer above.
     const tag = TAG_OF[(widget as DemoWidget).type];
     if (!WRITTEN_OUT.includes(tag) || typeof kpi.value !== 'number') continue;
-    // A trend tile writes three things: its label, its value and "x% vs prior". The reading is the value.
-    const written = tag === 'rb-trend'
-      ? await tile.locator('.rb-trend-inner > div').nth(1).innerText()
-      : await tile.innerText();
-    const shown = asNumber(written.trim());
+    const shown = asNumber((await writtenReading(tile, tag)).trim());
     expect(shown, `${demo.id}/${kpi.widget} ${when}: the tile writes a number out`).not.toBeNull();
     // The tile rounds for the reader (a currency to the penny, a percent to a digit), so what is
     // asserted is that the reader is being shown this claim's number and not another one.
