@@ -2220,8 +2220,12 @@ const ALLOWED_CONNECTION = 'db-limits-allowed-sqlite';
 const BLOCKED_CONNECTION_NAME = 'Limits Blocked';
 const BLOCKED_CONNECTION = 'db-limits-blocked-sqlite';
 
-/** The sample database every SQLite connection in the suite reads, as the file browser writes it. */
-const NORTHWIND_DB = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-sqlite/northwind.db`;
+/**
+ * The sample database every SQLite connection in the suite reads, relative to the installation as
+ * the shipped samples write it: the backend resolves it from its own working directory. Prefixing it
+ * with PORTABLE_EXECUTABLE_DIR doubles the prefix where that is relative (the web lane's `testground/e2e`).
+ */
+const NORTHWIND_DB = 'db/sample-northwind-sqlite/northwind.db';
 
 /**
  * Create a SQLite connection through the API an administrator's Save uses.
@@ -3159,7 +3163,7 @@ test.describe('Auth — Server: run-sql and author limits', () => {
             defaultConnection: false,
             databaseserver: {
               type: 'sqlite',
-              database: `${process.env.PORTABLE_EXECUTABLE_DIR}/db/${hiddenDb}`,
+              database: `db/${hiddenDb}`,
             },
           },
         }),

@@ -834,7 +834,11 @@ test.describe('Embedding and sharing: tokens and share links', () => {
     // refused with 400 so it cannot become a limit that matches nothing), so it is created too.
     const elsewhereCode = 'db-embed-key-elsewhere';
     const limited = { username: 'e2e-embed-limited-author', password: 'E2eEmbedLimited123!' };
-    const database = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-sqlite/northwind.db`;
+    // Relative to the installation, as the shipped samples write it (`file:db/sample-northwind-sqlite/...`):
+    // the backend resolves it from its own working directory, which is the installation. Prefixing it
+    // with PORTABLE_EXECUTABLE_DIR is wrong where that is itself relative (the web lane's
+    // `testground/e2e`): the prefix would be applied twice.
+    const database = 'db/sample-northwind-sqlite/northwind.db';
     let groupId: number | undefined;
 
     try {
