@@ -704,7 +704,10 @@ test.describe('REST — Cubes', () => {
     expect(body.sql.toLowerCase()).toContain('group by');
     expect(body.sql.toLowerCase()).toContain('order by');
     expect(body.sql.toLowerCase()).toContain('limit 5');
-    expect(Array.isArray(body.params)).toBeTruthy();
+    // params is the map of what was bound, by placeholder name (CubeQuery.getParams, a Map): an IN
+    // list numbers its own values, :cf1_0 and :cf1_1 here. The granularity, the order and the limit
+    // are not values, they are written into the SQL, so nothing else is bound.
+    expect(body.params).toEqual({ cf1_0: 'Germany', cf1_1: 'France' });
   });
 
   test('POST /api/cubes/northwind-sales/generate-sql answers a request with no measure ticked', async () => {
