@@ -175,7 +175,9 @@ export function useWidgetData(widgetId: string) {
 
       return () => {
         cancelled = true;
-        if (!settled) clearWidgetQueryLoading(widgetId);
+        // A request cancelled in flight has its result dropped above, so it must not stay
+        // recorded as executed: the next run has to fetch again.
+        if (!settled) { LAST_EXEC.delete(widgetId); clearWidgetQueryLoading(widgetId); }
       };
     }
 
@@ -243,7 +245,10 @@ export function useWidgetData(widgetId: string) {
       // so the spinner doesn't stick. The next effect run (if it doesn't dedup)
       // will call setWidgetQueryLoading again — the brief gap is invisible
       // because React runs cleanup + next-effect inside the same commit phase.
-      if (!settled) clearWidgetQueryLoading(widgetId);
+      // The dedup entry goes with it: this request's result is dropped (cancelled),
+      // so recording the query as executed would make the next run skip it and leave
+      // the widget with no data.
+      if (!settled) { LAST_EXEC.delete(widgetId); clearWidgetQueryLoading(widgetId); }
     };
   }, [connectionId, dataSource, filterValues, filterVersion, parametersConfig, widgetId, connectionsReady, tableSchema, setWidgetQueryLoading, setWidgetQueryResult, setWidgetQueryError, clearWidgetQueryLoading]);
 
