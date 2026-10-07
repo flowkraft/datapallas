@@ -2235,7 +2235,7 @@ async function createSqliteConnection(admin: string, name: string, code: string)
     connection: {
       code,
       name,
-      default: false,
+      defaultConnection: false,
       databaseserver: { type: 'sqlite', database: NORTHWIND_DB },
     },
   });
@@ -3156,7 +3156,7 @@ test.describe('Auth — Server: run-sql and author limits', () => {
           connection: {
             code: hiddenConnection,
             name: 'Explorer Hidden',
-            default: false,
+            defaultConnection: false,
             databaseserver: {
               type: 'sqlite',
               database: `${process.env.PORTABLE_EXECUTABLE_DIR}/db/${hiddenDb}`,

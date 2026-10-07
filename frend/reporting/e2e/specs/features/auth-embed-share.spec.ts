@@ -840,7 +840,7 @@ test.describe('Embedding and sharing: tokens and share links', () => {
           connection: {
             code: connectionCode,
             name: connectionCode,
-            default: false,
+            defaultConnection: false,
             databaseserver: { type: 'sqlite', database },
           },
         })).status,
