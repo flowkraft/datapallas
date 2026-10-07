@@ -830,6 +830,9 @@ test.describe('Embedding and sharing: tokens and share links', () => {
     // doors are knocked on with the key. The author's half is what makes the key's half mean
     // something — without it, a green test would only say the doors are open to everybody.
     const connectionCode = 'db-embed-key-journey';
+    // The one connection the group allows. A group may only name connections that exist (a typo is
+    // refused with 400 so it cannot become a limit that matches nothing), so it is created too.
+    const elsewhereCode = 'db-embed-key-elsewhere';
     const limited = { username: 'e2e-embed-limited-author', password: 'E2eEmbedLimited123!' };
     const database = `${process.env.PORTABLE_EXECUTABLE_DIR}/db/sample-northwind-sqlite/northwind.db`;
     let groupId: number | undefined;
@@ -847,13 +850,25 @@ test.describe('Embedding and sharing: tokens and share links', () => {
         'the key creates the connection this test is about',
       ).toBe(200);
 
+      expect(
+        (await asTheKey('PUT', `/api/connections/${elsewhereCode}`, {
+          connection: {
+            code: elsewhereCode,
+            name: elsewhereCode,
+            defaultConnection: false,
+            databaseserver: { type: 'sqlite', database },
+          },
+        })).status,
+        'the key creates the connection the group allows',
+      ).toBe(200);
+
       // A group that allows one connection which is not the one above: its members are refused this
       // database everywhere.
       const created = await asTheKey('POST', '/api/iam/groups', {
         name: 'e2e-embed-elsewhere-only',
-        settings: { connections: ['db-somewhere-else'] },
+        settings: { connections: [elsewhereCode] },
       });
-      expect(created.status, 'the key manages groups, as an administrator does').toBe(201);
+      expect(created.status, `the key manages groups, as an administrator does: ${created.text}`).toBe(201);
       groupId = JSON.parse(created.text).id;
 
       await asTheKey('DELETE', `/api/iam/users/${limited.username}`);
@@ -960,6 +975,7 @@ test.describe('Embedding and sharing: tokens and share links', () => {
       await asTheKey('DELETE', `/api/iam/users/${limited.username}`);
       if (groupId !== undefined) await asTheKey('DELETE', `/api/iam/groups/${groupId}`);
       await asTheKey('DELETE', `/api/connections/${connectionCode}`);
+      await asTheKey('DELETE', `/api/connections/${elsewhereCode}`);
     }
   });
 
