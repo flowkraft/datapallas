@@ -120,9 +120,21 @@ export class SamplesTestHelper {
     if (sampleId.includes("NORTHWIND-SALES-PIVOTTABLE"))
       expectedBurstFileName = 'dashboard.html';
 
+    // the dashboard samples added from 2026-09-28 ship the same file name as the other dashboard samples
+    if (sampleId.includes("CUBE-STORIES"))
+      expectedBurstFileName = 'dashboard.html';
+
+    if (sampleId.includes("CUBE-COUNTRY-SALES-DASHBOARD"))
+      expectedBurstFileName = 'dashboard.html';
+
+    if (sampleId.includes("DASHBOARD-DEMOS"))
+      expectedBurstFileName = 'dashboard.html';
+
+    // the value is set when the modal opens and cannot change afterwards: a wrong expectation must cost seconds, not the default wait
     ft = ft.waitOnInputToHaveValue(
       '#burstFileName',
       expectedBurstFileName,
+      2 * Constants.DELAY_TEN_SECONDS,
     );
 
     // 7. Check Split2Times configuration if applicable
