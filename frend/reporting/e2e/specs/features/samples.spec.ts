@@ -15,6 +15,7 @@ import {
   checksOf,
   difference,
   drawnRows,
+  openCardsPanel,
   waitForCard,
 } from '../../helpers/cube-stories-test-helper';
 import {
@@ -1184,6 +1185,8 @@ electronBeforeAfterAllTest(
         await expect(frame.locator('.rb-cube-stories-root .card'))
           .toHaveCount(CUBE_STORIES_PAGE_CARDS.length, { timeout: 60000 });
         for (const cubeId of CUBE_STORIES_PAGE_CARDS) {
+          // A card in a closed industry panel is not visible; open its panel the way a reader does.
+          await openCardsPanel(frame, cubeId);
           await expect(frame.locator(`#cube-${cubeId} #cubeHints .rb-hint`).first())
             .toBeVisible({ timeout: 60000 });
         }
@@ -1309,18 +1312,19 @@ electronBeforeAfterAllTest(
         await expect(page.locator('rb-parameters')).toHaveCount(1, { timeout: 15000 });
 
         // The page opens with what it is: a reader who arrives by a share link has no sample
-        // list around them to tell them (D2). The title sits above the Country filter, the way
-        // every other shipped dashboard opens.
+        // list around them to tell them (D2). The page is published from its canvas, which puts
+        // the parameter bar above the grid, so the title is the first thing in the grid: above
+        // every tile that answers.
         await expect(page.locator('.text-block h1')).toHaveText('Country Sales', { timeout: 15000 });
         await expect(page.locator('.text-block p'))
           .toContainText('What the country you picked sold', { timeout: 10000 });
-        const titleAboveFilter = await page.evaluate(() => {
+        const titleAboveTiles = await page.evaluate(() => {
           const title = document.querySelector('.text-block h1');
-          const params = document.querySelector('rb-parameters');
-          if (!title || !params) return false;
-          return title.getBoundingClientRect().top < params.getBoundingClientRect().top;
+          const tiles = Array.from(document.querySelectorAll('rb-value, rb-chart, rb-tabulator, rb-cube-renderer'));
+          if (!title || tiles.length === 0) return false;
+          return tiles.every((tile) => title.getBoundingClientRect().bottom <= tile.getBoundingClientRect().top);
         });
-        expect(titleAboveFilter, 'the title is above the Country filter').toBe(true);
+        expect(titleAboveTiles, 'the title is above every tile').toBe(true);
 
         // And the chart draws something: the published chart config carries a dataset on a
         // column the tile's own SQL returns, and its title where Chart.js reads it. Shipped as
