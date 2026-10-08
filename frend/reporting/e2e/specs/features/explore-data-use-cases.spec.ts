@@ -5604,8 +5604,11 @@ return ctx.dbSql.rows(sql)`,
       expect(Object.keys(fromTheServer)).toEqual(
         expect.arrayContaining(['dp_user_id', 'dp_user_email', 'dp_user_groups', 'dp_user_role',
                                 'dp_tenant_id', 'dp_today', 'dp_now']));
+      // The server knows an email only for an account that has one; the names above are what the
+      // chip offers either way, and what it binds is the text, empty or not.
       const me = fromTheServer['dp_user_email'];
-      expect(me.length).toBeGreaterThan(0);
+      expect(typeof me).toBe('string');
+      const knowsMe = me.length > 0;
 
       // ── everybody but me: the chip's own offer, and the value behind it ──
       await addVisualWidget(page, 'cube_demo.support_agents', 'tabulator', async () => {
@@ -5633,7 +5636,7 @@ return ctx.dbSql.rows(sql)`,
       // value the server knows is nowhere in the text.
       expect(everybodyElseSql).toContain('"email" <> ${dp_user_email}');
       expect(everybodyElseSql).not.toContain("'${dp_user_email}'");
-      expect(everybodyElseSql).not.toContain(me);
+      expect(knowsMe && everybodyElseSql.includes(me), 'the value itself is not in the text').toBe(false);
 
       // ── me: the same value, the opposite question ──
       await addVisualWidget(page, 'cube_demo.support_agents', 'tabulator', async () => {
@@ -5643,7 +5646,7 @@ return ctx.dbSql.rows(sql)`,
       });
       const meSql = await visualSql();
       expect(meSql).toContain('"email" = ${dp_user_email}');
-      expect(meSql).not.toContain(me);
+      expect(knowsMe && meSql.includes(me), 'the value itself is not in the text').toBe(false);
 
       // ── the tickets opened on or before today, the day the server says ──
       await addVisualWidget(page, 'cube_demo.support_tickets', 'tabulator', async () => {
@@ -5678,8 +5681,9 @@ return ctx.dbSql.rows(sql)`,
       // All 15 agents are somebody else: the value arrived, because a value
       // that never arrived is NULL and `<>` would answer 0.
       expect(await onCanvas(everybodyElseSql, { dp_user_email: me })).toBe(15);
-      // And none of them is me: the filter filters.
-      expect(await onCanvas(meSql, { dp_user_email: me })).toBe(0);
+      // And none of them is me: the filter filters. An account with no email has nothing to be
+      // matched by, and an empty value leaves a filter out (D30), so for it "me" is everybody.
+      expect(await onCanvas(meSql, { dp_user_email: me })).toBe(knowsMe ? 0 : 15);
 
       // The day is a day. Every one of the 3000 tickets was opened on or before
       // 2026-09-29, so today - whenever this runs after that - answers all of
@@ -5714,7 +5718,7 @@ return ctx.dbSql.rows(sql)`,
         }, { rc: d40ReportCode, cid: componentId });
 
       expect(await published(gridIds[0])).toBe(15);
-      expect(await published(gridIds[1])).toBe(0);
+      expect(await published(gridIds[1])).toBe(knowsMe ? 0 : 15);
       expect(await published(gridIds[2])).toBe(3000);
     } finally {
       await deleteCanvasViaUI(page, canvasName);
