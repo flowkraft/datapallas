@@ -215,7 +215,8 @@ function readJson<T>(file: string): T {
 /**
  * The asks of one card, flattened exactly as `CubeHints.of` flattens them for
  * the page: the hint first, then each of its variants, in the file's order;
- * a variant keeps the hint's question and brings its own sentence; `cubeName`
+ * a variant asks a question of its own, and brings its own sentence (a file that leaves the
+ * question out falls back to the hint's, as `CubeHints.of` does); `cubeName`
  * is taken out of the query, because a live cube answers about the cube its
  * dashboard declares and would refuse the name.
  *
@@ -238,7 +239,7 @@ export function asksOf(card: CubeCard): Ask[] {
       asks.push(ask(
         `${id}--${variant.id}`,
         `${id}/${variant.id}`,
-        String(hint.question),
+        String(variant.question ?? hint.question),
         String(variant.text),
         { ...(variant.query ?? {}) } as CubeQuery,
       ));
