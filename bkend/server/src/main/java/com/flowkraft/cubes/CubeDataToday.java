@@ -55,6 +55,14 @@ public class CubeDataToday {
 			"SELECT data_today, shift_days FROM dash_demo.as_of"));
 
 	/**
+	 * The same two markers, the dashboards' first. A connection that holds both demos (the shipped
+	 * DuckDB does) has two days, each the day of its own rows, and a dashboard is read against the
+	 * rows it shows - not against the cubes', which were seeded on another day.
+	 */
+	static final List<String> DASHBOARDS_FIRST = Collections.unmodifiableList(Arrays.asList(
+			MARKERS.get(1), MARKERS.get(0)));
+
+	/**
 	 * The day the data on this connection calls today.
 	 *
 	 * @throws IllegalArgumentException when {@code cube_demo.demo_info} cannot be read or holds no
@@ -62,12 +70,24 @@ public class CubeDataToday {
 	 *                                 data the cube was pointed at, not the server
 	 */
 	public LocalDate of(String connectionId) {
+		return of(connectionId, MARKERS);
+	}
+
+	/**
+	 * The day the data on this connection calls today, for a dashboard: the same row, but when the
+	 * connection holds both demos the dashboards' {@code dash_demo.as_of} answers first.
+	 */
+	public LocalDate ofDashboards(String connectionId) {
+		return of(connectionId, DASHBOARDS_FIRST);
+	}
+
+	private LocalDate of(String connectionId, List<String> markers) {
 
 		List<Map<String, Object>> rows = null;
 		String lastComplaint = null;
 		try (DatabaseConnectionManager dbManager = ConnectionFactory.newConnectionManager()) {
 			SqlExecutor sqlExec = new SqlExecutor(dbManager);
-			for (String marker : MARKERS) {
+			for (String marker : markers) {
 				try {
 					rows = sqlExec.queryOn(connectionId, marker, null, 1);
 				} catch (Exception notThisOne) {

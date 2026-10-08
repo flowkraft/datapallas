@@ -24,7 +24,7 @@ class ReportingServiceStoryParamsTest {
 		ReportingService service = new ReportingService();
 		service.useDataToday(new CubeDataToday() {
 			@Override
-			public LocalDate of(String connectionId) {
+			public LocalDate ofDashboards(String connectionId) {
 				reads.incrementAndGet();
 				return day;
 			}

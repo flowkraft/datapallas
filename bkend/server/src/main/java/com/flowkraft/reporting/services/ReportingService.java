@@ -778,7 +778,7 @@ public class ReportingService {
 		if (!anyRelative)
 			return;
 
-		LocalDate dataToday = cubeDataToday.of(connectionCode);
+		LocalDate dataToday = cubeDataToday.ofDashboards(connectionCode);
 		for (ReportParameter param : parameters)
 			param.defaultValue = CubeDates.resolve(param.defaultValue, dataToday);
 	}
@@ -806,7 +806,7 @@ public class ReportingService {
 				if (!value.isTextual() || !CubeDates.mentions(value.asText()))
 					continue;
 				if (dataToday == null)
-					dataToday = cubeDataToday.of(connectionCode);
+					dataToday = cubeDataToday.ofDashboards(connectionCode);
 				values.put(name, CubeDates.resolve(value.asText(), dataToday));
 			}
 		}
