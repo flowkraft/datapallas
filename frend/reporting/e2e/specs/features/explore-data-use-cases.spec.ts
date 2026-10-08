@@ -227,23 +227,52 @@ const GEO_ROWS = [
   { name: 'Los Angeles', lat:  34.0522,  lon: -118.2437  },
 ];
 
-async function setupGeoLocations(page: Page): Promise<void> {
-  const canvasName = 'GeoLocationsSetup';
-  await createCanvas(page, canvasName);
-  await addTableToCanvas(page, 'Orders');
-  await runSqlQuery(page, `CREATE TABLE IF NOT EXISTS geo_locations (name TEXT PRIMARY KEY, lat REAL, lon REAL)`);
-  for (const row of GEO_ROWS) {
-    await runSqlQuery(page, `INSERT OR IGNORE INTO geo_locations VALUES('${row.name}', ${row.lat}, ${row.lon})`);
-  }
-  await deleteCanvasViaUI(page, canvasName);
+/**
+ * Runs a Groovy script on the spec's own connection through the seed endpoint, the one door that
+ * may change data: `run-sql` answers a single SELECT/WITH and nothing else (`AdHocSqlGuard`), on
+ * purpose. The seed is accepted at once and goes on behind the answer, so the callers wait for
+ * what it makes. The script gets `dbSql`, a `groovy.sql.Sql` on the connection.
+ */
+async function runSeedScript(script: string): Promise<void> {
+  const connectionCode = toConnectionCode(CONNECTION_NAME, DB_VENDOR);
+  const accepted = await fetch(`http://localhost:9090/api/connections/${connectionCode}/run-seed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...Helpers.apiKeyHeader() },
+    body: JSON.stringify({ script, params: {} }),
+  });
+  expect(accepted.status, 'the seed script was accepted').toBe(200);
 }
 
-async function teardownGeoLocations(page: Page): Promise<void> {
-  const canvasName = 'GeoLocationsTeardown';
-  await createCanvas(page, canvasName);
-  await addTableToCanvas(page, 'Orders');
-  await runSqlQuery(page, `DROP TABLE IF EXISTS geo_locations`);
-  await deleteCanvasViaUI(page, canvasName);
+/** The rows of `geo_locations`, or null while the table is not there. */
+async function geoLocationsCount(): Promise<number | null> {
+  const connectionCode = toConnectionCode(CONNECTION_NAME, DB_VENDOR);
+  const answer = await fetch('http://localhost:9090/api/queries/run-sql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...Helpers.apiKeyHeader() },
+    body: JSON.stringify({ connectionId: connectionCode, sql: 'SELECT COUNT(*) AS n FROM geo_locations' }),
+  });
+  const payload = await answer.json();
+  if (payload.error) return null;
+  return Number((payload.data as Record<string, unknown>[])[0].n);
+}
+
+async function setupGeoLocations(): Promise<void> {
+  const statements = [
+    'CREATE TABLE IF NOT EXISTS geo_locations (name TEXT PRIMARY KEY, lat REAL, lon REAL)',
+    ...GEO_ROWS.map((row) =>
+      `INSERT OR IGNORE INTO geo_locations VALUES('${row.name}', ${row.lat}, ${row.lon})`),
+  ];
+  await runSeedScript(statements.map((sql) => `dbSql.execute(${JSON.stringify(sql)})`).join('\n'));
+  await expect
+    .poll(geoLocationsCount, { timeout: 60_000, intervals: [1_000] })
+    .toBe(GEO_ROWS.length);
+}
+
+async function teardownGeoLocations(): Promise<void> {
+  await runSeedScript(`dbSql.execute(${JSON.stringify('DROP TABLE IF EXISTS geo_locations')})`);
+  await expect
+    .poll(geoLocationsCount, { timeout: 60_000, intervals: [1_000] })
+    .toBeNull();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2806,7 +2835,7 @@ return ctx.dbSql.rows(sql)`,
   test('D22 — Reconstruct g-pivottable sample + pin map', async () => {
     test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
     const canvasName = 'D22 — Reconstruct g-pivottable sample + pin map';
-    await setupGeoLocations(page);
+    await setupGeoLocations();
     try {
       await createCanvas(page, canvasName);
 
@@ -2899,7 +2928,7 @@ return ctx.dbSql.rows(sql)`,
       expect(d22Categories).toContain('Beverages');
     } finally {
       await deleteCanvasViaUI(page, canvasName);
-      await teardownGeoLocations(page);
+      await teardownGeoLocations();
     }
   });
 
