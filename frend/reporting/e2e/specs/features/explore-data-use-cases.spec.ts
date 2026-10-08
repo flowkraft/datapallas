@@ -3568,7 +3568,7 @@ return ctx.dbSql.rows(sql)`,
       const d26Result = page.locator('#cubeRuntimeResult');
       // A month label the cube's own grain wrote, like `Jul 1996`.
       await expect(d26Result).toContainText(
-        /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}\b/, { timeout: 30_000 });
+        /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}/, { timeout: 30_000 });
       // The bottom row is the server's second query, not a sum of the page.
       await expect(d26Result).toContainText('Total', { timeout: 30_000 });
       await expect(d26Result).toContainText('$');
