@@ -256,6 +256,8 @@ public class DatabaseConnectionManager implements AutoCloseable {
 			log.debug("HikariDataSource instance created successfully for code: {}", connectionCode);
 		} catch (Exception e) {
 			log.error("Failed to create HikariDataSource for code '{}': {}", connectionCode, e.getMessage(), e);
+			if ("duckdb".equals(dbType))
+				log.error("DUCKDB-DIAG pool failed {}", DuckDbDiag.describe(connSettings.databaseserver.url));
 			throw new Exception("Failed to create database connection pool for code: " + connectionCode, e);
 		}
 
