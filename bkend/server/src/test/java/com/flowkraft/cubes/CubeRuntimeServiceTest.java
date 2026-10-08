@@ -483,10 +483,21 @@ class CubeRuntimeServiceTest {
 			assertEquals(List.of("name", "title", "description", "type", "format", "hasFilterOptions"),
 					new ArrayList<>(dimension.keySet()), "A dimension as a viewer sees it");
 		}
+		// A measure's drill_members are names of fields: the page needs them to draw a number that
+		// opens into the rows behind it, and they are the one key a measure may carry beyond these.
+		int drillable = 0;
 		for (Map<String, Object> measure : members(meta, "measures")) {
+			List<String> keys = new ArrayList<>(measure.keySet());
+			if (keys.remove("drill_members")) {
+				drillable++;
+				assertTrue(measure.get("drill_members") instanceof List<?> drill && !drill.isEmpty()
+						&& drill.stream().allMatch(String.class::isInstance),
+						"The drill members are a list of field names: " + measure.get("drill_members"));
+			}
 			assertEquals(List.of("name", "title", "description", "type", "format"),
-					new ArrayList<>(measure.keySet()), "A measure as a viewer sees it");
+					keys, "A measure as a viewer sees it");
 		}
+		assertTrue(drillable > 0, "A measure that can be opened says so, or no tile could offer it");
 		for (Map<String, Object> segment : members(meta, "segments")) {
 			assertEquals(List.of("name", "title", "description"), new ArrayList<>(segment.keySet()),
 					"A segment as a viewer sees it");

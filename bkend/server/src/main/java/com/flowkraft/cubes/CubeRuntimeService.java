@@ -409,9 +409,16 @@ public class CubeRuntimeService {
 	}
 
 	/**
-	 * One member as a viewer sees it: what it is called, what it is, and how its values are written.
-	 * Whatever else the author wrote — the SQL, the case expression, the sub-query, the primary key,
-	 * the filter-options statement, the drill members, the meta block — is not here.
+	 * One member as a viewer sees it: what it is called, what it is, and how its values are written,
+	 * and for a measure that can be opened, the names of the fields its drill shows ({@code
+	 * drill_members}: the page draws the number as clickable only when it has them). Whatever else
+	 * the author wrote — the SQL, the case expression, the sub-query, the primary key, the
+	 * filter-options statement, the meta block — is not here.
+	 *
+	 * <p>The drill members used to be left out too. Without them a live tile can never offer the
+	 * drill (W4.6): the number is not clickable and no {@code /drill} call is ever made. They are
+	 * only names the viewer already sees in the tree; the rows behind a number are still read by
+	 * {@code /drill}, on the server, with the cube's access filter bound to whoever asks.
 	 */
 	private static Map<String, Object> shown(Map<String, Object> member) {
 
@@ -421,6 +428,9 @@ public class CubeRuntimeService {
 		shown.put("description", member.get("description"));
 		shown.put("type", member.get("type"));
 		shown.put("format", member.get("format"));
+		if (member.get("drill_members") instanceof List<?> drill && !drill.isEmpty()) {
+			shown.put("drill_members", drill.stream().map(String::valueOf).toList());
+		}
 		return shown;
 	}
 
