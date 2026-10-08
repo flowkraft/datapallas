@@ -20,6 +20,7 @@ import { FluentTester } from '../../helpers/fluent-tester';
 import { ConnectionsTestHelper } from '../../helpers/areas/connections-test-helper';
 import { SelfServicePortalsTestHelper } from '../../helpers/areas/self-service-portals-test-helper';
 import { getCanvasComponentIds, assertDashboardRendersCorrectly } from '../../helpers/dashboard-test-helper';
+import { reseedCubeDemoData, type AdminFetch } from '../../helpers/cube-stories-test-helper';
 import {
   type WidgetType,
   WEB_COMPONENT,
@@ -58,6 +59,10 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const test = electronBeforeAfterAllTest as any;
+
+/** The admin API key on every call: the seed endpoint is an author's. */
+const adminFetch: AdminFetch = (url, init = {}) =>
+  fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...Helpers.apiKeyHeader() } });
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -299,6 +304,10 @@ test.describe('Data Canvas Use Cases', () => {
       : app.context.pages()[0];
     // This page is the worker's, opened without signing in; on the Server it still shows the login form.
     await Helpers.signInIfLoginFormIsShown(electronPage!);
+
+    // Many of this file's truths are counts and months of the cube demo data as it was frozen
+    // (the first month a deal closed, the 425 deals closed by a date): load it on that day.
+    await reseedCubeDemoData(adminFetch, 'http://localhost:9090');
 
     const connectionCode = toConnectionCode(CONNECTION_NAME, DB_VENDOR);
     const dbConnsResp = await fetch('http://localhost:9090/api/connections?type=database', { headers: Helpers.apiKeyHeader() });
