@@ -5781,13 +5781,21 @@ return ctx.dbSql.rows(sql)`,
       if (!res.ok) throw new Error(`enable showsamples failed: ${res.status} ${await res.text()}`);
     });
 
-    /** The SQL the Visual builder shows for the widget being edited. */
-    const visualSql = async (): Promise<string> => {
-      await clickDataTab(page);
-      await page.locator('#btnToggleVisualSql').click();
-      await page.locator('#preVisualSql').waitFor({ state: 'visible', timeout: 5_000 });
-      const sql = await page.locator('#preVisualSql').innerText();
-      await page.locator('#btnToggleVisualSql').click();
+    /**
+     * The frozen SQL of the n-th widget, as the canvas saved it. A cube widget has no visual-SQL
+     * box (that is the table builder's): its statement is the server's answer to the field tree,
+     * and the saved canvas is where it is kept. Asked until it carries the bound name, because the
+     * save follows the bind a moment later.
+     */
+    const savedSql = async (widgetIndex: number): Promise<string> => {
+      const canvasId = page.url().split('/').pop()!;
+      let sql = '';
+      await expect.poll(async () => {
+        const response = await page.request.get(`http://localhost:9090/api/explorations/${canvasId}`);
+        const state = JSON.parse((await response.json()).state);
+        sql = String(state.widgets[widgetIndex]?.dataSource?.generatedSql ?? '');
+        return sql;
+      }, { timeout: 30_000, intervals: [500] }).toContain('${dp_user_id}');
       return sql;
     };
 
@@ -5847,7 +5855,7 @@ return ctx.dbSql.rows(sql)`,
 
       // The bound name is written the way a hand-typed one is written, and the value the
       // server knows is nowhere in the text: it arrives when the tile runs, not before.
-      const everybodyElseSql = await visualSql();
+      const everybodyElseSql = await savedSql(0);
       expect(everybodyElseSql).toContain('${dp_user_id}');
       expect(everybodyElseSql).not.toContain("'${dp_user_id}'");
       expect(everybodyElseSql).not.toContain(me);
@@ -5857,7 +5865,7 @@ return ctx.dbSql.rows(sql)`,
       await selectCubeFields(page, [], ['Tickets']);
       await switchToWidget(page, 'number');
       await bindCube(0, 'Agent', 'equals', 'dp_user_id');
-      const meSql = await visualSql();
+      const meSql = await savedSql(1);
       expect(meSql).toContain('${dp_user_id}');
       expect(meSql).not.toContain(me);
 
