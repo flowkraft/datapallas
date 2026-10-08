@@ -145,8 +145,18 @@ test.describe('Cube Stories — the cube demo page', () => {
     await waitForCard(frame, deals.id);
     const dealsAsk = { id: 'deals-by-stage', query: { dimensions: ['Stage'], measures: ['Deals', 'DealValue'] } };
 
+    // A tick asks its question a moment later (the card waits to see if more boxes follow), so the
+    // tick's own answer is waited for and drawn before Show Me is clicked: that is the visitor's
+    // screen the click replaces, and the one question Show Me asks is then the only one counted.
+    const tickAnswered = page.waitForResponse(
+      (r) => r.url().includes(`/cube/${deals.id}/query`) && r.request().method() === 'POST',
+      { timeout: 60_000 });
     await inCard(frame, deals.id, '#chk-dim-LeadSource').check();
     await expect(inCard(frame, deals.id, '#chk-dim-LeadSource')).toBeChecked();
+    const tickRows = ((await (await tickAnswered).json()).rows ?? []).length;
+    await expect
+      .poll(async () => (await drawnRows(frame, deals.id)).length, { timeout: 60_000 })
+      .toBe(tickRows);
 
     let queriesAsked = 0;
     const countQueries = (request: { url(): string; method(): string }) => {
