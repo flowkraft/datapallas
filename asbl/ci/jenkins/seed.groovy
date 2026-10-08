@@ -36,6 +36,7 @@ def jobs = [
       E2E_GREP  : [text: 'Regex on the test titles. Empty = no title filter'],
       E2E_TARGET: [choices: ['web', 'electron-linux', 'electron-windows-vm', 'docker-server'], text: 'What the tests run against. electron-windows-vm = the real Windows desktop of the VM'],
       E2E_ROTATION_DATE: [text: 'YYYY-MM-DD: whose day\'s database rotation to run (2026-09-22 = sqlserver + duckdb). Empty = today'],
+      E2E_PACKAGE: [choices: ['', 'reuse', 'content'], text: 'Targeted runs only. Empty = rebuild the package unless it is this clean commit\'s (as before). reuse = run on the package that is there; content = package the content again on the built jars (minutes, not ~30). Jars and UI are built from the tree on every run, so only a fix to db-template/config/samples/scripts needs content'],
     ],
   ],
   'dp-ci-attach': [

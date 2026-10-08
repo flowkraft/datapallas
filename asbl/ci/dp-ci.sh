@@ -21,6 +21,10 @@
 #                                   E2E_MAX_TEST_MS (60 min per test), E2E_ACTION_TIMEOUT_MS (5 min per click),
 #                                   E2E_CLEAN_STATE_ATTEMPTS (60), E2E_FAILFAST (1), E2E_START_EVIDENCE_MS (5 min),
 #                                   E2E_STALL_MS (10 min), E2E_REPEAT_EACH (1), E2E_SLOW_MO (0 ms, the config default everywhere; 750 = watch in slow motion). 0 switches one off.
+#                                   E2E_PACKAGE=reuse|content (targeted runs only; default = rebuild the package whenever its stamp is not this clean commit):
+#                                   reuse = run on the package that is there; content = package the content again on the built jars (minutes). The jars
+#                                   and the UI are built from the tree on every run, so only a fix to db-template/config/samples/scripts needs `content`.
+#                                   The log says so: an `E2E_PACKAGE mode=... built_from=... commit_under_test=...` line.
 #                                   E2E_ROTATION_DATE (YYYY-MM-DD, default today UTC): whose day's vendor rotation to run, e.g. a failed run's. Watch a run with
 #                                   bash asbl/ci/e2e-watch.sh [STALL_MIN].
 #                                   E2E_LICENSE_INSTANCE_ID (dp-ci-linux-e2e): one licence-server instance for all CI
@@ -982,6 +986,26 @@ if [ "${1:-}" = "--inside" ]; then
   package_stamp() { mkdir -p "$(dirname "$PKG_STAMP")" && printf '%s\n' "$SHA" > "$PKG_STAMP"; }
   prepare_package() {
     local built; built=$(cat "$PKG_STAMP" 2>/dev/null)
+    # E2E_PACKAGE (opt-in, targeted runs only; empty = the stamp rule below, unchanged). Every e2e run compiles the jars and serves the
+    # UI from the tree; the package only supplies the CONTENT (_apps, db-template, config, samples, scripts, sample databases). So a fix that
+    # changes none of that need not rebuild it:
+    #   reuse   = run on the package that is there, as it is (specs, helpers, Java, Angular UI, web components);
+    #   content = package the content again on the jars that are already built (AssemblerTest#refreshContentForE2E: minutes, not the
+    #             26 of a full rebuild) -- for a fix to db-template, config, samples or scripts.
+    # The run says which package it ran on (the E2E_PACKAGE line), so it is never mistaken for a run on this commit's own package.
+    if [ -n "${E2E_PACKAGE:-}" ]; then
+      case "$E2E_PACKAGE" in reuse|content) ;; *) echo "!!! E2E_PACKAGE must be reuse or content (got '$E2E_PACKAGE')"; return 2 ;; esac
+      if [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ]; then
+        echo "!!! E2E_PACKAGE=$E2E_PACKAGE is for targeted runs: a full run always starts from a package built from its own commit"; return 2
+      fi
+      if [ -z "$built" ] || [ ! -d asbl/target/package/verified-db-noexe/DataPallas ]; then
+        echo "package: E2E_PACKAGE=$E2E_PACKAGE asked for, but there is no stamped package to start from - building it"
+      else
+        [ "$E2E_PACKAGE" = content ] && { mvn -B test -pl asbl -Dtest=AssemblerTest#refreshContentForE2E || return 1; }
+        echo "E2E_PACKAGE mode=$E2E_PACKAGE built_from=$built commit_under_test=$SHA"
+        return 0
+      fi
+    fi
     if [ "${SHA%-dirty}" = "$SHA" ] && [ "$built" = "$SHA" ] && [ -d asbl/target/package/verified-db-noexe/DataPallas ]; then
       echo "package: built from $SHA, the commit under test - nothing to rebuild"
       return 0
@@ -1811,7 +1835,7 @@ docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS --ulimit core=0
   -e DEBUG="${DEBUG:-}" \
   -e E2E_CHROMIUM_EXECUTABLE="${E2E_CHROMIUM_EXECUTABLE:-}" \
   -e E2E_SLOW_MO="${E2E_SLOW_MO:-}" \
-  -e E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-}" \
+  -e E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-}" -e E2E_PACKAGE="${E2E_PACKAGE:-}" \
   -e PUBLISH_TAG="$PUBLISH_TAG" -e PUBLISH_RESET="$PUBLISH_RESET" -e DRY_RUN="${DRY_RUN:-0}" -e FORCE="${FORCE:-0}" -e SMOKE_TIMEOUT_SECS="${SMOKE_TIMEOUT_SECS:-300}" \
   -e TARGET_HOST="${TARGET_HOST:-}" -e TARGET_COMPOSE_DIR="${TARGET_COMPOSE_DIR:-}" -e TARGET_DATA_DIR="${TARGET_DATA_DIR:-}" \
   -e TARGET_APP="${TARGET_APP:-}" -e TARGET_URL="${TARGET_URL:-}" \
