@@ -339,6 +339,8 @@ test.describe('Cube Stories — the cube demo page', () => {
     await expect(inCard(frame, tickets.id, '#cubeRuntimeSql')).toContainText('DuckDB');
 
     // ── A card with nothing ticked says what to do ──────────────────────────
+    // Support Desk's panel is the open one now (the industries are one accordion): back to Deals.
+    await waitForCard(frame, deals.id);
     for (const measure of ['Deals', 'DealValue']) {
       await inCard(frame, deals.id, `#chk-meas-${measure}`).uncheck();
     }
