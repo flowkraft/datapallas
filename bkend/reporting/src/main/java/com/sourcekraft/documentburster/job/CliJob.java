@@ -751,11 +751,7 @@ public class CliJob {
 				// packager and in the tests.
 				com.sourcekraft.documentburster.common.db.SeedScriptRunner.run(conn, vendor,
 						Path.of(scriptFilePath), params);
-				log.info("DUCKDB-DIAG seed script ended, connection still open {}",
-						com.sourcekraft.documentburster.common.db.DuckDbDiag.describe(dbSettings.connection.databaseserver.url));
 			}
-			log.info("DUCKDB-DIAG seed connection closed {}",
-					com.sourcekraft.documentburster.common.db.DuckDbDiag.describe(dbSettings.connection.databaseserver.url));
 
 			log.info("Seed script completed for: {}", connectionFilePath);
 		} finally {
