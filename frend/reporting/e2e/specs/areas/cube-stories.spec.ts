@@ -368,19 +368,23 @@ test.describe('Cube Stories — the cube demo page', () => {
     expect(noSuchMember.status()).toBe(400);
     expect(await noSuchMember.text()).toContain('NoSuchField');
 
-    // A request that tries to bring its own SQL or its own database is answered from the widget's
-    // entry alone, exactly as if it had asked for nothing of the sort.
+    // A request that tries to bring its own SQL, its own database or its own cube is refused, by
+    // name, and never answered from what it brought: silently dropping the key would let the
+    // caller believe the rows were the ones they asked for. The same selection without it is
+    // answered from the widget's entry alone.
     const plain = await page.request.post(
       `${BASE_URL}/api/reports/${CUBE_STORIES_REPORT_ID}/cube/${deals.id}/query`,
       { headers: carrying, data: { dimensions: ['Stage'], measures: ['Deals', 'DealValue'] } });
-    const smuggled = await page.request.post(
-      `${BASE_URL}/api/reports/${CUBE_STORIES_REPORT_ID}/cube/${deals.id}/query`,
-      { headers: carrying, data: {
-        dimensions: ['Stage'], measures: ['Deals', 'DealValue'],
-        sql: 'SELECT 1', connectionId: 'rbt-sample-northwind-sqlite-4f2',
-      } });
-    expect(smuggled.status()).toBe(plain.status());
-    expect((await smuggled.json()).rows).toEqual((await plain.json()).rows);
+    expect(plain.status()).toBe(200);
+    for (const [key, value] of [['sql', 'SELECT 1'], ['connectionId', 'rbt-sample-northwind-sqlite-4f2'],
+                                ['cubeName', 'another-cube']]) {
+      const smuggled = await page.request.post(
+        `${BASE_URL}/api/reports/${CUBE_STORIES_REPORT_ID}/cube/${deals.id}/query`,
+        { headers: carrying, failOnStatusCode: false,
+          data: { dimensions: ['Stage'], measures: ['Deals', 'DealValue'], [key]: value } });
+      expect(smuggled.status(), `'${key}' in a viewer's request is refused`).toBe(400);
+      expect(await smuggled.text(), 'and the refusal names it').toContain(`'${key}'`);
+    }
 
     // D11: a choice lives in the page and is gone with it. Oracle is picked here, and the page
     // that comes back is on DuckDB - where the rows really come from - and not on what somebody
