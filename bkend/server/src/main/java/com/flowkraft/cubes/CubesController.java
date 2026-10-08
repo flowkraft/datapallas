@@ -59,10 +59,6 @@ public class CubesController {
 	@Autowired
 	private CubeRuntimeService cubeRuntimeService;
 
-	/** The data's today, for a cube whose parameters default to a period of it (R1, R7). */
-	@Autowired
-	private CubeDataToday dataToday;
-
 	/** Who is asking, for a cube whose access_filter names them - the author is a viewer too. */
 	@Autowired
 	private UserVariables userVariables;
@@ -356,18 +352,15 @@ public class CubesController {
 		// nothing to bind them to; params go with it, for whoever wants to see what was bound.
 		CubeQuery query = CubeSqlGenerator.buildQuery(picked, request, dbVendor);
 
-		// A name a condition uses is a dashboard's parameter (R1), and design time has no dashboard:
-		// the author is writing the cube, not looking at a published page. Every such name is
-		// therefore left with no value here, which is what a viewer leaving the box empty means and
-		// drops the condition naming it — so the statement an author reads is the one their cube
-		// asks on its own, and the ${name} form is the one Show In Dashboard freezes.
-		CubeQuery shown = CubeVariableBinding.bound(query, Map.of(),
-				DashboardParameters.values(List.of(), picked, request, () -> dataToday.of(connectionId)),
-				Map.of());
+		// The text is the export form: every ${name} a condition, an access filter or a bound filter
+		// uses is left standing, because this is also the statement a canvas freezes into a
+		// published dashboard, and the dashboard binds those names to whoever is looking when it
+		// runs. Binding them here, with no value, baked an empty email and role into the frozen
+		// text, so a tile behind an access filter answered nothing to anybody.
 		return Mono.just(Map.<String, Object>of(
-				"sql", shown.toInlineSql(dbVendor),
+				"sql", query.toInlineSql(dbVendor),
 				"dialect", dbVendor,
-				"params", shown.getParams()));
+				"params", query.getParams()));
 	}
 
 	/**
