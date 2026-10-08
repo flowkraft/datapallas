@@ -366,8 +366,9 @@ export function SummarizeStep({
         </div>
       ))}
 
-      {/* Group By — only show when there are aggregations */}
-      {summarize.length > 0 && (
+      {/* Group By — always offered: with an aggregate it is a GROUP BY, with none it is the
+          distinct combinations of the grouped columns (SELECT DISTINCT), which the SQL builder writes. */}
+      {(
         <div className="ml-6 space-y-1">
           <span className="text-xs text-base-content/60">Group by:</span>
 
