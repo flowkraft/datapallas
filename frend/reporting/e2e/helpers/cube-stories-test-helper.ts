@@ -860,6 +860,11 @@ export type AdminFetch = (url: string, init?: RequestInit) => Promise<globalThis
  * cube's first check, asked of the live cube until it is the number that check
  * says. While the tables are being dropped and written the question fails or
  * answers the old rows, and both are simply waited through.
+ *
+ * The rows being right is not the load being over: the job still holds the file open
+ * for writing and closes it a moment later, and a page opened in between meets a file
+ * that cannot be read yet. So the last wait is for the page's own report to be
+ * readable again.
  */
 export async function reseedCubeDemoData(adminFetch: AdminFetch, baseUrl: string): Promise<void> {
   const accepted = await adminFetch(`${baseUrl}/api/connections/${CUBE_DEMO_CONNECTION}/run-seed`, {
@@ -893,6 +898,16 @@ export async function reseedCubeDemoData(adminFetch: AdminFetch, baseUrl: string
       }
     }, { timeout: 900_000, intervals: [5_000] })
     .toBe(howManyDeals);
+
+  await expect
+    .poll(async () => {
+      try {
+        return (await adminFetch(`${baseUrl}/api/reports/${CUBE_STORIES_REPORT_ID}/config`)).status;
+      } catch (theSeedIsStillRunning) {
+        return -1;
+      }
+    }, { timeout: 900_000, intervals: [5_000] })
+    .toBe(200);
 }
 
 /**

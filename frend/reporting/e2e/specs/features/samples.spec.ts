@@ -16,7 +16,9 @@ import {
   difference,
   drawnRows,
   openCardsPanel,
+  reseedCubeDemoData,
   waitForCard,
+  type AdminFetch,
 } from '../../helpers/cube-stories-test-helper';
 import {
   DEMOS,
@@ -28,6 +30,10 @@ import {
   watchForErrors,
 } from '../../helpers/dashboard-demos/published-dashboard-checks';
 import { assertStoriesAreOffered } from '../../helpers/dashboard-demos-test-helper';
+
+/** Administrator calls - seeding - carry the installation key, as in the other specs. */
+const adminFetch: AdminFetch = (url, init = {}) =>
+  fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...Helpers.apiKeyHeader() } });
 
 //DONE2
 test.describe('', async () => {
@@ -1292,6 +1298,11 @@ electronBeforeAfterAllTest(
         // A brand new browser carries no session; on a Server the dashboard would otherwise be
         // the login page. On a desktop installation this returns without doing anything.
         await Helpers.signInBrowserContext(context);
+
+        // The month-by-month story below names months, and the months of the demo data depend on
+        // the day it was seeded: so the data is loaded again on the day its checks were computed
+        // for, before the page is opened, whatever day the run happens on.
+        await reseedCubeDemoData(adminFetch, 'http://localhost:9090');
 
         const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-country-sales';
 
