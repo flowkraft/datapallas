@@ -3928,7 +3928,7 @@ return ctx.dbSql.rows(sql)`,
       await page.goto(d29Url);
       await page.waitForLoadState('networkidle');
       await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator('rb-number')).toHaveCount(2, { timeout: 20_000 });
+      await expect(page.locator('rb-value')).toHaveCount(2, { timeout: 20_000 });
 
       // The published dashboard's own answers, from the script the publisher
       // wrote - the path that converts through ParameterTypes.typed.
@@ -4056,7 +4056,7 @@ return ctx.dbSql.rows(sql)`,
       await page.goto(d30Url);
       await page.waitForLoadState('networkidle');
       await expect(page.locator('rb-dashboard')).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator('rb-number')).toHaveCount(1, { timeout: 20_000 });
+      await expect(page.locator('rb-value')).toHaveCount(1, { timeout: 20_000 });
 
       // ── the published dashboard, asked both ways through its own data door ──
       const [d30WidgetId] = d30Ids['number'] ?? [];
