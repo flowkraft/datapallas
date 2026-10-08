@@ -288,7 +288,8 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
    * generated again through the same call the tree's own change goes through, so the frozen text
    * follows the chip without the author touching the tree.
    */
-  const changeCubeBindings = async (paramBindings: CubeParamBinding[]) => {
+  const changeCubeBindings = async (edit: (current: CubeParamBinding[]) => CubeParamBinding[]) => {
+    const paramBindings = edit((liveVisualQuery(widgetId) ?? query).cubeSelection?.paramBindings ?? []);
     // The latest widget, not the one this render closed over: a second change made while the
     // first one is still waiting for its SQL starts from the first one's binding, not from the
     // list as it was before it.

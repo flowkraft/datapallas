@@ -24,7 +24,10 @@ interface CubeBindStepProps {
    *  file writes them. A measure's filter is a HAVING (owner, 2026-09-28). */
   members: CubeBindableMember[];
   bindings: CubeParamBinding[];
-  onChange: (bindings: CubeParamBinding[]) => void;
+  /** The change is handed over as an edit of the list as it is when the edit is applied, not of
+   *  the list this render drew: two changes made before the next render each start from the one
+   *  before it. */
+  onChange: (edit: (current: CubeParamBinding[]) => CubeParamBinding[]) => void;
   /** The dashboard's own parameter ids, from `parametersConfig`. */
   availableParams?: string[];
   /** The `dp_` names the server says it sets for this caller (R9). */
@@ -54,7 +57,7 @@ export function CubeBindStep({
   const addBinding = () => {
     const member = members[0]?.name ?? "";
     const offered = operatorsFor(member).map((operator) => operator.value);
-    onChange([...bindings, {
+    onChange((current) => [...current, {
       param: offers[0]?.id ?? "",
       member,
       // A member that cannot be listed starts on the first operator it can be asked with,
@@ -65,35 +68,42 @@ export function CubeBindStep({
     }]);
   };
 
-  const updateBinding = (i: number, patch: Partial<CubeParamBinding>) => {
-    onChange(bindings.map((binding, index) => (index === i ? { ...binding, ...patch } : binding)));
+  const updateBinding = (
+    i: number,
+    patch: Partial<CubeParamBinding> | ((binding: CubeParamBinding) => Partial<CubeParamBinding>),
+  ) => {
+    onChange((current) => current.map((binding, index) => (index === i
+      ? { ...binding, ...(typeof patch === "function" ? patch(binding) : patch) }
+      : binding)));
   };
 
   /** Moving to another member can leave the operator behind: a date cannot be listed, and a
    *  string cannot be compared. The binding follows the member rather than staying unaskable. */
   const changeMember = (i: number, member: string) => {
     const offered = operatorsFor(member).map((operator) => operator.value);
-    const current = bindings[i].operator ?? DEFAULT_BINDING_OPERATOR;
-    const operator = offered.includes(current) ? current : (offered[0] ?? current);
-    updateBinding(i, {
-      member,
-      operator,
-      paramTo: bindingTakesTwoEnds(operator) ? bindings[i].paramTo : undefined,
+    updateBinding(i, (binding) => {
+      const current = binding.operator ?? DEFAULT_BINDING_OPERATOR;
+      const operator = offered.includes(current) ? current : (offered[0] ?? current);
+      return {
+        member,
+        operator,
+        paramTo: bindingTakesTwoEnds(operator) ? binding.paramTo : undefined,
+      };
     });
   };
 
   /** `between` takes a second parameter; every other operator takes none, and forgets it. */
   const changeOperator = (i: number, operator: string) => {
-    updateBinding(i, {
+    updateBinding(i, (binding) => ({
       operator,
       paramTo: bindingTakesTwoEnds(operator)
-        ? (bindings[i].paramTo || offers[0]?.id || "")
+        ? (binding.paramTo || offers[0]?.id || "")
         : undefined,
-    });
+    }));
   };
 
   const removeBinding = (i: number) => {
-    onChange(bindings.filter((_, index) => index !== i));
+    onChange((current) => current.filter((_, index) => index !== i));
   };
 
   // Nothing to bind to and nothing bound yet: a canvas with no parameters says nothing about
