@@ -156,6 +156,8 @@
     labels: string[];
     from: string;
     to: string;
+    /** A list that leaves its values out (`notIn`) instead of keeping them: the chip says `not`. */
+    negate?: boolean;
   }
 
   /** One entry per filtered dimension. This is the whole filter state; the chips are drawn from it. */
@@ -710,6 +712,7 @@
     }
     const values = draftValues();
     const state: FilterState = { kind: filterKind, values: [], labels: [], from: '', to: '' };
+    if (filterKind === 'list' && activeFilters[dim.name]?.negate) state.negate = true;
     if (filterKind === 'list' || filterKind === 'boolean') {
       const said = String(values[dim.name] ?? '').trim();
       // '*' is the multi-select's "All", which is every value there is - that is no filter at all,
@@ -765,7 +768,9 @@
         if (f.to) out.push({ member, operator: 'lte', values: [f.to] });
         continue;
       }
-      if (f.values.length > 0) out.push({ member, operator: 'in', values: [...f.values] });
+      if (f.values.length > 0) {
+        out.push({ member, operator: f.negate ? 'notIn' : 'in', values: [...f.values] });
+      }
     }
     return out;
   }
@@ -777,8 +782,8 @@
       return f.from ? '\u2265 ' + f.from : '\u2264 ' + f.to;
     }
     const shown = f.labels.length === f.values.length ? f.labels : f.values;
-    if (shown.length > 3) return shown.slice(0, 2).join(', ') + ' +' + (shown.length - 2);
-    return shown.join(', ');
+    const said = shown.length > 3 ? shown.slice(0, 2).join(', ') + ' +' + (shown.length - 2) : shown.join(', ');
+    return f.negate ? 'not ' + said : said;
   }
 
   /**
@@ -820,6 +825,8 @@
         }
       } else {
         state.values = values;
+        // `notIn` (and a single `notEquals`) leaves its values out: that is kept, not turned into `in`.
+        state.negate = operator === 'notIn' || operator === 'notEquals';
         // Nobody has fetched this list yet, so a value is its own label until someone opens it.
         state.labels = values;
       }
