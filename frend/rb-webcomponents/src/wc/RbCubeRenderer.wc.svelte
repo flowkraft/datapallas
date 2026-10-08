@@ -997,6 +997,8 @@
   let dataVendor = '';
   let sqlOpen = false;
   let sqlText = '';
+  /** The database `sqlText` was written for: a statement is never shown under another database's name. */
+  let sqlTextVendor = '';
   let sqlError = '';
   let sqlLoading = false;
   /** The cube's own DSL text, only where the author turned Show Config on. */
@@ -1454,12 +1456,14 @@
     sqlLoading = true;
     try {
       const request = withDashboardParams(runtimeRequest());
-      if (sqlVendor) request.dbVendor = sqlVendor;
+      const askedVendor = sqlVendor;
+      if (askedVendor) request.dbVendor = askedVendor;
       const response = await fetch(runtimeUrl('sql'), {
         method: 'POST', headers: runtimeHeaders(), body: JSON.stringify(request),
       });
       const answer = await runtimeAnswer(response, 'The SQL of this question could not be written');
       sqlText = String(answer?.sql ?? '');
+      sqlTextVendor = askedVendor;
       sqlError = '';
     } catch (e: any) {
       sqlText = '';
@@ -3144,7 +3148,7 @@
               <div id="cubeRuntimeSqlError" class="rb-filter-note rb-filter-bad">{sqlError}</div>
             {:else if nothingTicked}
               <div class="rb-filter-note">Tick a field to see its SQL</div>
-            {:else if sqlLoading && !sqlText}
+            {:else if sqlLoading && (!sqlText || sqlTextVendor !== sqlVendor)}
               <div class="rb-filter-note">Generating&hellip;</div>
             {:else}
               <pre class="rb-opened-text">{sqlText}</pre>
