@@ -388,7 +388,8 @@ export async function openIndustry(frame: Frame, slug: string): Promise<void> {
  * A card in a closed panel is not visible, and every helper here reaches a card
  * by its id, so this is where the accordion is dealt with: once, for all of
  * them. A page that lays its cards out flat has no panel to open and is left
- * exactly as it is.
+ * exactly as it is. Every helper that clicks into a card or waits for something in it
+ * starts with this call, so a test never has to know which panel is open.
  */
 export async function openCardsPanel(frame: Frame, cubeId: string): Promise<void> {
   const panel = frame.locator(`.industry:has(#cube-${cubeId})`);
@@ -514,6 +515,7 @@ export async function clickShowMe(frame: Frame, cubeId: string, askId: string): 
  * for and the filters it carries.
  */
 export async function expectTreeShows(frame: Frame, cubeId: string, query: CubeQuery): Promise<void> {
+  await openCardsPanel(frame, cubeId);
   const dimensions = query.dimensions ?? [];
   const measures = query.measures ?? [];
   const segments = query.segments ?? [];
@@ -549,6 +551,7 @@ export async function answerCardParams(
   cubeId: string,
   answers: Record<string, string>,
 ): Promise<void> {
+  await openCardsPanel(frame, cubeId);
   for (const [name, value] of Object.entries(answers)) {
     const control = inCard(frame, cubeId, `#cubeCardParams #${name}`);
     await expect(control, `${cubeId}: the card asks its viewer for ${name}`)
@@ -651,12 +654,14 @@ export async function expectStoriesReadAsStories(
 // ── Show SQL, Show Config, and the shape switch ─────────────────────────────────
 
 export async function openSql(frame: Frame, cubeId: string): Promise<void> {
+  await openCardsPanel(frame, cubeId);
   const button = inCard(frame, cubeId, '#cubeRuntimeViewSql');
   if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
   await expect(inCard(frame, cubeId, '#cubeRuntimeSql')).toBeVisible({ timeout: 20_000 });
 }
 
 export async function hideSql(frame: Frame, cubeId: string): Promise<void> {
+  await openCardsPanel(frame, cubeId);
   const button = inCard(frame, cubeId, '#cubeRuntimeViewSql');
   if ((await button.getAttribute('aria-expanded')) === 'true') await button.click();
   await expect(inCard(frame, cubeId, '#cubeRuntimeSql')).toHaveCount(0, { timeout: 20_000 });
@@ -664,6 +669,7 @@ export async function hideSql(frame: Frame, cubeId: string): Promise<void> {
 
 /** The statement the panel is showing, once it has stopped saying it is writing one. */
 export async function sqlText(frame: Frame, cubeId: string, timeout = 30_000): Promise<string> {
+  await openCardsPanel(frame, cubeId);
   const panel = inCard(frame, cubeId, '#cubeRuntimeSql pre');
   await expect(panel).toBeVisible({ timeout });
   await expect
@@ -687,6 +693,7 @@ export async function chooseSqlVendor(frame: Frame, cubeId: string, vendor: stri
 }
 
 export async function openCode(frame: Frame, cubeId: string): Promise<string> {
+  await openCardsPanel(frame, cubeId);
   const button = inCard(frame, cubeId, '#cubeRuntimeViewCode');
   if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
   const panel = inCard(frame, cubeId, '#cubeRuntimeCode pre');
@@ -695,6 +702,7 @@ export async function openCode(frame: Frame, cubeId: string): Promise<string> {
 }
 
 export async function hideCode(frame: Frame, cubeId: string): Promise<void> {
+  await openCardsPanel(frame, cubeId);
   const button = inCard(frame, cubeId, '#cubeRuntimeViewCode');
   if ((await button.getAttribute('aria-expanded')) === 'true') await button.click();
   await expect(inCard(frame, cubeId, '#cubeRuntimeCode')).toHaveCount(0, { timeout: 20_000 });
