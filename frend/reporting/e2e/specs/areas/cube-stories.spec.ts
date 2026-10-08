@@ -272,6 +272,8 @@ test.describe('Cube Stories — the cube demo page', () => {
     expect(sqlOnOracle, 'another database is another statement').not.toBe(sqlOnDuckDb);
     await expect(inCard(frame, deals.id, '#cubeRuntimeSql')).toContainText('Oracle');
     // ── The chrome of the tile: where the detail toggle sits, and the two boxes ──
+    // The industries are one accordion: opening the Deals card above closed this card's panel.
+    await waitForCard(frame, sales.id);
     // Both boxes are closed again here, so the buttons read what a reader first sees.
     const chrome = await inCard(frame, sales.id, 'rb-cube-renderer').evaluate((host: Element) => {
       const root: ParentNode = (host as HTMLElement).shadowRoot ?? host;
