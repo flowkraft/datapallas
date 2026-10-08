@@ -859,7 +859,10 @@ export type AdminFetch = (url: string, init?: RequestInit) => Promise<globalThis
  * behind it. So the wait is on the data: the Deals count of the sales-pipeline
  * cube's first check, asked of the live cube until it is the number that check
  * says. While the tables are being dropped and written the question fails or
- * answers the old rows, and both are simply waited through.
+ * answers the old rows, and both are simply waited through. The script loads its
+ * tables one after the other, so a second wait is for the Payments count of the
+ * customer-payments cube, which reads the table it loads last: a page opened before
+ * that would meet cubes whose tables are not there yet.
  *
  * The rows being right is not the load being over: the job still holds the file open
  * for writing and closes it a moment later, and a page opened in between meets a file
@@ -878,6 +881,10 @@ export async function reseedCubeDemoData(adminFetch: AdminFetch, baseUrl: string
   const deals = checksOf('sales-pipeline').get('deals-and-value');
   expect(deals, 'the sales-pipeline check says how many deals the demo data holds').toBeTruthy();
   const howManyDeals = Number((deals as CubeCheck).rows[0][0]);
+
+  const payments = checksOf('customer-payments').get('payments-by-method/totals');
+  expect(payments, 'the customer-payments check says how many payments the demo data holds').toBeTruthy();
+  const howManyPayments = Number((payments as CubeCheck).rows[0][0]);
 
   await expect
     .poll(async () => {
@@ -898,6 +905,26 @@ export async function reseedCubeDemoData(adminFetch: AdminFetch, baseUrl: string
       }
     }, { timeout: 900_000, intervals: [5_000] })
     .toBe(howManyDeals);
+
+  await expect
+    .poll(async () => {
+      try {
+        const answer = await adminFetch(
+          `${baseUrl}/api/reports/${CUBE_STORIES_REPORT_ID}/cube/customer-payments/query`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dimensions: [], measures: ['Payments'] }),
+          },
+        );
+        if (answer.status !== 200) return -1;
+        const rows = (await answer.json()).rows ?? [];
+        return rows.length === 1 ? Number(Object.values(rows[0] as Record<string, unknown>)[0]) : -1;
+      } catch (theSeedIsStillRunning) {
+        return -1;
+      }
+    }, { timeout: 900_000, intervals: [5_000] })
+    .toBe(howManyPayments);
 
   await expect
     .poll(async () => {
