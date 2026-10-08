@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from "react";
-import { useCanvasStore, type CanvasState } from "./canvas-store";
+import { useCanvasStore, isDerivedWrite, type CanvasState } from "./canvas-store";
 
 const MAX_HISTORY = 50;
 
@@ -27,6 +27,14 @@ export function useCanvasHistory() {
 
       const key = JSON.stringify({ w: state.widgets, p: state.parametersConfig, c: state.connectionId });
       if (key === lastSnapshotRef.current) return;
+
+      // A widget restored by redo asks its query again, and the answer writes its columns and
+      // chart type back. That is the same edit completing, not a new one: keep it in the
+      // current snapshot and leave past and future as they are.
+      if (isDerivedWrite()) {
+        lastSnapshotRef.current = key;
+        return;
+      }
 
       if (lastSnapshotRef.current) {
         const prev = JSON.parse(lastSnapshotRef.current);

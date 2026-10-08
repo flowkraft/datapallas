@@ -363,6 +363,18 @@ interface CanvasActions {
   getSerializableState: () => Omit<CanvasState, "selectedWidgetId" | "editMode" | "filterValues" | "filterVersion" | "exploreSelections" | "exploreFieldStates" | "exploreVersion" | "exportedReportCode" | "queryResults">;
 }
 
+/**
+ * True while the store is written with what a query result (or a schema) says about a widget:
+ * its columns, its shape and, until the user picks one, the chart type that fits. Those writes
+ * follow from an edit that is already on the history; they are not one. The history reads this
+ * to fold such a write into the snapshot it holds instead of recording a step, which would also
+ * throw away everything that can still be redone.
+ */
+let derivedWrite = false;
+export function isDerivedWrite(): boolean {
+  return derivedWrite;
+}
+
 export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => ({
   ...DEFAULT_STATE,
 
@@ -639,24 +651,30 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
 
     // STEP 3 — atomic write.  One set() publishes type, displayConfig,
     // columns, shape, and the queryResult cache together.  No half-state
-    // visible to reactive observers.
-    set({
-      widgets: state.widgets.map((w) =>
-        w.id === widgetId
-          ? {
-              ...w,
-              type: nextType,
-              displayConfig: nextDisplayConfig,
-              columns: computed?.columns ?? w.columns,
-              shape: computed?.shape ?? w.shape,
-            }
-          : w
-      ),
-      queryResults: {
-        ...state.queryResults,
-        [widgetId]: { result, error: null, loading: false },
-      },
-    });
+    // visible to reactive observers.  What this writes is derived from the
+    // result, not an edit by the user, and is marked so (see isDerivedWrite).
+    derivedWrite = true;
+    try {
+      set({
+        widgets: state.widgets.map((w) =>
+          w.id === widgetId
+            ? {
+                ...w,
+                type: nextType,
+                displayConfig: nextDisplayConfig,
+                columns: computed?.columns ?? w.columns,
+                shape: computed?.shape ?? w.shape,
+              }
+            : w
+        ),
+        queryResults: {
+          ...state.queryResults,
+          [widgetId]: { result, error: null, loading: false },
+        },
+      });
+    } finally {
+      derivedWrite = false;
+    }
   },
 
   setWidgetColumnsFromSchema: (widgetId, columns, tableSchema, cardinality) => {
@@ -664,11 +682,16 @@ export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => 
     // every consumer reads widget.columns + widget.shape from here onwards.
     // Overwritten later by setWidgetQueryResult when the query actually runs.
     const shape = shapeFromColumns(columns, tableSchema ?? undefined, cardinality);
-    set({
-      widgets: get().widgets.map((w) =>
-        w.id === widgetId ? { ...w, columns, shape } : w
-      ),
-    });
+    derivedWrite = true;
+    try {
+      set({
+        widgets: get().widgets.map((w) =>
+          w.id === widgetId ? { ...w, columns, shape } : w
+        ),
+      });
+    } finally {
+      derivedWrite = false;
+    }
   },
 
   setWidgetQueryError: (widgetId, error) => {
