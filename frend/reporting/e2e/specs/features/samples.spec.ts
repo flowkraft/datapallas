@@ -1469,25 +1469,25 @@ electronBeforeAfterAllTest(
         // what the chip says; asked again directly it gives the rows the card drew; and asked the
         // other way round (IN) it gives other rows, so the operator is what decides them.
         await expect.poll(() => liveCubeAsks.length, { timeout: 60000 }).toBeGreaterThan(0);
-        const drawn = liveCubeAsks[liveCubeAsks.length - 1];
+        const liveCubeDrawn = liveCubeAsks[liveCubeAsks.length - 1];
         const withoutLength = (headers: Record<string, string>) => Object.fromEntries(
           Object.entries(headers).filter(([name]) => !['content-length', 'host', 'cookie'].includes(name.toLowerCase())));
-        expect((drawn.body.filters ?? []).filter((f: any) => f.member === 'Status'),
+        expect((liveCubeDrawn.body.filters ?? []).filter((f: any) => f.member === 'Status'),
           'the cube is asked to leave the cancelled and returned orders out')
           .toEqual([{ member: 'Status', operator: 'notIn', values: ['Cancelled', 'Returned'] }]);
-        const askedAgain = await page.request.post(drawn.url,
-          { headers: withoutLength(drawn.headers), data: drawn.body });
+        const askedAgain = await page.request.post(liveCubeDrawn.url,
+          { headers: withoutLength(liveCubeDrawn.headers), data: liveCubeDrawn.body });
         expect(askedAgain.ok(), 'the same question, asked directly').toBe(true);
-        expect((await askedAgain.json()).rows, 'gives the rows the card drew').toEqual(drawn.answer.rows);
-        const theOtherWay = await page.request.post(drawn.url, {
-          headers: withoutLength(drawn.headers),
+        expect((await askedAgain.json()).rows, 'gives the rows the card drew').toEqual(liveCubeDrawn.answer.rows);
+        const theOtherWay = await page.request.post(liveCubeDrawn.url, {
+          headers: withoutLength(liveCubeDrawn.headers),
           data: {
-            ...drawn.body,
-            filters: drawn.body.filters.map((f: any) => (f.member === 'Status' ? { ...f, operator: 'in' } : f)),
+            ...liveCubeDrawn.body,
+            filters: liveCubeDrawn.body.filters.map((f: any) => (f.member === 'Status' ? { ...f, operator: 'in' } : f)),
           },
         });
         expect(theOtherWay.ok(), 'and the question the other way round').toBe(true);
-        expect((await theOtherWay.json()).rows, 'is another set of orders').not.toEqual(drawn.answer.rows);
+        expect((await theOtherWay.json()).rows, 'is another set of orders').not.toEqual(liveCubeDrawn.answer.rows);
 
         // The cube says what it is, once, where the reader looks for it (D6).
         await expect(page.locator('.rb-cube-about'))
