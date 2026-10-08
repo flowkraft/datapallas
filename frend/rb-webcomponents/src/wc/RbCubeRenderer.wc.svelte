@@ -3049,6 +3049,10 @@
       <div id="cubeRuntimeResult" class="rb-runtime-result">
         {#if runtimeError}
           <div id="cubeRuntimeError" class="rb-filter-note rb-filter-bad">{runtimeError}</div>
+        {/if}
+        {#if runtimeError && runtimeRows.length === 0}
+          <!-- A failed query empties the rows, so there is no answer to show beside its error. A refused
+               selection changes nothing (refuseSelection): the answer that was drawn stays under the note. -->
         {:else if !runtime}
           <!-- The cube editor's preview has no answer of its own: only a refused hint shows here. -->
         {:else if nothingTicked}
