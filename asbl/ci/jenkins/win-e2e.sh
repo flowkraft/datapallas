@@ -16,7 +16,7 @@ PIDFILE="$LOG_DIR/win-e2e.pid"
 mkdir -p "$LOG_DIR"
 
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
-  echo "FAIL  a Windows e2e run is already going (pid $(cat "$PIDFILE")); follow it with the job dp-ci-attach, lane windows"
+  echo "FAIL  a Windows e2e run is already going (pid $(cat "$PIDFILE")); follow it by hand: FOLLOW_PIDFILE=<LOG_DIR>/win-e2e.pid bash asbl/ci/jenkins/follow-ci.sh attach"
   exit 1
 fi
 

@@ -2,7 +2,7 @@
 # =============================================================================
 # DataPallas Linux CI — run on internalsystems, from anywhere:
 #
-#   bash asbl/ci/dp-ci.sh build     JUnit + packages + Docker image, from the working tree as it is
+#   bash asbl/ci/dp-ci.sh build     compile (no unit tests) + packages + Docker image + Trivy scan, from the working tree as it is (Jenkins job dp-ci-package)
 #   E2E_SPEC=<regex> E2E_GREP=<regex> bash asbl/ci/dp-ci.sh e2e
 #                                   e2e via the SAME gulp flow as `npm run custom:start-server-and-e2e-web`
 #                                   (targeted when E2E_SPEC/E2E_GREP are set; both empty = the full suite without
@@ -21,10 +21,13 @@
 #                                   E2E_MAX_TEST_MS (60 min per test), E2E_ACTION_TIMEOUT_MS (5 min per click),
 #                                   E2E_CLEAN_STATE_ATTEMPTS (60), E2E_FAILFAST (1), E2E_START_EVIDENCE_MS (5 min),
 #                                   E2E_STALL_MS (10 min), E2E_REPEAT_EACH (1), E2E_SLOW_MO (0 ms, the config default everywhere; 750 = watch in slow motion). 0 switches one off.
-#                                   E2E_PACKAGE=reuse|content (targeted runs only; default = rebuild the package whenever its stamp is not this clean commit):
-#                                   reuse = run on the package that is there; content = package the content again on the built jars (minutes). The jars
-#                                   and the UI are built from the tree on every run, so only a fix to db-template/config/samples/scripts needs `content`.
-#                                   The log says so: an `E2E_PACKAGE mode=... built_from=... commit_under_test=...` line.
+#                                   `e2e` is the REAL e2e: the package is rebuilt whenever its stamp is not this clean commit (26-40 min), whatever E2E_PACKAGE says.
+#   E2E_SPEC=<regex> E2E_GREP=<regex> [E2E_PACKAGE=reuse|content] bash asbl/ci/dp-ci.sh e2e-dev
+#                                   the DEVELOPMENT e2e (Jenkins job dp-ci-e2e-dev): the same run as `e2e`, targeted (E2E_SPEC or E2E_GREP is required), web target
+#                                   only, and it NEVER rebuilds the package. E2E_PACKAGE=reuse (default) = run on the package that is there; content = package
+#                                   the content again on the built jars (minutes). The jars and the UI are built from the tree on every run, so only a fix to
+#                                   db-template/config/samples/scripts needs `content`. Not a release check: the real `e2e` is. The log says which package it
+#                                   ran on: an `E2E_PACKAGE mode=... built_from=... commit_under_test=...` line.
 #                                   E2E_ROTATION_DATE (YYYY-MM-DD, default today UTC): whose day's vendor rotation to run, e.g. a failed run's. Watch a run with
 #                                   bash asbl/ci/e2e-watch.sh [STALL_MIN].
 #                                   E2E_LICENSE_INSTANCE_ID (dp-ci-linux-e2e): one licence-server instance for all CI
@@ -1200,7 +1203,7 @@ HTML
     # The image must come from the commit under test: the tag is <version>-<commit>. An image from an older
     # build would test old code under this commit's name (nothing is built here, so the only safe answer is no).
     [ "${tag#*-}" = "$SHA" ] ||
-      { echo "!!! docker-server: the image was built from '${tag#*-}', the commit under test is '$SHA' — run 'dp-ci.sh build' (job dp-ci-build) first"; return 1; }
+      { echo "!!! docker-server: the image was built from '${tag#*-}', the commit under test is '$SHA' — run 'dp-ci.sh build' (job dp-ci-package) first"; return 1; }
     image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
       { echo "!!! docker-server: image $SERVER_IMAGE_REPO:$tag is not on this host — run 'dp-ci.sh build' first"; return 1; }
     [ -s "$zip" ] || { echo "!!! docker-server: $zip is missing — run 'dp-ci.sh build' first"; return 1; }
@@ -1348,7 +1351,7 @@ HTML
     echo "IMAGE_TAG=$VERSION-$SHA"
   }
 
-  # Trivy (J15): scans the image tag_image has just tagged. Report only: JSON for Jenkins (<log>-trivy/trivy.json, pulled by the dp-ci-build job)
+  # Trivy (J15): scans the image tag_image has just tagged. Report only: JSON for Jenkins (<log>-trivy/trivy.json, pulled by the dp-ci-package job)
   # plus the HIGH/CRITICAL table in this log. Never fails the build (a scan or database-download problem is printed and the run goes on).
   trivy_scan() {
     local out img="$SERVER_IMAGE_REPO:$VERSION-$SHA"
@@ -1667,10 +1670,21 @@ fi
 # LAUNCHER (on the host)
 # -----------------------------------------------------------------------------
 TASK="${1:-}"
+# e2e-dev = the development e2e: the same run as e2e, targeted, web only, never a package rebuild (job dp-ci-e2e-dev).
+# e2e = the real e2e: E2E_PACKAGE does not apply to it, so a stray value in the environment cannot skip the package rule.
+if [ "$TASK" = e2e-dev ]; then
+  if [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ]; then echo "FAIL  e2e-dev runs one spec file: set E2E_SPEC (e.g. /variables\.spec\.ts\$) or E2E_GREP. The full suite is the real e2e (dp-ci.sh e2e)."; exit 2; fi
+  E2E_PACKAGE="${E2E_PACKAGE:-reuse}"
+  case "$E2E_PACKAGE" in reuse|content) ;; *) echo "FAIL  E2E_PACKAGE must be reuse or content (got '$E2E_PACKAGE')"; exit 2 ;; esac
+  export E2E_TARGET=web
+  TASK=e2e
+elif [ "$TASK" = e2e ]; then
+  E2E_PACKAGE=""
+fi
 case "$TASK" in
   build|e2e|junit|quality|dev|win|publish-demo-bkstg|publish-demo-datapallas.com) ;;
   # release: reserved for the real software release (plan §3 O7)
-  *) echo "usage: $0 build|e2e|junit|quality|dev|win <check|ssh|ps|run|poll|stop|e2e>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
+  *) echo "usage: $0 build|e2e|e2e-dev|junit|quality|dev|win <check|ssh|ps|run|poll|stop|e2e>|publish-demo-bkstg [TAG]|publish-demo-datapallas.com [TAG] [--reset]"; exit 2 ;;
 esac
 
 # The Windows lane runs here on the host, before any container exists: it only talks to the VM over

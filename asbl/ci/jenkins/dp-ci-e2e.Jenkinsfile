@@ -1,4 +1,4 @@
-// Job datapallas/dp-ci-e2e. End-to-end tests: dp-ci.sh e2e. E2E_SPEC / E2E_GREP narrow it to a subset; both empty = the full suite. Needs the package of a previous build.
+// Job datapallas/dp-ci-e2e. The REAL end-to-end tests: dp-ci.sh e2e, on a package built from this exact commit (rebuilt first when it is not). Slow. E2E_SPEC narrows it to one file (a regex on the path); empty = the full suite. No title filter: it runs a file start to end. For the fast development loop use dp-ci-e2e-dev.
 // The work is the plain script named below, run on the host over SSH exactly as it is run by hand; this file
 // only starts it and shows its log. The run is a detached container owned by the Docker daemon, so closing
 // the browser or restarting Jenkins never stops it (see asbl/ci/jenkins/jenkins.md).
@@ -35,7 +35,7 @@ case "$E2E_TARGET" in
   *)
     RUN="E2E_TARGET=$(q "$E2E_TARGET") bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e" ;;
 esac
-ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC") E2E_GREP=$(q "$E2E_GREP") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") E2E_PACKAGE=$(q "$E2E_PACKAGE") $RUN"
+ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && E2E_SPEC=$(q "$E2E_SPEC") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") $RUN"
 '''
         }
       }

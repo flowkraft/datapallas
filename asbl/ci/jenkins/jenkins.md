@@ -37,12 +37,12 @@ session or of any chat.
 | What happens | The run | The Jenkins build |
 |---|---|---|
 | Browser, SSH session or chat closed | keeps running | keeps following |
-| Jenkins container restarts | **keeps running** | its console stops and the build shows as aborted; start `dp-ci-attach` to follow the same run again |
+| Jenkins container restarts | **keeps running** | its console stops and the build shows as aborted; follow the same run again by hand on the host: `bash asbl/ci/jenkins/follow-ci.sh attach` |
 | Someone presses Abort on the build | **keeps running** (only the following stops); stop it with `docker stop dp-ci` | aborted |
 | The host reboots | lost: rerun it | aborted |
 
 So the work cannot be lost by closing or restarting anything except the host. What a Jenkins restart takes
-away is the live view of that build, and `dp-ci-attach` brings it back.
+away is the live view of that build, and `follow-ci.sh attach` (on the host) brings it back.
 
 ## Jobs
 
@@ -50,14 +50,14 @@ All live in the folder `datapallas`, and are created by `seed.groovy`.
 
 | Job | Runs | Parameters |
 |---|---|---|
-| `dp-ci-build` | `dp-ci.sh build` | none |
-| `dp-ci-junit` | `dp-ci.sh junit` | `JUNIT_MODULE`, `JUNIT_TEST` |
+| `dp-ci-package` | `dp-ci.sh build`: compile (no unit tests), the distribution packages, the Docker image, the Trivy scan; about 14 min. Needed before a `docker-server` run of `dp-ci-e2e` and before publishing a demo | none |
+| `dp-ci-junit` | `dp-ci.sh junit`: the JUnit gate; no package, no e2e | `JUNIT_MODULE`, `JUNIT_TEST` |
 | `dp-ci-quality` | `dp-ci.sh quality`: compiles the Java modules, installs the npm dependencies, runs the quality tools; no package, no tests, never gating | none |
-| `dp-ci-e2e` | `dp-ci.sh e2e`, or `dp-ci.sh win e2e` for `electron-windows-vm` | `E2E_SPEC`, `E2E_GREP`, `E2E_TARGET` (`web`, `electron-linux`, `electron-windows-vm`, `docker-server`), `E2E_ROTATION_DATE` (empty = today; the day's database rotation, e.g. 2026-09-22 = sqlserver), `E2E_PACKAGE` (empty, `reuse` or `content`; targeted runs only: skip the package rebuild, or only package the content again, see `dp-ci.sh`) (both filters empty = the full suite) |
-| `dp-ci-attach` | follows the run going now, or shows how the last one ended; starts nothing | `LANE` (`linux` = the dp-ci container, `windows` = the Windows VM e2e) |
+| `dp-ci-e2e-dev` | `dp-ci.sh e2e-dev`: the **development** e2e. One spec file, web target only, never rebuilds the package; not a release check | `E2E_SPEC` (required), `E2E_GREP`, `E2E_PACKAGE` (`reuse` = run on the package that is there, for a fix to specs, helpers, Java, the Angular UI or web components; `content` = package the content again on the built jars first, minutes, for a fix under db-template, config, samples or scripts). The log has the line `E2E_PACKAGE mode=... built_from=... commit_under_test=...` |
+| `dp-ci-e2e` | `dp-ci.sh e2e`, or `dp-ci.sh win e2e` for `electron-windows-vm`: the **real** e2e, on a package built from this exact commit (rebuilt first when it is not: 26-40 min). Needed before a release | `E2E_SPEC` (one file, empty = the full suite), `E2E_TARGET` (`web`, `electron-linux`, `electron-windows-vm`, `docker-server`), `E2E_ROTATION_DATE` (empty = today; the day's database rotation, e.g. 2026-09-22 = sqlserver) |
 
 To add a step: make it a script in `asbl/ci/` that launches a detached run and prints a `log:` line, add a
-`<name>.Jenkinsfile` here (copy `dp-ci-build.Jenkinsfile`), add an entry to `seed.groovy`, push, run `seed`.
+`<name>.Jenkinsfile` here (copy `dp-ci-package.Jenkinsfile`), add an entry to `seed.groovy`, push, run `seed`.
 
 ## The seed job (hidden from the dashboard)
 
@@ -140,7 +140,7 @@ the first-run checklist is at the end. Jenkins folder `datapallas`, each job's b
 | Playwright | `dp-ci-e2e` | "Test Result" (JUnit XML) and "Playwright report" (HTML: steps, screenshots, trace) |
 | Robot Framework UAT (Windows lane) | `dp-ci-e2e` with `E2E_TARGET=electron-windows-vm` | "Robot Results" (nothing until a UAT step of the lane produces it) |
 | springdoc OpenAPI + Swagger UI | `dp-ci-e2e` with `E2E_TARGET=docker-server` | "Swagger UI (OpenAPI)" and the archived `openapi.json` |
-| Trivy (image CVEs, HIGH and CRITICAL) | `dp-ci-build` | "Trivy" warnings table; the same table is in the console log |
+| Trivy (image CVEs, HIGH and CRITICAL)  | `dp-ci-package` | "Trivy" warnings table; the same table is in the console log |
 | Javadoc | `dp-ci-quality` | "Javadoc" |
 | Compodoc | `dp-ci-quality` | "Compodoc" |
 | ESLint (Angular, AI Hub) | `dp-ci-quality` | "ESLint Angular", "ESLint AI Hub" |
@@ -157,7 +157,7 @@ the first-run checklist is at the end. Jenkins folder `datapallas`, each job's b
 
 1. The one-time Jenkins steps below, in order: install the plugins, relax the CSP, restart Jenkins, run `seed` (and approve the new `seed.groovy`).
 2. Run **`dp-ci-junit`** first: JaCoCo and Error Prone change the Java compile, so this is where a mistake shows first. If the compile breaks, remove the block marked "Error Prone + NullAway" in the poms.
-3. Run **`dp-ci-quality`**, then **`dp-ci-build`** (Trivy), then **`dp-ci-e2e`** (Playwright; for the OpenAPI page use `E2E_TARGET=docker-server`, after a build of the same commit).
+3. Run **`dp-ci-quality`**, then **`dp-ci-package`** (Trivy), then **`dp-ci-e2e`** (Playwright; for the OpenAPI page use `E2E_TARGET=docker-server`, after a build of the same commit).
 4. Open each table above once. An empty table next to a fine console log means the parser does not fit that tool's output: the raw output is archived or in the console, tell an agent which.
 
 ### The least certain changes (never run)
@@ -237,3 +237,7 @@ stamp is exactly the commit under test (a tree with uncommitted changes always r
 
 For a long step or a gate it starts the same job (or `dp-ci.sh`), reads the same log, fixes the cause when it
 fails and runs it again. The owner reads the same console in Jenkins.
+
+## Job renames and removals (2026-10-08)
+
+`dp-ci-build` is now `dp-ci-package`; `dp-ci-attach` is gone; `dp-ci-e2e-dev` is new. The seed job creates and updates jobs but never deletes one (`removedJobAction` IGNORE), so the old jobs `datapallas/dp-ci-build` and `datapallas/dp-ci-attach` stay in Jenkins until someone deletes them there; neither had a build history worth keeping.

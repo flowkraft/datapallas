@@ -14,35 +14,35 @@ folder('datapallas') {
 
 // name -> [Jenkinsfile, what it is, parameters]. Add an entry to add a job.
 def jobs = [
-  'dp-ci-build': [
-    about: 'JUnit, packages and the Docker image of the working tree on the server (dp-ci.sh build).',
+  'dp-ci-package': [
+    about: 'Builds what ships: compile (no unit tests), the distribution packages, the Docker image and its Trivy scan of the working tree on the server (dp-ci.sh build, about 14 min). Needed before a docker-server run of dp-ci-e2e and before publishing a demo; the real e2e (dp-ci-e2e) is needed before a release. Unit tests are dp-ci-junit.',
     params: [:],
   ],
   'dp-ci-quality': [
-    about: 'The quality tools (lint, bug finder, format check, documentation) of the working tree on the server (dp-ci.sh quality). No package, no tests; never gating.',
+    about: 'The quality tools (lint, bug finder, format check, documentation) of the working tree on the server (dp-ci.sh quality). No package, no tests, no e2e; never gating.',
     params: [:],
   ],
   'dp-ci-junit': [
-    about: 'The JUnit gate (dp-ci.sh junit): one module and test pattern, or everything when both are empty.',
+    about: 'The JUnit gate (dp-ci.sh junit): one module and test pattern, or everything when both are empty. No package, no e2e.',
     params: [
       JUNIT_MODULE: [choices: ['', 'bkend/common', 'bkend/reporting', 'bkend/server'], text: 'Module; empty = all three'],
       JUNIT_TEST  : [text: "Surefire -Dtest pattern, e.g. 'Jasper*Test'; empty = every test of the module"],
     ],
   ],
-  'dp-ci-e2e': [
-    about: 'End-to-end tests (dp-ci.sh e2e). Needs the package of a previous dp-ci-build.',
+  'dp-ci-e2e-dev': [
+    about: 'Fast e2e while developing (dp-ci.sh e2e-dev): ONE spec file, web target only. Never rebuilds the package: it runs on the package that is there, or repackages only the content. Not a release check: that is dp-ci-e2e.',
     params: [
-      E2E_SPEC  : [text: 'Regex on the spec file path; anchor it to run one file, e.g. /variables\\.spec\\.ts$ . Empty = no file filter'],
-      E2E_GREP  : [text: 'Regex on the test titles. Empty = no title filter'],
-      E2E_TARGET: [choices: ['web', 'electron-linux', 'electron-windows-vm', 'docker-server'], text: 'What the tests run against. electron-windows-vm = the real Windows desktop of the VM'],
-      E2E_ROTATION_DATE: [text: 'YYYY-MM-DD: whose day\'s database rotation to run (2026-09-22 = sqlserver + duckdb). Empty = today'],
-      E2E_PACKAGE: [choices: ['', 'reuse', 'content'], text: 'Targeted runs only. Empty = rebuild the package unless it is this clean commit\'s (as before). reuse = run on the package that is there; content = package the content again on the built jars (minutes, not ~30). Jars and UI are built from the tree on every run, so only a fix to db-template/config/samples/scripts needs content'],
+      E2E_SPEC  : [text: 'REQUIRED. Regex on the spec file path, anchored to one file, e.g. /variables\\.spec\\.ts$'],
+      E2E_GREP  : [text: 'Regex on the test titles, to re-run a few tests of that file. Empty = the whole file'],
+      E2E_PACKAGE: [choices: ['reuse', 'content'], text: 'reuse = run on the package that is there (a fix to specs, helpers, Java, the Angular UI, web components). content = package the content again first, minutes (a fix under db-template, config, samples or scripts)'],
     ],
   ],
-  'dp-ci-attach': [
-    about: 'Follow the run that is going now (or show how the last one ended). Starts nothing: use it to watch a run started elsewhere.',
+  'dp-ci-e2e': [
+    about: 'The real end-to-end tests (dp-ci.sh e2e), on a package built from this exact commit (rebuilt first when it is not: 26-40 min). Slow. Needed before a release; run dp-ci-package first for the docker-server target. For the fast development loop use dp-ci-e2e-dev.',
     params: [
-      LANE: [choices: ['linux', 'windows'], text: 'linux = the dp-ci container (build, junit, e2e); windows = the e2e on the Windows VM'],
+      E2E_SPEC  : [text: 'Regex on the spec file path; anchor it to run one file, e.g. /variables\\.spec\\.ts$ . Empty = the full suite'],
+      E2E_TARGET: [choices: ['web', 'electron-linux', 'electron-windows-vm', 'docker-server'], text: 'What the tests run against. electron-windows-vm = the real Windows desktop of the VM'],
+      E2E_ROTATION_DATE: [text: 'YYYY-MM-DD: whose day\'s database rotation to run (2026-09-22 = sqlserver + duckdb). Empty = today'],
     ],
   ],
 ]

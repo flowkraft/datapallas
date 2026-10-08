@@ -47,7 +47,7 @@ ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && set -f && bash asbl/ci/je
         recordCoverage(tools: [[parser: 'JACOCO', pattern: 'reports/bkend/*/target/site/jacoco/jacoco.xml']], sourceCodeRetention: 'NEVER')
         publishHTML(target: [reportName: 'JaCoCo common', reportDir: 'reports/bkend/common/target/site/jacoco', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: false])
         publishHTML(target: [reportName: 'JaCoCo reporting', reportDir: 'reports/bkend/reporting/target/site/jacoco', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: false])
-        // Error Prone + NullAway (J17): their javac warnings are in this run's console log (the compile is here; dp-ci-build's compile is not published again).
+        // Error Prone + NullAway (J17): their javac warnings are in this run's console log (the compile is here; dp-ci-package's compile is not published again).
         // The Maven console format is parsed; the filter keeps the two enabled checks only. Warnings only, never changes the result.
         recordIssues(tool: mavenConsole(id: 'errorprone', name: 'Error Prone'), filters: [includeMessage('.*\\[(DefaultCharset|NullAway)\\].*')], enabledForFailure: true, skipBlames: true)
         publishHTML(target: [reportName: 'JaCoCo server', reportDir: 'reports/bkend/server/target/site/jacoco', reportFiles: 'index.html', keepAll: false, allowMissing: true, alwaysLinkToLastBuild: false])
