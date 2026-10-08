@@ -3942,8 +3942,13 @@ return ctx.dbSql.rows(sql)`,
       const [byDate, byAmount] = d29Ids['number'] ?? [];
       const answers = await page.evaluate(async ({ rc, ids }) => {
         const out: Record<string, unknown>[] = [];
+        const config = await (await fetch(`/api/reports/${rc}/config`)).json();
+        const asked = new URLSearchParams();
+        for (const parameter of config.parameters ?? []) {
+          if (parameter.defaultValue != null) asked.set(parameter.id, String(parameter.defaultValue));
+        }
         for (const cid of ids) {
-          const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`);
+          const r = await fetch(`/api/reports/${rc}/data?${asked.toString()}&componentId=${cid}`);
           const payload = await r.json();
           out.push((payload.data as Record<string, unknown>[])[0]);
         }
