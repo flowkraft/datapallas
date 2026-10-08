@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -170,6 +172,13 @@ public class ReportingService {
 				// without its stories, exactly as a dashboard that ships none does.
 				log.warn("Could not read stories file " + storiesPath + ": " + e.getMessage());
 			}
+
+			// Show Me sets a story's values in the filter bar through the same check a reader's
+			// own pick goes through, and a select refuses a value that is not one of its options:
+			// a story that says "last year" as a token would do nothing at all. So its dates are
+			// turned into days here, exactly as the parameters' defaults are.
+			if (config.stories != null && reportingConnCode != null && !reportingConnCode.isEmpty())
+				resolveRelativeStoryParams(config.stories, reportingConnCode);
 		}
 
 		// Load parameters DSL
@@ -772,6 +781,35 @@ public class ReportingService {
 		LocalDate dataToday = cubeDataToday.of(connectionCode);
 		for (ReportParameter param : parameters)
 			param.defaultValue = CubeDates.resolve(param.defaultValue, dataToday);
+	}
+
+	/**
+	 * The relative dates in the filter values the stories set ({@code {dataToday:minus 1 year,
+	 * startOf year}}), turned into days against the data's today, the way
+	 * {@link #resolveRelativeParameterDefaults} does for a default, so that Show Me sets a day the
+	 * filter bar can hold. A story whose values hold no token reads nothing.
+	 */
+	void resolveRelativeStoryParams(JsonNode stories, String connectionCode) {
+
+		if (stories == null || !stories.isArray())
+			return;
+
+		LocalDate dataToday = null;
+		for (JsonNode story : stories) {
+			if (!(story.get("params") instanceof ObjectNode))
+				continue;
+			ObjectNode values = (ObjectNode) story.get("params");
+			List<String> names = new ArrayList<>();
+			values.fieldNames().forEachRemaining(names::add);
+			for (String name : names) {
+				JsonNode value = values.get(name);
+				if (!value.isTextual() || !CubeDates.mentions(value.asText()))
+					continue;
+				if (dataToday == null)
+					dataToday = cubeDataToday.of(connectionCode);
+				values.put(name, CubeDates.resolve(value.asText(), dataToday));
+			}
+		}
 	}
 
 	public void resolveParameterSqlOptions(List<ReportParameter> parameters, String connectionCode) throws Exception {
