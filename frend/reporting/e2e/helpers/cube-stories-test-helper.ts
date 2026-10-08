@@ -32,7 +32,7 @@
 // datapallas.com, where there is nothing to send it to.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { expect, type Frame, type Locator, type Response } from '@playwright/test';
+import { expect, type Frame, type Locator } from '@playwright/test';
 
 const fs = require('fs');
 const path = require('path');
@@ -485,12 +485,15 @@ export async function clickShowMe(frame: Frame, cubeId: string, askId: string): 
   const showMe = inCard(frame, cubeId, `#hint-${askId} #btnShowMe-${askId}`);
   await expect(showMe, `the ${cubeId} card offers a Show Me for ${askId}`).toBeVisible({ timeout: 30_000 });
 
-  const answered: Promise<Response> = page.waitForResponse(
-    (r) => r.url().includes(`/cube/${cubeId}/query`) && r.request().method() === 'POST',
+  // The answer to the question the click sends: not to one asked a moment before it (a box ticked
+  // by hand just ahead of the click has its own answer still on its way, and it is not this one).
+  const asked = page.waitForRequest(
+    (r) => r.url().includes(`/cube/${cubeId}/query`) && r.method() === 'POST',
     { timeout: 90_000 },
   );
   await showMe.click();
-  const response = await answered;
+  const response = await (await asked).response();
+  if (!response) throw new Error(`${cubeId}/${askId}: the page's own question got no answer`);
   expect(response.status(), `${cubeId}/${askId}: the page's own question was answered`).toBe(200);
   const body = await response.json();
   expect(body.truncated, `${cubeId}/${askId}: a cut answer is not the hint's answer`).toBeFalsy();
