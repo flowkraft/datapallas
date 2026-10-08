@@ -23,8 +23,8 @@
 #                                   E2E_STALL_MS (10 min), E2E_REPEAT_EACH (1), E2E_SLOW_MO (0 ms, the config default everywhere; 750 = watch in slow motion). 0 switches one off.
 #                                   `e2e` is the REAL e2e: the package is rebuilt whenever its stamp is not this clean commit (26-40 min), whatever E2E_PACKAGE says.
 #   E2E_SPEC=<regex> E2E_GREP=<regex> [E2E_PACKAGE=reuse|content] bash asbl/ci/dp-ci.sh e2e-dev
-#                                   the DEVELOPMENT e2e (Jenkins job dp-ci-e2e-dev): the same run as `e2e`, targeted (E2E_SPEC or E2E_GREP is required), web target
-#                                   only, and it NEVER rebuilds the package. E2E_PACKAGE=reuse (default) = run on the package that is there; content = package
+#                                   the DEVELOPMENT e2e (Jenkins job dp-ci-e2e-dev): the same run as `e2e`, targeted (E2E_SPEC or E2E_GREP is required), on the web
+#                                   target (default) or electron-linux (E2E_TARGET=electron-linux), and it NEVER rebuilds the package. E2E_PACKAGE=reuse (default) = run on the package that is there; content = package
 #                                   the content again on the built jars (minutes). The jars and the UI are built from the tree on every run, so only a fix to
 #                                   db-template/config/samples/scripts needs `content`. Not a release check: the real `e2e` is. The log says which package it
 #                                   ran on: an `E2E_PACKAGE mode=... built_from=... commit_under_test=...` line.
@@ -1676,7 +1676,9 @@ if [ "$TASK" = e2e-dev ]; then
   if [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ]; then echo "FAIL  e2e-dev runs one spec file: set E2E_SPEC (e.g. /variables\.spec\.ts\$) or E2E_GREP. The full suite is the real e2e (dp-ci.sh e2e)."; exit 2; fi
   E2E_PACKAGE="${E2E_PACKAGE:-reuse}"
   case "$E2E_PACKAGE" in reuse|content) ;; *) echo "FAIL  E2E_PACKAGE must be reuse or content (got '$E2E_PACKAGE')"; exit 2 ;; esac
-  export E2E_TARGET=web
+  E2E_TARGET="${E2E_TARGET:-web}"
+  case "$E2E_TARGET" in web|electron) ;; electron-linux) E2E_TARGET=electron ;; *) echo "FAIL  e2e-dev runs on web or electron-linux (got '$E2E_TARGET'); docker-server and the Windows VM are release checks: dp-ci.sh e2e"; exit 2 ;; esac
+  export E2E_TARGET
   TASK=e2e
 elif [ "$TASK" = e2e ]; then
   E2E_PACKAGE=""

@@ -25,24 +25,25 @@ def jobs = [
   'dp-ci-junit': [
     about: 'The JUnit gate (dp-ci.sh junit): one module and test pattern, or everything when both are empty. No package, no e2e.',
     params: [
-      JUNIT_MODULE: [choices: ['', 'bkend/common', 'bkend/reporting', 'bkend/server'], text: 'Module; empty = all three'],
-      JUNIT_TEST  : [text: "Surefire -Dtest pattern, e.g. 'Jasper*Test'; empty = every test of the module"],
+      JUNIT_MODULE: [choices: ['', 'bkend/common', 'bkend/reporting', 'bkend/server'], text: 'WHICH MODULE: the Maven module whose tests run. Empty = all three modules (slow).\nUse it: after you changed Java code, pick the module you changed.\nExample: bkend/server'],
+      JUNIT_TEST  : [text: 'WHICH TESTS inside the module (a Maven Surefire -Dtest pattern). Empty = every test of the module.\nUse it: nearly every time, to run only the class or method you touched.\nExamples:\n  ReportsServiceTest   -> one test class\n  ReportsServiceTest#method   -> one test method of it\n  Jasper*Test   -> every class that starts with Jasper and ends with Test\n  FooTest,BarTest   -> two classes'],
     ],
   ],
   'dp-ci-e2e-dev': [
-    about: 'Fast e2e while developing (dp-ci.sh e2e-dev): ONE spec file, web target only. Never rebuilds the package: it runs on the package that is there, or repackages only the content. Not a release check: that is dp-ci-e2e.',
+    about: 'Fast e2e while developing (dp-ci.sh e2e-dev): ONE spec file, on the web or the electron-linux target. Never rebuilds the package: it runs on the package that is there, or repackages only the content. Not a release check: that is dp-ci-e2e.',
     params: [
-      E2E_SPEC  : [text: 'REQUIRED. Regex on the spec file path, anchored to one file, e.g. /variables\\.spec\\.ts$'],
-      E2E_GREP  : [text: 'Regex on the test titles, to re-run a few tests of that file. Empty = the whole file'],
-      E2E_PACKAGE: [choices: ['reuse', 'content'], text: 'reuse = run on the package that is there (a fix to specs, helpers, Java, the Angular UI, web components). content = package the content again first, minutes (a fix under db-template, config, samples or scripts)'],
+      E2E_SPEC  : [text: 'WHICH FILE to run. REQUIRED. A regex on the path of the spec file; end it with $ so that it matches one file only.\nUse it: every run.\nExamples:\n  /areas/cube-stories\\.spec\\.ts$   -> only cube-stories.spec.ts\n  /features/samples\\.spec\\.ts$   -> only samples.spec.ts\n  /areas/   -> every spec file of the areas folder (several files, slow)\nThe files are under frend/reporting/e2e/specs/. Leave E2E_GREP empty to run the whole file.'],
+      E2E_GREP  : [text: 'WHICH TESTS inside that file. Optional. A regex on the test titles. Empty = every test of the file.\nUse it: to re-run only the test or tests that failed after a fix. Run the whole file again (empty) before you call the file green.\nExamples:\n  Show Me   -> the tests whose title contains Show Me\n  refus|SQL vendor   -> the tests whose title contains either text\nCareful: in a serial file (cube-stories, dashboard-demos, auth-authorization-server) a test depends on the ones before it, so a filtered run can fail for that reason alone.'],
+      E2E_TARGET: [choices: ['web', 'electron-linux'], text: 'WHAT the tests run against.\nweb (default, the everyday one): the server and the Angular UI built from this tree, in a browser.\nelectron-linux: the desktop application on Linux (for the specs that only run there, for example let-me-update-migrate-configuration).\ndocker-server and electron-windows-vm are release checks: use dp-ci-e2e for them.'],
+      E2E_PACKAGE: [choices: ['reuse', 'content'], text: 'WHICH PACKAGE to run on. The package holds the content the tests start from (sample apps, db-template, config, samples, scripts, sample databases). The jars and the Angular UI are always built from the tree, so a fix to Java, the UI, specs or helpers needs nothing more.\nreuse (default): run on the package that is already built. Use it for almost every run.\ncontent: package the content again first (a few minutes). Use it after a fix under db-template (for example the AI Hub app), config, samples or scripts.\nThe log says which package ran: the line E2E_PACKAGE mode=... built_from=... commit_under_test=...\nIf there is no package yet, one is built first (26 to 40 min).'],
     ],
   ],
   'dp-ci-e2e': [
     about: 'The real end-to-end tests (dp-ci.sh e2e), on a package built from this exact commit (rebuilt first when it is not: 26-40 min). Slow. Needed before a release; run dp-ci-package first for the docker-server target. For the fast development loop use dp-ci-e2e-dev.',
     params: [
-      E2E_SPEC  : [text: 'Regex on the spec file path; anchor it to run one file, e.g. /variables\\.spec\\.ts$ . Empty = the full suite'],
-      E2E_TARGET: [choices: ['web', 'electron-linux', 'electron-windows-vm', 'docker-server'], text: 'What the tests run against. electron-windows-vm = the real Windows desktop of the VM'],
-      E2E_ROTATION_DATE: [text: 'YYYY-MM-DD: whose day\'s database rotation to run (2026-09-22 = sqlserver + duckdb). Empty = today'],
+      E2E_SPEC  : [text: 'WHICH FILE(S) to run. A regex on the path of the spec file; end it with $ for one file. EMPTY = the full suite (about 5 hours).\nUse it: with a file, to confirm that file on a package built from this exact commit; empty, before a release.\nExamples:\n  /areas/cube-stories\\.spec\\.ts$   -> one file\n  /features/   -> every spec file of the features folder\nThe full run leaves out auth-authorization-server and let-me-update-migrate-configuration (they run on their own); name them in the regex to run them. For a quick fix-and-retry loop use dp-ci-e2e-dev instead.'],
+      E2E_TARGET: [choices: ['web', 'electron-linux', 'electron-windows-vm', 'docker-server'], text: 'WHAT the tests run against.\nweb (default, the everyday one): the server and the Angular UI built from this tree, in a browser.\nelectron-linux: the desktop application on Linux.\nelectron-windows-vm: the real Windows desktop of the VM (slow, for release checks).\ndocker-server: the shipped server bundle and its Docker image; run dp-ci-package on the SAME commit first.\nDay to day: web. The other three are for release checks.'],
+      E2E_ROTATION_DATE: [text: 'Optional, rarely needed. Some specs test a different app or database vendor depending on the day (the choice is seeded from the date, so two days in a row cover every combination). Empty = today, UTC.\nUse it only to repeat the variant of another day, for example the day a run failed.\nFormat YYYY-MM-DD. Example: 2026-09-22 (that day: sqlserver and duckdb).'],
     ],
   ],
 ]
