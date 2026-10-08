@@ -230,7 +230,7 @@
     if (reportId && apiBaseUrl) {
       selfFetchLoading = true;
       try {
-        const config = await fetchConfigCached(`${apiBaseUrl}/reports/${reportId}/config`, {});
+        const config = await fetchConfigCached(`${apiBaseUrl}/reports/${reportId}/config`, embedToken ? { 'X-Embed-Token': embedToken } : {});
         if (componentId && config.namedSankeyOptions?.[componentId]) {
           options = { ...config.namedSankeyOptions[componentId], ...options };
         } else if (config.sankeyOptions) {
