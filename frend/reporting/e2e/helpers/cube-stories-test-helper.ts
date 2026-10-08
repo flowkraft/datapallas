@@ -846,48 +846,30 @@ export function cubeDemoSeedScript(): string {
 export type AdminFetch = (url: string, init?: RequestInit) => Promise<globalThis.Response>;
 
 /**
- * Is the cube demo data on the day the checks were computed for?
+ * Is the cube demo data on the day the checks were computed for, and is its load over?
  *
- * Three numbers say so, asked of the live cubes: the Deals of the sales-pipeline cube, the Payments of
- * the customer-payments cube, which reads the table the seed script loads last, and the rows of
- * Online Sales month by month, which are the one answer that moves with the day the data was seeded.
- * A question that fails - the tables are being dropped and written - is simply "not yet".
+ * The seed script ends by writing one row, `cube_demo.demo_info`, after the 19 tables - its own
+ * words for "the seed finished" - and drops it before it touches the first of them. So the row is
+ * asked for, and `seeded_on` is the day the data was loaded for. Nothing about the tables
+ * themselves says the same: until each one's turn comes the old one is still there, with the same
+ * counts. A question that fails - the file is being written - is simply "not yet".
  */
 async function cubeDemoDataIsPinned(adminFetch: AdminFetch, baseUrl: string): Promise<boolean> {
-  const deals = checksOf('sales-pipeline').get('deals-and-value');
-  const payments = checksOf('customer-payments').get('payments-by-method/totals');
-  const months = checksOf('online-sales').get('sales-by-month');
-  expect(deals, 'the sales-pipeline check says how many deals the demo data holds').toBeTruthy();
-  expect(payments, 'the customer-payments check says how many payments the demo data holds').toBeTruthy();
-  expect(months, 'the online-sales check says what each month sold').toBeTruthy();
-
-  const rowsOf = async (cube: string, body: Record<string, unknown>): Promise<Array<Record<string, unknown>> | null> => {
-    try {
-      const answer = await adminFetch(`${baseUrl}/api/reports/${CUBE_STORIES_REPORT_ID}/cube/${cube}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (answer.status !== 200) return null;
-      return (await answer.json()).rows ?? [];
-    } catch (theSeedIsStillRunning) {
-      return null;
-    }
-  };
-  const firstNumber = (rows: Array<Record<string, unknown>> | null): number =>
-    rows && rows.length === 1 ? Number(Object.values(rows[0])[0]) : -1;
-
-  if (firstNumber(await rowsOf('sales-pipeline', { dimensions: [], measures: ['Deals'] }))
-      !== Number((deals as CubeCheck).rows[0][0])) return false;
-  if (firstNumber(await rowsOf('customer-payments', { dimensions: [], measures: ['Payments'] }))
-      !== Number((payments as CubeCheck).rows[0][0])) return false;
-
-  const byMonth = await rowsOf('online-sales', {
-    dimensions: ['OrderDate'],
-    granularities: { OrderDate: 'month' },
-    measures: ['Orders', 'NetSales'],
-  });
-  return byMonth !== null && difference((months as CubeCheck).rows, asLists(byMonth), false) === null;
+  try {
+    const answer = await adminFetch(`${baseUrl}/api/queries/run-sql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        connectionId: CUBE_DEMO_CONNECTION,
+        sql: 'SELECT CAST(seeded_on AS VARCHAR) AS seeded_on FROM cube_demo.demo_info',
+      }),
+    });
+    if (answer.status !== 200) return false;
+    const rows = (await answer.json()).data ?? [];
+    return rows.length === 1 && String(rows[0].seeded_on).startsWith(CUBE_DEMO_SEED_PARAMS.today);
+  } catch (theSeedIsStillRunning) {
+    return false;
+  }
 }
 
 /**
@@ -903,15 +885,12 @@ async function cubeDemoDataIsPinned(adminFetch: AdminFetch, baseUrl: string): Pr
  * Data that is on that day already is left alone: loading it again would give
  * the same rows, and would drop the tables from under whatever page is open
  * while it does. `run-seed` accepts the script and answers at once; the load
- * itself goes on behind it. So the wait is on the data, asked of the live cubes
- * until all three numbers of `cubeDemoDataIsPinned` are the ones the checks say.
- * While the tables are being dropped and written the questions fail or answer
- * the old rows, and both are simply waited through.
+ * itself goes on behind it, so the wait is for the marker row the script writes
+ * when it is over (see `cubeDemoDataIsPinned`).
  *
- * The rows being right is not the load being over: the job still holds the file open
- * for writing and closes it a moment later, and a page opened in between meets a file
- * that cannot be read yet. So the last wait is for the page's own report to be
- * readable again.
+ * The marker being there is not the file being quiet: the job closes it a moment
+ * later, and a page opened in between can meet a file that cannot be read yet. So
+ * the last wait is for a cube to answer from it.
  */
 export async function reseedCubeDemoData(adminFetch: AdminFetch, baseUrl: string): Promise<void> {
   if (await cubeDemoDataIsPinned(adminFetch, baseUrl)) return;
@@ -931,7 +910,15 @@ export async function reseedCubeDemoData(adminFetch: AdminFetch, baseUrl: string
   await expect
     .poll(async () => {
       try {
-        return (await adminFetch(`${baseUrl}/api/reports/${CUBE_STORIES_REPORT_ID}/config`)).status;
+        const answer = await adminFetch(
+          `${baseUrl}/api/reports/${CUBE_STORIES_REPORT_ID}/cube/sales-pipeline/query`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dimensions: [], measures: ['Deals'] }),
+          },
+        );
+        return answer.status;
       } catch (theSeedIsStillRunning) {
         return -1;
       }
