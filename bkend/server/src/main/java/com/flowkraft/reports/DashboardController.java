@@ -143,6 +143,9 @@ public class DashboardController {
 				// application compiles its themes with, shipped beside the bundle. A page that cannot
 				// fetch it falls back to the colours every stylesheet here carries next to its variables.
 				+ "  <link rel=\"stylesheet\" href=\"/rb-webcomponents/themes.css\">\n"
+				// The page names its own icon, from the folder that already serves its bundle, so the browser
+				// does not ask for /favicon.ico (which only an installation with the Angular bundle answers).
+				+ "  <link rel=\"icon\" type=\"image/x-icon\" href=\"/rb-webcomponents/favicon.ico\">\n"
 				+ "  <script src=\"/rb-webcomponents/rb-webcomponents.umd.js\"></script>\n"
 				+ "  <style>html, body { margin: 0; padding: 0; height: 100%;"
 				+ " background: var(--color-base-200, #ffffff);"
