@@ -5754,7 +5754,7 @@ return ctx.dbSql.rows(sql)`,
         }, { rc: d40ReportCode, cid: componentId });
 
       expect(await published(gridIds[0])).toBe(15);
-      expect(await published(gridIds[1])).toBe(knowsMe ? 0 : 15);
+      expect(await published(gridIds[1])).toBe(0);
       expect(await published(gridIds[2])).toBe(3000);
     } finally {
       await deleteCanvasViaUI(page, canvasName);
