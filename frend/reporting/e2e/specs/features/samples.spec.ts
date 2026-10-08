@@ -1788,6 +1788,11 @@ electronBeforeAfterAllTest(
 
         await SelfServicePortalsTestHelper.waitForServerReady(page, galleryUrl, 30, 2000);
 
+        // The readiness probe returns at DOMContentLoaded and leaves the Gallery still asking for its
+        // configuration. Leave that load before the watch starts: the browser cancels its requests,
+        // and a cancelled request of the probe is not one the page lost.
+        await page.goto('about:blank');
+
         // Nothing the page does may go wrong while this test uses it.
         const watch = watchForErrors(page);
 
