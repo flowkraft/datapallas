@@ -10,6 +10,9 @@ src/tailwind.css
 main.js
 src/**/*.js
 !src/karma.conf.js
+# copied here from frend/rb-webcomponents/dist by custom:compile-and-stage-web-components, like the .js files above;
+# untracked, it made every tree "-dirty" and so every e2e run rebuild the package
+src/assets/web-components/favicon.ico
 *.js.map
 
 # dependencies
