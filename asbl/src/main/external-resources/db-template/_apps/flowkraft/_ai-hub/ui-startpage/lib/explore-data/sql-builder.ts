@@ -484,9 +484,11 @@ export function buildSql(query: VisualQuery, options: BuildSqlOptions = {}): str
 
   // Without Summarize the query answers with rows, so a computed column is one
   // more select item beside the table's own columns. `t.*` and not `*`: Oracle
-  // rejects an unqualified `*` standing next to another select item.
+  // rejects an unqualified `*` standing next to another select item. The star is
+  // qualified by the table's name alone, not by `schema.table`: DuckDB cannot parse
+  // `"schema"."table".*`, and the bare name finds the FROM's table on all nine.
   if (!hasAgg && !distinctOnly && computedColumns.length > 0) {
-    selectParts.push(`${quoteTableRef(tableRef, dialect)}.*`);
+    selectParts.push(`${quoteIdent(tableRef.name, dialect)}.*`);
     for (const one of computedColumns) {
       selectParts.push(`${computedExpr(one, dialect)} AS ${quote(one.name)}`);
     }
