@@ -5687,9 +5687,9 @@ return ctx.dbSql.rows(sql)`,
       // All 15 agents are somebody else: the value arrived, because a value
       // that never arrived is NULL and `<>` would answer 0.
       expect(await onCanvas(everybodyElseSql, { dp_user_email: me })).toBe(15);
-      // And none of them is me: the filter filters. An account with no email has nothing to be
-      // matched by, and an empty value leaves a filter out (D30), so for it "me" is everybody.
-      expect(await onCanvas(meSql, { dp_user_email: me })).toBe(knowsMe ? 0 : 15);
+      // And none of them is me: the filter filters. No agent has an empty email either, so for an
+      // account the desk does not know the question finds nobody, exactly as for one it knows.
+      expect(await onCanvas(meSql, { dp_user_email: me })).toBe(0);
 
       // The day is a day. Every one of the 3000 tickets was opened on or before
       // 2026-09-29, so today - whenever this runs after that - answers all of
