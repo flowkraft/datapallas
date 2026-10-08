@@ -24,6 +24,8 @@ import {
   type WidgetType,
   WEB_COMPONENT,
   toConnectionCode,
+  demoShiftDays,
+  shiftedDay,
   createFreshCanvas,
   selectConnection,
   addTableToCanvas,
@@ -3882,12 +3884,16 @@ return ctx.dbSql.rows(sql)`,
 
       await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
 
+      // The dates of the demo data moved by whole days when it was loaded; the truths below are about
+      // the data as shipped, so the day asked is moved by the same days (`demoShiftDays`).
+      const closing = shiftedDay('2026-01-31', await demoShiftDays(page, connectionCode));
+
       // A date and a number with a fraction, declared as what they are. `Double`
       // is the name the backend conversion knows; the parameter bar gives it the
       // same number box a `decimal` gets.
       await addFilterBarParam(page,
         "reportParameters {\n" +
-        "  parameter(id: 'to', type: Date, label: 'Closing on or before', defaultValue: '2026-01-31') {\n" +
+        "  parameter(id: 'to', type: Date, label: 'Closing on or before', defaultValue: '" + closing + "') {\n" +
         "    constraints(required: false)\n" +
         "  }\n" +
         "  parameter(id: 'min', type: Double, label: 'Amount over', defaultValue: '31999.99') {\n" +
@@ -3996,9 +4002,13 @@ return ctx.dbSql.rows(sql)`,
 
       await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
 
+      // The dates of the demo data moved by whole days when it was loaded; the truths below are about
+      // the data as shipped, so the day asked is moved by the same days (`demoShiftDays`).
+      const closing = shiftedDay('2026-01-31', await demoShiftDays(page, connectionCode));
+
       await addFilterBarParam(page,
         "reportParameters {\n" +
-        "  parameter(id: 'to', type: Date, label: 'Closing on or before', defaultValue: '2026-01-31') {\n" +
+        "  parameter(id: 'to', type: Date, label: 'Closing on or before', defaultValue: '" + closing + "') {\n" +
         "    constraints(required: false)\n" +
         "  }\n" +
         "}"
@@ -4024,7 +4034,7 @@ return ctx.dbSql.rows(sql)`,
           return Number(rows[0].deal_count);
         }, { connectionId: connectionCode, sql: d30Sql, to: value });
 
-      expect(await onCanvas('2026-01-31')).toBe(425);
+      expect(await onCanvas(closing)).toBe(425);
       // Nothing in the box: the filter is not applied, and every deal comes back -
       // not the nothing an empty text bind used to answer.
       expect(await onCanvas('')).toBe(1200);
@@ -4067,7 +4077,7 @@ return ctx.dbSql.rows(sql)`,
           return Number((payload.data as Record<string, unknown>[])[0].deal_count);
         }, { rc: d30ReportCode, cid: d30WidgetId, to: value });
 
-      expect(await published('2026-01-31')).toBe(425);
+      expect(await published(closing)).toBe(425);
       expect(await published('')).toBe(1200);
     } finally {
       await deleteCanvasViaUI(page, canvasName);
@@ -4432,14 +4442,20 @@ return ctx.dbSql.rows(sql)`,
 
       await expect(page.locator('[id="btnTable-cube_demo.erp_invoices"]')).toBeVisible({ timeout: 15_000 });
 
+      // The invoices of the demo data moved by whole days when it was loaded: the week the truths
+      // below are about is the same week, moved by the same days (`demoShiftDays`).
+      const shift = await demoShiftDays(page, connectionCode);
+      const weekFrom = shiftedDay('2025-01-01', shift);
+      const weekTo = shiftedDay('2025-01-08', shift);
+
       // The two dates of a range are two parameters of the filter bar, each one
       // a Date: that declared type is what makes the day after derivable.
       await addFilterBarParam(page,
         "reportParameters {\n" +
-        "  parameter(id: 'from', type: Date, label: 'Issued from', defaultValue: '2025-01-01') {\n" +
+        "  parameter(id: 'from', type: Date, label: 'Issued from', defaultValue: '" + weekFrom + "') {\n" +
         "    constraints(required: false)\n" +
         "  }\n" +
-        "  parameter(id: 'to', type: Date, label: 'Issued to', defaultValue: '2025-01-08') {\n" +
+        "  parameter(id: 'to', type: Date, label: 'Issued to', defaultValue: '" + weekTo + "') {\n" +
         "    constraints(required: false)\n" +
         "  }\n" +
         "}"
@@ -4478,19 +4494,19 @@ return ctx.dbSql.rows(sql)`,
 
       // ── the canvas path, the one a widget calls ──
       const onCanvas = async (sql: string): Promise<number> =>
-        page.evaluate(async ({ connectionId, sql: text }) => {
+        page.evaluate(async ({ connectionId, sql: text, weekFrom, weekTo }) => {
           const r = await fetch('/api/dp/queries/run-sql', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               connectionId, sql: text,
-              params: { from: '2025-01-01', to: '2025-01-08' },
+              params: { from: weekFrom, to: weekTo },
               paramTypes: { from: 'Date', to: 'Date' },
             }),
           });
           const payload = await r.json();
           return Number((payload.data as Record<string, unknown>[])[0].invoice_id_count);
-        }, { connectionId: connectionCode, sql });
+        }, { connectionId: connectionCode, sql, weekFrom, weekTo });
 
       expect(await onCanvas(rangeSql)).toBe(18);
       expect(await onCanvas(onOrBeforeSql)).toBe(18);
@@ -4514,12 +4530,12 @@ return ctx.dbSql.rows(sql)`,
       const gridIds = d33Ids['tabulator'] ?? [];
       expect(gridIds.length).toBe(2);
       const published = async (componentId: string): Promise<number> =>
-        page.evaluate(async ({ rc, cid }) => {
+        page.evaluate(async ({ rc, cid, weekFrom, weekTo }) => {
           const r = await fetch(`/api/reports/${rc}/data?componentId=${cid}`
-            + '&from=2025-01-01&to=2025-01-08');
+            + `&from=${weekFrom}&to=${weekTo}`);
           const payload = await r.json();
           return Number((payload.data as Record<string, unknown>[])[0].invoice_id_count);
-        }, { rc: d33ReportCode, cid: componentId });
+        }, { rc: d33ReportCode, cid: componentId, weekFrom, weekTo });
 
       expect(await published(gridIds[0])).toBe(18);
       expect(await published(gridIds[1])).toBe(18);
@@ -5671,7 +5687,9 @@ return ctx.dbSql.rows(sql)`,
       const today = fromTheServer['dp_today'];
       const byToday = await onCanvas(todaySql, { dp_today: today }, { dp_today: 'Date' });
       expect(byToday).toBe(3000);
-      expect(await onCanvas(todaySql, { dp_today: '2025-06-30' }, { dp_today: 'Date' })).toBe(712);
+      // 712 tickets were opened on or before 30 June 2025 in the data as shipped: the day moves with it.
+      const june = shiftedDay('2025-06-30', await demoShiftDays(page, connectionCode));
+      expect(await onCanvas(todaySql, { dp_today: june }, { dp_today: 'Date' })).toBe(712);
 
       const d40CanvasId = page.url().split('/').pop()!;
       const { dashboardUrl: d40Url } = await publishDashboard(page);

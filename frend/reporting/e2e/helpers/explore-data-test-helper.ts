@@ -37,6 +37,36 @@ export function toConnectionCode(connectionName: string, vendor: string): string
   return `db-${_.kebabCase(connectionName)}-${vendor}`;
 }
 
+/**
+ * How many days the `cube_demo` data was moved when it was loaded
+ * (`cube_demo.demo_info.shift_days`): a fresh installation is "today", so every date of the demo
+ * is the date of the frozen data plus these days. A truth about the data as shipped - "425 deals
+ * closed on or before 31 January 2026" - is asked at the date moved by the same days, so it holds
+ * on whatever day the package was made. A count that does not depend on a calendar date is not
+ * touched. Read from the connection the test itself uses, so the data and the shift cannot differ.
+ */
+export async function demoShiftDays(page: Page, connectionCode: string): Promise<number> {
+  return page.evaluate(async (connectionId) => {
+    const r = await fetch('/api/dp/queries/run-sql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        connectionId, params: {}, paramTypes: {},
+        sql: 'SELECT shift_days FROM cube_demo.demo_info',
+      }),
+    });
+    const payload = await r.json();
+    return Number((payload.data as Record<string, unknown>[])[0].shift_days);
+  }, connectionCode);
+}
+
+/** A calendar day (`YYYY-MM-DD`) moved by whole days. */
+export function shiftedDay(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Select a DB connection by name + vendor and wait for the schema to load. */
 export async function selectConnection(
   page: Page,
