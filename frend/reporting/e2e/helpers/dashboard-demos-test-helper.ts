@@ -203,17 +203,19 @@ export async function assertStoriesAreOffered(root: Locator, demo: Demo): Promis
  *
  * Show Me sets the story's values on this dashboard's own filter bar and asks again - it never
  * navigates, which is what lets a story work on a Gallery card as well as on the demo's own page.
- * So what is waited for is this card's charts drawing again, and nothing about the page's address.
+ * So what is waited for is this card's charts drawing again, and the page stays the page it was.
+ * The address bar does take the view (`replaceState`, under this card's keys); the spec reads that.
  */
 export async function clickShowMe(root: Locator, demo: Demo, storyId: string): Promise<void> {
-  const before = root.page().url();
+  const pageBefore = new URL(root.page().url()).pathname;
   await root.locator(`#btnShowMe-${demo.reportId}-${storyId}`).click();
   await expect(
     root.locator(`#story-${demo.reportId}-${storyId}`),
     `the story '${storyId}' is marked as the one that was asked`,
   ).toHaveClass(/rb-hint-asked/, { timeout: 30_000 });
   await waitForChartsIn(root);
-  expect(root.page().url(), 'Show Me sets the filters; it does not navigate').toBe(before);
+  expect(new URL(root.page().url()).pathname, 'Show Me sets the filters; it does not navigate')
+    .toBe(pageBefore);
 }
 
 /** Reset, which puts every filter of this dashboard back to its default. */
