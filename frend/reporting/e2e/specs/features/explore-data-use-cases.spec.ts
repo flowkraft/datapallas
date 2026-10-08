@@ -3339,8 +3339,9 @@ return ctx.dbSql.rows(sql)`,
       // A date range on OrderDate: the same rows, cut by when they happened.
       await page.locator('#btnFilter-OrderDate').click();
       await page.locator('#cubeFilterPopover').waitFor({ state: 'visible', timeout: 10_000 });
-      await page.locator('#OrderDate__from').fill('1997-01-01');
-      await page.locator('#OrderDate__to').fill('1997-06-30');
+      // The shipped sample's orders run from December 2022 to June 2024: the half year is one of them.
+      await page.locator('#OrderDate__from').fill('2023-01-01');
+      await page.locator('#OrderDate__to').fill('2023-06-30');
       await page.locator('#btnFilterApply').click();
       await expect(page.locator('#chipFilter-OrderDate')).toBeVisible({ timeout: 10_000 });
       await expect.poll(() => d25Result.textContent(), { timeout: 30_000 }).not.toBe(d25Everywhere);
