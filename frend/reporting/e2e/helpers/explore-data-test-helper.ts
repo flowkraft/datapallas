@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import _ from 'lodash';
 import { Helpers } from '../utils/helpers';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -33,11 +34,7 @@ export const WEB_COMPONENT: Record<WidgetType, string> = {
 
 /** Mirrors ConnectionsTestHelper.createAndAssertNewDatabaseConnection's code formula. */
 export function toConnectionCode(connectionName: string, vendor: string): string {
-  const slug = connectionName
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/[\s_]+/g, '-')
-    .toLowerCase();
-  return `db-${slug}-${vendor}`;
+  return `db-${_.kebabCase(connectionName)}-${vendor}`;
 }
 
 /** Select a DB connection by name + vendor and wait for the schema to load. */
