@@ -28,6 +28,15 @@ const DEFAULT_QUERY: VisualQuery = {
   limit: 500,
 };
 
+/**
+ * The widget's query as the store holds it NOW. SQL for a cube is generated asynchronously, and
+ * while the server answers the author may tick the Show In Dashboard box or change a binding;
+ * writing the answer back onto the query the handler closed over would undo that change.
+ */
+function liveVisualQuery(widgetId: string): VisualQuery | undefined {
+  return useCanvasStore.getState().widgets.find((w) => w.id === widgetId)?.dataSource?.visualQuery;
+}
+
 /** A widget that is the cube itself needs room for the field tree and a result under it; grown
  *  once, on the first check, and the author's own size is kept from then on. */
 const CUBE_WIDGET_MIN_ROWS = 8;
@@ -214,9 +223,12 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
           cubeName,
         );
         setCubeSqlError(null);
+        const live = liveVisualQuery(widgetId);
+        // Another cube was picked while the SQL was being generated: it is not this tree's SQL.
+        if (live && live.cubeId !== query.cubeId) return;
         onChange({
           mode: "visual",
-          visualQuery: { ...query, cubeName: cubeName || undefined, cubeSelection: asked },
+          visualQuery: { ...(live ?? query), cubeName: cubeName || undefined, cubeSelection: asked },
           generatedSql,
         });
       } catch (err) {
@@ -296,9 +308,11 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
     try {
       const generatedSql = await generateCubeSql(query.cubeId!, connectionId || "", asked, cubeName);
       setCubeSqlError(null);
+      const live = liveVisualQuery(widgetId);
+      if (live && live.cubeId !== query.cubeId) return;
       onChange({
         mode: "visual",
-        visualQuery: { ...query, cubeName: cubeName || undefined, cubeSelection: selection },
+        visualQuery: { ...(live ?? query), cubeName: cubeName || undefined, cubeSelection: selection },
         generatedSql,
       });
     } catch (err) {
