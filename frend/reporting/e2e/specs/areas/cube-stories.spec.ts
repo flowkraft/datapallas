@@ -301,15 +301,19 @@ test.describe('Cube Stories — the cube demo page', () => {
       "the cube's own definition first, then the statement (D13)")
       .toEqual(['Show Config', 'Show SQL']);
 
-    // Ticking it adds the second level of detail the toggle is for, and nothing else moves.
-    await expect(inCard(frame, sales.id, '.rb-facts'),
-      "the cube's own facts are the detail, not what the tile opens with").toHaveCount(0);
+    // Ticking it adds the second level of detail the toggle is for - a line of type and settings
+    // under each field - and nothing else moves. The cube's own facts (its table or SQL) are no
+    // part of a live tile at any time: a viewer is told what the cube offers, never how it reads.
+    await expect(inCard(frame, sales.id, '.rb-detail'),
+      'the tile opens without the detail lines').toHaveCount(0);
     await inCard(frame, sales.id, '#chk-show-everything').check();
     await expect(inCard(frame, sales.id, '#chk-show-everything')).toBeChecked({ timeout: 15_000 });
-    await expect(inCard(frame, sales.id, '.rb-facts'), 'and ticking it shows them')
-      .toBeVisible({ timeout: 15_000 });
+    await expect(inCard(frame, sales.id, '.rb-detail').first(),
+      'and ticking it shows the line under the fields').toBeVisible({ timeout: 15_000 });
+    await expect(inCard(frame, sales.id, '.rb-facts'),
+      'but never how the cube reads its data').toHaveCount(0);
     await inCard(frame, sales.id, '#chk-show-everything').uncheck();
-    await expect(inCard(frame, sales.id, '.rb-facts')).toHaveCount(0);
+    await expect(inCard(frame, sales.id, '.rb-detail')).toHaveCount(0);
 
     // The words the owner read as an author's, not a reader's, are on no tile of the page (D13).
     await expect(frame.locator('.rb-cube-stories-root').locator('text=View SQL'),
