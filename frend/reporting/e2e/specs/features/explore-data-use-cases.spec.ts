@@ -3447,9 +3447,10 @@ return ctx.dbSql.rows(sql)`,
       expect(d25Unknown.status).toBe(400);
       expect(d25Unknown.body).toContain('NoSuchField');
 
-      // The connection is the widget file's, and asking for another one does
-      // not change which database answers: the rows are the same rows.
-      const d25Honest = await page.evaluate(async ({ rid, cid }) => {
+      // The connection is the widget file's, and a viewer cannot point the question at another
+      // one: the request is refused, by name, rather than answered from what it brought. The same
+      // selection without it is answered from the connection the file names.
+      const d25Smuggled = await page.evaluate(async ({ rid, cid }) => {
         // Echo the CSRF token as the app does: the Server rejects a session POST without it.
         const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
         const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
@@ -3460,6 +3461,18 @@ return ctx.dbSql.rows(sql)`,
             measures: ['Revenue'],
             connectionId: 'some-other-connection',
           }),
+        });
+        return { status: r.status, body: await r.text() };
+      }, { rid: d25ReportId, cid: d25ComponentId });
+      expect(d25Smuggled.status).toBe(400);
+      expect(d25Smuggled.body).toContain('connectionId');
+
+      const d25Honest = await page.evaluate(async ({ rid, cid }) => {
+        const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
+        const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}) },
+          body: JSON.stringify({ dimensions: ['CategoryName'], measures: ['Revenue'] }),
         });
         return { status: r.status, body: await r.json().catch(() => null) };
       }, { rid: d25ReportId, cid: d25ComponentId });
