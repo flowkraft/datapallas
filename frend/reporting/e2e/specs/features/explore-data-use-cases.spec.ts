@@ -4173,8 +4173,10 @@ return ctx.dbSql.rows(sql)`,
         await addVisualFilter(page, 1, 'close_date', 'less_than', to);
       });
       const typedSql = await visualSql();
-      // The same WHERE, to the character: what the relative span stands for.
-      expect(typedSql.split('WHERE ')[1]).toBe(relativeSql.split('WHERE ')[1]);
+      // The same WHERE: what the relative span stands for. Two typed conditions are written on two
+      // lines and the relative span on one; the clause is the contract, not where it breaks.
+      const clause = (sql: string): string => sql.split('WHERE ')[1].replace(/\s+/g, ' ').trim();
+      expect(clause(typedSql)).toBe(clause(relativeSql));
 
       // ── and "in the last N days" counts back from the browser's own today ──
       await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
