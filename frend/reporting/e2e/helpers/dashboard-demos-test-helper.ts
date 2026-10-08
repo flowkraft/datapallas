@@ -59,6 +59,12 @@ const DEFAULT_VIEW = 'defaults';
  * the wait is on the data and not on the call: the first demo's first claim, asked of the live
  * dashboard until it is the number that claim says. While the tables are being dropped and written
  * the question fails or answers the rows that were there before, and both are waited through.
+ *
+ * That number is read by the report's own script, which can answer a moment before the seed job has
+ * closed its connection to the file. The page then reads through the server's shared pool on that
+ * file, and a pool opened in that moment can find the seed's log still to be folded in and fail. So
+ * the wait ends on the page's own first question too - the report's config, which opens that pool -
+ * and a try that lands in that moment is simply asked again.
  */
 export async function reseedDashDemoData(adminFetch: AdminFetch, baseUrl: string): Promise<void> {
   const accepted = await adminFetch(`${baseUrl}/api/connections/${DASH_DEMO_CONNECTION}/run-seed`, {
@@ -98,6 +104,19 @@ export async function reseedDashDemoData(adminFetch: AdminFetch, baseUrl: string
       { timeout: 900_000, intervals: [5_000] },
     )
     .toBe(true);
+
+  await expect
+    .poll(
+      async () => {
+        try {
+          return (await adminFetch(`${baseUrl}/api/reports/${demo.reportId}/config`)).status;
+        } catch (theSeedIsStillRunning) {
+          return -1;
+        }
+      },
+      { timeout: 900_000, intervals: [5_000] },
+    )
+    .toBe(200);
 }
 
 // ── The link the Gallery is read by ───────────────────────────────────────────
