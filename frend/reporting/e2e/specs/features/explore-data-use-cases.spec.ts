@@ -3435,9 +3435,11 @@ return ctx.dbSql.rows(sql)`,
       // A member this cube does not offer is refused, and the refusal says so
       // rather than answering something near it.
       const d25Unknown = await page.evaluate(async ({ rid, cid }) => {
+        // Echo the CSRF token as the app does: the Server rejects a session POST without it.
+        const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
         const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}) },
           body: JSON.stringify({ dimensions: ['NoSuchField'], measures: ['Revenue'] }),
         });
         return { status: r.status, body: await r.text() };
@@ -3448,9 +3450,11 @@ return ctx.dbSql.rows(sql)`,
       // The connection is the widget file's, and asking for another one does
       // not change which database answers: the rows are the same rows.
       const d25Honest = await page.evaluate(async ({ rid, cid }) => {
+        // Echo the CSRF token as the app does: the Server rejects a session POST without it.
+        const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
         const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}) },
           body: JSON.stringify({
             dimensions: ['CategoryName'],
             measures: ['Revenue'],
@@ -3585,9 +3589,11 @@ return ctx.dbSql.rows(sql)`,
       // ── The same component, asked through the API ────────────────────────
       // W4.5: a share of the total is 1 by definition, and the groups add up to it.
       const d26Query = await page.evaluate(async ({ rid, cid }) => {
+        // Echo the CSRF token as the app does: the Server rejects a session POST without it.
+        const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
         const r = await fetch(`/api/reports/${rid}/cube/${cid}/query`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}) },
           body: JSON.stringify({
             dimensions: ['CategoryName'],
             measures: ['Revenue', 'RevenueShare'],
@@ -3608,9 +3614,11 @@ return ctx.dbSql.rows(sql)`,
 
       // W4.6 again, without the UI: the rows behind one category's revenue.
       const d26Drill = await page.evaluate(async ({ rid, cid }) => {
+        // Echo the CSRF token as the app does: the Server rejects a session POST without it.
+        const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
         const r = await fetch(`/api/reports/${rid}/cube/${cid}/drill`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}) },
           body: JSON.stringify({
             measure: 'Revenue',
             cell: { CategoryName: 'Beverages' },
