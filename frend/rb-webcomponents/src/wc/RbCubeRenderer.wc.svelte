@@ -1702,6 +1702,11 @@
    * them is what tells a change worth saving from a redraw, and what tells "this is the author's
    * own view again" — which is a delete, not a save, so the viewer still gets a default the
    * author publishes later.
+   *
+   * The Total row is left out: whether it is asked for follows from the shape the selection
+   * draws (a table has the row, a chart does not), so it is never a difference of its own. The
+   * author's published selection does not carry it, and counting it made the author's own view
+   * differ from itself, which saved it again right after "Reset view" had thrown it away.
    */
   function signatureOf(view: any): string {
 
@@ -1716,7 +1721,6 @@
       grains,
       (selection.order ?? []).map((o: any) => [o?.member, o?.dir]),
       selection.limit ?? null,
-      !!selection.totals,
       !!view?.collapsed,
     ]);
   }
