@@ -1216,8 +1216,9 @@ electronBeforeAfterAllTest(
           'the page links the theme palettes').toHaveCount(1);
         const palettes = await page.request.get('http://localhost:9090/rb-webcomponents/themes.css');
         expect(palettes.ok(), 'and they are really served').toBe(true);
+        // The served file is minified: its attribute selector may or may not keep the quotes.
         expect(await palettes.text(), 'including the theme this application is on')
-          .toContain(`[data-theme="${appTheme}"]`);
+          .toMatch(new RegExp(`\\[data-theme="?${appTheme}"?\\]`));
 
         // And the colours follow: the page's own background is the theme's, not the light one this
         // template used to carry. The probe asks the browser what the variable resolves to here,
@@ -1418,6 +1419,22 @@ electronBeforeAfterAllTest(
           'and one country is less than every country',
         ).toBe(true);
 
+        // What the live cube is asked from here on, and what it answered, is kept for the check on
+        // its rows below.
+        const liveCubeAsks: Array<{ url: string; headers: Record<string, string>; body: any; answer: any }> = [];
+        page.on('response', async (response) => {
+          const asked = response.request();
+          if (asked.method() !== 'POST' || !/\/cube\/tabulator_live-shop\/query$/.test(response.url())) return;
+          try {
+            liveCubeAsks.push({
+              url: response.url(),
+              headers: asked.headers(),
+              body: JSON.parse(asked.postData() ?? '{}'),
+              answer: await response.json(),
+            });
+          } catch (anAbortedAskHasNoAnswer) { /* it is asked again */ }
+        });
+
         // And the same through the parameter bar the viewer actually uses: pick Germany, reload,
         // and the drawn number is Germany's.
         await page.selectOption('#country', 'Germany');
@@ -1445,7 +1462,32 @@ electronBeforeAfterAllTest(
         // And the panel that carries them is headed by the cube, not by the word `Cube`: the
         // reader is told which of the shop's cubes they are about to ask (D5).
         await expect(page.locator('#cubePanelHeader'), 'the tile names its cube and its filter')
-          .toHaveText('\u25be Online Sales \u00b7 Country: Germany (dashboard)', { timeout: 60000 });
+          .toHaveText('\u25be Online Sales \u00b7 Country: Germany (dashboard); Status: not Cancelled, Returned',
+            { timeout: 60000 });
+
+        // The chip says `not`, and the rows are the answer to NOT IN - not to IN. The cube is asked
+        // what the chip says; asked again directly it gives the rows the card drew; and asked the
+        // other way round (IN) it gives other rows, so the operator is what decides them.
+        await expect.poll(() => liveCubeAsks.length, { timeout: 60000 }).toBeGreaterThan(0);
+        const drawn = liveCubeAsks[liveCubeAsks.length - 1];
+        const withoutLength = (headers: Record<string, string>) => Object.fromEntries(
+          Object.entries(headers).filter(([name]) => !['content-length', 'host', 'cookie'].includes(name.toLowerCase())));
+        expect((drawn.body.filters ?? []).filter((f: any) => f.member === 'Status'),
+          'the cube is asked to leave the cancelled and returned orders out')
+          .toEqual([{ member: 'Status', operator: 'notIn', values: ['Cancelled', 'Returned'] }]);
+        const askedAgain = await page.request.post(drawn.url,
+          { headers: withoutLength(drawn.headers), data: drawn.body });
+        expect(askedAgain.ok(), 'the same question, asked directly').toBe(true);
+        expect((await askedAgain.json()).rows, 'gives the rows the card drew').toEqual(drawn.answer.rows);
+        const theOtherWay = await page.request.post(drawn.url, {
+          headers: withoutLength(drawn.headers),
+          data: {
+            ...drawn.body,
+            filters: drawn.body.filters.map((f: any) => (f.member === 'Status' ? { ...f, operator: 'in' } : f)),
+          },
+        });
+        expect(theOtherWay.ok(), 'and the question the other way round').toBe(true);
+        expect((await theOtherWay.json()).rows, 'is another set of orders').not.toEqual(drawn.answer.rows);
 
         // The cube says what it is, once, where the reader looks for it (D6).
         await expect(page.locator('.rb-cube-about'))
