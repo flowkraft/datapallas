@@ -482,6 +482,8 @@ async function tickedNow(frame: Frame, cubeId: string): Promise<string[]> {
  */
 export async function clickShowMe(frame: Frame, cubeId: string, askId: string): Promise<Array<Record<string, unknown>>> {
   const page = frame.page();
+  // The panels are one accordion: a card whose panel another card's panel has closed is hidden.
+  await openCardsPanel(frame, cubeId);
   const showMe = inCard(frame, cubeId, `#hint-${askId} #btnShowMe-${askId}`);
   await expect(showMe, `the ${cubeId} card offers a Show Me for ${askId}`).toBeVisible({ timeout: 30_000 });
 
