@@ -289,7 +289,10 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
    * follows the chip without the author touching the tree.
    */
   const changeCubeBindings = async (paramBindings: CubeParamBinding[]) => {
-    const saved = query.cubeSelection;
+    // The latest widget, not the one this render closed over: a second change made while the
+    // first one is still waiting for its SQL starts from the first one's binding, not from the
+    // list as it was before it.
+    const saved = (liveVisualQuery(widgetId) ?? query).cubeSelection;
     const selection: CubeSelection = saved
       ? { ...saved, paramBindings }
       : { dimensions: [], measures: [], segments: [], filters: [], granularities: {}, order: [],
@@ -305,11 +308,20 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
       });
       return;
     }
+    // The binding is kept at once and the SQL follows: the chip is written down before the
+    // statement for it is back, so the next change to the chip reads this one.
+    onChange({
+      mode: "visual",
+      visualQuery: { ...(liveVisualQuery(widgetId) ?? query), cubeName: cubeName || undefined, cubeSelection: selection },
+      generatedSql: dataSource?.generatedSql ?? "",
+    });
     try {
       const generatedSql = await generateCubeSql(query.cubeId!, connectionId || "", asked, cubeName);
       setCubeSqlError(null);
       const live = liveVisualQuery(widgetId);
       if (live && live.cubeId !== query.cubeId) return;
+      // A later change to the chip owns the statement now; this one is for bindings that are gone.
+      if (live && JSON.stringify(live.cubeSelection?.paramBindings ?? []) !== JSON.stringify(paramBindings)) return;
       onChange({
         mode: "visual",
         visualQuery: { ...(live ?? query), cubeName: cubeName || undefined, cubeSelection: selection },
