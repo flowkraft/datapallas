@@ -3,10 +3,12 @@ package com.sourcekraft.documentburster.common.reportparameters;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -167,7 +169,13 @@ public class ReportParametersHelper {
 				rp.type = t instanceof Class ? ((Class<?>) t).getSimpleName() : String.valueOf(t);
 				rp.description = (String) paramMap.get("description");
 				Object defVal = paramMap.get("defaultValue");
-				rp.defaultValue = defVal != null ? String.valueOf(defVal) : null;
+				if (defVal instanceof Collection) {
+					// a multi-select's value is a comma-separated string; [] is no value, not the text "[]"
+					rp.defaultValue = ((Collection<?>) defVal).stream().map(String::valueOf)
+							.collect(Collectors.joining(","));
+				} else {
+					rp.defaultValue = defVal != null ? String.valueOf(defVal) : null;
+				}
 
 				Map<String, Object> constraints = (Map<String, Object>) paramMap.getOrDefault("constraints",
 						Collections.emptyMap());
