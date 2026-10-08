@@ -107,7 +107,9 @@ export function synthesizePostAggColumns(
   }
   for (const s of (visualQuery.summarize ?? [])) {
     result.push({
-      columnName: `${s.field}_${(s.aggregation as string).toLowerCase()}`,
+      // COUNT of rows is written as COUNT(*) under the name `count` (the SQL builder's alias).
+      columnName: s.field === "*" && (s.aggregation as string).toUpperCase() === "COUNT"
+        ? "count" : `${s.field}_${(s.aggregation as string).toLowerCase()}`,
       typeName: "DOUBLE",
       isNullable: true,
     });

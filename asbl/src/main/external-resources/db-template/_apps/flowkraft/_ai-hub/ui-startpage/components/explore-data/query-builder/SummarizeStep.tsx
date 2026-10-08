@@ -272,7 +272,12 @@ export function SummarizeStep({
           <select
             id={`selectAggFunc-${i}`}
             value={a.aggregation}
-            onChange={(e) => updateAgg(i, { aggregation: e.target.value })}
+            onChange={(e) => updateAgg(i, {
+              aggregation: e.target.value,
+              // "Count of rows" means something for COUNT only; any other function needs a column.
+              ...(e.target.value.toUpperCase() !== "COUNT" && a.field === "*"
+                ? { field: columns[0]?.columnName || "" } : {}),
+            })}
             className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content w-28"
           >
             {AGGREGATIONS.map((agg) => (
@@ -286,6 +291,11 @@ export function SummarizeStep({
             onChange={(e) => updateAgg(i, { field: e.target.value })}
             className="text-xs bg-base-100 border border-base-300 rounded px-1.5 py-1 text-base-content min-w-0 flex-1"
           >
+            {/* COUNT can count the rows themselves, with no column: the SQL's COUNT(*), whose
+                column is named `count`. Counting a column would skip its NULLs. */}
+            {a.aggregation.toUpperCase() === "COUNT" && (
+              <option value="*">Count of rows</option>
+            )}
             {aggFields.map((c) => (
               <option key={c.columnName} value={c.columnName}>{c.columnName}</option>
             ))}
