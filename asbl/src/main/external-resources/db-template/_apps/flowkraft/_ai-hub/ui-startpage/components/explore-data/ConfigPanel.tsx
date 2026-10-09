@@ -284,7 +284,9 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
     if (typeof dataBlock.labelField === "string" && dataBlock.labelField) currentXFields.push(dataBlock.labelField);
     if (typeof dataBlock.seriesField === "string" && dataBlock.seriesField) currentXFields.push(dataBlock.seriesField);
     const currentYFields: string[] = (dataBlock.datasets ?? []).map((d) => d.field).filter((f): f is string => Boolean(f));
-    const currentBubble = dslMap.bubbleSizeField as string | undefined;
+    // A DSL may carry the size under `options` (the published chart-config does); that is a pick too.
+    const currentBubble = (dslMap.bubbleSizeField
+      ?? (dslMap.options as { bubbleSizeField?: string } | undefined)?.bubbleSizeField) as string | undefined;
     const { dims, measures } = splitDimsAndMeasures(columns);
     const defaults = pickDefaultAxes(dims, measures, chartType, { cardinality });
 

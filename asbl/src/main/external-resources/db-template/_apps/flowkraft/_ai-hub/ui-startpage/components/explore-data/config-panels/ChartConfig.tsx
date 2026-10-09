@@ -199,7 +199,8 @@ export function ChartConfig({ config, columns, onChange, rankingHints }: ChartCo
   const chartType = (map.type as string | undefined) ?? "bar";
   const xFields = readXFields(map);
   const yFields = readYFields(map);
-  const bubbleSizeField = (map.bubbleSizeField as string | undefined) ?? "";
+  const bubbleSizeField = ((map.bubbleSizeField
+    ?? (map.options as { bubbleSizeField?: string } | undefined)?.bubbleSizeField) as string | undefined) ?? "";
   const chartTitle = readTitle(map);
   const legend = readLegend(map);
   const palette = (map.palette as string | undefined) ?? "default";
