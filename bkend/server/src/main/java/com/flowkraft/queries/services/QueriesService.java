@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.flowkraft.connections.ConnectionsService;
+import com.flowkraft.cubes.CubeDataToday;
+import com.flowkraft.cubes.CubeDates;
 import com.flowkraft.iam.limits.ConnectionNotAllowedException;
 import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.queries.ConnectionFactory;
@@ -42,6 +44,8 @@ public class QueriesService {
 
 	@Autowired
 	private LimitsService limitsService;
+
+	private CubeDataToday cubeDataToday = new CubeDataToday();
 
 	/**
 	 * Execute a SQL query against any configured database connection.
@@ -113,7 +117,7 @@ public class QueriesService {
 			throw refused;
 		}
 
-		PreparedSql prepared = prepare(sql, params, paramTypes);
+		PreparedSql prepared = prepare(sql, withRelativeDays(connectionId, params), paramTypes);
 		if (prepared.sql == null || prepared.sql.isBlank()) {
 			audit(connectionId, sql, "ok", 0, startedAt, "every line was a filter with no value");
 			return List.of();
@@ -127,6 +131,32 @@ public class QueriesService {
 			audit(connectionId, sql, "error", -1, startedAt, e.getMessage());
 			throw e;
 		}
+	}
+
+	/**
+	 * A filter value written {@code {dataToday:startOf year}} is the day the data on this connection
+	 * calls today, turned into that day before it is bound - the way a published dashboard serves its
+	 * defaults and the live-cube endpoints read their filters. The canvas holds a dashboard filter at
+	 * the default its author wrote, so without this the query was handed the token itself and a date
+	 * parameter refused it. Values that name no token are left as they are, and the marker table is
+	 * read only when one does.
+	 */
+	private Map<String, Object> withRelativeDays(String connectionId, Map<String, Object> params) {
+
+		if (params == null)
+			return null;
+
+		boolean anyRelative = false;
+		for (Object value : params.values())
+			anyRelative = anyRelative || (value instanceof String text && CubeDates.mentions(text));
+		if (!anyRelative)
+			return params;
+
+		java.time.LocalDate dataToday = cubeDataToday.ofDashboards(connectionId);
+		Map<String, Object> resolved = new java.util.LinkedHashMap<>(params);
+		resolved.replaceAll((name, value) ->
+				value instanceof String text && CubeDates.mentions(text) ? CubeDates.resolve(text, dataToday) : value);
+		return resolved;
 	}
 
 	/** One line per ad-hoc call, on its own logger so it can be routed to its own file. */
