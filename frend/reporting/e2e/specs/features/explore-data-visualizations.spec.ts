@@ -135,6 +135,31 @@ const AI_HUB_BASE_URL = 'http://localhost:8440';
 const DATA_CANVAS_URL = `${AI_HUB_BASE_URL}/explore-data`;
 const DB_VENDOR = 'sqlite';
 
+// ── Network quiet ──────────────────────────────────────────────────────────────
+const inFlightByPage = new WeakMap<Page, Map<unknown, string>>();
+
+/**
+ * Waits until the page has gone quiet on the network. A page that never does is a finding, not
+ * something to wait out for the length of the test, so the wait is bounded and, when it runs out,
+ * says which requests the page still has open.
+ */
+async function waitNetworkQuiet(page: Page): Promise<void> {
+  let inFlight = inFlightByPage.get(page);
+  if (!inFlight) {
+    const open = new Map<unknown, string>();
+    inFlight = open;
+    inFlightByPage.set(page, open);
+    page.on('request', (r) => open.set(r, `${r.method()} ${r.url()}`));
+    page.on('requestfinished', (r) => open.delete(r));
+    page.on('requestfailed', (r) => open.delete(r));
+  }
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 60_000 });
+  } catch (e) {
+    throw new Error(`the network never went quiet; still open: ${[...inFlight.values()].join(' | ') || 'nothing the page reports'}\n${String(e)}`);
+  }
+}
+
 // ── SQL data contexts ──────────────────────────────────────────────────────────
 // These produce the right column shapes for each widget family.
 
@@ -1088,9 +1113,9 @@ test.describe('Data Canvas Visualizations', () => {
 
             // Navigate away to canvas list, then back to the same canvas
             await page.goto(`${AI_HUB_BASE_URL}/explore-data`);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
             await page.goto(canvasUrl);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
 
             await assertWidgetRenders(page, 'chart');
             await clickWidgetHeader(page, 'chart');
@@ -1144,9 +1169,9 @@ test.describe('Data Canvas Visualizations', () => {
 
             // Navigate away/back
             await page.goto(`${AI_HUB_BASE_URL}/explore-data`);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
             await page.goto(canvasUrl);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
 
             await assertWidgetRenders(page, 'tabulator');
             await clickWidgetHeader(page, 'tabulator');
@@ -1199,9 +1224,9 @@ test.describe('Data Canvas Visualizations', () => {
 
             // Navigate away/back
             await page.goto(`${AI_HUB_BASE_URL}/explore-data`);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
             await page.goto(canvasUrl);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
 
             await assertWidgetRenders(page, 'pivot');
             await clickWidgetHeader(page, 'pivot');
@@ -1263,9 +1288,9 @@ test.describe('Data Canvas Visualizations', () => {
 
             // Navigate away/back
             await page.goto(`${AI_HUB_BASE_URL}/explore-data`);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
             await page.goto(canvasUrl);
-            await page.waitForLoadState('networkidle');
+            await waitNetworkQuiet(page);
 
             // Re-open filter config
             await page.locator('#btnConfigureFilters').waitFor({ state: 'visible', timeout: 5_000 });
