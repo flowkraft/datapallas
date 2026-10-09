@@ -432,6 +432,8 @@
           if (opts.valueFilter) valueFilter = opts.valueFilter;
           if (opts.rowOrder) rowOrder = opts.rowOrder;
           if (opts.colOrder) colOrder = opts.colOrder;
+          if (opts.rowTotals != null) rowTotals = opts.rowTotals;
+          if (opts.colTotals != null) colTotals = opts.colTotals;
           if (opts.hiddenAttributes) hiddenAttributes = opts.hiddenAttributes;
           if (opts.hiddenFromAggregators) hiddenFromAggregators = opts.hiddenFromAggregators;
           if (opts.hiddenFromDragDrop) hiddenFromDragDrop = opts.hiddenFromDragDrop;
@@ -986,6 +988,8 @@
         if (opts.valueFilter) valueFilter = opts.valueFilter;
         if (opts.rowOrder) rowOrder = opts.rowOrder;
         if (opts.colOrder) colOrder = opts.colOrder;
+        if (opts.rowTotals != null) rowTotals = opts.rowTotals;
+        if (opts.colTotals != null) colTotals = opts.colTotals;
         if (opts.hiddenAttributes) hiddenAttributes = opts.hiddenAttributes;
         if (opts.hiddenFromAggregators) hiddenFromAggregators = opts.hiddenFromAggregators;
         if (opts.hiddenFromDragDrop) hiddenFromDragDrop = opts.hiddenFromDragDrop;
