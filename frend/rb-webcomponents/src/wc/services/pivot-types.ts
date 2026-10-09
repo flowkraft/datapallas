@@ -33,7 +33,7 @@ export type DerivedAttributeFn = (record: Record<string, any>) => any;
 export type ValueFilter = Record<string, Record<string, boolean>>;
 
 // Sort order options
-export type SortOrder = 'key_a_to_z' | 'value_a_to_z' | 'value_z_to_a';
+export type SortOrder = 'key_a_to_z' | 'key_z_to_a' | 'value_a_to_z' | 'value_z_to_a';
 
 // Renderer names
 export type RendererName = 

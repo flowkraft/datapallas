@@ -170,6 +170,7 @@
   
   const sortIcons: Record<SortOrder, { rowSymbol: string; colSymbol: string; next: SortOrder }> = {
     'key_a_to_z': { rowSymbol: '↕', colSymbol: '↔', next: 'value_a_to_z' },
+    'key_z_to_a': { rowSymbol: '↕', colSymbol: '↔', next: 'value_a_to_z' },
     'value_a_to_z': { rowSymbol: '↓', colSymbol: '→', next: 'value_z_to_a' },
     'value_z_to_a': { rowSymbol: '↑', colSymbol: '←', next: 'key_a_to_z' },
   };

@@ -544,6 +544,11 @@ export class PivotData {
       case 'value_z_to_a':
         this.rowKeys.sort((a, b) => -naturalSort(v(a, []), v(b, [])));
         break;
+      case 'key_z_to_a': {
+        const byKey = this.arrSort(this.props.rows || []);
+        this.rowKeys.sort((a, b) => -byKey(a, b));
+        break;
+      }
       default:
         this.rowKeys.sort(this.arrSort(this.props.rows || []));
     }
@@ -555,6 +560,11 @@ export class PivotData {
       case 'value_z_to_a':
         this.colKeys.sort((a, b) => -naturalSort(v([], a), v([], b)));
         break;
+      case 'key_z_to_a': {
+        const byKey = this.arrSort(this.props.cols || []);
+        this.colKeys.sort((a, b) => -byKey(a, b));
+        break;
+      }
       default:
         this.colKeys.sort(this.arrSort(this.props.cols || []));
     }

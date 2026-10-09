@@ -17,8 +17,8 @@ export interface ServerPivotRequest {
   vals?: string[];
   aggregatorName?: string;
   filters?: Record<string, string[]>;
-  rowOrder?: 'key_a_to_z' | 'value_a_to_z' | 'value_z_to_a';
-  colOrder?: 'key_a_to_z' | 'value_a_to_z' | 'value_z_to_a';
+  rowOrder?: 'key_a_to_z' | 'key_z_to_a' | 'value_a_to_z' | 'value_z_to_a';
+  colOrder?: 'key_a_to_z' | 'key_z_to_a' | 'value_a_to_z' | 'value_z_to_a';
   includeSubtotals?: boolean;
   limit?: number;
 }
@@ -240,8 +240,8 @@ export function buildServerPivotRequest(
     vals?: string[];
     aggregatorName?: string;
     valueFilter?: Record<string, Record<string, boolean>>;
-    rowOrder?: 'key_a_to_z' | 'value_a_to_z' | 'value_z_to_a';
-    colOrder?: 'key_a_to_z' | 'value_a_to_z' | 'value_z_to_a';
+    rowOrder?: 'key_a_to_z' | 'key_z_to_a' | 'value_a_to_z' | 'value_z_to_a';
+    colOrder?: 'key_a_to_z' | 'key_z_to_a' | 'value_a_to_z' | 'value_z_to_a';
   },
   engine?: 'duckdb' | 'clickhouse'
 ): ServerPivotRequest {
