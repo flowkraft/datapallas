@@ -305,7 +305,9 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
     const newData: { labelField?: string; seriesField?: string; datasets?: { field: string; label?: string }[] } = { ...dataBlock };
     if (nextX[0]) newData.labelField = nextX[0]; else delete newData.labelField;
     if (nextX[1]) newData.seriesField = nextX[1]; else delete newData.seriesField;
-    if (nextY.length > 0) newData.datasets = nextY.map((f) => ({ field: f, label: f }));
+    // A measure that already has an entry keeps it whole (its label, its colour): a re-pick that only
+    // moved the X axis, or that ran on a result that briefly lacked a column, must not retitle the series.
+    if (nextY.length > 0) newData.datasets = nextY.map((f) => (dataBlock.datasets ?? []).find((d) => d?.field === f) ?? { field: f, label: f });
     else delete newData.datasets;
 
     const newMap: Record<string, unknown> = { ...dslMap };
