@@ -441,8 +441,8 @@ public class DashboardFileGenerator {
                 merged.put(field, withFormat(asMap(definition), settled.get(field))));
             settled.forEach((field, settings) -> {
                 if (merged.containsKey(field)) return;
-                Map<String, Object> format = tabulatorFormat(settings);
-                if (format != null) merged.put(field, format);
+                Map<String, Object> settledDefinition = settledDefinition(settings);
+                if (settledDefinition != null) merged.put(field, settledDefinition);
             });
             out.put("autoColumnsDefinitions", merged);
             return out;
@@ -471,26 +471,48 @@ public class DashboardFileGenerator {
         if (!addMissing) return out;
         for (Map.Entry<String, Map<String, Object>> column : settled.entrySet()) {
             if (named.contains(column.getKey())) continue;
-            Map<String, Object> format = tabulatorFormat(column.getValue());
-            if (format == null) continue;
+            Map<String, Object> settledDefinition = settledDefinition(column.getValue());
+            if (settledDefinition == null) continue;
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("field", column.getKey());
-            entry.putAll(format);
+            entry.putAll(settledDefinition);
             out.add(entry);
         }
         return out;
     }
 
-    /** One definition, with its column's format - unless it already carries one of its own. */
+    /**
+     * One definition, with its column's format - unless it already carries one of its own - and
+     * its column's title: the label the author typed in the column's gear is the one the canvas
+     * shows over the title of the Display tab, so it is the one the published table shows.
+     */
     private static Map<String, Object> withFormat(Map<String, Object> definition,
             Map<String, Object> settings) {
 
-        if (settings == null || definition.containsKey("formatter")) return definition;
-        Map<String, Object> format = tabulatorFormat(settings);
-        if (format == null) return definition;
+        if (settings == null) return definition;
+        Map<String, Object> format = definition.containsKey("formatter") ? null : tabulatorFormat(settings);
+        String title = columnTitle(settings);
+        if (format == null && title == null) return definition;
         Map<String, Object> out = new LinkedHashMap<>(definition);
-        format.forEach(out::putIfAbsent);
+        if (format != null) format.forEach(out::putIfAbsent);
+        if (title != null) out.put("title", title);
         return out;
+    }
+
+    /** What the canvas settled for a column that has no definition yet: its title and its format. */
+    private static Map<String, Object> settledDefinition(Map<String, Object> settings) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        Map<String, Object> format = tabulatorFormat(settings);
+        if (format != null) out.putAll(format);
+        String title = columnTitle(settings);
+        if (title != null) out.put("title", title);
+        return out.isEmpty() ? null : out;
+    }
+
+    /** The label typed in the column's gear, or {@code null} when there is none. */
+    private static String columnTitle(Map<String, Object> settings) {
+        String title = Objects.toString(settings.get("columnTitle"), "").trim();
+        return title.isEmpty() ? null : title;
     }
 
     /**
