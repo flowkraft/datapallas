@@ -207,6 +207,14 @@
   // PivotData Computation
   // ============================================================================
 
+  // The rows are materialized before the pivot is computed: the next statement reads
+  // `materializedInput`, which materializeInput assigns, and Svelte runs the `$:` statements in the
+  // order they are written (it cannot see an assignment made inside a function). Written after the
+  // pivot, a new set of rows was only taken up one update later, and the pivot stayed on the old ones.
+  $: if (data) {
+    materializeInput(data);
+  }
+
   // Server-side processing hands over rows that are already aggregated: one row per cell, the
   // count in `aggregated_value` (or in the value column when there is one). Counting those rows
   // again would make every cell 1, so a count is the sum of the numbers the server counted.
@@ -545,11 +553,6 @@
 
     attrValues = newAttrValues;
     materializedInput = newMaterializedInput;
-  }
-
-  // Watch for data changes
-  $: if (data) {
-    materializeInput(data);
   }
 
   // ============================================================================
