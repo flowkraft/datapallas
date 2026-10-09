@@ -31,6 +31,7 @@ class ScriptsServiceDbSqlTest {
 		QueriesService queries = mock(QueriesService.class);
 		when(queries.executeQuery(eq("c1"), anyString(), any())).thenReturn(
 				List.of(Map.of("area", "Sales", "target", 10), Map.of("area", "Support", "target", 20)));
+		when(queries.withRelativeDays(anyString(), any())).thenAnswer(call -> call.getArgument(1));
 		service = new ScriptsService();
 		ReflectionTestUtils.setField(service, "queriesService", queries);
 		ReflectionTestUtils.setField(service, "timeoutSeconds", 10);
@@ -61,5 +62,17 @@ class ScriptsServiceDbSqlTest {
 	void aFilterMayNotTakeOverDbSql() {
 		assertThrows(IllegalArgumentException.class,
 				() -> service.executeScript("c1", "[]", Map.of("dbSql", "x")));
+	}
+
+	@Test
+	void aDateFilterHeldAsARelativeDayIsReadAsTheDay() throws Exception {
+		QueriesService queries = mock(QueriesService.class);
+		Map<String, Object> asWritten = Map.of("dateFrom", "{dataToday:startOf year}");
+		when(queries.withRelativeDays("c1", asWritten)).thenReturn(Map.of("dateFrom", "2026-01-01"));
+		ReflectionTestUtils.setField(service, "queriesService", queries);
+
+		List<Map<String, Object>> rows = service.executeScript("c1", "[[day: dateFrom]]", asWritten);
+
+		assertEquals("2026-01-01", rows.get(0).get("day"));
 	}
 }

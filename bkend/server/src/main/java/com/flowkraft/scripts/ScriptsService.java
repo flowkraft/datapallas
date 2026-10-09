@@ -64,6 +64,9 @@ public class ScriptsService {
         binding.setVariable("log", LoggerFactory.getLogger("ScriptExecution"));
         // Bind each filter value as a named Groovy variable so ${paramName} resolves
         // naturally in Groovy GStrings (e.g. "WHERE col = ${shipper}").
+        // A date filter the canvas holds at its written default ({dataToday:...}) is the day it names
+        // before a script reads it, as it is before a query binds it.
+        filterValues = queriesService.withRelativeDays(connectionId, filterValues);
         if (filterValues != null) {
             for (Map.Entry<String, Object> entry : filterValues.entrySet()) {
                 if (RESERVED_BINDING_NAMES.contains(entry.getKey()))

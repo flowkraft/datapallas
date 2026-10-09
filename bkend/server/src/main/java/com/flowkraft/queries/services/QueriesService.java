@@ -141,7 +141,7 @@ public class QueriesService {
 	 * parameter refused it. Values that name no token are left as they are, and the marker table is
 	 * read only when one does.
 	 */
-	private Map<String, Object> withRelativeDays(String connectionId, Map<String, Object> params) {
+	public Map<String, Object> withRelativeDays(String connectionId, Map<String, Object> params) {
 
 		if (params == null)
 			return null;
