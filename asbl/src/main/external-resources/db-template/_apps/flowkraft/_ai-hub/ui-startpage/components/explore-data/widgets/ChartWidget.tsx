@@ -446,10 +446,15 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
     //    only at render-time would never reach the exported chart-config.groovy.
     //    Compare snapshots first to avoid update loops.
     if (xField && yFields.length > 0) {
-      const dataBlock: { labelField: string; seriesField?: string; datasets: { field: string; label: string }[] } = {
+      // A measure that already has an entry keeps it whole (its label, its colour): the pick only
+      // adds the entries that are missing, so a title the person or the DSL gave is not overwritten.
+      const kept = (dslMap.data ?? {}) as { datasets?: Array<{ field?: string }> } & Record<string, unknown>;
+      const dataBlock: { labelField: string; seriesField?: string; datasets: Array<{ field?: string; label?: string }> } & Record<string, unknown> = {
+        ...kept,
         labelField: xField,
-        datasets: yFields.map((f) => ({ field: f, label: f })),
+        datasets: yFields.map((f) => (kept.datasets ?? []).find((d) => d?.field === f) ?? { field: f, label: f }),
       };
+      delete dataBlock.seriesField;
       if (effectiveSeriesField && keys.includes(effectiveSeriesField)) {
         dataBlock.seriesField = effectiveSeriesField;
       }
@@ -506,7 +511,8 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
     }
     // A bubble's radius is the measure picked as Size. <rb-chart> reads it from the rows it is
     // given, and the Canvas hands it drawn data, so each point here carries its own radius.
-    const bubbleSizeField = dslMap.bubbleSizeField as string | undefined;
+    const bubbleSizeField = (dslMap.bubbleSizeField
+      ?? (dslMap.options as { bubbleSizeField?: string } | undefined)?.bubbleSizeField) as string | undefined;
     if (chartType === "bubble" && bubbleSizeField && !wantsSeries) {
       const drawn = el.data as { labels: unknown[]; datasets: Array<{ data: unknown[] }> };
       const size = new Map(rows.map((r) => [String(r[xField!]), Number(r[bubbleSizeField])]));
