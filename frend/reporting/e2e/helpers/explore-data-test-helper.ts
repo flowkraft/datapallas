@@ -807,20 +807,28 @@ async function dragWidgetsIntoPlace(
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(300);
 
-  // Grid geometry — mirror the values hard-coded in Canvas.tsx.
+  // Grid geometry — mirror the values hard-coded in Canvas.tsx. The grid has no containerPadding of
+  // its own, so react-grid-layout pads it with the margin all around.
   const COLS    = 12;
   const ROW_H   = 80;
   const MARGIN  = 12;
+  const PAD     = MARGIN;
 
   const grid = page.locator('.react-grid-layout').first();
   const gridBox = await grid.boundingBox();
   if (!gridBox) throw new Error('layoutWidgetsByDrag: grid container not found');
-  const colW = (gridBox.width - MARGIN * (COLS - 1)) / COLS;
+  const colW = (gridBox.width - MARGIN * (COLS - 1) - 2 * PAD) / COLS;
 
   const toPxW = (w: number) => w * colW + (w - 1) * MARGIN;
   const toPxH = (h: number) => h * ROW_H + (h - 1) * MARGIN;
-  const toPxX = (x: number) => gridBox.x + x * (colW + MARGIN);
-  const toPxY = (y: number) => gridBox.y + y * (ROW_H + MARGIN);
+  const toPxX = (x: number) => gridBox.x + PAD + x * (colW + MARGIN);
+  const toPxY = (y: number) => gridBox.y + PAD + y * (ROW_H + MARGIN);
+  const placeOf = (box: { x: number; y: number; width: number; height: number }): GridPos => ({
+    x: Math.round((box.x - gridBox.x - PAD) / (colW + MARGIN)),
+    y: Math.round((box.y - gridBox.y - PAD) / (ROW_H + MARGIN)),
+    w: Math.round((box.width + MARGIN) / (colW + MARGIN)),
+    h: Math.round((box.height + MARGIN) / (ROW_H + MARGIN)),
+  });
 
   const handles = await page.locator('[id^="widgetDragHandle-"]').all();
   if (handles.length !== targets.length) {
@@ -829,41 +837,54 @@ async function dragWidgetsIntoPlace(
     );
   }
 
-  for (let i = 0; i < handles.length; i++) {
-    const handle = handles[i];
-    const t = targets[i];
+  // The grid makes room for each widget that is moved, so one widget put in place can push an
+  // earlier one out of it. A person looks at the result and fixes what moved; so does this: it goes
+  // round again until every widget stands where it should (or a few rounds have not settled it).
+  for (let round = 0; round < 4; round++) {
+    let moved = false;
+    for (let i = 0; i < handles.length; i++) {
+      const handle = handles[i];
+      const t = targets[i];
 
-    // ── Resize by delta: drag .react-resizable-handle by (Δw, Δh) in px ──
-    const pre = await handle.boundingBox();
-    if (!pre) continue;
-    const resize = handle.locator('.react-resizable-handle').first();
-    const rBox = await resize.boundingBox();
-    if (rBox) {
-      const deltaW = toPxW(t.w) - pre.width;
-      const deltaH = toPxH(t.h) - pre.height;
-      const sx = rBox.x + rBox.width  / 2;
-      const sy = rBox.y + rBox.height / 2;
-      await page.mouse.move(sx, sy);
-      await page.mouse.down();
-      await page.mouse.move(sx + deltaW, sy + deltaH, { steps: 15 });
-      await page.mouse.up();
-      await page.waitForTimeout(400);
-    }
+      // ── Resize by delta: drag .react-resizable-handle by (Δw, Δh) in px ──
+      const pre = await handle.boundingBox();
+      if (!pre) continue;
+      const now = placeOf(pre);
+      if (now.w !== t.w || now.h !== t.h) {
+        const resize = handle.locator('.react-resizable-handle').first();
+        const rBox = await resize.boundingBox();
+        if (rBox) {
+          const deltaW = toPxW(t.w) - pre.width;
+          const deltaH = toPxH(t.h) - pre.height;
+          const sx = rBox.x + rBox.width  / 2;
+          const sy = rBox.y + rBox.height / 2;
+          await page.mouse.move(sx, sy);
+          await page.mouse.down();
+          await page.mouse.move(sx + deltaW, sy + deltaH, { steps: 15 });
+          await page.mouse.up();
+          await page.waitForTimeout(400);
+          moved = true;
+        }
+      }
 
-    // ── Move by delta: grab the widget header, drag by (Δx, Δy) in px ──
-    const post = await handle.boundingBox();
-    if (!post) continue;
-    const dx = toPxX(t.x) - post.x;
-    const dy = toPxY(t.y) - post.y;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-      const grabX = post.x + 40;
-      const grabY = post.y + 14;
-      await page.mouse.move(grabX, grabY);
-      await page.mouse.down();
-      await page.mouse.move(grabX + dx, grabY + dy, { steps: 20 });
-      await page.mouse.up();
-      await page.waitForTimeout(400);
+      // ── Move by delta: grab the widget header, drag by (Δx, Δy) in px ──
+      const post = await handle.boundingBox();
+      if (!post) continue;
+      const at = placeOf(post);
+      if (at.x !== t.x || at.y !== t.y) {
+        const dx = toPxX(t.x) - post.x;
+        const dy = toPxY(t.y) - post.y;
+        const grabX = post.x + 40;
+        const grabY = post.y + 14;
+        await page.mouse.move(grabX, grabY);
+        await page.mouse.down();
+        await page.mouse.move(grabX + dx, grabY + dy, { steps: 20 });
+        await page.mouse.up();
+        await page.waitForTimeout(400);
+        moved = true;
+      }
     }
+    if (!moved) break;
   }
 
   // Safety: release mouse and wait for ReactGridLayout drag overlay to clear.
