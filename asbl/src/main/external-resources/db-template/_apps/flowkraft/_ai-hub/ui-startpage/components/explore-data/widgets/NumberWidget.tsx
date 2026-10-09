@@ -73,6 +73,7 @@ export function NumberWidget({ widgetId }: NumberWidgetProps) {
         visualQuery: {
           kind: "table",
           table: tbl.tableName,
+          tableSchema: vq.tableSchema,
           filters: [],
           summarize: [{ aggregation: "count", field: "*" }],
           groupBy: [],
