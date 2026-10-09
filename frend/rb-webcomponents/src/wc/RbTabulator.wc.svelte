@@ -515,6 +515,12 @@
 
     // Thin wrapper: pass options straight through to Tabulator.
     const opts: Options = Object.assign({}, options || {});
+    // Tabulator writes the Column it resolves into each initialSort entry it is given. The entries
+    // are the caller's own, so they are handed over as copies: `options` stays plain data that can
+    // be serialized (a Column points back at its table, and JSON.stringify of it throws).
+    if (Array.isArray(opts.initialSort)) {
+      opts.initialSort = opts.initialSort.map((s) => ({ ...s }));
+    }
 
     // Auto-inject sensible defaults when no explicit configuration provided.
     // Prevents browser freezing on large datasets.
