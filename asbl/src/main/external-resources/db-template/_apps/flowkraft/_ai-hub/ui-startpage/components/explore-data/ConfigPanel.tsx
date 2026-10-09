@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useCanvasStore } from "@/lib/stores/canvas-store";
+import { useCanvasStore, asDerivedWrite } from "@/lib/stores/canvas-store";
 import type { DataSource, WidgetDisplayConfig } from "@/lib/stores/canvas-store";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import { fetchSchema, executeQuery, getConnectionType } from "@/lib/explore-data/rb-api";
@@ -312,10 +312,11 @@ export function ConfigPanel({ onCollapse }: { onCollapse?: () => void }) {
     if (nextBubble !== undefined) newMap.bubbleSizeField = nextBubble;
     else delete newMap.bubbleSizeField;
 
-    updateWidgetDisplayConfig(selectedWidget.id, {
+    // The auto-pick completes the edit that produced the result; it is not an edit of its own.
+    asDerivedWrite(() => updateWidgetDisplayConfig(selectedWidget.id, {
       ...selectedWidget.displayConfig,
       dslConfig: newMap,
-    });
+    }));
   }, [
     selectedWidget?.id,
     selectedWidget?.type,
