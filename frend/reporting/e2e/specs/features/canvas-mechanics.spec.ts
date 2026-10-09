@@ -387,7 +387,8 @@ async function cReadPivot(locator: Locator): Promise<CPivotState | null> {
     const rowKeys: string[][] = data.getRowKeys();
     const colKeys: string[][] = data.getColKeys();
     const cells: Record<string, number> = {};
-    for (const r of rowKeys) for (const c of colKeys) cells[`${r.join('|')}::${c.join('|')}`] = Number(data.getAggregator(r, c).value());
+    // A pivot with rows only has no column keys: its cells are the row totals, under an empty column.
+    for (const r of rowKeys) for (const c of colKeys.length ? colKeys : [[]]) cells[`${r.join('|')}::${c.join('|')}`] = Number(data.getAggregator(r, c).value());
     return { state: pivot.getState(), rowKeys: rowKeys.map((k) => k.join('|')), colKeys: colKeys.map((k) => k.join('|')), cells };
   });
 }
