@@ -2801,7 +2801,11 @@ test('(canvas mechanics) D01 every TODO 5e defect fix works', async () => {
       await page.locator('#pick_search').fill('');
       await expect(page.locator('#pick_modal [id^="pick_cb_"]')).toHaveCount(50);
 
-      // − Cancel throws the draft away; − a click on the backdrop does the same.
+      // + OK commits All; − Cancel then throws a later draft away; − a click on the backdrop does the same.
+      await page.locator('#pick_btnOk').click();
+      await expect(page.locator('#pick_modal')).not.toBeVisible();
+      await open();
+      await expect(page.locator('#pick_lblCount'), 'OK kept All').toContainText('All');
       await page.locator('#pick_btnNone').click();
       await page.locator('#pick_btnCancel').click();
       await expect(page.locator('#pick_modal')).not.toBeVisible();
