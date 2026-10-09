@@ -448,8 +448,8 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
     if (xField && yFields.length > 0) {
       // A measure that already has an entry keeps it whole (its label, its colour): the pick only
       // adds the entries that are missing, so a title the person or the DSL gave is not overwritten.
-      const kept = (dslMap.data ?? {}) as { datasets?: Array<{ field?: string }> } & Record<string, unknown>;
-      const dataBlock: { labelField: string; seriesField?: string; datasets: Array<{ field?: string; label?: string }> } & Record<string, unknown> = {
+      const kept = (dslMap.data ?? {}) as { datasets?: Array<{ field: string; label?: string }> } & Record<string, unknown>;
+      const dataBlock: { labelField: string; seriesField?: string; datasets: Array<{ field: string; label?: string }> } & Record<string, unknown> = {
         ...kept,
         labelField: xField,
         datasets: yFields.map((f) => (kept.datasets ?? []).find((d) => d?.field === f) ?? { field: f, label: f }),
