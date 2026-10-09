@@ -92,10 +92,11 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
 
   const autoTriggeredRef = useRef<string | null>(null);
   useEffect(() => {
-    // A pivot that has had a layout laid itself out once; when it is emptied later it asks,
-    // with the button, instead of laying itself out again at once.
+    // A pivot that has had a layout (its own or an auto-picked one) lays itself out unasked only
+    // that once; when it is emptied by hand later it asks, with the button. A fresh pivot has had
+    // no layout, so it is not marked and still lays itself out.
     if (!showAutoLayoutPrompt) {
-      if (widget) autoTriggeredRef.current = widget.id;
+      if (widget && !noLayout) autoTriggeredRef.current = widget.id;
       return;
     }
     if (!widget || !connectionId) return;
