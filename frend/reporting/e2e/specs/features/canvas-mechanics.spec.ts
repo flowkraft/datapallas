@@ -1348,15 +1348,17 @@ test.describe('Canvas mechanics', () => {
 
         // And what the link carries is a credential that works for the data behind the tile.
         const token = new URL(url).searchParams.get('token')!;
-        const dataUrl = `${SERVER_URL}/api/reports/${reportId}/data?componentId=${encodeURIComponent(numberIds[0])}`;
-        const allowed = await readerContext.request.get(dataUrl, { headers: { 'X-Embed-Token': token } });
+        // A share link's token travels as the `token` query parameter, as the page sends it;
+        // the X-Embed-Token header is for embed tokens, which are another credential.
+        const dataUrl = `${SERVER_URL}/api/reports/${reportId}/data?componentId=${encodeURIComponent(numberIds[0])}&token=${encodeURIComponent(token)}`;
+        const allowed = await readerContext.request.get(dataUrl);
         expect(allowed.status(), 'the live link answers its data call').toBe(200);
 
         // Negative: revoke it, and the same link is refused.
         await page.locator('[id^="btnRevokeShareLink-"]').first().click();
         await expect(page.locator('#tableShareLinks [id^="shareLink-"]'), 'the revoked link leaves the table')
           .toHaveCount(0, { timeout: 15_000 });
-        const refused = await readerContext.request.get(dataUrl, { headers: { 'X-Embed-Token': token } });
+        const refused = await readerContext.request.get(dataUrl);
         expect([401, 403], `the revoked link is refused (${refused.status()})`).toContain(refused.status());
         await page.locator('#btnShareClose').click();
       });
