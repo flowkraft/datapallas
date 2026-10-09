@@ -1247,7 +1247,7 @@ test.describe('Canvas mechanics', () => {
       await expect(page.locator('#configPanel')).toBeVisible();
       await expect(page.locator(`#widgetResizeGrip-${textId}`)).toHaveCount(1);
       const gridOf = async () =>
-        JSON.stringify(((await aStored(page, canvasId)).widgets as Array<Record<string, any>>)[0].gridPosition);
+        String(JSON.stringify(((await aStored(page, canvasId)).widgets as Array<Record<string, any>> | undefined)?.[0]?.gridPosition));
       await expect.poll(gridOf, { timeout: 20_000, intervals: [500] }).toContain('"w":6');
 
       // + Control: in Edit mode a drag of the header does move the widget (the negative below means something).
