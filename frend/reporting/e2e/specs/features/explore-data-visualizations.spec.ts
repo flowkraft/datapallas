@@ -1260,7 +1260,7 @@ test.describe('Data Canvas Visualizations', () => {
             await page.waitForTimeout(800); // serialize debounce (500ms) + margin
 
             // Open DSL section in modal (#filterDslEditorContainer added for testability)
-            await openDslEditor(page, '#filterDslEditorContainer');
+            await openDslEditor(page, '#filterDslEditorContainer', '#btnFilterDslToggle');
 
             // Parameters DSL must contain the canonical block + the seeded label.
             // Line-by-line read preserves newlines for the paste-back round-trip; see E-1.
@@ -1298,7 +1298,7 @@ test.describe('Data Canvas Visualizations', () => {
             await page.waitForTimeout(300);
 
             // Re-open DSL in modal
-            await openDslEditor(page, '#filterDslEditorContainer');
+            await openDslEditor(page, '#filterDslEditorContainer', '#btnFilterDslToggle');
 
             const dslAfter = await page.locator('#filterDslEditorContainer .cm-content').textContent() ?? '';
             expect(dslAfter).toMatch(/label:\s*'E2E_LABEL'/);

@@ -317,12 +317,16 @@ export async function detectColumns(page: Page): Promise<void> {
  *  stale text and any typed DSL lands in the wrong context.
  *
  *  The serialize API is async — the container becomes visible before content
- *  arrives, so we waitForFunction on .cm-content being non-empty. */
+ *  arrives, so we waitForFunction on .cm-content being non-empty.
+ *
+ *  The widget's editor and the filter bar's editor each have their own toggle
+ *  (`#btnDslToggle`, `#btnFilterDslToggle`), so the filter bar's is passed in. */
 export async function openDslEditor(
   page: Page,
   container: string = '#dslEditorContainer',
+  toggleSelector: string = '#btnDslToggle',
 ): Promise<void> {
-  const toggle = page.locator('#btnDslToggle');
+  const toggle = page.locator(toggleSelector);
   await toggle.scrollIntoViewIfNeeded();
   await toggle.waitFor({ state: 'visible', timeout: 5_000 });
 
