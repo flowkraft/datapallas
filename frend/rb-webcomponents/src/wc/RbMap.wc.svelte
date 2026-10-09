@@ -375,6 +375,7 @@
       } else {
         layerGroup.clearLayers();
       }
+      publishShapeCount();
 
       if (!data || data.length === 0) return;
 
@@ -385,6 +386,7 @@
       } else {
         await renderRegion(L, resolved);
       }
+      publishShapeCount();
 
       if (resolved.center && resolved.zoom != null) {
         mapInstance.setView(resolved.center, resolved.zoom);
@@ -394,6 +396,16 @@
       showRuntimeError(msg);   // imperative
       dispatch("renderError", { message: msg });
     }
+  }
+
+  // Canvas-drawn shapes leave nothing in the DOM to count, so the number drawn is written on the
+  // container: a person can't count them either, but a test (and a curious developer) can.
+  function publishShapeCount() {
+    if (!container || !layerGroup) return;
+    let n = 0;
+    const walk = (layer: any) => { if (typeof layer.eachLayer === "function") layer.eachLayer(walk); else n++; };
+    layerGroup.eachLayer(walk);
+    container.setAttribute("data-shape-count", String(n));
   }
 
   function renderPins(L: any, r: ResolvedOptions) {
