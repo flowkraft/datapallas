@@ -97,8 +97,9 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       <div id="overlayExportDialog" className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
 
       {/* Dialog */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div id="dlgExportDialog" className="bg-base-100 border border-base-300 rounded-xl shadow-xl w-full max-w-sm flex flex-col" onClick={(e) => e.stopPropagation()}>
+      {/* The wrapper lets clicks through to the backdrop; only the dialog itself takes them. */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div id="dlgExportDialog" className="pointer-events-auto bg-base-100 border border-base-300 rounded-xl shadow-xl w-full max-w-sm flex flex-col" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-base-300">
             <h2 className="text-base font-semibold text-base-content">

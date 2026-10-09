@@ -207,10 +207,11 @@ export function FilterBarConfigPanel({ open, onClose }: FilterBarConfigPanelProp
       <div id="overlayFilterBarConfig" className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" onClick={onClose} />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* The wrapper lets clicks through to the backdrop; only the dialog itself takes them. */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
           id="dlgFilterBarConfig"
-          className="bg-base-100 border border-base-300 ring-1 ring-border/60 rounded-xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col"
+          className="pointer-events-auto bg-base-100 border border-base-300 ring-1 ring-border/60 rounded-xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
