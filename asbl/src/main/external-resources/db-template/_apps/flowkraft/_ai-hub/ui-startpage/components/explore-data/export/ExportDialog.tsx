@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 // lucide-react removed
 import { useCanvasStore } from "@/lib/stores/canvas-store";
-import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
+import { usePublishStatusStore, publishSignature, rememberPublished } from "@/lib/stores/publish-status-store";
 import { columnKindsOf, extractParamTypes, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
 import { getConnectionType, updateCanvas } from "@/lib/explore-data/rb-api";
@@ -67,10 +67,9 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       );
       return built ? { ...w, dataSource: { ...ds, generatedSql: built } } : w;
     });
+    const persistedState = JSON.stringify({ widgets: patchedWidgets, parametersConfig: state.parametersConfig });
     try {
-      await updateCanvas(state.id, {
-        state: JSON.stringify({ widgets: patchedWidgets, parametersConfig: state.parametersConfig }),
-      });
+      await updateCanvas(state.id, { state: persistedState });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setResult({ success: false, error: `Failed to persist canvas before publish: ${msg}` });
@@ -86,6 +85,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       // Mark the canvas clean wrt publishing — subsequent edits will flip it
       // back to dirty via usePublishDirty. Autosave is unaffected.
       usePublishStatusStore.getState().markClean();
+      rememberPublished(state.id, publishSignature(state.name, state.connectionId || null, persistedState));
     }
   };
 

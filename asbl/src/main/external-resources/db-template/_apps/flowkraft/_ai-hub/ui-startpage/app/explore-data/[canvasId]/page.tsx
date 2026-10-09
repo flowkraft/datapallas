@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 // heroicons replace lucide ChevronRight / ChevronLeft
 import { useCanvasStore, type ParametersConfig } from "@/lib/stores/canvas-store";
 import { useSaveStatusStore } from "@/lib/stores/save-status-store";
-import { usePublishStatusStore } from "@/lib/stores/publish-status-store";
+import { usePublishStatusStore, publishSignature, editedSincePublish } from "@/lib/stores/publish-status-store";
 import { usePublishDirty } from "@/lib/stores/use-publish-dirty";
 import { fetchCanvas } from "@/lib/explore-data/rb-api";
 import { useCanvasAutosave } from "@/lib/stores/use-canvas-autosave";
@@ -99,7 +99,8 @@ export default function CanvasEditorPage({ params }: PageProps) {
         exploreFieldStates: {},
         exploreVersion: 0,
       });
-      usePublishStatusStore.getState().reset(!!canvas.exportedReportCode);
+      const signature = publishSignature(canvas.name as string, (canvas.connectionId as string) || null, (canvas.state as string) || "{}");
+      usePublishStatusStore.getState().reset(!!canvas.exportedReportCode && !editedSincePublish(canvasId, signature));
       setLoading(false);
     };
     load();
