@@ -165,7 +165,12 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
     };
     el.columns = columns;
     el.data = result.data;
-    el.options = renderConfig.options;
+    // Tabulator writes a Column object into each initialSort entry it is handed. Handing it
+    // the entries of the stored DSL itself would make the canvas state circular, so it gets copies.
+    const options = renderConfig.options as Record<string, unknown>;
+    el.options = Array.isArray(options?.initialSort)
+      ? { ...options, initialSort: (options.initialSort as Record<string, unknown>[]).map((s) => ({ ...s })) }
+      : renderConfig.options;
     el.theme = (dslMap.theme as string | undefined) ?? "";
   }, [ready, columnMeta, dslMap, renderConfig, result]);
 
