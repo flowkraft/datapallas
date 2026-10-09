@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useWidgetData } from "./useWidgetData";
 import { useCanvasStore } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "./useRbElementReady";
@@ -111,21 +111,17 @@ export function DetailWidget({ widgetId }: DetailWidgetProps) {
     };
   }, [ready, result, widget?.displayConfig, columnFormats, columnTitles, columnSettings]);
 
-  useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
-    const handler = (e: Event) => {
-      const t = e.target as HTMLElement | null;
-      const btn = t?.closest?.(".rb-col-settings") as HTMLElement | null;
-      if (!btn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const field = btn.dataset.field;
-      if (field) setActiveField(field);
-    };
-    wrap.addEventListener("click", handler);
-    return () => wrap.removeEventListener("click", handler);
-  }, []);
+  // The wrapper is only rendered once the data and <rb-detail> are ready, so the listener is a
+  // React prop: one attached in a mount effect never found the wrapper and the gear did nothing.
+  const handleGearClick = (e: ReactMouseEvent) => {
+    const t = e.target as HTMLElement | null;
+    const btn = t?.closest?.(".rb-col-settings") as HTMLElement | null;
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const field = btn.dataset.field;
+    if (field) setActiveField(field);
+  };
 
   const activeMeta = columnMeta.find((m) => m.field === activeField) ?? null;
 
@@ -159,7 +155,7 @@ export function DetailWidget({ widgetId }: DetailWidgetProps) {
   }
 
   return (
-    <div ref={wrapRef} className="h-full">
+    <div ref={wrapRef} className="h-full" onClick={handleGearClick}>
       {/* @ts-expect-error — custom element */}
       <rb-detail ref={ref} style={{ display: "block", width: "100%", height: "100%" }} />
       <ColumnSettingsDialog
