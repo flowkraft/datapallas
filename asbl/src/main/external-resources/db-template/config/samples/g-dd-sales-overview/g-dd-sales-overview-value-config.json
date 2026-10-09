@@ -16,7 +16,7 @@
     "decimals" : 2
   },
   "number_customer_id_count_distinct_ordered" : {
-    "field" : "customer_id_count_distinct",
+    "field" : "customer_id_count distinct",
     "format" : "number",
     "label" : "Customers who ordered"
   }

@@ -184,7 +184,7 @@ Every month this year except August runs above the same month a year earlier, mo
           { column: 'country_code', operator: 'equals', value: '${country}' },
           { column: 'channel', operator: 'in', value: '${channel}' },
         ],
-        summarize: [{ aggregation: 'COUNT_DISTINCT', field: 'customer_id' }],
+        summarize: [{ aggregation: 'COUNT DISTINCT', field: 'customer_id' }],
         limit: 1,
       },
       shot: {
@@ -203,7 +203,7 @@ Every month this year except August runs above the same month a year earlier, mo
     {
       kind: 'displayConfig',
       widget: 'number',
-      config: { numberField: 'customer_id_count_distinct', numberFormat: 'number', numberLabel: 'Customers who ordered' },
+      config: { numberField: 'customer_id_count distinct', numberFormat: 'number', numberLabel: 'Customers who ordered' },
       shot: {
         title: 'Set up customers who ordered',
         caption: 'On the **Display** tab, set the number\'s fields, label and format.',

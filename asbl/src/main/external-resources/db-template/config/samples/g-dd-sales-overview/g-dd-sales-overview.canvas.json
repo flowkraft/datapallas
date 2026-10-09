@@ -237,7 +237,7 @@
             ],
             "summarize": [
               {
-                "aggregation": "COUNT_DISTINCT",
+                "aggregation": "COUNT DISTINCT",
                 "field": "customer_id"
               }
             ],
@@ -245,10 +245,10 @@
             "sort": [],
             "limit": 1
           },
-          "generatedSql": "SELECT COUNT(DISTINCT \"customer_id\") AS \"customer_id_count_distinct\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
+          "generatedSql": "SELECT COUNT(DISTINCT \"customer_id\") AS \"customer_id_count distinct\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
         },
         "displayConfig": {
-          "numberField": "customer_id_count_distinct",
+          "numberField": "customer_id_count distinct",
           "numberFormat": "number",
           "numberLabel": "Customers who ordered"
         },

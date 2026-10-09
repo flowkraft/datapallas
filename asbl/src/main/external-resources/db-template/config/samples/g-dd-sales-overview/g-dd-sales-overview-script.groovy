@@ -178,7 +178,7 @@ if (!componentId || componentId == 'number_total_amount_avg_value') {
 if (!componentId || componentId == 'number_customer_id_count_distinct_ordered') {
     def sql = new StringBuilder()
     def params = []
-    sql << 'SELECT COUNT(DISTINCT "customer_id") AS "customer_id_count_distinct"\n'
+    sql << 'SELECT COUNT(DISTINCT "customer_id") AS "customer_id_count distinct"\n'
     sql << 'FROM "dash_demo"."orders"\n'
     sql << 'WHERE "status" <> \'cancelled\'\n'
     if (hasDateFrom && hasDateTo__next_day) {
