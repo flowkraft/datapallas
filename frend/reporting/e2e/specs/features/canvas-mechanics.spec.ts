@@ -305,8 +305,8 @@ const B_CHANNEL_FILTER_DSL = `reportParameters {
   }
 }
 `;
-const B_CHANNEL_COUNT_SQL =
-  "SELECT count(*) AS orders FROM dash_demo.orders WHERE (COALESCE(${channel}, '') = '' OR channel = ${channel})";
+// One condition per line: a filter with no value is left out with the line that uses it, so "All channels" counts every order.
+const B_CHANNEL_COUNT_SQL = 'SELECT count(*) AS orders FROM dash_demo.orders\nWHERE channel = ${channel}';
 
 // ── Group C ─────────────────────────────────────────────────────────────────
 
