@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import type { NumericBucket, TimeBucket } from "@/lib/stores/canvas-store";
 import { getFieldKind } from "@/lib/explore-data/field-utils";
+import { asTableRef } from "@/lib/explore-data/table-ref";
 import {
   AGGREGATIONS, HAVING_OPS, SHARE_LABEL, RUNNING_TOTAL_LABEL,
   RUNNING_TOTAL_AGGREGATIONS, type AggregateCondition,
@@ -76,13 +77,15 @@ interface SummarizeStepProps {
    *  back to "month" instead of data-range-aware `guessTimeBucket`. */
   connectionId?: string | null;
   tableName?: string | null;
+  /** The table's schema when it is not the connection's default one; the probes must name it. */
+  tableSchema?: string | null;
 }
 
 export function SummarizeStep({
   columns, aggregateColumns, summarize, groupBy,
   groupByNumericBuckets = {},
   groupByBuckets = {},
-  onChange, connectionId, tableName,
+  onChange, connectionId, tableName, tableSchema,
 }: SummarizeStepProps) {
   // Columns keyed by name — avoid repeated finds.
   const colByName = Object.fromEntries(columns.map((c) => [c.columnName, c]));
@@ -151,7 +154,7 @@ export function SummarizeStep({
       let range = existing;
       if (!range) {
         try {
-          range = await probeDateRange(connectionId, tableName, col);
+          range = await probeDateRange(connectionId, asTableRef(tableName as string, tableSchema), col);
         } catch { range = null; }
         setDateRangeByCol((prev) => ({ ...prev, [col]: range ?? null }));
       }
@@ -187,7 +190,7 @@ export function SummarizeStep({
     if (!range && connectionId && tableName) {
       setProbingCol(col);
       try {
-        range = await probeNumericRange(connectionId, tableName, col);
+        range = await probeNumericRange(connectionId, asTableRef(tableName as string, tableSchema), col);
       } finally {
         setProbingCol(null);
       }
@@ -219,7 +222,7 @@ export function SummarizeStep({
     if (!range && connectionId && tableName) {
       setProbingCol(col);
       try {
-        range = await probeDateRange(connectionId, tableName, col);
+        range = await probeDateRange(connectionId, asTableRef(tableName as string, tableSchema), col);
       } finally {
         setProbingCol(null);
       }
@@ -238,12 +241,12 @@ export function SummarizeStep({
     (async () => {
       for (const col of groupBy) {
         if (isNumericGroupByColumn(col) && !(col in numRangeByCol)) {
-          const range = await probeNumericRange(connectionId, tableName, col).catch(() => null);
+          const range = await probeNumericRange(connectionId, asTableRef(tableName as string, tableSchema), col).catch(() => null);
           if (cancelled) return;
           setNumRangeByCol((prev) => ({ ...prev, [col]: range ?? null }));
         }
         if (isTemporalGroupByColumn(col) && !(col in dateRangeByCol)) {
-          const range = await probeDateRange(connectionId, tableName, col).catch(() => null);
+          const range = await probeDateRange(connectionId, asTableRef(tableName as string, tableSchema), col).catch(() => null);
           if (cancelled) return;
           setDateRangeByCol((prev) => ({ ...prev, [col]: range ?? null }));
         }
@@ -251,7 +254,7 @@ export function SummarizeStep({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionId, tableName, groupBy.join("\u0000")]);
+  }, [connectionId, tableName, tableSchema, groupBy.join("\u0000")]);
 
   const selectedGroupBy = groupBy.map((col) => ({ col, schema: colByName[col] }));
   const unselectedColumns = columns.filter((c) => !groupBy.includes(c.columnName));

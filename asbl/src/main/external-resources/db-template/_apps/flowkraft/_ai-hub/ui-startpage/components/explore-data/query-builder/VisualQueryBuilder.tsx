@@ -453,6 +453,7 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
             groupByBuckets={query.groupByBuckets}
             connectionId={connectionId}
             tableName={query.table}
+            tableSchema={query.tableSchema}
             onChange={(summarize, groupBy, groupByNumericBuckets, groupByBuckets) =>
               updateQuery({ summarize, groupBy, groupByNumericBuckets, groupByBuckets })
             }
