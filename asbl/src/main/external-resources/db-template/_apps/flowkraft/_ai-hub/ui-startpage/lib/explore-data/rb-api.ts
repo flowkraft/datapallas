@@ -355,6 +355,9 @@ export async function updateCanvas(canvasId: string, body: unknown): Promise<voi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  // The answer is read, though nobody needs it: a response nobody reads stays open, and the browser
+  // reports every autosave as an aborted request when the page is left.
+  await res.text().catch(() => "");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
