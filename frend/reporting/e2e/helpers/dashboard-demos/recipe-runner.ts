@@ -331,7 +331,8 @@ async function doDisplayConfig(
       await setMapConfig(page, {
         type: config.mapType as 'region' | 'pin' | 'grid',
         region: config.region as string | undefined,
-        dimension: config.dimension as string | undefined,
+        // Only a region map has a dimension to pick; a pin or grid map is placed by its coordinates.
+        dimension: config.mapType === 'region' ? (config.dimension as string | undefined) : undefined,
         metric: config.metric as string | undefined,
         latField: config.latField as string | undefined,
         lonField: config.lonField as string | undefined,

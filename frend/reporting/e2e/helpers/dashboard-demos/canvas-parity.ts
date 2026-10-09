@@ -21,6 +21,15 @@
 //   Tabulator `autoColumns: true` / `pagination: true`: the widget's defaults, written only once a
 //     picker has touched them.
 //   `columnSettings`: only `columnTitle` is compared (a cube seeds number formats of its own).
+//   The widget's own bookkeeping, which no person chooses: `_auto_*` (what the auto-pick filled in),
+//     `userPicked`, `grouped`, `series`; and a Visual query's `kind: 'table'`, empty bucket maps,
+//     `executeVersion` and the `sql` it echoes next to `generatedSql`.
+//   What an earlier widget type left behind: a Number's `numberField` / `numberFormat` on a chart, a
+//     table's `{layout, autoColumns}` or a chart's DSL on a Number, Gauge, Progress, Trend or Sankey.
+//   A gauge `min` of 0: the box shows 0, and typing 0 over 0 writes nothing.
+//   The panel's three default gauge bands, when the shipped gauge has none of its own.
+//   A cube dimension's grain: `OrderDate.month` and `OrderDate` + `granularities` say one thing.
+//   `ASC` / `DESC` in the builder's SQL: its case is not a choice.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { expect } from '@playwright/test';
@@ -44,6 +53,12 @@ export const KNOWN_GAPS: ReadonlyArray<{
 }> = [
   { widget: 'number', key: 'numberDecimals', why: 'no Canvas control sets decimals and no AI Hub code reads them' },
   { widget: 'sankey', key: 'label', why: 'the Sankey panel has no label input' },
+  {
+    widget: 'map',
+    key: 'dimension',
+    why: 'the Map panel offers a dimension only for a region map; a pin or grid map is placed by its two coordinates',
+    only: (cfg) => cfg.mapType !== undefined && cfg.mapType !== 'region',
+  },
   {
     widget: 'gauge',
     key: 'gaugeBands',
@@ -106,8 +121,10 @@ function normalizeDataSource(ds: Json | null | undefined): Json | null {
   if (ds.mode === 'sql') return stripUndefined({ mode: 'sql', sql: collapse(ds.sql) });
   if (ds.mode === 'script') return stripUndefined({ mode: 'script', script: String(ds.script).replace(/\r\n/g, '\n').trim() });
   const out: Json = { ...ds };
-  if (out.generatedSql !== undefined) out.generatedSql = collapse(out.generatedSql);
-  if (out.sql !== undefined) out.sql = collapse(out.sql);
+  if (out.generatedSql !== undefined) out.generatedSql = upperDirection(collapse(out.generatedSql));
+  // A Visual query is read by its `generatedSql`; the `sql` next to it is that text, run.
+  delete out.sql;
+  delete out.executeVersion;
   if (out.script !== undefined) out.script = String(out.script).replace(/\r\n/g, '\n').trim();
   const vq = out.visualQuery;
   if (vq) {
@@ -119,15 +136,53 @@ function normalizeDataSource(ds: Json | null | undefined): Json | null {
       sort: (vq.sort ?? []).map((x: Json) => ({ ...x, direction: String(x.direction).toUpperCase() })),
       filters: vq.filters ?? [],
     };
+    if (out.visualQuery.kind === 'table') delete out.visualQuery.kind;
+    for (const k of ['groupByBuckets', 'groupByNumericBuckets']) {
+      const m = out.visualQuery[k];
+      if (m && typeof m === 'object' && Object.keys(m).length === 0) delete out.visualQuery[k];
+    }
+    const cube = out.visualQuery.cubeSelection;
+    if (cube) {
+      const grains: Json = cube.granularities ?? {};
+      out.visualQuery.cubeSelection = {
+        ...cube,
+        paramBindings: cube.paramBindings ?? [],
+        dimensions: (cube.dimensions ?? []).map((d: string) => {
+          const dot = String(d).indexOf('.');
+          return dot > 0 && grains[d.slice(0, dot)] === d.slice(dot + 1) ? d.slice(0, dot) : d;
+        }),
+      };
+    }
   }
   return stripUndefined(out);
 }
+
+/** The DSL of another widget type: a table's default layout, or a chart's `data` block. */
+function isLeftoverDsl(dsl: Json | undefined): boolean {
+  if (!dsl || typeof dsl !== 'object') return false;
+  const keys = Object.keys(dsl).sort().join(',');
+  return keys === 'autoColumns,layout' || dsl.data !== undefined;
+}
+
+const upperDirection = (s: unknown) => (typeof s === 'string' ? s.replace(/\b(asc|desc)\b/gi, (m) => m.toUpperCase()) : s);
 
 function normalizeDisplay(type: string, cfg: Json | null | undefined): Json {
   const out: Json = { ...(cfg ?? {}) };
   for (const gap of KNOWN_GAPS) {
     if (gap.widget === type && (!gap.only || gap.only(out))) delete out[gap.key];
   }
+  for (const k of Object.keys(out)) {
+    if (k.startsWith('_auto_')) delete out[k];
+  }
+  delete out.userPicked;
+  delete out.grouped;
+  delete out.series;
+  if (type === 'gauge' && out.min === 0) delete out.min;
+  if (type !== 'number') {
+    delete out.numberField;
+    delete out.numberFormat;
+  }
+  if (!['chart', 'tabulator', 'pivot', 'detail'].includes(type) && isLeftoverDsl(out.dslConfig)) delete out.dslConfig;
   if (out.columnSettings) {
     const titles: Json = {};
     for (const [field, s] of Object.entries<Json>(out.columnSettings)) {
@@ -201,6 +256,11 @@ export function canvasDifferences(rebuilt: Json, shipped: Json): string[] {
   }
   for (let i = 0; i < Math.min(s.widgets.length, r.widgets.length); i++) {
     const at = `widget ${i + 1} (${s.widgets[i].type})`;
+    // A gauge the shipped file gives no bands: the panel's three default bands are not a difference.
+    if (s.widgets[i].type === 'gauge' && s.widgets[i].display.gaugeBands === undefined
+        && bandsAreThreeDefaults(r.widgets[i].display.gaugeBands)) {
+      delete r.widgets[i].display.gaugeBands;
+    }
     if (s.widgets[i].type !== r.widgets[i].type) {
       out.push(`${at}: shipped type ${s.widgets[i].type} ≠ rebuilt ${r.widgets[i].type}`);
       continue;
