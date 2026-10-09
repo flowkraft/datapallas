@@ -207,13 +207,21 @@
   // PivotData Computation
   // ============================================================================
 
+  // Server-side processing hands over rows that are already aggregated: one row per cell, the
+  // count in `aggregated_value` (or in the value column when there is one). Counting those rows
+  // again would make every cell 1, so a count is the sum of the numbers the server counted.
+  $: serverCounted = engine !== 'browser' && !!reportId && serverMetadata !== null
+    && (aggregatorName === 'Count' || aggregatorName === 'Count Unique Values');
+  $: pivotAggregatorName = serverCounted ? 'Integer Sum' : aggregatorName;
+  $: pivotVals = serverCounted ? [vals[0] ?? 'aggregated_value'] : vals;
+
   $: pivotData = new PivotData({
     data: materializedInput,
     aggregators: mergedAggregators,
-    aggregatorName,
+    aggregatorName: pivotAggregatorName,
     cols,
     rows,
-    vals,
+    vals: pivotVals,
     valueFilter,
     sorters,
     derivedAttributes,
