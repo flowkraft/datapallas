@@ -57,6 +57,8 @@ public class PivotTableOptionsParser {
 		if (map.containsKey("rendererName")) opts.setRendererName(String.valueOf(map.get("rendererName")));
 		if (map.containsKey("rowOrder")) opts.setRowOrder(String.valueOf(map.get("rowOrder")));
 		if (map.containsKey("colOrder")) opts.setColOrder(String.valueOf(map.get("colOrder")));
+		if (map.containsKey("rowTotals")) opts.setRowTotals((Boolean) map.get("rowTotals"));
+		if (map.containsKey("colTotals")) opts.setColTotals((Boolean) map.get("colTotals"));
 		if (map.containsKey("valueFilter")) opts.setValueFilter((Map<String, Map<String, Boolean>>) map.get("valueFilter"));
 		if (map.containsKey("options")) opts.setOptions((Map<String, Object>) map.get("options"));
 		if (map.containsKey("data")) opts.setData((List<Map<String, Object>>) map.get("data"));

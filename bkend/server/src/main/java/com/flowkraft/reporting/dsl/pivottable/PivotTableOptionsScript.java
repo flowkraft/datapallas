@@ -21,6 +21,9 @@ import java.util.*;
  *   rowOrder 'key_a_to_z'
  *   colOrder 'key_a_to_z'
  *
+ *   rowTotals false
+ *   colTotals false
+ *
  *   valueFilter {
  *     filter 'status', exclude: ['Inactive', 'Pending']
  *   }
@@ -180,6 +183,8 @@ public abstract class PivotTableOptionsScript extends Script {
 		private String rendererName = null;
 		private String rowOrder = null;
 		private String colOrder = null;
+		private Boolean rowTotals = null;
+		private Boolean colTotals = null;
 		private final Map<String, Map<String, Boolean>> valueFilter = new LinkedHashMap<>();
 		private final Map<String, Object> options = new LinkedHashMap<>();
 		private final List<Map<String, Object>> dataRows = new ArrayList<>();
@@ -202,6 +207,8 @@ public abstract class PivotTableOptionsScript extends Script {
 		public void rendererName(String name) { this.rendererName = name; }
 		public void rowOrder(String order) { this.rowOrder = order; }
 		public void colOrder(String order) { this.colOrder = order; }
+		public void rowTotals(boolean show) { this.rowTotals = show; }
+		public void colTotals(boolean show) { this.colTotals = show; }
 
 		public void valueFilter(Closure<?> body) {
 			ValueFilterDelegate d = new ValueFilterDelegate(valueFilter);
@@ -255,6 +262,8 @@ public abstract class PivotTableOptionsScript extends Script {
 			if (rendererName != null) out.put("rendererName", rendererName);
 			if (rowOrder != null) out.put("rowOrder", rowOrder);
 			if (colOrder != null) out.put("colOrder", colOrder);
+			if (rowTotals != null) out.put("rowTotals", rowTotals);
+			if (colTotals != null) out.put("colTotals", colTotals);
 			if (!valueFilter.isEmpty()) out.put("valueFilter", new LinkedHashMap<>(valueFilter));
 			if (!options.isEmpty()) out.put("options", new LinkedHashMap<>(options));
 			if (!dataRows.isEmpty()) out.put("data", new ArrayList<>(dataRows));

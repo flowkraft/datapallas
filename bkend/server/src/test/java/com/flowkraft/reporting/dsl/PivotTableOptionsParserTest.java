@@ -644,6 +644,32 @@ public class PivotTableOptionsParserTest {
 		assertEquals("Table", resultNull.getRendererName());
 	}
 
+	// rowTotals / colTotals: the Canvas writes them, the published pivot reads them back
+	@Test
+	public void testRowAndColumnTotalsSwitchedOff() throws Exception {
+		String dsl = "pivotTable {\n" +
+			"  rows 'region'\n" +
+			"  cols 'year'\n" +
+			"  rowOrder 'value_z_to_a'\n" +
+			"  rowTotals false\n" +
+			"  colTotals false\n" +
+			"}";
+
+		PivotTableOptions result = PivotTableOptionsParser.parseGroovyPivotTableDslCode(dsl);
+
+		assertEquals(Boolean.FALSE, result.getRowTotals());
+		assertEquals(Boolean.FALSE, result.getColTotals());
+		assertEquals("value_z_to_a", result.getRowOrder());
+	}
+
+	@Test
+	public void testTotalsLeftAloneWhenNotWritten() throws Exception {
+		PivotTableOptions result = PivotTableOptionsParser.parseGroovyPivotTableDslCode("pivotTable {\n  rows 'region'\n}");
+
+		assertEquals(null, result.getRowTotals());
+		assertEquals(null, result.getColTotals());
+	}
+
 	// ─────────────────────────────────────────────────────────────────────────────
 	// #18 Kitchen Sink — every DSL feature combined in one config
 	//     Validates that all DSL features work together without interference:

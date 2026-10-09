@@ -326,6 +326,12 @@ public class ReportingService {
 				if (opts.getColOrder() != null) {
 					config.pivotTableOptions.put("colOrder", opts.getColOrder());
 				}
+				if (opts.getRowTotals() != null) {
+					config.pivotTableOptions.put("rowTotals", opts.getRowTotals());
+				}
+				if (opts.getColTotals() != null) {
+					config.pivotTableOptions.put("colTotals", opts.getColTotals());
+				}
 				if (opts.getValueFilter() != null && !opts.getValueFilter().isEmpty()) {
 					config.pivotTableOptions.put("valueFilter", opts.getValueFilter());
 				}
@@ -363,6 +369,8 @@ public class ReportingService {
 						if (po.getRendererName() != null) m.put("rendererName", po.getRendererName());
 						if (po.getRowOrder() != null) m.put("rowOrder", po.getRowOrder());
 						if (po.getColOrder() != null) m.put("colOrder", po.getColOrder());
+						if (po.getRowTotals() != null) m.put("rowTotals", po.getRowTotals());
+						if (po.getColTotals() != null) m.put("colTotals", po.getColTotals());
 						if (po.getValueFilter() != null && !po.getValueFilter().isEmpty()) m.put("valueFilter", po.getValueFilter());
 						if (po.getOptions() != null && !po.getOptions().isEmpty()) m.put("options", po.getOptions());
 						if (po.getHiddenAttributes() != null && !po.getHiddenAttributes().isEmpty()) m.put("hiddenAttributes", po.getHiddenAttributes());

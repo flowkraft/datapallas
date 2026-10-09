@@ -673,6 +673,12 @@ public class ReportsService {
 					if (pivotOptions.getColOrder() != null) {
 						configDetails.pivotTableOptions.put("colOrder", pivotOptions.getColOrder());
 					}
+					if (pivotOptions.getRowTotals() != null) {
+						configDetails.pivotTableOptions.put("rowTotals", pivotOptions.getRowTotals());
+					}
+					if (pivotOptions.getColTotals() != null) {
+						configDetails.pivotTableOptions.put("colTotals", pivotOptions.getColTotals());
+					}
 					if (pivotOptions.getValueFilter() != null && !pivotOptions.getValueFilter().isEmpty()) {
 						configDetails.pivotTableOptions.put("valueFilter", pivotOptions.getValueFilter());
 					}
@@ -959,6 +965,12 @@ public class ReportsService {
 								}
 								if (pivotOptions.getColOrder() != null) {
 									configFile.pivotTableOptions.put("colOrder", pivotOptions.getColOrder());
+								}
+								if (pivotOptions.getRowTotals() != null) {
+									configFile.pivotTableOptions.put("rowTotals", pivotOptions.getRowTotals());
+								}
+								if (pivotOptions.getColTotals() != null) {
+									configFile.pivotTableOptions.put("colTotals", pivotOptions.getColTotals());
 								}
 								if (pivotOptions.getValueFilter() != null && !pivotOptions.getValueFilter().isEmpty()) {
 									configFile.pivotTableOptions.put("valueFilter", pivotOptions.getValueFilter());

@@ -24,6 +24,10 @@ public class PivotTableOptions {
 	// Sorting
 	private String rowOrder = "key_a_to_z";
 	private String colOrder = "key_a_to_z";
+
+	// Totals: null leaves the renderer's own default (shown)
+	private Boolean rowTotals = null;
+	private Boolean colTotals = null;
 	
 	// Value filtering: { attrName: { value: true, ... }, ... }
 	private Map<String, Map<String, Boolean>> valueFilter = new LinkedHashMap<>();
@@ -74,6 +78,12 @@ public class PivotTableOptions {
 
 	public String getColOrder() { return colOrder; }
 	public void setColOrder(String colOrder) { this.colOrder = colOrder; }
+
+	public Boolean getRowTotals() { return rowTotals; }
+	public void setRowTotals(Boolean rowTotals) { this.rowTotals = rowTotals; }
+
+	public Boolean getColTotals() { return colTotals; }
+	public void setColTotals(Boolean colTotals) { this.colTotals = colTotals; }
 
 	public Map<String, Map<String, Boolean>> getValueFilter() { return valueFilter; }
 	public void setValueFilter(Map<String, Map<String, Boolean>> valueFilter) { this.valueFilter = valueFilter; }
