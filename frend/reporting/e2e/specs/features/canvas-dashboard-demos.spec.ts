@@ -41,6 +41,7 @@ import { assertSameCanvas, stateOf } from '../../helpers/dashboard-demos/canvas-
 import { runRecipe } from '../../helpers/dashboard-demos/recipe-runner';
 import { createBuildShots } from '../../helpers/dashboard-demos/build-shots';
 import type { Recipe } from '../../helpers/dashboard-demos/recipe';
+import { RECIPES } from '../../dashboard-demos/recipes';
 import {
   AI_HUB_APP_ID,
   AI_HUB_BASE_URL,
@@ -62,8 +63,10 @@ const adminFetch: AdminFetch = (url, init = {}) =>
 
 /** A demo's recipe, by the file name its number and id give it. */
 function recipeOf(demo: Demo): Recipe {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require(`../../dashboard-demos/recipes/${String(demo.nn).padStart(2, '0')}-${demo.id}.recipe`).recipe;
+  const key = `${String(demo.nn).padStart(2, '0')}-${demo.id}`;
+  const recipe = RECIPES[key];
+  if (!recipe) throw new Error(`no recipe for demo ${key}: add it to dashboard-demos/recipes/index.ts`);
+  return recipe;
 }
 
 const DD_TITLE = (demo: Demo) =>
