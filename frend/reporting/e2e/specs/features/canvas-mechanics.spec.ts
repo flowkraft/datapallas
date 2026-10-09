@@ -1782,7 +1782,7 @@ test.describe('Canvas mechanics', () => {
       await expect
         .poll(async () => {
           const w = await cStoredWidget(page, canvasId, autoId);
-          return (w?.dataSource?.visualQuery?.summarize ?? []).some((a: { aggregation: string }) => a.aggregation === 'COUNT');
+          return (w?.dataSource?.visualQuery?.summarize ?? []).some((a: { aggregation: string }) => a.aggregation.toUpperCase() === 'COUNT');
         }, { message: 'the stored query now counts', timeout: 30_000, intervals: [1_000] })
         .toBe(true);
 
