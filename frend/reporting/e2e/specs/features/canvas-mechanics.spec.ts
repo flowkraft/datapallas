@@ -1379,11 +1379,14 @@ test.describe('Canvas mechanics', () => {
         const region = await bAddParam(page, 1, { label: 'Region', required: true, defaultValue: 'DE' });
         expect(region).toBe('region');
 
-        // − with ONE parameter a visual filter offers the single-button bind, not the dropdown.
+        // − with ONE parameter a visual filter offers it first in the bind dropdown, the server's own values after it in a group of their own.
         await addTableToCanvas(page, 'dash_demo.orders');
         await addVisualFilter(page, 0, 'channel', 'equals');
-        await expect(page.locator('#btnBindParam-0'), 'one parameter: the single bind button').toBeVisible();
-        await expect(page.locator('#selectBindParam-0')).toHaveCount(0);
+        await expect(page.locator('#selectBindParam-0'), 'the signed-in author is offered the server values too: a dropdown').toBeVisible();
+        await expect(page.locator('#btnBindParam-0')).toHaveCount(0);
+        const declaredOffers = await page.locator('#selectBindParam-0 > option')
+          .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value).filter((v) => v));
+        expect(declaredOffers, 'the dashboard parameter, alone outside the server group').toEqual([region]);
 
         // + with more parameters it is the dropdown. A Date parameter with "widget: auto" is a date input.
         const channel = await bAddParam(page, 2, {
