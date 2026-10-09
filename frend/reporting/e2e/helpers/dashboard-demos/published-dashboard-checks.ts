@@ -571,16 +571,25 @@ export async function assertClaims(
     //    map draws its answer instead of writing it, and the claim about those is the answer above.
     const tag = TAG_OF[(widget as DemoWidget).type];
     if (!WRITTEN_OUT.includes(tag) || typeof kpi.value !== 'number') continue;
-    const shown = asNumber((await writtenReading(tile, tag)).trim());
-    expect(shown, `${demo.id}/${kpi.widget} ${when}: the tile writes a number out`).not.toBeNull();
     // The tile rounds for the reader (a currency to the penny, a percent to a digit), so what is
-    // asserted is that the reader is being shown this claim's number and not another one.
+    // asserted is that the reader is being shown this claim's number and not another one. A tile
+    // takes its new answer a moment after the filters ask for it, so the reading is asked for until
+    // it is this claim's number, and a number that never arrives is the failure.
     const want = Number(kpi.value);
     const near = Math.max(Math.abs(want) * 0.005, 0.05);
-    expect(
-      Math.abs((shown as number) - want) <= near,
-      `${demo.id}/${kpi.widget} ${when}: the tile reads ${shown} and its check says ${want}`,
-    ).toBe(true);
+    let shown: number | null = null;
+    try {
+      await expect
+        .poll(async () => {
+          shown = asNumber((await writtenReading(tile, tag)).trim());
+          return shown !== null && Math.abs(shown - want) <= near;
+        }, { timeout: 20_000, intervals: [250] })
+        .toBe(true);
+    } catch {
+      throw new Error(shown === null
+        ? `${demo.id}/${kpi.widget} ${when}: the tile writes a number out`
+        : `${demo.id}/${kpi.widget} ${when}: the tile reads ${shown} and its check says ${want}`);
+    }
   }
 }
 
