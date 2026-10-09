@@ -192,7 +192,7 @@ export function TabulatorWidget({ widgetId }: TabulatorWidgetProps) {
   return (
     <div className="h-full flex flex-col">
       {/* @ts-expect-error - Web component custom element */}
-      <rb-tabulator key={`${tabulatorTheme}|${tabulatorLayout}|${tabulatorPagination}|${tabulatorPageSize}`} ref={ref} id={`widgetViz-${widgetId}`} theme={tabulatorTheme} style={{ display: "block", width: "100%", flex: 1 }} />
+      <rb-tabulator key={`${tabulatorTheme}|${tabulatorLayout}|${tabulatorPagination}|${tabulatorPageSize}`} ref={ref} id={`widgetViz-${widgetId}`} component-id={widgetId} theme={tabulatorTheme} style={{ display: "block", width: "100%", flex: 1 }} />
       {atLimit && (
         <div className="shrink-0 px-2 py-0.5 text-[10px] text-base-content/60 bg-base-200/40 border-t border-base-300/50 text-right">
           showing first {limit} rows — add a filter or raise the limit to see more

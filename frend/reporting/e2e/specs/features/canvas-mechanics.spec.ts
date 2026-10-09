@@ -1747,19 +1747,19 @@ test.describe('Canvas mechanics', () => {
       await expect
         .poll(async () => (await cReadTabulator(page, id)).options.paginationSize, { timeout: 15_000 })
         .toBe(10);
-      await expect(page.locator('[id="btnTabulatorPage-2"]')).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator('[id="btnTabulatorPage-3"]')).toBeVisible();
+      await expect(page.locator('[id$="btnTabulatorPage-2"]')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('[id$="btnTabulatorPage-3"]')).toBeVisible();
 
       // + 100 per page: 200 products are exactly two pages (the pager has no page 3).
       await setTabulatorOptions(page, { pageSize: 100 });
       await expect.poll(async () => (await cReadTabulator(page, id)).options.paginationSize, { timeout: 15_000 }).toBe(100);
-      await expect(page.locator('[id="btnTabulatorPage-2"]')).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator('[id="btnTabulatorPage-3"]')).toHaveCount(0);
+      await expect(page.locator('[id$="btnTabulatorPage-2"]')).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('[id$="btnTabulatorPage-3"]')).toHaveCount(0);
 
       // − pagination off: no pager at all, and the table holds every product.
       await setTabulatorOptions(page, { pagination: false });
       await expect.poll(async () => (await cReadTabulator(page, id)).options.pagination, { timeout: 15_000 }).toBe(false);
-      await expect(page.locator('[id="btnTabulatorPage-2"]')).toHaveCount(0);
+      await expect(page.locator('[id$="btnTabulatorPage-2"]')).toHaveCount(0);
       expect((await cReadTabulator(page, id)).rows, 'every product, no page cut').toBe(C_TRUTHS.PRODUCTS);
 
       // − "capped by the query limit": a limit of 50 leaves 50 rows, with pagination still off.
