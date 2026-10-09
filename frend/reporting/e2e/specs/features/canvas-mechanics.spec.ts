@@ -3383,7 +3383,8 @@ test('(canvas mechanics) D01 every TODO 5e defect fix works', async () => {
       const deleteButton = page.locator(`[id="btnDeleteDivider-${dividerId}"]`);
       await expect.poll(async () => ((await aStored(page, canvasId)).widgets as unknown[]).length, { timeout: 20_000, intervals: [500] }).toBe(1);
 
-      // − A divider nobody selected has no delete button.
+      // − A divider nobody selected has no delete button (a divider just added is selected, so deselect it).
+      await page.keyboard.press('Escape');
       await expect(deleteButton).toHaveCount(0);
 
       // + Selecting it (a click) shows its delete button.
