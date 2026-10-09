@@ -162,6 +162,13 @@
 
   /** One entry per filtered dimension. This is the whole filter state; the chips are drawn from it. */
   let activeFilters: Record<string, FilterState> = {};
+  /**
+   * Filters a saved widget carries that the tree has no control for (an exclusive end such as
+   * `lt ${dateTo__next_day}`). They are not drawn, but they are part of the query, so they are
+   * kept and sent again with every selection instead of being dropped by the first tick.
+   */
+  let heldFilters: Array<{ member: string; operator: string; values: string[] }> = [];
+  const DRAWN_OPERATORS = ['in', 'notIn', 'equals', 'notEquals', 'between', 'gte', 'lte'];
   /** The dimension whose popover is open, or `''`: one at a time, under its own row. */
   let openFilterFor = '';
   let filterPopover: HTMLDivElement | null = null;
@@ -257,6 +264,7 @@
       selectedSegments = new Set();
       expandedExtras = new Set();
       activeFilters = {};
+      heldFilters = [];
       closeFilter();
       activeCubeSignature = newSignature;
       initExpanded();
@@ -276,6 +284,7 @@
     selectedSegments = new Set();
     expandedExtras = new Set();
     activeFilters = {};
+    heldFilters = [];
     closeFilter();
     initExpanded();
     dispatchSelection();
@@ -772,6 +781,7 @@
         out.push({ member, operator: f.negate ? 'notIn' : 'in', values: [...f.values] });
       }
     }
+    for (const h of heldFilters) out.push({ member: h.member, operator: h.operator, values: [...h.values] });
     return out;
   }
 
@@ -804,6 +814,7 @@
    */
   function filterStatesOf(list: any): Record<string, FilterState> {
     const next: Record<string, FilterState> = {};
+    const held: Array<{ member: string; operator: string; values: string[] }> = [];
     for (const f of Array.isArray(list) ? list : []) {
       const member = String(f?.member ?? '');
       const dim = member ? dimensionByName(member) : null;
@@ -811,8 +822,12 @@
       const values = (Array.isArray(f?.values) ? f.values : [f?.values])
         .filter((v: any) => v !== null && v !== undefined && v !== '')
         .map((v: any) => String(v));
-      const state = next[member] || { kind: controlOf(dim), values: [], labels: [], from: '', to: '' };
       const operator = String(f?.operator ?? 'in');
+      if (!DRAWN_OPERATORS.includes(operator)) {
+        held.push({ member, operator, values });
+        continue;
+      }
+      const state = next[member] || { kind: controlOf(dim), values: [], labels: [], from: '', to: '' };
       if (operator === 'between' || operator === 'gte' || operator === 'lte') {
         if (state.kind === 'list') state.kind = 'number-range';
         if (operator === 'between') {
@@ -832,6 +847,7 @@
       }
       next[member] = state;
     }
+    heldFilters = held;
     return next;
   }
 
