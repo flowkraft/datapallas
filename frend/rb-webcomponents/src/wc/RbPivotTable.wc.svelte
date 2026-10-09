@@ -1069,7 +1069,7 @@
   bind:this={container}
   class="pvtUi-container"
   id={componentId ? `widgetPivot-${componentId}` : undefined}
-  style:display={loading || error ? 'none' : 'block'}
+  style:display={loading || (error && !(Array.isArray(data) && data.length)) ? 'none' : 'block'}
   on:click={() => openDropdown = false}
   on:keydown={(e) => { if (e.key === 'Escape') openDropdown = false; }}
   role="application"
