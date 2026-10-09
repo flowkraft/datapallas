@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import _ from 'lodash';
 import { Helpers } from '../utils/helpers';
 
@@ -357,6 +357,23 @@ export async function openDslEditor(
 
 // ── Widget helpers ────────────────────────────────────────────────────────────
 
+/**
+ * Choose an option of a Display-tab select, and when it cannot be chosen say what the select does
+ * offer. A plain `selectOption` waits out the whole test timeout on a value that is not there and
+ * reports only "waiting for option"; the list of what is offered is the answer a reader needs.
+ */
+async function pickOption(select: Locator, value: string): Promise<void> {
+  await select.waitFor({ state: 'visible', timeout: 10_000 });
+  try {
+    await select.selectOption(value, { timeout: 10_000 });
+  } catch (e) {
+    const offered = await select.locator('option').evaluateAll(
+      (opts) => opts.map((o) => (o as HTMLOptionElement).value),
+    ).catch(() => [] as string[]);
+    throw new Error(`cannot pick '${value}' in ${select}: it offers [${offered.join(', ')}]\n${(e as Error).message}`);
+  }
+}
+
 /** Switch the canvas to the given widget type via the palette (main grid or More widgets).
  *  No-op if the widget already is the target type — the palette hides the current
  *  type's button (can't switch to self), which also happens when the canvas
@@ -371,9 +388,14 @@ export async function switchToWidget(page: Page, widgetType: WidgetType): Promis
     return;
   }
 
+  // The product opens More widgets by itself when the selected widget is a "less suited" one, so
+  // the toggle is pressed only when the section is shut - and shut again only when this call opened it.
   await page.locator('#btnMoreWidgets').waitFor({ state: 'visible', timeout: 5_000 });
-  await page.locator('#btnMoreWidgets').click();
-  await page.waitForTimeout(300);
+  const openedHere = (await page.locator('#moreWidgetsGrid').count()) === 0;
+  if (openedHere) {
+    await page.locator('#btnMoreWidgets').click();
+    await page.waitForTimeout(300);
+  }
 
   const moreBtn = page.locator(`#moreWidgetsGrid #btnVisualizeAs-${widgetType}`);
   if (await moreBtn.count() > 0) {
@@ -384,8 +406,10 @@ export async function switchToWidget(page: Page, widgetType: WidgetType): Promis
 
   // Button absent in both grids → widget auto-switched to the target type already.
   // Close the More Widgets popover so the next helper call starts from a clean state.
-  await page.locator('#btnMoreWidgets').click();
-  await page.waitForTimeout(300);
+  if (openedHere) {
+    await page.locator('#btnMoreWidgets').click();
+    await page.waitForTimeout(300);
+  }
 }
 
 export async function clickDisplayTab(page: Page): Promise<void> {
@@ -758,6 +782,22 @@ export async function layoutWidgetsByDrag(
   page: Page,
   targets: GridPos[],
 ): Promise<void> {
+  // A drag can only end on a point the page shows. A dashboard of twenty rows is taller than the
+  // window, so the window is made tall for the drags (everything is then on screen, nothing needs
+  // scrolling) and put back as it was.
+  const original = page.viewportSize();
+  if (original) await page.setViewportSize({ width: original.width, height: Math.max(original.height, 4_000) });
+  try {
+    await dragWidgetsIntoPlace(page, targets);
+  } finally {
+    if (original) await page.setViewportSize(original);
+  }
+}
+
+async function dragWidgetsIntoPlace(
+  page: Page,
+  targets: GridPos[],
+): Promise<void> {
   // Let any post-addWidget autosave settle before we start dragging.
   await page.waitForTimeout(1_200);
 
@@ -1034,7 +1074,7 @@ export async function setChartAxes(
     }
     const xSel = page.locator('#selectChartXAxis-0');
     await xSel.waitFor({ state: 'visible', timeout: 10_000 });
-    await xSel.selectOption(opts.x);
+    await pickOption(xSel, opts.x);
     await page.waitForTimeout(300);
   }
   if (opts.y !== undefined) {
@@ -1049,7 +1089,7 @@ export async function setChartAxes(
     }
     const ySel = page.locator('#selectChartYAxis-0');
     await ySel.waitFor({ state: 'visible', timeout: 10_000 });
-    await ySel.selectOption(opts.y);
+    await pickOption(ySel, opts.y);
     await page.waitForTimeout(300);
   }
   await page.locator('#btnDataTab').click();
@@ -1354,7 +1394,7 @@ export async function setNumberField(
   await page.locator('#btnDisplayTab').click();
   const select = page.locator('#selectNumberField');
   await select.waitFor({ state: 'visible', timeout: 10_000 });
-  await select.selectOption(field);
+  await pickOption(select, field);
   await page.waitForTimeout(300);
   if (captureBeforeReturn) await captureBeforeReturn();
   await page.locator('#btnDataTab').click();
@@ -1369,9 +1409,9 @@ export async function setTrendConfig(
 ): Promise<void> {
   await page.locator('#btnDisplayTab').click();
   await page.locator('#configPanel-trend').waitFor({ state: 'visible', timeout: 10_000 });
-  if (opts.date !== undefined) await page.locator('#selectTrendDate').selectOption(opts.date);
-  if (opts.value !== undefined) await page.locator('#selectTrendValue').selectOption(opts.value);
-  if (opts.format !== undefined) await page.locator('#selectTrendFormat').selectOption(opts.format);
+  if (opts.date !== undefined) await pickOption(page.locator('#selectTrendDate'), opts.date);
+  if (opts.value !== undefined) await pickOption(page.locator('#selectTrendValue'), opts.value);
+  if (opts.format !== undefined) await pickOption(page.locator('#selectTrendFormat'), opts.format);
   if (opts.label !== undefined) await page.locator('#inputTrendLabel').fill(opts.label);
   await page.waitForTimeout(400);
   if (captureBeforeReturn) await captureBeforeReturn();
@@ -1387,9 +1427,9 @@ export async function setProgressConfig(
 ): Promise<void> {
   await page.locator('#btnDisplayTab').click();
   await page.locator('#configPanel-progress').waitFor({ state: 'visible', timeout: 10_000 });
-  if (opts.field !== undefined) await page.locator('#selectProgressField').selectOption(opts.field);
+  if (opts.field !== undefined) await pickOption(page.locator('#selectProgressField'), opts.field);
   if (opts.goal !== undefined) await page.locator('#inputProgressGoal').fill(String(opts.goal));
-  if (opts.format !== undefined) await page.locator('#selectProgressFormat').selectOption(opts.format);
+  if (opts.format !== undefined) await pickOption(page.locator('#selectProgressFormat'), opts.format);
   if (opts.label !== undefined) await page.locator('#inputProgressLabel').fill(opts.label);
   await page.waitForTimeout(400);
   if (captureBeforeReturn) await captureBeforeReturn();
@@ -1407,7 +1447,7 @@ export async function setGaugeField(page: Page, field: string): Promise<void> {
   await page.locator('#btnDisplayTab').click();
   const select = page.locator('#selectGaugeField');
   await select.waitFor({ state: 'visible', timeout: 10_000 });
-  await select.selectOption(field);
+  await pickOption(select, field);
   await page.waitForTimeout(300);
   await page.locator('#btnDataTab').click();
   await page.waitForTimeout(300);
@@ -1439,11 +1479,11 @@ export async function setMapConfig(
   await page.locator('#btnDisplayTab').click();
   await page.locator(`#btnMapType-${opts.type}`).waitFor({ state: 'visible', timeout: 10_000 });
   await page.locator(`#btnMapType-${opts.type}`).click();
-  if (opts.region !== undefined) await page.locator('#selectMapRegion').selectOption(opts.region);
-  if (opts.dimension !== undefined) await page.locator('#selectMapDimension').selectOption(opts.dimension);
-  if (opts.latField !== undefined) await page.locator('#selectMapLatField').selectOption(opts.latField);
-  if (opts.lonField !== undefined) await page.locator('#selectMapLonField').selectOption(opts.lonField);
-  if (opts.metric !== undefined) await page.locator('#selectMapMetric').selectOption(opts.metric);
+  if (opts.region !== undefined) await pickOption(page.locator('#selectMapRegion'), opts.region);
+  if (opts.dimension !== undefined) await pickOption(page.locator('#selectMapDimension'), opts.dimension);
+  if (opts.latField !== undefined) await pickOption(page.locator('#selectMapLatField'), opts.latField);
+  if (opts.lonField !== undefined) await pickOption(page.locator('#selectMapLonField'), opts.lonField);
+  if (opts.metric !== undefined) await pickOption(page.locator('#selectMapMetric'), opts.metric);
   await page.waitForTimeout(400);
   if (captureBeforeReturn) await captureBeforeReturn();
   await page.locator('#btnDataTab').click();
@@ -1458,9 +1498,9 @@ export async function setSankeyFields(
 ): Promise<void> {
   await page.locator('#btnDisplayTab').click();
   await page.locator('#configPanel-sankey').waitFor({ state: 'visible', timeout: 10_000 });
-  if (opts.source !== undefined) await page.locator('#selectSankeySource').selectOption(opts.source);
-  if (opts.target !== undefined) await page.locator('#selectSankeyTarget').selectOption(opts.target);
-  if (opts.value !== undefined) await page.locator('#selectSankeyValue').selectOption(opts.value);
+  if (opts.source !== undefined) await pickOption(page.locator('#selectSankeySource'), opts.source);
+  if (opts.target !== undefined) await pickOption(page.locator('#selectSankeyTarget'), opts.target);
+  if (opts.value !== undefined) await pickOption(page.locator('#selectSankeyValue'), opts.value);
   await page.waitForTimeout(400);
   if (captureBeforeReturn) await captureBeforeReturn();
   await page.locator('#btnDataTab').click();
