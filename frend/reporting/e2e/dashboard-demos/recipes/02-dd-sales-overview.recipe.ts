@@ -78,7 +78,7 @@ Every month this year except August runs above the same month a year earlier, mo
     {
       kind: 'displayConfig',
       widget: 'number',
-      config: { numberField: 'total_amount', numberFormat: 'currency', numberLabel: 'Revenue' },
+      config: { numberField: 'total_amount_sum', numberFormat: 'currency', numberLabel: 'Revenue' },
       shot: {
         title: 'Set up revenue',
         caption: 'On the **Display** tab, set the number\'s fields, label and format.',
@@ -116,7 +116,7 @@ Every month this year except August runs above the same month a year earlier, mo
     {
       kind: 'displayConfig',
       widget: 'number',
-      config: { numberField: 'order_id', numberFormat: 'number', numberLabel: 'Orders' },
+      config: { numberField: 'order_id_count', numberFormat: 'number', numberLabel: 'Orders' },
       shot: {
         title: 'Set up orders',
         caption: 'On the **Display** tab, set the number\'s fields, label and format.',
@@ -158,7 +158,7 @@ Every month this year except August runs above the same month a year earlier, mo
       kind: 'displayConfig',
       widget: 'number',
       config: {
-        numberField: 'total_amount',
+        numberField: 'total_amount_avg',
         numberFormat: 'currency',
         numberLabel: 'Average order value',
         numberDecimals: 2,
@@ -203,7 +203,7 @@ Every month this year except August runs above the same month a year earlier, mo
     {
       kind: 'displayConfig',
       widget: 'number',
-      config: { numberField: 'customer_id', numberFormat: 'number', numberLabel: 'Customers who ordered' },
+      config: { numberField: 'customer_id_count_distinct', numberFormat: 'number', numberLabel: 'Customers who ordered' },
       shot: {
         title: 'Set up customers who ordered',
         caption: 'On the **Display** tab, set the number\'s fields, label and format.',

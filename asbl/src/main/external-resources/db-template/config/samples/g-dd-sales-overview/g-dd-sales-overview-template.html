@@ -124,19 +124,19 @@
     </div>
     <div class="grid-item number-card" style="grid-column: 1 / span 3; grid-row: 2 / span 2;">
       <p class="number-label">Revenue</p>
-      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_total_amount_revenue" field="total_amount_sum" format="currency"></rb-value></p>
+      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_total_amount_sum_revenue" field="total_amount_sum" format="currency"></rb-value></p>
     </div>
     <div class="grid-item number-card" style="grid-column: 4 / span 3; grid-row: 2 / span 2;">
       <p class="number-label">Orders</p>
-      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_order_id_orders" field="order_id_count" format="number"></rb-value></p>
+      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_order_id_count_orders" field="order_id_count" format="number"></rb-value></p>
     </div>
     <div class="grid-item number-card" style="grid-column: 7 / span 3; grid-row: 2 / span 2;">
       <p class="number-label">Average order value</p>
-      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_total_amount_value" field="total_amount_avg" format="currency"></rb-value></p>
+      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_total_amount_avg_value" field="total_amount_avg" format="currency"></rb-value></p>
     </div>
     <div class="grid-item number-card" style="grid-column: 10 / span 3; grid-row: 2 / span 2;">
       <p class="number-label">Customers who ordered</p>
-      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_customer_id_ordered" field="customer_id_count_distinct" format="number"></rb-value></p>
+      <p class="number-value"><rb-value report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="number_customer_id_count_distinct_ordered" field="customer_id_count_distinct" format="number"></rb-value></p>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 4 / span 4; min-height: 320px;">
       <rb-chart report-id="g-dd-sales-overview" api-base-url="http://localhost:9090/api" component-id="chart_dd02-chart-revenue-per-month"></rb-chart>

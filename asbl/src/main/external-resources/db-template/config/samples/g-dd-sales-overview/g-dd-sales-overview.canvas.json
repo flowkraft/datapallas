@@ -76,7 +76,7 @@
           "generatedSql": "SELECT CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) AS \"total_amount_sum\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
         },
         "displayConfig": {
-          "numberField": "total_amount",
+          "numberField": "total_amount_sum",
           "numberFormat": "currency",
           "numberLabel": "Revenue"
         },
@@ -133,7 +133,7 @@
           "generatedSql": "SELECT COUNT(\"order_id\") AS \"order_id_count\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
         },
         "displayConfig": {
-          "numberField": "order_id",
+          "numberField": "order_id_count",
           "numberFormat": "number",
           "numberLabel": "Orders"
         },
@@ -190,7 +190,7 @@
           "generatedSql": "SELECT CAST(AVG(CAST(\"total_amount\" AS DECIMAL(31,4))) AS DECIMAL(31,4)) AS \"total_amount_avg\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
         },
         "displayConfig": {
-          "numberField": "total_amount",
+          "numberField": "total_amount_avg",
           "numberFormat": "currency",
           "numberLabel": "Average order value",
           "numberDecimals": 2
@@ -248,7 +248,7 @@
           "generatedSql": "SELECT COUNT(DISTINCT \"customer_id\") AS \"customer_id_count_distinct\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nLIMIT 1"
         },
         "displayConfig": {
-          "numberField": "customer_id",
+          "numberField": "customer_id_count_distinct",
           "numberFormat": "number",
           "numberLabel": "Customers who ordered"
         },

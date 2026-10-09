@@ -84,8 +84,8 @@ def hasChannel = (channel != null && !channel.isEmpty())
 def dateTo__next_day = dayAfter('dateTo', 'Date', dateTo)
 def hasDateTo__next_day = (dateTo__next_day != null && !dateTo__next_day.isEmpty())
 
-// ─── Widget: number_total_amount_revenue (type=number, dataSource=visual) ───
-if (!componentId || componentId == 'number_total_amount_revenue') {
+// ─── Widget: number_total_amount_sum_revenue (type=number, dataSource=visual) ───
+if (!componentId || componentId == 'number_total_amount_sum_revenue') {
     def sql = new StringBuilder()
     def params = []
     sql << 'SELECT CAST(SUM("total_amount") AS DECIMAL(31,4)) AS "total_amount_sum"\n'
@@ -111,11 +111,11 @@ if (!componentId || componentId == 'number_total_amount_revenue') {
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
-    ctx.reportData('number_total_amount_revenue', data)
+    ctx.reportData('number_total_amount_sum_revenue', data)
 }
 
-// ─── Widget: number_order_id_orders (type=number, dataSource=visual) ───
-if (!componentId || componentId == 'number_order_id_orders') {
+// ─── Widget: number_order_id_count_orders (type=number, dataSource=visual) ───
+if (!componentId || componentId == 'number_order_id_count_orders') {
     def sql = new StringBuilder()
     def params = []
     sql << 'SELECT COUNT("order_id") AS "order_id_count"\n'
@@ -141,11 +141,11 @@ if (!componentId || componentId == 'number_order_id_orders') {
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
-    ctx.reportData('number_order_id_orders', data)
+    ctx.reportData('number_order_id_count_orders', data)
 }
 
-// ─── Widget: number_total_amount_value (type=number, dataSource=visual) ───
-if (!componentId || componentId == 'number_total_amount_value') {
+// ─── Widget: number_total_amount_avg_value (type=number, dataSource=visual) ───
+if (!componentId || componentId == 'number_total_amount_avg_value') {
     def sql = new StringBuilder()
     def params = []
     sql << 'SELECT CAST(AVG(CAST("total_amount" AS DECIMAL(31,4))) AS DECIMAL(31,4)) AS "total_amount_avg"\n'
@@ -171,11 +171,11 @@ if (!componentId || componentId == 'number_total_amount_value') {
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
-    ctx.reportData('number_total_amount_value', data)
+    ctx.reportData('number_total_amount_avg_value', data)
 }
 
-// ─── Widget: number_customer_id_ordered (type=number, dataSource=visual) ───
-if (!componentId || componentId == 'number_customer_id_ordered') {
+// ─── Widget: number_customer_id_count_distinct_ordered (type=number, dataSource=visual) ───
+if (!componentId || componentId == 'number_customer_id_count_distinct_ordered') {
     def sql = new StringBuilder()
     def params = []
     sql << 'SELECT COUNT(DISTINCT "customer_id") AS "customer_id_count_distinct"\n'
@@ -201,7 +201,7 @@ if (!componentId || componentId == 'number_customer_id_ordered') {
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
-    ctx.reportData('number_customer_id_ordered', data)
+    ctx.reportData('number_customer_id_count_distinct_ordered', data)
 }
 
 // ─── Widget: chart_dd02-chart-revenue-per-month (type=chart, dataSource=visual) ───
