@@ -3708,7 +3708,10 @@ test('(canvas mechanics) M51 Chart stacked bars and bubble size', async () => {
     expect(stored[0].displayConfig.dslConfig.options?.scales).toBeUndefined();
 
     // − with no second dimension there is nothing to stack, and no choice is offered.
-    await page.locator('#btnRemoveChartXAxis-1').click();
+    await page.locator('#btnDataTab').click();
+    await page.locator('#btnRemoveGroupBy-status').click();
+    await runVisualQuery(page);
+    await page.locator('#btnDisplayTab').click();
     await expect(page.locator('#btnChartStacked-on')).toHaveCount(0);
     await expect(page.locator('#btnChartStacked-off')).toHaveCount(0);
 
