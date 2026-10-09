@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import groovy.lang.Closure;
 import groovy.lang.GString;
 
 import com.flowkraft.queries.services.QueriesService;
@@ -79,6 +80,25 @@ public class DbSqlProxy {
     public Map<String, Object> firstRow(GString gstring) throws Exception {
         List<Map<String, Object>> rows = rows(gstring);
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public Map<String, Object> firstRow(String sql, List<?> params) throws Exception {
+        List<Map<String, Object>> rows = rows(sql, params);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    // ── eachRow: the shipped dashboards' scripts walk a result the way groovy.sql.Sql does ──
+
+    public void eachRow(String sql, Closure<?> perRow) throws Exception {
+        for (Map<String, Object> row : rows(sql)) perRow.call(row);
+    }
+
+    public void eachRow(String sql, List<?> params, Closure<?> perRow) throws Exception {
+        for (Map<String, Object> row : rows(sql, params)) perRow.call(row);
+    }
+
+    public void eachRow(GString gstring, Closure<?> perRow) throws Exception {
+        for (Map<String, Object> row : rows(gstring)) perRow.call(row);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

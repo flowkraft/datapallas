@@ -40,7 +40,7 @@ public class ScriptsService {
     private QueriesService queriesService;
 
     /** Binding names the script itself relies on — a filter value may not take them over. */
-    private static final Set<String> RESERVED_BINDING_NAMES = Set.of("ctx", "log");
+    private static final Set<String> RESERVED_BINDING_NAMES = Set.of("ctx", "log", "dbSql");
 
     @Value("${DataPallas.scripts.timeout-seconds:60}")
     private int timeoutSeconds;
@@ -59,6 +59,8 @@ public class ScriptsService {
 
         Binding binding = new Binding();
         binding.setVariable("ctx", ctx);
+        // The shipped dashboards' scripts call `dbSql` directly, as a published report's script does.
+        binding.setVariable("dbSql", dbSqlProxy);
         binding.setVariable("log", LoggerFactory.getLogger("ScriptExecution"));
         // Bind each filter value as a named Groovy variable so ${paramName} resolves
         // naturally in Groovy GStrings (e.g. "WHERE col = ${shipper}").
