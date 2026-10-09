@@ -707,8 +707,31 @@ public class ServicesManager {
 		}
 	}
 
+	/**
+	 * One start or stop at a time per compose project. The commands arrive on separate threads, and a
+	 * start that begins while the previous stop is still running {@code docker compose down} finds
+	 * containers it depends on removed under it ("No such container"): it fails, the app stays
+	 * stopped, and nothing starts it again. Start and stop of the same compose file take turns.
+	 */
+	private static final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.locks.ReentrantLock> APP_LOCKS =
+			new java.util.concurrent.ConcurrentHashMap<>();
+
+	private static java.util.concurrent.locks.ReentrantLock appLock(String serviceName) throws Exception {
+		return APP_LOCKS.computeIfAbsent(getComposePath(serviceName), k -> new java.util.concurrent.locks.ReentrantLock());
+	}
+
 	/** Handle 'app start <serviceName> [args]' */
 	private static void handleAppStart(String serviceName, String args) throws Exception {
+		java.util.concurrent.locks.ReentrantLock lock = appLock(serviceName);
+		lock.lock();
+		try {
+			doAppStart(serviceName, args);
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	private static void doAppStart(String serviceName, String args) throws Exception {
 		// Ensure portable apps config marker exists and .env files are updated when missing
 		ensurePortableAppsConfig();
 		// System.out.println("Starting app '" + serviceName + "'...");
@@ -1020,6 +1043,16 @@ public class ServicesManager {
 
 	/** Handle 'app stop <serviceName> [args]' */
 	private static void handleAppStop(String serviceName, String args) throws Exception {
+		java.util.concurrent.locks.ReentrantLock lock = appLock(serviceName);
+		lock.lock();
+		try {
+			doAppStop(serviceName, args);
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	private static void doAppStop(String serviceName, String args) throws Exception {
 		// System.out.println("Stopping app '" + serviceName + "'...");
 
 		String composePath = getComposePath(serviceName);
