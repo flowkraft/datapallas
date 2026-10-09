@@ -3727,6 +3727,8 @@ test('(canvas mechanics) M51 Chart stacked bars and bubble size', async () => {
     await expect(page.locator('#btnChartStacked-off')).toHaveCount(0);
 
     // + a bubble chart takes its radius from the measure chosen as Size.
+    //   The panel keeps the Display tab it was left on, so the Data tab is opened for the new widget.
+    await page.locator('#btnDataTab').click();
     const bubbles = await eNewVisualWidget(page, 'orders');
     await addGroupBy(page, 'channel');
     await addAggregation(page, 0, 'SUM', 'total_amount');
