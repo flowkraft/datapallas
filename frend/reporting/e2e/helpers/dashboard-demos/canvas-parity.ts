@@ -60,6 +60,12 @@ export const KNOWN_GAPS: ReadonlyArray<{
     only: (cfg) => cfg.mapType !== undefined && cfg.mapType !== 'region',
   },
   {
+    widget: 'map',
+    key: 'region',
+    why: 'the Map panel starts every map on the world countries and keeps the pick when the type changes; a pin or grid map reads no region',
+    only: (cfg) => cfg.mapType !== undefined && cfg.mapType !== 'region',
+  },
+  {
     widget: 'gauge',
     key: 'gaugeBands',
     why: 'the Gauge panel has three bands in fixed colours; only their limits are editable',
