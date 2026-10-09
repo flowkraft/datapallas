@@ -375,6 +375,17 @@ export function isDerivedWrite(): boolean {
   return derivedWrite;
 }
 
+/** Runs a store write that is derived from what is already shown (an auto-pick, a default), not an edit by the user. */
+export function asDerivedWrite(write: () => void): void {
+  const before = derivedWrite;
+  derivedWrite = true;
+  try {
+    write();
+  } finally {
+    derivedWrite = before;
+  }
+}
+
 export const useCanvasStore = create<CanvasState & CanvasActions>((set, get) => ({
   ...DEFAULT_STATE,
 

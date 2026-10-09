@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useWidgetData } from "./useWidgetData";
-import { useCanvasStore } from "@/lib/stores/canvas-store";
+import { asDerivedWrite, useCanvasStore } from "@/lib/stores/canvas-store";
 import { useRbElementReady } from "./useRbElementReady";
 import { IconSparkles as Sparkles } from "@/components/shared/Icons";
 import { fetchSchema, getConnectionType } from "@/lib/explore-data/rb-api";
@@ -457,7 +457,9 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
       // Snapshot diff: only write when something actually changed. Without this
       // every render re-writes the same Map, looping the effect and pegging CPU.
       if (JSON.stringify(desiredMap) !== JSON.stringify(dslMap)) {
-        updateDslMap(desiredMap);
+        // The chart type and data it picks for itself are derived from the result, not an edit:
+        // the undo history folds them in instead of throwing away what can still be redone.
+        asDerivedWrite(() => updateDslMap(desiredMap));
       }
     }
 
