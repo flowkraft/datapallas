@@ -5,6 +5,8 @@ import type { WidgetDisplayConfig } from "@/lib/stores/canvas-store";
 import type { ColumnSchema } from "@/lib/explore-data/types";
 import type { PickShape } from "@/lib/explore-data/smart-defaults/widget-picker";
 import { dimensionsOf, measuresOf } from "@/lib/explore-data/widget-defaults";
+import { getFieldKind } from "@/lib/explore-data/field-utils";
+import { isLatitude, isLongitude } from "@/lib/explore-data/smart-defaults";
 import { AutoBadge, isAutoField, clearAutoFlag } from "./AutoBadge";
 
 const _MapIcon  = ({ className }: { className?: string }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" /></svg>);
@@ -48,6 +50,15 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
 
   const dimensions = dimensionsOf(columns, shape);
   const measures   = measuresOf(columns, shape);
+  // A latitude or longitude is a number that the shape may class as a dimension (a coordinate),
+  // so the two pickers offer every numeric column and anything named like one, besides the measures.
+  const coordinateOptions = [
+    ...measures,
+    ...columns.filter(
+      (c) => (getFieldKind(c) === "measure" || isLatitude(c) || isLongitude(c))
+        && !measures.some((m) => m.columnName === c.columnName),
+    ),
+  ];
 
   const showRegionFields = mapType === "region" || mapType === "auto";
   const showLatLonFields = mapType === "pin" || mapType === "grid" || mapType === "auto";
@@ -134,7 +145,7 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
               className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
             >
               <option value="">Auto-detect</option>
-              {measures.map((c) => (
+              {coordinateOptions.map((c) => (
                 <option key={c.columnName} value={c.columnName}>{c.columnName}</option>
               ))}
             </select>
@@ -148,7 +159,7 @@ export function MapConfig({ config, columns, shape, onChange }: MapConfigProps) 
               className="w-full mt-1 text-sm bg-base-100 border border-base-300 rounded-md px-2 py-1.5 text-base-content"
             >
               <option value="">Auto-detect</option>
-              {measures.map((c) => (
+              {coordinateOptions.map((c) => (
                 <option key={c.columnName} value={c.columnName}>{c.columnName}</option>
               ))}
             </select>
