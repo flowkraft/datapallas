@@ -2207,8 +2207,10 @@ test('(canvas mechanics) M11 Map settings', async () => {
     expect(await eWidgetText(page, gridId), 'a grid with its fields shows no error').not.toContain('Grid map needs');
 
     // The three types and their fields are what the server saved.
-    const stored = await eStoredWidgets(page, canvasId, (w) =>
-      w.length === 4 || w.filter((x) => x.type === 'map' && x.displayConfig?.mapType).length === 3);
+    const stored = await eStoredWidgets(page, canvasId, (w) => {
+      const types = w.filter((x) => x.type === 'map').map((x) => x.displayConfig?.mapType);
+      return types.join() === 'region,pin,grid' && w.find((x) => x.displayConfig?.mapType === 'grid')?.displayConfig?.metric === 'cities';
+    });
     const maps = stored.filter((w) => w.type === 'map').map((w) => w.displayConfig);
     expect(maps.map((m) => m.mapType)).toEqual(['region', 'pin', 'grid']);
     expect(maps[0]).toMatchObject({ region: 'world_countries', dimension: 'country_code', metric: 'order_id_count' });
@@ -3966,6 +3968,8 @@ test('(canvas mechanics) M55 Published pivot: filter a field\'s values', async (
 
       // + "only" keeps exactly one value, the way the seeded rows count it.
       const only = g5Statuses[g5Statuses.length - 1];
+      // the "only" link shows while the pointer is over its value, so the reader points at the value first
+      await valueBtn(only).hover();
       await onlyBtn(only).click();
       p = await cWaitPivot(pivot, (x) => cSame(x.rowKeys, [only]), `only ${only} is left`);
       g5ExpectCells(p, g5Counts([only]), `${only} per channel`);
