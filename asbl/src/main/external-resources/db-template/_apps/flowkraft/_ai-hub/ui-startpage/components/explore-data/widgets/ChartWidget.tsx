@@ -504,6 +504,23 @@ export function ChartWidget({ widgetId }: ChartWidgetProps) {
       const built = buildChartJsData(rows, xField!, yFields, chartType, paletteColors);
       el.data = { ...built, datasets: applyDatasetDslKeys(built.datasets, dslMap, false) };
     }
+    // A bubble's radius is the measure picked as Size. <rb-chart> reads it from the rows it is
+    // given, and the Canvas hands it drawn data, so each point here carries its own radius.
+    const bubbleSizeField = dslMap.bubbleSizeField as string | undefined;
+    if (chartType === "bubble" && bubbleSizeField && !wantsSeries) {
+      const drawn = el.data as { labels: unknown[]; datasets: Array<{ data: unknown[] }> };
+      const size = new Map(rows.map((r) => [String(r[xField!]), Number(r[bubbleSizeField])]));
+      el.data = {
+        ...drawn,
+        datasets: drawn.datasets.map((ds) => ({
+          ...ds,
+          data: ds.data.map((y, i) => {
+            const r = size.get(String(drawn.labels[i]));
+            return r !== undefined && Number.isFinite(r) ? { y, r } : y;
+          }),
+        })),
+      };
+    }
     el.type = chartType;
     // Grouped bar: multi-measure or two-categorical bar charts should be
     // side-by-side, not stacked.
