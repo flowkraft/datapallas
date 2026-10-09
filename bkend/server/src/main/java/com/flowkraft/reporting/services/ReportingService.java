@@ -73,6 +73,28 @@ public class ReportingService {
 	}
 
 	/**
+	 * Is there a report folder for this code? The lookup {@link #loadReportConfig} makes, asked
+	 * without loading anything: config/reports/{code}, config/samples/{code}, then the frend-only
+	 * samples under config/samples/_frend/{code}. A code that points out of those folders is no report.
+	 */
+	public boolean reportExists(String reportCode) {
+
+		if (reportCode == null || reportCode.isBlank())
+			return false;
+
+		Path config = Paths.get(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, "config").normalize();
+
+		for (String parent : new String[] { "reports", "samples", "samples/" + SamplesFrendOnlyService.FREND_SAMPLES_SUBFOLDER }) {
+			Path folder = config.resolve(parent);
+			Path candidate = folder.resolve(reportCode).normalize();
+			if (!candidate.equals(folder) && candidate.startsWith(folder) && Files.isDirectory(candidate))
+				return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Load full report configuration by report code.
 	 * Looks in both config/reports/{code} and config/samples/{code}.
 	 */

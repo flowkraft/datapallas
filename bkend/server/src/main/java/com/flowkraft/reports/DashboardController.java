@@ -17,7 +17,7 @@ import com.flowkraft.embed.EmbedTokenService;
 import com.flowkraft.embed.ShareTokenService;
 import com.flowkraft.iam.dashboards.DashboardAccess;
 import com.flowkraft.iam.limits.ReportAccess;
-import com.flowkraft.iam.reports.ReportCatalog;
+import com.flowkraft.reporting.services.ReportingService;
 import com.flowkraft.system.services.SystemService;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterSettingsInternal;
 
@@ -81,7 +81,7 @@ public class DashboardController {
 	private SystemService systemService;
 
 	@Autowired
-	private ReportCatalog reportCatalog;
+	private ReportingService reportingService;
 
 	/**
 	 * The theme a dashboard wears when the application has stored none: the same value the
@@ -108,7 +108,7 @@ public class DashboardController {
 
 		// A link to a dashboard that was never published, or has been deleted since, is a link that is
 		// no longer available - for the author and a share-link visitor alike - not an empty page.
-		if (!reportCatalog.exists(reportCode))
+		if (!reportingService.reportExists(reportCode))
 			return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
 					.header("Content-Type", "text/html")
 					.body(notFoundHtml()));
