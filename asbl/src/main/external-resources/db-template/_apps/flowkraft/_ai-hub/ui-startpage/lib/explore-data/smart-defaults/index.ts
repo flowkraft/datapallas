@@ -87,6 +87,7 @@ export {
   autoPickMeasure,
   autoFilterPaneField,
   autoPivotLayout,
+  MAX_PIVOT_CELLS,
   suggestRenderModeForCube,
   type PivotLayout,
 } from "./auto-pick";

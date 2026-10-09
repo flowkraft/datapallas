@@ -135,6 +135,12 @@ export function autoFilterPaneField(
   return candidates[0]?.col.columnName ?? null;
 }
 
+/** The most cells a pivot is asked to draw; `PivotWidget` shows "Pivot too large" beyond it. */
+export const MAX_PIVOT_CELLS = 20000;
+
+/** What a dimension is assumed to hold when its distinct count has not been probed. */
+const UNPROBED_DISTINCT = 20;
+
 export interface PivotLayout {
   rows: string[];
   cols: string[];
@@ -208,6 +214,14 @@ export function autoPivotLayout(
   } else {
     layout.vals = measures.length >= 1 ? [measures[0].columnName] : [];
   }
+
+  // An auto-picked pivot has to be drawable: the cross-tab has one cell per row key times column
+  // key, so the dimensions with the most values (the last ones) are dropped until it fits.
+  const distinct = (c: string) => Math.max(1, cardinality?.[c] || UNPROBED_DISTINCT);
+  const cells = () =>
+    layout.rows.reduce((n, c) => n * distinct(c), 1) * layout.cols.reduce((n, c) => n * distinct(c), 1);
+  while (cells() > MAX_PIVOT_CELLS && layout.rows.length > 1) layout.rows.pop();
+  while (cells() > MAX_PIVOT_CELLS && layout.cols.length > 1) layout.cols.pop();
 
   return layout;
 }

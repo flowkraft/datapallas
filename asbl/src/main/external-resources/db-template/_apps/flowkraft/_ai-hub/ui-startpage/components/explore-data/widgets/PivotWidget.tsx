@@ -7,7 +7,7 @@ import { useRbElementReady } from "./useRbElementReady";
 import { IconSparkles as Sparkles, IconBarChart3 as BarChart3 } from "@/components/shared/Icons";
 import { fetchSchema } from "@/lib/explore-data/rb-api";
 import { findTable, refForQuery } from "@/lib/explore-data/table-ref";
-import { autoPivotLayout, isIdColumn, probeCardinality, classifyColumn } from "@/lib/explore-data/smart-defaults";
+import { autoPivotLayout, isIdColumn, probeCardinality, classifyColumn, MAX_PIVOT_CELLS } from "@/lib/explore-data/smart-defaults";
 import { useEffectiveField } from "@/lib/hooks/use-effective-field";
 import { useDslConfig } from "@/lib/hooks/use-dsl-config";
 
@@ -121,7 +121,6 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
       ? result.data
       : result.data.filter((row) => dimCols.every((c) => row[c] !== null && row[c] !== undefined && row[c] !== ""));
 
-    const MAX_PIVOT_CELLS = 20000;
     if (dimCols.length > 0) {
       const rowDistinct = pivotRows.reduce(
         (acc, c) => acc * Math.max(1, new Set(filteredData.map((r) => r[c])).size),
