@@ -1573,11 +1573,14 @@ test.describe('Canvas mechanics', () => {
     test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
     await withFreshCanvas(page, 'E2E mech M07 Chart axes', async () => {
       // Orders by channel and status, two sums: two dimensions and two metrics to put on the axes.
+      // Both sums first: the canvas turns the widget into a chart the moment the first grouped result comes
+      // back and keeps the metrics it found then (a user's picks stay), so a sum added after the groups
+      // would never reach the axes - and with one metric and two groups the product splits the series by itself.
       await addTableToCanvas(page, 'dash_demo.orders');
-      await addGroupBy(page, 'channel');
-      await addGroupBy(page, 'status');
       await addAggregation(page, 0, 'SUM', 'total_amount');
       await addAggregation(page, 1, 'SUM', 'shipping_fee');
+      await addGroupBy(page, 'channel');
+      await addGroupBy(page, 'status');
       await runVisualQuery(page);
       await switchToWidget(page, 'chart');
       const id = await getLastWidgetId(page);
