@@ -17,6 +17,11 @@ interface DetailWidgetProps {
   widgetId: string;
 }
 
+// One object for "no settings yet". A new `{}` on every render made the effect below hand <rb-detail>
+// fresh options each time, and <rb-detail> redraws its rows (and their gear buttons) on every set:
+// a press on a gear re-rendered the widget, so the button it landed on was replaced before the click.
+const NO_COLUMN_SETTINGS: ColumnSettingsMap = {};
+
 /**
  * DetailWidget — thin React wrapper around the <rb-detail> web component.
  * Single-row record viewer; shows ALL columns of the first row as a key/value list.
@@ -38,7 +43,7 @@ export function DetailWidget({ widgetId }: DetailWidgetProps) {
   const ready = useRbElementReady("rb-detail");
   const [activeField, setActiveField] = useState<string | null>(null);
 
-  const columnSettings = (widget?.displayConfig.columnSettings as ColumnSettingsMap | undefined) ?? {};
+  const columnSettings = (widget?.displayConfig.columnSettings as ColumnSettingsMap | undefined) ?? NO_COLUMN_SETTINGS;
   const groupByBuckets = widget?.dataSource?.visualQuery?.groupByBuckets ?? {};
   const groupByCols = new Set(widget?.dataSource?.visualQuery?.groupBy ?? []);
 
