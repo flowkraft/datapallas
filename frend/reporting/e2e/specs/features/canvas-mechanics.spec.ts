@@ -640,7 +640,10 @@ async function eFirstDatasetColour(page: Page, widgetId: string): Promise<string
 
 /** Leaflet draws a region, a pin or a grid cell as one interactive path inside the widget's own box. */
 async function eMapShapes(page: Page, widgetId: string): Promise<number> {
-  return page.locator(`#widget-${widgetId} .leaflet-interactive`).count();
+  // The map draws on a canvas, so its shapes are not elements; it writes their number on its container.
+  const container = page.locator(`#widget-${widgetId} [data-shape-count]`);
+  if ((await container.count()) === 0) return 0;
+  return Number(await container.first().getAttribute('data-shape-count'));
 }
 
 /** Pick Finetune → SQL or Script in the current widget. */
