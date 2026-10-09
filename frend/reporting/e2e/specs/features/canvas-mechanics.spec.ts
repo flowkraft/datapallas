@@ -1634,6 +1634,14 @@ test.describe('Canvas mechanics', () => {
       await page.locator('#btnDisplayTab').click();
       await page.locator('#configPanel-pivot').waitFor({ state: 'visible', timeout: 10_000 });
 
+      // Switching to a pivot lays the fields out by itself; take every one of them back to the available list first.
+      const assigned = page.locator('[id^="btnRemovePivotField-"]');
+      for (let left = await assigned.count(); left > 0; left = await assigned.count()) {
+        await assigned.first().click();
+        await expect(assigned).toHaveCount(left - 1);
+      }
+      await expect(page.locator('[id="btnDragPivotSource-total_amount"]')).toBeVisible();
+
       // − a measure cannot be dropped into Rows, a dimension cannot be dropped into Values.
       await cDragPivotField(page, 'total_amount', 'rows');
       await expect(page.locator('[id="btnDragPivotField-total_amount"]'), 'a measure stays out of Rows').toHaveCount(0);
