@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { GridLayout, type Layout, verticalCompactor } from "react-grid-layout";
-import { useCanvasStore } from "@/lib/stores/canvas-store";
+import { asDerivedWrite, useCanvasStore } from "@/lib/stores/canvas-store";
 import { WidgetShell } from "./widgets/WidgetShell";
 
 import "react-grid-layout/css/styles.css";
@@ -14,6 +14,7 @@ const GRID_MARGIN: readonly [number, number] = [12, 12];
 export function Canvas() {
   const { widgets, editMode, selectWidget, updateLayout } = useCanvasStore();
   const containerRef = useRef<HTMLDivElement>(null);
+  const laidOutIdsRef = useRef("");
   const [containerWidth, setContainerWidth] = useState(800);
 
   useEffect(() => {
@@ -45,9 +46,18 @@ export function Canvas() {
   const handleLayoutChange = useCallback(
     (newLayout: Layout) => {
       if (!editMode) return;
-      updateLayout(
+      const write = () => updateLayout(
         newLayout.map((l) => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h }))
       );
+      // When a widget has come or gone, the grid closes the gap and reports the new places. That is
+      // the add or the delete completing, not a second edit: it must not become an undo step of its
+      // own (it would hide the delete from Ctrl+Z and clear Redo). A drag or a resize keeps the same
+      // widgets and is the user's edit.
+      const ids = newLayout.map((l) => l.i).sort().join(",");
+      const membershipChanged = ids !== laidOutIdsRef.current;
+      laidOutIdsRef.current = ids;
+      if (membershipChanged) asDerivedWrite(write);
+      else write();
     },
     [editMode, updateLayout]
   );
