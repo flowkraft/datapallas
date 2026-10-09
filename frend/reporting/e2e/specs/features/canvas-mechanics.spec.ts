@@ -957,6 +957,14 @@ function g5ExpectCells(p: CPivotState, truth: Record<string, number>, what: stri
 }
 
 /**
+ * `g5ExpectCells` as a yes or no, for a wait: a published pivot counts on the server, so after the
+ * reader changes the aggregator or the value field its cells keep the old numbers until the answer
+ * arrives, and only then are they worth checking.
+ */
+const g5CellsMatch = (p: CPivotState, truth: Record<string, number>): boolean =>
+  Object.entries(p.cells).every(([cell, value]) => Math.abs(value - (truth[cell] ?? 0)) < 0.005);
+
+/**
  * Build the pivot the reader tests need (rows = status, columns = channel, Count, no value field),
  * publish the dashboard and open it. Hands back the pivot element and the prefix of its control ids.
  */
@@ -3870,14 +3878,14 @@ test('(canvas mechanics) M54 Published pivot: renderer, aggregator, value field 
       // + picking total_amount sums it per cell: the seeded rows' sums.
       await page.locator('[id$="btnPivotVal-0"]').click();
       await page.locator(`[id$="btnPivotVal-0-${g5Token('total_amount')}"]`).click();
-      p = await cWaitPivot(pivot, (x) => x.state.vals.join() === 'total_amount', 'the reader picked total_amount');
+      p = await cWaitPivot(pivot, (x) => x.state.vals.join() === 'total_amount' && g5CellsMatch(x, g5Sums()), 'the reader picked total_amount and the server summed it');
       g5ExpectCells(p, g5Sums(), 'total_amount summed per status and channel');
       await expect(page.locator('[id$="btnPivotVal-0"]')).toContainText('total_amount');
 
       // + back to Count: the picker goes away (Count takes no field) and the counts are back.
       await page.locator('[id$="btnPivotAggregator"]').click();
       await page.locator(`[id$="btnPivotAggregator-${g5Token('Count')}"]`).click();
-      p = await cWaitPivot(pivot, (x) => x.state.aggregatorName === 'Count', 'Count again');
+      p = await cWaitPivot(pivot, (x) => x.state.aggregatorName === 'Count' && g5CellsMatch(x, counts), 'Count again and the server counted');
       await expect(page.locator('[id$="btnPivotVal-0"]'), 'Count takes no value field').toHaveCount(0);
       g5ExpectCells(p, counts, 'counted again');
 
