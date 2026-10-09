@@ -211,17 +211,31 @@ export function VisualQueryBuilder({ widgetId, schema, dataSource, onChange, onR
       // them, so they travel from the saved widget into the new question. The SQL is generated
       // with them as filters - which is what puts `${country}` into the frozen text - while the
       // widget keeps them apart, so reopening it puts only the author's own chips back.
-      const bindings = query.cubeSelection?.paramBindings;
-      const asked: CubeSelection = bindings?.length
-        ? { ...selection, paramBindings: bindings }
-        : selection;
+      // Read from the widget as it is now, not from the render this listener was set up in: a
+      // binding added since then is the author's and must not be written over with the old list.
+      const bindingsNow = () => (liveVisualQuery(widgetId) ?? query).cubeSelection?.paramBindings;
+      let bindings = bindingsNow();
       try {
-        const generatedSql = await generateCubeSql(
+        let generatedSql = await generateCubeSql(
           query.cubeId!,
           connectionId || "",
           selectionWithBindings(selection, bindings),
           cubeName,
         );
+        // A binding changed while the SQL was being generated: the statement is asked for again with
+        // the list as it is now, so the SQL and the bindings written down together agree.
+        for (let again = 0; again < 2 && JSON.stringify(bindingsNow() ?? []) !== JSON.stringify(bindings ?? []); again++) {
+          bindings = bindingsNow();
+          generatedSql = await generateCubeSql(
+            query.cubeId!,
+            connectionId || "",
+            selectionWithBindings(selection, bindings),
+            cubeName,
+          );
+        }
+        const asked: CubeSelection = bindings?.length
+          ? { ...selection, paramBindings: bindings }
+          : selection;
         setCubeSqlError(null);
         const live = liveVisualQuery(widgetId);
         // Another cube was picked while the SQL was being generated: it is not this tree's SQL.
