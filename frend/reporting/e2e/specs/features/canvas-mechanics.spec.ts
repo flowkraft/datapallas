@@ -3608,6 +3608,8 @@ test('(canvas mechanics) M48 Numeric group-by bins', async () => {
     // + 10 bins: a handful of groups that still add up to every order.
     await page.locator('#selectNumericBin-total_amount').selectOption('10');
     await runVisualQuery(page);
+    // ten groups of a number and a count are drawn as a chart, and a chart keeps no rows to read: look at the table
+    await switchToWidget(page, 'tabulator');
     const binned = await g4RowsWhere(page, id, (r) => r.length > 1 && r.length <= 11, 'ten bins answer in at most eleven groups');
     const countKey = Object.keys(binned[0]).find((k) => k.toLowerCase().includes('count'))!;
     expect(binned.reduce((sum, r) => sum + Number(r[countKey]), 0), 'the bins lose no order').toBe(orders.length);
