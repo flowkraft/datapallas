@@ -48,6 +48,8 @@ export function GaugeWidget({ widgetId }: GaugeWidgetProps) {
     return {
       ...displayConfig,
       field: effectiveField,
+      // The Min box shows 0 until someone types another number, so the gauge is handed that 0.
+      min: (displayConfig.min as number | undefined) ?? 0,
       bands,
       format: displayConfig.gaugeFormat as "number" | "currency" | "percent" | "raw" | undefined,
     };
