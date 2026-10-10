@@ -605,7 +605,10 @@ export async function runInteractions(
   checks: DemoChecks = loadChecks(demo.id),
 ): Promise<void> {
   for (const interaction of checks.interactions ?? []) {
-    await setParams(root, demo, interaction.changed);
+    // An interaction's claims are about its whole set of filter values (`params`: the defaults with
+    // `changed` on top), so every filter is put where it says, not only the ones it changes: the
+    // interaction before it may have left another filter elsewhere.
+    await setParams(root, demo, interaction.params);
     await reloadDashboard(root);
     await waitForChartsIn(root);
     await assertClaims(root, demo, interaction.params, interaction.kpis, `under '${interaction.id}'`);
