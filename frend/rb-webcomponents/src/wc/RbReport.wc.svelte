@@ -251,7 +251,7 @@
       
     } catch (e: any) {
       error = e.message || 'Failed to load report configuration';
-      console.error('rb-report: loadConfig error', e);
+      console.error(`rb-report: loadConfig error for ${reportId}`, e);
     } finally {
       loading = false;
     }
