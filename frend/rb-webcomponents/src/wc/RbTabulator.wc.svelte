@@ -3,6 +3,7 @@
 <script context="module" lang="ts">
   import { TabulatorFull } from 'tabulator-tables';
   import { formatMeasure } from '../shared/cube-format';
+  import { reportQuery } from '../shared/report-query';
 
   // One formatter of our own, beside Tabulator's own.
   //
@@ -483,7 +484,7 @@
         const willUseProgressiveLoad = !!(options as any)?.progressiveLoad;
         const willUseSpreadsheet = !!(options as any)?.spreadsheet;
         if (!willUseRemotePagination && !willUseProgressiveLoad && !willUseSpreadsheet && (!data || !data.length)) {
-          const dataQueryParams = new URLSearchParams(reportParams as Record<string, string>);
+          const dataQueryParams = reportQuery(reportParams);
           if (testMode) dataQueryParams.set('testMode', 'true');
           if (componentId) dataQueryParams.set('componentId', componentId);
           const dataQs = dataQueryParams.toString();
@@ -717,7 +718,7 @@
         configDsl = config.tabulatorDsl;
       }
 
-      const dataParams = new URLSearchParams(params as Record<string, string>);
+      const dataParams = reportQuery(params);
       if (componentId) dataParams.set('componentId', componentId);
       const queryString = dataParams.toString();
       const url = queryString

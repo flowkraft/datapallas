@@ -100,6 +100,7 @@
 
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick, createEventDispatcher } from "svelte";
+  import { reportQuery } from '../shared/report-query';
   import { normalizeCountryToIso2 } from "./map/country-lookup";
   import { normalizeStateToUsps } from "./map/state-lookup";
   import { findLatitudeColumn, findLongitudeColumn } from "../shared/map-column-names";
@@ -622,7 +623,7 @@
           options = { ...config.mapOptions, ...options };
         }
 
-        const qs = new URLSearchParams(reportParams as Record<string, string>);
+        const qs = reportQuery(reportParams);
         if (testMode) qs.set("testMode", "true");
         if (componentId) qs.set("componentId", componentId);
         const dataUrl = qs.toString()
@@ -665,7 +666,7 @@
   // Public reload method — useful from React when filters change.
   export async function reload(params: Record<string, string> = {}) {
     if (reportId && apiBaseUrl) {
-      const qs = new URLSearchParams({ ...reportParams, ...params } as Record<string, string>);
+      const qs = reportQuery({ ...reportParams, ...params });
       if (testMode) qs.set("testMode", "true");
       if (componentId) qs.set("componentId", componentId);
       const res = await fetch(`${apiBaseUrl}/reports/${reportId}/data?${qs.toString()}`, { headers: embedToken ? { 'X-Embed-Token': embedToken } : {} });

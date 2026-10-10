@@ -23,6 +23,7 @@
 
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
+  import { reportQuery } from '../shared/report-query';
 
   // ============================================================================
   // Two usage modes:
@@ -125,7 +126,7 @@
       const headers: Record<string, string> = {};
       if (embedToken) headers['X-Embed-Token'] = embedToken;
 
-      const dataQueryParams = new URLSearchParams(reportParams as Record<string, string>);
+      const dataQueryParams = reportQuery(reportParams);
       if (componentId) dataQueryParams.set('componentId', componentId);
       const qs = dataQueryParams.toString();
       const dataUrl = qs

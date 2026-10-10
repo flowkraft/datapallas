@@ -18,6 +18,7 @@
 
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick, createEventDispatcher } from 'svelte';
+  import { reportQuery } from '../shared/report-query';
 
   // DEBUG: counters for lifecycle events
   let _afterUpdateCount = 0;
@@ -709,7 +710,7 @@
         }
 
         // Fetch data (GET with user params + testMode + componentId)
-        const dataQueryParams = new URLSearchParams(reportParams as Record<string, string>);
+        const dataQueryParams = reportQuery(reportParams);
         if (testMode) dataQueryParams.set('testMode', 'true');
         if (componentId) dataQueryParams.set('componentId', componentId);
         const dataQs = dataQueryParams.toString();
@@ -839,7 +840,7 @@
       }
 
       // Build query string from params (merge reportParams + caller params)
-      const mergedParams = new URLSearchParams({ ...reportParams, ...params } as Record<string, string>);
+      const mergedParams = reportQuery({ ...reportParams, ...params });
       if (testMode) mergedParams.set('testMode', 'true');
       if (componentId) mergedParams.set('componentId', componentId);
       const queryString = mergedParams.toString();

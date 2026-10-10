@@ -31,6 +31,7 @@
 
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick, createEventDispatcher } from "svelte";
+  import { reportQuery } from '../shared/report-query';
 
   export let reportId: string = "";
   export let apiBaseUrl: string = "";
@@ -229,7 +230,7 @@
         } else if (config.gaugeOptions) {
           options = { ...config.gaugeOptions, ...options };
         }
-        const qs = new URLSearchParams(reportParams as Record<string, string>);
+        const qs = reportQuery(reportParams);
         if (testMode) qs.set("testMode", "true");
         if (componentId) qs.set("componentId", componentId);
         const dataUrl = qs.toString()
@@ -260,7 +261,7 @@
 
   export async function reload(params: Record<string, string> = {}) {
     if (reportId && apiBaseUrl) {
-      const qs = new URLSearchParams({ ...reportParams, ...params } as Record<string, string>);
+      const qs = reportQuery({ ...reportParams, ...params });
       if (testMode) qs.set("testMode", "true");
       if (componentId) qs.set("componentId", componentId);
       const res = await fetch(`${apiBaseUrl}/reports/${reportId}/data?${qs.toString()}`, { headers: embedToken ? { 'X-Embed-Token': embedToken } : {} });
