@@ -36,6 +36,12 @@ export interface StartValueParam {
 /** The multi-select wildcard, as `RbParameters` writes it: "every option". */
 const WILDCARD = '*';
 
+/** A day, or a day and a time, as a date or datetime picker holds it. */
+const DATE_VALUE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?)?$/;
+
+/** A date written the way a default writes it, for the server to expand: `{dataToday:startOf year}`. */
+const DATE_TOKEN = /^\{[^{}<>]+\}$/;
+
 /**
  * Query keys a DataPallas dashboard page carries for itself. They are not parameters and saying so
  * on every page load would be noise - everything else that is not a declared parameter warns once.
@@ -189,9 +195,17 @@ export function acceptValue(
     return { ok: true, value: option };
   }
 
-  // text, date, datetime and anything that fell back to a text box: the value travels as the reader
-  // would have typed it. A date carries whatever a default of the same parameter would carry -
-  // nothing here expands a token, exactly as nothing does for a default.
+  // A date carries what its picker can hold, or whatever a default of the same parameter would carry
+  // (a `{dataToday:...}` token, as a story's values do) - nothing here expands a token, exactly as
+  // nothing does for a default. Empty is a date nobody picked.
+  if (control === 'date' || control === 'datetime') {
+    const t = text.trim();
+    if (t !== '' && !DATE_VALUE.test(t) && !DATE_TOKEN.test(t)) return reject('it is not a date');
+    return { ok: true, value: t };
+  }
+
+  // text and anything that fell back to a text box: the value travels as the reader would have
+  // typed it.
   return { ok: true, value: text };
 }
 
