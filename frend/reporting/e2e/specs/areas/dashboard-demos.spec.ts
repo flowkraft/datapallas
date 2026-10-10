@@ -649,9 +649,11 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       const name = (param as { id: string }).id;
       const value = interaction.changed[name];
 
-      const reader = await browser.newPage();
+      // The reader's own browser, so a second page of it (below) is the same signed-in reader.
+      const context = await browser.newContext();
+      const reader = await context.newPage();
       // Opened with no link, a dashboard asks who is looking: this reader is signed in.
-      await Helpers.signInBrowserContext(reader.context());
+      await Helpers.signInBrowserContext(context);
       try {
         const body = await openPublished(reader, DD02.reportId, {}, BASE_URL);
         const historyBefore = await reader.evaluate(() => history.length);
@@ -666,7 +668,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
           'and holding it is not a new page in the reader\'s history').toBe(historyBefore);
 
         // A fresh page on that address is the same view: the link is the view.
-        const again = await reader.context().newPage();
+        const again = await context.newPage();
         try {
           await again.goto(reader.url(), { timeout: 120_000, waitUntil: 'networkidle' });
           const there = again.locator('body');
@@ -686,7 +688,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
             'a filter back at its default leaves the address as it was').toBeNull();
         }
       } finally {
-        await reader.close();
+        await context.close();
       }
     });
 
