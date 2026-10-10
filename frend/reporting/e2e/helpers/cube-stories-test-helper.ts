@@ -498,11 +498,21 @@ export async function clickShowMe(frame: Frame, cubeId: string, askId: string): 
     { timeout: 90_000 },
   );
   await showMe.click();
-  const response = await (await asked).response();
+  const request = await asked;
+  const response = await request.response();
   if (!response) throw new Error(`${cubeId}/${askId}: the page's own question got no answer`);
   expect(response.status(), `${cubeId}/${askId}: the page's own question was answered`).toBe(200);
   const body = await response.json();
-  expect(body.truncated, `${cubeId}/${askId}: a cut answer is not the hint's answer`).toBeFalsy();
+  // `truncated` says there were more rows than the question took. A story that asks for its top
+  // five (`limit`) takes five on purpose, and those five are its whole answer; any other cut answer
+  // is not the hint's.
+  const limit = Number((request.postDataJSON() ?? {}).limit) || 0;
+  if (limit > 0 && body.truncated) {
+    expect((body.rows ?? []).length, `${cubeId}/${askId}: the answer is the ${limit} rows the story asked for`)
+      .toBe(limit);
+  } else {
+    expect(body.truncated, `${cubeId}/${askId}: a cut answer is not the hint's answer`).toBeFalsy();
+  }
 
   // What came back is not yet what is drawn; the assertion is on what is drawn. A card between
   // two answers draws none for a moment, which is "not yet" too.
