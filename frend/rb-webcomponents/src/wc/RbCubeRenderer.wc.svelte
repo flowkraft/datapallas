@@ -412,6 +412,11 @@
         changed = true;
       }
     }
+    // A named filter is ticked in its own folder: a story that ticks one shows it ticked.
+    if (selectedSegments.size > 0 && !expandedSections.has('filters')) {
+      expandedSections.add('filters');
+      changed = true;
+    }
     if (changed) expandedSections = new Set(expandedSections);
   }
 
