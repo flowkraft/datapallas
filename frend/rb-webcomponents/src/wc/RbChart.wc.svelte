@@ -226,21 +226,24 @@
   // Inject inherited text/grid colors (always) + a palette for colourless datasets
   // (single-colour chart types only — pie/doughnut need per-slice arrays we don't touch).
   // Only fills values the caller/server config left undefined, so explicit colors win.
+  // The options are a shallow copy of the widget's own chartConfig.options, so its plugins and its
+  // scales are the widget's objects: each is copied before a colour goes in, or the colours read off
+  // this page would be written into the widget's saved configuration.
   function rbApplyThemeColors(cfg: any) {
     if (!cfg) return;
     const c = rbReadThemeColors();
     const o = (cfg.options = cfg.options || {});
     if (o.color === undefined) o.color = c.text;
-    o.plugins = o.plugins || {};
+    o.plugins = { ...(o.plugins || {}) };
     if (o.plugins.legend?.display !== false) {
-      o.plugins.legend = o.plugins.legend || {};
+      o.plugins.legend = { ...(o.plugins.legend || {}) };
       o.plugins.legend.labels = Object.assign({ color: c.text }, o.plugins.legend.labels);
     }
     o.plugins.title = Object.assign({ color: c.text }, o.plugins.title);
-    o.scales = o.scales || { x: {}, y: {} };
+    o.scales = o.scales ? { ...o.scales } : { x: {}, y: {} };
     for (const k of Object.keys(o.scales)) {
-      const sc = o.scales[k];
-      if (!sc || typeof sc !== 'object') continue;
+      if (!o.scales[k] || typeof o.scales[k] !== 'object') continue;
+      const sc = (o.scales[k] = { ...o.scales[k] });
       sc.ticks = Object.assign({ color: c.text }, sc.ticks);
       sc.grid = Object.assign({ color: c.grid }, sc.grid);
       sc.border = Object.assign({ color: c.grid }, sc.border);
