@@ -122,9 +122,11 @@ function galleryUrl(token: string, params: Record<string, unknown> = {}): string
     + (query ? `&${query}` : '');
 }
 
-// One page, opened once: 25 live dashboards are a heavy page, and every test asks the same page a
-// different question, in the order a reader would.
-test.describe.configure({ mode: 'serial' });
+// One page, opened once per worker: 25 live dashboards are a heavy page, and every test asks the same
+// page a different question, in the order a reader would. No test needs what an earlier one did - each
+// demo puts its own card back and reads its neighbour before and after itself, the others open their
+// own pages - so the file is not serial: a red test does not skip the ones after it, which run on a
+// fresh worker that opens the page again.
 
 test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
   let page: Page;
