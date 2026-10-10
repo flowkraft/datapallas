@@ -141,14 +141,13 @@
     "id": "sales-for-a-period",
     "fromStory": 21,
     "question": "What did we sell last quarter, by category?",
-    "text": "This cube reads the sale line by line inside a period. **Show Me** opens it on the quarter the data is in - the **Ordered** filter at the top - with **Units** and **Net Sales** ticked and **Category** down the side, and every number is of those dates only.",
+    "text": "A period is the **Ordered** filter. **Show Me** opens the Shop on the quarter the data is in - the filter at the top - with **Units Sold** and **Net Sales** ticked and **Category** down the side, and every number is of those dates only.",
     "query": {
-      "cubeName": "shop-for-a-period",
       "dimensions": [
         "Category"
       ],
       "measures": [
-        "Units",
+        "UnitsSold",
         "NetSales"
       ],
       "filters": [
@@ -168,12 +167,11 @@
         "question": "And what did we sell the quarter before that?",
         "text": "Move the **Ordered** filter one quarter back: the same question, the quarter before it.",
         "query": {
-          "cubeName": "shop-for-a-period",
           "dimensions": [
             "Category"
           ],
           "measures": [
-            "Units",
+            "UnitsSold",
             "NetSales"
           ],
           "filters": [
@@ -193,12 +191,11 @@
         "question": "How does the quarter compare with the same quarter a year ago?",
         "text": "Move it a year back instead: the same quarter, last year, which is what a quarter is really compared with.",
         "query": {
-          "cubeName": "shop-for-a-period",
           "dimensions": [
             "Category"
           ],
           "measures": [
-            "Units",
+            "UnitsSold",
             "NetSales"
           ],
           "filters": [

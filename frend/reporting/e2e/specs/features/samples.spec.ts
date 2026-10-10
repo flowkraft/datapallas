@@ -1517,16 +1517,16 @@ electronBeforeAfterAllTest(
         await expect(page.locator('#cubeSqlVendor'),
           'a dashboard whose cube shows no SQL has nothing to pick a database for').toHaveCount(0);
 
-        // ── D7: the five stories this dashboard chose, in D9's layout ──
+        // ── D7: the six stories this dashboard chose, in D9's layout ──
         // A reader opening a dashboard cold is told what the cube can answer, in this dashboard's
-        // own words: five of the Online Sales cube's ten questions, the ones that still mean
+        // own words: six of the Online Sales cube's ten questions, the ones that still mean
         // something once a country is picked at the top of the page, each with its variants under
         // it. The entry names them, in this order, and the order is the author's.
         await expect(page.locator('#cubeHints'), 'the tile offers its stories')
           .toHaveCount(1, { timeout: 60000 });
         const storyIds = await page.locator('#cubeHints .rb-hint').evaluateAll((cards) =>
           cards.map((card) => card.id));
-        expect(storyIds, 'exactly these five ids, in this order, with their variants under them')
+        expect(storyIds, 'exactly these six ids, in this order, with their variants under them')
           .toEqual([
             'hint-revenue-mix',
             'hint-revenue-mix--by-channel',
@@ -1535,6 +1535,9 @@ electronBeforeAfterAllTest(
             'hint-discount-by-category',
             'hint-category-margin',
             'hint-category-margin--in-all',
+            'hint-sales-for-a-period',
+            'hint-sales-for-a-period--previous-quarter',
+            'hint-sales-for-a-period--same-quarter-last-year',
           ]);
         // Each one is a question a reader reads, with a Show Me of its own.
         await expect(page.locator('#hint-sales-by-month'), 'the new month-by-month story')
@@ -1543,13 +1546,14 @@ electronBeforeAfterAllTest(
           .toContainText('Which cities buy the most?');
         await expect(page.locator('#btnShowMe-sales-by-month')).toBeVisible();
         await expect(page.locator('#btnShowMe-sales-by-city')).toBeVisible();
+        await expect(page.locator('#btnShowMe-sales-for-a-period')).toBeVisible();
 
         // The negative half, twice over. The stories this dashboard left out are offered nowhere -
-        // the two that group by Country would answer in one row now that a country is picked, the
-        // period story belongs to the file's other cube, and two more repeat the tiles above.
+        // the two that group by Country would answer in one row now that a country is picked, and
+        // two more repeat the tiles above.
         for (const left of ['sales-by-country', 'customers-by-country', 'what-sells',
-          'customers-by-category', 'sales-for-a-period']) {
-          await expect(page.locator(`#hint-${left}`), `${left} is not one of this dashboard's five`)
+          'customers-by-category']) {
+          await expect(page.locator(`#hint-${left}`), `${left} is not one of this dashboard's six`)
             .toHaveCount(0);
         }
         // And the one story that would fight the filter bar is dropped by the server, although its
@@ -1745,6 +1749,34 @@ electronBeforeAfterAllTest(
         );
         expect(netSalesOf(lockedAsksForFrance), 'the lock beats the dashboard value')
           .toBeCloseTo(859422.88, 1);
+
+        // ── The period story, answered for the country the dashboard is on ──
+        // Sales for a Period is a story of the Shop itself (owner, 2026-10-10), so this tile offers
+        // it, and its Show Me is ANDed with the dashboard's country like every other question:
+        // Germany's Q3 2026 by category, not the whole shop's quarter that its check pins. The
+        // numbers are .docs/cube-demo-data/truths_stories_21_30.py, "21 on Country Sales".
+        const germanyQuarter = [
+          ['Accessories', 91, 6187.95], ['Audio', 70, 16649.32], ['Cables & Power', 78, 2467.89],
+          ['Displays', 68, 33725.11], ['Networking', 68, 13801.06], ['Peripherals', 91, 11388.26],
+          ['Storage', 104, 23957.49], ['Video', 102, 45162.17],
+        ];
+        const periodAnswered = page.waitForResponse(
+          (r) => r.url().includes('/cube/tabulator_live-shop/query') && r.request().method() === 'POST',
+          { timeout: 90000 },
+        );
+        await page.click('#btnShowMe-sales-for-a-period');
+        expect((await periodAnswered).status(), 'the period story was answered').toBe(200);
+        await expect(page.locator('#chipFilter-OrderDate'), 'the period is a filter the reader can see')
+          .toBeVisible({ timeout: 60000 });
+        await expect(page.locator('#chipDashFilter-Country'), 'and the country is still the dashboard\'s')
+          .toContainText('Country: Germany (dashboard)');
+        const periodRows = async () => page.locator('#cubeRuntimeResult rb-tabulator').first()
+          .evaluate((el: any) => (el.data ?? []).map((row: Record<string, unknown>) => Object.values(row)));
+        await expect
+          .poll(async () => difference(germanyQuarter, await periodRows(), false), { timeout: 60000 })
+          .toBeNull();
+        expect(difference(checksOf('online-sales').get('sales-for-a-period')!.rows, await periodRows(), false),
+          "Germany's quarter is not the whole shop's").not.toBeNull();
       } finally {
         if (externalBrowser) {
           await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);

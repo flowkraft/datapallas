@@ -471,9 +471,8 @@ test.describe('Cube Stories — the cube demo page', () => {
     test.setTimeout(30 * 60_000);
     // Invoices and Payments are two cubes of one file and two cards here, and each offers only its
     // own questions — the helper asserts that, because a card showing the other cube's hints would
-    // be asking about fields it has not got. Sales for a Period is the second cube of the Shop's
-    // own file, and the same rule holds for it.
-    for (const id of ['online-sales', 'shop-for-a-period', 'student-enrollments',
+    // be asking about fields it has not got.
+    for (const id of ['online-sales', 'student-enrollments',
                       'customer-invoices', 'customer-payments']) {
       await walkEveryHint(frame, cardOf(id));
     }
@@ -496,7 +495,7 @@ test.describe('Cube Stories — the cube demo page', () => {
   // ───────────────────────────────────────────────────────────────────────────
   test('(cube-stories) Sales for a Period: the chip the hint leaves, moved and taken off', async () => {
     test.setTimeout(30 * 60_000);
-    const period = cardOf('shop-for-a-period');
+    const period = cardOf('online-sales');
     const checks = checksOf(period.id);
 
     // Q3 2026, by category: the quarter the data is in, which the hint asks for in tokens.
@@ -520,7 +519,7 @@ test.describe('Cube Stories — the cube demo page', () => {
         { timeout: 60_000 })
       .toBeNull();
 
-    // And off with it: no period at all is every order line the cube can see. Still the eight
+    // And off with it: no period at all is every order the Shop holds. Still the eight
     // categories, and not one of them the number the quarter answered.
     await inCard(frame, period.id, '#btnChipRemove-OrderDate').click();
     await expect(inCard(frame, period.id, '#chipFilter-OrderDate'),

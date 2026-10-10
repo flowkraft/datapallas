@@ -622,9 +622,10 @@ class GeneratedSqlAllVendorsTest {
 
 	// ── the cube's own conditions, answered by a dashboard (R1) ──────────────────
 
-	/** Story 21's cube, the one written to be read between two days the viewer picks. */
+	/** Story 21's cube: the Shop itself, whose Ordered filter is the period (owner, 2026-10-10). */
 	private static final String ONLINE_SALES = "retail-ecommerce/online-sales-cube-config.groovy";
-	private static final String FOR_A_PERIOD = "shop-for-a-period";
+	/** The file's own cube, the one without a name. */
+	private static final String THE_SHOP = "";
 
 	/** One set of answers to one cube's conditions, and the rows they must leave behind. */
 	private record Answered(String who, String conditions, Map<String, Object> values,
@@ -807,7 +808,7 @@ class GeneratedSqlAllVendorsTest {
 		try {
 			File config = new File(existing(SAMPLES_CUBES_DIR, "the shipped sample cubes"), ONLINE_SALES);
 			CubeOptions file = CubeOptionsParser.parseGroovyCubeDslCode(Files.readString(config.toPath()));
-			CubeOptions cube = CubeSqlGenerator.pickCube(file, FOR_A_PERIOD);
+			CubeOptions cube = CubeSqlGenerator.pickCube(file, THE_SHOP);
 			cube.setConditions(conditionsOf(ask.conditions()));
 
 			Map<String, Object> request = new LinkedHashMap<>();

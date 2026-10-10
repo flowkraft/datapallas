@@ -89,7 +89,7 @@ class CubeSampleSqlExecutesTest {
 	 * that same DuckDB sample, whose dash_demo schema holds the dashboards demo data.
 	 */
 	private static final List<String> SAMPLE_CUBES = List.of("northwind-sales", "northwind-customers", "northwind-hr",
-			"northwind-inventory", "northwind-warehouse", "online-sales", "shop-for-a-period", "sales-pipeline",
+			"northwind-inventory", "northwind-warehouse", "online-sales", "sales-pipeline",
 			"support-desk", "freight-shipments", "student-enrollments", "customer-invoices", "customer-payments",
 			"invoice-balances", "customer-statement", "depot-network", "student-progress",
 			"dd-sales", "dd-finance", "dd-support");

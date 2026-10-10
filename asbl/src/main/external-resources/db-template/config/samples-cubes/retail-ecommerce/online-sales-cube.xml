@@ -5,10 +5,4 @@
         <description>The online store: every order with its customer, its products and its lines, so the same sale reads by order or by line. Runs on the cube_demo demo data.</description>
         <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
     </cube>
-    <cube>
-        <cubeName>shop-for-a-period</cubeName>
-        <name>Sales for a Period</name>
-        <description>The same online store, for the period the person reading picks: two dates they answer, and every number is of those dates only. Runs on the cube_demo demo data.</description>
-        <connectionId>rbt-sample-northwind-duckdb-4f2</connectionId>
-    </cube>
 </cubes>

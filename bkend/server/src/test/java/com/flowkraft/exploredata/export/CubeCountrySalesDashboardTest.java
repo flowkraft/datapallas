@@ -249,11 +249,10 @@ class CubeCountrySalesDashboardTest {
 		@SuppressWarnings("unchecked")
 		Map<String, Object> visualQuery = (Map<String, Object>) dataSource.get("visualQuery");
 		visualQuery.put("showInDashboard", true);
-		// The five stories this dashboard offers, in the order a reader reads them. A dashboard is
-		// not a cube catalogue: the Online Sales cube answers ten questions, and the five named
+		// The six stories this dashboard offers, in the order a reader reads them. A dashboard is
+		// not a cube catalogue: the Online Sales cube answers ten questions, and the six named
 		// here are the ones that still mean something once a country is picked at the top of the
-		// page. The two that group by Country would answer in one row, and the sale-in-a-period
-		// story belongs to the other cube of that file.
+		// page. The two that group by Country would answer in one row.
 		visualQuery.put("showHints", STORIES);
 		// A live cube publishes no SQL: the dashboard carries the cube, not an answer to it.
 		dataSource.put("generatedSql", "");
@@ -262,7 +261,7 @@ class CubeCountrySalesDashboardTest {
 
 	/** The stories the live tile offers, in the order it offers them (D7). */
 	private static final List<String> STORIES = List.of("revenue-mix", "sales-by-month",
-			"sales-by-city", "discount-by-category", "category-margin");
+			"sales-by-city", "discount-by-category", "category-margin", "sales-for-a-period");
 
 	/** A map whose keys stay in the order they were written in, which is the order they are emitted in. */
 	private static Map<String, Object> ordered(Object... keysAndValues) {
@@ -345,21 +344,21 @@ class CubeCountrySalesDashboardTest {
 		// Both modes on one dashboard: four tiles carry frozen SQL, and the fifth is the cube.
 		assertEquals(shipped(REPORT_ID + "-cube-widgets.json"), files.cubeWidgetsJson());
 
-		// The live tile offers exactly these five stories, in this order (D7): a reader opening the
+		// The live tile offers exactly these six stories, in this order (D7): a reader opening the
 		// dashboard cold is told what the cube can answer, in the words of this dashboard.
 		int at = -1;
 		for (String story : STORIES) {
 			int found = files.cubeWidgetsJson().indexOf("\"" + story + "\"");
-			assertTrue(found > at, "exactly these five ids, in this order: " + story
+			assertTrue(found > at, "exactly these six ids, in this order: " + story
 					+ " in " + files.cubeWidgetsJson());
 			at = found;
 		}
 		// The negative half: the stories that would fight this dashboard are named nowhere, and a
 		// tile that named none would carry no key at all.
 		for (String left : List.of("sales-by-country", "customers-by-country", "what-sells",
-				"customers-by-category", "sales-for-a-period")) {
+				"customers-by-category")) {
 			assertFalse(files.cubeWidgetsJson().contains("\"" + left + "\""),
-					left + " is not one of this dashboard's five: " + files.cubeWidgetsJson());
+					left + " is not one of this dashboard's six: " + files.cubeWidgetsJson());
 		}
 		assertTrue(files.templateHtml().contains("rb-cube-renderer"), files.templateHtml());
 		// The binding rides in the entry, never in the markup and never in a request.

@@ -38,8 +38,9 @@
 // status test is the measure's own filters, so Net Sales means the same thing
 // wherever it is read, beside a Gross Sales that counts every status.
 //
-// This file holds a second cube, 'shop-for-a-period', at the bottom: the same
-// sale read line by line, between two days the viewer picks.
+// A period is the Ordered filter: the sales-for-a-period story presets it to
+// the quarter the data is in, written relative to the data's own today
+// ({dataToday}), and the viewer moves it or takes it off like any other chip.
 //
 // Data: cube_demo.shop_orders (3,000 orders, 240 of them guest orders),
 // cube_demo.shop_order_lines (8,500 lines), cube_demo.shop_products (80) and
@@ -321,92 +322,5 @@ cube {
     title 'Guest orders'
     description 'Orders placed without an account'
     sql "\${CUBE}.customer_id IS NULL"
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// Sales for a Period — the same sale, between two days the viewer picks
-// ════════════════════════════════════════════════════════════════════════════
-//
-// Almost every sales report starts with a period, and this cube is the sale
-// read line by line inside one.
-//
-// The period is not declared here. A cube declares no parameters: a dashboard
-// declares its own, once, in its -report-parameters-spec.groovy, and a cube
-// only uses the names. What a viewer picks on the Cube Stories page is the
-// cube's own date filter on OrderDate - the same chip every other dimension
-// gets - and a hint presets it, written relative to the day the data itself
-// calls today ({dataToday}), never to this machine's clock: the demo data is
-// re-seeded around a moving today, and a fixed day would quietly stop meaning
-// "this quarter".
-//
-// Each end of the period is its own filter, so a viewer who clears the to-date
-// asks "from that day onwards", and one who clears both asks about everything.
-//
-// Grain: one row per order line, which is why this cube counts units and net
-// sales rather than orders: cube_demo.shop_order_lines is the table, and the
-// order and the product are joined many_to_one onto it.
-//
-// What it can answer: what was sold in a period, by category (Units, Net
-// Sales), and what the quarter before or the same quarter a year ago holds -
-// the same question with other dates, which is what the hints show.
-// ════════════════════════════════════════════════════════════════════════════
-
-cube('shop-for-a-period') {
-  sql_table 'cube_demo.shop_order_lines'
-  title 'Sales for a Period'
-  description 'What was sold between two days the viewer picks, by product category'
-  currency 'EUR'
-
-  join {
-    name 'cube_demo.shop_orders'
-    title 'Orders'
-    description 'The order the line is on'
-    sql '${CUBE}.order_id = cube_demo.shop_orders.order_id'
-    relationship 'many_to_one'
-  }
-  join {
-    name 'cube_demo.shop_products'
-    title 'Products'
-    description 'The product on the line'
-    sql '${CUBE}.product_id = cube_demo.shop_products.product_id'
-    relationship 'many_to_one'
-  }
-
-  dimension {
-    name 'OrderDate'
-    title 'Ordered'
-    description 'The day the order the line is on was placed - the period this cube is read by'
-    sql 'cube_demo.shop_orders.order_date'
-    type 'time'
-  }
-  dimension {
-    name 'Category'
-    title 'Category'
-    description 'The product category on the order line'
-    sql 'cube_demo.shop_products.category'
-    type 'string'
-  }
-
-  measure {
-    name 'Units'
-    title 'Units'
-    description 'How many items were sold, on the orders that were neither cancelled nor returned'
-    sql '${CUBE}.qty'
-    type 'sum'
-    filters {
-      filter sql: "cube_demo.shop_orders.status NOT IN ('Cancelled', 'Returned')"
-    }
-  }
-  measure {
-    name 'NetSales'
-    title 'Net Sales'
-    description 'What was sold after the discount on each line, on the orders that were neither cancelled nor returned'
-    sql '${CUBE}.qty * ${CUBE}.unit_price * (100 - ${CUBE}.discount_pct) * 0.01'
-    type 'sum'
-    format 'currency'
-    filters {
-      filter sql: "cube_demo.shop_orders.status NOT IN ('Cancelled', 'Returned')"
-    }
   }
 }

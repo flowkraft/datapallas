@@ -118,7 +118,6 @@ export const CUBE_STORIES_CARDS: CubeCard[] = [
   { id: 'northwind-sales',      title: 'Northwind Sales Analysis',     area: 'Northwind',              domain: 'northwind',           file: 'northwind-sales',     cubeName: '' },
   { id: 'northwind-warehouse',  title: 'Northwind Sales Warehouse',    area: 'Northwind',              domain: 'northwind',           file: 'northwind-warehouse', cubeName: '' },
   { id: 'online-sales',         title: 'Online Sales',                 area: 'Retail & E-commerce',    domain: 'retail-ecommerce',    file: 'online-sales',        cubeName: '' },
-  { id: 'shop-for-a-period',    title: 'Sales for a Period',           area: 'Retail & E-commerce',    domain: 'retail-ecommerce',    file: 'online-sales',        cubeName: 'shop-for-a-period' },
   { id: 'depot-network',        title: 'Depot Network',                area: 'Transport & Logistics',  domain: 'transport-logistics', file: 'depot-network',       cubeName: '' },
   { id: 'freight-shipments',    title: 'Freight Shipments',            area: 'Transport & Logistics',  domain: 'transport-logistics', file: 'freight-shipments',   cubeName: '' },
 ];
@@ -140,10 +139,6 @@ export interface CubeStoriesPanel {
  * cards it holds. The first one is open when the page loads and the other six
  * are closed; opening one closes the rest, which is the browser's own
  * behaviour for a `<details name="industries">` group.
- *
- * `online-sales` is the only Retail card the page has: the second cube of that
- * file, `shop-for-a-period`, is in `CUBE_STORIES_CARDS` above but has no card
- * on the page and no widget in the sample's config.
  */
 export const CUBE_STORIES_PANELS: CubeStoriesPanel[] = [
   { slug: 'crm-sales',           name: 'CRM & Sales',           cubes: '1 cube',  cards: ['sales-pipeline'] },
