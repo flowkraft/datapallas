@@ -206,6 +206,12 @@
       if (!apiKey) apiKey = hostEl.getAttribute("api-key") || "";
       if (!embedToken) embedToken = hostEl.getAttribute('embed-token') || '';
       if (!componentId) componentId = hostEl.getAttribute("component-id") || "";
+      // The filter bar hands a widget its values by putting a fresh element in its place with a
+      // report-params attribute; a widget that does not read it asks for its defaults instead.
+      if (!Object.keys(reportParams).length) {
+        const rp = hostEl.getAttribute('report-params');
+        if (rp) try { reportParams = JSON.parse(rp); } catch(e) {}
+      }
       if (!testMode) {
         const tm = hostEl.getAttribute("test-mode");
         if (tm === "true" || tm === "") testMode = true;
