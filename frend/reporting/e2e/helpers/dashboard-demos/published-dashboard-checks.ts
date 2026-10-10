@@ -237,7 +237,13 @@ export async function reloadDashboard(root: Locator): Promise<void> {
  */
 export async function readParams(root: Locator, demo: Demo): Promise<Record<string, string>> {
   const standing: Record<string, string> = {};
-  for (const param of declaredParams(demo.id)) {
+  const declared = declaredParams(demo.id);
+  // The bar is filled after the dashboard is on the page (a Gallery card loads when it is scrolled
+  // to), and a filter it has not drawn yet would be read as one it does not have.
+  if (declared.length > 0)
+    await expect(root.locator(declared.map((p) => `#${p.id}`).join(', ')).first(),
+      `${demo.id} has drawn its filter bar`).toBeAttached({ timeout: 60_000 });
+  for (const param of declared) {
     const control = root.locator(`#${param.id}`);
     if ((await control.count()) === 0) continue;
     if (await control.evaluate((el) => el.tagName.toLowerCase() === 'button')) {
