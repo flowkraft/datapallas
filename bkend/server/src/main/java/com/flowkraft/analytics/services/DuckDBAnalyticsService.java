@@ -319,7 +319,7 @@ public class DuckDBAnalyticsService {
 
                 // Execute Groovy script to get in-memory data
                 log.debug("Fetching script data for report: {}", reportCode);
-                ReportDataResult scriptResult = fetchReportData(reportCode);
+                ReportDataResult scriptResult = fetchReportData(reportCode, request);
                 List<LinkedHashMap<String, Object>> data = scriptResult.reportData;
 
                 if (data == null || data.isEmpty()) {
@@ -377,7 +377,7 @@ public class DuckDBAnalyticsService {
     /**
      * Execute Groovy script to get in-memory data (reuses existing infrastructure).
      */
-    private ReportDataResult fetchReportData(String reportCode) throws Exception {
+    private ReportDataResult fetchReportData(String reportCode, PivotRequest request) throws Exception {
         // Find report config path (same logic as ReportingService.fetchReportData)
         Path reportsDir = Paths.get(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, "config", "reports", reportCode);
         Path samplesDir = Paths.get(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, "config", "samples", reportCode);
@@ -400,7 +400,13 @@ public class DuckDBAnalyticsService {
 
         // Execute script via CliJob (same as ReportingService.fetchData)
         CliJob cliJob = new CliJob(cfgFilePath);
-        return cliJob.doFetchData(null, false);
+        // The script runs as /data runs it: with the filters the reader set and, when the pivot names
+        // its widget, for that widget - a dashboard's script answers its first widget otherwise, and a
+        // pivot of that has none of the pivot's own columns.
+        Map<String, String> parameters = new HashMap<>(request.getReportParams());
+        if (request.getComponentId() != null && !request.getComponentId().isBlank())
+            parameters.put("componentId", request.getComponentId());
+        return cliJob.doFetchData(parameters, false);
     }
 
     /**

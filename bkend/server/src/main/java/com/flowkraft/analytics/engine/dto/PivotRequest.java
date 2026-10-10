@@ -19,6 +19,18 @@ public class PivotRequest {
     private String reportId;
 
     /**
+     * The pivot widget inside the report. A dashboard's script answers each widget by its id
+     * (the {@code componentId} /data passes it), so a pivot of script data reads this widget's rows.
+     */
+    private String componentId;
+
+    /**
+     * The report parameters a pivot of script data runs the script with: the filters the reader set,
+     * as /data receives them, and then (written by the controller) who is asking.
+     */
+    private Map<String, String> reportParams = new HashMap<>();
+
+    /**
      * INTERNAL: Connection code - resolved from reportId by the backend.
      * Do NOT send this from the client.
      */
@@ -69,6 +81,22 @@ public class PivotRequest {
 
     public void setReportId(String reportId) {
         this.reportId = reportId;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public Map<String, String> getReportParams() {
+        return reportParams;
+    }
+
+    public void setReportParams(Map<String, String> reportParams) {
+        this.reportParams = reportParams == null ? new HashMap<>() : new HashMap<>(reportParams);
     }
 
     public String getConnectionCode() {

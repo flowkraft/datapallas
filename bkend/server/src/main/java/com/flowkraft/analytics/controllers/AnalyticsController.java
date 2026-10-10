@@ -2,6 +2,7 @@ package com.flowkraft.analytics.controllers;
 
 import com.flowkraft.common.AppPaths;
 import com.flowkraft.embed.LockedParams;
+import com.flowkraft.embed.UserVariables;
 import com.flowkraft.iam.dashboards.DashboardAccess;
 import com.flowkraft.iam.limits.ReportAccess;
 import com.flowkraft.iam.limits.LimitsService;
@@ -58,6 +59,10 @@ public class AnalyticsController {
 
     @Autowired
     private LimitsService limitsService;
+
+    /** Who is asking, in the form a report's script compares against (row 0 of the precedence table). */
+    @Autowired
+    private UserVariables userVariables;
 
 
     /**
@@ -255,6 +260,10 @@ public class AnalyticsController {
             // id that is not there — and a limited author, whose report the check cannot read because
             // there is no report, was refused their own pivot.
             reportAccess.assertReportReadable(request.getReportId(), httpRequest);
+            // A pivot of script data runs the report's script, so it runs it as /data does: with the
+            // reader's filters, and with what the session says about every dp_ name written over them,
+            // last, so a reader asking for ?dp_user_id=boss still gets their own rows.
+            request.getReportParams().putAll(userVariables.of(httpRequest));
         }
 
         // A pivot named by table reads that table out of the connection the caller chose, so it

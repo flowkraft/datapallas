@@ -281,7 +281,7 @@
         valueFilter,
         rowOrder,
         colOrder,
-      }, engineToUse);
+      }, engineToUse, componentId || undefined, Object.fromEntries(reportQuery(reportParams)));
 
       // Derive analytics API URL from apiBaseUrl; use origin so we don't depend on its exact path.
       if (apiBaseUrl) {

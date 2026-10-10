@@ -10,6 +10,11 @@ import { withCsrfHeader } from '../../shared/session-request';
 export interface ServerPivotRequest {
   /** Server resolves connectionCode + tableName from the reportId. */
   reportId: string;
+  /** The pivot widget inside the report: a dashboard's script answers each widget by its id, so a
+   *  pivot of script data reads this widget's rows and not the first widget's. */
+  componentId?: string;
+  /** The filters the reader set, as /data gets them: the script that answers the pivot runs with them. */
+  reportParams?: Record<string, string>;
   /** Backend engine (if omitted, backend auto-detects from connection type). */
   engine?: 'duckdb' | 'clickhouse';
   rows?: string[];
@@ -243,10 +248,14 @@ export function buildServerPivotRequest(
     rowOrder?: 'key_a_to_z' | 'key_z_to_a' | 'value_a_to_z' | 'value_z_to_a';
     colOrder?: 'key_a_to_z' | 'key_z_to_a' | 'value_a_to_z' | 'value_z_to_a';
   },
-  engine?: 'duckdb' | 'clickhouse'
+  engine?: 'duckdb' | 'clickhouse',
+  componentId?: string,
+  reportParams?: Record<string, string>,
 ): ServerPivotRequest {
   return {
     reportId,
+    ...(componentId ? { componentId } : {}),
+    ...(reportParams && Object.keys(reportParams).length > 0 ? { reportParams } : {}),
     engine,
     rows: state.rows || [],
     cols: state.cols || [],
