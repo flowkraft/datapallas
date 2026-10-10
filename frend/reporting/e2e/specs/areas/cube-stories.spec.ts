@@ -1321,7 +1321,7 @@ test.describe('Cube Stories — the cube demo page', () => {
       .toEqual(['hint-deals-by-stage']);
 
     // ── A tick by hand: the selection is the reader's own, so the mark goes ────
-    await inCard(frame, pipeline.id, '#meas-Deals').click();
+    await inCard(frame, pipeline.id, '#chk-meas-Deals').click();
     await expect
       .poll(async () => (await laidOut()).marked.length, { timeout: 30_000 })
       .toBe(0);
