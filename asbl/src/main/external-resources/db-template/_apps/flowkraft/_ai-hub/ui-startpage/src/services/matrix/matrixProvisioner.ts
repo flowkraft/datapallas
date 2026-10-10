@@ -1154,7 +1154,8 @@ export async function provisionMatrixRooms(options?: {
   // -------------------------------------------------------------------------
   console.log('\n📝 Step 1b: Registering kraftbot user...');
   try {
-    const kraftbotPassword = process.env.KRAFTBOT_PASSWORD || 'kraftbot';
+    // The installation's API key, the file baibot reads its password from (BAIBOT_USER_PASSWORD_FILE).
+    const kraftbotPassword = process.env.KRAFTBOT_PASSWORD || readDataPallasApiKey();
     await registerUserWithSharedSecret({
       username: kraftbotUsername,
       password: kraftbotPassword,

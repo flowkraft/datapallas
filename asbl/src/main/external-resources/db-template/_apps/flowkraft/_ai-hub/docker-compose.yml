@@ -250,6 +250,9 @@ services:
       - BAIBOT_SEND_N_NEWEST_MESSAGES=1
       - BAIBOT_CONFIG_FILE_PATH=/app/config.yml
       - BAIBOT_PERSISTENCE_DATA_DIR_PATH=/data
+      # kraftbot's password is the installation's API key, read from the file at every start; the AI Hub
+      # makes the account with the same key (lib/kraftbot-account.ts). Nothing published in config.yml.
+      - BAIBOT_USER_PASSWORD_FILE=/app/config/_internal/api-key.txt
     volumes:
       - ./config/baibot/config.yml:/app/config.yml:ro
       # DataPallas config/_internal, read-only — where the agents' api_key_file points

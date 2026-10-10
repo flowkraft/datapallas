@@ -1,3 +1,4 @@
+import { readDataPallasApiKey } from './datapallas-api-key';
 import { getConfig } from '@/lib/db';
 import { getActiveProviderConfig, type LLMFullConfig } from '@/lib/llm-providers';
 
@@ -54,7 +55,8 @@ async function checkMatrixBotReady(): Promise<boolean> {
   const base = process.env.MATRIX_HOMESERVER_URL || 'http://flowkraft-ai-hub-matrix-synapse:8008';
   const server = process.env.MATRIX_SERVER_NAME || 'localhost';
   const kraftbot = process.env.KRAFTBOT_USERNAME || 'kraftbot';
-  const kraftbotPass = process.env.KRAFTBOT_PASSWORD || 'kraftbot';
+  // The installation's API key, the file baibot reads its password from (BAIBOT_USER_PASSWORD_FILE).
+  const kraftbotPass = process.env.KRAFTBOT_PASSWORD || readDataPallasApiKey();
   try {
     // Log in as kraftbot with a fixed device_id (reuses one probe session — no device spam).
     // This login does NOT sync, so it can't itself set presence "online"; only baibot's sync does.

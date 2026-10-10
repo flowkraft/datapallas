@@ -6,7 +6,9 @@ homeserver:
 
 user:
   mxid_localpart: kraftbot
-  password: kraftbot
+  # Never written here: baibot reads it at start from BAIBOT_USER_PASSWORD_FILE (docker-compose.yml),
+  # the installation's own config/_internal/api-key.txt, and refuses to start without it.
+  password: ""
 
   # The name the bot uses as a display name and when it refers to itself.
   name: kraftbot

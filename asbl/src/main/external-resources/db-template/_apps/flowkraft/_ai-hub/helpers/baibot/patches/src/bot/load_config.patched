@@ -1,7 +1,8 @@
 // Patched from https://raw.githubusercontent.com/etkecc/baibot/v1.13.0/src/bot/load_config.rs
 // Implements BAIBOT_SEND_N_NEWEST_MESSAGES=N (e.g., =1) for Letta integration.
 // Letta manages its own conversation memory, so we only need to send the last N messages.
-// Also implements `api_key_file` on static agent definitions (see resolve_agent_api_key_files).
+// Also implements `api_key_file` on static agent definitions (see resolve_agent_api_key_files)
+// and BAIBOT_USER_PASSWORD_FILE (see resolve_user_password_file).
 
 use std::env;
 use std::path::PathBuf;
@@ -141,12 +142,39 @@ pub fn load() -> anyhow::Result<Config> {
         }
     }
 
+    // FlowKraft Patch: The bot's own password from the file named by BAIBOT_USER_PASSWORD_FILE
+    resolve_user_password_file(&mut config)?;
+
     // FlowKraft Patch: Fill static agents' api_key from the file named by their api_key_file
     resolve_agent_api_key_files(&mut config);
 
     config.validate().map_err(|s| anyhow!(s))?;
 
     Ok(config)
+}
+
+// FlowKraft Patch: BAIBOT_USER_PASSWORD_FILE.
+//
+// kraftbot's password is the installation's API key (config/_internal/api-key.txt), which the AI
+// Hub also makes the account with, so no password is ever written into config.yml or published.
+// The trimmed content of the named file becomes user.password. A file that is named but cannot be
+// read, or is empty, stops the bot with an error saying so: there is no public password to fall
+// back to, and a bot that logged in with one would be the hole this closes.
+fn resolve_user_password_file(config: &mut Config) -> anyhow::Result<()> {
+    let Ok(path) = env::var("BAIBOT_USER_PASSWORD_FILE") else {
+        return Ok(());
+    };
+
+    let contents = std::fs::read_to_string(&path)
+        .map_err(|err| anyhow!("BAIBOT_USER_PASSWORD_FILE ({}) cannot be read: {}", path, err))?;
+    let password = contents.trim();
+    if password.is_empty() {
+        return Err(anyhow!("BAIBOT_USER_PASSWORD_FILE ({}) is empty", path));
+    }
+
+    config.user.password = password.to_owned();
+    eprintln!("baibot: user.password loaded from {}", path);
+    Ok(())
 }
 
 // FlowKraft Patch: `api_key_file` on static agent definitions.
