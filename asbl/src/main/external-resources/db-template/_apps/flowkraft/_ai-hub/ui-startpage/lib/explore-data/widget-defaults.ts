@@ -19,6 +19,7 @@ import {
 } from "./smart-defaults";
 import { pickWidget, type PickShape } from "./smart-defaults/widget-picker";
 import { pickColumnFormat } from "./type-formatters";
+import { aggregateColumnName } from "./sql-builder";
 
 /** Return only the raw ColumnSchema entries whose column names appear in
  *  `widget.shape.dims`.  Used by config panels (MapConfig, TrendConfig,
@@ -107,9 +108,9 @@ export function synthesizePostAggColumns(
   }
   for (const s of (visualQuery.summarize ?? [])) {
     result.push({
-      // COUNT of rows is written as COUNT(*) under the name `count` (the SQL builder's alias).
-      columnName: s.field === "*" && (s.aggregation as string).toUpperCase() === "COUNT"
-        ? "count" : `${s.field}_${(s.aggregation as string).toLowerCase()}`,
+      // The name the SQL builder writes it under: `count` for COUNT(*), `_pct` for a share,
+      // `_running` for a running total - the result's own column, before the result is there.
+      columnName: aggregateColumnName(visualQuery, s),
       typeName: "DOUBLE",
       isNullable: true,
     });

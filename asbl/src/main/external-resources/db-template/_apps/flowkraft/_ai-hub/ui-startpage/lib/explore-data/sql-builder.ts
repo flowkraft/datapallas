@@ -854,6 +854,14 @@ export function runsAsRunningTotal(query: VisualQuery, agg: SummarizeEntry): boo
 }
 
 /**
+ * The name one aggregate of this query comes back under: the column the SQL writes it as, a share
+ * and a running total included. Whatever names a result column before the result is there asks here.
+ */
+export function aggregateColumnName(query: VisualQuery, agg: SummarizeEntry): string {
+  return aggregateAlias(agg, runsAsRunningTotal(query, agg));
+}
+
+/**
  * The alias an aggregate is written under in the SELECT - `count` for a
  * COUNT(*), `<field>_<fn>` for every other one - which is also the name a sort
  * key uses to ask for it.
