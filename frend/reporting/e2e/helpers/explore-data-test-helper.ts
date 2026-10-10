@@ -814,21 +814,27 @@ async function dragWidgetsIntoPlace(
   const MARGIN  = 12;
   const PAD     = MARGIN;
 
+  // The grid is as wide as the panels beside it leave it: the settings panel of the widget added
+  // last is open when the drags start, and the first drag on the canvas closes it, so the grid
+  // widens. Its geometry is therefore measured afresh before every drag, never once for all.
   const grid = page.locator('.react-grid-layout').first();
-  const gridBox = await grid.boundingBox();
-  if (!gridBox) throw new Error('layoutWidgetsByDrag: grid container not found');
-  const colW = (gridBox.width - MARGIN * (COLS - 1) - 2 * PAD) / COLS;
-
-  const toPxW = (w: number) => w * colW + (w - 1) * MARGIN;
-  const toPxH = (h: number) => h * ROW_H + (h - 1) * MARGIN;
-  const toPxX = (x: number) => gridBox.x + PAD + x * (colW + MARGIN);
-  const toPxY = (y: number) => gridBox.y + PAD + y * (ROW_H + MARGIN);
-  const placeOf = (box: { x: number; y: number; width: number; height: number }): GridPos => ({
-    x: Math.round((box.x - gridBox.x - PAD) / (colW + MARGIN)),
-    y: Math.round((box.y - gridBox.y - PAD) / (ROW_H + MARGIN)),
-    w: Math.round((box.width + MARGIN) / (colW + MARGIN)),
-    h: Math.round((box.height + MARGIN) / (ROW_H + MARGIN)),
-  });
+  const geometry = async () => {
+    const gridBox = await grid.boundingBox();
+    if (!gridBox) throw new Error('layoutWidgetsByDrag: grid container not found');
+    const colW = (gridBox.width - MARGIN * (COLS - 1) - 2 * PAD) / COLS;
+    return {
+      toPxW: (w: number) => w * colW + (w - 1) * MARGIN,
+      toPxH: (h: number) => h * ROW_H + (h - 1) * MARGIN,
+      toPxX: (x: number) => gridBox.x + PAD + x * (colW + MARGIN),
+      toPxY: (y: number) => gridBox.y + PAD + y * (ROW_H + MARGIN),
+      placeOf: (box: { x: number; y: number; width: number; height: number }): GridPos => ({
+        x: Math.round((box.x - gridBox.x - PAD) / (colW + MARGIN)),
+        y: Math.round((box.y - gridBox.y - PAD) / (ROW_H + MARGIN)),
+        w: Math.round((box.width + MARGIN) / (colW + MARGIN)),
+        h: Math.round((box.height + MARGIN) / (ROW_H + MARGIN)),
+      }),
+    };
+  };
 
   const handles = await page.locator('[id^="widgetDragHandle-"]').all();
   if (handles.length !== targets.length) {
@@ -848,6 +854,7 @@ async function dragWidgetsIntoPlace(
 
       // ── Resize by delta: drag .react-resizable-handle by (Δw, Δh) in px ──
       const resizeTo = async (): Promise<void> => {
+        const { toPxW, toPxH, placeOf } = await geometry();
         const pre = await handle.boundingBox();
         if (!pre) return;
         const now = placeOf(pre);
@@ -866,6 +873,7 @@ async function dragWidgetsIntoPlace(
 
       // ── Move by delta: grab the widget header, drag by (Δx, Δy) in px ──
       const moveTo = async (): Promise<void> => {
+        const { toPxX, toPxY, placeOf } = await geometry();
         const post = await handle.boundingBox();
         if (!post) return;
         const at = placeOf(post);
@@ -885,7 +893,7 @@ async function dragWidgetsIntoPlace(
       // first and then moved, and one that grows is moved first and then sized.
       const box = await handle.boundingBox();
       if (!box) continue;
-      if (t.w <= placeOf(box).w) { await resizeTo(); await moveTo(); }
+      if (t.w <= (await geometry()).placeOf(box).w) { await resizeTo(); await moveTo(); }
       else { await moveTo(); await resizeTo(); }
     }
     if (!moved) break;
