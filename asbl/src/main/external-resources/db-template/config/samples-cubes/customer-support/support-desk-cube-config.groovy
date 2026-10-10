@@ -41,14 +41,18 @@ cube {
 
   // ── Who sees which rows (story 31) ──
   // An agent sees their own team's tickets, a support manager sees the desk, and
-  // an admin or an author sees everything. The three lines are the author's SQL;
-  // nothing in the product knows these rules, and the ${dp_} values are bound a
-  // moment before the statement runs, never pasted into this text.
+  // an admin or an author sees everything. A share link has nobody behind it, so
+  // the first three lines show it nothing; the fourth lets a link read the whole
+  // desk when its author made it with the attribute desk = all, a grant written
+  // on the link itself. The four lines are the author's SQL; nothing in the
+  // product knows these rules, and the ${dp_} values are bound a moment before
+  // the statement runs, never pasted into this text.
   access_filter '''${CUBE}.agent_id IN (
       SELECT a.agent_id FROM cube_demo.support_agents a
       WHERE a.team = (SELECT b.team FROM cube_demo.support_agents b WHERE b.email = ${dp_user_email}))
   OR 'support-managers' IN (${dp_user_groups})
-  OR ${dp_user_role} IN ('admin', 'report-author', 'platform-admin')'''
+  OR ${dp_user_role} IN ('admin', 'report-author', 'platform-admin')
+  OR 'all' = ${dp_attr_desk}'''
 
   join {
     name 'cube_demo.support_agents'

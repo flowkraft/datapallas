@@ -265,7 +265,7 @@
       <p class="card-area" id="cube-support-desk-area">Customer Support</p>
       <h3 class="card-title">Support Desk</h3>
       <p class="card-grain"><strong>Grain:</strong> One row per ticket (cube_demo.support_tickets)</p>
-      <p class="card-rows"><strong>Who sees which rows:</strong> an agent sees their own team&rsquo;s tickets, and the desk finds the team from the email they signed in with; the <em>support-managers</em> group, an admin and a report author see the whole desk. It is the cube&rsquo;s own rule, written in its SQL, and it is on every answer this card gives &mdash; totals and drill included.</p>
+      <p class="card-rows"><strong>Who sees which rows:</strong> an agent sees their own team&rsquo;s tickets, and the desk finds the team from the email they signed in with; the <em>support-managers</em> group, an admin and a report author see the whole desk. A share link has nobody behind it and sees none of them, unless it was made with the attribute <em>desk = all</em>, which lets it read the whole desk, as this page&rsquo;s own link does. It is the cube&rsquo;s own rule, written in its SQL, and it is on every answer this card gives &mdash; totals and drill included.</p>
       <rb-cube-renderer report-id="g-cube-stories" component-id="support-desk"
         api-base-url="http://localhost:9090/api"></rb-cube-renderer>
     </div>

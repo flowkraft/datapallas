@@ -1183,8 +1183,9 @@ class CubeRuntimeServiceTest {
 	// ═══════════════════════════════════════════════════════════════════════════
 
 	/**
-	 * The desk's rule has three lines - your own team, the managers' group, and the roles that see
-	 * everything - and all three are the author's SQL. What the runtime owes them is the same on
+	 * The desk's rule has four lines - your own team, the managers' group, the roles that see
+	 * everything, and a share link made with the attribute desk = all - and all four are the
+	 * author's SQL. What the runtime owes them is the same on
 	 * every line: the condition is in the statement with a placeholder where the person goes, and
 	 * the person arrives as a bound value. These five tests are that promise, once per kind of
 	 * person who opens the card; which rows each of them then gets back is the vendor loop's
@@ -1270,6 +1271,29 @@ class CubeRuntimeServiceTest {
 		assertEquals("", database.params.get("dp_user_email"), "Nobody, which matches no agent");
 		assertEquals("", database.params.get("dp_user_role"), "And no role, which is none of the three");
 		assertEquals(List.of(""), database.params.get("dp_user_groups"));
+		assertTrue(database.sql.contains("'all' = :dp_attr_desk"), "The grant's line is there too: " + database.sql);
+		assertEquals("", database.params.get("dp_attr_desk"),
+				"A link made without the attribute grants nothing, which is not 'all'");
+	}
+
+	/**
+	 * A share link made with the attribute desk = all (owner, 2026-10-10): the fourth line lets it
+	 * read the whole desk. The grant is the link's, bound like every other value and never written
+	 * into the statement, and the three lines about a person stay as they are, empty.
+	 */
+	@Test
+	void aShareLinkMadeWithTheDeskAttributeReadsTheWholeDesk() throws Exception {
+
+		Map<String, String> link = atTheDesk("", "", "");
+		link.put("dp_attr_desk", "all");
+		runtime.query("sales-board", "cube31", deskAsked(), link);
+
+		assertTrue(database.sql.contains("'all' = :dp_attr_desk"),
+				"The grant is the author's text, the link's value is bound: " + database.sql);
+		assertEquals("all", database.params.get("dp_attr_desk"));
+		assertFalse(database.sql.contains("'all' = 'all'"), "Nothing is written into the SQL: " + database.sql);
+		assertEquals("", database.params.get("dp_user_email"), "Still nobody behind it");
+		assertEquals("", database.params.get("dp_user_role"));
 	}
 
 	/** The card's own question: this morning's plate, by priority. */

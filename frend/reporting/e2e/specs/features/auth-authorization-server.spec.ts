@@ -5489,9 +5489,9 @@ test.describe('Auth — Server: signing in and out', () => {
 // § Story 31 — My Team's Tickets: the desk's own rule about who reads which rows
 // ══════════════════════════════════════════════════════════════════════════
 //
-// The Support Desk cube ships an `access_filter` with three lines: an agent sees their own team's
-// tickets, the `support-managers` group sees the desk, and an admin or a report author sees
-// everything. Nothing in the product knows those rules — they are the author's SQL, and the
+// The Support Desk cube ships an `access_filter` whose first three lines are about the person: an
+// agent sees their own team's tickets, the `support-managers` group sees the desk, and an admin or
+// a report author sees everything (the fourth is a share link's grant, `desk = all`). Nothing in the product knows those rules — they are the author's SQL, and the
 // `${dp_}` values in them are bound from the session a moment before the statement runs.
 //
 // Only a running server can say whether the person who signed in is the person the rule is

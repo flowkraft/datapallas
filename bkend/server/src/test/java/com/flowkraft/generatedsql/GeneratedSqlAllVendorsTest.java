@@ -511,6 +511,73 @@ class GeneratedSqlAllVendorsTest {
 		for (Viewer viewer : VIEWERS) {
 			answers.add(askAsViewer(jdbi, vendor, generated, viewer));
 		}
+		answers.addAll(askTheShippedDeskAsALink(jdbi, vendor));
+		return answers;
+	}
+
+	/**
+	 * Two share links asking the shipped Support Desk, its own access_filter untouched (owner,
+	 * 2026-10-10). A link has nobody behind it, so the three lines about a person leave it nothing;
+	 * the fourth lets it read the whole desk when it was made with the attribute desk = all. The
+	 * link made without it is the attribute missing altogether, bound empty as the runtime binds
+	 * it. The desk by priority is support_tickets as the demo data holds it, 3,000 tickets.
+	 */
+	private static final List<Viewer> SHIPPED_DESK_LINKS = List.of(
+			new Viewer("a share link made with desk = all: the whole desk",
+					new LinkedHashMap<>(Map.of("dp_attr_desk", "all")),
+					List.of(List.of("High", 685), List.of("Low", 805), List.of("Normal", 1172),
+							List.of("Urgent", 338))),
+			new Viewer("a share link made without the attribute: nothing", new LinkedHashMap<>(), List.of()));
+
+	/** The shipped desk, generated once per vendor and bound for each link the way the runtime binds it. */
+	private List<String> askTheShippedDeskAsALink(Jdbi jdbi, String vendor) {
+
+		CubeQuery generated;
+		try {
+			File config = new File(existing(SAMPLES_CUBES_DIR, "the shipped sample cubes"), SUPPORT_DESK);
+			CubeOptions cube = CubeOptionsParser.parseGroovyCubeDslCode(Files.readString(config.toPath()));
+			generated = CubeSqlGenerator.buildQuery(cube,
+					Map.of("dimensions", List.of("Priority"), "measures", List.of("Tickets")), vendor);
+		} catch (Exception broken) {
+			return List.of("\n=== " + vendor + " | shipped desk filter | - ===\n  the SQL was not generated: " + broken);
+		}
+		if (!generated.getSql().contains("${dp_attr_desk}")) {
+			return List.of("\n=== " + vendor + " | shipped desk filter | - ===\n  the shipped filter has no grant"
+					+ " for a share link\n  SQL: " + generated.getSql());
+		}
+
+		List<String> answers = new ArrayList<>();
+		for (Viewer link : SHIPPED_DESK_LINKS) {
+			Map<String, String> values = new LinkedHashMap<>();
+			link.values.forEach((name, value) -> values.put(name, String.valueOf(value)));
+			CubeQuery bound = CubeVariableBinding.bound(generated, values);
+			String sql = bound.getSql();
+			Map<String, Object> binds = bound.getParams() == null ? Map.of() : bound.getParams();
+
+			List<List<Object>> actual;
+			try {
+				actual = jdbi.withHandle(handle -> {
+					org.jdbi.v3.core.statement.Query query = handle.createQuery(sql);
+					for (Map.Entry<String, Object> bind : binds.entrySet()) {
+						if (bind.getValue() instanceof List<?> list) query.bindList(bind.getKey(), list);
+						else query.bind(bind.getKey(), bind.getValue());
+					}
+					return query.map((resultSet, context) -> {
+						List<Object> row = new ArrayList<>();
+						for (int column = 1; column <= resultSet.getMetaData().getColumnCount(); column++) {
+							row.add(resultSet.getObject(column));
+						}
+						return row;
+					}).list();
+				});
+			} catch (Exception broken) {
+				answers.add(reportViewer(vendor, link, sql,
+						"the database refused it: " + broken + " (parameters " + binds + ")"));
+				continue;
+			}
+			String difference = difference(link.rows, actual, false);
+			answers.add(difference == null ? null : reportViewer(vendor, link, sql, difference));
+		}
 		return answers;
 	}
 

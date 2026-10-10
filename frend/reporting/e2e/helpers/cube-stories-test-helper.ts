@@ -965,6 +965,9 @@ export async function createCubeStoriesShareLink(
     body: JSON.stringify({
       reportId: CUBE_STORIES_REPORT_ID,
       ...(lockedParams ? { lockedParams } : {}),
+      // The page's own link reads the whole Support Desk: a link has nobody behind it, and the
+      // desk's access_filter admits it only on this grant (owner, 2026-10-10).
+      attributes: { desk: 'all' },
     }),
   });
   expect(created.status, 'a share link for the Cube Stories page').toBe(200);
