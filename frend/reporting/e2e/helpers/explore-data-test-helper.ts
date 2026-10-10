@@ -847,42 +847,46 @@ async function dragWidgetsIntoPlace(
       const t = targets[i];
 
       // ── Resize by delta: drag .react-resizable-handle by (Δw, Δh) in px ──
-      const pre = await handle.boundingBox();
-      if (!pre) continue;
-      const now = placeOf(pre);
-      if (now.w !== t.w || now.h !== t.h) {
-        const resize = handle.locator('.react-resizable-handle').first();
-        const rBox = await resize.boundingBox();
-        if (rBox) {
-          const deltaW = toPxW(t.w) - pre.width;
-          const deltaH = toPxH(t.h) - pre.height;
-          const sx = rBox.x + rBox.width  / 2;
-          const sy = rBox.y + rBox.height / 2;
-          await page.mouse.move(sx, sy);
-          await page.mouse.down();
-          await page.mouse.move(sx + deltaW, sy + deltaH, { steps: 15 });
-          await page.mouse.up();
-          await page.waitForTimeout(400);
-          moved = true;
-        }
-      }
+      const resizeTo = async (): Promise<void> => {
+        const pre = await handle.boundingBox();
+        if (!pre) return;
+        const now = placeOf(pre);
+        if (now.w === t.w && now.h === t.h) return;
+        const rBox = await handle.locator('.react-resizable-handle').first().boundingBox();
+        if (!rBox) return;
+        const sx = rBox.x + rBox.width  / 2;
+        const sy = rBox.y + rBox.height / 2;
+        await page.mouse.move(sx, sy);
+        await page.mouse.down();
+        await page.mouse.move(sx + toPxW(t.w) - pre.width, sy + toPxH(t.h) - pre.height, { steps: 15 });
+        await page.mouse.up();
+        await page.waitForTimeout(400);
+        moved = true;
+      };
 
       // ── Move by delta: grab the widget header, drag by (Δx, Δy) in px ──
-      const post = await handle.boundingBox();
-      if (!post) continue;
-      const at = placeOf(post);
-      if (at.x !== t.x || at.y !== t.y) {
-        const dx = toPxX(t.x) - post.x;
-        const dy = toPxY(t.y) - post.y;
+      const moveTo = async (): Promise<void> => {
+        const post = await handle.boundingBox();
+        if (!post) return;
+        const at = placeOf(post);
+        if (at.x === t.x && at.y === t.y) return;
         const grabX = post.x + 40;
         const grabY = post.y + 14;
         await page.mouse.move(grabX, grabY);
         await page.mouse.down();
-        await page.mouse.move(grabX + dx, grabY + dy, { steps: 20 });
+        await page.mouse.move(grabX + toPxX(t.x) - post.x, grabY + toPxY(t.y) - post.y, { steps: 20 });
         await page.mouse.up();
         await page.waitForTimeout(400);
         moved = true;
-      }
+      };
+
+      // The grid keeps a widget inside its 12 columns: a widget made wider where it stands is cut
+      // at the right edge, and one moved right is stopped there. So a widget that shrinks is sized
+      // first and then moved, and one that grows is moved first and then sized.
+      const box = await handle.boundingBox();
+      if (!box) continue;
+      if (t.w <= placeOf(box).w) { await resizeTo(); await moveTo(); }
+      else { await moveTo(); await resizeTo(); }
     }
     if (!moved) break;
   }
