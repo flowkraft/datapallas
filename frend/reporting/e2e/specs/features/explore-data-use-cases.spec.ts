@@ -5959,7 +5959,7 @@ return ctx.dbSql.rows(sql)`,
 
       // ── the live tile, asked the way the renderer asks it ──
       const liveId = (d41Ids['tabulator'] ?? [])[0];
-      const askCube = async (body: Record<string, unknown>): Promise<number> =>
+      const askRaw = async (body: Record<string, unknown>): Promise<{ status: number; body: string }> =>
         page.evaluate(async ({ rc, cid, b }) => {
           // Echo the CSRF token as the app does: the Server rejects a session POST without it.
           const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
@@ -5968,22 +5968,31 @@ return ctx.dbSql.rows(sql)`,
             headers: { 'Content-Type': 'application/json', ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}) },
             body: JSON.stringify({ dimensions: ['Team'], measures: ['Tickets'], filters: [], ...b }),
           });
-          const payload = await r.json();
-          return (payload.rows as Record<string, unknown>[])
-            .reduce((sum, row) => sum + Number(row.Tickets), 0);
+          return { status: r.status, body: await r.text() };
         }, { rc: d41ReportCode, cid: liveId, b: body });
+      const askCube = async (body: Record<string, unknown>): Promise<number> => {
+        const answer = await askRaw(body);
+        expect(answer.status, `the live cube answers ${JSON.stringify(body)}: ${answer.body}`).toBe(200);
+        return (JSON.parse(answer.body).rows as Record<string, unknown>[])
+          .reduce((sum, row) => sum + Number(row.Tickets), 0);
+      };
 
       expect(await askCube({}), 'the live cube reads the same binding').toBe(2959);
 
       // The negative half, twice. A viewer who sends the reserved name is not answering it:
-      // the server never reads it off a request, and the number does not move.
-      expect(await askCube({ params: { dp_user_id: 'Chiara Muller' } }),
-        'a reserved name sent in the request is not a value the server takes').toBe(2959);
-      // Nor is a binding sent in the body a binding: the published entry decides what is
-      // bound, and this request would otherwise show one agent's own tickets.
+      // the server never reads it off a request. It is no parameter this dashboard declares, so
+      // the request is refused by name (DashboardParameters.refuseUndeclared, since 52f8f42f)
+      // rather than answered as though the name had been taken, or dropped without a word.
+      const reserved = await askRaw({ params: { dp_user_id: 'Chiara Muller' } });
+      expect(reserved.status, 'a reserved name sent in the request is not a value the server takes')
+        .toBe(400);
+      expect(reserved.body, 'and the refusal names it').toContain("'dp_user_id'");
+      // Nor is a binding sent in the body a binding: the published entry decides what is bound.
+      // This body binds the dashboard's own parameter (declared, so it is not refused) to Agent
+      // and answers it with one agent's name; taken, it would show that agent's own tickets.
       expect(await askCube({
-        paramBindings: [{ param: 'dp_user_id', member: 'Agent', operator: 'equals' }],
-        params: { dp_user_id: 'Chiara Muller' },
+        paramBindings: [{ param: 'team', member: 'Agent', operator: 'equals' }],
+        params: { team: 'Chiara Muller' },
       }), 'and a binding sent in the body is not one either').toBe(2959);
 
       // The viewer's own ticks are ANDed with it, never instead of it: one team's tickets
