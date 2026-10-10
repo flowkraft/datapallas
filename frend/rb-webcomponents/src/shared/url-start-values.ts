@@ -108,13 +108,22 @@ export function joinEscaped(values: any[]): string {
 
 /** The option values this parameter offers, or null when it offers no list. */
 function optionValues(p: StartValueParam): string[] | null {
-  const opts = (p.uiHints as any)?.options;
+  const own = ownOptionValues(p);
+  return own ? own.map(v => String(v)) : null;
+}
+
+/**
+ * The options' own values, as the control holds them (a number stays a number), from the same list
+ * `loadOptions` draws: the control's options or, when it names none, the parameter's allowedValues.
+ */
+function ownOptionValues(p: StartValueParam): any[] | null {
+  const opts = (p.uiHints as any)?.options ?? (p as any).constraints?.allowedValues;
   if (!Array.isArray(opts) || opts.length === 0) return null;
   // The three shapes `loadOptions` accepts: plain values, {label, value}, and [value, label].
   return opts.map(o => {
-    if (Array.isArray(o) && o.length >= 2 && typeof o[0] !== 'object') return String(o[0]);
-    if (typeof o === 'object' && o !== null && 'value' in o) return String((o as any).value);
-    return String(o);
+    if (Array.isArray(o) && o.length >= 2 && typeof o[0] !== 'object') return o[0];
+    if (typeof o === 'object' && o !== null && 'value' in o) return (o as any).value;
+    return o;
   });
 }
 
@@ -171,9 +180,13 @@ export function acceptValue(
   }
 
   if (control === 'select' || control === 'radio') {
-    const known = optionValues(p);
-    if (known && !known.includes(text)) return reject('it is not one of its options');
-    return { ok: true, value: text };
+    const own = ownOptionValues(p);
+    if (!own) return { ok: true, value: text };
+    // The option's own value, not the text it was written as: a select shows the option whose value
+    // IS the one it holds, so a 5 out of a link or a story must stand as the option's number 5.
+    const option = own.find(v => String(v) === text);
+    if (option === undefined) return reject('it is not one of its options');
+    return { ok: true, value: option };
   }
 
   // text, date, datetime and anything that fell back to a text box: the value travels as the reader
