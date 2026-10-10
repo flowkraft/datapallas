@@ -122,14 +122,13 @@ export function PivotWidget({ widgetId }: PivotWidgetProps) {
       : result.data.filter((row) => dimCols.every((c) => row[c] !== null && row[c] !== undefined && row[c] !== ""));
 
     if (dimCols.length > 0) {
-      const rowDistinct = pivotRows.reduce(
-        (acc, c) => acc * Math.max(1, new Set(filteredData.map((r) => r[c])).size),
-        1,
-      );
-      const colDistinct = pivotCols.reduce(
-        (acc, c) => acc * Math.max(1, new Set(filteredData.map((r) => r[c])).size),
-        1,
-      );
+      // The cross-tab has a row per combination of the row fields that occurs in the data, and a
+      // column per such combination of the column fields: a product's sku and name are one column
+      // key each, not sku x name. Multiplying each field's own count refused pivots it could draw.
+      const keysOf = (fields: string[]) =>
+        Math.max(1, new Set(filteredData.map((r) => JSON.stringify(fields.map((c) => r[c])))).size);
+      const rowDistinct = keysOf(pivotRows);
+      const colDistinct = keysOf(pivotCols);
       if (rowDistinct * colDistinct > MAX_PIVOT_CELLS) {
         const el = ref.current as HTMLElement & { data?: unknown; options?: unknown };
         el.data = [];
