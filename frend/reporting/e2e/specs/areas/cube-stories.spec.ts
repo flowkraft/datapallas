@@ -1043,7 +1043,7 @@ test.describe('Cube Stories — the cube demo page', () => {
     // MySQL quotes with backticks, which is the thing ANSI has no form for.
     const sales = cardOf('northwind-sales');
     await openSql(frame, sales.id);
-    await expect(inCard(frame, sales.id, '#cubeRuntimeSql')).toContainText('sqlite');
+    await expect(inCard(frame, sales.id, '#cubeRuntimeSql')).toContainText('the rows come from SQLite');
     const rowsBefore = await drawnRows(frame, sales.id);
 
     await chooseSqlVendor(frame, sales.id, 'mysql');
