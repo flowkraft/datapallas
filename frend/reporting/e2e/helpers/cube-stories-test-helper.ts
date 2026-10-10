@@ -484,8 +484,10 @@ async function tickedNow(frame: Frame, cubeId: string): Promise<string[]> {
  */
 export async function clickShowMe(frame: Frame, cubeId: string, askId: string): Promise<Array<Record<string, unknown>>> {
   const page = frame.page();
-  // The panels are one accordion: a card whose panel another card's panel has closed is hidden.
-  await openCardsPanel(frame, cubeId);
+  // The card answered its own first question before the click: a card is loaded when its panel is
+  // opened, and that first `/query` is not the one the click sends. (`waitForCard` opens the panel
+  // too: the panels are one accordion, and a card whose panel another one closed is hidden.)
+  await waitForCard(frame, cubeId);
   const showMe = inCard(frame, cubeId, `#hint-${askId} #btnShowMe-${askId}`);
   await expect(showMe, `the ${cubeId} card offers a Show Me for ${askId}`).toBeVisible({ timeout: 30_000 });
 
@@ -502,9 +504,10 @@ export async function clickShowMe(frame: Frame, cubeId: string, askId: string): 
   const body = await response.json();
   expect(body.truncated, `${cubeId}/${askId}: a cut answer is not the hint's answer`).toBeFalsy();
 
-  // What came back is not yet what is drawn; the assertion is on what is drawn.
+  // What came back is not yet what is drawn; the assertion is on what is drawn. A card between
+  // two answers draws none for a moment, which is "not yet" too.
   await expect
-    .poll(async () => (await drawnRows(frame, cubeId)).length, { timeout: 60_000 })
+    .poll(async () => (await drawnRows(frame, cubeId).catch(() => null))?.length ?? -1, { timeout: 60_000 })
     .toBe((body.rows ?? []).length);
 
   return body.rows ?? [];
