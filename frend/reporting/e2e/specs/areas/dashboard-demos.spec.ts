@@ -27,7 +27,7 @@
 // Written and checked, never run by this phase: the owner runs it.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test, expect, type APIRequestContext, type APIResponse, type Page } from '@playwright/test';
 
 const fs = require('fs');
 const path = require('path');
@@ -399,7 +399,12 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       );
       expect(louder.status(), 'the report in the query is not the report that answers')
         .toBe(asked.status());
-      expect(await louder.text(), 'and the answer is the same one').toBe(await asked.text());
+      // The same answer, apart from how long the server took to give it.
+      const answerOf = async (response: APIResponse): Promise<Record<string, unknown>> => {
+        const { executionTimeMillis: _took, ...answer } = await response.json();
+        return answer;
+      };
+      expect(await answerOf(louder), 'and the answer is the same one').toEqual(await answerOf(asked));
 
       // The same, from inside the page: a dashboard added to the DOM by hand is still refused.
       const added = await reader.evaluate(async (reportId) => {
