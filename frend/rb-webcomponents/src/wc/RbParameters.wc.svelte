@@ -352,7 +352,9 @@
   // mode) and FilterBar.tsx (canvas mode) both produce it. Lets the user show
   // a friendly `name` while the IN-list bind receives the raw `id`.
   function loadOptions(p: ParamMeta): { label: string; value: any }[] {
-    const opts = p.uiHints?.options;
+    // A parameter that names its values in constraints(allowedValues: [...]) and gives its control
+    // no options of its own is offered exactly those values: they are the only ones it accepts.
+    const opts = p.uiHints?.options ?? p.constraints?.allowedValues;
     if (!opts) return [];
     if (Array.isArray(opts)) {
       return opts.map(o => {
