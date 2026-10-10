@@ -1340,18 +1340,23 @@ test.describe('Data Canvas Visualizations', () => {
       const w = (state.widgets as Array<Record<string, any>>).find((x) => x.id === widgetId);
       return { x: w?.gridPosition?.x, y: w?.gridPosition?.y, w: w?.gridPosition?.w };
     };
-    // Where the page draws it: the header's distance from the grid's left edge.
-    const drawnOffset = async (): Promise<number> => {
+    // Where the page draws it: the column its grid item starts in. A column's width in pixels
+    // depends on how wide the canvas is (the config panel of a selected widget narrows it), so the
+    // column is read from the grid's geometry as Canvas.tsx sets it: 12 columns, a 12 px margin
+    // between them and, with no containerPadding of its own, the same 12 px around the grid.
+    const drawnColumn = async (): Promise<number> => {
       const grid = await page.locator('.react-grid-layout').first().boundingBox();
-      const header = await page.locator(`#widgetHeader-${widgetId}`).boundingBox();
-      if (!grid || !header) throw new Error('the grid or the widget header is not on screen');
-      return header.x - grid.x;
+      const item = await page.locator(`#widgetDragHandle-${widgetId}`).boundingBox();
+      if (!grid || !item) throw new Error('the grid or the widget is not on screen');
+      const COLS = 12, MARGIN = 12;
+      const colW = (grid.width - MARGIN * (COLS - 1) - 2 * MARGIN) / COLS;
+      return Math.round((item.x - grid.x - MARGIN) / (colW + MARGIN));
     };
 
     // The widget starts in the first column of the first row, saved as a Detail widget (4 wide).
     await expect.poll(async () => JSON.stringify(await storedPlace()), { timeout: 20_000, intervals: [500] })
       .toBe(JSON.stringify({ x: 0, y: 0, w: 4 }));
-    const offsetBefore = await drawnOffset();
+    expect(await drawnColumn(), 'drawn in the first column').toBe(0);
 
     // Drag the header to the right, as a person does (the header is the grid's drag handle).
     const box = await page.locator(`#widgetHeader-${widgetId}`).boundingBox();
@@ -1365,13 +1370,12 @@ test.describe('Data Canvas Visualizations', () => {
     await page.mouse.up();
     await page.locator('.react-grid-placeholder').waitFor({ state: 'detached', timeout: 10_000 });
 
-    // + It is drawn further right, and the server has it in a later column, still on row 0: the grid
-    //   compacts upwards (verticalCompactor), so a sideways move never leaves it lower down.
-    expect(await drawnOffset()).toBeGreaterThan(offsetBefore + 30);
+    // + The server has it in a later column, still on row 0: the grid compacts upwards
+    //   (verticalCompactor), so a sideways move never leaves it lower down. It is drawn there too.
     await expect.poll(async () => (await storedPlace()).x, { timeout: 20_000, intervals: [500] }).toBeGreaterThan(0);
     const moved = await storedPlace();
     expect(moved.y).toBe(0);
-    const offsetMoved = await drawnOffset();
+    expect(await drawnColumn(), 'drawn in the column it was saved in').toBe(moved.x);
 
     // + Saved, not just drawn: leave the canvas, open it again, and it stands in the same column.
     await page.goto(`${AI_HUB_BASE_URL}/explore-data`);
@@ -1380,7 +1384,7 @@ test.describe('Data Canvas Visualizations', () => {
     await waitNetworkQuiet(page);
     await assertWidgetRenders(page, 'detail');
     expect(await storedPlace()).toEqual(moved);
-    expect(Math.abs((await drawnOffset()) - offsetMoved)).toBeLessThan(2);
+    expect(await drawnColumn(), 'drawn in the same column after reopening').toBe(moved.x);
     console.log(`[F-2] DONE — widget moved to column ${moved.x}, row ${moved.y}, and stays there after reopening`);
   });
 });
