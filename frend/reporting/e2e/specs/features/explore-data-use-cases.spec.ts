@@ -5961,9 +5961,11 @@ return ctx.dbSql.rows(sql)`,
       const liveId = (d41Ids['tabulator'] ?? [])[0];
       const askCube = async (body: Record<string, unknown>): Promise<number> =>
         page.evaluate(async ({ rc, cid, b }) => {
+          // Echo the CSRF token as the app does: the Server rejects a session POST without it.
+          const xsrf = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(document.cookie)?.[1];
           const r = await fetch(`/api/reports/${rc}/cube/${cid}/query`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(xsrf ? { 'X-XSRF-TOKEN': decodeURIComponent(xsrf) } : {}) },
             body: JSON.stringify({ dimensions: ['Team'], measures: ['Tickets'], filters: [], ...b }),
           });
           const payload = await r.json();
