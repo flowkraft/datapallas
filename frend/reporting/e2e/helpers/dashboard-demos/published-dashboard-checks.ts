@@ -723,8 +723,12 @@ export interface ErrorWatch {
 export function watchForErrors(page: Page): ErrorWatch {
   const messages: string[] = [];
 
+  // A console error carries where it came from: "Failed to load resource" names its URL nowhere
+  // else, and a refusal a test asked for is forgiven by what was refused.
   page.on('console', (message) => {
-    if (message.type() === 'error') messages.push(`console: ${message.text()}`);
+    if (message.type() !== 'error') return;
+    const where = message.location()?.url ?? '';
+    messages.push(`console: ${message.text()}${where ? ` [${where}]` : ''}`);
   });
   page.on('pageerror', (error) => messages.push(`uncaught: ${error.message}`));
   page.on('dialog', async (dialog) => {
