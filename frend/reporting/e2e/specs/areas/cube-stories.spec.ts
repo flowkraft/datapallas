@@ -1066,7 +1066,9 @@ test.describe('Cube Stories — the cube demo page', () => {
     await openSql(frame, balances.id);
 
     const onDuckDb = await sqlText(frame, balances.id);
-    expect(onDuckDb, 'a SQL cube is read from its own statement').toContain('cube_src');
+    // Under the name the cube gives its statement (`sql_alias 'inv'`); `cube_src` is only the
+    // generator's name for a SQL cube that gives none.
+    expect(onDuckDb, 'a SQL cube is read from its own statement').toMatch(/FROM \(SELECT[\s\S]*\) inv\b/);
     expect(onDuckDb).toContain('ORDER BY');
     expect(onDuckDb, 'most engines cut the answer down with LIMIT').toContain('LIMIT 10');
 
