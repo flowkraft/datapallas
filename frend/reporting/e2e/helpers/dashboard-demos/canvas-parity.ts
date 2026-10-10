@@ -198,11 +198,16 @@ function normalizeDisplay(type: string, cfg: Json | null | undefined): Json {
     if (Object.keys(titles).length === 0) delete out.columnSettings;
   }
   const dsl = out.dslConfig;
-  if (type === 'tabulator' && dsl) {
+  if ((type === 'tabulator' || type === 'detail') && dsl) {
+    // Turning a widget into a table seeds `{ layout: 'fitColumns', autoColumns: true }`
+    // (widget-defaults.ts), which is also what the export writes for a table with no DSL: those
+    // defaults say nothing a shipped canvas without them does not.
     const d: Json = { ...dsl };
     if (d.autoColumns === true) delete d.autoColumns;
     if (d.pagination === true) delete d.pagination;
-    out.dslConfig = d;
+    if (d.layout === 'fitColumns') delete d.layout;
+    if (Object.keys(d).length === 0) delete out.dslConfig;
+    else out.dslConfig = d;
   }
   return stripUndefined(out);
 }
