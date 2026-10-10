@@ -230,7 +230,9 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       if (stories.length > 0) await assertStoriesAreOffered(card, demo);
       for (const story of stories) {
         const neighbour = DEMOS.find((other) => other.nn === demo.nn + 1) ?? null;
-        const before = neighbour ? await readParams(cardOf(page, neighbour), neighbour) : {};
+        // The card below loads when it is scrolled to: read it loaded, or "exactly as it was" below
+        // would compare two empty bars.
+        const before = neighbour ? await readParams(await scrollCardIntoView(page, neighbour), neighbour) : {};
 
         await clickShowMe(card, demo, story.id);
 
