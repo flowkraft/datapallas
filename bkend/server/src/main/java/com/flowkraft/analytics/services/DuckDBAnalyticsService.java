@@ -460,7 +460,7 @@ public class DuckDBAnalyticsService {
      * Create DuckDB table from in-memory data with automatic schema inference.
      * Uses batch INSERT for performance.
      */
-    private void createTableFromData(Connection conn, String tableName,
+    void createTableFromData(Connection conn, String tableName,
                                      List<LinkedHashMap<String, Object>> data,
                                      List<String> columnNames) throws Exception {
         if (data == null || data.isEmpty()) {
@@ -471,8 +471,8 @@ public class DuckDBAnalyticsService {
             ? columnNames
             : new ArrayList<>(data.get(0).keySet());
 
-        // Infer column types from first row
-        Map<String, String> columnTypes = inferColumnTypes(data.get(0), columns);
+        // Infer each column's type from its first value that is not null
+        Map<String, String> columnTypes = inferColumnTypes(data, columns);
 
         // Build CREATE TABLE statement
         StringBuilder createSql = new StringBuilder();
@@ -514,12 +514,13 @@ public class DuckDBAnalyticsService {
     }
 
     /**
-     * Infer SQL types from Java objects in first data row.
+     * Infer SQL types from Java objects: each column from its first value that is not null, so a
+     * null in the first row does not make a column of numbers text (which SUM and AVG refuse).
      */
-    private Map<String, String> inferColumnTypes(Map<String, Object> firstRow, List<String> columns) {
+    private Map<String, String> inferColumnTypes(List<LinkedHashMap<String, Object>> data, List<String> columns) {
         Map<String, String> types = new HashMap<>();
         for (String col : columns) {
-            Object value = firstRow.get(col);
+            Object value = data.stream().map(row -> row.get(col)).filter(v -> v != null).findFirst().orElse(null);
             String sqlType = inferSqlType(value);
             types.put(col, sqlType);
         }
@@ -534,9 +535,11 @@ public class DuckDBAnalyticsService {
             return "VARCHAR"; // Default to VARCHAR for nulls
         }
 
-        if (value instanceof Integer || value instanceof Long) {
+        if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
             return "BIGINT";
-        } else if (value instanceof Double || value instanceof Float) {
+        } else if (value instanceof Number) {
+            // Double and Float, and the BigDecimal a DECIMAL column comes back as (an order's total):
+            // counted as a double, the number the browser pivot of the same rows computes with.
             return "DOUBLE";
         } else if (value instanceof Boolean) {
             return "BOOLEAN";
