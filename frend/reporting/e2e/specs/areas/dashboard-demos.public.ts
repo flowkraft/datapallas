@@ -29,7 +29,7 @@
 import { test, expect, type Frame } from '@playwright/test';
 
 import { DEMOS, pad } from '../../helpers/dashboard-demos/demo-catalog';
-import { assertDemoDrawn, assertUniqueIds, readParams } from '../../helpers/dashboard-demos/published-dashboard-checks';
+import { asStanding, assertDemoDrawn, assertUniqueIds, readParams } from '../../helpers/dashboard-demos/published-dashboard-checks';
 import {
   assertStoriesAreOffered,
   clickReset,
@@ -120,7 +120,7 @@ test.describe('Dashboard Demos on datapallas.com', () => {
     await clickShowMe(card, demo, story.id);
     const standing = await readParams(card, demo);
     for (const [name, value] of Object.entries(story.params)) {
-      expect(standing[name], `${demo.id}: Show Me on '${story.id}' sets ${name}`).toBe(String(value));
+      expect(standing[name], `${demo.id}: Show Me on '${story.id}' sets ${name}`).toBe(asStanding(demo, name, value));
     }
     expect(
       Object.keys(story.params).some((name) => before[name] !== standing[name]),

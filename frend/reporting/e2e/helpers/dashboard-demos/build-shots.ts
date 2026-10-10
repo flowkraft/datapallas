@@ -42,7 +42,7 @@ import {
 } from '../../utils/docs-screenshot-helper';
 import { getLastWidgetId } from '../explore-data-test-helper';
 import { loadChecks, loadStories, pad, type Demo } from './demo-catalog';
-import { openPublished, readParams, waitForChartsIn, watchForErrors } from './published-dashboard-checks';
+import { asStanding, openPublished, readParams, waitForChartsIn, watchForErrors } from './published-dashboard-checks';
 import type { Recipe, Step } from './recipe';
 import { shotsEnabled, type RecipeResult } from './recipe-runner';
 
@@ -179,7 +179,7 @@ export function createBuildShots(
         const standing = await readParams(opened, demo);
         for (const [name, value] of Object.entries(answer.params)) {
           if (String(value).includes('{')) continue; // a date the server resolves, not the bar
-          if (standing[name] !== String(value))
+          if (standing[name] !== asStanding(demo, name, value))
             throw new Error(`${recipe.id}: the link set ${name}=${String(value)}, the dashboard's bar says '${standing[name]}'`);
         }
         await shoot(answer.title, answer.caption);

@@ -231,12 +231,19 @@ export async function reloadDashboard(root: Locator): Promise<void> {
     .toBeHidden({ timeout: 30_000 });
 }
 
-/** The values the filter bar of this dashboard is standing on. */
+/**
+ * The values the filter bar of this dashboard is standing on. A multiselect's value is what its list
+ * has ticked, in the form `asStanding` gives an expected value.
+ */
 export async function readParams(root: Locator, demo: Demo): Promise<Record<string, string>> {
   const standing: Record<string, string> = {};
   for (const param of declaredParams(demo.id)) {
     const control = root.locator(`#${param.id}`);
     if ((await control.count()) === 0) continue;
+    if (await control.evaluate((el) => el.tagName.toLowerCase() === 'button')) {
+      standing[param.id] = await tickedIn(root, param.id);
+      continue;
+    }
     standing[param.id] = await control.evaluate((el) => {
       const tag = el.tagName.toLowerCase();
       if (tag === 'select') return (el as HTMLSelectElement).value;
@@ -248,13 +255,73 @@ export async function readParams(root: Locator, demo: Demo): Promise<Record<stri
         const picked = el.querySelector('input[type="radio"]:checked') as HTMLInputElement | null;
         return picked ? picked.value : '';
       }
-      // A multiselect's trigger says what is picked; the values are its ticked boxes.
-      const ticked = Array.from(el.parentElement?.querySelectorAll('input[type="checkbox"]:checked') ?? [])
-        .map((one) => (one as HTMLInputElement).value);
-      return ticked.join(',');
+      return '';
     });
   }
   return standing;
+}
+
+/**
+ * What a multiselect has ticked, read where the reader sees it: its list is drawn only while it is
+ * open, so it is opened, read page by page, and closed with Cancel, which changes nothing. "All" is
+ * the wildcard the bar holds for every option.
+ */
+async function tickedIn(root: Locator, id: string): Promise<string> {
+  await root.locator(`#${id}`).click();
+  const modal = root.locator(`#${id}_modal`);
+  await expect(modal, `${id} opens its list`).toBeVisible({ timeout: 30_000 });
+  try {
+    if ((await root.locator(`#${id}_lblCount`).innerText()).trim() === 'All') return '*';
+    const ticked: string[] = [];
+    for (let page = 1; ; page++) {
+      ticked.push(...await modal.evaluate((list) =>
+        Array.from(list.querySelectorAll('input[type="checkbox"]:checked'))
+          .map((box) => (box as HTMLInputElement).value)));
+      const next = root.locator(`#${id}_btnNextPage`);
+      if ((await next.count()) === 0 || await next.isDisabled()) break;
+      await next.click();
+      await expect(root.locator(`#${id}_lblPagePos`)).toHaveText(new RegExp(`^Page ${page + 1} of`));
+    }
+    return joinPicked(ticked);
+  } finally {
+    await root.locator(`#${id}_btnCancel`).click();
+    await expect(modal, `${id} closes on Cancel`).toBeHidden({ timeout: 30_000 });
+  }
+}
+
+/**
+ * A filter value as `readParams` reports it. A multiselect's list shows which values are ticked, not
+ * the order they were picked in, so its values are sorted and joined, a comma inside one escaped as
+ * the bar escapes it; any other filter's value is its text.
+ */
+export function asStanding(demo: Demo, name: string, value: unknown): string {
+  const param = declaredParams(demo.id).find((p) => p.id === name);
+  const multi = /^multi-?select$/i.test(String(param?.uiHints?.control ?? ''));
+  if (!multi) return String(value ?? '');
+  if (value === '*') return '*';
+  return joinPicked(Array.isArray(value) ? value.map((one) => String(one)) : splitPicked(String(value ?? '')));
+}
+
+/** Several picked values as one text: sorted, a backslash or a comma inside a value escaped. */
+function joinPicked(values: string[]): string {
+  return values.slice().sort()
+    .map((one) => one.replace(/\\/g, '\\\\').replace(/,/g, '\\,'))
+    .join(',');
+}
+
+/** The other way: an unescaped comma separates two values (as `splitEscaped` in the web components). */
+function splitPicked(text: string): string[] {
+  const out: string[] = [];
+  let current = '';
+  let escaped = false;
+  for (const ch of text) {
+    if (escaped) { current += ch; escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === ',') { out.push(current); current = ''; continue; }
+    current += ch;
+  }
+  out.push(current);
+  return out.map((one) => one.trim()).filter((one) => one.length > 0);
 }
 
 // ── What a tile shows ─────────────────────────────────────────────────────────

@@ -47,6 +47,7 @@ import {
 import {
   askData,
   assertClaims,
+  asStanding,
   assertDemoDashboard,
   assertUniqueIds,
   cardOf,
@@ -227,7 +228,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
         for (const [name, value] of Object.entries(story.params ?? {})) {
           if (String(value).includes('{')) continue; // resolved by the server, not by the bar
           expect(standing[name], `${demo.id}: the story '${story.id}' set ${name}`)
-            .toBe(String(value));
+            .toBe(asStanding(demo, name, value));
           expect(new URL(page.url()).searchParams.get(`${demo.reportId}.${name}`),
             `${demo.id}: the address bar holds the story that was shown`).toBe(String(value));
         }
@@ -466,7 +467,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       const body = await openPublished(own, DD02.reportId, picked, BASE_URL);
       const standing = await readParams(body, DD02);
       for (const [name, value] of Object.entries(picked))
-        expect(standing[name], `${name} started at the value the link carried`).toBe(String(value));
+        expect(standing[name], `${name} started at the value the link carried`).toBe(asStanding(DD02, name, value));
       await assertClaims(body, DD02, interaction.params, interaction.kpis, 'as the link opened it');
     } finally {
       await own.close();
@@ -480,14 +481,14 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       const card = await scrollCardIntoView(gallery, DD02);
       const standing = await readParams(card, DD02);
       for (const [name, value] of Object.entries(picked))
-        expect(standing[name], `${DD02.id} started at ${name}=${value}`).toBe(String(value));
+        expect(standing[name], `${DD02.id} started at ${name}=${value}`).toBe(asStanding(DD02, name, value));
 
       const neighbour = await scrollCardIntoView(gallery, DD03);
       const theirs = await readParams(neighbour, DD03);
       const defaults = loadChecks(DD03.id).defaults;
       for (const [name, value] of Object.entries(defaults))
         if (name in theirs && !String(value).includes('{'))
-          expect(theirs[name], `${DD03.id} is at its own default for ${name}`).toBe(String(value));
+          expect(theirs[name], `${DD03.id} is at its own default for ${name}`).toBe(asStanding(DD03, name, value));
     } finally {
       await gallery.close();
     }
@@ -511,7 +512,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       const defaults = loadChecks(DD02.id).defaults;
       if (!String(defaults[name] ?? '').includes('{'))
         expect(standing[name], `${DD02.id} stayed at its own default for ${name}`)
-          .toBe(String(defaults[name] ?? ''));
+          .toBe(asStanding(DD02, name, defaults[name] ?? ''));
       await assertClaims(card, DD02, defaults, loadChecks(DD02.id).kpis, 'with a plain name in the URL');
     } finally {
       await gallery.close();
@@ -539,7 +540,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       await expect(body.locator(`#${name}`), 'a locked filter is not the reader\'s to change')
         .toBeDisabled({ timeout: 60_000 });
       expect((await readParams(body, DD02))[name], "the bar is on the link's value")
-        .toBe(String(locked));
+        .toBe(asStanding(DD02, name, locked));
 
       // And the data is the locked answer, whatever the address asked for: the server's LockedParams.
       await assertClaims(body, DD02, interaction.params, interaction.kpis, 'under its lock');
@@ -605,7 +606,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
           { timeout: 120_000, waitUntil: 'networkidle' },
         );
         expect((await readParams(reader.locator('body'), DD02))[picky],
-          `${picky} stayed at its own default`).toBe(String(checks.defaults[picky] ?? ''));
+          `${picky} stayed at its own default`).toBe(asStanding(DD02, picky, checks.defaults[picky] ?? ''));
         await assertClaims(reader.locator('body'), DD02, checks.defaults, checks.kpis,
           'with a value its filter does not offer');
 
@@ -646,7 +647,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
           await again.goto(reader.url(), { timeout: 120_000, waitUntil: 'networkidle' });
           const there = again.locator('body');
           expect((await readParams(there, DD02))[name], 'opened again, on the same value')
-            .toBe(String(value));
+            .toBe(asStanding(DD02, name, value));
           await assertClaims(there, DD02, interaction.params, interaction.kpis, 'opened from its link');
         } finally {
           await again.close();
