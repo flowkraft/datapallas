@@ -298,6 +298,8 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
     // The other half of `lazy`: only the Gallery's cards carry it, so a dashboard opened on its own
     // is the page it always was.
     const own = await browser.newPage();
+    // Opened with no link, a dashboard asks who is looking: this reader is signed in.
+    await Helpers.signInBrowserContext(own.context());
     try {
       const body = await openPublished(own, DD02.reportId, {}, BASE_URL);
       await expect(own.locator(`rb-dashboard[lazy]`), 'its own page waits for nothing')
@@ -439,6 +441,8 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
     // `show-stories` is the Gallery's attribute: on its own page the dashboard is the dashboard,
     // and the questions belong to the page that offers them.
     const own = await browser.newPage();
+    // Opened with no link, a dashboard asks who is looking: this reader is signed in.
+    await Helpers.signInBrowserContext(own.context());
     try {
       const body = await openPublished(own, DD02.reportId, {}, BASE_URL);
       expect(storiesOf(DD02.id).length, `${DD02.id} ships stories`).toBeGreaterThan(0);
@@ -463,6 +467,8 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
 
     // On its own page, the plain names.
     const own = await browser.newPage();
+    // Opened with no link, a dashboard asks who is looking: this reader is signed in.
+    await Helpers.signInBrowserContext(own.context());
     try {
       const body = await openPublished(own, DD02.reportId, picked, BASE_URL);
       const standing = await readParams(body, DD02);
@@ -569,6 +575,8 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       const checks = loadChecks(DD02.id);
       const name = (declaredParams(DD02.id)[0] as { id: string }).id;
       const reader = await browser.newPage();
+      // Opened with no link, a dashboard asks who is looking: this reader is signed in.
+      await Helpers.signInBrowserContext(reader.context());
       // A dialog is a failure: a value that became script would open one. `watchForErrors` records
       // dialogs and dismisses them, so the assertion below is that none was opened.
       const readerWatch = watchForErrors(reader);
@@ -628,6 +636,8 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       const value = interaction.changed[name];
 
       const reader = await browser.newPage();
+      // Opened with no link, a dashboard asks who is looking: this reader is signed in.
+      await Helpers.signInBrowserContext(reader.context());
       try {
         const body = await openPublished(reader, DD02.reportId, {}, BASE_URL);
         const historyBefore = await reader.evaluate(() => history.length);
@@ -727,6 +737,8 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
         fs.writeFileSync(spec, lines.join('\n'));
 
         const reader = await browser.newPage();
+        // Opened with no link, a dashboard asks who is looking: this reader is signed in.
+        await Helpers.signInBrowserContext(reader.context());
         try {
           await reader.goto(`${BASE_URL}/dashboard/${copyId}`,
             { timeout: 120_000, waitUntil: 'networkidle' });
