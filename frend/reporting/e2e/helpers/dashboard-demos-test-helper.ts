@@ -67,14 +67,6 @@ const DEFAULT_VIEW = 'defaults';
  * and a try that lands in that moment is simply asked again.
  */
 export async function reseedDashDemoData(adminFetch: AdminFetch, baseUrl: string): Promise<void> {
-  const accepted = await adminFetch(`${baseUrl}/api/connections/${DASH_DEMO_CONNECTION}/run-seed`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ script: dashDemoSeedScript(), params: DASH_DEMO_SEED_PARAMS }),
-  });
-  expect(accepted.status, 'the demo data seed was accepted').toBe(200);
-  expect((await accepted.json()).ok, 'the demo data seed was accepted').toBeTruthy();
-
   const demo = demoOf(FIRST_DEMO);
   const checks = loadChecks(FIRST_DEMO);
   expect(
@@ -85,38 +77,45 @@ export async function reseedDashDemoData(adminFetch: AdminFetch, baseUrl: string
   const kpi = checks.kpis[0];
   const widget = widgetOf(FIRST_DEMO, kpi.widget);
 
-  await expect
-    .poll(
-      async () => {
-        try {
-          const answer = await adminFetch(
-            `${baseUrl}/api/reports/${demo.reportId}/data`
-              + `?componentId=${encodeURIComponent(widget.componentId)}`,
-          );
-          if (answer.status !== 200) return false;
-          const body = await answer.json();
-          const rows = (body.data ?? body.rows ?? []) as Array<Record<string, unknown>>;
-          return shows(kpi.value, reading(widget, rows, kpi));
-        } catch (theSeedIsStillRunning) {
-          return false;
-        }
-      },
-      { timeout: 900_000, intervals: [5_000] },
-    )
-    .toBe(true);
+  /** The first demo's first claim, asked of the live dashboard: the number the seeded day gives. */
+  const firstClaimHolds = async (): Promise<boolean> => {
+    try {
+      const answer = await adminFetch(
+        `${baseUrl}/api/reports/${demo.reportId}/data`
+          + `?componentId=${encodeURIComponent(widget.componentId)}`,
+      );
+      if (answer.status !== 200) return false;
+      const body = await answer.json();
+      const rows = (body.data ?? body.rows ?? []) as Array<Record<string, unknown>>;
+      return shows(kpi.value, reading(widget, rows, kpi));
+    } catch (theSeedIsStillRunning) {
+      return false;
+    }
+  };
+  const configStatus = async (): Promise<number> => {
+    try {
+      return (await adminFetch(`${baseUrl}/api/reports/${demo.reportId}/config`)).status;
+    } catch (theSeedIsStillRunning) {
+      return -1;
+    }
+  };
 
-  await expect
-    .poll(
-      async () => {
-        try {
-          return (await adminFetch(`${baseUrl}/api/reports/${demo.reportId}/config`)).status;
-        } catch (theSeedIsStillRunning) {
-          return -1;
-        }
-      },
-      { timeout: 900_000, intervals: [5_000] },
-    )
-    .toBe(200);
+  // Already seeded for that day in this run (a file starts its tests again after a red, and none of
+  // them writes to the demo data): a new load would answer the same number all the way through, so
+  // the wait below could not tell it from the old one, and the page would open the file while the
+  // new load is still being folded in.
+  if (await firstClaimHolds() && await configStatus() === 200) return;
+
+  const accepted = await adminFetch(`${baseUrl}/api/connections/${DASH_DEMO_CONNECTION}/run-seed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ script: dashDemoSeedScript(), params: DASH_DEMO_SEED_PARAMS }),
+  });
+  expect(accepted.status, 'the demo data seed was accepted').toBe(200);
+  expect((await accepted.json()).ok, 'the demo data seed was accepted').toBeTruthy();
+
+  await expect.poll(firstClaimHolds, { timeout: 900_000, intervals: [5_000] }).toBe(true);
+  await expect.poll(configStatus, { timeout: 900_000, intervals: [5_000] }).toBe(200);
 }
 
 // ── The link the Gallery is read by ───────────────────────────────────────────
