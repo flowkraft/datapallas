@@ -2369,7 +2369,11 @@
         : [String(entry?.member ?? ''), String(entry?.dir ?? '')];
       const member = said[0] || '';
       if (!member) continue;
-      if (!measureByName(member) && (!dimensionByName(member) || errorOf('dimension', member))) {
+      // An order names a column of the answer, and a grained dimension is one of them: the
+      // `CreatedDate.day` a story groups by is sorted by as readily, as the server reads it too.
+      const dot = member.indexOf('.');
+      const field = dot > 0 ? member.slice(0, dot) : member;
+      if (!measureByName(member) && (!dimensionByName(field) || errorOf('dimension', field))) {
         return refuseSelection('member', member);
       }
       order.push({ member, dir: String(said[1] || '').toLowerCase() === 'desc' ? 'desc' : 'asc' });
