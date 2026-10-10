@@ -77,9 +77,11 @@ const asOneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
 const adminFetch: AdminFetch = (url, init = {}) =>
   fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...Helpers.apiKeyHeader() } });
 
-// One page, opened once: a page of live cubes is a heavy one and every test asks the same page
-// different questions, in order.
-test.describe.configure({ mode: 'serial' });
+// One page, opened once per worker: a page of live cubes is a heavy one and every test asks the same
+// page different questions, in order. No test needs what an earlier one did - each starts from a
+// Show Me (which replaces the selection), a walk of every hint, or a page of its own, and the helpers
+// open a card's panel before they use it - so the file is not serial: a red test does not skip the
+// ones after it, which run on a fresh worker that opens the page again.
 
 test.describe('Cube Stories — the cube demo page', () => {
   let page: Page;
