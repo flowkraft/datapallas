@@ -27,7 +27,7 @@
 // Written and checked, never run by this phase: the owner runs it.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
 const fs = require('fs');
 const path = require('path');
@@ -105,6 +105,18 @@ async function shareLinkFor(reportId: string, lockedParams?: Record<string, unkn
   const made = await created.json();
   expect(made.token, 'the raw token is returned once, at creation').toBeTruthy();
   return made.token as string;
+}
+
+/**
+ * A dashboard page a link does not open answers as a dead link does: 404 and "This link is no longer
+ * available". Its reader holds a link, not an account, so there is no sign-in to send them to
+ * (`SignInRedirectEntryPoint`); the API answers the same request with 401 or 403.
+ */
+async function expectDeadLink(request: APIRequestContext, url: string, what: string): Promise<void> {
+  const answer = await request.get(url);
+  expect(answer.status(), `${what} (${url})`).toBe(404);
+  expect(await answer.text(), `${what}: the page says the link opens nothing`)
+    .toContain('This link is no longer available');
 }
 
 /** And every link a test made is taken back, whatever the test did with it. */
@@ -340,14 +352,13 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
     }
 
     // The link itself is no wider than the credential it hands out.
-    for (const asked of [
-      `${BASE_URL}/api/reports/${NOT_ON_THE_GALLERY}/config?token=${encodeURIComponent(shareToken)}`,
+    const asked = `${BASE_URL}/api/reports/${NOT_ON_THE_GALLERY}/config?token=${encodeURIComponent(shareToken)}`;
+    const refused = await page.request.get(asked);
+    expect([401, 403], `${asked} is refused to the Gallery's link (${refused.status()})`)
+      .toContain(refused.status());
+    await expectDeadLink(page.request,
       `${BASE_URL}/dashboard/${NOT_ON_THE_GALLERY}?token=${encodeURIComponent(shareToken)}`,
-    ]) {
-      const refused = await page.request.get(asked);
-      expect([401, 403], `${asked} is refused to the Gallery's link (${refused.status()})`)
-        .toContain(refused.status());
-    }
+      `${NOT_ON_THE_GALLERY} is not the Gallery link's to open`);
     forgive(watch, NOT_ON_THE_GALLERY);
   });
 
@@ -363,12 +374,10 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       await assertDemoDashboard(reader.locator('body'), DD02);
 
       // Not the Gallery it is a card of, and not the demo next to it.
-      for (const reportId of [GALLERY_REPORT_ID, DD03.reportId]) {
-        const refused = await reader.request.get(
-          `${BASE_URL}/dashboard/${reportId}?token=${encodeURIComponent(token)}`);
-        expect([401, 403], `${reportId} is not this link's to open (${refused.status()})`)
-          .toContain(refused.status());
-      }
+      for (const reportId of [GALLERY_REPORT_ID, DD03.reportId])
+        await expectDeadLink(reader.request,
+          `${BASE_URL}/dashboard/${reportId}?token=${encodeURIComponent(token)}`,
+          `${reportId} is not this link's to open`);
 
       // And asking under another name admits nothing: the credential says what it opens, the
       // request does not.
