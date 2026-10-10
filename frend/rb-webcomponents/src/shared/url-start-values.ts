@@ -174,15 +174,19 @@ export function acceptValue(
 
   if (control === 'multi-select') {
     if (text.trim() === WILDCARD) return { ok: true, value: WILDCARD };
-    const picked = splitEscaped(text);
+    // A list (a story's values) is already one value per item; a text is the escaped form.
+    const picked = Array.isArray(raw)
+      ? raw.map(v => String(v ?? '').trim()).filter(v => v.length > 0)
+      : splitEscaped(text);
     if (picked.length === 0) return { ok: true, value: '' };
     const known = optionValues(p);
     if (known) {
       const outside = picked.filter(v => !known.includes(v));
       if (outside.length) return reject(`${outside.join(', ')} is not one of its options`);
     }
-    // Back in the value contract the rest of the component and the backend share: a plain CSV.
-    return { ok: true, value: picked.join(',') };
+    // Back in the value the component holds: the same escaped form, so an option with a comma in it
+    // stays one option.
+    return { ok: true, value: joinEscaped(picked) };
   }
 
   if (control === 'select' || control === 'radio') {
@@ -290,8 +294,8 @@ function serialise(p: StartValueParam, value: any): string {
   if (controlTypeOf(p as any) === 'multi-select') {
     const text = String(value);
     if (text.trim() === WILDCARD) return WILDCARD;
-    // The component's own value is a plain CSV: split it there, escape each value here.
-    const picked = text.split(',').map(s => s.trim()).filter(Boolean);
+    // The component's own value is already the escaped form: read it as such, write it back.
+    const picked = splitEscaped(text);
     return picked.length ? joinEscaped(picked) : '';
   }
   if (typeof value === 'boolean') return value ? 'true' : 'false';

@@ -10,7 +10,9 @@
   // Starting values a link carries, and the address bar kept on the view that is on screen. This
   // component is the only one that reads or writes the URL for parameters - see
   // src/shared/url-start-values.ts for the rules.
-  import { startValuesFromUrl, urlWithValues, acceptedValues } from '../shared/url-start-values';
+  import {
+    startValuesFromUrl, urlWithValues, acceptedValues, splitEscaped, joinEscaped,
+  } from '../shared/url-start-values';
 
   // ParamRef type for cross-field references
   interface ParamRef {
@@ -271,11 +273,12 @@
 
   /**
    * The locked value in the shape the controls use: a multi-value lock is a list on the server and
-   * a comma-separated string here, exactly like a multi-select's own value.
+   * a comma-separated string here, exactly like a multi-select's own value (a comma inside one
+   * value written `\,`).
    */
   function lockedValue(p: ParamMeta): any {
     const value = lockedParameters?.[p.id];
-    return Array.isArray(value) ? value.join(',') : value;
+    return Array.isArray(value) ? joinEscaped(value) : value;
   }
 
   function getDefaultForType(type: string): any {
@@ -420,9 +423,11 @@
     return Number.isFinite(n) && n > 0 ? n : DEFAULT_MULTI_PAGE_SIZE;
   }
 
+  // A multi-select's value is its picked options joined by commas, a comma inside one option
+  // written `\,` (`splitEscaped` / `joinEscaped`): an option holding a comma stays one option.
   function csvToSet(v: any): Set<string> {
     if (v == null || v === '' || v === WILDCARD) return new Set();
-    return new Set(String(v).split(',').map(s => s.trim()).filter(Boolean));
+    return new Set(splitEscaped(String(v)));
   }
 
   // Read helpers. The template MUST pass `multiDraft[p.id]` / `formValues[p.id]`
@@ -517,7 +522,7 @@
 
   // ── Draft mutators (operate on multiDraft, never touch formValues) ─────
   function setDraftCsv(p: ParamMeta, values: Set<string>) {
-    multiDraft[p.id] = Array.from(values).join(',');
+    multiDraft[p.id] = joinEscaped(Array.from(values));
     multiDraft = multiDraft;
   }
 
