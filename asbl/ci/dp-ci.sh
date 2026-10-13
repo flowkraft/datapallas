@@ -198,13 +198,18 @@ firewall_close() {  # $1 = log file
 
 firewall_open() {  # $1 = log file
   local outside leftovers
-  # the rules cover 172.16.0.0/12 only, so every Docker network must be inside it
-  outside=$(docker network ls -q | xargs -r docker network inspect -f '{{.Name}} {{range .IPAM.Config}}{{.Subnet}} {{end}}' |
+  # the rules cover 172.16.0.0/12 only, so every Docker network must be inside it. An internal network
+  # (`internal: true`) is the exception: its containers reach neither the host nor anything outside the
+  # network, so no traffic of it goes through these rules and its subnet can be anything (virgil's
+  # agents_key_proxy_net, 10.89.77.0/28, is one).
+  outside=$(docker network ls -q | xargs -r docker network inspect -f '{{.Name}} {{.Internal}} {{range .IPAM.Config}}{{.Subnet}} {{end}}' |
     python3 -c '
 import ipaddress, sys
 pool = ipaddress.ip_network(sys.argv[1])
 for line in sys.stdin:
-    name, *subnets = line.split()
+    name, internal, *subnets = line.split()
+    if internal == "true":
+        continue
     for subnet in subnets:
         net = ipaddress.ip_network(subnet, strict=False)
         if net.version == 4 and not net.subnet_of(pool):
