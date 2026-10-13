@@ -27,6 +27,7 @@ def asDeclaredType = { String name, String type, value ->
 // ─── Filter values: an empty one turns its filter off ───
 def category = userVars?.get('category')?.toString()
 def hasCategory = (category != null && !category.isEmpty())
+// topN is required: it always has a value, its default when the request has none
 def topN = userVars?.get('topN')?.toString()
 def hasTopN = (topN != null && !topN.isEmpty())
 
@@ -97,10 +98,9 @@ if (!componentId || componentId == 'chart_dd05-chart-top-n-by-margin') {
     }
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY gross_margin DESC\n'
-    if (hasTopN) {
-        sql << 'LIMIT ?\n'
-        params << asDeclaredType('topN', 'Integer', topN)
-    }
+    // Always applied: topN is required
+    sql << 'LIMIT ?\n'
+    params << asDeclaredType('topN', 'Integer', topN)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('chart_dd05-chart-top-n-by-margin', data)
 }
@@ -123,10 +123,9 @@ if (!componentId || componentId == 'chart_dd05-chart-bottom-n-by-margin') {
     }
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY gross_margin ASC\n'
-    if (hasTopN) {
-        sql << 'LIMIT ?\n'
-        params << asDeclaredType('topN', 'Integer', topN)
-    }
+    // Always applied: topN is required
+    sql << 'LIMIT ?\n'
+    params << asDeclaredType('topN', 'Integer', topN)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('chart_dd05-chart-bottom-n-by-margin', data)
 }

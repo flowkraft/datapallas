@@ -6,7 +6,7 @@
   import { onMount, createEventDispatcher, tick } from 'svelte';
   // Which control each declared type is filled in with lives in its own module, so `npm test`
   // can ask it directly - see src/shared/parameter-controls.test.ts.
-  import { controlTypeOf, defaultForType, isTicked } from '../shared/parameter-controls';
+  import { controlTypeOf, isTicked } from '../shared/parameter-controls';
   import { slicerFieldsOnPage, slicerSelectionsFor, refreshDataWidgets } from '../shared/slicer-selections';
   import { withCsrfHeader } from '../shared/session-request';
   // A `date-range` control draws `<id>From` and `<id>To` as one range with presets - see
@@ -18,7 +18,7 @@
   // component is the only one that reads or writes the URL for parameters - see
   // src/shared/url-start-values.ts for the rules.
   import {
-    startValuesFromUrl, urlWithValues, acceptedValues, splitEscaped, joinEscaped,
+    urlWithValues, acceptedValues, splitEscaped, joinEscaped, openingValues,
   } from '../shared/url-start-values';
 
   // ParamRef type for cross-field references
@@ -251,8 +251,11 @@
     multiOpen = {};
     multiDraft = {};
 
+    // Defaults and locks first: the cascading filters below were answered for those. The values come
+    // from `openingValues`, the one place `RbReport` reads them from too (shared/url-start-values.ts).
+    const defaults = openingValues(parameters as any, lockedParameters, null, reportId);
     parameters.forEach(p => {
-      formValues[p.id] = isLocked(p) ? lockedValue(p) : (p.defaultValue ?? getDefaultForType(p.type));
+      formValues[p.id] = defaults[p.id];
       touched[p.id] = false;
       errors[p.id] = [];
       // Seed transient multi-select state. Default-value seeding is automatic:
@@ -275,42 +278,23 @@
     // once with the defaults and once again with the link's values. A locked parameter ignores
     // them: its value is the link's own, and the server enforces that whatever the browser sends.
     if (fromUrl && typeof window !== 'undefined' && window.location) {
-      const fromLink = startValuesFromUrl(
-        window.location.search, window.location.pathname, reportId, parameters as any,
-      );
-      Object.keys(fromLink).forEach(id => {
-        const p = parameters.find(x => x.id === id);
-        if (!p || isLocked(p)) return;
-        formValues[id] = fromLink[id];
-      });
+      formValues = openingValues(parameters as any, lockedParameters, window.location, reportId);
     }
 
     validateAll(true); // Force emit on init
     emitValues(true);
     // In standalone published dashboard mode, auto-apply defaults to sibling widgets
-    // so the initial load reflects the default filter value without requiring a Reload click
+    // so the initial load reflects the default filter value without requiring a Reload click.
+    // A tile the dashboard already put on the page with these values is left alone: it is asking
+    // with them right now, and a copy would only ask the same question twice.
     if (showReload && hostElement) {
-      applyParamsToSiblings({ ...formValues });
+      applyParamsToSiblings({ ...formValues }, true);
     }
   }
 
   /** Is this parameter fixed by the link or token the page was opened with? */
   function isLocked(p: ParamMeta): boolean {
     return !!lockedParameters && Object.prototype.hasOwnProperty.call(lockedParameters, p.id);
-  }
-
-  /**
-   * The locked value in the shape the controls use: a multi-value lock is a list on the server and
-   * a comma-separated string here, exactly like a multi-select's own value (a comma inside one
-   * value written `\,`).
-   */
-  function lockedValue(p: ParamMeta): any {
-    const value = lockedParameters?.[p.id];
-    return Array.isArray(value) ? joinEscaped(value) : value;
-  }
-
-  function getDefaultForType(type: string): any {
-    return defaultForType(type);
   }
 
   // Sanitise an arbitrary option value into characters safe for an HTML id /
@@ -854,7 +838,7 @@
   }
 
   // Replace all sibling rb-* components with fresh elements carrying the given params
-  function applyParamsToSiblings(values: { [id: string]: any }) {
+  function applyParamsToSiblings(values: { [id: string]: any }, keepUnchanged = false) {
     if (!hostElement) return;
     // The slicers' picks ride along. A reload asked for in the filter bar re-fetches every tile, and a
     // tile asked without `__slicer_channel` would answer for every channel again - the reader would
@@ -868,7 +852,7 @@
     const fields = [...slicerFieldsOnPage(hostElement)];
     for (const field of selections.fields()) if (!fields.includes(field)) fields.push(field);
     const slicerPicks = selections.paramValues(fields);
-    refreshDataWidgets(hostElement, { ...values, ...slicerPicks });
+    refreshDataWidgets(hostElement, { ...values, ...slicerPicks }, { keepUnchanged });
   }
 
   // Submit: user explicitly requests data refresh with current param values

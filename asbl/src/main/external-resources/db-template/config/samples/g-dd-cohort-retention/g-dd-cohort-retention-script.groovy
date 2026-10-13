@@ -25,6 +25,7 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// customerType is required: it always has a value, its default when the request has none
 def customerType = userVars?.get('customerType')?.toString()
 def hasCustomerType = (customerType != null && !customerType.isEmpty())
 
@@ -35,25 +36,20 @@ if (!componentId || componentId == 'pivot_dd10-pivot-cohorts') {
     sql << 'WITH base AS (\n'
     sql << '  SELECT c.customer_id AS customer_id,\n'
     sql << '         c.signup_date AS signup_date,\n'
-    if (hasCustomerType) {
-        sql << '         CASE WHEN ? = \'business\'\n'
-        params << asDeclaredType('customerType', 'String', customerType)
-    }
+    // Always applied: customerType is required
+    sql << '         CASE WHEN ? = \'business\'\n'
+    params << asDeclaredType('customerType', 'String', customerType)
     sql << '              THEN CAST(year(c.signup_date) AS VARCHAR) || \' Q\' || CAST(quarter(c.signup_date) AS VARCHAR)\n'
     sql << '              ELSE strftime(date_trunc(\'month\', c.signup_date), \'%Y-%m\') END AS cohort,\n'
-    if (hasCustomerType) {
-        sql << '         CASE WHEN ? = \'business\' THEN 3 ELSE 1 END AS step\n'
-        params << asDeclaredType('customerType', 'String', customerType)
-    }
+    // Always applied: customerType is required
+    sql << '         CASE WHEN ? = \'business\' THEN 3 ELSE 1 END AS step\n'
+    params << asDeclaredType('customerType', 'String', customerType)
     sql << '  FROM dash_demo.customers c\n'
     sql << '  WHERE true\n'
-    if (hasCustomerType) {
-        sql << '  AND (? = \'all\' OR c.customer_type = ?)\n'
-        params << asDeclaredType('customerType', 'String', customerType)
-        params << asDeclaredType('customerType', 'String', customerType)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerType is required
+    sql << '  AND (? = \'all\' OR c.customer_type = ?)\n'
+    params << asDeclaredType('customerType', 'String', customerType)
+    params << asDeclaredType('customerType', 'String', customerType)
     sql << '),\n'
     sql << 'periods AS (SELECT unnest(range(1, 13)) AS n)\n'
     sql << 'SELECT b.cohort AS cohort,\n'
@@ -86,13 +82,10 @@ if (!componentId || componentId == 'chart_dd10-chart-retention-curve') {
     sql << '  FROM dash_demo.customers c\n'
     sql << '  WHERE ((c.signup_date >= DATE \'2024-03-01\' AND c.signup_date < DATE \'2025-01-01\')\n'
     sql << '      OR (c.signup_date >= DATE \'2025-03-01\' AND c.signup_date < DATE \'2026-01-01\'))\n'
-    if (hasCustomerType) {
-        sql << '  AND (? = \'all\' OR c.customer_type = ?)\n'
-        params << asDeclaredType('customerType', 'String', customerType)
-        params << asDeclaredType('customerType', 'String', customerType)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerType is required
+    sql << '  AND (? = \'all\' OR c.customer_type = ?)\n'
+    params << asDeclaredType('customerType', 'String', customerType)
+    params << asDeclaredType('customerType', 'String', customerType)
     sql << '),\n'
     sql << 'periods AS (SELECT unnest(range(1, 13)) AS n)\n'
     sql << 'SELECT p.n AS month_since_signup,\n'
@@ -125,13 +118,10 @@ if (!componentId || componentId == 'number_retention_pct_retention') {
     sql << 'FROM dash_demo.customers c\n'
     sql << 'WHERE c.signup_date >= DATE \'2024-01-01\'\n'
     sql << '  AND c.signup_date < DATE \'2026-04-01\'\n'
-    if (hasCustomerType) {
-        sql << '  AND (? = \'all\' OR c.customer_type = ?)\n'
-        params << asDeclaredType('customerType', 'String', customerType)
-        params << asDeclaredType('customerType', 'String', customerType)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerType is required
+    sql << '  AND (? = \'all\' OR c.customer_type = ?)\n'
+    params << asDeclaredType('customerType', 'String', customerType)
+    params << asDeclaredType('customerType', 'String', customerType)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_retention_pct_retention', data)
 }

@@ -190,14 +190,19 @@ export const DATA_WIDGET_TAGS = 'rb-tabulator, rb-chart, rb-pivot-table, rb-valu
  *
  * @param host   any element inside the dashboard, or the dashboard's root
  * @param values the parameter values the widgets should ask with: the filter bar's, with the slicers'
+ * @param options.keepUnchanged leave a widget that already asks with exactly these values: the filter
+ *               bar's first apply, after the dashboard put its tiles on the page with the values the
+ *               bar opens with. A reader's Apply always asks again.
  */
 export function refreshDataWidgets(host: Element | null | undefined,
-                                   values: Record<string, unknown>): void {
+                                   values: Record<string, unknown>,
+                                   options: { keepUnchanged?: boolean } = {}): void {
   if (!host) return;
   const root = host.closest('.rb-dashboard-root') || (host.getRootNode() as Element | Document) || document;
   const paramsJson = JSON.stringify(values);
   const widgets = (root as Element | Document).querySelectorAll(DATA_WIDGET_TAGS);
   widgets.forEach((el: Element) => {
+    if (options.keepUnchanged && el.getAttribute('report-params') === paramsJson) return;
     el.parentNode?.replaceChild(freshCopy(el, paramsJson), el);
   });
 }

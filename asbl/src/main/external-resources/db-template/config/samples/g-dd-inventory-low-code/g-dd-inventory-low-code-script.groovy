@@ -90,7 +90,7 @@ if (!componentId || componentId == 'number_stockvalue_value') {
     if (hasCategory && listHasValues(category)) {
         addInList(sql, params, category, 'AND dash_demo.products.category IN') { asDeclaredType('category', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_stockvalue_value', data)
@@ -116,7 +116,7 @@ if (!componentId || componentId == 'number_belowreorder_reorder') {
     if (hasCategory && listHasValues(category)) {
         addInList(sql, params, category, 'AND dash_demo.products.category IN') { asDeclaredType('category', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_belowreorder_reorder', data)
@@ -140,7 +140,7 @@ if (!componentId || componentId == 'number_slow_mover_value_value') {
     if (hasCategory && listHasValues(category)) {
         addInList(sql, params, category, 'AND pr.category IN') { asDeclaredType('category', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND (sl.last_sold_date IS NULL OR sl.last_sold_date < (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 90 DAY)\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -187,7 +187,7 @@ if (!componentId || componentId == 'chart_dd19-chart-slow-movers-by-value') {
     if (hasCategory && listHasValues(category)) {
         addInList(sql, params, category, 'AND pr.category IN') { asDeclaredType('category', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND (sl.last_sold_date IS NULL OR sl.last_sold_date < (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 90 DAY)\n'
     sql << 'GROUP BY pr.sku, pr.name\n'
@@ -221,7 +221,7 @@ if (!componentId || componentId == 'tabulator_stock_levels_sku') {
     if (hasCategory && listHasValues(category)) {
         addInList(sql, params, category, 'AND pr.category IN') { asDeclaredType('category', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasBelowReorderOnly) {
         sql << '  AND (sl.qty_on_hand < sl.reorder_level OR NOT ?)\n'

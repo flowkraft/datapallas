@@ -73,8 +73,10 @@ def addInList = { sql, params, listValue, lineBeforeList, convert = null ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// dateFrom is required: it always has a value, its default when the request has none
 def dateFrom = userVars?.get('dateFrom')?.toString()
 def hasDateFrom = (dateFrom != null && !dateFrom.isEmpty())
+// dateTo is required: it always has a value, its default when the request has none
 def dateTo = userVars?.get('dateTo')?.toString()
 def hasDateTo = (dateTo != null && !dateTo.isEmpty())
 def device = userVars?.get('device')?.toString()
@@ -89,22 +91,16 @@ if (!componentId || componentId == 'number_estimated_sessions_sessions') {
     sql << 'SELECT count(*) * (SELECT a.web_session_sample_rate FROM dash_demo.as_of a) AS estimated_sessions\n'
     sql << 'FROM dash_demo.web_sessions s\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND s.started_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND s.started_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND s.started_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND s.started_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND s.device IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_estimated_sessions_sessions', data)
@@ -117,22 +113,16 @@ if (!componentId || componentId == 'gauge_conversion_rate_rate') {
     sql << 'SELECT round(count(CASE WHEN s.purchased THEN 1 END) * 1.0 / count(*), 4) AS conversion_rate\n'
     sql << 'FROM dash_demo.web_sessions s\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND s.started_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND s.started_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND s.started_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND s.started_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND s.device IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('gauge_conversion_rate_rate', data)
@@ -146,17 +136,14 @@ if (!componentId || componentId == 'trend_started_ts_week') {
     sql << 'FROM (\n'
     sql << '  SELECT strftime("started_ts", \'%G-W%V\') AS "started_ts", COUNT("session_id") AS "session_id_count"\n'
     sql << '  FROM "dash_demo"."web_sessions"\n'
-    if (hasDateFrom && hasDateTo__next_day) {
-        sql << '  WHERE "started_ts" >= ? AND "started_ts" < ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom and dateTo are required
+    sql << '  WHERE "started_ts" >= ? AND "started_ts" < ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND "device" IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '    AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  GROUP BY strftime("started_ts", \'%G-W%V\')\n'
     sql << ') grouped_rows\n'
@@ -177,22 +164,16 @@ if (!componentId || componentId == 'chart_dd12-chart-funnel') {
     sql << '         s.purchased AS purchased\n'
     sql << '  FROM dash_demo.web_sessions s\n'
     sql << '  WHERE true\n'
-    if (hasDateFrom) {
-        sql << '    AND s.started_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '    AND s.started_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '    AND s.started_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '    AND s.started_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND s.device IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '    AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '),\n'
     sql << 'steps AS (\n'
@@ -219,17 +200,14 @@ if (!componentId || componentId == 'chart_dd12-chart-sessions-per-week-by-device
     sql << 'FROM (\n'
     sql << '  SELECT strftime("started_ts", \'%G-W%V\') AS "started_ts", "device", COUNT("session_id") AS "session_id_count"\n'
     sql << '  FROM "dash_demo"."web_sessions"\n'
-    if (hasDateFrom && hasDateTo__next_day) {
-        sql << '  WHERE "started_ts" >= ? AND "started_ts" < ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom and dateTo are required
+    sql << '  WHERE "started_ts" >= ? AND "started_ts" < ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND "device" IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '    AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  GROUP BY strftime("started_ts", \'%G-W%V\'), "device"\n'
     sql << ') grouped_rows\n'
@@ -249,22 +227,16 @@ if (!componentId || componentId == 'chart_dd12-chart-mobile-checkout-per-month')
     sql << '       count(CASE WHEN s.reached_checkout THEN 1 END) AS reached_checkout\n'
     sql << 'FROM dash_demo.web_sessions s\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND s.started_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND s.started_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND s.started_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND s.started_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND s.device IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY 1\n'
@@ -281,22 +253,16 @@ if (!componentId || componentId == 'pivot_dd12-pivot-sessions-weekday-hour') {
     sql << '       count(*) AS sessions\n'
     sql << 'FROM dash_demo.web_sessions s\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND s.started_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND s.started_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND s.started_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND s.started_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND s.device IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY 1, 2\n'
     sql << 'ORDER BY 1, 2\n'
@@ -313,22 +279,16 @@ if (!componentId || componentId == 'chart_dd12-chart-conversion-by-traffic-sourc
     sql << '       count(CASE WHEN s.purchased THEN 1 END) AS purchasing_sessions\n'
     sql << 'FROM dash_demo.web_sessions s\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND s.started_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND s.started_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND s.started_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND s.started_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasDevice && listHasValues(device)) {
         addInList(sql, params, device, 'AND s.device IN') { asDeclaredType('device', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY conversion_pct DESC\n'

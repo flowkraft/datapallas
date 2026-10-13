@@ -37,8 +37,10 @@ def dayAfter = { String name, String type, value ->
 // ─── Filter values: an empty one turns its filter off ───
 def team = userVars?.get('team')?.toString()
 def hasTeam = (team != null && !team.isEmpty())
+// dateFrom is required: it always has a value, its default when the request has none
 def dateFrom = userVars?.get('dateFrom')?.toString()
 def hasDateFrom = (dateFrom != null && !dateFrom.isEmpty())
+// dateTo is required: it always has a value, its default when the request has none
 def dateTo = userVars?.get('dateTo')?.toString()
 def hasDateTo = (dateTo != null && !dateTo.isEmpty())
 def dateTo__next_day = dayAfter('dateTo', 'Date', dateTo)
@@ -53,24 +55,18 @@ if (!componentId || componentId == 'trend_openedat_csat') {
     sql << '  CAST(AVG(CAST(dash_demo.support_tickets.csat_score AS DECIMAL(31,4))) AS DECIMAL(31,4)) AS "AvgCsat"\n'
     sql << 'FROM dash_demo.support_tickets\n'
     sql << 'LEFT JOIN dash_demo.support_agents ON dash_demo.support_tickets.agent_id = dash_demo.support_agents.agent_id\n'
-    if (hasDateTo__next_day) {
-        sql << 'WHERE dash_demo.support_tickets.opened_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateTo is required
+    sql << 'WHERE dash_demo.support_tickets.opened_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasTeam) {
         sql << '  AND dash_demo.support_agents.team = ?\n'
         params << asDeclaredType('team', 'String', team)
     } else {
         sql << '  AND 1=1\n'   // no value: this filter is off
     }
-    if (hasDateFrom) {
-        sql << '  AND dash_demo.support_tickets.opened_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND dash_demo.support_tickets.opened_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
     sql << 'GROUP BY\n'
     sql << '  CAST(DATE_TRUNC(\'month\', dash_demo.support_tickets.opened_ts) AS DATE)\n'
     sql << 'ORDER BY\n'
@@ -87,18 +83,12 @@ if (!componentId || componentId == 'progress_dd22-progress-team-sla') {
     sql << '             * 100.0 / (SELECT k.target FROM dash_demo.kpi_targets k WHERE k.area = \'Support\' AND k.kpi = \'sla_met\'), 4) AS pct_of_target\n'
     sql << 'FROM dash_demo.support_tickets t\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND t.opened_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND t.opened_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND t.opened_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND t.opened_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
         params << asDeclaredType('team', 'String', team)
@@ -116,18 +106,12 @@ if (!componentId || componentId == 'number_reopened_rate_reopened') {
     sql << 'SELECT round(count(CASE WHEN t.reopened THEN 1 END) / count(*)::DOUBLE, 4) AS reopened_rate\n'
     sql << 'FROM dash_demo.support_tickets t\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND t.opened_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND t.opened_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND t.opened_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND t.opened_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
         params << asDeclaredType('team', 'String', team)
@@ -146,18 +130,12 @@ if (!componentId || componentId == 'chart_dd22-chart-boxplot-resolution-hours-by
     sql << '       round(date_diff(\'minute\', t.opened_ts, t.resolved_ts) / 60.0, 2) AS resolution_hours\n'
     sql << 'FROM dash_demo.support_tickets t\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND t.opened_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND t.opened_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND t.opened_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND t.opened_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
         params << asDeclaredType('team', 'String', team)
@@ -179,24 +157,18 @@ if (!componentId || componentId == 'chart_dd22-chart-csat-by-channel') {
     sql << '  CAST(AVG(CAST(dash_demo.support_tickets.csat_score AS DECIMAL(31,4))) AS DECIMAL(31,4)) AS "AvgCsat"\n'
     sql << 'FROM dash_demo.support_tickets\n'
     sql << 'LEFT JOIN dash_demo.support_agents ON dash_demo.support_tickets.agent_id = dash_demo.support_agents.agent_id\n'
-    if (hasDateTo__next_day) {
-        sql << 'WHERE dash_demo.support_tickets.opened_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateTo is required
+    sql << 'WHERE dash_demo.support_tickets.opened_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasTeam) {
         sql << '  AND dash_demo.support_agents.team = ?\n'
         params << asDeclaredType('team', 'String', team)
     } else {
         sql << '  AND 1=1\n'   // no value: this filter is off
     }
-    if (hasDateFrom) {
-        sql << '  AND dash_demo.support_tickets.opened_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND dash_demo.support_tickets.opened_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
     sql << 'GROUP BY\n'
     sql << '  dash_demo.support_tickets.channel\n'
     sql << 'ORDER BY\n'
@@ -218,18 +190,12 @@ if (!componentId || componentId == 'tabulator_support_tickets_leaderboard') {
     sql << 'FROM dash_demo.support_tickets t\n'
     sql << 'JOIN dash_demo.support_agents sa ON sa.agent_id = t.agent_id\n'
     sql << 'WHERE true\n'
-    if (hasDateFrom) {
-        sql << '  AND t.opened_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND t.opened_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND t.opened_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND t.opened_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
         params << asDeclaredType('team', 'String', team)

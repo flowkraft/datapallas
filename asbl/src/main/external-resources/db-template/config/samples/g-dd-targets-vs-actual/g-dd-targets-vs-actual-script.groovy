@@ -25,6 +25,7 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// year is required: it always has a value, its default when the request has none
 def year = userVars?.get('year')?.toString()
 def hasYear = (year != null && !year.isEmpty())
 def region = userVars?.get('region')?.toString()
@@ -44,12 +45,9 @@ if (!componentId || componentId == 'progress_dd08-progress-emea') {
     sql << '           WHERE o.status <> \'cancelled\'\n'
     sql << '           GROUP BY 1, 2\n'
     sql << '          ) a ON a.m = t.month AND a.region = t.region\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '  AND t.region = \'EMEA\'\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('progress_dd08-progress-emea', data)
@@ -69,12 +67,9 @@ if (!componentId || componentId == 'progress_dd08-progress-na') {
     sql << '           WHERE o.status <> \'cancelled\'\n'
     sql << '           GROUP BY 1, 2\n'
     sql << '          ) a ON a.m = t.month AND a.region = t.region\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '  AND t.region = \'NA\'\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('progress_dd08-progress-na', data)
@@ -94,12 +89,9 @@ if (!componentId || componentId == 'progress_dd08-progress-apac') {
     sql << '           WHERE o.status <> \'cancelled\'\n'
     sql << '           GROUP BY 1, 2\n'
     sql << '          ) a ON a.m = t.month AND a.region = t.region\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '  AND t.region = \'APAC\'\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('progress_dd08-progress-apac', data)
@@ -119,12 +111,9 @@ if (!componentId || componentId == 'progress_dd08-progress-latam') {
     sql << '           WHERE o.status <> \'cancelled\'\n'
     sql << '           GROUP BY 1, 2\n'
     sql << '          ) a ON a.m = t.month AND a.region = t.region\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '  AND t.region = \'LATAM\'\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('progress_dd08-progress-latam', data)
@@ -146,12 +135,9 @@ if (!componentId || componentId == 'chart_dd08-chart-monthly-revenue-vs-target')
     sql << '           WHERE o.status <> \'cancelled\'\n'
     sql << '           GROUP BY 1, 2\n'
     sql << '          ) a ON a.m = t.month AND a.region = t.region\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     if (hasRegion) {
         sql << '  AND t.region = ?\n'
         params << asDeclaredType('region', 'String', region)
@@ -178,12 +164,9 @@ if (!componentId || componentId == 'gauge_pct_of_target_attainment') {
     sql << '           WHERE o.status <> \'cancelled\'\n'
     sql << '           GROUP BY 1, 2\n'
     sql << '          ) a ON a.m = t.month AND a.region = t.region\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     if (hasRegion) {
         sql << '  AND t.region = ?\n'
         params << asDeclaredType('region', 'String', region)
@@ -211,12 +194,9 @@ if (!componentId || componentId == 'pivot_dd08-pivot-variance-by-region-month') 
     sql << '           WHERE o.status <> \'cancelled\'\n'
     sql << '           GROUP BY 1, 2\n'
     sql << '          ) a ON a.m = t.month AND a.region = t.region\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << 'ORDER BY 1, 2\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('pivot_dd08-pivot-variance-by-region-month', data)

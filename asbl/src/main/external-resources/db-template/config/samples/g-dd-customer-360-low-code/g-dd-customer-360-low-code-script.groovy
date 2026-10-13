@@ -25,6 +25,7 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// customerId is required: it always has a value, its default when the request has none
 def customerId = userVars?.get('customerId')?.toString()
 def hasCustomerId = (customerId != null && !customerId.isEmpty())
 
@@ -47,12 +48,9 @@ if (!componentId || componentId == 'detail_dd11-detail-customer-profile') {
     sql << 'FROM dash_demo.customers c\n'
     sql << 'JOIN dash_demo.geo_cities g ON g.city_id = c.city_id\n'
     sql << 'LEFT JOIN dash_demo.employees e ON e.employee_id = c.account_manager_id\n'
-    if (hasCustomerId) {
-        sql << 'WHERE c.customer_id = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << 'WHERE c.customer_id = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('detail_dd11-detail-customer-profile', data)
 }
@@ -64,12 +62,9 @@ if (!componentId || componentId == 'number_total_amount_sum_revenue') {
     sql << 'SELECT CAST(SUM("total_amount") AS DECIMAL(31,4)) AS "total_amount_sum"\n'
     sql << 'FROM "dash_demo"."orders"\n'
     sql << 'WHERE "status" <> \'cancelled\'\n'
-    if (hasCustomerId) {
-        sql << '  AND "customer_id" = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << '  AND "customer_id" = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     sql << 'LIMIT 500\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_total_amount_sum_revenue', data)
@@ -82,12 +77,9 @@ if (!componentId || componentId == 'number_count_invoices') {
     sql << 'SELECT COUNT(*) AS "count"\n'
     sql << 'FROM "dash_demo"."invoices"\n'
     sql << 'WHERE "status" IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasCustomerId) {
-        sql << '  AND "customer_id" = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << '  AND "customer_id" = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     sql << 'LIMIT 500\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_count_invoices', data)
@@ -100,12 +92,9 @@ if (!componentId || componentId == 'number_count_closed') {
     sql << 'SELECT COUNT(*) AS "count"\n'
     sql << 'FROM "dash_demo"."support_tickets"\n'
     sql << 'WHERE "status" <> \'closed\'\n'
-    if (hasCustomerId) {
-        sql << '  AND "customer_id" = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << '  AND "customer_id" = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     sql << 'LIMIT 500\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_count_closed', data)
@@ -118,12 +107,9 @@ if (!componentId || componentId == 'number_care_plan_mrr_mrr') {
     sql << 'SELECT round(coalesce(sum(mrr), 0), 2) AS care_plan_mrr\n'
     sql << 'FROM dash_demo.subscriptions\n'
     sql << 'WHERE cancel_date IS NULL\n'
-    if (hasCustomerId) {
-        sql << '  AND customer_id = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << '  AND customer_id = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_care_plan_mrr_mrr', data)
 }
@@ -137,12 +123,9 @@ if (!componentId || componentId == 'chart_dd11-chart-orders-per-month') {
     sql << '       round(sum(o.total_amount), 2) AS revenue\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.status <> \'cancelled\'\n'
-    if (hasCustomerId) {
-        sql << '  AND o.customer_id = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << '  AND o.customer_id = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -159,12 +142,9 @@ if (!componentId || componentId == 'chart_dd11-chart-spend-by-category') {
     sql << 'JOIN dash_demo.orders o ON o.order_id = l.order_id\n'
     sql << 'JOIN dash_demo.products p ON p.product_id = l.product_id\n'
     sql << 'WHERE o.status <> \'cancelled\'\n'
-    if (hasCustomerId) {
-        sql << '  AND o.customer_id = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << '  AND o.customer_id = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY spend DESC\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -184,12 +164,9 @@ if (!componentId || componentId == 'tabulator_orders_orders') {
     sql << '       CAST(o.delivered_ts AS DATE) AS delivered,\n'
     sql << '       round(o.total_amount, 2) AS total_amount\n'
     sql << 'FROM dash_demo.orders o\n'
-    if (hasCustomerId) {
-        sql << 'WHERE o.customer_id = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << 'WHERE o.customer_id = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     sql << 'ORDER BY o.order_ts DESC\n'
     sql << 'LIMIT 20\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -209,12 +186,9 @@ if (!componentId || componentId == 'tabulator_support_tickets_tickets') {
     sql << '       t.sla_breached AS sla_breached,\n'
     sql << '       t.csat_score AS csat\n'
     sql << 'FROM dash_demo.support_tickets t\n'
-    if (hasCustomerId) {
-        sql << 'WHERE t.customer_id = ?\n'
-        params << asDeclaredType('customerId', 'Integer', customerId)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: customerId is required
+    sql << 'WHERE t.customer_id = ?\n'
+    params << asDeclaredType('customerId', 'Integer', customerId)
     sql << 'ORDER BY t.opened_ts DESC\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('tabulator_support_tickets_tickets', data)

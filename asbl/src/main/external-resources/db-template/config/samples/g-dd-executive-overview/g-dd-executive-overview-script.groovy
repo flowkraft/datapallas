@@ -25,6 +25,7 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// year is required: it always has a value, its default when the request has none
 def year = userVars?.get('year')?.toString()
 def hasYear = (year != null && !year.isEmpty())
 
@@ -36,20 +37,14 @@ if (!componentId || componentId == 'trend_year_start_revenue') {
     sql << '       round(sum(o.total_amount), 2) AS revenue\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.status <> \'cancelled\'\n'
-    if (hasYear) {
-        sql << '  AND year(o.order_ts) >= year(least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))) - 1\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasYear) {
-        sql << '  AND CAST(o.order_ts AS DATE) <= CASE WHEN year(o.order_ts) = year(least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))) THEN least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) ELSE least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 1 YEAR END\n'
-        params << asDeclaredType('year', 'Date', year)
-        params << asDeclaredType('year', 'Date', year)
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '  AND year(o.order_ts) >= year(least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))) - 1\n'
+    params << asDeclaredType('year', 'Date', year)
+    // Always applied: year is required
+    sql << '  AND CAST(o.order_ts AS DATE) <= CASE WHEN year(o.order_ts) = year(least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))) THEN least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) ELSE least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 1 YEAR END\n'
+    params << asDeclaredType('year', 'Date', year)
+    params << asDeclaredType('year', 'Date', year)
+    params << asDeclaredType('year', 'Date', year)
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -62,19 +57,13 @@ if (!componentId || componentId == 'progress_dd01-kpi-revenue-vs-target') {
     def params = []
     sql << 'SELECT round((SELECT sum(o.total_amount) FROM dash_demo.orders o\n'
     sql << '                WHERE o.status <> \'cancelled\'\n'
-    if (hasYear) {
-        sql << '                  AND year(o.order_ts) = year(CAST(? AS DATE)))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '                  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '                  AND year(o.order_ts) = year(CAST(? AS DATE)))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '       / (SELECT sum(t.revenue_target) FROM dash_demo.sales_targets t\n'
-    if (hasYear) {
-        sql << '          WHERE year(t.month) = year(CAST(? AS DATE))), 4) AS pct_of_target\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '          WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '          WHERE year(t.month) = year(CAST(? AS DATE))), 4) AS pct_of_target\n'
+    params << asDeclaredType('year', 'Date', year)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('progress_dd01-kpi-revenue-vs-target', data)
 }
@@ -85,18 +74,12 @@ if (!componentId || componentId == 'number_mrr_mrr') {
     def params = []
     sql << 'SELECT round(sum(s.mrr), 2) AS mrr\n'
     sql << 'FROM dash_demo.subscriptions s\n'
-    if (hasYear) {
-        sql << 'WHERE s.start_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
-    if (hasYear) {
-        sql << '  AND (s.cancel_date IS NULL OR s.cancel_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE s.start_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n'
+    params << asDeclaredType('year', 'Date', year)
+    // Always applied: year is required
+    sql << '  AND (s.cancel_date IS NULL OR s.cancel_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)))\n'
+    params << asDeclaredType('year', 'Date', year)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_mrr_mrr', data)
 }
@@ -107,31 +90,19 @@ if (!componentId || componentId == 'number_dso_days_dso') {
     def params = []
     sql << 'SELECT round(365.0\n'
     sql << '       * (SELECT sum(i.amount + i.tax_amount) FROM dash_demo.invoices i\n'
-    if (hasYear) {
-        sql << '          WHERE i.issue_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '          WHERE 1=1\n'   // no value: this filter is off
-    }
-    if (hasYear) {
-        sql << '            AND (i.last_paid_date IS NULL OR i.last_paid_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '            AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '          WHERE i.issue_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n'
+    params << asDeclaredType('year', 'Date', year)
+    // Always applied: year is required
+    sql << '            AND (i.last_paid_date IS NULL OR i.last_paid_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '       / (SELECT sum(i.amount + i.tax_amount) FROM dash_demo.invoices i\n'
-    if (hasYear) {
-        sql << '          WHERE i.issue_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 365 DAY\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '          WHERE 1=1\n'   // no value: this filter is off
-    }
-    if (hasYear) {
-        sql << '            AND i.issue_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))), 2) AS dso_days\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '            AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '          WHERE i.issue_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 365 DAY\n'
+    params << asDeclaredType('year', 'Date', year)
+    // Always applied: year is required
+    sql << '            AND i.issue_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))), 2) AS dso_days\n'
+    params << asDeclaredType('year', 'Date', year)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_dso_days_dso', data)
 }
@@ -143,12 +114,9 @@ if (!componentId || componentId == 'gauge_on_time_pct_time') {
     sql << 'SELECT round(1.0 * count(CASE WHEN CAST(o.delivered_ts AS DATE) <= o.promised_date THEN 1 END) / count(*), 4) AS on_time_pct\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasYear) {
-        sql << '  AND year(o.delivered_ts) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '  AND year(o.delivered_ts) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('gauge_on_time_pct_time', data)
 }
@@ -159,18 +127,12 @@ if (!componentId || componentId == 'number_headcount_headcount') {
     def params = []
     sql << 'SELECT count(*) AS headcount\n'
     sql << 'FROM dash_demo.employees e\n'
-    if (hasYear) {
-        sql << 'WHERE e.hire_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
-    if (hasYear) {
-        sql << '  AND (e.termination_date IS NULL OR e.termination_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE e.hire_date <= least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a))\n'
+    params << asDeclaredType('year', 'Date', year)
+    // Always applied: year is required
+    sql << '  AND (e.termination_date IS NULL OR e.termination_date > least(make_date(year(CAST(? AS DATE)), 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)))\n'
+    params << asDeclaredType('year', 'Date', year)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_headcount_headcount', data)
 }
@@ -183,12 +145,9 @@ if (!componentId || componentId == 'number_gross_margin_pct_margin') {
     sql << 'FROM dash_demo.order_lines l\n'
     sql << 'JOIN dash_demo.orders o USING (order_id)\n'
     sql << 'WHERE o.status <> \'cancelled\'\n'
-    if (hasYear) {
-        sql << '  AND year(o.order_ts) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '  AND year(o.order_ts) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_gross_margin_pct_margin', data)
 }
@@ -199,12 +158,9 @@ if (!componentId || componentId == 'gauge_sla_met_pct_met') {
     def params = []
     sql << 'SELECT round(1.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 4) AS sla_met_pct\n'
     sql << 'FROM dash_demo.support_tickets t\n'
-    if (hasYear) {
-        sql << 'WHERE year(t.opened_ts) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << 'WHERE year(t.opened_ts) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('gauge_sla_met_pct_met', data)
 }
@@ -219,21 +175,15 @@ if (!componentId || componentId == 'chart_dd01-chart-revenue-vs-target') {
     sql << 'FROM (SELECT date_trunc(\'month\', o.order_ts) AS month, sum(o.total_amount) AS revenue\n'
     sql << '      FROM dash_demo.orders o\n'
     sql << '      WHERE o.status <> \'cancelled\'\n'
-    if (hasYear) {
-        sql << '        AND year(o.order_ts) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '        AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '        AND year(o.order_ts) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '      GROUP BY 1) a\n'
     sql << 'LEFT JOIN (SELECT s.month AS month, sum(s.revenue_target) AS revenue_target\n'
     sql << '           FROM dash_demo.sales_targets s\n'
-    if (hasYear) {
-        sql << '           WHERE year(s.month) = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '           WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '           WHERE year(s.month) = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '           GROUP BY 1) t ON t.month = a.month\n'
     sql << 'ORDER BY a.month\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -248,12 +198,9 @@ if (!componentId || componentId == 'tabulator_dd01-table-off-target') {
     sql << '  SELECT CASE WHEN count(*) = 1 THEN min(r.y)\n'
     sql << '              ELSE (SELECT year(a.as_of) FROM dash_demo.as_of a) END AS y\n'
     sql << '  FROM range(1, 10000) AS r(y)\n'
-    if (hasYear) {
-        sql << '  WHERE r.y = year(CAST(? AS DATE))\n'
-        params << asDeclaredType('year', 'Date', year)
-    } else {
-        sql << '  WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: year is required
+    sql << '  WHERE r.y = year(CAST(? AS DATE))\n'
+    params << asDeclaredType('year', 'Date', year)
     sql << '),\n'
     sql << 'p AS (\n'
     sql << '  SELECT k.y AS y, least(make_date(k.y, 12, 31), (SELECT a.as_of FROM dash_demo.as_of a)) AS cutoff\n'

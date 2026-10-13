@@ -89,7 +89,7 @@ if (!componentId || componentId == 'trend_month_mrr') {
     if (hasPlan && listHasValues(plan)) {
         addInList(sql, params, plan, 'AND s.plan IN') { asDeclaredType('plan', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY m.month\n'
     sql << 'ORDER BY m.month\n'
@@ -107,7 +107,7 @@ if (!componentId || componentId == 'number_active_subscribers_subscribers') {
     if (hasPlan && listHasValues(plan)) {
         addInList(sql, params, plan, 'AND s.plan IN') { asDeclaredType('plan', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND s.cancel_date IS NULL\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -125,7 +125,7 @@ if (!componentId || componentId == 'gauge_churn_last_month_month') {
     if (hasPlan && listHasValues(plan)) {
         addInList(sql, params, plan, 'AND s.plan IN') { asDeclaredType('plan', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND s.start_date < date_trunc(\'month\', (SELECT a.as_of FROM dash_demo.as_of a))\n'
     sql << '  AND (s.cancel_date IS NULL OR s.cancel_date >= date_trunc(\'month\', (SELECT a.as_of FROM dash_demo.as_of a)))\n'
@@ -150,7 +150,7 @@ if (!componentId || componentId == 'chart_dd15-chart-waterfall-mrr-movement') {
     if (hasPlan && listHasValues(plan)) {
         addInList(sql, params, plan, 'AND s.plan IN') { asDeclaredType('plan', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY movement\n'
     sql << 'ORDER BY CASE movement\n'
@@ -173,7 +173,7 @@ if (!componentId || componentId == 'chart_dd15-chart-churn-reasons') {
     if (hasPlan && listHasValues(plan)) {
         addInList(sql, params, plan, 'AND "plan" IN') { asDeclaredType('plan', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY "cancel_reason"\n'
     sql << 'ORDER BY COUNT("subscription_id") DESC\n'
@@ -206,7 +206,7 @@ if (!componentId || componentId == 'chart_dd15-chart-mrr-by-plan') {
     if (hasPlan && listHasValues(plan)) {
         addInList(sql, params, plan, 'AND s.plan IN') { asDeclaredType('plan', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY m.month, s.plan\n'
     sql << 'ORDER BY m.month, s.plan\n'
@@ -235,7 +235,7 @@ if (!componentId || componentId == 'pivot_dd15-pivot-subscriber-cohorts') {
     if (hasPlan && listHasValues(plan)) {
         addInList(sql, params, plan, 'AND s.plan IN') { asDeclaredType('plan', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND s.start_date >= DATE \'2025-01-01\'\n'
     sql << 'GROUP BY cohort, m.month\n'

@@ -63,6 +63,7 @@ def addInList = { sql, params, listValue, lineBeforeList, convert = null ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// period is required: it always has a value, its default when the request has none
 def period = userVars?.get('period')?.toString()
 def hasPeriod = (period != null && !period.isEmpty())
 def department = userVars?.get('department')?.toString()
@@ -77,16 +78,13 @@ if (!componentId || componentId == 'number_payroll_cost_cost') {
     sql << 'JOIN dash_demo.employees e ON e.employee_id = pl.employee_id\n'
     sql << 'JOIN dash_demo.departments d ON d.department_id = e.department_id\n'
     sql << 'WHERE true\n'
-    if (hasPeriod) {
-        sql << '  AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
-        params << asDeclaredType('period', 'String', period)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: period is required
+    sql << '  AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
+    params << asDeclaredType('period', 'String', period)
     if (hasDepartment && listHasValues(department)) {
         addInList(sql, params, department, 'AND d.name IN') { asDeclaredType('department', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_payroll_cost_cost', data)
@@ -101,16 +99,13 @@ if (!componentId || componentId == 'number_average_gross_pay_pay') {
     sql << 'JOIN dash_demo.employees e ON e.employee_id = pl.employee_id\n'
     sql << 'JOIN dash_demo.departments d ON d.department_id = e.department_id\n'
     sql << 'WHERE true\n'
-    if (hasPeriod) {
-        sql << '  AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
-        params << asDeclaredType('period', 'String', period)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: period is required
+    sql << '  AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
+    params << asDeclaredType('period', 'String', period)
     if (hasDepartment && listHasValues(department)) {
         addInList(sql, params, department, 'AND d.name IN') { asDeclaredType('department', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_average_gross_pay_pay', data)
@@ -125,16 +120,13 @@ if (!componentId || componentId == 'number_overtime_hours_hours') {
     sql << 'JOIN dash_demo.employees e ON e.employee_id = pl.employee_id\n'
     sql << 'JOIN dash_demo.departments d ON d.department_id = e.department_id\n'
     sql << 'WHERE true\n'
-    if (hasPeriod) {
-        sql << '  AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
-        params << asDeclaredType('period', 'String', period)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: period is required
+    sql << '  AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
+    params << asDeclaredType('period', 'String', period)
     if (hasDepartment && listHasValues(department)) {
         addInList(sql, params, department, 'AND d.name IN') { asDeclaredType('department', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_overtime_hours_hours', data)
@@ -154,7 +146,7 @@ if (!componentId || componentId == 'chart_dd17-chart-cost-per-month-by-departmen
     if (hasDepartment && listHasValues(department)) {
         addInList(sql, params, department, 'AND d.name IN') { asDeclaredType('department', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY month, department\n'
     sql << 'ORDER BY month, department\n'
@@ -176,16 +168,13 @@ if (!componentId || componentId == 'chart_dd17-chart-cost-components') {
     sql << '  JOIN dash_demo.employees e ON e.employee_id = pl.employee_id\n'
     sql << '  JOIN dash_demo.departments d ON d.department_id = e.department_id\n'
     sql << '  WHERE true\n'
-    if (hasPeriod) {
-        sql << '    AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
-        params << asDeclaredType('period', 'String', period)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: period is required
+    sql << '    AND strftime(pl.period_month, \'%Y-%m\') = ?\n'
+    params << asDeclaredType('period', 'String', period)
     if (hasDepartment && listHasValues(department)) {
         addInList(sql, params, department, 'AND d.name IN') { asDeclaredType('department', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '    AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '),\n'
     sql << 'totals AS (\n'
@@ -234,17 +223,14 @@ if (!componentId || componentId == 'tabulator_dd17-table-cost-change-by-departme
     sql << '  JOIN dash_demo.employees e ON e.employee_id = pl.employee_id\n'
     sql << '  JOIN dash_demo.departments d ON d.department_id = e.department_id\n'
     sql << '  WHERE true\n'
-    if (hasPeriod) {
-        sql << '    AND date_trunc(\'month\', pl.period_month) IN (CAST(? || \'-01\' AS DATE), CAST(? || \'-01\' AS DATE) - INTERVAL 12 MONTH)\n'
-        params << asDeclaredType('period', 'String', period)
-        params << asDeclaredType('period', 'String', period)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: period is required
+    sql << '    AND date_trunc(\'month\', pl.period_month) IN (CAST(? || \'-01\' AS DATE), CAST(? || \'-01\' AS DATE) - INTERVAL 12 MONTH)\n'
+    params << asDeclaredType('period', 'String', period)
+    params << asDeclaredType('period', 'String', period)
     if (hasDepartment && listHasValues(department)) {
         addInList(sql, params, department, 'AND d.name IN') { asDeclaredType('department', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '    AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '),\n'
     sql << 'per_month AS (\n'

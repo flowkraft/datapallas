@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import com.flowkraft.cubes.CubeDates;
 import com.flowkraft.exploredata.export.DashboardDemos.Demo;
+import com.flowkraft.reporting.services.ReportingService;
 
 /**
  * Every claim the Dashboard Demos make is the number the tile that makes it shows a reader.
@@ -220,6 +223,57 @@ class DashboardDemosQueriesTest {
 		assertTrue(wrong.get(0).contains(demo.reportId()), wrong.get(0));
 	}
 
+	@Test
+	@Order(6)
+	@DisplayName("Every demo answers a request that carries no filter values: a required filter is its default, the rest are off")
+	void everyDemoAnswersARequestWithNoValues() throws Exception {
+
+		// What a tile asking on its own, a link or another program sends: nothing at all. The server
+		// fills each required filter with its default, as /data does, and every other filter is off.
+		// Before, DD01, DD10 and DD25 (and its twin) failed here: their required filters' lines had an
+		// "off" version, and it was not SQL - a column, a CASE branch, a bracket left open.
+		Connection connection = DashboardDemos.dashDemo();
+		ReportingService server = new ReportingService();
+		List<String> wrong = new ArrayList<>();
+		int demos = 0;
+
+		for (Demo demo : DashboardDemos.allWithTwins()) {
+			Path spec = Paths.get(DashboardDemos.SAMPLES, demo.reportId(),
+					demo.reportId() + "-report-parameters-spec.groovy");
+			Map<String, Object> asked = new LinkedHashMap<>();
+			server.withRequiredValues(new LinkedHashMap<>(), spec).forEach((name, value) -> asked.put(name, day(value)));
+
+			Map<String, List<Map<String, Object>>> reported;
+			try {
+				reported = DashboardDemos.answers(demo, asked, connection);
+			} catch (Exception failed) {
+				wrong.add(demo.reportId() + ": " + failed.getMessage());
+				continue;
+			}
+			demos++;
+			// Every tile the page answers at its defaults is answered: none of them went missing.
+			Set<String> atDefaults = DashboardDemos.answers(demo, demo.paramsOf("defaults"), connection).keySet();
+			if (!reported.keySet().equals(atDefaults))
+				wrong.add(demo.reportId() + ": answered " + reported.keySet() + ", at its defaults " + atDefaults);
+
+			// A demo whose filters are all required opens on its defaults whatever the request carried.
+			if (allRequired(demo))
+				read(demo, "no values", demo.kpis(), asked, connection, wrong);
+		}
+
+		assertTrue(demos > 0, "no demo was asked at all, which is not a pass");
+		assertTrue(wrong.isEmpty(), wrong.size() + " problems with a request that carries no values:\n"
+				+ String.join("\n", wrong));
+	}
+
+	/** Whether every filter the demo declares is required (and it declares one). */
+	@SuppressWarnings("unchecked")
+	private static boolean allRequired(Demo demo) {
+		List<Map<String, Object>> parameters = demo.parameters();
+		return !parameters.isEmpty() && parameters.stream().allMatch(p -> p.get("constraints") instanceof Map<?, ?> c
+				&& Boolean.TRUE.equals(((Map<String, Object>) c).get("required")));
+	}
+
 	// ── The harness ──────────────────────────────────────────────────────────────
 
 	/** Reads every claim of one demo under one set of answers, and says which ones do not hold. */
@@ -229,7 +283,16 @@ class DashboardDemosQueriesTest {
 		if (kpis.isEmpty())
 			return 0;
 
-		Map<String, Object> params = demo.paramsOf(interactionId);
+		return read(demo, interactionId, kpis, demo.paramsOf(interactionId), connection, wrong);
+	}
+
+	/** The same, under answers given here rather than read off the catalogue. */
+	private static int read(Demo demo, String interactionId, List<Map<String, Object>> kpis,
+			Map<String, Object> params, Connection connection, List<String> wrong) throws Exception {
+
+		if (kpis.isEmpty())
+			return 0;
+
 		Map<String, List<Map<String, Object>>> reported = DashboardDemos.answers(demo, params, connection);
 
 		for (Map<String, Object> kpi : kpis) {

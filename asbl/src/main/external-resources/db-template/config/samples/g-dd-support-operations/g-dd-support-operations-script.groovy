@@ -101,7 +101,7 @@ if (!componentId || componentId == 'number_opened_last_7_days_days') {
     if (hasPriority && listHasValues(priority)) {
         addInList(sql, params, priority, 'AND t.priority IN') { asDeclaredType('priority', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
@@ -148,7 +148,7 @@ if (!componentId || componentId == 'gauge_sla_met_rate_met') {
     if (hasPriority && listHasValues(priority)) {
         addInList(sql, params, priority, 'AND t.priority IN') { asDeclaredType('priority', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
@@ -172,7 +172,7 @@ if (!componentId || componentId == 'pivot_dd21-pivot-tickets-weekday-hour') {
     if (hasPriority && listHasValues(priority)) {
         addInList(sql, params, priority, 'AND t.priority IN') { asDeclaredType('priority', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
@@ -200,7 +200,7 @@ if (!componentId || componentId == 'chart_dd21-chart-created-vs-resolved-per-wee
     if (hasPriority && listHasValues(priority)) {
         addInList(sql, params, priority, 'AND t.priority IN') { asDeclaredType('priority', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
@@ -217,7 +217,7 @@ if (!componentId || componentId == 'chart_dd21-chart-created-vs-resolved-per-wee
     if (hasPriority && listHasValues(priority)) {
         addInList(sql, params, priority, 'AND t.priority IN') { asDeclaredType('priority', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
@@ -250,7 +250,7 @@ if (!componentId || componentId == 'chart_dd21-chart-open-backlog-by-priority') 
     if (hasPriority && listHasValues(priority)) {
         addInList(sql, params, priority, 'AND t.priority IN') { asDeclaredType('priority', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'
@@ -283,7 +283,7 @@ if (!componentId || componentId == 'tabulator_dd21-table-open-urgent-and-high') 
     if (hasPriority && listHasValues(priority)) {
         addInList(sql, params, priority, 'AND t.priority IN') { asDeclaredType('priority', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasTeam) {
         sql << '  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ?)\n'

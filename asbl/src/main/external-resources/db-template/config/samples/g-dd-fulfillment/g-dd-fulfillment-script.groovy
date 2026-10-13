@@ -73,8 +73,10 @@ def addInList = { sql, params, listValue, lineBeforeList, convert = null ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// dateFrom is required: it always has a value, its default when the request has none
 def dateFrom = userVars?.get('dateFrom')?.toString()
 def hasDateFrom = (dateFrom != null && !dateFrom.isEmpty())
+// dateTo is required: it always has a value, its default when the request has none
 def dateTo = userVars?.get('dateTo')?.toString()
 def hasDateTo = (dateTo != null && !dateTo.isEmpty())
 def carrier = userVars?.get('carrier')?.toString()
@@ -90,22 +92,16 @@ if (!componentId || componentId == 'gauge_on_time_rate_delivery') {
     sql << '             / count(*)::DOUBLE, 4) AS on_time_rate\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('gauge_on_time_rate_delivery', data)
@@ -118,22 +114,16 @@ if (!componentId || componentId == 'number_average_days_to_deliver_deliver') {
     sql << 'SELECT round(avg(date_diff(\'day\', o.order_ts::DATE, o.delivered_ts::DATE)), 2) AS average_days_to_deliver\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_average_days_to_deliver_deliver', data)
@@ -146,22 +136,16 @@ if (!componentId || componentId == 'number_late_orders_orders') {
     sql << 'SELECT count(*) AS late_orders\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND o.delivered_ts::DATE > o.promised_date\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -177,22 +161,16 @@ if (!componentId || componentId == 'trend_week_week') {
     sql << '             / count(*)::DOUBLE, 4) AS on_time_rate\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY week\n'
     sql << 'ORDER BY week\n'
@@ -208,22 +186,16 @@ if (!componentId || componentId == 'chart_dd20-chart-late-by-carrier') {
     sql << '       round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2) AS late_pct\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY o.carrier\n'
     sql << 'ORDER BY late_pct DESC\n'
@@ -239,22 +211,16 @@ if (!componentId || componentId == 'chart_dd20-chart-boxplot-delivery-days-by-ca
     sql << '       date_diff(\'day\', o.order_ts::DATE, o.delivered_ts::DATE) AS delivery_days\n'
     sql << 'FROM dash_demo.orders o\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'ORDER BY o.carrier, delivery_days\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -272,22 +238,16 @@ if (!componentId || componentId == 'map_dd20-map-late-by-country') {
     sql << 'FROM dash_demo.orders o\n'
     sql << 'JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY g.country\n'
     sql << 'ORDER BY g.country\n'
@@ -308,22 +268,16 @@ if (!componentId || componentId == 'tabulator_dd20-table-late-orders') {
     sql << 'FROM dash_demo.orders o\n'
     sql << 'JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n'
     sql << 'WHERE o.delivered_ts IS NOT NULL\n'
-    if (hasDateFrom) {
-        sql << '  AND o.delivered_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.delivered_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.delivered_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.delivered_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCarrier && listHasValues(carrier)) {
         addInList(sql, params, carrier, 'AND o.carrier IN') { asDeclaredType('carrier', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND o.delivered_ts::DATE > o.promised_date\n'
     sql << 'ORDER BY days_late DESC, o.delivered_ts DESC\n'

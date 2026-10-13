@@ -107,7 +107,7 @@ if (!componentId || componentId == 'number_total_amount_sum_revenue') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND "channel" IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -137,7 +137,7 @@ if (!componentId || componentId == 'number_order_id_count_orders') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND "channel" IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -167,7 +167,7 @@ if (!componentId || componentId == 'number_total_amount_avg_value') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND "channel" IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -197,7 +197,7 @@ if (!componentId || componentId == 'number_customer_id_count_distinct_ordered') 
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND "channel" IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'LIMIT 1\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -229,7 +229,7 @@ if (!componentId || componentId == 'chart_dd02-chart-revenue-per-month') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND "channel" IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '    AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  GROUP BY strftime("order_ts", \'%Y-%m\')\n'
     sql << ') grouped_rows\n'
@@ -270,7 +270,7 @@ if (!componentId || componentId == 'chart_dd02-chart-revenue-by-category') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND o.channel IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY p.category\n'
     sql << 'ORDER BY revenue DESC\n'
@@ -301,7 +301,7 @@ if (!componentId || componentId == 'chart_dd02-chart-revenue-by-channel') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND "channel" IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY "channel"\n'
     sql << 'ORDER BY CASE WHEN CAST(SUM("total_amount") AS DECIMAL(31,4)) IS NULL THEN 1 ELSE 0 END, CAST(SUM("total_amount") AS DECIMAL(31,4)) DESC\n'
@@ -333,7 +333,7 @@ if (!componentId || componentId == 'map_dd02-map-revenue-by-country') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND "channel" IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY "country_code"\n'
     sql << 'ORDER BY CASE WHEN CAST(SUM("total_amount") AS DECIMAL(31,4)) IS NULL THEN 1 ELSE 0 END, CAST(SUM("total_amount") AS DECIMAL(31,4)) DESC\n'
@@ -375,7 +375,7 @@ if (!componentId || componentId == 'tabulator_dd02-table-top-products') {
     if (hasChannel && listHasValues(channel)) {
         addInList(sql, params, channel, 'AND o.channel IN') { asDeclaredType('channel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY p.name, p.category\n'
     sql << 'ORDER BY revenue DESC\n'

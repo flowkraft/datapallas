@@ -79,7 +79,7 @@ if (!componentId || componentId == 'number_netsales_net') {
     if (hasCountry && listHasValues(country)) {
         addInList(sql, params, country, 'AND cube_demo.shop_customers.country IN') { asDeclaredType('country', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'LIMIT 500\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -99,7 +99,7 @@ if (!componentId || componentId == 'number_units_units') {
     if (hasCountry && listHasValues(country)) {
         addInList(sql, params, country, 'AND cube_demo.shop_customers.country IN') { asDeclaredType('country', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'LIMIT 500\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -119,7 +119,7 @@ if (!componentId || componentId == 'chart_channel_channel') {
     if (hasCountry && listHasValues(country)) {
         addInList(sql, params, country, 'AND cube_demo.shop_customers.country IN') { asDeclaredType('country', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY\n'
     sql << '  cube_demo.shop_orders.channel\n'
@@ -145,7 +145,7 @@ if (!componentId || componentId == 'tabulator_net-category') {
     if (hasCountry && listHasValues(country)) {
         addInList(sql, params, country, 'AND cube_demo.shop_customers.country IN') { asDeclaredType('country', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY\n'
     sql << '  cube_demo.shop_products.category\n'

@@ -19,6 +19,7 @@ import assert from 'node:assert/strict';
 
 import { prepareDashboardHtml } from './dashboard-injection.ts';
 import type { DashboardHostContext } from './dashboard-injection.ts';
+import { DATA_WIDGET_TAGS } from './slicer-selections.ts';
 
 const DASHBOARD = 'quarterly-dashboard';
 const TOKEN = 'header.payload.signature';
@@ -106,6 +107,20 @@ describe('a shared dashboard hands its credential to the widgets inside it', () 
     // rb-parameters is the control itself. Feeding it the values it just produced is how a
     // parameter panel resets the reader's own selection.
     assert.ok(!attributesOf(prepared, 'rb-parameters').includes('report-params'));
+  });
+
+  test('every data widget is given the filter values, a trend or a gauge as much as a table', () => {
+    // Each of them reads `report-params` when it mounts and asks for its data at once. A widget put
+    // on the page without them asked unfiltered; the list of the ones given values was once a list
+    // of its own, four names long, and a dashboard's trend, progress and gauge tiles were not on it.
+    const tags = DATA_WIDGET_TAGS.split(',').map((tag) => tag.trim());
+    const template = tags.map((tag) => '<' + tag + ' component-id="w"></' + tag + '>').join('\n');
+    const prepared = prepareDashboardHtml(template, sharedPage({ reportParams: { year: '2026-01-01' } }));
+
+    assert.equal(tags.length, 11);
+    for (const tag of tags)
+      assert.equal(valueOf(prepared, tag, 'report-params'), '{&quot;year&quot;:&quot;2026-01-01&quot;}',
+        tag + ' must ask for its data with the filter values from its first request');
   });
 
   test('a widget pointed at another report is explained, not silently left blank', () => {

@@ -35,8 +35,10 @@ def dayAfter = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// dateFrom is required: it always has a value, its default when the request has none
 def dateFrom = userVars?.get('dateFrom')?.toString()
 def hasDateFrom = (dateFrom != null && !dateFrom.isEmpty())
+// dateTo is required: it always has a value, its default when the request has none
 def dateTo = userVars?.get('dateTo')?.toString()
 def hasDateTo = (dateTo != null && !dateTo.isEmpty())
 def category = userVars?.get('category')?.toString()
@@ -53,18 +55,12 @@ if (!componentId || componentId == 'number_marginpct_margin') {
     sql << 'FROM dash_demo.order_lines\n'
     sql << 'LEFT JOIN dash_demo.orders ON dash_demo.order_lines.order_id = dash_demo.orders.order_id\n'
     sql << 'LEFT JOIN dash_demo.products ON dash_demo.order_lines.product_id = dash_demo.products.product_id\n'
-    if (hasDateTo__next_day) {
-        sql << 'WHERE dash_demo.orders.order_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateFrom) {
-        sql << '  AND dash_demo.orders.order_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateTo is required
+    sql << 'WHERE dash_demo.orders.order_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
+    // Always applied: dateFrom is required
+    sql << '  AND dash_demo.orders.order_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
     if (hasCategory) {
         sql << '  AND dash_demo.products.category = ?\n'
         params << asDeclaredType('category', 'String', category)
@@ -84,18 +80,12 @@ if (!componentId || componentId == 'number_grossprofit_profit') {
     sql << 'FROM dash_demo.order_lines\n'
     sql << 'LEFT JOIN dash_demo.orders ON dash_demo.order_lines.order_id = dash_demo.orders.order_id\n'
     sql << 'LEFT JOIN dash_demo.products ON dash_demo.order_lines.product_id = dash_demo.products.product_id\n'
-    if (hasDateTo__next_day) {
-        sql << 'WHERE dash_demo.orders.order_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateFrom) {
-        sql << '  AND dash_demo.orders.order_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateTo is required
+    sql << 'WHERE dash_demo.orders.order_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
+    // Always applied: dateFrom is required
+    sql << '  AND dash_demo.orders.order_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
     if (hasCategory) {
         sql << '  AND dash_demo.products.category = ?\n'
         params << asDeclaredType('category', 'String', category)
@@ -115,18 +105,12 @@ if (!componentId || componentId == 'number_discounts_given_given') {
     sql << 'JOIN dash_demo.orders o ON o.order_id = l.order_id\n'
     sql << 'JOIN dash_demo.products p ON p.product_id = l.product_id\n'
     sql << 'WHERE o.status <> \'cancelled\'\n'
-    if (hasDateFrom) {
-        sql << '  AND o.order_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.order_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.order_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.order_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCategory) {
         sql << '  AND p.category = ?\n'
         params << asDeclaredType('category', 'String', category)
@@ -148,18 +132,12 @@ if (!componentId || componentId == 'chart_dd16-chart-revenue-and-margin-per-mont
     sql << 'JOIN dash_demo.orders o ON o.order_id = l.order_id\n'
     sql << 'JOIN dash_demo.products p ON p.product_id = l.product_id\n'
     sql << 'WHERE o.status <> \'cancelled\'\n'
-    if (hasDateFrom) {
-        sql << '  AND o.order_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '  AND o.order_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '  AND o.order_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '  AND o.order_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCategory) {
         sql << '  AND p.category = ?\n'
         params << asDeclaredType('category', 'String', category)
@@ -185,18 +163,12 @@ if (!componentId || componentId == 'chart_dd16-chart-waterfall-list-price-to-gro
     sql << '  JOIN dash_demo.orders o ON o.order_id = l.order_id\n'
     sql << '  JOIN dash_demo.products p ON p.product_id = l.product_id\n'
     sql << '  WHERE o.status <> \'cancelled\'\n'
-    if (hasDateFrom) {
-        sql << '    AND o.order_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateTo__next_day) {
-        sql << '    AND o.order_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateFrom is required
+    sql << '    AND o.order_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
+    // Always applied: dateTo is required
+    sql << '    AND o.order_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
     if (hasCategory) {
         sql << '    AND p.category = ?\n'
         params << asDeclaredType('category', 'String', category)
@@ -223,18 +195,12 @@ if (!componentId || componentId == 'pivot_dd16-pivot-margin-by-category-quarter'
     sql << 'FROM dash_demo.order_lines\n'
     sql << 'LEFT JOIN dash_demo.orders ON dash_demo.order_lines.order_id = dash_demo.orders.order_id\n'
     sql << 'LEFT JOIN dash_demo.products ON dash_demo.order_lines.product_id = dash_demo.products.product_id\n'
-    if (hasDateTo__next_day) {
-        sql << 'WHERE dash_demo.orders.order_ts < ?\n'
-        params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
-    if (hasDateFrom) {
-        sql << '  AND dash_demo.orders.order_ts >= ?\n'
-        params << asDeclaredType('dateFrom', 'Date', dateFrom)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: dateTo is required
+    sql << 'WHERE dash_demo.orders.order_ts < ?\n'
+    params << asDeclaredType('dateTo__next_day', 'Date', dateTo__next_day)
+    // Always applied: dateFrom is required
+    sql << '  AND dash_demo.orders.order_ts >= ?\n'
+    params << asDeclaredType('dateFrom', 'Date', dateFrom)
     if (hasCategory) {
         sql << '  AND dash_demo.products.category = ?\n'
         params << asDeclaredType('category', 'String', category)

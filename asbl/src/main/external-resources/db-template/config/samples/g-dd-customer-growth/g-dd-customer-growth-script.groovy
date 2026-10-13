@@ -83,7 +83,7 @@ if (!componentId || componentId == 'number_customer_id_count_customers') {
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND "acquisition_channel" IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'LIMIT 500\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -106,7 +106,7 @@ if (!componentId || componentId == 'number_new_customers_days') {
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND c.acquisition_channel IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND c.signup_date > (SELECT a.as_of FROM dash_demo.as_of a) - INTERVAL 30 DAY\n'
     sql << '  AND c.signup_date <= (SELECT a.as_of FROM dash_demo.as_of a)\n'
@@ -131,7 +131,7 @@ if (!componentId || componentId == 'trend_signup_date_month') {
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND "acquisition_channel" IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '    AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  GROUP BY strftime("signup_date", \'%Y-%m\')\n'
     sql << ') grouped_rows\n'
@@ -160,7 +160,7 @@ if (!componentId || componentId == 'number_repeat_buyer_pct_buyers') {
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND c.acquisition_channel IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '        AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '     ) b\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -186,7 +186,7 @@ if (!componentId || componentId == 'chart_dd09-chart-new-customers-per-month-by-
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND c.acquisition_channel IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '  AND c.signup_date >= DATE \'2024-01-01\'\n'
     sql << 'GROUP BY 1, 2\n'
@@ -210,7 +210,7 @@ if (!componentId || componentId == 'chart_dd09-chart-segment-mix') {
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND "acquisition_channel" IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY "segment"\n'
     sql << 'ORDER BY COUNT("customer_id") DESC\n'
@@ -234,7 +234,7 @@ if (!componentId || componentId == 'map_dd09-map-customers-by-country') {
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND "acquisition_channel" IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY "country_code"\n'
     sql << 'ORDER BY COUNT("customer_id") DESC\n'
@@ -275,7 +275,7 @@ if (!componentId || componentId == 'chart_dd09-chart-customers-by-lifetime-order
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND c.acquisition_channel IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '              AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '           ) n\n'
     sql << '     ) b\n'
@@ -311,7 +311,7 @@ if (!componentId || componentId == 'tabulator_dd09-table-newest-customers') {
     if (hasAcquisitionChannel && listHasValues(acquisitionChannel)) {
         addInList(sql, params, acquisitionChannel, 'AND c.acquisition_channel IN') { asDeclaredType('acquisitionChannel', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'ORDER BY c.signup_date DESC\n'
     sql << 'LIMIT 200\n'

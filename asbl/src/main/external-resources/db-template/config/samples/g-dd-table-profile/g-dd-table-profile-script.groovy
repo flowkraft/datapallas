@@ -25,8 +25,10 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// tableName is required: it always has a value, its default when the request has none
 def tableName = userVars?.get('tableName')?.toString()
 def hasTableName = (tableName != null && !tableName.isEmpty())
+// columnName is required: it always has a value, its default when the request has none
 def columnName = userVars?.get('columnName')?.toString()
 def hasColumnName = (columnName != null && !columnName.isEmpty())
 
@@ -50,12 +52,9 @@ if (!componentId || componentId == 'number_column_count_columns') {
     sql << 'SELECT count(*) AS column_count\n'
     sql << 'FROM information_schema.columns\n'
     sql << 'WHERE table_schema = \'dash_demo\'\n'
-    if (hasTableName) {
-        sql << '  AND table_name = ?\n'
-        params << asDeclaredType('tableName', 'String', tableName)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: tableName is required
+    sql << '  AND table_name = ?\n'
+    params << asDeclaredType('tableName', 'String', tableName)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_column_count_columns', data)
 }

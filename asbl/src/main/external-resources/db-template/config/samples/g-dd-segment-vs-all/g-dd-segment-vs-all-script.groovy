@@ -25,6 +25,7 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// country is required: it always has a value, its default when the request has none
 def country = userVars?.get('country')?.toString()
 def hasCountry = (country != null && !country.isEmpty())
 
@@ -36,12 +37,9 @@ if (!componentId || componentId == 'number_aov_here_here') {
     sql << 'FROM dash_demo.orders o\n'
     sql << 'JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n'
     sql << 'WHERE o.status <> \'cancelled\'\n'
-    if (hasCountry) {
-        sql << '  AND g.country = ?\n'
-        params << asDeclaredType('country', 'String', country)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: country is required
+    sql << '  AND g.country = ?\n'
+    params << asDeclaredType('country', 'String', country)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_aov_here_here', data)
 }
@@ -65,12 +63,9 @@ if (!componentId || componentId == 'number_return_rate_here_here') {
     sql << 'FROM dash_demo.orders o\n'
     sql << 'JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n'
     sql << 'WHERE true\n'
-    if (hasCountry) {
-        sql << '  AND g.country = ?\n'
-        params << asDeclaredType('country', 'String', country)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: country is required
+    sql << '  AND g.country = ?\n'
+    params << asDeclaredType('country', 'String', country)
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
     ctx.reportData('number_return_rate_here_here', data)
 }
@@ -91,10 +86,9 @@ if (!componentId || componentId == 'chart_dd25-chart-category-share-here-vs-ever
     def params = []
     sql << 'WITH per_category AS (\n'
     sql << '  SELECT pr.category AS category,\n'
-    if (hasCountry) {
-        sql << '         sum(CASE WHEN g.country = ? THEN l.line_amount ELSE 0 END) AS here,\n'
-        params << asDeclaredType('country', 'String', country)
-    }
+    // Always applied: country is required
+    sql << '         sum(CASE WHEN g.country = ? THEN l.line_amount ELSE 0 END) AS here,\n'
+    params << asDeclaredType('country', 'String', country)
     sql << '         sum(l.line_amount) AS everywhere\n'
     sql << '  FROM dash_demo.order_lines l\n'
     sql << '  JOIN dash_demo.orders o ON o.order_id = l.order_id\n'
@@ -118,10 +112,9 @@ if (!componentId || componentId == 'chart_dd25-chart-quarterly-index') {
     def params = []
     sql << 'WITH per_quarter AS (\n'
     sql << '  SELECT date_trunc(\'quarter\', o.order_ts)::DATE AS quarter,\n'
-    if (hasCountry) {
-        sql << '         sum(CASE WHEN g.country = ? THEN o.total_amount ELSE 0 END) AS here,\n'
-        params << asDeclaredType('country', 'String', country)
-    }
+    // Always applied: country is required
+    sql << '         sum(CASE WHEN g.country = ? THEN o.total_amount ELSE 0 END) AS here,\n'
+    params << asDeclaredType('country', 'String', country)
     sql << '         sum(o.total_amount) AS everywhere\n'
     sql << '  FROM dash_demo.orders o\n'
     sql << '  JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n'
@@ -146,12 +139,9 @@ if (!componentId || componentId == 'chart_dd25-chart-channel-mix-here') {
     sql << 'FROM dash_demo.orders o\n'
     sql << 'JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n'
     sql << 'WHERE true\n'
-    if (hasCountry) {
-        sql << '  AND g.country = ?\n'
-        params << asDeclaredType('country', 'String', country)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: country is required
+    sql << '  AND g.country = ?\n'
+    params << asDeclaredType('country', 'String', country)
     sql << 'GROUP BY o.channel\n'
     sql << 'ORDER BY share_pct DESC\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)

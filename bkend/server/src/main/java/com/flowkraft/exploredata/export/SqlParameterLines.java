@@ -18,7 +18,9 @@ import com.sourcekraft.documentburster.common.reportparameters.BuiltinVariables;
  * filter: the line that uses it is left out and the query answers as if the filter were not there.
  * The published script has always done exactly that - {@code if (hasTo) { … }} around each line,
  * and {@code listHasValues} answering false for an empty list - and the canvas now asks the
- * database the same question through {@link #linesThatApply}. Both read the SQL with the parser
+ * database the same question through {@link #linesThatApply}. A required filter always has a
+ * value, so the script writes its lines as they are; only a filter that may be empty needs a line
+ * that can be switched off ({@link #offForm}). Both read the SQL with the parser
  * below, so there is one rule, in one place: change it here and the canvas and the dashboard it
  * was published as change together.
  *
@@ -86,33 +88,122 @@ public final class SqlParameterLines {
         return result;
     }
 
-    /** A condition line: {@code WHERE …}, {@code AND …} or {@code OR …}, and what it opens with. */
-    private static final Pattern CONNECTOR = Pattern.compile("(?i)^(\\s*)(WHERE|AND|OR)\\s+\\S[\\s\\S]*$");
+    /** A condition line: {@code WHERE …}, {@code AND …}, {@code OR …} or {@code HAVING …}, and what it opens with. */
+    private static final Pattern CONNECTOR = Pattern.compile("(?i)^(\\s*)(WHERE|AND|OR|HAVING)\\s+\\S[\\s\\S]*$");
+
+    /** A line that is a row-limit clause and nothing else: {@code LIMIT ${n}}, {@code OFFSET ${n}}, {@code FETCH FIRST ${n} ROWS ONLY}. */
+    private static final Pattern ROW_LIMIT = Pattern.compile(
+            "(?i)^\\s*(LIMIT\\s+\\S+|OFFSET\\s+\\S+(\\s+ROWS?)?|FETCH\\s+(FIRST|NEXT)\\s+\\S+\\s+ROWS?\\s+ONLY)\\s*;?\\s*$");
 
     /**
-     * The line as it reads when its filter is not applied: the condition replaced by one that is
-     * always true, {@code WHERE 1=1} / {@code AND 1=1}, which every vendor this product supports
-     * accepts. Null when the line is not a condition at all, and is then simply left out.
-     *
-     * <p>Why not drop the line outright: a query is written one condition per line and the first of
-     * them carries the WHERE, so dropping that line leaves the next one opening with AND and the
-     * database refusing the whole query. It is the same no-op the Visualize step already writes for
-     * a filter whose value box is empty and for an empty IN list. A condition spread over several
-     * lines is not covered - neither the canvas nor the script has ever written one.
+     * A filter line as it reads when its filter is off: {@code text}, or nothing at all - the line
+     * left out - when {@code text} is null.
      */
-    public static String notAppliedForm(String lineText) {
+    public record Off(String text) {}
+
+    /**
+     * How a line reads when the filter on it is off. There is one rule, in one place: the canvas
+     * applies it to the SQL it runs, and the published script is written with it.
+     *
+     * <ul>
+     *   <li>A whole condition becomes one that is always true, {@code WHERE 1=1} / {@code AND 1=1},
+     *       which every vendor this product supports accepts. A whole condition opens with WHERE,
+     *       AND, OR or HAVING and closes every bracket it opens. It is not left out, because the
+     *       first condition carries the WHERE: dropping it would leave the next line opening with
+     *       AND, and the database would refuse the whole query. It is the same no-op the Visualize
+     *       step writes for a value box left empty.</li>
+     *   <li>A row-limit clause on a line of its own ({@code LIMIT ${topN}}) is left out: no
+     *       limit.</li>
+     * </ul>
+     *
+     * <p>Null for every other line: it cannot be switched off. Examples are a column of the SELECT
+     * ({@code sum(CASE WHEN … = ${p} THEN …) AS here,}), a branch of a CASE, or a condition whose
+     * brackets open or close on another line. Leaving such a line out, or cutting it down to
+     * {@code AND 1=1}, writes SQL the database refuses. Worse, it can write a query that runs and
+     * answers a different question. So the callers refuse it, in words, naming the line: the
+     * export when the dashboard is saved, the canvas when it is asked.
+     */
+    public static Off offForm(String lineText) {
         Matcher m = CONNECTOR.matcher(lineText);
-        if (!m.matches()) return null;
-        return m.group(1) + m.group(2) + " 1=1";
+        if (m.matches() && closesWhatItOpens(lineText))
+            return new Off(m.group(1) + m.group(2) + " 1=1");
+        if (ROW_LIMIT.matcher(lineText).matches())
+            return new Off(null);
+        return null;
     }
 
     /**
-     * The SQL as it reads with every filter that has no value not applied: each of those lines
-     * becomes its {@link #notAppliedForm}, or is left out when it is not a condition. A parameter
-     * that is not declared on the dashboard is not a filter and never touches a line.
+     * True when the line's round brackets pair up within the line: it never closes one it did not
+     * open, and it closes every one it opens. A bracket inside a quoted text ({@code '('}), a quoted
+     * name ({@code "a(b"}) or a {@code --} comment does not count.
+     */
+    static boolean closesWhatItOpens(String lineText) {
+        int depth = 0;
+        char quote = 0;
+        for (int i = 0; i < lineText.length(); i++) {
+            char c = lineText.charAt(i);
+            if (quote != 0) {
+                // '' inside a text is an escaped quote: it closes and reopens, which leaves it open.
+                if (c == quote) quote = 0;
+                continue;
+            }
+            if (c == '\'' || c == '"') {
+                quote = c;
+            } else if (c == '-' && i + 1 < lineText.length() && lineText.charAt(i + 1) == '-') {
+                break;
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                if (--depth < 0) return false;
+            }
+        }
+        return depth == 0 && quote == 0;
+    }
+
+    /**
+     * A line with a filter on it that cannot be switched off (see {@link #offForm}), asked with that
+     * filter empty. An {@link IllegalArgumentException}, so every path that runs a query reports it
+     * the way it reports a bad value: its message, in words, instead of the database's syntax error.
+     */
+    public static final class FilterLineException extends IllegalArgumentException {
+
+        private final List<String> filters;
+        private final String line;
+
+        public FilterLineException(List<String> filters, String line) {
+            super(describe(filters, line));
+            this.filters = List.copyOf(filters);
+            this.line = line;
+        }
+
+        /** The filters on the line that have no value. */
+        public List<String> filters() {
+            return filters;
+        }
+
+        /** The line, as written. */
+        public String line() {
+            return line;
+        }
+
+        private static String describe(List<String> filters, String line) {
+            String names = filters.stream().map(f -> "'" + f + "'").collect(Collectors.joining(" and "));
+            return "The filter " + names + (filters.size() == 1 ? " has" : " have") + " no value, and the line "
+                    + (filters.size() == 1 ? "it is" : "they are") + " on cannot be left without one: `"
+                    + line.strip() + "`. Give " + (filters.size() == 1 ? "it" : "them") + " a value, or write a"
+                    + " filter that may be empty as one whole condition on a line of its own, such as `AND country = ${country}`.";
+        }
+    }
+
+    /**
+     * The SQL as it reads with every filter that has no value off: each of those lines becomes its
+     * {@link #offForm}. A parameter that is not declared on the dashboard is not a filter and never
+     * touches a line.
      *
      * <p>Returns the SQL unchanged - the same bytes - when every parameter has a value, so the
      * ordinary case is the query the user wrote.
+     *
+     * @throws FilterLineException when a filter with no value is on a line that cannot be switched off
      */
     public static String linesThatApply(String sql, Collection<String> paramNames, Map<String, Object> values) {
         if (sql == null || sql.isBlank() || paramNames.isEmpty()) return sql;
@@ -129,19 +220,21 @@ public final class SqlParameterLines {
                 kept.add(line.text());
                 continue;
             }
-            boolean applies = true;
+            List<String> empty = new ArrayList<>();
             for (String p : line.params()) {
-                if (notApplied(values == null ? null : values.get(p))) applies = false;
+                if (notApplied(values == null ? null : values.get(p)) && !empty.contains(p)) empty.add(p);
             }
-            if (line.inListParam() != null && listNotApplied(values == null ? null : values.get(line.inListParam())))
-                applies = false;
-            if (applies) {
+            if (line.inListParam() != null && listNotApplied(values == null ? null : values.get(line.inListParam()))
+                    && !empty.contains(line.inListParam()))
+                empty.add(line.inListParam());
+            if (empty.isEmpty()) {
                 kept.add(line.text());
                 continue;
             }
             anyDropped = true;
-            String noop = notAppliedForm(line.text());
-            if (noop != null) kept.add(noop);
+            Off off = offForm(line.text());
+            if (off == null) throw new FilterLineException(empty, line.text());
+            if (off.text() != null) kept.add(off.text());
         }
         return anyDropped ? String.join("\n", kept) : sql;
     }

@@ -285,7 +285,9 @@ public class AnalyticsController {
             if (request.getReportId() != null && !request.getReportId().isEmpty()) {
                 log.info("Received pivot request for reportCode: {}", request.getReportId());
                 resolveConnectionFromReportCode(request, cm);
-                // The report's script reads these values: a relative date a link carried is a day first.
+                // The report's script reads these values: a required filter the request left empty is its
+                // default, and a relative date - a link's or a default's - is a day.
+                request.setReportParams(reportingService.withRequiredValues(request.getReportId(), request.getReportParams()));
                 request.setReportParams(reportingService.withRelativeDays(request.getReportParams(), request.getConnectionCode()));
             } else {
                 log.info("Received pivot request for table: {}, engine: {}",

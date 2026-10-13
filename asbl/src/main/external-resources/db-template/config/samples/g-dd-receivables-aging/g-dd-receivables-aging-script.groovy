@@ -25,6 +25,7 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// minAmount is required: it always has a value, its default when the request has none
 def minAmount = userVars?.get('minAmount')?.toString()
 def hasMinAmount = (minAmount != null && !minAmount.isEmpty())
 def accountManagerId = userVars?.get('accountManagerId')?.toString()
@@ -38,12 +39,9 @@ if (!componentId || componentId == 'number_overdue_90_plus_plus') {
     sql << 'FROM dash_demo.invoices i\n'
     sql << 'JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n'
     sql << 'WHERE i.status IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasMinAmount) {
-        sql << '  AND i.amount + i.tax_amount >= ?\n'
-        params << asDeclaredType('minAmount', 'Double', minAmount)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: minAmount is required
+    sql << '  AND i.amount + i.tax_amount >= ?\n'
+    params << asDeclaredType('minAmount', 'Double', minAmount)
     if (hasAccountManagerId) {
         sql << '  AND c.account_manager_id = ?\n'
         params << asDeclaredType('accountManagerId', 'Integer', accountManagerId)
@@ -65,12 +63,9 @@ if (!componentId || componentId == 'gauge_current_not_overdue_overdue') {
     sql << 'FROM dash_demo.invoices i\n'
     sql << 'JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n'
     sql << 'WHERE i.status IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasMinAmount) {
-        sql << '  AND i.amount + i.tax_amount >= ?\n'
-        params << asDeclaredType('minAmount', 'Double', minAmount)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: minAmount is required
+    sql << '  AND i.amount + i.tax_amount >= ?\n'
+    params << asDeclaredType('minAmount', 'Double', minAmount)
     if (hasAccountManagerId) {
         sql << '  AND c.account_manager_id = ?\n'
         params << asDeclaredType('accountManagerId', 'Integer', accountManagerId)
@@ -117,12 +112,9 @@ if (!componentId || componentId == 'number_customers_overdue_overdue') {
     sql << 'FROM dash_demo.invoices i\n'
     sql << 'JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n'
     sql << 'WHERE i.status IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasMinAmount) {
-        sql << '  AND i.amount + i.tax_amount >= ?\n'
-        params << asDeclaredType('minAmount', 'Double', minAmount)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: minAmount is required
+    sql << '  AND i.amount + i.tax_amount >= ?\n'
+    params << asDeclaredType('minAmount', 'Double', minAmount)
     if (hasAccountManagerId) {
         sql << '  AND c.account_manager_id = ?\n'
         params << asDeclaredType('accountManagerId', 'Integer', accountManagerId)
@@ -149,12 +141,9 @@ if (!componentId || componentId == 'chart_dd14-chart-aging-buckets') {
     sql << '  FROM dash_demo.invoices i\n'
     sql << '  JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n'
     sql << '  WHERE i.status IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasMinAmount) {
-        sql << '    AND i.amount + i.tax_amount >= ?\n'
-        params << asDeclaredType('minAmount', 'Double', minAmount)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: minAmount is required
+    sql << '    AND i.amount + i.tax_amount >= ?\n'
+    params << asDeclaredType('minAmount', 'Double', minAmount)
     if (hasAccountManagerId) {
         sql << '    AND c.account_manager_id = ?\n'
         params << asDeclaredType('accountManagerId', 'Integer', accountManagerId)
@@ -188,12 +177,9 @@ if (!componentId || componentId == 'chart_dd14-chart-aging-by-segment') {
     sql << '  FROM dash_demo.invoices i\n'
     sql << '  JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n'
     sql << '  WHERE i.status IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasMinAmount) {
-        sql << '    AND i.amount + i.tax_amount >= ?\n'
-        params << asDeclaredType('minAmount', 'Double', minAmount)
-    } else {
-        sql << '    AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: minAmount is required
+    sql << '    AND i.amount + i.tax_amount >= ?\n'
+    params << asDeclaredType('minAmount', 'Double', minAmount)
     if (hasAccountManagerId) {
         sql << '    AND c.account_manager_id = ?\n'
         params << asDeclaredType('accountManagerId', 'Integer', accountManagerId)
@@ -221,12 +207,9 @@ if (!componentId || componentId == 'chart_dd14-chart-top-10-overdue-customers') 
     sql << 'FROM dash_demo.invoices i\n'
     sql << 'JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n'
     sql << 'WHERE i.status IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasMinAmount) {
-        sql << '  AND i.amount + i.tax_amount >= ?\n'
-        params << asDeclaredType('minAmount', 'Double', minAmount)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: minAmount is required
+    sql << '  AND i.amount + i.tax_amount >= ?\n'
+    params << asDeclaredType('minAmount', 'Double', minAmount)
     if (hasAccountManagerId) {
         sql << '  AND c.account_manager_id = ?\n'
         params << asDeclaredType('accountManagerId', 'Integer', accountManagerId)
@@ -255,12 +238,9 @@ if (!componentId || componentId == 'tabulator_dd14-table-overdue-invoices') {
     sql << 'FROM dash_demo.invoices i\n'
     sql << 'JOIN dash_demo.customers c ON c.customer_id = i.customer_id\n'
     sql << 'WHERE i.status IN (\'open\', \'overdue\', \'partially_paid\')\n'
-    if (hasMinAmount) {
-        sql << '  AND i.amount + i.tax_amount >= ?\n'
-        params << asDeclaredType('minAmount', 'Double', minAmount)
-    } else {
-        sql << '  AND 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: minAmount is required
+    sql << '  AND i.amount + i.tax_amount >= ?\n'
+    params << asDeclaredType('minAmount', 'Double', minAmount)
     if (hasAccountManagerId) {
         sql << '  AND c.account_manager_id = ?\n'
         params << asDeclaredType('accountManagerId', 'Integer', accountManagerId)

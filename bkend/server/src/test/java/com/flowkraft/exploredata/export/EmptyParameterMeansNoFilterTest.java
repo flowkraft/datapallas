@@ -1,6 +1,8 @@
 package com.flowkraft.exploredata.export;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -109,6 +111,15 @@ class EmptyParameterMeansNoFilterTest {
 			+ "  AND stage IN (${stages})";
 
 	private static final Map<String, String> TYPES = Map.of("to", "Date", "min", "Double");
+
+	/**
+	 * A filter inside a column rather than on a condition line of its own: the shape of DD25's "here
+	 * against everyone". There is no way to switch such a line off - left out, the SELECT loses a
+	 * column and ends on a comma - so its filter has to be required.
+	 */
+	private static final String COLUMN_SQL = "SELECT sum(CASE WHEN stage = ${stage} THEN 1 ELSE 0 END) AS here,\n"
+			+ "       COUNT(*) AS everyone\n"
+			+ "FROM cube_demo.crm_deals";
 
 	@TempDir
 	Path tempDir;
@@ -235,7 +246,68 @@ class EmptyParameterMeansNoFilterTest {
 				"with nothing picked the query keeps asking a whole question:\n" + script);
 	}
 
+	/**
+	 * A required filter is never off, so its line is written as it is, wherever in the query it sits,
+	 * and the published dashboard counts the deals at the stage it names. Before, the script wrapped
+	 * the line in {@code if (hasStage)} and, with no value, left the column out: the SELECT ended on a
+	 * comma and the database refused it - DD25 on every request that came without a country.
+	 */
+	@Test
+	void ansi_a_required_filter_inside_a_column_is_always_applied() throws Exception {
+		List<Map<String, Object>> required = List.of(Map.of("id", "stage", "constraints", Map.of("required", true)));
+		String script = ScriptAssembler.assemble(List.of(widget(COLUMN_SQL)), required).text();
+		assertFalse(script.contains("if (hasStage)"), "a required filter's line has no guard:\n" + script);
+		assertTrue(script.contains("// Always applied: stage is required"), script);
+
+		for (String vendor : List.of("duckdb", "sqlite")) {
+			try (Connection connection = open(vendor)) {
+				Map<String, Object> row = run(connection, script, Map.of("stage", "Closed Won")).get("tabulator_a").get(0);
+				List<Object> counts = new ArrayList<>(row.values());
+				assertEquals(DEALS_CLOSED_WON, ((Number) counts.get(0)).longValue(), vendor + ": the deals at the stage");
+				assertEquals(ALL_DEALS, ((Number) counts.get(1)).longValue(), vendor + ": and every deal");
+			}
+		}
+	}
+
+	/**
+	 * The same line with the filter optional cannot be published: it would break the first time the
+	 * filter is left empty. The save is refused, naming the widget, the filter and the line, instead
+	 * of writing a dashboard that fails for its viewers.
+	 */
+	@Test
+	void the_export_refuses_an_optional_filter_its_line_cannot_go_without() {
+		CanvasExportException refused = assertThrows(CanvasExportException.class,
+				() -> ScriptAssembler.assemble(List.of(widget(COLUMN_SQL)), List.of(Map.of("id", "stage"))));
+		assertEquals("w-a", refused.widgetId);
+		assertTrue(refused.getMessage().contains("the filter 'stage' is not required"), refused.getMessage());
+		assertTrue(refused.getMessage().contains("sum(CASE WHEN stage = ${stage} THEN 1 ELSE 0 END) AS here,"),
+				refused.getMessage());
+	}
+
+	/**
+	 * On the canvas the same line with the filter empty is a message about the filter, not the
+	 * database's syntax error about a query nobody wrote.
+	 */
+	@Test
+	void the_canvas_names_the_filter_a_line_cannot_go_without() {
+		SqlParameterLines.FilterLineException refused = assertThrows(SqlParameterLines.FilterLineException.class,
+				() -> QueriesService.prepare(COLUMN_SQL, Map.of("stage", ""), Map.of()));
+		assertEquals(List.of("stage"), refused.filters());
+	}
+
 	// ── The two paths ────────────────────────────────────────────────────────────
+
+	/** One SQL widget, as the canvas saves it. */
+	private static Map<String, Object> widget(String sql) {
+		Map<String, Object> dataSource = new LinkedHashMap<>();
+		dataSource.put("mode", "sql");
+		dataSource.put("sql", sql);
+		Map<String, Object> widget = new LinkedHashMap<>();
+		widget.put("id", "w-a");
+		widget.put("type", "tabulator");
+		widget.put("dataSource", dataSource);
+		return widget;
+	}
 
 	/** What the canvas asks: the production {@code prepare}, then JDBI, on this connection. */
 	private static long onCanvas(Connection connection, Map<String, Object> values) {

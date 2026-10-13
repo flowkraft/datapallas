@@ -2,7 +2,8 @@
 //
 // A link can carry a view: a screenshot in a "How it was built" page, or a link a reader shares
 // after picking the filters they wanted. This module is the ONLY place that reads or writes the
-// address bar for parameters; `RbParameters.wc.svelte` is its only caller.
+// address bar for parameters; `RbParameters.wc.svelte` reads and writes it, and `RbReport.wc.svelte`
+// reads the values a dashboard opens with (`openingValues`), so its tiles ask with them at once.
 //
 // A filter bar is not a security boundary, and neither is this. A URL can only choose, among what
 // the reader could already pick by hand, where the filters start. What a reader may see is decided
@@ -23,7 +24,7 @@
 // Plain functions in a module of their own, next to `parameter-controls.ts`, so the rules can be
 // read in one place - and so that the same acceptance check serves both the URL and Show Me.
 
-import { controlTypeOf, defaultForType } from './parameter-controls';
+import { controlTypeOf, defaultForType } from './parameter-controls.ts';
 
 /** A parameter as the DSL declares it, as far as a starting value is concerned. */
 export interface StartValueParam {
@@ -286,6 +287,49 @@ export function startValuesFromUrl(
   });
 
   return out;
+}
+
+/**
+ * The values a dashboard's filter bar opens with: each parameter's default (or the empty value of
+ * its type), the value a link or token locked in its place, and - when `location` is given - the
+ * starting values the page URL carries for the parameters that are not locked.
+ *
+ * One function, because two places need the same answer at the same moment. `RbParameters` fills
+ * its form with it, and `RbReport` writes it onto the dashboard's tiles before they are on the page.
+ * A tile asks for its data the moment it mounts: asked with nothing, it got the unfiltered answer -
+ * and an error from a query that needs its value - until the filter bar's first apply asked again.
+ *
+ * `location` is the page's `window.location` (only `search` and `pathname` are read). Null reads no
+ * URL: the defaults and the locks alone, which is what Reset means.
+ */
+export function openingValues(
+  parameters: StartValueParam[] | null | undefined,
+  locked: { [id: string]: any } | null | undefined,
+  location: { search: string; pathname: string } | null | undefined,
+  reportId: string,
+): { [id: string]: any } {
+  const values: { [id: string]: any } = {};
+  if (!parameters || parameters.length === 0) return values;
+  const isLocked = (id: string) => !!locked && Object.prototype.hasOwnProperty.call(locked, id);
+  for (const p of parameters) {
+    if (isLocked(p.id)) {
+      // A multi-value lock is a list on the server and the escaped comma-separated string the
+      // controls hold here.
+      const value = locked![p.id];
+      values[p.id] = Array.isArray(value) ? joinEscaped(value) : value;
+    } else {
+      values[p.id] = p.defaultValue ?? defaultForType(p.type ?? '');
+    }
+  }
+  if (location) {
+    // A locked parameter ignores the URL: its value is the link's own, and the server enforces that
+    // whatever the browser sends.
+    const fromLink = startValuesFromUrl(location.search, location.pathname, reportId, parameters);
+    for (const id of Object.keys(fromLink)) {
+      if (!isLocked(id)) values[id] = fromLink[id];
+    }
+  }
+  return values;
 }
 
 /** One value as the URL carries it. The empty string means "no key". */

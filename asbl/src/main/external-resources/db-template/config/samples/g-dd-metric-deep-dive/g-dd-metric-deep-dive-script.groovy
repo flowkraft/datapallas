@@ -25,6 +25,7 @@ def asDeclaredType = { String name, String type, value ->
 }
 
 // ─── Filter values: an empty one turns its filter off ───
+// metric is required: it always has a value, its default when the request has none
 def metric = userVars?.get('metric')?.toString()
 def hasMetric = (metric != null && !metric.isEmpty())
 
@@ -76,12 +77,9 @@ if (!componentId || componentId == 'trend_month_month') {
     sql << 'SELECT date_trunc(\'month\', f.happened_at)::DATE AS month,\n'
     sql << '       round(sum(f.value), 2) AS value\n'
     sql << 'FROM feed f\n'
-    if (hasMetric) {
-        sql << 'WHERE f.metric = ?\n'
-        params << asDeclaredType('metric', 'String', metric)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: metric is required
+    sql << 'WHERE f.metric = ?\n'
+    params << asDeclaredType('metric', 'String', metric)
     sql << 'GROUP BY month\n'
     sql << 'ORDER BY month\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -135,12 +133,9 @@ if (!componentId || componentId == 'number_metric_ytd_ytd') {
     sql << ')\n'
     sql << 'SELECT round(sum(f.value), 2) AS metric_ytd\n'
     sql << 'FROM feed f\n'
-    if (hasMetric) {
-        sql << 'WHERE f.metric = ?\n'
-        params << asDeclaredType('metric', 'String', metric)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: metric is required
+    sql << 'WHERE f.metric = ?\n'
+    params << asDeclaredType('metric', 'String', metric)
     sql << '  AND f.happened_at >= date_trunc(\'year\', (SELECT a.as_of FROM dash_demo.as_of a))\n'
     sql << '  AND f.happened_at <= (SELECT a.as_of FROM dash_demo.as_of a)\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -198,12 +193,9 @@ if (!componentId || componentId == 'number_vs_last_year_year') {
     sql << '         / sum(CASE WHEN f.happened_at < date_trunc(\'year\', (SELECT a.as_of FROM dash_demo.as_of a))\n'
     sql << '                    THEN f.value END) - 1, 4) AS vs_last_year\n'
     sql << 'FROM feed f\n'
-    if (hasMetric) {
-        sql << 'WHERE f.metric = ?\n'
-        params << asDeclaredType('metric', 'String', metric)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: metric is required
+    sql << 'WHERE f.metric = ?\n'
+    params << asDeclaredType('metric', 'String', metric)
     sql << '  AND ((f.happened_at >= date_trunc(\'year\', (SELECT a.as_of FROM dash_demo.as_of a))\n'
     sql << '  AND f.happened_at <= (SELECT a.as_of FROM dash_demo.as_of a))\n'
     sql << '    OR (f.happened_at >= date_trunc(\'year\', (SELECT a.as_of FROM dash_demo.as_of a)) - INTERVAL 1 YEAR\n'
@@ -260,12 +252,9 @@ if (!componentId || componentId == 'chart_dd24-chart-metric-over-time') {
     sql << 'SELECT date_trunc(\'month\', f.happened_at)::DATE AS month,\n'
     sql << '       round(sum(f.value), 2) AS value\n'
     sql << 'FROM feed f\n'
-    if (hasMetric) {
-        sql << 'WHERE f.metric = ?\n'
-        params << asDeclaredType('metric', 'String', metric)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: metric is required
+    sql << 'WHERE f.metric = ?\n'
+    params << asDeclaredType('metric', 'String', metric)
     sql << 'GROUP BY month\n'
     sql << 'ORDER BY month\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -320,12 +309,9 @@ if (!componentId || componentId == 'chart_dd24-chart-what-it-is-made-of') {
     sql << 'SELECT f.made_of AS made_of,\n'
     sql << '       round(sum(f.value), 2) AS value\n'
     sql << 'FROM feed f\n'
-    if (hasMetric) {
-        sql << 'WHERE f.metric = ?\n'
-        params << asDeclaredType('metric', 'String', metric)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: metric is required
+    sql << 'WHERE f.metric = ?\n'
+    params << asDeclaredType('metric', 'String', metric)
     sql << '  AND f.happened_at >= date_trunc(\'year\', (SELECT a.as_of FROM dash_demo.as_of a))\n'
     sql << '  AND f.happened_at <= (SELECT a.as_of FROM dash_demo.as_of a)\n'
     sql << 'GROUP BY f.made_of\n'
@@ -382,12 +368,9 @@ if (!componentId || componentId == 'chart_dd24-chart-by-month-of-year') {
     sql << 'SELECT strftime(f.happened_at, \'%m %b\') AS month_of_year,\n'
     sql << '       round(sum(f.value), 2) AS value\n'
     sql << 'FROM feed f\n'
-    if (hasMetric) {
-        sql << 'WHERE f.metric = ?\n'
-        params << asDeclaredType('metric', 'String', metric)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: metric is required
+    sql << 'WHERE f.metric = ?\n'
+    params << asDeclaredType('metric', 'String', metric)
     sql << 'GROUP BY month_of_year\n'
     sql << 'ORDER BY month_of_year\n'
     def data = params.isEmpty() ? dbSql.rows(sql.toString()) : dbSql.rows(sql.toString(), params)
@@ -442,12 +425,9 @@ if (!componentId || componentId == 'chart_dd24-chart-by-country-top-10') {
     sql << 'SELECT f.country AS country,\n'
     sql << '       round(sum(f.value), 2) AS value\n'
     sql << 'FROM feed f\n'
-    if (hasMetric) {
-        sql << 'WHERE f.metric = ?\n'
-        params << asDeclaredType('metric', 'String', metric)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: metric is required
+    sql << 'WHERE f.metric = ?\n'
+    params << asDeclaredType('metric', 'String', metric)
     sql << '  AND f.happened_at >= date_trunc(\'year\', (SELECT a.as_of FROM dash_demo.as_of a))\n'
     sql << '  AND f.happened_at <= (SELECT a.as_of FROM dash_demo.as_of a)\n'
     sql << 'GROUP BY f.country\n'

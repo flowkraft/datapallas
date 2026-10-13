@@ -86,7 +86,7 @@ if (!componentId || componentId == 'map_dd03-map-revenue-by-country') {
     if (hasCountries && listHasValues(countries)) {
         addInList(sql, params, countries, 'AND g.country IN') { asDeclaredType('countries', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY revenue DESC\n'
@@ -112,7 +112,7 @@ if (!componentId || componentId == 'chart_dd03-chart-average-order-value-by-coun
     if (hasCountries && listHasValues(countries)) {
         addInList(sql, params, countries, 'AND g.country IN') { asDeclaredType('countries', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY 1\n'
     sql << 'ORDER BY average_order_value DESC\n'
@@ -142,7 +142,7 @@ if (!componentId || componentId == 'map_dd03-map-orders-by-city') {
     if (hasCountries && listHasValues(countries)) {
         addInList(sql, params, countries, 'AND g.country IN') { asDeclaredType('countries', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY 1, 2, 3, 4\n'
     sql << 'ORDER BY orders DESC\n'
@@ -177,7 +177,7 @@ if (!componentId || componentId == 'tabulator_dd03-table-country-growth') {
     if (hasCountries && listHasValues(countries)) {
         addInList(sql, params, countries, 'AND g.country IN') { asDeclaredType('countries', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '              AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << '            GROUP BY 1) c\n'
     sql << '      GROUP BY 1) f\n'

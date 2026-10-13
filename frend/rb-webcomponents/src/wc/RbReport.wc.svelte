@@ -3,6 +3,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
   import { prepareDashboardHtml } from '../shared/dashboard-injection';
+  import { openingValues } from '../shared/url-start-values';
   // The "⋯" menu on each tile (#19): added here, where every published dashboard is put on the page.
   import { decorateTiles } from '../shared/tile-menu';
   // A click on a bar or a table row opens the rows behind it (#21).
@@ -242,6 +243,13 @@
 
       // Dashboard mode: config includes raw HTML template with embedded web components
       if (config.dashboardTemplate) {
+        // Every tile asks for its data the moment it is on the page, so it is given the values the
+        // filter bar opens with before it is: the same `openingValues` the bar fills its form with.
+        // Given none, each tile first asked unfiltered - a wrong answer for a moment, and an error
+        // from a query that needs its value - and asked again once the bar had loaded.
+        if (Array.isArray(config.parameters) && config.parameters.length > 0)
+          currentDashboardParams = openingValues(config.parameters, config.lockedParameters,
+            typeof window !== 'undefined' ? window.location : null, reportId);
         dashboardTemplate = config.dashboardTemplate;
         loading = false;
         return; // Dashboard renders via innerHTML, no data fetch needed
@@ -440,9 +448,6 @@
   }
   
   // Dashboard mode: inject HTML into DOM when container is ready
-  let dashboardHasParameters = false;
-  let dashboardInitialParamsReceived = false;
-
   function injectDashboard(fullInject: boolean = true) {
     if (!dashboardContainer || !dashboardTemplate) return;
 
@@ -746,13 +751,9 @@
   }
 
   function handleDashboardParamChange(e: CustomEvent) {
+    // The tiles were put on the page with the values the bar opens with (loadConfig), and the bar
+    // hands every later change to them itself; this keeps the values for a re-injection.
     currentDashboardParams = e.detail || {};
-
-    // First valueChange = defaults loaded. If we haven't rendered visualizations yet, do it now.
-    if (dashboardHasParameters && !dashboardInitialParamsReceived) {
-      dashboardInitialParamsReceived = true;
-      injectDashboard(); // Re-inject full dashboard with default param values on all rb-* components
-    }
   }
 
   function handleDashboardParamSubmit(e: CustomEvent) {

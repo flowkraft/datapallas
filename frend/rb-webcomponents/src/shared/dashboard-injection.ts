@@ -36,6 +36,8 @@
  * Windows, on the Server and in Docker, and can be tested without any of them.
  */
 
+import { DATA_WIDGET_TAGS } from './slicer-selections.ts';
+
 export interface DashboardHostContext {
   /** The one report this page — and therefore this page's credential — may read. */
   reportId: string;
@@ -43,12 +45,20 @@ export interface DashboardHostContext {
   apiBaseUrl: string;
   /** The short-lived token minted for a share link or an embed; empty when a session cookie carries. */
   embedToken: string;
-  /** Current parameter values, as the dashboard's `rb-parameters` last reported them. */
+  /**
+   * The values the dashboard's filters hold: on the first injection the values its filter bar opens
+   * with (`openingValues` in url-start-values.ts), afterwards what its `rb-parameters` last reported.
+   */
   reportParams: Record<string, unknown>;
 }
 
-/** The widgets that take `report-params`; the others ignore it, so they are not given it. */
-const PARAMETERISED_WIDGETS = ['tabulator', 'chart', 'pivot-table', 'value'];
+/**
+ * The widgets that take `report-params`: every data widget, the very list a filter change refreshes
+ * (`DATA_WIDGET_TAGS`). It was once a list of its own here, four names long, and fell behind as
+ * widgets were added: a trend, a gauge or a map put on the page without the filter values asked for
+ * its data with none.
+ */
+const PARAMETERISED_WIDGETS = DATA_WIDGET_TAGS.split(',').map((tag) => tag.trim().replace(/^rb-/, ''));
 
 /**
  * Not widgets but hosts: a dashboard embedded in a dashboard, and a report embedded in one. They take

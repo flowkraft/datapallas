@@ -123,9 +123,11 @@ public class ScriptAssembler {
     /** One line of user SQL, with {@code ${param}} tokens replaced by JDBC {@code ?}.
      *  When {@code inListParam} is non-null, the line was originally
      *  {@code ... IN (${param})} and {@code text} carries an SQL prefix (everything
-     *  before the IN clause) to be passed to the runtime {@code addInList} helper. */
-    private record SqlLine(String text, List<String> params, String inListParam) {
-        SqlLine(String text, List<String> params) { this(text, params, null); }
+     *  before the IN clause) to be passed to the runtime {@code addInList} helper.
+     *  {@code written} is the line as the author wrote it: what its "off" version is read from, as
+     *  the canvas reads it, and what a refusal quotes. */
+    private record SqlLine(String text, List<String> params, String inListParam, String written) {
+        SqlLine(String text, List<String> params) { this(text, params, null, text); }
     }
 
     /**
@@ -203,6 +205,18 @@ public class ScriptAssembler {
             Object type = declared.get("type");
             if (id instanceof String name && !name.isBlank() && type instanceof String t && !t.isBlank())
                 paramTypes.put(name, t);
+        }
+
+        // The filters declared required. A required filter always has a value: the filter bar does
+        // not apply without one, and the server fills in its declared default when a request comes
+        // without it (ReportingService.withRequiredValues). So a line whose filters are all required
+        // is written as it is, with no "off" version, and the line need not be a whole condition: a
+        // CASE branch or a column of the SELECT may use a required filter. The day after a required
+        // date is required with it.
+        Set<String> requiredParams = new HashSet<>();
+        for (Map<String, Object> declared : declaredParams) {
+            if (declared.get("id") instanceof String name && isRequired(declared))
+                requiredParams.add(name);
         }
 
         // A date range of whole days ends at midnight after the last day, and the SQL the canvas
@@ -322,7 +336,8 @@ public class ScriptAssembler {
             for (SqlLine l : lines) {
                 if (l.inListParam() == null) continue;
                 anyList = true;
-                if (!SqlParameterLines.usesBuiltin(used(l))) anyFilterList = true;
+                if (!SqlParameterLines.usesBuiltin(used(l)) && !required(requiredParams, l.inListParam()))
+                    anyFilterList = true;
             }
         }
         boolean anyTyped  = paramNames.stream().anyMatch(paramTypes::containsKey);
@@ -449,6 +464,8 @@ public class ScriptAssembler {
                       .append(" = dayAfter('").append(base).append("', '")
                       .append(paramTypes.get(paramName)).append("', ").append(base).append(")\n");
                 } else {
+                    if (required(requiredParams, paramName))
+                        sb.append("// ").append(paramName).append(" is required: it always has a value, its default when the request has none\n");
                     sb.append("def ").append(paramName)
                       .append(" = userVars?.get('").append(paramName).append("')?.toString()\n");
                 }
@@ -540,21 +557,38 @@ public class ScriptAssembler {
                               .append(sl.inListParam() != null ? "list" : "value").append(" matches no row\n");
                             appendLineWithValues(sb, "    ", sql, prms, sl, paramTypes);
                             canBeEmpty = false;
+                        } else if (used.stream().allMatch(name -> required(requiredParams, name))) {
+                            // Every filter on the line is required, so it always has a value and the
+                            // line is always part of the query: no guard and no "off" version.
+                            List<String> names = used.stream().distinct()
+                                    .map(name -> DateParameters.isNextDayName(name) ? DateParameters.baseName(name) : name)
+                                    .distinct().toList();
+                            sb.append("    // Always applied: ").append(String.join(" and ", names))
+                              .append(names.size() == 1 ? " is" : " are").append(" required\n");
+                            appendLineWithValues(sb, "    ", sql, prms, sl, paramTypes);
+                            canBeEmpty = false;
                         } else {
                             // No value, no filter - and the line keeps the query whole by asking
                             // something always true (`WHERE 1=1`) instead of vanishing and leaving the
-                            // next line opening with AND. SqlParameterLines.notAppliedForm is that
-                            // rule, the one the canvas applies to the same SQL.
-                            String condition = guard(paramNames, used);
-                            if (sl.inListParam() != null)
+                            // next line opening with AND. SqlParameterLines.offForm is that rule, the
+                            // one the canvas applies to the same SQL. A line it cannot switch off is
+                            // refused here, so a dashboard whose query would break when a filter is
+                            // left empty is never saved.
+                            List<String> optional = used.stream().distinct()
+                                    .filter(name -> !required(requiredParams, name)).toList();
+                            SqlParameterLines.Off off = SqlParameterLines.offForm(sl.written());
+                            if (off == null)
+                                throw new CanvasExportException(cannotSwitchOff(compId, optional, sl.written()),
+                                        origId.isBlank() ? compId : origId);
+                            String condition = guard(paramNames, optional);
+                            if (sl.inListParam() != null && optional.contains(sl.inListParam()))
                                 condition += " && listHasValues(" + sl.inListParam() + ")";
-                            String noop = SqlParameterLines.notAppliedForm(sl.text());
                             sb.append("    if (").append(condition).append(") {\n");
                             appendLineWithValues(sb, "        ", sql, prms, sl, paramTypes);
-                            if (noop != null) {
+                            if (off.text() != null) {
                                 sb.append("    } else {\n");
                                 sb.append("        ").append(sql).append(" << '")
-                                  .append(escapeForGroovySingleQuoted(noop)).append("\\n'   // ")
+                                  .append(escapeForGroovySingleQuoted(off.text())).append("\\n'   // ")
                                   .append(sl.inListParam() != null ? "no values, or '*' (all)" : "no value")
                                   .append(": this filter is off\n");
                                 canBeEmpty = false;
@@ -817,7 +851,7 @@ public class ScriptAssembler {
     private static List<SqlLine> analyzeSqlLines(String sql, List<String> paramNames) {
         List<SqlLine> result = new ArrayList<>();
         for (SqlParameterLines.Line line : SqlParameterLines.split(sql, paramNames)) {
-            result.add(new SqlLine(line.jdbcText(), line.params(), line.inListParam()));
+            result.add(new SqlLine(line.jdbcText(), line.params(), line.inListParam(), line.text()));
         }
         return result;
     }
@@ -863,6 +897,32 @@ public class ScriptAssembler {
         if (type != null)
             sb.append(" { asDeclaredType('").append(list).append("', '").append(type).append("', it) }");
         sb.append("\n");
+    }
+
+    /** True when the filter is declared required on the canvas ({@code constraints.required}). */
+    private static boolean isRequired(Map<String, Object> declared) {
+        Object constraints = declared.get("constraints");
+        if (!(constraints instanceof Map<?, ?> c)) return false;
+        Object required = c.get("required");
+        return Boolean.TRUE.equals(required) || "true".equalsIgnoreCase(String.valueOf(required));
+    }
+
+    /** True when the name is a required filter, or the day after one. */
+    private static boolean required(Set<String> requiredParams, String name) {
+        if (name == null) return false;
+        return requiredParams.contains(DateParameters.isNextDayName(name) ? DateParameters.baseName(name) : name);
+    }
+
+    /** Why a line with a filter that may be empty cannot be saved, in words. */
+    private static String cannotSwitchOff(String compId, List<String> optional, String line) {
+        String names = optional.stream().map(n -> "'" + n + "'").collect(Collectors.joining(" and "));
+        boolean one = optional.size() == 1;
+        return "Widget '" + compId + "': the filter " + names + (one ? " is" : " are") + " not required, so "
+                + (one ? "it" : "they") + " may be left empty, and then this line has to be switched off: `"
+                + line.strip() + "`. It cannot be, because it is not one whole condition (a line that opens"
+                + " with WHERE, AND, OR or HAVING and closes every bracket it opens) nor a LIMIT on its own."
+                + " Write the filter as a condition on a line of its own, such as `AND country = ${country}`,"
+                + " or make the filter required.";
     }
 
     /** {@code hasA && hasB} — each param the line uses, once, in definition order. */

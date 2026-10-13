@@ -77,8 +77,10 @@ def status = userVars?.get('status')?.toString()
 def hasStatus = (status != null && !status.isEmpty())
 def customerId = userVars?.get('customerId')?.toString()
 def hasCustomerId = (customerId != null && !customerId.isEmpty())
+// issuedFrom is required: it always has a value, its default when the request has none
 def issuedFrom = userVars?.get('issuedFrom')?.toString()
 def hasIssuedFrom = (issuedFrom != null && !issuedFrom.isEmpty())
+// issuedTo is required: it always has a value, its default when the request has none
 def issuedTo = userVars?.get('issuedTo')?.toString()
 def hasIssuedTo = (issuedTo != null && !issuedTo.isEmpty())
 def issuedTo__next_day = dayAfter('issuedTo', 'Date', issuedTo)
@@ -135,17 +137,14 @@ if (!componentId || componentId == 'chart_dd13-chart-billed-per-month-by-status'
     sql << '  dash_demo.invoices.status AS "Status",\n'
     sql << '  CAST(SUM(dash_demo.invoices.amount + dash_demo.invoices.tax_amount) AS DECIMAL(31,4)) AS "Billed"\n'
     sql << 'FROM dash_demo.invoices\n'
-    if (hasIssuedFrom && hasIssuedTo) {
-        sql << 'WHERE (dash_demo.invoices.issue_date >= ? AND dash_demo.invoices.issue_date <= ?)\n'
-        params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
-        params << asDeclaredType('issuedTo', 'Date', issuedTo)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: issuedFrom and issuedTo are required
+    sql << 'WHERE (dash_demo.invoices.issue_date >= ? AND dash_demo.invoices.issue_date <= ?)\n'
+    params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
+    params << asDeclaredType('issuedTo', 'Date', issuedTo)
     if (hasStatus && listHasValues(status)) {
         addInList(sql, params, status, 'AND dash_demo.invoices.status IN') { asDeclaredType('status', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY\n'
     sql << '  CAST(DATE_TRUNC(\'month\', dash_demo.invoices.issue_date) AS DATE),\n'
@@ -164,17 +163,14 @@ if (!componentId || componentId == 'chart_dd13-chart-billed-by-source') {
     def params = []
     sql << 'SELECT "source", (100.0 * CAST(CAST(SUM(("amount" + "tax_amount")) AS DECIMAL(31,4)) AS DECIMAL(20,4)) / NULLIF(SUM(CAST(SUM(("amount" + "tax_amount")) AS DECIMAL(31,4))) OVER (), 0)) AS "billed_sum_pct"\n'
     sql << 'FROM "dash_demo"."invoices"\n'
-    if (hasIssuedFrom && hasIssuedTo__next_day) {
-        sql << 'WHERE "issue_date" >= ? AND "issue_date" < ?\n'
-        params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
-        params << asDeclaredType('issuedTo__next_day', 'Date', issuedTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: issuedFrom and issuedTo are required
+    sql << 'WHERE "issue_date" >= ? AND "issue_date" < ?\n'
+    params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
+    params << asDeclaredType('issuedTo__next_day', 'Date', issuedTo__next_day)
     if (hasStatus && listHasValues(status)) {
         addInList(sql, params, status, 'AND "status" IN') { asDeclaredType('status', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasCustomerId) {
         sql << '  AND "customer_id" = ?\n'
@@ -195,17 +191,14 @@ if (!componentId || componentId == 'chart_dd13-chart-billed-by-source__rows') {
     def params = []
     sql << 'SELECT "invoices".*, ("amount" + "tax_amount") AS "billed"\n'
     sql << 'FROM "dash_demo"."invoices"\n'
-    if (hasIssuedFrom && hasIssuedTo__next_day) {
-        sql << 'WHERE "issue_date" >= ? AND "issue_date" < ?\n'
-        params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
-        params << asDeclaredType('issuedTo__next_day', 'Date', issuedTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: issuedFrom and issuedTo are required
+    sql << 'WHERE "issue_date" >= ? AND "issue_date" < ?\n'
+    params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
+    params << asDeclaredType('issuedTo__next_day', 'Date', issuedTo__next_day)
     if (hasStatus && listHasValues(status)) {
         addInList(sql, params, status, 'AND "status" IN') { asDeclaredType('status', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasCustomerId) {
         sql << '  AND "customer_id" = ?\n'
@@ -233,17 +226,14 @@ if (!componentId || componentId == 'chart_dd13-chart-top-10-customers-by-billed'
     sql << '  CAST(SUM(dash_demo.invoices.amount + dash_demo.invoices.tax_amount) AS DECIMAL(31,4)) AS "Billed"\n'
     sql << 'FROM dash_demo.invoices\n'
     sql << 'LEFT JOIN dash_demo.customers ON dash_demo.invoices.customer_id = dash_demo.customers.customer_id\n'
-    if (hasIssuedFrom && hasIssuedTo) {
-        sql << 'WHERE (dash_demo.invoices.issue_date >= ? AND dash_demo.invoices.issue_date <= ?)\n'
-        params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
-        params << asDeclaredType('issuedTo', 'Date', issuedTo)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: issuedFrom and issuedTo are required
+    sql << 'WHERE (dash_demo.invoices.issue_date >= ? AND dash_demo.invoices.issue_date <= ?)\n'
+    params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
+    params << asDeclaredType('issuedTo', 'Date', issuedTo)
     if (hasStatus && listHasValues(status)) {
         addInList(sql, params, status, 'AND dash_demo.invoices.status IN') { asDeclaredType('status', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     sql << 'GROUP BY\n'
     sql << '  dash_demo.customers.name\n'
@@ -260,17 +250,14 @@ if (!componentId || componentId == 'tabulator_invoices_invoices') {
     def params = []
     sql << 'SELECT *\n'
     sql << 'FROM "dash_demo"."invoices"\n'
-    if (hasIssuedFrom && hasIssuedTo__next_day) {
-        sql << 'WHERE "issue_date" >= ? AND "issue_date" < ?\n'
-        params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
-        params << asDeclaredType('issuedTo__next_day', 'Date', issuedTo__next_day)
-    } else {
-        sql << 'WHERE 1=1\n'   // no value: this filter is off
-    }
+    // Always applied: issuedFrom and issuedTo are required
+    sql << 'WHERE "issue_date" >= ? AND "issue_date" < ?\n'
+    params << asDeclaredType('issuedFrom', 'Date', issuedFrom)
+    params << asDeclaredType('issuedTo__next_day', 'Date', issuedTo__next_day)
     if (hasStatus && listHasValues(status)) {
         addInList(sql, params, status, 'AND "status" IN') { asDeclaredType('status', 'String', it) }
     } else {
-        sql << 'AND 1=1\n'   // no values, or '*' (all): this filter is off
+        sql << '  AND 1=1\n'   // no values, or '*' (all): this filter is off
     }
     if (hasCustomerId) {
         sql << '  AND "customer_id" = ?\n'

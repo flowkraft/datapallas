@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,7 +21,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.flowkraft.samples.SamplesFrendOnlyService;
 
@@ -82,6 +85,7 @@ public class ReportingService {
 			int timeoutSeconds) throws Exception {
 		CliJob cliJob = new CliJob(configurationFilePath);
 
+		parameters = withRequiredValues(parameters, specBeside(configurationFilePath));
 		if (parameters != null && parameters.values().stream().anyMatch(CubeDates::mentions))
 			parameters = withRelativeDays(parameters, connectionCodeOf(configurationFilePath));
 		return cliJob.doFetchData(parameters, testMode, timeoutSeconds);
@@ -109,6 +113,112 @@ public class ReportingService {
 		Map<String, String> resolved = new LinkedHashMap<>(parameters);
 		resolved.replaceAll((name, value) -> CubeDates.resolve(value, dataToday));
 		return resolved;
+	}
+
+	/**
+	 * The filter values a report runs with, each required filter the request left out or empty
+	 * given the default its spec declares.
+	 *
+	 * <p>A required filter always has a value: the filter bar does not apply without one, and the
+	 * published script writes a required filter's lines with no "off" version, because such a line
+	 * need not be a whole condition (ScriptAssembler). A request can still come without the value: a
+	 * tile asking before the filter bar has set it, a link, another program calling {@code /data}. Its
+	 * default is what such a request means - the value the filter bar opens on - so it is filled in
+	 * here, before the relative days are resolved ({@code {dataToday:startOf year}} is a default like
+	 * any other). A required filter with no value and no default is a question the report cannot
+	 * answer: refused, naming the filter, with a 400.
+	 *
+	 * <p>Only required filters. An optional filter with no value is off, which is what the request
+	 * says, so it goes on as it came. A report with no spec, or a spec with no required filter, gets
+	 * the parameters back unchanged.
+	 */
+	public Map<String, String> withRequiredValues(Map<String, String> parameters, Path spec) {
+
+		List<RequiredFilter> required = requiredFilters(spec);
+		if (required.isEmpty())
+			return parameters;
+
+		Map<String, String> filled = null;
+		for (RequiredFilter filter : required) {
+			String value = parameters == null ? null : parameters.get(filter.id());
+			if (value != null && !value.isEmpty())
+				continue;
+			if (filter.defaultValue() == null || filter.defaultValue().isEmpty())
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The filter '" + filter.label()
+						+ "' is required and has no value. Give it one: it has no default to fall back on.");
+			if (filled == null)
+				filled = parameters == null ? new LinkedHashMap<>() : new LinkedHashMap<>(parameters);
+			filled.put(filter.id(), filter.defaultValue());
+		}
+		return filled != null ? filled : parameters;
+	}
+
+	/** The parameters spec beside a report's settings.xml: named after its folder, which is the report's code. */
+	Path specBeside(String configurationFilePath) {
+		Path folder = Paths.get(configurationFilePath).toAbsolutePath().getParent();
+		return folder == null || folder.getFileName() == null ? null
+				: folder.resolve(folder.getFileName() + "-report-parameters-spec.groovy");
+	}
+
+	/** The same, for a report named by its code: the spec in its folder, wherever that is. */
+	public Map<String, String> withRequiredValues(String reportCode, Map<String, String> parameters) {
+
+		if (reportCode == null || reportCode.isBlank())
+			return parameters;
+		Path config = Paths.get(AppPaths.PORTABLE_EXECUTABLE_DIR_PATH, "config").normalize();
+		for (String parent : new String[] { "reports", "samples", "samples/" + SamplesFrendOnlyService.FREND_SAMPLES_SUBFOLDER }) {
+			Path folder = config.resolve(parent);
+			Path candidate = folder.resolve(reportCode).normalize();
+			if (!candidate.equals(folder) && candidate.startsWith(folder) && Files.isDirectory(candidate))
+				return withRequiredValues(parameters, candidate.resolve(reportCode + "-report-parameters-spec.groovy"));
+		}
+		return parameters;
+	}
+
+	/** A required filter of a report: its id, the name the viewer knows it by, and its default (null when none). */
+	record RequiredFilter(String id, String label, String defaultValue) {
+	}
+
+	/** What one read of a spec found, and the file's state when it was read. */
+	private record RequiredFilters(java.nio.file.attribute.FileTime modified, long size, List<RequiredFilter> filters) {
+	}
+
+	/**
+	 * The specs read so far, by path. Every tile of a dashboard asks for its data on its own, so a
+	 * page of ten tiles would parse the same spec ten times; it is read again only when the file
+	 * changes. Only plain values are kept: the parsed parameters are not shared with anyone.
+	 */
+	private final Map<Path, RequiredFilters> requiredBySpec = new ConcurrentHashMap<>();
+
+	/** The required filters a spec declares, in its order; none when there is no spec or it cannot be read. */
+	List<RequiredFilter> requiredFilters(Path spec) {
+
+		if (spec == null || !Files.isRegularFile(spec))
+			return List.of();
+		try {
+			java.nio.file.attribute.FileTime modified = Files.getLastModifiedTime(spec);
+			long size = Files.size(spec);
+			RequiredFilters known = requiredBySpec.get(spec);
+			if (known != null && known.modified().equals(modified) && known.size() == size)
+				return known.filters();
+
+			List<RequiredFilter> filters = new ArrayList<>();
+			for (ReportParameter parameter : ReportParametersHelper.parseGroovyParametersDslCode(Files.readString(spec))) {
+				Object required = parameter.constraints == null ? null : parameter.constraints.get("required");
+				if (parameter.id == null || !(Boolean.TRUE.equals(required) || "true".equalsIgnoreCase(String.valueOf(required))))
+					continue;
+				String label = parameter.label != null && !parameter.label.isBlank() ? parameter.label : parameter.id;
+				filters.add(new RequiredFilter(parameter.id, label, parameter.defaultValue));
+			}
+			List<RequiredFilter> read = List.copyOf(filters);
+			requiredBySpec.put(spec, new RequiredFilters(modified, size, read));
+			return read;
+		} catch (Exception unreadable) {
+			// The same spec is read by /config, which says so to the viewer; the data is not held
+			// back for it here.
+			log.warn("Could not read the required filters of " + spec + ": " + unreadable.getMessage());
+			return List.of();
+		}
 	}
 
 	/** The connection a report reads, from the reporting.xml beside its settings.xml; null when none. */
