@@ -383,8 +383,8 @@ const DASHBOARD_HTML = `<meta charset="utf-8">
   <!-- Header -->
   <div class="dash-header">
     <div>
-      <h1 class="dash-title">Northwind Sales Dashboard</h1>
-      <p class="dash-subtitle">Wholesale distribution - revenue, customers &amp; product performance</p>
+      <h1 class="dash-title" id="dashTitle">Northwind Sales Dashboard</h1>
+      <p class="dash-subtitle" id="dashSubtitle">Wholesale distribution - revenue, customers &amp; product performance</p>
     </div>
   </div>
 
