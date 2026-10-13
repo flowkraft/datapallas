@@ -41,7 +41,7 @@ import {
   waitForRbChartsRendered,
 } from '../../utils/docs-screenshot-helper';
 import { getLastWidgetId } from '../explore-data-test-helper';
-import { loadChecks, loadStories, pad, type Demo } from './demo-catalog';
+import { demoOf, loadChecks, loadStories, pad, type Demo, type Story } from './demo-catalog';
 import { asStanding, openPublished, readParams, waitForChartsIn, watchForErrors } from './published-dashboard-checks';
 import type { Recipe, Step } from './recipe';
 import { shotsEnabled, type RecipeResult } from './recipe-runner';
@@ -176,11 +176,11 @@ export function createBuildShots(
       // 2. A story answered: the same dashboard, opened the way Show Me opens it.
       const answer = answerOf(demo);
       if (answer) {
-        const opened = await openPublished(page, published.reportId, answer.params);
+        const params = await asServed(page, answer);
+        const opened = await openPublished(page, published.reportId, params);
         await waitForChartsIn(opened);
         const standing = await readParams(opened, demo);
-        for (const [name, value] of Object.entries(answer.params)) {
-          if (String(value).includes('{')) continue; // a date the server resolves, not the bar
+        for (const [name, value] of Object.entries(params)) {
           if (standing[name] !== asStanding(demo, name, value))
             throw new Error(`${recipe.id}: the link set ${name}=${String(value)}, the dashboard's bar says '${standing[name]}'`);
         }
@@ -241,14 +241,23 @@ function codeOf(step: Step): string | undefined {
   }
 }
 
+/** What the page ends on: the values it opens the dashboard with and, for a story, which one it is. */
+export interface Answer {
+  title: string;
+  caption: string;
+  params: Record<string, unknown>;
+  story?: { reportId: string; id: string };
+}
+
 /** The story that ends the page, or, with none, the first interaction its checks hold the demo to. */
-export function answerOf(demo: Demo): { title: string; caption: string; params: Record<string, unknown> } | undefined {
+export function answerOf(demo: Demo): Answer | undefined {
   const story = loadStories(demo.id)[0];
   if (story) {
     return {
       title: `The story: ${story.question}`,
       caption: `Open the dashboard with the filters set for it. ${story.text}`,
       params: story.params ?? {},
+      story: { reportId: demoOf(demo.id).reportId, id: story.id },
     };
   }
   const checks = loadChecks(demo.id);
@@ -259,6 +268,23 @@ export function answerOf(demo: Demo): { title: string; caption: string; params: 
     caption: 'Pick a value in a filter and every tile that depends on it answers.',
     params: interaction.params,
   };
+}
+
+/**
+ * The values the picture opens the published copy with, as Show Me sets them: a story's relative
+ * date (`{dataToday:minus 2 months, endOf month}`) is the day the server serves for it in the
+ * shipped dashboard's config (`resolveRelativeStoryParams`), so the filter bar in the picture shows
+ * the days its tiles answer for - and is checked for them like every other value.
+ */
+async function asServed(page: Page, answer: Answer): Promise<Record<string, unknown>> {
+  const relative = Object.values(answer.params).some((value) => String(value).includes('{'));
+  if (!relative || !answer.story) return answer.params;
+  const { reportId, id } = answer.story;
+  const response = await page.request.get(`http://localhost:9090/api/reports/${reportId}/config`);
+  if (!response.ok()) throw new Error(`${reportId}'s config answered ${response.status()}`);
+  const served = (((await response.json()).stories ?? []) as Story[]).find((one) => one.id === id);
+  if (!served) throw new Error(`${reportId}'s config serves no story '${id}'`);
+  return served.params ?? {};
 }
 
 // ── Waiting, and refusing a picture of an error ───────────────────────────────
