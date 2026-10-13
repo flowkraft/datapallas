@@ -82,7 +82,39 @@ public class ReportingService {
 			int timeoutSeconds) throws Exception {
 		CliJob cliJob = new CliJob(configurationFilePath);
 
+		if (parameters != null && parameters.values().stream().anyMatch(CubeDates::mentions))
+			parameters = withRelativeDays(parameters, connectionCodeOf(configurationFilePath));
 		return cliJob.doFetchData(parameters, testMode, timeoutSeconds);
+	}
+
+	/**
+	 * The filter values a report runs with, each relative date among them ({@code {dataToday:minus 2
+	 * months, endOf month}}) turned into the day it names on the report's connection.
+	 *
+	 * <p>A link or a story may carry such a token: the filter bar takes it from the URL as a date
+	 * default would hold it and leaves expanding it to the server. A default is expanded before the
+	 * dashboard is served ({@link #resolveRelativeParameterDefaults}) and the Canvas expands a value
+	 * before it binds it; a published report's script reads the values the request carries, so it is
+	 * done here - for {@code /data} and for a pivot of a report alike - or the script reads the token
+	 * itself and every tile fails. Values without a token, and a report with no connection, go on as
+	 * they came.
+	 */
+	public Map<String, String> withRelativeDays(Map<String, String> parameters, String connectionCode) {
+
+		if (parameters == null || connectionCode == null || connectionCode.isEmpty()
+				|| parameters.values().stream().noneMatch(CubeDates::mentions))
+			return parameters;
+
+		LocalDate dataToday = cubeDataToday.ofDashboards(connectionCode);
+		Map<String, String> resolved = new LinkedHashMap<>(parameters);
+		resolved.replaceAll((name, value) -> CubeDates.resolve(value, dataToday));
+		return resolved;
+	}
+
+	/** The connection a report reads, from the reporting.xml beside its settings.xml; null when none. */
+	String connectionCodeOf(String configurationFilePath) throws Exception {
+		Path reportingPath = Paths.get(configurationFilePath).resolveSibling("reporting.xml");
+		return Files.exists(reportingPath) ? extractXmlValue(Files.readString(reportingPath), "conncode") : null;
 	}
 
 	/**

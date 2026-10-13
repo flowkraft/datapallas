@@ -8,6 +8,7 @@ import com.flowkraft.iam.limits.ReportAccess;
 import com.flowkraft.iam.limits.LimitsService;
 import com.flowkraft.analytics.services.ClickHouseAnalyticsService;
 import com.flowkraft.analytics.services.DuckDBAnalyticsService;
+import com.flowkraft.reporting.services.ReportingService;
 import com.flowkraft.analytics.engine.dto.ExploreRequest;
 import com.flowkraft.analytics.engine.dto.ExploreResponse;
 import com.flowkraft.analytics.engine.dto.PivotRequest;
@@ -59,6 +60,9 @@ public class AnalyticsController {
 
     @Autowired
     private LimitsService limitsService;
+
+    @Autowired
+    private ReportingService reportingService;
 
     /** Who is asking, in the form a report's script compares against (row 0 of the precedence table). */
     @Autowired
@@ -281,6 +285,8 @@ public class AnalyticsController {
             if (request.getReportId() != null && !request.getReportId().isEmpty()) {
                 log.info("Received pivot request for reportCode: {}", request.getReportId());
                 resolveConnectionFromReportCode(request, cm);
+                // The report's script reads these values: a relative date a link carried is a day first.
+                request.setReportParams(reportingService.withRelativeDays(request.getReportParams(), request.getConnectionCode()));
             } else {
                 log.info("Received pivot request for table: {}, engine: {}",
                         request.getTableName(), request.getEngine());
