@@ -239,7 +239,8 @@
 
     const geoJsonUrl = opts.geoJsonUrl ?? DEFAULT_GEOJSON_URLS[region];
     const geoJsonKey = opts.geoJsonKey ?? "";
-    const tileUrl = opts.tileUrl ?? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    // OpenStreetMap's own address, with no a/b/c subdomain: OSM no longer asks for them.
+    const tileUrl = opts.tileUrl ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
     const attribution = opts.attribution
       ?? "© <a href='https://www.openstreetmap.org/copyright' target='_blank' rel='noopener'>OpenStreetMap</a> contributors";
     const colorScale = opts.colorScale && opts.colorScale.length > 0 ? opts.colorScale : DEFAULT_COLOR_SCALE;
@@ -376,7 +377,13 @@
 
       if (!mapInstance) {
         mapInstance = L.map(container, { preferCanvas: true });
-        L.tileLayer(resolved.tileUrl, { maxZoom: 18 }).addTo(mapInstance);
+        // Each tile names the site it is drawn on (its origin, nothing more). OpenStreetMap's tile
+        // policy requires it: a tile asked with no Referer comes back as an "Access blocked" picture,
+        // with status 200, so nothing reports it. A published dashboard sends no referrer at all
+        // (<meta name="referrer" content="no-referrer">, to keep a share token in its address from
+        // leaving the page); this attribute overrides that for the tiles only, and the origin
+        // carries no path and no query, so the token stays where it is.
+        L.tileLayer(resolved.tileUrl, { maxZoom: 18, referrerPolicy: "strict-origin" }).addTo(mapInstance);
         layerGroup = L.layerGroup().addTo(mapInstance);
         // World fallback view until fitBounds runs (prevents blank canvas).
         mapInstance.setView([20, 0], 2);

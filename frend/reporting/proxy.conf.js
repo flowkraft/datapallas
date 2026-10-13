@@ -17,6 +17,15 @@ module.exports = {
     changeOrigin: true,
     logLevel: "debug",
   },
+  // The country and state shapes a map draws (rb-map asks for /geojson/countries.geojson on the page's
+  // own address). The server serves them, as it serves the bundle above; without this the dev server
+  // answered 404 and every map on a dashboard opened here showed "GeoJSON fetch failed: 404".
+  "/geojson": {
+    target: "http://localhost:9090",
+    secure: false,
+    changeOrigin: true,
+    logLevel: "debug",
+  },
   // Published dashboards are pages the server renders at /dashboard/<reportCode> (DashboardController).
   // The trailing slash is on purpose: keys match as path prefixes, so a bare "/dashboard" would also
   // catch any dev-server file whose name starts with "dashboard".

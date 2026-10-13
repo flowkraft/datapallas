@@ -776,6 +776,8 @@ export interface ErrorWatch {
   /** Nothing was logged as an error and nothing failed to load. */
   assertNone(context?: string): void;
   messages: string[];
+  /** How many map tiles the page asked OpenStreetMap for: a map that drew none is not proven by the watch. */
+  mapTiles: number;
 }
 
 /**
@@ -808,12 +810,26 @@ export function watchForErrors(page: Page): ErrorWatch {
       messages.push(`${response.status()}: ${response.request().method()} ${response.url()}`);
   });
 
-  return {
+  // A map tile asked without a Referer is refused by OpenStreetMap's tile policy, and the refusal is
+  // an "Access blocked" picture sent with status 200: nothing above sees it, and the reader sees a
+  // map covered in warnings. A published dashboard sends no referrer at all, so rb-map has to name
+  // its origin on the tiles itself.
+  // headerValue reads the headers the browser really sent; headers() may leave some out.
+  page.on('request', async (request) => {
+    if (!/^https:\/\/([a-c]\.)?tile\.openstreetmap\.org\//.test(request.url())) return;
+    watch.mapTiles++;
+    if (!(await request.headerValue('referer').catch(() => null)))
+      messages.push(`map tile asked with no Referer, which OpenStreetMap answers "Access blocked": ${request.url()}`);
+  });
+
+  const watch: ErrorWatch = {
     messages,
+    mapTiles: 0,
     assertNone(context = 'the page') {
       expect(messages, `${context} met no errors:\n${messages.join('\n')}`).toEqual([]);
     },
   };
+  return watch;
 }
 
 /**
