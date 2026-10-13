@@ -539,6 +539,17 @@ export async function dragPivotChip(page: Page, field: string, zone: 'rows' | 'c
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2 + 8, from.y + from.height / 2 + 8, { steps: 4 });
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+  // dnd-kit scrolls the panel while the pointer is near one of its edges, so the zone may have moved
+  // under the pointer on the way (a field let go over the next zone, which refuses it): the release
+  // follows the zone to where it stands still.
+  let at = to;
+  for (let i = 0; i < 5; i++) {
+    await page.waitForTimeout(100);
+    const now = await target.boundingBox();
+    if (!now || (Math.abs(now.x - at.x) < 1 && Math.abs(now.y - at.y) < 1)) break;
+    at = now;
+    await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2, { steps: 3 });
+  }
   await page.mouse.up();
 }
 
