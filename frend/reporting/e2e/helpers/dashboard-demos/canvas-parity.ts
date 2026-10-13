@@ -275,14 +275,26 @@ export interface ParityOptions {
   columnNames?: Array<Record<string, string> | undefined>;
 }
 
-/** A display with its column names put under other ones: every value and key that is one of them. */
+/**
+ * The keys whose value is text a reader sees, never a column: a label that happens to read like a
+ * column ("Headcount" over the cube's `Headcount`) is the same words in both canvases.
+ */
+const TEXT_KEYS = new Set([
+  'label', 'numberLabel', 'text', 'title', 'subtitle', 'widgetTitle', 'widgetSubtitle', 'columnTitle',
+  'noDataMessage', 'numberPrefix', 'numberSuffix',
+]);
+
+/** A display with its column names put under other ones: every value and key that is one of them, text left as written. */
 function renamedDisplay(display: Json, names: Record<string, string>): Json {
-  const walk = (v: any): any => {
-    if (typeof v === 'string') return Object.prototype.hasOwnProperty.call(names, v) ? names[v] : v;
-    if (Array.isArray(v)) return v.map(walk);
+  const walk = (v: any, key?: string): any => {
+    if (typeof v === 'string') {
+      if (key !== undefined && TEXT_KEYS.has(key)) return v;
+      return Object.prototype.hasOwnProperty.call(names, v) ? names[v] : v;
+    }
+    if (Array.isArray(v)) return v.map((x) => walk(x));
     if (v && typeof v === 'object') {
       const out: Json = {};
-      for (const [k, x] of Object.entries(v)) out[Object.prototype.hasOwnProperty.call(names, k) ? names[k] : k] = walk(x);
+      for (const [k, x] of Object.entries(v)) out[Object.prototype.hasOwnProperty.call(names, k) ? names[k] : k] = walk(x, k);
       return out;
     }
     return v;
