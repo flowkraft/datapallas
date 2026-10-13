@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -149,14 +157,14 @@
       <p class="number-label">Overdue amount</p>
       <p class="number-value"><rb-value report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="number_overdue_amount_amount" field="" format="currency"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 8; grid-row: 4 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="chart_dd13-chart-billed-per-month-by-status"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 8; grid-row: 4 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="chart_dd13-chart-billed-per-month-by-status"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 9 / span 4; grid-row: 4 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="chart_dd13-chart-billed-by-source"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 9 / span 4; grid-row: 4 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="chart_dd13-chart-billed-by-source"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 8 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="chart_dd13-chart-top-10-customers-by-billed"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 8 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="chart_dd13-chart-top-10-customers-by-billed"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 8 / span 4;">
       <rb-tabulator report-id="g-dd-invoices" api-base-url="http://localhost:9090/api" component-id="tabulator_invoices_invoices"></rb-tabulator>

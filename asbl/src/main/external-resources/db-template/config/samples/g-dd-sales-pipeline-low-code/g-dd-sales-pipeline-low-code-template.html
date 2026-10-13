@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -147,11 +155,11 @@
       <p class="number-label">Next quarter's pipeline / its quota</p>
       <p class="number-value"><rb-value report-id="g-dd-sales-pipeline-low-code" api-base-url="http://localhost:9090/api" component-id="number_next_quarter_cover_cover" field="" format="number"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 5 / span 5; min-height: 400px;">
-      <rb-chart report-id="g-dd-sales-pipeline-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd07-chart-deals-by-stage"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 5 / span 5; min-height: 400px;">
+      <rb-chart fill-height report-id="g-dd-sales-pipeline-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd07-chart-deals-by-stage"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 5 / span 5; min-height: 400px;">
-      <rb-chart report-id="g-dd-sales-pipeline-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd07-chart-win-rate-by-lead-source"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 5 / span 5; min-height: 400px;">
+      <rb-chart fill-height report-id="g-dd-sales-pipeline-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd07-chart-win-rate-by-lead-source"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 10 / span 4;">
       <rb-tabulator report-id="g-dd-sales-pipeline-low-code" api-base-url="http://localhost:9090/api" component-id="tabulator_crm_opportunities_deals"></rb-tabulator>

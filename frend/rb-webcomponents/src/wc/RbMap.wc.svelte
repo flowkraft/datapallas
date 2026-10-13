@@ -396,9 +396,10 @@
         // carries no path and no query, so the token stays where it is.
         L.tileLayer(resolved.tileUrl, { maxZoom: 18, referrerPolicy: "strict-origin" }).addTo(mapInstance);
         layerGroup = L.layerGroup().addTo(mapInstance);
-        // World fallback view until fitBounds runs (prevents blank canvas).
-        mapInstance.setView([20, 0], 2);
+        // World fallback view until fitBounds runs (prevents blank canvas). The lowest zoom is
+        // known before it, so the map opens there and fetches no tiles for a zoom it then leaves.
         fillWithWorld();
+        mapInstance.setView([20, 0], 2);
         // Leaflet computes viewport from container.clientHeight at init time.
         // In a flex/grid layout the container can still be sizing up when
         // L.map() runs, leaving the tile pane rendered at a stale (too-short)

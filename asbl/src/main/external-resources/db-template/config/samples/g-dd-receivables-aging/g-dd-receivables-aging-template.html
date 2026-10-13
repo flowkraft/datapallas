@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -147,14 +155,14 @@
       <p class="number-label">Customers overdue</p>
       <p class="number-value"><rb-value report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="number_customers_overdue_overdue" field="" format="number"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="chart_dd14-chart-aging-buckets"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="chart_dd14-chart-aging-buckets"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="chart_dd14-chart-aging-by-segment"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="chart_dd14-chart-aging-by-segment"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 5; grid-row: 9 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="chart_dd14-chart-top-10-overdue-customers"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 5; grid-row: 9 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="chart_dd14-chart-top-10-overdue-customers"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 6 / span 7; grid-row: 9 / span 4;">
       <rb-tabulator report-id="g-dd-receivables-aging" api-base-url="http://localhost:9090/api" component-id="tabulator_dd14-table-overdue-invoices"></rb-tabulator>

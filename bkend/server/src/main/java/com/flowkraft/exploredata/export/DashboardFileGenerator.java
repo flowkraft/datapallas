@@ -208,6 +208,14 @@ public class DashboardFileGenerator {
                "      padding: 16px;\n" +
                "      overflow: hidden;\n" +
                "    }\n" +
+               "    .rb-dashboard-root .rb-chart-tile {\n" +
+               "      display: flex;\n" +
+               "      flex-direction: column;\n" +
+               "    }\n" +
+               "    .rb-dashboard-root .rb-chart-tile > rb-chart {\n" +
+               "      flex: 1 1 auto;\n" +
+               "      min-height: 0;\n" +
+               "    }\n" +
                "    .rb-dashboard-root .number-card {\n" +
                "      display: flex;\n" +
                "      flex-direction: column;\n" +
@@ -377,7 +385,9 @@ public class DashboardFileGenerator {
         // circular dependency resolves at Chart.js's ~300px default, far less
         // than the h spans intended. Emit an explicit min-height proportional
         // to the row span (80px per row matches grid-auto-rows' minimum) so the
-        // chart fills its allotted vertical real estate.
+        // chart fills its allotted vertical real estate. The chart itself is told to fill the tile
+        // (`fill-height`, under its title and subtitle), as it does in the canvas: keeping its own
+        // shape, it stood in the top of a tile its neighbours made taller.
         String chartStyle = style + String.format(" min-height: %dpx;", row * 80);
 
         // Show In Dashboard: this widget is the cube, whatever type the widget picker says. The
@@ -391,7 +401,7 @@ public class DashboardFileGenerator {
 
         return switch (type) {
             case "chart" ->
-                String.format("    <div class=\"grid-item\" style=\"%s\">\n      <rb-chart %s%s></rb-chart>\n    </div>", chartStyle, attrs, drillFieldsAttr(w));
+                String.format("    <div class=\"grid-item rb-chart-tile\" style=\"%s\">\n      <rb-chart fill-height %s%s></rb-chart>\n    </div>", chartStyle, attrs, drillFieldsAttr(w));
             case "tabulator" ->
                 String.format("    <div class=\"grid-item\" style=\"%s\">\n      <rb-tabulator %s%s></rb-tabulator>\n    </div>", style, attrs, drillFieldsAttr(w));
             case "pivot" ->

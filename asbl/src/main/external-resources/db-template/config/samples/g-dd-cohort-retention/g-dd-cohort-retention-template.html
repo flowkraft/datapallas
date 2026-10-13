@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -136,8 +144,8 @@
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 2 / span 6;">
       <rb-pivot-table report-id="g-dd-cohort-retention" api-base-url="http://localhost:9090/api" component-id="pivot_dd10-pivot-cohorts"></rb-pivot-table>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 8; grid-row: 8 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-cohort-retention" api-base-url="http://localhost:9090/api" component-id="chart_dd10-chart-retention-curve"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 8; grid-row: 8 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-cohort-retention" api-base-url="http://localhost:9090/api" component-id="chart_dd10-chart-retention-curve"></rb-chart>
     </div>
     <div class="grid-item number-card" style="grid-column: 9 / span 4; grid-row: 8 / span 2;">
       <p class="number-label">Average 6-month retention</p>

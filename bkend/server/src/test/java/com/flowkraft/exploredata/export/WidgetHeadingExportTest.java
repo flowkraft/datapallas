@@ -40,14 +40,14 @@ class WidgetHeadingExportTest {
 	void a_titled_chart_opens_its_tile_with_the_title_and_the_subtitle() throws Exception {
 		String template = templateOf(widget("chart",
 				Map.of("widgetTitle", "Orders by channel", "widgetSubtitle", "All orders, this year")));
-		int start = template.indexOf("<div class=\"grid-item\"");
+		int start = template.indexOf("<div class=\"grid-item rb-chart-tile\"");
 		int end = template.indexOf("</rb-chart>", start);
 		assertTrue(start >= 0 && end > start, template);
 		String tile = template.substring(start, end);
-		Matcher heading = Pattern.compile("<div class=\"grid-item\"[^>]*>\\n"
+		Matcher heading = Pattern.compile("<div class=\"grid-item rb-chart-tile\"[^>]*>\\n"
 				+ "\\s*<div class=\"rb-tile-title\" id=\"tileTitle-[^\"]+\"[^>]*>Orders by channel</div>\\n"
 				+ "\\s*<div class=\"rb-tile-subtitle\" id=\"tileSubtitle-[^\"]+\"[^>]*>All orders, this year</div>\\n"
-				+ "\\s*<rb-chart ").matcher(tile);
+				+ "\\s*<rb-chart fill-height ").matcher(tile);
 		assertTrue(heading.lookingAt(), tile);
 	}
 

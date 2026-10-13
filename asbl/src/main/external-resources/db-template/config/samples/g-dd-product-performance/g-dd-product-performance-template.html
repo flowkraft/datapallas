@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -132,17 +140,17 @@
 <p>Products rated under 3.5 stars sell about 40% fewer units per product; the AeroDesk Pro standing desk (3.2 stars) has a 17.5% return rate since April 2026.</p>
 </div>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 2 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-rating-vs-units"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 2 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-rating-vs-units"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 2 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-discount-vs-return-rate"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 2 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-discount-vs-return-rate"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 6 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-top-n-by-margin"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 6 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-top-n-by-margin"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 6 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-bottom-n-by-margin"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 6 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="chart_dd05-chart-bottom-n-by-margin"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 10 / span 5;">
       <rb-tabulator report-id="g-dd-product-performance" api-base-url="http://localhost:9090/api" component-id="tabulator_products_products"></rb-tabulator>

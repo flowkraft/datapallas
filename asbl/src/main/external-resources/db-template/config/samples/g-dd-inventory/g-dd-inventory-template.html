@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -145,11 +153,11 @@
       <p class="number-label">Slow-mover value, no sale in 90 days</p>
       <p class="number-value"><rb-value report-id="g-dd-inventory" api-base-url="http://localhost:9090/api" component-id="number_slow_mover_value_value" field="" format="currency"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 4 / span 5; min-height: 400px;">
-      <rb-chart report-id="g-dd-inventory" api-base-url="http://localhost:9090/api" component-id="chart_dd19-chart-space-used-by-warehouse"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 4 / span 5; min-height: 400px;">
+      <rb-chart fill-height report-id="g-dd-inventory" api-base-url="http://localhost:9090/api" component-id="chart_dd19-chart-space-used-by-warehouse"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 4 / span 5; min-height: 400px;">
-      <rb-chart report-id="g-dd-inventory" api-base-url="http://localhost:9090/api" component-id="chart_dd19-chart-slow-movers-by-value"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 4 / span 5; min-height: 400px;">
+      <rb-chart fill-height report-id="g-dd-inventory" api-base-url="http://localhost:9090/api" component-id="chart_dd19-chart-slow-movers-by-value"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 9 / span 4;">
       <rb-tabulator report-id="g-dd-inventory" api-base-url="http://localhost:9090/api" component-id="tabulator_dd19-table-stock-by-sku"></rb-tabulator>

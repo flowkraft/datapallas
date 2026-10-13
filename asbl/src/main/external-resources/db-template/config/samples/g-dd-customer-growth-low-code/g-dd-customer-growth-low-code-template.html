@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -147,17 +155,17 @@
       <p class="number-label">Repeat buyers</p>
       <p class="number-value"><rb-value report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="number_repeat_buyer_pct_buyers" field="" format="percent"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 8; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd09-chart-new-customers-per-month-by-channel"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 8; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd09-chart-new-customers-per-month-by-channel"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 9 / span 4; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd09-chart-segment-mix" drill-fields="segment"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 9 / span 4; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd09-chart-segment-mix" drill-fields="segment"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 9 / span 5;">
       <rb-map report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="map_dd09-map-customers-by-country"></rb-map>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 9 / span 5; min-height: 400px;">
-      <rb-chart report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd09-chart-customers-by-lifetime-orders"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 9 / span 5; min-height: 400px;">
+      <rb-chart fill-height report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd09-chart-customers-by-lifetime-orders"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 14 / span 4;">
       <rb-tabulator report-id="g-dd-customer-growth-low-code" api-base-url="http://localhost:9090/api" component-id="tabulator_orders_customers"></rb-tabulator>

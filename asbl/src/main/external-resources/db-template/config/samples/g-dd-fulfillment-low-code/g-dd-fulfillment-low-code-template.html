@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -147,11 +155,11 @@
     <div class="grid-item kpi-card" style="grid-column: 10 / span 3; grid-row: 2 / span 3;">
       <rb-trend report-id="g-dd-fulfillment-low-code" api-base-url="http://localhost:9090/api" component-id="trend_deliveredat_week"></rb-trend>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-fulfillment-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd20-chart-late-by-carrier"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-fulfillment-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd20-chart-late-by-carrier"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-fulfillment-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd20-chart-boxplot-delivery-days-by-carrier"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-fulfillment-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd20-chart-boxplot-delivery-days-by-carrier"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 9 / span 4;">
       <rb-map report-id="g-dd-fulfillment-low-code" api-base-url="http://localhost:9090/api" component-id="map_dd20-map-late-by-country"></rb-map>

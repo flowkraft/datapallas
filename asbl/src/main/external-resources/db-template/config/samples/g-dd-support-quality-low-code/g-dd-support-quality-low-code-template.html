@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -143,11 +151,11 @@
       <p class="number-label">Reopened %</p>
       <p class="number-value"><rb-value report-id="g-dd-support-quality-low-code" api-base-url="http://localhost:9090/api" component-id="number_reopened_rate_reopened" field="" format="percent"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-support-quality-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd22-chart-boxplot-resolution-hours-by-channel"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-support-quality-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd22-chart-boxplot-resolution-hours-by-channel"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-support-quality-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd22-chart-csat-by-channel"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-support-quality-low-code" api-base-url="http://localhost:9090/api" component-id="chart_dd22-chart-csat-by-channel"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 9 / span 5;">
       <rb-tabulator report-id="g-dd-support-quality-low-code" api-base-url="http://localhost:9090/api" component-id="tabulator_support_tickets_leaderboard"></rb-tabulator>

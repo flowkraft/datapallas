@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -160,8 +168,8 @@
     <div class="grid-item kpi-card" style="grid-column: 10 / span 3; grid-row: 4 / span 3;">
       <rb-gauge report-id="g-dd-executive-overview" api-base-url="http://localhost:9090/api" component-id="gauge_sla_met_pct_met"></rb-gauge>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 7 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-executive-overview" api-base-url="http://localhost:9090/api" component-id="chart_dd01-chart-revenue-vs-target"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 12; grid-row: 7 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-executive-overview" api-base-url="http://localhost:9090/api" component-id="chart_dd01-chart-revenue-vs-target"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 11 / span 1;">
       <hr class="divider" />

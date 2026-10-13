@@ -71,6 +71,11 @@
   // colours, which is every chart whose author never picked another set.
   export let palette: string = '';
 
+  // Fill the box it sits in (`fill-height`), as the Canvas draws a chart in its tile: a published
+  // dashboard's tile has the height its author gave it, and a chart that kept a shape of its own
+  // stood in the top of it. Without it a chart keeps Chart.js's own shape, for hosts with no box.
+  export let fillHeight: boolean = false;
+
   // Raw DSL source code (exposed for Configuration tab)
   export let configDsl: string = '';
   
@@ -342,6 +347,9 @@
     if (options && !chartConfig) {
       mergedOptions = Object.assign({}, options, mergedOptions);
     }
+
+    // Filling its box, the chart takes the box's shape - unless its own options say otherwise.
+    if (fillHeight && mergedOptions.maintainAspectRatio === undefined) mergedOptions.maintainAspectRatio = false;
 
     const resolvedType = type || chartConfig?.type || (normalizedData?.datasets?.[0]?.type || 'line');
 
@@ -745,6 +753,7 @@
       if (!embedToken) embedToken = hostEl.getAttribute('embed-token') || '';
       if (!componentId) componentId = hostEl.getAttribute('component-id') || '';
       if (hostEl.getAttribute('clicks-filter') === 'true') clicksFilter = true;
+      if (hostEl.hasAttribute('fill-height') && hostEl.getAttribute('fill-height') !== 'false') fillHeight = true;
       if (!palette) palette = hostEl.getAttribute('palette') || '';
       if (!crossFilterField) crossFilterField = hostEl.getAttribute('cross-filter-field') || '';
       if (!Object.keys(reportParams).length) {
@@ -977,6 +986,11 @@
     width: 100%; 
     position: relative; 
   }
+  /* Filling its box: the host has the box's height, and the chart nothing of its own to add to it. */
+  .rb-chart-root.rb-chart-fill {
+    position: absolute;
+    inset: 0;
+  }
   /* Let Chart.js control canvas sizing when responsive/maintainAspectRatio are set */
   canvas { 
     display: block; 
@@ -1024,7 +1038,7 @@
 {#if error}
   <div class="rb-error" id={componentId ? `widgetError-${componentId}` : undefined}>{error}</div>
 {/if}
-<div class="rb-chart-root" bind:this={container} id={componentId ? `widgetChart-${componentId}` : undefined} style:display={selfFetchLoading || error ? 'none' : 'block'}>
+<div class="rb-chart-root" class:rb-chart-fill={fillHeight} bind:this={container} id={componentId ? `widgetChart-${componentId}` : undefined} style:display={selfFetchLoading || error ? 'none' : 'block'}>
   {#if loading}
     <div class="rb-chart-overlay"><div class="rb-chart-spinner"></div></div>
   {/if}

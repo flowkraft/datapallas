@@ -36,6 +36,7 @@
 
 <script lang="ts">
   import { applyTableExtras, type TableExtras } from '../shared/table-extras';
+  import { withColumnNumberFormats } from '../shared/column-format';
   import {
     onMount,
     afterUpdate,
@@ -610,6 +611,13 @@
     if (opts.data && Array.isArray(opts.data) && opts.data.length > 0
         && !opts.columns && (opts as any).autoColumns === undefined) {
       (opts as any).autoColumns = true;
+    }
+
+    // A table made from its data writes its numbers the way the Canvas wrote them: money, a share,
+    // a plain number (shared/column-format). A column whose definition says how is left to it.
+    if ((opts as any).autoColumns === true && !opts.columns && Array.isArray(opts.data)) {
+      const definitions = withColumnNumberFormats((opts as any).autoColumnsDefinitions, opts.data);
+      if (definitions !== undefined) (opts as any).autoColumnsDefinitions = definitions;
     }
 
     // Server-side mode detection

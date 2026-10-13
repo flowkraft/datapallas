@@ -816,7 +816,33 @@ export async function assertMapsFillTheirBoxes(root: Locator, context: string): 
   }
 }
 
+// ── Charts ──────────────────────────────────────────────────────────────────
+
+/**
+ * Every chart in the root fills its tile, as it does in the Canvas: its drawing reaches down to the
+ * tile's bottom edge, instead of keeping a shape of its own in the top of a taller tile.
+ */
+export async function assertChartsFillTheirTiles(root: Locator, context: string): Promise<void> {
+  const tiles = root.locator('.rb-chart-tile');
+  const count = await tiles.count();
+  for (let i = 0; i < count; i++) {
+    await expect.poll(() => tiles.nth(i).evaluate((tile) => {
+      const host = tile.querySelector('rb-chart');
+      const canvas = host?.shadowRoot?.querySelector('canvas') ?? host?.querySelector('canvas');
+      if (!canvas || canvas.getBoundingClientRect().height === 0) return 'no chart drawn';
+      const style = getComputedStyle(tile);
+      const bottom = tile.getBoundingClientRect().bottom - parseFloat(style.paddingBottom)
+        - parseFloat(style.borderBottomWidth);
+      const gap = Math.round(bottom - canvas.getBoundingClientRect().bottom);
+      return Math.abs(gap) <= 2 ? '' : `${gap}px between the chart and the tile's bottom`;
+    }), { message: `${context}: chart ${i + 1} fills its tile`, timeout: 15_000, intervals: [500] }).toBe('');
+  }
+}
+
 // ── Nothing went wrong while all that happened ────────────────────────────────
+
+/** A map tile, as rb-map asks OpenStreetMap for one. */
+const OSM_TILE = /^https:\/\/([a-c]\.)?tile\.openstreetmap\.org\//;
 
 /** What a page complained about while a test was using it. */
 export interface ErrorWatch {
@@ -850,6 +876,9 @@ export function watchForErrors(page: Page): ErrorWatch {
     await dialog.dismiss().catch(() => undefined);
   });
   page.on('requestfailed', (request) => {
+    // A map tile the map stopped loading is the map's own doing: Leaflet cancels the tiles of a
+    // zoom it has moved on from (its box settling to its size moves it), and nothing failed.
+    if (OSM_TILE.test(request.url()) && request.failure()?.errorText === 'net::ERR_ABORTED') return;
     messages.push(`failed: ${request.method()} ${request.url()} (${request.failure()?.errorText})`);
   });
   page.on('response', (response) => {
@@ -863,7 +892,7 @@ export function watchForErrors(page: Page): ErrorWatch {
   // its origin on the tiles itself.
   // headerValue reads the headers the browser really sent; headers() may leave some out.
   page.on('request', async (request) => {
-    if (!/^https:\/\/([a-c]\.)?tile\.openstreetmap\.org\//.test(request.url())) return;
+    if (!OSM_TILE.test(request.url())) return;
     watch.mapTiles++;
     if (!(await request.headerValue('referer').catch(() => null)))
       messages.push(`map tile asked with no Referer, which OpenStreetMap answers "Access blocked": ${request.url()}`);

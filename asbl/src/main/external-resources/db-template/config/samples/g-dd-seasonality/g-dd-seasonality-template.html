@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -135,14 +143,14 @@
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 2 / span 5;">
       <rb-pivot-table report-id="g-dd-seasonality" api-base-url="http://localhost:9090/api" component-id="pivot_dd06-pivot-weekday-hour"></rb-pivot-table>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 7 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-seasonality" api-base-url="http://localhost:9090/api" component-id="chart_dd06-chart-orders-by-month-of-year"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 7 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-seasonality" api-base-url="http://localhost:9090/api" component-id="chart_dd06-chart-orders-by-month-of-year"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 7 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-seasonality" api-base-url="http://localhost:9090/api" component-id="chart_dd06-chart-average-by-day-of-month"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 7 / span 6; grid-row: 7 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-seasonality" api-base-url="http://localhost:9090/api" component-id="chart_dd06-chart-average-by-day-of-month"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 11 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-seasonality" api-base-url="http://localhost:9090/api" component-id="chart_dd06-chart-daily-orders-black-friday"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 12; grid-row: 11 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-seasonality" api-base-url="http://localhost:9090/api" component-id="chart_dd06-chart-daily-orders-black-friday"></rb-chart>
     </div>
   </div>
 </div>

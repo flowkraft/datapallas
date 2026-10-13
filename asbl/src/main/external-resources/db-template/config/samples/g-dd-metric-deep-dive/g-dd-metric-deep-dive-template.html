@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -144,17 +152,17 @@
       <p class="number-label">vs last year</p>
       <p class="number-value"><rb-value report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="number_vs_last_year_year" field="" format="percent"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 5 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-metric-over-time"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 12; grid-row: 5 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-metric-over-time"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 4; grid-row: 9 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-what-it-is-made-of"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 4; grid-row: 9 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-what-it-is-made-of"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 5 / span 4; grid-row: 9 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-by-month-of-year"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 5 / span 4; grid-row: 9 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-by-month-of-year"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 9 / span 4; grid-row: 9 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-by-country-top-10"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 9 / span 4; grid-row: 9 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-metric-deep-dive" api-base-url="http://localhost:9090/api" component-id="chart_dd24-chart-by-country-top-10"></rb-chart>
     </div>
   </div>
 </div>

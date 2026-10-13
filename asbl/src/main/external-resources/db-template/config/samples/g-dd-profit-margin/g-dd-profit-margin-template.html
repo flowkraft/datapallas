@@ -32,6 +32,14 @@
       padding: 16px;
       overflow: hidden;
     }
+    .rb-dashboard-root .rb-chart-tile {
+      display: flex;
+      flex-direction: column;
+    }
+    .rb-dashboard-root .rb-chart-tile > rb-chart {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .rb-dashboard-root .number-card {
       display: flex;
       flex-direction: column;
@@ -145,11 +153,11 @@
       <p class="number-label">Discounts given</p>
       <p class="number-value"><rb-value report-id="g-dd-profit-margin" api-base-url="http://localhost:9090/api" component-id="number_discounts_given_given" field="" format="currency"></rb-value></p>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 4 / span 4; min-height: 320px;">
-      <rb-chart report-id="g-dd-profit-margin" api-base-url="http://localhost:9090/api" component-id="chart_dd16-chart-revenue-and-margin-per-month"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 12; grid-row: 4 / span 4; min-height: 320px;">
+      <rb-chart fill-height report-id="g-dd-profit-margin" api-base-url="http://localhost:9090/api" component-id="chart_dd16-chart-revenue-and-margin-per-month"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 6; grid-row: 8 / span 5; min-height: 400px;">
-      <rb-chart report-id="g-dd-profit-margin" api-base-url="http://localhost:9090/api" component-id="chart_dd16-chart-waterfall-list-price-to-gross-profit"></rb-chart>
+    <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 6; grid-row: 8 / span 5; min-height: 400px;">
+      <rb-chart fill-height report-id="g-dd-profit-margin" api-base-url="http://localhost:9090/api" component-id="chart_dd16-chart-waterfall-list-price-to-gross-profit"></rb-chart>
     </div>
     <div class="grid-item" style="grid-column: 7 / span 6; grid-row: 8 / span 5;">
       <rb-pivot-table report-id="g-dd-profit-margin" api-base-url="http://localhost:9090/api" component-id="pivot_dd16-pivot-margin-by-category-quarter"></rb-pivot-table>
