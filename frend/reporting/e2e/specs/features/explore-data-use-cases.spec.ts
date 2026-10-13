@@ -4015,7 +4015,8 @@ return ctx.dbSql.rows(sql)`,
   // Every KPI and trend on a dashboard says "this year" or "the last 30 days",
   // and a canvas saved with a typed date goes stale the day after it is saved.
   // The date dropdown therefore offers the relative spans, and their two bounds
-  // are computed in the browser from its own date (`relative-dates.ts`) and
+  // are computed in the browser (`relative-dates.ts`) from the data's today, the
+  // day the connection's demo rows were seeded to (#3, `CubeDataToday`), and
   // written as the half-open range of whole days a `between` writes - so the SQL
   // is ANSI, holds no `CURRENT_DATE` and no interval, and is the same text on
   // every vendor (Jasmine block 19, and case a33 on all nine).
@@ -4065,6 +4066,14 @@ return ctx.dbSql.rows(sql)`,
 
       await expect(page.locator('[id="btnTable-cube_demo.crm_deals"]')).toBeVisible({ timeout: 15_000 });
 
+      // A relative date counts from the data's today, the day its rows were seeded to (#3,
+      // `CubeDataToday`), not from this machine's clock: read the same answer the Canvas reads.
+      const today: string = await page.evaluate(async (code) => {
+        const res = await fetch(`/api/dp/queries/data-today/${encodeURIComponent(code)}`);
+        return res.ok ? (await res.json())?.today : null;
+      }, connectionCode);
+      expect(today, 'the demo data on this connection says which day is its today').toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
       // ── the deals closed this year, said as "this year" ──
       let offered: string[] = [];
       await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
@@ -4089,9 +4098,8 @@ return ctx.dbSql.rows(sql)`,
       const days = relativeSql.match(/DATE '(\d{4}-\d{2}-\d{2})'/g) ?? [];
       expect(days.length).toBe(2);
       const [from, to] = days.map((one) => one.slice(6, 16));
-      // The browser's own date decides the year - read here from the very clock
-      // the generator read, so the assertion holds on any day of any year.
-      const thisYear = await page.evaluate(() => new Date().getFullYear());
+      // The data's today decides the year, so the assertion holds on any day of any year.
+      const thisYear = Number(today.slice(0, 4));
       expect(from).toBe(`${thisYear}-01-01`);
       expect(to).toBe(`${thisYear + 1}-01-01`);
       expect(relativeSql).toContain(`"close_date" >= DATE '${from}' AND "close_date" < DATE '${to}'`);
@@ -4108,17 +4116,12 @@ return ctx.dbSql.rows(sql)`,
       const clause = (sql: string): string => sql.split('WHERE ')[1].replace(/\s+/g, ' ').trim();
       expect(clause(typedSql)).toBe(clause(relativeSql));
 
-      // ── and "in the last N days" counts back from the browser's own today ──
+      // ── and "in the last N days" counts back from the data's today ──
       await addVisualWidget(page, 'cube_demo.crm_deals', 'tabulator', async () => {
         await addAggregation(page, 0, 'COUNT', 'deal_id');
         await addVisualFilter(page, 0, 'close_date', 'last_n_days', '30');
       });
       const lastThirtySql = await visualSql();
-      const today = await page.evaluate(() => {
-        const now = new Date();
-        const pad = (n: number) => String(n).padStart(2, '0');
-        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      });
       const dayOf = (iso: string, shift: number): string => {
         const d = new Date(`${iso}T00:00:00Z`);
         d.setUTCDate(d.getUTCDate() + shift);
