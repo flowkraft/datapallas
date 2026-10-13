@@ -57,6 +57,7 @@ import {
   assertClaims,
   asStanding,
   assertDemoDashboard,
+  assertMapsFillTheirBoxes,
   assertUniqueIds,
   cardOf,
   embedTokenOf,
@@ -314,8 +315,10 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
 
       await assertUniqueIds(card);
       // A card with a map drew it on real tiles: the watch below refuses a tile asked without a Referer.
-      if (await card.locator('rb-map').count() > 0)
+      if (await card.locator('rb-map').count() > 0) {
         expect(watch.mapTiles, `${demo.id}'s map asked for its tiles`).toBeGreaterThan(0);
+        await assertMapsFillTheirBoxes(card, demo.id);
+      }
       watch.assertNone(`${demo.id} on the Gallery`);
     });
   }

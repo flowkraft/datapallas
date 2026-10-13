@@ -96,6 +96,9 @@
     "#deebf7", "#9ecae1", "#4292c6", "#2171b5", "#08519c",
   ];
 
+  // The world as the tiles draw it: Web Mercator stops at 85.0511 degrees north and south.
+  const WORLD_BOUNDS: [[number, number], [number, number]] = [[-85.0511, -180], [85.0511, 180]];
+
   const MISSING_COLOR = "#f0f0f0";
   const MISSING_STROKE = "#cccccc";
 </script>
@@ -376,7 +379,15 @@
       resolved = resolveOptions(data ?? [], options);
 
       if (!mapInstance) {
-        mapInstance = L.map(container, { preferCanvas: true });
+        // The map never shows past the world's edges. A view zoomed out further than the world is
+        // tall - a country map fitting every country, Antarctica included, into a wide box - left a
+        // grey band under the world. So the map can neither be dragged past the top or bottom
+        // (maxBounds, viscosity 1) nor zoomed out below the zoom at which the world fills the box
+        // (fillWithWorld, again on every resize). Quarter steps let that zoom fit the box closely
+        // instead of jumping a whole level, which would show half the world.
+        mapInstance = L.map(container, {
+          preferCanvas: true, zoomSnap: 0.25, maxBounds: WORLD_BOUNDS, maxBoundsViscosity: 1,
+        });
         // Each tile names the site it is drawn on (its origin, nothing more). OpenStreetMap's tile
         // policy requires it: a tile asked with no Referer comes back as an "Access blocked" picture,
         // with status 200, so nothing reports it. A published dashboard sends no referrer at all
@@ -387,17 +398,18 @@
         layerGroup = L.layerGroup().addTo(mapInstance);
         // World fallback view until fitBounds runs (prevents blank canvas).
         mapInstance.setView([20, 0], 2);
+        fillWithWorld();
         // Leaflet computes viewport from container.clientHeight at init time.
         // In a flex/grid layout the container can still be sizing up when
         // L.map() runs, leaving the tile pane rendered at a stale (too-short)
         // height — the grey strip at the bottom. Call invalidateSize() after
         // the browser has committed layout (100ms) AND again on any container
         // resize (grid-item drag, window resize, panel toggle).
-        setTimeout(() => { try { mapInstance?.invalidateSize(); } catch {} }, 100);
+        setTimeout(() => { try { mapInstance?.invalidateSize(); fillWithWorld(); } catch {} }, 100);
         if (typeof ResizeObserver !== "undefined") {
           const ro = new ResizeObserver(() => {
             // debounce: let the final size settle before telling Leaflet
-            setTimeout(() => { try { mapInstance?.invalidateSize(); } catch {} }, 0);
+            setTimeout(() => { try { mapInstance?.invalidateSize(); fillWithWorld(); } catch {} }, 0);
           });
           ro.observe(container);
           (mapInstance as any)._rbResizeObserver = ro;
@@ -432,6 +444,16 @@
 
   // Canvas-drawn shapes leave nothing in the DOM to count, so the number drawn is written on the
   // container: a person can't count them either, but a test (and a curious developer) can.
+  /**
+   * The lowest zoom is the one at which the world still fills the box, in both directions: below
+   * it the box would show grey past the world's edges. Asked again whenever the box changes size,
+   * because a taller box needs a closer zoom. A box not laid out yet has no size to fill.
+   */
+  function fillWithWorld() {
+    if (!mapInstance || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
+    mapInstance.setMinZoom(mapInstance.getBoundsZoom(WORLD_BOUNDS, true));
+  }
+
   function publishShapeCount() {
     if (!container || !layerGroup) return;
     let n = 0;

@@ -769,6 +769,38 @@ export function interactionOf(checks: DemoChecks, id: string): Interaction {
   return interaction;
 }
 
+// ── Maps ────────────────────────────────────────────────────────────────────
+
+/**
+ * Every map in the root is covered by the world from edge to edge: no grey band past the world's
+ * top or bottom, or beside it. Read off the tiles themselves - Leaflet places a tile only where the
+ * world is - so it holds whether or not the tile pictures could be downloaded.
+ */
+export async function assertMapsFillTheirBoxes(root: Locator, context: string): Promise<void> {
+  const maps = root.locator('rb-map .leaflet-container');
+  const count = await maps.count();
+  for (let i = 0; i < count; i++) {
+    const map = maps.nth(i);
+    // Leaflet keeps the tiles of the zoom it left until the new ones are in; wait for one level.
+    await expect.poll(() => map.locator('.leaflet-tile-container').count(),
+      { message: `${context}: map ${i + 1} settles on one zoom`, timeout: 30_000 }).toBe(1);
+    const gaps = await map.evaluate((box) => {
+      const frame = box.getBoundingClientRect();
+      const tiles = Array.from(box.querySelectorAll('img.leaflet-tile')).map((t) => t.getBoundingClientRect());
+      if (tiles.length === 0) return 'no tile at all';
+      const top = Math.min(...tiles.map((t) => t.top)), bottom = Math.max(...tiles.map((t) => t.bottom));
+      const left = Math.min(...tiles.map((t) => t.left)), right = Math.max(...tiles.map((t) => t.right));
+      const out: string[] = [];
+      if (top > frame.top + 1) out.push(`${Math.round(top - frame.top)}px above the world`);
+      if (bottom < frame.bottom - 1) out.push(`${Math.round(frame.bottom - bottom)}px below the world`);
+      if (left > frame.left + 1) out.push(`${Math.round(left - frame.left)}px left of the world`);
+      if (right < frame.right - 1) out.push(`${Math.round(frame.right - right)}px right of the world`);
+      return out.join(', ');
+    });
+    expect(gaps, `${context}: map ${i + 1} is filled by the world`).toBe('');
+  }
+}
+
 // ── Nothing went wrong while all that happened ────────────────────────────────
 
 /** What a page complained about while a test was using it. */
