@@ -107,6 +107,25 @@ export interface FormatSpec {
   /** Explicit date style override. When absent, we use the default for the
    *  bucket (or ISO-short for raw dates). */
   dateStyle?: "short" | "medium" | "long" | "iso";
+  /** The unit a duration column's numbers are in, read off its name. */
+  durationUnit?: DurationUnit;
+}
+
+/** The units a duration column can be counted in. */
+export type DurationUnit = "ms" | "s" | "min" | "h" | "d";
+
+const DURATION_UNITS: Array<[RegExp, DurationUnit]> = [
+  [/\b(ms|millis|milliseconds)\b/i, "ms"],
+  [/\b(seconds|secs?)\b/i, "s"],
+  [/\b(minutes|mins?)\b/i, "min"],
+  [/\b(hours|hrs?)\b/i, "h"],
+  [/\b(days)\b/i, "d"],
+];
+
+/** The unit a duration column names (`days`, `Delivery hours`, `ms`), or undefined when its
+ *  name says none (`duration`, `elapsed`): a number of an unknown unit is not guessed at. */
+export function durationUnitFromName(columnName: string): DurationUnit | undefined {
+  return DURATION_UNITS.find(([rx]) => rx.test(columnName))?.[1];
 }
 
 /** Pure classifier — given a column schema, decide the formatter. Ordered so
@@ -131,7 +150,11 @@ export function pickColumnFormat(col: ColumnSchema): FormatSpec {
   if (isPercentage(col))   return { kind: "percentage" };
   if (isLatitude(col) || isLongitude(col) || isCoordinate(col))
                            return { kind: "coordinate" };
-  if (isDuration(col))     return { kind: "duration" };
+  if (isDuration(col)) {
+    // A duration is written in the unit its name gives; one with no unit stays a number.
+    const durationUnit = durationUnitFromName(col.columnName);
+    return durationUnit ? { kind: "duration", durationUnit } : { kind: "number" };
+  }
   if (isTemporal(col))     return { kind: "date" };
   if (isBooleanCol(col))   return { kind: "boolean" };
   if (isNumeric(col))      return { kind: "number" };
@@ -233,25 +256,39 @@ export function formatCoordinateValue(v: unknown): string {
   return n.toFixed(5) + "°";
 }
 
-/** Duration formatter — takes a number in milliseconds (our default assumption)
- *  and prints "2h 30m" / "45s" / "3d". Returns the raw value when we can't
- *  figure out a unit. */
-export function formatDurationValue(v: unknown): string {
+const SECONDS_IN: Record<DurationUnit, number> = { ms: 0.001, s: 1, min: 60, h: 3600, d: 86400 };
+const UNIT_SHORT: Record<DurationUnit, string> = { ms: " ms", s: "s", min: "m", h: "h", d: "d" };
+
+/** Duration formatter — a number in the unit its column names (`spec.durationUnit`), written
+ *  as its two largest parts: "5d", "2d 12h", "1h 30m", "45s", "250 ms". A duration whose unit is
+ *  not known is written as a plain number: 5 days must not read "5s". */
+export function formatDurationValue(v: unknown, spec: FormatSpec = { kind: "duration" }): string {
   if (v === null || v === undefined || v === "") return "";
-  const ms = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(ms)) return String(v);
-  const s = Math.abs(ms) >= 1000 ? ms / 1000 : ms;
-  // If the column likely stores seconds already, the number will be >= 1000 ms;
-  // else treat as plain seconds. Either way, convert to h/m/s for display.
-  const secs = Math.floor(s);
-  const days = Math.floor(secs / 86400);
-  const hours = Math.floor((secs % 86400) / 3600);
-  const mins = Math.floor((secs % 3600) / 60);
-  const rem = secs % 60;
-  if (days > 0)  return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  if (mins > 0)  return `${mins}m ${rem}s`;
-  return `${rem}s`;
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return String(v);
+  if (!spec.durationUnit) return formatNumberValue(n, { kind: "number" });
+  const sign = n < 0 ? "-" : "";
+  const total = Math.abs(n) * SECONDS_IN[spec.durationUnit];
+  // Nothing at all reads in the column's own unit: no time is "0d" in a column of days.
+  if (total === 0) return `0${UNIT_SHORT[spec.durationUnit]}`;
+  // Each step compares what it would write: 999.6 ms is 1s, and 59.97s is 1m.
+  const millis = Math.round(total * 1000);
+  if (millis < 1000) return `${sign}${millis} ms`;
+  const tenths = Math.round(total * 10) / 10;
+  if (tenths < 60) return `${sign}${tenths}s`;
+  const steps: Array<[number, string]> = [[86400, "d"], [3600, "h"], [60, "m"], [1, "s"]];
+  const largest = (seconds: number) => steps.findIndex(([size]) => seconds >= size);
+  // Rounded to the smaller of its two parts, then its parts picked again: 59m 59.8s is 1h.
+  const unit = steps[largest(tenths) + 1][0];
+  const rounded = Math.round(tenths / unit) * unit;
+  const big = largest(rounded);
+  const [bigSize, bigName] = steps[big];
+  const [smallSize, smallName] = steps[big + 1];
+  const smalls = Math.round(rounded / smallSize);
+  const perBig = bigSize / smallSize;
+  const whole = Math.floor(smalls / perBig);
+  const rest = smalls % perBig;
+  return `${sign}${whole}${bigName}${rest ? ` ${rest}${smallName}` : ""}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -450,7 +487,7 @@ export function formatCellHtml(v: unknown, col: ColumnSchema, spec?: FormatSpec)
     case "currency":   return escapeHtml(formatCurrencyValue(v, fmt));
     case "percentage": return escapeHtml(formatPercentageValue(v, fmt));
     case "coordinate": return escapeHtml(formatCoordinateValue(v));
-    case "duration":   return escapeHtml(formatDurationValue(v));
+    case "duration":   return escapeHtml(formatDurationValue(v, fmt));
     case "date":       return escapeHtml(formatDateValue(v, fmt));
     case "boolean":    return escapeHtml(formatBooleanValue(v));
     case "number":     return escapeHtml(formatNumberValue(v, fmt));
@@ -470,7 +507,7 @@ export function formatCellText(v: unknown, col: ColumnSchema, spec?: FormatSpec)
     case "currency":   return formatCurrencyValue(v, fmt);
     case "percentage": return formatPercentageValue(v, fmt);
     case "coordinate": return formatCoordinateValue(v);
-    case "duration":   return formatDurationValue(v);
+    case "duration":   return formatDurationValue(v, fmt);
     case "date":       return formatDateValue(v, fmt);
     case "boolean":    return formatBooleanValue(v);
     case "number":     return formatNumberValue(v, fmt);
