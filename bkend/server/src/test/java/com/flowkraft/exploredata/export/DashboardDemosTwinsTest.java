@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +34,25 @@ class DashboardDemosTwinsTest {
 	/** How near two numbers must be to be the same number on a tile: a currency's cent. */
 	private static final double CENT = 0.005;
 	private static final double HUNDREDTH_OF_A_PERCENT = 0.00005;
+
+	@Test
+	@DisplayName("The Gallery shows each demo once: its twin where it has one, else itself")
+	void theGalleryShowsTheTwinInPlaceOfItsOriginal() throws Exception {
+
+		// Owner decision 21: on the Gallery a reader sees each dashboard once, in its least-code
+		// version; the e2e keeps running all 37.
+		Map<String, String> twinOf = new LinkedHashMap<>();
+		for (Twin twin : DashboardDemos.twins())
+			twinOf.put(twin.original().id(), twin.twin().reportId());
+
+		List<String> wrong = new ArrayList<>();
+		for (Demo demo : DashboardDemos.all()) {
+			String wanted = twinOf.getOrDefault(demo.id(), demo.reportId());
+			if (!demo.galleryReportId().equals(wanted))
+				wrong.add(demo.id() + "'s card shows " + demo.galleryReportId() + ", not " + wanted);
+		}
+		assertTrue(wrong.isEmpty(), "the Gallery does not show the least-code version:\n" + String.join("\n", wrong));
+	}
 
 	@Test
 	@DisplayName("Every twin is named after its original and has its widgets, in order and type, and its stories")

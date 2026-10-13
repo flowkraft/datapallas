@@ -41,9 +41,17 @@ import {
   asQuery,
   declaredParams,
   demoOf,
+  loadCanvas,
   loadChecks,
+  loadTwinCanvas,
+  paramsItDeclares,
+  rebuiltWidgetsOf,
+  shownReportId,
   widgetOf,
+  widgetsOf,
+  type Demo,
 } from '../../helpers/dashboard-demos/demo-catalog';
+import { normalizeCanvas, stateOf } from '../../helpers/dashboard-demos/canvas-parity';
 import {
   askData,
   assertClaims,
@@ -93,6 +101,38 @@ const DD03 = demoOf('dd-sales-by-country');
  */
 const adminFetch: AdminFetch = (url, init = {}) =>
   fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...Helpers.apiKeyHeader() } });
+
+/**
+ * The dashboard a card shows (owner decision 21): the demo itself, or, where the index names a
+ * "(low-code)" twin, that twin - under the demo's own number, checks and stories, which the twin spec
+ * proves it answers. A twin's widget built otherwise than its original's (a Visual query, a cube)
+ * names its own columns, so it is read under the original's, read off the original's first row at
+ * the defaults, as the twin spec reads them. That one call carries the installation key: the card's
+ * link opens only what the card shows.
+ */
+async function shownOnCard(demo: Demo): Promise<Demo> {
+  const reportId = shownReportId(demo);
+  if (reportId === demo.reportId) return demo;
+  const twin = loadTwinCanvas(reportId);
+  if (!twin) throw new Error(`${demo.id}: the Gallery shows ${reportId}, which ships no canvas`);
+  const widgets = rebuiltWidgetsOf(demo.id, stateOf(twin));
+  const shipped = widgetsOf(demo.id);
+  const theirs = normalizeCanvas(loadCanvas(demo.id)).widgets;
+  const ours = normalizeCanvas(twin).widgets;
+  const query = asQuery(paramsItDeclares(demo.id, loadChecks(demo.id).defaults));
+  for (const [i, widget] of widgets.entries()) {
+    if (!theirs[i]?.dataSource) continue;
+    if (JSON.stringify(theirs[i].dataSource) === JSON.stringify(ours[i]?.dataSource)) continue;
+    const answer = await adminFetch(`${BASE_URL}/api/reports/${demo.reportId}/data?componentId=`
+      + encodeURIComponent(shipped[i].componentId) + (query ? `&${query}` : ''));
+    expect(answer.status, `${demo.id}/${shipped[i].key} answers its own data call`).toBe(200);
+    const body = await answer.json();
+    const rows = (body.data ?? body.rows ?? []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) throw new Error(`${demo.id}/${shipped[i].key} answers no row, so its columns are unknown`);
+    widget.columns = Object.keys(rows[0]);
+  }
+  return { ...demo, reportId, rebuilt: widgets };
+}
 
 /** A share link for one report, for the tests about what a link opens. */
 async function shareLinkFor(reportId: string, lockedParams?: Record<string, unknown>): Promise<string> {
@@ -186,10 +226,10 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
 
     for (const demo of DEMOS) {
       const card = cardOf(page, demo);
-      await expect(card.locator(`[id="dashboard-${demo.reportId}"]`),
+      await expect(card.locator(`[id="dashboard-${shownReportId(demo)}"]`),
         `${demo.id}'s card carries its own dashboard`).toHaveCount(1);
       await expect(page.locator(`#lnkOpenAlone-${demo.id}`), `${demo.id} can be opened on its own`)
-        .toHaveAttribute('href', `/dashboard/${demo.reportId}`);
+        .toHaveAttribute('href', `/dashboard/${shownReportId(demo)}`);
       const built = page.locator(`#lnkHowBuilt-${demo.id}`);
       await expect(built, `${demo.id} says how it was built`)
         .toHaveAttribute('href', demo.howItWasBuiltUrl);
@@ -211,11 +251,13 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
   //    the questions it offers are answered by the numbers its checks hold it to.
   // ────────────────────────────────────────────────────────────────────────────
 
-  for (const demo of DEMOS) {
-    test(`(dashboard demos gallery) DD${String(demo.nn).padStart(2, '0')} ${demo.title}`
+  for (const listed of DEMOS) {
+    test(`(dashboard demos gallery) DD${String(listed.nn).padStart(2, '0')} ${listed.title}`
       + ' — loads, filters work, stories answer', async () => {
       test.setTimeout(20 * 60_000);
 
+      // The dashboard its card shows: the demo, or its "(low-code)" twin (owner decision 21).
+      const demo = await shownOnCard(listed);
       const checks = loadChecks(demo.id);
 
       // 1. The card loads when it is scrolled to, and shows this demo's own numbers.
@@ -228,8 +270,9 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       // 3. The questions it was written to answer, answered where the reader asked them.
       const stories = expectStoriesAndChecksAgree(demo.id);
       if (stories.length > 0) await assertStoriesAreOffered(card, demo);
+      const below = DEMOS.find((other) => other.nn === demo.nn + 1);
+      const neighbour = below && stories.length > 0 ? await shownOnCard(below) : null;
       for (const story of stories) {
-        const neighbour = DEMOS.find((other) => other.nn === demo.nn + 1) ?? null;
         // The card below loads when it is scrolled to: read it loaded, or "exactly as it was" below
         // would compare two empty bars.
         const before = neighbour ? await readParams(await scrollCardIntoView(page, neighbour), neighbour) : {};
@@ -291,8 +334,8 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
     });
     try {
       await fresh.goto(galleryUrl(shareToken), { timeout: 120_000, waitUntil: 'networkidle' });
-      const first = DEMOS[0];
-      const last = DEMOS[DEMOS.length - 1];
+      const first = await shownOnCard(DEMOS[0]);
+      const last = await shownOnCard(DEMOS[DEMOS.length - 1]);
 
       await expect.poll(() => asked.includes(first.reportId), { timeout: 60_000 })
         .toBe(true);

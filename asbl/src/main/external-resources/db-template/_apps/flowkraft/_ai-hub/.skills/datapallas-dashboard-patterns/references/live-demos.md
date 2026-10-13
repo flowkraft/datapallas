@@ -42,14 +42,14 @@ do not edit by hand.
 - **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-by-country` · **on its own:** `/dashboard/g-dd-sales-by-country`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-sales-by-country
 
-### DD04 Sales Channels (`g-dd-sales-channels`)
+### DD04 Sales Channels (`g-dd-sales-channels-low-code`)
 - **Question:** Which channel gets the next euro of effort?
 - **Who:** The e-commerce and trade sales leads, deciding the next year's channel budget. **Decision:** Which channel gets the next euro of effort: marketplace fees, the app, the web shop or the reps.
 - **Finding:** The mobile app has grown from about 14% to about 28% of orders since 2024 while the marketplace has shrunk from 19% to 12%. Marketplace orders come back about twice as often as web orders (10.7% against 5.6%), and Smart Home sells mostly through the app.
 - **Tiles:** pie chart, bar chart, area chart, sankey
 - **Filters:** Include returns (`includeReturns`)
 - **Stories:** "How does the mix look before returns?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-channels` · **on its own:** `/dashboard/g-dd-sales-channels`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-channels` · **on its own:** `/dashboard/g-dd-sales-channels-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-sales-channels-low-code
 
 ### DD05 Product Performance (`g-dd-product-performance`)
@@ -72,14 +72,14 @@ do not edit by hand.
 - **In the gallery:** `/dashboard/g-dashboard-demos#dd-seasonality` · **on its own:** `/dashboard/g-dd-seasonality`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-seasonality
 
-### DD07 Sales Pipeline (`g-dd-sales-pipeline`)
+### DD07 Sales Pipeline (`g-dd-sales-pipeline-low-code`)
 - **Question:** Will we make this quarter, and is next quarter safe?
 - **Who:** The sales director, every week. **Decision:** Will we make this quarter, is next quarter safe, and which deals and sources need attention.
 - **Finding:** Referral deals win about twice as often as paid-search deals (51% against 25%), and next quarter's pipeline covers 2.1 times its quota.
 - **Tiles:** number x3, gauge, funnel chart, bar chart, table
 - **Filters:** Rep (`repEmployeeId`), Closing from (`closeFrom`), Closing to (`closeTo`)
 - **Stories:** "How is one rep doing?" "What still has to close this week?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-pipeline` · **on its own:** `/dashboard/g-dd-sales-pipeline`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-pipeline` · **on its own:** `/dashboard/g-dd-sales-pipeline-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-sales-pipeline-low-code
 
 ### DD08 Targets vs Actual (`g-dd-targets-vs-actual`)
@@ -94,14 +94,14 @@ do not edit by hand.
 
 ## C · Customers
 
-### DD09 Customer Base & Growth (`g-dd-customer-growth`)
+### DD09 Customer Base & Growth (`g-dd-customer-growth-low-code`)
 - **Question:** Which acquisition channels to fund, and do new customers come back?
 - **Who:** The marketing lead. **Decision:** Which acquisition channels to fund, and whether new customers come back.
 - **Finding:** Referral signups more than doubled after the loyalty programme of March 2025, from about 13 a month to about 29.
 - **Tiles:** number x3, trend, line chart, doughnut chart, map, bar chart, table
 - **Filters:** Segment (`segment`), Acquisition channel (`acquisitionChannel`)
 - **Stories:** "Do the big accounts behave differently?" "What did the loyalty programme bring?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-customer-growth` · **on its own:** `/dashboard/g-dd-customer-growth`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-customer-growth` · **on its own:** `/dashboard/g-dd-customer-growth-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-customer-growth-low-code
 
 ### DD10 Cohort Retention (`g-dd-cohort-retention`)
@@ -114,38 +114,38 @@ do not edit by hand.
 - **In the gallery:** `/dashboard/g-dashboard-demos#dd-cohort-retention` · **on its own:** `/dashboard/g-dd-cohort-retention`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-cohort-retention
 
-### DD11 Customer 360 (`g-dd-customer-360`)
+### DD11 Customer 360 (`g-dd-customer-360-low-code`)
 - **Question:** What should I raise on this call?
 - **Who:** An account manager, before a call. **Decision:** What to raise on the call: the money owed, the open issues, what they buy.
 - **Finding:** Helix Retail Group has bought 1.6M over 31 months and pays on time 136 times out of 140 - but four invoices are overdue, the oldest of them 985 days past due.
 - **Tiles:** detail, number x4, combo chart, doughnut chart, table x2
 - **Filters:** Customer (`customerId`)
 - **Stories:** "And a small consumer account?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-customer-360` · **on its own:** `/dashboard/g-dd-customer-360`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-customer-360` · **on its own:** `/dashboard/g-dd-customer-360-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-customer-360-low-code
 
 ## D · Digital
 
-### DD12 Website Traffic & Conversion (`g-dd-web-funnel`)
+### DD12 Website Traffic & Conversion (`g-dd-web-funnel-low-code`)
 - **Question:** Is the site converting, where do visitors drop, and which sources pay back?
 - **Who:** The digital marketing lead, daily. **Decision:** Is the site converting, where do visitors drop, and which traffic sources pay back.
 - **Finding:** Mobile checkout to purchase fell from about 62% to 41% in June 2026 - a checkout bug - and was back at 62% in August; email visitors convert at 6.1%, about twice paid social's 2.7%.
 - **Tiles:** number, gauge, trend, funnel chart, line chart x2, pivot, bar chart
 - **Filters:** From (`dateFrom`), To (`dateTo`), Device (`device`)
 - **Stories:** "What happened on mobile in June?" "Was desktop hit too?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-web-funnel` · **on its own:** `/dashboard/g-dd-web-funnel`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-web-funnel` · **on its own:** `/dashboard/g-dd-web-funnel-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-web-funnel-low-code
 
 ## E · Finance
 
-### DD13 Invoices & Billing (`g-dd-invoices`)
+### DD13 Invoices & Billing (`g-dd-invoices-low-code`)
 - **Question:** Is this month's billing complete and collected, and what is still open?
 - **Who:** The accountant, at month end. **Decision:** Is this month's billing complete and collected, and what is still open.
 - **Finding:** September billing is 1,098,189.32 - 98.9% of it from trade orders and 1.1% from Care plans - against 827,603.01 collected; 12.3% of the 1,637,606.29 still open is overdue.
 - **Tiles:** number x4, bar chart, doughnut chart, row chart, table
 - **Filters:** Status (`status`), Customer (`customerId`), Issued from (`issuedFrom`), Issued to (`issuedTo`)
 - **Stories:** "What is overdue?" "And the largest account?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-invoices` · **on its own:** `/dashboard/g-dd-invoices`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-invoices` · **on its own:** `/dashboard/g-dd-invoices-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-invoices-low-code
 
 ### DD14 Receivables Aging & Collections (`g-dd-receivables-aging`)
@@ -158,14 +158,14 @@ do not edit by hand.
 - **In the gallery:** `/dashboard/g-dashboard-demos#dd-receivables-aging` · **on its own:** `/dashboard/g-dd-receivables-aging`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-receivables-aging
 
-### DD15 Subscriptions: MRR & Churn (`g-dd-subscriptions-mrr`)
+### DD15 Subscriptions: MRR & Churn (`g-dd-subscriptions-mrr-low-code`)
 - **Question:** Is recurring revenue growing, and is churn under control after the price change?
 - **Who:** The head of subscriptions, monthly. **Decision:** Whether recurring revenue is growing, and whether churn is under control after the price change.
 - **Finding:** February 2026 was the worst month of the year for retention - every cohort kept less of itself, and price is the reason 86 subscribers gave when they left - yet MRR is at a new high of 99,781.43, with 8,102.58 of it won back by expansion over the last 12 months.
 - **Tiles:** trend, number, gauge, waterfall chart, bar chart, area chart, pivot
 - **Filters:** Plan (`plan`)
 - **Stories:** "And the plan the price change hit hardest?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-subscriptions-mrr` · **on its own:** `/dashboard/g-dd-subscriptions-mrr`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-subscriptions-mrr` · **on its own:** `/dashboard/g-dd-subscriptions-mrr-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-subscriptions-mrr-low-code
 
 ### DD16 Profit & Margin (`g-dd-profit-margin`)
@@ -190,36 +190,36 @@ do not edit by hand.
 - **In the gallery:** `/dashboard/g-dashboard-demos#dd-payroll` · **on its own:** `/dashboard/g-dd-payroll`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-payroll
 
-### DD18 Headcount & Attrition (`g-dd-headcount`)
+### DD18 Headcount & Attrition (`g-dd-headcount-low-code`)
 - **Question:** Where do people leave, and what would have to change to keep them?
 - **Who:** The HR director, quarterly. **Decision:** Where people leave, and what to change to keep them.
 - **Finding:** Customer Support is where people leave: 17.5% a year against 9.64% for the company over the 33 months, 12 leavers from a team that averaged 25 people, and the shortest median tenure of any department at 3.1 years - 8 of its 26 people have been there under a year. Pay is the likely reason: at L1, where 10 of those 26 sit, it pays 81.7% of what everyone else at that level is paid, a median of 27,891 against 32,270; pooled over L1 to L3 it is 92.02%.
 - **Tiles:** number x3, line chart, bar chart x2, boxplot chart
 - **Filters:** Department (`department`), Country (`country`)
 - **Stories:** "Which team is losing people?" "And the largest country?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-headcount` · **on its own:** `/dashboard/g-dd-headcount`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-headcount` · **on its own:** `/dashboard/g-dd-headcount-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-headcount-low-code
 
 ## G · Operations
 
-### DD19 Inventory & Stock Health (`g-dd-inventory`)
+### DD19 Inventory & Stock Health (`g-dd-inventory-low-code`)
 - **Question:** What do we reorder today, where does it fit, and what stock should we clear?
 - **Who:** The purchasing manager, daily. **Decision:** What to reorder today, where it fits, and what stock to clear.
 - **Finding:** 14 SKUs are below their reorder level, 4 of them in Rotterdam, and Rotterdam is the warehouse with no room left: 94% of capacity against 71% in Frankfurt and 52% in Sao Paulo. 62,110.83 sits in 9 slow movers that have not sold in 90 days, none of them worth more than 6,979.31 on its own, and every one of them is in a different building - so the money to free is spread thin while the space problem is in one place.
 - **Tiles:** number x3, bar chart, row chart, table
 - **Filters:** Warehouse (`warehouse`), Below reorder level only (`belowReorderOnly`), Category (`category`)
 - **Stories:** "Rotterdam has no room - what is in it?" "And everything we hold, not just what is short?" "Just the buying area I look after?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-inventory` · **on its own:** `/dashboard/g-dd-inventory`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-inventory` · **on its own:** `/dashboard/g-dd-inventory-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-inventory-low-code
 
-### DD20 Fulfillment & Delivery (`g-dd-fulfillment`)
+### DD20 Fulfillment & Delivery (`g-dd-fulfillment-low-code`)
 - **Question:** Is lateness a carrier problem or a country problem, and which orders do we chase?
 - **Who:** The logistics manager, daily and at the carrier review. **Decision:** Whether lateness is a carrier problem or a country problem, and which orders to chase.
 - **Finding:** Lateness is a carrier, not a country: SwiftPost is late 12.3% of the time against 4.28% for the other two over every delivery on the books - 12.38% against 4.25% and 3.05% in the last 90 days - and it is the worse carrier in all 18 countries where it delivers at least 60 parcels a year, from 7.56% in the Netherlands to 20% in Sweden. When it is late the parcel arrives 3.51 days late, against about a day and a half for the others, which is why its delivery-days box has the long tail.
 - **Tiles:** gauge, number x2, trend, bar chart, boxplot chart, map, table
 - **Filters:** From (`dateFrom`), To (`dateTo`), Carrier (`carrier`)
 - **Stories:** "Is it one carrier?" "And over the year, not the quarter?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-fulfillment` · **on its own:** `/dashboard/g-dd-fulfillment`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-fulfillment` · **on its own:** `/dashboard/g-dd-fulfillment-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-fulfillment-low-code
 
 ### DD21 Support Operations (`g-dd-support-operations`)
@@ -232,14 +232,14 @@ do not edit by hand.
 - **In the gallery:** `/dashboard/g-dashboard-demos#dd-support-operations` · **on its own:** `/dashboard/g-dd-support-operations`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-support-operations
 
-### DD22 Support Quality & Agents (`g-dd-support-quality`)
+### DD22 Support Quality & Agents (`g-dd-support-quality-low-code`)
 - **Question:** Which channel should we steer customers to, and which agents need coaching?
 - **Who:** The head of support, at the monthly review. **Decision:** Which channel to steer customers to, and which agents to coach.
 - **Finding:** Chat leaves people happiest and no faster: CSAT 4.4 on chat against 4.07 on the phone, 3.83 by email and 3.67 on the web form, while a ticket takes 60 to 63 hours to resolve whichever channel it arrives on - chat's median, 62.63 hours, is the longest of the four against the web form's 60.28. So chat buys satisfaction, not speed. Every team clears the 90% SLA target, from 90.5% in Billing to 91.5% in Technical, and the 32 agents sit between 3.86 and 4.13 CSAT, so there is no one to single out for coaching.
 - **Tiles:** trend, progress, number, boxplot chart, bar chart, table
 - **Filters:** Team (`team`), From (`dateFrom`), To (`dateTo`)
 - **Stories:** "And my technical team?" "Who needs coaching?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-support-quality` · **on its own:** `/dashboard/g-dd-support-quality`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-support-quality` · **on its own:** `/dashboard/g-dd-support-quality-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-support-quality-low-code
 
 ## H · The analyst's toolkit
@@ -264,12 +264,12 @@ do not edit by hand.
 - **In the gallery:** `/dashboard/g-dashboard-demos#dd-metric-deep-dive` · **on its own:** `/dashboard/g-dd-metric-deep-dive`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-metric-deep-dive
 
-### DD25 Segment vs Everyone (`g-dd-segment-vs-all`)
+### DD25 Segment vs Everyone (`g-dd-segment-vs-all-low-code`)
 - **Question:** Is my country different from the company as a whole, and where?
 - **Who:** A country manager: "is my country different?" **Decision:** What to do differently in my market: assortment, channel, price.
 - **Finding:** Poland is a smaller basket and a faster market: 1,944.91 an order against 2,756.55 everywhere, returns no different at 5.93% against 5.97%, but quarterly revenue at 208.67 against the company's 139.44 since the start of 2024. It buys more Smart Home, 12.2% of its revenue against 10.58%, and a little more on the app, 21.37% of its orders against 20.55% - the assortment difference is real, the channel difference is under a point.
 - **Tiles:** number x4, bar chart, line chart, pie chart
 - **Filters:** Country (`country`)
 - **Stories:** "And the biggest market - is it the average?" "And a market on the other side of the world?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-segment-vs-all` · **on its own:** `/dashboard/g-dd-segment-vs-all`
+- **In the gallery:** `/dashboard/g-dashboard-demos#dd-segment-vs-all` · **on its own:** `/dashboard/g-dd-segment-vs-all-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-segment-vs-all-low-code

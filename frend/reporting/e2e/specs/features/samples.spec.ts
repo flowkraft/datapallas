@@ -23,6 +23,7 @@ import {
 import {
   DEMOS,
   GALLERY_REPORT_ID,
+  shownReportId,
 } from '../../helpers/dashboard-demos/demo-catalog';
 import {
   assertDemoDashboard,
@@ -1856,7 +1857,7 @@ electronBeforeAfterAllTest(
 
         for (const demo of DEMOS)
           await expect(
-            page.locator(`#${demo.id} [id="dashboard-${demo.reportId}"]`),
+            page.locator(`#${demo.id} [id="dashboard-${shownReportId(demo)}"]`),
             `${demo.id}'s card carries its own dashboard`,
           ).toHaveCount(1);
 

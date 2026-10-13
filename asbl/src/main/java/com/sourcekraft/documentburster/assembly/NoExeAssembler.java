@@ -1677,7 +1677,8 @@ public class NoExeAssembler extends AbstractAssembler {
 					samplesDirPath, templatesDirPath);
 
 		// The "(low-code)" twins: the same dashboards built with less code, each one published on its
-		// own (not on the Gallery, where the original keeps its card).
+		// own. The Gallery shows a twin on its original's card (`galleryReportId`, owner decision 21);
+		// the original ships too.
 		File twinsIndex = new File(samplesDirPath + "/dashboard-demos-low-code.json");
 		if (twinsIndex.exists()) {
 			Map<String, Object> twins = new ObjectMapper().readValue(twinsIndex,

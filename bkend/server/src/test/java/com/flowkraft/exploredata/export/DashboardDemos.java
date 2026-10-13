@@ -33,7 +33,9 @@ import groovy.lang.GroovyShell;
  *   <li>{@code frend/reporting/e2e/dashboard-demos/checks/<nn>-<id>.checks.json} - what every tile
  *       shows at the defaults and under each interaction, and how crowded each bucket is.</li>
  * </ul>
- * and {@code config/samples/dashboard-demos.json} lists all 25 in Gallery order.
+ * and {@code config/samples/dashboard-demos.json} lists all 25 in Gallery order. A demo with a
+ * "(low-code)" twin names it there as {@code galleryReportId}: the Gallery shows the twin on that
+ * demo's card (owner decision 21), and everything else here still reads the original.
  *
  * <p>{@link #answers} is the point of the whole arrangement: it does not re-implement the
  * dashboard's rules, it runs the dashboard. {@link ScriptAssembler} writes the script a published
@@ -83,6 +85,15 @@ final class DashboardDemos {
 		/** The prefix every widget id of this demo carries. */
 		String widgetPrefix() {
 			return String.format("w-dd%02d-", nn);
+		}
+
+		/**
+		 * The dashboard the Gallery shows on this demo's card: its "(low-code)" twin where the index
+		 * names one ({@code galleryReportId}, owner decision 21), else the demo itself.
+		 */
+		String galleryReportId() {
+			String shown = Objects.toString(index.get("galleryReportId"), "");
+			return shown.isEmpty() ? reportId : shown;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -223,8 +234,9 @@ final class DashboardDemos {
 	}
 
 	/**
-	 * {@code dashboard-demos-low-code.json}: the twins, in Gallery order of their originals. Not on
-	 * the Gallery (the original keeps its card); the installer ships each one as its own dashboard.
+	 * {@code dashboard-demos-low-code.json}: the twins, in Gallery order of their originals. The
+	 * Gallery shows each one on its original's card ({@code galleryReportId}); the installer ships
+	 * each one, and each original, as its own dashboard.
 	 */
 	@SuppressWarnings("unchecked")
 	static List<Twin> twins() throws Exception {

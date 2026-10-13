@@ -102,9 +102,9 @@ final class DashboardDemosGallery {
 				+ " &middot; <strong>Decision:</strong> " + html(field(demo, "decision"))
 				+ " &middot; <strong>Finding:</strong> " + html(field(demo, "finding")) + "</p>\n"
 				+ "    <p class=\"card-links\"><a id=\"lnkOpenAlone-" + id + "\" href=\"/dashboard/"
-				+ demo.reportId() + "\">Open on its own &rarr;</a></p>\n"
+				+ demo.galleryReportId() + "\">Open on its own &rarr;</a></p>\n"
 				+ "    <div class=\"card-dashboard\" style=\"min-height: " + height(demo) + "px\">\n"
-				+ "      <rb-dashboard report-id=\"" + demo.reportId()
+				+ "      <rb-dashboard report-id=\"" + demo.galleryReportId()
 				+ "\" api-base-url=\"/api\" lazy show-stories></rb-dashboard>\n"
 				+ "    </div>\n"
 				+ "    <p class=\"card-links\"><a id=\"lnkHowBuilt-" + id + "\" href=\""
@@ -135,7 +135,7 @@ final class DashboardDemosGallery {
 			out.append("\n## ").append(area.getKey()).append("\n");
 			for (Demo demo : area.getValue()) {
 				out.append("\n### ").append(number(demo)).append(" ").append(field(demo, "title"))
-						.append(" (`").append(demo.reportId()).append("`)\n");
+						.append(" (`").append(demo.galleryReportId()).append("`)\n");
 				out.append("- **Question:** ").append(field(demo, "question")).append("\n");
 				out.append("- **Who:** ").append(field(demo, "who")).append(" **Decision:** ")
 						.append(field(demo, "decision")).append("\n");
@@ -145,7 +145,7 @@ final class DashboardDemosGallery {
 				out.append("- **Stories:** ").append(stories(demo)).append("\n");
 				out.append("- **In the gallery:** `/dashboard/").append(REPORT_ID).append("#")
 						.append(demo.id()).append("` \u00b7 **on its own:** `/dashboard/")
-						.append(demo.reportId()).append("`\n");
+						.append(demo.galleryReportId()).append("`\n");
 				out.append("- **How it was built:** ").append(field(demo, "howItWasBuiltUrl")).append("\n");
 			}
 		}

@@ -69,6 +69,11 @@ export interface Demo {
   heightPx: number;
   howItWasBuiltUrl: string;
   /**
+   * The dashboard the Gallery shows on this demo's card when it is not the demo itself: its
+   * "(low-code)" twin (owner decision 21). Everything else here still reads the original.
+   */
+  galleryReportId?: string;
+  /**
    * Set when the dashboard under test is one a recipe REBUILT in the Canvas (TODO 12) and not the
    * shipped one: its widgets, named the way the checks name them. Its component ids differ from
    * the shipped ones (the formula reads the widget id's last part), so the claims must look the
@@ -183,6 +188,11 @@ export function demoOf(id: string): Demo {
   const demo = DEMOS.find((d) => d.id === wanted);
   if (!demo) throw new Error(`no demo '${id}' in ${INDEX_PATH}; there are ${DEMOS.length}`);
   return demo;
+}
+
+/** The dashboard a demo's Gallery card shows: its "(low-code)" twin where the index names one. */
+export function shownReportId(demo: Demo): string {
+  return demo.galleryReportId ?? demo.reportId;
 }
 
 /** The checks of one demo: the file its number and its id name. */

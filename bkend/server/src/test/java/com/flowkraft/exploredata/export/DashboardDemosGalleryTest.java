@@ -57,11 +57,11 @@ class DashboardDemosGalleryTest {
 			// The card, the two links and the dashboard: one of each, named the way the e2e names them.
 			for (String needed : List.of(
 					"<p class=\"card-area\" id=\"" + id + "-area\">",
-					"<a id=\"lnkOpenAlone-" + id + "\" href=\"/dashboard/" + demo.reportId() + "\">",
+					"<a id=\"lnkOpenAlone-" + id + "\" href=\"/dashboard/" + demo.galleryReportId() + "\">",
 					"<a id=\"lnkHowBuilt-" + id + "\" href=\""
 							+ DashboardDemosGallery.field(demo, "howItWasBuiltUrl")
 							+ "\" target=\"_blank\" rel=\"noopener\">",
-					"<rb-dashboard report-id=\"" + demo.reportId()
+					"<rb-dashboard report-id=\"" + demo.galleryReportId()
 							+ "\" api-base-url=\"/api\" lazy show-stories></rb-dashboard>",
 					"style=\"min-height: " + demo.index().get("heightPx") + "px\""))
 				if (count(card, needed) != 1)
@@ -124,7 +124,7 @@ class DashboardDemosGalleryTest {
 		List<String> wrong = new ArrayList<>();
 
 		for (Demo demo : demos) {
-			if (count(reference, "(`" + demo.reportId() + "`)") != 1)
+			if (count(reference, "(`" + demo.galleryReportId() + "`)") != 1)
 				wrong.add(demo.id() + " is not named once by its report id");
 			if (!reference.contains("`/dashboard/" + DashboardDemosGallery.REPORT_ID + "#" + demo.id() + "`"))
 				wrong.add(demo.id() + " does not say where it is in the gallery");

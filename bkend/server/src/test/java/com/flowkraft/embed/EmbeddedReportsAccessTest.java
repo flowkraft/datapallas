@@ -397,11 +397,15 @@ class EmbeddedReportsAccessTest {
 				+ String.join("\n", admitted));
 	}
 
-	/** The demos of the shipped index, in the order the Gallery lists them. */
+	/**
+	 * The dashboards the shipped Gallery shows, in its order: a demo's "(low-code)" twin where the
+	 * index names one ({@code galleryReportId}, owner decision 21), else the demo itself.
+	 */
 	private static List<String> shippedDemoIds() throws Exception {
 		JsonNode index = JSON.readTree(new File(SHIPPED_SAMPLES + "/dashboard-demos.json"));
 		List<String> ids = new ArrayList<>();
-		index.path("demos").forEach(demo -> ids.add(demo.path("reportId").asText()));
+		index.path("demos").forEach(demo -> ids.add(
+				demo.path("galleryReportId").asText(demo.path("reportId").asText())));
 		return ids;
 	}
 
