@@ -1,6 +1,7 @@
 package com.flowkraft.common.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -32,9 +33,14 @@ public class WebComponentsResourceConfig implements WebMvcConfigurer {
         // URL: /rb-webcomponents/** -> file:{PORTABLE_EXECUTABLE_DIR}/tools/rb-webcomponents/
         String webComponentsPath = Utils.resolvePathAgainstPortableDir("tools/rb-webcomponents/");
 
+        // no-cache, not a max-age: the browser keeps its copy but asks every time whether it is still
+        // the current one, and gets a 304 with no body when it is (Last-Modified). The bundle has one
+        // name whatever version it is, so with max-age=3600 a browser kept running the old one for up
+        // to an hour after an update - after an upgrade, or a rebuild on a dev server - with nothing
+        // on the page to say so.
         registry.addResourceHandler("/rb-webcomponents/**")
                 .addResourceLocations("file:" + webComponentsPath)
-                .setCachePeriod(3600); // Cache for 1 hour
+                .setCacheControl(CacheControl.noCache());
 
         // Serve geojson assets (countries.geojson etc.) consumed by rb-map.
         // The files live in the AI Hub Next.js app's public folder so they can
@@ -43,9 +49,10 @@ public class WebComponentsResourceConfig implements WebMvcConfigurer {
         String geojsonPath = Utils.resolvePathAgainstPortableDir(
                 "_apps/flowkraft/_ai-hub/ui-startpage/public/geojson/");
 
+        // The same rule as the bundle: one name per file whatever its version.
         registry.addResourceHandler("/geojson/**")
                 .addResourceLocations("file:" + geojsonPath)
-                .setCachePeriod(3600);
+                .setCacheControl(CacheControl.noCache());
 
         // The Angular application itself, from lib/frend.
         //
