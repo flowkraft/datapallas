@@ -679,7 +679,7 @@ export function buildSql(query: VisualQuery, options: BuildSqlOptions = {}): str
     const expr = aggregateOf(agg);
     if (runsAsRunningTotal(query, agg)) return runningTotalExpr(expr, runningOrder());
     const calc = quickCalcOf(query, agg);
-    if (calc === "change") return changeExpr(expr, runningOrder());
+    if (calc === "change") return changeExpr(expr, runningOrder(), dialect);
     if (calc === "moving") return movingAverageExpr(expr, runningOrder());
     if (calc === "rank") return rankExpr(expr);
     return agg.share ? percentOfTotalExpr(expr) : expr;
@@ -1026,10 +1026,13 @@ export function movingAverageExpr(aggregate: string, bucketOrder: string): strin
  * One aggregate read as its change from the bucket before (#11): the aggregate minus the
  * aggregate of the row before, which is a SUM over a frame of exactly that one row. ANSI on all
  * nine (no `LAG`, which ClickHouse does not have), ordered as a running total is (`runningOrder`).
- * The first bucket has no row before it, and its change is NULL.
+ * The first bucket has no row before it, and its change is NULL. ClickHouse sums an empty frame
+ * to 0, not NULL, so its first change would be the aggregate itself (24.3, the vendor loop's a47):
+ * there the sum is `sumOrNull`, which answers NULL over no rows and the same number otherwise.
  */
-export function changeExpr(aggregate: string, bucketOrder: string): string {
-  return `(${aggregate} - SUM(${aggregate}) OVER (ORDER BY ${bucketOrder} ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING))`;
+export function changeExpr(aggregate: string, bucketOrder: string, dialect?: SqlDialect): string {
+  const sum = dialect === "clickhouse" ? "sumOrNull" : "SUM";
+  return `(${aggregate} - ${sum}(${aggregate}) OVER (ORDER BY ${bucketOrder} ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING))`;
 }
 
 /**

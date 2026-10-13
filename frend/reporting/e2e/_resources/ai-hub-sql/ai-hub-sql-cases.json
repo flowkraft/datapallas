@@ -2261,14 +2261,14 @@
     {
       "id": "d29-slicer-wrap",
       "group": "D",
-      "proves": "the shape a slicer sends a pasted-SQL widget: the author's query read as a derived table with an alias, and one IN over a column its own result has. The values stand in the text because this loop sends plain SQL; in the product they arrive bound, and the binding is what EmptyParameterMeansNoFilterTest proves. The column is quoted the vendor's way, which is why this case is written per vendor",
+      "proves": "the shape a slicer sends a pasted-SQL widget: the author's query read as a derived table with an alias, and one IN over a column its own result has. The values stand in the text because this loop sends plain SQL; in the product they arrive bound, and the binding is what EmptyParameterMeansNoFilterTest proves. The column is quoted the vendor's way, and named as the result names it: the author's unquoted stage comes back as STAGE on Oracle and Db2, which is the name the product's wrap is given there (slicerFilterPlanFor wraps only a column the result has), so those two legs quote \"STAGE\". That is why this case is written per vendor",
       "sql": {
         "sqlite": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"stage\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
         "duckdb": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"stage\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
         "postgres": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"stage\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
         "clickhouse": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"stage\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
-        "oracle": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"stage\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
-        "db2": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"stage\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
+        "oracle": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"STAGE\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
+        "db2": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE \"STAGE\" IN ('Negotiation', 'Closed Won')\nORDER BY stage",
         "mysql": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE `stage` IN ('Negotiation', 'Closed Won')\nORDER BY stage",
         "mariadb": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE `stage` IN ('Negotiation', 'Closed Won')\nORDER BY stage",
         "sqlserver": "SELECT * FROM (\nSELECT stage, count(*) AS n\nFROM cube_demo.crm_deals\nGROUP BY stage\n) slicer_src\nWHERE [stage] IN ('Negotiation', 'Closed Won')\nORDER BY stage"

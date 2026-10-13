@@ -3869,11 +3869,17 @@ describe("ANSI — quick calcs: change vs the bucket before, and rank (#11)", ()
       .toBe("(SUM(amount) - SUM(SUM(amount)) OVER (ORDER BY m ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING))");
   });
 
+  it("keeps the first change NULL on ClickHouse, which sums an empty frame to 0", () => {
+    expect(changeExpr("SUM(amount)", "m", "clickhouse"))
+      .toBe("(SUM(amount) - sumOrNull(SUM(amount)) OVER (ORDER BY m ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING))");
+  });
+
   it("orders the change's window by the bucket, NULLs last, on every vendor, and names it _change", () => {
     for (const vendor of EVERY_VENDOR) {
       const sql = unquoted(sqlOn(monthly({ quickCalc: "change" }), vendor));
+      const sum = vendor === "clickhouse" ? "sumOrNull" : "SUM";
       expect(sql).withContext(vendor).toContain(
-        "(CAST(SUM(amount) AS DECIMAL(31,4)) - SUM(CAST(SUM(amount) AS DECIMAL(31,4))) OVER (ORDER BY CASE WHEN MIN(");
+        `(CAST(SUM(amount) AS DECIMAL(31,4)) - ${sum}(CAST(SUM(amount) AS DECIMAL(31,4))) OVER (ORDER BY CASE WHEN MIN(`);
       expect(sql).withContext(vendor).toContain(" ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING)) AS amount_sum_change");
     }
   });
