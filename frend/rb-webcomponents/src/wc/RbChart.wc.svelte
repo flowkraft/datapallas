@@ -23,6 +23,7 @@
   import { VALUE_LABELS_PLUGIN_ID, valueLabelsPlugin } from '../shared/value-labels';
   import { applyStackPercent } from '../shared/stack-percent';
   import { applyTopN, isOtherIndex } from '../shared/top-n';
+  import { boxPlotFromDrawn, boxPlotFromRows } from '../shared/box-plot';
   import { applyChartNumberFormat, drawModeOf } from '../shared/chart-number-format';
 
   // DEBUG: counters for lifecycle events
@@ -351,7 +352,7 @@
     if (resolvedType === 'area')      return buildAreaConfig(normalizedData, mergedOptions);
     if (resolvedType === 'combo')     return buildComboConfig(normalizedData, mergedOptions);
     if (resolvedType === 'bubble')    return buildBubbleConfig(normalizedData, mergedOptions, data);
-    if (resolvedType === 'boxplot')   return buildBoxPlotConfig(mergedOptions, data);
+    if (resolvedType === 'boxplot')   return buildBoxPlotConfig(normalizedData, mergedOptions, data);
     if (resolvedType === 'waterfall') return buildWaterfallConfig(normalizedData, mergedOptions);
 
     return {
@@ -441,9 +442,10 @@
     } as any;
   }
 
-  // BoxPlot — needs raw rows grouped by xField. Each category becomes
-  // `[v1, v2, v3, ...]`; the plugin computes quartiles/whiskers.
-  function buildBoxPlotConfig(mergedOptions: any, rawData: any) {
+  // BoxPlot — every value of a category in one box: `[v1, v2, v3, ...]`; the plugin computes
+  // quartiles/whiskers. From the query's rows when it has them, else from the drawn data, which
+  // holds one point per row (the Canvas, and a published chart before it is shaped).
+  function buildBoxPlotConfig(normalizedData: any, mergedOptions: any, rawData: any) {
     // Array-shaped options: xFields[0] is the X column, yFields[0] the metric.
     // Falls back to chartConfig.labelField / dataset field for DSL-driven renders.
     const xField: string = chartConfig?.labelField
@@ -454,33 +456,22 @@
       || '';
     const reportRows: any[] = rawData?.reportData ?? (Array.isArray(rawData) ? rawData : []);
 
-    if (!reportRows.length || !xField || !yField) {
-      return { type: 'bar', data: { labels: [], datasets: [] }, options: mergedOptions, plugins: plugins || [] } as any;
-    }
+    const boxes = reportRows.length && xField && yField
+      ? boxPlotFromRows(reportRows, xField, yField)
+      : boxPlotFromDrawn(normalizedData);
 
-    const groups = new Map<string, number[]>();
-    for (const r of reportRows) {
-      const k = String(r[xField] ?? '');
-      const v = Number(r[yField]);
-      if (!Number.isFinite(v)) continue;
-      let arr = groups.get(k);
-      if (!arr) { arr = []; groups.set(k, arr); }
-      arr.push(v);
-    }
-    const labels = [...groups.keys()];
-    const data = labels.map((k) => groups.get(k) ?? []);
-
+    // Still a box plot when there is nothing to draw yet: a chart drawn as another type would be
+    // drawn anew on every update, as its type would differ from the one asked for.
     return {
       type: 'boxplot',
       data: {
-        labels,
-        datasets: [{
-          label: yField,
-          data,
+        labels: boxes.labels,
+        datasets: boxes.datasets.map((ds) => ({
+          ...ds,
           backgroundColor: 'rgba(80,158,227,0.4)',
           borderColor: '#2171b5',
           borderWidth: 1,
-        }],
+        })),
       },
       options: mergedOptions,
       plugins: plugins || [],
@@ -815,8 +806,10 @@
         const reportData = Array.isArray(dataResult) ? dataResult : (dataResult?.data || []);
 
         // Transform data using chartConfig (which contains datasets with field mappings)
+        // The rows stay with the data: a box plot and a bubble's size read them, every other
+        // chart draws them through its chartConfig (normalizeDataForChart).
         if (chartConfig && reportData) {
-          data = transformChartConfigToChartJS(chartConfig, reportData);
+          data = { chartConfig, reportData };
         }
 
         // Dispatch events for config and data loaded
@@ -872,9 +865,9 @@
       }
 
       if (chart) {
-        // update datasets and labels in-place to preserve animation and scales
-        const normalizedData = normalizeDataForChart(data);
-        chart.config.data = normalizedData || chart.config.data;
+        // update datasets and labels in-place to preserve animation and scales; shaped as
+        // createChart shapes them, or a box plot, bubble or waterfall would turn into plain bars
+        chart.config.data = buildConfig().data || chart.config.data;
         
         // Merge Chart.js options - preserve existing, apply chartConfig (DSL) or options (Angular)
         let mergedOptions: any = Object.assign({}, chart.config.options || {});
@@ -952,7 +945,7 @@
       
       // Transform data using updated chartConfig
       if (chartConfig && reportData) {
-        data = transformChartConfigToChartJS(chartConfig, reportData);
+        data = { chartConfig, reportData };
       }
       
       // Rebuild chart to apply new config (options like title, scales, etc.)

@@ -178,6 +178,10 @@
   // CSS fix: explicit text contrast — prevents host-page color leakage via no-shadow-DOM.
   // Uses !important because host-page dark/light mode CSS can override normal specificity.
   const CONTRAST_FIX_CSS = `
+/* The table's own controls (the pager's buttons) take their system colours from color-scheme:
+   without it a light table on a dark page shows white page numbers on its light footer. */
+.rb-tabulator-root[data-rb-theme-mode="light"] { color-scheme: light; }
+.rb-tabulator-root[data-rb-theme-mode="dark"] { color-scheme: dark; }
 .rb-tabulator-root[data-rb-theme-mode="light"] .tabulator,
 .rb-tabulator-root[data-rb-theme-mode="light"] .tabulator .tabulator-header .tabulator-col,
 .rb-tabulator-root[data-rb-theme-mode="light"] .tabulator .tabulator-header .tabulator-col .tabulator-col-content .tabulator-col-title,

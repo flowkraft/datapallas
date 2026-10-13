@@ -654,6 +654,19 @@ export async function assertDemoDrawn(root: Locator, demo: Demo): Promise<void> 
     .toHaveCount(declaredParams(demo.id).length > 0 ? 1 : 0, { timeout: 30_000 });
 
   await waitForChartsIn(root);
+  // A chart has an answer when Chart.js holds a value to draw: an empty chart draws its axes too,
+  // which is all the pixel probe sees (a published box plot drew only its axes, 2026-10-13).
+  await expect
+    .poll(() => root.locator('[id^="chartCanvas-"]').evaluateAll((els) => els
+      .filter((el) => {
+        const host: any = (el.getRootNode() as ShadowRoot).host ?? el.closest('rb-chart');
+        const datasets: any[] = host?.getChartInstance?.()?.data?.datasets ?? [];
+        return !datasets.some((ds) => (ds?.data ?? [])
+          .some((v: unknown) => v != null && !(Array.isArray(v) && v.length === 0)));
+      })
+      .map((el) => el.id)),
+    { message: `${demo.id}: every chart holds a value to draw`, timeout: 60_000, intervals: [500] })
+    .toEqual([]);
 
   // Every data tile has an answer, not a spinner and not a blank.
   for (const widget of widgets) {
@@ -782,7 +795,9 @@ export async function assertMapsFillTheirBoxes(root: Locator, context: string): 
   for (let i = 0; i < count; i++) {
     const map = maps.nth(i);
     // Leaflet keeps the tiles of the zoom it left until the new ones are in; wait for one level.
-    await expect.poll(() => map.locator('.leaflet-tile-container').count(),
+    // The level it left stays in the page, emptied, until the next change of zoom: count only
+    // the levels that hold a tile.
+    await expect.poll(() => map.locator('.leaflet-tile-container:has(img.leaflet-tile)').count(),
       { message: `${context}: map ${i + 1} settles on one zoom`, timeout: 30_000 }).toBe(1);
     const gaps = await map.evaluate((box) => {
       const frame = box.getBoundingClientRect();
