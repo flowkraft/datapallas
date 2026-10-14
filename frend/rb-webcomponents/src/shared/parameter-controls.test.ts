@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { controlTypeOf, defaultForType, isTicked, resetControlWarnings } from './parameter-controls.ts';
+import { controlTypeOf, defaultForType, isTicked, resetControlWarnings, selectValueOf } from './parameter-controls.ts';
 
 describe('the control a declared parameter type is filled in with', () => {
   test('a number with a fraction is a number box, by either name', () => {
@@ -92,5 +92,23 @@ describe('whether a Boolean tick box is ticked', () => {
     assert.equal(isTicked(undefined), false);
     assert.equal(isTicked(null), false);
     assert.equal(isTicked(''), false);
+  });
+});
+
+describe('a drop-down and its options compare as text', () => {
+  test('a number is the option that says it', () => {
+    assert.equal(selectValueOf(10), '10');
+    assert.equal(selectValueOf(10), selectValueOf('10'));
+  });
+
+  test('nothing is the empty option, "-- All --"', () => {
+    assert.equal(selectValueOf(null), '');
+    assert.equal(selectValueOf(undefined), '');
+    assert.equal(selectValueOf(''), '');
+  });
+
+  test('zero and false stay values', () => {
+    assert.equal(selectValueOf(0), '0');
+    assert.equal(selectValueOf(false), 'false');
   });
 });

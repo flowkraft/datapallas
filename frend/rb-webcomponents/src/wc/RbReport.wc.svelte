@@ -2,7 +2,7 @@
 
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { prepareDashboardHtml } from '../shared/dashboard-injection';
+  import { prepareDashboardHtml, hasFilterBar } from '../shared/dashboard-injection';
   import { openingValues } from '../shared/url-start-values';
   // The "⋯" menu on each tile (#19): added here, where every published dashboard is put on the page.
   import { decorateTiles } from '../shared/tile-menu';
@@ -246,8 +246,10 @@
         // Every tile asks for its data the moment it is on the page, so it is given the values the
         // filter bar opens with before it is: the same `openingValues` the bar fills its form with.
         // Given none, each tile first asked unfiltered - a wrong answer for a moment, and an error
-        // from a query that needs its value - and asked again once the bar had loaded.
-        if (Array.isArray(config.parameters) && config.parameters.length > 0)
+        // from a query that needs its value - and asked again once the bar had loaded. A page with no
+        // bar gives none: its parameters are its cards' own questions (Cube Stories, `hasFilterBar`).
+        if (Array.isArray(config.parameters) && config.parameters.length > 0
+            && hasFilterBar(config.dashboardTemplate))
           currentDashboardParams = openingValues(config.parameters, config.lockedParameters,
             typeof window !== 'undefined' ? window.location : null, reportId);
         dashboardTemplate = config.dashboardTemplate;
@@ -580,7 +582,9 @@
       return;
     }
     lastAskedId = story?.id ?? null;
-    params.setValues(story?.params || {});
+    // From the dashboard as it opens, not from what the story before this one left in the bar.
+    if (typeof params.showStory === 'function') params.showStory(story?.params || {});
+    else params.setValues(story?.params || {});
     params.reloadNow();
   }
 

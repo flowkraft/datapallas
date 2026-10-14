@@ -12,7 +12,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { openingValues, resetUrlWarnings } from './url-start-values.ts';
+import { openingValues, resetUrlWarnings, storyValues } from './url-start-values.ts';
 import type { StartValueParam } from './url-start-values.ts';
 
 const REPORT = 'g-dd-executive-overview';
@@ -76,5 +76,26 @@ describe('the values a dashboard opens with', () => {
   test('a dashboard with no filters opens with no values', () => {
     assert.deepEqual(openingValues([], null, page('/dashboard/' + REPORT, '?year=2025-01-01'), REPORT), {});
     assert.deepEqual(openingValues(null, null, null, REPORT), {});
+  });
+});
+
+describe('the values a story sets', () => {
+  test('a story starts from the dashboard as it opens, not from the story before it', () => {
+    resetUrlWarnings();
+    assert.deepEqual(storyValues(PARAMETERS, null, { topN: '5' }),
+      { year: '2026-01-01', topN: 5, onlyOpen: false, country: 'Poland' });
+  });
+
+  test('a locked filter stays the link\'s, whatever the story says', () => {
+    resetUrlWarnings();
+    const values = storyValues(PARAMETERS, { country: 'Spain' }, { country: 'Poland', year: '2025-01-01' });
+
+    assert.equal(values.country, 'Spain');
+    assert.equal(values.year, '2025-01-01');
+  });
+
+  test('a name the dashboard does not declare is not set', () => {
+    resetUrlWarnings();
+    assert.ok(!('region' in storyValues(PARAMETERS, null, { region: 'APAC' })));
   });
 });

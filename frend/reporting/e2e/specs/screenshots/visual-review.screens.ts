@@ -222,7 +222,7 @@ async function shootTiles(root: Locator, item: string, theme: string, meta: Meta
 
 /**
  * Every chart's tooltip, as a reader gets it: the mouse on the chart's first drawn point (the point
- * Chart.js itself puts its tooltip on), and a picture of the chart's tile.
+ * Chart.js itself puts its tooltip on; the middle of a bar), and a picture of the chart's tile.
  */
 async function shootHovers(page: Page, root: Locator, item: string, theme: string, meta: Meta): Promise<void> {
   const charts = root.locator('rb-chart');
@@ -238,7 +238,14 @@ async function shootHovers(page: Page, root: Locator, item: string, theme: strin
         for (let d = 0; d < (drawn.data?.datasets?.length ?? 0); d++) {
           const element = drawn.getDatasetMeta(d)?.data?.find((one: any) => one && !one.skip);
           if (!element) continue;
-          const at = element.tooltipPosition ? element.tooltipPosition(true) : { x: element.x, y: element.y };
+          let at = element.tooltipPosition ? element.tooltipPosition(true) : { x: element.x, y: element.y };
+          // A bar's tooltip position is its end, the very edge of it, where the mouse is often off
+          // the bar: the middle of the bar is on it.
+          if (typeof element.base === 'number') {
+            at = element.horizontal
+              ? { x: (element.x + element.base) / 2, y: element.y }
+              : { x: element.x, y: (element.y + element.base) / 2 };
+          }
           const rect = drawn.canvas.getBoundingClientRect();
           return { x: rect.left + at.x, y: rect.top + at.y };
         }

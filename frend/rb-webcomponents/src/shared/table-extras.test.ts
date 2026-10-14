@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyTableExtras, highlightStyle, highlightsOf, rangesOf, sumIfNumbers, withTotal } from './table-extras.ts';
+import { applyTableExtras, COLUMN_FLOOR_PX, highlightStyle, highlightsOf, rangesOf, sumIfNumbers, withColumnFloor, withTotal } from './table-extras.ts';
 
 describe('a table beyond Tabulator', () => {
   test('a total is the sum of numbers; a text column has none', () => {
@@ -81,5 +81,19 @@ describe('a table beyond Tabulator', () => {
     const opts: any = { layout: 'fitColumns' };
     assert.equal(applyTableExtras(opts), null);
     assert.deepEqual(opts, { layout: 'fitColumns' });
+  });
+});
+
+describe('a column is never squeezed to two letters', () => {
+  test('a table with no column defaults gets the floor', () => {
+    const opts: any = { layout: 'fitColumns' };
+    withColumnFloor(opts);
+    assert.deepEqual(opts.columnDefaults, { minWidth: COLUMN_FLOOR_PX });
+  });
+
+  test('the author\'s own column defaults win, and are kept', () => {
+    const opts: any = { columnDefaults: { minWidth: 40, headerSort: false } };
+    withColumnFloor(opts);
+    assert.deepEqual(opts.columnDefaults, { minWidth: 40, headerSort: false });
   });
 });

@@ -163,3 +163,17 @@ export function applyTableExtras(opts: Record<string, any>): TableExtras | null 
       ? (cols.map((c: Record<string, any>) => withTotal(c)) as unknown as T) : cols),
   };
 }
+
+/** The narrowest a column is drawn when its author set no width of their own, in pixels. */
+export const COLUMN_FLOOR_PX = 90;
+
+/**
+ * Every column at least `COLUMN_FLOOR_PX` wide, unless the author's `columnDefaults` says otherwise.
+ *
+ * Fitted into a half-width tile, or into a phone, a table of seven or eight columns squeezed each one
+ * to two letters - "A...", "K...", "17,81..." (DD11, DD13, and every table on a phone). With a floor
+ * the columns keep their words and the table scrolls sideways inside its tile instead.
+ */
+export function withColumnFloor(opts: Record<string, any>): void {
+  opts.columnDefaults = { minWidth: COLUMN_FLOOR_PX, ...(opts.columnDefaults || {}) };
+}

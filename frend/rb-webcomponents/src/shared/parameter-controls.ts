@@ -94,3 +94,15 @@ export function defaultForType(type: string): any {
   if (t === 'integer' || t === 'decimal' || t === 'double') return null;
   return '';
 }
+
+/**
+ * The value a drop-down is set to, and the value each of its options carries: always text.
+ *
+ * A browser picks the option whose value equals the select's own value, and equal there means the
+ * same type. An Integer parameter holds a number (DD05's Top N opens on 10) or nothing (DD13's and
+ * DD14's "-- All --"), while options come from SQL or from the declaration as text - so the drop-down
+ * matched none of them and opened blank. Both sides as text, with nothing as the empty option.
+ */
+export function selectValueOf(value: unknown): string {
+  return value == null ? '' : String(value);
+}

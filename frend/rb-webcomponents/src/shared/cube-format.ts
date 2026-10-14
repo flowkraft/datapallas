@@ -13,6 +13,16 @@
 /** What a measure's `format` may say. Anything else is shown as it came back. */
 export type CubeFormat = 'currency' | 'percent' | 'number' | 'compact' | '';
 
+/**
+ * The format a measure is written in: the one its cube declares, and `number` for a measure that
+ * declares none. Shown as it came back, an average or a ratio read 70.55555555555556 (Win Rate),
+ * 4.8609 days or 958147.19 kg; a number is grouped and keeps two decimals at most.
+ */
+export function measureFormatOf(declared: unknown): string {
+  const format = declared === null || declared === undefined ? '' : String(declared);
+  return format || 'number';
+}
+
 /** The currency a cube uses when it names none. */
 export const DEFAULT_CURRENCY = 'USD';
 
@@ -62,7 +72,7 @@ export function formatMeasure(value: unknown, format: string,
         maximumFractionDigits: 2,
       }) + '%';
     case 'number':
-      return num.toLocaleString('en-US');
+      return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
     case 'compact':
       // 1.2K, 3.5M: a big number read at a glance (#26, #27), one decimal at most.
       return num.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });

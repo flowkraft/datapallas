@@ -35,7 +35,7 @@
 </script>
 
 <script lang="ts">
-  import { applyTableExtras, type TableExtras } from '../shared/table-extras';
+  import { applyTableExtras, withColumnFloor, type TableExtras } from '../shared/table-extras';
   import { withColumnNumberFormats } from '../shared/column-format';
   import {
     onMount,
@@ -246,6 +246,8 @@
 .rb-theme-inherit .tabulator .tabulator-footer .tabulator-page.active { background: var(--rb-table-accent, color-mix(in srgb, currentColor 30%, transparent)) !important; color: var(--rb-table-accent-text, inherit) !important; border-color: var(--rb-table-accent, transparent) !important; }
 .rb-theme-inherit .tabulator .tabulator-footer .tabulator-page-size, .rb-theme-inherit .tabulator .tabulator-header-filter input, .rb-theme-inherit .tabulator .tabulator-header-filter select { background: transparent !important; color: inherit !important; border: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 18%, transparent)) !important; }
 .rb-theme-inherit .tabulator .tabulator-col-resize-handle { border-right: 2px solid var(--rb-table-border, color-mix(in srgb, currentColor 12%, transparent)) !important; }
+.rb-theme-inherit .tabulator .tabulator-calcs-holder, .rb-theme-inherit .tabulator .tabulator-calcs-holder .tabulator-row, .rb-theme-inherit .tabulator .tabulator-row.tabulator-calcs, .rb-theme-inherit .tabulator .tabulator-row.tabulator-calcs:hover { background: var(--rb-table-header-bg, color-mix(in srgb, currentColor 7%, transparent)) !important; color: inherit !important; font-weight: bold; }
+.rb-theme-inherit .tabulator .tabulator-calcs-holder { border-top: 1px solid var(--rb-table-border, color-mix(in srgb, currentColor 18%, transparent)) !important; border-bottom: none !important; }
 `;
 
   // Map theme names → embedded CSS strings
@@ -674,6 +676,9 @@
         };
       }
     }
+
+    // A narrow tile or a phone scrolls the table sideways rather than cutting every column to two letters.
+    withColumnFloor(opts as Record<string, any>);
 
     // Totals and highlights (#28): the table's own keys, which Tabulator never sees.
     tableExtras = applyTableExtras(opts as Record<string, any>);

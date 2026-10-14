@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { formatCell, formatMeasure, formatTime } from './cube-format.ts';
+import { formatCell, formatMeasure, formatTime, measureFormatOf } from './cube-format.ts';
 
 describe('a measure is written the way its cube declares it', () => {
   test('a currency is the cube currency, with cents', () => {
@@ -23,6 +23,14 @@ describe('a measure is written the way its cube declares it', () => {
     assert.equal(formatMeasure(1234567, 'number'), '1,234,567');
     assert.equal(formatMeasure(1234567, ''), '1234567');
     assert.equal(formatMeasure('N/A', 'currency'), 'N/A');
+  });
+
+  test('a number keeps two decimals at most, and a measure that declares nothing is a number', () => {
+    assert.equal(formatMeasure(70.55555555555556, 'number'), '70.56');
+    assert.equal(formatMeasure(958147.19, 'number'), '958,147.19');
+    assert.equal(measureFormatOf(undefined), 'number');
+    assert.equal(measureFormatOf(''), 'number');
+    assert.equal(measureFormatOf('currency'), 'currency');
   });
 
   test('nothing is not zero: an empty cell stays empty', () => {

@@ -167,6 +167,9 @@
   let error: string | null = null;
   let mapInstance: any = null;          // L.Map
   let layerGroup: any = null;           // L.LayerGroup holding data layers
+  // What the map frames: the data's bounds, kept so that the box can be framed again once it has its
+  // real size (fitToData). Null when the author set a centre and zoom, or turned fitting off.
+  let fitTarget: any = null;
   let resolved: ResolvedOptions = {
     mapType: "region", region: "world_countries", dimension: "", metric: "",
     latField: "", lonField: "", geoJsonUrl: "", geoJsonKey: "", tileUrl: "",
@@ -406,11 +409,11 @@
         // height — the grey strip at the bottom. Call invalidateSize() after
         // the browser has committed layout (100ms) AND again on any container
         // resize (grid-item drag, window resize, panel toggle).
-        setTimeout(() => { try { mapInstance?.invalidateSize(); fillWithWorld(); } catch {} }, 100);
+        setTimeout(() => { try { mapInstance?.invalidateSize(); fillWithWorld(); fitToData(); } catch {} }, 100);
         if (typeof ResizeObserver !== "undefined") {
           const ro = new ResizeObserver(() => {
             // debounce: let the final size settle before telling Leaflet
-            setTimeout(() => { try { mapInstance?.invalidateSize(); fillWithWorld(); } catch {} }, 0);
+            setTimeout(() => { try { mapInstance?.invalidateSize(); fillWithWorld(); fitToData(); } catch {} }, 0);
           });
           ro.observe(container);
           (mapInstance as any)._rbResizeObserver = ro;
@@ -419,6 +422,7 @@
       } else {
         layerGroup.clearLayers();
       }
+      fitTarget = null;
       publishShapeCount();
 
       if (!data || data.length === 0) return;
@@ -434,6 +438,7 @@
       publishShapeCount();
 
       if (resolved.center && resolved.zoom != null) {
+        fitTarget = null;
         mapInstance.setView(resolved.center, resolved.zoom);
       }
     } catch (err: any) {
@@ -453,6 +458,22 @@
   function fillWithWorld() {
     if (!mapInstance || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
     mapInstance.setMinZoom(mapInstance.getBoundsZoom(WORLD_BOUNDS, true));
+  }
+
+  /**
+   * Frame the data, now and again whenever the box changes size.
+   *
+   * A fit is worked out for the box as it is at that moment. On a dashboard's own page the tile was
+   * still sizing up when the data arrived, so the fit was made for a box that was not the final one,
+   * and the lowest zoom set afterwards for the real box kept the view where that fit left it: DD02's
+   * countries map opened on the Gulf of Guinea, DD03's pins on Greenland, while the same maps framed
+   * well in the narrower Gallery cards. So the bounds are kept, and framed again once the box has
+   * its size - which also keeps the data framed when a tile is resized.
+   */
+  function fitToData(bounds?: any) {
+    if (bounds !== undefined) fitTarget = bounds;
+    if (!mapInstance || !fitTarget || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
+    try { mapInstance.fitBounds(fitTarget); } catch {}
   }
 
   function publishShapeCount() {
@@ -496,8 +517,7 @@
       layerGroup.addLayer(m);
     }
     if (r.fitBounds && markers.length > 0) {
-      const group = L.featureGroup(markers);
-      mapInstance.fitBounds(group.getBounds().pad(0.1));
+      fitToData(L.featureGroup(markers).getBounds().pad(0.1));
     }
   }
 
@@ -530,8 +550,7 @@
       layerGroup.addLayer(rect);
     }
     if (r.fitBounds && rects.length > 0) {
-      const group = L.featureGroup(rects);
-      mapInstance.fitBounds(group.getBounds().pad(0.05));
+      fitToData(L.featureGroup(rects).getBounds().pad(0.05));
     }
   }
 
@@ -571,6 +590,8 @@
     }
 
     const colorFor = buildQuantileScale([...metricByKey.values()], r.colorScale);
+    // The regions the data answers for: the map frames them, not the whole world (fitToData).
+    const answered = L.latLngBounds([]);
 
     const layer = L.geoJSON(geo, {
       style: (feature: any) => {
@@ -592,6 +613,7 @@
           feature.properties?.ADMIN ??
           fk;
         const metricVal = row ? row[r.metric] : null;
+        if (row && typeof fLayer.getBounds === "function") answered.extend(fLayer.getBounds());
         fLayer.bindTooltip(
           `<strong>${escapeHtml(String(regionName))}</strong>` +
           (metricVal == null ? "<br><em>no data</em>" : `<br>${escapeHtml(r.metric)}: ${formatNumber(Number(metricVal))}`),
@@ -610,7 +632,7 @@
     layerGroup.addLayer(layer);
 
     if (r.fitBounds) {
-      try { mapInstance.fitBounds(layer.getBounds().pad(0.05)); } catch {}
+      try { fitToData((answered.isValid() ? answered : layer.getBounds()).pad(0.05)); } catch {}
     }
   }
 

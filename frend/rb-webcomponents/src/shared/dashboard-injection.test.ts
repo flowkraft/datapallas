@@ -17,7 +17,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { prepareDashboardHtml } from './dashboard-injection.ts';
+import { prepareDashboardHtml, hasFilterBar } from './dashboard-injection.ts';
 import type { DashboardHostContext } from './dashboard-injection.ts';
 import { DATA_WIDGET_TAGS } from './slicer-selections.ts';
 
@@ -182,5 +182,18 @@ describe('a shared dashboard hands its credential to the widgets inside it', () 
 
   test('an empty template is left exactly as it is', () => {
     assert.equal(prepareDashboardHtml('', sharedPage()), '');
+  });
+});
+
+describe('a page gives its tiles opening values only when it has a filter bar', () => {
+  test('a dashboard with its own rb-parameters has a bar', () => {
+    assert.equal(hasFilterBar('<div><rb-parameters report-id="d"></rb-parameters><rb-chart></rb-chart></div>'), true);
+    assert.equal(hasFilterBar('<RB-PARAMETERS\n  id="p"/>'), true);
+  });
+
+  test('the Cube Stories page, whose one parameter is a card\'s, has none', () => {
+    assert.equal(hasFilterBar('<rb-cube-renderer component-id="customer-statement"></rb-cube-renderer>'), false);
+    assert.equal(hasFilterBar('<rb-parameters-help></rb-parameters-help>'), false);
+    assert.equal(hasFilterBar(''), false);
   });
 });

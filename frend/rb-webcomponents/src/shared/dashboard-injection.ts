@@ -69,6 +69,18 @@ const NESTED_HOSTS = ['report', 'dashboard'];
 const WIDGET_OPEN_TAG = /<rb-([a-z0-9-]+)((?:"[^"]*"|'[^']*'|[^>])*?)(\/?)>/gi;
 
 /**
+ * Whether the template puts a filter bar on the page: an `<rb-parameters>` of its own.
+ *
+ * The tiles are put on the page with the values the bar opens with, so a page with no bar has none
+ * to give them. The Cube Stories page is one: its one parameter (`customerId`) is the Customer
+ * Statement card's question, drawn on that card, and a card hides every name the page answers - given
+ * the page's opening values, the card lost its picker and showed the whole book.
+ */
+export function hasFilterBar(template: string): boolean {
+  return /<rb-parameters[\s/>]/i.test(template || '');
+}
+
+/**
  * @returns the template with the host's credential, API base and parameters written onto every
  *          widget that can use them, and with an explanation in front of any widget that names a
  *          report this page's credential cannot open

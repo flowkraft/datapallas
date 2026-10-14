@@ -332,6 +332,24 @@ export function openingValues(
   return values;
 }
 
+/**
+ * The values a story's Show Me sets: every filter at the value the dashboard opens with (its default,
+ * or the link's lock), and the story's own values over them.
+ *
+ * A story is a question asked of the dashboard as it opens. Set over whatever the previous story
+ * left, the Gallery's second stories answered another question: DD03's "Poland and Germany" kept
+ * the first story's APAC region and showed every tile empty, DD07's "this week" kept one rep, DD09's
+ * "referral alone" kept Enterprise. The story's own values go through `acceptedValues`, as before.
+ */
+export function storyValues(
+  parameters: StartValueParam[] | null | undefined,
+  locked: { [id: string]: any } | null | undefined,
+  story: { [id: string]: any } | null | undefined,
+): { [id: string]: any } {
+  if (!parameters || parameters.length === 0) return {};
+  return { ...openingValues(parameters, locked, null, ''), ...acceptedValues(parameters, story || {}, locked || {}) };
+}
+
 /** One value as the URL carries it. The empty string means "no key". */
 function serialise(p: StartValueParam, value: any): string {
   if (value == null) return '';

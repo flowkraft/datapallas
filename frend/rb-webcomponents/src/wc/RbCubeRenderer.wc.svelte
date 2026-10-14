@@ -20,7 +20,7 @@
   import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   // One formatter for every host: the table, the single value, the chart and the time labels all
   // show a number the way the cube declares it (W4.2), so two hosts cannot disagree about it.
-  import { formatCell, formatMeasure, DEFAULT_CURRENCY } from '../shared/cube-format';
+  import { formatCell, formatMeasure, measureFormatOf, DEFAULT_CURRENCY } from '../shared/cube-format';
   import { refusalMessage, withCsrfHeader } from '../shared/session-request';
 
   // Props
@@ -1553,8 +1553,12 @@
    */
   function showMe(ask: any) {
     runtimeError = '';
+    pressedId = String(ask?.id ?? '');
     applySelection(ask?.query);
   }
+
+  /** The story whose Show Me was pressed last: of the stories that tick the same, it is the one marked. */
+  let pressedId = '';
 
   /**
    * The story the ticks on the left are asking, marked on the right - whatever put them there: a
@@ -1563,15 +1567,19 @@
    * opens the page tomorrow sees the ticks and not the press. A tick of their own takes the mark
    * off by itself: the selection is theirs then, and no longer the story's.
    *
-   * What is compared is what a story asks a reader to tick - the fields, and the grain a date is
-   * read at. Not the filters, which the dashboard adds to every question on the page, and not the
-   * order or the number of rows, which no tick box shows.
+   * What is compared is what a story asks a reader to tick - the fields, the grain a date is read
+   * at, and the segments under Filters. Not the dashboard's filters, which it adds to every question
+   * on the page, and not the order or the number of rows, which no tick box shows. Stories that
+   * differ only there tick the same boxes (Support Desk's "how many" and "how many still open" did,
+   * before segments counted; Online Sales' "last quarter" and "the quarter before" still do), so of
+   * those the one whose Show Me was pressed is marked, and otherwise the first.
    */
-  $: askedId = storyAsked(hints, selectedDimensions, selectedMeasures, activeCube);
+  $: askedId = storyAsked(hints, selectedDimensions, selectedMeasures, selectedSegments, pressedId);
 
-  /** The first story asking exactly what is ticked, or `''` when none of them is. */
+  /** The story asking exactly what is ticked - the one pressed if it is one of them - or `''`. */
   function storyAsked(asks: any[], dimensionKeys: Set<string>, measureNames: Set<string>,
-      _cube: any): string {
+      segmentNames: Set<string>, pressed: string): string {
+    let first = '';
     for (const ask of asks || []) {
       const query = ask?.query;
       if (!query || typeof query !== 'object') continue;
@@ -1581,11 +1589,16 @@
       if (keys.some((key: string) => !key)) continue;   // a story this cube cannot ask
       const measures = listOf(query.measures)
         .map((entry: any) => (typeof entry === 'string' ? entry : String(entry?.name ?? '')));
-      if (sameAsTicked(keys, dimensionKeys) && sameAsTicked(measures, measureNames)) {
-        return String(ask?.id ?? '');
+      const segments = listOf(query.segments)
+        .map((entry: any) => (typeof entry === 'string' ? entry : String(entry?.name ?? '')));
+      if (sameAsTicked(keys, dimensionKeys) && sameAsTicked(measures, measureNames)
+          && sameAsTicked(segments, segmentNames)) {
+        const id = String(ask?.id ?? '');
+        if (id && id === pressed) return id;
+        if (!first) first = id;
       }
     }
-    return '';
+    return first;
   }
 
   /** Is that list of names, in whatever order, exactly what is ticked? */
@@ -2094,7 +2107,7 @@
    */
   function columnFormat(name: string): { format?: string; granularity?: string; currency?: string } {
     if (measureByName(name)) {
-      return { format: String(measureByName(name)?.format ?? ''), currency: cubeCurrency };
+      return { format: measureFormatOf(measureByName(name)?.format), currency: cubeCurrency };
     }
     const dim = dimensionByName(name);
     if (dim?.type === 'time') {
@@ -2149,7 +2162,7 @@
       y: {
         ticks: {
           callback: (value: any) => formatMeasure(value,
-            String(measureByName(askedMeasures[0])?.format ?? ''), cubeCurrency),
+            measureFormatOf(measureByName(askedMeasures[0])?.format), cubeCurrency),
         },
       },
     },
@@ -2159,7 +2172,7 @@
           label: (item: any) => {
             const name = askedMeasures[Number(item?.datasetIndex ?? 0)] ?? '';
             return measureTitle(name) + ': ' + formatMeasure(item?.parsed?.y ?? item?.raw,
-              String(measureByName(name)?.format ?? ''), cubeCurrency);
+              measureFormatOf(measureByName(name)?.format), cubeCurrency);
           },
         },
       },
@@ -3112,8 +3125,7 @@
     {#if selectedDimensions.size > 0 || selectedMeasures.size > 0 || selectedSegments.size > 0}
       <p class="rb-cube-hint" style="margin-top: 8px; text-align: center;">
         {selectedDimensions.size} dimension{selectedDimensions.size !== 1 ? 's' : ''},
-        {selectedMeasures.size} measure{selectedMeasures.size !== 1 ? 's' : ''}
-        {#if selectedSegments.size > 0}, {selectedSegments.size} filter{selectedSegments.size !== 1 ? 's' : ''}{/if}
+        {selectedMeasures.size} measure{selectedMeasures.size !== 1 ? 's' : ''}{#if selectedSegments.size > 0}, {selectedSegments.size} filter{selectedSegments.size !== 1 ? 's' : ''}{/if}
         selected
         {#if !readOnly}
           <!-- #4: how many rows the answer keeps; with a sort above, "the top N" -->

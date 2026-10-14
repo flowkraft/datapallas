@@ -25,6 +25,7 @@
   import { applyTopN, isOtherIndex } from '../shared/top-n';
   import { boxPlotFromDrawn, boxPlotFromRows } from '../shared/box-plot';
   import { applyChartNumberFormat, drawModeOf } from '../shared/chart-number-format';
+  import { scalesToTheme } from '../shared/chart-scales';
 
   // DEBUG: counters for lifecycle events
   let _afterUpdateCount = 0;
@@ -294,7 +295,7 @@
       o.plugins.legend.labels = Object.assign({ color: c.text }, o.plugins.legend.labels);
     }
     o.plugins.title = Object.assign({ color: c.text }, o.plugins.title);
-    o.scales = o.scales ? { ...o.scales } : { x: {}, y: {} };
+    o.scales = scalesToTheme(cfg.type, o.scales);
     for (const k of Object.keys(o.scales)) {
       if (!o.scales[k] || typeof o.scales[k] !== 'object') continue;
       const sc = (o.scales[k] = { ...o.scales[k] });

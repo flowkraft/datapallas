@@ -126,6 +126,11 @@
   // "duckdb" or "clickhouse" = aggregate server-side, only send results
   export let engine: PivotEngine = 'browser';
 
+  // On a published dashboard the reader is shown the answer, not how the server worked it out: the
+  // "Server-side processing" line is for the pages that explain the engines (the docs' warehouse
+  // page), and on a demo it read as debugging output.
+  let onPublishedDashboard = false;
+
 
   // ============================================================================
   // Internal state for self-fetch mode
@@ -381,6 +386,7 @@
     // Navigate from container up through shadow DOM to host element
     const shadowRoot = container?.getRootNode();
     const hostEl = (shadowRoot as ShadowRoot)?.host;
+    onPublishedDashboard = !!hostEl?.closest?.('.rb-report-dashboard');
     if (hostEl) {
       if (!reportId) reportId = hostEl.getAttribute('report-id') || '';
       if (!apiBaseUrl) apiBaseUrl = hostEl.getAttribute('api-base-url') || '';
@@ -1064,7 +1070,7 @@
 {#if error}
   <div class="rb-error" id={componentId ? `widgetError-${componentId}` : undefined}>{error}</div>
 {/if}
-{#if serverMetadata && (engine === 'duckdb' || engine === 'clickhouse')}
+{#if serverMetadata && (engine === 'duckdb' || engine === 'clickhouse') && !onPublishedDashboard}
   <div class="rb-server-info">
     ⚡ Server-side processing ({engine}): {serverMetadata.rowCount} rows in {serverMetadata.executionTimeMs}ms
   </div>
@@ -1550,6 +1556,10 @@
   const PIVOT_CSS = `
 .pvtUi-container {
   font-family: Verdana, sans-serif;
+  /* A pivot wider than its tile scrolls inside it rather than being cut at the tile's edge (DD12,
+     DD15, DD21; every pivot on a phone). */
+  max-width: 100%;
+  overflow-x: auto;
 }
 /* Reset button styles for all buttons in component */
 .pvtUi-container button {

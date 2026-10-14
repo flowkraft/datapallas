@@ -6,7 +6,7 @@
   import { onMount, createEventDispatcher, tick } from 'svelte';
   // Which control each declared type is filled in with lives in its own module, so `npm test`
   // can ask it directly - see src/shared/parameter-controls.test.ts.
-  import { controlTypeOf, isTicked } from '../shared/parameter-controls';
+  import { controlTypeOf, isTicked, selectValueOf } from '../shared/parameter-controls';
   import { slicerFieldsOnPage, slicerSelectionsFor, refreshDataWidgets } from '../shared/slicer-selections';
   import { withCsrfHeader } from '../shared/session-request';
   // A `date-range` control draws `<id>From` and `<id>To` as one range with presets - see
@@ -18,7 +18,7 @@
   // component is the only one that reads or writes the URL for parameters - see
   // src/shared/url-start-values.ts for the rules.
   import {
-    urlWithValues, acceptedValues, splitEscaped, joinEscaped, openingValues,
+    urlWithValues, acceptedValues, splitEscaped, joinEscaped, openingValues, storyValues,
   } from '../shared/url-start-values';
 
   // ParamRef type for cross-field references
@@ -513,7 +513,8 @@
   function triggerLabelFor(p: ParamMeta, value: string | undefined): string {
     if (value === WILDCARD) return 'All';
     const set = csvToSet(value);
-    if (set.size === 0) return 'None';
+    // Nothing picked is no filter at all: every value is in (EmptyParameterMeansNoFilterTest).
+    if (set.size === 0) return 'All';
     const labelMap = new Map(loadOptions(p).map(o => [String(o.value), o.label]));
     const labels = Array.from(set).map(k => labelMap.get(k) ?? k);
     const joined = labels.join(', ');
@@ -937,7 +938,19 @@
    * Nothing is reloaded here: the caller says when, with `reloadNow()`.
    */
   export function setValues(values: { [id: string]: any }) {
-    const accepted = acceptedValues(parameters as any, values || {}, lockedParameters);
+    applyValues(acceptedValues(parameters as any, values || {}, lockedParameters));
+  }
+
+  /**
+   * A story's values, set from the dashboard as it opens: every filter back at its default (or the
+   * link's lock), then the story's own (`storyValues`). Show Me calls this, so a story never answers
+   * with what the story before it left in the bar. Nothing is reloaded here either.
+   */
+  export function showStory(values: { [id: string]: any }) {
+    applyValues(storyValues(parameters as any, lockedParameters, values));
+  }
+
+  function applyValues(accepted: { [id: string]: any }) {
     Object.keys(accepted).forEach(id => {
       formValues[id] = accepted[id];
       touched[id] = true;
@@ -1256,7 +1269,7 @@
             {/if}
             <select
               id={p.id}
-              value={formValues[p.id]}
+              value={selectValueOf(formValues[p.id])}
               disabled={isLocked(p)}
               title={p.description || ''}
               class="form-control"
@@ -1264,7 +1277,7 @@
               on:blur={() => handleBlur(p)}
             >
               {#each shownOptions(p, selectSearch[p.id], optionsVersion) as o}
-                <option value={o.value} selected={String(o.value) === String(formValues[p.id] ?? '')}>{o.label}</option>
+                <option value={selectValueOf(o.value)} selected={selectValueOf(o.value) === selectValueOf(formValues[p.id])}>{o.label}</option>
               {/each}
             </select>
           {:else}
