@@ -301,9 +301,13 @@ ORDER BY 1`,
           type: 'combo',
           data: {
             labelField: 'month',
-            datasets: [{ field: 'orders', label: 'Orders' }, { field: 'revenue', label: 'Revenue' }],
+            datasets: [{ field: 'orders', label: 'Orders' }, { field: 'revenue', label: 'Revenue', yAxisID: 'y1' }],
           },
-          options: { plugins: { title: { display: true, text: 'Orders per month' } } },
+          options: {
+            plugins: { title: { display: true, text: 'Orders per month' } },
+            // The pickers' right axis: on the right, no grid lines of its own (no axis titles).
+            scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } },
+          },
         },
       },
       shot: {

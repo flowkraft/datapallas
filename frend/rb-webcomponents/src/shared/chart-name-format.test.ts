@@ -90,3 +90,53 @@ describe('a built chart', () => {
     assert.deepEqual(scatter.options, {});
   });
 });
+
+describe('names that say money, and charts of two axes', () => {
+  test('more money words; a bare value says nothing, a value of something is money', () => {
+    for (const f of ['mrr', 'mrr_delta', 'owed', 'spend', 'Billed', 'gross_margin', 'avg_order_value', 'stuck_value']) {
+      assert.equal(namedKindOf(f), 'currency', f);
+    }
+    assert.equal(namedKindOf('value'), '');
+    assert.equal(namedKindOf('gross_margin_pct'), 'share');
+    assert.equal(namedKindOf('avg_orders'), '');
+  });
+
+  test('a count on the left axis and money on the right: each axis by its own series', () => {
+    const config: any = {
+      type: 'bar',
+      data: { labels: ['a'], datasets: [{ label: 'Orders', data: [3] }, { label: 'Revenue', data: [800997.01], yAxisID: 'y1' }] },
+      options: {},
+    };
+    applyNamedFormat(config, ['orders', 'revenue']);
+    assert.equal(config.options.scales.y, undefined);
+    assert.equal(config.options.scales.y1.ticks.callback(300000), '$300,000');
+    const label = config.options.plugins.tooltip.callbacks.label;
+    assert.equal(label({ dataset: config.data.datasets[1], parsed: { x: 0, y: 800997.01 } }), 'Revenue: $800,997.01');
+    assert.equal(label({ dataset: config.data.datasets[0], parsed: { x: 0, y: 3 }, formattedValue: '3' }), 'Orders: 3');
+  });
+
+  test('the same two series on one axis still disagree, and the chart is left as it is', () => {
+    const config: any = { type: 'bar', data: { labels: ['a'], datasets: [{ data: [3] }, { data: [5] }] }, options: {} };
+    applyNamedFormat(config, ['orders', 'revenue']);
+    assert.deepEqual(config.options, {});
+  });
+
+  test('a value axis of shares starts at 0, unless the chart says where it starts', () => {
+    const line = (y: any) => ({ type: 'line', data: { labels: ['a', 'b'], datasets: [{ data: [40.9, 41.04] }] }, options: { scales: { y } } as any });
+    const auto: any = line({});
+    applyNamedFormat(auto, ['checkout_to_purchase_pct']);
+    assert.equal(auto.options.scales.y.beginAtZero, true);
+    const named: any = line({ min: 40 });
+    applyNamedFormat(named, ['checkout_to_purchase_pct']);
+    assert.equal(named.options.scales.y.beginAtZero, undefined);
+    const money: any = line({});
+    applyNamedFormat(money, ['revenue']);
+    assert.equal(money.options.scales.y.beginAtZero, undefined);
+  });
+
+  test('a pie of stored values names its slices for a reader', () => {
+    const pie: any = { type: 'pie', data: { labels: ['web', 'sales_rep'], datasets: [{ data: [10, 20] }] }, options: {} };
+    applyNamedFormat(pie, ['revenue']);
+    assert.equal(pie.options.plugins.tooltip.callbacks.label({ label: 'sales_rep', raw: 20 }), 'Sales rep: $20.00');
+  });
+});

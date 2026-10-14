@@ -10,6 +10,7 @@ chart('chart_dd11-chart-orders-per-month') {
       dataset {
         field 'revenue'
         label 'Revenue'
+        yAxisID 'y1'
       }
     }
   }
@@ -18,6 +19,14 @@ chart('chart_dd11-chart-orders-per-month') {
       title {
         display true
         text 'Orders per month'
+      }
+    }
+    scales {
+      y1 {
+        position 'right'
+        grid {
+          drawOnChartArea false
+        }
       }
     }
   }

@@ -10,6 +10,8 @@
  * Pure, so `npm test` asks it directly - see chart-legend.test.ts.
  */
 
+import { readableLabelWriter } from './chart-axes.ts';
+
 /** One series whose legend names its slices, not its series. */
 const SLICE_TYPES = new Set(['pie', 'doughnut', 'polarArea']);
 
@@ -54,4 +56,21 @@ export function withLegendRule(type: string, seriesCount: number, legend: Record
  */
 export function splitSeriesName(value: string): string {
   return value === '' ? '(none)' : value;
+}
+
+/**
+ * A legend's item maker that writes the items' names as the chart's axis writes its labels
+ * (chart-axes `readableLabelWriter`): `sales_rep` reads "Sales rep", and beside it `web` reads
+ * "Web", on a pie's legend as on a chart split by a column. Only the text changes: the item keeps
+ * what a click on it toggles.
+ *
+ * @param generate the legend's own item maker (Chart.js's, for the chart's type)
+ */
+export function readableLegend(generate: (chart: any) => any[]): (chart: any) => any[] {
+  const wrapped = function (this: any, chart: any) {
+    const items = generate.call(this, chart) || [];
+    const write = readableLabelWriter(items.map((item: any) => item?.text));
+    return write ? items.map((item: any) => ({ ...item, text: write(item.text) })) : items;
+  };
+  return wrapped;
 }

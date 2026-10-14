@@ -294,9 +294,19 @@ ORDER BY 1`,
           type: 'combo',
           data: {
             labelField: 'month',
-            datasets: [{ field: 'orders', label: 'Orders' }, { field: 'revenue', label: 'Revenue' }],
+            datasets: [{ field: 'orders', label: 'Orders' }, { field: 'revenue', label: 'Revenue', yAxisID: 'y1' }],
           },
-          options: { plugins: { title: { display: true, text: 'Orders per month' } } },
+          options: {
+            plugins: { title: { display: true, text: 'Orders per month' } },
+            scales: {
+              y: { position: 'left', title: { display: true, text: 'Orders' } },
+              y1: {
+                position: 'right',
+                title: { display: true, text: 'Revenue' },
+                grid: { drawOnChartArea: false },
+              },
+            },
+          },
         },
       },
       dsl: `chart {
@@ -311,6 +321,7 @@ ORDER BY 1`,
       dataset {
         field 'revenue'
         label 'Revenue'
+        yAxisID 'y1'
       }
     }
   }
@@ -319,6 +330,25 @@ ORDER BY 1`,
       title {
         display true
         text 'Orders per month'
+      }
+    }
+    scales {
+      y {
+        position 'left'
+        title {
+          display true
+          text 'Orders'
+        }
+      }
+      y1 {
+        position 'right'
+        title {
+          display true
+          text 'Revenue'
+        }
+        grid {
+          drawOnChartArea false
+        }
       }
     }
   }

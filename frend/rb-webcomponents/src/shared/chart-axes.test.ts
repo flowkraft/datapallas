@@ -95,7 +95,8 @@ describe('values kept the database\'s way, written for a reader', () => {
     assert.deepEqual(config.data.labels, ['paid_social', 'web']);
     const callback = config.options.scales.x.ticks.callback;
     assert.equal(callback.call({ getLabelForValue: (v: number) => config.data.labels[v] }, 0, 0), 'Paid social');
-    assert.equal(config.options.plugins.tooltip.callbacks.title([{ label: 'web' }]), 'web');
+    // beside a stored value, one lower-case word gets its capital too: "Web" beside "Paid social"
+    assert.equal(config.options.plugins.tooltip.callbacks.title([{ label: 'web' }]), 'Web');
     // not dates: the axis keeps Chart.js's own rotation
     assert.equal(config.options.scales.x.ticks.maxRotation, undefined);
   });
@@ -162,5 +163,33 @@ describe('a bubble chart', () => {
     const bar: any = { type: 'bar', options: {} };
     applyBubbleRoom(bar);
     assert.equal(bar.options.scales, undefined);
+  });
+});
+
+describe('the names of a chart\'s series and slices, beside stored values', () => {
+  test('a pie\'s tooltip names its slice as the axis would', () => {
+    const pie: any = { type: 'pie', data: { labels: ['web', 'sales_rep', 'Smart Home'], datasets: [{ data: [1, 2, 3] }] }, options: {} };
+    applyDateLabels(pie);
+    assert.equal(pie.options.scales, undefined);
+    const label = pie.options.plugins.tooltip.callbacks.label;
+    assert.equal(label({ label: 'sales_rep', formattedValue: '2' }), 'Sales rep: 2');
+    assert.equal(label({ label: 'web', formattedValue: '1' }), 'Web: 1');
+    assert.equal(label({ label: 'Smart Home', formattedValue: '3' }), 'Smart Home: 3');
+  });
+
+  test('a chart split by a column names each series so; a label callback of its own stays', () => {
+    const split: any = { type: 'line', data: { labels: ['a'], datasets: [{ label: 'paid_search', data: [1] }, { label: 'organic', data: [2] }] }, options: {} };
+    applyDateLabels(split);
+    assert.equal(split.options.plugins.tooltip.callbacks.label({ dataset: { label: 'organic' }, formattedValue: '2' }), 'Organic: 2');
+    const own = () => 'own';
+    const mine: any = { ...split, options: { plugins: { tooltip: { callbacks: { label: own } } } } };
+    applyDateLabels(mine);
+    assert.equal(mine.options.plugins.tooltip.callbacks.label, own);
+  });
+
+  test('series named for a reader already are left alone', () => {
+    const plain: any = { type: 'bar', data: { labels: ['a'], datasets: [{ label: 'Revenue', data: [1] }, { label: 'Target', data: [2] }] }, options: {} };
+    applyDateLabels(plain);
+    assert.equal(plain.options.plugins, undefined);
   });
 });

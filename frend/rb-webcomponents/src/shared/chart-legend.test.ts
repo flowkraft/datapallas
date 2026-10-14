@@ -6,7 +6,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { legendShown, splitSeriesName, withLegendRule } from './chart-legend.ts';
+import { legendShown, readableLegend, splitSeriesName, withLegendRule } from './chart-legend.ts';
 
 describe('whether a chart shows its legend', () => {
   test('one series has no legend, two have one', () => {
@@ -60,5 +60,18 @@ describe('the name of a series split by a column', () => {
 
   test('an empty value still has a name', () => {
     assert.equal(splitSeriesName(''), '(none)');
+  });
+});
+
+describe('a legend beside stored values', () => {
+  test('its items read as the axis writes them, keeping what a click toggles', () => {
+    const generate = () => [{ text: 'web', index: 0 }, { text: 'sales_rep', index: 1, hidden: true }];
+    const items = readableLegend(generate)({});
+    assert.deepEqual(items, [{ text: 'Web', index: 0 }, { text: 'Sales rep', index: 1, hidden: true }]);
+  });
+
+  test('a legend of names written for a reader is left as it is', () => {
+    const own = [{ text: 'Revenue' }, { text: 'Target' }];
+    assert.deepEqual(readableLegend(() => own)({}), own);
   });
 });

@@ -58,23 +58,57 @@ export function readableValue(label: unknown): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** One lower-case word, as the database keeps a value (`web`, `marketplace`). */
+const LOWER_WORD_RX = /^[a-z][a-z0-9]*$/;
+
 /**
  * @returns how to write labels some of which are kept the database's way (`paid_social`), or null
- *          when none is (they are written as they are)
+ *          when none is (they are written as they are). Beside them, a value of one lower-case word
+ *          is written with its capital too, so one axis does not read "web" beside "Sales rep".
  */
 export function readableLabelWriter(labels: unknown[] | undefined): ((label: unknown) => string) | null {
   if (!Array.isArray(labels) || !labels.some((label) => SNAKE_VALUE_RX.test(String(label ?? '')))) return null;
-  return readableValue;
+  return (label: unknown) => {
+    const text = String(label ?? '');
+    return LOWER_WORD_RX.test(text) ? text.charAt(0).toUpperCase() + text.slice(1) : readableValue(text);
+  };
 }
 
+/** One series whose slices are named by the labels: its tooltip names the slice, not the series. */
+const SLICE_TYPES = new Set(['pie', 'doughnut', 'polarArea']);
+
 /**
- * Write a built chart's category labels for a reader, in place: date buckets as their buckets,
- * values kept the database's way in words (`paid_social` reads `Paid social`). The category axis's
- * ticks and the tooltip's title; a tick or title callback the configuration already has is left to
- * it. The labels themselves are not touched: a click filters by the value as the database has it.
+ * Write a built chart's labels for a reader, in place: date buckets as their buckets, values kept
+ * the database's way in words (`paid_social` reads `Paid social`). The category axis's ticks and
+ * the tooltip's title; the names of the series of a chart split by a column, and of a pie's slices,
+ * in the tooltip. A tick, title or label callback the configuration already has is left to it. The
+ * labels themselves are not touched: a click filters by the value as the database has it.
  */
 export function applyDateLabels(config: any): void {
-  if (!config || NO_CATEGORY_AXIS.has(config.type)) return;
+  if (!config) return;
+  if (!NO_CATEGORY_AXIS.has(config.type)) writeCategoryAxis(config);
+  writeSeriesNames(config);
+}
+
+/** The tooltip's name of a series or of a slice, written as the axis writes its labels. */
+function writeSeriesNames(config: any): void {
+  const slices = SLICE_TYPES.has(config.type);
+  const names = slices ? config.data?.labels : (config.data?.datasets ?? []).map((ds: any) => ds?.label);
+  const write = readableLabelWriter(names);
+  if (!write) return;
+  const options = (config.options = { ...(config.options || {}) });
+  const plugins = (options.plugins = { ...(options.plugins || {}) });
+  const tooltip = (plugins.tooltip = { ...(plugins.tooltip || {}) });
+  const callbacks = (tooltip.callbacks = { ...(tooltip.callbacks || {}) });
+  if (callbacks.label !== undefined) return;
+  callbacks.label = (item: any) => {
+    const name = slices ? item?.label : item?.dataset?.label;
+    const value = String(item?.formattedValue ?? '');
+    return name == null || name === '' ? value : `${write(name)}: ${value}`;
+  };
+}
+
+function writeCategoryAxis(config: any): void {
   const dates = dateLabelWriter(config.data?.labels);
   const write = dates ?? readableLabelWriter(config.data?.labels);
   if (!write) return;

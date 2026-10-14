@@ -26,7 +26,7 @@
   import { boxPlotFromDrawn, boxPlotFromRows, boxTooltipLines } from '../shared/box-plot';
   import { applyChartNumberFormat, drawModeOf } from '../shared/chart-number-format';
   import { scalesToTheme } from '../shared/chart-scales';
-  import { splitSeriesName, withLegendRule } from '../shared/chart-legend';
+  import { readableLegend, splitSeriesName, withLegendRule } from '../shared/chart-legend';
   import { applyBubbleRoom, applyDateLabels, applyShareStackMax } from '../shared/chart-axes';
   import { applyNamedFormat } from '../shared/chart-name-format';
 
@@ -115,6 +115,20 @@
     const fields = (cfg?.datasets || []).map((ds: any) => ds?.field).filter((f: unknown) => typeof f === 'string' && f);
     // Split by a column, every series is the first dataset's field.
     return cfg?.seriesField ? fields.slice(0, 1) : fields;
+  }
+
+  /**
+   * The legend writes its names as the axis writes its labels (shared/chart-legend `readableLegend`),
+   * from Chart.js's own item maker for the chart's type. An item maker the configuration has is its own.
+   */
+  function rbReadableLegend(cfg: any, Ctor: any) {
+    const legend = cfg?.options?.plugins?.legend;
+    if (!legend || legend.display === false) return;
+    const labels = (legend.labels = { ...(legend.labels || {}) });
+    if (labels.generateLabels !== undefined) return;
+    const generate = Ctor?.overrides?.[cfg.type]?.plugins?.legend?.labels?.generateLabels
+      ?? Ctor?.defaults?.plugins?.legend?.labels?.generateLabels;
+    if (typeof generate === 'function') labels.generateLabels = readableLegend(generate);
   }
 
   // reuse ResizeObserver patch from RbTabulator
@@ -706,6 +720,7 @@
       applyBubbleRoom(config);
       lastDrawMode = drawModeOf(config.options);
       rbApplyThemeColors(config);
+      rbReadableLegend(config, ChartCtor);
       const ctx2d = canvas?.getContext('2d');
       if (!ctx2d) return;
       chart = new ChartCtor(ctx2d, config);
@@ -948,6 +963,7 @@
         applyShareStackMax(chart.config);
         applyBubbleRoom(chart.config);
         rbApplyThemeColors(chart.config);
+        rbReadableLegend(chart.config, chart.constructor);
 
         try { chart.update(); } catch (err) { dispatch('chartError', { message: String(err) }); }
       }

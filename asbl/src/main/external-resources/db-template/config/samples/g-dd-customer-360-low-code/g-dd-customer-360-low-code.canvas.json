@@ -511,7 +511,8 @@
                 },
                 {
                   "field": "revenue",
-                  "label": "Revenue"
+                  "label": "Revenue",
+                  "yAxisID": "y1"
                 }
               ]
             },
@@ -520,6 +521,14 @@
                 "title": {
                   "display": true,
                   "text": "Orders per month"
+                }
+              },
+              "scales": {
+                "y1": {
+                  "position": "right",
+                  "grid": {
+                    "drawOnChartArea": false
+                  }
                 }
               }
             }
