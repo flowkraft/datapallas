@@ -169,6 +169,10 @@ async function doStep(
       if (typeof step.config.widgetTitle === 'string') {
         await page.locator('#btnDisplayTab').click();
         await page.locator('#inputWidgetTitle').fill(step.config.widgetTitle);
+        // Back where the next widget's query is written, as the Display steps above leave it.
+        await page.waitForTimeout(500);
+        await page.locator('#btnDataTab').click();
+        await page.waitForTimeout(500);
       }
       return undefined;
 
