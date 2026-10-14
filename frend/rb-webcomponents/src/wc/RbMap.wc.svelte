@@ -334,6 +334,13 @@
     if (rawKey == null) return "";
     // A state is matched as its data is (`canonicalKey`): a name or a code, read as the USPS code.
     if (region === "us_states") return normalizeStateToUsps(rawKey) ?? String(rawKey).toUpperCase();
+    // Natural Earth gives a few countries no code ("-99": France, Norway, Kosovo), so no row ever
+    // coloured them: France sat white among its neighbours with the most revenue of the four. Such
+    // a country is read by its name.
+    if (String(rawKey) === "-99") {
+      const named = normalizeCountryToIso2(feature.properties?.name ?? feature.properties?.NAME ?? feature.properties?.ADMIN);
+      if (named) return named.toUpperCase();
+    }
     return String(rawKey).toUpperCase();
   }
 
@@ -457,10 +464,7 @@
    */
   function fillWithWorld() {
     if (!mapInstance || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
-    const min = mapInstance.getBoundsZoom(WORLD_BOUNDS, true);
-    // Up to it at once: setMinZoom would get there with an animated zoom.
-    if (mapInstance.getZoom() < min) mapInstance.setZoom(min, { animate: false });
-    mapInstance.setMinZoom(min);
+    mapInstance.setMinZoom(mapInstance.getBoundsZoom(WORLD_BOUNDS, true));
   }
 
   /**
@@ -765,12 +769,7 @@
 
   onDestroy(() => {
     try { (mapInstance as any)?._rbResizeObserver?.disconnect(); } catch {}
-    // Leaflet ends what it is still animating (a zoom, a pan, a tile fading in) on timers and frames
-    // remove() does not cancel, and on the removed map they threw from inside Leaflet (`_leaflet_pos`,
-    // then `classList` of undefined): a Cube Stories card removes its map when the next answer is a
-    // table or a chart. So the map is removed once they are over; its box has left the page already.
-    const map = mapInstance;
-    if (map) setTimeout(() => { try { map.stop(); map.remove(); } catch {} }, 500);
+    try { mapInstance?.remove(); } catch {}
     mapInstance = null;
     layerGroup = null;
   });
