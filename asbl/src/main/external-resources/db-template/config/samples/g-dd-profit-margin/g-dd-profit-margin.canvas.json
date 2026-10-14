@@ -340,6 +340,7 @@
           "generatedSql": "SELECT\n  dash_demo.products.category AS \"Category\",\n  CAST(DATE_TRUNC('quarter', dash_demo.orders.order_ts) AS DATE) AS \"OrderedAt\",\n  1.0 * ((CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_amount END) AS DECIMAL(31,4))) - (CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_cost END) AS DECIMAL(31,4)))) / NULLIF((CAST(SUM(CASE WHEN (dash_demo.orders.status <> 'cancelled') THEN dash_demo.order_lines.line_amount END) AS DECIMAL(31,4))), 0) AS \"MarginPct\"\nFROM dash_demo.order_lines\nLEFT JOIN dash_demo.orders ON dash_demo.order_lines.order_id = dash_demo.orders.order_id\nLEFT JOIN dash_demo.products ON dash_demo.order_lines.product_id = dash_demo.products.product_id\nWHERE dash_demo.orders.order_ts < ${dateTo__next_day}\n  AND dash_demo.orders.order_ts >= ${dateFrom}\n  AND dash_demo.products.category = ${category}\nGROUP BY\n  dash_demo.products.category,\n  CAST(DATE_TRUNC('quarter', dash_demo.orders.order_ts) AS DATE)\nORDER BY\n  \"Category\" ASC,\n  \"OrderedAt\" ASC\nLIMIT 500"
         },
         "displayConfig": {
+          "widgetTitle": "Margin by category and quarter",
           "dslConfig": {
             "rows": [
               "Category"

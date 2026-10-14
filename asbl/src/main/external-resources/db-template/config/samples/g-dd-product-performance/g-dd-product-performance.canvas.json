@@ -213,6 +213,7 @@
           "generatedSql": "SELECT *\nFROM \"dash_demo\".\"products\"\nWHERE \"category\" = ${category}\nORDER BY CASE WHEN \"name\" IS NULL THEN 1 ELSE 0 END, \"name\" asc\nLIMIT 500"
         },
         "displayConfig": {
+          "widgetTitle": "All products",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

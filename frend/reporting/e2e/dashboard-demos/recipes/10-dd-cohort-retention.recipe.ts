@@ -86,7 +86,7 @@ ORDER BY 1, 2`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: {},
+      config: { widgetTitle: 'Retention by cohort' },
       dsl: `pivotTable {
   rows([
     'cohort'

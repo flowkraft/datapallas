@@ -5,6 +5,7 @@
 
 import { PivotData } from './pivot-data';
 import type { ChartJSData, ChartJSDataset, HeatmapMode, PivotDataProps } from './pivot-types';
+import { paintedCellStyle } from '../../shared/readable-text';
 
 // ============================================================================
 // Table Helper Functions
@@ -209,7 +210,7 @@ export function renderPivotTableHTML(
       const val = aggregator.value();
       const numVal = typeof val === 'number' ? val : 0;
       const style = valueCellColors(rowKey, colKey, numVal);
-      const styleAttr = style.backgroundColor ? ` style="background-color:${style.backgroundColor}"` : '';
+      const styleAttr = paintedCellStyle(style.backgroundColor);
       // Add data attributes for click handling
       const dataAttrs = options.clickable 
         ? ` data-row="${escapeHtml(JSON.stringify(rowKey))}" data-col="${escapeHtml(JSON.stringify(colKey))}" data-value="${escapeHtml(String(val))}"`
@@ -223,7 +224,7 @@ export function renderPivotTableHTML(
       const totalVal = totalAggregator.value();
       const totalNumVal = typeof totalVal === 'number' ? totalVal : 0;
       const totalStyle = colTotalColors(totalNumVal);
-      const totalStyleAttr = totalStyle.backgroundColor ? ` style="background-color:${totalStyle.backgroundColor}"` : '';
+      const totalStyleAttr = paintedCellStyle(totalStyle.backgroundColor);
       html += `<td class="pvtTotal"${totalStyleAttr}>${totalAggregator.format(totalVal)}</td>`;
     }
 
@@ -240,7 +241,7 @@ export function renderPivotTableHTML(
       const val = totalAggregator.value();
       const numVal = typeof val === 'number' ? val : 0;
       const style = rowTotalColors(numVal);
-      const styleAttr = style.backgroundColor ? ` style="background-color:${style.backgroundColor}"` : '';
+      const styleAttr = paintedCellStyle(style.backgroundColor);
       html += `<td class="pvtTotal"${styleAttr}>${totalAggregator.format(val)}</td>`;
     });
 

@@ -557,6 +557,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Sessions by weekday and hour",
           "dslConfig": {
             "aggregatorName": "Sum",
             "rendererName": "Table Heatmap",

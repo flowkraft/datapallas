@@ -482,6 +482,7 @@ WHERE i.status = 'overdue'`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Invoices',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

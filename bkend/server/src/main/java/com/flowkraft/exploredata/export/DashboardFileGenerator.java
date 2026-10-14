@@ -452,9 +452,11 @@ public class DashboardFileGenerator {
                     "    <div class=\"grid-item\" style=\"%s\">\n      <rb-slicer %s field=\"%s\" table-name=\"%s\" connection-code=\"\"></rb-slicer>\n    </div>",
                     style, attrs, escapeHtmlAttr(slicerField(w)), visualQueryTable(w));
             }
+            // A divider is a line between tiles, not a tile: no card behind it (background, border,
+            // padding), so it does not read as an empty one; the line runs across the middle of its row.
             case "divider" ->
                 String.format(
-                    "    <div class=\"grid-item\" style=\"%s\">\n      <hr class=\"divider\" />\n    </div>",
+                    "    <div class=\"grid-item rb-divider-tile\" style=\"%s background: transparent; border: none; padding: 0; display: flex; align-items: center;\">\n      <hr class=\"divider\" style=\"width: 100%%;\" />\n    </div>",
                     style);
             case "iframe" -> {
                 Map<String, Object> dc = displayConfig(w);

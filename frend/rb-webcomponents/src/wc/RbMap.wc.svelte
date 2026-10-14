@@ -469,11 +469,16 @@
    * countries map opened on the Gulf of Guinea, DD03's pins on Greenland, while the same maps framed
    * well in the narrower Gallery cards. So the bounds are kept, and framed again once the box has
    * its size - which also keeps the data framed when a tile is resized.
+   *
+   * Without the zoom animation: an animated fit ends a few frames later, and on a box that had left
+   * the page by then (a Cube Stories panel closed by the next one) Leaflet threw on its own
+   * (`_leaflet_pos` of undefined), outside any try.
    */
   function fitToData(bounds?: any) {
     if (bounds !== undefined) fitTarget = bounds;
-    if (!mapInstance || !fitTarget || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
-    try { mapInstance.fitBounds(fitTarget); } catch {}
+    if (!mapInstance || !fitTarget || !container || !container.isConnected
+        || container.clientWidth === 0 || container.clientHeight === 0) return;
+    try { mapInstance.fitBounds(fitTarget, { animate: false }); } catch {}
   }
 
   function publishShapeCount() {

@@ -40,6 +40,7 @@
           "sql": "WITH base AS (\n  SELECT c.customer_id AS customer_id,\n         c.signup_date AS signup_date,\n         CASE WHEN ${customerType} = 'business'\n              THEN CAST(year(c.signup_date) AS VARCHAR) || ' Q' || CAST(quarter(c.signup_date) AS VARCHAR)\n              ELSE strftime(date_trunc('month', c.signup_date), '%Y-%m') END AS cohort,\n         CASE WHEN ${customerType} = 'business' THEN 3 ELSE 1 END AS step\n  FROM dash_demo.customers c\n  WHERE true\n  AND (${customerType} = 'all' OR c.customer_type = ${customerType})\n),\nperiods AS (SELECT unnest(range(1, 13)) AS n)\nSELECT b.cohort AS cohort,\n       lpad(CAST(p.n AS VARCHAR), 2, '0') AS periods_since_signup,\n       round(100.0 * count(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM dash_demo.orders o\n                                  WHERE o.customer_id = b.customer_id\n                                    AND o.status <> 'cancelled'\n                                    AND o.order_ts >= b.signup_date + (p.n - 1) * b.step * INTERVAL 1 MONTH\n                                    AND o.order_ts < b.signup_date + (p.n + 1) * b.step * INTERVAL 1 MONTH)\n                                THEN b.customer_id END)\n                   / count(DISTINCT b.customer_id), 2) AS retention_pct\nFROM base b\nCROSS JOIN periods p\nGROUP BY 1, 2\nORDER BY 1, 2"
         },
         "displayConfig": {
+          "widgetTitle": "Retention by cohort",
           "dslConfig": {
             "rows": [
               "cohort"

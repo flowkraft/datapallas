@@ -390,7 +390,7 @@ ORDER BY 1, 2`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: {},
+      config: { widgetTitle: 'Variance to target by region and month, %' },
       dsl: `pivotTable {
   rows([
     'region'

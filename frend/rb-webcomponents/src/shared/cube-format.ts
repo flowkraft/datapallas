@@ -134,3 +134,15 @@ export function formatCell(value: unknown, column: CubeColumnFormat | undefined)
   if (column.format) return formatMeasure(value, column.format, column.currency);
   return value === null || value === undefined ? '' : String(value);
 }
+
+/** What a dimension's cell says for a row that has no value in it. */
+export const NO_DIMENSION_VALUE = '(none)';
+
+/**
+ * A dimension's cell: its value written as its column writes it, or `(none)` for a row with no value
+ * (Online Sales had a row of 240 orders under an empty country cell, which read as a missing label).
+ */
+export function dimensionText(value: unknown, written: (value: unknown) => string): string {
+  if (value === null || value === undefined || value === '') return NO_DIMENSION_VALUE;
+  return written(value);
+}

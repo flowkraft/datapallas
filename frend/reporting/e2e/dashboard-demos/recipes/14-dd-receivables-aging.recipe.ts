@@ -536,6 +536,7 @@ ORDER BY days_overdue DESC`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Overdue invoices',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

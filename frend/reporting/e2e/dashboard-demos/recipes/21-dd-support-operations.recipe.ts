@@ -250,7 +250,7 @@ ORDER BY 1, 2`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: {},
+      config: { widgetTitle: 'Tickets by weekday and hour' },
       dsl: `pivotTable {
   rows([
     'weekday'
@@ -500,6 +500,7 @@ ORDER BY days_waiting DESC, t.ticket_id`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Open urgent and high tickets',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

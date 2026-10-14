@@ -464,7 +464,7 @@ ORDER BY cohort, m.month`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: {},
+      config: { widgetTitle: 'Subscribers still active, by cohort, %' },
       dsl: `pivotTable {
   rows([
     'cohort'

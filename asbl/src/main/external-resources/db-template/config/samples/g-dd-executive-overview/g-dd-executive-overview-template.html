@@ -171,10 +171,11 @@
     <div class="grid-item rb-chart-tile" style="grid-column: 1 / span 12; grid-row: 7 / span 4; min-height: 320px;">
       <rb-chart fill-height report-id="g-dd-executive-overview" api-base-url="http://localhost:9090/api" component-id="chart_dd01-chart-revenue-vs-target"></rb-chart>
     </div>
-    <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 11 / span 1;">
-      <hr class="divider" />
+    <div class="grid-item rb-divider-tile" style="grid-column: 1 / span 12; grid-row: 11 / span 1; background: transparent; border: none; padding: 0; display: flex; align-items: center;">
+      <hr class="divider" style="width: 100%;" />
     </div>
     <div class="grid-item" style="grid-column: 1 / span 12; grid-row: 12 / span 3;">
+      <div class="rb-tile-title" id="tileTitle-tabulator_dd01-table-off-target" style="font-size: 14px; font-weight: 600; margin: 0 0 2px 0;">Off target</div>
       <rb-tabulator report-id="g-dd-executive-overview" api-base-url="http://localhost:9090/api" component-id="tabulator_dd01-table-off-target"></rb-tabulator>
     </div>
   </div>

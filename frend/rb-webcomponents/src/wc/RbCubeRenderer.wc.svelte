@@ -20,7 +20,7 @@
   import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   // One formatter for every host: the table, the single value, the chart and the time labels all
   // show a number the way the cube declares it (W4.2), so two hosts cannot disagree about it.
-  import { formatCell, formatMeasure, measureFormatOf, DEFAULT_CURRENCY } from '../shared/cube-format';
+  import { formatCell, formatMeasure, measureFormatOf, dimensionText, DEFAULT_CURRENCY } from '../shared/cube-format';
   import { refusalMessage, withCsrfHeader } from '../shared/session-request';
 
   // Props
@@ -2129,7 +2129,7 @@
       const column: any = {
         title: titleOf(name),
         field: name,
-        formatter: (cell: any) => formatCell(cell.getValue(), shape),
+        formatter: (cell: any) => dimensionText(cell.getValue(), (value) => formatCell(value, shape)),
       };
       if (totals && columns.length === 0) column.bottomCalc = () => 'Total';
       columns.push(column);
@@ -3142,7 +3142,8 @@
     {/if}
 
     <!-- The shapes this widget offers, where it offers more than one (design part 8) -->
-    {#if offersShapeChoice && runtime && !runtimeError}
+    {#if offersShapeChoice && runtime && !runtimeError && resultShape !== 'map'}
+      <!-- A map is neither: the switch is not drawn over one, where it said "Table" on a map. -->
       <div id="cubeDisplaySwitch" class="rb-display-switch">
         <button type="button" id="cubeRuntimeViewTable" class="rb-display-button"
                 class:rb-display-on={shownDisplay === 'table'} aria-pressed={shownDisplay === 'table'}

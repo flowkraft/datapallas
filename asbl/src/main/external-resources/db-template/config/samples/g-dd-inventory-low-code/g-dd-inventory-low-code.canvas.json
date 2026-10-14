@@ -402,6 +402,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Stock by SKU",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

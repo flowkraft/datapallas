@@ -270,6 +270,7 @@
           "sql": "SELECT i.invoice_no AS invoice_no,\n       c.name AS customer,\n       i.issue_date AS issued,\n       i.due_date AS due,\n       CAST((SELECT a.as_of FROM dash_demo.as_of a) - i.due_date AS INTEGER) AS days_overdue,\n       round(i.amount + i.tax_amount, 2) AS owed,\n       i.status AS status\nFROM dash_demo.invoices i\nJOIN dash_demo.customers c ON c.customer_id = i.customer_id\nWHERE i.status IN ('open', 'overdue', 'partially_paid')\n  AND i.amount + i.tax_amount >= ${minAmount}\n  AND c.account_manager_id = ${accountManagerId}\n  AND i.due_date < (SELECT a.as_of FROM dash_demo.as_of a)\nORDER BY days_overdue DESC"
         },
         "displayConfig": {
+          "widgetTitle": "Overdue invoices",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

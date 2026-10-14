@@ -382,6 +382,7 @@ ORDER BY suggested_order DESC, pr.sku`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Stock by SKU',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

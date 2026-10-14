@@ -165,6 +165,11 @@ async function doStep(
 
     case 'displayConfig':
       await doDisplayConfig(page, step.widget, step.config, step.dsl, current);
+      // The tile's title, at the top of the Display tab: typed last, so no pasted DSL writes over it.
+      if (typeof step.config.widgetTitle === 'string') {
+        await page.locator('#btnDisplayTab').click();
+        await page.locator('#inputWidgetTitle').fill(step.config.widgetTitle);
+      }
       return undefined;
 
     case 'layout':

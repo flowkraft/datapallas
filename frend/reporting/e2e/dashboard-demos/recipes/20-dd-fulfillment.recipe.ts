@@ -407,7 +407,7 @@ ORDER BY g.country`,
     {
       kind: 'displayConfig',
       widget: 'map',
-      config: { mapType: 'region', region: 'world_countries', dimension: 'country', metric: 'late_pct' },
+      config: { widgetTitle: 'Late deliveries by country, %', mapType: 'region', region: 'world_countries', dimension: 'country', metric: 'late_pct' },
       shot: {
         title: 'Set up late by country',
         caption: 'On the **Display** tab, set the map\'s fields, label and format.',
@@ -456,6 +456,7 @@ ORDER BY days_late DESC, o.delivered_ts DESC`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Late orders',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

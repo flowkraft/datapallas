@@ -25,6 +25,7 @@
   import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   import { reportQuery } from '../shared/report-query';
   import { formatMeasure } from '../shared/cube-format';
+  import { kpiNumber, NO_VALUE } from '../shared/kpi-format';
 
   const dispatch = createEventDispatcher();
 
@@ -103,7 +104,7 @@
       case 'number': {
         const num = parseFloat(str.replace(/[^0-9.\-]/g, ''));
         if (isNaN(num)) return str;
-        return num.toLocaleString('en-US');
+        return kpiNumber(num, 'en-US');
       }
       case 'percent': {
         const num = parseFloat(str.replace(/[^0-9.\-]/g, ''));
@@ -254,6 +255,9 @@
     <span class="rb-value-loading" id={componentId ? `widgetLoading-${componentId}` : undefined}>...</span>
   {:else if error}
     <span class="rb-value-error" id={componentId ? `widgetError-${componentId}` : undefined} title={error}>--</span>
+  {:else if displayValue === ''}
+    <!-- No row, or no value in it: a dash says so, where an empty tile read as one still asking. -->
+    {NO_VALUE}
   {:else}
     {prefix}{displayValue}{suffix}
   {/if}

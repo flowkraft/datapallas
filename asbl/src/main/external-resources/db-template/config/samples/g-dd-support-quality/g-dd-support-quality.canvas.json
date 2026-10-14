@@ -238,6 +238,7 @@
           "sql": "SELECT sa.name AS agent,\n       sa.team AS team,\n       count(*) AS tickets,\n       round(avg(date_diff('minute', t.opened_ts, t.resolved_ts) / 60.0), 2) AS avg_resolution_hours,\n       round(avg(t.csat_score), 2) AS avg_csat,\n       round(100.0 * count(CASE WHEN NOT t.sla_breached THEN 1 END) / count(*), 2) AS sla_met_pct\nFROM dash_demo.support_tickets t\nJOIN dash_demo.support_agents sa ON sa.agent_id = t.agent_id\nWHERE true\n  AND t.opened_ts >= ${dateFrom}\n  AND t.opened_ts < ${dateTo__next_day}\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\nGROUP BY sa.name, sa.team\nORDER BY tickets DESC, agent"
         },
         "displayConfig": {
+          "widgetTitle": "Agent leaderboard",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

@@ -358,6 +358,7 @@ ORDER BY tickets DESC, agent`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Agent leaderboard',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

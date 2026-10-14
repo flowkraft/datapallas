@@ -452,6 +452,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Agent leaderboard",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

@@ -140,7 +140,8 @@
       needle.setAttribute("y1", String(cy));
       needle.setAttribute("x2", String(nx));
       needle.setAttribute("y2", String(ny));
-      needle.setAttribute("stroke", "#333");
+      // The page's text colour: the fixed #333 vanished on the dark theme.
+      needle.setAttribute("stroke", "currentColor");
       needle.setAttribute("stroke-width", "2.5");
       needle.setAttribute("stroke-linecap", "round");
       svg.appendChild(needle);
@@ -149,7 +150,7 @@
       hub.setAttribute("cx", String(cx));
       hub.setAttribute("cy", String(cy));
       hub.setAttribute("r", "4");
-      hub.setAttribute("fill", "#333");
+      hub.setAttribute("fill", "currentColor");
       svg.appendChild(hub);
 
       // Value text.
@@ -161,6 +162,12 @@
       valueText.setAttribute("font-size", String(Math.max(14, radius * 0.28)));
       valueText.setAttribute("font-weight", "600");
       valueText.setAttribute("fill", "currentColor");
+      // A halo in the tile's own background, drawn under the digits: the needle passes behind the
+      // value instead of through it.
+      valueText.style.stroke = "var(--color-base-100, transparent)";
+      valueText.style.strokeWidth = "4px";
+      valueText.style.strokeLinejoin = "round";
+      valueText.style.paintOrder = "stroke";
       valueText.textContent = formatVal(value, fmt);
       svg.appendChild(valueText);
 

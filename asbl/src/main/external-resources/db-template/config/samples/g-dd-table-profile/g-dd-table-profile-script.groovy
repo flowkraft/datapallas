@@ -111,9 +111,9 @@ if (!componentId || componentId == 'tabulator_dd23-table-column-profile') {
                     ELSE 'attribute'
                END AS role_guessed_from_the_name,
                s.null_percentage AS null_percentage,
-               s.approx_unique AS distinct_values_approx,
+               least(s.approx_unique, s.count) AS distinct_values_approx,
                s.min AS smallest,
-               s.avg AS average,
+               coalesce(CAST(round(TRY_CAST(s.avg AS DOUBLE), 2) AS VARCHAR), s.avg) AS average,
                s.max AS largest
         FROM (SUMMARIZE dash_demo.${tableName}) s
         JOIN information_schema.columns c

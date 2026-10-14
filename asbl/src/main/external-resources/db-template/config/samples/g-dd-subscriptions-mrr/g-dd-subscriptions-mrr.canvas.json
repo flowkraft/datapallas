@@ -271,6 +271,7 @@
           "sql": "WITH months AS (\n  SELECT CAST(date_trunc('month', (SELECT a.as_of FROM dash_demo.as_of a)) - to_months(CAST(g.i AS INTEGER)) AS DATE) AS month\n  FROM generate_series(0, 11) AS g(i)\n)\nSELECT year(s.start_date) || ' Q' || quarter(s.start_date) AS cohort,\n       strftime(m.month, '%Y-%m') AS month,\n       round(100.0 * count(*) FILTER (WHERE s.cancel_date IS NULL\n                                        OR s.cancel_date >= m.month + to_months(1))\n             / count(*), 1) AS retained_pct\nFROM months m\nJOIN dash_demo.subscriptions s\n  ON s.start_date < m.month\n AND (s.cancel_date IS NULL OR s.cancel_date >= m.month)\nWHERE true\n  AND s.plan IN (${plan})\n  AND s.start_date >= DATE '2025-01-01'\nGROUP BY cohort, m.month\nORDER BY cohort, m.month"
         },
         "displayConfig": {
+          "widgetTitle": "Subscribers still active, by cohort, %",
           "dslConfig": {
             "rows": [
               "cohort"

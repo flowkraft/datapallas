@@ -515,6 +515,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Late deliveries by country, %",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true
@@ -584,6 +585,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Late orders",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

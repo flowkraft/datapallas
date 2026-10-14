@@ -1079,6 +1079,7 @@
 <div
   bind:this={container}
   class="pvtUi-container"
+  class:rb-pivot-published={onPublishedDashboard}
   id={componentId ? `widgetPivot-${componentId}` : undefined}
   style:display={loading || (error && !(Array.isArray(data) && data.length)) ? 'none' : 'block'}
   on:click={() => openDropdown = false}
@@ -1612,6 +1613,16 @@ table.pvtTable tbody tr td {
   border: 1px solid var(--rb-pivot-border, color-mix(in srgb, currentColor 12%, transparent));
   vertical-align: top;
   text-align: right;
+}
+/* On a published dashboard the cells are sized to a tile: a heatmap of 7 days by 24 hours was wider
+   than its tile at the Canvas's roomier padding. The editor stays: a reader may change the pivot. */
+.rb-pivot-published table.pvtTable {
+  margin: 0;
+}
+.rb-pivot-published table.pvtTable thead tr th,
+.rb-pivot-published table.pvtTable tbody tr th,
+.rb-pivot-published table.pvtTable tbody tr td {
+  padding: 3px 4px;
 }
 .pvtTotal, .pvtGrandTotal {
   font-weight: bold;

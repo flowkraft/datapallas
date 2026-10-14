@@ -411,7 +411,7 @@ ORDER BY ord`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: {},
+      config: { widgetTitle: 'Margin by category and quarter' },
       dsl: `pivotTable {
   rows([
     'Category'

@@ -26,6 +26,7 @@
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick, createEventDispatcher } from "svelte";
   import { reportQuery } from '../shared/report-query';
+  import { kpiNumber, trendDelta } from '../shared/kpi-format';
 
   export let reportId: string = "";
   export let apiBaseUrl: string = "";
@@ -75,7 +76,7 @@
       case "currency": return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
       case "percent":  return (n * 100).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "%";
       case "raw":      return String(n);
-      default:         return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+      default:         return kpiNumber(n);
     }
   }
 
@@ -119,9 +120,11 @@
 
       if (Number.isFinite(delta)) {
         const deltaEl = document.createElement("div");
-        const up = delta >= 0;
-        deltaEl.style.cssText = `font-size:11px;font-weight:500;margin-top:2px;color:${up ? "#2e7d32" : "#c62828"};`;
-        deltaEl.textContent = `${up ? "▲" : "▼"} ${(Math.abs(delta) * 100).toFixed(1)}% vs prior`;
+        const change = trendDelta(delta);
+        const tone = change.tone === "up" ? "#2e7d32"
+          : (change.tone === "down" ? "#c62828" : "color-mix(in oklab, currentColor 60%, transparent)");
+        deltaEl.style.cssText = `font-size:11px;font-weight:500;margin-top:2px;color:${tone};`;
+        deltaEl.textContent = change.text;
         root.appendChild(deltaEl);
       }
 

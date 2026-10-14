@@ -390,6 +390,7 @@ FROM (SELECT (SELECT count(*) FROM dash_demo.orders o
       kind: 'displayConfig',
       widget: 'map',
       config: {
+        widgetTitle: 'Customers by country',
         mapType: 'region',
         region: 'world_countries',
         dimension: 'country_code',
@@ -516,6 +517,7 @@ LIMIT 200`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Newest customers',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

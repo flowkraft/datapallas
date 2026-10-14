@@ -212,7 +212,7 @@ Referral deals win about twice as often as paid-search deals (51% against 25%), 
         max: 1.5,
         label: 'Quota attainment this quarter',
         gaugeFormat: 'percent',
-        gaugeBands: [{ to: 1, color: '#c62828' }, { to: 1.5, color: '#2e7d32' }],
+        gaugeBands: [{ to: 1, color: '#ef8c8c' }, { to: 1, color: '#f9d45c' }, { to: 1.5, color: '#88bf4d' }],
       },
       shot: {
         title: 'Set up quota attainment',
@@ -308,7 +308,7 @@ ORDER BY deals DESC`,
         dslConfig: {
           type: 'funnel',
           data: { labelField: 'stage', datasets: [{ field: 'deals', label: 'Deals' }] },
-          options: { plugins: { title: { display: true, text: 'Open deals by stage' } } },
+          options: { plugins: { title: { display: true, text: 'Open deals by stage, any close date' } } },
         },
       },
       shot: {
@@ -410,7 +410,7 @@ ORDER BY win_rate_pct DESC`,
     {
       kind: 'displayConfig',
       widget: 'tabulator',
-      config: { dslConfig: { layout: 'fitColumns', autoColumns: true, theme: 'modern' } },
+      config: { widgetTitle: 'Open deals closing in the window', dslConfig: { layout: 'fitColumns', autoColumns: true, theme: 'modern' } },
       shot: {
         title: 'Set up open deals',
         caption: 'On the **Display** tab, set the table\'s layout, page size and columns.',

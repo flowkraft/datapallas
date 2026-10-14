@@ -254,6 +254,7 @@ ORDER BY revenue DESC`,
       kind: 'displayConfig',
       widget: 'sankey',
       config: {
+        widgetTitle: 'Revenue from channel to category',
         sourceField: 'channel',
         targetField: 'category',
         valueField: 'revenue',

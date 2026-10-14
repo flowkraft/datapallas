@@ -82,6 +82,7 @@ WHERE c.customer_id = \${customerId}`,
       kind: 'displayConfig',
       widget: 'detail',
       config: {
+        widgetTitle: 'Customer profile',
         columnSettings: {
           credit_limit: { columnTitle: 'Credit limit' },
           payment_terms_days: { columnTitle: 'Payment terms (days)' },
@@ -438,7 +439,7 @@ LIMIT 20`,
     {
       kind: 'displayConfig',
       widget: 'tabulator',
-      config: { columnSettings: { total_amount: { columnTitle: 'Total' } } },
+      config: { widgetTitle: 'Last 20 orders', columnSettings: { total_amount: { columnTitle: 'Total' } } },
       shot: {
         title: 'Set up last 20 orders',
         caption: 'On the **Display** tab, set the table\'s layout, page size and columns.',
@@ -484,6 +485,7 @@ ORDER BY t.opened_ts DESC`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Support tickets',
         columnSettings: { sla_breached: { columnTitle: 'SLA breached' }, csat: { columnTitle: 'CSAT' } },
       },
       shot: {

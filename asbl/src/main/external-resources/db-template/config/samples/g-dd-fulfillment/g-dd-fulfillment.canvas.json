@@ -220,6 +220,7 @@
           "sql": "SELECT g.country AS country,\n       CASE WHEN count(*) >= 60\n            THEN round(100.0 * count(CASE WHEN o.delivered_ts::DATE > o.promised_date THEN 1 END) / count(*), 2)\n       END AS late_pct\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\nGROUP BY g.country\nORDER BY g.country"
         },
         "displayConfig": {
+          "widgetTitle": "Late deliveries by country, %",
           "mapType": "region",
           "region": "world_countries",
           "dimension": "country",
@@ -242,6 +243,7 @@
           "sql": "SELECT o.order_id AS order_id,\n       o.carrier AS carrier,\n       g.country AS country,\n       o.promised_date AS promised_date,\n       o.delivered_ts::DATE AS delivered_date,\n       date_diff('day', o.promised_date, o.delivered_ts::DATE) AS days_late\nFROM dash_demo.orders o\nJOIN dash_demo.geo_cities g ON g.city_id = o.city_id\nWHERE o.delivered_ts IS NOT NULL\n  AND o.delivered_ts >= ${dateFrom}\n  AND o.delivered_ts < ${dateTo__next_day}\n  AND o.carrier IN (${carrier})\n  AND o.delivered_ts::DATE > o.promised_date\nORDER BY days_late DESC, o.delivered_ts DESC"
         },
         "displayConfig": {
+          "widgetTitle": "Late orders",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

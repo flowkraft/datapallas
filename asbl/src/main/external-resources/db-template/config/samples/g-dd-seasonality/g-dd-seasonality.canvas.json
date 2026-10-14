@@ -40,6 +40,7 @@
           "sql": "SELECT dayname(o.order_ts) AS weekday,\n       lpad(hour(o.order_ts)::VARCHAR, 2, '0') AS hour_of_day,\n       count(*) AS orders\nFROM dash_demo.orders o\nWHERE o.channel = ${channel}\nGROUP BY 1, 2"
         },
         "displayConfig": {
+          "widgetTitle": "Orders by weekday and hour",
           "dslConfig": {
             "rows": [
               "weekday"

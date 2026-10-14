@@ -158,8 +158,13 @@ export const getSort = (sorters: any, attr: string): Sorter => {
 // Number formatters
 // ============================================================================
 
-export const usFmt = numberFormat();
+const usFmt2 = numberFormat();
 export const usFmtInt = numberFormat({ digitsAfterDecimal: 0 });
+/**
+ * A sum, a minimum or an average: two decimals where there are any, none on a whole number. A sum
+ * of tickets read "417.00" in every cell of DD21's heatmap, which also made it wider than its tile.
+ */
+export const usFmt = (x: number): string => (Number.isInteger(x) ? usFmtInt(x) : usFmt2(x));
 export const usFmtPct = numberFormat({
   digitsAfterDecimal: 1,
   scaler: 100,

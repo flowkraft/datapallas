@@ -401,7 +401,7 @@ ORDER BY cohort, m.month`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: { dslConfig: {
+      config: { widgetTitle: 'Subscribers still active, by cohort, %', dslConfig: {
           rows: ['cohort'],
           cols: ['month'],
           vals: ['retained_pct'],

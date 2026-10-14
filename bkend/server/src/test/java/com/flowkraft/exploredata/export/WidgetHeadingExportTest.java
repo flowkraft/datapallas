@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * A data widget's title and subtitle (#23) are the first lines of its published tile, as typed and
- * escaped; a widget with neither, and a layout piece, are written exactly as before.
+ * escaped; a widget with neither, and a layout piece, are written exactly as before. A divider is a
+ * line between tiles, with no card behind it.
  */
 class WidgetHeadingExportTest {
 
@@ -77,5 +78,15 @@ class WidgetHeadingExportTest {
 	@Test
 	void a_layout_piece_has_no_heading() throws Exception {
 		assertFalse(templateOf(widget("divider", Map.of("widgetTitle", "Section"))).contains("rb-tile-title"));
+	}
+
+	@Test
+	void a_divider_is_a_line_between_tiles_not_an_empty_card() throws Exception {
+		String template = templateOf(widget("divider", Map.of()));
+		Matcher tile = Pattern.compile("<div class=\"grid-item rb-divider-tile\" style=\"([^\"]*)\">\\s*<hr class=\"divider\"")
+				.matcher(template);
+		assertTrue(tile.find(), template);
+		assertTrue(tile.group(1).contains("background: transparent") && tile.group(1).contains("border: none")
+				&& tile.group(1).contains("padding: 0"), "no card behind the line: " + tile.group(1));
 	}
 }

@@ -477,7 +477,7 @@ ORDER BY 1, 2`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: { dslConfig: {
+      config: { widgetTitle: 'Sessions by weekday and hour', dslConfig: {
           rows: ['weekday'],
           cols: ['hour_of_day'],
           vals: ['sessions'],

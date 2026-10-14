@@ -24,6 +24,10 @@ describe('the scales a chart is given to colour', () => {
     assert.deepEqual(scalesToTheme('line', undefined), { x: {}, y: {} });
   });
 
+  test('an axis the author did not name is still given, to be coloured', () => {
+    assert.deepEqual(scalesToTheme('bar', { y: { suggestedMax: 100 } }), { x: {}, y: { suggestedMax: 100 } });
+  });
+
   test('scales the author named are kept, as a copy', () => {
     const named = { y: { min: 0 } };
     const out = scalesToTheme('pie', named);

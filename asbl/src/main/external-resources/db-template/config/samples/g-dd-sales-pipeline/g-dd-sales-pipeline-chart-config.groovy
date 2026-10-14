@@ -13,7 +13,7 @@ chart('chart_dd07-chart-deals-by-stage') {
     plugins {
       title {
         display true
-        text 'Open deals by stage'
+        text 'Open deals by stage, any close date'
       }
     }
   }

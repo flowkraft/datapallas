@@ -515,6 +515,7 @@
           "generatedSql": "SELECT \"country_code\", CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) AS \"total_amount_sum\"\nFROM \"dash_demo\".\"orders\"\nWHERE \"status\" <> 'cancelled'\n  AND \"order_ts\" >= ${dateFrom} AND \"order_ts\" < ${dateTo__next_day}\n  AND \"country_code\" = ${country}\n  AND \"channel\" IN (${channel})\nGROUP BY \"country_code\"\nORDER BY CASE WHEN CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) IS NULL THEN 1 ELSE 0 END, CAST(SUM(\"total_amount\") AS DECIMAL(31,4)) DESC\nLIMIT 500"
         },
         "displayConfig": {
+          "widgetTitle": "Revenue by country",
           "mapType": "region",
           "region": "world_countries",
           "dimension": "country_code",
@@ -537,6 +538,7 @@
           "sql": "SELECT p.name AS product,\n       p.category AS category,\n       SUM(l.qty) AS quantity,\n       ROUND(SUM(l.line_amount), 2) AS revenue\nFROM dash_demo.order_lines l\nJOIN dash_demo.orders o ON o.order_id = l.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND o.order_ts >= ${dateFrom}\n  AND o.order_ts < ${dateTo__next_day}\n  AND o.country_code = ${country}\n  AND o.channel IN (${channel})\nGROUP BY p.name, p.category\nORDER BY revenue DESC\nLIMIT 20"
         },
         "displayConfig": {
+          "widgetTitle": "Top products",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

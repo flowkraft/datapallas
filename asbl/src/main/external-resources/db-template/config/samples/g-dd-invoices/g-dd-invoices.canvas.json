@@ -439,6 +439,7 @@
           "generatedSql": "SELECT *\nFROM \"dash_demo\".\"invoices\"\nWHERE \"issue_date\" >= ${issuedFrom} AND \"issue_date\" < ${issuedTo__next_day}\n  AND \"status\" IN (${status})\n  AND \"customer_id\" = ${customerId}\nORDER BY CASE WHEN \"issue_date\" IS NULL THEN 1 ELSE 0 END, \"issue_date\" DESC\nLIMIT 5000"
         },
         "displayConfig": {
+          "widgetTitle": "Invoices",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

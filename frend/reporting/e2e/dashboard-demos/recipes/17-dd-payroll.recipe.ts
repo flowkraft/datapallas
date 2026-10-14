@@ -487,6 +487,7 @@ ORDER BY cost_change DESC`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Cost change by department',
         dslConfig: { layout: 'fitColumns', autoColumns: true, pagination: false, theme: 'midnight' },
         columnSettings: {
           department: { columnTitle: 'Department' },

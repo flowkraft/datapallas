@@ -97,7 +97,9 @@
       root.style.cssText = "display:flex;flex-direction:column;justify-content:center;height:100%;padding:8px;font-family:inherit;";
 
       const header = document.createElement("div");
-      header.style.cssText = "display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;";
+      // A gap between the label and the value, and the value under the label in a narrow tile: they ran
+      // together ("Revenue vs annual target99.9% / 100%").
+      header.style.cssText = "display:flex;flex-wrap:wrap;column-gap:8px;justify-content:space-between;align-items:baseline;margin-bottom:6px;";
       const labelEl = document.createElement("div");
       labelEl.style.cssText = "font-size:11px;color:color-mix(in oklab, currentColor 60%, transparent);";
       labelEl.textContent = label;

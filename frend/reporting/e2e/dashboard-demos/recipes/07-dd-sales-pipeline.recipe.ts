@@ -267,7 +267,7 @@ ORDER BY deals DESC`,
         dslConfig: {
           type: 'funnel',
           data: { labelField: 'stage', datasets: [{ field: 'deals', label: 'Deals' }] },
-          options: { plugins: { title: { display: true, text: 'Open deals by stage' } } },
+          options: { plugins: { title: { display: true, text: 'Open deals by stage, any close date' } } },
         },
       },
       dsl: `chart {
@@ -285,7 +285,7 @@ ORDER BY deals DESC`,
     plugins {
       title {
         display true
-        text 'Open deals by stage'
+        text 'Open deals by stage, any close date'
       }
     }
   }
@@ -414,7 +414,7 @@ ORDER BY win_rate_pct DESC`,
     {
       kind: 'displayConfig',
       widget: 'tabulator',
-      config: { dslConfig: { layout: 'fitColumns', autoColumns: true, theme: 'modern' } },
+      config: { widgetTitle: 'Open deals closing in the window', dslConfig: { layout: 'fitColumns', autoColumns: true, theme: 'modern' } },
       shot: {
         title: 'Set up open deals',
         caption: 'On the **Display** tab, set the table\'s layout, page size and columns.',

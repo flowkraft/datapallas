@@ -459,6 +459,7 @@ ORDER BY revenue DESC`,
       kind: 'displayConfig',
       widget: 'map',
       config: {
+        widgetTitle: 'Revenue by country',
         mapType: 'region',
         region: 'world_countries',
         dimension: 'country_code',
@@ -513,6 +514,7 @@ LIMIT 20`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Top products',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

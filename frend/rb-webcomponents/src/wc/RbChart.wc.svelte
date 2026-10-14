@@ -26,6 +26,8 @@
   import { boxPlotFromDrawn, boxPlotFromRows } from '../shared/box-plot';
   import { applyChartNumberFormat, drawModeOf } from '../shared/chart-number-format';
   import { scalesToTheme } from '../shared/chart-scales';
+  import { splitSeriesName, withLegendRule } from '../shared/chart-legend';
+  import { applyDateLabels, applyShareStackMax } from '../shared/chart-axes';
 
   // DEBUG: counters for lifecycle events
   let _afterUpdateCount = 0;
@@ -151,7 +153,7 @@
           lookup[sv][lab] = toNum(row[valueField]);
         }
         const datasets = seriesOrder.map((sv) => ({
-          label: `${valueField} (${sv})`,
+          label: splitSeriesName(sv),
           data: labelOrder.map((lab) => lookup[sv][lab] ?? null),
         }));
         return { labels: labelOrder, datasets };
@@ -290,6 +292,9 @@
     const o = (cfg.options = cfg.options || {});
     if (o.color === undefined) o.color = c.text;
     o.plugins = { ...(o.plugins || {}) };
+    // A legend for two series up, as Explore Data does (shared/chart-legend).
+    const legend = withLegendRule(cfg.type, (cfg.data?.datasets || []).length, o.plugins.legend);
+    if (legend !== o.plugins.legend) o.plugins.legend = legend;
     if (o.plugins.legend?.display !== false) {
       o.plugins.legend = { ...(o.plugins.legend || {}) };
       o.plugins.legend.labels = Object.assign({ color: c.text }, o.plugins.legend.labels);
@@ -302,12 +307,22 @@
       sc.ticks = Object.assign({ color: c.text }, sc.ticks);
       sc.grid = Object.assign({ color: c.grid }, sc.grid);
       sc.border = Object.assign({ color: c.grid }, sc.border);
+      // An axis title the author wrote reads in the page's text colour too, not Chart.js's grey.
+      if (sc.title && typeof sc.title === 'object') sc.title = Object.assign({ color: c.text }, sc.title);
     }
     if (RB_SINGLE_COLOR_TYPES.has(cfg.type)) {
       (cfg.data?.datasets || []).forEach((ds: any, i: number) => {
         const col = c.palette[i % c.palette.length];
         if (ds.backgroundColor === undefined) ds.backgroundColor = cfg.type === 'line' ? rbToAlpha(col, 0.25) : col;
         if (ds.borderColor === undefined) ds.borderColor = col;
+      });
+    } else if (cfg.type === 'boxplot') {
+      (cfg.data?.datasets || []).forEach((ds: any) => {
+        // Marked as the page's, so a theme swap re-colours it; a median colour the author set stays.
+        if (ds.medianColor === undefined || ds.rbMedianFromTheme) {
+          ds.medianColor = c.text;
+          ds.rbMedianFromTheme = true;
+        }
       });
     } else if (c.named && (cfg.type === 'pie' || cfg.type === 'doughnut')) {
       // A slice at a time, which is what a pie of one dataset needs. Only for a set the author
@@ -475,10 +490,15 @@
       type: 'boxplot',
       data: {
         labels: boxes.labels,
+        // The house blue for the box, its whiskers and its outliers: the darker #2171b5 and the
+        // plugin's black outliers all but vanished on the dark theme. The median takes the page's
+        // text colour (rbApplyThemeColors), so it reads on both.
         datasets: boxes.datasets.map((ds) => ({
           ...ds,
           backgroundColor: 'rgba(80,158,227,0.4)',
-          borderColor: '#2171b5',
+          borderColor: '#509ee3',
+          outlierBackgroundColor: '#509ee3',
+          outlierBorderColor: '#509ee3',
           borderWidth: 1,
         })),
       },
@@ -653,6 +673,9 @@
       applyStackPercent(config);
       // Its numbers in the format its DSL names (#26): the value axis, the tooltips, the labels.
       applyChartNumberFormat(config);
+      // Date buckets written as months or quarters, a stack of shares up to 100 (shared/chart-axes).
+      applyDateLabels(config);
+      applyShareStackMax(config);
       lastDrawMode = drawModeOf(config.options);
       rbApplyThemeColors(config);
       const ctx2d = canvas?.getContext('2d');
@@ -892,6 +915,8 @@
         applyTopN(chart.config);
         applyStackPercent(chart.config);
         applyChartNumberFormat(chart.config);
+        applyDateLabels(chart.config);
+        applyShareStackMax(chart.config);
         rbApplyThemeColors(chart.config);
 
         try { chart.update(); } catch (err) { dispatch('chartError', { message: String(err) }); }

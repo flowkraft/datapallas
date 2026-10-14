@@ -314,6 +314,18 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
         await assertClaims(card, demo, checks.defaults, checks.kpis, 'after Reset');
       }
 
+      // A story asked straight after another answers alone: nothing the first one set is left in
+      // the bar (DD03's "Poland and Germany" under APAC read every tile empty).
+      if (stories.length >= 2) {
+        const [first, second] = stories;
+        await clickShowMe(card, demo, first.id);
+        await clickShowMe(card, demo, second.id);
+        const { params, kpis } = claimsOf(demo.id, second);
+        await assertClaims(card, demo, params, kpis, `after Show Me on '${first.id}' then on '${second.id}'`);
+        await clickReset(card, demo);
+        await assertClaims(card, demo, checks.defaults, checks.kpis, 'after Reset');
+      }
+
       await assertUniqueIds(card);
       await assertChartsFillTheirTiles(card, demo.id);
       // A card with a map drew it on real tiles: the watch below refuses a tile asked without a Referer.

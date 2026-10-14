@@ -47,6 +47,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Customer profile",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true
@@ -666,6 +667,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Last 20 orders",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true
@@ -797,6 +799,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Support tickets",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true

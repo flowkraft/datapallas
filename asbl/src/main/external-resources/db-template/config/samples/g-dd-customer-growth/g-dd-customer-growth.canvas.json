@@ -326,6 +326,7 @@
           "generatedSql": "SELECT \"country_code\", COUNT(\"customer_id\") AS \"customer_id_count\"\nFROM \"dash_demo\".\"customers\"\nWHERE \"segment\" = ${segment}\n  AND \"acquisition_channel\" IN (${acquisitionChannel})\nGROUP BY \"country_code\"\nORDER BY COUNT(\"customer_id\") DESC\nLIMIT 500"
         },
         "displayConfig": {
+          "widgetTitle": "Customers by country",
           "mapType": "region",
           "region": "world_countries",
           "dimension": "country_code",
@@ -389,6 +390,7 @@
           "sql": "SELECT c.name AS customer,\n       c.segment AS segment,\n       c.acquisition_channel AS acquisition_channel,\n       g.country AS country,\n       c.signup_date AS signup_date,\n       (SELECT round(o.total_amount, 2) FROM dash_demo.orders o\n        WHERE o.customer_id = c.customer_id\n          AND o.status <> 'cancelled'\n        ORDER BY o.order_ts\n        LIMIT 1) AS first_order_value\nFROM dash_demo.customers c\nJOIN dash_demo.geo_cities g ON g.city_id = c.city_id\nWHERE true\n  AND c.segment = ${segment}\n  AND c.acquisition_channel IN (${acquisitionChannel})\nORDER BY c.signup_date DESC\nLIMIT 200"
         },
         "displayConfig": {
+          "widgetTitle": "Newest customers",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

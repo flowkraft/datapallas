@@ -206,6 +206,7 @@
           "sql": "SELECT CAST(isodow(t.opened_ts) AS VARCHAR) || ' ' || strftime(t.opened_ts, '%a') AS weekday,\n       lpad(CAST(hour(t.opened_ts) AS VARCHAR), 2, '0') AS hour_of_day,\n       count(*) AS tickets\nFROM dash_demo.support_tickets t\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\nGROUP BY 1, 2\nORDER BY 1, 2"
         },
         "displayConfig": {
+          "widgetTitle": "Tickets by weekday and hour",
           "dslConfig": {
             "rows": [
               "weekday"
@@ -330,6 +331,7 @@
           "sql": "SELECT t.ticket_id AS ticket_id,\n       t.priority AS priority,\n       t.status AS status,\n       t.channel AS channel,\n       t.category AS category,\n       sa.name AS agent,\n       t.opened_ts::DATE AS opened_date,\n       date_diff('day', t.opened_ts, (SELECT a.as_of FROM dash_demo.as_of a)) AS days_waiting\nFROM dash_demo.support_tickets t\nLEFT JOIN dash_demo.support_agents sa ON sa.agent_id = t.agent_id\nWHERE true\n  AND t.priority IN (${priority})\n  AND t.agent_id IN (SELECT sa.agent_id FROM dash_demo.support_agents sa WHERE sa.team = ${team})\n  AND t.status IN ('open', 'pending')\n  AND t.priority IN ('urgent', 'high')\nORDER BY days_waiting DESC, t.ticket_id"
         },
         "displayConfig": {
+          "widgetTitle": "Open urgent and high tickets",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

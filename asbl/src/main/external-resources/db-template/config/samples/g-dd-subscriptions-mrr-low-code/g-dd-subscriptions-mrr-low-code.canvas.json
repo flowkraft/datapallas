@@ -526,6 +526,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Subscribers still active, by cohort, %",
           "dslConfig": {
             "aggregatorName": "Average",
             "rendererName": "Table Heatmap",

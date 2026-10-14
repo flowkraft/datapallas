@@ -65,7 +65,7 @@ GROUP BY 1, 2`,
     {
       kind: 'displayConfig',
       widget: 'pivot',
-      config: {},
+      config: { widgetTitle: 'Orders by weekday and hour' },
       dsl: `pivotTable {
   rows([
     'weekday'

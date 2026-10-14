@@ -372,6 +372,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Revenue from channel to category",
           "dslConfig": {
             "type": "bar",
             "data": {

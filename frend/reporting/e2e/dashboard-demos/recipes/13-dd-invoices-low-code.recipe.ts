@@ -422,6 +422,7 @@ WHERE date_trunc('month', p.paid_date) = date_trunc('month', (SELECT a.as_of FRO
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Invoices',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

@@ -236,7 +236,7 @@
               "color": "#ef8c8c"
             },
             {
-              "to": 1.5,
+              "to": 1,
               "color": "#f9d45c"
             },
             {
@@ -353,7 +353,7 @@
               "plugins": {
                 "title": {
                   "display": true,
-                  "text": "Open deals by stage"
+                  "text": "Open deals by stage, any close date"
                 }
               }
             }
@@ -538,6 +538,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Open deals closing in the window",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

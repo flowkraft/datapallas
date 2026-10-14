@@ -203,6 +203,7 @@
           "sql": "SELECT t.region AS region,\n       strftime(t.month, '%Y-%m') AS month,\n       round(100.0 * (coalesce(a.actual, 0) - t.revenue_target)\n                   / t.revenue_target, 2) AS variance_pct\nFROM dash_demo.sales_targets t\nLEFT JOIN (SELECT date_trunc('month', o.order_ts) AS m,\n                  g.region AS region,\n                  sum(o.total_amount) AS actual\n           FROM dash_demo.orders o\n           JOIN dash_demo.geo_cities g ON g.city_id = o.city_id\n           WHERE o.status <> 'cancelled'\n           GROUP BY 1, 2\n          ) a ON a.m = t.month AND a.region = t.region\nWHERE year(t.month) = year(CAST(${year} AS DATE))\nORDER BY 1, 2"
         },
         "displayConfig": {
+          "widgetTitle": "Variance to target by region and month, %",
           "dslConfig": {
             "rows": [
               "region"

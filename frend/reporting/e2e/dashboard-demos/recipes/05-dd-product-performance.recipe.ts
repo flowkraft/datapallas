@@ -369,6 +369,7 @@ LIMIT \${topN}`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'All products',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

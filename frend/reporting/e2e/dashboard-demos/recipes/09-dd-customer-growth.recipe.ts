@@ -383,6 +383,7 @@ ORDER BY 1, 2`,
       kind: 'displayConfig',
       widget: 'map',
       config: {
+        widgetTitle: 'Customers by country',
         mapType: 'region',
         region: 'world_countries',
         dimension: 'country_code',
@@ -533,6 +534,7 @@ LIMIT 200`,
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Newest customers',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

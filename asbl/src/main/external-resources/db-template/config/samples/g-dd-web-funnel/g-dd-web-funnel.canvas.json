@@ -311,6 +311,7 @@
           "sql": "SELECT CAST(isodow(s.started_ts) AS VARCHAR) || ' ' || strftime(s.started_ts, '%a') AS weekday,\n       lpad(CAST(hour(s.started_ts) AS VARCHAR), 2, '0') AS hour_of_day,\n       count(*) AS sessions\nFROM dash_demo.web_sessions s\nWHERE true\n  AND s.started_ts >= ${dateFrom}\n  AND s.started_ts < ${dateTo__next_day}\n  AND s.device IN (${device})\nGROUP BY 1, 2\nORDER BY 1, 2"
         },
         "displayConfig": {
+          "widgetTitle": "Sessions by weekday and hour",
           "dslConfig": {
             "rows": [
               "weekday"

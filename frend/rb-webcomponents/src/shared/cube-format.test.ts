@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { formatCell, formatMeasure, formatTime, measureFormatOf } from './cube-format.ts';
+import { dimensionText, formatCell, formatMeasure, formatTime, measureFormatOf } from './cube-format.ts';
 
 describe('a measure is written the way its cube declares it', () => {
   test('a currency is the cube currency, with cents', () => {
@@ -69,5 +69,19 @@ describe('a cell is written by what its column is', () => {
     assert.equal(formatCell(12, { format: 'currency', currency: 'GBP' }), '£12.00');
     assert.equal(formatCell('Germany', { }), 'Germany');
     assert.equal(formatCell('Germany', undefined), 'Germany');
+  });
+});
+
+describe('a dimension cell with no value', () => {
+  test('says (none), where an empty cell read as a missing label', () => {
+    const written = (value: unknown) => String(value);
+    assert.equal(dimensionText(null, written), '(none)');
+    assert.equal(dimensionText('', written), '(none)');
+    assert.equal(dimensionText(undefined, written), '(none)');
+  });
+
+  test('a value is written as its column writes it', () => {
+    assert.equal(dimensionText('2024-03-11', (value) => formatCell(value, { granularity: 'month' })), 'Mar 2024');
+    assert.equal(dimensionText(0, (value) => String(value)), '0');
   });
 });

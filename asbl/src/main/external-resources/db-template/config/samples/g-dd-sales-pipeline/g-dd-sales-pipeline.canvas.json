@@ -151,7 +151,7 @@
               "plugins": {
                 "title": {
                   "display": true,
-                  "text": "Open deals by stage"
+                  "text": "Open deals by stage, any close date"
                 }
               }
             }
@@ -246,6 +246,7 @@
           "generatedSql": "SELECT *\nFROM \"dash_demo\".\"crm_opportunities\"\nWHERE \"stage\" NOT IN ('won', 'lost')\n  AND \"expected_close_date\" >= ${closeFrom} AND \"expected_close_date\" < ${closeTo__next_day}\n  AND \"owner_employee_id\" = ${repEmployeeId}\nORDER BY CASE WHEN \"expected_close_date\" IS NULL THEN 1 ELSE 0 END, \"expected_close_date\" asc\nLIMIT 500"
         },
         "displayConfig": {
+          "widgetTitle": "Open deals closing in the window",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

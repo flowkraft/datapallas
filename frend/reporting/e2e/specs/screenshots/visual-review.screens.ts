@@ -55,8 +55,10 @@ import {
 import {
   CUBE_STORIES_PAGE_CARDS,
   CUBE_STORIES_REPORT_ID,
+  answerCardParams,
   asksOf,
   cardOf as cubeCardOf,
+  checksOf as cubeChecksOf,
   cardRoot,
   clickShowMe as cubeShowMe,
   createCubeStoriesShareLink,
@@ -577,6 +579,14 @@ test.describe('Visual review — Cube Stories', () => {
         // field tree and draws its answer, which is what a reader is invited to do first.
         const first = asksOf(card)[0];
         if (first) {
+          // A story that asks its reader to pick first (Customer Statement: "Pick Southridge Video
+          // SpA above the fields") is shown picked, as its check is: else it drew the whole book.
+          const locked = cubeChecksOf(cubeId).get(first.check)?.locked ?? {};
+          if (Object.keys(locked).length > 0) {
+            await answerCardParams(frame, cubeId,
+              Object.fromEntries(Object.entries(locked).map(([name, value]) => [name, String(value ?? '')])));
+            meta.notes.push(`picked first: ${JSON.stringify(locked)}`);
+          }
           await cubeShowMe(frame, cubeId, first.id)
             .catch((e) => meta.notes.push(`Show Me on ${first.id} failed: ${String(e).slice(0, 300)}`));
           meta.notes.push(`shown: Show Me on '${first.id}' (${first.question})`);

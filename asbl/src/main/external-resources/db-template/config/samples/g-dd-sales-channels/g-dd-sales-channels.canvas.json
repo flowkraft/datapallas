@@ -155,6 +155,7 @@
           "sql": "SELECT o.channel AS channel,\n       p.category AS category,\n       round(sum(l.line_amount), 2) AS revenue\nFROM dash_demo.orders o\nJOIN dash_demo.order_lines l ON l.order_id = o.order_id\nJOIN dash_demo.products p ON p.product_id = l.product_id\nWHERE o.status <> 'cancelled'\n  AND (o.status <> 'returned' OR ${includeReturns})\nGROUP BY 1, 2\nORDER BY revenue DESC"
         },
         "displayConfig": {
+          "widgetTitle": "Revenue from channel to category",
           "sourceField": "channel",
           "targetField": "category",
           "valueField": "revenue",

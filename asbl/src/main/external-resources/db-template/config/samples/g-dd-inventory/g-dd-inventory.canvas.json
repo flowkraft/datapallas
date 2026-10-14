@@ -190,6 +190,7 @@
           "sql": "SELECT pr.sku AS sku,\n       pr.name AS product,\n       pr.category AS category,\n       w.name AS warehouse,\n       sl.qty_on_hand AS qty_on_hand,\n       sl.reorder_level AS reorder_level,\n       greatest(sl.reorder_level - sl.qty_on_hand, sl.reorder_qty) AS suggested_order\nFROM dash_demo.stock_levels sl\nJOIN dash_demo.products pr ON pr.product_id = sl.product_id\nJOIN dash_demo.warehouses w ON w.warehouse_id = sl.warehouse_id\nWHERE true\n  AND w.name = ${warehouse}\n  AND pr.category IN (${category})\n  AND (sl.qty_on_hand < sl.reorder_level OR NOT ${belowReorderOnly})\nORDER BY suggested_order DESC, pr.sku"
         },
         "displayConfig": {
+          "widgetTitle": "Stock by SKU",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

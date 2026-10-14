@@ -40,6 +40,7 @@
           "sql": "SELECT c.name AS customer,\n       c.company_name AS company,\n       c.customer_type AS type,\n       c.segment AS segment,\n       c.acquisition_channel AS acquired_through,\n       c.signup_date AS customer_since,\n       (SELECT count(*) FROM dash_demo.orders o WHERE o.customer_id = c.customer_id) AS orders,\n       g.city AS city,\n       g.country AS country,\n       c.payment_terms_days AS payment_terms_days,\n       c.credit_limit AS credit_limit,\n       e.name AS account_manager\nFROM dash_demo.customers c\nJOIN dash_demo.geo_cities g ON g.city_id = c.city_id\nLEFT JOIN dash_demo.employees e ON e.employee_id = c.account_manager_id\nWHERE c.customer_id = ${customerId}"
         },
         "displayConfig": {
+          "widgetTitle": "Customer profile",
           "columnSettings": {
             "credit_limit": {
               "columnTitle": "Credit limit"
@@ -230,6 +231,7 @@
           "sql": "SELECT o.order_id AS order_id,\n       CAST(o.order_ts AS DATE) AS ordered,\n       o.channel AS channel,\n       o.status AS status,\n       o.carrier AS carrier,\n       o.promised_date AS promised,\n       CAST(o.delivered_ts AS DATE) AS delivered,\n       round(o.total_amount, 2) AS total_amount\nFROM dash_demo.orders o\nWHERE o.customer_id = ${customerId}\nORDER BY o.order_ts DESC\nLIMIT 20"
         },
         "displayConfig": {
+          "widgetTitle": "Last 20 orders",
           "columnSettings": {
             "total_amount": {
               "columnTitle": "Total"
@@ -253,6 +255,7 @@
           "sql": "SELECT t.ticket_id AS ticket_id,\n       CAST(t.opened_ts AS DATE) AS opened,\n       t.category AS category,\n       t.priority AS priority,\n       t.status AS status,\n       t.channel AS channel,\n       t.sla_breached AS sla_breached,\n       t.csat_score AS csat\nFROM dash_demo.support_tickets t\nWHERE t.customer_id = ${customerId}\nORDER BY t.opened_ts DESC"
         },
         "displayConfig": {
+          "widgetTitle": "Support tickets",
           "columnSettings": {
             "sla_breached": {
               "columnTitle": "SLA breached"

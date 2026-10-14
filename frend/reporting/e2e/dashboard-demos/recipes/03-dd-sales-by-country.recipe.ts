@@ -75,7 +75,7 @@ ORDER BY revenue DESC`,
     {
       kind: 'displayConfig',
       widget: 'map',
-      config: { mapType: 'region', region: 'world_countries', dimension: 'country', metric: 'revenue' },
+      config: { widgetTitle: 'Revenue by country', mapType: 'region', region: 'world_countries', dimension: 'country', metric: 'revenue' },
       shot: {
         title: 'Set up revenue by country',
         caption: 'On the **Display** tab, set the map\'s fields, label and format.',
@@ -193,6 +193,7 @@ ORDER BY orders DESC`,
       kind: 'displayConfig',
       widget: 'map',
       config: {
+        widgetTitle: 'Orders by city',
         mapType: 'pin',
         latField: 'latitude',
         lonField: 'longitude',
@@ -252,6 +253,7 @@ ORDER BY CASE WHEN bucket = 'Other countries' THEN 1 ELSE 0 END, growth_pct DESC
       kind: 'displayConfig',
       widget: 'tabulator',
       config: {
+        widgetTitle: 'Growth by country',
         dslConfig: {
           layout: 'fitColumns',
           autoColumns: true,

@@ -587,6 +587,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Customers by country",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true
@@ -723,6 +724,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Newest customers",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,

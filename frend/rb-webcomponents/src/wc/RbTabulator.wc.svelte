@@ -37,6 +37,7 @@
 <script lang="ts">
   import { applyTableExtras, withColumnFloor, type TableExtras } from '../shared/table-extras';
   import { withColumnNumberFormats } from '../shared/column-format';
+  import { withReaderTitles } from '../shared/column-titles';
   import {
     onMount,
     afterUpdate,
@@ -617,8 +618,10 @@
 
     // A table made from its data writes its numbers the way the Canvas wrote them: money, a share,
     // a plain number (shared/column-format). A column whose definition says how is left to it.
+    // A column named the way a query names one (`growth_pct`) is headed the way a reader writes it
+    // ("Growth %", shared/column-titles); a title its definition gives is left to it.
     if ((opts as any).autoColumns === true && !opts.columns && Array.isArray(opts.data)) {
-      const definitions = withColumnNumberFormats((opts as any).autoColumnsDefinitions, opts.data);
+      const definitions = withReaderTitles(withColumnNumberFormats((opts as any).autoColumnsDefinitions, opts.data), opts.data);
       if (definitions !== undefined) (opts as any).autoColumnsDefinitions = definitions;
     }
 

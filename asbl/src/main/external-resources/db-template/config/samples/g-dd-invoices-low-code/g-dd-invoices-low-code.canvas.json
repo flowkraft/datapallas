@@ -648,6 +648,7 @@
           "executeVersion": 1
         },
         "displayConfig": {
+          "widgetTitle": "Invoices",
           "dslConfig": {
             "layout": "fitColumns",
             "autoColumns": true,
