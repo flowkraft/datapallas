@@ -2881,7 +2881,9 @@ test('(canvas mechanics) D01 every TODO 5e defect fix works', async () => {
         .toContain('Order total');
       expect(byId(cId).displayConfig.columnSettings, 'an untouched Tabulator stores no columnSettings').toBeUndefined();
       const untouched = await fTabulatorText(page, pubC);
-      expect(untouched, 'and renders its columns as before').toContain('segment');
+      // A published table made from its data heads a query-named column the way a reader writes it
+      // (shared/column-titles): `segment` is "Segment".
+      expect(untouched, 'and renders its columns as before').toContain('Segment');
       expect(untouched).not.toContain('Order total');
 
       // 4. TODO 5e item 4: the two DSL toggles have distinct ids.
