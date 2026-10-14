@@ -170,8 +170,6 @@
   // What the map frames: the data's bounds, kept so that the box can be framed again once it has its
   // real size (fitToData). Null when the author set a centre and zoom, or turned fitting off.
   let fitTarget: any = null;
-  // The middles of the regions framed, framed instead when the box cannot show them whole (fitToData).
-  let fitCore: any = null;
   let resolved: ResolvedOptions = {
     mapType: "region", region: "world_countries", dimension: "", metric: "",
     latField: "", lonField: "", geoJsonUrl: "", geoJsonKey: "", tileUrl: "",
@@ -431,7 +429,7 @@
       } else {
         layerGroup.clearLayers();
       }
-      fitTarget = fitCore = null;
+      fitTarget = null;
       publishShapeCount();
 
       if (!data || data.length === 0) return;
@@ -447,7 +445,7 @@
       publishShapeCount();
 
       if (resolved.center && resolved.zoom != null) {
-        fitTarget = fitCore = null;
+        fitTarget = null;
         mapInstance.setView(resolved.center, resolved.zoom);
       }
     } catch (err: any) {
@@ -482,23 +480,12 @@
    * Without the zoom animation: an animated fit ends a few frames later, and on a box that had left
    * the page by then (a Cube Stories panel closed by the next one) Leaflet threw on its own
    * (`_leaflet_pos` of undefined), outside any try.
-   *
-   * A box too wide and short to show the regions whole (the world fills its width first,
-   * `fillWithWorld`) frames their middles instead: framed by their edges, Canada's Arctic islands
-   * and Australia's south centred the view on Europe, and Brazil, one of the countries with
-   * orders, sat below the box.
    */
-  function fitToData(bounds?: any, core?: any) {
-    if (bounds !== undefined) { fitTarget = bounds; fitCore = core ?? null; }
+  function fitToData(bounds?: any) {
+    if (bounds !== undefined) fitTarget = bounds;
     if (!mapInstance || !fitTarget || !container || !container.isConnected
         || container.clientWidth === 0 || container.clientHeight === 0) return;
-    try {
-      mapInstance.fitBounds(fitTarget, { animate: false });
-      // Re-centred only, at the zoom the box allows: the middles of one region are a point.
-      if (fitCore && !mapInstance.getBounds().contains(fitTarget)) {
-        mapInstance.fitBounds(fitCore, { animate: false, maxZoom: mapInstance.getZoom() });
-      }
-    } catch {}
+    try { mapInstance.fitBounds(fitTarget, { animate: false }); } catch {}
   }
 
   function publishShapeCount() {
@@ -615,10 +602,8 @@
     }
 
     const colorFor = buildQuantileScale([...metricByKey.values()], r.colorScale);
-    // The regions the data answers for: the map frames them, not the whole world, or their middles
-    // when the box cannot show them whole (fitToData).
+    // The regions the data answers for: the map frames them, not the whole world (fitToData).
     const answered = L.latLngBounds([]);
-    const middles = L.latLngBounds([]);
 
     const layer = L.geoJSON(geo, {
       style: (feature: any) => {
@@ -640,10 +625,7 @@
           feature.properties?.ADMIN ??
           fk;
         const metricVal = row ? row[r.metric] : null;
-        if (row && typeof fLayer.getBounds === "function") {
-          answered.extend(fLayer.getBounds());
-          middles.extend(fLayer.getBounds().getCenter());
-        }
+        if (row && typeof fLayer.getBounds === "function") answered.extend(fLayer.getBounds());
         fLayer.bindTooltip(
           `<strong>${escapeHtml(String(regionName))}</strong>` +
           (metricVal == null ? "<br><em>no data</em>" : `<br>${escapeHtml(r.metric)}: ${formatNumber(Number(metricVal))}`),
@@ -662,10 +644,7 @@
     layerGroup.addLayer(layer);
 
     if (r.fitBounds) {
-      try {
-        if (answered.isValid()) fitToData(answered.pad(0.05), middles.pad(0.05));
-        else fitToData(layer.getBounds().pad(0.05));
-      } catch {}
+      try { fitToData((answered.isValid() ? answered : layer.getBounds()).pad(0.05)); } catch {}
     }
   }
 

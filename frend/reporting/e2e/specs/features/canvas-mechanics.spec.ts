@@ -8170,9 +8170,14 @@ async function m108ClickRegion(page: Page, mapId: string, code: string): Promise
           if (names.includes(wanted)) region = layer;
         });
         if (!region) return null;
-        const point = map.latLngToContainerPoint(region.getBounds().getCenter());
+        const middle = region.getBounds().getCenter();
         const rect = map.getContainer().getBoundingClientRect();
-        if (point.x < 0 || point.y < 0 || point.x > rect.width || point.y > rect.height) return null;
+        const outside = (p: { x: number; y: number }) => p.x < 0 || p.y < 0 || p.x > rect.width || p.y > rect.height;
+        // A box too wide and short for every country with orders frames where most of them are
+        // (Europe); a reader drags the map to the country, and so does the test.
+        if (outside(map.latLngToContainerPoint(middle))) map.panTo(middle, { animate: false });
+        const point = map.latLngToContainerPoint(middle);
+        if (outside(point)) return null;
         return { x: rect.x + point.x, y: rect.y + point.y };
       }, code);
       return at !== null;
