@@ -139,6 +139,16 @@ export function formatCell(value: unknown, column: CubeColumnFormat | undefined)
 export const NO_DIMENSION_VALUE = '(none)';
 
 /**
+ * The narrowest a measure's column can be and still show its total whole. The total is written bold
+ * and is often the longest number of its column, and a column as wide as its values cut it
+ * ("€16,314,81..." under "€9,517,674.41"): about 9 px a character at the table's size, plus the
+ * cell's padding.
+ */
+export function totalColumnWidth(total: string): number {
+  return Math.ceil(String(total ?? '').length * 9) + 20;
+}
+
+/**
  * A dimension's cell: its value written as its column writes it, or `(none)` for a row with no value
  * (Online Sales had a row of 240 orders under an empty country cell, which read as a missing label).
  */

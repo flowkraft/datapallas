@@ -131,25 +131,28 @@
         if (prev >= max) break;
       }
 
-      // Needle.
+      // Needle: its outer part only, from inside the arc to the band. Drawn from the centre it ran
+      // through the value written above the centre ("93.9%" crossed out on DD20, DD07, DD08, DD15,
+      // DD21); out here it clears the digits at any angle.
       const needleAngle = valueToAngle(value);
-      const nx = cx + Math.cos(needleAngle) * (radius - arcWidth * 0.2);
-      const ny = cy + Math.sin(needleAngle) * (radius - arcWidth * 0.2);
+      const needleAt = (r: number) => [cx + Math.cos(needleAngle) * r, cy + Math.sin(needleAngle) * r];
+      const [ix, iy] = needleAt(radius * 0.72);
+      const [nx, ny] = needleAt(radius - arcWidth * 0.2);
       const needle = document.createElementNS(svgNS, "line");
-      needle.setAttribute("x1", String(cx));
-      needle.setAttribute("y1", String(cy));
+      needle.setAttribute("x1", String(ix));
+      needle.setAttribute("y1", String(iy));
       needle.setAttribute("x2", String(nx));
       needle.setAttribute("y2", String(ny));
       // The page's text colour: the fixed #333 vanished on the dark theme.
       needle.setAttribute("stroke", "currentColor");
-      needle.setAttribute("stroke-width", "2.5");
+      needle.setAttribute("stroke-width", "3.5");
       needle.setAttribute("stroke-linecap", "round");
       svg.appendChild(needle);
 
       const hub = document.createElementNS(svgNS, "circle");
-      hub.setAttribute("cx", String(cx));
-      hub.setAttribute("cy", String(cy));
-      hub.setAttribute("r", "4");
+      hub.setAttribute("cx", String(ix));
+      hub.setAttribute("cy", String(iy));
+      hub.setAttribute("r", "3.5");
       hub.setAttribute("fill", "currentColor");
       svg.appendChild(hub);
 

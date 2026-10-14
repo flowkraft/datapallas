@@ -1,5 +1,6 @@
 /**
- * Two things a chart's category and value axes say that the query cannot.
+ * What a chart's category and value axes say that the query cannot: its dates, its shares, the
+ * values kept the database's way, and the room its bubbles need.
  *
  * Dates. A query that groups by `date_trunc('month', ...)` hands the chart a date (`2024-01-01`, or
  * `2024-01-01T00:00:00`) per month, and the axis wrote each one in full, rotated, 33 times a chart:
@@ -46,13 +47,36 @@ export function dateLabelWriter(labels: unknown[] | undefined): ((label: unknown
   };
 }
 
+/** A value as the database keeps it: lower-case words joined by `_` (`paid_social`, `sales_rep`). */
+const SNAKE_VALUE_RX = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/;
+
+/** `paid_social` as a reader writes it: `Paid social`. Anything else as it is. */
+export function readableValue(label: unknown): string {
+  const text = String(label ?? '');
+  if (!SNAKE_VALUE_RX.test(text)) return text;
+  const words = text.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /**
- * Write a built chart's date labels as their buckets, in place: the category axis's ticks and the
- * tooltip's title. A tick or title callback the configuration already has is left to it.
+ * @returns how to write labels some of which are kept the database's way (`paid_social`), or null
+ *          when none is (they are written as they are)
+ */
+export function readableLabelWriter(labels: unknown[] | undefined): ((label: unknown) => string) | null {
+  if (!Array.isArray(labels) || !labels.some((label) => SNAKE_VALUE_RX.test(String(label ?? '')))) return null;
+  return readableValue;
+}
+
+/**
+ * Write a built chart's category labels for a reader, in place: date buckets as their buckets,
+ * values kept the database's way in words (`paid_social` reads `Paid social`). The category axis's
+ * ticks and the tooltip's title; a tick or title callback the configuration already has is left to
+ * it. The labels themselves are not touched: a click filters by the value as the database has it.
  */
 export function applyDateLabels(config: any): void {
   if (!config || NO_CATEGORY_AXIS.has(config.type)) return;
-  const write = dateLabelWriter(config.data?.labels);
+  const dates = dateLabelWriter(config.data?.labels);
+  const write = dates ?? readableLabelWriter(config.data?.labels);
   if (!write) return;
   const options = (config.options = { ...(config.options || {}) });
   const axis = options.indexAxis === 'y' ? 'y' : 'x';
@@ -60,8 +84,8 @@ export function applyDateLabels(config: any): void {
   const scale = (scales[axis] = { ...(scales[axis] || {}) });
   const ticks = (scale.ticks = { ...(scale.ticks || {}) });
   // A weekly axis has 50 dates and rotated them all: one reading line, Chart.js skipping what does not fit.
-  if (ticks.maxRotation === undefined) ticks.maxRotation = 0;
-  if (ticks.autoSkip === undefined) ticks.autoSkip = true;
+  if (dates && ticks.maxRotation === undefined) ticks.maxRotation = 0;
+  if (dates && ticks.autoSkip === undefined) ticks.autoSkip = true;
   if (ticks.callback === undefined) {
     ticks.callback = function (this: any, value: unknown, index: number) {
       const label = typeof this?.getLabelForValue === 'function' ? this.getLabelForValue(value) : config.data?.labels?.[index];
@@ -105,4 +129,23 @@ export function applyShareStackMax(config: any): void {
   if (!stacksAreShares(config.data?.datasets)) return;
   options.scales = { ...options.scales, [valueAxis]: { ...scale, min: scale.min ?? 0, max: 100 } };
   config.options = options;
+}
+
+/** The room a bubble chart leaves past its largest values, so its biggest bubbles stay whole. */
+const BUBBLE_GRACE = '12%';
+
+/**
+ * Leave room for a bubble's radius at both ends of both axes, in place. Chart.js ends its axes at
+ * the data and clips what lies beyond, so the bubble at the top was drawn cut off and over the
+ * chart's title (DD05's AeroDesk Pro). A `grace` or a range the configuration names is left to it.
+ */
+export function applyBubbleRoom(config: any): void {
+  if (!config || config.type !== 'bubble') return;
+  const options = (config.options = { ...(config.options || {}) });
+  const scales = (options.scales = { ...(options.scales || {}) });
+  for (const axis of ['x', 'y']) {
+    const scale = scales[axis] || {};
+    if (scale.grace !== undefined || scale.min !== undefined || scale.max !== undefined) continue;
+    scales[axis] = { ...scale, grace: BUBBLE_GRACE };
+  }
 }

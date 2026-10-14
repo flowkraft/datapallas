@@ -6,7 +6,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyDateLabels, applyShareStackMax, dateLabelWriter, stacksAreShares } from './chart-axes.ts';
+import { applyBubbleRoom, applyDateLabels, applyShareStackMax, dateLabelWriter, readableValue, stacksAreShares } from './chart-axes.ts';
 
 describe('date buckets on a category axis', () => {
   test('months are written as the month', () => {
@@ -75,6 +75,38 @@ describe('a built chart writes its date labels as buckets', () => {
   });
 });
 
+describe('values kept the database\'s way, written for a reader', () => {
+  test('words joined by _ read as words', () => {
+    assert.equal(readableValue('paid_social'), 'Paid social');
+    assert.equal(readableValue('sales_rep'), 'Sales rep');
+    assert.equal(readableValue('no_longer_needed'), 'No longer needed');
+  });
+
+  test('anything else is left as it is', () => {
+    assert.equal(readableValue('web'), 'web');
+    assert.equal(readableValue('Smart Home'), 'Smart Home');
+    assert.equal(readableValue('order_ID'), 'order_ID');
+    assert.equal(readableValue(null), '');
+  });
+
+  test('on the axis and in the tooltip; the labels a click filters by stay', () => {
+    const config: any = { type: 'bar', data: { labels: ['paid_social', 'web'], datasets: [] }, options: {} };
+    applyDateLabels(config);
+    assert.deepEqual(config.data.labels, ['paid_social', 'web']);
+    const callback = config.options.scales.x.ticks.callback;
+    assert.equal(callback.call({ getLabelForValue: (v: number) => config.data.labels[v] }, 0, 0), 'Paid social');
+    assert.equal(config.options.plugins.tooltip.callbacks.title([{ label: 'web' }]), 'web');
+    // not dates: the axis keeps Chart.js's own rotation
+    assert.equal(config.options.scales.x.ticks.maxRotation, undefined);
+  });
+
+  test('a chart with no such value is left alone', () => {
+    const config: any = { type: 'bar', data: { labels: ['web', 'Smart Home'], datasets: [] }, options: {} };
+    applyDateLabels(config);
+    assert.equal(config.options.scales, undefined);
+  });
+});
+
 describe('a stacked chart of shares ends at 100', () => {
   const shares = () => ({
     type: 'line',
@@ -110,5 +142,25 @@ describe('a stacked chart of shares ends at 100', () => {
     mode.options.rbStack100 = true;
     applyShareStackMax(mode);
     assert.equal(mode.options.scales.y.max, undefined);
+  });
+});
+
+describe('a bubble chart', () => {
+  test('leaves room for its bubbles at both ends of both axes', () => {
+    const config: any = { type: 'bubble', data: { datasets: [] }, options: { scales: { y: { ticks: { color: '#ddd' } } } } };
+    applyBubbleRoom(config);
+    assert.equal(config.options.scales.x.grace, '12%');
+    assert.equal(config.options.scales.y.grace, '12%');
+    assert.equal(config.options.scales.y.ticks.color, '#ddd');
+  });
+
+  test('a range or a grace the configuration names is left to it; other charts are left alone', () => {
+    const config: any = { type: 'bubble', options: { scales: { x: { min: 0 }, y: { grace: 5 } } } };
+    applyBubbleRoom(config);
+    assert.equal(config.options.scales.x.grace, undefined);
+    assert.equal(config.options.scales.y.grace, 5);
+    const bar: any = { type: 'bar', options: {} };
+    applyBubbleRoom(bar);
+    assert.equal(bar.options.scales, undefined);
   });
 });

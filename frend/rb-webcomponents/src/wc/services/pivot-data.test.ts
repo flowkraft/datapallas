@@ -44,3 +44,22 @@ describe('a pivot', () => {
     assert.equal(pivotCellFormat(usFmtInt, [1.5]), usFmtInt);
   });
 });
+
+describe('a pivot of a share', () => {
+  test('of fractions writes them as percents', () => {
+    const write = pivotCellFormat(usFmt, [0.4912, 0.1262, null], 'MarginPct');
+    assert.equal(write(0.4912), '49.12%');
+    assert.equal(write(0.1262), '12.62%');
+  });
+
+  test('of points writes them with a percent sign', () => {
+    const write = pivotCellFormat(usFmt, [-15, 3.5, 100], 'variance_pct');
+    assert.equal(write(-15), '-15%');
+    assert.equal(write(3.5), '3.5%');
+  });
+
+  test('a field named otherwise, or a count of it, is written as before', () => {
+    assert.equal(pivotCellFormat(usFmt, [417], 'orders')(417), '417');
+    assert.equal(pivotCellFormat(usFmtInt, [3], 'retained_pct'), usFmtInt);
+  });
+});

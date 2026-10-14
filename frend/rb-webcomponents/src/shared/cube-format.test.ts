@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { dimensionText, formatCell, formatMeasure, formatTime, measureFormatOf } from './cube-format.ts';
+import { dimensionText, formatCell, formatMeasure, formatTime, measureFormatOf, totalColumnWidth } from './cube-format.ts';
 
 describe('a measure is written the way its cube declares it', () => {
   test('a currency is the cube currency, with cents', () => {
@@ -69,6 +69,15 @@ describe('a cell is written by what its column is', () => {
     assert.equal(formatCell(12, { format: 'currency', currency: 'GBP' }), '£12.00');
     assert.equal(formatCell('Germany', { }), 'Germany');
     assert.equal(formatCell('Germany', undefined), 'Germany');
+  });
+});
+
+describe('a total under its column', () => {
+  test('its column is wide enough for it, longer totals wider', () => {
+    const total = formatMeasure(16314812.37, 'currency', 'EUR');
+    assert.equal(total, '€16,314,812.37');
+    assert.ok(totalColumnWidth(total) >= 14 * 8 + 16);
+    assert.ok(totalColumnWidth('1,700') < totalColumnWidth(total));
   });
 });
 

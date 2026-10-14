@@ -15,6 +15,7 @@ import type {
   ValueFilter,
   SortOrder,
 } from './pivot-types';
+import { namedKindOf } from '../../shared/chart-name-format.ts';
 
 // ============================================================================
 // Number formatting utilities
@@ -169,9 +170,20 @@ export const usFmt = (x: number): string => (Number.isInteger(x) ? usFmtInt(x) :
  * How a pivot writes its cells: whole numbers without decimals only when every cell of it is whole
  * (a sum of tickets); else two decimals in every cell, or an average of 100 sat as "100" beside
  * "99.10" in the same column (DD15, DD10, DD08). A formatter other than `usFmt` is left as it is.
+ *
+ * A value field named as a share (`retained_pct`, `MarginPct`: shared/chart-name-format) is written
+ * as one, as the charts write it: DD16's margin read 0.49 beside the KPI's 32.91%. A share is a
+ * fraction when every cell is between -1 and 1 (0.49 is 49%), else it is in points (34.2 is 34.2%).
  */
-export function pivotCellFormat(format: (x: any) => string, cells: unknown[]): (x: any) => string {
+export function pivotCellFormat(format: (x: any) => string, cells: unknown[], field?: string): (x: any) => string {
   if (format !== usFmt) return format;
+  if (field && namedKindOf(field) === 'share') {
+    const nums = cells.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+    const fraction = nums.length > 0 && nums.every((v) => Math.abs(v) <= 1);
+    return (x: any) => (typeof x === 'number' && Number.isFinite(x)
+      ? (fraction ? x * 100 : x).toLocaleString('en-US', { maximumFractionDigits: 2 }) + '%'
+      : format(x));
+  }
   const whole = cells.every((v) => typeof v !== 'number' || !Number.isFinite(v) || Number.isInteger(v));
   return whole ? usFmt : (x: any) => (typeof x === 'number' ? usFmt2(x) : format(x));
 }

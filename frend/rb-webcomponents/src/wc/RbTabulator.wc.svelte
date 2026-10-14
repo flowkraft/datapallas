@@ -213,6 +213,8 @@
 .rb-tabulator-root[data-rb-theme-mode="dark"] .tabulator .tabulator-row.tabulator-selected .tabulator-cell { color: #fff !important; }
 .rb-tabulator-root[data-rb-theme-mode="dark"] .tabulator .tabulator-footer .tabulator-page-size { background-color: #222 !important; color: #ddd !important; border: 1px solid #444 !important; }
 .rb-tabulator-root[data-rb-theme-mode="dark"] .tabulator .tabulator-footer .tabulator-page:hover { color: #fff !important; }
+/* The midnight theme writes the page numbers it does not show in #333: dark grey on its grey buttons. */
+.rb-tabulator-root[data-rb-theme-mode="dark"] .tabulator .tabulator-footer .tabulator-page:not(.active) { color: #ddd !important; }
 
 /* Moving row clone — Tabulator appends it to <body>, outside .rb-tabulator-root.
    Default theme gives it a white/light background, so force dark text for contrast. */

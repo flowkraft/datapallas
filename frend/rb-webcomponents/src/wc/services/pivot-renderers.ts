@@ -6,6 +6,8 @@
 import { PivotData, pivotCellFormat } from './pivot-data';
 import type { ChartJSData, ChartJSDataset, HeatmapMode, PivotDataProps } from './pivot-types';
 import { paintedCellStyle } from '../../shared/readable-text';
+import { dateLabelWriter } from '../../shared/chart-axes';
+import { readerTitle } from '../../shared/column-titles';
 
 // ============================================================================
 // Table Helper Functions
@@ -41,16 +43,38 @@ export function spanSize(arr: string[][], i: number, j: number): number {
   return len;
 }
 
+/** The colour of a heatmap's highest value: the house blue. Its lowest is white. */
+const HEAT_DEEPEST = [0x50, 0x9e, 0xe3];
+
 /**
- * Default red color scale generator for heatmaps
+ * A heatmap's colour scale: white for the lowest value up to the house blue for the highest. It was
+ * white to red, and red read as bad on every pivot whose high values are good (the best margin,
+ * DD16; a month above its target, DD08). A cell's text takes the colour that reads on it
+ * (shared/readable-text). Every value the same, every cell is the deepest: there is no low one.
  */
-export function redColorScaleGenerator(values: number[]): (x: number) => { backgroundColor: string } {
+export function heatColorScaleGenerator(values: number[]): (x: number) => { backgroundColor: string } {
   const min = Math.min(...values);
   const max = Math.max(...values);
   return (x: number) => {
-    const nonRed = 255 - Math.round((255 * (x - min)) / (max - min));
-    return { backgroundColor: `rgb(255,${nonRed},${nonRed})` };
+    const t = max > min ? (x - min) / (max - min) : 1;
+    const [r, g, b] = HEAT_DEEPEST.map((c) => Math.round(255 - (255 - c) * t));
+    return { backgroundColor: `rgb(${r},${g},${b})` };
   };
+}
+
+/**
+ * How a pivot writes the keys of one of its fields: a field of date buckets (`date_trunc('quarter',
+ * ...)` hands it 2024-10-01) as the buckets a chart's axis writes (2024 Q4, shared/chart-axes), any
+ * other as it is. Only the header changes: a cell's data-row / data-col keep the value a click
+ * filters by.
+ */
+function keyWriter(keys: any[][], level: number): (key: unknown) => string {
+  return dateLabelWriter(keys.map((key) => key[level])) ?? ((key: unknown) => String(key));
+}
+
+/** A field named the way a query names one (`hour_of_day`) is headed the way a reader writes it. */
+function fieldTitle(field: string): string {
+  return readerTitle(field) ?? field;
 }
 
 // ============================================================================
@@ -77,7 +101,7 @@ export function renderPivotTableHTML(
 ): string {
   const {
     heatmapMode,
-    colorScaleGenerator = redColorScaleGenerator,
+    colorScaleGenerator = heatColorScaleGenerator,
     showRowTotals = true,
     showColTotals = true,
   } = options;
@@ -95,8 +119,9 @@ export function renderPivotTableHTML(
   const grandTotalAggregator = pivotData.getAggregator([], []);
   const cellValues: unknown[] = [];
   rowKeys.forEach((r) => colKeys.forEach((c) => cellValues.push(pivotData.getAggregator(r, c).value())));
-  /** Every cell and total of the pivot written alike (`pivotCellFormat`). */
-  const write = (agg: { format: (x: any) => string }, v: any) => pivotCellFormat(agg.format, cellValues)(v);
+  /** Every cell and total of the pivot written alike (`pivotCellFormat`), a share as a share. */
+  const valueField = (pivotData.props.vals || [])[0];
+  const write = (agg: { format: (x: any) => string }, v: any) => pivotCellFormat(agg.format, cellValues, valueField)(v);
 
   // Prepare heatmap color functions
   let valueCellColors: (r: string[], c: string[], v: number) => { backgroundColor?: string } = () => ({});
@@ -149,6 +174,9 @@ export function renderPivotTableHTML(
     }
   }
 
+  const colKeyText = colAttrs.map((_, j) => keyWriter(colKeys, j));
+  const rowKeyText = rowAttrs.map((_, j) => keyWriter(rowKeys, j));
+
   // Build HTML
   let html = '<table class="pvtTable">';
 
@@ -161,13 +189,13 @@ export function renderPivotTableHTML(
     if (j === 0 && rowAttrs.length !== 0) {
       html += `<th colspan="${rowAttrs.length}" rowspan="${colAttrs.length}"></th>`;
     }
-    html += `<th class="pvtAxisLabel">${escapeHtml(c)}</th>`;
+    html += `<th class="pvtAxisLabel">${escapeHtml(fieldTitle(c))}</th>`;
     
     colKeys.forEach((colKey, i) => {
       const x = spanSize(colKeys, i, j);
       if (x !== -1) {
         const rowspan = j === colAttrs.length - 1 && rowAttrs.length !== 0 ? 2 : 1;
-        html += `<th class="pvtColLabel" colspan="${x}" rowspan="${rowspan}">${escapeHtml(String(colKey[j]))}</th>`;
+        html += `<th class="pvtColLabel" colspan="${x}" rowspan="${rowspan}">${escapeHtml(colKeyText[j](colKey[j]))}</th>`;
       }
     });
     
@@ -182,7 +210,7 @@ export function renderPivotTableHTML(
   if (rowAttrs.length !== 0) {
     html += '<tr>';
     rowAttrs.forEach((r) => {
-      html += `<th class="pvtAxisLabel">${escapeHtml(r)}</th>`;
+      html += `<th class="pvtAxisLabel">${escapeHtml(fieldTitle(r))}</th>`;
     });
     if (effectiveShowRowTotals) {
       html += `<th class="pvtTotalLabel">${colAttrs.length === 0 ? 'Totals' : ''}</th>`;
@@ -204,7 +232,7 @@ export function renderPivotTableHTML(
       const x = spanSize(rowKeys, i, j);
       if (x !== -1) {
         const colspan = j === rowAttrs.length - 1 && colAttrs.length !== 0 ? 2 : 1;
-        html += `<th class="pvtRowLabel" rowspan="${x}" colspan="${colspan}">${escapeHtml(String(txt))}</th>`;
+        html += `<th class="pvtRowLabel" rowspan="${x}" colspan="${colspan}">${escapeHtml(rowKeyText[j](txt))}</th>`;
       }
     });
     

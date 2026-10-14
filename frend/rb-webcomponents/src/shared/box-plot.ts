@@ -5,6 +5,8 @@
  * both give the same boxes.
  */
 
+import { readerTitle } from './column-titles.ts';
+
 export interface BoxPlotData {
   labels: string[];
   datasets: { label: string; data: number[][] }[];
@@ -49,4 +51,28 @@ export function boxPlotFromDrawn(drawn: any): BoxPlotData {
     return { label: String(ds?.label ?? `Series ${d + 1}`), data: labels.map((k) => groups.get(k)!) };
   });
   return { labels, datasets };
+}
+
+/** The figures of a box, in the order a reader reads one: from the top. */
+const BOX_FIGURES: [string, string][] = [
+  ['max', 'Max'], ['q3', '75%'], ['median', 'Median'], ['mean', 'Mean'], ['q1', '25%'], ['min', 'Min'],
+];
+
+const plainNumber = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
+/**
+ * A box's tooltip, a line a figure, under its series headed the way a reader writes it. The plugin
+ * wrote it on one line - "delivery_days: (min: 1, 25% quantile: 3, median: 5, mean: 5.2, 75%
+ * quantile: 7, max: 12)" - that ran off the tile (DD20, DD22). A hovered outlier says its value.
+ */
+export function boxTooltipLines(series: string, stats: any, outlierIndex = -1,
+  write: (n: number) => string = plainNumber): string[] {
+  const name = readerTitle(series) ?? series;
+  if (!stats || typeof stats !== 'object') return name ? [name] : [];
+  const outlier = Array.isArray(stats.outliers) ? stats.outliers[outlierIndex] : undefined;
+  if (outlierIndex >= 0 && typeof outlier === 'number') return [`${name ? name + ': ' : ''}outlier ${write(outlier)}`];
+  const lines = BOX_FIGURES
+    .filter(([key]) => typeof stats[key] === 'number' && Number.isFinite(stats[key]))
+    .map(([key, title]) => `${title}: ${write(stats[key])}`);
+  return name ? [name, ...lines] : lines;
 }

@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { boxPlotFromDrawn, boxPlotFromRows } from './box-plot.ts';
+import { boxPlotFromDrawn, boxPlotFromRows, boxTooltipLines } from './box-plot.ts';
 
 const rows = [
   { carrier: 'UPS', delivery_days: 2 },
@@ -40,5 +40,22 @@ describe('box plot data', () => {
     assert.deepEqual(boxPlotFromDrawn({ labels: [], datasets: [] }), { labels: [], datasets: [] });
     assert.deepEqual(boxPlotFromDrawn(undefined), { labels: [], datasets: [] });
     assert.deepEqual(boxPlotFromRows([], 'x', 'y').labels, []);
+  });
+});
+
+describe('a box\'s tooltip', () => {
+  const stats = { min: 1, q1: 3, median: 5, mean: 5.2345, q3: 7, max: 12, outliers: [19] };
+
+  test('a line a figure, from the top, under the series headed for a reader', () => {
+    assert.deepEqual(boxTooltipLines('delivery_days', stats),
+      ['Delivery days', 'Max: 12', '75%: 7', 'Median: 5', 'Mean: 5.23', '25%: 3', 'Min: 1']);
+  });
+
+  test('a hovered outlier says its value', () => {
+    assert.deepEqual(boxTooltipLines('delivery_days', stats, 0), ['Delivery days: outlier 19']);
+  });
+
+  test('no figures: just the series', () => {
+    assert.deepEqual(boxTooltipLines('Salary', null), ['Salary']);
   });
 });

@@ -224,8 +224,9 @@ async function shootTiles(root: Locator, item: string, theme: string, meta: Meta
 }
 
 /**
- * Every chart's tooltip, as a reader gets it: the mouse on the chart's first drawn point (the point
- * Chart.js itself puts its tooltip on; the middle of a bar), and a picture of the chart's tile.
+ * Every chart's tooltip, as a reader gets it: the mouse on the chart's first drawn point that shows
+ * one (the middle of a bar, else the point Chart.js itself puts its tooltip on), and a picture of the
+ * chart's tile.
  */
 async function shootHovers(page: Page, root: Locator, item: string, theme: string, meta: Meta): Promise<void> {
   const charts = root.locator('rb-chart');
@@ -235,31 +236,44 @@ async function shootHovers(page: Page, root: Locator, item: string, theme: strin
     const file = shotPath(item, `hover-${pad(i + 1)}-${theme}`);
     try {
       await chart.scrollIntoViewIfNeeded({ timeout: 10_000 });
-      const point = await chart.evaluate((host) => {
+      const points = await chart.evaluate((host) => {
         const drawn: any = (host as any).getChartInstance?.();
-        if (!drawn) return null;
+        if (!drawn) return [];
+        const rect = drawn.canvas.getBoundingClientRect();
+        const found: { x: number; y: number }[] = [];
         for (let d = 0; d < (drawn.data?.datasets?.length ?? 0); d++) {
+          if (drawn.isDatasetVisible && !drawn.isDatasetVisible(d)) continue;
           const element = drawn.getDatasetMeta(d)?.data?.find((one: any) => one && !one.skip);
           if (!element) continue;
-          let at = element.tooltipPosition ? element.tooltipPosition(true) : { x: element.x, y: element.y };
           // A bar's tooltip position is its end, the very edge of it, where the mouse is often off
-          // the bar: the middle of the bar is on it.
+          // the bar: the middle of the bar is on it. A box plot also has a base, and the middle down to
+          // it misses the box: there Chart.js's own point is tried next.
           if (typeof element.base === 'number') {
-            at = element.horizontal
-              ? { x: (element.x + element.base) / 2, y: element.y }
-              : { x: element.x, y: (element.y + element.base) / 2 };
+            found.push(element.horizontal
+              ? { x: rect.left + (element.x + element.base) / 2, y: rect.top + element.y }
+              : { x: rect.left + element.x, y: rect.top + (element.y + element.base) / 2 });
           }
-          const rect = drawn.canvas.getBoundingClientRect();
-          return { x: rect.left + at.x, y: rect.top + at.y };
+          const at = element.tooltipPosition ? element.tooltipPosition(true) : { x: element.x, y: element.y };
+          found.push({ x: rect.left + at.x, y: rect.top + at.y });
         }
-        return null;
+        return found;
       });
-      if (!point) {
+      if (points.length === 0) {
         meta.notes.push(`chart ${i + 1}: no drawn point to hover`);
         continue;
       }
-      await page.mouse.move(point.x, point.y);
-      await page.waitForTimeout(700);
+      // A series too small to see (tens on a scale of thousands) has points the mouse cannot be on:
+      // the next one is tried until Chart.js shows its tooltip.
+      let shown = false;
+      for (const point of points) {
+        await page.mouse.move(point.x, point.y);
+        await page.waitForTimeout(700);
+        shown = await chart.evaluate(
+          (host) => ((host as any).getChartInstance?.()?.tooltip?.getActiveElements?.() ?? []).length > 0,
+        );
+        if (shown) break;
+      }
+      if (!shown) meta.notes.push(`chart ${i + 1}: no tooltip at any drawn point`);
       const tile = chart.locator('xpath=ancestor::div[contains(concat(" ", @class, " "), " grid-item ")][1]');
       const target = (await tile.count()) > 0 ? tile : chart;
       meta.expected.push(path.relative(outDir(), file));

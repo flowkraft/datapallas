@@ -20,7 +20,8 @@
   import { onMount, onDestroy, tick, createEventDispatcher } from 'svelte';
   // One formatter for every host: the table, the single value, the chart and the time labels all
   // show a number the way the cube declares it (W4.2), so two hosts cannot disagree about it.
-  import { formatCell, formatMeasure, measureFormatOf, dimensionText, DEFAULT_CURRENCY } from '../shared/cube-format';
+  import { formatCell, formatMeasure, measureFormatOf, dimensionText, totalColumnWidth, DEFAULT_CURRENCY } from '../shared/cube-format';
+  import { COLUMN_FLOOR_PX } from '../shared/table-extras';
   import { refusalMessage, withCsrfHeader } from '../shared/session-request';
 
   // Props
@@ -2143,7 +2144,10 @@
         formatter: (cell: any) => formatCell(cell.getValue(), shape),
       };
       if (totals) {
-        column.bottomCalc = () => formatMeasure(totals[name], String(shape.format ?? ''), cubeCurrency);
+        const total = formatMeasure(totals[name], String(shape.format ?? ''), cubeCurrency);
+        column.bottomCalc = () => total;
+        // A column as wide as its values cut its total: it is at least as wide as the total.
+        column.minWidth = Math.max(COLUMN_FLOOR_PX, totalColumnWidth(total));
       }
       columns.push(column);
     }

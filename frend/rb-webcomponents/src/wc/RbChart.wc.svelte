@@ -23,11 +23,12 @@
   import { VALUE_LABELS_PLUGIN_ID, valueLabelsPlugin } from '../shared/value-labels';
   import { applyStackPercent } from '../shared/stack-percent';
   import { applyTopN, isOtherIndex } from '../shared/top-n';
-  import { boxPlotFromDrawn, boxPlotFromRows } from '../shared/box-plot';
+  import { boxPlotFromDrawn, boxPlotFromRows, boxTooltipLines } from '../shared/box-plot';
   import { applyChartNumberFormat, drawModeOf } from '../shared/chart-number-format';
   import { scalesToTheme } from '../shared/chart-scales';
   import { splitSeriesName, withLegendRule } from '../shared/chart-legend';
-  import { applyDateLabels, applyShareStackMax } from '../shared/chart-axes';
+  import { applyBubbleRoom, applyDateLabels, applyShareStackMax } from '../shared/chart-axes';
+  import { applyNamedFormat } from '../shared/chart-name-format';
 
   // DEBUG: counters for lifecycle events
   let _afterUpdateCount = 0;
@@ -108,6 +109,13 @@
   let lastChartType: string | undefined = undefined;
   let lastDrawMode = '';
   const dispatch = createEventDispatcher();
+
+  /** The query columns the chart's series draw: what their names say about their numbers. */
+  function seriesFieldsOf(cfg: any): string[] {
+    const fields = (cfg?.datasets || []).map((ds: any) => ds?.field).filter((f: unknown) => typeof f === 'string' && f);
+    // Split by a column, every series is the first dataset's field.
+    return cfg?.seriesField ? fields.slice(0, 1) : fields;
+  }
 
   // reuse ResizeObserver patch from RbTabulator
   function transformChartConfigToChartJS(chartConfig: any, reportData: any[]) {
@@ -484,6 +492,23 @@
       ? boxPlotFromRows(reportRows, xField, yField)
       : boxPlotFromDrawn(normalizedData);
 
+    // A box's tooltip, a line a figure (shared/box-plot), unless the configuration writes its own.
+    const boxOptions = { ...(mergedOptions || {}) };
+    const tooltip = boxOptions.plugins?.tooltip ?? {};
+    if (tooltip.callbacks?.label === undefined) {
+      boxOptions.plugins = {
+        ...(boxOptions.plugins || {}),
+        tooltip: {
+          ...tooltip,
+          callbacks: {
+            ...(tooltip.callbacks || {}),
+            label: (item: any) => boxTooltipLines(String(item?.dataset?.label ?? ''), item?.parsed,
+              item?.formattedValue?.hoveredOutlierIndex ?? -1),
+          },
+        },
+      };
+    }
+
     // Still a box plot when there is nothing to draw yet: a chart drawn as another type would be
     // drawn anew on every update, as its type would differ from the one asked for.
     return {
@@ -502,7 +527,7 @@
           borderWidth: 1,
         })),
       },
-      options: mergedOptions,
+      options: boxOptions,
       plugins: plugins || [],
     } as any;
   }
@@ -673,9 +698,12 @@
       applyStackPercent(config);
       // Its numbers in the format its DSL names (#26): the value axis, the tooltips, the labels.
       applyChartNumberFormat(config);
+      // Named none: money and shares written as their names say (shared/chart-name-format).
+      applyNamedFormat(config, seriesFieldsOf(chartConfig));
       // Date buckets written as months or quarters, a stack of shares up to 100 (shared/chart-axes).
       applyDateLabels(config);
       applyShareStackMax(config);
+      applyBubbleRoom(config);
       lastDrawMode = drawModeOf(config.options);
       rbApplyThemeColors(config);
       const ctx2d = canvas?.getContext('2d');
@@ -915,8 +943,10 @@
         applyTopN(chart.config);
         applyStackPercent(chart.config);
         applyChartNumberFormat(chart.config);
+        applyNamedFormat(chart.config, seriesFieldsOf(chartConfig));
         applyDateLabels(chart.config);
         applyShareStackMax(chart.config);
+        applyBubbleRoom(chart.config);
         rbApplyThemeColors(chart.config);
 
         try { chart.update(); } catch (err) { dispatch('chartError', { message: String(err) }); }

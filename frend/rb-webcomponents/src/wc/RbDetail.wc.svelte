@@ -27,6 +27,8 @@
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick, createEventDispatcher } from "svelte";
   import { reportQuery } from '../shared/report-query';
+  import { readerTitle } from '../shared/column-titles';
+  import { columnNumberFormat, formatColumnValue } from '../shared/column-format';
 
   export let reportId: string = "";
   export let apiBaseUrl: string = "";
@@ -314,7 +316,9 @@
         const dt = document.createElement("dt");
         dt.style.cssText = "color:color-mix(in oklab, currentColor 60%, transparent);font-weight:600;display:flex;align-items:center;gap:4px;";
         const label = document.createElement("span");
-        label.textContent = titles[key] ?? key;
+        // A field named the way a query names one (`acquired_through`) is headed the way a reader
+        // writes it, as a table's column is (shared/column-titles); a title set in its gear stays.
+        label.textContent = titles[key] ?? readerTitle(key) ?? key;
         dt.appendChild(label);
 
         if (interactive) {
@@ -339,7 +343,10 @@
         if (spec && spec.kind) {
           dd.innerHTML = formatByKind(val, spec);
         } else {
-          dd.innerHTML = escapeHtml(formatVal(val));
+          // Nothing set in its gear: money and shares as their names say, as a table made from its
+          // data writes them (shared/column-format).
+          const named = columnNumberFormat(key, [val]);
+          dd.innerHTML = escapeHtml(named ? formatColumnValue(val, named) : formatVal(val));
         }
         dl.appendChild(dt);
         dl.appendChild(dd);
