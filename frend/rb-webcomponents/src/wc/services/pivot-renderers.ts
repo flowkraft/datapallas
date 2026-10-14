@@ -3,7 +3,7 @@
  * Ported from react-pivottable/TableRenderers.jsx and PlotlyRenderers.jsx
  */
 
-import { PivotData } from './pivot-data';
+import { PivotData, pivotCellFormat } from './pivot-data';
 import type { ChartJSData, ChartJSDataset, HeatmapMode, PivotDataProps } from './pivot-types';
 import { paintedCellStyle } from '../../shared/readable-text';
 
@@ -93,6 +93,10 @@ export function renderPivotTableHTML(
   // Symmetrically: when rows=[] the col-total row is the only data row.
   const effectiveShowColTotals = showColTotals || rowKeys.length === 0;
   const grandTotalAggregator = pivotData.getAggregator([], []);
+  const cellValues: unknown[] = [];
+  rowKeys.forEach((r) => colKeys.forEach((c) => cellValues.push(pivotData.getAggregator(r, c).value())));
+  /** Every cell and total of the pivot written alike (`pivotCellFormat`). */
+  const write = (agg: { format: (x: any) => string }, v: any) => pivotCellFormat(agg.format, cellValues)(v);
 
   // Prepare heatmap color functions
   let valueCellColors: (r: string[], c: string[], v: number) => { backgroundColor?: string } = () => ({});
@@ -216,7 +220,7 @@ export function renderPivotTableHTML(
         ? ` data-row="${escapeHtml(JSON.stringify(rowKey))}" data-col="${escapeHtml(JSON.stringify(colKey))}" data-value="${escapeHtml(String(val))}"`
         : '';
       const clickClass = options.clickable ? ' pvtClickable' : '';
-      html += `<td class="pvtVal${clickClass}"${styleAttr}${dataAttrs}>${aggregator.format(val)}</td>`;
+      html += `<td class="pvtVal${clickClass}"${styleAttr}${dataAttrs}>${write(aggregator, val)}</td>`;
     });
     
     // Row total (rightmost column) — suppress when showRowTotals === false.
@@ -225,7 +229,7 @@ export function renderPivotTableHTML(
       const totalNumVal = typeof totalVal === 'number' ? totalVal : 0;
       const totalStyle = colTotalColors(totalNumVal);
       const totalStyleAttr = paintedCellStyle(totalStyle.backgroundColor);
-      html += `<td class="pvtTotal"${totalStyleAttr}>${totalAggregator.format(totalVal)}</td>`;
+      html += `<td class="pvtTotal"${totalStyleAttr}>${write(totalAggregator, totalVal)}</td>`;
     }
 
     html += '</tr>';
@@ -242,13 +246,13 @@ export function renderPivotTableHTML(
       const numVal = typeof val === 'number' ? val : 0;
       const style = rowTotalColors(numVal);
       const styleAttr = paintedCellStyle(style.backgroundColor);
-      html += `<td class="pvtTotal"${styleAttr}>${totalAggregator.format(val)}</td>`;
+      html += `<td class="pvtTotal"${styleAttr}>${write(totalAggregator, val)}</td>`;
     });
 
     // The grand-total cell only makes sense alongside row totals; if the user
     // suppressed row totals, don't emit the grand cell either.
     if (effectiveShowRowTotals) {
-      html += `<td class="pvtGrandTotal">${grandTotalAggregator.format(grandTotalAggregator.value())}</td>`;
+      html += `<td class="pvtGrandTotal">${write(grandTotalAggregator, grandTotalAggregator.value())}</td>`;
     }
     html += '</tr>';
   }

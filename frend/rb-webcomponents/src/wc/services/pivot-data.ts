@@ -158,13 +158,24 @@ export const getSort = (sorters: any, attr: string): Sorter => {
 // Number formatters
 // ============================================================================
 
-const usFmt2 = numberFormat();
+export const usFmt2 = numberFormat();
 export const usFmtInt = numberFormat({ digitsAfterDecimal: 0 });
 /**
  * A sum, a minimum or an average: two decimals where there are any, none on a whole number. A sum
  * of tickets read "417.00" in every cell of DD21's heatmap, which also made it wider than its tile.
  */
 export const usFmt = (x: number): string => (Number.isInteger(x) ? usFmtInt(x) : usFmt2(x));
+/**
+ * How a pivot writes its cells: whole numbers without decimals only when every cell of it is whole
+ * (a sum of tickets); else two decimals in every cell, or an average of 100 sat as "100" beside
+ * "99.10" in the same column (DD15, DD10, DD08). A formatter other than `usFmt` is left as it is.
+ */
+export function pivotCellFormat(format: (x: any) => string, cells: unknown[]): (x: any) => string {
+  if (format !== usFmt) return format;
+  const whole = cells.every((v) => typeof v !== 'number' || !Number.isFinite(v) || Number.isInteger(v));
+  return whole ? usFmt : (x: any) => (typeof x === 'number' ? usFmt2(x) : format(x));
+}
+
 export const usFmtPct = numberFormat({
   digitsAfterDecimal: 1,
   scaler: 100,

@@ -554,7 +554,7 @@ ORDER BY CASE WHEN j.status = 'off target' THEN 0 ELSE 1 END, j.area, j.kpi`,
     {
       kind: 'displayConfig',
       widget: 'tabulator',
-      config: { widgetTitle: 'Off target', dslConfig: { layout: 'fitColumns', autoColumns: true, theme: 'modern' } },
+      config: { widgetTitle: 'KPIs against their targets', dslConfig: { layout: 'fitColumns', autoColumns: true, theme: 'modern' } },
       shot: {
         title: 'Set up off target',
         caption: 'On the **Display** tab, set the table\'s layout, page size and columns.',

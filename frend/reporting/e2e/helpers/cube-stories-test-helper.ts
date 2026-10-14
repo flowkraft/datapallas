@@ -574,7 +574,7 @@ export async function answerCardParams(
  * to this check's own value or cleared. A card whose checks fix nothing is left alone, so the
  * fourteen cards that ask their viewer nothing walk exactly as before.
  */
-function answersFor(check: CubeCheck, checks: Map<string, CubeCheck>): Record<string, string> {
+export function answersFor(check: CubeCheck, checks: Map<string, CubeCheck>): Record<string, string> {
   const asked = new Set<string>();
   for (const one of checks.values()) for (const name of Object.keys(one.locked ?? {})) asked.add(name);
 

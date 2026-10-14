@@ -56,6 +56,7 @@ import {
   CUBE_STORIES_PAGE_CARDS,
   CUBE_STORIES_REPORT_ID,
   answerCardParams,
+  answersFor,
   asksOf,
   cardOf as cubeCardOf,
   checksOf as cubeChecksOf,
@@ -575,18 +576,24 @@ test.describe('Visual review — Cube Stories', () => {
         await waitForCard(frame, cubeId, 90_000);
         const root = cardRoot(frame, cubeId);
 
+        // A story that asks its reader to pick first (Customer Statement: "Pick Southridge Video
+        // SpA above the fields") is shown picked, as its check is: else it drew the whole book, and
+        // every later story kept the first one's pick (VanArsdel and "all customers" showed Southridge).
+        // Answered as the e2e answers it (`answersFor`): its own pick, or the card's picks cleared.
+        const checks = cubeChecksOf(cubeId);
+        const pickFor = async (ask: { id: string; check: string }) => {
+          const check = checks.get(ask.check);
+          const answers = check ? answersFor(check, checks) : {};
+          if (Object.keys(answers).length === 0) return;
+          await answerCardParams(frame, cubeId, answers);
+          meta.notes.push(`answered for ${ask.id}: ${JSON.stringify(answers)}`);
+        };
+
         // A card means something once it answers a question: the first hint's Show Me fills the
         // field tree and draws its answer, which is what a reader is invited to do first.
         const first = asksOf(card)[0];
         if (first) {
-          // A story that asks its reader to pick first (Customer Statement: "Pick Southridge Video
-          // SpA above the fields") is shown picked, as its check is: else it drew the whole book.
-          const locked = cubeChecksOf(cubeId).get(first.check)?.locked ?? {};
-          if (Object.keys(locked).length > 0) {
-            await answerCardParams(frame, cubeId,
-              Object.fromEntries(Object.entries(locked).map(([name, value]) => [name, String(value ?? '')])));
-            meta.notes.push(`picked first: ${JSON.stringify(locked)}`);
-          }
+          await pickFor(first);
           await cubeShowMe(frame, cubeId, first.id)
             .catch((e) => meta.notes.push(`Show Me on ${first.id} failed: ${String(e).slice(0, 300)}`));
           meta.notes.push(`shown: Show Me on '${first.id}' (${first.question})`);
@@ -603,6 +610,7 @@ test.describe('Visual review — Cube Stories', () => {
         for (const [i, ask] of asksOf(card).entries()) {
           if (i === 0) continue;
           try {
+            await pickFor(ask);
             await cubeShowMe(frame, cubeId, ask.id);
             await settle(page, root, meta);
             await shootElement(page, root, shotPath(item, `${pad(i + 1)}-hint-${ask.id}-${theme}`), meta);
