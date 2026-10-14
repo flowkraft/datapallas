@@ -457,7 +457,10 @@
    */
   function fillWithWorld() {
     if (!mapInstance || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
-    mapInstance.setMinZoom(mapInstance.getBoundsZoom(WORLD_BOUNDS, true));
+    const min = mapInstance.getBoundsZoom(WORLD_BOUNDS, true);
+    // Up to it at once: setMinZoom would get there with an animated zoom (see onDestroy).
+    if (mapInstance.getZoom() < min) mapInstance.setZoom(min, { animate: false });
+    mapInstance.setMinZoom(min);
   }
 
   /**
@@ -762,6 +765,10 @@
 
   onDestroy(() => {
     try { (mapInstance as any)?._rbResizeObserver?.disconnect(); } catch {}
+    // A zoom still animating ends on a timer remove() does not cancel, and on the removed map it threw
+    // from inside Leaflet (`_leaflet_pos` of undefined): a Cube Stories card removes its map when the
+    // next answer is a table or a chart. Nothing is left to end once the map is gone.
+    try { mapInstance?.stop(); if (mapInstance) (mapInstance as any)._onZoomTransitionEnd = () => {}; } catch {}
     try { mapInstance?.remove(); } catch {}
     mapInstance = null;
     layerGroup = null;
