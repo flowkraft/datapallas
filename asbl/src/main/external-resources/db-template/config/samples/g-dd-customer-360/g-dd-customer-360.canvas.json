@@ -175,19 +175,8 @@
                 }
               },
               "scales": {
-                "y": {
-                  "position": "left",
-                  "title": {
-                    "display": true,
-                    "text": "Orders"
-                  }
-                },
                 "y1": {
                   "position": "right",
-                  "title": {
-                    "display": true,
-                    "text": "Revenue"
-                  },
                   "grid": {
                     "drawOnChartArea": false
                   }

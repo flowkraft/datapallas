@@ -298,14 +298,8 @@ ORDER BY 1`,
           },
           options: {
             plugins: { title: { display: true, text: 'Orders per month' } },
-            scales: {
-              y: { position: 'left', title: { display: true, text: 'Orders' } },
-              y1: {
-                position: 'right',
-                title: { display: true, text: 'Revenue' },
-                grid: { drawOnChartArea: false },
-              },
-            },
+            // Revenue on the right axis, as the pickers' "right axis" box sets it (the low-code twin).
+            scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } },
           },
         },
       },
@@ -333,19 +327,8 @@ ORDER BY 1`,
       }
     }
     scales {
-      y {
-        position 'left'
-        title {
-          display true
-          text 'Orders'
-        }
-      }
       y1 {
         position 'right'
-        title {
-          display true
-          text 'Revenue'
-        }
         grid {
           drawOnChartArea false
         }

@@ -22,19 +22,8 @@ chart('chart_dd11-chart-orders-per-month') {
       }
     }
     scales {
-      y {
-        position 'left'
-        title {
-          display true
-          text 'Orders'
-        }
-      }
       y1 {
         position 'right'
-        title {
-          display true
-          text 'Revenue'
-        }
         grid {
           drawOnChartArea false
         }
