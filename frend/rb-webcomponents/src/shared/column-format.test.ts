@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { columnNumberFormat, formatColumnValue, withColumnNumberFormats } from './column-format.ts';
+import { columnNumberFormat, formatBooleanValue, formatColumnValue, withColumnNumberFormats } from './column-format.ts';
 
 const usd = (n: number) => n.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (n: number, max: number) => n.toLocaleString(undefined, { maximumFractionDigits: max });
@@ -45,7 +45,9 @@ describe('a published table writes its numbers as the Canvas did', () => {
     const listed = withColumnNumberFormats([{ field: 'revenue', formatter: 'money' }, { field: 'product', title: 'Product' }], rows) as any[];
     assert.equal(listed.find((d) => d.field === 'revenue').formatter, 'money');
     assert.equal(listed.find((d) => d.field === 'product').formatter, undefined);
-    assert.equal(listed.find((d) => d.field === 'quantity'), undefined);
+    const quantity = listed.find((d) => d.field === 'quantity');
+    assert.equal(quantity.formatter, undefined, 'a whole number is written as it came');
+    assert.equal(quantity.hozAlign, 'right', 'and lines up on the right, as in the Canvas');
     const weight = listed.find((d) => d.field === 'weight');
     assert.equal(weight.formatter({ getValue: () => 1234.5 }), num(1234.5, 2));
     assert.equal(weight.hozAlign, 'right');
@@ -53,6 +55,19 @@ describe('a published table writes its numbers as the Canvas did', () => {
     const keyed = withColumnNumberFormats({ product: { title: 'Product' } }, rows) as Record<string, any>;
     assert.equal(keyed.product.title, 'Product');
     assert.equal(keyed.revenue.formatter({ getValue: () => 1326265.8 }), usd(1326265.8));
+  });
+
+  test('a column of true / false reads Yes / a dash, as the Canvas writes a boolean', () => {
+    assert.equal(formatBooleanValue(true), 'Yes');
+    assert.equal(formatBooleanValue(false), '—');
+    assert.equal(formatBooleanValue(null), '');
+    const listed = withColumnNumberFormats([{ field: 'discontinued', title: 'Discontinued' }],
+      [{ product: 'AeroDesk Pro', discontinued: false }, { product: 'Orbiton', discontinued: true }]) as any[];
+    const flag = listed.find((d) => d.field === 'discontinued');
+    assert.equal(flag.title, 'Discontinued');
+    assert.equal(flag.formatter({ getValue: () => false }), '—');
+    assert.equal(flag.formatter({ getValue: () => true }), 'Yes');
+    assert.equal(flag.hozAlign, undefined);
   });
 
   test('a table with no rows, or no number in them, is left as it is', () => {

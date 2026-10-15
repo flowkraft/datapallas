@@ -90,7 +90,31 @@ export function applyDateLabels(config: any): void {
     writeCategoryAxis(config);
     shortenRowNames(config);
   }
+  writeScatterPoints(config);
   writeSeriesNames(config);
+}
+
+/**
+ * A scatter point's tooltip: its series and its value up the chart ("Units sold: 330"), under its
+ * value across as the title. Chart.js wrote the two as one tuple, "Units sold: (2.8, 330)" (DD05).
+ * A label callback the configuration has is left to it.
+ */
+function writeScatterPoints(config: any): void {
+  if (config.type !== 'scatter') return;
+  const write = readableLabelWriter((config.data?.datasets ?? []).map((ds: any) => ds?.label)) ?? ((v: unknown) => String(v ?? ''));
+  const options = (config.options = { ...(config.options || {}) });
+  const plugins = (options.plugins = { ...(options.plugins || {}) });
+  const tooltip = (plugins.tooltip = { ...(plugins.tooltip || {}) });
+  const callbacks = (tooltip.callbacks = { ...(tooltip.callbacks || {}) });
+  if (callbacks.label !== undefined) return;
+  callbacks.label = (item: any) => {
+    const y = item?.parsed?.y;
+    const scale = item?.chart?.scales?.[item?.dataset?.yAxisID ?? 'y'];
+    const value = typeof y !== 'number' ? String(item?.formattedValue ?? '')
+      : typeof scale?.getLabelForValue === 'function' ? String(scale.getLabelForValue(y)) : y.toLocaleString();
+    const name = item?.dataset?.label;
+    return name == null || name === '' ? value : `${write(name)}: ${value}`;
+  };
 }
 
 /** About the width of one character of a tick label, in pixels (Chart.js's 12 px sans-serif). */

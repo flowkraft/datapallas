@@ -13,6 +13,8 @@
  * `smart-defaults/classification.ts`. A coordinate or a duration is left as the database wrote
  * it: the Canvas writes those its own way, and nothing here guesses at them. So is a column of
  * whole numbers that is neither money nor a share: an id or a year must not read 123,349 or 2,024.
+ * Every number column lines up on the right, as in the Canvas, written out or not; and a column of
+ * true / false reads "Yes" / "—", as the Canvas writes a boolean column (`formatBooleanValue`).
  */
 
 export type ColumnNumberKind = 'currency' | 'percentage' | 'number';
@@ -55,6 +57,14 @@ function geoHeadOrTail(name: string, keywords: string[]): boolean {
   if (keywords.includes(toks[0]) || keywords.includes(toks[toks.length - 1])) return true;
   const lower = name.toLowerCase();
   return keywords.some((kw) => lower.endsWith(kw) || lower.startsWith(kw));
+}
+
+/** A boolean, as the Canvas writes one: "Yes", or a dash for no. */
+export function formatBooleanValue(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '';
+  if (v === true) return 'Yes';
+  if (v === false) return '—';
+  return String(v);
 }
 
 /** A column's values, in row order. */
@@ -114,15 +124,21 @@ export function withColumnNumberFormats(definitions: unknown, rows: any[]): unkn
     : keyed ? Object.entries(definitions as Record<string, any>).map(([field, d]) => ({ field, ...d })) : [];
   let changed = false;
   for (const field of Object.keys(rows[0])) {
-    const format = columnNumberFormat(field, valuesOf(rows, field));
-    if (!format) continue;
+    const values = valuesOf(rows, field);
+    const sample = values.find((v) => v !== null && v !== undefined);
+    if (typeof sample !== 'number' && typeof sample !== 'boolean') continue;
     let def = listed.find((d) => d?.field === field);
     if (def?.formatter) continue;
     if (!def) { def = { field }; listed.push(def); }
-    def.formatter = (cell: { getValue: () => unknown }) => formatColumnValue(cell.getValue(), format);
-    // A number lines up on the right, as it does in the Canvas.
-    def.hozAlign ??= 'right';
-    def.headerHozAlign ??= 'right';
+    if (typeof sample === 'boolean') {
+      def.formatter = (cell: { getValue: () => unknown }) => formatBooleanValue(cell.getValue());
+    } else {
+      const format = columnNumberFormat(field, values);
+      if (format) def.formatter = (cell: { getValue: () => unknown }) => formatColumnValue(cell.getValue(), format);
+      // A number lines up on the right, as it does in the Canvas, written out or as it came.
+      def.hozAlign ??= 'right';
+      def.headerHozAlign ??= 'right';
+    }
     changed = true;
   }
   if (!changed) return definitions;

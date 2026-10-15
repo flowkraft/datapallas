@@ -227,3 +227,38 @@ describe('the names down a row chart', () => {
     assert.equal(columns.options.scales?.y?.ticks?.callback, undefined);
   });
 });
+
+describe('a scatter point in its tooltip', () => {
+  const scatter = (label?: string) => ({
+    type: 'scatter',
+    data: { datasets: [{ label, data: [{ x: 2.8, y: 330 }] }] },
+    options: {} as any,
+  });
+  const item = (config: any) => ({
+    parsed: { x: 2.8, y: 330 }, formattedValue: '(2.8, 330)', dataset: config.data.datasets[0],
+    chart: { scales: { y: { getLabelForValue: (v: number) => v.toLocaleString('en-US') } } },
+  });
+
+  test('its series and its value up the chart, not the pair', () => {
+    const config = scatter('Units sold');
+    applyDateLabels(config);
+    assert.equal(config.options.plugins.tooltip.callbacks.label(item(config)), 'Units sold: 330');
+  });
+
+  test('a series kept the database\'s way reads as words; no name, the value alone', () => {
+    const named = scatter('units_sold');
+    applyDateLabels(named);
+    assert.equal(named.options.plugins.tooltip.callbacks.label(item(named)), 'Units sold: 330');
+    const bare = scatter();
+    applyDateLabels(bare);
+    assert.equal(bare.options.plugins.tooltip.callbacks.label(item(bare)), '330');
+  });
+
+  test('a label of the author\'s is kept', () => {
+    const config = scatter('Units sold');
+    const own = () => 'own';
+    config.options = { plugins: { tooltip: { callbacks: { label: own } } } };
+    applyDateLabels(config);
+    assert.equal(config.options.plugins.tooltip.callbacks.label, own);
+  });
+});
