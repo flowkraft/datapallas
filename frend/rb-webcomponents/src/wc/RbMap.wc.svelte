@@ -461,10 +461,18 @@
    * The lowest zoom is the one at which the world still fills the box, in both directions: below
    * it the box would show grey past the world's edges. Asked again whenever the box changes size,
    * because a taller box needs a closer zoom. A box not laid out yet has no size to fill.
+   *
+   * A view below the new lowest zoom is raised to it by Leaflet, with its zoom animation, and while
+   * that animation runs Leaflet drops any other change of zoom: the fit to the data that follows
+   * (fitToData) did nothing, and the map kept its opening centre, West Africa, at the lowest zoom
+   * (DD02's Gallery card). So the data is framed again once that zoom has ended. Raising the view
+   * at once instead sent a box that was tall for a moment to zoom 9, thousands of tiles.
    */
   function fillWithWorld() {
     if (!mapInstance || !container || container.clientWidth === 0 || container.clientHeight === 0) return;
-    mapInstance.setMinZoom(mapInstance.getBoundsZoom(WORLD_BOUNDS, true));
+    const lowest = mapInstance.getBoundsZoom(WORLD_BOUNDS, true);
+    if (mapInstance.getZoom() < lowest) mapInstance.once("zoomend", () => fitToData());
+    mapInstance.setMinZoom(lowest);
   }
 
   /**
