@@ -214,6 +214,20 @@ describe('the names down a row chart', () => {
     assert.equal(tick(config, 1300, 0), 'OFF-0127 Pikaro Conference One 532', 'a desktop: whole');
   });
 
+  test('a name is measured in the axis font where there is a canvas, not guessed', () => {
+    const config: any = rows();
+    applyDateLabels(config);
+    let font = '';
+    const ctx = { font: '', save() {}, restore() {}, measureText(text: string) { font = this.font; return { width: text.length * 6 }; } };
+    const scale = (width: number) => ({ chart: { width }, ctx, _resolveTickFontOptions: () => ({ string: '12px Arial' }),
+      getLabelForValue: (v: number) => config.data.labels[v] });
+    const at = (width: number) => config.options.scales.y.ticks.callback.call(scale(width), 0, 0, []);
+    // 34 letters at 6 px = 204 px: whole in a 520 px chart (208 px of names), where 7 px a letter cut it.
+    assert.equal(at(520), 'OFF-0127 Pikaro Conference One 532');
+    assert.equal(font, '12px Arial');
+    assert.equal(at(340), 'OFF-0127 Pikaro Confe…', 'a phone: as much as 136 px holds');
+  });
+
   test('a callback of the author\'s writes first; drawing again does not cut twice; columns are not touched', () => {
     const config: any = rows();
     config.options.scales = { y: { ticks: { callback: (_v: unknown, i: number) => `#${i} ${config.data.labels[i]}` } } };

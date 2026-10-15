@@ -117,7 +117,8 @@ function writeScatterPoints(config: any): void {
   };
 }
 
-/** About the width of one character of a tick label, in pixels (Chart.js's 12 px sans-serif). */
+/** About the width of one character of a tick label, in pixels (Chart.js's 12 px sans-serif): the
+ *  guess when there is no canvas to measure a name on. */
 const TICK_CHAR_PX = 7;
 
 /** The share of a row chart's width its names may take. */
@@ -134,6 +135,8 @@ export function shortenLabel(text: string, max: number): string {
  * gives that axis only its share of the width and draws a longer name past the chart's left edge,
  * cut: "7 Pikaro Conference One 532" (DD19's slow movers at 390 px). The start of a name is what
  * tells the rows apart, so it is the end that goes; the tooltip still names the row in full.
+ * A name is measured in the axis's own font: guessed at 7 px a letter, names that fitted lost their
+ * last characters ("AUD-0157 Pikaro Conference One 5…", "Other departments (2…") in a Gallery card.
  */
 function shortenRowNames(config: any): void {
   if (config.options?.indexAxis !== 'y') return;
@@ -148,10 +151,30 @@ function shortenRowNames(config: any): void {
       : typeof this?.getLabelForValue === 'function' ? this.getLabelForValue(value) : config.data?.labels?.[index];
     const width = Number(this?.chart?.width) || 0;
     if (typeof label !== 'string' || width <= 0) return label;
-    return shortenLabel(label, Math.floor((width * ROW_NAMES_SHARE) / TICK_CHAR_PX));
+    const room = width * ROW_NAMES_SHARE;
+    const measure = tickTextWidth(this, index);
+    if (!measure) return shortenLabel(label, Math.floor(room / TICK_CHAR_PX));
+    let max = label.length;
+    while (max >= 4 && measure(shortenLabel(label, max)) > room) max--;
+    return shortenLabel(label, max);
   };
   shortened.rbShortRowNames = true;
   ticks.callback = shortened;
+}
+
+/** How wide a text is drawn in a scale's tick font, or null when there is no canvas to measure on. */
+function tickTextWidth(scale: any, index: number): ((text: string) => number) | null {
+  const ctx = scale?.ctx ?? scale?.chart?.ctx;
+  if (!ctx || typeof ctx.measureText !== 'function') return null;
+  let font: string | undefined;
+  try { font = scale._resolveTickFontOptions?.(index)?.string; } catch { font = undefined; }
+  return (text: string) => {
+    ctx.save();
+    if (font) ctx.font = font;
+    const width = ctx.measureText(text).width;
+    ctx.restore();
+    return width;
+  };
 }
 
 /** The tooltip's name of a series or of a slice, written as the axis writes its labels. */
