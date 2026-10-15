@@ -36,6 +36,7 @@
 
 <script lang="ts">
   import { applyTableExtras, withColumnFloor, type TableExtras } from '../shared/table-extras';
+  import { fitColumnsToContent } from '../shared/column-widths';
   import { withColumnNumberFormats } from '../shared/column-format';
   import { withReaderTitles } from '../shared/column-titles';
   import {
@@ -295,6 +296,10 @@
   // See watchForBecomingVisible() below.
   let sizeObserver: ResizeObserver | null = null;
   let hadSize = false;
+  // See fitToContent() below.
+  let fitPending = true;
+  let fitWidth = 0;
+  let readerSized = false;
   // keep a resolved columns reference (so we can avoid accidental overrides)
   let resolvedColumns: ColumnDefinition[] | undefined;
 
@@ -469,11 +474,32 @@
         } catch (err) {
           console.error('rb-tabulator redraw-on-show error', err);
         }
+      } else if (hasSize && isReady && Math.abs(container.clientWidth - fitWidth) >= 2) {
+        // A tile made wider or narrower (a window, a phone turned): the columns are shared out again.
+        requestAnimationFrame(fitToContent);
       }
       hadSize = hasSize;
     });
 
     sizeObserver.observe(container);
+  }
+
+  /**
+   * Columns as wide as what they hold (`shared/column-widths.ts`): once the rows are drawn after
+   * new data, and again when the tile's width changes - not on a change of page, so the columns
+   * do not jump as a reader pages. A column the reader dragged wider or narrower leaves the table
+   * to them.
+   */
+  function fitToContent() {
+    if (!table || !isReady || readerSized || !container) return;
+    try {
+      if (fitColumnsToContent(table, container)) {
+        fitPending = false;
+        fitWidth = container.clientWidth;
+      }
+    } catch (err) {
+      console.error('rb-tabulator column widths error', err);
+    }
   }
 
   onMount(async () => {
@@ -718,8 +744,12 @@
         // sync any props that arrived before build
         updateTable();
         tagPagerControls();
+        if (fitPending) requestAnimationFrame(fitToContent);
       });
       table.on('renderComplete', tagPagerControls);
+      table.on('dataProcessed', () => { fitPending = true; });
+      table.on('renderComplete', () => { if (fitPending) requestAnimationFrame(fitToContent); });
+      table.on('columnResized', () => { readerSized = true; });
       table.on('renderComplete', tagRows);
       table.on('scrollVertical', tagRows);
       table.on('rowClick', (e, row) => dispatch('rowClick', { event: e, row, rowData: row.getData() }));

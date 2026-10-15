@@ -86,8 +86,48 @@ const SLICE_TYPES = new Set(['pie', 'doughnut', 'polarArea']);
  */
 export function applyDateLabels(config: any): void {
   if (!config) return;
-  if (!NO_CATEGORY_AXIS.has(config.type)) writeCategoryAxis(config);
+  if (!NO_CATEGORY_AXIS.has(config.type)) {
+    writeCategoryAxis(config);
+    shortenRowNames(config);
+  }
   writeSeriesNames(config);
+}
+
+/** About the width of one character of a tick label, in pixels (Chart.js's 12 px sans-serif). */
+const TICK_CHAR_PX = 7;
+
+/** The share of a row chart's width its names may take. */
+const ROW_NAMES_SHARE = 0.4;
+
+/** A label cut to `max` characters, its end written "…"; a label that fits, as it is. */
+export function shortenLabel(text: string, max: number): string {
+  if (max < 4 || text.length <= max) return text;
+  return text.slice(0, max - 1).trimEnd() + '…';
+}
+
+/**
+ * The names down a row chart's axis (horizontal bars), never wider than 40% of the chart. Chart.js
+ * gives that axis only its share of the width and draws a longer name past the chart's left edge,
+ * cut: "7 Pikaro Conference One 532" (DD19's slow movers at 390 px). The start of a name is what
+ * tells the rows apart, so it is the end that goes; the tooltip still names the row in full.
+ */
+function shortenRowNames(config: any): void {
+  if (config.options?.indexAxis !== 'y') return;
+  const options = (config.options = { ...config.options });
+  const scales = (options.scales = { ...(options.scales || scalesToTheme(config.type, undefined)) });
+  const scale = (scales.y = { ...(scales.y || {}) });
+  const ticks = (scale.ticks = { ...(scale.ticks || {}) });
+  const inner = ticks.callback;
+  if (inner?.rbShortRowNames) return;
+  const shortened = function (this: any, value: unknown, index: number, all: unknown[]) {
+    const label = typeof inner === 'function' ? inner.call(this, value, index, all)
+      : typeof this?.getLabelForValue === 'function' ? this.getLabelForValue(value) : config.data?.labels?.[index];
+    const width = Number(this?.chart?.width) || 0;
+    if (typeof label !== 'string' || width <= 0) return label;
+    return shortenLabel(label, Math.floor((width * ROW_NAMES_SHARE) / TICK_CHAR_PX));
+  };
+  shortened.rbShortRowNames = true;
+  ticks.callback = shortened;
 }
 
 /** The tooltip's name of a series or of a slice, written as the axis writes its labels. */
@@ -120,6 +160,9 @@ function writeCategoryAxis(config: any): void {
   // A weekly axis has 50 dates and rotated them all: one reading line, Chart.js skipping what does not fit.
   if (dates && ticks.maxRotation === undefined) ticks.maxRotation = 0;
   if (dates && ticks.autoSkip === undefined) ticks.autoSkip = true;
+  // And a gap between the dates it keeps: with Chart.js's 3 px they ran together on a phone
+  // ("2024-012024-06", DD04, DD21).
+  if (dates && ticks.autoSkipPadding === undefined) ticks.autoSkipPadding = 12;
   if (ticks.callback === undefined) {
     ticks.callback = function (this: any, value: unknown, index: number) {
       const label = typeof this?.getLabelForValue === 'function' ? this.getLabelForValue(value) : config.data?.labels?.[index];

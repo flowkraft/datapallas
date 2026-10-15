@@ -32,6 +32,8 @@
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick, createEventDispatcher } from "svelte";
   import { reportQuery } from '../shared/report-query';
+  import { redrawOnResize } from '../shared/redraw-on-resize';
+  import { readableLabelWriter } from '../shared/chart-axes';
   import { sankey as d3Sankey, sankeyLinkHorizontal, sankeyJustify } from "d3-sankey";
 
   export let reportId: string = "";
@@ -54,6 +56,8 @@
   } = {};
 
   export let width: string | number | undefined = undefined;
+  // Drawn again when its box changes size (V35).
+  let stopRedraw: (() => void) | undefined;
   export let height: string | number | undefined = undefined;
 
   let container: HTMLDivElement;
@@ -137,10 +141,18 @@
         links: links.map((d) => ({ ...d })),
       });
 
+      // A name the database keeps its way (`sales_rep`) is written as the charts write it
+      // ("Sales rep"), in labels and hovers; a click still names the node as stored.
+      const write = readableLabelWriter((graph.nodes as any[]).map((nd) => nd.name)) ?? ((name: unknown) => String(name ?? ""));
+
       const svgNS = "http://www.w3.org/2000/svg";
       const svg = document.createElementNS(svgNS, "svg");
       svg.setAttribute("width", String(w));
       svg.setAttribute("height", String(h));
+      // Never wider than its box: a box made narrower shows the drawing scaled down until it is
+      // drawn again to the new size (redrawOnResize), never cut at the tile's edge.
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      svg.style.maxWidth = "100%";
       svg.style.display = "block";
 
       // Links — paths beneath nodes.
@@ -155,7 +167,7 @@
         path.setAttribute("stroke-opacity", "0.35");
         path.setAttribute("stroke-width", String(Math.max(1, lk.width ?? 1)));
         const title = document.createElementNS(svgNS, "title");
-        title.textContent = `${lk.source.name} → ${lk.target.name}: ${formatNumber(lk.value)}`;
+        title.textContent = `${write(lk.source.name)} → ${write(lk.target.name)}: ${formatNumber(lk.value)}`;
         path.appendChild(title);
         path.style.cursor = "pointer";
         path.addEventListener("click", () => dispatch("linkClick", { source: lk.source.name, target: lk.target.name, value: lk.value }));
@@ -175,7 +187,7 @@
         rect.setAttribute("stroke", "var(--rb-surface, Canvas)");
         rect.style.cursor = "pointer";
         const title = document.createElementNS(svgNS, "title");
-        title.textContent = `${nd.name}: ${formatNumber(nd.value ?? 0)}`;
+        title.textContent = `${write(nd.name)}: ${formatNumber(nd.value ?? 0)}`;
         rect.appendChild(title);
         rect.addEventListener("click", () => dispatch("nodeClick", { name: nd.name, value: nd.value }));
         nodeG.appendChild(rect);
@@ -188,7 +200,7 @@
         label.setAttribute("text-anchor", onLeft ? "start" : "end");
         label.setAttribute("font-size", "11");
         label.setAttribute("fill", "currentColor");
-        label.textContent = nd.name;
+        label.textContent = write(nd.name);
         nodeG.appendChild(label);
       }
       svg.appendChild(nodeG);
@@ -264,11 +276,13 @@
     }
 
     render();
+    stopRedraw = redrawOnResize(container, render);
   });
 
   afterUpdate(() => { render(); });
 
   onDestroy(() => {
+    stopRedraw?.();
     if (container) container.innerHTML = "";
   });
 

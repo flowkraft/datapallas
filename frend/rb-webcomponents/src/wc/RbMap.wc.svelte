@@ -769,6 +769,11 @@
 
   onDestroy(() => {
     try { (mapInstance as any)?._rbResizeObserver?.disconnect(); } catch {}
+    // A zoom still animating ends on a 250 ms timer that remove() does not cancel, and on the
+    // removed map that end threw from inside Leaflet (`_leaflet_pos` of undefined): a Cube Stories
+    // card removes its map when the next answer is a table (V59). Leaflet's end of a zoom does
+    // nothing when the map is not zooming, so the map is told it is not before it goes.
+    try { if (mapInstance) (mapInstance as any)._animatingZoom = false; } catch {}
     try { mapInstance?.remove(); } catch {}
     mapInstance = null;
     layerGroup = null;

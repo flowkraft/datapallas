@@ -6,7 +6,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyBubbleRoom, applyDateLabels, applyShareStackMax, dateLabelWriter, readableValue, stacksAreShares } from './chart-axes.ts';
+import { applyBubbleRoom, applyDateLabels, applyShareStackMax, dateLabelWriter, readableValue, shortenLabel, stacksAreShares } from './chart-axes.ts';
 
 describe('date buckets on a category axis', () => {
   test('months are written as the month', () => {
@@ -52,6 +52,7 @@ describe('a built chart writes its date labels as buckets', () => {
     // written on one line, the ones that do not fit skipped
     assert.equal(config.options.scales.x.ticks.maxRotation, 0);
     assert.equal(config.options.scales.x.ticks.autoSkip, true);
+    assert.equal(config.options.scales.x.ticks.autoSkipPadding, 12, 'the dates kept do not run together');
     // the other axis is still there to be coloured
     assert.ok(config.options.scales.y);
   });
@@ -191,5 +192,38 @@ describe('the names of a chart\'s series and slices, beside stored values', () =
     const plain: any = { type: 'bar', data: { labels: ['a'], datasets: [{ label: 'Revenue', data: [1] }, { label: 'Target', data: [2] }] }, options: {} };
     applyDateLabels(plain);
     assert.equal(plain.options.plugins, undefined);
+  });
+});
+
+describe('the names down a row chart', () => {
+  const rows = () => ({
+    type: 'bar',
+    data: { labels: ['OFF-0127 Pikaro Conference One 532', 'MON-0102 Velmont 27 Go 953'], datasets: [{ data: [7000, 6800] }] },
+    options: { indexAxis: 'y' },
+  });
+  const tick = (config: any, width: number, index: number) => config.options.scales.y.ticks.callback.call(
+    { chart: { width }, getLabelForValue: (v: number) => config.data.labels[v] }, index, index, []);
+
+  test('a name is cut at its end only when it is wider than 40% of the chart', () => {
+    assert.equal(shortenLabel('OFF-0127 Pikaro Conference One 532', 18), 'OFF-0127 Pikaro C…');
+    assert.equal(shortenLabel('Short', 18), 'Short');
+    const config: any = rows();
+    applyDateLabels(config);
+    assert.equal(tick(config, 340, 0), 'OFF-0127 Pikaro Co…', 'a phone: 136 px of names');
+    assert.equal(tick(config, 340, 1), 'MON-0102 Velmont 2…');
+    assert.equal(tick(config, 1300, 0), 'OFF-0127 Pikaro Conference One 532', 'a desktop: whole');
+  });
+
+  test('a callback of the author\'s writes first; drawing again does not cut twice; columns are not touched', () => {
+    const config: any = rows();
+    config.options.scales = { y: { ticks: { callback: (_v: unknown, i: number) => `#${i} ${config.data.labels[i]}` } } };
+    applyDateLabels(config);
+    const once = config.options.scales.y.ticks.callback;
+    applyDateLabels(config);
+    assert.equal(config.options.scales.y.ticks.callback, once);
+    assert.equal(tick(config, 340, 0), '#0 OFF-0127 Pikaro…');
+    const columns: any = { type: 'bar', data: { labels: ['A long name of a product'], datasets: [{ data: [1] }] }, options: {} };
+    applyDateLabels(columns);
+    assert.equal(columns.options.scales?.y?.ticks?.callback, undefined);
   });
 });

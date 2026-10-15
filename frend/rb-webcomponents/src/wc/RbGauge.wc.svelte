@@ -32,6 +32,7 @@
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick, createEventDispatcher } from "svelte";
   import { reportQuery } from '../shared/report-query';
+  import { redrawOnResize } from '../shared/redraw-on-resize';
 
   export let reportId: string = "";
   export let apiBaseUrl: string = "";
@@ -53,6 +54,8 @@
   } = {};
 
   export let width: string | number | undefined = undefined;
+  // Drawn again when its box changes size (V35).
+  let stopRedraw: (() => void) | undefined;
   export let height: string | number | undefined = undefined;
 
   let container: HTMLDivElement;
@@ -110,6 +113,9 @@
       svg.setAttribute("width", String(w));
       svg.setAttribute("height", String(h));
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      // Never wider than its box: a box made narrower shows the drawing scaled down until it is
+      // drawn again to the new size (redrawOnResize), never cut at the tile's edge.
+      svg.style.maxWidth = "100%";
       svg.style.display = "block";
 
       // Convert value [min,max] → angle [-π, 0] (semicircle).
@@ -262,11 +268,13 @@
     }
 
     render();
+    stopRedraw = redrawOnResize(container, render);
   });
 
   afterUpdate(() => { render(); });
 
   onDestroy(() => {
+    stopRedraw?.();
     if (container) container.innerHTML = "";
   });
 
