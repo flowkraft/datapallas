@@ -7,9 +7,9 @@
 //
 // Entire point: answer transactional sales questions — who bought what, when,
 // for how much money, by which sales rep, was it shipped on time, was a
-// discount applied. Covers samples 12–18 (Customer Statements, Customer Sales
+// discount applied. Covers the samples Customer Statements, Customer Sales
 // Summary, Customer Invoices, Category-Region Crosstab, Monthly Sales Trend,
-// Supplier Scorecards, Sales Dashboard).
+// Supplier Scorecards and Sales Dashboard.
 //
 // Design discipline: every dimension/measure/segment is here because it
 // directly supports a real sales-analysis question. Customer-CRM details

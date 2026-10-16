@@ -32,7 +32,7 @@
 // dashboard's own page is `#publishedDashboard`.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Frame, type Locator, type Page } from '@playwright/test';
 
 import {
   asQuery,
@@ -77,6 +77,37 @@ export function cardOf(page: Page, demo: Demo): Locator {
 }
 
 /**
+ * The area a card sits in: the collapsible panel (`<details name="areas">`) that holds it. The Gallery
+ * keeps its 25 cards in eight of these, one open at a time, the first when the page loads.
+ */
+export function areaOf(root: Page | Frame, demo: Demo): Locator {
+  return root.locator(`#dashboardDemosRoot details.area:has(> .card[id="${demo.id}"])`);
+}
+
+/**
+ * The card's own area, open, without asking a test to know which one that is.
+ *
+ * A card in a closed area is not visible and its dashboard has not loaded (`lazy`), and everything
+ * here reaches a card by its id, so this is where the accordion is dealt with, once, for all of them.
+ * It is the visitor's way in: the area's bar is clicked, and one that is already open is left alone
+ * rather than clicked shut. Opening an area closes the one that was open, so a test that reads two
+ * cards in two areas opens each as it goes. A page with no areas is left exactly as it is.
+ */
+export async function openAreaOf(root: Page | Frame, demo: Demo): Promise<void> {
+  const area = areaOf(root, demo);
+  if ((await area.count()) === 0) return;
+  const isOpen = () => area.evaluate((el) => (el as HTMLDetailsElement).open);
+  if (!(await isOpen())) await area.locator(':scope > summary').click();
+  await expect.poll(isOpen, { timeout: 15_000, message: `${demo.area} opens when its bar is clicked` }).toBe(true);
+}
+
+/** The Gallery's cards, in the order the page holds them (a card is the one thing in an area with the `card` class). */
+export async function galleryCardIds(root: Page | Frame): Promise<string[]> {
+  return root.locator('#dashboardDemosRoot details.area > .card')
+    .evaluateAll((cards) => cards.map((card) => card.id));
+}
+
+/**
  * A dashboard on its own page, open and drawn.
  *
  * `params` are the starting values a link can carry (TODO 5f), written as a reader's own address bar
@@ -112,7 +143,8 @@ export function prefixed(demo: Demo, params: Record<string, unknown>): Record<st
 }
 
 /**
- * The card scrolled to, which is what loads the dashboard on it (TODO 5g, `lazy`).
+ * The card scrolled to, which is what loads the dashboard on it (TODO 5g, `lazy`): its area is opened
+ * first, because a card in a closed area is not on the screen and loads nothing.
  *
  * The card's own box is there from the first paint — it keeps the demo's height so the page does not
  * jump — and the dashboard inside it arrives after the scroll.
@@ -120,6 +152,7 @@ export function prefixed(demo: Demo, params: Record<string, unknown>): Record<st
 export async function scrollCardIntoView(page: Page, demo: Demo): Promise<Locator> {
   const card = cardOf(page, demo);
   await expect(card, `the Gallery has a card for ${demo.id}`).toHaveCount(1, { timeout: 60_000 });
+  await openAreaOf(page, demo);
   await card.scrollIntoViewIfNeeded({ timeout: 30_000 });
   await expect(card.locator(`[id="dashboard-${demo.reportId}"]`), `${demo.id} loads when it is scrolled to`)
     .toBeVisible({ timeout: 60_000 });

@@ -42,7 +42,7 @@ import {
   shownReportId,
   type Demo,
 } from '../../helpers/dashboard-demos/demo-catalog';
-import { waitForChartsIn, watchForErrors, type ErrorWatch } from '../../helpers/dashboard-demos/published-dashboard-checks';
+import { openAreaOf, waitForChartsIn, watchForErrors, type ErrorWatch } from '../../helpers/dashboard-demos/published-dashboard-checks';
 import {
   clickReset,
   clickShowMe,
@@ -442,7 +442,7 @@ test.describe('Visual review — the Gallery', () => {
 
   test('(visual) gallery page', async () => {
     test.setTimeout(10 * 60_000);
-    const meta = newMeta('gallery-page', 'The Gallery: its title and contents list');
+    const meta = newMeta('gallery-page', 'The Gallery: its title, its areas and the first area's list');
     try {
       meta.url = `/dashboard/${GALLERY_REPORT_ID}`;
       meta.theme = await themeOf(page);
@@ -452,7 +452,7 @@ test.describe('Visual review — the Gallery', () => {
       await top.waitFor({ state: 'visible', timeout: 60_000 });
       // The head of the page: its title and the contents list, down to the first card's top.
       const head = await page.evaluate(() => {
-        const first = document.querySelector('#dashboardDemosRoot > [id^="dd-"]');
+        const first = document.querySelector('#dashboardDemosRoot details.area > .card');
         return first ? first.getBoundingClientRect().top + window.scrollY : 1000;
       });
       await fitHeight(page, head, meta);
@@ -479,6 +479,8 @@ test.describe('Visual review — the Gallery', () => {
       try {
         meta.theme = await themeOf(page);
         const card = page.locator(`#${demo.id}`);
+        // Its area first: a card in a closed area is not on the screen.
+        await openAreaOf(page, demo);
         await card.scrollIntoViewIfNeeded({ timeout: 30_000 });
         // The card loads when it is reached (lazy): its dashboard first, then its tiles.
         await card.locator(`[id="dashboard-${shownReportId(demo)}"]`).waitFor({ state: 'visible', timeout: 60_000 });

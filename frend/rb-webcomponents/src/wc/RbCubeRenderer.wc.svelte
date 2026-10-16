@@ -22,6 +22,9 @@
   // show a number the way the cube declares it (W4.2), so two hosts cannot disagree about it.
   import { formatCell, formatMeasure, measureFormatOf, dimensionText, totalColumnWidth, DEFAULT_CURRENCY } from '../shared/cube-format';
   import { COLUMN_FLOOR_PX } from '../shared/table-extras';
+  import { cubeShowMeSteps, fieldOf } from '../shared/cube-tour';
+  import { folderTip } from '../shared/folder-tips';
+  import type { TourStep } from '../shared/tour';
   import { refusalMessage, withCsrfHeader } from '../shared/session-request';
 
   // Props
@@ -838,8 +841,13 @@
       return f.from ? '\u2265 ' + f.from : '\u2264 ' + f.to;
     }
     const shown = f.labels.length === f.values.length ? f.labels : f.values;
-    const said = shown.length > 3 ? shown.slice(0, 2).join(', ') + ' +' + (shown.length - 2) : shown.join(', ');
-    return f.negate ? 'not ' + said : said;
+    if (f.negate) {
+      // Each value gets its own `not`: "not Cancelled, Returned" reads as one thing left out, not two.
+      if (shown.length > 3) return 'not ' + shown.slice(0, 2).join(', not ') + ' and not ' + (shown.length - 2) + ' others';
+      const nots = shown.map((v) => 'not ' + v);
+      return nots.length > 1 ? nots.slice(0, -1).join(', ') + ' and ' + nots[nots.length - 1] : nots.join('');
+    }
+    return shown.length > 3 ? shown.slice(0, 2).join(', ') + ' +' + (shown.length - 2) : shown.join(', ');
   }
 
   /**
@@ -1552,14 +1560,212 @@
    * through `applySelection`, the one 3a wrote, so a hint naming a field this cube has not got is
    * refused in words instead of half-applied, and the question is asked as a tick asks it.
    */
-  function showMe(ask: any) {
+  function showMe(ask: any): boolean {
     runtimeError = '';
     pressedId = String(ask?.id ?? '');
-    applySelection(ask?.query);
+    return applySelection(ask?.query);
+  }
+
+  // ── Show Me asks first: "Apply this story?" ───────────────────────────────
+  // A story replaces the reader's selection, so pressing Show Me does not do it: it opens a Yes / No
+  // beside the button, and while it is open the fields the story would use are lit - in the sentence
+  // and in the tree. Only Yes applies it; a toast then says so and points at the answer under it.
+
+  /** The story whose Yes / No is open ('' when none is). */
+  let confirmId = '';
+  /** Reset view asked "Sure?" and waiting for the Yes / No. */
+  let resetAsking = false;
+  let toast = '';
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The answer glows for a few seconds after a story is applied, then fades. */
+  let flashResult = false;
+  let flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** The names a story's query lists, as the tree knows them (`OrderDate.month` is the field `OrderDate`). */
+  function namesIn(list: any): Set<string> {
+    const found = new Set<string>();
+    for (const entry of Array.isArray(list) ? list : list ? [list] : []) {
+      const name = typeof entry === 'string' ? entry : String(entry?.name ?? entry?.member ?? '');
+      if (name) found.add(fieldOf(name));
+    }
+    return found;
+  }
+  $: confirmAsk = hints.find((h: any) => String(h?.id) === confirmId) ?? null;
+  $: involvedMeasures = namesIn(confirmAsk?.query?.measures);
+  $: involvedDimensions = namesIn(confirmAsk?.query?.dimensions);
+  $: involvedSegments = namesIn(confirmAsk?.query?.segments);
+
+  // The story that is applied - the one marked on the right - keeps its fields lit on the left, still,
+  // so the reader can see which boxes it ticked. While a Yes / No is open, its own fields breathe instead.
+  $: markedAsk = hints.find((h: any) => String(h?.id) === askedId) ?? null;
+  $: markedMeasures = namesIn(markedAsk?.query?.measures);
+  $: markedDimensions = namesIn(markedAsk?.query?.dimensions);
+  $: markedSegments = namesIn(markedAsk?.query?.segments);
+
+  async function askToApply(ask: any) {
+    confirmId = String(ask?.id ?? '');
+    await tick();
+    document.getElementById('btnShowMeYes-' + confirmId)?.focus({ preventScroll: true });
+  }
+
+  function cancelStory(ask: any) {
+    confirmId = '';
+    // Back to the button that asked, so the keyboard is where it was.
+    document.getElementById('btnShowMe-' + String(ask?.id ?? ''))?.focus({ preventScroll: true });
+  }
+
+  /** How long the toast is read before the answer is lit. */
+  const READ_TOAST_MS = 2500;
+
+  async function applyStory(ask: any) {
+    confirmId = '';
+    if (!showMe(ask)) return;
+    say('Story applied: \u201c' + String(ask?.question ?? '').trim() + '\u201d. Notice how the data below was refreshed to match the ticked fields.');
+    // The reader pressed Yes to see the answer, so the whole cube comes into view: at once, and again when
+    // the answer has been drawn, because it changes the cube's height.
+    bringCubeIntoView();
+    await tick();
+    const started = Date.now();
+    // The question is sent a moment after the ticks (a tick waits briefly for the next one): wait for it
+    // to start, and then to finish, and never for long.
+    while (Date.now() - started < 600 && !(runtimeLoading || queryRunning)) await pause(50);
+    while (Date.now() - started < 8000 && (runtimeLoading || queryRunning)) await pause(100);
+    await tick();
+    bringCubeIntoView();
+    // The toast says to look at the answer: the reader gets time to read it before the answer lights up.
+    if (Date.now() - started < READ_TOAST_MS) await pause(READ_TOAST_MS - (Date.now() - started));
+    await flash();
+  }
+
+  /** Light the answer once: off and on again, so a second story lights it afresh. */
+  async function flash() {
+    if (flashTimer) clearTimeout(flashTimer);
+    flashResult = false;
+    await tick();
+    flashResult = true;
+    flashTimer = setTimeout(() => { flashResult = false; flashTimer = null; }, 3800);
+  }
+
+  function pause(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /** The whole cube in the middle of the screen; one taller than the screen is lined up by its top, which is where it starts. */
+  function bringCubeIntoView() {
+    if (!container) return;
+    const tall = container.getBoundingClientRect().height > window.innerHeight * 0.9;
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    container.scrollIntoView({ block: tall ? 'start' : 'center', behavior: calm ? 'auto' : 'smooth' });
+  }
+
+  /** Reset view is a question first: one click on the link asks, only Yes throws the reader's ticks away. */
+  async function askToReset() {
+    if (!viewDiffers) return;
+    resetAsking = true;
+    await tick();
+    document.getElementById('btnResetYes')?.focus({ preventScroll: true });
+  }
+
+  function cancelReset() {
+    resetAsking = false;
+    document.getElementById('lnkCubeResetView')?.focus({ preventScroll: true });
+  }
+
+  async function confirmReset() {
+    resetAsking = false;
+    await resetView();
+    say('Cube restored to its default state.');
+    document.getElementById('lnkCubeResetView')?.focus({ preventScroll: true });
+  }
+
+  function onResetKey(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      cancelReset();
+    }
+  }
+
+  function say(text: string) {
+    toast = text;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast = ''; toastTimer = null; }, 6000);
+  }
+
+  function onGateKey(event: KeyboardEvent, ask: any) {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      cancelStory(ask);
+    }
   }
 
   /** The story whose Show Me was pressed last: of the stories that tick the same, it is the one marked. */
   let pressedId = '';
+
+  /**
+   * The steps this cube adds to its dashboard's tour (`<rb-dashboard-tour>` asks for them): the first
+   * story, from its question through Show Me to its answer. It is always the first story, however many
+   * there are: the tour is about how Show Me works, not about one story. No stories, no steps.
+   * `tourReady()` says whether the cube has finished reading its stories: before that there are none yet.
+   */
+  export function tourReady(): boolean {
+    return readOnly || viewLoaded || runtimeError !== '';
+  }
+
+  /**
+   * A tour starts from scratch: whatever the reader ticked, filtered, folded or was shown before, the explorer goes
+   * back to how it was published (what the Reset view does, without asking and without the toast), the lists are
+   * scrolled to their top, and the answer is waited for - so the first step looks the same every time.
+   */
+  export async function resetForTour(): Promise<void> {
+    if (readOnly || !live) return;
+    confirmId = '';
+    resetAsking = false;
+    openFilterFor = '';
+    toast = '';
+    flashResult = false;
+    if (viewStorage !== 'none') {
+      await resetView();
+    } else {
+      pressedId = '';
+      panelCollapsed = false;
+      applySelection(authorDefault);
+    }
+    await tick();
+    for (const id of ['cubeFieldsHalf', 'cubeStoriesHalf']) {
+      const half = container?.querySelector('[id="' + id + '"]');
+      if (half) half.scrollTop = 0;
+    }
+    await answerSettled();
+  }
+
+  /** The answer to a selection is asked a moment after the ticks: wait for it, but never for long. */
+  async function answerSettled(): Promise<void> {
+    const started = Date.now();
+    await pause(250);
+    while (Date.now() - started < 5000 && (runtimeLoading || queryRunning)) await pause(100);
+    await tick();
+  }
+
+  /** The tour is over: a question it opened is closed again, nothing applied. */
+  export function tourClose(): void {
+    confirmId = '';
+    resetAsking = false;
+  }
+
+  export function tourSteps(): TourStep[] {
+    const first = hints[0];
+    if (!first || !container || readOnly) return [];
+    const titleOf = (name: string): string => {
+      const field = dimensionByName(name) ?? measureByName(name);
+      return String(field?.title || field?.name || name);
+    };
+    return cubeShowMeSteps({
+      story: first, root: container, titleOf, showMe: () => showMe(first),
+      answered: answerSettled, openGate: () => askToApply(first), closeGate: () => { confirmId = ''; },
+      openReset: async () => { resetAsking = true; await tick(); },
+      closeReset: () => { resetAsking = false; },
+    });
+  }
 
   /**
    * The story the ticks on the left are asking, marked on the right - whatever put them there: a
@@ -1814,7 +2020,10 @@
 
   $: defaultViewSignature = signatureOf({ selection: authorDefault, collapsed: false });
 
-  /** The link shows only when there is something to go back from. */
+  /** The link is always there once the view can be saved; it is dimmed while there is nothing to go back from. */
+  $: canReset = runtime && viewStorage !== 'none' && viewLoaded && !readOnly;
+
+  /** There is something to go back from. */
   $: viewDiffers = runtime && viewStorage !== 'none' && viewLoaded
     && currentViewSignature !== defaultViewSignature;
 
@@ -1928,6 +2137,7 @@
     viewDropped = [];
     panelCollapsed = false;
     savedViewSignature = defaultViewSignature;
+    pressedId = '';
     applySelection(authorDefault);
   }
 
@@ -2677,8 +2887,8 @@
 
     if ((cube.measures || []).length > 0) {
       rows.push({
-        kind: 'folder', key: 'measures', id: 'grp-measures', label: 'Measures',
-        icon: 'Σ', colour: '#5cb85c', depth: 0, tip: '',
+        kind: 'folder', key: 'measures', id: 'grp-measures', label: 'Measures (numbers)',
+        icon: 'Σ', colour: '#5cb85c', depth: 0, tip: folderTip('measures'),
       });
       if (open.has('measures')) {
         for (const m of cube.measures) rows.push(...fieldRows(m, 'measure', 1));
@@ -2687,9 +2897,9 @@
 
     rows.push({
       kind: 'folder', key: 'main', id: 'grp-main',
-      label: cube.title || cube.sqlTable || 'Table',
+      label: (cube.title || cube.sqlTable || 'Table') + ' (group by)',
       icon: '📁', colour: '', depth: 0,
-      tip: String(cube.sqlTable || cube.sql || ''),
+      tip: folderTip('main', { title: String(cube.title || cube.sqlTable || ''), source: String(cube.sqlTable || cube.sql || '') }),
     });
     if (open.has('main')) {
       for (const d of mainDimensions()) rows.push(...fieldRows(d, 'dimension', 1));
@@ -2699,7 +2909,8 @@
         const key = 'join-' + j.name;
         rows.push({
           kind: 'folder', key, id: 'grp-join-' + slug(j.name), label: joinLabel(j),
-          icon: '🔗', colour: '', depth: 1, tip: String(j?.relationship || ''),
+          icon: '🔗', colour: '', depth: 1,
+          tip: folderTip('join', { title: joinLabel(j), relationship: String(j?.relationship || '') }),
         });
         if (everything) {
           const wiring = joinWiring(j);
@@ -2714,7 +2925,7 @@
     if ((cube.segments || []).length > 0) {
       rows.push({
         kind: 'folder', key: 'filters', id: 'grp-filters', label: 'Filters',
-        icon: '🔍', colour: '#d9534f', depth: 0, tip: '',
+        icon: '🔍', colour: '#d9534f', depth: 0, tip: folderTip('filters'),
       });
       if (open.has('filters')) {
         for (const s of cube.segments) rows.push(...fieldRows(s, 'segment', 1));
@@ -2724,7 +2935,7 @@
     if ((cube.hierarchies || []).length > 0) {
       rows.push({
         kind: 'folder', key: 'drill', id: 'grp-drill', label: 'Drill paths',
-        icon: '📊', colour: '#5bc0de', depth: 0, tip: '',
+        icon: '📊', colour: '#5bc0de', depth: 0, tip: folderTip('drill'),
       });
       if (open.has('drill')) {
         for (const h of cube.hierarchies) {
@@ -2787,6 +2998,7 @@
   onDestroy(() => {
     document.removeEventListener(SQL_VENDOR_EVENT, onPageSqlVendor);
     document.removeEventListener(SQL_VENDOR_ASK, onPageSqlVendorAsk);
+    if (toastTimer) clearTimeout(toastTimer);
   });
 
   // The host may set the two runtime props instead of the attributes, and after the first render:
@@ -2841,6 +3053,8 @@
 
     <!-- W5: the one control the cube panel has, and what the data is filtered by, in one line -->
     {#if runtime}
+      <!-- What this area is, said once above the title. It is its own line, not part of the header's text. -->
+      <div class="rb-panel-eyebrow" id="cubePanelEyebrow">Interactive Data Explorer</div>
       <button type="button" id="cubePanelHeader" class="rb-panel-header" class:rb-panel-fixed={readOnly}
               aria-expanded={!panelCollapsed} aria-disabled={readOnly} title={panelHeaderText}
               on:click={togglePanel}>
@@ -2872,7 +3086,7 @@
     {/if}
 
     <!-- The filters in force, one chip each: what is being looked at, before the tree it came from -->
-    {#if filterChips.length > 0 || dashChips.length > 0 || viewDiffers}
+    {#if filterChips.length > 0 || dashChips.length > 0 || canReset}
       <div class="rb-chip-bar">
       <div id="cubeFilterChips" class="rb-chips">
         <!-- R8: the dashboard's own filter, said where this widget's filters are said. No ×: it
@@ -2896,9 +3110,20 @@
           </span>
         {/each}
       </div>
-      {#if viewDiffers && !readOnly}
-        <button type="button" id="lnkCubeResetView" class="rb-reset-view"
-                title="Go back to the dashboard as it was published" on:click={resetView}>Reset view</button>
+      {#if canReset}
+        <span class="rb-reset-actions">
+          <button type="button" id="lnkCubeResetView" class="rb-reset-view" class:rb-reset-idle={!viewDiffers}
+                  aria-disabled={!viewDiffers} aria-expanded={resetAsking}
+                  title={viewDiffers ? 'Go back to the dashboard as it was published' : 'Already as it was published'}
+                  on:click={askToReset}>Reset view</button>
+          {#if resetAsking}
+            <span class="rb-hint-gate" id="resetGate" role="group" aria-label="Reset this view?" on:keydown={onResetKey}>
+              <span class="rb-hint-gate-question">Sure?</span>
+              <button type="button" id="btnResetYes" class="rb-gate-button rb-gate-yes" on:click={confirmReset}>Yes</button>
+              <button type="button" id="btnResetNo" class="rb-gate-button" on:click={cancelReset}>No</button>
+            </span>
+          {/if}
+        </span>
       {/if}
       </div>
     {/if}
@@ -2933,16 +3158,33 @@
     {#if offersStories}
       <div class="rb-cube-half rb-cube-stories" id="cubeStoriesHalf">
       <div id="cubeStoriesHeading" class="rb-stories-heading"
-           title="Ideas for what to ask this cube: press Show Me and the fields it needs are ticked for you">Stories</div>
+           title="Ideas for what to ask this cube: press Show Me and the fields it needs are ticked for you">Data Stories</div>
       <div id="cubeHints" class="rb-hints">
         {#each hints as ask (ask.id)}
-          <div id="hint-{ask.id}" class="rb-hint" class:rb-hint-asked={ask.id === askedId}>
+          <div id="hint-{ask.id}" class="rb-hint" class:rb-hint-asked={ask.id === askedId} class:rb-hint-applied={ask.id === askedId && ask.id === pressedId}
+               class:rb-hint-pending={String(ask.id) === confirmId}>
+            {#if ask.id === askedId && ask.id === pressedId}
+              <span class="rb-hint-stamp" id="hintApplied-{ask.id}" title="This story is applied: its fields are ticked">applied</span>
+            {/if}
             <div class="rb-hint-question">{ask.question}</div>
             <!-- The only place this component writes HTML: what `boldFieldNames` returns is
                  escaped text with `<strong>` in it, and nothing a hints file wrote survives as markup. -->
             <div class="rb-hint-text" id="hintText-{ask.id}">{@html boldFieldNames(ask.text)}</div>
-            <button type="button" id="btnShowMe-{ask.id}" class="rb-hint-showme"
-                    title="Tick what this question asks for" on:click={() => showMe(ask)}>Show Me</button>
+            <div class="rb-hint-actions">
+              <button type="button" id="btnShowMe-{ask.id}" class="rb-hint-showme"
+                      aria-expanded={String(ask.id) === confirmId}
+                      title="Tick what this question asks for" on:click={() => askToApply(ask)}>Show Me</button>
+              {#if String(ask.id) === confirmId}
+                <span class="rb-hint-gate" id="hintGate-{ask.id}" role="group" aria-label="Apply this story?"
+                      on:keydown={(e) => onGateKey(e, ask)}>
+                  <span class="rb-hint-gate-question">Apply this story?</span>
+                  <button type="button" id="btnShowMeYes-{ask.id}" class="rb-gate-button rb-gate-yes"
+                          on:click={() => applyStory(ask)}>Yes</button>
+                  <button type="button" id="btnShowMeNo-{ask.id}" class="rb-gate-button"
+                          on:click={() => cancelStory(ask)}>No</button>
+                </span>
+              {/if}
+            </div>
           </div>
         {/each}
       </div>
@@ -2968,6 +3210,8 @@
           {@const meas = row.member}
           {@const refused = errorOf('measure', meas.name)}
           <div id="meas-{meas.name}" class="rb-tree-row rb-tree-field" class:rb-refused={refused}
+               class:rb-involved={involvedMeasures.has(meas.name)}
+               class:rb-story-field={markedMeasures.has(meas.name) && !involvedMeasures.has(meas.name)}
                style="padding-left: {4 + row.depth * 20}px;"
                title={tooltip('measure', meas, measureFacts(meas))}>
             <label class="rb-cube-checkbox">
@@ -2994,6 +3238,8 @@
           {@const dim = row.member}
           {@const refused = errorOf('dimension', dim.name)}
           <div id="dim-{dim.name}" class="rb-tree-row rb-tree-field" class:rb-refused={refused}
+               class:rb-involved={involvedDimensions.has(dim.name)}
+               class:rb-story-field={markedDimensions.has(dim.name) && !involvedDimensions.has(dim.name)}
                style="padding-left: {4 + row.depth * 20}px;"
                title={tooltip('dimension', dim, dimensionFacts(dim))}>
             <label class="rb-cube-checkbox">
@@ -3069,6 +3315,8 @@
           {@const seg = row.member}
           {@const refused = errorOf('segment', seg.name)}
           <div id="seg-{seg.name}" class="rb-tree-row rb-tree-field" class:rb-refused={refused}
+               class:rb-involved={involvedSegments.has(seg.name)}
+               class:rb-story-field={markedSegments.has(seg.name) && !involvedSegments.has(seg.name)}
                style="padding-left: {4 + row.depth * 20}px;"
                title={tooltip('segment', seg, [])}>
             <label class="rb-cube-checkbox">
@@ -3163,7 +3411,7 @@
 
     <!-- W2: the answer, under the tree it was asked from -->
     {#if runtime || runtimeError}
-      <div id="cubeRuntimeResult" class="rb-runtime-result">
+      <div id="cubeRuntimeResult" class="rb-runtime-result" class:rb-result-flash={flashResult}>
         {#if runtimeError}
           <div id="cubeRuntimeError" class="rb-filter-note rb-filter-bad">{runtimeError}</div>
         {/if}
@@ -3272,6 +3520,10 @@
                    columns={drillColumns} loading={drillLoading} error={drillError} truncated={drillTruncated}
                    on:close={closeDrill}></rb-drill-rows>
   {/if}
+  {#if toast}
+    <div class="rb-toast" id="cubeToast" role="status" aria-live="polite" title="Click to close"
+         on:click={() => { toast = ''; }}>{toast}</div>
+  {/if}
 </div>
 
 <style>
@@ -3317,33 +3569,85 @@
   /* One word over the questions, a size above the field half's own headings: the tree is a list a
      reader scans, and this is the half they are invited to start from. */
   .rb-stories-heading {
-    font-size: 15px;
+    font-size: 1.3rem;
     font-weight: 700;
+    line-height: 1.2;
     padding: 0 4px;
-    margin: 0 0 2px;
+    margin: 0 0 8px;
     cursor: help;
   }
 
   .rb-hints {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
     margin: 4px 0 8px;
   }
 
+  /*
+   * A story is the way in, so it has a look of its own: a bar and a tint in the page's accent. Every
+   * colour here is that accent mixed into whatever the page already is (transparent), or the page's
+   * own text colour, so it follows the theme the reader picked - dark or light, whichever one - and
+   * the words stay the page's own colour and stay readable on any of them.
+   */
   .rb-hint {
-    border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
-    border-radius: 6px;
-    padding: 8px 10px;
+    --rb-story: var(--rb-accent, var(--color-primary, #2171b5));
+    border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+    border-left: 3px solid color-mix(in oklab, var(--rb-story) 70%, transparent);
+    border-radius: 8px;
+    padding: 10px 12px 10px 14px;
+    background: color-mix(in oklab, var(--rb-story) 4%, transparent);
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .rb-hint:hover {
+    border-color: color-mix(in oklab, var(--rb-story) 35%, transparent);
+    border-left-color: var(--rb-story);
+    background: color-mix(in oklab, var(--rb-story) 7%, transparent);
   }
 
   /* The story the ticks are asking, marked while its fields are the ticked ones. */
-  .rb-hint-asked {
-    border-color: color-mix(in oklab, currentColor 45%, transparent);
-    background: color-mix(in oklab, currentColor 6%, transparent);
+  .rb-hint-asked,
+  .rb-hint-asked:hover {
+    border-color: color-mix(in oklab, var(--rb-story) 50%, transparent);
+    border-left-color: var(--rb-story);
+    background: color-mix(in oklab, var(--rb-story) 9%, transparent);
+  }
+  /* The story the reader applied with Show Me, for as long as its ticks are still the ones ticked. */
+  .rb-hint-applied,
+  .rb-hint-applied:hover {
+    border-color: color-mix(in oklab, var(--rb-story) 70%, transparent);
+    border-left-width: 5px;
+    border-left-color: var(--rb-story);
+    background: color-mix(in oklab, var(--rb-story) 13%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--rb-story) 25%, transparent);
+  }
+  .rb-hint-applied .rb-hint-actions {
+    padding-right: 84px;
+    min-height: 30px;
+  }
+  /* The stamp: while the story is the one applied it says so in the corner; change one of its ticks and it goes. */
+  .rb-hint {
+    position: relative;
+  }
+  .rb-hint-stamp {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    padding: 2px 10px;
+    border: 2px solid #fff;
+    border-radius: 3px;
+    background: var(--rb-story);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    transform: rotate(-4deg);
+    pointer-events: none;
+    animation: rb-stamp-in 0.22s ease-out;
   }
 
   .rb-hint-question {
+    font-size: 14px;
     font-weight: 600;
   }
 
@@ -3353,7 +3657,6 @@
     margin: 2px 0 6px;
   }
 
-  .rb-hint-showme,
   .rb-opened-button,
   .rb-display-button {
     border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
@@ -3364,6 +3667,202 @@
     font-size: 12px;
     padding: 3px 10px;
     cursor: pointer;
+  }
+
+  /*
+   * Show Me: a quiet pill, the story's accent as a thin outline and a faint tint with the page's own text
+   * colour, so it reads on any theme. Under the pointer or the keyboard it fills with the accent and takes the text
+   * colour the theme pairs with it.
+   */
+  .rb-hint-showme {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid color-mix(in oklab, var(--rb-story) 55%, transparent);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--rb-story) 7%, transparent);
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 13px 3px 10px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .rb-hint-showme::before {
+    content: '\25B6';
+    font-size: 8px;
+    color: color-mix(in oklab, var(--rb-story) 80%, currentColor);
+    transition: color 0.15s;
+  }
+  .rb-hint-showme:hover,
+  .rb-hint-showme:focus-visible {
+    background: var(--rb-story);
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+  }
+  .rb-hint-showme:hover::before,
+  .rb-hint-showme:focus-visible::before {
+    color: inherit;
+  }
+  .rb-hint-showme:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--rb-story) 70%, transparent);
+    outline-offset: 2px;
+  }
+
+  .rb-hint-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+
+  /* The Yes / No that opens beside Show Me: the same quiet pill, so it reads as the button's own question. */
+  .rb-hint-gate {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    animation: rb-gate-in 0.18s ease-out;
+  }
+  .rb-hint-gate-question {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .rb-gate-button {
+    border: 1px solid color-mix(in oklab, currentColor 28%, transparent);
+    border-radius: 999px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    padding: 3px 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .rb-gate-button:hover,
+  .rb-gate-button:focus-visible {
+    background: color-mix(in oklab, currentColor 10%, transparent);
+  }
+  .rb-gate-yes {
+    border-color: color-mix(in oklab, var(--rb-story) 65%, transparent);
+    background: color-mix(in oklab, var(--rb-story) 12%, transparent);
+    font-weight: 600;
+  }
+  .rb-gate-yes:hover,
+  .rb-gate-yes:focus-visible {
+    background: var(--rb-story);
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+  }
+  .rb-gate-button:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--rb-story) 70%, transparent);
+    outline-offset: 2px;
+  }
+
+  /*
+   * While the question is open, the fields the story would use breathe: each name in the sentence
+   * takes the accent in turn (a soft wave, left to right), and the same fields glow in the tree. It is
+   * the accent mixed into the page's own colours, like the card, so it follows any theme.
+   */
+  .rb-hint-pending :global(.rb-hint-text strong) {
+    border-radius: 3px;
+    padding: 0 2px;
+    animation: rb-field-glow 1.8s ease-in-out infinite;
+  }
+  .rb-hint-pending :global(.rb-hint-text strong:nth-of-type(2)) { animation-delay: 0.2s; }
+  .rb-hint-pending :global(.rb-hint-text strong:nth-of-type(3)) { animation-delay: 0.4s; }
+  .rb-hint-pending :global(.rb-hint-text strong:nth-of-type(4)) { animation-delay: 0.6s; }
+  .rb-hint-pending :global(.rb-hint-text strong:nth-of-type(n + 5)) { animation-delay: 0.8s; }
+  .rb-involved {
+    border-radius: 4px;
+    animation: rb-field-row 1.8s ease-in-out infinite;
+  }
+  /* The applied story's fields, kept lit: a faint tint and a bar on the left, in the accent. */
+  .rb-story-field {
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 15%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 75%, transparent);
+  }
+  @keyframes -global-rb-field-glow {
+    0%, 100% { background: transparent; }
+    50% { background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 36%, transparent); }
+  }
+  @keyframes -global-rb-field-row {
+    0%, 100% { background: transparent; }
+    50% { background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 24%, transparent); }
+  }
+  @keyframes -global-rb-stamp-in {
+    from { opacity: 0; transform: rotate(-4deg) scale(1.6); }
+    to { opacity: 1; transform: rotate(-4deg) scale(1); }
+  }
+  @keyframes -global-rb-gate-in {
+    from { opacity: 0; transform: translateX(-4px); }
+    to { opacity: 1; transform: none; }
+  }
+  /* Asked for less motion: the same fields stay marked, and do not move. */
+  @media (prefers-reduced-motion: reduce) {
+    .rb-hint-pending :global(.rb-hint-text strong) {
+      animation: none;
+      background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 30%, transparent);
+    }
+    .rb-involved {
+      animation: none;
+      background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 20%, transparent);
+    }
+    .rb-hint-gate { animation: none; }
+    .rb-hint-stamp { animation: none; }
+  }
+
+  /* The toast: said once, bottom centre, in the accent with the text the theme pairs with it. */
+  .rb-toast {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100002;
+    max-width: min(92vw, 420px);
+    padding: 10px 18px;
+    border-radius: 10px;
+    background: var(--rb-accent, var(--color-primary, #2171b5));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+    font-size: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+    animation: rb-toast-in 0.25s ease-out;
+  }
+  @keyframes -global-rb-toast-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: none; }
+  }
+  /* The answer, lit for a moment after Yes: a ring and a soft tint in the accent that fade away on their own. */
+  .rb-result-flash {
+    position: relative;
+    border-radius: 6px;
+    animation: rb-result-ring 3.8s ease-out forwards;
+  }
+  .rb-result-flash::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 14%, transparent);
+    pointer-events: none;
+    animation: rb-result-tint 3.8s ease-out forwards;
+  }
+  @keyframes -global-rb-result-ring {
+    0%, 30% {
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 85%, transparent),
+        0 0 22px color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 45%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 2px transparent, 0 0 22px transparent;
+    }
+  }
+  @keyframes -global-rb-result-tint {
+    0%, 30% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rb-toast { animation: none; }
+    .rb-result-flash, .rb-result-flash::after { animation: none; }
+    .rb-result-flash { outline: 2px solid color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 60%, transparent); }
   }
 
   .rb-display-switch,
@@ -3417,11 +3916,22 @@
     border-bottom: 1px solid color-mix(in oklab, currentColor 15%, transparent);
     color: inherit;
     font: inherit;
-    font-weight: 600;
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.25;
     text-align: left;
     cursor: pointer;
-    padding: 4px 2px;
-    margin-bottom: 6px;
+    padding: 4px 2px 8px;
+    margin-bottom: 8px;
+  }
+  /* The name of the area above the title: small, spaced capitals in the page's accent. */
+  .rb-panel-eyebrow {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--rb-accent, var(--color-primary, #2171b5));
   }
   /* read-only: the same line, saying the same thing, with nothing to click. */
   .rb-panel-header.rb-panel-fixed {
@@ -3441,8 +3951,10 @@
   }
 
   .rb-chip-bar {
+    --rb-story: var(--rb-accent, var(--color-primary, #2171b5));
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
   }
   .rb-chip-bar > .rb-chips {
@@ -3455,11 +3967,26 @@
     color: inherit;
     cursor: pointer;
     font: inherit;
-    font-size: 12px;
-    opacity: 0.8;
+    font-size: 14px;
+    opacity: 0.85;
     padding: 0;
+    margin: 0;
     text-decoration: underline;
     white-space: nowrap;
+  }
+  /* Nothing to go back from: still there, only quieter, so it never jumps in and out of the screen. */
+  .rb-reset-view.rb-reset-idle {
+    opacity: 0.45;
+    cursor: default;
+    text-decoration: none;
+  }
+  .rb-reset-actions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin: 0 0 14px;
+    margin-left: auto;
   }
 
   /* A number that has rows behind it says so before it is clicked. */
@@ -3588,6 +4115,16 @@
     border: 1px solid var(--rb-border, color-mix(in oklab, currentColor 18%, transparent));
     border-radius: 4px;
     font-size: 13px;
+  }
+  /*
+   * The list a select opens is drawn by the browser, on its own background, while the select itself is transparent and
+   * takes the page's text colour: on a dark theme that was light text on a white list. The options get the theme's own
+   * pair (the system pair when the page has no theme), so the text is readable on any of them.
+   */
+  .rb-cube-select option,
+  .rb-gran-select option {
+    background-color: var(--color-base-100, Canvas);
+    color: var(--color-base-content, CanvasText);
   }
   .rb-cube-desc {
     color: color-mix(in oklab, currentColor 60%, transparent);

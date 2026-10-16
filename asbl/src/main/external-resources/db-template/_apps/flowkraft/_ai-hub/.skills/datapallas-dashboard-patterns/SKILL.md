@@ -81,7 +81,7 @@ In the order of the question: **the headline, the trend, the why, the where and 
 - what is missing.
 
 Then:
-- **Point at the live demo** that matches: *"see DD14 in Samples → 23. Dashboard Demos, and how it was built: <link>"* — the links are in `live-demos.md`.
+- **Point at the live demo** that matches: *"see DD14 in Samples → 2. Dashboard Demos, and how it was built: <link>"* — the links are in `live-demos.md`.
 - **Offer the next dashboards**, one line each, for the user to pick: **zoom-ins** (the same data by country, by channel, by product, over time), **related dashboards** (the entities the facts point to), and **comparisons** (a segment against everyone, this year against last).
 - **Offer to write the PRD** (`business-analysis`), or to hand the build to **`datapallas-dashboards`** for the Canvas steps.
 

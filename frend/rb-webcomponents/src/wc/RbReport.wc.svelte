@@ -6,11 +6,13 @@
   import { openingValues } from '../shared/url-start-values';
   // The "⋯" menu on each tile (#19): added here, where every published dashboard is put on the page.
   import { decorateTiles } from '../shared/tile-menu';
+  import { closeOthersOfGroup } from '../shared/panel-group';
   // A click on a bar or a table row opens the rows behind it (#21).
   import { wireDrillThrough } from '../shared/drill-through';
   import { wireNoData } from '../shared/no-data';
   // How often the dashboard asks its data again by itself, as its author set it (#22).
   import { autoRefreshMinutesOf } from '../shared/auto-refresh';
+  import { storyToastLines } from '../shared/story-summary';
   import { fieldOf, SLICER_TAG, slicerFieldsOnPage, slicerSelectionsFor, refreshDataWidgets,
            CROSS_FILTER_EVENT, DATA_WIDGET_TAGS,
            type SlicerSelection } from '../shared/slicer-selections';
@@ -80,6 +82,19 @@
   /** The stories the config carries, and the one the reader asked last (marked, as a cube marks it). */
   let stories: any[] = [];
   let lastAskedId: string | null = null;
+  /** The story whose "Apply the filter values?" Yes / No is open, and what it would change. */
+  let confirmStoryId = '';
+  /** What that Yes would set, filter by filter: shown in the gate so the reader knows what they are agreeing to. */
+  let pendingChanges: { id: string; label: string; to: string; toFull: string }[] = [];
+  /** What the story on screen set, kept so a No on another story gives its marks back. */
+  let appliedMarks: { involved: string[]; changes: any[] } | null = null;
+  /** True while Show Me sets the bar: those value changes are the story's, not the reader's. */
+  let applyingStory = false;
+  let storyToast: string[] = [];
+  let storyToastTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The answer glows for a few seconds after a story is applied, then fades. */
+  let flashAnswer = false;
+  let flashTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Track previous entityCode to detect changes
   let prevEntityCode: string = '';
@@ -508,6 +523,11 @@
   function handlePanelOpened(event: Event) {
     const panel = event.target as HTMLElement | null;
     if (!panel || panel.tagName !== 'DETAILS' || !(panel as HTMLDetailsElement).open) return;
+    // One open panel at a time in a group of one name: the browser's own rule, stated here too so a
+    // dashboard shows it whatever drew the page (Gallery areas, Cube Stories industries).
+    if (dashboardContainer)
+      closeOthersOfGroup(panel as HTMLDetailsElement,
+        dashboardContainer.querySelectorAll<HTMLDetailsElement>('details[name]'));
     if (typeof window === 'undefined') return;
     window.requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
   }
@@ -569,23 +589,104 @@
   $: offersStories = showStories && stories.length > 0;
 
   /**
-   * Show Me: the story's values, set as if the reader had picked them, and this dashboard reloaded.
+   * Show Me asks first: "Apply the filter values and refresh the dashboard?". The filters the story
+   * is about breathe in the bar, each with what it would set, while the question is open - the reader
+   * sees what Yes does before saying it.
+   */
+  async function askToApply(story: any) {
+    const params = ownParameters();
+    confirmStoryId = String(story?.id ?? '');
+    if (params && typeof params.describeStory === 'function' && typeof params.markInvolved === 'function') {
+      const what = params.describeStory(story?.params || {});
+      pendingChanges = what.changes;
+      params.markInvolved('pending', what.involved, what.changes);
+    }
+    await tick();
+    storyButton('btnShowMeYes', story)?.focus({ preventScroll: true });
+  }
+
+  function cancelStory(story: any) {
+    confirmStoryId = '';
+    pendingChanges = [];
+    // The marks of the story that is on screen come back, and the keyboard goes back to the button that asked.
+    const params = ownParameters();
+    if (params && typeof params.markInvolved === 'function') {
+      if (appliedMarks) params.markInvolved('applied', appliedMarks.involved, appliedMarks.changes);
+      else params.markInvolved('');
+    }
+    storyButton('btnShowMe', story)?.focus({ preventScroll: true });
+  }
+
+  function onGateKey(event: KeyboardEvent, story: any) {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      cancelStory(story);
+    }
+  }
+
+  function storyButton(prefix: string, story: any): HTMLElement | null {
+    return (container?.querySelector(`[id="${prefix}-${reportId}-${story?.id}"]`) as HTMLElement | null) ?? null;
+  }
+
+  function say(...lines: string[]) {
+    storyToast = lines.filter(Boolean);
+    if (storyToastTimer) clearTimeout(storyToastTimer);
+    storyToastTimer = setTimeout(() => { storyToast = []; storyToastTimer = null; }, 7000);
+  }
+
+  /**
+   * Yes: the story's values, set as if the reader had picked them, and this dashboard reloaded.
    *
    * `setValues` is where the validation lives (`shared/url-start-values.ts`, shared with the values
    * a page URL carries): an unknown name or a value outside a filter's options is ignored with one
    * warning, and a locked parameter keeps the link's value. The page does not navigate.
    */
-  function showMe(story: any) {
+  async function applyStory(story: any) {
+    confirmStoryId = '';
+    pendingChanges = [];
     const params = ownParameters();
     if (!params || typeof params.setValues !== 'function') {
       console.warn('[RbReport] Show Me: this dashboard has no filter bar to set');
       return;
     }
+    const what = typeof params.describeStory === 'function'
+      ? params.describeStory(story?.params || {}) : { involved: [], changes: [] };
     lastAskedId = story?.id ?? null;
+    applyingStory = true;
     // From the dashboard as it opens, not from what the story before this one left in the bar.
-    if (typeof params.showStory === 'function') params.showStory(story?.params || {});
-    else params.setValues(story?.params || {});
+    try {
+      if (typeof params.showStory === 'function') params.showStory(story?.params || {});
+      else params.setValues(story?.params || {});
+    } finally {
+      applyingStory = false;
+    }
+    appliedMarks = { involved: what.involved, changes: what.changes };
+    if (typeof params.markInvolved === 'function') params.markInvolved('applied', what.involved, what.changes);
     params.reloadNow();
+
+    say(...storyToastLines(story?.question, what.changes));
+    // The reader pressed Yes to see the answer: the bar and the dashboard under it come into view,
+    // and once the tiles have asked again the answer lights up for a moment.
+    await tick();
+    bringAnswerIntoView(params);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    await flash();
+  }
+
+  /** The filter bar at the top of the screen, which is where the answer starts. */
+  function bringAnswerIntoView(params: any) {
+    if (typeof window === 'undefined' || !params?.scrollIntoView) return;
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    params.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+  }
+
+  /** Light the answer once: off and on again, so a second story lights it afresh. */
+  async function flash() {
+    if (flashTimer) clearTimeout(flashTimer);
+    flashAnswer = false;
+    await tick();
+    flashAnswer = true;
+    flashTimer = setTimeout(() => { flashAnswer = false; flashTimer = null; }, 3800);
   }
 
   /** Reset: this dashboard's own defaults, and the same reload. */
@@ -596,8 +697,12 @@
       return;
     }
     lastAskedId = null;
+    confirmStoryId = '';
+    appliedMarks = null;
+    if (typeof params.markInvolved === 'function') params.markInvolved('');
     params.reset();
     params.reloadNow();
+    say('Filters back to their defaults');
   }
 
   /**
@@ -758,6 +863,12 @@
     // The tiles were put on the page with the values the bar opens with (loadConfig), and the bar
     // hands every later change to them itself; this keeps the values for a re-injection.
     currentDashboardParams = e.detail || {};
+    // A filter the reader changes by hand is no longer what the story set: its marks go.
+    if (!applyingStory && appliedMarks && !e.detail?.rbInit) {
+      appliedMarks = null;
+      const params = ownParameters();
+      if (params && typeof params.markInvolved === 'function' && !confirmStoryId) params.markInvolved('');
+    }
   }
 
   function handleDashboardParamSubmit(e: CustomEvent) {
@@ -875,11 +986,41 @@
   {#if configLoaded && dashboardTemplate && !error && offersStories}
     <div id="stories-{reportId}" class="rb-hints">
       {#each stories as story (story.id)}
-        <div id="story-{reportId}-{story.id}" class="rb-hint" class:rb-hint-asked={story.id === lastAskedId}>
+        <div id="story-{reportId}-{story.id}" class="rb-hint" class:rb-hint-asked={story.id === lastAskedId}
+             class:rb-hint-applied={story.id === lastAskedId} class:rb-hint-pending={String(story.id) === confirmStoryId}>
+          {#if story.id === lastAskedId}
+            <span class="rb-hint-stamp" id="storyApplied-{reportId}-{story.id}" title="This story is applied: its filters are set">applied</span>
+          {/if}
           <div class="rb-hint-question">{story.question}</div>
           <div class="rb-hint-text">{story.text}</div>
-          <button type="button" id="btnShowMe-{reportId}-{story.id}" class="rb-hint-showme"
-                  title="Set the filters this question asks for" on:click={() => showMe(story)}>Show Me</button>
+          <div class="rb-hint-actions">
+            <button type="button" id="btnShowMe-{reportId}-{story.id}" class="rb-hint-showme"
+                    aria-expanded={String(story.id) === confirmStoryId}
+                    title="Set the filters this question asks for" on:click={() => askToApply(story)}>Show Me</button>
+            {#if String(story.id) === confirmStoryId}
+              <span class="rb-hint-gate" id="storyGate-{reportId}-{story.id}" role="group"
+                    aria-label="Apply the filter values and refresh the dashboard?" on:keydown={(e) => onGateKey(e, story)}>
+                <span class="rb-hint-gate-question">Apply the filter values and refresh the dashboard?</span>
+                <button type="button" id="btnShowMeYes-{reportId}-{story.id}" class="rb-gate-button rb-gate-yes"
+                        on:click={() => applyStory(story)}>Yes</button>
+                <button type="button" id="btnShowMeNo-{reportId}-{story.id}" class="rb-gate-button"
+                        on:click={() => cancelStory(story)}>No</button>
+              </span>
+            {/if}
+          </div>
+          {#if String(story.id) === confirmStoryId}
+            <!-- What Yes sets, said plainly: each filter and the value it takes. -->
+            <div class="rb-hint-sets" id="storySets-{reportId}-{story.id}">
+              {#if pendingChanges.length}
+                <span class="rb-hint-sets-label">This sets</span>
+                {#each pendingChanges as change (change.id)}
+                  <span class="rb-hint-set"><span class="rb-hint-set-name">{change.label}</span> <strong>{change.toFull}</strong></span>
+                {/each}
+              {:else}
+                <span class="rb-hint-sets-label">The filters are already set this way; Yes just refreshes the dashboard.</span>
+              {/if}
+            </div>
+          {/if}
         </div>
       {/each}
       <!-- One Reset for the dashboard, not one per story: it puts every filter back to its default. -->
@@ -914,7 +1055,15 @@
   {/if}
 
   {#if configLoaded && dashboardTemplate && !error}
-    <div class="rb-report-dashboard" id={reportId ? `widgetReport-${reportId}` : 'widgetReport'} bind:this={dashboardContainer}></div>
+    <div class="rb-report-dashboard" id={reportId ? `widgetReport-${reportId}` : 'widgetReport'} bind:this={dashboardContainer}
+         class:rb-result-flash={flashAnswer}></div>
+  {/if}
+
+  {#if storyToast.length}
+    <div class="rb-toast" id="storyToast-{reportId}" role="status" aria-live="polite" title="Click to close"
+         on:click={() => { storyToast = []; }}>
+      {#each storyToast as line, i}<div class={i === 0 ? 'rb-toast-first' : 'rb-toast-rest'}>{line}</div>{/each}
+    </div>
   {/if}
 
   {#if configLoaded && !dashboardTemplate && !error}
@@ -1121,7 +1270,7 @@
   .rb-hints {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
     margin: 8px 0;
   }
 
@@ -1182,19 +1331,60 @@
     text-decoration: underline;
   }
 
+  /*
+   * A story is the way in, so it has a look of its own - the cube's: a bar and a tint in the page's
+   * accent. Every colour is that accent mixed into whatever the page already is, or the page's own text
+   * colour, so it follows the theme (dark or light) and the words stay readable on any of them.
+   */
   .rb-hint {
-    border: 1px solid color-mix(in oklab, currentColor 15%, transparent);
-    border-radius: 6px;
-    padding: 8px 10px;
+    --rb-story: var(--rb-accent, var(--color-primary, #2171b5));
+    position: relative;
+    border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+    border-left: 3px solid color-mix(in oklab, var(--rb-story) 70%, transparent);
+    border-radius: 8px;
+    padding: 10px 12px 10px 14px;
+    background: color-mix(in oklab, var(--rb-story) 4%, transparent);
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .rb-hint:hover {
+    border-color: color-mix(in oklab, var(--rb-story) 35%, transparent);
+    border-left-color: var(--rb-story);
+    background: color-mix(in oklab, var(--rb-story) 7%, transparent);
   }
 
   /* The story the reader asked last, marked while its values are the ones on screen. */
-  .rb-hint-asked {
-    border-color: color-mix(in oklab, currentColor 45%, transparent);
-    background: color-mix(in oklab, currentColor 6%, transparent);
+  .rb-hint-asked,
+  .rb-hint-asked:hover {
+    border-color: color-mix(in oklab, var(--rb-story) 70%, transparent);
+    border-left-width: 5px;
+    border-left-color: var(--rb-story);
+    background: color-mix(in oklab, var(--rb-story) 13%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--rb-story) 25%, transparent);
+  }
+  .rb-hint-applied .rb-hint-actions {
+    padding-right: 84px;
+    min-height: 30px;
+  }
+  /* The stamp: while the story is the one shown it says so in the corner. */
+  .rb-hint-stamp {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    padding: 2px 10px;
+    border: 2px solid #fff;
+    border-radius: 3px;
+    background: var(--rb-story);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    transform: rotate(-4deg);
+    pointer-events: none;
+    animation: rb-stamp-in 0.22s ease-out;
   }
 
   .rb-hint-question {
+    font-size: 14px;
     font-weight: 600;
   }
 
@@ -1204,15 +1394,176 @@
     margin: 2px 0 6px;
   }
 
+  /* Show Me: a quiet pill, the accent as a thin outline and a faint tint; under the pointer or keyboard it fills. */
   .rb-hint-showme {
-    border: 1px solid color-mix(in oklab, currentColor 25%, transparent);
-    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid color-mix(in oklab, var(--rb-story) 55%, transparent);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--rb-story) 7%, transparent);
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 13px 3px 10px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .rb-hint-showme::before {
+    content: '\25B6';
+    font-size: 8px;
+    color: color-mix(in oklab, var(--rb-story) 80%, currentColor);
+    transition: color 0.15s;
+  }
+  .rb-hint-showme:hover,
+  .rb-hint-showme:focus-visible {
+    background: var(--rb-story);
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+  }
+  .rb-hint-showme:hover::before,
+  .rb-hint-showme:focus-visible::before {
+    color: inherit;
+  }
+  .rb-hint-showme:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--rb-story) 70%, transparent);
+    outline-offset: 2px;
+  }
+  /* The Reset is one for the whole dashboard, so it is a plain button, not a pill with a play mark. */
+  .rb-hint-reset .rb-hint-showme::before {
+    content: none;
+  }
+  .rb-hint-reset .rb-hint-showme {
+    padding: 3px 13px;
+  }
+
+  .rb-hint-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+
+  /* What Yes would set: "This sets  Year 2025  Region APAC", each filter a small chip, its value in bold. */
+  .rb-hint-sets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-top: 8px;
+    font-size: 13px;
+    animation: rb-gate-in 0.18s ease-out;
+  }
+  .rb-hint-sets-label {
+    color: color-mix(in oklab, currentColor 70%, transparent);
+  }
+  .rb-hint-set {
+    padding: 2px 11px;
+    border: 1px solid color-mix(in oklab, var(--rb-story) 55%, transparent);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--rb-story) 12%, transparent);
+  }
+  .rb-hint-set-name {
+    color: color-mix(in oklab, currentColor 70%, transparent);
+  }
+
+  /* The Yes / No that opens beside Show Me: the same quiet pill, so it reads as the button's own question. */
+  .rb-hint-gate {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    animation: rb-gate-in 0.18s ease-out;
+  }
+  .rb-hint-gate-question {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .rb-gate-button {
+    border: 1px solid color-mix(in oklab, currentColor 28%, transparent);
+    border-radius: 999px;
     background: none;
     color: inherit;
     font: inherit;
-    font-size: 12px;
-    padding: 3px 10px;
+    font-size: 13px;
+    padding: 3px 13px;
     cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .rb-gate-button:hover,
+  .rb-gate-button:focus-visible {
+    background: color-mix(in oklab, currentColor 10%, transparent);
+  }
+  .rb-gate-yes {
+    border-color: color-mix(in oklab, var(--rb-story) 65%, transparent);
+    background: color-mix(in oklab, var(--rb-story) 12%, transparent);
+    font-weight: 600;
+  }
+  .rb-gate-yes:hover,
+  .rb-gate-yes:focus-visible {
+    background: var(--rb-story);
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+  }
+  .rb-gate-button:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--rb-story) 70%, transparent);
+    outline-offset: 2px;
+  }
+  @keyframes rb-gate-in {
+    from { opacity: 0; transform: translateX(-4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes rb-stamp-in {
+    from { opacity: 0; transform: rotate(-4deg) scale(1.6); }
+    to { opacity: 1; transform: rotate(-4deg) scale(1); }
+  }
+
+  /* The toast: said once, top right, in the accent with the text the theme pairs with it. */
+  .rb-toast {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100002;
+    max-width: min(92vw, 460px);
+    padding: 10px 18px;
+    border-radius: 10px;
+    background: var(--rb-accent, var(--color-primary, #2171b5));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+    font-size: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+    animation: rb-toast-in 0.25s ease-out;
+  }
+  .rb-toast-first {
+    font-weight: 600;
+  }
+  .rb-toast-rest {
+    font-size: 13px;
+    margin-top: 3px;
+    opacity: 0.92;
+  }
+  @keyframes rb-toast-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* The answer, lit for a moment after Yes: a ring and a soft tint in the accent that fade away on their own. */
+  .rb-result-flash {
+    position: relative;
+    border-radius: 6px;
+    animation: rb-result-ring 3.8s ease-out forwards;
+  }
+  @keyframes rb-result-ring {
+    0%, 30% {
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 85%, transparent),
+        0 0 22px color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 45%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 2px transparent, 0 0 22px transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rb-toast, .rb-hint-gate, .rb-hint-stamp { animation: none; }
+    .rb-result-flash { animation: none; outline: 2px solid color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 60%, transparent); }
   }
 
   .rb-report-entity-html {

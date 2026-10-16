@@ -15,14 +15,14 @@ import com.flowkraft.exploredata.export.DashboardDemos.Demo;
  *
  * <p>{@code config/samples/dashboard-demos.json} says what each demo is - its area, its title, the
  * question it answers, who reads it, what they decide, what they find, and how tall its dashboard is.
- * Three readers need that said again in their own form: the Gallery page's contents list, the
- * Gallery page's 25 cards, and the reference Athena reads when someone asks which dashboard fits
- * their data. All three are generated here, so a demo renamed in the index cannot keep an old name
- * anywhere else, and none of them is written by hand.
+ * Two readers need that said again in their own form: the Gallery page - eight collapsible areas,
+ * one open at a time, each with its list of dashboards and its cards - and the reference Athena
+ * reads when someone asks which dashboard fits their data. Both are generated here, so a demo
+ * renamed in the index cannot keep an old name anywhere else, and none of them is written by hand.
  *
  * <p>The Gallery template holds the generated text between marker comments, the way a generated
  * block is always marked: everything outside them - the header, the info bar, the stylesheet - is
- * the author's and is never touched. {@code DashboardDemosExportParityTest} regenerates both blocks
+ * the author's and is never touched. {@code DashboardDemosExportParityTest} regenerates the block
  * and fails if what is in the template is not what the index says.
  */
 final class DashboardDemosGallery {
@@ -30,9 +30,6 @@ final class DashboardDemosGallery {
 	/** The Gallery's own report id: the page that holds all 25. */
 	static final String REPORT_ID = "g-dashboard-demos";
 
-	static final String CONTENTS_BEGIN = "<!-- BEGIN contents: generated from "
-			+ "config/samples/dashboard-demos.json. Do not edit by hand. -->";
-	static final String CONTENTS_END = "<!-- END contents -->";
 	static final String CARDS_BEGIN = "<!-- BEGIN cards: generated from "
 			+ "config/samples/dashboard-demos.json. Do not edit by hand. -->";
 	static final String CARDS_END = "<!-- END cards -->";
@@ -56,25 +53,13 @@ final class DashboardDemosGallery {
 
 	// ------------------------------------------------------------------ the page ---
 
-	/** The contents list: one entry per area, with its demos under it, in the index's own order. */
-	static String contents(List<Demo> demos) {
-		StringBuilder out = new StringBuilder();
-		for (Map.Entry<String, List<Demo>> area : byArea(demos).entrySet()) {
-			out.append("      <li><a href=\"#").append(areaId(area.getKey())).append("\">")
-					.append(html(area.getKey())).append("</a>\n        <ul>\n");
-			for (Demo demo : area.getValue())
-				out.append("          <li><a id=\"lnkContents-").append(demo.id()).append("\" href=\"#")
-						.append(demo.id()).append("\">")
-						.append(html(field(demo, "title"))).append("</a></li>\n");
-			out.append("        </ul>\n      </li>\n");
-		}
-		return out.toString();
-	}
-
 	/**
-	 * The 25 cards, under one heading per area: what the demo is, the line that says who reads it and
-	 * what they decide, a link to its own page, the dashboard itself, and the page that shows how it
-	 * was built.
+	 * The 25 cards, in eight collapsible areas: an accordion of {@code <details name="areas">}, one open at
+	 * a time, the first open when the page loads. An area's bar says its name and how many dashboards
+	 * it holds; under the bar is the list of its dashboards (the links jump to their cards, which are
+	 * in the same open area), and then the cards. Each card says what the demo is, the line that says
+	 * who reads it and what they decide, a link to its own page, the dashboard itself, and the page
+	 * that shows how it was built.
 	 *
 	 * <p>The dashboard is the very one the Canvas published, named only by its report id:
 	 * {@code lazy} so it fetches nothing until the reader scrolls to it, {@code show-stories} so its
@@ -83,13 +68,84 @@ final class DashboardDemosGallery {
 	 */
 	static String cards(List<Demo> demos) {
 		StringBuilder out = new StringBuilder();
+		boolean first = true;
+		int patterns = (int) demos.stream().filter(d -> patternOf(d) != null).count();
+		if (patterns > 0)
+			out.append(patternFilter(patterns));
 		for (Map.Entry<String, List<Demo>> area : byArea(demos).entrySet()) {
-			out.append("  <h2 class=\"area-heading\" id=\"").append(areaId(area.getKey())).append("\">")
-					.append(html(area.getKey())).append("</h2>\n");
+			String id = areaId(area.getKey());
+			int count = area.getValue().size();
+			out.append("  <details name=\"areas\" class=\"area\" id=\"").append(id).append("\"")
+					.append(first ? " open" : "").append(">\n");
+			out.append("    <summary class=\"area-bar\" id=\"").append(id).append("-bar\">")
+					.append(html(area.getKey())).append(" <span class=\"area-count\" id=\"").append(id)
+					.append("-count\">").append(count).append(count == 1 ? " dashboard" : " dashboards")
+					.append("</span>");
+			long here = area.getValue().stream().filter(d -> patternOf(d) != null).count();
+			if (here > 0)
+				out.append(" <span class=\"area-patterns\" id=\"").append(id).append("-patterns\">&#9670; ")
+						.append(here).append(here == 1 ? " pattern" : " patterns").append("</span>");
+			out.append("</summary>\n");
+			out.append("    <nav class=\"area-contents\" id=\"").append(id).append("-contents\">\n");
+			for (Demo demo : area.getValue())
+				out.append("      <a id=\"lnkContents-").append(demo.id()).append("\" href=\"#")
+						.append(demo.id()).append("\">").append(html(field(demo, "title"))).append("</a>\n");
+			out.append("    </nav>\n");
 			for (Demo demo : area.getValue())
 				out.append(card(demo, area.getKey()));
+			out.append("  </details>\n");
+			first = false;
 		}
 		return out.toString();
+	}
+
+	/**
+	 * The pattern a demo is the live example of, as the index words it ({@code name}, {@code shows},
+	 * {@code dataShape}, {@code goodFit}), or {@code null} for a demo that is only ours.
+	 */
+	@SuppressWarnings("unchecked")
+	static Map<String, Object> patternOf(Demo demo) {
+		return demo.index().get("pattern") instanceof Map<?, ?> given ? (Map<String, Object>) given : null;
+	}
+
+	static String field(Map<String, Object> map, String name) {
+		return Objects.toString(map.get(name), "");
+	}
+
+	/**
+	 * The one switch of the page: only the dashboards that are also a pattern, or all of them. It is a
+	 * checkbox and a label with no script: the stylesheet reads its state (`:has(:checked)`), so the
+	 * template holds nothing to run.
+	 */
+	private static String patternFilter(int patterns) {
+		return "  <div class=\"pattern-filter\" id=\"patternFilter\">\n"
+				+ "    <input type=\"checkbox\" id=\"chkPatternsOnly\">\n"
+				+ "    <label for=\"chkPatternsOnly\" id=\"lblPatternsOnly\">\n"
+				+ "      <span class=\"pattern-switch\" aria-hidden=\"true\"></span>\n"
+				+ "      <span><strong>Only the " + patterns + " data patterns</strong>\n"
+				+ "        <span class=\"pattern-filter-hint\">dashboards that show how a particular shape of data is best presented</span>\n"
+				+ "        <span class=\"pattern-filter-on\">open an area to see them</span></span>\n"
+				+ "    </label>\n"
+				+ "  </div>\n\n";
+	}
+
+	/** The stamp in the card's corner, and the short text it opens: what the pattern is and when it fits. */
+	private static String patternBlock(Demo demo) {
+		Map<String, Object> pattern = patternOf(demo);
+		if (pattern == null)
+			return "";
+		String id = demo.id();
+		return "    <details class=\"card-pattern\" id=\"" + id + "-pattern\">\n"
+				+ "      <summary class=\"pattern-stamp\" id=\"" + id + "-pattern-stamp\""
+				+ " title=\"This dashboard is also a pattern: open it to read when it fits your data\">"
+				+ "<span class=\"pattern-stamp-label\">&#9670; Data pattern</span>"
+				+ "<span class=\"pattern-stamp-name\">" + html(field(pattern, "name")) + "</span></summary>\n"
+				+ "      <div class=\"pattern-panel\" id=\"" + id + "-pattern-text\">\n"
+				+ "        <p><strong>What it shows.</strong> " + html(field(pattern, "shows")) + "</p>\n"
+				+ "        <p><strong>The data it fits.</strong> " + html(field(pattern, "dataShape")) + "</p>\n"
+				+ "        <p><strong>Use it when</strong> " + html(field(pattern, "goodFit")) + "</p>\n"
+				+ "      </div>\n"
+				+ "    </details>\n";
 	}
 
 	private static String card(Demo demo, String area) {
@@ -101,15 +157,20 @@ final class DashboardDemosGallery {
 				+ "    <p class=\"card-grain\"><strong>Who:</strong> " + html(field(demo, "who"))
 				+ " &middot; <strong>Decision:</strong> " + html(field(demo, "decision"))
 				+ " &middot; <strong>Finding:</strong> " + html(field(demo, "finding")) + "</p>\n"
+				+ patternBlock(demo)
 				+ "    <p class=\"card-links\"><a id=\"lnkOpenAlone-" + id + "\" href=\"/dashboard/"
 				+ demo.galleryReportId() + "\">Open on its own &rarr;</a></p>\n"
 				+ "    <div class=\"card-dashboard\" style=\"min-height: " + height(demo) + "px\">\n"
 				+ "      <rb-dashboard report-id=\"" + demo.galleryReportId()
 				+ "\" api-base-url=\"/api\" lazy show-stories></rb-dashboard>\n"
 				+ "    </div>\n"
-				+ "    <p class=\"card-links\"><a id=\"lnkHowBuilt-" + id + "\" href=\""
+				+ "    <div class=\"card-build\">\n"
+				+ "      <p class=\"card-build-text\"><strong>Build this one yourself.</strong> Every step, from the data"
+				+ " to this finished dashboard, in the Data Canvas.</p>\n"
+				+ "      <a id=\"lnkHowBuilt-" + id + "\" href=\""
 				+ html(field(demo, "howItWasBuiltUrl"))
-				+ "\" target=\"_blank\" rel=\"noopener\">How was this dashboard built? &rarr;</a></p>\n"
+				+ "\" target=\"_blank\" rel=\"noopener\">How was this dashboard built? &rarr;</a>\n"
+				+ "    </div>\n"
 				+ "  </div>\n";
 	}
 
@@ -143,8 +204,15 @@ final class DashboardDemosGallery {
 				out.append("- **Tiles:** ").append(tiles(demo)).append("\n");
 				out.append("- **Filters:** ").append(filters(demo)).append("\n");
 				out.append("- **Stories:** ").append(stories(demo)).append("\n");
-				out.append("- **In the gallery:** `/dashboard/").append(REPORT_ID).append("#")
-						.append(demo.id()).append("` \u00b7 **on its own:** `/dashboard/")
+				Map<String, Object> pattern = patternOf(demo);
+				if (pattern != null)
+					out.append("- **Pattern:** ").append(field(pattern, "name")).append(". It shows: ")
+							.append(field(pattern, "shows")).append(" **The data it fits:** ")
+							.append(field(pattern, "dataShape")).append(" **Use it when** ")
+							.append(field(pattern, "goodFit")).append("\n");
+				out.append("- **In the gallery:** `/dashboard/").append(REPORT_ID).append("`, area \"")
+						.append(field(demo, "area")).append("\" (open it), card \"")
+						.append(field(demo, "title")).append("\" \u00b7 **on its own:** `/dashboard/")
 						.append(demo.galleryReportId()).append("`\n");
 				out.append("- **How it was built:** ").append(field(demo, "howItWasBuiltUrl")).append("\n");
 			}
@@ -230,8 +298,8 @@ final class DashboardDemosGallery {
 	}
 
 	/**
-	 * Writes the generated blocks where they belong and returns one line per file that moved: the two
-	 * blocks of the Gallery's template, and Athena's reference.
+	 * Writes the generated block where it belongs and returns one line per file that moved: the
+	 * Gallery's template, and Athena's reference.
 	 */
 	static List<String> install(List<Demo> demos) throws Exception {
 		List<String> changes = new ArrayList<>();
@@ -239,8 +307,7 @@ final class DashboardDemosGallery {
 		Path page = template();
 		if (Files.exists(page)) {
 			String was = Files.readString(page);
-			String now = replaced(was, CONTENTS_BEGIN, CONTENTS_END, "\n" + contents(demos) + "    ");
-			now = replaced(now, CARDS_BEGIN, CARDS_END, "\n" + cards(demos) + "\n  ");
+			String now = replaced(was, CARDS_BEGIN, CARDS_END, "\n" + cards(demos) + "\n  ");
 			if (!now.equals(was)) {
 				Files.writeString(page, now);
 				changes.add("changed " + REPORT_ID + "/" + page.getFileName());
@@ -270,7 +337,7 @@ final class DashboardDemosGallery {
 		return grouped;
 	}
 
-	/** An area's anchor: its letter, which is what the contents list links to. */
+	/** An area's anchor: its letter, the id of its collapsible panel. */
 	static String areaId(String area) {
 		String letter = area.split(" ", 2)[0].toLowerCase();
 		StringBuilder kept = new StringBuilder("area-");

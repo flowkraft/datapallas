@@ -29,7 +29,7 @@
 import { test, expect, type Frame } from '@playwright/test';
 
 import { DEMOS, pad } from '../../helpers/dashboard-demos/demo-catalog';
-import { asStanding, assertDemoDrawn, assertUniqueIds, readParams } from '../../helpers/dashboard-demos/published-dashboard-checks';
+import { asStanding, assertDemoDrawn, assertUniqueIds, galleryCardIds, openAreaOf, readParams } from '../../helpers/dashboard-demos/published-dashboard-checks';
 import {
   assertStoriesAreOffered,
   clickReset,
@@ -84,8 +84,7 @@ test.describe('Dashboard Demos on datapallas.com', () => {
     expect(frame, 'the framed page is a frame of this page').toBeTruthy();
 
     // ── The page inside it, card for card ───────────────────────────────────
-    const cardIds = await frame.locator('#dashboardDemosRoot > [id^="dd-"]')
-      .evaluateAll((cards) => cards.map((card) => card.id));
+    const cardIds = await galleryCardIds(frame);
     expect(cardIds, 'one card per demo, in the index\'s order').toEqual(DEMOS.map((demo) => demo.id));
     for (const demo of DEMOS) {
       const built = frame.locator(`#lnkHowBuilt-${demo.id}`);
@@ -112,12 +111,13 @@ test.describe('Dashboard Demos on datapallas.com', () => {
     const demo = withStory!;
     const story = plainStory(demo.id)!;
     const card = frame.locator(`#${demo.id}`);
+    await openAreaOf(frame, demo);
     await card.scrollIntoViewIfNeeded({ timeout: 30_000 });
     await assertDemoDrawn(card, demo);
     await assertStoriesAreOffered(card, demo);
 
     const before = await readParams(card, demo);
-    await clickShowMe(card, demo, story.id);
+    await clickShowMe(card, demo, story);
     const standing = await readParams(card, demo);
     for (const [name, value] of Object.entries(story.params)) {
       expect(standing[name], `${demo.id}: Show Me on '${story.id}' sets ${name}`).toBe(asStanding(demo, name, value));
@@ -132,6 +132,7 @@ test.describe('Dashboard Demos on datapallas.com', () => {
 
     // ── Lazy, positive half: scrolled to, the last card loads and draws ─────
     const lastCard = frame.locator(`#${last.id}`);
+    await openAreaOf(frame, last);
     await lastCard.scrollIntoViewIfNeeded({ timeout: 30_000 });
     await expect.poll(() => asked.includes(last.reportId), { timeout: 120_000 }).toBe(true);
     await assertDemoDrawn(lastCard, last);

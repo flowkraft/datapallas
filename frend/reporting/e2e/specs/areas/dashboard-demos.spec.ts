@@ -59,11 +59,14 @@ import {
   assertDemoDashboard,
   assertChartsFillTheirTiles,
   assertMapsFillTheirBoxes,
+  areaOf,
   assertUniqueIds,
   cardOf,
   embedTokenOf,
   forgive,
+  galleryCardIds,
   interactionOf,
+  openAreaOf,
   openPublished,
   prefixed,
   readParams,
@@ -81,6 +84,7 @@ import {
   claimsOf,
   clickReset,
   clickShowMe,
+  declineShowMe,
   createGalleryShareLink,
   expectStoriesAndChecksAgree,
   reseedDashDemoData,
@@ -220,9 +224,23 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
     await expect(page.locator('#dashboardDemosRoot'), 'the Gallery opens for a visitor')
       .toBeVisible({ timeout: 60_000 });
 
+    // The areas first, as the page opens: eight bars, the first area open and no other, and an
+    // open area closes the one that was open (the way Cube Stories holds its industries).
+    const bars = page.locator('#dashboardDemosRoot details.area > summary.area-bar');
+    await expect(bars, 'one bar per area').toHaveCount(8);
+    const openAreas = () => page.locator('#dashboardDemosRoot details.area').evaluateAll((areas) =>
+      areas.map((area) => (area as HTMLDetailsElement).open));
+    expect(await openAreas(), 'the first area is open when the page loads, and no other').toEqual(
+      [true, false, false, false, false, false, false, false]);
+    await bars.nth(2).click();
+    await expect.poll(openAreas, { timeout: 15_000, message: 'opening an area closes the open one' })
+      .toEqual([false, false, true, false, false, false, false, false]);
+    await bars.nth(0).click();
+    await expect.poll(openAreas, { timeout: 15_000, message: 'and the first one opens again' })
+      .toEqual([true, false, false, false, false, false, false, false]);
+
     // The cards, in the index's order, each carrying its own dashboard and its own two links.
-    const cardIds = await page.locator('#dashboardDemosRoot > [id^="dd-"]').evaluateAll((cards) =>
-      cards.map((card) => card.id));
+    const cardIds = await galleryCardIds(page);
     expect(cardIds, 'one card per demo, in the order the index lists them')
       .toEqual(DEMOS.map((demo) => demo.id));
 
@@ -239,13 +257,92 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
         .toHaveAttribute('target', '_blank');
     }
 
-    // And the contents list above them says the same thing, area by area.
-    const contents = await page.locator('#ddContents [id^="lnkContents-"]').evaluateAll((links) =>
-      links.map((link) => (link as HTMLAnchorElement).getAttribute('href')));
-    for (const demo of DEMOS)
-      expect(contents, `the contents list names ${demo.id}`).toContain(`#${demo.id}`);
+    // And the list at the top of each area says the same thing, in its own area: every link leads to
+    // a card of the area it is in, which is open when the link is clicked.
+    for (const demo of DEMOS) {
+      const link = areaOf(page, demo).locator(`[id="lnkContents-${demo.id}"]`);
+      await expect(link, `${demo.area} lists ${demo.id}`).toHaveAttribute('href', `#${demo.id}`);
+    }
 
     watch.assertNone('the Gallery on open');
+  });
+
+  test('(dashboard demos gallery) a demo that is also a pattern carries a stamp that opens its text, and one switch shows only those', async () => {
+    test.setTimeout(5 * 60_000);
+
+    const patterns = DEMOS.filter((demo) => demo.pattern);
+    expect(patterns.length, 'the index marks some demos as patterns').toBeGreaterThan(0);
+    expect(patterns.length, 'and not all of them: the others are only ours').toBeLessThan(DEMOS.length);
+
+    // 1. A stamp on every pattern card and on no other; it opens a text with the three things a reader
+    //    needs (what it shows, the data it fits, when to use it), and closes again.
+    for (const demo of DEMOS) {
+      const card = cardOf(page, demo);
+      const stamp = card.locator(`#${demo.id}-pattern-stamp`);
+      if (!demo.pattern) {
+        await expect(card.locator('.card-pattern'), `${demo.id} is only ours and carries no stamp`).toHaveCount(0);
+        continue;
+      }
+      await openAreaOf(page, demo);
+      await card.scrollIntoViewIfNeeded({ timeout: 30_000 });
+      await expect(stamp, `${demo.id} carries the stamp`).toBeVisible();
+      await expect(stamp).toContainText('Data pattern');
+      await expect(stamp).toContainText(demo.pattern.name);
+      const text = card.locator(`#${demo.id}-pattern-text`);
+      await expect(text, `${demo.id}'s pattern text is closed until the stamp is clicked`).toBeHidden();
+      await stamp.click();
+      await expect(text, `${demo.id}'s stamp opens its text`).toBeVisible();
+      await expect(text).toContainText(demo.pattern.shows);
+      await expect(text).toContainText(demo.pattern.dataShape);
+      await expect(text).toContainText(demo.pattern.goodFit);
+      await expect(text.locator('strong'), 'three things are said: what it shows, the data it fits, when to use it')
+        .toHaveText(['What it shows.', 'The data it fits.', 'Use it when']);
+      await stamp.click();
+      await expect(text, `${demo.id}'s stamp closes its text again`).toBeHidden();
+    }
+
+    // 2. The one switch. Off, everything is there; on, only the patterns are, in the areas that have any.
+    const label = page.locator('#lblPatternsOnly');
+    const only = page.locator('#chkPatternsOnly');
+    await expect(label, 'the switch says how many patterns there are')
+      .toContainText(`Only the ${patterns.length} data patterns`);
+    await expect(only).not.toBeChecked();
+
+    const areas = Array.from(new Set(DEMOS.map((demo) => demo.area)));
+    try {
+      await label.click();
+      await expect(only, 'clicking its label switches it on').toBeChecked();
+
+      for (const area of areas) {
+        const here = DEMOS.filter((demo) => demo.area === area);
+        const mine = here.filter((demo) => demo.pattern);
+        const panel = areaOf(page, here[0]);
+        if (mine.length === 0) {
+          await expect(panel, `${area} has no pattern and steps aside`).toBeHidden();
+          continue;
+        }
+        await expect(panel, `${area} has patterns and stays`).toBeVisible();
+        await expect(panel.locator('.area-patterns'), `${area} says how many patterns it holds`)
+          .toContainText(`${mine.length} ${mine.length === 1 ? 'pattern' : 'patterns'}`);
+        await expect(panel.locator('.area-count'), `${area} says patterns, not the count of every dashboard`).toBeHidden();
+        await openAreaOf(page, here[0]);
+        for (const demo of here)
+          if (demo.pattern) await expect(cardOf(page, demo), `${demo.id} is a pattern and stays`).toBeVisible();
+          else await expect(cardOf(page, demo), `${demo.id} is only ours and steps aside`).toBeHidden();
+      }
+    } finally {
+      if (await only.isChecked()) await label.click();
+    }
+
+    await expect(only, 'the switch goes off again').not.toBeChecked();
+    for (const area of areas) {
+      const here = DEMOS.find((demo) => demo.area === area)!;
+      await expect(areaOf(page, here), `${area} is back`).toBeVisible();
+      await expect(areaOf(page, here).locator('.area-count'), `${area} counts its dashboards again`).toBeVisible();
+    }
+    await expect(page.locator('.area-patterns').first(), 'the pattern counts go quiet with the switch').toBeHidden();
+    await openAreaOf(page, DEMOS[0]);
+    watch.assertNone('the Gallery after the pattern switch');
   });
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -274,12 +371,30 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
       if (stories.length > 0) await assertStoriesAreOffered(card, demo);
       const below = DEMOS.find((other) => other.nn === demo.nn + 1);
       const neighbour = below && stories.length > 0 ? await shownOnCard(below) : null;
+      // The card below may be in the next area, and an area opens only by closing the one that is open:
+      // it is read by opening its area, and this demo's own is opened again after (a no-op in the same area).
+      const readNeighbour = async (): Promise<Record<string, string>> => {
+        if (!neighbour) return {};
+        const standing = await readParams(await scrollCardIntoView(page, neighbour), neighbour);
+        await openAreaOf(page, demo);
+        return standing;
+      };
+      // Show Me asks first: No closes the question and leaves the filters, the dashboard and the
+      // address exactly as they were (nothing is reloaded, so this is quick).
+      if (stories.length > 0) {
+        const standingBefore = await readParams(card, demo);
+        const urlBefore = page.url();
+        await declineShowMe(card, demo, stories[0]);
+        expect(await readParams(card, demo), `${demo.id}: No leaves the filters as they were`).toEqual(standingBefore);
+        expect(page.url(), `${demo.id}: No leaves the address as it was`).toBe(urlBefore);
+      }
+
       for (const story of stories) {
         // The card below loads when it is scrolled to: read it loaded, or "exactly as it was" below
         // would compare two empty bars.
-        const before = neighbour ? await readParams(await scrollCardIntoView(page, neighbour), neighbour) : {};
+        const before = await readNeighbour();
 
-        await clickShowMe(card, demo, story.id);
+        await clickShowMe(card, demo, story);
 
         // The values the story asked for stand in this dashboard's own filter bar, and the URL
         // holds the view - under this card's keys, so the link leads back to what was shown.
@@ -307,7 +422,7 @@ test.describe('Dashboard Demos — the gallery of 25 dashboards', () => {
 
         // Its neighbour is untouched: a story is one dashboard's, not the page's (TODO 5j).
         if (neighbour)
-          expect(await readParams(cardOf(page, neighbour), neighbour),
+          expect(await readNeighbour(),
             `${demo.id}'s story left ${neighbour.id} exactly as it was`).toEqual(before);
 
         await clickReset(card, demo);

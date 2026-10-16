@@ -69,6 +69,11 @@ export interface Demo {
   heightPx: number;
   howItWasBuiltUrl: string;
   /**
+   * Set on a demo that is also the live example of a dashboard pattern: how one shape of data is best
+   * shown. The Gallery stamps its card and the switch at the top shows only these.
+   */
+  pattern?: { name: string; shows: string; dataShape: string; goodFit: string };
+  /**
    * The dashboard the Gallery shows on this demo's card when it is not the demo itself: its
    * "(low-code)" twin (owner decision 21). Everything else here still reads the original.
    */

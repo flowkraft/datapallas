@@ -180,7 +180,7 @@ public final class CubeWidgets {
 	/**
 	 * The story ids this tile names, in its own order, or empty when it asked for all of them.
 	 *
-	 * <p>The order is the author's: on sample 22 the five stories chosen for that dashboard are
+	 * <p>The order is the author's: on the Country Sales Dashboard sample the five stories chosen for that dashboard are
 	 * read top to bottom as the entry lists them, not as the cube's own file happens to.
 	 */
 	private static List<String> hintIdsOf(Object declared) {

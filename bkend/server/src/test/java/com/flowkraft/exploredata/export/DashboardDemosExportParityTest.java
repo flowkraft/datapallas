@@ -137,11 +137,11 @@ class DashboardDemosExportParityTest {
 	}
 
 	@Test
-	@DisplayName("The Gallery page in the tree holds exactly the cards and the contents the index says")
+	@DisplayName("The Gallery page in the tree holds exactly the areas and the cards the index says")
 	void theGalleryPageHoldsWhatTheIndexSays() throws Exception {
 
 		// The Gallery is the one page here nobody exported: its header, its info bar and its
-		// stylesheet are written by hand, and only what is between the two marker pairs comes from
+		// stylesheet are written by hand, and only what is between the marker pair comes from
 		// the index. So this is the whole of what a generator owns in that file - a demo renamed in
 		// the index, or a card edited in the page, is this assertion and nothing else.
 		List<Demo> demos = DashboardDemos.all();
@@ -150,14 +150,10 @@ class DashboardDemosExportParityTest {
 				+ " fill its markers with -Ddd.write=true");
 
 		String held = Files.readString(page);
-		assertEquals("\n" + DashboardDemosGallery.contents(demos) + "    ",
-				DashboardDemosGallery.between(held, DashboardDemosGallery.CONTENTS_BEGIN,
-						DashboardDemosGallery.CONTENTS_END),
-				"the Gallery's contents list is not what the index says (regenerate with -Ddd.write=true)");
 		assertEquals("\n" + DashboardDemosGallery.cards(demos) + "\n  ",
 				DashboardDemosGallery.between(held, DashboardDemosGallery.CARDS_BEGIN,
 						DashboardDemosGallery.CARDS_END),
-				"the Gallery's cards are not what the index says (regenerate with -Ddd.write=true)");
+				"the Gallery's areas and cards are not what the index says (regenerate with -Ddd.write=true)");
 
 		// And the author's half is still the author's: what is outside the markers is never written
 		// by the generator, so it has to be asserted here or nothing holds it.

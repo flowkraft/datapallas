@@ -1650,7 +1650,7 @@ public class NoExeAssembler extends AbstractAssembler {
 	}
 
 	/**
-	 * Sample 22: the 25 Dashboard Demos and the Gallery page that embeds them.
+	 * The Dashboard Demos sample: the 25 Dashboard Demos and the Gallery page that embeds them.
 	 *
 	 * <p><b>One loop, not 26 blocks.</b> Every demo is described once, in
 	 * {@code config/samples/dashboard-demos.json} - the same index the Gallery's cards, the e2e
@@ -1697,7 +1697,7 @@ public class NoExeAssembler extends AbstractAssembler {
 	}
 
 	/**
-	 * One published dashboard of sample 22: its settings, its reporting and its moved template.
+	 * One published dashboard of the Dashboard Demos sample: its settings, its reporting and its moved template.
 	 *
 	 * <p>What the pair says is what the other dashboard samples say - no distribution, mailmerge on
 	 * (the script datasource needs it), {@code ds.dashboard}, {@code dashboard.html} - on the

@@ -81,8 +81,98 @@ export class SamplesService {
 
   samples: Array<SampleInfo> = [
     {
+      id: 'CUBE-COUNTRY-SALES-DASHBOARD',
+      name: '1. Country Sales Dashboard (cube, dashboard filter)',
+      visibility: 'visible',
+      jobType: 'dashboard',
+      input: {
+        data: ['file:db/sample-northwind-duckdb/northwind.duckdb'],
+        dataUrl: [],
+        numberOfPages: -1,
+        tokens: [],
+      },
+      step1: 'dashboard',
+      step2: '',
+      step3: '',
+      output: {
+        data: [],
+        folder: '',
+      },
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive dashboard (no output files)`,
+      configurationFilePath: `config/samples/g-cube-country-sales/settings.xml`,
+      configurationFileName: 'g-cube-country-sales',
+      notes: ``,
+      recipientType: '',
+      documentType: 'dashboard',
+      capReportSplitting: false,
+      capReportDistribution: false,
+      capReportGenerationMailMerge: true,
+      activeClicked: false,
+    },
+    {
+      id: 'DASHBOARD-DEMOS',
+      name: '2. Dashboard Demos (25 dashboards, one page)',
+      visibility: 'visible',
+      jobType: 'dashboard',
+      input: {
+        data: ['file:db/sample-northwind-duckdb/northwind.duckdb'],
+        dataUrl: [],
+        numberOfPages: -1,
+        tokens: [],
+      },
+      step1: 'dashboard',
+      step2: '',
+      step3: '',
+      output: {
+        data: [],
+        folder: '',
+      },
+      outputHtmlHardcoded: `${iconSvg('th-large')} 25 interactive dashboards on one page (no output files)`,
+      configurationFilePath: `config/samples/g-dashboard-demos/settings.xml`,
+      configurationFileName: 'g-dashboard-demos',
+      notes: ``,
+      recipientType: '',
+      documentType: 'dashboard',
+      capReportSplitting: false,
+      capReportDistribution: false,
+      capReportGenerationMailMerge: true,
+      activeClicked: false,
+    },
+    {
+      id: 'CUBE-STORIES',
+      name: '3. Cube Stories (interactive)',
+      visibility: 'visible',
+      jobType: 'dashboard',
+      input: {
+        data: [
+          'file:db/sample-northwind-duckdb/northwind.duckdb',
+          'file:db/sample-northwind-sqlite/northwind.db',
+        ],
+        dataUrl: [],
+        numberOfPages: -1,
+        tokens: [],
+      },
+      step1: 'dashboard',
+      step2: '',
+      step3: '',
+      output: {
+        data: [],
+        folder: '',
+      },
+      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive cube page (no output files)`,
+      configurationFilePath: `config/samples/g-cube-stories/settings.xml`,
+      configurationFileName: 'g-cube-stories',
+      notes: ``,
+      recipientType: '',
+      documentType: 'dashboard',
+      capReportSplitting: false,
+      capReportDistribution: false,
+      capReportGenerationMailMerge: true,
+      activeClicked: false,
+    },
+    {
       id: 'MONTHLY-PAYSLIPS-SPLIT-ONLY',
-      name: '1. Monthly Payslips (pdf2pdf)',
+      name: '4. Monthly Payslips (pdf2pdf)',
       visibility: 'visible',
       jobType: 'burst',
       input: {
@@ -123,7 +213,7 @@ export class SamplesService {
     },
     {
       id: 'EXCEL-DISTINCT-SHEETS-SPLIT-ONLY',
-      name: '2. Monthly Payslips Excel - split by distinct sheets (xlsx2xlsx)',
+      name: '5. Monthly Payslips Excel - split by distinct sheets (xlsx2xlsx)',
       visibility: 'visible',
       jobType: 'burst',
       step1: 'split',
@@ -167,7 +257,7 @@ export class SamplesService {
     },
     {
       id: 'EXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY',
-      name: '3. Customer List/Country Excel - split by distinct column values (xlsx2xlsx)',
+      name: '6. Customer List/Country Excel - split by distinct column values (xlsx2xlsx)',
       visibility: 'visible',
       jobType: 'burst',
       step1: 'split',
@@ -203,7 +293,7 @@ export class SamplesService {
     },
     {
       id: 'INVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY',
-      name: '4. Customers with Multiple Invoices PDF (pdf2pdf)',
+      name: '7. Customers with Multiple Invoices PDF (pdf2pdf)',
       visibility: 'visible',
       jobType: 'burst',
       step1: 'split',
@@ -246,7 +336,7 @@ export class SamplesService {
     },
     {
       id: 'INVOICES-MERGE-THEN-SPLIT',
-      name: '5. Customer Invoices PDF - Merge and then Process Multiple Files Together (pdf2pdf)',
+      name: '8. Customer Invoices PDF - Merge and then Process Multiple Files Together (pdf2pdf)',
       visibility: 'visible',
       jobType: 'merge-burst',
       input: {
@@ -295,7 +385,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-PAYSLIPS-DOCX',
-      name: '6. Generate Monthly Payslips (csv2docx)',
+      name: '9. Generate Monthly Payslips (csv2docx)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -333,7 +423,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-PAYSLIPS-HTML',
-      name: '7. Generate Monthly Payslips (csv2html)',
+      name: '10. Generate Monthly Payslips (csv2html)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -371,7 +461,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-PAYSLIPS-PDF',
-      name: '8. Generate Monthly Payslips (csv2pdf)',
+      name: '11. Generate Monthly Payslips (csv2pdf)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -409,7 +499,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-PAYSLIPS-EXCEL',
-      name: '9. Generate Monthly Payslips (csv2xlsx)',
+      name: '12. Generate Monthly Payslips (csv2xlsx)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -447,7 +537,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-PAYSLIPS-EXCEL-XLSX-DS',
-      name: '10. Generate Monthly Payslips (xlsx2xlsx)',
+      name: '13. Generate Monthly Payslips (xlsx2xlsx)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -485,7 +575,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-STUDENT-PROFILES-SQL2PDF',
-      name: '11. Generate Student Profiles (sql2pdf)',
+      name: '14. Generate Student Profiles (sql2pdf)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -514,7 +604,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-CUSTOMER-STATEMENTS-SQL2HTML',
-      name: '12. Generate Customer Statements (sql2html)',
+      name: '15. Generate Customer Statements (sql2html)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -570,7 +660,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX',
-      name: '13. Customer Sales Summary (sql2xlsx - one output file)',
+      name: '16. Customer Sales Summary (sql2xlsx - one output file)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -599,7 +689,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML',
-      name: '14. Generate Customer Invoices (script2html - master-details)',
+      name: '17. Generate Customer Invoices (script2html - master-details)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -641,7 +731,7 @@ export class SamplesService {
     // Insert after the GENERATE-STUDENT-PROFILES-SQL2PDF sample
     {
       id: 'GENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML',
-      name: '15. Category-Region Crosstab (script2html - one output file)',
+      name: '18. Category-Region Crosstab (script2html - one output file)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -671,7 +761,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML',
-      name: '16. Monthly Sales Trend (script2html - one output file)',
+      name: '19. Monthly Sales Trend (script2html - one output file)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -701,7 +791,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML',
-      name: '17. Supplier Scorecards (script2html)',
+      name: '20. Supplier Scorecards (script2html)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -738,7 +828,7 @@ export class SamplesService {
     },
     {
       id: 'NORTHWIND-SALES-DASHBOARD',
-      name: '18. Sales Dashboard (interactive)',
+      name: '21. Sales Dashboard (interactive)',
       visibility: 'visible',
       jobType: 'dashboard',
       input: {
@@ -767,7 +857,7 @@ export class SamplesService {
     },
     {
       id: 'NORTHWIND-SALES-PIVOTTABLE',
-      name: '19. Sales PivotTable (data warehouse)',
+      name: '22. Sales PivotTable (data warehouse)',
       visibility: 'visible',
       jobType: 'dashboard',
       input: {
@@ -796,7 +886,7 @@ export class SamplesService {
     },
     {
       id: 'GENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF',
-      name: '20. Ad-hoc Employee Profile (script2pdf - report parameters, no database)',
+      name: '23. Ad-hoc Employee Profile (script2pdf - report parameters, no database)',
       visibility: 'visible',
       jobType: 'generate',
       input: {
@@ -818,96 +908,6 @@ export class SamplesService {
       notes: ``,
       recipientType: '',
       documentType: 'report',
-      capReportSplitting: false,
-      capReportDistribution: false,
-      capReportGenerationMailMerge: true,
-      activeClicked: false,
-    },
-    {
-      id: 'CUBE-STORIES',
-      name: '21. Cube Stories (interactive)',
-      visibility: 'visible',
-      jobType: 'dashboard',
-      input: {
-        data: [
-          'file:db/sample-northwind-duckdb/northwind.duckdb',
-          'file:db/sample-northwind-sqlite/northwind.db',
-        ],
-        dataUrl: [],
-        numberOfPages: -1,
-        tokens: [],
-      },
-      step1: 'dashboard',
-      step2: '',
-      step3: '',
-      output: {
-        data: [],
-        folder: '',
-      },
-      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive cube page (no output files)`,
-      configurationFilePath: `config/samples/g-cube-stories/settings.xml`,
-      configurationFileName: 'g-cube-stories',
-      notes: ``,
-      recipientType: '',
-      documentType: 'dashboard',
-      capReportSplitting: false,
-      capReportDistribution: false,
-      capReportGenerationMailMerge: true,
-      activeClicked: false,
-    },
-    {
-      id: 'CUBE-COUNTRY-SALES-DASHBOARD',
-      name: '22. Country Sales Dashboard (cube, dashboard filter)',
-      visibility: 'visible',
-      jobType: 'dashboard',
-      input: {
-        data: ['file:db/sample-northwind-duckdb/northwind.duckdb'],
-        dataUrl: [],
-        numberOfPages: -1,
-        tokens: [],
-      },
-      step1: 'dashboard',
-      step2: '',
-      step3: '',
-      output: {
-        data: [],
-        folder: '',
-      },
-      outputHtmlHardcoded: `${iconSvg('th-large')} Interactive dashboard (no output files)`,
-      configurationFilePath: `config/samples/g-cube-country-sales/settings.xml`,
-      configurationFileName: 'g-cube-country-sales',
-      notes: ``,
-      recipientType: '',
-      documentType: 'dashboard',
-      capReportSplitting: false,
-      capReportDistribution: false,
-      capReportGenerationMailMerge: true,
-      activeClicked: false,
-    },
-    {
-      id: 'DASHBOARD-DEMOS',
-      name: '23. Dashboard Demos (25 dashboards, one page)',
-      visibility: 'visible',
-      jobType: 'dashboard',
-      input: {
-        data: ['file:db/sample-northwind-duckdb/northwind.duckdb'],
-        dataUrl: [],
-        numberOfPages: -1,
-        tokens: [],
-      },
-      step1: 'dashboard',
-      step2: '',
-      step3: '',
-      output: {
-        data: [],
-        folder: '',
-      },
-      outputHtmlHardcoded: `${iconSvg('th-large')} 25 interactive dashboards on one page (no output files)`,
-      configurationFilePath: `config/samples/g-dashboard-demos/settings.xml`,
-      configurationFileName: 'g-dashboard-demos',
-      notes: ``,
-      recipientType: '',
-      documentType: 'dashboard',
       capReportSplitting: false,
       capReportDistribution: false,
       capReportGenerationMailMerge: true,

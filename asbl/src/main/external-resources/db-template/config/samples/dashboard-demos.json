@@ -23,6 +23,12 @@
       "who": "The head of sales, Monday morning.",
       "decision": "Is sales on its growth path, and which categories, channels, countries and products carry it.",
       "finding": "Every month this year except August runs above the same month a year earlier, most of them by about a quarter; Smart Home, the newest category, has already all but caught Office Furniture for third place.",
+      "pattern": {
+        "name": "Transactions overview",
+        "shows": "Total revenue and number of orders, how they change month by month, and a breakdown by category, channel, country and product.",
+        "dataShape": "A table where each row is one sale or order, with a date, an amount and a few labels such as category, channel or country.",
+        "goodFit": "you want to see how the business is doing at a glance, and then find out what is behind the numbers."
+      },
       "heightPx": 1520,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-sales-overview"
     },
@@ -36,6 +42,12 @@
       "who": "The country managers.",
       "decision": "Where to invest next: which markets carry the revenue, which carry the big orders, and which grow.",
       "finding": "Germany is the largest market, Canada grows fastest (about +49%), and Japan has the largest orders.",
+      "pattern": {
+        "name": "Transactions by place",
+        "shows": "Revenue on a map, and a ranking of the countries by total revenue, by average order size and by growth.",
+        "dataShape": "The same kind of sales table, with a country (or a region or state) on each row.",
+        "goodFit": "you sell in several places and want to know which ones deserve more effort and which ones to leave alone."
+      },
       "heightPx": 1440,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-sales-by-country"
     },
@@ -50,6 +62,12 @@
       "who": "The e-commerce and trade sales leads, deciding the next year's channel budget.",
       "decision": "Which channel gets the next euro of effort: marketplace fees, the app, the web shop or the reps.",
       "finding": "The mobile app has grown from about 14% to about 28% of orders since 2024 while the marketplace has shrunk from 19% to 12%. Marketplace orders come back about twice as often as web orders (10.7% against 5.6%), and Smart Home sells mostly through the app.",
+      "pattern": {
+        "name": "Transactions by source",
+        "shows": "How much each channel or source brings in, how each one’s share changes over time, and what each one sells.",
+        "dataShape": "A sales table with a channel or source on each row, and only a handful of different values (web shop, app, store and so on).",
+        "goodFit": "you have to split a budget between channels and want to see which ones pay off."
+      },
       "heightPx": 1360,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-sales-channels-low-code"
     },
@@ -63,6 +81,12 @@
       "who": "The category manager.",
       "decision": "Which products to push, which to fix and which to delist.",
       "finding": "Products rated under 3.5 stars sell about 40% fewer units per product; the AeroDesk Pro standing desk (3.2 stars) has a 17.5% return rate since April 2026.",
+      "pattern": {
+        "name": "Transactions by product",
+        "shows": "Which products and categories sell the most, and how things relate to each other, for example rating against units sold, or discount against returns.",
+        "dataShape": "Sales rows that name the product, and a product list with a category and a few numbers for each product, such as rating, cost or returns.",
+        "goodFit": "you decide which products to promote, which to fix and which to stop selling."
+      },
       "heightPx": 1360,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-product-performance"
     },
@@ -76,6 +100,12 @@
       "who": "The operations planner and marketing.",
       "decision": "When to staff up and when to run campaigns.",
       "finding": "Orders peak on Monday evenings, 19:00-21:00, with Monday 20:00 the busiest hour of the week, while sales-rep orders peak on Monday at 13:00. November is about 2.3 times an average month and the Black Friday days run about 4 times an average day; the 25th to the 27th of any month bring about 25% more orders than an average day, and August runs a third below an average month.",
+      "pattern": {
+        "name": "Seasonality",
+        "shows": "When people buy: by month of the year, by day of the month, by weekday and hour, and the busiest days of one year, day by day.",
+        "dataShape": "Sales with a date, covering a year or more. If the date also has a time of day, you get the weekday-and-hour view too.",
+        "goodFit": "you plan staffing, stock or campaigns around the busy and the quiet periods."
+      },
       "heightPx": 1360,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-seasonality"
     },
@@ -117,6 +147,12 @@
       "who": "The marketing lead.",
       "decision": "Which acquisition channels to fund, and whether new customers come back.",
       "finding": "Referral signups more than doubled after the loyalty programme of March 2025, from about 13 a month to about 29.",
+      "pattern": {
+        "name": "Customers",
+        "shows": "How many new customers you get each month, where they come from, which segment and country they belong to, and how many buy again.",
+        "dataShape": "A customer list with a sign-up date, a segment, a country and the channel each customer came through, plus orders that point back to the customer.",
+        "goodFit": "you decide which sources of new customers to pay for, and want to know whether those customers stay."
+      },
       "heightPx": 1600,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-customer-growth-low-code"
     },
@@ -158,6 +194,12 @@
       "who": "The digital marketing lead, daily.",
       "decision": "Is the site converting, where do visitors drop, and which traffic sources pay back.",
       "finding": "Mobile checkout to purchase fell from about 62% to 41% in June 2026 - a checkout bug - and was back at 62% in August; email visitors convert at 6.1%, about twice paid social's 2.7%.",
+      "pattern": {
+        "name": "Events, the web half",
+        "shows": "Visits over time, where they come from, how many visitors drop out at each step of the funnel, and which sources lead to a purchase.",
+        "dataShape": "A log of visits or clicks, each with a time, a source, a device and a yes or no for whether the visit ended in a purchase.",
+        "goodFit": "you run a website or an app and want to know where visitors are lost and which sources bring the ones who buy."
+      },
       "heightPx": 1600,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-web-funnel-low-code"
     },
@@ -280,6 +322,12 @@
       "who": "The support lead, at the daily stand-up.",
       "decision": "Who works when, and which tickets get picked up today.",
       "finding": "Mondays 09:00-11:00 are the peak - 1,059 tickets in those three cells against 83.33 for an average hour of the week - and urgent SLA breaches spiked in June 2026 with the checkout bug: 26.32% of that month's urgent tickets breached against 8.64% in every other month, 3.05 times the rate. The queue itself is small and slightly growing: 127 open, of which 40 are urgent or high and the oldest has been waiting 45 days, and over the 142 full weeks 13,868 tickets came in against 13,770 resolved.",
+      "pattern": {
+        "name": "Events, the tickets half",
+        "shows": "When tickets come in (weekday and hour), how many are open and for how long, and which ones are late, by priority and by team.",
+        "dataShape": "A list of tickets with the time opened, the time closed (empty while still open), a priority and the team that handles it.",
+        "goodFit": "you manage a queue of requests and want to know when to have people ready and which tickets are running late."
+      },
       "heightPx": 1680,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-support-operations"
     },
@@ -307,6 +355,12 @@
       "who": "The analyst meeting a new table.",
       "decision": "Whether the table can be trusted, and which columns can be used.",
       "finding": "Pick any table and you know it in half a minute: support_tickets holds 14,000 rows over 15 columns, 476 of them opened in the last 30 days, and 4 columns have gaps - order_id is empty on 52.64% of tickets, because a ticket need not be about an order, and csat_score on 58.33%, because most people never answer the survey. Its priority column is 51.56% normal and 8.21% urgent. Point the same page at orders.total_amount and the chart turns into twenty ranges over 23,162 distinct amounts, 20,782 orders inside the first one.",
+      "pattern": {
+        "name": "Table profile",
+        "shows": "How big the table is, how many values are missing in each column, and for any one column its type, its different values and how often each one appears.",
+        "dataShape": "Any table, whatever is in it. You look at one column at a time.",
+        "goodFit": "you are about to use a table for the first time and need to know whether the data is complete and which columns are worth using."
+      },
       "heightPx": 1280,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-table-profile"
     },
@@ -320,6 +374,12 @@
       "who": "The COO, at the monthly business review, walking through the five metrics one at a time.",
       "decision": "Whether each metric is where it should be, and what drives it.",
       "finding": "Revenue is 17.5% up on the same span of last year and orders 27.55% up, while tickets grow 10.32% - support scales with the business rather than with the order book. Orders growing faster than revenue is the other half of that sentence: the average order is smaller than it was. November is the biggest month of the year for both, 8,273,224.34 and 3,165 orders against a May second place of 5,920,290.39, while payroll peaks in March and new customers in September. Germany leads all five metrics, revenue 3,651,821.21 of the 18,326,301.98 year to date.",
+      "pattern": {
+        "name": "One metric, every angle",
+        "shows": "One number looked at in five ways: this year against last year, over time, what it is made of, month of the year, and by country.",
+        "dataShape": "A table with the one number you care about (revenue, orders, cost), a date, and a few labels to split it by.",
+        "goodFit": "you own one number and are asked whether it is where it should be and what is pushing it up or down."
+      },
       "heightPx": 1200,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-metric-deep-dive"
     },
@@ -334,6 +394,12 @@
       "who": "A country manager: \"is my country different?\"",
       "decision": "What to do differently in my market: assortment, channel, price.",
       "finding": "Poland is a smaller basket and a faster market: 1,944.91 an order against 2,756.55 everywhere, returns no different at 5.93% against 5.97%, but quarterly revenue at 208.67 against the company's 139.44 since the start of 2024. It buys more Smart Home, 12.2% of its revenue against 10.58%, and a little more on the app, 21.37% of its orders against 20.55% - the assortment difference is real, the channel difference is under a point.",
+      "pattern": {
+        "name": "Segment against everyone",
+        "shows": "One group, such as a country or a customer segment, next to the whole company: order value, return rate, mix of categories and channels, and its trend against the company’s.",
+        "dataShape": "A table with a label that defines the group (country, segment, product line) and all the other rows to compare it with.",
+        "goodFit": "you are in charge of one market or segment and want to know where it differs from the company as a whole."
+      },
       "heightPx": 1200,
       "howItWasBuiltUrl": "https://datapallas.com/docs/dashboard-demos/dd-segment-vs-all-low-code"
     }

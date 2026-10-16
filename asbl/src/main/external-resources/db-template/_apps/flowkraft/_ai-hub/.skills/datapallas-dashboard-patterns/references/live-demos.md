@@ -17,7 +17,7 @@ do not edit by hand.
 - **Tiles:** trend, progress, number x4, gauge x2, bar chart, table
 - **Filters:** Year (`year`)
 - **Stories:** "How did last year close?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-executive-overview` · **on its own:** `/dashboard/g-dd-executive-overview`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "A · The company at a glance" (open it), card "Executive Overview" · **on its own:** `/dashboard/g-dd-executive-overview`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-executive-overview
 
 ## B · Sales
@@ -29,7 +29,8 @@ do not edit by hand.
 - **Tiles:** number x4, line chart, row chart x2, map, table
 - **Filters:** From (`dateFrom`), To (`dateTo`), Country (`country`), Channel (`channel`)
 - **Stories:** "How is Germany doing?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-overview` · **on its own:** `/dashboard/g-dd-sales-overview`
+- **Pattern:** Transactions overview. It shows: Total revenue and number of orders, how they change month by month, and a breakdown by category, channel, country and product. **The data it fits:** A table where each row is one sale or order, with a date, an amount and a few labels such as category, channel or country. **Use it when** you want to see how the business is doing at a glance, and then find out what is behind the numbers.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "B · Sales" (open it), card "Sales Overview" · **on its own:** `/dashboard/g-dd-sales-overview`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-sales-overview
 
 ### DD03 Sales by Country (`g-dd-sales-by-country`)
@@ -39,7 +40,8 @@ do not edit by hand.
 - **Tiles:** map x2, row chart, table
 - **Filters:** Region (`region`), Countries (`countries`)
 - **Stories:** "What does the APAC territory look like?" "How does Poland compare with Germany?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-by-country` · **on its own:** `/dashboard/g-dd-sales-by-country`
+- **Pattern:** Transactions by place. It shows: Revenue on a map, and a ranking of the countries by total revenue, by average order size and by growth. **The data it fits:** The same kind of sales table, with a country (or a region or state) on each row. **Use it when** you sell in several places and want to know which ones deserve more effort and which ones to leave alone.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "B · Sales" (open it), card "Sales by Country" · **on its own:** `/dashboard/g-dd-sales-by-country`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-sales-by-country
 
 ### DD04 Sales Channels (`g-dd-sales-channels-low-code`)
@@ -49,7 +51,8 @@ do not edit by hand.
 - **Tiles:** pie chart, bar chart, area chart, sankey
 - **Filters:** Include returns (`includeReturns`)
 - **Stories:** "How does the mix look before returns?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-channels` · **on its own:** `/dashboard/g-dd-sales-channels-low-code`
+- **Pattern:** Transactions by source. It shows: How much each channel or source brings in, how each one’s share changes over time, and what each one sells. **The data it fits:** A sales table with a channel or source on each row, and only a handful of different values (web shop, app, store and so on). **Use it when** you have to split a budget between channels and want to see which ones pay off.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "B · Sales" (open it), card "Sales Channels" · **on its own:** `/dashboard/g-dd-sales-channels-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-sales-channels-low-code
 
 ### DD05 Product Performance (`g-dd-product-performance`)
@@ -59,7 +62,8 @@ do not edit by hand.
 - **Tiles:** scatter chart, bubble chart, row chart x2, table
 - **Filters:** Category (`category`), How many (`topN`)
 - **Stories:** "What does the Monday meeting need?" "What is wrong in Office Furniture?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-product-performance` · **on its own:** `/dashboard/g-dd-product-performance`
+- **Pattern:** Transactions by product. It shows: Which products and categories sell the most, and how things relate to each other, for example rating against units sold, or discount against returns. **The data it fits:** Sales rows that name the product, and a product list with a category and a few numbers for each product, such as rating, cost or returns. **Use it when** you decide which products to promote, which to fix and which to stop selling.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "B · Sales" (open it), card "Product Performance" · **on its own:** `/dashboard/g-dd-product-performance`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-product-performance
 
 ### DD06 Seasonality & Peak Times (`g-dd-seasonality`)
@@ -69,7 +73,8 @@ do not edit by hand.
 - **Tiles:** pivot, bar chart x2, line chart
 - **Filters:** Channel (`channel`)
 - **Stories:** "When do the sales reps sell?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-seasonality` · **on its own:** `/dashboard/g-dd-seasonality`
+- **Pattern:** Seasonality. It shows: When people buy: by month of the year, by day of the month, by weekday and hour, and the busiest days of one year, day by day. **The data it fits:** Sales with a date, covering a year or more. If the date also has a time of day, you get the weekday-and-hour view too. **Use it when** you plan staffing, stock or campaigns around the busy and the quiet periods.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "B · Sales" (open it), card "Seasonality & Peak Times" · **on its own:** `/dashboard/g-dd-seasonality`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-seasonality
 
 ### DD07 Sales Pipeline (`g-dd-sales-pipeline-low-code`)
@@ -79,7 +84,7 @@ do not edit by hand.
 - **Tiles:** number x3, gauge, funnel chart, bar chart, table
 - **Filters:** Rep (`repEmployeeId`), Closing from (`closeFrom`), Closing to (`closeTo`)
 - **Stories:** "How is one rep doing?" "What still has to close this week?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-sales-pipeline` · **on its own:** `/dashboard/g-dd-sales-pipeline-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "B · Sales" (open it), card "Sales Pipeline" · **on its own:** `/dashboard/g-dd-sales-pipeline-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-sales-pipeline-low-code
 
 ### DD08 Targets vs Actual (`g-dd-targets-vs-actual`)
@@ -89,7 +94,7 @@ do not edit by hand.
 - **Tiles:** progress x4, combo chart, gauge, pivot
 - **Filters:** Year (`year`), Region (`region`)
 - **Stories:** "Who is behind, and does the director still see the rest?" "Is the gap this year's?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-targets-vs-actual` · **on its own:** `/dashboard/g-dd-targets-vs-actual`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "B · Sales" (open it), card "Targets vs Actual" · **on its own:** `/dashboard/g-dd-targets-vs-actual`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-targets-vs-actual
 
 ## C · Customers
@@ -101,7 +106,8 @@ do not edit by hand.
 - **Tiles:** number x3, trend, line chart, doughnut chart, map, bar chart, table
 - **Filters:** Segment (`segment`), Acquisition channel (`acquisitionChannel`)
 - **Stories:** "Do the big accounts behave differently?" "What did the loyalty programme bring?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-customer-growth` · **on its own:** `/dashboard/g-dd-customer-growth-low-code`
+- **Pattern:** Customers. It shows: How many new customers you get each month, where they come from, which segment and country they belong to, and how many buy again. **The data it fits:** A customer list with a sign-up date, a segment, a country and the channel each customer came through, plus orders that point back to the customer. **Use it when** you decide which sources of new customers to pay for, and want to know whether those customers stay.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "C · Customers" (open it), card "Customer Base & Growth" · **on its own:** `/dashboard/g-dd-customer-growth-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-customer-growth-low-code
 
 ### DD10 Cohort Retention (`g-dd-cohort-retention`)
@@ -111,7 +117,7 @@ do not edit by hand.
 - **Tiles:** pivot, line chart, number
 - **Filters:** Customer type (`customerType`)
 - **Stories:** "How do the trade accounts read?" "And the consumers on their own?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-cohort-retention` · **on its own:** `/dashboard/g-dd-cohort-retention`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "C · Customers" (open it), card "Cohort Retention" · **on its own:** `/dashboard/g-dd-cohort-retention`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-cohort-retention
 
 ### DD11 Customer 360 (`g-dd-customer-360-low-code`)
@@ -121,7 +127,7 @@ do not edit by hand.
 - **Tiles:** detail, number x4, combo chart, doughnut chart, table x2
 - **Filters:** Customer (`customerId`)
 - **Stories:** "And a small consumer account?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-customer-360` · **on its own:** `/dashboard/g-dd-customer-360-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "C · Customers" (open it), card "Customer 360" · **on its own:** `/dashboard/g-dd-customer-360-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-customer-360-low-code
 
 ## D · Digital
@@ -133,7 +139,8 @@ do not edit by hand.
 - **Tiles:** number, gauge, trend, funnel chart, line chart x2, pivot, bar chart
 - **Filters:** From (`dateFrom`), To (`dateTo`), Device (`device`)
 - **Stories:** "What happened on mobile in June?" "Was desktop hit too?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-web-funnel` · **on its own:** `/dashboard/g-dd-web-funnel-low-code`
+- **Pattern:** Events, the web half. It shows: Visits over time, where they come from, how many visitors drop out at each step of the funnel, and which sources lead to a purchase. **The data it fits:** A log of visits or clicks, each with a time, a source, a device and a yes or no for whether the visit ended in a purchase. **Use it when** you run a website or an app and want to know where visitors are lost and which sources bring the ones who buy.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "D · Digital" (open it), card "Website Traffic & Conversion" · **on its own:** `/dashboard/g-dd-web-funnel-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-web-funnel-low-code
 
 ## E · Finance
@@ -145,7 +152,7 @@ do not edit by hand.
 - **Tiles:** number x4, bar chart, doughnut chart, row chart, table
 - **Filters:** Status (`status`), Customer (`customerId`), Issued from (`issuedFrom`), Issued to (`issuedTo`)
 - **Stories:** "What is overdue?" "And the largest account?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-invoices` · **on its own:** `/dashboard/g-dd-invoices-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "E · Finance" (open it), card "Invoices & Billing" · **on its own:** `/dashboard/g-dd-invoices-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-invoices-low-code
 
 ### DD14 Receivables Aging & Collections (`g-dd-receivables-aging`)
@@ -155,7 +162,7 @@ do not edit by hand.
 - **Tiles:** number x2, gauge, trend, bar chart x2, row chart, table
 - **Filters:** Minimum amount (`minAmount`), Account manager (`accountManagerId`)
 - **Stories:** "Which arrears are worth a call?" "And one manager's own book?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-receivables-aging` · **on its own:** `/dashboard/g-dd-receivables-aging`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "E · Finance" (open it), card "Receivables Aging & Collections" · **on its own:** `/dashboard/g-dd-receivables-aging`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-receivables-aging
 
 ### DD15 Subscriptions: MRR & Churn (`g-dd-subscriptions-mrr-low-code`)
@@ -165,7 +172,7 @@ do not edit by hand.
 - **Tiles:** trend, number, gauge, waterfall chart, bar chart, area chart, pivot
 - **Filters:** Plan (`plan`)
 - **Stories:** "And the plan the price change hit hardest?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-subscriptions-mrr` · **on its own:** `/dashboard/g-dd-subscriptions-mrr-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "E · Finance" (open it), card "Subscriptions: MRR & Churn" · **on its own:** `/dashboard/g-dd-subscriptions-mrr-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-subscriptions-mrr-low-code
 
 ### DD16 Profit & Margin (`g-dd-profit-margin`)
@@ -175,7 +182,7 @@ do not edit by hand.
 - **Tiles:** number x3, combo chart, waterfall chart, pivot
 - **Filters:** From (`dateFrom`), To (`dateTo`), Category (`category`)
 - **Stories:** "Which categories pay for the discounting?" "And what did last Q4 cost?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-profit-margin` · **on its own:** `/dashboard/g-dd-profit-margin`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "E · Finance" (open it), card "Profit & Margin" · **on its own:** `/dashboard/g-dd-profit-margin`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-profit-margin
 
 ## F · People
@@ -187,7 +194,7 @@ do not edit by hand.
 - **Tiles:** number x3, bar chart, doughnut chart, line chart, table
 - **Filters:** Period (`period`), Department (`department`)
 - **Stories:** "Where do the overtime hours sit?" "And a November, when the warehouse works nights?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-payroll` · **on its own:** `/dashboard/g-dd-payroll`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "F · People" (open it), card "Payroll Cost" · **on its own:** `/dashboard/g-dd-payroll`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-payroll
 
 ### DD18 Headcount & Attrition (`g-dd-headcount-low-code`)
@@ -197,7 +204,7 @@ do not edit by hand.
 - **Tiles:** number x3, line chart, bar chart x2, boxplot chart
 - **Filters:** Department (`department`), Country (`country`)
 - **Stories:** "Which team is losing people?" "And the largest country?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-headcount` · **on its own:** `/dashboard/g-dd-headcount-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "F · People" (open it), card "Headcount & Attrition" · **on its own:** `/dashboard/g-dd-headcount-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-headcount-low-code
 
 ## G · Operations
@@ -209,7 +216,7 @@ do not edit by hand.
 - **Tiles:** number x3, bar chart, row chart, table
 - **Filters:** Warehouse (`warehouse`), Below reorder level only (`belowReorderOnly`), Category (`category`)
 - **Stories:** "Rotterdam has no room - what is in it?" "And everything we hold, not just what is short?" "Just the buying area I look after?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-inventory` · **on its own:** `/dashboard/g-dd-inventory-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "G · Operations" (open it), card "Inventory & Stock Health" · **on its own:** `/dashboard/g-dd-inventory-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-inventory-low-code
 
 ### DD20 Fulfillment & Delivery (`g-dd-fulfillment-low-code`)
@@ -219,7 +226,7 @@ do not edit by hand.
 - **Tiles:** gauge, number x2, trend, bar chart, boxplot chart, map, table
 - **Filters:** From (`dateFrom`), To (`dateTo`), Carrier (`carrier`)
 - **Stories:** "Is it one carrier?" "And over the year, not the quarter?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-fulfillment` · **on its own:** `/dashboard/g-dd-fulfillment-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "G · Operations" (open it), card "Fulfillment & Delivery" · **on its own:** `/dashboard/g-dd-fulfillment-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-fulfillment-low-code
 
 ### DD21 Support Operations (`g-dd-support-operations`)
@@ -229,7 +236,8 @@ do not edit by hand.
 - **Tiles:** number x3, gauge, pivot, line chart, bar chart, table
 - **Filters:** Priority (`priority`), Team (`team`)
 - **Stories:** "What is urgent right now?" "And my billing team?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-support-operations` · **on its own:** `/dashboard/g-dd-support-operations`
+- **Pattern:** Events, the tickets half. It shows: When tickets come in (weekday and hour), how many are open and for how long, and which ones are late, by priority and by team. **The data it fits:** A list of tickets with the time opened, the time closed (empty while still open), a priority and the team that handles it. **Use it when** you manage a queue of requests and want to know when to have people ready and which tickets are running late.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "G · Operations" (open it), card "Support Operations" · **on its own:** `/dashboard/g-dd-support-operations`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-support-operations
 
 ### DD22 Support Quality & Agents (`g-dd-support-quality-low-code`)
@@ -239,7 +247,7 @@ do not edit by hand.
 - **Tiles:** trend, progress, number, boxplot chart, bar chart, table
 - **Filters:** Team (`team`), From (`dateFrom`), To (`dateTo`)
 - **Stories:** "And my technical team?" "Who needs coaching?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-support-quality` · **on its own:** `/dashboard/g-dd-support-quality-low-code`
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "G · Operations" (open it), card "Support Quality & Agents" · **on its own:** `/dashboard/g-dd-support-quality-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-support-quality-low-code
 
 ## H · The analyst's toolkit
@@ -251,7 +259,8 @@ do not edit by hand.
 - **Tiles:** number x4, table, bar chart
 - **Filters:** Table (`tableName`), Column (`columnName`)
 - **Stories:** "And a number column, on the biggest table?" "Why are a quarter of the columns empty here?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-table-profile` · **on its own:** `/dashboard/g-dd-table-profile`
+- **Pattern:** Table profile. It shows: How big the table is, how many values are missing in each column, and for any one column its type, its different values and how often each one appears. **The data it fits:** Any table, whatever is in it. You look at one column at a time. **Use it when** you are about to use a table for the first time and need to know whether the data is complete and which columns are worth using.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "H · The analyst's toolkit" (open it), card "Table Profile" · **on its own:** `/dashboard/g-dd-table-profile`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-table-profile
 
 ### DD24 One Metric, Every Angle (`g-dd-metric-deep-dive`)
@@ -261,7 +270,8 @@ do not edit by hand.
 - **Tiles:** trend, number x2, line chart, row chart x2, bar chart
 - **Filters:** Metric (`metric`)
 - **Stories:** "Orders, then - are we selling more or just dearer?" "And is support keeping up?" "What about the cost side?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-metric-deep-dive` · **on its own:** `/dashboard/g-dd-metric-deep-dive`
+- **Pattern:** One metric, every angle. It shows: One number looked at in five ways: this year against last year, over time, what it is made of, month of the year, and by country. **The data it fits:** A table with the one number you care about (revenue, orders, cost), a date, and a few labels to split it by. **Use it when** you own one number and are asked whether it is where it should be and what is pushing it up or down.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "H · The analyst's toolkit" (open it), card "One Metric, Every Angle" · **on its own:** `/dashboard/g-dd-metric-deep-dive`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-metric-deep-dive
 
 ### DD25 Segment vs Everyone (`g-dd-segment-vs-all-low-code`)
@@ -271,5 +281,6 @@ do not edit by hand.
 - **Tiles:** number x4, bar chart, line chart, pie chart
 - **Filters:** Country (`country`)
 - **Stories:** "And the biggest market - is it the average?" "And a market on the other side of the world?"
-- **In the gallery:** `/dashboard/g-dashboard-demos#dd-segment-vs-all` · **on its own:** `/dashboard/g-dd-segment-vs-all-low-code`
+- **Pattern:** Segment against everyone. It shows: One group, such as a country or a customer segment, next to the whole company: order value, return rate, mix of categories and channels, and its trend against the company’s. **The data it fits:** A table with a label that defines the group (country, segment, product line) and all the other rows to compare it with. **Use it when** you are in charge of one market or segment and want to know where it differs from the company as a whole.
+- **In the gallery:** `/dashboard/g-dashboard-demos`, area "H · The analyst's toolkit" (open it), card "Segment vs Everyone" · **on its own:** `/dashboard/g-dd-segment-vs-all-low-code`
 - **How it was built:** https://datapallas.com/docs/dashboard-demos/dd-segment-vs-all-low-code

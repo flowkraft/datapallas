@@ -1377,7 +1377,7 @@ class CubeRuntimeServiceTest {
 	/**
 	 * A tile may name the stories it offers, in its own order.
 	 *
-	 * <p>A dashboard is about something: sample 22 is one country's sales, and the five stories it
+	 * <p>A dashboard is about something: the Country Sales Dashboard sample is one country's sales, and the five stories it
 	 * offers are the ones that mean something there, top to bottom as the author listed them - not
 	 * as the cube's file happens to. Naming a hint names its variants too, because a variant is one
 	 * more answer to the same Show Me, and the file's order inside the hint is kept.

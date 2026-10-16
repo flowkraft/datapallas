@@ -3316,6 +3316,8 @@ return ctx.dbSql.rows(sql)`,
       await expect(page.locator('#cubePanelHeader'))
         .toHaveText('▾ Northwind Sales Analysis · pick what to see', { timeout: 30_000 });
       await page.locator('#lnkCubeResetView').click();
+      // Reset view asks first; only Yes gives the view back.
+      await page.locator('#btnResetYes').click();
       await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany',
         { timeout: 30_000 });
       await expect(page.locator('#cubePanelHeader'))

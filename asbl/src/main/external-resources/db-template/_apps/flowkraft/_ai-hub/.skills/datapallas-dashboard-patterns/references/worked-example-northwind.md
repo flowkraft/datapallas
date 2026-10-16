@@ -100,5 +100,5 @@ For each: the reading order of `layout-and-widgets.md`: title with the finding, 
 2. **What the data cannot give:** margin (no cost), customer growth and cohorts (no signup date), channel (no channel column), warehouses (one stock figure), quotas, ratings and returns.
 3. **What I inferred from names:** all eight references above; `ShipVia` was the loosest.
 4. **What I left out on purpose:** the contact details and birth dates (sensitive), the notes, photos and pictures, and the territory and demographic link tables.
-5. **Live demos:** DD02, DD05, DD19, DD20 (and DD08 for the targets idea), in Samples → 23. Dashboard Demos, each with its "how it was built" page.
+5. **Live demos:** DD02, DD05, DD19, DD20 (and DD08 for the targets idea), in Samples → 2. Dashboard Demos, each with its "how it was built" page.
 6. **Offer the next dashboards:** a customer-by-country zoom-in (DD03's shape), a customer's own record (DD11's shape) and each category against everyone (DD25's shape); and offer a PRD, or a hand-off to `datapallas-dashboards` for the Canvas.

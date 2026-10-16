@@ -26,7 +26,9 @@ import {
   shownReportId,
 } from '../../helpers/dashboard-demos/demo-catalog';
 import {
+  areaOf,
   assertDemoDashboard,
+  galleryCardIds,
   scrollCardIntoView,
   watchForErrors,
 } from '../../helpers/dashboard-demos/published-dashboard-checks';
@@ -40,1229 +42,7 @@ const adminFetch: AdminFetch = (url, init = {}) =>
 test.describe('', async () => {
 
   electronBeforeAfterAllTest(
-    'should work correctly (01_monthly_payslips_split_only)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = Constants.PAYSLIPS_PDF_BURST_TOKENS.map(
-        function (burstToken) {
-          return burstToken + '.pdf';
-        },
-      );
-
-      let ft = new FluentTester(firstPage);
-
-      // First navigate to samples page and make the sample visible
-      await ft
-        .click('#leftMenuSamples')
-        .waitOnElementToContainText(
-          '#tdMONTHLY-PAYSLIPS-SPLIT-ONLY',
-          'Monthly Payslips',
-        );
-
-      // Now verify the Learn More modal
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'MONTHLY-PAYSLIPS-SPLIT-ONLY',
-        //['config/samples/split-only/settings.xml'],
-        'Payslips.pdf',
-        'kyle.butford@northridgehealth.org.pdf',
-      );
-
-      // Continue with the test workflow
-      await ft
-        .click('#trMONTHLY-PAYSLIPS-SPLIT-ONLY')
-        .click('#btnSampleTryItMONTHLY-PAYSLIPS-SPLIT-ONLY')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItMONTHLY-PAYSLIPS-SPLIT-ONLY')
-        .clickYesDoThis()
-        .click('#btnBurst')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_LOGS)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles)
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (02_excel_distinct_sheets_split_only)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = Constants.PAYSLIPS_XLS_BURST_TOKENS.map(
-        function (burstToken) {
-          return burstToken + '.xls';
-        },
-      );
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .waitOnElementToContainText(
-          '#tdEXCEL-DISTINCT-SHEETS-SPLIT-ONLY',
-          'Monthly Payslips Excel',
-        );
-
-      // Now verify the Learn More modal
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'EXCEL-DISTINCT-SHEETS-SPLIT-ONLY',
-        //['config/samples/split-only/settings.xml'],
-        'Payslips-Distinct-Sheets.xls',
-        'alfreda.waldback@northridgehealth.org.xls',
-      );
-
-      await ft
-        .click('#trEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
-        .click('#btnSamplesLearnModeEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
-        .waitOnElementToContainText(
-          '#divEXCEL-DISTINCT-SHEETS-SPLIT-ONLY',
-          'When processing your actual reports',
-        )
-        .click('#btnCloseSamplesLearnMoreModal')
-        .click('#btnSampleTryItEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
-        .clickYesDoThis()
-        .click('#btnBurst')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_LOGS)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'xls')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (03_split_excel_file_by_distinct_column_values_split_only)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = [
-        'Germany.xls',
-        'USA.xls',
-        'UK.xls',
-        'Sweden.xls',
-        'France.xls',
-        'Spain.xls',
-        'Canada.xls',
-        'Argentina.xls',
-        'Switzerland.xls',
-        'Brazil.xls',
-        'Austria.xls',
-        'Italy.xls',
-        'Portugal.xls',
-        'Mexico.xls',
-        'Venezuela.xls',
-        'Ireland.xls',
-        'Belgium.xls',
-        'Norway.xls',
-        'Denmark.xls',
-        'Finland.xls',
-        'Poland.xls',
-      ];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .waitOnElementToContainText(
-          '#tdEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY',
-          'Customer List/Country Excel',
-        );
-
-      // Now verify the Learn More modal
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'EXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY',
-        //['config/samples/split-only/settings.xml'],
-        'Customers-Distinct-Column-Values.xls',
-        'Canada.xls',
-      );
-
-      await ft
-        .click('#trEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
-        .click('#btnSamplesLearnModeEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
-        .waitOnElementToContainText(
-          '#divEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY',
-          'When processing your actual reports',
-        )
-        .click('#btnCloseSamplesLearnMoreModal')
-        .click('#btnSampleTryItEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
-        .clickYesDoThis()
-        .click('#btnBurst')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'xls')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (04_invoices_split_once_more_split_only)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = [
-        '10.pdf',
-        '9.pdf',
-        '8.pdf',
-        '7.pdf',
-        '6.pdf',
-        '5.pdf',
-        '4.pdf',
-        '3.pdf',
-        '2.pdf',
-        'accounting@alphainsurance.biz.pdf',
-        'accounting@betainsurance.biz.pdf',
-        'accounting@gammahealth.biz.pdf',
-      ];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
-        .waitOnElementToContainText(
-          '#tdINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY',
-          'Customers with Multiple Invoices',
-        )
-        .click('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY');
-
-      // Now verify the Learn More modal
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'INVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY',
-        //['config/samples/split-only/settings.xml'],
-        'Split2Times.pdf',
-        '6.pdf',
-      );
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
-        .waitOnElementToContainText(
-          '#tdINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY',
-          'Customers with Multiple Invoices',
-        )
-        .click('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
-        .click('#btnSampleTryItINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
-        .clickYesDoThis()
-        .click('#btnBurst')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles)
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (05_invoices_merge_then_split_only)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = [
-        '0011.pdf',
-        '0012.pdf',
-        '0013.pdf',
-        '0014.pdf',
-        '0015.pdf',
-        '0016.pdf',
-        '0017.pdf',
-        '0018.pdf',
-        '0019.pdf',
-        'merged.pdf',
-      ];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trINVOICES-MERGE-THEN-SPLIT')
-        .waitOnElementToContainText('#tdINVOICES-MERGE-THEN-SPLIT', 'Merge and')
-        .click('#trINVOICES-MERGE-THEN-SPLIT');
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'INVOICES-MERGE-THEN-SPLIT',
-        //['config/samples/split-only/settings.xml'],
-        'Invoices-Nov.pdf',
-        '0018.pdf customer invoice',
-      );
-
-      await ft
-        .scrollIntoViewIfNeeded('#trINVOICES-MERGE-THEN-SPLIT')
-        .waitOnElementToContainText('#tdINVOICES-MERGE-THEN-SPLIT', 'Merge and')
-        .click('#trINVOICES-MERGE-THEN-SPLIT')
-        .click('#btnSampleTryItINVOICES-MERGE-THEN-SPLIT')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItINVOICES-MERGE-THEN-SPLIT')
-        .clickYesDoThis()
-        .click('#btnRun')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles)
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (06_generate_payslips_docx)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-DOCX')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-DOCX',
-          'Generate Monthly Payslips (csv2docx)',
-        )
-        .click('#trGENERATE-PAYSLIPS-DOCX');
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-PAYSLIPS-DOCX',
-        //['config/samples/split-only/settings.xml'],
-        'Payslips.csv',
-        'kyle.butford@northridgehealth.org.docx employee payslip',
-        'payslips-template.docx',
-      );
-
-      await ft
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-DOCX')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-DOCX',
-          'Generate Monthly Payslips (csv2docx)',
-        )
-        .click('#trGENERATE-PAYSLIPS-DOCX')
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-DOCX')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-DOCX')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(
-          ['0.docx', '1.docx', '2.docx'],
-          'docx',
-        )
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (07_generate_payslips_html)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-HTML')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-HTML',
-          'Generate Monthly Payslips (csv2html)',
-        )
-        .click('#trGENERATE-PAYSLIPS-HTML');
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-PAYSLIPS-HTML',
-        //['config/samples/split-only/settings.xml'],
-        'Payslips.csv',
-        'kyle.butford@northridgehealth.org.html employee payslip',
-        undefined,
-        'class="company-info"',
-      );
-
-      await ft
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-HTML')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-HTML',
-          'Generate Monthly Payslips (csv2html)',
-        )
-        .click('#trGENERATE-PAYSLIPS-HTML')
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-HTML')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-HTML')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(
-          ['0.html', '1.html', '2.html'],
-          'html',
-        )
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (08_generate_payslips_pdf)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-PDF')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-PDF',
-          'Generate Monthly Payslips (csv2pdf)',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-PAYSLIPS-PDF',
-        //['config/samples/split-only/settings.xml'],
-        'Payslips.csv',
-        'kyle.butford@northridgehealth.org.pdf employee payslip',
-        undefined,
-        'class="company-info"',
-      );
-
-      await ft
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-PDF')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-PDF',
-          'Generate Monthly Payslips (csv2pdf)',
-        )
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-PDF')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-PDF')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(
-          ['0.pdf', '1.pdf', '2.pdf'],
-          'pdf',
-        )
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (09_generate_payslips_excel)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-EXCEL',
-          'Generate Monthly Payslips (csv2xlsx)',
-        )
-        .click('#trGENERATE-PAYSLIPS-EXCEL');
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-PAYSLIPS-EXCEL',
-        //['config/samples/split-only/settings.xml'],
-        'Payslips.csv',
-        'kyle.butford@northridgehealth.org.xlsx employee payslip',
-        undefined,
-        'data-text-cell',
-      );
-
-      await ft
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-EXCEL',
-          'Generate Monthly Payslips (csv2xlsx)',
-        )
-        .click('#trGENERATE-PAYSLIPS-EXCEL')
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(
-          ['0.xlsx', '1.xlsx', '2.xlsx'],
-          'xlsx',
-        )
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (10_generate_xlsx_from_xlsx_ds)',
-    async ({ beforeAfterEach: firstPage }) => {
-      //long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-EXCEL-XLSX-DS',
-          'Generate Monthly Payslips (xlsx2xlsx)',
-        )
-        .click('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS');
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-PAYSLIPS-EXCEL-XLSX-DS',
-        //['config/samples/split-only/settings.xml'],
-        'Payslips.xlsx',
-        'kyle.butford@northridgehealth.org.xlsx employee payslip',
-        undefined,
-        'data-text-cell',
-      );
-
-      await ft
-        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
-        .waitOnElementToContainText(
-          '#tdGENERATE-PAYSLIPS-EXCEL-XLSX-DS',
-          'Generate Monthly Payslips (xlsx2xlsx)',
-        )
-        .click('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(
-          ['0.xlsx', '1.xlsx', '2.xlsx'],
-          'xlsx',
-        )
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-  
-  electronBeforeAfterAllTest(
-    'should work correctly (11_generate_student_profiles_sql2foppdf)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = ['Andrew-Fuller.pdf', 'Janet-Leverling.pdf', 'Nancy-Davolio.pdf'];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-STUDENT-PROFILES-SQL2PDF')
-        .waitOnElementToContainText(
-          '#tdGENERATE-STUDENT-PROFILES-SQL2PDF',
-          'Student Profiles',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-STUDENT-PROFILES-SQL2PDF',
-        'northwind.db',
-        'Andrew-Fuller.pdf',
-        '',
-        'fo:layout-master-set',
-      );
-
-      await ft
-        .click('#trGENERATE-STUDENT-PROFILES-SQL2PDF')
-        .click('#btnSampleTryItGENERATE-STUDENT-PROFILES-SQL2PDF')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-STUDENT-PROFILES-SQL2PDF')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'pdf')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (12_generate_customer_statements_sql2html)',
-    async ({ beforeAfterEach: firstPage }) => {
-      // long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = [
-        'ALFKI.html',
-        'ANATR.html',
-        'ANTON.html',
-        'AROUT.html',
-        'BERGS.html',
-        'BLAUS.html',
-        'BONAP.html',
-        'CACTU.html',
-        'DRACD.html',
-        'DUMON.html',
-        'ERNSH.html',
-        'FOLKO.html',
-        'FRANK.html',
-        'GREAL.html',
-        'HILAA.html',
-        'ISLAT.html',
-        'KOENE.html',
-        'LEHMS.html',
-        'LILAS.html',
-        'MAGAA.html',
-        'MORGK.html',
-        'OTTIK.html',
-        'QUICK.html',
-        'TOMSP.html',
-        'WANDK.html',
-      ];
-
-      let ft = new FluentTester(firstPage);
-
-      // Navigate to samples and locate the new sample
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
-        .waitOnElementToContainText(
-          '#tdGENERATE-CUSTOMER-STATEMENTS-SQL2HTML',
-          'Customer Statements',
-        );
-
-      // Verify Learn More modal content briefly (title + example file)
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-CUSTOMER-STATEMENTS-SQL2HTML',
-        'northwind.db',
-        'ALFKI.html',
-        '',
-        'Total Freight',
-      );
-
-      // Run the sample "Try It" -> Generate
-      await ft
-        .click('#trGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
-        .click('#btnSampleTryItGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (13_generate_customer_sales_summary_sql2xlsx)',
-    async ({ beforeAfterEach: firstPage }) => {
-      // long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = ['CustomerSalesSummary.xlsx'];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
-        .waitOnElementToContainText(
-          '#tdGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX',
-          'Customer Sales Summary',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX',
-        'northwind.db',
-        'CustomerSalesSummary.xlsx',
-        '',
-        'Top customers by sales'
-      );
-
-      await ft
-        .click('#trGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
-        .click('#btnSampleTryItGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'xlsx')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (14_generate_customer_invoices_master_detail_sql2html)',
-    async ({ beforeAfterEach: firstPage }) => {
-      // long running test
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = [
-        'invoice_1.html',
-        'invoice_2.html',
-        'invoice_4.html',
-        'invoice_5.html',
-        'invoice_8.html',
-        'invoice_9.html',
-        'invoice_33.html',
-        'invoice_34.html',
-        'invoice_58.html',
-        'invoice_59.html',
-      ];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
-        .waitOnElementToContainText(
-          '#tdGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML',
-          'Customer Invoices',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML',
-        'northwind.db',
-        'invoice_4.html',
-        '',
-        'Line Total',
-      );
-
-      await ft
-        .click('#trGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
-        .click('#btnSampleTryItGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-
-  electronBeforeAfterAllTest(
-    'should work correctly (15_generate_category_region_crosstab_script2html)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = ['CategoryRegionCrosstab.html'];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
-        .waitOnElementToContainText(
-          '#tdGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML',
-          'Category-Region Crosstab',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML',
-        'northwind.db',
-        'CategoryRegionCrosstab.html',
-        '',
-        'Category Sales by Region'
-      );
-
-      await ft
-        .click('#trGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
-        .click('#btnSampleTryItGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (16_generate_monthly_sales_trend_script2html)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = ['MonthlySalesTrend.html'];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
-        .waitOnElementToContainText(
-          '#tdGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML',
-          'Monthly Sales Trend',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML',
-        'northwind.db',
-        'MonthlySalesTrend.html',
-        '',
-        'Monthly Sales Trend',
-      );
-
-      await ft
-        .click('#trGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
-        .click('#btnSampleTryItGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-electronBeforeAfterAllTest(
-    'should work correctly (17_generate_supplier_scorecards_script2html)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = [
-        'supplier_1_scorecard.html',
-        'supplier_2_scorecard.html',
-        'supplier_3_scorecard.html',
-        'supplier_4_scorecard.html',
-        'supplier_5_scorecard.html',
-        'supplier_6_scorecard.html',
-      ];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
-        .waitOnElementToContainText(
-          '#tdGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML',
-          'Supplier Scorecards',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML',
-        'northwind.db',
-        'supplier_1_scorecard.html',
-        '',
-        'Supplier Scorecard',
-      );
-
-      await ft
-        .click('#trGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
-        .click('#btnSampleTryItGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
-        .clickYesDoThis()
-        .waitOnElementToBecomeVisible('#qaReminderLink')
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (18_northwind_sales_dashboard)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-DASHBOARD')
-        .waitOnElementToContainText(
-          '#tdNORTHWIND-SALES-DASHBOARD',
-          'Sales Dashboard',
-        );
-
-      // Verify the Learn More modal
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'NORTHWIND-SALES-DASHBOARD',
-        'northwind.db',
-      );
-
-      // Dashboard "Try It" opens directly in the browser (no burst/generate flow).
-      // Open external browser and assert dashboard renders correctly.
-      let externalBrowser = null;
-
-      await ft
-        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-DASHBOARD')
-        .click('#trNORTHWIND-SALES-DASHBOARD')
-        .click('#btnSampleTryItNORTHWIND-SALES-DASHBOARD');
-
-      try {
-        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
-        externalBrowser = browser;
-
-        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
-        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
-        // the Angular shell would load instead of the dashboard. Sign it in the way every other
-        // external-browser test does; on a desktop installation the local caller is already an
-        // administrator and this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
-        const dashboardUrl = 'http://localhost:9090/dashboard/g-dashboard';
-
-        await SelfServicePortalsTestHelper.waitForServerReady(
-          page,
-          dashboardUrl,
-          30,
-          2000,
-        );
-
-        await page.goto(dashboardUrl, {
-          timeout: 30000,
-          waitUntil: 'networkidle',
-        });
-
-        // Assert the dashboard is on the page
-        const { expect } = await import('@playwright/test');
-        await expect(page.locator('#dashboard-g-dashboard')).toBeVisible({ timeout: 10000 });
-
-        // Run shared dashboard assertions — default "-- All --" (unfiltered)
-        await assertDashboardRendersCorrectly(page, 'g-dashboard');
-
-        // Exercise the country parameter filter — select "Germany"
-        await page.selectOption('#country', 'Germany');
-        await page.click('#btnReloadDashboard');
-        await page.waitForTimeout(5000);
-
-        // Assert Germany-filtered data across all components
-        await assertDashboardRendersCorrectly(page, 'g-dashboard', 'Germany');
-      } finally {
-        if (externalBrowser) {
-          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
-        }
-      }
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (19_northwind_sales_pivottable)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-PIVOTTABLE')
-        .waitOnElementToContainText(
-          '#tdNORTHWIND-SALES-PIVOTTABLE',
-          'Sales PivotTable',
-        );
-
-      // Verify the Learn More modal
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'NORTHWIND-SALES-PIVOTTABLE',
-        'northwind.duckdb',
-      );
-
-      // Dashboard "Try It" opens directly in the browser
-      let externalBrowser = null;
-
-      await ft
-        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-PIVOTTABLE')
-        .click('#trNORTHWIND-SALES-PIVOTTABLE')
-        .click('#btnSampleTryItNORTHWIND-SALES-PIVOTTABLE');
-
-      try {
-        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
-        externalBrowser = browser;
-
-        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
-        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
-        // the Angular shell would load instead of the dashboard. Sign it in the way every other
-        // external-browser test does; on a desktop installation the local caller is already an
-        // administrator and this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
-        const dashboardUrl = 'http://localhost:9090/dashboard/g-pivottable';
-
-        await SelfServicePortalsTestHelper.waitForServerReady(
-          page,
-          dashboardUrl,
-          30,
-          2000,
-        );
-
-        await page.goto(dashboardUrl, {
-          timeout: 30000,
-          waitUntil: 'networkidle',
-        });
-
-        const { expect } = await import('@playwright/test');
-
-        // Assert the dashboard is on the page
-        await expect(page.locator('#dashboard-g-pivottable')).toBeVisible({ timeout: 10000 });
-
-        // Assert pivot table header and component are visible. The heading says what the page
-        // is for rather than naming the data behind it (D2).
-        await expect(page.locator('#dashTitle')).toHaveText('Sales Explorer', { timeout: 30000 });
-        await expect(page.locator('#dashSubtitle'))
-          .toContainText('Ask your own question of the sales', { timeout: 10000 });
-        // One pivot: the sample's pivot has no component id, so its controls carry their plain ids.
-        await expect(page.locator('#dashboard-g-pivottable #btnPivotRenderer')).toHaveCount(1, { timeout: 15000 });
-      } finally {
-        if (externalBrowser) {
-          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
-        }
-      }
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (20_generate_adhoc_employee_profile_script2pdf)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      const expectedOutputFiles = ['E001-John-Doe.pdf'];
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded(
-          '#trGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF',
-        )
-        .waitOnElementToContainText(
-          '#tdGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF',
-          'Ad-hoc Employee Profile',
-        );
-
-      ft = SamplesTestHelper.verifyLearnMoreModal(
-        ft,
-        'GENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF',
-        'Adhoc (user provided data)',
-        'E001-John-Doe.pdf',
-        '',
-        'fo:layout-master-set',
-      );
-
-      await ft
-        .click('#trGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF')
-        .click('#btnSampleTryItGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF')
-        .clickNoDontDoThis()
-        .click('#btnSampleTryItGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF')
-        .clickYesDoThis()
-        .waitOnElementToBecomeEnabled('#btnGenerateReports')
-        .click('#btnGenerateReports')
-        .clickYesDoThis()
-        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
-        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
-        .appStatusShouldBeGreatNoErrorsNoWarnings()
-        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'pdf')
-        .appStatusShouldBeGreatNoErrorsNoWarnings();
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (21_cube_stories)',
-    async ({ beforeAfterEach: firstPage }) => {
-      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
-
-      let ft = new FluentTester(firstPage);
-
-      await ft
-        .click('#leftMenuSamples')
-        .scrollIntoViewIfNeeded('#trCUBE-STORIES')
-        .waitOnElementToContainText('#tdCUBE-STORIES', 'Cube Stories');
-
-      // Verify the Learn More modal
-      ft = SamplesTestHelper.verifyLearnMoreModal(ft, 'CUBE-STORIES', 'northwind.db');
-
-      // A dashboard sample's "Try It" opens the page in the browser, as sample 19 does.
-      let externalBrowser = null;
-
-      await ft
-        .scrollIntoViewIfNeeded('#trCUBE-STORIES')
-        .click('#trCUBE-STORIES')
-        .click('#btnSampleTryItCUBE-STORIES');
-
-      try {
-        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
-        externalBrowser = browser;
-
-        // A brand new browser carries no session; on a Server the dashboard would otherwise be
-        // the login page. On a desktop installation this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
-        const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-stories';
-
-        await SelfServicePortalsTestHelper.waitForServerReady(page, dashboardUrl, 30, 2000);
-
-        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
-
-        const { expect } = await import('@playwright/test');
-        const frame = page.mainFrame();
-
-        // The sample is the page: every cube DataPallas ships, each card with the questions its
-        // cube was written to answer.
-        await expect(page.locator('#dashboard-g-cube-stories')).toBeVisible({ timeout: 10000 });
-        // Its own title already says what the page is for, and stays as it is (D2).
-        await expect(page.locator('#dashTitle')).toHaveText('Cube Stories', { timeout: 30000 });
-        await expect(page.locator('#dashSubtitle')).toContainText('tick a field', { timeout: 10000 });
-        await expect(frame.locator('#cubeStoriesRoot > [id^="industry-"] > [id^="cube-"]'))
-          .toHaveCount(CUBE_STORIES_PAGE_CARDS.length, { timeout: 60000 });
-        for (const cubeId of CUBE_STORIES_PAGE_CARDS) {
-          // A card in a closed industry panel is not visible; open its panel the way a reader does.
-          await openCardsPanel(frame, cubeId);
-          await expect(frame.locator(`#cube-${cubeId} #cubeHints [id^="hint-"]`).first())
-            .toBeVisible({ timeout: 60000 });
-        }
-
-        // And it is live: the Deals card answers its own first question with the rows the vendor
-        // loop checks that cube's SQL against. That check counts every deal and adds up what they
-        // are worth, so it is the same on any day the demo data was seeded.
-        const deals = cardOf('sales-pipeline');
-        await waitForCard(frame, deals.id, 60000);
-        const dealsAndValue = checksOf(deals.id).get('deals-and-value');
-        expect(dealsAndValue, 'the Deals cube has a check for its first hint').toBeTruthy();
-        const wrong = difference(dealsAndValue.rows, await drawnRows(frame, deals.id), false);
-        expect(wrong, `the Deals card: ${wrong ?? ''}`).toBeNull();
-
-        // ── D10: the dashboard is the same product as the application that published it ──
-        // The owner met this defect as two screenshots side by side: the application in its dark
-        // theme, and the dashboard it had just published in light colours. So the assertion is the
-        // two pages together - whatever theme the application is on, the dashboard opens on it.
-        const appTheme = await firstPage.locator('html').getAttribute('data-theme');
-        expect(appTheme, 'the application is on a theme of its own').toBeTruthy();
-        await expect(page.locator('html'), 'and the dashboard it published is on the same one')
-          .toHaveAttribute('data-theme', appTheme as string);
-
-        // The palettes that theme name refers to are served next to the bundle, from the same
-        // daisyUI the application compiles its own themes with.
-        await expect(page.locator('link[href="/rb-webcomponents/themes.css"]'),
-          'the page links the theme palettes').toHaveCount(1);
-        const palettes = await page.request.get('http://localhost:9090/rb-webcomponents/themes.css');
-        expect(palettes.ok(), 'and they are really served').toBe(true);
-        // The served file is minified: its attribute selector may or may not keep the quotes.
-        expect(await palettes.text(), 'including the theme this application is on')
-          .toMatch(new RegExp(`\\[data-theme="?${appTheme}"?\\]`));
-
-        // And the colours follow: the page's own background is the theme's, not the light one this
-        // template used to carry. The probe asks the browser what the variable resolves to here,
-        // so the test says nothing about any single theme's colours.
-        const [background, base200, oldLightDefault] = await page.evaluate(() => {
-          const probe = document.createElement('div');
-          probe.style.background = 'var(--color-base-200)';
-          document.body.appendChild(probe);
-          const resolved = getComputedStyle(probe).backgroundColor;
-          probe.style.background = 'rgb(248, 250, 252)';
-          const light = getComputedStyle(probe).backgroundColor;
-          const root = getComputedStyle(document.getElementById('cubeStoriesRoot')!).backgroundColor;
-          probe.remove();
-          return [root, resolved, light];
-        });
-        expect(background, "the dashboard's background is the theme's").toBe(base200);
-        expect(background, 'and never the light one the template used to hard-code')
-          .not.toBe(oldLightDefault);
-
-        // The other half of the same change: a component embedded on somebody else's site has no
-        // theme and no palettes, and must look exactly as it did. That is what every fallback in
-        // the bundle is for, so none of them may be missing.
-        const bundle = await page.request.get(
-          'http://localhost:9090/rb-webcomponents/rb-webcomponents.umd.js');
-        expect(bundle.ok(), 'the bundle is served').toBe(true);
-        const noFallback = (await bundle.text()).match(/var\(--color-[a-z0-9-]+\)/g) ?? [];
-        expect(noFallback, 'every theme variable in the bundle carries the old colour as a fallback')
-          .toEqual([]);
-      } finally {
-        if (externalBrowser) {
-          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
-        }
-      }
-    },
-  );
-
-  electronBeforeAfterAllTest(
-    'should work correctly (22_cube_country_sales_dashboard)',
+    'should work correctly (01_cube_country_sales_dashboard)',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
@@ -1283,7 +63,7 @@ electronBeforeAfterAllTest(
         'northwind.duckdb',
       );
 
-      // A dashboard sample's "Try It" opens the page in the browser, as sample 18 does.
+      // A dashboard sample's "Try It" opens the page in the browser, as the Sales Dashboard sample does.
       let externalBrowser = null;
 
       await ft
@@ -1468,7 +248,7 @@ electronBeforeAfterAllTest(
         // And the panel that carries them is headed by the cube, not by the word `Cube`: the
         // reader is told which of the shop's cubes they are about to ask (D5).
         await expect(page.locator('#cubePanelHeader'), 'the tile names its cube and its filter')
-          .toHaveText('\u25be Online Sales \u00b7 Country: Germany (dashboard); Status: not Cancelled, Returned',
+          .toHaveText('\u25be Online Sales \u00b7 Country: Germany (dashboard); Status: not Cancelled and not Returned',
             { timeout: 60000 });
 
         // The chip says `not`, and the rows are the answer to NOT IN - not to IN. The cube is asked
@@ -1693,6 +473,8 @@ electronBeforeAfterAllTest(
           { timeout: 90000 },
         );
         await page.click('#btnShowMe-sales-by-month');
+        // Show Me asks first; the story is applied on Yes.
+        await page.click('#btnShowMeYes-sales-by-month');
         expect((await monthAnswered).status(), "the page's own question was answered").toBe(200);
 
         // The tree says what the story said: Ordered, read by month, with the two measures ticked
@@ -1758,6 +540,8 @@ electronBeforeAfterAllTest(
           { timeout: 90000 },
         );
         await page.click('#btnShowMe-sales-for-a-period');
+        // Show Me asks first; the story is applied on Yes.
+        await page.click('#btnShowMeYes-sales-for-a-period');
         expect((await periodAnswered).status(), 'the period story was answered').toBe(200);
         await expect(page.locator('#chipFilter-OrderDate'), 'the period is a filter the reader can see')
           .toBeVisible({ timeout: 60000 });
@@ -1779,18 +563,18 @@ electronBeforeAfterAllTest(
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Sample 23: Dashboard Demos — 25 dashboards on one page.
+  // Sample 2: Dashboard Demos — 25 dashboards on one page.
   //
-  // Light, as sample 21's is: it walks the sample the way the person in front of the
+  // Light, as the Cube Stories sample's is: it walks the sample the way the person in front of the
   // installation does (the list, the Learn More modal, Try It, the page in a browser) and
   // checks that the Gallery a visitor meets is the page the index describes. What each of
   // the 25 dashboards shows, the filters, the stories, the links and the sharing are
   // `specs/areas/dashboard-demos.spec.ts`.
   //
-  // It is sample 23 and not 22: 22 is Country Sales Dashboard, above.
+  // It is sample 2, right after sample 1 (Country Sales Dashboard): the three dashboard samples lead the list.
   // ═══════════════════════════════════════════════════════════════════════════
   electronBeforeAfterAllTest(
-    'should work correctly (23_dashboard_demos)',
+    'should work correctly (02_dashboard_demos)',
     async ({ beforeAfterEach: firstPage }) => {
       test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
 
@@ -1804,7 +588,7 @@ electronBeforeAfterAllTest(
       // Verify the Learn More modal
       ft = SamplesTestHelper.verifyLearnMoreModal(ft, 'DASHBOARD-DEMOS', 'northwind.duckdb');
 
-      // A dashboard sample's "Try It" opens the page in the browser, as sample 22's does.
+      // A dashboard sample's "Try It" opens the page in the browser, as the Country Sales Dashboard's does.
       let externalBrowser = null;
 
       await ft
@@ -1841,17 +625,22 @@ electronBeforeAfterAllTest(
         await expect(page.locator('#dashTitle'))
           .toContainText('Dashboard Demos', { timeout: 30000 });
 
-        // The contents list above the cards: one entry per demo, in the index's order.
-        const contents = await page
-          .locator('#ddContents [id^="lnkContents-dd-"]')
-          .evaluateAll((links) => links.map((link) => (link as HTMLAnchorElement).hash));
-        expect(contents, 'the contents list names every demo, in order')
-          .toEqual(DEMOS.map((demo) => `#${demo.id}`));
+        // The areas: eight collapsible panels, the first open when the page loads and no other.
+        await expect(page.locator('#dashboardDemosRoot details.area > summary.area-bar'),
+          'one bar per area').toHaveCount(8);
+        expect(
+          await page.locator('#dashboardDemosRoot details.area')
+            .evaluateAll((areas) => areas.map((area) => (area as HTMLDetailsElement).open)),
+          'the first area is open and the rest are closed',
+        ).toEqual([true, false, false, false, false, false, false, false]);
+
+        // The list at the top of each area: one entry per demo, in that area, leading to its card.
+        for (const demo of DEMOS)
+          await expect(areaOf(page, demo).locator(`[id="lnkContents-${demo.id}"]`),
+            `${demo.area} lists ${demo.id}`).toHaveAttribute('href', `#${demo.id}`);
 
         // And the cards themselves, each carrying its own dashboard.
-        const cards = await page
-          .locator('#dashboardDemosRoot > [id^="dd-"]')
-          .evaluateAll((divs) => divs.map((div) => div.id));
+        const cards = await galleryCardIds(page);
         expect(cards, 'one card per demo, in the index\'s order')
           .toEqual(DEMOS.map((demo) => demo.id));
 
@@ -1891,6 +680,1228 @@ electronBeforeAfterAllTest(
           await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
         }
       }
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (03_cube_stories)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trCUBE-STORIES')
+        .waitOnElementToContainText('#tdCUBE-STORIES', 'Cube Stories');
+
+      // Verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(ft, 'CUBE-STORIES', 'northwind.db');
+
+      // A dashboard sample's "Try It" opens the page in the browser, as the Sales PivotTable sample does.
+      let externalBrowser = null;
+
+      await ft
+        .scrollIntoViewIfNeeded('#trCUBE-STORIES')
+        .click('#trCUBE-STORIES')
+        .click('#btnSampleTryItCUBE-STORIES');
+
+      try {
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        externalBrowser = browser;
+
+        // A brand new browser carries no session; on a Server the dashboard would otherwise be
+        // the login page. On a desktop installation this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
+
+        const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-stories';
+
+        await SelfServicePortalsTestHelper.waitForServerReady(page, dashboardUrl, 30, 2000);
+
+        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
+
+        const { expect } = await import('@playwright/test');
+        const frame = page.mainFrame();
+
+        // The sample is the page: every cube DataPallas ships, each card with the questions its
+        // cube was written to answer.
+        await expect(page.locator('#dashboard-g-cube-stories')).toBeVisible({ timeout: 10000 });
+        // Its own title already says what the page is for, and stays as it is (D2).
+        await expect(page.locator('#dashTitle')).toHaveText('Cube Stories', { timeout: 30000 });
+        await expect(page.locator('#dashSubtitle')).toContainText('tick a field', { timeout: 10000 });
+        await expect(frame.locator('#cubeStoriesRoot > [id^="industry-"] > [id^="cube-"]'))
+          .toHaveCount(CUBE_STORIES_PAGE_CARDS.length, { timeout: 60000 });
+        for (const cubeId of CUBE_STORIES_PAGE_CARDS) {
+          // A card in a closed industry panel is not visible; open its panel the way a reader does.
+          await openCardsPanel(frame, cubeId);
+          await expect(frame.locator(`#cube-${cubeId} #cubeHints [id^="hint-"]`).first())
+            .toBeVisible({ timeout: 60000 });
+        }
+
+        // And it is live: the Deals card answers its own first question with the rows the vendor
+        // loop checks that cube's SQL against. That check counts every deal and adds up what they
+        // are worth, so it is the same on any day the demo data was seeded.
+        const deals = cardOf('sales-pipeline');
+        await waitForCard(frame, deals.id, 60000);
+        const dealsAndValue = checksOf(deals.id).get('deals-and-value');
+        expect(dealsAndValue, 'the Deals cube has a check for its first hint').toBeTruthy();
+        const wrong = difference(dealsAndValue.rows, await drawnRows(frame, deals.id), false);
+        expect(wrong, `the Deals card: ${wrong ?? ''}`).toBeNull();
+
+        // ── D10: the dashboard is the same product as the application that published it ──
+        // The owner met this defect as two screenshots side by side: the application in its dark
+        // theme, and the dashboard it had just published in light colours. So the assertion is the
+        // two pages together - whatever theme the application is on, the dashboard opens on it.
+        const appTheme = await firstPage.locator('html').getAttribute('data-theme');
+        expect(appTheme, 'the application is on a theme of its own').toBeTruthy();
+        await expect(page.locator('html'), 'and the dashboard it published is on the same one')
+          .toHaveAttribute('data-theme', appTheme as string);
+
+        // The palettes that theme name refers to are served next to the bundle, from the same
+        // daisyUI the application compiles its own themes with.
+        await expect(page.locator('link[href="/rb-webcomponents/themes.css"]'),
+          'the page links the theme palettes').toHaveCount(1);
+        const palettes = await page.request.get('http://localhost:9090/rb-webcomponents/themes.css');
+        expect(palettes.ok(), 'and they are really served').toBe(true);
+        // The served file is minified: its attribute selector may or may not keep the quotes.
+        expect(await palettes.text(), 'including the theme this application is on')
+          .toMatch(new RegExp(`\\[data-theme="?${appTheme}"?\\]`));
+
+        // And the colours follow: the page's own background is the theme's, not the light one this
+        // template used to carry. The probe asks the browser what the variable resolves to here,
+        // so the test says nothing about any single theme's colours.
+        const [background, base200, oldLightDefault] = await page.evaluate(() => {
+          const probe = document.createElement('div');
+          probe.style.background = 'var(--color-base-200)';
+          document.body.appendChild(probe);
+          const resolved = getComputedStyle(probe).backgroundColor;
+          probe.style.background = 'rgb(248, 250, 252)';
+          const light = getComputedStyle(probe).backgroundColor;
+          const root = getComputedStyle(document.getElementById('cubeStoriesRoot')!).backgroundColor;
+          probe.remove();
+          return [root, resolved, light];
+        });
+        expect(background, "the dashboard's background is the theme's").toBe(base200);
+        expect(background, 'and never the light one the template used to hard-code')
+          .not.toBe(oldLightDefault);
+
+        // The other half of the same change: a component embedded on somebody else's site has no
+        // theme and no palettes, and must look exactly as it did. That is what every fallback in
+        // the bundle is for, so none of them may be missing.
+        const bundle = await page.request.get(
+          'http://localhost:9090/rb-webcomponents/rb-webcomponents.umd.js');
+        expect(bundle.ok(), 'the bundle is served').toBe(true);
+        const noFallback = (await bundle.text()).match(/var\(--color-[a-z0-9-]+\)/g) ?? [];
+        expect(noFallback, 'every theme variable in the bundle carries the old colour as a fallback')
+          .toEqual([]);
+      } finally {
+        if (externalBrowser) {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
+        }
+      }
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (04_monthly_payslips_split_only)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = Constants.PAYSLIPS_PDF_BURST_TOKENS.map(
+        function (burstToken) {
+          return burstToken + '.pdf';
+        },
+      );
+
+      let ft = new FluentTester(firstPage);
+
+      // First navigate to samples page and make the sample visible
+      await ft
+        .click('#leftMenuSamples')
+        .waitOnElementToContainText(
+          '#tdMONTHLY-PAYSLIPS-SPLIT-ONLY',
+          'Monthly Payslips',
+        );
+
+      // Now verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'MONTHLY-PAYSLIPS-SPLIT-ONLY',
+        //['config/samples/split-only/settings.xml'],
+        'Payslips.pdf',
+        'kyle.butford@northridgehealth.org.pdf',
+      );
+
+      // Continue with the test workflow
+      await ft
+        .click('#trMONTHLY-PAYSLIPS-SPLIT-ONLY')
+        .click('#btnSampleTryItMONTHLY-PAYSLIPS-SPLIT-ONLY')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItMONTHLY-PAYSLIPS-SPLIT-ONLY')
+        .clickYesDoThis()
+        .click('#btnBurst')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_LOGS)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles)
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (05_excel_distinct_sheets_split_only)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = Constants.PAYSLIPS_XLS_BURST_TOKENS.map(
+        function (burstToken) {
+          return burstToken + '.xls';
+        },
+      );
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .waitOnElementToContainText(
+          '#tdEXCEL-DISTINCT-SHEETS-SPLIT-ONLY',
+          'Monthly Payslips Excel',
+        );
+
+      // Now verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'EXCEL-DISTINCT-SHEETS-SPLIT-ONLY',
+        //['config/samples/split-only/settings.xml'],
+        'Payslips-Distinct-Sheets.xls',
+        'alfreda.waldback@northridgehealth.org.xls',
+      );
+
+      await ft
+        .click('#trEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
+        .click('#btnSamplesLearnModeEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
+        .waitOnElementToContainText(
+          '#divEXCEL-DISTINCT-SHEETS-SPLIT-ONLY',
+          'When processing your actual reports',
+        )
+        .click('#btnCloseSamplesLearnMoreModal')
+        .click('#btnSampleTryItEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItEXCEL-DISTINCT-SHEETS-SPLIT-ONLY')
+        .clickYesDoThis()
+        .click('#btnBurst')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_LOGS)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'xls')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (06_split_excel_file_by_distinct_column_values_split_only)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = [
+        'Germany.xls',
+        'USA.xls',
+        'UK.xls',
+        'Sweden.xls',
+        'France.xls',
+        'Spain.xls',
+        'Canada.xls',
+        'Argentina.xls',
+        'Switzerland.xls',
+        'Brazil.xls',
+        'Austria.xls',
+        'Italy.xls',
+        'Portugal.xls',
+        'Mexico.xls',
+        'Venezuela.xls',
+        'Ireland.xls',
+        'Belgium.xls',
+        'Norway.xls',
+        'Denmark.xls',
+        'Finland.xls',
+        'Poland.xls',
+      ];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .waitOnElementToContainText(
+          '#tdEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY',
+          'Customer List/Country Excel',
+        );
+
+      // Now verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'EXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY',
+        //['config/samples/split-only/settings.xml'],
+        'Customers-Distinct-Column-Values.xls',
+        'Canada.xls',
+      );
+
+      await ft
+        .click('#trEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
+        .click('#btnSamplesLearnModeEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
+        .waitOnElementToContainText(
+          '#divEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY',
+          'When processing your actual reports',
+        )
+        .click('#btnCloseSamplesLearnMoreModal')
+        .click('#btnSampleTryItEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItEXCEL-DISTINCT-COLUMN-VALUES-SPLIT-ONLY')
+        .clickYesDoThis()
+        .click('#btnBurst')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'xls')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (07_invoices_split_once_more_split_only)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = [
+        '10.pdf',
+        '9.pdf',
+        '8.pdf',
+        '7.pdf',
+        '6.pdf',
+        '5.pdf',
+        '4.pdf',
+        '3.pdf',
+        '2.pdf',
+        'accounting@alphainsurance.biz.pdf',
+        'accounting@betainsurance.biz.pdf',
+        'accounting@gammahealth.biz.pdf',
+      ];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
+        .waitOnElementToContainText(
+          '#tdINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY',
+          'Customers with Multiple Invoices',
+        )
+        .click('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY');
+
+      // Now verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'INVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY',
+        //['config/samples/split-only/settings.xml'],
+        'Split2Times.pdf',
+        '6.pdf',
+      );
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
+        .waitOnElementToContainText(
+          '#tdINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY',
+          'Customers with Multiple Invoices',
+        )
+        .click('#trINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
+        .click('#btnSampleTryItINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItINVOICES-SPLIT-ONCE-MORE-SPLIT-ONLY')
+        .clickYesDoThis()
+        .click('#btnBurst')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles)
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (08_invoices_merge_then_split_only)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = [
+        '0011.pdf',
+        '0012.pdf',
+        '0013.pdf',
+        '0014.pdf',
+        '0015.pdf',
+        '0016.pdf',
+        '0017.pdf',
+        '0018.pdf',
+        '0019.pdf',
+        'merged.pdf',
+      ];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trINVOICES-MERGE-THEN-SPLIT')
+        .waitOnElementToContainText('#tdINVOICES-MERGE-THEN-SPLIT', 'Merge and')
+        .click('#trINVOICES-MERGE-THEN-SPLIT');
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'INVOICES-MERGE-THEN-SPLIT',
+        //['config/samples/split-only/settings.xml'],
+        'Invoices-Nov.pdf',
+        '0018.pdf customer invoice',
+      );
+
+      await ft
+        .scrollIntoViewIfNeeded('#trINVOICES-MERGE-THEN-SPLIT')
+        .waitOnElementToContainText('#tdINVOICES-MERGE-THEN-SPLIT', 'Merge and')
+        .click('#trINVOICES-MERGE-THEN-SPLIT')
+        .click('#btnSampleTryItINVOICES-MERGE-THEN-SPLIT')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItINVOICES-MERGE-THEN-SPLIT')
+        .clickYesDoThis()
+        .click('#btnRun')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles)
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (09_generate_payslips_docx)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-DOCX')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-DOCX',
+          'Generate Monthly Payslips (csv2docx)',
+        )
+        .click('#trGENERATE-PAYSLIPS-DOCX');
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-PAYSLIPS-DOCX',
+        //['config/samples/split-only/settings.xml'],
+        'Payslips.csv',
+        'kyle.butford@northridgehealth.org.docx employee payslip',
+        'payslips-template.docx',
+      );
+
+      await ft
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-DOCX')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-DOCX',
+          'Generate Monthly Payslips (csv2docx)',
+        )
+        .click('#trGENERATE-PAYSLIPS-DOCX')
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-DOCX')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-DOCX')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(
+          ['0.docx', '1.docx', '2.docx'],
+          'docx',
+        )
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (10_generate_payslips_html)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-HTML')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-HTML',
+          'Generate Monthly Payslips (csv2html)',
+        )
+        .click('#trGENERATE-PAYSLIPS-HTML');
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-PAYSLIPS-HTML',
+        //['config/samples/split-only/settings.xml'],
+        'Payslips.csv',
+        'kyle.butford@northridgehealth.org.html employee payslip',
+        undefined,
+        'class="company-info"',
+      );
+
+      await ft
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-HTML')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-HTML',
+          'Generate Monthly Payslips (csv2html)',
+        )
+        .click('#trGENERATE-PAYSLIPS-HTML')
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-HTML')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-HTML')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(
+          ['0.html', '1.html', '2.html'],
+          'html',
+        )
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (11_generate_payslips_pdf)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-PDF')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-PDF',
+          'Generate Monthly Payslips (csv2pdf)',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-PAYSLIPS-PDF',
+        //['config/samples/split-only/settings.xml'],
+        'Payslips.csv',
+        'kyle.butford@northridgehealth.org.pdf employee payslip',
+        undefined,
+        'class="company-info"',
+      );
+
+      await ft
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-PDF')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-PDF',
+          'Generate Monthly Payslips (csv2pdf)',
+        )
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-PDF')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-PDF')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(
+          ['0.pdf', '1.pdf', '2.pdf'],
+          'pdf',
+        )
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (12_generate_payslips_excel)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-EXCEL',
+          'Generate Monthly Payslips (csv2xlsx)',
+        )
+        .click('#trGENERATE-PAYSLIPS-EXCEL');
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-PAYSLIPS-EXCEL',
+        //['config/samples/split-only/settings.xml'],
+        'Payslips.csv',
+        'kyle.butford@northridgehealth.org.xlsx employee payslip',
+        undefined,
+        'data-text-cell',
+      );
+
+      await ft
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-EXCEL',
+          'Generate Monthly Payslips (csv2xlsx)',
+        )
+        .click('#trGENERATE-PAYSLIPS-EXCEL')
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(
+          ['0.xlsx', '1.xlsx', '2.xlsx'],
+          'xlsx',
+        )
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (13_generate_xlsx_from_xlsx_ds)',
+    async ({ beforeAfterEach: firstPage }) => {
+      //long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-EXCEL-XLSX-DS',
+          'Generate Monthly Payslips (xlsx2xlsx)',
+        )
+        .click('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS');
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-PAYSLIPS-EXCEL-XLSX-DS',
+        //['config/samples/split-only/settings.xml'],
+        'Payslips.xlsx',
+        'kyle.butford@northridgehealth.org.xlsx employee payslip',
+        undefined,
+        'data-text-cell',
+      );
+
+      await ft
+        .scrollIntoViewIfNeeded('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
+        .waitOnElementToContainText(
+          '#tdGENERATE-PAYSLIPS-EXCEL-XLSX-DS',
+          'Generate Monthly Payslips (xlsx2xlsx)',
+        )
+        .click('#trGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-PAYSLIPS-EXCEL-XLSX-DS')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(
+          ['0.xlsx', '1.xlsx', '2.xlsx'],
+          'xlsx',
+        )
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+  
+  electronBeforeAfterAllTest(
+    'should work correctly (14_generate_student_profiles_sql2foppdf)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = ['Andrew-Fuller.pdf', 'Janet-Leverling.pdf', 'Nancy-Davolio.pdf'];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-STUDENT-PROFILES-SQL2PDF')
+        .waitOnElementToContainText(
+          '#tdGENERATE-STUDENT-PROFILES-SQL2PDF',
+          'Student Profiles',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-STUDENT-PROFILES-SQL2PDF',
+        'northwind.db',
+        'Andrew-Fuller.pdf',
+        '',
+        'fo:layout-master-set',
+      );
+
+      await ft
+        .click('#trGENERATE-STUDENT-PROFILES-SQL2PDF')
+        .click('#btnSampleTryItGENERATE-STUDENT-PROFILES-SQL2PDF')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-STUDENT-PROFILES-SQL2PDF')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'pdf')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (15_generate_customer_statements_sql2html)',
+    async ({ beforeAfterEach: firstPage }) => {
+      // long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = [
+        'ALFKI.html',
+        'ANATR.html',
+        'ANTON.html',
+        'AROUT.html',
+        'BERGS.html',
+        'BLAUS.html',
+        'BONAP.html',
+        'CACTU.html',
+        'DRACD.html',
+        'DUMON.html',
+        'ERNSH.html',
+        'FOLKO.html',
+        'FRANK.html',
+        'GREAL.html',
+        'HILAA.html',
+        'ISLAT.html',
+        'KOENE.html',
+        'LEHMS.html',
+        'LILAS.html',
+        'MAGAA.html',
+        'MORGK.html',
+        'OTTIK.html',
+        'QUICK.html',
+        'TOMSP.html',
+        'WANDK.html',
+      ];
+
+      let ft = new FluentTester(firstPage);
+
+      // Navigate to samples and locate the new sample
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
+        .waitOnElementToContainText(
+          '#tdGENERATE-CUSTOMER-STATEMENTS-SQL2HTML',
+          'Customer Statements',
+        );
+
+      // Verify Learn More modal content briefly (title + example file)
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-CUSTOMER-STATEMENTS-SQL2HTML',
+        'northwind.db',
+        'ALFKI.html',
+        '',
+        'Total Freight',
+      );
+
+      // Run the sample "Try It" -> Generate
+      await ft
+        .click('#trGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
+        .click('#btnSampleTryItGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-CUSTOMER-STATEMENTS-SQL2HTML')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (16_generate_customer_sales_summary_sql2xlsx)',
+    async ({ beforeAfterEach: firstPage }) => {
+      // long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = ['CustomerSalesSummary.xlsx'];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
+        .waitOnElementToContainText(
+          '#tdGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX',
+          'Customer Sales Summary',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX',
+        'northwind.db',
+        'CustomerSalesSummary.xlsx',
+        '',
+        'Top customers by sales'
+      );
+
+      await ft
+        .click('#trGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
+        .click('#btnSampleTryItGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-CUSTOMER-SALES-SUMMARY-SQL2XLSX')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'xlsx')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (17_generate_customer_invoices_master_detail_sql2html)',
+    async ({ beforeAfterEach: firstPage }) => {
+      // long running test
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = [
+        'invoice_1.html',
+        'invoice_2.html',
+        'invoice_4.html',
+        'invoice_5.html',
+        'invoice_8.html',
+        'invoice_9.html',
+        'invoice_33.html',
+        'invoice_34.html',
+        'invoice_58.html',
+        'invoice_59.html',
+      ];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
+        .waitOnElementToContainText(
+          '#tdGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML',
+          'Customer Invoices',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML',
+        'northwind.db',
+        'invoice_4.html',
+        '',
+        'Line Total',
+      );
+
+      await ft
+        .click('#trGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
+        .click('#btnSampleTryItGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+
+  electronBeforeAfterAllTest(
+    'should work correctly (18_generate_category_region_crosstab_script2html)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = ['CategoryRegionCrosstab.html'];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
+        .waitOnElementToContainText(
+          '#tdGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML',
+          'Category-Region Crosstab',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML',
+        'northwind.db',
+        'CategoryRegionCrosstab.html',
+        '',
+        'Category Sales by Region'
+      );
+
+      await ft
+        .click('#trGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
+        .click('#btnSampleTryItGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-CATEGORY-REGION-CROSSTAB-SCRIPT2HTML')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (19_generate_monthly_sales_trend_script2html)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = ['MonthlySalesTrend.html'];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
+        .waitOnElementToContainText(
+          '#tdGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML',
+          'Monthly Sales Trend',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML',
+        'northwind.db',
+        'MonthlySalesTrend.html',
+        '',
+        'Monthly Sales Trend',
+      );
+
+      await ft
+        .click('#trGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
+        .click('#btnSampleTryItGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-MONTHLY-SALES-TREND-SCRIPT2HTML')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (20_generate_supplier_scorecards_script2html)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = [
+        'supplier_1_scorecard.html',
+        'supplier_2_scorecard.html',
+        'supplier_3_scorecard.html',
+        'supplier_4_scorecard.html',
+        'supplier_5_scorecard.html',
+        'supplier_6_scorecard.html',
+      ];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
+        .waitOnElementToContainText(
+          '#tdGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML',
+          'Supplier Scorecards',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML',
+        'northwind.db',
+        'supplier_1_scorecard.html',
+        '',
+        'Supplier Scorecard',
+      );
+
+      await ft
+        .click('#trGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
+        .click('#btnSampleTryItGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-SUPPLIER-SCORECARDS-SCRIPT2HTML')
+        .clickYesDoThis()
+        .waitOnElementToBecomeVisible('#qaReminderLink')
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'html')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (21_northwind_sales_dashboard)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-DASHBOARD')
+        .waitOnElementToContainText(
+          '#tdNORTHWIND-SALES-DASHBOARD',
+          'Sales Dashboard',
+        );
+
+      // Verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'NORTHWIND-SALES-DASHBOARD',
+        'northwind.db',
+      );
+
+      // Dashboard "Try It" opens directly in the browser (no burst/generate flow).
+      // Open external browser and assert dashboard renders correctly.
+      let externalBrowser = null;
+
+      await ft
+        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-DASHBOARD')
+        .click('#trNORTHWIND-SALES-DASHBOARD')
+        .click('#btnSampleTryItNORTHWIND-SALES-DASHBOARD');
+
+      try {
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        externalBrowser = browser;
+
+        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
+        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
+        // the Angular shell would load instead of the dashboard. Sign it in the way every other
+        // external-browser test does; on a desktop installation the local caller is already an
+        // administrator and this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
+
+        const dashboardUrl = 'http://localhost:9090/dashboard/g-dashboard';
+
+        await SelfServicePortalsTestHelper.waitForServerReady(
+          page,
+          dashboardUrl,
+          30,
+          2000,
+        );
+
+        await page.goto(dashboardUrl, {
+          timeout: 30000,
+          waitUntil: 'networkidle',
+        });
+
+        // Assert the dashboard is on the page
+        const { expect } = await import('@playwright/test');
+        await expect(page.locator('#dashboard-g-dashboard')).toBeVisible({ timeout: 10000 });
+
+        // Run shared dashboard assertions — default "-- All --" (unfiltered)
+        await assertDashboardRendersCorrectly(page, 'g-dashboard');
+
+        // Exercise the country parameter filter — select "Germany"
+        await page.selectOption('#country', 'Germany');
+        await page.click('#btnReloadDashboard');
+        await page.waitForTimeout(5000);
+
+        // Assert Germany-filtered data across all components
+        await assertDashboardRendersCorrectly(page, 'g-dashboard', 'Germany');
+      } finally {
+        if (externalBrowser) {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
+        }
+      }
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (22_northwind_sales_pivottable)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-PIVOTTABLE')
+        .waitOnElementToContainText(
+          '#tdNORTHWIND-SALES-PIVOTTABLE',
+          'Sales PivotTable',
+        );
+
+      // Verify the Learn More modal
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'NORTHWIND-SALES-PIVOTTABLE',
+        'northwind.duckdb',
+      );
+
+      // Dashboard "Try It" opens directly in the browser
+      let externalBrowser = null;
+
+      await ft
+        .scrollIntoViewIfNeeded('#trNORTHWIND-SALES-PIVOTTABLE')
+        .click('#trNORTHWIND-SALES-PIVOTTABLE')
+        .click('#btnSampleTryItNORTHWIND-SALES-PIVOTTABLE');
+
+      try {
+        const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        externalBrowser = browser;
+
+        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
+        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
+        // the Angular shell would load instead of the dashboard. Sign it in the way every other
+        // external-browser test does; on a desktop installation the local caller is already an
+        // administrator and this returns without doing anything.
+        await Helpers.signInBrowserContext(context);
+
+        const dashboardUrl = 'http://localhost:9090/dashboard/g-pivottable';
+
+        await SelfServicePortalsTestHelper.waitForServerReady(
+          page,
+          dashboardUrl,
+          30,
+          2000,
+        );
+
+        await page.goto(dashboardUrl, {
+          timeout: 30000,
+          waitUntil: 'networkidle',
+        });
+
+        const { expect } = await import('@playwright/test');
+
+        // Assert the dashboard is on the page
+        await expect(page.locator('#dashboard-g-pivottable')).toBeVisible({ timeout: 10000 });
+
+        // Assert pivot table header and component are visible. The heading says what the page
+        // is for rather than naming the data behind it (D2).
+        await expect(page.locator('#dashTitle')).toHaveText('Sales Explorer', { timeout: 30000 });
+        await expect(page.locator('#dashSubtitle'))
+          .toContainText('Ask your own question of the sales', { timeout: 10000 });
+        // One pivot: the sample's pivot has no component id, so its controls carry their plain ids.
+        await expect(page.locator('#dashboard-g-pivottable #btnPivotRenderer')).toHaveCount(1, { timeout: 15000 });
+      } finally {
+        if (externalBrowser) {
+          await SelfServicePortalsTestHelper.closeExternalBrowser(externalBrowser);
+        }
+      }
+    },
+  );
+
+  electronBeforeAfterAllTest(
+    'should work correctly (23_generate_adhoc_employee_profile_script2pdf)',
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
+
+      const expectedOutputFiles = ['E001-John-Doe.pdf'];
+
+      let ft = new FluentTester(firstPage);
+
+      await ft
+        .click('#leftMenuSamples')
+        .scrollIntoViewIfNeeded(
+          '#trGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF',
+        )
+        .waitOnElementToContainText(
+          '#tdGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF',
+          'Ad-hoc Employee Profile',
+        );
+
+      ft = SamplesTestHelper.verifyLearnMoreModal(
+        ft,
+        'GENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF',
+        'Adhoc (user provided data)',
+        'E001-John-Doe.pdf',
+        '',
+        'fo:layout-master-set',
+      );
+
+      await ft
+        .click('#trGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF')
+        .click('#btnSampleTryItGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF')
+        .clickNoDontDoThis()
+        .click('#btnSampleTryItGENERATE-ADHOC-EMPLOYEE-PROFILE-SCRIPT2PDF')
+        .clickYesDoThis()
+        .waitOnElementToBecomeEnabled('#btnGenerateReports')
+        .click('#btnGenerateReports')
+        .clickYesDoThis()
+        .waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
+        .waitOnProcessingToFinish(Constants.CHECK_PROCESSING_LOGS)
+        .appStatusShouldBeGreatNoErrorsNoWarnings()
+        .processingShouldHaveGeneratedOutputFiles(expectedOutputFiles, 'pdf')
+        .appStatusShouldBeGreatNoErrorsNoWarnings();
     },
   );
 

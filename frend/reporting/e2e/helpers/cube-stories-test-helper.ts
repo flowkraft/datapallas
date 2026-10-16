@@ -493,6 +493,8 @@ export async function clickShowMe(frame: Frame, cubeId: string, askId: string): 
     { timeout: 90_000 },
   );
   await showMe.click();
+  // Show Me asks first ("Apply this story?"): nothing is applied until the reader answers Yes.
+  await inCard(frame, cubeId, `#btnShowMeYes-${askId}`).click();
   const request = await asked;
   const response = await request.response();
   if (!response) throw new Error(`${cubeId}/${askId}: the page's own question got no answer`);

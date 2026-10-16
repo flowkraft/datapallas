@@ -9,6 +9,7 @@
   import { controlTypeOf, isTicked, selectValueOf } from '../shared/parameter-controls';
   import { slicerFieldsOnPage, slicerSelectionsFor, refreshDataWidgets } from '../shared/slicer-selections';
   import { withCsrfHeader } from '../shared/session-request';
+  import { changedFilterIds, cleanOptionLabel } from '../shared/story-summary';
   // A `date-range` control draws `<id>From` and `<id>To` as one range with presets - see
   // src/shared/date-range.ts.
   import {
@@ -950,6 +951,64 @@
     applyValues(storyValues(parameters as any, lockedParameters, values));
   }
 
+  // ── What a story is about (Show Me on a dashboard) ────────────────────────
+  // The dashboard's story cards ask what a story would do (`describeStory`) before the reader says
+  // yes, and say which filters it is about afterwards (`markInvolved`): the filters glow while the
+  // question is open and keep a tint, with `was -> now`, for as long as the story is the one shown.
+  let involvedIds: Set<string> = new Set();
+  let involvedMode: '' | 'pending' | 'applied' = '';
+  let storyChanges: { [id: string]: { from: string; to: string } } = {};
+
+  /** A value as the reader sees it in the bar: an option's label, "All" for nothing picked, never the raw id. */
+  function displayValue(p: ParamMeta, value: any, full = false): string {
+    const text = value == null ? '' : String(value);
+    const type = getControlType(p);
+    if (type === 'multi-select' && full) {
+      // Every pick by name, for a place with room (the Yes / No), not the bar's "N selected".
+      const picked = Array.from(csvToSet(text));
+      if (text === WILDCARD || picked.length === 0) return 'All';
+      const labelMap = new Map(loadOptions(p).map(o => [String(o.value), o.label]));
+      return picked.map(k => labelMap.get(k) ?? k).join(', ');
+    }
+    if (type === 'multi-select') return triggerLabelFor(p, text);
+    if (type === 'boolean') return text === 'true' ? 'Yes' : 'No';
+    const found = loadOptions(p).find(o => String(o.value ?? '') === text);
+    // A label such as "-- All regions --" is a menu entry, not a name: the dashes are dropped.
+    if (found) return cleanOptionLabel(found.label);
+    return text || 'All';
+  }
+
+  /**
+   * What a story would do to this bar, without doing it: the filters it is about, and for each one
+   * that would change, what it shows now and what it would show. Nothing is set or reloaded.
+   */
+  export function describeStory(values: { [id: string]: any }) {
+    const asked = acceptedValues(parameters as any, values || {}, lockedParameters);
+    const after = storyValues(parameters as any, lockedParameters, values);
+    const involved = new Set<string>(Object.keys(asked));
+    const changes: { id: string; label: string; from: string; to: string; toFull: string }[] = [];
+    const byId = new Map((parameters || []).map((p: ParamMeta) => [p.id, p] as const));
+    for (const id of changedFilterIds(Array.from(byId.keys()), formValues, after)) {
+      const p = byId.get(id)!;
+      involved.add(id);
+      changes.push({ id, label: paramLabel(p), from: displayValue(p, formValues[id]), to: displayValue(p, after[id]),
+        toFull: displayValue(p, after[id], true) });
+    }
+    return { involved: Array.from(involved), changes };
+  }
+
+  /** Marks the filters a story is about; '' as the mode takes every mark away. */
+  export function markInvolved(
+    mode: '' | 'pending' | 'applied',
+    involved: string[] = [],
+    changes: { id: string; from: string; to: string }[] = [],
+  ) {
+    involvedMode = mode;
+    involvedIds = new Set(mode ? involved : []);
+    storyChanges = {};
+    if (mode) for (const c of changes) storyChanges[c.id] = { from: c.from, to: c.to };
+  }
+
   function applyValues(accepted: { [id: string]: any }) {
     Object.keys(accepted).forEach(id => {
       formValues[id] = accepted[id];
@@ -1024,7 +1083,13 @@
       <form class="report-parameters-form" style="display: flex; flex-direction: column; gap: 1rem;">
         {#each parameters.filter((q) => !rangeToIds.has(q.id)) as p (p.id)}
           {@const partner = rangePartnerOf(p, parameters)}
-          <div class="form-group">
+          {@const aboutStory = involvedIds.has(p.id) || (partner ? involvedIds.has(partner.id) : false)}
+          <div class="form-group" class:rb-involved={involvedMode === 'pending' && aboutStory}
+               class:rb-story-field={involvedMode === 'applied' && aboutStory}>
+            {#if involvedMode && storyChanges[p.id]}
+              <span class="rb-story-change" id={'storyChange-' + p.id}
+                    title={involvedMode === 'pending' ? 'What Yes would set' : 'What the story set'}>{storyChanges[p.id].from} &rarr; {storyChanges[p.id].to}</span>
+            {/if}
             <!-- Multi-select renders its own "Choose <label>" inside the trigger button,
                  so the form-group <label> above would be a redundant repetition. Hide it
                  for that control only. All other controls keep the standalone label. -->
@@ -1354,6 +1419,60 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+  }
+
+  /*
+   * The filters a story is about, in the page's accent mixed into whatever the page already is, so
+   * it follows any theme. While the story's Yes / No is open they breathe; once it is applied they
+   * keep a tint and a bar on the left. The mark is a layer behind the filter, not padding on it, so
+   * marking one moves nothing.
+   */
+  .rb-involved,
+  .rb-story-field {
+    position: relative;
+    isolation: isolate;
+  }
+  .rb-involved::before,
+  .rb-story-field::before {
+    content: '';
+    position: absolute;
+    inset: -6px -10px;
+    z-index: -1;
+    border-radius: 6px;
+    pointer-events: none;
+  }
+  .rb-involved::before {
+    animation: rb-param-glow 1.8s ease-in-out infinite;
+  }
+  .rb-story-field::before {
+    background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 14%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 75%, transparent);
+  }
+  @keyframes rb-param-glow {
+    0%, 100% { background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 6%, transparent); }
+    50% { background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 28%, transparent); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rb-involved::before {
+      animation: none;
+      background: color-mix(in oklab, var(--rb-accent, var(--color-primary, #2171b5)) 20%, transparent);
+    }
+  }
+  /* What the story sets, as a tag on the filter's top edge: "All regions -> APAC". It floats, so showing it moves nothing. */
+  .rb-story-change {
+    position: absolute;
+    top: -14px;
+    right: -6px;
+    z-index: 1;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--rb-accent, var(--color-primary, #2171b5));
+    color: var(--rb-accent-text, var(--color-primary-content, #fff));
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
   }
   
   label {

@@ -190,6 +190,10 @@ export async function assertStoriesAreOffered(root: Locator, demo: Demo): Promis
       root.locator(`#btnShowMe-${demo.reportId}-${story.id}`),
       `the story '${story.id}' can be shown`,
     ).toBeVisible({ timeout: 30_000 });
+    await expect(
+      root.locator(`#storyGate-${demo.reportId}-${story.id}`),
+      `the story '${story.id}' asks nothing until Show Me is pressed`,
+    ).toHaveCount(0);
   }
   await expect(
     root.locator(`#btnStoryReset-${demo.reportId}`),
@@ -197,29 +201,85 @@ export async function assertStoriesAreOffered(root: Locator, demo: Demo): Promis
   ).toHaveCount(1);
 }
 
+/** The question Show Me asks before it touches the dashboard. */
+export const SHOW_ME_QUESTION = 'Apply the filter values and refresh the dashboard?';
+
 /**
- * A story shown the way a reader shows it: the button, and the dashboard reloading where it stands.
- *
- * Show Me sets the story's values on this dashboard's own filter bar and asks again - it never
- * navigates, which is what lets a story work on a Gallery card as well as on the demo's own page.
- * So what is waited for is this card's charts drawing again, and the page stays the page it was.
- * The address bar does take the view (`replaceState`, under this card's keys); the spec reads that.
+ * Show Me pressed: the gate opens under the button and says what Yes would set, and the filters the
+ * story is about glow. Nothing has been set yet. Returns the gate, so the caller can say Yes or No.
  */
-export async function clickShowMe(root: Locator, demo: Demo, storyId: string): Promise<void> {
+export async function openShowMeGate(root: Locator, demo: Demo, story: Story): Promise<Locator> {
+  await root.locator(`#btnShowMe-${demo.reportId}-${story.id}`).click();
+  const gate = root.locator(`#storyGate-${demo.reportId}-${story.id}`);
+  await expect(gate, `Show Me on '${story.id}' asks before it applies`).toBeVisible();
+  await expect(gate).toContainText(SHOW_ME_QUESTION);
+  await expect(root.locator(`#btnShowMeYes-${demo.reportId}-${story.id}`), 'the gate offers Yes').toBeVisible();
+  await expect(root.locator(`#btnShowMeNo-${demo.reportId}-${story.id}`), 'the gate offers No').toBeVisible();
+  await expect(root.locator(`#storySets-${demo.reportId}-${story.id}`), 'the gate says what Yes sets').toBeVisible();
+  // A story that names filters lights them while the question is open; one that names none lights nothing.
+  if (Object.keys(story.params ?? {}).length > 0)
+    await expect(root.locator('.rb-involved').first(), `the filters '${story.id}' sets glow while it waits`)
+      .toBeVisible();
+  return gate;
+}
+
+/** No: the gate closes, the glow goes, and the dashboard is exactly as it was. */
+export async function declineShowMe(root: Locator, demo: Demo, story: Story): Promise<void> {
+  await openShowMeGate(root, demo, story);
+  await root.locator(`#btnShowMeNo-${demo.reportId}-${story.id}`).click();
+  await expect(root.locator(`#storyGate-${demo.reportId}-${story.id}`), 'No closes the gate').toHaveCount(0);
+  await expect(root.locator('.rb-involved'), 'No takes the glow away').toHaveCount(0);
+  await expect(root.locator(`#story-${demo.reportId}-${story.id}`), 'No does not mark the story as asked')
+    .not.toHaveClass(/rb-hint-asked/);
+}
+
+/**
+ * A story shown the way a reader shows it: the button, Yes to the question it asks, and the
+ * dashboard reloading where it stands.
+ *
+ * Show Me asks "Apply the filter values and refresh the dashboard?" and Yes sets the story's values
+ * on this dashboard's own filter bar and asks again - it never navigates, which is what lets a story
+ * work on a Gallery card as well as on the demo's own page. So what is waited for is this card's
+ * charts drawing again, and the page stays the page it was. The address bar does take the view
+ * (`replaceState`, under this card's keys); the spec reads that.
+ */
+export async function clickShowMe(root: Locator, demo: Demo, story: Story | string): Promise<void> {
   const pageBefore = new URL(root.page().url()).pathname;
+  const storyId = typeof story === 'string' ? story : story.id;
   await root.locator(`#btnShowMe-${demo.reportId}-${storyId}`).click();
+  await expect(
+    root.locator(`#storyGate-${demo.reportId}-${storyId}`),
+    `Show Me on '${storyId}' asks before it applies`,
+  ).toBeVisible();
+  await root.locator(`#btnShowMeYes-${demo.reportId}-${storyId}`).click();
   await expect(
     root.locator(`#story-${demo.reportId}-${storyId}`),
     `the story '${storyId}' is marked as the one that was asked`,
   ).toHaveClass(/rb-hint-asked/, { timeout: 30_000 });
+  await expect(root.locator(`#storyGate-${demo.reportId}-${storyId}`), 'Yes closes the gate').toHaveCount(0);
+  await expect(root.locator(`#storyApplied-${demo.reportId}-${storyId}`), 'the story says it is applied')
+    .toBeVisible();
+  // The toast names the question that is now showing; it stays a few seconds, so it is read before the charts are waited for.
+  if (typeof story !== 'string')
+    await expect(storyToastOf(root, demo), 'the toast names the story that was applied')
+      .toContainText(story.question.trim());
   await waitForChartsIn(root);
   expect(new URL(root.page().url()).pathname, 'Show Me sets the filters; it does not navigate')
     .toBe(pageBefore);
 }
 
+/** The toast of this dashboard (there is one per dashboard, not one for the Gallery). */
+export function storyToastOf(root: Locator, demo: Demo): Locator {
+  return root.locator(`#storyToast-${demo.reportId}`);
+}
+
 /** Reset, which puts every filter of this dashboard back to its default. */
 export async function clickReset(root: Locator, demo: Demo): Promise<void> {
   await root.locator(`#btnStoryReset-${demo.reportId}`).click();
+  await expect(storyToastOf(root, demo), 'Reset says it put the filters back')
+    .toContainText('Filters back to their defaults');
+  await expect(root.locator('.rb-story-field'), 'Reset takes the marks of the story away').toHaveCount(0);
+  await expect(root.locator('.rb-hint-asked'), 'Reset leaves no story marked as asked').toHaveCount(0);
   await waitForChartsIn(root);
 }
 

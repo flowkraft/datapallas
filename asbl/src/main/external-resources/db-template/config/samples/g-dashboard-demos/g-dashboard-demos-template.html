@@ -70,60 +70,69 @@
       text-decoration: underline;
     }
 
-    /* The contents list: the eight areas, with their dashboards under them. A page this long is
-       read by jumping, so the links are the first thing under the info bar. */
-    .rb-dashboard-demos-root .contents {
+    /* The eight areas, as an accordion: one panel open at a time, the first when the page loads
+       (the way the Cube Stories page holds its industries). The bars carry the page's own surface,
+       border and accent, so they follow the theme like everything else. */
+    .rb-dashboard-demos-root .area {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 16px 20px;
-      margin-bottom: 28px;
-      font-size: 13px;
+      margin-bottom: 12px;
+      padding: 0 16px;
     }
-    .rb-dashboard-demos-root .contents-title {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin: 0 0 8px 0;
-    }
-    .rb-dashboard-demos-root .contents ul {
+    .rb-dashboard-demos-root .area > summary {
+      cursor: pointer;
       list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .rb-dashboard-demos-root .contents > ul > li {
-      margin-bottom: 8px;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-    .rb-dashboard-demos-root .contents ul ul {
-      margin: 4px 0 0 0;
       display: flex;
-      flex-wrap: wrap;
-      gap: 4px 14px;
-      font-weight: 400;
-    }
-    .rb-dashboard-demos-root .contents a {
-      color: var(--accent-dark);
-      text-decoration: none;
-    }
-    .rb-dashboard-demos-root .contents a:hover {
-      text-decoration: underline;
-    }
-
-    /* One heading per area, above that area's cards. */
-    .rb-dashboard-demos-root .area-heading {
+      align-items: baseline;
+      gap: 10px;
+      padding: 14px 0;
       font-size: 15px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.8px;
       color: var(--accent-dark);
-      margin: 32px 0 12px 0;
-      padding-bottom: 6px;
+    }
+    .rb-dashboard-demos-root .area > summary::-webkit-details-marker {
+      display: none;
+    }
+    /* The one thing the bar has to say beyond its name: open, or closed. */
+    .rb-dashboard-demos-root .area > summary::before {
+      content: "\25b8";
+      font-size: 12px;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+    .rb-dashboard-demos-root .area[open] > summary::before {
+      transform: rotate(90deg);
+    }
+    .rb-dashboard-demos-root .area-count {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: none;
+      color: var(--text-secondary);
+    }
+    /* The dashboards of the open area, as links to their cards just below. */
+    .rb-dashboard-demos-root .area-contents {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 14px;
+      margin: 0 0 16px 0;
+      padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .rb-dashboard-demos-root .area-contents a {
+      color: var(--accent-dark);
+      text-decoration: none;
+    }
+    .rb-dashboard-demos-root .area-contents a:hover {
+      text-decoration: underline;
+    }
+    .rb-dashboard-demos-root .area .card:last-child {
+      margin-bottom: 16px;
     }
 
     /* One card per dashboard: what it answers, the dashboard itself, and how it was built. */
@@ -178,10 +187,211 @@
     .rb-dashboard-demos-root .card-links a:hover {
       text-decoration: underline;
     }
+    /* "How was this dashboard built?" is the way from looking at a dashboard to making one, so it
+       is a band of its own under the dashboard, with a real button, and not a line of small text. */
+    .rb-dashboard-demos-root .card-build {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px 20px;
+      margin: 8px 0 0 0;
+      padding: 14px 16px;
+      background: var(--color-base-200, #f0f4f8);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+    .rb-dashboard-demos-root .card-build-text {
+      flex: 1 1 260px;
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .rb-dashboard-demos-root .card-build-text strong {
+      color: var(--text-primary);
+      font-size: 15px;
+    }
+    .rb-dashboard-demos-root .card-build a {
+      display: inline-block;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-primary-content, #ffffff);
+      background: var(--accent-dark);
+      border-radius: 8px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .rb-dashboard-demos-root .card-build a:hover {
+      filter: brightness(1.12);
+    }
     /* The card keeps the dashboard's own height while it is still on its way, so the page does
        not jump under the reader as the dashboards arrive one by one. */
     .rb-dashboard-demos-root .card-dashboard {
       margin: 0 0 12px 0;
+    }
+
+    /* Eleven of the dashboards are also a pattern: how one shape of data is best shown. They carry a
+       small stamp in the card's corner (it opens a short text), and one switch at the top shows only
+       them. The switch is a checkbox the stylesheet reads, so the page needs no script. */
+    .rb-dashboard-demos-root .pattern-filter {
+      margin: 0 0 12px 0;
+    }
+    .rb-dashboard-demos-root .pattern-filter input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .rb-dashboard-demos-root .pattern-filter label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .rb-dashboard-demos-root .pattern-filter label strong {
+      color: var(--text-primary);
+      margin-right: 6px;
+    }
+    .rb-dashboard-demos-root .pattern-filter-on {
+      display: none;
+    }
+    .rb-dashboard-demos-root .pattern-switch {
+      position: relative;
+      flex: none;
+      width: 34px;
+      height: 18px;
+      border-radius: 9px;
+      background: var(--border);
+      transition: background 0.15s ease;
+    }
+    .rb-dashboard-demos-root .pattern-switch::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      transition: transform 0.15s ease;
+    }
+    .rb-dashboard-demos-root .pattern-filter input:checked + label .pattern-switch {
+      background: var(--accent);
+    }
+    .rb-dashboard-demos-root .pattern-filter input:checked + label .pattern-switch::after {
+      transform: translateX(16px);
+    }
+    .rb-dashboard-demos-root .pattern-filter input:focus-visible + label .pattern-switch {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .rb-dashboard-demos-root .area-patterns {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: none;
+      color: var(--accent);
+      display: none;
+    }
+    /* Only the patterns: the other cards and the lists of links step aside, and an area that has no
+       pattern is hidden (the lists are skipped because a card or two is all that is left to see). */
+    .rb-dashboard-demos-root:has(#chkPatternsOnly:checked) .card:not(:has(.card-pattern)),
+    .rb-dashboard-demos-root:has(#chkPatternsOnly:checked) .area-contents,
+    .rb-dashboard-demos-root:has(#chkPatternsOnly:checked) .area:not(:has(.card-pattern)),
+    .rb-dashboard-demos-root:has(#chkPatternsOnly:checked) .area-count,
+    .rb-dashboard-demos-root:has(#chkPatternsOnly:checked) .pattern-filter-hint {
+      display: none;
+    }
+    .rb-dashboard-demos-root:has(#chkPatternsOnly:checked) .area-patterns,
+    .rb-dashboard-demos-root:has(#chkPatternsOnly:checked) .pattern-filter-on {
+      display: inline;
+    }
+    .rb-dashboard-demos-root .card {
+      position: relative;
+    }
+    .rb-dashboard-demos-root .card:has(.card-pattern) .card-title {
+      padding-right: 200px;
+    }
+    .rb-dashboard-demos-root .card-pattern {
+      margin: 0;
+    }
+    .rb-dashboard-demos-root .pattern-stamp {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+      max-width: 190px;
+      padding: 4px 10px;
+      border: 1.5px solid var(--text-primary);
+      border-radius: 6px;
+      color: var(--text-primary);
+      background: var(--surface);
+      cursor: pointer;
+      list-style: none;
+      transform: rotate(-2deg);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .rb-dashboard-demos-root .pattern-stamp::-webkit-details-marker {
+      display: none;
+    }
+    .rb-dashboard-demos-root .pattern-stamp:hover,
+    .rb-dashboard-demos-root .card-pattern[open] > .pattern-stamp {
+      transform: rotate(0deg);
+      background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    }
+    .rb-dashboard-demos-root .pattern-stamp-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+    .rb-dashboard-demos-root .pattern-stamp-name {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.25;
+      text-align: right;
+    }
+    .rb-dashboard-demos-root .pattern-panel {
+      margin: 0 0 12px 0;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-primary);
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+    .rb-dashboard-demos-root .pattern-panel p {
+      margin: 0 0 6px 0;
+    }
+    .rb-dashboard-demos-root .pattern-panel strong {
+      font-weight: 700;
+    }
+    .rb-dashboard-demos-root .pattern-panel p:last-child {
+      margin-bottom: 0;
+    }
+    @media (max-width: 640px) {
+      .rb-dashboard-demos-root .card:has(.card-pattern) .card-title {
+        padding-right: 0;
+      }
+      .rb-dashboard-demos-root .pattern-stamp {
+        position: static;
+        align-items: flex-start;
+        max-width: none;
+        margin: 0 0 10px 0;
+        transform: none;
+      }
+      .rb-dashboard-demos-root .pattern-stamp-name {
+        text-align: left;
+      }
     }
   </style>
 
@@ -195,83 +405,32 @@
 
   <!-- What this page is -->
   <div class="info-bar">
-    <strong>Twenty-five dashboards of one company, live.</strong> Each card below is a whole
-    dashboard, built in the Data Canvas and published like any of your own &mdash; the filters are
-    live, so change one and the tiles answer again. Above each dashboard&rsquo;s filter bar are the
-    questions it was built to answer: click <strong>Show Me</strong> and the filters it needs are
-    set for you, and <strong>Reset</strong> puts the dashboard back. Every card also says
-    <strong>how it was built</strong>, step by step, in the Canvas.
+    <strong>Twenty-five dashboards of one company, live.</strong> Eight areas, one open at a
+    time: open one to see its dashboards. Each card is a whole dashboard, built in the Data Canvas
+    and published like any of your own &mdash; the filters are live, so change one and the tiles answer again. Above each dashboard&rsquo;s filter bar are the
+    questions it was built to answer: click <strong>Show Me</strong>, say <strong>Yes</strong>, and the
+    filters it needs are set for you and the dashboard refreshes; <strong>Reset</strong> puts it back. Every card also says
+    <strong>how it was built</strong>, step by step, in the Canvas. A card with a
+    <strong>&#9670; Data pattern</strong> stamp is also a pattern: click the stamp to read what kind of data it suits.
     <a href="https://datapallas.com/docs/dashboard-demos" target="_blank">Read more &rarr;</a>
   </div>
 
-  <!-- On this page: the eight areas and their dashboards, generated from the index. -->
-  <nav class="contents" id="ddContents">
-    <p class="contents-title">On this page</p>
-    <ul>
-    <!-- BEGIN contents: generated from config/samples/dashboard-demos.json. Do not edit by hand. -->
-      <li><a href="#area-a">A &middot; The company at a glance</a>
-        <ul>
-          <li><a id="lnkContents-dd-executive-overview" href="#dd-executive-overview">Executive Overview</a></li>
-        </ul>
-      </li>
-      <li><a href="#area-b">B &middot; Sales</a>
-        <ul>
-          <li><a id="lnkContents-dd-sales-overview" href="#dd-sales-overview">Sales Overview</a></li>
-          <li><a id="lnkContents-dd-sales-by-country" href="#dd-sales-by-country">Sales by Country</a></li>
-          <li><a id="lnkContents-dd-sales-channels" href="#dd-sales-channels">Sales Channels</a></li>
-          <li><a id="lnkContents-dd-product-performance" href="#dd-product-performance">Product Performance</a></li>
-          <li><a id="lnkContents-dd-seasonality" href="#dd-seasonality">Seasonality &amp; Peak Times</a></li>
-          <li><a id="lnkContents-dd-sales-pipeline" href="#dd-sales-pipeline">Sales Pipeline</a></li>
-          <li><a id="lnkContents-dd-targets-vs-actual" href="#dd-targets-vs-actual">Targets vs Actual</a></li>
-        </ul>
-      </li>
-      <li><a href="#area-c">C &middot; Customers</a>
-        <ul>
-          <li><a id="lnkContents-dd-customer-growth" href="#dd-customer-growth">Customer Base &amp; Growth</a></li>
-          <li><a id="lnkContents-dd-cohort-retention" href="#dd-cohort-retention">Cohort Retention</a></li>
-          <li><a id="lnkContents-dd-customer-360" href="#dd-customer-360">Customer 360</a></li>
-        </ul>
-      </li>
-      <li><a href="#area-d">D &middot; Digital</a>
-        <ul>
-          <li><a id="lnkContents-dd-web-funnel" href="#dd-web-funnel">Website Traffic &amp; Conversion</a></li>
-        </ul>
-      </li>
-      <li><a href="#area-e">E &middot; Finance</a>
-        <ul>
-          <li><a id="lnkContents-dd-invoices" href="#dd-invoices">Invoices &amp; Billing</a></li>
-          <li><a id="lnkContents-dd-receivables-aging" href="#dd-receivables-aging">Receivables Aging &amp; Collections</a></li>
-          <li><a id="lnkContents-dd-subscriptions-mrr" href="#dd-subscriptions-mrr">Subscriptions: MRR &amp; Churn</a></li>
-          <li><a id="lnkContents-dd-profit-margin" href="#dd-profit-margin">Profit &amp; Margin</a></li>
-        </ul>
-      </li>
-      <li><a href="#area-f">F &middot; People</a>
-        <ul>
-          <li><a id="lnkContents-dd-payroll" href="#dd-payroll">Payroll Cost</a></li>
-          <li><a id="lnkContents-dd-headcount" href="#dd-headcount">Headcount &amp; Attrition</a></li>
-        </ul>
-      </li>
-      <li><a href="#area-g">G &middot; Operations</a>
-        <ul>
-          <li><a id="lnkContents-dd-inventory" href="#dd-inventory">Inventory &amp; Stock Health</a></li>
-          <li><a id="lnkContents-dd-fulfillment" href="#dd-fulfillment">Fulfillment &amp; Delivery</a></li>
-          <li><a id="lnkContents-dd-support-operations" href="#dd-support-operations">Support Operations</a></li>
-          <li><a id="lnkContents-dd-support-quality" href="#dd-support-quality">Support Quality &amp; Agents</a></li>
-        </ul>
-      </li>
-      <li><a href="#area-h">H &middot; The analyst's toolkit</a>
-        <ul>
-          <li><a id="lnkContents-dd-table-profile" href="#dd-table-profile">Table Profile</a></li>
-          <li><a id="lnkContents-dd-metric-deep-dive" href="#dd-metric-deep-dive">One Metric, Every Angle</a></li>
-          <li><a id="lnkContents-dd-segment-vs-all" href="#dd-segment-vs-all">Segment vs Everyone</a></li>
-        </ul>
-      </li>
-    <!-- END contents -->
-    </ul>
-  </nav>
-
   <!-- BEGIN cards: generated from config/samples/dashboard-demos.json. Do not edit by hand. -->
-  <h2 class="area-heading" id="area-a">A &middot; The company at a glance</h2>
+  <div class="pattern-filter" id="patternFilter">
+    <input type="checkbox" id="chkPatternsOnly">
+    <label for="chkPatternsOnly" id="lblPatternsOnly">
+      <span class="pattern-switch" aria-hidden="true"></span>
+      <span><strong>Only the 11 data patterns</strong>
+        <span class="pattern-filter-hint">dashboards that show how a particular shape of data is best presented</span>
+        <span class="pattern-filter-on">open an area to see them</span></span>
+    </label>
+  </div>
+
+  <details name="areas" class="area" id="area-a" open>
+    <summary class="area-bar" id="area-a-bar">A &middot; The company at a glance <span class="area-count" id="area-a-count">1 dashboard</span></summary>
+    <nav class="area-contents" id="area-a-contents">
+      <a id="lnkContents-dd-executive-overview" href="#dd-executive-overview">Executive Overview</a>
+    </nav>
 
   <div class="card" id="dd-executive-overview">
     <p class="card-area" id="dd-executive-overview-area">A &middot; The company at a glance</p>
@@ -282,20 +441,45 @@
     <div class="card-dashboard" style="min-height: 1360px">
       <rb-dashboard report-id="g-dd-executive-overview" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-executive-overview" href="https://datapallas.com/docs/dashboard-demos/dd-executive-overview" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-executive-overview" href="https://datapallas.com/docs/dashboard-demos/dd-executive-overview" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
-  <h2 class="area-heading" id="area-b">B &middot; Sales</h2>
+  </details>
+  <details name="areas" class="area" id="area-b">
+    <summary class="area-bar" id="area-b-bar">B &middot; Sales <span class="area-count" id="area-b-count">7 dashboards</span> <span class="area-patterns" id="area-b-patterns">&#9670; 5 patterns</span></summary>
+    <nav class="area-contents" id="area-b-contents">
+      <a id="lnkContents-dd-sales-overview" href="#dd-sales-overview">Sales Overview</a>
+      <a id="lnkContents-dd-sales-by-country" href="#dd-sales-by-country">Sales by Country</a>
+      <a id="lnkContents-dd-sales-channels" href="#dd-sales-channels">Sales Channels</a>
+      <a id="lnkContents-dd-product-performance" href="#dd-product-performance">Product Performance</a>
+      <a id="lnkContents-dd-seasonality" href="#dd-seasonality">Seasonality &amp; Peak Times</a>
+      <a id="lnkContents-dd-sales-pipeline" href="#dd-sales-pipeline">Sales Pipeline</a>
+      <a id="lnkContents-dd-targets-vs-actual" href="#dd-targets-vs-actual">Targets vs Actual</a>
+    </nav>
 
   <div class="card" id="dd-sales-overview">
     <p class="card-area" id="dd-sales-overview-area">B &middot; Sales</p>
     <h3 class="card-title">Sales Overview</h3>
     <p class="card-description">Is sales on its growth path, and what carries it?</p>
     <p class="card-grain"><strong>Who:</strong> The head of sales, Monday morning. &middot; <strong>Decision:</strong> Is sales on its growth path, and which categories, channels, countries and products carry it. &middot; <strong>Finding:</strong> Every month this year except August runs above the same month a year earlier, most of them by about a quarter; Smart Home, the newest category, has already all but caught Office Furniture for third place.</p>
+    <details class="card-pattern" id="dd-sales-overview-pattern">
+      <summary class="pattern-stamp" id="dd-sales-overview-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Transactions overview</span></summary>
+      <div class="pattern-panel" id="dd-sales-overview-pattern-text">
+        <p><strong>What it shows.</strong> Total revenue and number of orders, how they change month by month, and a breakdown by category, channel, country and product.</p>
+        <p><strong>The data it fits.</strong> A table where each row is one sale or order, with a date, an amount and a few labels such as category, channel or country.</p>
+        <p><strong>Use it when</strong> you want to see how the business is doing at a glance, and then find out what is behind the numbers.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-sales-overview" href="/dashboard/g-dd-sales-overview">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1520px">
       <rb-dashboard report-id="g-dd-sales-overview" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-sales-overview" href="https://datapallas.com/docs/dashboard-demos/dd-sales-overview" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-sales-overview" href="https://datapallas.com/docs/dashboard-demos/dd-sales-overview" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-sales-by-country">
@@ -303,11 +487,22 @@
     <h3 class="card-title">Sales by Country</h3>
     <p class="card-description">Where should we invest next?</p>
     <p class="card-grain"><strong>Who:</strong> The country managers. &middot; <strong>Decision:</strong> Where to invest next: which markets carry the revenue, which carry the big orders, and which grow. &middot; <strong>Finding:</strong> Germany is the largest market, Canada grows fastest (about +49%), and Japan has the largest orders.</p>
+    <details class="card-pattern" id="dd-sales-by-country-pattern">
+      <summary class="pattern-stamp" id="dd-sales-by-country-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Transactions by place</span></summary>
+      <div class="pattern-panel" id="dd-sales-by-country-pattern-text">
+        <p><strong>What it shows.</strong> Revenue on a map, and a ranking of the countries by total revenue, by average order size and by growth.</p>
+        <p><strong>The data it fits.</strong> The same kind of sales table, with a country (or a region or state) on each row.</p>
+        <p><strong>Use it when</strong> you sell in several places and want to know which ones deserve more effort and which ones to leave alone.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-sales-by-country" href="/dashboard/g-dd-sales-by-country">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1440px">
       <rb-dashboard report-id="g-dd-sales-by-country" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-sales-by-country" href="https://datapallas.com/docs/dashboard-demos/dd-sales-by-country" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-sales-by-country" href="https://datapallas.com/docs/dashboard-demos/dd-sales-by-country" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-sales-channels">
@@ -315,11 +510,22 @@
     <h3 class="card-title">Sales Channels</h3>
     <p class="card-description">Which channel gets the next euro of effort?</p>
     <p class="card-grain"><strong>Who:</strong> The e-commerce and trade sales leads, deciding the next year's channel budget. &middot; <strong>Decision:</strong> Which channel gets the next euro of effort: marketplace fees, the app, the web shop or the reps. &middot; <strong>Finding:</strong> The mobile app has grown from about 14% to about 28% of orders since 2024 while the marketplace has shrunk from 19% to 12%. Marketplace orders come back about twice as often as web orders (10.7% against 5.6%), and Smart Home sells mostly through the app.</p>
+    <details class="card-pattern" id="dd-sales-channels-pattern">
+      <summary class="pattern-stamp" id="dd-sales-channels-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Transactions by source</span></summary>
+      <div class="pattern-panel" id="dd-sales-channels-pattern-text">
+        <p><strong>What it shows.</strong> How much each channel or source brings in, how each one’s share changes over time, and what each one sells.</p>
+        <p><strong>The data it fits.</strong> A sales table with a channel or source on each row, and only a handful of different values (web shop, app, store and so on).</p>
+        <p><strong>Use it when</strong> you have to split a budget between channels and want to see which ones pay off.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-sales-channels" href="/dashboard/g-dd-sales-channels-low-code">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1360px">
       <rb-dashboard report-id="g-dd-sales-channels-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-sales-channels" href="https://datapallas.com/docs/dashboard-demos/dd-sales-channels-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-sales-channels" href="https://datapallas.com/docs/dashboard-demos/dd-sales-channels-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-product-performance">
@@ -327,11 +533,22 @@
     <h3 class="card-title">Product Performance</h3>
     <p class="card-description">Which products should we push, fix or delist?</p>
     <p class="card-grain"><strong>Who:</strong> The category manager. &middot; <strong>Decision:</strong> Which products to push, which to fix and which to delist. &middot; <strong>Finding:</strong> Products rated under 3.5 stars sell about 40% fewer units per product; the AeroDesk Pro standing desk (3.2 stars) has a 17.5% return rate since April 2026.</p>
+    <details class="card-pattern" id="dd-product-performance-pattern">
+      <summary class="pattern-stamp" id="dd-product-performance-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Transactions by product</span></summary>
+      <div class="pattern-panel" id="dd-product-performance-pattern-text">
+        <p><strong>What it shows.</strong> Which products and categories sell the most, and how things relate to each other, for example rating against units sold, or discount against returns.</p>
+        <p><strong>The data it fits.</strong> Sales rows that name the product, and a product list with a category and a few numbers for each product, such as rating, cost or returns.</p>
+        <p><strong>Use it when</strong> you decide which products to promote, which to fix and which to stop selling.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-product-performance" href="/dashboard/g-dd-product-performance">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1360px">
       <rb-dashboard report-id="g-dd-product-performance" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-product-performance" href="https://datapallas.com/docs/dashboard-demos/dd-product-performance" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-product-performance" href="https://datapallas.com/docs/dashboard-demos/dd-product-performance" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-seasonality">
@@ -339,11 +556,22 @@
     <h3 class="card-title">Seasonality &amp; Peak Times</h3>
     <p class="card-description">When do we staff up, and when do we run campaigns?</p>
     <p class="card-grain"><strong>Who:</strong> The operations planner and marketing. &middot; <strong>Decision:</strong> When to staff up and when to run campaigns. &middot; <strong>Finding:</strong> Orders peak on Monday evenings, 19:00-21:00, with Monday 20:00 the busiest hour of the week, while sales-rep orders peak on Monday at 13:00. November is about 2.3 times an average month and the Black Friday days run about 4 times an average day; the 25th to the 27th of any month bring about 25% more orders than an average day, and August runs a third below an average month.</p>
+    <details class="card-pattern" id="dd-seasonality-pattern">
+      <summary class="pattern-stamp" id="dd-seasonality-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Seasonality</span></summary>
+      <div class="pattern-panel" id="dd-seasonality-pattern-text">
+        <p><strong>What it shows.</strong> When people buy: by month of the year, by day of the month, by weekday and hour, and the busiest days of one year, day by day.</p>
+        <p><strong>The data it fits.</strong> Sales with a date, covering a year or more. If the date also has a time of day, you get the weekday-and-hour view too.</p>
+        <p><strong>Use it when</strong> you plan staffing, stock or campaigns around the busy and the quiet periods.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-seasonality" href="/dashboard/g-dd-seasonality">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1360px">
       <rb-dashboard report-id="g-dd-seasonality" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-seasonality" href="https://datapallas.com/docs/dashboard-demos/dd-seasonality" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-seasonality" href="https://datapallas.com/docs/dashboard-demos/dd-seasonality" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-sales-pipeline">
@@ -355,7 +583,10 @@
     <div class="card-dashboard" style="min-height: 1280px">
       <rb-dashboard report-id="g-dd-sales-pipeline-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-sales-pipeline" href="https://datapallas.com/docs/dashboard-demos/dd-sales-pipeline-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-sales-pipeline" href="https://datapallas.com/docs/dashboard-demos/dd-sales-pipeline-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-targets-vs-actual">
@@ -367,20 +598,41 @@
     <div class="card-dashboard" style="min-height: 1120px">
       <rb-dashboard report-id="g-dd-targets-vs-actual" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-targets-vs-actual" href="https://datapallas.com/docs/dashboard-demos/dd-targets-vs-actual" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-targets-vs-actual" href="https://datapallas.com/docs/dashboard-demos/dd-targets-vs-actual" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
-  <h2 class="area-heading" id="area-c">C &middot; Customers</h2>
+  </details>
+  <details name="areas" class="area" id="area-c">
+    <summary class="area-bar" id="area-c-bar">C &middot; Customers <span class="area-count" id="area-c-count">3 dashboards</span> <span class="area-patterns" id="area-c-patterns">&#9670; 1 pattern</span></summary>
+    <nav class="area-contents" id="area-c-contents">
+      <a id="lnkContents-dd-customer-growth" href="#dd-customer-growth">Customer Base &amp; Growth</a>
+      <a id="lnkContents-dd-cohort-retention" href="#dd-cohort-retention">Cohort Retention</a>
+      <a id="lnkContents-dd-customer-360" href="#dd-customer-360">Customer 360</a>
+    </nav>
 
   <div class="card" id="dd-customer-growth">
     <p class="card-area" id="dd-customer-growth-area">C &middot; Customers</p>
     <h3 class="card-title">Customer Base &amp; Growth</h3>
     <p class="card-description">Which acquisition channels to fund, and do new customers come back?</p>
     <p class="card-grain"><strong>Who:</strong> The marketing lead. &middot; <strong>Decision:</strong> Which acquisition channels to fund, and whether new customers come back. &middot; <strong>Finding:</strong> Referral signups more than doubled after the loyalty programme of March 2025, from about 13 a month to about 29.</p>
+    <details class="card-pattern" id="dd-customer-growth-pattern">
+      <summary class="pattern-stamp" id="dd-customer-growth-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Customers</span></summary>
+      <div class="pattern-panel" id="dd-customer-growth-pattern-text">
+        <p><strong>What it shows.</strong> How many new customers you get each month, where they come from, which segment and country they belong to, and how many buy again.</p>
+        <p><strong>The data it fits.</strong> A customer list with a sign-up date, a segment, a country and the channel each customer came through, plus orders that point back to the customer.</p>
+        <p><strong>Use it when</strong> you decide which sources of new customers to pay for, and want to know whether those customers stay.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-customer-growth" href="/dashboard/g-dd-customer-growth-low-code">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1600px">
       <rb-dashboard report-id="g-dd-customer-growth-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-customer-growth" href="https://datapallas.com/docs/dashboard-demos/dd-customer-growth-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-customer-growth" href="https://datapallas.com/docs/dashboard-demos/dd-customer-growth-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-cohort-retention">
@@ -392,7 +644,10 @@
     <div class="card-dashboard" style="min-height: 1120px">
       <rb-dashboard report-id="g-dd-cohort-retention" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-cohort-retention" href="https://datapallas.com/docs/dashboard-demos/dd-cohort-retention" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-cohort-retention" href="https://datapallas.com/docs/dashboard-demos/dd-cohort-retention" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-customer-360">
@@ -404,22 +659,49 @@
     <div class="card-dashboard" style="min-height: 1280px">
       <rb-dashboard report-id="g-dd-customer-360-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-customer-360" href="https://datapallas.com/docs/dashboard-demos/dd-customer-360-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-customer-360" href="https://datapallas.com/docs/dashboard-demos/dd-customer-360-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
-  <h2 class="area-heading" id="area-d">D &middot; Digital</h2>
+  </details>
+  <details name="areas" class="area" id="area-d">
+    <summary class="area-bar" id="area-d-bar">D &middot; Digital <span class="area-count" id="area-d-count">1 dashboard</span> <span class="area-patterns" id="area-d-patterns">&#9670; 1 pattern</span></summary>
+    <nav class="area-contents" id="area-d-contents">
+      <a id="lnkContents-dd-web-funnel" href="#dd-web-funnel">Website Traffic &amp; Conversion</a>
+    </nav>
 
   <div class="card" id="dd-web-funnel">
     <p class="card-area" id="dd-web-funnel-area">D &middot; Digital</p>
     <h3 class="card-title">Website Traffic &amp; Conversion</h3>
     <p class="card-description">Is the site converting, where do visitors drop, and which sources pay back?</p>
     <p class="card-grain"><strong>Who:</strong> The digital marketing lead, daily. &middot; <strong>Decision:</strong> Is the site converting, where do visitors drop, and which traffic sources pay back. &middot; <strong>Finding:</strong> Mobile checkout to purchase fell from about 62% to 41% in June 2026 - a checkout bug - and was back at 62% in August; email visitors convert at 6.1%, about twice paid social's 2.7%.</p>
+    <details class="card-pattern" id="dd-web-funnel-pattern">
+      <summary class="pattern-stamp" id="dd-web-funnel-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Events, the web half</span></summary>
+      <div class="pattern-panel" id="dd-web-funnel-pattern-text">
+        <p><strong>What it shows.</strong> Visits over time, where they come from, how many visitors drop out at each step of the funnel, and which sources lead to a purchase.</p>
+        <p><strong>The data it fits.</strong> A log of visits or clicks, each with a time, a source, a device and a yes or no for whether the visit ended in a purchase.</p>
+        <p><strong>Use it when</strong> you run a website or an app and want to know where visitors are lost and which sources bring the ones who buy.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-web-funnel" href="/dashboard/g-dd-web-funnel-low-code">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1600px">
       <rb-dashboard report-id="g-dd-web-funnel-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-web-funnel" href="https://datapallas.com/docs/dashboard-demos/dd-web-funnel-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-web-funnel" href="https://datapallas.com/docs/dashboard-demos/dd-web-funnel-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
-  <h2 class="area-heading" id="area-e">E &middot; Finance</h2>
+  </details>
+  <details name="areas" class="area" id="area-e">
+    <summary class="area-bar" id="area-e-bar">E &middot; Finance <span class="area-count" id="area-e-count">4 dashboards</span></summary>
+    <nav class="area-contents" id="area-e-contents">
+      <a id="lnkContents-dd-invoices" href="#dd-invoices">Invoices &amp; Billing</a>
+      <a id="lnkContents-dd-receivables-aging" href="#dd-receivables-aging">Receivables Aging &amp; Collections</a>
+      <a id="lnkContents-dd-subscriptions-mrr" href="#dd-subscriptions-mrr">Subscriptions: MRR &amp; Churn</a>
+      <a id="lnkContents-dd-profit-margin" href="#dd-profit-margin">Profit &amp; Margin</a>
+    </nav>
 
   <div class="card" id="dd-invoices">
     <p class="card-area" id="dd-invoices-area">E &middot; Finance</p>
@@ -430,7 +712,10 @@
     <div class="card-dashboard" style="min-height: 1120px">
       <rb-dashboard report-id="g-dd-invoices-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-invoices" href="https://datapallas.com/docs/dashboard-demos/dd-invoices-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-invoices" href="https://datapallas.com/docs/dashboard-demos/dd-invoices-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-receivables-aging">
@@ -442,7 +727,10 @@
     <div class="card-dashboard" style="min-height: 1200px">
       <rb-dashboard report-id="g-dd-receivables-aging" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-receivables-aging" href="https://datapallas.com/docs/dashboard-demos/dd-receivables-aging" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-receivables-aging" href="https://datapallas.com/docs/dashboard-demos/dd-receivables-aging" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-subscriptions-mrr">
@@ -454,7 +742,10 @@
     <div class="card-dashboard" style="min-height: 1280px">
       <rb-dashboard report-id="g-dd-subscriptions-mrr-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-subscriptions-mrr" href="https://datapallas.com/docs/dashboard-demos/dd-subscriptions-mrr-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-subscriptions-mrr" href="https://datapallas.com/docs/dashboard-demos/dd-subscriptions-mrr-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-profit-margin">
@@ -466,9 +757,18 @@
     <div class="card-dashboard" style="min-height: 1200px">
       <rb-dashboard report-id="g-dd-profit-margin" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-profit-margin" href="https://datapallas.com/docs/dashboard-demos/dd-profit-margin" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-profit-margin" href="https://datapallas.com/docs/dashboard-demos/dd-profit-margin" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
-  <h2 class="area-heading" id="area-f">F &middot; People</h2>
+  </details>
+  <details name="areas" class="area" id="area-f">
+    <summary class="area-bar" id="area-f-bar">F &middot; People <span class="area-count" id="area-f-count">2 dashboards</span></summary>
+    <nav class="area-contents" id="area-f-contents">
+      <a id="lnkContents-dd-payroll" href="#dd-payroll">Payroll Cost</a>
+      <a id="lnkContents-dd-headcount" href="#dd-headcount">Headcount &amp; Attrition</a>
+    </nav>
 
   <div class="card" id="dd-payroll">
     <p class="card-area" id="dd-payroll-area">F &middot; People</p>
@@ -479,7 +779,10 @@
     <div class="card-dashboard" style="min-height: 1120px">
       <rb-dashboard report-id="g-dd-payroll" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-payroll" href="https://datapallas.com/docs/dashboard-demos/dd-payroll" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-payroll" href="https://datapallas.com/docs/dashboard-demos/dd-payroll" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-headcount">
@@ -491,9 +794,20 @@
     <div class="card-dashboard" style="min-height: 1120px">
       <rb-dashboard report-id="g-dd-headcount-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-headcount" href="https://datapallas.com/docs/dashboard-demos/dd-headcount-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-headcount" href="https://datapallas.com/docs/dashboard-demos/dd-headcount-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
-  <h2 class="area-heading" id="area-g">G &middot; Operations</h2>
+  </details>
+  <details name="areas" class="area" id="area-g">
+    <summary class="area-bar" id="area-g-bar">G &middot; Operations <span class="area-count" id="area-g-count">4 dashboards</span> <span class="area-patterns" id="area-g-patterns">&#9670; 1 pattern</span></summary>
+    <nav class="area-contents" id="area-g-contents">
+      <a id="lnkContents-dd-inventory" href="#dd-inventory">Inventory &amp; Stock Health</a>
+      <a id="lnkContents-dd-fulfillment" href="#dd-fulfillment">Fulfillment &amp; Delivery</a>
+      <a id="lnkContents-dd-support-operations" href="#dd-support-operations">Support Operations</a>
+      <a id="lnkContents-dd-support-quality" href="#dd-support-quality">Support Quality &amp; Agents</a>
+    </nav>
 
   <div class="card" id="dd-inventory">
     <p class="card-area" id="dd-inventory-area">G &middot; Operations</p>
@@ -504,7 +818,10 @@
     <div class="card-dashboard" style="min-height: 1200px">
       <rb-dashboard report-id="g-dd-inventory-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-inventory" href="https://datapallas.com/docs/dashboard-demos/dd-inventory-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-inventory" href="https://datapallas.com/docs/dashboard-demos/dd-inventory-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-fulfillment">
@@ -516,7 +833,10 @@
     <div class="card-dashboard" style="min-height: 1200px">
       <rb-dashboard report-id="g-dd-fulfillment-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-fulfillment" href="https://datapallas.com/docs/dashboard-demos/dd-fulfillment-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-fulfillment" href="https://datapallas.com/docs/dashboard-demos/dd-fulfillment-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-support-operations">
@@ -524,11 +844,22 @@
     <h3 class="card-title">Support Operations</h3>
     <p class="card-description">Who works when, and which tickets do we pick up today?</p>
     <p class="card-grain"><strong>Who:</strong> The support lead, at the daily stand-up. &middot; <strong>Decision:</strong> Who works when, and which tickets get picked up today. &middot; <strong>Finding:</strong> Mondays 09:00-11:00 are the peak - 1,059 tickets in those three cells against 83.33 for an average hour of the week - and urgent SLA breaches spiked in June 2026 with the checkout bug: 26.32% of that month's urgent tickets breached against 8.64% in every other month, 3.05 times the rate. The queue itself is small and slightly growing: 127 open, of which 40 are urgent or high and the oldest has been waiting 45 days, and over the 142 full weeks 13,868 tickets came in against 13,770 resolved.</p>
+    <details class="card-pattern" id="dd-support-operations-pattern">
+      <summary class="pattern-stamp" id="dd-support-operations-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Events, the tickets half</span></summary>
+      <div class="pattern-panel" id="dd-support-operations-pattern-text">
+        <p><strong>What it shows.</strong> When tickets come in (weekday and hour), how many are open and for how long, and which ones are late, by priority and by team.</p>
+        <p><strong>The data it fits.</strong> A list of tickets with the time opened, the time closed (empty while still open), a priority and the team that handles it.</p>
+        <p><strong>Use it when</strong> you manage a queue of requests and want to know when to have people ready and which tickets are running late.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-support-operations" href="/dashboard/g-dd-support-operations">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1680px">
       <rb-dashboard report-id="g-dd-support-operations" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-support-operations" href="https://datapallas.com/docs/dashboard-demos/dd-support-operations" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-support-operations" href="https://datapallas.com/docs/dashboard-demos/dd-support-operations" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-support-quality">
@@ -540,20 +871,41 @@
     <div class="card-dashboard" style="min-height: 1280px">
       <rb-dashboard report-id="g-dd-support-quality-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-support-quality" href="https://datapallas.com/docs/dashboard-demos/dd-support-quality-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-support-quality" href="https://datapallas.com/docs/dashboard-demos/dd-support-quality-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
-  <h2 class="area-heading" id="area-h">H &middot; The analyst's toolkit</h2>
+  </details>
+  <details name="areas" class="area" id="area-h">
+    <summary class="area-bar" id="area-h-bar">H &middot; The analyst's toolkit <span class="area-count" id="area-h-count">3 dashboards</span> <span class="area-patterns" id="area-h-patterns">&#9670; 3 patterns</span></summary>
+    <nav class="area-contents" id="area-h-contents">
+      <a id="lnkContents-dd-table-profile" href="#dd-table-profile">Table Profile</a>
+      <a id="lnkContents-dd-metric-deep-dive" href="#dd-metric-deep-dive">One Metric, Every Angle</a>
+      <a id="lnkContents-dd-segment-vs-all" href="#dd-segment-vs-all">Segment vs Everyone</a>
+    </nav>
 
   <div class="card" id="dd-table-profile">
     <p class="card-area" id="dd-table-profile-area">H &middot; The analyst's toolkit</p>
     <h3 class="card-title">Table Profile</h3>
     <p class="card-description">Can I trust this table, and which of its columns can I use?</p>
     <p class="card-grain"><strong>Who:</strong> The analyst meeting a new table. &middot; <strong>Decision:</strong> Whether the table can be trusted, and which columns can be used. &middot; <strong>Finding:</strong> Pick any table and you know it in half a minute: support_tickets holds 14,000 rows over 15 columns, 476 of them opened in the last 30 days, and 4 columns have gaps - order_id is empty on 52.64% of tickets, because a ticket need not be about an order, and csat_score on 58.33%, because most people never answer the survey. Its priority column is 51.56% normal and 8.21% urgent. Point the same page at orders.total_amount and the chart turns into twenty ranges over 23,162 distinct amounts, 20,782 orders inside the first one.</p>
+    <details class="card-pattern" id="dd-table-profile-pattern">
+      <summary class="pattern-stamp" id="dd-table-profile-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Table profile</span></summary>
+      <div class="pattern-panel" id="dd-table-profile-pattern-text">
+        <p><strong>What it shows.</strong> How big the table is, how many values are missing in each column, and for any one column its type, its different values and how often each one appears.</p>
+        <p><strong>The data it fits.</strong> Any table, whatever is in it. You look at one column at a time.</p>
+        <p><strong>Use it when</strong> you are about to use a table for the first time and need to know whether the data is complete and which columns are worth using.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-table-profile" href="/dashboard/g-dd-table-profile">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1280px">
       <rb-dashboard report-id="g-dd-table-profile" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-table-profile" href="https://datapallas.com/docs/dashboard-demos/dd-table-profile" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-table-profile" href="https://datapallas.com/docs/dashboard-demos/dd-table-profile" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-metric-deep-dive">
@@ -561,11 +913,22 @@
     <h3 class="card-title">One Metric, Every Angle</h3>
     <p class="card-description">Is each of the company's five metrics where it should be, and what drives it?</p>
     <p class="card-grain"><strong>Who:</strong> The COO, at the monthly business review, walking through the five metrics one at a time. &middot; <strong>Decision:</strong> Whether each metric is where it should be, and what drives it. &middot; <strong>Finding:</strong> Revenue is 17.5% up on the same span of last year and orders 27.55% up, while tickets grow 10.32% - support scales with the business rather than with the order book. Orders growing faster than revenue is the other half of that sentence: the average order is smaller than it was. November is the biggest month of the year for both, 8,273,224.34 and 3,165 orders against a May second place of 5,920,290.39, while payroll peaks in March and new customers in September. Germany leads all five metrics, revenue 3,651,821.21 of the 18,326,301.98 year to date.</p>
+    <details class="card-pattern" id="dd-metric-deep-dive-pattern">
+      <summary class="pattern-stamp" id="dd-metric-deep-dive-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">One metric, every angle</span></summary>
+      <div class="pattern-panel" id="dd-metric-deep-dive-pattern-text">
+        <p><strong>What it shows.</strong> One number looked at in five ways: this year against last year, over time, what it is made of, month of the year, and by country.</p>
+        <p><strong>The data it fits.</strong> A table with the one number you care about (revenue, orders, cost), a date, and a few labels to split it by.</p>
+        <p><strong>Use it when</strong> you own one number and are asked whether it is where it should be and what is pushing it up or down.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-metric-deep-dive" href="/dashboard/g-dd-metric-deep-dive">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1200px">
       <rb-dashboard report-id="g-dd-metric-deep-dive" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-metric-deep-dive" href="https://datapallas.com/docs/dashboard-demos/dd-metric-deep-dive" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-metric-deep-dive" href="https://datapallas.com/docs/dashboard-demos/dd-metric-deep-dive" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
 
   <div class="card" id="dd-segment-vs-all">
@@ -573,12 +936,24 @@
     <h3 class="card-title">Segment vs Everyone</h3>
     <p class="card-description">Is my country different from the company as a whole, and where?</p>
     <p class="card-grain"><strong>Who:</strong> A country manager: &quot;is my country different?&quot; &middot; <strong>Decision:</strong> What to do differently in my market: assortment, channel, price. &middot; <strong>Finding:</strong> Poland is a smaller basket and a faster market: 1,944.91 an order against 2,756.55 everywhere, returns no different at 5.93% against 5.97%, but quarterly revenue at 208.67 against the company's 139.44 since the start of 2024. It buys more Smart Home, 12.2% of its revenue against 10.58%, and a little more on the app, 21.37% of its orders against 20.55% - the assortment difference is real, the channel difference is under a point.</p>
+    <details class="card-pattern" id="dd-segment-vs-all-pattern">
+      <summary class="pattern-stamp" id="dd-segment-vs-all-pattern-stamp" title="This dashboard is also a pattern: open it to read when it fits your data"><span class="pattern-stamp-label">&#9670; Data pattern</span><span class="pattern-stamp-name">Segment against everyone</span></summary>
+      <div class="pattern-panel" id="dd-segment-vs-all-pattern-text">
+        <p><strong>What it shows.</strong> One group, such as a country or a customer segment, next to the whole company: order value, return rate, mix of categories and channels, and its trend against the company’s.</p>
+        <p><strong>The data it fits.</strong> A table with a label that defines the group (country, segment, product line) and all the other rows to compare it with.</p>
+        <p><strong>Use it when</strong> you are in charge of one market or segment and want to know where it differs from the company as a whole.</p>
+      </div>
+    </details>
     <p class="card-links"><a id="lnkOpenAlone-dd-segment-vs-all" href="/dashboard/g-dd-segment-vs-all-low-code">Open on its own &rarr;</a></p>
     <div class="card-dashboard" style="min-height: 1200px">
       <rb-dashboard report-id="g-dd-segment-vs-all-low-code" api-base-url="/api" lazy show-stories></rb-dashboard>
     </div>
-    <p class="card-links"><a id="lnkHowBuilt-dd-segment-vs-all" href="https://datapallas.com/docs/dashboard-demos/dd-segment-vs-all-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a></p>
+    <div class="card-build">
+      <p class="card-build-text"><strong>Build this one yourself.</strong> Every step, from the data to this finished dashboard, in the Data Canvas.</p>
+      <a id="lnkHowBuilt-dd-segment-vs-all" href="https://datapallas.com/docs/dashboard-demos/dd-segment-vs-all-low-code" target="_blank" rel="noopener">How was this dashboard built? &rarr;</a>
+    </div>
   </div>
+  </details>
 
   <!-- END cards -->
 </div>

@@ -115,9 +115,9 @@ public final class CubeHints {
 	 * dashboard it is on.
 	 *
 	 * <p><b>The tile's own five.</b> A tile may name the stories it offers ({@code showHints} as a
-	 * list) because a dashboard is not a cube catalogue: sample 22 is about one country's sales and
+	 * list) because a dashboard is not a cube catalogue: the Country Sales Dashboard sample is about one country's sales and
 	 * offers the five stories that mean something there, in the order a reader reads them. A tile
-	 * that named none gets them all, which is what sample 21 does. Naming an id the cube has not
+	 * that named none gets them all, which is what the Cube Stories sample does. Naming an id the cube has not
 	 * got is not an error here — the cube's file is where the stories live, and a tile that outlived
 	 * a story it named simply offers one fewer.
 	 *

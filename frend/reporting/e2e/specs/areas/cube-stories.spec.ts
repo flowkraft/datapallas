@@ -1251,7 +1251,7 @@ test.describe('Cube Stories — the cube demo page', () => {
   // story's rows, and the story pressed is marked while they are its rows.
   //
   // Negative half: a tick by hand takes the mark off, because the selection is then the reader's.
-  // (A tile with no stories has no right column at all: sample 22's live tile, in samples.spec.)
+  // (A tile with no stories has no right column at all: the Country Sales Dashboard's live tile, in samples.spec.)
   //
   // Made to go red: `expect(difference(stage.rows, afterShowMe, false)).toBeNull()` — the columns
   // could be side by side and the tile still be the old one if pressing Show Me on the right left

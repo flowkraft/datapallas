@@ -650,7 +650,7 @@ class CubeSqlGeneratorTest {
 		assertTrue(cube.getJoins() == null || cube.getJoins().isEmpty(),
 				"Warehouse cube should have no joins (denormalized view)");
 
-		// Test 1: replicate the existing Sales PivotTable sample (sample 19)
+		// Test 1: replicate the existing Sales PivotTable sample
 		// Rows = customer_country + category_name, vals = net_revenue
 		String sql1 = CubeSqlGenerator.generateSql(cube,
 				List.of("CustomerCountry", "CategoryName"),

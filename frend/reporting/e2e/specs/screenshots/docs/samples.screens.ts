@@ -14,7 +14,7 @@
 // starts with "Samples — " so a single grep runs the whole file, or one block:
 //     E2E_GREP="Samples —"                       (all blocks)
 //     E2E_GREP="Samples — gallery"               (just the cheap gallery block)
-//     E2E_GREP="Samples — Sales Dashboard"       (just sample #18)
+//     E2E_GREP="Samples — Sales Dashboard"       (just sample #21)
 //
 // ── WHAT THIS FILE CAPTURES ─────────────────────────────────────────────────────
 //
@@ -23,12 +23,12 @@
 //     003_00_samples-learn-more.png     The "Learn More" modal (View Configuration ringed)
 //     003_00_samples-try-it.png         The "Try It" confirmation dialog
 //
-//   BLOCK 2 — Sales Dashboard, sample #18 (external browser; needs the RB backend)
+//   BLOCK 2 — Sales Dashboard, sample #21 (external browser; needs the RB backend)
 //     bi-analytics/047-rb-dash-samples.png                The Samples list, Sales Dashboard row selected
 //     bi-analytics/093-rb-dash-northwind-try-it.png       The sample's table row (cropped)
 //     bi-analytics/095-rb-dash-northwind-final-browser.png The live dashboard, Country=Germany
 //
-//   BLOCK 3 — Sales PivotTable, sample #19 (external browser; needs the RB backend)
+//   BLOCK 3 — Sales PivotTable, sample #22 (external browser; needs the RB backend)
 //     bi-analytics/036-rb-pivottable-duckdb-try-it.png    The sample's table row (cropped)
 //     bi-analytics/037-rb-pivottable-duckdb.png           The live DuckDB pivot table
 //
@@ -50,7 +50,7 @@
 // NOTE — shared assets. BLOCKS 4 & 5 (and the dashboard/pivot browser frames in
 // BLOCKS 2 & 3) regenerate images that ALSO appear in the bi-analytics and
 // document-portal docs. They live here because samples.mdx references them and the
-// flows ARE the sample #18/#19 + "BI solution" + "self-service portal" stories. If
+// flows ARE the sample #21/#22 + "BI solution" + "self-service portal" stories. If
 // a dedicated bi-analytics.screens.ts / document-portal.screens.ts is ever added,
 // these blocks could move there and samples.mdx would simply reuse the PNGs (same
 // "CONSIDER CONSOLIDATING" note as learn.screens.ts).
@@ -93,13 +93,13 @@ const BI_DIR = path.join(DOCS_IMAGES_DIR, 'bi-analytics');
 const WEBPORTAL_DIR = path.join(DOCS_IMAGES_DIR, 'webportal');
 
 // ── SAMPLE IDS (must match samplesService ids — see samples.spec.ts) ────────────
-// The gallery's Learn More / Try It shots feature sample #14 (Customer Invoices) to
+// The gallery's Learn More / Try It shots feature sample #17 (Customer Invoices) to
 // match the original committed 003_00_samples* screenshots — which SELECT this row
 // and open its modals. Change FEATURED_SAMPLE / _NAME to feature a different one.
-const FEATURED_SAMPLE = 'GENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML'; // #14
+const FEATURED_SAMPLE = 'GENERATE-CUSTOMER-INVOICES-MASTER-DETAILS-SCRIPT2HTML'; // #17
 const FEATURED_SAMPLE_NAME = 'Customer Invoices';
-const SAMPLE_DASHBOARD = 'NORTHWIND-SALES-DASHBOARD';   // #18 Sales Dashboard
-const SAMPLE_PIVOTTABLE = 'NORTHWIND-SALES-PIVOTTABLE'; // #19 Sales PivotTable
+const SAMPLE_DASHBOARD = 'NORTHWIND-SALES-DASHBOARD';   // #21 Sales Dashboard
+const SAMPLE_PIVOTTABLE = 'NORTHWIND-SALES-PIVOTTABLE'; // #22 Sales PivotTable
 
 // ── LIVE DASHBOARD URLS (served by the RB backend on 9090 — see samples.spec.ts) ─
 const DASHBOARD_URL = 'http://localhost:9090/dashboard/g-dashboard';
@@ -144,7 +144,7 @@ electronBeforeAfterAllTest(
 
     // ── Open the Samples page, bring the featured sample's row into view, and
     //    SELECT it (click the row → bg-primary/10 highlight) — matching the original
-    //    003_00_samples.png, which shows sample #14 selected.
+    //    003_00_samples.png, which shows sample #17 selected.
     await ft
       .gotoBurstScreen()
       .waitOnElementToBecomeVisible('#btnBurstSamples')
@@ -170,7 +170,7 @@ electronBeforeAfterAllTest(
     }, `#tr${FEATURED_SAMPLE}`);
     await firstPage.waitForTimeout(400);
 
-    // ── 003_00_samples — the gallery overview with sample #14 selected (Name /
+    // ── 003_00_samples — the gallery overview with sample #17 selected (Name /
     //    What It Does / Input / Expected Output / Actions columns, Learn More +
     //    Try It buttons per row).
     await captureDocsScreenshot(firstPage, dp('003_00_samples'));
@@ -215,13 +215,13 @@ electronBeforeAfterAllTest(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BLOCK 2 — Sales Dashboard (sample #18): row crop + live dashboard (Germany)
+// BLOCK 2 — Sales Dashboard (sample #21): row crop + live dashboard (Germany)
 // ─────────────────────────────────────────────────────────────────────────────
 // Mirrors samples.spec.ts "(18_northwind_sales_dashboard)". The dashboard is served
 // by the RB backend on :9090 (no Docker). Try It provisions g-dashboard and opens
 // the system browser; we ALSO open our own Edge browser at the same URL to capture.
 electronBeforeAfterAllTest(
-  'Samples — Sales Dashboard sample #18 (samples.mdx)',
+  'Samples — Sales Dashboard sample #21 (samples.mdx)',
   async ({ beforeAfterEach: firstPage }) => {
     test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
     const ft = new FluentTester(firstPage);
@@ -307,13 +307,13 @@ electronBeforeAfterAllTest(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BLOCK 3 — Sales PivotTable (sample #19): row crop + live DuckDB pivot table
+// BLOCK 3 — Sales PivotTable (sample #22): row crop + live DuckDB pivot table
 // ─────────────────────────────────────────────────────────────────────────────
 // Mirrors samples.spec.ts "(19_northwind_sales_pivottable)". Served by the RB
 // backend on :9090 (no Docker). The saved g-pivottable already carries its layout
 // (customer_country × year_quarter, Sum net_revenue), so we just open and capture.
 electronBeforeAfterAllTest(
-  'Samples — Sales PivotTable sample #19 (samples.mdx)',
+  'Samples — Sales PivotTable sample #22 (samples.mdx)',
   async ({ beforeAfterEach: firstPage }) => {
     test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
     const ft = new FluentTester(firstPage);

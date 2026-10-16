@@ -175,7 +175,7 @@ public abstract class ChartOptionsScript extends Script {
 	/**
 	 * What to say about one chart-level name the DSL does not know.
 	 *
-	 * <p>The three named here are the ones that were actually written (D3, sample 22's "Orders by
+	 * <p>The three named here are the ones that were actually written (D3, the Country Sales Dashboard sample's "Orders by
 	 * Channel" chart, which drew an empty axis): each of them has a place in this DSL, and the
 	 * message is that place rather than a complaint. Anything else gets the general sentence, which
 	 * is still enough to see that a key is doing nothing.
