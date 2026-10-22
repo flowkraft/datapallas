@@ -323,23 +323,23 @@
 		<dependency>
 			<groupId>org.apache.groovy</groupId>
 			<artifactId>groovy</artifactId>
-			<version>4.0.27</version>
+			<version>6.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.groovy</groupId>
 			<artifactId>groovy-ant</artifactId>
-			<version>4.0.27</version>
+			<version>6.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.groovy</groupId>
 			<artifactId>groovy-sql</artifactId>
-			<version>4.0.27</version>
+			<version>6.0.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.groovy</groupId>
 			<artifactId>groovy-xml</artifactId>
-			<version>4.0.27</version>
+			<version>6.0.0</version>
 		</dependency>
 
 		<dependency>
