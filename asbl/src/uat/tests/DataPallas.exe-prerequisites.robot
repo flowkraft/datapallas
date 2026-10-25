@@ -155,7 +155,7 @@ Verify Chrome Debugger Connection
 
   # The driver meets whichever page exists first, and on a cold VM that is the splash. Move to the app's
   # own window; when the splash is already gone this is the only one and costs nothing.
-  Wait Until Keyword Succeeds    10x    1s    Switch Window    url:.*index.html.*
+  Wait Until Keyword Succeeds    10x    1s    Switch To App Window
 
   # Verify we can interact with the page
   Wait Until Keyword Succeeds    3x    1s    Get Title

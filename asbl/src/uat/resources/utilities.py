@@ -198,6 +198,29 @@ def app_page_target(wait_seconds=300, port=9222):
                          % (wait_seconds, seen))
 
 
+def switch_to_app_window():
+    """Moves the browser session to the app's own window, the one whose url holds index.html.
+
+    SeleniumLibrary's "Switch Window  url:..." compares the whole url for equality (6.7.0), so a pattern
+    such as url:.*index.html.* never matches any window. Look at each window's url instead. One pass: the
+    caller retries while the splash is still closing, and a window that closes under the look is skipped.
+    """
+    from robot.libraries.BuiltIn import BuiltIn
+    driver = BuiltIn().get_library_instance('SeleniumLibrary').driver
+    seen = []
+    for handle in driver.window_handles:
+        try:
+            driver.switch_to.window(handle)
+            url = driver.current_url or ''
+        except Exception as e:  # the splash closed between window_handles and the switch
+            seen.append('%s (%s)' % (handle, type(e).__name__))
+            continue
+        if 'index.html' in url:
+            return url
+        seen.append(url)
+    raise AssertionError('no window of the app (index.html) yet; windows seen: %s' % (', '.join(seen) or 'none'))
+
+
 def empty_folder(folder_path):
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
