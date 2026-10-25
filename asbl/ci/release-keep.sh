@@ -77,16 +77,23 @@ report() {
 import json, os, re, sys, xml.etree.ElementTree as ET
 steps_path, out, ch, version, commit, verdict = sys.argv[1:7]
 ANSI = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+ERROR_HINT = re.compile(r'(?i)(\bfail\b|\bfailed\b|\berror\b|\bexception\b|\bfatal\b|traceback|caused by|npm err!|\bcannot\b|\bdenied\b|\brefused\b|timed out|no such|\bnot found\b)')
 def clean(s): return ANSI.sub('', s or '').strip()
 def first_lines(s, n=12):
     lines = [l.rstrip() for l in clean(s).splitlines() if l.strip()]
     return '\n'.join(lines[:n]) + ('\n...' if len(lines) > n else '')
 def signature(msg):
-    l = next((x for x in clean(msg).splitlines() if x.strip()), '(no message)')
+    # The FIRST line that reads like an error, not the first line of the message: a step's message is the log's
+    # tail, and the tail window starts wherever it starts - usually a stack-trace line or an npm warning. On
+    # 2026-10-25 the groups were named after such a line, which told nobody which root cause it was.
+    lines = [x.strip() for x in clean(msg).splitlines() if x.strip()]
+    l = next((x for x in lines if ERROR_HINT.search(x)), lines[0] if lines else '(no message)')
     l = re.sub(r'\d+(\.\d+)?(ms|s)?', 'N', l)
     l = re.sub(r'[A-Za-z]:\\[^\s\'"]+|/[^\s\'"]+/[^\s\'"]+', '<path>', l)
     return l.strip()[:160]
 def tail(path, n=40):
+    if not os.path.isfile(path):
+        return '(the log %s was never written: the step died before its first line)' % path
     try:
         with open(path, 'rb') as f: data = f.read()[-200000:]
         return '\n'.join(clean(data.decode('utf-8', 'replace')).splitlines()[-n:])
@@ -128,10 +135,38 @@ def playwright(st):
         for sub in suite.get('suites', []): walk(sub, path + [sub.get('title', '')])
     for top in d.get('suites', []): walk(top, [])
     return None
+def robot_partial(st, r, err):
+    """A run stopped mid-write (the stall guard, a kill, a full disk) leaves output.xml without its closing tags,
+    so ElementTree refuses the whole file and this report used to say only "could not be read" - with none of the
+    failed tests named, which is the one thing a reader needs. Read the text instead: every <test> written to the
+    end carries its status."""
+    try:
+        text = open(r, encoding='utf-8', errors='replace').read()
+    except Exception as e:
+        return 'the Robot output %s could not be read (%s)' % (r, e)
+    passed = failed = skipped = 0
+    for m in re.finditer(r'<test\b[^>]*\bname="([^"]*)"[^>]*>(.*?)(?:</test>|\Z)', text, re.S):
+        name, body = m.group(1), m.group(2)
+        s = re.search(r'<status[^>]*\bstatus="([A-Z ]+)"', body)
+        status = s.group(1) if s else 'NOT RUN'
+        message = ' '.join(clean(re.sub(r'<[^>]+>', ' ', body[:4000])).split())
+        if status == 'PASS':
+            passed += 1
+        elif status == 'SKIP':
+            skipped += 1
+        else:
+            failed += 1
+        if status in ('FAIL', 'SKIP', 'NOT RUN'):
+            failures.append(dict(step=st['label'], test=name, where=os.path.basename(r),
+                outcome='failed' if status == 'FAIL' else 'skipped or not run: counts as a failure of the run',
+                message=message or '(no message)', evidence=[os.path.join(os.path.dirname(r), 'log.html'), r]))
+    counts[st['label']] = 'passed %d, failed %d, skipped %d (partial: the file was cut short)' % (passed, failed, skipped)
+    return ('the Robot output %s was cut short (%s); %d tests were readable in it, the rest of the file was never '
+            'written' % (os.path.basename(r), err, passed + failed + skipped))
 def robot(st):
     r = st['report']
     try: root = ET.parse(r).getroot()
-    except Exception as e: return 'the Robot output %s could not be read (%s)' % (r, e)
+    except Exception as e: return robot_partial(st, r, e)
     stat = root.find('statistics/total/stat')
     if stat is not None: counts[st['label']] = 'passed %s, failed %s, skipped %s' % (stat.get('pass', 0), stat.get('fail', 0), stat.get('skip', 0))
     parent = {c: p for p in root.iter() for c in p}
@@ -161,7 +196,8 @@ for st in steps:
         note = 'no test report at %s (the step did not get that far)' % st['report']
     if note: notes[st['label']] = note
     if st['verdict'] != 'PASS' and len(failures) == n:
-        failures.append(dict(step=st['label'], test='(the step itself: %s)' % st['what'], where=st['log'] or '-',
+        where = (st['log'] or '-') if not st['log'] or os.path.isfile(st['log']) else st['log'] + ' (never written)'
+        failures.append(dict(step=st['label'], test='(the step itself: %s)' % st['what'], where=where,
             outcome='step %s with no failed test in its report%s' % (st['verdict'], (': ' + note) if note else ''),
             message=tail(st['log']) if st['log'] else '(no log)', evidence=[x for x in (st['log'], st['report']) if x]))
 
@@ -188,7 +224,8 @@ L += ['## Grouped by root cause', '']
 if not failures:
     L.append('Nothing to group: the run is green.')
 else:
-    L += ['The run groups the failures by the first line of their error (the same line = one group). A group is a starting point,',
+    L += ['The run groups the failures by the first line of their message that reads like an error - not the first line,',
+          'which is wherever the log tail happens to begin (the same line = one group). A group is a starting point,',
           'not a cause: the run analyses and fixes nothing. Whoever reads this writes, under each group, the root cause, what changed',
           'since the test last passed, the fix proposed and how to verify it; the fix waits for the owner\'s go.', '']
     for g, (sig, ids) in enumerate(groups.items(), 1):
