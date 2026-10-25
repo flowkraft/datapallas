@@ -22,8 +22,13 @@ public class DataPallasAssembler extends AbstractAssembler {
 	protected void compile() throws Exception {
 
 		//String npmRunCustomReleaseCommand = "npm run custom:release-electron";
-		
-		String npmRunCustomReleaseCommand = "npm run custom:release-electron --force";
+
+		// npm must not rewrite the tracked lock files. This step runs inside the checkout the lane is testing, and the
+		// lane refuses a dirty tree (win_sync_repo): `npm prune --force` and `electron-builder install-app-deps`, both
+		// inside pre/postcustom:release-electron, rewrote package-lock.json with .npmrc save=true and the light set then
+		// died at the door (2026-10-25). The Docker path already does this at dp-ci.sh:2269 (`npm install --force
+		// --no-save`); npm_config_save is inherited by every nested npm, so one `set` covers both of them.
+		String npmRunCustomReleaseCommand = "set npm_config_save=false && npm run custom:release-electron --force";
 
 		new ProcessExecutor().directory(new File(Utils.getTopProjectFolderPath() + "/frend/reporting"))
 				.command("cmd", "/c", npmRunCustomReleaseCommand).redirectOutput(new LogOutputStream() {
