@@ -1490,6 +1490,9 @@ if ('$want' -ne '') {
 }
 & docker compose up -d @extra 2>&1 | ForEach-Object { "compose: \$_" }
 if (\$LASTEXITCODE -ne 0) { "FAIL  docker compose up -d failed"; exit 1 }
+# compose writes its progress to stderr, and under 2>&1 PowerShell 5.1 makes each line an error record:
+# \$? stays false and powershell.exe exits 1 although compose succeeded, so the step failed every time
+exit 0
 PS
   win_wait_9090 || { win_docker_down "$inst"; return 1; }
   running_id=$(win_ssh "docker inspect datapallas-server --format {{.Image}}" 2>/dev/null | tr -d '\r' | tail -1)
