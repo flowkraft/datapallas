@@ -3,6 +3,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import subprocess, glob, re, os, importlib, shutil, zipfile, time, errno, pyautogui, psutil
+import json, urllib.request
 import shutil
 from pywinauto.application import Application
 
@@ -166,6 +167,36 @@ def _kill_pid_tree(pid):
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
     psutil.wait_procs(procs, timeout=5)
+
+def app_page_target(wait_seconds=300, port=9222):
+    """Waits for the app's own page and returns its debugger target id.
+
+    DataPallas.exe shows a splash page first and opens the app (index.html) as a second page target only
+    when the backend is up: on the CI VM the debugger port answered from t+13 s with the splash, and the
+    app target appeared at t+131 s (2026-10-25). The debugger port is therefore not the condition to wait
+    for - Selenium attaches to the first page it meets, which is the splash, and dies with "no such
+    window" when the app replaces it. Wait for the app's own target instead, then switch to it after the
+    attach.
+    """
+    url = 'http://localhost:%d/json' % int(port)
+    deadline = time.time() + float(wait_seconds)
+    seen = 'nothing answered'
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=5) as r:
+                targets = json.loads(r.read().decode('utf-8', 'replace'))
+        except Exception as e:  # the app has not opened the port yet: that is what waiting is for
+            seen = 'no debugger yet (%s)' % e
+        else:
+            pages = [t for t in targets if t.get('type') == 'page']
+            for t in pages:
+                if 'index.html' in (t.get('url') or ''):
+                    return t['id']
+            seen = ', '.join((t.get('url') or t.get('title') or '?') for t in pages) or 'no page target'
+        time.sleep(2)
+    raise AssertionError('the app never opened its own window within %s s; page targets seen: %s'
+                         % (wait_seconds, seen))
+
 
 def empty_folder(folder_path):
     for filename in os.listdir(folder_path):

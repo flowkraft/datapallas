@@ -152,7 +152,11 @@ Verify Chrome Debugger Connection
   ${options}=    Evaluate    sys.modules['selenium.webdriver'].ChromeOptions()    sys, selenium.webdriver
   Call Method    ${options}    add_experimental_option    debuggerAddress    localhost:9222
   Create WebDriver    Chrome    service=${signal_service}    options=${options}
-  
+
+  # The driver meets whichever page exists first, and on a cold VM that is the splash. Move to the app's
+  # own window; when the splash is already gone this is the only one and costs nothing.
+  Wait Until Keyword Succeeds    10x    1s    Switch Window    url:.*index.html.*
+
   # Verify we can interact with the page
   Wait Until Keyword Succeeds    3x    1s    Get Title
 

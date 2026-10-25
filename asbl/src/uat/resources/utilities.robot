@@ -114,17 +114,13 @@ Open Electron Application
   ${working_dir}=    Get Parent Directory    ${signal_electron.binary_location}
   Start Process    ${electron_command}    cwd=${working_dir}  shell=True
      
-  # No fixed sleep: the attach needs the debugger port, and the port is what to wait for. A fixed 30 s
-  # was both too short on a cold VM and wasted on every warm launch (2026-10-25, group J).
-  Wait Until Keyword Succeeds    60x    2s    Debugger Port Is Open
+  # Not the debugger port: the splash opens it about two minutes before the app exists, so Selenium
+  # attached to the splash and died with "no such window" when it closed (2026-10-25, group J). Wait for
+  # the app's own page target instead, then attach and switch to it.
+  ${app_target}=    App Page Target    300
+  Log    the app's page target is up: ${app_target}
   Verify Chrome Debugger Connection
   
-Debugger Port Is Open
-  [Documentation]  The one condition the attach needs, polled instead of assumed: the app listens on
-  ...              the debugger port. On a cold VM the splash takes about 40 s to get there.
-  ${port_check}=    Run Process    powershell -command "if(Test-NetConnection -ComputerName localhost -Port 9222 -WarningAction SilentlyContinue -InformationLevel Quiet) { Write-Output 'open' } else { Write-Output 'closed' }"    shell=True
-  Should Be Equal    ${port_check.stdout.strip()}    open
-
 Verify Chrome Debugger Connection
   [Documentation]  Verifies Chrome debugger is available before attempting connection
   # First check if port is actually responding
@@ -137,7 +133,11 @@ Verify Chrome Debugger Connection
   ${options}=    Evaluate    sys.modules['selenium.webdriver'].ChromeOptions()    sys, selenium.webdriver
   Call Method    ${options}    add_experimental_option    debuggerAddress    localhost:9222
   Create WebDriver    Chrome    service=${signal_service}    options=${options}
-  
+
+  # The driver meets whichever page exists first, and on a cold VM that is the splash. Move to the app's
+  # own window; when the splash is already gone this is the only one and costs nothing.
+  Wait Until Keyword Succeeds    10x    1s    Switch Window    url:.*index.html.*
+
   # Verify we can interact with the page
   Wait Until Keyword Succeeds    3x    1s    Get Title
   
