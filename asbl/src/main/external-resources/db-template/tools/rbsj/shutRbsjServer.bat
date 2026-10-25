@@ -40,3 +40,6 @@ if "%RB_SERVER_MODE%"=="true" (
     :: Call killOlderExes.ps1 to kill older instances of DataPallas.exe
     powershell -File "%~dp0killOlderExesAndSpringBoots.ps1" -scriptDir "%PORTABLE_EXECUTABLE_DIR_PATH%"
 )
+
+:: The PowerShell script's exit code is ours: 0 only when the server was really stopped
+exit /b %ERRORLEVEL%

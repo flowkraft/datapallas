@@ -10,8 +10,16 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     if ($scriptDir) {
         $scriptArgs += " -scriptDir `"$scriptDir`""
     }
-    Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList $scriptArgs
-    exit
+    try {
+        # -Wait: the caller must not be told the server is stopped before the elevated script has done its work.
+        $elevated = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList $scriptArgs -Wait -PassThru
+        # ... and it must be told what that work achieved: this exit code is the only one the caller sees.
+        exit $elevated.ExitCode
+    } catch {
+        # The UAC question was answered No, or never answered at all: nothing was stopped.
+        Write-Host "Error: could not run with administrator rights, nothing was stopped: $($_.Exception.Message)"
+        exit 1
+    }
 }
 
 # Define the path of the log file based on the RB_SERVER_MODE environment variable
