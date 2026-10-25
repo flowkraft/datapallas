@@ -32,22 +32,36 @@ ${VIEWER_PASSWORD}     ViewerPassword123!
 
 *** Test Cases ***
 The Packaged Server Detects Itself And Enforces Authentication
-    [Documentation]    The Server edition must never come up unauthenticated. This is the single
-    ...                most important assertion in the file: if it fails, everything the API exposes
-    ...                — connections, their passwords, arbitrary Groovy — is open to anyone who can
-    ...                reach port 9090.
+    [Documentation]    The Server edition must never serve anybody as a user without a session. This is
+    ...                the single most important assertion in the file: if it fails, everything the API
+    ...                exposes — connections, their passwords, arbitrary Groovy — is open to anyone who
+    ...                can reach port 9090.
+    ...
+    ...                /api/auth/me is the exception, and deliberately so: it is permitAll and answers
+    ...                200 with authenticated:false for an anonymous caller, because it is what tells the
+    ...                frontend whether to render the shell or the login door. Its answer carries no
+    ...                identity at all. A 401 here (what this test used to demand) cannot happen on the
+    ...                real server, so the assertion says what the server promises instead.
 
     Given A Running Packaged Server
 
-    # No session yet, so identity must be refused rather than served.
+    # No session yet: the probe answers, and what it answers is "nobody".
     Create Session    dp    ${SERVER_URL}    verify=${False}
     ${me}=    GET On Session    dp    /api/auth/me    expected_status=any
-    Should Be Equal As Integers    ${me.status_code}    401
+    Should Be Equal As Integers    ${me.status_code}    200
+    Should Not Be True    ${me.json()}[authenticated]
+    Should Not Be True    ${me.json()}[machine]
+    Should Be Equal    ${me.json()}[user]    ${None}
+    ${roles}=    Get From Dictionary    ${me.json()}    roles
+    Should Be Empty    ${roles}
 
-    # And a genuinely dangerous endpoint must be refused too, not merely the identity probe.
+    # A genuinely dangerous endpoint must be refused, and with a valid CSRF token in hand the refusal
+    # must be the authentication talking (401) — a bare 403 here would only prove CSRF.
+    ${token}=    Csrf Token
     ${script}=    POST On Session    dp    /api/queries/run-script
-    ...    json={"connectionId": "x", "script": "return []"}    expected_status=any
-    Should Contain    ${{ [401, 403] }}    ${script.status_code}
+    ...    json={"connectionId": "x", "script": "return []"}
+    ...    headers=${{ {'X-XSRF-TOKEN': $token} }}    expected_status=any
+    Should Be Equal As Integers    ${script.status_code}    401
 
 The Default Account Works And Is Advertised Until It Is Changed
     [Documentation]    A freshly downloaded server has to be usable immediately — that is why the
@@ -64,8 +78,10 @@ The Default Account Works And Is Advertised Until It Is Changed
     Should Be Equal    ${status.json()}[defaultPassword]    ${DEFAULT_PASSWORD}
 
     # And the account actually works.
+    ${csrf}=    Csrf Token
     ${login}=    POST On Session    dp    /api/auth/login
     ...    json={"username": "${DEFAULT_USER}", "password": "${DEFAULT_PASSWORD}"}
+    ...    headers=${{ {'X-XSRF-TOKEN': $csrf} }}
     Should Be Equal As Integers    ${login.status_code}    200
     Should Contain    ${login.json()}[roles]    TENANT_ADMIN
 
@@ -84,8 +100,10 @@ Changing The Default Password Silences The Notice
     Should Not Be True    ${status.json()}[usingDefaultCredentials]
 
     # The old password is genuinely gone, not merely hidden.
+    ${csrf}=    Csrf Token
     ${old}=    POST On Session    dp    /api/auth/login
-    ...    json={"username": "${DEFAULT_USER}", "password": "${DEFAULT_PASSWORD}"}    expected_status=any
+    ...    json={"username": "${DEFAULT_USER}", "password": "${DEFAULT_PASSWORD}"}
+    ...    headers=${{ {'X-XSRF-TOKEN': $csrf} }}    expected_status=any
     Should Be Equal As Integers    ${old.status_code}    401
 
 Roles Are Enforced On The Packaged Server
@@ -193,16 +211,39 @@ Check PDF Files Generated
     ${count}=    Count Files    ${PORTABLE_EXECUTABLE_DIR_SERVER}/output    pattern=*.pdf    recursive=True
     Should Be Equal As Integers    ${count}    ${expected_count}
 
+Csrf Token
+    [Documentation]    Spring's double-submit CSRF, as the packaged server configures it: the token in the
+    ...                XSRF-TOKEN cookie must come back in an X-XSRF-TOKEN header on every request that
+    ...                changes something, cookie session or not. /api/auth/me hands the cookie out, since
+    ...                it answers whether anybody is signed in or not.
+    ...
+    ...                The cache is not an optimisation: signing in rotates the token (Spring clears it),
+    ...                so the keyword is called again afterwards, and a request that finds the cookie still
+    ...                valid writes no new one — then the value already known is the right one.
+    ${cached}=    Get Variable Value    ${CSRF_TOKEN}    ${EMPTY}
+    ${me}=    GET On Session    dp    /api/auth/me
+    ${cookie}=    Set Variable    ${{ $me.headers.get('Set-Cookie', '') }}
+    ${token}=    Evaluate    (__import__('re').search(r'XSRF-TOKEN=([^;]+)', $cookie) or [None, None])[1]
+    IF    $token is None
+        RETURN    ${cached}
+    END
+    Set Test Variable    ${CSRF_TOKEN}    ${token}
+    RETURN    ${token}
+
 Sign In
     [Arguments]    ${username}    ${password}
-    [Documentation]    Signs in and returns headers carrying the session cookie.
+    [Documentation]    Signs in and returns the headers a further request needs: the CSRF token. The
+    ...                session cookie stays in the session's own jar, so the caller keeps using the
+    ...                session `dp` and adds this header to whatever it changes.
     Create Session    dp    ${SERVER_URL}    verify=${False}
+    ${csrf}=    Csrf Token
     ${response}=    POST On Session    dp    /api/auth/login
     ...    json={"username": "${username}", "password": "${password}"}
+    ...    headers=${{ {'X-XSRF-TOKEN': $csrf} }}
     Should Be Equal As Integers    ${response.status_code}    200
-    ${cookie}=    Set Variable    ${response.headers}[Set-Cookie]
-    ${session_cookie}=    Set Variable    ${{ $cookie.split(';')[0] }}
-    ${headers}=    Create Dictionary    Cookie=${session_cookie}
+    # Signing in rotates the CSRF token, so the one used for the login itself is spent.
+    ${fresh}=    Csrf Token
+    ${headers}=    Create Dictionary    X-XSRF-TOKEN=${fresh}
     RETURN    ${headers}
 
 Sign In As Default Administrator
