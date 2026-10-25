@@ -1388,13 +1388,16 @@ WIN_LIGHT_SPEC='[\\/](features[\\/]quick-start|areas[\\/]configuration|component
 # The Docker CLI on the VM must not ask the Windows credential store. Over SSH there is no interactive
 # logon session, so docker-credential-wincred answers "A specified logon session does not exist. It may
 # already have been terminated." and every registry call dies - which is how the release's compose pull
-# (docker compose up -d --pull always) failed on 2026-10-25. A config without credsStore pulls
-# anonymously, which is all a public demo image needs; a private registry would need a real login in an
-# interactive session, never a secret written here.
+# (docker compose up -d --pull always) failed on 2026-10-25. A config without credsStore is not enough:
+# when the config holds no auths entry at all, the CLI picks the platform's store by itself (wincred on
+# Windows), so {"auths":{}} still failed over SSH on the VM (Docker 29.8.1). One entry for a host that
+# never exists keeps the CLI on its plain file store, and the pull goes out anonymously, which is all a
+# public demo image needs; a private registry would need a real login in an interactive session, never a
+# secret written here.
 win_docker_config() {
   local tmp
   tmp=$(mktemp) || return 1
-  printf '{"auths":{}}' > "$tmp"
+  printf '{"auths":{"none.invalid":{}}}' > "$tmp"
   win_ssh "if not exist C:\\dp-ci\\docker-config md C:\\dp-ci\\docker-config" >/dev/null 2>&1
   win_scp "$tmp" C:/dp-ci/docker-config/config.json || {
     rm -f "$tmp"; echo "FAIL  could not write the Docker CLI config on the VM" >&2; return 1; }
