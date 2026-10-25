@@ -140,30 +140,6 @@ Prerequisites Chocolatey Not Installed and Java Not Installed Should Allow User 
 #  ...  see vars.py for more details.
 #  Create Webdriver    Chrome    options=${signal_electron}    service=${signal_service}
 
-Open Electron Application
-  [Documentation]  Open's your electron application with improved reliability for slower systems
-  ...  ${signal_electron.binary_location} and chromedriver binary via ${chromedriver_path}
-  ...  see vars.py for more details.
-  # Kill any existing processes to prevent conflicts
-  Run Keyword And Ignore Error    Kill DataPallas Exe Process
-  Sleep    2s
-     
-  # Start with explicit debugging port
-  ${electron_command}=    Set Variable    cmd /c "where /q refreshenv && (call refreshenv && start ${signal_electron.binary_location} --remote-debugging-port=9222) || start ${signal_electron.binary_location} --remote-debugging-port=9222"
-  ${working_dir}=    Get Parent Directory    ${signal_electron.binary_location}
-  Start Process    ${electron_command}    cwd=${working_dir}  shell=True
-     
-  # No fixed sleep: the attach needs the debugger port, and the port is what to wait for. A fixed 30 s
-  # was both too short on a cold VM and wasted on every warm launch (2026-10-25, group J).
-  Wait Until Keyword Succeeds    60x    2s    Debugger Port Is Open
-  Verify Chrome Debugger Connection
-  
-Debugger Port Is Open
-  [Documentation]  The one condition the attach needs, polled instead of assumed: the app listens on
-  ...              the debugger port. On a cold VM the splash takes about 40 s to get there.
-  ${port_check}=    Run Process    powershell -command "if(Test-NetConnection -ComputerName localhost -Port 9222 -WarningAction SilentlyContinue -InformationLevel Quiet) { Write-Output 'open' } else { Write-Output 'closed' }"    shell=True
-  Should Be Equal    ${port_check.stdout.strip()}    open
-
 Verify Chrome Debugger Connection
   [Documentation]  Verifies Chrome debugger is available before attempting connection
   # First check if port is actually responding
