@@ -1772,7 +1772,8 @@ win_put_dist() {
 #                      sha256 checked), then asbl\src\uat\run-tests.bat, unchanged: extracts datapallas.zip and
 #                      datapallas-server.zip and runs every .robot file as a user meets the product - Java and Chocolatey
 #                      removed and installed, the exe, the command line, the server and its Windows service. A bare step:
-#                      the machine's Java, never the CI's. No pack = not run (a failure of the run).
+#                      the machine's Java, never the CI's; elevated (WIN_RUN_ELEVATE=1), so its installs and teardowns
+#                      meet no UAC prompt nobody could answer. No pack = not run (a failure of the run).
 #   4/4 kept, upload   what it kept (each file against the manifest), then, only when parts 1-3 are green: still
 #                      origin/main and step 1 green (UPLOAD=no: only said), then (asbl/ci/release-publish.sh stage-files):
 #                      UPLOAD=yes: this host deletes the Windows files of earlier rehearsals (its own credentials), the VM
