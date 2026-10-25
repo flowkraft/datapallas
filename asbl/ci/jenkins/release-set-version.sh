@@ -106,9 +106,11 @@ main() {
   fi
   echo "pushed: ${c:0:8} \"release $V: the version in the $n version files\" is on main"
   echo "RELEASE_COMMIT=$c"
-  echo "NEXT: step 1, dp-ci-release-step1-e2e-prerelease, its four lanes on the commit being released (this one, or a later one"
-  echo "      with the changelog): docker-server full and auth, windows-vm-electron full, windows-vm-server light. Step 1 runs"
-  echo "      made before this commit do not count for this release; after it, any step 1 run on the commit being released does."
+  echo "NEXT: step 1, dp-ci-release-step1-e2e-prerelease, on the commit being released (this one, or a later one with the"
+  echo "      changelog): this release's full lane (web or docker-server; bash asbl/ci/release-state.sh full-lane --choose says"
+  echo "      which), docker-server auth and windows-vm-server light. windows-vm-electron light is step 3's own run, its"
+  echo "      RELEASE STEP 2/4, so a release does not run it here. Step 1 runs made before this commit do not count for this"
+  echo "      release; after it, any step 1 run on the commit being released does."
   result "$V set: ${c:0:8}"
 }
 
