@@ -1946,7 +1946,12 @@ PS
          WIN_RUN_TIMEOUT="${RELEASE_LIGHT_TIMEOUT:-21600}"; mark_run win_e2e ); then res_light=PASS; else res_light=FAIL; fi
   RELEASE_COMMIT="$vmc" RELEASE_LOG="$light_log" bash "$REPO/asbl/ci/release-state.sh" record step1.windows-vm-electron-light "$res_light" \
     "version=$RELEASE_VERSION" "by=step 3, dp-ci.sh win release RELEASE STEP 2/4"
-  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 2/4" "$res_light" "the electron light set (E2E_SPEC=light, WIN_LIGHT_SPEC) on the app built from the repository" "$light_log" "${light_log%.log}-playwright.json" >/dev/null
+  # The lane can die before it writes its own log (the pack leaves the checkout dirty, the driver never starts):
+  # then this run's log is the only evidence there is, and the failure report must cite it instead of a file
+  # nobody will ever find (2026-10-25, group E: the report pointed at a log that did not exist).
+  light_evidence="$light_log"
+  [ -f "$light_log" ] || light_evidence="$log"
+  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 2/4" "$res_light" "the electron light set (E2E_SPEC=light, WIN_LIGHT_SPEC) on the app built from the repository" "$light_evidence" "${light_log%.log}-playwright.json" >/dev/null
   mark_end "$([ "$res_light" = PASS ] && echo 0 || echo 1)"
 
   mark_start "RELEASE STEP 3/4" "Robot Framework UAT: the pack's zips in asbl\\dist (put back from the kept copy when needed), then asbl\\src\\uat\\run-tests.bat"
