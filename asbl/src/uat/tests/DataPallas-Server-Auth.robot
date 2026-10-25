@@ -58,8 +58,10 @@ The Packaged Server Detects Itself And Enforces Authentication
     # A genuinely dangerous endpoint must be refused, and with a valid CSRF token in hand the refusal
     # must be the authentication talking (401) — a bare 403 here would only prove CSRF.
     ${token}=    Csrf Token
+    # Every body in this file is a Python dict, json=${{ {...} }}: RequestsLibrary sends a plain json={...} as one
+    # JSON string, which the server cannot read as an object (a login answered 500).
     ${script}=    POST On Session    dp    /api/queries/run-script
-    ...    json={"connectionId": "x", "script": "return []"}
+    ...    json=${{ {"connectionId": "x", "script": "return []"} }}
     ...    headers=${{ {'X-XSRF-TOKEN': $token} }}    expected_status=any
     Should Be Equal As Integers    ${script.status_code}    401
 
@@ -80,10 +82,11 @@ The Default Account Works And Is Advertised Until It Is Changed
     # And the account actually works.
     ${csrf}=    Csrf Token
     ${login}=    POST On Session    dp    /api/auth/login
-    ...    json={"username": "${DEFAULT_USER}", "password": "${DEFAULT_PASSWORD}"}
+    ...    json=${{ {"username": $DEFAULT_USER, "password": $DEFAULT_PASSWORD} }}
     ...    headers=${{ {'X-XSRF-TOKEN': $csrf} }}
     Should Be Equal As Integers    ${login.status_code}    200
-    Should Contain    ${login.json()}[roles]    TENANT_ADMIN
+    # the tenant's administrator is ADMIN (TENANT_ADMIN is the old name, still read from stored rows by Role.parse)
+    Should Contain    ${login.json()}[roles]    ADMIN
 
 Changing The Default Password Silences The Notice
     [Documentation]    The notice is derived from the password, not from a flag, so changing the
@@ -93,7 +96,7 @@ Changing The Default Password Silences The Notice
     ${session}=    Sign In As Default Administrator
 
     ${changed}=    PUT On Session    dp    /api/iam/users/${DEFAULT_USER}/password
-    ...    json={"password": "${NEW_PASSWORD}"}    headers=${session}
+    ...    json=${{ {"password": $NEW_PASSWORD} }}    headers=${session}
     Should Be Equal As Integers    ${changed.status_code}    200
 
     ${status}=    GET On Session    dp    /api/auth/first-run
@@ -102,7 +105,7 @@ Changing The Default Password Silences The Notice
     # The old password is genuinely gone, not merely hidden.
     ${csrf}=    Csrf Token
     ${old}=    POST On Session    dp    /api/auth/login
-    ...    json={"username": "${DEFAULT_USER}", "password": "${DEFAULT_PASSWORD}"}
+    ...    json=${{ {"username": $DEFAULT_USER, "password": $DEFAULT_PASSWORD} }}
     ...    headers=${{ {'X-XSRF-TOKEN': $csrf} }}    expected_status=any
     Should Be Equal As Integers    ${old.status_code}    401
 
@@ -114,21 +117,22 @@ Roles Are Enforced On The Packaged Server
     ${admin}=    Sign In As Default Administrator
 
     ${created}=    POST On Session    dp    /api/iam/users
-    ...    json={"username": "${VIEWER_USER}", "password": "${VIEWER_PASSWORD}", "role": "VIEWER"}
+    ...    json=${{ {"username": $VIEWER_USER, "password": $VIEWER_PASSWORD, "role": "VIEWER"} }}
     ...    headers=${admin}    expected_status=any
     Should Contain    ${{ [201, 409] }}    ${created.status_code}
 
     ${viewer}=    Sign In    ${VIEWER_USER}    ${VIEWER_PASSWORD}
 
     ${script}=    POST On Session    dp    /api/queries/run-script
-    ...    json={"connectionId": "x", "script": "return []"}    headers=${viewer}    expected_status=any
+    ...    json=${{ {"connectionId": "x", "script": "return []"} }}    headers=${viewer}    expected_status=any
     Should Be Equal As Integers    ${script.status_code}    403
 
     ${reveal}=    POST On Session    dp    /api/connections/eml-contact/reveal-password
-    ...    json={"field": "userpassword"}    headers=${viewer}    expected_status=any
+    ...    json=${{ {"field": "userpassword"} }}    headers=${viewer}    expected_status=any
     Should Be Equal As Integers    ${reveal.status_code}    403
 
-    ${fs}=    GET On Session    dp    /api/system/fs/content?path=config/_internal/settings.xml
+    # \= : a url holding ?name=value would otherwise reach the keyword as a named argument, and url as missing
+    ${fs}=    GET On Session    dp    /api/system/fs/content?path\=config/_internal/settings.xml
     ...    headers=${viewer}    expected_status=any
     Should Be Equal As Integers    ${fs.status_code}    403
 
@@ -139,11 +143,11 @@ The Trust Boundary Holds On The Packaged Server
     Given A Running Packaged Server
     ${admin}=    Sign In As Default Administrator
 
-    ${outside}=    GET On Session    dp    /api/system/fs/content?path=C:/Windows/win.ini
+    ${outside}=    GET On Session    dp    /api/system/fs/content?path\=C:/Windows/win.ini
     ...    headers=${admin}    expected_status=any
     Should Be Equal As Integers    ${outside.status_code}    400
 
-    ${escape}=    GET On Session    dp    /api/system/fs/content?path=../../secret
+    ${escape}=    GET On Session    dp    /api/system/fs/content?path\=../../secret
     ...    headers=${admin}    expected_status=any
     Should Be Equal As Integers    ${escape.status_code}    400
 
@@ -155,27 +159,29 @@ Share Links Let Someone Without An Account Open A Dashboard
     ${admin}=    Sign In As Default Administrator
 
     ${link}=    POST On Session    dp    /api/embed/share-link
-    ...    json={"reportId": "g-dashboard"}    headers=${admin}    expected_status=any
+    ...    json=${{ {"reportId": "g-dashboard"} }}    headers=${admin}    expected_status=any
     Should Be Equal As Integers    ${link.status_code}    200
     ${token}=    Set Variable    ${link.json()}[token]
 
     # A brand-new session with no cookies — exactly what a recipient of the link has.
     Create Session    anon    ${SERVER_URL}    verify=${False}
-    ${opened}=    GET On Session    anon    /dashboard/g-dashboard?token=${token}
+    ${opened}=    GET On Session    anon    /dashboard/g-dashboard?token\=${token}
     Should Be Equal As Integers    ${opened.status_code}    200
     Should Contain    ${opened.text}    rb-dashboard
     Should Contain    ${opened.text}    embed-token=
 
-    # Without the link, the same page is refused.
-    ${bare}=    GET On Session    anon    /dashboard/g-dashboard    expected_status=any
-    Should Be Equal As Integers    ${bare.status_code}    401
+    # Without the link, the same page is refused: a browser opening it is sent to sign in (a 302 to the
+    # login route, SignInRedirectEntryPoint), so the redirect is not followed or the login page reads 200.
+    ${bare}=    GET On Session    anon    /dashboard/g-dashboard    expected_status=any    allow_redirects=${False}
+    Should Be Equal As Integers    ${bare.status_code}    302
+    Should Contain    ${bare.headers}[Location]    /#/login?returnUrl=
 
-    ${links}=    GET On Session    dp    /api/embed/share-link?reportId=g-dashboard    headers=${admin}
+    ${links}=    GET On Session    dp    /api/embed/share-link?reportId\=g-dashboard    headers=${admin}
     FOR    ${entry}    IN    @{links.json()}
         DELETE On Session    dp    /api/embed/share-link/${entry}[id]    headers=${admin}
     END
 
-    ${revoked}=    GET On Session    anon    /dashboard/g-dashboard?token=${token}    expected_status=any
+    ${revoked}=    GET On Session    anon    /dashboard/g-dashboard?token\=${token}    expected_status=any
     Should Be Equal As Integers    ${revoked.status_code}    404
 
 Unattended Polling Still Works With Authentication Enforced
@@ -219,10 +225,12 @@ Csrf Token
     ...
     ...                The cache is not an optimisation: signing in rotates the token (Spring clears it),
     ...                so the keyword is called again afterwards, and a request that finds the cookie still
-    ...                valid writes no new one — then the value already known is the right one.
+    ...                valid writes no new one — then the token is the cookie this request carried, which
+    ...                the session's jar got from an earlier answer (any request writes it, not only this one).
     ${cached}=    Get Variable Value    ${CSRF_TOKEN}    ${EMPTY}
     ${me}=    GET On Session    dp    /api/auth/me
-    ${cookie}=    Set Variable    ${{ $me.headers.get('Set-Cookie', '') }}
+    # a cookie this answer sets first, else the one the request carried
+    ${cookie}=    Set Variable    ${{ $me.headers.get('Set-Cookie', '') + '; ' + ($me.request.headers.get('Cookie') or '') }}
     ${token}=    Evaluate    (__import__('re').search(r'XSRF-TOKEN=([^;]+)', $cookie) or [None, None])[1]
     IF    $token is None
         RETURN    ${cached}
@@ -238,7 +246,7 @@ Sign In
     Create Session    dp    ${SERVER_URL}    verify=${False}
     ${csrf}=    Csrf Token
     ${response}=    POST On Session    dp    /api/auth/login
-    ...    json={"username": "${username}", "password": "${password}"}
+    ...    json=${{ {"username": $username, "password": $password} }}
     ...    headers=${{ {'X-XSRF-TOKEN': $csrf} }}
     Should Be Equal As Integers    ${response.status_code}    200
     # Signing in rotates the CSRF token, so the one used for the login itself is spent.
