@@ -275,6 +275,16 @@ def _refresh_java_env():
         del os.environ['JAVA_HOME']
 
 
+def _java_banner_line():
+    """The first line of `java -version`, for the log: it names the Java that is actually installed."""
+    try:
+        result = subprocess.run(['java', '-version'], capture_output=True, text=True)
+    except (OSError, ValueError):
+        return '(java could not be run)'
+    text = ((result.stderr or '') + (result.stdout or '')).strip()
+    return text.splitlines()[0] if text else '(no banner)'
+
+
 def _java_runs(version=None):
     """HEALTH check (never a presence check): True iff `java -version` actually
     boots (exit 0), optionally requiring major `version` in the banner."""
@@ -287,7 +297,14 @@ def _java_runs(version=None):
     if version is None:
         return True
     banner = (result.stderr or '') + (result.stdout or '')
-    return re.search(r'version "%s[.\"]' % re.escape(str(version)), banner) is not None
+    want = str(version).strip().lower()
+    if want in ('', 'latest', 'any'):
+        # 'latest' names no major: choco installs whatever the vendor ships at that moment, so there
+        # is no number to look for and the JVM booting (above) is the whole check. Matching the word
+        # itself - what this used to do - could never succeed, which is why the Java matrix never
+        # passed its 'latest' tests (2026-10-25, group L).
+        return True
+    return re.search(r'version "%s[.\"]' % re.escape(want), banner) is not None
 
 
 def _runtime_image_present():
@@ -411,6 +428,10 @@ def ensure_java_is_installed(version="17"):
         state = detect_java_state(version)
         if state == 'working':
             print(f"Java {version} is installed and working (verified, attempt {attempt}).")
+            if str(version).strip().lower() == 'latest':
+                # The log should say WHICH Java 'latest' turned out to be: it changes over time, and a
+                # failure months later is read against it.
+                print(f"Java 'latest' resolved to: {_java_banner_line()}")
             return
         print(f"[ensure_java_is_installed] attempt {attempt}: state={state} -> (re)installing")
         if state == 'broken':
