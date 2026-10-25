@@ -2,10 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { Router, UrlTree } from '@angular/router';
 
 import { AuthService } from './providers/auth.service';
+import { StateStoreService } from './providers/state-store.service';
 
 /**
- * Keeps unauthenticated callers off the app screens. In every deployment — there is no mode in which
- * this guard waves people through.
+ * Keeps unauthenticated callers off the app screens. It waves a caller through in one case only: an
+ * installation whose Java is missing or too old. The backend cannot run without Java, so there is
+ * nobody to authenticate against — that is not an unauthenticated user, it is a machine that has not
+ * finished setting up, and its landing screen has to render to explain how to install Java.
  *
  * <p>Follows the shape of {@link NoJavaGuard}: a `canActivate` that either lets the route through or
  * redirects. It is composed alongside NoJavaGuard in the same `canActivate` arrays, so a route can
@@ -23,8 +26,15 @@ import { AuthService } from './providers/auth.service';
 export class AuthGuard {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly storeService = inject(StateStoreService);
 
   async canActivate(): Promise<boolean | UrlTree> {
+    // Checked before the identity: on a machine without Java there is no backend to ask, and
+    // redirecting to /login would hide the Install Java instructions for good.
+    if (!this.storeService.configSys.sysInfo.setup.java.isJavaOk) {
+      return true;
+    }
+
     // The identity is normally resolved during bootstrap (InitService), but a deep link or a full
     // reload can reach a guard first — so make sure we have an answer before deciding.
     if (!this.authService.isResolved()) {
