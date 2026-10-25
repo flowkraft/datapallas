@@ -153,13 +153,17 @@ Open Electron Application
   ${working_dir}=    Get Parent Directory    ${signal_electron.binary_location}
   Start Process    ${electron_command}    cwd=${working_dir}  shell=True
      
-  # Give application more time to start and stabilize
-  Log    Waiting 10 seconds for Electron to fully initialize...
-  Sleep    30s
-     
-  # More resilient connection approach with longer timeout between attempts
-  Wait Until Keyword Succeeds    15x    10s    Verify Chrome Debugger Connection
+  # No fixed sleep: the attach needs the debugger port, and the port is what to wait for. A fixed 30 s
+  # was both too short on a cold VM and wasted on every warm launch (2026-10-25, group J).
+  Wait Until Keyword Succeeds    60x    2s    Debugger Port Is Open
+  Verify Chrome Debugger Connection
   
+Debugger Port Is Open
+  [Documentation]  The one condition the attach needs, polled instead of assumed: the app listens on
+  ...              the debugger port. On a cold VM the splash takes about 40 s to get there.
+  ${port_check}=    Run Process    powershell -command "if(Test-NetConnection -ComputerName localhost -Port 9222 -WarningAction SilentlyContinue -InformationLevel Quiet) { Write-Output 'open' } else { Write-Output 'closed' }"    shell=True
+  Should Be Equal    ${port_check.stdout.strip()}    open
+
 Verify Chrome Debugger Connection
   [Documentation]  Verifies Chrome debugger is available before attempting connection
   # First check if port is actually responding
