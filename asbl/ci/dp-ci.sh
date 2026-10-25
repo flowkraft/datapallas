@@ -596,6 +596,18 @@ win_run_start() {
   case "$step" in *[!A-Za-z0-9_-]*) echo "FAIL  step name may only contain letters, digits, - and _" >&2; return 2 ;; esac
   win_console_ok || return 1
 
+  # WIN_RUN_ELEVATE=1: the task itself runs elevated. A step that installs or uninstalls software - the
+  # Robot UAT does, in every prerequisites and different-java-versions test - meets a UAC prompt when it runs
+  # unelevated, and that prompt sits on the VM's desktop with nobody to answer it: the teardown of
+  # 2026-10-25 stalled there (group H). A scheduled task launched with /rl highest is already elevated, so
+  # no prompt appears. It needs an administrator account on the VM: without one schtasks says "Access is
+  # denied" and the task is never created - named below, not discovered as an empty log an hour later.
+  local rl="" elev_note=""
+  if [ "${WIN_RUN_ELEVATE:-}" = 1 ]; then
+    rl="/rl highest "
+    elev_note=" (WIN_RUN_ELEVATE=1: is the CI account an administrator on the VM?)"
+  fi
+
   # One driver per step name. Two drivers on the same name do not just interleave their logs: when
   # the first one finishes it calls win_run_stop, which kills the process tree of the step the SECOND
   # one started, and that step dies with no exit marker and no explanation. Refuse instead.
@@ -668,8 +680,8 @@ win_run_start() {
 # PREVIOUS run's step.exit in the moment before the new step starts, and call it finished.
 Remove-Item "$dir\\step.log" -ErrorAction SilentlyContinue
 Remove-Item "$dir\\step.exit" -ErrorAction SilentlyContinue
-& schtasks /create /f /tn "dp-ci-$step" /sc once /st 00:00 /it /tr "$dir\\run.cmd" | Out-Null
-if (\$LASTEXITCODE -ne 0) { "FAIL  could not create the task"; exit 1 }
+& schtasks /create /f /tn "dp-ci-$step" /sc once /st 00:00 /it ${rl}/tr "$dir\\run.cmd" | Out-Null
+if (\$LASTEXITCODE -ne 0) { "FAIL  could not create the task$elev_note"; exit 1 }
 & schtasks /run /tn "dp-ci-$step" | Out-Null
 if (\$LASTEXITCODE -ne 0) { "FAIL  could not start the task"; exit 1 }
 "STARTED $step"
@@ -1949,7 +1961,9 @@ if (-not (Test-Path '$uat\\.venv\\Scripts\\activate.bat')) {
   & powershell -NoProfile -ExecutionPolicy Bypass -File requirements-install.ps1 2>&1 | Select-Object -Last 5
 }
 PS
-    WIN_RUN_ENV="" WIN_RUN_BARE=1 WIN_RUN_WATCH="" WIN_RUN_TIMEOUT="${RELEASE_ROBOT_TIMEOUT:-21600}" WIN_RUN_STALL=5400 \
+    # WIN_RUN_ELEVATE: the suites install and uninstall Java and Chocolatey, so the task itself must be
+    # elevated (a UAC prompt on the VM's desktop has nobody to answer it; group H of 2026-10-25).
+    WIN_RUN_ENV="" WIN_RUN_BARE=1 WIN_RUN_WATCH="" WIN_RUN_ELEVATE=1 WIN_RUN_TIMEOUT="${RELEASE_ROBOT_TIMEOUT:-21600}" WIN_RUN_STALL=5400 \
       win_run release-robot "$uat" run-tests.bat
     # run-tests.bat does not pass Robot's exit code on: the verdict is the suite's own output.xml
     rm -rf "$base-robot"
