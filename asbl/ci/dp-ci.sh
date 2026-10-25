@@ -1373,6 +1373,22 @@ win_web_result() {
 # The specs run from the VM's checkout and the node_modules already in it, as the Electron lane's do.
 WIN_LIGHT_SPEC='[\\/](features[\\/]quick-start|areas[\\/]configuration|components[\\/]log-files-viewer-separate-tabs|areas[\\/]cubes-definitions|features[\\/]apps-ai-hub)\.spec\.ts$'
 
+# The Docker CLI on the VM must not ask the Windows credential store. Over SSH there is no interactive
+# logon session, so docker-credential-wincred answers "A specified logon session does not exist. It may
+# already have been terminated." and every registry call dies - which is how the release's compose pull
+# (docker compose up -d --pull always) failed on 2026-10-25. A config without credsStore pulls
+# anonymously, which is all a public demo image needs; a private registry would need a real login in an
+# interactive session, never a secret written here.
+win_docker_config() {
+  local tmp
+  tmp=$(mktemp) || return 1
+  printf '{"auths":{}}' > "$tmp"
+  win_ssh "if not exist C:\\dp-ci\\docker-config md C:\\dp-ci\\docker-config" >/dev/null 2>&1
+  win_scp "$tmp" C:/dp-ci/docker-config/config.json || {
+    rm -f "$tmp"; echo "FAIL  could not write the Docker CLI config on the VM" >&2; return 1; }
+  rm -f "$tmp"
+}
+
 win_docker_e2e() {
   local target=windows-vm-docker mode=targeted retries spec gexp tag version image_id vm_id running_id tmp want="" vmc
   local zip="$REPO/asbl/dist/datapallas-server-docker.zip" step=docker-e2e
@@ -1446,8 +1462,10 @@ PS
     win_bundle_extract "$zip" "$root" docker-compose.yml || return 1
   fi
   # "cd DataPallas" and "docker compose up -d", as the page says; from the download, with no local copy of the image
+  win_docker_config || return 1
   win_ps 2>&1 <<PS | tr -d '\r' || { win_docker_down "$inst"; return 1; }
 \$ErrorActionPreference = "Continue"
+\$env:DOCKER_CONFIG = 'C:\dp-ci\docker-config'
 Set-Location '$inst'
 \$extra = @()
 if ('$want' -ne '') {
