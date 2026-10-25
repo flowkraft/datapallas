@@ -1937,7 +1937,8 @@ PS
   $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 1/4" "${res_pack%%(*}" "the pack: asbl\\pack-datapallas.bat on the VM ($res_pack)" "$log" >/dev/null
   [ "$res_pack" = PASS ] && $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 1/4 keep" "$res_keep" "the three zips brought down and kept in $folder" "$log" >/dev/null
 
-  mark_next "RELEASE STEP 2/4" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (WIN_LIGHT_SPEC: features/quick-start, areas/configuration, components/log-files-viewer-separate-tabs, areas/cubes-definitions, features/apps-ai-hub), the app built from the repository; recorded as step1.windows-vm-electron-light"
+  mark_end "$([ "$res_pack" = PASS ] && echo 0 || echo 1)"
+  mark_start "RELEASE STEP 2/4" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (WIN_LIGHT_SPEC: features/quick-start, areas/configuration, components/log-files-viewer-separate-tabs, areas/cubes-definitions, features/apps-ai-hub), the app built from the repository; recorded as step1.windows-vm-electron-light"
   # the lane as step 1 ran it (its own prepare, its reports), in a subshell so its settings stay its own; a 6 h cap, as the
   # targeted Windows runs have (win-ci.env)
   light_log="$base-electron-light.log"
