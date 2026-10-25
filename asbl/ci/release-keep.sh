@@ -145,10 +145,12 @@ def robot_partial(st, r, err):
     except Exception as e:
         return 'the Robot output %s could not be read (%s)' % (r, e)
     passed = failed = skipped = 0
-    for m in re.finditer(r'<test\b[^>]*\bname="([^"]*)"[^>]*>(.*?)(?:</test>|\Z)', text, re.S):
-        name, body = m.group(1), m.group(2)
-        s = re.search(r'<status[^>]*\bstatus="([A-Z ]+)"', body)
-        status = s.group(1) if s else 'NOT RUN'
+    for m in re.finditer(r'<test\b[^>]*\bname="([^"]*)"[^>]*>(.*?)(</test>|\Z)', text, re.S):
+        name, body, closed = m.group(1), m.group(2), m.group(3)
+        # A test's own status is the LAST <status> in it; the ones before belong to its keywords (the first is
+        # usually a passed setup keyword). A test the file ends inside never got its own status: not run.
+        s = re.findall(r'<status[^>]*\bstatus="([A-Z ]+)"', body) if closed else []
+        status = s[-1] if s else 'NOT RUN'
         message = ' '.join(clean(re.sub(r'<[^>]+>', ' ', body[:4000])).split())
         if status == 'PASS':
             passed += 1
