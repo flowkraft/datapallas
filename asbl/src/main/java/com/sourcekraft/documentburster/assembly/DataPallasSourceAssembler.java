@@ -51,18 +51,26 @@ public class DataPallasSourceAssembler extends AbstractAssembler {
 	private static String runGit(File dir, String... args) throws Exception {
 		List<String> command = new ArrayList<>(Arrays.asList("git", "-C", dir.getAbsolutePath()));
 		command.addAll(Arrays.asList(args));
-		Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
-		boolean finished = process.waitFor(10, TimeUnit.MINUTES);
-		String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-		if (!finished) {
-			process.destroyForcibly();
-			throw new IllegalStateException("git " + String.join(" ", args) + " did not finish in " + dir);
+		// The output goes to a file, not a pipe: `git ls-files` prints about 350 KB, more than a pipe holds, and
+		// git stops on a full pipe that nobody reads before waitFor returns - so it never returned, and verify()
+		// failed after the 10 minutes.
+		File out = File.createTempFile("datapallas-git-", ".out");
+		try {
+			Process process = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(out).start();
+			boolean finished = process.waitFor(10, TimeUnit.MINUTES);
+			if (!finished) {
+				process.destroyForcibly();
+				throw new IllegalStateException("git " + String.join(" ", args) + " did not finish in " + dir);
+			}
+			String output = new String(Files.readAllBytes(out.toPath()), StandardCharsets.UTF_8);
+			if (process.exitValue() != 0) {
+				throw new IllegalStateException(
+						"git " + String.join(" ", args) + " failed in " + dir + ": " + output);
+			}
+			return output;
+		} finally {
+			FileUtils.deleteQuietly(out);
 		}
-		if (process.exitValue() != 0) {
-			throw new IllegalStateException(
-					"git " + String.join(" ", args) + " failed in " + dir + ": " + output);
-		}
-		return output;
 	}
 
 	@Override
