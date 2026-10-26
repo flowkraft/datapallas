@@ -91,6 +91,7 @@ The Default Account Works And Is Advertised Until It Is Changed
 Changing The Default Password Silences The Notice
     [Documentation]    The notice is derived from the password, not from a flag, so changing the
     ...                password must clear it with nothing else to remember.
+    [Teardown]    Put The Default Password Back And Shut Server
 
     Given A Running Packaged Server
     ${session}=    Sign In As Default Administrator
@@ -255,7 +256,21 @@ Sign In
     RETURN    ${headers}
 
 Sign In As Default Administrator
-    [Documentation]    Uses burst/burst. Each test starts from a clean installation, so the default
-    ...                account is present even after the password-change test above.
+    [Documentation]    Uses burst/burst. The test setup does not reset the users (config/_internal/iam.db),
+    ...                so the password-change test puts the default password back when it ends.
     ${headers}=    Sign In    ${DEFAULT_USER}    ${DEFAULT_PASSWORD}
     RETURN    ${headers}
+
+Put The Default Password Back And Shut Server
+    [Documentation]    The users live in config/_internal/iam.db, which the next test's server opens again:
+    ...                the password goes back to burst, so the tests after this one sign in as the
+    ...                server ships. When the test stopped before changing it, the sign-in below fails
+    ...                and nothing needs putting back.
+    Run Keyword And Ignore Error    Set The Default Password Back
+    Shut Server
+
+Set The Default Password Back
+    ${session}=    Sign In    ${DEFAULT_USER}    ${NEW_PASSWORD}
+    ${back}=    PUT On Session    dp    /api/iam/users/${DEFAULT_USER}/password
+    ...    json=${{ {"password": $DEFAULT_PASSWORD} }}    headers=${session}
+    Should Be Equal As Integers    ${back.status_code}    200
