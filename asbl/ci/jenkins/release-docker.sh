@@ -154,7 +154,7 @@ newest_log() {
 # rehearse <version> <commit>: DOCKER RELEASE STEP 2/6 .. 6/6: build, prove on Linux and Windows, keep, then the upload
 rehearse() {
   local v="$1" c="$2" dry=0 out rc tag image_id zip=asbl/dist/datapallas-server-docker.zip zip_sha light rehearsal url
-  local res_linux=NOT_RUN res_windows=NOT_RUN res_keep=NOT_RUN t0 log json folder
+  local res_linux=NOT_RUN res_windows=NOT_RUN res_keep=NOT_RUN t0 log json folder image_tar
   [ "$DRY" = yes ] && dry=1
   mark_next "DOCKER RELEASE STEP 2/6" "the build of origin/main, only when there is none yet (dp-ci.sh build-if-needed)"
   out=$(mktemp) || return 1
@@ -187,6 +187,12 @@ rehearse() {
   [ -s "$zip" ] || { echo "FAILED: $zip is missing (the build's)"; finish_red "$v" "$c" "the build's zip is missing"; return 1; }
   zip_sha=$(sha256sum "$zip" | cut -d' ' -f1)
   echo "the artifact under proof: $RELEASE_IMAGE_REPO:$tag ($image_id) and $zip (sha256 $zip_sha)"
+  # The image as a file as well, saved before the proofs: this host's nightly cleanup (~03:00-03:25Z) deletes every image no
+  # container uses, and took this one during the Windows proof of 889001e6 (keep FAIL). Step 5 loads it back from here when
+  # the daemon lost it, and keeps the file beside the zip.
+  image_tar="$folder/.incoming-datapallas-server-image.tar"
+  docker save -o "$image_tar" "$RELEASE_IMAGE_REPO:$tag" ||
+    { echo "FAILED: docker save $RELEASE_IMAGE_REPO:$tag"; rm -f "$image_tar"; finish_red "$v" "$c" "the image could not be saved as a file"; return 1; }
 
   mark_next "DOCKER RELEASE STEP 3/6" "Linux proof, no registry: $zip installed as the self-host page says against $RELEASE_IMAGE_REPO:$tag, the light set ($light), the one-command run"
   # E2E_DOCKER_FROM_URL empty = the build's own zip and image (docker-server never pulls them); retries 1, as the Windows light set has
@@ -210,9 +216,14 @@ rehearse() {
   mark_end "$([ "$res_windows" = PASS ] && echo 0 || echo 1)"
 
   mark_start "DOCKER RELEASE STEP 5/6" "keep, red or green: $zip and $RELEASE_IMAGE_REPO:$tag into $folder (asbl/ci/release-keep.sh)"
+  if ! docker image inspect "$RELEASE_IMAGE_REPO:$tag" >/dev/null 2>&1; then
+    echo "$RELEASE_IMAGE_REPO:$tag is not in this host's Docker daemon any more (its nightly image cleanup?): loading it from $image_tar"
+    docker load -q -i "$image_tar" || echo "FAILED: docker load -i $image_tar"
+  fi
   if [ "$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null)" = "$image_id" ] && [ "$(sha256sum "$zip" | cut -d' ' -f1)" = "$zip_sha" ] &&
-     $KEEP keep docker "$v" "$c" "datapallas-server-docker.zip=$zip" "image=$RELEASE_IMAGE_REPO:$tag"; then res_keep=PASS
+     $KEEP keep docker "$v" "$c" "datapallas-server-docker.zip=$zip" "image=$RELEASE_IMAGE_REPO:$tag" "image-file=$image_tar"; then res_keep=PASS
   else echo "FAILED: not kept: the image or the zip changed since the proofs (a build ran meanwhile?), or the copy failed (above)"; res_keep=FAIL; fi
+  rm -f "$image_tar"   # kept (moved into the folder) or not: no stray copy of the image
   $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 5/6" "$res_keep" "keep: the zip and the image in $folder" >/dev/null
   mark_end "$([ "$res_keep" = PASS ] && echo 0 || echo 1)"
 

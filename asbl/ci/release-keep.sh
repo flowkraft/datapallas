@@ -9,16 +9,19 @@
 #     MANIFEST.txt                                        version, commit, and per channel: the run's time, verdict, log, each
 #                                                         file's name, size and sha256, the image's tag and id, each proof
 #     failure-report-docker.md failure-report-windows.md  each channel's last run: every failure, then grouped (below)
+#     datapallas-server-image.tar                         step 2 (docker channel): the proven image as a file (docker save)
 #     replaced/<channel>-<time>/                          a set a later run of the same version and commit replaced: moved
 #                                                         here with its manifest lines and report, never deleted by a run
-#   The image is not a file: it stays in this host's Docker daemon, tagged <repo>:<version> (and <repo>:<version>-<commit>, the
-#   build's own tag), its id in the manifest.
+#   The image stays in this host's Docker daemon, tagged <repo>:<version> (and <repo>:<version>-<commit>, the build's own
+#   tag), its id in the manifest. The daemon is no safe place on its own: this host's nightly cleanup deletes every image no
+#   container uses, so the image is kept as a file too, and the upload loads it from there when the daemon lost it. That
+#   file is not in the manifest's file list: the image id, a hash of its content that docker load checks, says it is the one.
 #
 #   bash asbl/ci/release-keep.sh begin <channel> <version> <commit>        a run starts: its step list is emptied; prints the folder
 #   bash asbl/ci/release-keep.sh step <channel> <version> <commit> <label> PASS|FAIL|NOT_RUN <what> [<log>] [<report>]
 #                                                                           one step of the run, its verdict, its log and its
 #                                                                           test report (a Playwright .json or a Robot output.xml)
-#   bash asbl/ci/release-keep.sh keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<tag>]
+#   bash asbl/ci/release-keep.sh keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<tag> [image-file=<its docker save>]]
 #                                                                           the files (and the image) kept: a file whose sha256 is
 #                                                                           already the kept one is reused; otherwise the channel's
 #                                                                           earlier set goes to replaced/ and the new one comes in
@@ -46,6 +49,7 @@ abs() { case "$1" in /*|"") echo "$1" ;; *) echo "$CALLER_PWD/$1" ;; esac; }  # 
 
 RELEASE_ARTIFACTS_DIR="${RELEASE_ARTIFACTS_DIR:-/var/kraft-internalsystems/logs/datapallas-ci/release-artifacts}"
 RELEASE_IMAGE_REPO="${RELEASE_IMAGE_REPO:-flowkraft/datapallas-server}"
+IMAGE_FILE=datapallas-server-image.tar   # the kept image as a file; release-publish.sh stage-docker loads it by this name
 
 usage() { sed -n '2,40p' "$0"; exit 2; }
 sha_of() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
@@ -258,7 +262,8 @@ summary() {  # summary <folder> <channel>: each artifact of the channel, its pro
   mget "$f" "$ch.file" | while read -r name size sha; do
     echo "KEPT    $name  ${size#size=} bytes  ${sha}  ->  $f/$name"
   done
-  mget "$f" "$ch.image" | while read -r l; do echo "KEPT    image $l  (in this host's Docker daemon)"; done
+  mget "$f" "$ch.image" | while read -r l; do
+    echo "KEPT    image $l  (in this host's Docker daemon$([ -s "$f/$IMAGE_FILE" ] && echo ", and as a file: $f/$IMAGE_FILE"))"; done
   mget "$f" "$ch.proof" | sed 's/^/PROOF   /'
   echo "REPORT  $f/failure-report-$ch.md"
 }
@@ -279,6 +284,7 @@ check() {  # check <folder> [channel]: rc 0 = everything as the manifest says
       for t in "$img" ${rest#built_as=}; do
         have=$(docker image inspect "$t" --format '{{.Id}}' 2>/dev/null)
         if [ "$have" = "$id" ]; then echo "OK      image $t  id $id"
+        elif [ -z "$have" ] && [ -s "$f/$IMAGE_FILE" ]; then echo "NOTE    image $t is not in this host's Docker daemon now (its nightly image cleanup?): the upload loads it from $f/$IMAGE_FILE and checks its id"
         elif [ "$t" = "$img" ] && [ -n "${rest#built_as=}" ]; then echo "NOTE    image $t is ${have:-not on this host} now (another build of this version tagged it?): the upload tags it again from ${rest#built_as=}"
         else echo "CHANGED image $t: its id is ${have:-not on this host}, the manifest says $id ($ch)"; bad=1; fi
       done
@@ -288,14 +294,15 @@ check() {  # check <folder> [channel]: rc 0 = everything as the manifest says
   return "$bad"
 }
 
-keep() {  # keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<tag>]
-  local ch="$1" v="$2" c="$3" a name path sha same=1 img="" id old dest t new
+keep() {  # keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<tag> [image-file=<its docker save>]]
+  local ch="$1" v="$2" c="$3" a name path sha same=1 img="" imgfile="" id old dest t new
   shift 3
   folder_of "$v" "$c" || exit 2
   lock "$F"
   new=$(mktemp "$F/.keep-$ch.XXXXXX") || exit 2
   for a in "$@"; do
     name=${a%%=*}; path=${a#*=}
+    if [ "$name" = image-file ]; then imgfile=$path; continue; fi
     if [ "$name" = image ]; then
       id=$(docker image inspect "$path" --format '{{.Id}}' 2>/dev/null) || { echo "FAIL  keep: the image $path is not on this host"; rm -f "$new"; exit 1; }
       docker tag "$path" "$RELEASE_IMAGE_REPO:$v" || { echo "FAIL  keep: docker tag $RELEASE_IMAGE_REPO:$v"; rm -f "$new"; exit 1; }
@@ -312,6 +319,8 @@ keep() {  # keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<ta
   [ "$(mget "$F" "$ch.file" | cut -d' ' -f1 | sort | tr '\n' ' ')" = "$(cut -d' ' -f1 "$new" | sort | tr '\n' ' ')" ] || same=0
   if [ "$same" = 1 ]; then
     echo "KEEP  the $ch set in $F is already these very files (the same sha256$([ -n "$img" ] && echo " and image id")): reused, nothing copied"
+    # a set kept before the image was kept as a file gets that file now
+    [ -n "$img" ] && [ -s "$imgfile" ] && [ ! -s "$F/$IMAGE_FILE" ] && mv -f "$imgfile" "$F/$IMAGE_FILE"
     for a in "$@"; do path=${a#*=}; case "$path" in "$RELEASE_ARTIFACTS_DIR"/*/.incoming-*) rm -f "$path" ;; esac; done
     rm -f "$new"; return 0
   fi
@@ -320,6 +329,7 @@ keep() {  # keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<ta
     dest="$F/replaced/$ch-${old:-$(now)}"; mkdir -p "$dest" || exit 2
     mget "$F" "$ch.file" | while read -r name _; do [ -f "$F/$name" ] && mv -f "$F/$name" "$dest/"; done
     [ -f "$F/failure-report-$ch.md" ] && mv -f "$F/failure-report-$ch.md" "$dest/"
+    [ -n "$(mget "$F" "$ch.image")" ] && [ -f "$F/$IMAGE_FILE" ] && mv -f "$F/$IMAGE_FILE" "$dest/"
     grep "^$ch\." "$F/MANIFEST.txt" > "$dest/MANIFEST-$ch.txt"
     echo "REPLACED  the earlier $ch set of this version and commit (run ${old:-?}) moved to $dest: kept, not deleted; the new one comes in whole"
   fi
@@ -327,13 +337,18 @@ keep() {  # keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<ta
   echo "$ch.time=$(now)" > "$t"
   for a in "$@"; do
     name=${a%%=*}; path=${a#*=}
-    [ "$name" = image ] && continue
+    case "$name" in image|image-file) continue ;; esac
     case "$path" in "$RELEASE_ARTIFACTS_DIR"/*) mv -f "$path" "$F/$name" ;; *) cp -f "$path" "$F/.$name.part" && mv -f "$F/.$name.part" "$F/$name" ;; esac ||
       { echo "FAIL  keep: could not put $name in $F"; rm -f "$new" "$t"; exit 1; }
     sha=$(sed -n "s/^$name size=[0-9]* sha256=//p" "$new")
     [ "$(sha_of "$F/$name")" = "$sha" ] || { echo "FAIL  keep: $F/$name is not the file given (sha256 differs after the copy)"; rm -f "$new" "$t"; exit 1; }
     echo "KEEP  $name  sha256 $sha  ->  $F/$name"
   done
+  if [ -n "$img" ] && [ -s "$imgfile" ]; then
+    case "$imgfile" in "$RELEASE_ARTIFACTS_DIR"/*) mv -f "$imgfile" "$F/$IMAGE_FILE" ;; *) cp -f "$imgfile" "$F/.$IMAGE_FILE.part" && mv -f "$F/.$IMAGE_FILE.part" "$F/$IMAGE_FILE" ;; esac ||
+      { echo "FAIL  keep: could not put $IMAGE_FILE in $F"; rm -f "$new" "$t"; exit 1; }
+    echo "KEEP  $IMAGE_FILE  ->  $F/$IMAGE_FILE  (the image as a file: docker load -i brings it back, its id is checked)"
+  fi
   sed "s/^/$ch.file=/" "$new" >> "$t"
   [ -n "$img" ] && { echo "$ch.image=$img" >> "$t"; echo "KEEP  image $RELEASE_IMAGE_REPO:$v  ${img#* id=}"; }
   mset_channel "$F" "$ch" "$t"; rm -f "$new" "$t"

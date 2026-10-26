@@ -684,6 +684,13 @@ for k, v in (json.load(sys.stdin).get(os.environ["R"]) or {}).items():
     fi
     zip="${RELEASE_KEPT_DIR:+$RELEASE_KEPT_DIR/datapallas-server-docker.zip}"; zip="${zip:-asbl/dist/datapallas-server-docker.zip}"
     [ -s "$zip" ] || fail "$zip is missing (the build's)"
+    # a kept image the daemon lost (this host's nightly image cleanup): back from the kept folder's copy (release-keep.sh
+    # IMAGE_FILE); the id checks below say whether it is the proven one
+    if [ -n "${RELEASE_KEPT_DIR:-}" ] && ! docker image inspect "$RELEASE_IMAGE_REPO:$tag" >/dev/null 2>&1 &&
+       [ -s "$RELEASE_KEPT_DIR/datapallas-server-image.tar" ]; then
+      echo "$RELEASE_IMAGE_REPO:$tag is not in this host's Docker daemon: loading it from $RELEASE_KEPT_DIR/datapallas-server-image.tar"
+      docker load -q -i "$RELEASE_KEPT_DIR/datapallas-server-image.tar" || fail "docker load -i $RELEASE_KEPT_DIR/datapallas-server-image.tar"
+    fi
     id=$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) || fail "the build's image $RELEASE_IMAGE_REPO:$tag is not on this host"
     # what goes out is what release-docker.sh proved (when it says what that was)
     [ -z "${RELEASE_COMMIT:-}" ] || [ "$(git rev-parse "$RELEASE_COMMIT" 2>/dev/null)" = "$c" ] ||
