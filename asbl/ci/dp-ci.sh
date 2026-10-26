@@ -1898,9 +1898,17 @@ win_release() {
     win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat
   rc=$?
   if [ "$rc" -ne 0 ]; then
-    echo "--- asbl\\pack-datapallas.log (last 60 lines) ---"
+    # First the lines that name the failure, then the log's end. A failing test of the pack ends the log in a Maven
+    # stack trace naming the fork, not the test or its error (2026-10-26: "git ls-files did not finish" sat 100 lines
+    # above the last 60), and the failure report quotes the last 40 lines of this step.
+    echo "--- asbl\\pack-datapallas.log, the lines naming the failure ---"
     win_ps 2>&1 <<PS | tr -d '\r'
-Get-Content '$WIN_REPO\\asbl\\pack-datapallas.log' -Tail 60 -ErrorAction SilentlyContinue
+Select-String -Path '$WIN_REPO\\asbl\\pack-datapallas.log' -Pattern '<<< (FAILURE|ERROR)!', 'BUILD FAILED', '^\[ERROR\] Failed to execute goal' -Context 0,1 -ErrorAction SilentlyContinue |
+  Select-Object -First 8 | ForEach-Object { \$_.Line; \$_.Context.PostContext }
+PS
+    echo "--- asbl\\pack-datapallas.log (last 20 lines) ---"
+    win_ps 2>&1 <<PS | tr -d '\r'
+Get-Content '$WIN_REPO\\asbl\\pack-datapallas.log' -Tail 20 -ErrorAction SilentlyContinue
 PS
     res_pack="FAIL(exit $rc)"
   else

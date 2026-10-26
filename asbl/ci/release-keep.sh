@@ -34,7 +34,7 @@
 #
 # The failure report (one per channel run, green or red): each step with its verdict and its test counts; every failure once,
 # with its test, its step, the first lines of its error and its evidence (screenshot, trace, the report it came from), every
-# skipped test as a failure of the run, and a red step with no test report as its log's last lines; then the failures grouped
+# skipped test as a failure of the run, and a red step with no test report as its section's last lines; then the failures grouped
 # by their error's first line. A group is a starting point, not a cause: the run never analyses or fixes anything, so each
 # group's root cause, what changed since it last passed, the fix proposed and how to verify it are written into the report by
 # whoever reads it, and a fix waits for the owner's go.
@@ -74,7 +74,7 @@ steps_file() { echo "$1/.steps-$2"; }
 # report <folder> <channel> <verdict>: failure-report-<channel>.md from the steps file
 report() {
   python3 - "$(steps_file "$1" "$2")" "$1/failure-report-$2.md" "$2" "$(mget "$1" version)" "$(mget "$1" commit)" "$3" <<'PY'
-import json, os, re, sys, xml.etree.ElementTree as ET
+import collections, json, os, re, sys, xml.etree.ElementTree as ET
 steps_path, out, ch, version, commit, verdict = sys.argv[1:7]
 ANSI = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
 ERROR_HINT = re.compile(r'(?i)(\bfail\b|\bfailed\b|\berror\b|\bexception\b|\bfatal\b|traceback|caused by|npm err!|\bcannot\b|\bdenied\b|\brefused\b|timed out|no such|\bnot found\b)')
@@ -91,10 +91,23 @@ def signature(msg):
     l = re.sub(r'\d+(\.\d+)?(ms|s)?', 'N', l)
     l = re.sub(r'[A-Za-z]:\\[^\s\'"]+|/[^\s\'"]+/[^\s\'"]+', '<path>', l)
     return l.strip()[:160]
-def tail(path, n=40):
+def tail(path, n=40, label=None):
     if not os.path.isfile(path):
         return '(the log %s was never written: the step died before its first line)' % path
     try:
+        # A log that several steps write (dp-ci.sh win release: the whole run) holds this step between its own
+        # '######## <label> START' and '... END' lines, so the excerpt comes from there. The file's last lines are
+        # whatever ran last: on 2026-10-26 the pack's failure was shown with the electron light set's end.
+        if label:
+            start, end, sec = '######## %s START' % label, '######## %s END' % label, None
+            with open(path, 'rb') as f:
+                for raw in f:
+                    line = raw.decode('utf-8', 'replace').rstrip('\r\n')
+                    if line.startswith(start): sec = collections.deque(maxlen=n)
+                    elif sec is not None and line.startswith(end): break
+                    elif sec is not None: sec.append(line)
+            if sec:
+                return clean('\n'.join(sec))
         with open(path, 'rb') as f: data = f.read()[-200000:]
         return '\n'.join(clean(data.decode('utf-8', 'replace')).splitlines()[-n:])
     except Exception as e:
@@ -201,7 +214,7 @@ for st in steps:
         where = (st['log'] or '-') if not st['log'] or os.path.isfile(st['log']) else st['log'] + ' (never written)'
         failures.append(dict(step=st['label'], test='(the step itself: %s)' % st['what'], where=where,
             outcome='step %s with no failed test in its report%s' % (st['verdict'], (': ' + note) if note else ''),
-            message=tail(st['log']) if st['log'] else '(no log)', evidence=[x for x in (st['log'], st['report']) if x]))
+            message=tail(st['log'], label=st['label']) if st['log'] else '(no log)', evidence=[x for x in (st['log'], st['report']) if x]))
 
 L = ['# Failure report: the %s release run of %s on %s' % (ch, version, commit[:8]), '',
      'Verdict of the run: **%s**. Written by asbl/ci/release-keep.sh at the end of the run; nothing in it was fixed or applied.' % verdict, '',
