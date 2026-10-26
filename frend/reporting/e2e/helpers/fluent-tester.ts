@@ -3188,7 +3188,7 @@ export class FluentTester implements PromiseLike<void> {
   ): Promise<void> {
     const selectElement = this.window.locator(selector);
 
-    selectElement.selectOption({ label: label });
+    await selectElement.selectOption({ label: label });
   }
 
   // Add this private implementation method
@@ -3198,7 +3198,9 @@ export class FluentTester implements PromiseLike<void> {
   ): Promise<void> {
     const selectElement = this.window.locator(selector);
 
-    selectElement.selectOption({ value: value });
+    // awaited: without it the next step ran before the option was even selected, so a wait for what the
+    // change starts (a template loading) found the page from before it, on a slow machine (2026-10-26)
+    await selectElement.selectOption({ value: value });
   }
 
   // Add this public method
