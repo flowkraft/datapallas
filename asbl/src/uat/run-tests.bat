@@ -39,6 +39,12 @@ python -c "import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath('r
 python -c "import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath('resources.utilities.py'))); from resources.utilities import ensure_chocolatey_is_installed; ensure_chocolatey_is_installed()"
 python -c "import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath('resources.utilities.py'))); from resources.utilities import ensure_java_prerequisite; ensure_java_prerequisite()"
 
+:: Chocolatey may have just been installed above: load its variables into this window, then the venv again
+:: (activate puts back the PATH it saved the first time, from before the refresh, unless that copy is cleared)
+call "%ProgramData%\chocolatey\bin\RefreshEnv.cmd"
+set "_OLD_VIRTUAL_PATH="
+call .venv\Scripts\activate
+
 :: Prepare robot arguments
 set ROBOT_ARGS=--listener RetryFailed:0 --pythonpath . -d results -L TRACE
 
