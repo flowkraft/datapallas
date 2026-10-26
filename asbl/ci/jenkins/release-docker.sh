@@ -216,15 +216,23 @@ rehearse() {
   mark_end "$([ "$res_windows" = PASS ] && echo 0 || echo 1)"
 
   mark_start "DOCKER RELEASE STEP 5/6" "keep, red or green: $zip and $RELEASE_IMAGE_REPO:$tag into $folder (asbl/ci/release-keep.sh)"
-  if ! docker image inspect "$RELEASE_IMAGE_REPO:$tag" >/dev/null 2>&1; then
-    echo "$RELEASE_IMAGE_REPO:$tag is not in this host's Docker daemon any more (its nightly image cleanup?): loading it from $image_tar"
-    docker load -q -i "$image_tar" || echo "FAILED: docker load -i $image_tar"
-  fi
-  if [ "$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null)" = "$image_id" ] && [ "$(sha256sum "$zip" | cut -d' ' -f1)" = "$zip_sha" ] &&
-     $KEEP keep docker "$v" "$c" "datapallas-server-docker.zip=$zip" "image=$RELEASE_IMAGE_REPO:$tag" "image-file=$image_tar"; then res_keep=PASS
-  else echo "FAILED: not kept: the image or the zip changed since the proofs (a build ran meanwhile?), or the copy failed (above)"; res_keep=FAIL; fi
+  # the step's own log, so the failure report quotes why a keep failed (it said "(no log)" for chain b's)
+  {
+    if ! docker image inspect "$RELEASE_IMAGE_REPO:$tag" >/dev/null 2>&1; then
+      echo "$RELEASE_IMAGE_REPO:$tag is not in this host's Docker daemon any more (its nightly image cleanup?): loading it from $image_tar"
+      docker load -q -i "$image_tar" || echo "FAILED: docker load -i $image_tar"
+    fi
+    if [ "$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null)" = "$image_id" ] && [ "$(sha256sum "$zip" | cut -d' ' -f1)" = "$zip_sha" ] &&
+       $KEEP keep docker "$v" "$c" "datapallas-server-docker.zip=$zip" "image=$RELEASE_IMAGE_REPO:$tag" "image-file=$image_tar"; then res_keep=PASS
+    else
+      echo "FAILED: not kept: the image or the zip changed since the proofs (a build ran meanwhile?), or the copy failed (above)"; res_keep=FAIL
+      echo "  the image $RELEASE_IMAGE_REPO:$tag is $(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null | grep . || echo 'not on this host'), the proofs ran $image_id"
+      echo "  the zip $zip has sha256 $(sha256sum "$zip" 2>/dev/null | cut -d' ' -f1), the proofs installed $zip_sha"
+    fi
+  } > "$folder/keep-docker.log" 2>&1
+  cat "$folder/keep-docker.log"
   rm -f "$image_tar"   # kept (moved into the folder) or not: no stray copy of the image
-  $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 5/6" "$res_keep" "keep: the zip and the image in $folder" >/dev/null
+  $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 5/6" "$res_keep" "keep: the zip and the image in $folder" "$folder/keep-docker.log" >/dev/null
   mark_end "$([ "$res_keep" = PASS ] && echo 0 || echo 1)"
 
   if [ "$res_linux" != PASS ] || [ "$res_windows" != PASS ] || [ "$res_keep" != PASS ]; then

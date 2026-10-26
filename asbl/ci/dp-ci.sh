@@ -1342,8 +1342,11 @@ PS
 
   # Playwright runs in the foreground of the step, so the step prints its exit code in the line the Linux lanes parse
   # (`call echo %%ERRORLEVEL%%` reads it after npx has finished, not when the line is read).
+  # It stops on its own 10 min before the lane's limit (--global-timeout), so it still writes its report: the tests it
+  # ran and the one it interrupted. Killed by the limit, it wrote none (chain b on 889001e6: 3 h, no failed test named).
+  local pw_limit_ms=$(( WIN_RUN_TIMEOUT > 1200 ? (WIN_RUN_TIMEOUT - 600) * 1000 : WIN_RUN_TIMEOUT * 1000 ))
   win_run "$step" "$WIN_REPO\\frend\\reporting" \
-    'npx playwright test -c e2e/playwright.config.ts e2e/ & call echo Main Playwright process exited with code %%ERRORLEVEL%%' 2>&1 | tee "$WIN_WEB_OUT"
+    "npx playwright test -c e2e/playwright.config.ts e2e/ --global-timeout=$pw_limit_ms & call echo Main Playwright process exited with code %%ERRORLEVEL%%" 2>&1 | tee "$WIN_WEB_OUT"
   WIN_RUN_ENV=""
 
   win_pull "$(printf '%s' "$WIN_RUNS\\$step\\playwright.json" | tr '\\' '/')" "${WIN_WEB_OUT%.log}-playwright.json" \
