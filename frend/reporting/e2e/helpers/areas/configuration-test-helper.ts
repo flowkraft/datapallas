@@ -78,9 +78,12 @@ export class ConfigurationTestHelper {
     }
 
     return ft
-      .inputShouldHaveValue(
+      // the form is filled once the report's own settings are read (GET reports/<id>), 15-18 s on the Windows
+      // Docker server (2026-10-26): wait for that here, the checks after it read the same filled form
+      .waitOnInputToHaveValue(
         '#burstFileName',
         '${burst_token}.${output_type_extension}',
+        Constants.DELAY_HUNDRED_SECONDS,
       )
       .inputShouldHaveValue(
         '#outputFolder',
