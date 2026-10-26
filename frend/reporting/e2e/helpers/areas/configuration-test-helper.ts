@@ -1524,6 +1524,9 @@ export class ConfigurationTestHelper {
       ft = ft
         .dropDownSelectOptionHavingValue('#reportOutputType', outputType)
         .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
+        // after the switch the page loads (or creates) this type's template and only then saves what is
+        // typed: text typed sooner is overwritten by the loaded one (the Windows Docker server took ~10 s)
+        .waitOnElementToBecomeVisible('#reportTemplateContainer[aria-busy="false"]')
         .sleep(Constants.DELAY_ONE_SECOND)
         // Use setCodeJarContent instead of keyboard simulation
         .setCodeJarContent(

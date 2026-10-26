@@ -146,9 +146,11 @@
     @if (askForFeatureService.alreadyImplementedFeatures.includes(xmlReporting?.documentburster.report.template.outputtype)) {
     <div>
       @if (xmlReporting?.documentburster.report.template.outputtype != 'output.none' && !isJasperOutput) {
+      <!-- aria-busy: the output type's template is still loading; what is typed now is not saved -->
       <div
         style="display:grid;grid-template-columns:repeat(12,1fr);gap:1rem"
         id="reportTemplateContainer"
+        [attr.aria-busy]="!autosaveEnabled"
       >
         <div style="grid-column:span 2">
           {{(
