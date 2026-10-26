@@ -1549,6 +1549,8 @@ export class ConfigurationTestHelper {
     ft = ft
       .dropDownSelectOptionHavingValue('#reportOutputType', 'output.docx')
       .waitOnElementToBecomeVisible('#selectTemplateFile')
+      // the switch has ended (as for the html types above) before a file is chosen and the gallery opens
+      .waitOnElementToBecomeVisible('#reportTemplateContainer[aria-busy="false"]')
       .selectNgOption('#selectTemplateFile', 'payslips-template.docx');
 
     // Test trying to use HTML template with DOCX output type
@@ -1814,6 +1816,8 @@ export class ConfigurationTestHelper {
       .elementShouldContainText('.ng-value', 'payslips-template.docx')
       .dropDownSelectOptionHavingValue('#reportOutputType', reportOutputType)
       .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
+      // the editor holds this type's template only once the switch has ended (10 s and more on a slow server)
+      .waitOnElementToBecomeVisible('#reportTemplateContainer[aria-busy="false"]')
       .sleep(3 * Constants.DELAY_ONE_SECOND)
       // Verify it starts with <html, this confirms it's HTML content
       .codeJarShouldContainText('#codeJarHtmlTemplateEditor', '<html')
@@ -1835,6 +1839,7 @@ export class ConfigurationTestHelper {
       ft = ft
         .dropDownSelectOptionHavingValue('#reportOutputType', outputType)
         .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
+        .waitOnElementToBecomeVisible('#reportTemplateContainer[aria-busy="false"]')
         .sleep(3 * Constants.DELAY_ONE_SECOND)
         .waitOnElementToBecomeVisible('#codeJarHtmlTemplateEditor')
         // Verify the exact content matches our simple template format
