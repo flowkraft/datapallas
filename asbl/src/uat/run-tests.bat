@@ -64,6 +64,10 @@ if "%TEST_NAME%"=="" (
     robot %ROBOT_ARGS% -t "%TEST_NAME%" tests
 )
 
+:: The suites' Selenium drivers (chromedriver.exe) outlive them and keep this window's output open, and with
+:: it the log the release job writes it to: the next run in that log's folder could not even start
+taskkill /f /im chromedriver.exe >nul 2>&1
+
 :: Ensure prerequisites remain after tests
 python -c "import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath('resources.utilities.py'))); from resources.utilities import ensure_chocolatey_is_installed; ensure_chocolatey_is_installed()"
 python -c "import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath('resources.utilities.py'))); from resources.utilities import ensure_java_prerequisite; ensure_java_prerequisite()"

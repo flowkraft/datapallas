@@ -1978,8 +1978,12 @@ PS
   elif ! win_put_dist "$folder" $(sed -n 's/^sha256   \([0-9a-f]\{64\}\)  [0-9]*  \([A-Za-z0-9._-]*\)$/\2:\1/p' "$base-release-files.txt"); then
     echo "not run: the pack's zips are not in the VM's asbl\\dist and could not be put back (above)"
   else
-    # the suite's own set-up, once: its venv
+    # the suite's own set-up, once: its venv. Before it, what an earlier UAT run left: a chromedriver.exe that
+    # still holds that run's step.log open makes win_run's redirect fail, so the step 'ends' at once (EXIT=0)
+    # without running, and its results folder would then be read as this run's verdict (2026-10-26)
     win_ps 2>&1 <<PS | tr -d '\r'
+Get-Process chromedriver -ErrorAction SilentlyContinue | Stop-Process -Force
+Remove-Item '$uat\\results' -Recurse -Force -ErrorAction SilentlyContinue
 if (-not (Test-Path '$uat\\.venv\\Scripts\\activate.bat')) {
   Set-Location '$uat'
   & powershell -NoProfile -ExecutionPolicy Bypass -File requirements-install.ps1 2>&1 | Select-Object -Last 5
