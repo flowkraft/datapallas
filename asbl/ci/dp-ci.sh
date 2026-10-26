@@ -558,7 +558,8 @@ win_ps() {   # PowerShell script on stdin -> the VM, nothing interpreted on the 
 #
 #   C:\dp-ci\runs\<step>\step.cmd    what runs
 #   C:\dp-ci\runs\<step>\step.log    everything it printed
-#   C:\dp-ci\runs\<step>\step.exit   EXIT=<code>, written only when it is over
+#   C:\dp-ci\runs\<step>\step.exit   EXIT=<code>, written only when it is over (EXIT=97 and a second line
+#                                     saying why when the step could not write step.log, so did not run)
 #
 # Because the task belongs to the scheduler and not to sshd, dropping the SSH connection - or this
 # script being killed - does not kill the step. That is the whole point: a two-hour e2e must not
@@ -661,13 +662,30 @@ win_run_start() {
 
   {
     echo '@echo off'
-    echo 'call "%~dp0step.cmd" > "%~dp0step.log" 2>&1'
+    # DPRAN says the step itself ran. When step.log cannot be opened (a program left running by an earlier
+    # run of this step still holds it: a UAT's chromedriver.exe, 2026-10-26), cmd skips the redirected call
+    # and ERRORLEVEL stays 0, so the step came back EXIT=0 without having run. That is a failure: EXIT=97,
+    # and step.exit's second line says why (win_run prints it).
+    echo 'set "DPRAN="'
+    echo 'call :step > "%~dp0step.log" 2>&1'
     # The redirection goes FIRST, deliberately. Written the natural way round,
     # `echo EXIT=%ERRORLEVEL%>"...step.exit"`, cmd reads the digit glued to the `>` as a file HANDLE
     # - `0>` is "redirect stdin" - so on success it redirected handle 0 and wrote an empty file. The
     # step then had no exit code at all, and every failure came back looking like EXIT=0.
     echo 'set DPRC=%ERRORLEVEL%'
+    echo 'if not defined DPRAN goto nolog'
     echo '>"%~dp0step.exit" echo EXIT=%DPRC%'
+    echo 'exit /b %DPRC%'
+    echo ':step'
+    echo 'set "DPRAN=1"'
+    echo 'call "%~dp0step.cmd"'
+    echo 'exit /b %ERRORLEVEL%'
+    echo ':nolog'
+    echo '('
+    echo '  echo EXIT=97'
+    echo '  echo !!! the step did not run: %~dp0step.log could not be written. Another process holds it open, a program left running by an earlier run of this step.'
+    echo ') >"%~dp0step.exit"'
+    echo 'exit /b 97'
   } | sed 's/$/\r/' > "$tmp"
   win_scp "$tmp" "$(printf '%s' "$dir\\run.cmd" | tr '\\' '/')" || { rm -f "$tmp"; echo "FAIL  could not copy the launcher to the VM" >&2; return 1; }
   rm -f "$tmp"
@@ -1979,8 +1997,8 @@ PS
     echo "not run: the pack's zips are not in the VM's asbl\\dist and could not be put back (above)"
   else
     # the suite's own set-up, once: its venv. Before it, what an earlier UAT run left: a chromedriver.exe that
-    # still holds that run's step.log open makes win_run's redirect fail, so the step 'ends' at once (EXIT=0)
-    # without running, and its results folder would then be read as this run's verdict (2026-10-26)
+    # still holds that run's step.log open, so the step cannot write its log and does not run (win_run's
+    # EXIT=97), and an earlier run's results folder must never be read as this run's verdict (2026-10-26)
     win_ps 2>&1 <<PS | tr -d '\r'
 Get-Process chromedriver -ErrorAction SilentlyContinue | Stop-Process -Force
 Remove-Item '$uat\\results' -Recurse -Force -ErrorAction SilentlyContinue
