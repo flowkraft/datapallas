@@ -313,10 +313,9 @@ public class ServicesManager {
 	 * ... not found"). With the symlink one path works for both sides: the client reads the files through
 	 * it, and the daemon gets a string that is real on the host.
 	 *
-	 * VERIFIED ON LINUX ONLY (2026-09-16). On Docker Desktop for Windows a mount's Source comes back in
-	 * the host's own form (C:\\...), which is not an absolute path for this Linux JVM, so the symlink step
-	 * declines and everything falls back to the behaviour that shipped before — to be revisited when a
-	 * Windows Docker Desktop run can confirm what compose accepts there.
+	 * On Docker Desktop for Windows a mount's Source comes back in the host's own form (C:\\...), which is
+	 * not an absolute path for this Linux JVM: it is rewritten first to the daemon's /host_mnt/c/... form
+	 * (see daemonPathOf), and from there everything works as on Linux.
 	 *
 	 * The other three environments never get here at all: Electron, and a Server started directly on the
 	 * host JVM on Windows or Linux, run compose exactly as before, because only the Docker server image
@@ -335,7 +334,7 @@ public class ServicesManager {
 			return null;
 		}
 
-		Path inHere = Paths.get(roots[0]), onHost = Paths.get(roots[1]);
+		Path inHere = Paths.get(roots[0]), onHost = Paths.get(daemonPathOf(roots[1]));
 		if (!onHost.isAbsolute() || !makeVisibleInHere(onHost, inHere)) {
 			warnOnceAboutHostPath("the host path " + onHost + " cannot be made visible inside this container");
 			return null;
@@ -395,6 +394,25 @@ public class ServicesManager {
 			log.warn("Could not read this container's mounts: {}", e.getMessage());
 			return null;
 		}
+	}
+
+	/**
+	 * A Windows host path (C:\\Projects\\DataPallas\\_apps, how Docker Desktop for Windows reports the
+	 * Source of a mount, and how a Windows user writes DATAPALLAS_HOST_DIR) in the form Docker Desktop's
+	 * daemon also takes, /host_mnt/c/Projects/DataPallas/_apps: absolute for this JVM and for compose, so the
+	 * symlink and --project-directory work as on Linux. Anything else is returned as it is.
+	 *
+	 * Checked on Docker Desktop for Windows (WSL 2 engine, 2026-10-26): from inside a container, compose with
+	 * --project-directory /host_mnt/c/... and a symlink of it to the mounted folder bound ./conf to the
+	 * real Windows folder (so did /run/desktop/mnt/host/c/... and /c/...). /host_mnt is the drives' own
+	 * path under the Hyper-V engine. Without it, AI Hub's matrix-synapse started on an empty folder.
+	 */
+	private static String daemonPathOf(String source) {
+		if (source.length() < 3 || !Character.isLetter(source.charAt(0)) || source.charAt(1) != ':'
+				|| (source.charAt(2) != '\\' && source.charAt(2) != '/'))
+			return source;
+		return "/host_mnt/" + Character.toLowerCase(source.charAt(0)) + "/"
+				+ source.substring(3).replace('\\', '/').replaceAll("/+$", "");
 	}
 
 	/**

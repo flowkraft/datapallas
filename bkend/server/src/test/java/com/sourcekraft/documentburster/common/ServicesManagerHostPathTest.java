@@ -30,4 +30,20 @@ public class ServicesManagerHostPathTest {
 
 		assertThat(hostPathOf.invoke(null, Paths.get("/opt/datapallas/_apps/matomo"))).isNull();
 	}
+
+	/**
+	 * Docker Desktop for Windows reports a mount's Source as C:\\..., which this Linux JVM cannot use as a path;
+	 * its daemon takes the same folder as /host_mnt/c/... . A Linux or macOS path is already right.
+	 */
+	@Test
+	void aWindowsHostPathBecomesTheDaemonsHostMntPath() throws Exception {
+		Method daemonPathOf = ServicesManager.class.getDeclaredMethod("daemonPathOf", String.class);
+		daemonPathOf.setAccessible(true);
+
+		assertThat(daemonPathOf.invoke(null, "C:\\Projects\\DataPallas\\_apps"))
+				.isEqualTo("/host_mnt/c/Projects/DataPallas/_apps");
+		assertThat(daemonPathOf.invoke(null, "D:/dp/DataPallas/_apps/")).isEqualTo("/host_mnt/d/dp/DataPallas/_apps");
+		assertThat(daemonPathOf.invoke(null, "/var/datapallas/_apps")).isEqualTo("/var/datapallas/_apps");
+		assertThat(daemonPathOf.invoke(null, "/Users/me/DataPallas/_apps")).isEqualTo("/Users/me/DataPallas/_apps");
+	}
 }
