@@ -766,7 +766,9 @@ def open_folder(window_title, folder_path):
     # Match on a stable prefix of the title rather than the full string, so the
     # match survives changes to the trailing executable name in the dialog title.
     title_pattern = re.escape(window_title[:50]) + ".*"
-    app = Application().connect(title_re=title_pattern)
+    # the dialog opens a moment after the click (on the CI VM the second one was not there 2 s after it,
+    # 2026-10-26): wait for it, a missing dialog still fails after 30 s
+    app = Application().connect(title_re=title_pattern, timeout=30)
     dialog = app.window(title_re=title_pattern)
 
     # Set the focus to the 'Edit' control again
