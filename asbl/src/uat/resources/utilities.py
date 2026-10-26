@@ -168,6 +168,17 @@ def _kill_pid_tree(pid):
             pass
     psutil.wait_procs(procs, timeout=5)
 
+def is_app_url(url):
+    """True for the app's own page: index.html, or the folder it sits in.
+
+    The packaged app is built with --base-href ./ (frend/reporting/package.json), so when the router
+    writes its '#/' address the page's url becomes the folder: .../resources/app.asar/#/. It does that
+    when Java is missing (the prerequisites suite, 2026-10-26). The splash is splash.html, or a data: url.
+    """
+    path = (url or '').split('#')[0].split('?')[0]
+    return path.endswith('/index.html') or (path.startswith('file:') and path.endswith('/'))
+
+
 def app_page_target(wait_seconds=300, port=9222):
     """Waits for the app's own page and returns its debugger target id.
 
@@ -190,7 +201,7 @@ def app_page_target(wait_seconds=300, port=9222):
         else:
             pages = [t for t in targets if t.get('type') == 'page']
             for t in pages:
-                if 'index.html' in (t.get('url') or ''):
+                if is_app_url(t.get('url')):
                     return t['id']
             seen = ', '.join((t.get('url') or t.get('title') or '?') for t in pages) or 'no page target'
         time.sleep(2)
@@ -199,7 +210,7 @@ def app_page_target(wait_seconds=300, port=9222):
 
 
 def switch_to_app_window():
-    """Moves the browser session to the app's own window, the one whose url holds index.html.
+    """Moves the browser session to the app's own window (is_app_url).
 
     SeleniumLibrary's "Switch Window  url:..." compares the whole url for equality (6.7.0), so a pattern
     such as url:.*index.html.* never matches any window. Look at each window's url instead. One pass: the
@@ -215,10 +226,10 @@ def switch_to_app_window():
         except Exception as e:  # the splash closed between window_handles and the switch
             seen.append('%s (%s)' % (handle, type(e).__name__))
             continue
-        if 'index.html' in url:
+        if is_app_url(url):
             return url
         seen.append(url)
-    raise AssertionError('no window of the app (index.html) yet; windows seen: %s' % (', '.join(seen) or 'none'))
+    raise AssertionError('no window of the app yet; windows seen: %s' % (', '.join(seen) or 'none'))
 
 
 def empty_folder(folder_path):
