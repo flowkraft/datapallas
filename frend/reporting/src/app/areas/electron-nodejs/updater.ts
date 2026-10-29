@@ -473,6 +473,21 @@ export class Updater {
         { overwrite: true },
       );
     }
+
+    // The installation's encryption key, in both modes and whatever the options: the saved passwords in
+    // the config XMLs migrated above are ENC(…) values made with it, so it replaces any key the new folder
+    // has. An installation without one has nothing encrypted.
+    const encryptionKeyFileExists = await UtilitiesNodeJs.existsAsync(
+      `${updateInfo.updateSourceDirectoryPath}/config/_internal/.master-key`,
+    );
+
+    if (encryptionKeyFileExists) {
+      await UtilitiesNodeJs.copyAsync(
+        `${updateInfo.updateSourceDirectoryPath}/config/_internal/.master-key`,
+        `${this.updateDestinationDirectoryPath}/config/_internal/.master-key`,
+        { overwrite: true },
+      );
+    }
     // script files
     for (const scriptFile of updateInfo.migrateScriptFiles) {
       const scriptFilePath = scriptFile[1];

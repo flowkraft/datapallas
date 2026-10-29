@@ -1,4 +1,5 @@
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { randomBytes } from 'crypto';
 import * as jetpack from 'fs-jetpack';
 
 import { FluentTester } from '../../helpers/fluent-tester';
@@ -32,9 +33,17 @@ test.describe('', async () => {
         baselineVersionFilePath,
       );
 
+      // The old installation's encryption key (a fresh one: base64 of 32 random bytes): the migrated
+      // passwords were encrypted with it, so it has to arrive as it is.
+      const oldInstallationEncryptionKey = randomBytes(32).toString('base64');
+      await jetpack.writeAsync(
+        `${UPGRADE_DIR}/baseline/DocumentBurster/config/_internal/.master-key`,
+        oldInstallationEncryptionKey,
+      );
+
       const ft = new FluentTester(firstPage);
 
-      return ft
+      await ft
         .click('#topMenuHelp')
         .waitOnElementToContainText(
           '#topMenuHelpJava',
@@ -89,6 +98,11 @@ test.describe('', async () => {
         )
         .inputShouldHaveValue('#outputFolder', 'custom-output path')
         .inputShouldHaveValue('#quarantineFolder', 'custom-quarantine');
+
+      expect(
+        await jetpack.readAsync('testground/e2e/config/_internal/.master-key'),
+        'the old installation encryption key, as it was',
+      ).toBe(oldInstallationEncryptionKey);
     },
   );
 });
