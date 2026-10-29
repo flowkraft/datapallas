@@ -15,7 +15,6 @@ import com.flowkraft.common.AppPaths;
 import com.flowkraft.jobs.services.JobExecutionService;
 import com.sourcekraft.documentburster.utils.Utils;
 import com.flowkraft.reports.ReportsService;
-import com.sourcekraft.documentburster.common.settings.Settings;
 import com.sourcekraft.documentburster.job.CliJob;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionDatabaseSettings;
 import com.sourcekraft.documentburster.common.settings.model.DocumentBursterConnectionEmailSettings;
@@ -69,11 +68,10 @@ public class ConnectionsService {
 	 * <p>Behavior:
 	 * <ul>
 	 *   <li>No-op for non-sample connection IDs.</li>
-	 *   <li>Throws {@link IllegalStateException} if the user has disabled the
-	 *       "Show sample connections & cubes" preference — in that case the UI
-	 *       should not be exposing samples in the first place, but we guard
-	 *       against stale state and direct API calls. The error message is
-	 *       explicit so the user knows why.</li>
+	 *   <li>Answers the same whether "Show sample connections & cubes" is on or
+	 *       off. That preference only decides whether the samples are listed in
+	 *       the connections and cubes screens; the Samples screen, Try it and
+	 *       the demo canvases use the sample connections either way.</li>
 	 *   <li>Idempotent: if the XML already exists, returns immediately
 	 *       without overwriting (samples are read-only).</li>
 	 *   <li>Side effect: creates the parent directory and writes the XML
@@ -89,11 +87,6 @@ public class ConnectionsService {
 	private void materializeSampleIfNeeded(String connectionId) throws Exception {
 		if (!isSampleConnectionCode(connectionId)) {
 			return;
-		}
-		if (!Settings.isShowSamplesEnabled()) {
-			throw new IllegalStateException(
-					"Sample connections are disabled. Enable them in Configuration → More Settings"
-							+ "'Show sample connections & cubes' to use this connection.");
 		}
 		String xmlPath = getConnectionFilePath(connectionId);
 		if (new File(xmlPath).exists()) {

@@ -9,7 +9,7 @@
 
 		<runtime>windows</runtime>
 
-		<showsamples>true</showsamples>
+		<showsamples>false</showsamples>
 		
 	</settings>
 

@@ -138,6 +138,21 @@ export class Helpers {
     );
   };
 
+  /**
+   * A fresh install hides the sample connections and cubes: the package ships showsamples false
+   * (db-template config/_internal/settings.xml). Every spec was written for an installation that
+   * showed them, so the clean-state restore shows them again and each spec starts as it always did.
+   * The specs about the flag set it themselves; the shipped default is ShippedShowSamplesDefaultTest's.
+   */
+  static showSamplesInCleanState = async (internalSettingsXmlPath: string) => {
+    const settingsXml = (await jetpack.readAsync(internalSettingsXmlPath)) || '';
+    if (!/<showsamples>[^<]*<\/showsamples>/.test(settingsXml)) return;
+    await jetpack.writeAsync(
+      internalSettingsXmlPath,
+      settingsXml.replace(/<showsamples>[^<]*<\/showsamples>/, '<showsamples>true</showsamples>'),
+    );
+  };
+
   static currentElectronApp: ElectronApplication | null = null;
   static currentBrowser: Browser;
   static currentBrowserContext: BrowserContext;
@@ -592,6 +607,9 @@ export class Helpers {
 
         await Helpers.setCiLicenseInstanceId(
           path.join(process.env.PORTABLE_EXECUTABLE_DIR, PATHS.CONFIG_PATH.replace(/^[/\\]+/, ''), '_internal', 'license.xml'),
+        );
+        await Helpers.showSamplesInCleanState(
+          path.join(process.env.PORTABLE_EXECUTABLE_DIR, PATHS.CONFIG_PATH.replace(/^[/\\]+/, ''), '_internal', 'settings.xml'),
         );
 
         if (!configFiles && configFiles.length == 0) {
