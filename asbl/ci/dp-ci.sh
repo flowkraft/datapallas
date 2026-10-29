@@ -109,8 +109,8 @@
 #       builds one when there is none, about 30 min). The jars and the UI are built from the tree on every run; the package supplies the content
 #       (db-template, config, samples, scripts). E2E_PACKAGE says what happens to it:
 #         [package-reuse-as-is]              run on the package exactly as it stands (a fix to specs, helpers, Java, the UI). Instant.
-#         package-rsync-simple-file-changes  copy the plain db-template files changed since the package was built (commits, and new
-#                                            untracked files) into the package and the testground; stops with "use
+#         package-rsync-simple-file-changes  copy the plain db-template files changed since the package was built (commits;
+#                                            untracked files are left out, as the packers leave them) into the package and the testground; stops with "use
 #                                            package-repackage" when one of them is not a verbatim copy (generated, transformed
 #                                            or named by the assembler). Seconds.
 #         package-repackage                  package the content again on the jars already built
@@ -122,9 +122,11 @@
 #       ai-hub-ai-hub-frend:dev; line AI_HUB_FROM_SOURCES=<path>): a Canvas change needs no image build. `e2e` keeps the
 #       production image. Every variable of `e2e` above applies (E2E_RETRIES: 0, a targeted run).
 #
-#   JUNIT_MODULE=<bkend/common|bkend/reporting|bkend/server> JUNIT_TEST=<surefire -Dtest pattern> bash asbl/ci/dp-ci.sh junit
+#   JUNIT_MODULE=<bkend/common|bkend/reporting|bkend/server|asbl> JUNIT_TEST=<surefire -Dtest pattern> bash asbl/ci/dp-ci.sh junit
 #       The Java unit tests of the checkout as it is: one class or pattern (e.g. 'Jasper*Test', 'ReportsServiceTest#method');
-#       JUNIT_TEST [empty = every test of the module]; JUNIT_MODULE [empty = all three]. One class 1-4 min, all about 24 min.
+#       JUNIT_TEST [empty = every test of the module]; JUNIT_MODULE [empty = the three bkend modules]. One class 1-4 min, all
+#       about 24 min. asbl only with JUNIT_TEST: its AssemblerTest holds the four full packs, and its target/ (the package) is
+#       kept.
 #
 #   bash asbl/ci/dp-ci.sh quality
 #       The quality tools (lint, bug finder, format check, complexity, docs). Compiles the Java modules without tests and
@@ -2365,7 +2367,7 @@ if [ "${1:-}" = "--inside" ]; then
   package_stamp() { mkdir -p "$(dirname "$PKG_STAMP")" && printf '%s\n' "$SHA" > "$PKG_STAMP"; }
 
   # package-rsync-simple-file-changes. The db-template files that differ between the commit the package was built from and the tree as
-  # it is (commits, and new untracked files: the launcher refuses a tree with changes to tracked files) are copied into the package and the testground, but only where a copy is all the
+  # it is (commits: the launcher refuses a tree with changes to tracked files) are copied into the package and the testground, but only where a copy is all the
   # assembler would have done with them: the package must hold the file byte for byte as it was at that commit (the assembler overlays
   # the bkend/reporting template and rewrites many configs and samples afterwards), and the assembler code must not name it (it may
   # generate or check it). One path that fails either test, or a deleted file, and nothing is copied: use package-repackage. A file the
@@ -2385,12 +2387,14 @@ if [ "${1:-}" = "--inside" ]; then
       else
         case "$st" in
           M) git show "$from:$path" 2>/dev/null | cmp -s - "$top/$rel" || why="the package does not hold it as a verbatim copy" ;;
-          A|'??') [ -e "$top/$rel" ] && why="new in the tree, but the package already has another file there" ;;
+          A) [ -e "$top/$rel" ] && why="new in the tree, but the package already has another file there" ;;
           *) why="$st (only changed or new files are copied)" ;;
         esac
       fi
       if [ -n "$why" ]; then refused+=("$rel: $why"); else copy+=("$rel"); fi
-    done < <(git diff --name-status --no-renames "$from" -- "$src"; git ls-files --others --exclude-standard -- "$src" | sed 's/^/??\t/')
+    done < <(git diff --name-status --no-renames "$from" -- "$src")
+    # A package holds git's tracked files only (the packers copy from `git ls-files`), so an untracked file is not copied.
+    git ls-files --others --exclude-standard -- "$src" | sed 's/^/left out (untracked, a package holds tracked files only): /'
     if [ ${#refused[@]} -gt 0 ]; then
       for f in "${refused[@]}"; do echo "refused: $f"; done
       echo "!!! package-rsync-simple-file-changes copied nothing: ${#refused[@]} changed path(s) are not plain copies - use package-repackage"
@@ -2494,14 +2498,22 @@ if [ "${1:-}" = "--inside" ]; then
     for m in $modules; do
       case "$m" in
         bkend/common|bkend/reporting|bkend/server) ;;
-        *) echo "!!! JUNIT_MODULE must be bkend/common, bkend/reporting or bkend/server (got '$m')"; return 2 ;;
+        asbl) [ -n "${JUNIT_TEST:-}" ] ||
+                { echo "!!! JUNIT_MODULE=asbl needs JUNIT_TEST: the module's AssemblerTest holds the four full packs"; return 2; } ;;
+        *) echo "!!! JUNIT_MODULE must be bkend/common, bkend/reporting, bkend/server or asbl (got '$m')"; return 2 ;;
       esac
     done
     for m in $modules; do
       echo "--- $m: dependencies ---"
       mvn -B install -pl "$m" -am -DskipTests || return 1
       echo "--- $m: tests ---"
-      mvn -B clean test -f "$m/pom.xml" "${filter[@]}" || rc=1
+      if [ "$m" = asbl ]; then
+        # no clean: asbl/target/package is the package the e2e and the dev loop run
+        rm -rf asbl/target/surefire-reports
+        mvn -B test -f "$m/pom.xml" "${filter[@]}" || rc=1
+      else
+        mvn -B clean test -f "$m/pom.xml" "${filter[@]}" || rc=1
+      fi
       echo "--- JUnit summary $m ---"
       for f in "$m"/target/surefire-reports/*.txt; do
         [ -f "$f" ] || continue

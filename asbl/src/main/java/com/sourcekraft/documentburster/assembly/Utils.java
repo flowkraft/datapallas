@@ -9,14 +9,17 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -24,6 +27,7 @@ import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOCase;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.NameFileFilter;
 import org.apache.commons.io.filefilter.NotFileFilter;
@@ -109,6 +113,93 @@ public class Utils {
 	}
 
 	public static boolean dir1ContainsAllDir2Files(File dir1, File dir2, FileFilter filter) throws Exception {
+		// Gather files from dir2, applying the filter if provided
+		Collection<File> dir2Files;
+		if (filter != null) {
+			dir2Files = new ArrayList<>();
+			collectFilesWithFilter(dir2, filter, dir2Files);
+		} else {
+			dir2Files = FileUtils.listFilesAndDirs(dir2, TrueFileFilter.TRUE, TrueFileFilter.TRUE);
+		}
+		return dir1ContainsAllNames(dir1, dir2, dir2Files);
+	}
+
+	/**
+	 * The package check for a template folder: the same list the packer copied
+	 * ({@link #trackedTemplateFiles}), not whatever sits in the folder on disk.
+	 */
+	public static boolean dir1ContainsAllTrackedFiles(File dir1, File templateDir, FileFilter filter)
+			throws Exception {
+		Collection<File> dir2Files = new ArrayList<>();
+		for (String relativePath : trackedTemplateFiles(templateDir, filter))
+			dir2Files.add(new File(templateDir, relativePath));
+		return dir1ContainsAllNames(dir1, templateDir, dir2Files);
+	}
+
+	/**
+	 * Copies the files git tracks under {@code templateDir} into {@code destDir}, at the same relative
+	 * paths and with their bytes as they are on disk (a modified file goes as it is now). Untracked and
+	 * ignored files stay behind: whatever a test, a container or a developer left in the checkout - a
+	 * {@code .master-key}, build output, a playground's plugins - is not part of the product.
+	 */
+	public static int copyTrackedTemplateFiles(File templateDir, File destDir, FileFilter filter) throws Exception {
+		List<String> relativePaths = trackedTemplateFiles(templateDir, filter);
+		for (String relativePath : relativePaths)
+			FileUtils.copyFile(new File(templateDir, relativePath), new File(destDir, relativePath));
+		System.out.println("Copied " + relativePaths.size() + " tracked files of " + templateDir.getPath() + " to "
+				+ destDir.getPath());
+		return relativePaths.size();
+	}
+
+	/**
+	 * The relative paths ('/'-separated) of the files git tracks under {@code templateDir} that are on
+	 * disk, less those {@code filter} (may be null) rejects. As with
+	 * {@link FileUtils#copyDirectory(File, File, FileFilter)}, the filter sees each file and each folder
+	 * above it. A tracked file deleted from the disk is left out. A folder git does not know fails the
+	 * packing: the packages are built from a git checkout.
+	 */
+	public static List<String> trackedTemplateFiles(File templateDir, FileFilter filter) throws Exception {
+		List<String> relativePaths = new ArrayList<>();
+		for (String relativePath : gitLsFiles(templateDir)) {
+			File file = new File(templateDir, relativePath);
+			if (file.isFile() && (filter == null || acceptedWithItsFolders(file, templateDir, filter)))
+				relativePaths.add(relativePath);
+		}
+		if (relativePaths.isEmpty())
+			throw new IllegalStateException("git tracks no files in " + templateDir.getAbsolutePath());
+		return relativePaths;
+	}
+
+	/** The files under {@code dir} that git does not track, ignored ones included ('/'-separated, relative). */
+	public static List<String> filesGitDoesNotTrack(File dir) throws Exception {
+		return gitLsFiles(dir, "--others");
+	}
+
+	private static List<String> gitLsFiles(File dir, String... options) throws Exception {
+		List<String> command = new ArrayList<>(Arrays.asList("git", "ls-files", "-z"));
+		command.addAll(Arrays.asList(options));
+		command.addAll(Arrays.asList("--", "."));
+		Process git = new ProcessBuilder(command).directory(dir).redirectError(ProcessBuilder.Redirect.INHERIT)
+				.start();
+		byte[] listing = IOUtils.toByteArray(git.getInputStream());
+		if (git.waitFor() != 0)
+			throw new IllegalStateException(String.join(" ", command) + " failed in " + dir.getAbsolutePath()
+					+ " - the packages are built from a git checkout");
+		List<String> relativePaths = new ArrayList<>();
+		for (String relativePath : new String(listing, StandardCharsets.UTF_8).split("\0"))
+			if (!relativePath.isEmpty())
+				relativePaths.add(relativePath);
+		return relativePaths;
+	}
+
+	private static boolean acceptedWithItsFolders(File file, File templateDir, FileFilter filter) {
+		for (File f = file; f != null && !f.equals(templateDir); f = f.getParentFile())
+			if (!filter.accept(f))
+				return false;
+		return true;
+	}
+
+	private static boolean dir1ContainsAllNames(File dir1, File dir2, Collection<File> dir2Files) throws Exception {
 		Set<String> ignores = new HashSet<String>();
 		ignores.add(Utils.getInstallationTopFolderName());
 		ignores.add("dependencies");
@@ -123,15 +214,6 @@ public class Utils {
 		}
 
 		Set<String> dir2FileNames = new HashSet<String>();
-		// Gather files from dir2, applying the filter if provided
-		Collection<File> dir2Files;
-		if (filter != null) {
-			dir2Files = new ArrayList<>();
-			collectFilesWithFilter(dir2, filter, dir2Files);
-		} else {
-			dir2Files = FileUtils.listFilesAndDirs(dir2, TrueFileFilter.TRUE, TrueFileFilter.TRUE);
-		}
-
 		for (File dir2File : dir2Files) {
 			String fileName = FilenameUtils.getName(dir2File.getCanonicalPath());
 

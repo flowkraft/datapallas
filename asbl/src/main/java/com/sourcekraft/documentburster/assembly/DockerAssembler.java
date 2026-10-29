@@ -41,6 +41,14 @@ public class DockerAssembler extends AbstractAssembler {
 
         File top = new File(Utils.getTopProjectFolderPath());
 
+        // The Dockerfile takes the Server's template files straight from db-server-template; the image ships
+        // what the commit has, so a file git does not track there stops the build.
+        File serverTemplate = new File(top, "asbl/src/main/external-resources/db-server-template");
+        java.util.List<String> notTracked = Utils.filesGitDoesNotTrack(serverTemplate);
+        if (!notTracked.isEmpty())
+            throw new IllegalStateException("The image would ship files git does not track in "
+                    + serverTemplate.getPath() + ": " + notTracked + " - remove them (or commit them) first");
+
         // Preprocess Dockerfile to inject the correct version label
         File dockerfileSource = new File(top, "Dockerfile");
         File dockerfileBuild = new File(top, "Dockerfile.assembled");

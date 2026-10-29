@@ -70,8 +70,8 @@ public class NoExeAssembler extends AbstractAssembler {
 		System.out.println(
 				"------------------------------------- DONE_02:NoExeAssembler Utils.runMaven(Utils.getTopProjectFolderPath(), mvn -pl ':rb-reporting' -am dependency:copy-dependencies) ... -------------------------------------");
 
-		// copy db template files and folders
-		FileUtils.copyDirectory(new File("src/main/external-resources/db-template"),
+		// copy db template files and folders: git's tracked files only, then today's filter
+		Utils.copyTrackedTemplateFiles(new File("src/main/external-resources/db-template"),
 				new File(packageDirPath + "/" + topFolderName), createDotAppslSelectiveFilter());
 
 		// Bundle the self-contained DataZeus learning content (the koans + the
@@ -107,11 +107,12 @@ public class NoExeAssembler extends AbstractAssembler {
 
 		// START MODULE_REPORTING work
 
-		// copy MODULE_REPORTING's template files and folders
-		FileUtils.copyDirectory(
+		// copy MODULE_REPORTING's template files and folders: git's tracked files only (tests that point
+		// Settings at this template write a config/_internal/.master-key into it)
+		Utils.copyTrackedTemplateFiles(
 				new File(
 						Utils.getTopProjectFolderPath() + "/bkend/reporting/" + "src/main/external-resources/template"),
-				new File(packageDirPath + "/" + topFolderName));
+				new File(packageDirPath + "/" + topFolderName), null);
 
 		System.out.println(
 				"------------------------------------- DONE_04:NoExeAssembler copy MODULE_REPORTING's template files and folders ... -------------------------------------");
@@ -1819,15 +1820,15 @@ public class NoExeAssembler extends AbstractAssembler {
 		FileUtils.copyDirectory(new File(packageDirPath), new File(verifyDirPath));
 
 		// verify db general template files and folders
-		assertThat(Utils.dir1ContainsAllDir2Files(new File(verifyDirPath + "/" + topFolderName),
+		assertThat(Utils.dir1ContainsAllTrackedFiles(new File(verifyDirPath + "/" + topFolderName),
 				new File("src/main/external-resources/db-template"), createDotAppslSelectiveFilter())).isTrue();
 
 		System.out.println(
 				"------------------------------------- VERIFIED_01:NoExeAssembler db general template files and folders ... -------------------------------------");
 
 		// verify burst module template files and folders
-		assertThat(Utils.dir1ContainsAllDir2Files(new File(verifyDirPath + "/" + topFolderName), new File(
-				Utils.getTopProjectFolderPath() + "/bkend/reporting/" + "src/main/external-resources/template")))
+		assertThat(Utils.dir1ContainsAllTrackedFiles(new File(verifyDirPath + "/" + topFolderName), new File(
+				Utils.getTopProjectFolderPath() + "/bkend/reporting/" + "src/main/external-resources/template"), null))
 				.isTrue();
 
 		System.out.println(
@@ -1846,14 +1847,15 @@ public class NoExeAssembler extends AbstractAssembler {
 						new File(Utils.getTopProjectFolderPath() + "/bkend/reporting/target/rb-reporting.jar")))
 				.isTrue();
 
-		// verify rb-server.jar file is there
-		assertThat(
-				FileUtils.contentEquals(new File(verifyDirPath + "/" + topFolderName + "/lib/server/rbsj-server.jar"),
-						new File(Utils.getTopProjectFolderPath() + "/bkend/server/target/rbsj-server.jar")))
-				.isTrue();
+		// verify rb-server.jar file is there (contentEquals is also true when neither file exists, so the
+		// packaged one is asserted first)
+		File packagedServerJar = new File(verifyDirPath + "/" + topFolderName + "/lib/server/rb-server.jar");
+		assertThat(packagedServerJar).isFile();
+		assertThat(FileUtils.contentEquals(packagedServerJar,
+				new File(Utils.getTopProjectFolderPath() + "/bkend/server/target/rb-server.jar"))).isTrue();
 
 		System.out.println(
-				"------------------------------------- VERIFIED_04:NoExeAssembler rb-reporting.jar, rbsj-server files are there ... -------------------------------------");
+				"------------------------------------- VERIFIED_04:NoExeAssembler rb-reporting.jar, rb-server.jar files are there ... -------------------------------------");
 
 		// verify _copyDefaultConfigurationAndLicenseFiles();
 

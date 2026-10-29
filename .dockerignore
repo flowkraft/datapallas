@@ -49,6 +49,9 @@ asbl/target/
 # and does not include other 'target' outputs.
 !asbl/target/package/verified-db-noexe/
 !asbl/target/package/verified-db-noexe/**
+# ...but not the desktop build's jars: the image builds its own (backend-build stage)
+asbl/target/package/verified-db-noexe/DataPallas/lib/burst/
+asbl/target/package/verified-db-noexe/DataPallas/lib/server/
 
 # Docker files in subdirectories (we only need root Dockerfile)
 asbl/docker/

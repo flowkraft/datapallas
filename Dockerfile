@@ -214,15 +214,13 @@ RUN arch="$(dpkg --print-architecture)" \
 # Set working directory
 WORKDIR /app
 
-# Copy template folder structure (rarely changes)
-COPY ./asbl/src/main/external-resources/db-template .
+# The template files only as the packers copied and checked them (git's tracked files): the verified
+# NoExe package, which also holds what NoExeAssembler generates (config, db, _apps). Its lib/burst and
+# lib/server jars are kept out of the build context (.dockerignore); the build stages below provide the
+# image's own. The Server's few additions come from db-server-template, which DockerAssembler only builds
+# from while that folder holds nothing git does not track.
+COPY ./asbl/target/package/verified-db-noexe/DataPallas .
 COPY ./asbl/src/main/external-resources/db-server-template .
-COPY ./bkend/reporting/src/main/external-resources/template .
-
-# NoExeAssembler generated files (config, db)
-COPY ./asbl/target/package/verified-db-noexe/DataPallas/_apps ./_apps
-COPY ./asbl/target/package/verified-db-noexe/DataPallas/config ./config
-COPY ./asbl/target/package/verified-db-noexe/DataPallas/db ./db
 
 # Preserve a copy of defaults in a safe location so runtime can extract them
 RUN mkdir -p /opt/datapallas/defaults && cp -a ./config /opt/datapallas/defaults/ || true

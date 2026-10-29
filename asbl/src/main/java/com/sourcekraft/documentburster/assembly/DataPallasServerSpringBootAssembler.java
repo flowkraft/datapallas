@@ -51,9 +51,9 @@ public class DataPallasServerSpringBootAssembler extends AbstractAssembler {
 		System.out.println(
 				"------------------------------------- DONE_02:DataPallasServer copy all the already 'verified' DataPallas files ... -------------------------------------");
 
-		// copy db-server template files and folders
-		FileUtils.copyDirectory(new File("src/main/external-resources/db-server-template"),
-				new File(packageDirPath + "/" + this.topFolderName));
+		// copy db-server template files and folders: git's tracked files only
+		Utils.copyTrackedTemplateFiles(new File("src/main/external-resources/db-server-template"),
+				new File(packageDirPath + "/" + this.topFolderName), null);
 
 		System.out.println(
 				"------------------------------------- DONE_03:DataPallasServer copy db-server template files and folders ... -------------------------------------");
@@ -109,8 +109,8 @@ public class DataPallasServerSpringBootAssembler extends AbstractAssembler {
 				"------------------------------------- VERIFIED_02:DataPallasServer copy all the already 'verified' DataPallas files ... -------------------------------------");
 
 		// copy db-server template files and folders
-		assertThat(Utils.dir1ContainsAllDir2Files(new File(verifyDirPath + "/" + this.topFolderName),
-				new File("src/main/external-resources/db-server-template"))).isTrue();
+		assertThat(Utils.dir1ContainsAllTrackedFiles(new File(verifyDirPath + "/" + this.topFolderName),
+				new File("src/main/external-resources/db-server-template"), null)).isTrue();
 
 		System.out.println(
 				"------------------------------------- VERIFIED_03:DataPallasServer db-server template files and folders ... -------------------------------------");
