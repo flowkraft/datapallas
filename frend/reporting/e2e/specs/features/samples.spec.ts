@@ -75,10 +75,6 @@ test.describe('', async () => {
         const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
 
-        // A brand new browser carries no session; on a Server the dashboard would otherwise be
-        // the login page. On a desktop installation this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
         // The month-by-month story below names months, and the months of the demo data depend on
         // the day it was seeded: so the data is loaded again on the day its checks were computed
         // for, before the page is opened, whatever day the run happens on.
@@ -86,9 +82,13 @@ test.describe('', async () => {
 
         const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-country-sales';
 
-        await SelfServicePortalsTestHelper.waitForServerReady(page, dashboardUrl, 30, 2000);
+        // Opened the way Try it opens it: on a desktop install with the token the shell mints, so
+        // this browser is signed in to nothing; elsewhere by somebody signed in.
+        const tryItUrl = await Helpers.tryItDashboardUrl(context, dashboardUrl);
 
-        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
+        await SelfServicePortalsTestHelper.waitForServerReady(page, tryItUrl, 30, 2000);
+
+        await page.goto(tryItUrl, { timeout: 30000, waitUntil: 'networkidle' });
 
         const { expect } = await import('@playwright/test');
 
@@ -102,6 +102,11 @@ test.describe('', async () => {
         // page's one table is the tile that is bound to the categories.
         await expect(page.locator('#widgetTabulator-tabulator_net-category')).toHaveCount(1, { timeout: 15000 });
         await expect(page.locator('#formReportParameters')).toHaveCount(1, { timeout: 15000 });
+
+        // What follows asks the API from inside the page and makes a share link, which is the
+        // dashboard's author at work: the reader of a desktop Try it holds only the page's token,
+        // so the browser signs in now. Where it already is, this does nothing.
+        await Helpers.signInBrowserContext(context);
 
         // The page opens with what it is: a reader who arrives by a share link has no sample
         // list around them to tell them (D2). The page is published from its canvas, which puts
@@ -600,11 +605,12 @@ test.describe('', async () => {
         const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
 
-        // A brand new browser carries no session; on a Server the dashboard would otherwise be
-        // the login page. On a desktop installation this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
-        const galleryUrl = `http://localhost:9090/dashboard/${GALLERY_REPORT_ID}`;
+        // Opened the way Try it opens it: on a desktop install with the token the shell mints, so
+        // this browser is signed in to nothing; elsewhere by somebody signed in.
+        const galleryUrl = await Helpers.tryItDashboardUrl(
+          context,
+          `http://localhost:9090/dashboard/${GALLERY_REPORT_ID}`,
+        );
 
         await SelfServicePortalsTestHelper.waitForServerReady(page, galleryUrl, 30, 2000);
 
@@ -710,11 +716,12 @@ test.describe('', async () => {
         const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
 
-        // A brand new browser carries no session; on a Server the dashboard would otherwise be
-        // the login page. On a desktop installation this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
-        const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-stories';
+        // Opened the way Try it opens it: on a desktop install with the token the shell mints, so
+        // this browser is signed in to nothing; elsewhere by somebody signed in.
+        const dashboardUrl = await Helpers.tryItDashboardUrl(
+          context,
+          'http://localhost:9090/dashboard/g-cube-stories',
+        );
 
         await SelfServicePortalsTestHelper.waitForServerReady(page, dashboardUrl, 30, 2000);
 
@@ -1742,14 +1749,12 @@ test.describe('', async () => {
         const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
 
-        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
-        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
-        // the Angular shell would load instead of the dashboard. Sign it in the way every other
-        // external-browser test does; on a desktop installation the local caller is already an
-        // administrator and this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
-        const dashboardUrl = 'http://localhost:9090/dashboard/g-dashboard';
+        // Opened the way Try it opens it: on a desktop install with the token the shell mints, so
+        // this browser is signed in to nothing; elsewhere by somebody signed in.
+        const dashboardUrl = await Helpers.tryItDashboardUrl(
+          context,
+          'http://localhost:9090/dashboard/g-dashboard',
+        );
 
         await SelfServicePortalsTestHelper.waitForServerReady(
           page,
@@ -1819,14 +1824,12 @@ test.describe('', async () => {
         const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
 
-        // A dashboard page is a report a signed-in user opens. This browser is brand new, so on a
-        // Server it carries no session and SignInRedirectEntryPoint would send it to /#/login —
-        // the Angular shell would load instead of the dashboard. Sign it in the way every other
-        // external-browser test does; on a desktop installation the local caller is already an
-        // administrator and this returns without doing anything.
-        await Helpers.signInBrowserContext(context);
-
-        const dashboardUrl = 'http://localhost:9090/dashboard/g-pivottable';
+        // Opened the way Try it opens it: on a desktop install with the token the shell mints, so
+        // this browser is signed in to nothing; elsewhere by somebody signed in.
+        const dashboardUrl = await Helpers.tryItDashboardUrl(
+          context,
+          'http://localhost:9090/dashboard/g-pivottable',
+        );
 
         await SelfServicePortalsTestHelper.waitForServerReady(
           page,

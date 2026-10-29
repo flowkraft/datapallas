@@ -27,13 +27,16 @@ import reactor.core.publisher.Mono;
 /**
  * Serves a published dashboard as a standalone page.
  *
- * <h2>Two ways in</h2>
+ * <h2>Three ways in</h2>
  * <ul>
  *   <li><b>Signed in</b> — the page is same-origin with the API, so the session cookie carries
  *       through to the component's data fetch. Nothing extra is needed.</li>
  *   <li><b>A share link</b> — {@code /dashboard/{id}?token=…}. A browser typing a URL cannot set a
  *       header, which is why the durable credential has to live in the query string here rather than
  *       being an embed token like everywhere else.</li>
+ *   <li><b>Try it on a desktop install</b> — the same URL, with a read-only embed token the desktop
+ *       shell minted with the installation key, because the user's browser it opens is signed in to
+ *       nothing.</li>
  * </ul>
  *
  * <h2>How the two token types meet</h2>
@@ -116,26 +119,44 @@ public class DashboardController {
 		if (token != null && !token.isBlank()) {
 			Optional<ShareTokenService.SharedReport> shared = shareTokenService.resolve(token);
 
-			// A token for a different dashboard is as good as no token — one link opens the report it
-			// was made for and the dashboards that report's page embedded then, and the one place that
-			// decides it is EmbedTokenAuthorizationManager.admits.
-			if (shared.isEmpty() || !EmbedTokenAuthorizationManager.admits(shared.get().reportId(),
-					shared.get().embeddedReports(), reportCode))
-				return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.header("Content-Type", "text/html")
-						.body(notFoundHtml()));
+			if (shared.isPresent()) {
+				// A token for a different dashboard is as good as no token — one link opens the report
+				// it was made for and the dashboards that report's page embedded then, and the one place
+				// that decides it is EmbedTokenAuthorizationManager.admits.
+				if (!EmbedTokenAuthorizationManager.admits(shared.get().reportId(),
+						shared.get().embeddedReports(), reportCode))
+					return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
+							.header("Content-Type", "text/html")
+							.body(notFoundHtml()));
 
-			// The page's components read with an embed token, so a link that locks parameters, or says
-			// who its recipient is, has to sign both into it. This is where the durable credential
-			// hands over to the short-lived one, and everything the link carries has to survive the
-			// handover or it stops at the door: the locks, the attributes the widgets filter with
-			// (${dp_attr_...}), and the dashboards the page embeds.
-			// Minted from the list stored with the link, never from a fresh read of the template: the
-			// reload this page does before its token expires therefore keeps opening exactly what the
-			// link opened when it was created.
-			embedToken = embedTokenService.mint(reportCode, EmbedTokenService.DEFAULT_TTL_SECONDS,
-					shared.get().lockedParams(), shared.get().attributes(), null, null,
-					shared.get().embeddedReports());
+				// The page's components read with an embed token, so a link that locks parameters, or
+				// says who its recipient is, has to sign both into it. This is where the durable
+				// credential hands over to the short-lived one, and everything the link carries has to
+				// survive the handover or it stops at the door: the locks, the attributes the widgets
+				// filter with (${dp_attr_...}), and the dashboards the page embeds.
+				// Minted from the list stored with the link, never from a fresh read of the template:
+				// the reload this page does before its token expires therefore keeps opening exactly
+				// what the link opened when it was created.
+				embedToken = embedTokenService.mint(reportCode, EmbedTokenService.DEFAULT_TTL_SECONDS,
+						shared.get().lockedParams(), shared.get().attributes(), null, null,
+						shared.get().embeddedReports());
+			} else {
+				// Not a share link: the desktop's Try it, whose link carries an embed token the shell
+				// minted with the installation key (app/main.ts). It hands over to the page's own token
+				// the same way, so the reload before that one expires lands on "no longer available"
+				// once the link's token has expired too.
+				Optional<EmbedTokenService.Claims> linked = embedTokenService.verify(token)
+						.filter(claims -> EmbedTokenAuthorizationManager.admits(claims.reportId(),
+								claims.embeddedReports(), reportCode));
+				if (linked.isEmpty())
+					return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
+							.header("Content-Type", "text/html")
+							.body(notFoundHtml()));
+
+				embedToken = embedTokenService.mint(reportCode, EmbedTokenService.DEFAULT_TTL_SECONDS,
+						linked.get().lockedParams(), linked.get().attributes(), linked.get().timezone(),
+						linked.get().locale(), linked.get().embeddedReports());
+			}
 		}
 
 		// Two minutes' margin, so the page is replaced before anything it holds can be refused, and

@@ -212,21 +212,24 @@ function isServerEdition(): boolean {
  * Limited to this installation's own backend port on loopback, so the key never travels to the
  * containers DataPallas starts (AI Hub, the portals) or anywhere off the machine.
  */
+function readInstallationKey(): string {
+  try {
+    const baseDir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd();
+    return fs
+      .readFileSync(path.join(baseDir, 'config', '_internal', 'api-key.txt'), 'utf-8')
+      .trim();
+  } catch {
+    return '';
+  }
+}
+
 function attachInstallationCredential(target: BrowserWindow): void {
   let cachedKey = '';
 
   const readKey = (): string => {
-    if (cachedKey) return cachedKey;
-    try {
-      const baseDir = process.env.PORTABLE_EXECUTABLE_DIR || process.cwd();
-      cachedKey = fs
-        .readFileSync(path.join(baseDir, 'config', '_internal', 'api-key.txt'), 'utf-8')
-        .trim();
-    } catch {
-      // The server writes it on its first start, so it can be missing for a moment: stay empty and
-      // read again on the next request rather than caching the absence.
-      cachedKey = '';
-    }
+    // The server writes it on its first start, so it can be missing for a moment: stay empty and
+    // read again on the next request rather than caching the absence.
+    if (!cachedKey) cachedKey = readInstallationKey();
     return cachedKey;
   };
 
@@ -250,6 +253,45 @@ function attachInstallationCredential(target: BrowserWindow): void {
       });
     },
   );
+}
+
+/** A working day: Try it's link outlives the 1 h page token, which the page renews from it. */
+const DASHBOARD_LINK_TTL_SECONDS = 8 * 3600;
+
+const OWN_DASHBOARD_PAGE = new RegExp(`^http://(localhost|127\\.0\\.0\\.1):${SERVER_PORT}/dashboard/([^/?#]+)/?$`);
+
+/**
+ * Open a link in the user's own browser — and give a link to this installation's own dashboard page
+ * the credential that browser does not have.
+ *
+ * Try it and Explore Data's View leave the app this way. The window is signed in by the
+ * installation key (attachInstallationCredential), the browser by nothing, so its dashboard page
+ * would be the sign-in screen. The link therefore carries a read-only embed token for that one
+ * dashboard, minted here with the installation key; the key itself never leaves this process. The
+ * Server edition signs people in, and its browser is sent to sign in like any other.
+ */
+async function openInUsersBrowser(url: string): Promise<void> {
+  let target = url;
+  const ownDashboard = isServerEdition() ? null : OWN_DASHBOARD_PAGE.exec(url);
+  const key = ownDashboard ? readInstallationKey() : '';
+  if (ownDashboard && key) {
+    try {
+      const minted = await fetch(`http://127.0.0.1:${SERVER_PORT}/api/embed/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
+        body: JSON.stringify({
+          reportId: decodeURIComponent(ownDashboard[2]),
+          ttlSeconds: DASHBOARD_LINK_TTL_SECONDS,
+        }),
+      });
+      const token = minted.ok ? (await minted.json())?.token : '';
+      if (token) target = `${url}?token=${encodeURIComponent(token)}`;
+      else log.warn(`openInUsersBrowser: no dashboard token (HTTP ${minted.status}), opening the page without one`);
+    } catch (err) {
+      log.warn('openInUsersBrowser: could not mint the dashboard token, opening the page without one', err);
+    }
+  }
+  await shell.openExternal(target);
 }
 
 // wait for a TCP connection to a port (returns true if connected within timeout)
@@ -355,7 +397,7 @@ function createWindow(): BrowserWindow {
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    openInUsersBrowser(url).catch((err) => log.warn('openInUsersBrowser failed', err));
     return { action: 'deny' };
   });
 

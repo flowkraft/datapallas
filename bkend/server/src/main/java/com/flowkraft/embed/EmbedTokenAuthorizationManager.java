@@ -41,6 +41,8 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 	/**
 	 * Share links are the one exception, because a browser navigating to a URL cannot set a header.
 	 * The page mitigates the exposure with {@code referrer: no-referrer}, and the token is revocable.
+	 * The dashboard page also takes an embed token here, for the same reason: the desktop's Try it
+	 * opens the user's browser on {@code /dashboard/{id}?token=…}, and nothing else does.
 	 */
 	private static final String SHARE_TOKEN_PARAM = "token";
 
@@ -177,6 +179,23 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 					return new AuthorizationDecision(true);
 				}
 			}
+
+			// Try it on a desktop install: the shell mints an embed token with the installation key
+			// and opens the dashboard in the user's own browser, which can carry it only in the URL.
+			// Read from the URL on the dashboard page alone. The page hands its components a token
+			// of their own in a header, so no /api/** request ever needs one in its query string.
+			if (isDashboardPage(request)) {
+				Optional<EmbedTokenService.Claims> linked = embedTokenService.verify(shareToken)
+						.filter(link -> admits(link.reportId(), link.embeddedReports(), requestedReportId.get()));
+				if (linked.isPresent()) {
+					TokenRequest.mark(request, requestedReportId.get());
+					attachLocks(request, linked.get().lockedParams(), linked.get().reportId(),
+							requestedReportId.get());
+					attachCaller(request, linked.get().attributes(), linked.get().timezone(),
+							linked.get().locale());
+					return new AuthorizationDecision(true);
+				}
+			}
 		}
 
 		// No token, a bad one, or one for a different report — fall back to being properly signed in.
@@ -279,15 +298,30 @@ public class EmbedTokenAuthorizationManager implements AuthorizationManager<Requ
 				.filter(claims -> admits(claims.reportId(), claims.embeddedReports(), reportId));
 	}
 
-	private Optional<String> reportIdOf(HttpServletRequest request) {
+	/** A browser opening a dashboard page: GET /dashboard/{id}, nothing deeper. */
+	private boolean isDashboardPage(HttpServletRequest request) {
+		String path = pathOf(request);
+		return path != null && "GET".equalsIgnoreCase(request.getMethod()) && DASHBOARD.matcher(path).matches();
+	}
+
+	private String pathOf(HttpServletRequest request) {
 
 		String path = request.getRequestURI();
 		if (path == null)
-			return Optional.empty();
+			return null;
 
 		String contextPath = request.getContextPath();
 		if (contextPath != null && !contextPath.isEmpty() && path.startsWith(contextPath))
 			path = path.substring(contextPath.length());
+
+		return path;
+	}
+
+	private Optional<String> reportIdOf(HttpServletRequest request) {
+
+		String path = pathOf(request);
+		if (path == null)
+			return Optional.empty();
 
 		Matcher data = REPORT_DATA.matcher(path);
 		if (data.matches())

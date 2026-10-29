@@ -411,6 +411,31 @@ export class Helpers {
     if (!res.ok()) throw new Error(`signInBrowserContext: login at ${baseUrl} answered ${res.status()}`);
   }
 
+  /**
+   * The address Try it opens, for the separate browser a test made for it. On a desktop install
+   * (TEST_ENV=electron) the shell mints a read-only embed token with the installation's key and opens
+   * `/dashboard/<code>?token=…` (openInUsersBrowser in app/main.ts), so that browser signs in to
+   * nothing, and neither does this one. Everywhere else the dashboard is opened by somebody signed in,
+   * so the context is signed in and the address stays as it is.
+   */
+  static async tryItDashboardUrl(context: BrowserContext, dashboardUrl: string): Promise<string> {
+    if (process.env.TEST_ENV !== 'electron') {
+      await Helpers.signInBrowserContext(context);
+      return dashboardUrl;
+    }
+
+    const url = new URL(dashboardUrl);
+    const reportId = decodeURIComponent(url.pathname.replace(/^\/dashboard\//, '').replace(/\/$/, ''));
+    const res = await fetch(`${url.origin}/api/embed/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...Helpers.apiKeyHeader() },
+      body: JSON.stringify({ reportId, ttlSeconds: 8 * 3600 }),
+    });
+    if (!res.ok) throw new Error(`tryItDashboardUrl: minting the token for ${reportId} answered ${res.status}`);
+    const { token } = await res.json();
+    return `${dashboardUrl}?token=${encodeURIComponent(token)}`;
+  }
+
   static async browserClose(): Promise<void> {
     if (!this.currentBrowserContext || !this.currentBrowser) {
       return;
