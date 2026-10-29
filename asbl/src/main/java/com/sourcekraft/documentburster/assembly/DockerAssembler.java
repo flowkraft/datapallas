@@ -300,6 +300,9 @@ public class DockerAssembler extends AbstractAssembler {
         String pinnedVersion = pm.group(1).trim();
         assertThat(pinnedVersion).isEqualTo(this.version);
 
+        // the package check on the zip (dp-ci.sh build checks the image's own file list)
+        PackageCheck.assertNothingExtra(new File(verifyDirPath + "/" + this.topFolderName), new File(Utils.getTopProjectFolderPath()));
+
         System.out.println("------------------------------------- VERIFIED: DockerAssembler image exists: " + imageId + " and versions are consistent: " + this.version + " ... -------------------------------------");
     }
 

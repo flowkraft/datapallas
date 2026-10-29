@@ -2484,6 +2484,20 @@ if [ "${1:-}" = "--inside" ]; then
     cat bkend/*/target/surefire-reports/*.txt 2>/dev/null | grep -h "^Tests run:" |
       awk -F'[:,]' '{r+=$2; f+=$4; e+=$6; s+=$8} END {printf "Tests run: %d, Failures: %d, Errors: %d, Skipped: %d\n", r, f, e, s}'
     grep -l -E "FAILURE|ERROR" bkend/*/target/surefire-reports/*.txt 2>/dev/null | sed 's/^/FAILED: /'
+    [ $rc -ne 0 ] || image_package_check || rc=1
+    return $rc
+  }
+
+  # The package check (asbl PackageCheck: the commit's template files and what the build makes, nothing else)
+  # on the image's own file list. Each pack's verify() has already checked its zip.
+  image_package_check() {
+    local list rc
+    list=$(mktemp) || return 1
+    docker run --rm --entrypoint find "$SERVER_IMAGE_REPO:$VERSION" /app /opt/datapallas -type f > "$list" ||
+      { rm -f "$list"; echo "!!! package check: could not list the files of $SERVER_IMAGE_REPO:$VERSION"; return 1; }
+    java asbl/src/main/java/com/sourcekraft/documentburster/assembly/PackageCheck.java --image-file-list "$list"
+    rc=$?
+    rm -f "$list"
     return $rc
   }
 

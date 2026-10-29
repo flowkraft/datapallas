@@ -1886,6 +1886,9 @@ public class NoExeAssembler extends AbstractAssembler {
 		System.out.println(
 				"------------------------------------- VERIFIED_07:NoExeAssembler _copyDistributedByGroovyFile... -------------------------------------");
 
+		// the package check: the commit's template files and what the build makes, nothing else
+		PackageCheck.assertNothingExtra(new File(verifyDirPath + "/" + topFolderName), new File(Utils.getTopProjectFolderPath()));
+
 		System.out.println(
 				"------------------------------------- VERIFIED_DONE:NoExeAssembler ... -------------------------------------");
 

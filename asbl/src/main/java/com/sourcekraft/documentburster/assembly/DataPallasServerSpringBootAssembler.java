@@ -154,6 +154,8 @@ public class DataPallasServerSpringBootAssembler extends AbstractAssembler {
 
 		assertThat(content).as("log4j2.xml should NOT contain 'rbsj-server.log'").doesNotContain("rbsj-server.log");
 
+		// the package check: the commit's template files and what the build makes, nothing else
+		PackageCheck.assertNothingExtra(new File(verifyDirPath + "/" + this.topFolderName), new File(Utils.getTopProjectFolderPath()));
 	}
 
 	public void setdataPallasVerifyDirPath(String dataPallasVerifyDirPath) {
