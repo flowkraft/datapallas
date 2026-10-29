@@ -4,6 +4,7 @@ import { SHARED_IMPORTS } from '../../../shared/shared-imports';
 import * as _ from 'lodash';
 
 import dayjs from 'dayjs';
+import * as semver from 'semver';
 
 //import * as path from 'path';
 
@@ -59,7 +60,7 @@ export class WhatsNewComponent {
     if (!this.stateStore.configSys.sysInfo.setup.java.isJavaOk) return;
 
     await this.licenseService.loadLicense();
-    if (this.licenseService.changeLog) {
+    if (this.licenseService.changeLog && !this.endsBeforeTheInstalledRelease(this.licenseService.changeLog)) {
       this.changeLog = this.licenseService.changeLog;
       this.changeLogMarkdown =
         this.licenseService.licenseDetails.license.changelog;
@@ -94,6 +95,17 @@ export class WhatsNewComponent {
     this.handleVisibleAnnouncement('first');
 
     this.handleVisibleRelease('first');
+  }
+
+  /**
+   * A cached or remote changelog whose newest release is older than the one installed (datapallas.com
+   * not yet told of a release, or a licence cached before it) would present that older release as the
+   * latest. The local release notes, shipped with this version, are the truer answer then.
+   */
+  endsBeforeTheInstalledRelease(changeLog: Changelog): boolean {
+    const newest = semver.coerce(String(changeLog.releases?.[0]?.version ?? ''));
+    const installed = semver.coerce(String(this.settingsService.version ?? ''));
+    return !!newest && !!installed && semver.lt(newest, installed);
   }
 
   async getBlogPosts(): Promise<BlogPost[]> {

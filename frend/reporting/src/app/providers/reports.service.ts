@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
+import * as semver from 'semver';
 import { ApiService } from './api.service';
+import { AppPathsService } from './app-paths.service';
 import { APP_CONFIG } from '../../environments/environment';
 
 export interface TmplFileInfo {
@@ -114,7 +116,7 @@ export class ReportsService {
   currentConfigurationTemplateName: string;
   currentConfigurationTemplate: CfgTmplFileInfo;
 
-  product: string = 'DocumentBurster';
+  product: string = 'DataPallas';
   version: any;
   isWindows: boolean = false;
   isServerVersion: boolean = false;
@@ -129,6 +131,7 @@ export class ReportsService {
   }> = new Map();
 
   public apiService = inject(ApiService);
+  private appPathsService = inject(AppPathsService);
 
   constructor() {
     this.CONFIGURATION_FOLDER_PATH = `${APP_CONFIG.folders.config}`;
@@ -202,6 +205,11 @@ export class ReportsService {
     xmlSettings.documentburster = await this.apiService.get('/reports/_defaults/settings');
 
     this.version = xmlSettings.documentburster.settings.version;
+
+    // What the licence chip, the About tab and the update screen show (through ConfigurationRepository):
+    // the installed product and version, the same two this service reads them from.
+    this.appPathsService.product = this.product;
+    this.appPathsService.version = semver.coerce(String(this.version));
 
     return xmlSettings;
   }

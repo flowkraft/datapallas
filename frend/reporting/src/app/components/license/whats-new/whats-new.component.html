@@ -49,16 +49,17 @@
                     | translate
                     }}
                   </strong>
-                  <em>DocumentBurster</em>
-                  is {{ visibleRelease?.version }}
+                  <em id="releaseProduct">{{ settingsService.product }}</em>
+                  is <span id="releaseVersion">{{ visibleRelease?.version }}</span>
                   -
-                  {{ visibleReleaseDate }}
+                  <span id="releaseDate">{{ visibleReleaseDate }}</span>
                 </div>
               }
               @if (visibleReleaseIndex != 0) {
                 <div>
-                  <em>DocumentBurster</em> {{ visibleRelease?.version }} -
-                  {{ visibleReleaseDate }}
+                  <em id="releaseProduct">{{ settingsService.product }}</em>
+                  <span id="releaseVersion">{{ visibleRelease?.version }}</span> -
+                  <span id="releaseDate">{{ visibleReleaseDate }}</span>
                 </div>
               }
             </h4>

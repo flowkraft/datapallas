@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<license>
+  <key></key>
+  <product>DataPallas</product>
+  <status></status>
+  <customername></customername>
+  <customeremail></customeremail>
+  <expires></expires>
+  <latestversion>99.0.0</latestversion>
+  <changelog># DataPallas
+
+All notable changes to this project will be documented in this file.
+
+## 99.0.0 - 2099-01-15
+
+### Added
+
+- A release newer than any installation, cached with the licence.
+
+## 98.0.0 - 2098-01-15
+
+### Fixed
+
+- The release before it.</changelog>
+</license>

@@ -283,36 +283,94 @@ test.describe('', async () => {
     await Helpers.appClose();
   });
 
-  /*
-  
-  test('should correctly display when a newer version is available for download', async () => {
-    await jetpack.copyAsync(
-      PATHS.E2E_RESOURCES_PATH + '/license/license-download-latest-version.xml',
-      path.resolve(
-        slash(
-          process.env.PORTABLE_EXECUTABLE_DIR +
-            PATHS.CONFIG_PATH +
-            '/_internal/license.xml',
-        ),
-      ),
-      { overwrite: true },
-    );
+  // The version chip and the Releases heading name the installation itself: the product the server
+  // reports and the version in config/_defaults/settings.xml. A cached licence comes before
+  // datapallas.com (license.service), so each case below is set up without the network.
+  test('should show the installed product and version on the license screen', async () => {
+    await Helpers.restoreDocumentBursterCleanState(false);
 
-    const electronApp = await Helpers.electronAppLaunch('../..');
-    const ft = new FluentTester(await electronApp.firstWindow());
+    const firstPage = await Helpers.appStart();
+    const ft = new FluentTester(firstPage);
+    const { product, version } = await installedProductAndVersion();
 
     await ft
       .click('#topMenuBurst')
       .click('#tab-btn-licenseTab')
-      .elementShouldBeVisible('#btnCheckLicenseKey')
-      .elementShouldBeVisible('#statusActiveLicenseKey')
-      .elementShouldBeVisible('#version')
-      .elementShouldContainText('#version', 'DocumentBurster 9.1.3')
-      .elementShouldNotBeVisible('#updateNowSuccint');
+      .elementShouldContainText('#version', product)
+      .elementShouldContainText('#version', version)
+      .elementShouldNotContainText('#version', 'DocumentBurster');
 
-    await Helpers.electronAppClose(electronApp);
+    await Helpers.appClose();
   });
 
-  
-  */
+  test('should show a cached release newer than the installed one as the latest', async () => {
+    await Helpers.restoreDocumentBursterCleanState(false);
+    await cacheLicence('license-newer-release-cached.xml');
+
+    const firstPage = await Helpers.appStart();
+    const ft = new FluentTester(firstPage);
+    const { product } = await installedProductAndVersion();
+
+    await ft
+      .click('#topMenuBurst')
+      .click('#tab-btn-licenseTab')
+      .elementShouldContainText('#releaseVersion', '99.0.0')
+      .elementShouldContainText('#releaseProduct', product)
+      .elementShouldNotContainText('#releaseProduct', 'DocumentBurster');
+
+    await Helpers.appClose();
+  });
+
+  test('should show the installation own release notes when the cached release is older', async () => {
+    await Helpers.restoreDocumentBursterCleanState(false);
+    // Its changelog tops at 8.8.3, many releases before the testground's.
+    await cacheLicence('license-download-latest-version.xml');
+
+    const ownNotes = jetpack.read(
+      path.resolve(slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/CHANGELOG.md`)),
+    );
+    const ownNewest = /^## (\d+\.\d+\.\d+)/m.exec(ownNotes || '')?.[1];
+    if (!ownNewest) throw new Error('the testground has no release in its own CHANGELOG.md');
+
+    const firstPage = await Helpers.appStart();
+    const ft = new FluentTester(firstPage);
+    const { product } = await installedProductAndVersion();
+
+    await ft
+      .click('#topMenuBurst')
+      .click('#tab-btn-licenseTab')
+      .elementShouldContainText('#releaseVersion', ownNewest)
+      .elementShouldNotContainText('#releaseVersion', '8.8.3')
+      .elementShouldContainText('#releaseProduct', product)
+      .elementShouldNotContainText('#releaseProduct', 'DocumentBurster');
+
+    await Helpers.appClose();
+  });
 });
+
+/** What the screen has to show: the product the server reports, the version the installation ships. */
+async function installedProductAndVersion(): Promise<{ product: string; version: string }> {
+  const info = await fetch('http://localhost:9090/api/system/info', { headers: Helpers.apiKeyHeader() });
+  if (!info.ok) throw new Error(`/api/system/info answered ${info.status}`);
+  const product = String((await info.json()).product);
+
+  const defaults = jetpack.read(
+    path.resolve(
+      slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.CONFIG_PATH}/_defaults/settings.xml`),
+    ),
+  );
+  const version = /<version>([^<]+)<\/version>/.exec(defaults || '')?.[1]?.trim();
+  if (!version) throw new Error('the testground has no <version> in config/_defaults/settings.xml');
+
+  return { product, version };
+}
+
+async function cacheLicence(resource: string): Promise<void> {
+  await jetpack.copyAsync(
+    `${PATHS.E2E_RESOURCES_PATH}/license/${resource}`,
+    path.resolve(
+      slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.CONFIG_PATH}/_internal/license.xml`),
+    ),
+    { overwrite: true },
+  );
+}

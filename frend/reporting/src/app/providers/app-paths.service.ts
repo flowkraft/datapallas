@@ -11,7 +11,7 @@ export class AppPathsService {
   isWindows: boolean = false;
   isServerVersion: boolean = false;
   isJServerStarted: boolean = false;
-  product: string = 'DocumentBurster';
+  product: string = 'DataPallas';
 
   version: semver.SemVer;
 
