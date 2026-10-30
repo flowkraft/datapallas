@@ -82,7 +82,7 @@ replay() {
     echo "REPLAY ${from:0:8} -> ${to:0:8} ($RR_CHANGED files changed)"
     printf '  %-22s %-8s %s\n' build "$RR_IMAGE_AND_ZIPS" "(image-and-zips)" \
       linux-proof "$(either "$RR_E2E_PACKAGE" "$RR_IMAGE_AND_ZIPS")" "(e2e-package, image-and-zips)" \
-      windows-docker-proof "$RR_IMAGE_AND_ZIPS" "(image-and-zips)" \
+      windows-docker-proof "$(either "$RR_E2E_PACKAGE" "$RR_IMAGE_AND_ZIPS")" "(e2e-package, image-and-zips)" \
       pack "$RR_WINDOWS_PACK" "(windows-pack)" \
       electron-light "$RR_E2E_PACKAGE" "(e2e-package)" \
       robot "$RR_WINDOWS_PACK" "(windows-pack)" \
