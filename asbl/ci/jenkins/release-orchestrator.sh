@@ -39,8 +39,8 @@
 #   RELEASE_PIN [empty]    the commit of this execution; empty = step 0's commit, else origin/main at the start
 #   MODE [rehearsal]       the only mode it runs: MODE=public and step 4 come after the sign-off, not from here
 #   UPLOAD [no]            the only value: it stops before the upload (release day: MODE=upload UPLOAD=yes, the jobs)
-#   E2E_APPROVAL, E2E_APPROVAL_USER [empty]   Virgil's approval, passed on to the steps' guards only when given in the
-#                          environment of this start; never written in a file
+#   E2E_APPROVAL, E2E_APPROVAL_USER [empty]   the owner's approval, passed on to the steps' guards only when given in
+#                          the environment of this start; never written in a file
 #   DRY_RUN=yes [no]       the order, the pin, the step 1 lanes it would run and each part with its command, then the summary
 #                          as the schedule makes it; it runs, builds, records and fetches nothing (it reads the release record)
 #   DRY_RUN_RED="<part>..." [empty]   a dry run only: the parts that come out red, to see what still runs after them
@@ -348,7 +348,7 @@ mark_end "$([ "$guard_ok" = 1 ] && echo 0 || echo 1)"
 if [ "$guard_ok" = 0 ]; then
   echo "execution $EXECUTION not started: step 1 is not green on ${PIN:0:8} (above). A lane red on a few tests: re-run them alone,"
   echo "  bash asbl/ci/release-rerun.sh run <part> --failed <the lane's report>, then bash asbl/ci/release-state.sh record-step1 <target> reruns full|auth|light;"
-  echo "  then start the orchestrator again with RELEASE_PIN=${PIN:0:8} (or with Virgil's approval, E2E_APPROVAL)"
+  echo "  then start the orchestrator again with RELEASE_PIN=${PIN:0:8} (or with the owner's approval, E2E_APPROVAL)"
   [ "$DRY" = yes ] || finish 1
 fi
 
