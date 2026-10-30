@@ -1,5 +1,4 @@
 import * as path from 'path';
-import { spawnSync } from 'child_process';
 const slash = require('slash');
 
 import { test } from '@playwright/test';
@@ -327,18 +326,11 @@ test.describe('', async () => {
     // Its changelog tops at 8.8.3, many releases before the testground's.
     await cacheLicence('license-download-latest-version.xml');
 
-    // On the shipped Docker server CHANGELOG.md is a program file inside the container (/app), not one of the
-    // data folders the bundle unpacks on the host; asbl/ci/dp-ci.sh sets E2E_DOCKER_SERVER for that target only.
-    const dockerServer = process.env.E2E_DOCKER_SERVER;
-    const ownNotes = dockerServer
-      ? spawnSync('docker', ['exec', dockerServer, 'cat', '/app/CHANGELOG.md'], { encoding: 'utf-8' }).stdout
-      : jetpack.read(path.resolve(slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/CHANGELOG.md`)));
-    const ownNewest = /^## (\d+\.\d+\.\d+)/m.exec(ownNotes || '')?.[1];
-    if (!ownNewest) throw new Error('the testground has no release in its own CHANGELOG.md');
-
     const firstPage = await Helpers.appStart();
     const ft = new FluentTester(firstPage);
     const { product } = await installedProductAndVersion();
+    const ownNewest = /^## (\d+\.\d+\.\d+)/m.exec(await installedReleaseNotes())?.[1];
+    if (!ownNewest) throw new Error('the testground has no release in its own CHANGELOG.md');
 
     await ft
       .click('#topMenuBurst')
@@ -367,6 +359,13 @@ async function installedProductAndVersion(): Promise<{ product: string; version:
   if (!version) throw new Error('the testground has no <version> in config/_defaults/settings.xml');
 
   return { product, version };
+}
+
+/** The CHANGELOG.md the installation ships, as the server reads it for the What's New panel. */
+async function installedReleaseNotes(): Promise<string> {
+  const notes = await fetch('http://localhost:9090/api/system/info/release-notes', { headers: Helpers.apiKeyHeader() });
+  if (!notes.ok) throw new Error(`/api/system/info/release-notes answered ${notes.status}`);
+  return notes.text();
 }
 
 async function cacheLicence(resource: string): Promise<void> {
