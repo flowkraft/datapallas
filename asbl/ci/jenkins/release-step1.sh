@@ -4,7 +4,7 @@
 # same log and the same release record. It is also the everyday full e2e of the trunk (E2E_SPEC and E2E_GREP empty).
 #
 # HOW, in order:
-#   0. who started it, first: STEP1_STARTED_BY=<who>  <UTC time>  :: step 1 <target> (asbl/ci/marks.sh run_record_begin);
+#   0. who started it, first: STARTED_BY=<who>  <UTC time>  :: step 1 <target> (asbl/ci/marks.sh run_record_begin);
 #      a run started from the shell also gets its folder, <LOG_DIR>/runs/<UTC>-step-1-<target>/, with its console in run.log;
 #   1. the version line: release-state.sh version-check --print (what a release would do now; the lane runs anyway);
 #   2. this release's full lane and the lanes step 1 needs: release-state.sh full-lane --step1 (web or docker-server,
