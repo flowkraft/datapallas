@@ -467,6 +467,28 @@ export class Helpers {
   }
 
   /**
+   * Empties the installation's temp folder the way `jetpack.dirAsync({empty:true})` would, except it leaves what the
+   * running server holds open. The server unpacks its native libraries there (SQLite's sqlite-*-sqlitejdbc.dll,
+   * DuckDB's libduckdb_java*.so) and keeps them loaded, and on Windows a loaded library or an open file cannot be
+   * deleted (EPERM, EBUSY): the windows-vm-server lane's server runs across all its tests. dirAsync is not used
+   * because a failed delete never settles it and escapes as an unhandled rejection, which failed every test of that
+   * lane in 0 ms; here any other failure reaches the clean-state loop.
+   */
+  static emptyTempFolderKeepingFilesInUse = async (tempPath: string) => {
+    await jetpack.dirAsync(tempPath);
+
+    for (const entry of (await jetpack.listAsync(tempPath)) || []) {
+      try {
+        await jetpack.removeAsync(`${tempPath}/${entry}`);
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code !== 'EPERM' && code !== 'EBUSY') throw err;
+        console.log(`restoreDocumentBursterCleanState: temp/${entry} is in use (${code}), left in place`);
+      }
+    }
+  };
+
+  /**
    * Empties `/config` the way `jetpack.dirAsync({empty:true})` would, except it leaves the IAM
    * SQLite store alone. The backend opens `config/_internal/iam.db` at boot and holds it (plus its
    * WAL sidecars) open for the whole worker, so on Windows unlinking it fails with EBUSY and the
@@ -640,12 +662,9 @@ export class Helpers {
           { empty: true },
         );
 
-        // empty temp
-        await jetpack.dirAsync(
+        // empty temp, except what the running server holds
+        await this.emptyTempFolderKeepingFilesInUse(
           `${process.env.PORTABLE_EXECUTABLE_DIR}/${PATHS.TEMP_PATH}`,
-          {
-            empty: true,
-          },
         );
 
         //try {
