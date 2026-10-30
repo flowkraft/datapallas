@@ -56,10 +56,12 @@
     <echo>arg49 = ${arg49}</echo>
     <echo>arg50 = ${arg50}</echo>
 
+    <!-- lib/burst/* is Java's own classpath wildcard (every jar in that folder), handed to the forked JVM as it is.
+         A fileset put one absolute path per jar on its command line: with 300 jars that outgrew what Windows allows
+         (32767 characters, CreateProcess error=206) once the installation folder was longer than about 60
+         characters, and the CLI failed before it started. -->
     <path id="documentburster.class.path">
-        <fileset dir="${DOCUMENTBURSTER_HOME}/lib/burst">
-            <include name="**/*.jar" />
-        </fileset>
+        <pathelement location="${DOCUMENTBURSTER_HOME}/lib/burst/*" />
 
         <pathelement location="${DOCUMENTBURSTER_HOME}" />
     </path>
