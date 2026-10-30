@@ -45,9 +45,10 @@ pipeline {
         sh '''#!/bin/bash
 set -o pipefail
 q() { printf '%q' "$1"; }
-# the parameters and who started the build, passed to the script that is the lane (the header of this file); each part of the
-# run is marked START/END with the time it took (asbl/ci/marks.sh): grep '^######## ' in the console
-ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") || exit 2; E2E_TARGET=$(q "$E2E_TARGET") E2E_SPEC=$(q "$E2E_SPEC") E2E_GREP=$(q "$E2E_GREP") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") E2E_RETRIES=$(q "$E2E_RETRIES") STEP1_STARTED_BY=$(q "$STEP1_STARTED_BY") bash asbl/ci/jenkins/release-step1.sh"
+# the parameters, who started the build and the build (its BUILD_TAG: Jenkins keeps this run's console and reports, the
+# script only adds its line to the history of runs), passed to the script that is the lane (the header of this file); each
+# part of the run is marked START/END with the time it took (asbl/ci/marks.sh): grep '^######## ' in the console
+ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") || exit 2; E2E_TARGET=$(q "$E2E_TARGET") E2E_SPEC=$(q "$E2E_SPEC") E2E_GREP=$(q "$E2E_GREP") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") E2E_RETRIES=$(q "$E2E_RETRIES") STEP1_STARTED_BY=$(q "$STEP1_STARTED_BY") JENKINS_BUILD=$(q "$BUILD_TAG") bash asbl/ci/jenkins/release-step1.sh"
 '''
         }
       }
