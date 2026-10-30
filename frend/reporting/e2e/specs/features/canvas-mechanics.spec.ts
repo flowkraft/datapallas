@@ -2165,7 +2165,10 @@ test('(canvas mechanics) M15 Visualize as', async () => {
   test.setTimeout(Constants.DELAY_FIVE_THOUSANDS_SECONDS);
   await withFreshCanvas(page, 'E2E mech M15 Visualize as', async (canvasId) => {
     await addTableToCanvas(page, 'dash_demo.orders');
-    expect((await dStoredWidgets(page, canvasId)).length, 'one widget on the canvas').toBe(1);
+    // the autosave lands 1.2 s after the last change, and the table's first query keeps changing the canvas
+    await expect
+      .poll(async () => (await dStoredWidgets(page, canvasId)).length, { message: 'one widget on the canvas', timeout: 20_000 })
+      .toBe(1);
 
     // − without a manual pick, the first result moves a drop-default tabulator to the type that fits.
     await runSqlQuery(page, 'SELECT channel, COUNT(*) AS orders FROM dash_demo.orders GROUP BY channel');
