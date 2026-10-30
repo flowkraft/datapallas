@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { spawnSync } from 'child_process';
 const slash = require('slash');
 
 import { test } from '@playwright/test';
@@ -326,9 +327,12 @@ test.describe('', async () => {
     // Its changelog tops at 8.8.3, many releases before the testground's.
     await cacheLicence('license-download-latest-version.xml');
 
-    const ownNotes = jetpack.read(
-      path.resolve(slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/CHANGELOG.md`)),
-    );
+    // On the shipped Docker server CHANGELOG.md is a program file inside the container (/app), not one of the
+    // data folders the bundle unpacks on the host; asbl/ci/dp-ci.sh sets E2E_DOCKER_SERVER for that target only.
+    const dockerServer = process.env.E2E_DOCKER_SERVER;
+    const ownNotes = dockerServer
+      ? spawnSync('docker', ['exec', dockerServer, 'cat', '/app/CHANGELOG.md'], { encoding: 'utf-8' }).stdout
+      : jetpack.read(path.resolve(slash(`${process.env.PORTABLE_EXECUTABLE_DIR}/CHANGELOG.md`)));
     const ownNewest = /^## (\d+\.\d+\.\d+)/m.exec(ownNotes || '')?.[1];
     if (!ownNewest) throw new Error('the testground has no release in its own CHANGELOG.md');
 
