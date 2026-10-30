@@ -1,7 +1,7 @@
 import { Browser, BrowserContext, Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { FluentTester } from '../fluent-tester';
-import { AppsTestHelper } from '../apps-test-helper';
+import { AppsTestHelper, ServicesLogMark } from '../apps-test-helper';
 import { Constants } from '../../utils/constants';
 import { Helpers } from '../../utils/helpers';
 import { DockerTestHelper } from '../docker-test-helper';
@@ -168,17 +168,21 @@ export class SelfServicePortalsTestHelper {
       console.log(`[startApp] app '${appId}' stopped — proceeding to start`);
     });
 
-    return ft
+    const startLines: ServicesLogMark = { offset: 0 };
+    ft = ft
       .consoleLog(`Starting app '${appId}'...`)
       .waitOnElementToBecomeVisible(btnSel, timeout)
-      .waitOnElementToBecomeEnabled(btnSel, timeout)
+      .waitOnElementToBecomeEnabled(btnSel, timeout);
+    ft = AppsTestHelper.markServicesLog(ft, startLines)
       .click(btnSel)
       .confirmDialogShouldBeVisible()
       .clickYesDoThis()
       .waitOnElementToBecomeDisabled(btnSel, timeout)
       .waitOnElementToBecomeVisible(spinnerSel, timeout)
       .waitOnElementToContainText(stateSel, 'starting', timeout)
-      .consoleLog(`App '${appId}' is starting...`)
+      .consoleLog(`App '${appId}' is starting...`);
+    // A start the page shows failed ends here at once, with the server's reason (chain b's AI Hub waited 67 + 62 min)
+    return AppsTestHelper.waitUntilRunningUnlessItsStartFailed(ft, appId, startLines, timeout)
       .waitOnElementToBecomeEnabled(btnSel, timeout)
       .waitOnElementToContainText(stateSel, 'running', timeout)
       .waitOnElementToContainText(btnSel, 'Stop', timeout)

@@ -220,12 +220,14 @@ export class AppsTestHelper {
     const sanitizedId = sanitizeAppId(appId);
     const btnSel = `#btnStartStop_${sanitizedId}`;
     const stateSel = `#appState_${sanitizedId}`;
+    const startLines: ServicesLogMark = { offset: 0 };
 
     // --- START THE APP ---
     ft = ft
       .scrollIntoViewIfNeeded(btnSel)
       .consoleLog(`Starting app '${appName}' (${appId})...`)
-      .waitOnElementToContainText(stateSel, 'stopped', timeout)
+      .waitOnElementToContainText(stateSel, 'stopped', timeout);
+    ft = AppsTestHelper.markServicesLog(ft, startLines)
       .click(btnSel)
       .confirmDialogShouldBeVisible()
       .waitOnElementToContainText('#confirmDialog .modal-box', appName)
@@ -236,8 +238,8 @@ export class AppsTestHelper {
       .waitOnElementToContainText(stateSel, 'starting', timeout)
       .consoleLog(`App '${appName}' is starting...`);
 
-    // Wait for running state
-    ft = ft
+    // Wait for running state; a start the page shows failed ends it at once
+    ft = AppsTestHelper.waitUntilRunningUnlessItsStartFailed(ft, appId, startLines, timeout)
       .waitOnElementToContainText(stateSel, 'running', timeout)
       .consoleLog(`App '${appName}' is running.`);
 
@@ -247,4 +249,95 @@ export class AppsTestHelper {
     return ft;
   }
 
+  /**
+   * Takes `mark` at services.log's end when the chain gets there: put it just before an app's Start is clicked,
+   * so waitUntilRunningUnlessItsStartFailed reads that start's own lines and no older ones.
+   */
+  static markServicesLog(ft: FluentTester, mark: ServicesLogMark): FluentTester {
+    ft.actions.push(async () => {
+      mark.offset = AppsTestHelper.servicesLogSize();
+    });
+    return ft;
+  }
+
+  /**
+   * Wait for an app whose Start was just clicked to show 'running' - and end as soon as the page shows that the
+   * start failed, with the server's reason in the error.
+   *
+   * The card alone never shows it. The server answers a start with "pending" and runs `docker compose up` by itself
+   * (StarterPacksManagementService), so when compose fails the card stays on 'starting': the page holds a start in
+   * flight (docker-lifecycle.service.ts resolveNextStatus) until its polling gives up, after 3 h. What the page does
+   * show is the server's verdict: ServicesManager logs "Failed to start app" to errors.log and the status bar turns
+   * into #btnErrors (status-bar.template.html). Chain a's AI Hub (3f5c21f0, 2026-10-25) showed it 6 min after Start
+   * and its wait went on for 40 min more; chain b's (889001e6) spent 67 + 62 min there. A start the server refuses at
+   * once marks the card instead: 'border-error' on #appPanel_<id> (isAppError, apps-manager.template.html).
+   *
+   * A red bar could also be another request's error, so the start's own lines decide, read past `startLines` as
+   * waitUntilComposeDown reads a stop: 'handleAppStart: composePath=' and then a non-zero 'Command exit code: N'.
+   * A red bar with no failed start there keeps the wait going.
+   */
+  static waitUntilRunningUnlessItsStartFailed(
+    ft: FluentTester,
+    appId: string,
+    startLines: ServicesLogMark,
+    timeout: number = Constants.DELAY_FIVE_THOUSANDS_SECONDS,
+  ): FluentTester {
+    const sanitizedId = sanitizeAppId(appId);
+    const stateSel = `#appState_${sanitizedId}`;
+    const panelSel = `#appPanel_${sanitizedId}`;
+
+    ft.actions.push(async () => {
+      const page = ft.window;
+      // A short timeout on each read, as waitUntilStopped's: with none, one read can block for 300 s.
+      const textNow = async (sel: string): Promise<string> =>
+        ((await page.locator(sel).first().textContent({ timeout: 5_000 }).catch(() => '')) || '').trim();
+      const shown = async (sel: string): Promise<boolean> =>
+        (await page.locator(sel).count().catch(() => 0)) > 0;
+      const waitMs = Constants.capWait(timeout);
+      const deadline = Date.now() + waitMs;
+      let state = '';
+
+      while (Date.now() < deadline) {
+        state = (await textNow(stateSel)).toLowerCase();
+        if (state.includes('running')) return;
+        const cardMarkedError = await shown(`${panelSel}.border-error`);
+        if (cardMarkedError || (await shown('#btnErrors'))) {
+          const serverSays = AppsTestHelper.failedStartIn(AppsTestHelper.servicesLogLinesFrom(startLines.offset));
+          if (cardMarkedError || serverSays) {
+            const cardOutput = cardMarkedError ? await textNow(`${panelSel} pre`) : '';
+            throw new Error(
+              `startApp: app '${appId}' did not start, and the page shows it: ` +
+                (cardMarkedError
+                  ? `its card is marked as an error${cardOutput ? ` (${cardOutput})` : ''}`
+                  : `the status bar's 'View Error(s)' while the card still says '${state}'`) +
+                `. The server: ${serverSays || `no failed start in ${AppsTestHelper.servicesLogPath()} past the mark`}`,
+            );
+          }
+        }
+        await page.waitForTimeout(2_000);
+      }
+
+      throw new Error(`startApp: app '${appId}' did not reach 'running' within ${waitMs} ms; its card says '${state}'`);
+    });
+    return ft;
+  }
+
+  /**
+   * The failed start in `lines` (services.log past a mark) as the server wrote it: docker's last lines before the
+   * exit code (its own reason, e.g. "dependency failed to start: container ... is unhealthy"), the exit code and the
+   * "Failed to start app" after it. Empty when no start failed there.
+   */
+  private static failedStartIn(lines: string[]): string {
+    const exitCode = /Command exit code: (-?\d+)/;
+    const start = lines.findIndex((line) => line.includes('handleAppStart: composePath='));
+    const exit = start < 0 ? -1 : lines.findIndex((line, i) => i > start && exitCode.test(line));
+    if (exit < 0 || lines[exit].match(exitCode)![1] === '0') return '';
+    const dockerSays = lines.slice(start + 1, exit).filter((line) => line.trim()).slice(-5);
+    const failed = lines.slice(exit + 1).find((line) => line.includes('Failed to start app'));
+    return [...dockerSays, lines[exit], ...(failed ? [failed] : [])].join(' | ');
+  }
+
 }
+
+/** A place in services.log (its size in bytes then), taken by AppsTestHelper.markServicesLog. */
+export type ServicesLogMark = { offset: number };

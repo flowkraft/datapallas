@@ -48,7 +48,8 @@
 #
 # The failure report (one per channel run, green or red): each step with its verdict and its test counts; every failure once,
 # with its test, its step, the first lines of its error and its evidence (screenshot, trace, the report it came from), every
-# skipped test as a failure of the run, and a red step with no test report as its section's last lines; then the failures grouped
+# skipped test as a failure of the run, every test the end of a run cut short (never reached, interrupted: its time limit) as one
+# too and again in a list of their own, and a red step with no test report as its section's last lines; then the failures grouped
 # by their error's first line. A group is a starting point, not a cause: the run never analyses or fixes anything, so each
 # group's root cause, what changed since it last passed, the fix proposed and how to verify it are written into the report by
 # whoever reads it, and a fix waits for the owner's go.
@@ -143,33 +144,56 @@ try:
 except FileNotFoundError:
     pass
 
-failures, counts, suites, flaky = [], {}, {}, []
+failures, counts, suites, flaky, cut_short = [], {}, {}, [], []
 def playwright(st):
     r = st['report']
     try: d = json.load(open(r, encoding='utf-8'))
     except Exception as e: return 'the Playwright report %s could not be read (%s)' % (r, e)
     s = d.get('stats', {})
     counts[st['label']] = 'passed %s, failed %s, flaky %s, skipped %s' % (s.get('expected', 0), s.get('unexpected', 0), s.get('flaky', 0), s.get('skipped', 0))
+    cut = {'never reached': 0, 'interrupted': 0}
     def walk(suite, path):
         for sp in suite.get('specs', []):
             for t in sp.get('tests', []):
                 status = t.get('status')
+                ran = t.get('results') or []
+                # A run that ends before its tests do (the lane's time limit: Playwright's --global-timeout, dp-ci.sh
+                # win_web_e2e) leaves the test it was in "interrupted" and those after it with no result at all.
+                # Playwright counts both as skipped, and one that failed and was then cut off on its retry as flaky
+                # (chain b's AI Hub on 889001e6). None of them passed, so each is a failure of the run, named for what
+                # happened to it, and `show` (release-rerun.sh) lists it until a re-run of it passes.
+                interrupted = any(x.get('status') == 'interrupted' for x in ran)
+                if status == 'flaky' and interrupted and not any(x.get('status') == 'passed' for x in ran): status = 'unexpected'
                 if status == 'flaky':
                     flaky.append('%s > %s (%s:%s)' % (st['label'], ' > '.join([x for x in path + [sp.get('title', '')] if x]), sp.get('file', '?'), sp.get('line', '?')))
                 if status not in ('unexpected', 'skipped'): continue
-                res = t.get('results') or [{}]
+                res = ran or [{}]
                 last = res[-1]
                 err = last.get('error') or {}
                 msg = err.get('message') or '\n'.join(clean((e or {}).get('message')) for e in last.get('errors', [])) or ''
                 ev = [a.get('path') for r_ in res for a in r_.get('attachments', []) if a.get('path')]
+                tried = len([x for x in res if x.get('status') != 'interrupted'])
+                if status == 'skipped' and not ran:
+                    outcome, msg = 'never reached: the run ended before this test began, so it never ran', 'not run: the run ended before this test began'
+                elif status == 'skipped' and interrupted:
+                    outcome, msg = 'interrupted: the run ended while this test ran, so it never finished', msg or 'interrupted: the run ended while this test ran'
+                elif interrupted:
+                    outcome = 'failed (%d attempt%s), then interrupted on its retry: the run ended' % (tried, '' if tried == 1 else 's')
+                elif status == 'unexpected':
+                    outcome = 'failed (%d attempt%s)' % (len(res), '' if len(res) == 1 else 's')
+                else:
+                    outcome, msg = 'skipped: counts as a failure of the run', msg or 'skipped (no message: a test.skip or a condition in the spec)'
+                test = ' > '.join([x for x in path + [sp.get('title', '')] if x])
+                if interrupted or not ran:
+                    cut['interrupted' if interrupted else 'never reached'] += 1
+                    cut_short.append('%s > %s (%s:%s): %s' % (st['label'], test, sp.get('file', '?'), sp.get('line', '?'), outcome.split(':')[0]))
                 failures.append(dict(step=st['label'], kind='test', file=sp.get('file', ''), title=sp.get('title', ''), report=r,
-                    test=' > '.join([x for x in path + [sp.get('title', '')] if x]),
-                    where='%s:%s' % (sp.get('file', '?'), sp.get('line', '?')),
-                    outcome=('failed (%d attempt%s)' % (len(res), '' if len(res) == 1 else 's')) if status == 'unexpected' else 'skipped: counts as a failure of the run',
-                    message=msg if status == 'unexpected' else (msg or 'skipped (no message: a test.skip or a condition in the spec)'),
+                    test=test, where='%s:%s' % (sp.get('file', '?'), sp.get('line', '?')), outcome=outcome, message=msg,
                     evidence=ev[:6] + [r]))
         for sub in suite.get('suites', []): walk(sub, path + [sub.get('title', '')])
     for top in d.get('suites', []): walk(top, [])
+    if cut['never reached'] or cut['interrupted']:
+        counts[st['label']] += '; cut short by the end of the run: %d never reached, %d interrupted' % (cut['never reached'], cut['interrupted'])
     return None
 def robot_partial(st, r, err):
     """A run stopped mid-write (the stall guard, a kill, a full disk) leaves output.xml without its closing tags,
@@ -261,6 +285,9 @@ if not failures:
 for i, f in enumerate(failures, 1):
     L += ['### %d. %s' % (i, f['test']), '', '- step: %s' % f['step'], '- where: %s' % f['where'], '- outcome: %s' % f['outcome'],
           '- evidence: %s' % ', '.join(f['evidence']), '', '```text', first_lines(f['message'], 40 if f['outcome'].startswith('step') else 12) or '(no message)', '```', '']
+# the tests the end of the run cut short, beside the failures above (each is one of them): what a capped run never proved
+if cut_short:
+    L += ['## Cut short by the end of the run (%d): never reached or interrupted, so not proven' % len(cut_short), ''] + ['- ' + x for x in cut_short] + ['']
 if flaky:
     L += ['## Flaky: failed, then passed on the retry (not failures of the run, listed to be looked at)', ''] + ['- ' + x for x in flaky] + ['']
 groups = {}
