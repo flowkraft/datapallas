@@ -98,6 +98,14 @@
 #                  Chromium 120]. DEBUG is passed through (DEBUG=pw:browser prints the browser's own stderr).
 #       E2E_DD_SCREENSHOTS=1 [off]: the dashboard-demo specs also take the "How it was built" pictures, written into the
 #                  docs site's public/images/docs (DOCS_SITE [<all-repos>/src/company-biz/flowkraft/www/reportburster.com]).
+#       E2E_REUSE_BUILD="<parts>" [empty]  a re-run between the two executions of steps 2 and 3, set only by
+#                  asbl/ci/release-rerun.sh: for each part named (e2e-package, image-and-zips), where a lane wants a build of
+#                  exactly the commit under test (the e2e package's stamp, the image's tag, the same on the VM: reuse_build_ok),
+#                  a build of an earlier commit is used when asbl/ci/reuse-or-rebuild.sh says nothing that part ships changed
+#                  since; otherwise the lane stops and builds nothing. A part not named, and empty: the exact commit, as always.
+#       E2E_KEPT_BUILD=<artifacts folder> [empty]  with image-and-zips in E2E_REUSE_BUILD: the docker-server lane and win
+#                  docker-e2e install that execution's kept image and datapallas-server-docker.zip (asbl/ci/release-keep.sh)
+#                  instead of the newest build's (kept_build_tag). Empty = the newest successful build, as always.
 #       Ends with one parsable line: E2E_RESULT mode=... passed=N failed=N ... exit=N. Watch a run: bash asbl/ci/e2e-watch.sh.
 #       Host firewall: an e2e run opens two ufw rules tagged dp-ci-e2e (host -> Docker networks, containers -> DataPallas
 #       on 9090), because ufw denies both by default; a detached watcher removes them when dp-ci is gone, however the run
@@ -204,6 +212,11 @@
 #                               [21600 = 6 h]), then, UPLOAD=yes, datapallas.zip, datapallas-server.zip and datapallas-src.zip
 #                               staged in rehearsal/<version>-<commit>/; MODE=public copies a passed rehearsal to newest/ - see
 #                               win_release.
+#       robot                   the Robot UAT again on a kept pack, between the two executions (asbl/ci/release-rerun.sh runs
+#                               it through asbl/ci/jenkins/win-e2e.sh robot): the VM on origin/main, the kept zips of
+#                               RELEASE_KEPT (an artifacts folder, asbl/ci/release-keep.sh) put back in its asbl\dist, then
+#                               run-tests.bat, every suite or only ROBOT_TEST (its --test). REBUILD_PACK=yes: pack-datapallas.bat
+#                               first, and the suites on that new pack. Keeps, uploads and records nothing - see win_robot_rerun.
 #       prereq e2e|docker-e2e|server-e2e|release
 #                               that lane's checks (prereq above): e2e = vm vm-docker vm-java vm-mvn vm-free; docker-e2e = vm
 #                               vm-docker docker vm-free; server-e2e = vm vm-docker vm-java vm-free; release = vm vm-free.
@@ -253,6 +266,67 @@ PINNED_REPO=/var/kraft-internalsystems/projects/dp-pinned/reportburster  # the p
 SERVER_IMAGE_REPO=flowkraft/datapallas-server
 # mark_start / mark_end / mark_next / mark_run: the START/END lines of a run's parts, with their times (host side)
 . "$REPO/asbl/ci/marks.sh"
+
+# reuse_listed <part>: is that part (e2e-package, image-and-zips) one a re-run may take from an earlier commit (E2E_REUSE_BUILD)?
+reuse_listed() { case " ${E2E_REUSE_BUILD:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
+# reuse_build_ok <part> <built from> <under test> [<checkout>]: may a re-run use a build of an earlier commit? A re-run
+# between the two executions of steps 2 and 3 (asbl/ci/release-rerun.sh names the part in E2E_REUSE_BUILD) tests a fix to the
+# tests or the CI on the build already there, when the one rule (asbl/ci/reuse-or-rebuild.sh) says nothing that part ships
+# changed since. It is called only where an exact-commit check has just failed, and for a part not named it answers no at
+# once, printing nothing: every other run keeps that check exactly as it was. With a checkout given, changes to its tracked
+# files mean no (a dirty tree is no commit), and so does a build of one. rc 0 = use it; the answer goes to stderr, so a
+# caller that prints a value on stdout (win_vm_build_tag) is not disturbed.
+reuse_build_ok() {
+  reuse_listed "$1" || return 1
+  local part="$1" built="$2" under="$3" tree="${4:-}"
+  case "$built" in *-dirty)
+    echo "REUSE_BUILD $part built from $built cannot be used for ${under:0:8}: a build of a dirty tree is of no commit" >&2; return 1 ;;
+  esac
+  (
+    . "$REPO/asbl/ci/reuse-or-rebuild.sh"
+    reuse_or_rebuild "$built" "${under%-dirty}" "$tree"
+    case "$part" in
+      e2e-package)    answer=$RR_E2E_PACKAGE why=$RR_WHY_E2E_PACKAGE ;;
+      image-and-zips) answer=$RR_IMAGE_AND_ZIPS why=$RR_WHY_IMAGE_AND_ZIPS ;;
+      *) echo "!!! reuse_build_ok: no part '$part'" >&2; exit 2 ;;
+    esac
+    if [ "$answer" = reuse ]; then
+      echo "REUSE_BUILD $part built from ${built:0:8} used for ${under:0:8}: nothing it ships changed since (asbl/ci/reuse-or-rebuild.sh, E2E_REUSE_BUILD)" >&2
+      exit 0
+    fi
+    echo "REUSE_BUILD $part built from ${built:0:8} cannot be used for ${under:0:8}: it ships what changed since: $why${RR_NOTE:+ ($RR_NOTE)}" >&2
+    exit 1
+  )
+}
+
+# kept_build_tag <under test> [<checkout>]: E2E_KEPT_BUILD=<artifacts folder> (a re-run, asbl/ci/release-rerun.sh): the image
+# that execution kept, <version>-<commit> as its MANIFEST's built_as names it, loaded back from the folder's image file when
+# this host's daemon lost it (its nightly cleanup), the same way release-docker.sh keeps it; then the zip and the image checked
+# against the manifest (release-keep.sh check), and used only when reuse_build_ok says the image may stand for the commit
+# under test. Prints the tag; rc 2 with the reason otherwise. The caller installs the folder's datapallas-server-docker.zip
+# with it, never asbl/dist's.
+kept_build_tag() {
+  local kept="${E2E_KEPT_BUILD%/}" under="$1" tag tagsha
+  tag=$(sed -n 's/^docker\.image=.* built_as=[^ :]*:\([^ ]*\)$/\1/p' "$kept/MANIFEST.txt" 2>/dev/null | tail -1)
+  [ -n "$tag" ] && [ -s "$kept/datapallas-server-docker.zip" ] ||
+    { echo "FAIL  E2E_KEPT_BUILD=$kept: no kept image (a docker.image line with built_as) or no datapallas-server-docker.zip there" >&2; return 2; }
+  if ! docker image inspect "$SERVER_IMAGE_REPO:$tag" >/dev/null 2>&1; then
+    [ -s "$kept/datapallas-server-image.tar" ] ||
+      { echo "FAIL  $SERVER_IMAGE_REPO:$tag is not on this host and $kept keeps no datapallas-server-image.tar" >&2; return 2; }
+    echo "KEPT_BUILD $SERVER_IMAGE_REPO:$tag is not in this host's Docker daemon: loading it from $kept/datapallas-server-image.tar" >&2
+    docker load -q -i "$kept/datapallas-server-image.tar" >&2 || { echo "FAIL  docker load -i $kept/datapallas-server-image.tar" >&2; return 2; }
+  fi
+  bash "$REPO/asbl/ci/release-keep.sh" check "$kept" docker >&2 ||
+    { echo "FAIL  $kept: the zip or the image is not the one the execution kept (above)" >&2; return 2; }
+  # two git versions may abbreviate the same commit to different lengths (as in win_vm_build_tag)
+  tagsha="${tag#*-}"
+  [ "${under#"$tagsha"}" != "$under" ] || [ "${tagsha#"$under"}" != "$tagsha" ] ||
+    reuse_build_ok image-and-zips "$tagsha" "$under" ${2:+"$2"} ||
+    { echo "FAIL  the kept image is of '$tagsha', the commit under test is '${under:0:8}', and it cannot stand for it (above)" >&2; return 2; }
+  echo "KEPT_BUILD $SERVER_IMAGE_REPO:$tag and $kept/datapallas-server-docker.zip (E2E_KEPT_BUILD)" >&2
+  echo "$tag"
+}
 
 # A publish target: the site's compose folder (docker-compose.yml + .env with DATAPALLAS_IMAGE=...), its data
 # folder, the app container, the public URL (empty = no URL check) and the host: "local", or an ssh host reached
@@ -876,6 +950,17 @@ win_prepare_package() {
     echo "WIN_E2E_PACKAGE=current ($vm)"
     return 0
   fi
+  # a re-run between the executions (e2e-package in E2E_REUSE_BUILD, reuse_build_ok): the package of an earlier commit when
+  # nothing it ships changed since; asbl/ci/release-rerun.sh reads this line to know which package the lane used
+  if [ -n "$built" ] && reuse_listed e2e-package && win_ssh "if exist $pkg\\verified-db-noexe\\DataPallas echo yes" 2>/dev/null | grep -q yes &&
+     reuse_build_ok e2e-package "$built" "$vm"; then
+    echo "WIN_E2E_PACKAGE=reused ($built for $vm)"
+    return 0
+  fi
+  if reuse_listed e2e-package; then
+    echo "FAIL  the VM's package is built from '${built:-nothing}', not usable for $vm, and a re-run builds nothing (E2E_REUSE_BUILD): rebuild it first (asbl/ci/release-rerun.sh with REBUILD=yes)" >&2
+    return 2
+  fi
   echo "WIN_E2E_PACKAGE=stale (built from '${built:-nothing}', the VM is at $vm) - running pack-prepare-for-e2e.bat on the desktop"
   win_ssh "if exist $pkg\\.built-from del /q $pkg\\.built-from" >/dev/null 2>&1
   # The package's web-component bundle is built by `vite build` in frend\rb-webcomponents, which needs its devDependencies
@@ -1257,8 +1342,9 @@ win_vm_build_tag() {
   done
   [ -n "$tag" ] || { echo "FAIL  no successful build log with an IMAGE_TAG line - run dp-ci.sh build-if-needed first" >&2; return 2; }
   tagsha="${tag#*-}"
-  # two git versions may abbreviate the same commit to different lengths
-  [ "${vm#"$tagsha"}" != "$vm" ] || [ "${tagsha#"$vm"}" != "$tagsha" ] ||
+  # two git versions may abbreviate the same commit to different lengths; a re-run between the executions
+  # (image-and-zips in E2E_REUSE_BUILD) may use a build of an earlier commit (reuse_build_ok, which answers on stderr)
+  [ "${vm#"$tagsha"}" != "$vm" ] || [ "${tagsha#"$vm"}" != "$tagsha" ] || reuse_build_ok image-and-zips "$tagsha" "$vm" ||
     { echo "FAIL  the build is of '$tagsha', the VM tests '$vm' - run dp-ci.sh build-if-needed first" >&2; return 2; }
   echo "$tag"
 }
@@ -1454,7 +1540,13 @@ win_docker_e2e() {
   else
     mark_start "$target STEP 1/3" "the image: the build of the VM's commit, copied to the VM when it is not there yet"
     win_sync_repo || return $?
-    tag=$(win_vm_build_tag) || return $?
+    if [ -n "${E2E_KEPT_BUILD:-}" ]; then
+      # a re-run between the executions on the image and the zip an execution kept (kept_build_tag), not the newest build's
+      tag=$(kept_build_tag "$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)") || return 2
+      zip="${E2E_KEPT_BUILD%/}/datapallas-server-docker.zip"
+    else
+      tag=$(win_vm_build_tag) || return $?
+    fi
     image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
       { echo "FAIL  image $SERVER_IMAGE_REPO:$tag is not on this host - run dp-ci.sh build-if-needed first" >&2; return 2; }
     [ -s "$zip" ] || { echo "FAIL  $zip is missing - run dp-ci.sh build-if-needed first" >&2; return 2; }
@@ -1773,6 +1865,90 @@ win_put_dist() {
   return "$bad"
 }
 
+# win_robot_suites <results folder on this host> [<test name>]: the Robot UAT on what the VM's asbl\dist holds, as a user meets
+# the product: step 3's RELEASE STEP 3/4, and a re-run of the suites or of one failed test between the executions
+# (win_robot_rerun). Every suite, or only <test name> (run-tests.bat --test, robot -t). The results come down into <results
+# folder>; the verdict is their output.xml, since run-tests.bat does not pass Robot's exit code on. Sets WIN_ROBOT_RESULT
+# (PASS only when something passed and nothing failed or was skipped) and prints the ROBOT_RESULT line.
+win_robot_suites() {
+  local dest="$1" test="${2:-}" uat="$WIN_REPO\\asbl\\src\\uat" counts pass fail skip
+  WIN_ROBOT_RESULT=FAIL
+  # the suite's own set-up, once: its venv. Before it, what an earlier UAT run left: a chromedriver.exe that
+  # still holds that run's step.log open, so the step cannot write its log and does not run (win_run's
+  # EXIT=97), and an earlier run's results folder must never be read as this run's verdict (2026-10-26)
+  win_ps 2>&1 <<PS | tr -d '\r'
+Get-Process chromedriver -ErrorAction SilentlyContinue | Stop-Process -Force
+Remove-Item '$uat\\results' -Recurse -Force -ErrorAction SilentlyContinue
+if (-not (Test-Path '$uat\\.venv\\Scripts\\activate.bat')) {
+  Set-Location '$uat'
+  & powershell -NoProfile -ExecutionPolicy Bypass -File requirements-install.ps1 2>&1 | Select-Object -Last 5
+}
+PS
+  # WIN_RUN_ELEVATE: the suites install and uninstall Java and Chocolatey, so the task itself must be
+  # elevated (a UAC prompt on the VM's desktop has nobody to answer it; group H of 2026-10-25).
+  WIN_RUN_ENV="" WIN_RUN_BARE=1 WIN_RUN_WATCH="" WIN_RUN_ELEVATE=1 WIN_RUN_TIMEOUT="${RELEASE_ROBOT_TIMEOUT:-21600}" WIN_RUN_STALL=5400 \
+    win_run release-robot "$uat" run-tests.bat ${test:+--test "\"$test\""}
+  # run-tests.bat does not pass Robot's exit code on: the verdict is the suite's own output.xml
+  rm -rf "$dest"
+  WIN_SCP_EXTRA=-r win_pull "$(printf '%s' "$uat\\results" | tr '\\' '/')" "$dest" 2>/dev/null
+  counts=$(python3 - "$dest/output.xml" <<'PY' 2>/dev/null
+import sys, xml.etree.ElementTree as ET
+s = ET.parse(sys.argv[1]).getroot().find('statistics/total/stat')
+print(s.get('pass', 0), s.get('fail', 0), s.get('skip', 0))
+PY
+)
+  if [ -n "$counts" ]; then
+    read -r pass fail skip <<< "$counts"
+    echo "ROBOT_RESULT passed=$pass failed=$fail skipped=$skip report=$dest/report.html"
+    [ "$fail" = 0 ] && [ "$skip" = 0 ] && [ "$pass" -gt 0 ] && WIN_ROBOT_RESULT=PASS
+  else
+    echo "ROBOT_RESULT no output.xml - the suite did not finish (see the step output above)"
+  fi
+  return 0
+}
+
+# Between the two executions (asbl/ci/release-rerun.sh run robot, through asbl/ci/jenkins/win-e2e.sh robot): the Robot UAT
+# again on a kept pack, after a fix to the suites (asbl/src/uat, never shipped) or the CI. The VM on origin/main; the zips
+# RELEASE_KEPT (an artifacts folder of asbl/ci/release-keep.sh) kept, put back in the VM's asbl\dist (win_put_dist, each one
+# checked by its sha256 in the folder's MANIFEST); then win_robot_suites: every suite, or only ROBOT_TEST. REBUILD_PACK=yes
+# instead packs first (pack-datapallas.bat, as step 3's RELEASE STEP 1/4) and runs the suites on that new pack:
+# release-rerun.sh asks for it when asbl/ci/reuse-or-rebuild.sh says the pack ships what changed. It keeps, records and
+# uploads nothing; release-rerun.sh writes the re-run's lines. rc 0 = the suites passed.
+win_robot_rerun() {
+  local kept="${RELEASE_KEPT%/}" test="${ROBOT_TEST:-}" base files
+  # the name goes on a cmd.exe line inside quotes: none of cmd's or Robot's own special characters
+  case "$test" in *[!A-Za-z0-9\ _.,:\(\)\'*?/-]*)
+    echo "FAIL  ROBOT_TEST may hold letters, digits, spaces and _ . , : ( ) ' * ? / - only: '$test'" >&2; return 2 ;;
+  esac
+  base="${WIN_E2E_LOG:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/win-robot-$(date -u +%Y%m%dT%H%M%SZ)-step.log}"
+  base="${base%.log}"
+  prereq vm vm-free || return 2
+  if [ "${REBUILD_PACK:-no}" = yes ]; then
+    mark_start "ROBOT RE-RUN 1/2" "the pack, made again (REBUILD_PACK=yes): the VM on origin/main, asbl\\pack-datapallas.bat"
+    win_sync_repo || return $?
+    win_server_down "$WIN_REPO\\frend\\reporting\\testground\\server\\DataPallas" >/dev/null
+    win_stacks_down server
+    win_temp_clean
+    WIN_RUN_ENV="" WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-datapallas.log" WIN_RUN_TIMEOUT="${RELEASE_PACK_TIMEOUT:-28800}" WIN_RUN_STALL=7200 \
+      win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat ||
+      { echo "FAIL  the pack failed: asbl\\pack-datapallas.log on the VM (dp-ci.sh win poll release-pack)"; return 1; }
+    echo "ROBOT_PACK=rebuilt ($(win_ssh "git -C $WIN_REPO rev-parse HEAD" 2>/dev/null | tr -d '\r' | tail -1))"
+  else
+    mark_start "ROBOT RE-RUN 1/2" "the kept pack: the VM on origin/main, the zips of $kept back in its asbl\\dist"
+    files=$(sed -n 's/^windows\.file=\([A-Za-z0-9._-]*\) size=[0-9]* sha256=\([0-9a-f]\{64\}\)$/\1:\2/p' "$kept/MANIFEST.txt" 2>/dev/null)
+    [ -n "$kept" ] && [ -n "$files" ] ||
+      { echo "FAIL  RELEASE_KEPT='$kept' keeps no Windows pack (no windows.file lines in its MANIFEST.txt)" >&2; return 2; }
+    win_sync_repo || return $?
+    win_put_dist "$kept" $files || return 1
+    echo "ROBOT_PACK=kept ($kept, built from $(sed -n 's/^commit=//p' "$kept/MANIFEST.txt"))"
+  fi
+  mark_next "ROBOT RE-RUN 2/2" "asbl\\src\\uat\\run-tests.bat${test:+ --test \"$test\"} on that pack"
+  win_robot_suites "$base-robot" "$test"
+  echo "WIN_ROBOT_REPORT=$base-robot/output.xml"
+  mark_end "$([ "$WIN_ROBOT_RESULT" = PASS ] && echo 0 || echo 1)"
+  [ "$WIN_ROBOT_RESULT" = PASS ]
+}
+
 # Job dp-ci-release-step3-release-windows-vm (`dp-ci.sh win release`): the Windows release, MODE=rehearsal (the default),
 # MODE=upload or MODE=public, UPLOAD=no (the default) or yes, DRY_RUN=no|yes. Pack, prove, keep, upload, in that order:
 # nothing is uploaded before the electron light set and the Robot UAT passed, and nothing at all unless UPLOAD=yes. Never at
@@ -1840,7 +2016,7 @@ win_put_dist() {
 # and what each part would do (DRY_RUN=1 counts as yes).
 win_release() {
   local base vmc hostc files ok=1 rc gate res_pack=NOT_RUN res_light=NOT_RUN res_robot=NOT_RUN res_keep=NOT_RUN res_stage=NOT_RUN mode dry reh
-  local uat n counts pass fail skip folder inc light_log kept="" log keep="bash $REPO/asbl/ci/release-keep.sh"
+  local n folder inc light_log kept="" log keep="bash $REPO/asbl/ci/release-keep.sh"
   mode="${MODE:-rehearsal}"
   case "$mode" in rehearsal|upload|public) ;; *) echo "FAIL  MODE must be rehearsal, upload or public (got '$mode')" >&2; return 2 ;; esac
   case "${DRY_RUN:-no}" in no|0) dry=no ;; yes|1) dry=yes ;; *) echo "FAIL  DRY_RUN must be no or yes (got '$DRY_RUN')" >&2; return 2 ;; esac
@@ -1859,7 +2035,6 @@ win_release() {
     mark_end "$rc"
     return "$rc"
   fi
-  uat="$WIN_REPO\\asbl\\src\\uat"
   base="${WIN_E2E_LOG:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/win-release-$(date -u +%Y%m%dT%H%M%SZ)-step.log}"
   base="${base%.log}"
   log="${base%-step}.log"
@@ -2005,38 +2180,8 @@ PS
   elif ! win_put_dist "$folder" $(sed -n 's/^sha256   \([0-9a-f]\{64\}\)  [0-9]*  \([A-Za-z0-9._-]*\)$/\2:\1/p' "$base-release-files.txt"); then
     echo "not run: the pack's zips are not in the VM's asbl\\dist and could not be put back (above)"
   else
-    # the suite's own set-up, once: its venv. Before it, what an earlier UAT run left: a chromedriver.exe that
-    # still holds that run's step.log open, so the step cannot write its log and does not run (win_run's
-    # EXIT=97), and an earlier run's results folder must never be read as this run's verdict (2026-10-26)
-    win_ps 2>&1 <<PS | tr -d '\r'
-Get-Process chromedriver -ErrorAction SilentlyContinue | Stop-Process -Force
-Remove-Item '$uat\\results' -Recurse -Force -ErrorAction SilentlyContinue
-if (-not (Test-Path '$uat\\.venv\\Scripts\\activate.bat')) {
-  Set-Location '$uat'
-  & powershell -NoProfile -ExecutionPolicy Bypass -File requirements-install.ps1 2>&1 | Select-Object -Last 5
-}
-PS
-    # WIN_RUN_ELEVATE: the suites install and uninstall Java and Chocolatey, so the task itself must be
-    # elevated (a UAC prompt on the VM's desktop has nobody to answer it; group H of 2026-10-25).
-    WIN_RUN_ENV="" WIN_RUN_BARE=1 WIN_RUN_WATCH="" WIN_RUN_ELEVATE=1 WIN_RUN_TIMEOUT="${RELEASE_ROBOT_TIMEOUT:-21600}" WIN_RUN_STALL=5400 \
-      win_run release-robot "$uat" run-tests.bat
-    # run-tests.bat does not pass Robot's exit code on: the verdict is the suite's own output.xml
-    rm -rf "$base-robot"
-    WIN_SCP_EXTRA=-r win_pull "$(printf '%s' "$uat\\results" | tr '\\' '/')" "$base-robot" 2>/dev/null
-    res_robot=FAIL
-    counts=$(python3 - "$base-robot/output.xml" <<'PY' 2>/dev/null
-import sys, xml.etree.ElementTree as ET
-s = ET.parse(sys.argv[1]).getroot().find('statistics/total/stat')
-print(s.get('pass', 0), s.get('fail', 0), s.get('skip', 0))
-PY
-)
-    if [ -n "$counts" ]; then
-      read -r pass fail skip <<< "$counts"
-      echo "ROBOT_RESULT passed=$pass failed=$fail skipped=$skip report=$base-robot/report.html"
-      [ "$fail" = 0 ] && [ "$skip" = 0 ] && [ "$pass" -gt 0 ] && res_robot=PASS
-    else
-      echo "ROBOT_RESULT no output.xml - the suite did not finish (see the step output above)"
-    fi
+    win_robot_suites "$base-robot"
+    res_robot=$WIN_ROBOT_RESULT
   fi
   $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 3/4" "$res_robot" "the Robot UAT (asbl\\src\\uat\\run-tests.bat, all seven suites) on the pack's zips" "$log" "$([ -d "$base-robot" ] && echo "$base-robot/output.xml")" >/dev/null
   mark_end "$([ "$res_robot" = PASS ] && echo 0 || echo 1)"
@@ -2474,6 +2619,17 @@ if [ "${1:-}" = "--inside" ]; then
       echo "package: built from $SHA, the commit under test - nothing to rebuild"
       return 0
     fi
+    # A re-run between the executions (e2e-package in E2E_REUSE_BUILD, reuse_build_ok): the package of an earlier commit when
+    # nothing it ships changed since. Only a package built from a clean commit (a one-line stamp): one a shortcut changed never is.
+    if [ "$(grep -c . <<<"$built")" = 1 ] && [ -d asbl/target/package/verified-db-noexe/DataPallas ] &&
+       reuse_build_ok e2e-package "$from" "$SHA" "$REPO"; then
+      echo "package: built from $from, reused for $SHA (E2E_REUSE_BUILD) - nothing rebuilt"
+      return 0
+    fi
+    if reuse_listed e2e-package; then
+      echo "!!! package: built from '${built:-nothing}', not usable for $SHA, and a re-run builds nothing (E2E_REUSE_BUILD): rebuild it first (asbl/ci/release-rerun.sh with REBUILD=yes)"
+      return 2
+    fi
     echo "package: built from '${built:-nothing}', commit under test is $SHA - rebuilding it (pack-prepare-for-e2e.bat)"
     rm -f "$PKG_STAMP"
     mvn_build &&
@@ -2767,6 +2923,14 @@ HTML
       curl -fsSL --max-time 1800 -o "$zip" "$E2E_DOCKER_FROM_URL" ||
         { echo "!!! docker-server: cannot download $E2E_DOCKER_FROM_URL"; return 1; }
       echo "docker-server: downloaded $E2E_DOCKER_FROM_URL (sha256 $(sha256sum "$zip" | cut -c1-16)...), the release image $want"
+    elif [ -n "${E2E_KEPT_BUILD:-}" ]; then
+      # A re-run between the executions on the image and the zip an execution kept, not the newest build's (kept_build_tag
+      # checks them and that they may stand for this commit); then as below: the image's id, the released tag on it.
+      tag=$(kept_build_tag "$SHA" "$REPO") || { echo "!!! docker-server: E2E_KEPT_BUILD=$E2E_KEPT_BUILD cannot be used (above)"; return 1; }
+      zip="${E2E_KEPT_BUILD%/}/datapallas-server-docker.zip"
+      echo "docker-server: the kept image $SERVER_IMAGE_REPO:$tag and $zip (E2E_KEPT_BUILD)"
+      image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) || return 1
+      docker tag "$SERVER_IMAGE_REPO:$tag" "$SERVER_IMAGE_REPO:$(printf '%s' "$tag" | cut -d- -f1)" || return 1
     else
       for f in $(ls -1 "$LOG_DIR"/*-build-*.log 2>/dev/null | sort -r); do
         grep -aq '^PIPELINE_RESULT=SUCCESS' "$f" || continue
@@ -2775,8 +2939,9 @@ HTML
       done
       [ -n "${tag:-}" ] || { echo "!!! docker-server: no successful build log with an IMAGE_TAG line — run 'dp-ci.sh build' first"; return 1; }
       # The image must come from the commit under test: the tag is <version>-<commit>. An image from an older
-      # build would test old code under this commit's name (nothing is built here, so the only safe answer is no).
-      [ "${tag#*-}" = "$SHA" ] ||
+      # build would test old code under this commit's name (nothing is built here, so the only safe answer is no),
+      # unless a re-run between the executions (image-and-zips in E2E_REUSE_BUILD) finds that nothing the image ships changed since.
+      [ "${tag#*-}" = "$SHA" ] || reuse_build_ok image-and-zips "${tag#*-}" "$SHA" "$REPO" ||
         { echo "!!! docker-server: the image was built from '${tag#*-}', the commit under test is '$SHA' — run 'dp-ci.sh build-if-needed' first"; return 1; }
       image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
         { echo "!!! docker-server: image $SERVER_IMAGE_REPO:$tag is not on this host — run 'dp-ci.sh build' first"; return 1; }
@@ -3363,6 +3528,7 @@ if [ "$TASK" = "win" ]; then
     docker-e2e) mark_run win_docker_e2e; exit $? ;;
     server-e2e) mark_run win_server_e2e; exit $? ;;
     release) mark_run win_release; exit $? ;;
+    robot) mark_run win_robot_rerun; exit $? ;;   # release-rerun.sh run robot (through win-e2e.sh robot): the Robot UAT again on a kept pack
     stage-upload) shift 2; win_stage_upload "$@"; exit $? ;;   # release-publish.sh stage-files: the VM's upload (stdin: the remote's fields)
     put-dist) shift 2; win_put_dist "$@"; exit $? ;;
     rclone-ensure) shift 2; win_rclone_ensure "$@"; exit $? ;;   # release-publish.sh upload-kept: the VM's rclone for its upload   # release-publish.sh upload-kept: the kept zips back in the VM's asbl\dist
@@ -3379,6 +3545,7 @@ if [ "$TASK" = "win" ]; then
            echo "       $0 win docker-e2e   (DataPallas Server in Docker Desktop, installed as the self-host page says; a light set by default)"
            echo "       $0 win server-e2e   (DataPallas Server on the VM's Java 17, installed as the installation page says; the same light set)"
            echo "       $0 win release      (the Windows release: pack-datapallas.bat and the zips kept, the electron light set, the Robot UAT on the pack's zips, then staged; MODE=upload: the kept zips uploaded)"
+           echo "       $0 win robot        (between the executions: RELEASE_KEPT=<artifacts folder> its pack back in asbl\\dist, then the Robot UAT, ROBOT_TEST=<name> only that test; REBUILD_PACK=yes packs first)"
            echo "       $0 win stage-upload [--print] <bucket path> <name>:<sha256>...   (the VM uploads asbl\\dist files; stdin: the rclone remote's FIELD=value lines; release-publish.sh stage-files runs it)"
            echo "       $0 win rclone-ensure [check|print]   (the VM's pinned rclone, installed when missing; release-publish.sh upload-kept runs it)"
            echo "       $0 win put-dist [--check] <folder> <name>:<sha256>...   (the VM's asbl\\dist gets those files from <folder> when it holds others; release-publish.sh upload-kept runs it)"; exit 2 ;;
@@ -3554,6 +3721,7 @@ docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS $DOCS_FLAGS --u
   -e E2E_CHROMIUM_EXECUTABLE="${E2E_CHROMIUM_EXECUTABLE:-}" \
   -e E2E_SLOW_MO="${E2E_SLOW_MO:-}" -e E2E_DD_SCREENSHOTS="${E2E_DD_SCREENSHOTS:-}" \
   -e E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-}" -e E2E_PACKAGE="${E2E_PACKAGE:-}" -e E2E_DOCKER_FROM_URL="${E2E_DOCKER_FROM_URL:-}" -e E2E_DOCKER_ONE_COMMAND="${E2E_DOCKER_ONE_COMMAND:-}" \
+  -e E2E_REUSE_BUILD="${E2E_REUSE_BUILD:-}" -e E2E_KEPT_BUILD="${E2E_KEPT_BUILD:-}" \
   -e PUBLISH_TAG="$PUBLISH_TAG" -e PUBLISH_RESET="$PUBLISH_RESET" -e PUBLISH_SETTINGS_FILE="$PUBLISH_SETTINGS_FILE" -e DRY_RUN="${DRY_RUN:-0}" -e FORCE="${FORCE:-0}" -e SMOKE_TIMEOUT_SECS="${SMOKE_TIMEOUT_SECS:-300}" \
   -e TARGET_HOST="${TARGET_HOST:-}" -e TARGET_COMPOSE_DIR="${TARGET_COMPOSE_DIR:-}" -e TARGET_DATA_DIR="${TARGET_DATA_DIR:-}" \
   -e TARGET_APP="${TARGET_APP:-}" -e TARGET_URL="${TARGET_URL:-}" \

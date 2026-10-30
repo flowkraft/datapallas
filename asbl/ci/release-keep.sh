@@ -34,6 +34,13 @@
 #                                                                           manifest: OK, or CHANGED/MISSING naming it; exit 1 then
 #   bash asbl/ci/release-keep.sh show [<folder>]                           the manifest and the summary (the newest folder when
 #                                                                           none is given)
+#   bash asbl/ci/release-keep.sh failures <folder> <channel> | <steps file>   every failure of that channel's last run (or
+#                                                                           of a run written as a .steps file), one tab-separated
+#                                                                           line each: step, test|step, the test as the report
+#                                                                           names it, its file, its own title, its report
+#                                                                           (asbl/ci/release-rerun.sh reads them)
+#   bash asbl/ci/release-keep.sh report-steps <steps file> <report.md> <title>   the failure report of any run whose steps
+#                                                                           are written as a .steps file (a re-run's), same format
 #
 # The failure report (one per channel run, green or red): each step with its verdict and its test counts; every failure once,
 # with its test, its step, the first lines of its error and its evidence (screenshot, trace, the report it came from), every
@@ -51,7 +58,7 @@ RELEASE_ARTIFACTS_DIR="${RELEASE_ARTIFACTS_DIR:-/var/kraft-internalsystems/logs/
 RELEASE_IMAGE_REPO="${RELEASE_IMAGE_REPO:-flowkraft/datapallas-server}"
 IMAGE_FILE=datapallas-server-image.tar   # the kept image as a file; release-publish.sh stage-docker loads it by this name
 
-usage() { sed -n '2,40p' "$0"; exit 2; }
+usage() { sed -n '2,47p' "$0"; exit 2; }
 sha_of() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 channel_ok() { case "$1" in docker|windows) ;; *) echo "FAIL  the channel must be docker or windows (got '$1')"; exit 2 ;; esac; }
@@ -77,9 +84,16 @@ steps_file() { echo "$1/.steps-$2"; }
 
 # report <folder> <channel> <verdict>: failure-report-<channel>.md from the steps file
 report() {
-  python3 - "$(steps_file "$1" "$2")" "$1/failure-report-$2.md" "$2" "$(mget "$1" version)" "$(mget "$1" commit)" "$3" <<'PY'
+  report_steps "$(steps_file "$1" "$2")" "$1/failure-report-$2.md" "$2" "$(mget "$1" version)" "$(mget "$1" commit)" "$3"
+}
+# report_steps <steps file> <report.md> <channel> <version> <commit> <verdict> [<title>]: the failure report of those steps.
+# <verdict> --list prints every failure as one tab-separated line instead (release-keep.sh failures); <title> replaces the
+# report's "the <channel> release run of <version> on <commit>" (a re-run's report).
+report_steps() {
+  python3 - "$@" <<'PY'
 import collections, json, os, re, sys, xml.etree.ElementTree as ET
 steps_path, out, ch, version, commit, verdict = sys.argv[1:7]
+title = sys.argv[7] if len(sys.argv) > 7 else ''
 ANSI = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
 ERROR_HINT = re.compile(r'(?i)(\bfail\b|\bfailed\b|\berror\b|\bexception\b|\bfatal\b|traceback|caused by|npm err!|\bcannot\b|\bdenied\b|\brefused\b|timed out|no such|\bnot found\b)')
 def clean(s): return ANSI.sub('', s or '').strip()
@@ -144,7 +158,8 @@ def playwright(st):
                 err = last.get('error') or {}
                 msg = err.get('message') or '\n'.join(clean((e or {}).get('message')) for e in last.get('errors', [])) or ''
                 ev = [a.get('path') for r_ in res for a in r_.get('attachments', []) if a.get('path')]
-                failures.append(dict(step=st['label'], test=' > '.join([x for x in path + [sp.get('title', '')] if x]),
+                failures.append(dict(step=st['label'], kind='test', file=sp.get('file', ''), title=sp.get('title', ''), report=r,
+                    test=' > '.join([x for x in path + [sp.get('title', '')] if x]),
                     where='%s:%s' % (sp.get('file', '?'), sp.get('line', '?')),
                     outcome=('failed (%d attempt%s)' % (len(res), '' if len(res) == 1 else 's')) if status == 'unexpected' else 'skipped: counts as a failure of the run',
                     message=msg if status == 'unexpected' else (msg or 'skipped (no message: a test.skip or a condition in the spec)'),
@@ -176,7 +191,7 @@ def robot_partial(st, r, err):
         else:
             failed += 1
         if status in ('FAIL', 'SKIP', 'NOT RUN'):
-            failures.append(dict(step=st['label'], test=name, where=os.path.basename(r),
+            failures.append(dict(step=st['label'], kind='test', file='', title=name, report=r, test=name, where=os.path.basename(r),
                 outcome='failed' if status == 'FAIL' else 'skipped or not run: counts as a failure of the run',
                 message=message or '(no message)', evidence=[os.path.join(os.path.dirname(r), 'log.html'), r]))
     counts[st['label']] = 'passed %d, failed %d, skipped %d (partial: the file was cut short)' % (passed, failed, skipped)
@@ -201,7 +216,8 @@ def robot(st):
         for p in [parent.get(t)]:
             if p is not None and p.get('source'): sc['source'] = os.path.basename(p.get('source'))
         if status in ('FAIL', 'SKIP', 'NOT RUN'):
-            failures.append(dict(step=st['label'], test=' > '.join(names + [t.get('name', '')]), where=sc['source'] or top,
+            failures.append(dict(step=st['label'], kind='test', file=sc['source'] or top, title=t.get('name', ''), report=r,
+                test=' > '.join(names + [t.get('name', '')]), where=sc['source'] or top,
                 outcome='failed' if status == 'FAIL' else 'skipped: counts as a failure of the run',
                 message=(s.text or '') if s is not None else '', evidence=[os.path.join(os.path.dirname(r), 'log.html'), r]))
     return None
@@ -216,11 +232,17 @@ for st in steps:
     if note: notes[st['label']] = note
     if st['verdict'] != 'PASS' and len(failures) == n:
         where = (st['log'] or '-') if not st['log'] or os.path.isfile(st['log']) else st['log'] + ' (never written)'
-        failures.append(dict(step=st['label'], test='(the step itself: %s)' % st['what'], where=where,
+        failures.append(dict(step=st['label'], kind='step', file='', title='', report=st['report'],
+            test='(the step itself: %s)' % st['what'], where=where,
             outcome='step %s with no failed test in its report%s' % (st['verdict'], (': ' + note) if note else ''),
             message=tail(st['log'], label=st['label']) if st['log'] else '(no log)', evidence=[x for x in (st['log'], st['report']) if x]))
 
-L = ['# Failure report: the %s release run of %s on %s' % (ch, version, commit[:8]), '',
+if verdict == '--list':
+    # release-rerun.sh: every failure, one line, each field on one line (a test title may hold a line break)
+    one = lambda v: ' '.join(str(v or '').split())
+    for f in failures: print('\t'.join(one(f.get(k)) for k in ('step', 'kind', 'test', 'file', 'title', 'report')))
+    sys.exit(0)
+L = ['# Failure report: ' + (title or 'the %s release run of %s on %s' % (ch, version, commit[:8])), '',
      'Verdict of the run: **%s**. Written by asbl/ci/release-keep.sh at the end of the run; nothing in it was fixed or applied.' % verdict, '',
      '## The steps', '', '| step | verdict | tests | log | test report |', '|---|---|---|---|---|']
 for st in steps:
@@ -380,6 +402,16 @@ case "$cmd" in
     summary "$F" "$1" ;;
   check)
     [ "$#" -ge 1 ] || usage; check "$(abs "$1")" "${@:2}" ;;
+  failures)
+    if [ "$#" = 1 ] && [ -f "$(abs "$1")" ]; then report_steps "$(abs "$1")" - steps "" "" --list; exit $?; fi
+    [ "$#" = 2 ] || usage; channel_ok "$2"; f="$(abs "$1")"; f="${f%/}"
+    [ -f "$f/MANIFEST.txt" ] || { echo "FAIL  no kept release in '$f'"; exit 2; }
+    report_steps "$(steps_file "$f" "$2")" - "$2" "$(mget "$f" version)" "$(mget "$f" commit)" --list ;;
+  report-steps)
+    [ "$#" = 3 ] || usage; [ -f "$(abs "$1")" ] || { echo "FAIL  no steps file '$1'"; exit 2; }
+    # the run's verdict: PASS only when every step passed
+    v=$(awk -F'\t' '$2 != "PASS" { r = "FAIL" } END { print (r ? r : "PASS") }' "$(abs "$1")")
+    report_steps "$(abs "$1")" "$(abs "$2")" re-run "" "" "$v" "$3" ;;
   show)
     f="$(abs "${1:-$(ls -1dt "$RELEASE_ARTIFACTS_DIR"/*/ 2>/dev/null | head -1)}")"; f="${f%/}"
     [ -f "$f/MANIFEST.txt" ] || { echo "no kept release in '${f:-$RELEASE_ARTIFACTS_DIR}'"; exit 1; }

@@ -8,14 +8,15 @@
 # closing Jenkins, the browser or the SSH session leaves it running. A reboot of this host kills the
 # driver, not the VM task: then `bash asbl/ci/dp-ci.sh win poll e2e` (or `docker-e2e`, `server-e2e`) shows what the VM did.
 #
-#   bash win-e2e.sh [e2e|docker-e2e|server-e2e|release]   which lane: e2e (default) = windows-vm-electron, docker-e2e = windows-vm-docker,
-#                                                         server-e2e = windows-vm-server, release = job dp-ci-release-step3-release-windows-vm (MODE, UPLOAD, DRY_RUN passed on)
+#   bash win-e2e.sh [e2e|docker-e2e|server-e2e|release|robot]   which lane: e2e (default) = windows-vm-electron, docker-e2e = windows-vm-docker,
+#                                                         server-e2e = windows-vm-server, release = job dp-ci-release-step3-release-windows-vm (MODE, UPLOAD, DRY_RUN passed on),
+#                                                         robot = the Robot UAT again on a kept pack (asbl/ci/release-rerun.sh; RELEASE_KEPT, ROBOT_TEST, REBUILD_PACK passed on)
 #   E2E_SPEC / E2E_GREP / E2E_ROTATION_DATE / E2E_RETRIES  passed on to dp-ci.sh win <lane> through the environment (both filters
 #                                            empty = its default set; E2E_RETRIES empty = the lane's own, see dp-ci.sh)
 set -uo pipefail
 
 LANE="${1:-e2e}"
-case "$LANE" in e2e|docker-e2e|server-e2e|release) ;; *) echo "FAIL  lane must be e2e, docker-e2e, server-e2e or release (got '$LANE')"; exit 2 ;; esac
+case "$LANE" in e2e|docker-e2e|server-e2e|release|robot) ;; *) echo "FAIL  lane must be e2e, docker-e2e, server-e2e, release or robot (got '$LANE')"; exit 2 ;; esac
 
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
 # one pid file for every Windows lane: they share the VM's desktop, its port 9090 and its Docker Desktop
