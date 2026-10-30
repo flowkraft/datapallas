@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 16.6.1 - 2026-11-02
+
+### Changed
+
+- CI/CD improvements that make releases faster and the end-to-end test runs more efficient.
+
 ## 16.6.0 - 2026-10-26
 
 ### Added
