@@ -41,15 +41,28 @@ public class LogTailingService {
 			// Poll the log file every 250ms (matches the execution-stats cadence) so new
 			// lines stream to the UI responsively, instead of the 1s Tailer default.
 			Tailer tailer = new Tailer(new File(AppPaths.LOGS_DIR_PATH + "/" + fileName), new TailerListenerAdapter() {
+
+				// The lines of one read go out as one message. One message per line flooded every
+				// viewer's websocket when a start read a long file from the top: past 512 KB waiting
+				// for one session, Spring closes that session, and the UI went without live state
+				// until it reconnected (about 30 s).
+				private final List<FileInfo> logsTailInfo = new ArrayList<FileInfo>();
+
 				public void handle(String line) {
 
 					boolean trimContent = false;
 
-					List<FileInfo> logsTailInfo = new ArrayList<FileInfo>();
 					logsTailInfo.add(new FileInfo(fileName, line, trimContent));
+				}
+
+				public void endOfFileReached() {
+
+					if (logsTailInfo.isEmpty())
+						return;
 
 					WebSocketJobsExecutionStatsInfo tailMessageInfo = new WebSocketJobsExecutionStatsInfo("logs.tailer",
-							logsTailInfo.stream());
+							new ArrayList<FileInfo>(logsTailInfo).stream());
+					logsTailInfo.clear();
 
 					messagingTemplate.convertAndSend("/topic/tailer", tailMessageInfo);
 				}

@@ -98,16 +98,18 @@ export class WebSocketService extends WebSocketEndpoint {
     // console.log(`handleFileTailerEvent data = ${receivedEvent}`);
 
     const message = JSON.parse(receivedEvent);
-    const payload = message.filesPayload[0];
 
     // console.log(
-    //  `handleFileTailerEvent payload = ${JSON.stringify(message.filesPayload[0])}`,
+    //  `handleFileTailerEvent payload = ${JSON.stringify(message.filesPayload)}`,
     // );
 
-    const fileName = payload.fileName;
-    if (this.logsSubjects.has(fileName)) {
-      const logLine = payload.fileContent;
-      this.logsSubjects.get(fileName).next(logLine);
+    // one message holds every line the backend Tailer read in one pass, in file order
+    for (const payload of message.filesPayload) {
+      const fileName = payload.fileName;
+      if (this.logsSubjects.has(fileName)) {
+        const logLine = payload.fileContent;
+        this.logsSubjects.get(fileName).next(logLine);
+      }
     }
 
     //const message = this.getMessage(data);
