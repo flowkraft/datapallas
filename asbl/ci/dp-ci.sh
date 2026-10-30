@@ -188,7 +188,7 @@
 #                               package rebuilt with asbl/pack-prepare-for-e2e.bat unless it was built from that commit.
 #       e2e                     windows-vm-electron: the desktop app on the VM, E2E_SPEC/E2E_GREP as in `e2e` (on Windows the
 #                               path has backslashes: write the separator as [\\/]); both empty = the full suite without
-#                               auth-authorization-server; E2E_SPEC=light = the light set (WIN_LIGHT_SPEC), what a release
+#                               auth-authorization-server; E2E_SPEC=light = the light set (WIN_ELECTRON_LIGHT_SPEC), what a release
 #                               needs of this lane. Caps: WIN_RUN_TIMEOUT [full 64 h, targeted 3 h; win-ci.env sets
 #                               6 h for targeted runs], WIN_RUN_STALL [full 105 min, targeted 80 min].
 #       docker-e2e              windows-vm-docker: DataPallas Server in the VM's Docker Desktop, from datapallas-server-docker.zip
@@ -1125,10 +1125,11 @@ win_e2e() {
     mode=full
     spec='^(?!.*auth-authorization-server).*\.spec\.ts$'
   elif [ "$spec" = light ] && [ -z "$gexp" ]; then
-    # E2E_SPEC=light: the light set the other Windows lanes run (WIN_LIGHT_SPEC), what a release needs of this lane
+    # E2E_SPEC=light: the other Windows lanes' light set and auth-authorization-desktop (WIN_ELECTRON_LIGHT_SPEC),
+    # what a release needs of this lane
     # since the full set alternates between web and docker-server (asbl/ci/release-state.sh full-lane)
     mode=light
-    spec="$WIN_LIGHT_SPEC"
+    spec="$WIN_ELECTRON_LIGHT_SPEC"
   fi
   # A targeted run shows each failure as it is; a full run, and the light set as on the other Windows lanes, retry a
   # failed test once, so one run still collects every failure instead of stopping at the first flake (plan W7).
@@ -1407,6 +1408,11 @@ win_web_result() {
 # and what is in them is the Linux docker-server lane's to prove; starting them from Windows is this one's.
 # The specs run from the VM's checkout and the node_modules already in it, as the Electron lane's do.
 WIN_LIGHT_SPEC='[\\/](features[\\/]quick-start|areas[\\/]configuration|components[\\/]log-files-viewer-separate-tabs|areas[\\/]cubes-definitions|features[\\/]apps-ai-hub)\.spec\.ts$'
+# The Electron lane's light set is those five and auth-authorization-desktop (owner, 2026-10-30): what only the desktop
+# app can break, the shell signing its own requests and the link it opens in the user's browser carrying the token that
+# browser needs (Try it and Explore Data's View shipped a 404 in 16.6.0 with every lane green). Its Electron-only tests
+# skip on the server lanes, so their light set stays the five.
+WIN_ELECTRON_LIGHT_SPEC='[\\/](features[\\/]quick-start|areas[\\/]configuration|components[\\/]log-files-viewer-separate-tabs|areas[\\/]cubes-definitions|features[\\/]apps-ai-hub|features[\\/]auth-authorization-desktop)\.spec\.ts$'
 
 # The Docker CLI on the VM must not ask the Windows credential store. Over SSH there is no interactive
 # logon session, so docker-credential-wincred answers "A specified logon session does not exist. It may
@@ -1794,8 +1800,9 @@ win_put_dist() {
 #                      (asbl/ci/release-keep.sh keep windows: <artifacts>/<version>-<commit>/, each checked against the pack's
 #                      sha256; an earlier set of the same commit moves to replaced/, never deleted).
 #   2/4 electron light the desktop app built from the repository, its light set: dp-ci.sh win e2e with E2E_SPEC=light
-#                      (WIN_LIGHT_SPEC, the five specs every light set runs, retries 1) on the release commit, its own
-#                      prepare (pack-prepare-for-e2e.bat, which empties asbl\dist), recorded as
+#                      (WIN_ELECTRON_LIGHT_SPEC: the five specs every light set runs and auth-authorization-desktop,
+#                      retries 1) on the release commit, its own prepare (pack-prepare-for-e2e.bat, which empties
+#                      asbl\dist), recorded as
 #                      step1.windows-vm-electron-light on the commit: step 1 needs no hand-started lane for it.
 #   3/4 Robot UAT      the pack's zips put back in asbl\dist from the kept copy when the prepare emptied it (win_put_dist,
 #                      sha256 checked), then asbl\src\uat\run-tests.bat, unchanged: extracts datapallas.zip and
@@ -1894,7 +1901,7 @@ win_release() {
   if [ "$dry" = yes ]; then
     echo "dry run: would put the VM on ${hostc:0:8}, run asbl\\pack-datapallas.bat there, print the zips' sha256 and keep them in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$RELEASE_VERSION-${hostc:0:8}/"
     mark_next "RELEASE STEP 2/4" "the electron light set (dry run)"
-    echo "dry run: would run dp-ci.sh win e2e with E2E_SPEC=light (WIN_LIGHT_SPEC) on ${hostc:0:8}, its own prepare first, and record step1.windows-vm-electron-light"
+    echo "dry run: would run dp-ci.sh win e2e with E2E_SPEC=light (WIN_ELECTRON_LIGHT_SPEC) on ${hostc:0:8}, its own prepare first, and record step1.windows-vm-electron-light"
     mark_next "RELEASE STEP 3/4" "Robot Framework UAT (dry run)"
     echo "dry run: would put the pack's zips back in asbl\\dist when needed and run asbl\\src\\uat\\run-tests.bat on them"
     mark_next "RELEASE STEP 4/4" "what it kept, the upload (dry run, UPLOAD=$UPLOAD)"
@@ -1976,7 +1983,7 @@ PS
   [ "$res_pack" = PASS ] && $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 1/4 keep" "$res_keep" "the three zips brought down and kept in $folder" "$log" >/dev/null
 
   mark_end "$([ "$res_pack" = PASS ] && echo 0 || echo 1)"
-  mark_start "RELEASE STEP 2/4" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (WIN_LIGHT_SPEC: features/quick-start, areas/configuration, components/log-files-viewer-separate-tabs, areas/cubes-definitions, features/apps-ai-hub), the app built from the repository; recorded as step1.windows-vm-electron-light"
+  mark_start "RELEASE STEP 2/4" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (WIN_ELECTRON_LIGHT_SPEC: features/quick-start, areas/configuration, components/log-files-viewer-separate-tabs, areas/cubes-definitions, features/apps-ai-hub, features/auth-authorization-desktop), the app built from the repository; recorded as step1.windows-vm-electron-light"
   # the lane as step 1 ran it (its own prepare, its reports), in a subshell so its settings stay its own; a 6 h cap, as the
   # targeted Windows runs have (win-ci.env)
   light_log="$base-electron-light.log"
@@ -1989,7 +1996,7 @@ PS
   # nobody will ever find (2026-10-25, group E: the report pointed at a log that did not exist).
   light_evidence="$light_log"
   [ -f "$light_log" ] || light_evidence="$log"
-  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 2/4" "$res_light" "the electron light set (E2E_SPEC=light, WIN_LIGHT_SPEC) on the app built from the repository" "$light_evidence" "${light_log%.log}-playwright.json" >/dev/null
+  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 2/4" "$res_light" "the electron light set (E2E_SPEC=light, WIN_ELECTRON_LIGHT_SPEC) on the app built from the repository" "$light_evidence" "${light_log%.log}-playwright.json" >/dev/null
   mark_end "$([ "$res_light" = PASS ] && echo 0 || echo 1)"
 
   mark_start "RELEASE STEP 3/4" "Robot Framework UAT: the pack's zips in asbl\\dist (put back from the kept copy when needed), then asbl\\src\\uat\\run-tests.bat"

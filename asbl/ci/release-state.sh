@@ -377,7 +377,7 @@ case "$cmd" in
     if [ -z "$spec" ] && [ -z "$gexp" ]; then
       case "$target" in windows-vm-docker|windows-vm-server) mode=light ;; *) mode=full ;; esac
     elif [ "$target" = windows-vm-electron ] && [ "$spec" = light ] && [ -z "$gexp" ]; then
-      mode=light   # E2E_SPEC=light: WIN_LIGHT_SPEC of dp-ci.sh, the electron lane's light set
+      mode=light   # E2E_SPEC=light: WIN_ELECTRON_LIGHT_SPEC of dp-ci.sh, the electron lane's light set
     elif [ -z "$gexp" ] && case "$spec" in *'|'*|*'(?'*) false ;; *auth-authorization-server*) true ;; *) false ;; esac; then
       mode=auth
     else
