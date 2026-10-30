@@ -1987,7 +1987,8 @@ win_robot_rerun() {
 #                      the machine's Java, never the CI's; elevated (WIN_RUN_ELEVATE=1), so its installs and teardowns
 #                      meet no UAC prompt nobody could answer. No pack = not run (a failure of the run).
 #   4/4 kept, upload   what it kept (each file against the manifest), then, only when parts 1-3 are green: still
-#                      origin/main and step 1 green (UPLOAD=no: only said), then (asbl/ci/release-publish.sh stage-files):
+#                      origin/main (or moved since by never-shipped files only: release-state.sh moved-main) and step 1
+#                      green (UPLOAD=no: only said), then (asbl/ci/release-publish.sh stage-files):
 #                      UPLOAD=yes: this host deletes the Windows files of earlier rehearsals (its own credentials), the VM
 #                      itself uploads datapallas.zip, datapallas-server.zip and datapallas-src.zip from its asbl\dist to
 #                      rehearsal/<version>-<commit>/ (each checked against the pack's sha256 first; its own rclone, put in
@@ -2193,10 +2194,11 @@ PS
     RELEASE_COMMIT="$vmc" RELEASE_LOG="$log" bash "$REPO/asbl/ci/release-state.sh" record rehearsal.windows FAIL \
       "version=$RELEASE_VERSION" "pack=$res_pack" "keep=$res_keep" "light=$res_light" "robot=$res_robot"
     ok=0
-  # hours after the start: still origin/main, and step 1 green on it (a later step-1 run may have recorded red); UPLOAD=no:
+  # hours after the start: still origin/main, or moved by never-shipped files only (a test or CI fix: release-state.sh
+  # moved-main prints which), and step 1 green on it (a later step-1 run may have recorded red); UPLOAD=no:
   # nothing is uploaded, so an incomplete step 1 is said, and release day's upload checks it again
-  elif ! git -C "$REPO" fetch -q origin || [ "$(git -C "$REPO" rev-parse origin/main)" != "$vmc" ]; then
-    echo "not uploaded: origin/main moved since the start (or could not be read)"
+  elif ! { git -C "$REPO" fetch -q origin && bash "$REPO/asbl/ci/release-state.sh" moved-main "$vmc" "$(git -C "$REPO" rev-parse origin/main)"; }; then
+    echo "not uploaded: origin/main moved since the start by what ships (or could not be read)"
     res_stage=FAIL; ok=0
   elif [ "$UPLOAD" = yes ] && ! RELEASE_COMMIT="$vmc" bash "$REPO/asbl/ci/release-state.sh" require step1; then
     echo "not uploaded: step 1 is not green on ${vmc:0:8}"

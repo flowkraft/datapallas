@@ -18,6 +18,15 @@
 #                                                                                its pack; it is shown as "proven later", not checked.
 #                                                                                Only that lane, only here: `require step1`, which
 #                                                                                every upload makes, always reads all four
+#   bash asbl/ci/release-state.sh record-step1 <e2e target> reruns full|auth|light   a lane red on a few tests made green by
+#                                                                                their re-runs alone: the lane's newest red run
+#                                                                                (this commit or an earlier one of its history)
+#                                                                                recorded PASS once every failure passed alone
+#                                                                                since (below); DRY_RUN=yes: said, not recorded
+#   bash asbl/ci/release-state.sh moved-main <start commit> <origin/main now>    may a step that started on one commit finish
+#                                                                                after main moved: exit 0 when main did not move
+#                                                                                or moved by never-shipped files only, exit 1
+#                                                                                when it moved by what ships (or is unreadable)
 #   bash asbl/ci/release-state.sh get <name> <key>                               print one recorded value
 #   bash asbl/ci/release-state.sh full-lane                                      the last two releases' full-lane choices: version,
 #                                                                                lane, why (alternated|random), when, the full run's
@@ -65,6 +74,15 @@
 # alternates, plan-release-build-prove-upload): step1.<this release's full lane>-full (web or docker-server, the full-lane
 # record below), step1.docker-server-auth, step1.windows-vm-electron-light (E2E_SPEC=light) and step1.windows-vm-server-light.
 # A `targeted` run (own E2E_SPEC/E2E_GREP) is recorded for the table but never counts for a release.
+# STEP 1 ON AN EARLIER COMMIT (step1_answer, since plan-2026-10-28-faster-releases): a lane with no verdict on the commit
+# counts with its newest verdict on an earlier commit of that commit's history when asbl/ci/reuse-or-rebuild.sh says
+# nothing step 1's lanes test changed between the two (RR_STEP1 still-counts: a test or CI fix after step 1). A product
+# change between them still needs step 1 again, or E2E_APPROVAL. step1-guard, `require` and `show` name that commit and why.
+# A LANE RED ON A FEW TESTS: `record-step1 <target> reruns <mode>` records it PASS once every failure in its report passed
+# alone after the lane's run (asbl/ci/release-rerun.sh run, retries 0; release-rerun.sh lane checks it), each on a commit
+# where nothing step 1's lanes test changed since the lane's own. The verdict keeps the run (log, report, run_time, rc) and
+# names the re-runs (reruns, rerun_commits, rerun_logs). A red with no failed test (the lane cut short or broken), a re-run
+# red again or one after a product change: still red, as is a lane whose run left no report.
 # E2E_APPROVAL (the parameter of the release jobs of steps 2 and 3, 2026-10-23): free text, empty by default. Empty =
 # step1-guard and `require step1...` check the lanes as always. With the two words "owner approved" in it (any case)
 # they do not check them: the run goes on whatever the record says, and the decision is printed (the lines starting
@@ -103,6 +121,9 @@ RELEASE_DOWNLOAD_BASE="${RELEASE_DOWNLOAD_BASE:-https://downloads.datapallas.com
 # The Windows channel's released version until its first MODE=public writes newest/windows-version.txt: the last version
 # both channels were released together, by hand (newest/'s zips uploaded 2026-08-15 14:08Z, Docker Hub's :16.5.0 14:25Z).
 WINDOWS_RELEASED_BY_HAND=16.5.0
+# reuse_or_rebuild and its RR_* answers: whether step 1 on an earlier commit still counts, and whether main moved by
+# never-shipped files only
+. asbl/ci/reuse-or-rebuild.sh
 
 commit_of() {  # the full hash of RELEASE_COMMIT or HEAD; the given text itself when git does not know it
   local c="${RELEASE_COMMIT:-HEAD}" full
@@ -205,6 +226,55 @@ lane_state() {  # lane_state <verdict name>: what the record holds for it on thi
   done
   if [ -n "$best" ]; then echo "missing on ${commit:0:8}; newest on another commit: $(field "$best" result) on $(basename "$(dirname "$best")" | cut -c1-8) ($best_t)"
   else echo "missing on ${commit:0:8} and on every other commit"; fi
+}
+# lane_report <e2e target> <log>: the lane's Playwright report, found as release-docker.sh and release-rerun.sh find it: the
+# Linux e2e writes it beside its log, a Windows lane names the copy it pulled from the VM (WIN_E2E_REPORT=)
+lane_report() {
+  local r=""
+  [ -n "$2" ] || return 0
+  case "$1" in
+    windows-vm-*) r=$(grep -aoP '^WIN_E2E_REPORT=\K\S+' "$2" 2>/dev/null | tail -1); [ -n "$r" ] || r="${2%.log}-step-playwright.json" ;;
+    *)            r="${2%.log}-playwright.json" ;;
+  esac
+  [ -f "$r" ] && echo "$r"
+}
+# lane_verdicts <verdict name> <commit>: that lane's verdicts on <commit> and on the earlier commits of its history, newest
+# first, one "<time> <file>" line each (a commit this checkout does not know is left out)
+lane_verdicts() {
+  local o oc
+  for o in "$RELEASE_STATE_DIR"/*/"$1"; do
+    [ -f "$o" ] || continue
+    oc=$(basename "$(dirname "$o")")
+    [ "$oc" = "$2" ] || git merge-base --is-ancestor "$oc" "$2" 2>/dev/null || continue
+    printf '%s %s\n' "$(field "$o" time)" "$o"
+  done | sort -r
+}
+# step1_answer <verdict name>: what counts for one step-1 lane on $commit (STEP 1 ON AN EARLIER COMMIT, above): its own
+# verdict when it has one, the last run counting as always; else the newest verdict of the lane on an earlier commit of its
+# history from which nothing step 1's lanes test changed. Sets S1_RESULT (PASS, FAIL, or empty: missing), S1_FROM (the
+# commit whose verdict counts) and S1_HOW (how, in words, for the gate's lines and `show`; empty for a plain run of the
+# commit itself).
+step1_answer() {
+  local n="$1" t f="" oc=""
+  S1_RESULT="" S1_FROM="" S1_HOW=""
+  if [ -f "$dir/$n" ]; then
+    f="$dir/$n"; oc="$commit"
+  else
+    while read -r t f; do
+      oc=$(basename "$(dirname "$f")")
+      reuse_or_rebuild "$oc" "$commit"
+      [ "$RR_STEP1" = still-counts ] && break
+      [ -n "$S1_HOW" ] || S1_HOW="none carried: the newest on an earlier commit, $(field "$f" result) on ${oc:0:8} ($t), does not count here: $RR_STEP1_WHY since"
+      f=""
+    done < <(lane_verdicts "$n" "$commit")
+    [ -n "$f" ] || return 0
+    S1_HOW="carried from ${oc:0:8} ($(field "$f" time)): nothing step 1's lanes test changed in ${oc:0:8}..${commit:0:8} ($RR_CHANGED files differ; asbl/ci/reuse-or-rebuild.sh)"
+  fi
+  S1_RESULT=$(field "$f" result) S1_FROM="$oc"
+  if [ "$(field "$f" completed_by)" = reruns ]; then
+    S1_HOW="${S1_HOW:+$S1_HOW; }green by re-runs: its run of $(field "$f" run_time) was red on $(field "$f" reruns) test(s), each passed alone since, on $(field "$f" rerun_commits)"
+  fi
+  return 0
 }
 approval_accept() {  # approval_accept <the check> <lane>...: the phrase is there: print the decision, record approval.step1; rc 2 = not recorded
   local check="$1" user now n lanes="" tmp
@@ -372,6 +442,35 @@ case "$cmd" in
     # RELEASE_STEP_START is an earlier run's (this one failed before it started its own, e.g. in its build): not used.
     target="${1:-}"; rc="${2:-}"
     printf '%s' "$target" | grep -qE '^[a-z0-9-]+$' || { echo "FAIL  record-step1: bad target '$target'"; exit 2; }
+    if [ "$rc" = reruns ]; then
+      # A LANE RED ON A FEW TESTS (above): its newest red run, here or on an earlier commit of this one's history, made
+      # green when release-rerun.sh lane finds every failure of its report passed alone since; recorded on the lane's commit
+      mode="${3:-}"
+      case "$mode" in full|auth|light) ;; *) echo "FAIL  record-step1 $target reruns full|auth|light: which run of the lane (got '$mode')"; exit 2 ;; esac
+      name="step1.$target-$mode"
+      head=$(commit_of) || true
+      [ -n "$head" ] || { echo "FAIL  cannot tell which commit (RELEASE_COMMIT='${RELEASE_COMMIT:-}', HEAD)"; exit 2; }
+      read -r t f < <(lane_verdicts "$name" "$head")
+      [ -n "${f:-}" ] || { echo "FAIL  no $name recorded on ${head:0:8} or on an earlier commit of its history"; exit 1; }
+      lc=$(basename "$(dirname "$f")")
+      if [ "$(field "$f" result)" != FAIL ]; then
+        echo "RELEASE_STATE $name is $(field "$f" result) on ${lc:0:8} ($t)$([ "$(field "$f" completed_by)" = reruns ] && echo ", completed by re-runs"): nothing to complete"
+        exit 0
+      fi
+      log=$(field "$f" log); report=$(field "$f" report); [ -n "$report" ] || report=$(lane_report "$target" "$log")
+      [ -n "$report" ] ||
+        { echo "RELEASE_STATE $name stays red on ${lc:0:8}: its run left no test report (log ${log:-none}): only a run of the whole lane makes it green"; exit 1; }
+      out=$(bash asbl/ci/release-rerun.sh lane "$target" "$report" "$lc" "$t"); r=$?
+      printf '%s\n' "$out"
+      [ "$r" = 0 ] || { echo "RELEASE_STATE $name stays red on ${lc:0:8} (above)"; exit 1; }
+      mapfile -t reruns < <(sed -n 's/^LANE_RERUNS //p' <<< "$out")
+      case "${DRY_RUN:-no}" in
+        yes|1) echo "RELEASE_STATE dry run: would record $name=PASS commit=${lc:0:8}, completed by re-runs (${reruns[*]})"; exit 0 ;;
+      esac
+      RELEASE_COMMIT="$lc" RELEASE_LOG="$log" bash "$SELF" record "$name" PASS "version=$(field "$f" version)" "rc=$(field "$f" rc)" \
+        "report=$report" completed_by=reruns run_result=FAIL "run_time=$t" "${reruns[@]}"
+      exit $?
+    fi
     printf '%s' "$rc" | grep -qE '^[0-9]+$' || { echo "FAIL  record-step1: bad rc '$rc'"; exit 2; }
     spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
     if [ -z "$spec" ] && [ -z "$gexp" ]; then
@@ -393,7 +492,9 @@ case "$cmd" in
     fi
     git rev-parse --verify -q "$c^{commit}" >/dev/null 2>&1 || git fetch -q origin 2>/dev/null
     [ "$rc" = 0 ] && res=PASS || res=FAIL
-    RELEASE_COMMIT="$c" RELEASE_LOG="$log" bash "$SELF" record "step1.$target-$mode" "$res" "rc=$rc"
+    # the lane's test report too: `record-step1 <target> reruns` reads its failures
+    report=$(lane_report "$target" "$log")
+    RELEASE_COMMIT="$c" RELEASE_LOG="$log" bash "$SELF" record "step1.$target-$mode" "$res" "rc=$rc" ${report:+"report=$report"}
     # a full run on one of the two sides: this release's full-lane record says whether it is its lane
     if [ "$mode" = full ] && case " $FULL_SIDES " in *" $target "*) true ;; *) false ;; esac; then
       v=$(tree_version)
@@ -451,11 +552,15 @@ case "$cmd" in
     for n in "$@"; do [ "$n" = step1 ] && names="$names $REQUIRED_STEP1" || names="$names $n"; done
     bad=0
     for n in $names; do
-      f="$dir/$n"; r=$(field "$f" result)
+      # a step-1 lane: this commit's verdict, or an earlier commit's that still counts (step1_answer); the rest: this commit's
+      case "$n" in
+        step1.*) step1_answer "$n"; f="$RELEASE_STATE_DIR/$S1_FROM/$n"; r="$S1_RESULT" ;;
+        *)       f="$dir/$n"; r=$(field "$f" result); S1_HOW="" ;;
+      esac
       case "$r" in
-        PASS) echo "  ok       $n  (version $(field "$f" version), $(field "$f" time))" ;;
-        FAIL) echo "  RED      $n  (version $(field "$f" version), $(field "$f" time)$(l=$(field "$f" log); [ -n "$l" ] && echo ", log $l"))"; bad=1 ;;
-        *)    echo "  MISSING  $n  (never run on this commit)"; bad=1 ;;
+        PASS) echo "  ok       $n  (version $(field "$f" version), $(field "$f" time))${S1_HOW:+: $S1_HOW}" ;;
+        FAIL) echo "  RED      $n  (version $(field "$f" version), $(field "$f" time)$(l=$(field "$f" log); [ -n "$l" ] && echo ", log $l"))${S1_HOW:+: $S1_HOW}"; bad=1 ;;
+        *)    echo "  MISSING  $n  (never run on this commit${S1_HOW:+; $S1_HOW})"; bad=1 ;;
       esac
     done
     if [ "$bad" = 0 ]; then echo "RELEASE_STATE require OK commit=${commit:0:8}"; [ "$lanes1" = 1 ] && approval_refused && exit 1; exit 0; fi
@@ -477,17 +582,39 @@ case "$cmd" in
       ""|windows-vm-electron-light) ;;
       *) echo "FAIL  step1-guard: STEP1_PROVEN_LATER may only name windows-vm-electron-light, the lane step 3 runs itself (got '$STEP1_PROVEN_LATER')"; exit 2 ;;
     esac
-    bad=""
+    bad="" red=0
     for n in $REQUIRED_STEP1; do
-      if [ -n "${STEP1_PROVEN_LATER:-}" ] && [ "$n" = "step1.$STEP1_PROVEN_LATER" ] && [ "$(field "$dir/$n" result)" != PASS ]; then
+      step1_answer "$n"
+      if [ -n "${STEP1_PROVEN_LATER:-}" ] && [ "$n" = "step1.$STEP1_PROVEN_LATER" ] && [ "$S1_RESULT" != PASS ]; then
         echo "note: ${n#step1.} is proven later, by step 3 itself (its RELEASE STEP 2/4, recorded as $n): not checked now; every upload requires it"
         continue
       fi
-      case "$(field "$dir/$n" result)" in PASS) ;; FAIL) bad="$bad, ${n#step1.} red" ;; *) bad="$bad, ${n#step1.} missing" ;; esac
+      # how a lane counts when it is not a plain run of this commit: carried from an earlier one, or green by re-runs
+      [ -z "$S1_HOW" ] || echo "note: ${n#step1.} ${S1_RESULT:-missing} on ${commit:0:8}${S1_FROM:+$([ "$S1_FROM" = "$commit" ] || echo " (the verdict of ${S1_FROM:0:8})")}: $S1_HOW"
+      case "$S1_RESULT" in PASS) ;; FAIL) bad="$bad, ${n#step1.} red"; red=1 ;; *) bad="$bad, ${n#step1.} missing" ;; esac
     done
     if [ -z "$bad" ]; then echo "ok: step 1 is green on ${commit:0:8} (${REQUIRED_STEP1//step1./})"; approval_refused && exit 1; exit 0; fi
     echo "REFUSED: step 1 is not green on ${commit:0:8}: ${bad#, }. Run dp-ci-release-step1-e2e-prerelease first."
+    [ "$red" = 0 ] || echo "       A lane red on a few tests: re-run them alone (bash asbl/ci/release-rerun.sh run <lane> --failed <its report>), then bash asbl/ci/release-state.sh record-step1 <lane> reruns <mode>"
     approval_refused
+    exit 1
+    ;;
+  moved-main)
+    # The guards at the end of steps 2 and 3 (release-docker.sh DOCKER RELEASE STEP 6/6, dp-ci.sh win_release before its
+    # upload): origin/main moved since the step started. By never-shipped files only (a test or CI fix: every part reuses,
+    # asbl/ci/reuse-or-rebuild.sh), what the start commit built and proved still stands; by anything that ships, or a main
+    # that no longer contains the start commit, the step is refused, as before.
+    s=$(git rev-parse --verify -q "${1:-}^{commit}" 2>/dev/null); m=$(git rev-parse --verify -q "${2:-}^{commit}" 2>/dev/null)
+    [ -n "$s" ] && [ -n "$m" ] || { echo "MOVED_MAIN refused: cannot read the commits ('${1:-}', '${2:-}')"; exit 1; }
+    [ "$s" != "$m" ] || { echo "MOVED_MAIN no: origin/main is still ${s:0:8}"; exit 0; }
+    git merge-base --is-ancestor "$s" "$m" ||
+      { echo "MOVED_MAIN refused: origin/main ${m:0:8} does not contain ${s:0:8} (rewritten?)"; exit 1; }
+    reuse_or_rebuild "$s" "$m"
+    if [ "$RR_E2E_PACKAGE/$RR_IMAGE_AND_ZIPS/$RR_WINDOWS_PACK" = reuse/reuse/reuse ]; then
+      echo "MOVED_MAIN ok: origin/main moved ${s:0:8} -> ${m:0:8} by never-shipped files only ($RR_CHANGED files; asbl/ci/reuse-or-rebuild.sh): what ${s:0:8} built and proved still stands"
+      exit 0
+    fi
+    echo "MOVED_MAIN refused: origin/main moved ${s:0:8} -> ${m:0:8} by what ships: $(printf '%s\n' $RR_WHY_E2E_PACKAGE $RR_WHY_IMAGE_AND_ZIPS $RR_WHY_WINDOWS_PACK | sort -u | head -5 | paste -sd' ')${RR_NOTE:+ ($RR_NOTE)}"
     exit 1
     ;;
   rehearsed)
@@ -540,7 +667,14 @@ case "$cmd" in
         "$(grep -vE '^(result|commit|version|time)=' "$f" | tr '\n' ' ' | cut -c1-120)"
     done
     [ "$found" = 1 ] || echo "(nothing recorded for this commit)"
-    for n in $REQUIRED_STEP1; do [ "$(field "$dir/$n" result)" = PASS ] || { echo "step 1 for a release: NOT complete (needs $REQUIRED_STEP1)"; exit 0; }; done
+    # each lane a release needs, as the gates read it (step1_answer): which commit's verdict counts, and how
+    complete=1
+    for n in $REQUIRED_STEP1; do
+      step1_answer "$n"
+      printf 'step 1 %-28s %s\n' "${n#step1.}" "${S1_RESULT:-missing}${S1_FROM:+ on ${S1_FROM:0:8}}${S1_HOW:+: $S1_HOW}"
+      [ "$S1_RESULT" = PASS ] || complete=0
+    done
+    [ "$complete" = 1 ] || { echo "step 1 for a release: NOT complete (needs $REQUIRED_STEP1)"; exit 0; }
     echo "step 1 for a release: complete"
     ;;
   released)
@@ -574,5 +708,5 @@ case "$cmd" in
     version_check "$ch"
     ;;
   *)
-    sed -n '2,91p' "$0"; exit 2 ;;
+    sed -n '2,109p' "$0"; exit 2 ;;
 esac

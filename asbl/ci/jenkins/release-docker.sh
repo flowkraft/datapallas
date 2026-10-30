@@ -38,9 +38,10 @@
 #                            <artifacts>/<version>-<commit>/ (the same sha256 already there = reused; another = the earlier
 #                            set moved to replaced/, never deleted), the image tagged <repo>:<version>, the manifest lines
 #   DOCKER RELEASE STEP 6/6  a red proof: rehearsal.docker FAIL, nothing pushed or staged. Green: the guard (origin/main still
-#                            this commit, the step 1 guard as in part 1, the image and the zip still the ones proven: image
-#                            id, sha256), then the upload (release-publish.sh stage-docker): UPLOAD=yes: :<version> pushed
-#                            (never :latest) and the docker zip in rehearsal/<version>-<commit>/, both checked, then
+#                            this commit, or moved since by never-shipped files only: release-state.sh moved-main; the step
+#                            1 guard as in part 1; the image and the zip still the ones proven: image id, sha256), then
+#                            the upload (release-publish.sh stage-docker): UPLOAD=yes: :<version> pushed (never :latest)
+#                            and the docker zip in rehearsal/<version>-<commit>/, both checked, then
 #                            rehearsal.docker PASS (upload=yes), which MODE=public copies. UPLOAD=no (the default): the
 #                            exact commands it would run, nothing written to Docker Hub or the bucket, no credential read;
 #                            rehearsal.docker PASS upload=no, which MODE=public never copies.
@@ -68,7 +69,7 @@
 # it first). RELEASE_PUBLISH_ENV, RELEASE_DOWNLOAD_BASE and RELEASE_ARTIFACTS_DIR are the ones of release-publish.sh and
 # release-keep.sh (a test points them at a fixture).
 set -uo pipefail
-case "${1:-}" in -h|--help|help) sed -n '2,69p' "$0"; exit 0 ;; esac
+case "${1:-}" in -h|--help|help) sed -n '2,70p' "$0"; exit 0 ;; esac
 cd "$(dirname "$0")/../../.." || exit 2
 . asbl/ci/marks.sh
 
@@ -246,8 +247,10 @@ rehearse() {
   fi
 
   mark_start "DOCKER RELEASE STEP 6/6" "guard: origin/main still ${c:0:8}, step 1 still green on it, the image and the zip still the ones proven; then the upload, UPLOAD=$UPLOAD"
-  if ! git fetch -q origin || [ "$(git rev-parse origin/main)" != "$c" ]; then
-    echo "FAILED: origin/main moved since the start (or could not be read): nothing pushed or staged; run it again"; finish_red "$v" "$c" "origin/main moved"; return 1
+  # origin/main may have moved since the start by never-shipped files only (a test or CI fix): what ${c:0:8} built and
+  # proved still stands (release-state.sh moved-main prints which); a move by what ships refuses, as before
+  if ! { git fetch -q origin && $STATE moved-main "$c" "$(git rev-parse origin/main)"; }; then
+    echo "FAILED: origin/main moved since the start by what ships (or could not be read): nothing pushed or staged; run it again"; finish_red "$v" "$c" "origin/main moved"; return 1
   fi
   RELEASE_COMMIT="$c" STEP1_PROVEN_LATER=windows-vm-electron-light $STATE step1-guard || { finish_red "$v" "$c" "the step 1 guard refused"; return 1; }
   [ "$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null)" = "$image_id" ] && [ "$(sha256sum "$zip" | cut -d' ' -f1)" = "$zip_sha" ] ||

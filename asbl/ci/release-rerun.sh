@@ -41,6 +41,10 @@
 #   bash asbl/ci/release-rerun.sh show [<kept folder>]   every failure of that execution (the newest kept folder when none is
 #        given), each with its last re-run: "verified green", "red again" or "not verified yet", and a note when a change
 #        that part ships came after it; then "ready for execution 2" or what is missing. It refuses nothing (exit 0).
+#   bash asbl/ci/release-rerun.sh lane <part> <report> <lane commit> <lane time>   a step 1 lane's run, red on the failures
+#        of <report>: each one with the newest re-run of that very test (never the whole set: a lane's set is not the
+#        light set) since <lane time>; exit 0 and LANE_RERUNS lines only when every one passed alone on a commit where
+#        nothing step 1's lanes test changed since <lane commit>; a red step with no failed test never does.
 #   DRY_RUN=yes [no]   run: the commit, the build each part would take, the rule's answer, the tests and the command it
 #                      would start; it fetches, runs and writes nothing
 #   REBUILD=yes [no]   run: a build the rule says rebuild is rebuilt first, as the STOP line says: image-and-zips =
@@ -59,7 +63,7 @@
 #
 # It never uploads, never writes the release record (release-state.sh) or an execution's kept folder, never retries a test,
 # builds or packs only with REBUILD=yes, and starts nothing in a dry run. Called by hand or by an agent; `show` also by the
-# release's orchestrator before execution 2.
+# release's orchestrator before execution 2; `lane` by asbl/ci/release-state.sh record-step1 <target> reruns <mode>.
 set -uo pipefail
 cd "$(dirname "$0")/../.." || exit 2
 REPO=$PWD
@@ -75,7 +79,7 @@ case "$REBUILD" in yes|no) ;; *) echo "FAIL  REBUILD must be yes or no (got '$RE
 # reuse_or_rebuild and its RR_* answers
 . "$REPO/asbl/ci/reuse-or-rebuild.sh"
 
-usage() { sed -n '2,62p' "$0"; exit 2; }
+usage() { sed -n '2,66p' "$0"; exit 2; }
 abs() { case "$1" in /*|"") echo "$1" ;; *) echo "$CALLER_PWD/$1" ;; esac; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
@@ -470,9 +474,49 @@ show_execution() {
   return 0
 }
 
+# lane_reruns <part> <report> <lane commit> <lane time>: `lane` (USE above). The failures and their ids as `show` names them
+# (failures_of); a re-run counts for the lane's commit when the rule says nothing step 1's lanes test changed between the
+# two commits (RR_STEP1 still-counts), as release-state.sh counts step 1 on an earlier commit.
+lane_reruns() {
+  local part="$1" report="$2" lc since="$4" step kind id file title rep line rtime rcommit rres rlog n=0 green=0 commits="" logs=""
+  lc=$(git rev-parse --verify -q "${3:-}^{commit}") ||
+    { echo "LANE_RESULT still red: the lane's commit '${3:-}' is no commit here"; return 1; }
+  echo "LANE   $part on ${lc:0:8}, its run of $since (report $report); record $RELEASE_RERUN_RECORD"
+  while IFS=$'\037' read -r step kind id file title rep; do
+    n=$((n + 1))
+    echo "  $n. $id"
+    if [ "$kind" = step ]; then
+      echo "     the lane itself failed, with no failed test in its report (cut short or broken): only a run of the whole lane makes it green"; continue
+    fi
+    line=$(awk -F'\t' -v p="$part" -v i="$id" -v s="$since" '$2 == p && $3 == i && $1 >= s { l = $0 } END { print l }' "$RELEASE_RERUN_RECORD" 2>/dev/null)
+    [ -n "$line" ] || { echo "     not verified yet: no re-run of it alone since the lane's run"; continue; }
+    IFS=$'\t' read -r rtime _ _ rcommit rres rlog _ <<< "$line"
+    [ "$rres" = PASS ] || { echo "     red again: re-run $rtime on ${rcommit:0:8}, $rres (log $rlog)"; continue; }
+    reuse_or_rebuild "$lc" "$rcommit"
+    if [ "$RR_STEP1" != still-counts ]; then
+      echo "     green on ${rcommit:0:8} ($rtime), but that is not the product the lane tested: $RR_STEP1_WHY since ${lc:0:8} ($(printf '%s\n' $RR_WHY_E2E_PACKAGE $RR_WHY_IMAGE_AND_ZIPS | sort -u | head -5 | paste -sd' ')${RR_NOTE:+; $RR_NOTE})"
+      continue
+    fi
+    echo "     passed alone: re-run $rtime on ${rcommit:0:8} (log $rlog)"
+    green=$((green + 1))
+    case " $commits " in *" ${rcommit:0:8} "*) ;; *) commits="${commits:+$commits }${rcommit:0:8}" ;; esac
+    logs="${logs:+$logs }$rlog"
+  done < <(failures_of "$report")
+  if [ "$n" -gt 0 ] && [ "$green" = "$n" ]; then
+    echo "LANE_RERUNS reruns=$n"
+    echo "LANE_RERUNS rerun_commits=$commits"
+    echo "LANE_RERUNS rerun_logs=$logs"
+    echo "LANE_RESULT green by re-runs: each of the $n red passed alone since the lane's run, on $commits"
+    return 0
+  fi
+  echo "LANE_RESULT still red: $green of $n red passed alone since the lane's run"
+  return 1
+}
+
 cmd="${1:-}"; [ "$#" -gt 0 ] && shift
 case "$cmd" in
   run)  run_part "$@" ;;
   show) show_execution "$@" ;;
+  lane) [ "$#" = 4 ] || usage; lane_reruns "$1" "$(abs "$2")" "$3" "$4" ;;
   *)    usage ;;
 esac
