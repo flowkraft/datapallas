@@ -5,6 +5,7 @@ import * as path from 'path';
 import { electronBeforeAfterAllTest } from '../../utils/common-setup';
 import { Constants } from '../../utils/constants';
 import { FluentTester } from '../../helpers/fluent-tester';
+import { SelfServicePortalsTestHelper } from '../../helpers/areas/self-service-portals-test-helper';
 import { Helpers } from '../../utils/helpers';
 
 /**
@@ -291,6 +292,85 @@ test.describe('Auth — the desktop shell authenticates itself, invisibly', () =
         .waitOnElementToBecomeEnabled('#btnNewDropdown')
         .gotoConfigurationReports()
         .appStatusShouldBeGreatNoErrorsNoWarnings();
+    },
+  );
+
+  // The browser a desktop link opens is signed in to nothing, and nobody may be asked to sign in
+  // there either. 16.6.0 shipped this broken (/#/login, then a 404) with every test green: the
+  // samples tests signed their own browser in, and none went through the shell's link handler.
+  // This one clicks the real link, goes through the real handler in main.ts, and opens what it
+  // hands over in a browser with no session.
+  electronBeforeAfterAllTest(
+    "(desktop-ui, Electron only) Explore Data's View opens the dashboard in a browser that never signed in",
+    async ({ beforeAfterEach: firstPage }) => {
+      test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
+      await skipUnlessTheShellSignsItsOwnRequests();
+
+      // The shell gives the link to the user's browser with shell.openExternal. Recorded instead:
+      // nothing opens on the test machine, and the test holds exactly the link that browser gets.
+      const electronApp = Helpers.currentElectronApp!;
+      const recording = await electronApp.evaluate(({ shell }) => {
+        const shared = globalThis as any;
+        shared.openExternalBeforeThisTest = shell.openExternal;
+        const linksOpenedInUsersBrowser: string[] = [];
+        shared.linksOpenedInUsersBrowser = linksOpenedInUsersBrowser;
+        const recordLink = async (url: string) => {
+          linksOpenedInUsersBrowser.push(url);
+        };
+        shell.openExternal = recordLink;
+        return shell.openExternal === recordLink;
+      });
+      expect(recording, 'shell.openExternal is replaced by the recorder').toBe(true);
+
+      try {
+        await new FluentTester(firstPage)
+          .gotoDataCanvas()
+          .waitOnElementToBecomeVisible('#dashboardSearch')
+          .setValue('#dashboardSearch', 'CountrySalesDashboard')
+          .waitOnElementToBecomeVisible('#btnViewDashboard_g-cube-country-sales')
+          .click('#btnViewDashboard_g-cube-country-sales');
+
+        let linksOpened: string[] = [];
+        await expect
+          .poll(
+            async () => {
+              linksOpened = await electronApp.evaluate(() => (globalThis as any).linksOpenedInUsersBrowser);
+              return linksOpened.length;
+            },
+            { message: "View hands one link to the user's browser", timeout: 15000 },
+          )
+          .toBe(1);
+
+        const link = new URL(linksOpened[0]);
+        expect(`${link.origin}${link.pathname}`).toBe(`${BASE_URL}/dashboard/g-cube-country-sales`);
+        expect(link.searchParams.get('token'), 'the link carries the token the shell minted').toBeTruthy();
+
+        const { browser, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
+        try {
+          const refusedDataCalls: string[] = [];
+          page.on('response', (response) => {
+            if (response.url().includes('/api/reports/') && [401, 403].includes(response.status()))
+              refusedDataCalls.push(`${response.status()} ${response.url()}`);
+          });
+
+          const answer = await page.goto(link.href, { timeout: 30000, waitUntil: 'networkidle' });
+          // Without the token the page sent the browser to /#/login, which a desktop cannot serve.
+          expect(answer?.status(), 'the dashboard page, not a 404').toBe(200);
+          expect(page.url()).not.toContain('/#/login');
+
+          const countrySales = page.locator('#dashboard-g-cube-country-sales');
+          await expect(countrySales).toBeVisible({ timeout: 10000 });
+          await expect(countrySales.locator('[id^="widgetValue-"]')).toHaveCount(2, { timeout: 15000 });
+          await expect(countrySales.locator('[id^="widgetChart-"]')).toHaveCount(1, { timeout: 15000 });
+          expect(refusedDataCalls, 'the page reads its data with the token it was given').toEqual([]);
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await electronApp.evaluate(({ shell }) => {
+          shell.openExternal = (globalThis as any).openExternalBeforeThisTest;
+        });
+      }
     },
   );
 });
