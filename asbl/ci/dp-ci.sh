@@ -1787,6 +1787,9 @@ win_server_e2e() {
   win_ps 2>&1 <<'PS' | tr -d '\r' || return 1
 $l = Get-NetTCPConnection -LocalPort 9090 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($l) { "FAIL  port 9090 is taken by " + (Get-Process -Id $l.OwningProcess -ErrorAction SilentlyContinue).ProcessName; exit 1 }
+# a free port is the good case, but Get-NetTCPConnection found nothing and left $? false: without this exit,
+# powershell.exe -EncodedCommand exits 1 and the lane stopped here, silently, every time 9090 was free
+exit 0
 PS
   win_bundle_extract "$zip" "$root" startServer.bat || return 1
 
