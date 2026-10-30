@@ -35,6 +35,9 @@
 #   bash asbl/ci/release-state.sh full-lane --choose                             this checkout's version: its full lane, chosen and
 #                                                                                recorded now when it has none, and the lanes step 1
 #                                                                                needs (DRY_RUN=yes: nothing recorded)
+#   bash asbl/ci/release-state.sh full-lane --step1                              the same at a step-1 lane's start, only while the
+#                                                                                version is still to be released (release-step1.sh;
+#                                                                                E2E_TARGET, STEP1_STARTED_BY = who, as chosen_by)
 #   bash asbl/ci/release-state.sh show [<commit>]                                the table of one commit
 #   bash asbl/ci/release-state.sh rehearsed docker|windows <version>             the newest PASSED rehearsal of that version on that
 #                                                                                channel, on whichever commit, that uploaded its
@@ -513,14 +516,15 @@ case "$cmd" in
       --choose) required_step1 choose "full-lane --choose" || exit 2
                 echo "step 1 of $(tree_version) needs: ${REQUIRED_STEP1//step1./}" ;;
       --step1)  # the step-1 job, at its start: the choice made only when this version is still to be released on a channel
-                # (the job is also the everyday e2e: a released version, or one the gate refuses, draws nothing)
+                # (the job is also the everyday e2e: a released version, or one the gate refuses, draws nothing); who
+                # started it (STEP1_STARTED_BY, from asbl/ci/jenkins/release-step1.sh) is written as who chose
                 go=0; why=""
                 for ch in docker windows; do
                   version_check "$ch" >/dev/null 2>&1; rc=$?
                   case "$rc" in 0) go=1 ;; 3) why="$why $ch: already released;" ;; *) why="$why $ch: refused or could not check (rc $rc);" ;; esac
                 done
                 if [ "$go" = 1 ]; then
-                  required_step1 choose "step 1 job (${E2E_TARGET:-?})" || exit 2
+                  required_step1 choose "step 1 job (${E2E_TARGET:-?})${STEP1_STARTED_BY:+, started by $STEP1_STARTED_BY}" || exit 2
                   echo "step 1 of $(tree_version) needs: ${REQUIRED_STEP1//step1./}"
                 else
                   required_step1
@@ -708,5 +712,5 @@ case "$cmd" in
     version_check "$ch"
     ;;
   *)
-    sed -n '2,109p' "$0"; exit 2 ;;
+    sed -n '2,112p' "$0"; exit 2 ;;
 esac

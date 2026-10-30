@@ -5,9 +5,12 @@
 // everyday full e2e of the trunk. Each build records its verdict (asbl/ci/release-state.sh). The quick loop is dp-ci-dev-e2e-one-spec.
 // Its full description (what, when, order, needs, time, examples, log) is in asbl/ci/jenkins/seed.groovy, which makes the job;
 // the guide is asbl/ci/jenkins/jenkins.md, section dp-ci-release-step1-e2e-prerelease.
-// The work is the plain script named below, run on the host over SSH exactly as it is run by hand; this file
-// only starts it and shows its log. The run is a detached container owned by the Docker daemon, so closing
-// the browser or restarting Jenkins never stops it (see asbl/ci/jenkins/jenkins.md).
+// THIN ON PURPOSE: the lane is asbl/ci/jenkins/release-step1.sh (the target's launcher, the prerequisites, build-if-needed,
+// the job steps, and the release record's lines: the version line, full-lane --step1, record-step1), run on the host over
+// SSH exactly as an agent, the release's orchestrator or a person runs it by hand, so a direct run is this job's run. This
+// file only collects the parameters and who started the build, calls the script, shows its log and pulls the reports. The
+// run is detached (a container owned by the Docker daemon, or the Windows driver), so closing the browser or restarting
+// Jenkins never stops it (see asbl/ci/jenkins/jenkins.md).
 pipeline {
   agent any
 
@@ -27,50 +30,24 @@ pipeline {
   stages {
     stage('Run on the host') {
       steps {
+        script {
+          // who started this build (release-step1.sh prints it and writes it as who chose the full lane): read from the
+          // build's cause, no plugin needed. Never stops the build
+          try {
+            def u = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')
+            env.STEP1_STARTED_BY = u ? u[0].userId : currentBuild.getBuildCauses()[0].shortDescription
+          } catch (err) {
+            env.STEP1_STARTED_BY = "(not read: ${err})"
+          }
+        }
         // a red run is recorded here, not thrown, so that the Reports stage below still runs and shows its reports
         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
         sh '''#!/bin/bash
 set -o pipefail
 q() { printf '%q' "$1"; }
-case "$E2E_TARGET" in
-  windows-vm-electron)
-    # the Windows VM lane: dp-ci.sh win e2e, started by win-e2e.sh and followed by its pid
-    RUN="env FOLLOW_PIDFILE=/var/kraft-internalsystems/logs/datapallas-ci/win-e2e.pid bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh" ;;
-  windows-vm-docker)
-    # DataPallas Server in the VM's Docker Desktop: dp-ci.sh win docker-e2e, same launcher, same pid file
-    RUN="env FOLLOW_PIDFILE=/var/kraft-internalsystems/logs/datapallas-ci/win-e2e.pid bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh docker-e2e" ;;
-  windows-vm-server)
-    # DataPallas Server on the VM's own Java 17: dp-ci.sh win server-e2e, same launcher, same pid file
-    RUN="env FOLLOW_PIDFILE=/var/kraft-internalsystems/logs/datapallas-ci/win-e2e.pid bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh server-e2e" ;;
-  electron-windows-vm|docker-windows-vm|server-windows-vm)
-    # the names before 2026-10-22, still in the parameters of older builds: refused here, not sent to the Linux e2e below
-    echo "FAIL  E2E_TARGET $E2E_TARGET was renamed: windows-vm-electron, windows-vm-docker, windows-vm-server"; exit 2 ;;
-  electron-linux)
-    RUN="env E2E_TARGET=electron bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e" ;;
-  *)
-    RUN="env E2E_TARGET=$(q "$E2E_TARGET") bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e" ;;
-esac
-# Each part of the job is marked START/END with the time it took (asbl/ci/marks.sh): grep '^######## ' in the console.
-# The three targets that install what `dp-ci.sh build` makes build origin/main first, only when it is not built yet; before
-# that build (about 40 min) they check, in seconds, what their lane needs (dp-ci.sh prereq: MISSING <what>: <what to do>).
-JS="bash asbl/ci/jenkins/job-step.sh"
-case "$E2E_TARGET" in
-  docker-server) PRE="bash asbl/ci/dp-ci.sh prereq docker" ;;
-  windows-vm-docker) PRE="bash asbl/ci/dp-ci.sh win prereq docker-e2e" ;;
-  windows-vm-server) PRE="bash asbl/ci/dp-ci.sh win prereq server-e2e" ;;
-esac
-case "$E2E_TARGET" in
-  docker-server|windows-vm-docker|windows-vm-server)
-    STEPS="$PRE && $JS 'JOB STEP 1/2' 'the build of origin/main, only when there is none yet (dp-ci.sh build-if-needed)' bash asbl/ci/dp-ci.sh build-if-needed && $JS 'JOB STEP 2/2' 'e2e $E2E_TARGET' $RUN" ;;
-  *)
-    STEPS="$JS 'JOB STEP 1/1' 'e2e $E2E_TARGET' $RUN" ;;
-esac
-# Around the steps, the release record (asbl/ci/release-state.sh): first the version line (what a release would do now:
-# settings.xml against Docker Hub's :latest; this job runs anyway, it is also the everyday e2e job), then this release's
-# full lane (full-lane --step1: web or docker-server, alternated, or drawn at random and said so; chosen once per version,
-# only while the version is still to be released) and the lanes step 1 needs, last the lane's verdict,
-# step1.<target>-<full|auth|light|targeted>, which steps 2 and 3 of a release require on their commit.
-ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") || exit 2; export E2E_SPEC=$(q "$E2E_SPEC") E2E_GREP=$(q "$E2E_GREP") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") E2E_RETRIES=$(q "$E2E_RETRIES"); bash asbl/ci/release-state.sh version-check --print; E2E_TARGET=$(q "$E2E_TARGET") bash asbl/ci/release-state.sh full-lane --step1; t0=\\$(date +%s); $STEPS; rc=\\$?; RELEASE_STEP_START=\\$t0 bash asbl/ci/release-state.sh record-step1 $(q "$E2E_TARGET") \\$rc; exit \\$rc"
+# the parameters and who started the build, passed to the script that is the lane (the header of this file); each part of the
+# run is marked START/END with the time it took (asbl/ci/marks.sh): grep '^######## ' in the console
+ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") || exit 2; E2E_TARGET=$(q "$E2E_TARGET") E2E_SPEC=$(q "$E2E_SPEC") E2E_GREP=$(q "$E2E_GREP") E2E_ROTATION_DATE=$(q "$E2E_ROTATION_DATE") E2E_RETRIES=$(q "$E2E_RETRIES") STEP1_STARTED_BY=$(q "$STEP1_STARTED_BY") bash asbl/ci/jenkins/release-step1.sh"
 '''
         }
       }
