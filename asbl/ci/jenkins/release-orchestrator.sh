@@ -18,6 +18,7 @@
 #        host  the build of the pin first when a lane takes it (dp-ci.sh build-if-needed), then lane 2 (docker-server-auth),
 #              then lane 1 (this release's full set, web or docker-server)
 #        VM    lane 4 (windows-vm-server, its light set) meanwhile, once the build is there; lane 3 is step 3's own
+#      every lane with retries 1, the owner's rule for a release (2026-10-30), as in the light sets of steps 2 and 3;
 #      then the guard steps 2 and 3 make (release-state.sh step1-guard): not green and no approval = no execution, the
 #      re-run commands printed (a lane red on a few tests is completed by re-running them, release-rerun.sh);
 #   4. the execution, two tracks at once (the VM's parts one after the other, never two at once):
@@ -299,7 +300,9 @@ lane_part() {
 run_lane() {  # run_lane <lane>
   local id envs
   read -r id envs <<< "$(lane_part "$1")"
-  run_part "$id" "step 1 ${1#step1.} (release-step1.sh)" env $envs E2E_GREP= E2E_RETRIES= E2E_ROTATION_DATE= \
+  # Retries 1 on every lane (owner, 2026-10-30): a release's step 1 gives a flaky test one more try, like the light sets
+  # of steps 2 and 3. Left empty, each lane would take its own default: 2 for a Linux full run, 0 for the auth lane.
+  run_part "$id" "step 1 ${1#step1.} (release-step1.sh)" env $envs E2E_GREP= E2E_RETRIES=1 E2E_ROTATION_DATE= \
     STEP1_STARTED_BY="release orchestrator, started by $WHO" \
     bash asbl/ci/jenkins/release-step1.sh
 }

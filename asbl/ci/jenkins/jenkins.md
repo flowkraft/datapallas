@@ -343,7 +343,8 @@ not depend on the shell that started them: `setsid nohup <command> >/dev/null 2>
   - Command: `ORCH_STARTED_BY=<name> RELEASE_VERSION=<x.y.z> bash asbl/ci/jenkins/release-orchestrator.sh`
     (`ORCH_STARTED_BY` required). It runs:
     - step 0 (its dry run, then the real one; the commit it pushes is the pin);
-    - step 1's lanes that do not count yet for the pin, then the step 1 guard;
+    - step 1's lanes that do not count yet for the pin, each with retries 1 (a flaky test gets one more try, as in
+      the light sets of steps 2 and 3), then the step 1 guard;
     - the execution on two tracks. The host: the build, the Linux proof, the keeping. The VM: the pack, the Windows
       Docker proof once the build ended, the Electron light set, Robot; never two VM parts at once.
   - `EXECUTION=2`: step 1 (only what does not count yet), then execution 2. It is refused unless `release-rerun.sh show`
