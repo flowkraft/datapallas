@@ -137,6 +137,9 @@ const _splitSendVerifyEmailsAndUploads = (
         process.env.PORTABLE_EXECUTABLE_DIR + '/samples/burst/Payslips.pdf',
       ),
     )
+    // all tokens, so the emails are only written as _email.txt: the mode stays what an earlier test on the same page
+    // left (connections.spec.ts leaves "random", which sends them to a test email server nobody started)
+    .click('#testTokensAll')
     .click('#btnRunTest')
     .clickYesDoThis()
     .waitOnProcessingToStart(Constants.CHECK_PROCESSING_STATUS_BAR)
