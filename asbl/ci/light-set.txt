@@ -1,0 +1,92 @@
+# asbl/ci/light-set.txt: THE LIGHT SET, the tests a release runs on the lanes where it does not run the full suite.
+#
+# What it is: one list for the four lanes that run a light set. They are:
+#   - the Docker release's Linux proof on docker-server (asbl/ci/jenkins/release-docker.sh, DOCKER RELEASE STEP 3/6);
+#   - windows-vm-docker (its DOCKER RELEASE STEP 4/6);
+#   - windows-vm-server (step 1, lane 4);
+#   - windows-vm-electron (step 3's RELEASE STEP 2/4, recorded as step 1's lane 3).
+# The release record calls such a run "light" (asbl/ci/release-state.sh record-step1).
+# How it is read, step by step (asbl/ci/dp-ci.sh light_set_filters <lane>):
+#   1. Every line that is not blank or a comment is an entry: zone | lanes | spec file | test title.
+#   2. A lane keeps the entries whose lanes field is "all" or its own group: server is docker-server, web,
+#      windows-vm-docker and windows-vm-server; electron is windows-vm-electron (and the Linux electron target).
+#   3. The spec file (under frend/reporting/e2e/) must be there. An empty title takes the whole file. A title takes that
+#      one test: the test's own title, exactly, without its describe titles.
+#   4. The entries become the two filters every lane already hands to playwright.config.ts: E2E_SPEC (the files) and
+#      E2E_GREP (the tests). A lane is asked for the set with E2E_SPEC=light; windows-vm-docker and windows-vm-server
+#      also take it when neither E2E_SPEC nor E2E_GREP is given, as before.
+# Inputs: this file alone, with no "|" inside a field. No defaults.
+# Dry run: print each lane's entries and its two filters, running nothing:
+#   bash asbl/ci/dp-ci.sh light-set                      (the four lanes)
+#   bash asbl/ci/dp-ci.sh light-set windows-vm-docker    (one lane)
+# To see the tests themselves without running them, use Playwright's list (in frend/reporting, with that lane's two
+# filters):
+#   TEST_ENV=web E2E_SPEC='<E2E_SPEC>' E2E_GREP='<E2E_GREP>' npx playwright test -c e2e/playwright.config.ts e2e/ --list
+# It never runs anything. A lane never runs any set but this one: a bad entry stops the lane before its first test.
+# Callers: dp-ci.sh e2e (E2E_TARGET=docker-server E2E_SPEC=light), dp-ci.sh win e2e (E2E_SPEC=light), dp-ci.sh win
+# docker-e2e and win server-e2e. Through those: release-docker.sh, win-e2e.sh release, release-rerun.sh and the step 1 job.
+#
+# Lane limits:
+#   - auth-authorization-server is server only (the Electron flow serves no web UI). Taken whole, it runs alone, because it
+#     changes accounts, roles and, last, burst's password.
+#   - let-me-update-migrate-configuration is Electron only.
+#   - The Electron-only tests of auth-authorization-desktop skip themselves on the server lanes.
+#
+# zone | lanes | spec file | test title (empty = the whole file)
+#
+# The 23 shipped samples, then one sentinel per zone the samples cannot reach: the most complex test of the zone, read
+# before it was picked (the owner's pick rule, 2026-10-26). Settled 2026-10-30 (plan-2026-10-28-faster-releases-trusted-
+# light-set, TODO 8). The report of that plan has, for each entry, the lanes, the last known minutes and why.
+
+# The base: every shipped sample, from samples/ in to output/ out.
+base: the 23 samples | all | specs/features/samples.spec.ts |
+# The only test that saves and reloads every datasource type (CSV, TSV, fixed width, Excel, SQL, Script, XML), with a
+# gallery template and DOCX, then restores the defaults.
+configuration | all | specs/areas/configuration.spec.ts | (WITH Report Generation) - should work changing/saving configuration values and should work rolling back to default configuration values
+# Logs and quarantined files loaded, then cleared by the server through the confirm dialog: all three viewers empty.
+logs | all | specs/components/log-files-viewer-all-together.spec.ts | should handle correctly pressing the Clear All Quarantined and Log Files button
+# Search, a field two joins away, a filter whose options come from the database column, then the SQL it generates.
+cube definitions | all | specs/areas/cubes-definitions.spec.ts | (cube-definitions) should filter from the field tree and show it in View SQL
+# Its only test: one selection published both ways (the AI Hub started first), the same rows.
+cube modes | all | specs/areas/cube-modes-parity.spec.ts |
+# The most of the builder: a filter bar parameter filled by SQL, eight Groovy widgets, a tabulator, a pivot, a nine-tile
+# layout, published, each tile's data checked for two countries.
+explore data | all | specs/features/explore-data-use-cases.spec.ts | D21 — Reconstruct g-dashboard sample
+# A connection used by JasperReports itself: the .jrxml runs its own SQL for each sales rep.
+jasper | all | specs/features/reporting-jasper.spec.ts | (sqlite) should generate a personalized order history report for each sales rep
+# The jr CLI twice (analyze, then --fix), the scanner's reporting.xml, a parameter form from the .jrxml, a PDF from the
+# JasperReports 6 renderer.
+jasper legacy | all | specs/features/reporting-jasper-legacy.spec.ts | should migrate a JasperReports Server export with jr analyze --fix and then generate it
+# Every upload command and the email, as Quality Assurance's evidence files (no server needed).
+output targets | all | specs/features/split-send-emails-upload.spec.ts | should upload Payslips.pdf to ftp, sftp, fileshare, ftps and http and should also send emails (My Report)
+# Its only test: a connection, the app started, agents, Matrix and Chat2DB.
+app: AI Hub | all | specs/features/apps-ai-hub.spec.ts |
+# Its only test: WordPress started, admin and front pages, stopped.
+app: CMS | all | specs/features/apps-cms-wordpress.spec.ts |
+# Six front pages (parameters, a report, three pivot engines), then admin statistics, two CRUDs and settings saved.
+app: generated | all | specs/features/apps-grails-nextjs.spec.ts | Grails Playground: Full test suite (front-facing + admin)
+# Server only (Lane limits): one test, never the whole file. Eight doors refused, each naming the connection; it deletes
+# the group, user and report it makes. Its file's beforeAll leaves four role accounts, which no later file reads.
+security: refusal | server | specs/features/auth-authorization-server.spec.ts | (journey) the same chain on a connection the author's group does not allow is refused at every step, and the refusal names the connection
+# What only the desktop app can break (owner, 2026-10-30, ac01cd76): the shell signing its own requests, and the link
+# it opens in the user's browser carrying the token that browser needs. Try it and Explore Data's View shipped a 404 in
+# 16.6.0 with every lane green. The whole file, always: no settling, pick or cap removes or narrows it.
+security: desktop | electron | specs/features/auth-authorization-desktop.spec.ts |
+# Two connections, a group and a user; six doors, each refused to the limited session and open to the installation key.
+security: sharing | all | specs/features/auth-embed-share.spec.ts | (embed) the installation key is refused nothing a limited session would be refused
+# Electron only (Lane limits): an older configuration updated and migrated.
+upgrade | electron | specs/features/let-me-update-migrate-configuration.spec.ts |
+# The only CLI test that chains two engine stages: three PDFs merged, then burst, ten outputs named.
+interface: CLI | all | specs/features/interface-client-cli.spec.ts | 05_merge_then_burst_invoices (pdf2pdf)
+# Eleven of the twelve recipe step kinds: filters, five tables, three cubes bound to the filters, visual queries with a
+# computed column, SQL widgets, layout, published, checked against what ships.
+dashboard builder | all | specs/features/canvas-dashboard-demos.spec.ts | (dashboard demos) DD13 Invoices & Billing — rebuilt in the Canvas like a user, published, same as shipped
+# The deepest REST test: a merge list, then POST /api/jobs (merge and burst), ten outputs named.
+interface: REST | all | specs/features/interface-client-rest.spec.ts | 05_merge_then_burst_invoices (pdf2pdf)
+# Three screens: the test SMTP server, the connection's modal and list, Configuration > Email (reuse, valid, invalid);
+# six real deliveries counted. No vendor rotation, no database container.
+connections | all | specs/areas/connections.spec.ts | (email-connection) should exercise Send Test Email: unsaved modal, list, config reuse, inline valid and inline invalid (bundled SMTP)
+# Create, rename, General Settings and Distribution saved and reloaded, restored, the new name kept, removed.
+report configurations | all | specs/areas/configuration-templates.spec.ts | should correctly create a new configuration, allow to alter few configuration values, rollback the changes and also change the displayable name of the configuration and finally remove it (test.xml)
+# The test email server, two mails checked (subject, body, branding) and the exact files of the token list.
+quality assurance | all | specs/areas/processing-qa.spec.ts | should correctly generate-email-test-tokenlist samples/reports/payslips/Payslips.csv (Payslips)

@@ -356,8 +356,9 @@ run_part() {
     web|docker-server)
       selection "$part" "${ids[@]}"
       if [ "${#ids[@]}" = 0 ]; then
-        # the whole set as step 2's Linux proof runs it: the Windows lanes' light set and the one-command run
-        light=$(sed -n "s/^WIN_LIGHT_SPEC='\(.*\)'\$/\1/p" asbl/ci/dp-ci.sh); SEL_SPEC="$light" one_command=yes
+        # the whole set as step 2's Linux proof runs it: the light set (asbl/ci/light-set.txt, E2E_SPEC=light) and the
+        # one-command run
+        SEL_SPEC=light one_command=yes
       fi
       env_lane=(E2E_TARGET="$part" E2E_SPEC="$SEL_SPEC" E2E_GREP="$SEL_GREP" E2E_RETRIES=0 E2E_PACKAGE="" E2E_DOCKER_FROM_URL=""
                 E2E_DOCKER_ONE_COMMAND="$one_command" E2E_REUSE_BUILD="$reuse" E2E_KEPT_BUILD="$kept_build")

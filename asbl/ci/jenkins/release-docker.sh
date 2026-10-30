@@ -179,9 +179,11 @@ rehearse() {
   tag=$(sed -n 's/^BUILD_TAG=//p' "$out" | tail -1); rm -f "$out"
   [ "$rc" = 0 ] || { echo "FAILED: no build of ${c:0:8} (above)"; [ "$dry" = 1 ] || finish_red "$v" "$c" "the build failed: nothing to prove or keep"; return 1; }
   [ "$(git rev-parse HEAD)" = "$c" ] || { echo "FAILED: origin/main moved during the run (${c:0:8} -> $(git rev-parse --short HEAD)): run it again"; return 1; }
-  # the light set: the Windows lanes' WIN_LIGHT_SPEC, read from dp-ci.sh so there is one list
-  light=$(sed -n "s/^WIN_LIGHT_SPEC='\(.*\)'\$/\1/p" asbl/ci/dp-ci.sh)
-  [ -n "$light" ] || { echo "FAILED: no WIN_LIGHT_SPEC in asbl/ci/dp-ci.sh"; return 1; }
+  # the light set: asbl/ci/light-set.txt, the one list every lane reads; each proof asks its lane for it by the word
+  # (E2E_SPEC=light on docker-server, no filter on windows-vm-docker). Read here first, so a bad list stops the run before
+  # its proofs start.
+  light=asbl/ci/light-set.txt
+  bash asbl/ci/dp-ci.sh light-set docker-server windows-vm-docker >/dev/null || { echo "FAILED: the light set, $light (above)"; return 1; }
   if [ "$dry" = 1 ]; then
     if [ -z "$PART" ] || [ "$PART" = linux ]; then
       mark_next "DOCKER RELEASE STEP 3/6" "Linux proof (dry run)"
@@ -246,11 +248,11 @@ rehearse() {
   mark_next "DOCKER RELEASE STEP 3/6" "Linux proof, no registry: $zip installed as the self-host page says against $RELEASE_IMAGE_REPO:$tag, the light set ($light), the one-command run"
   # E2E_DOCKER_FROM_URL empty = the build's own zip and image (docker-server never pulls them); retries 1, as the Windows light set has
   t0=$(date +%s)
-  if E2E_TARGET=docker-server E2E_SPEC="$light" E2E_GREP="" E2E_RETRIES=1 E2E_DOCKER_FROM_URL="" E2E_DOCKER_ONE_COMMAND=yes \
+  if E2E_TARGET=docker-server E2E_SPEC=light E2E_GREP="" E2E_RETRIES=1 E2E_DOCKER_FROM_URL="" E2E_DOCKER_ONE_COMMAND=yes \
      FOLLOW_PIDFILE="" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e; then res_linux=PASS; else res_linux=FAIL; fi
   log=$(newest_log "$LOG_DIR/latest.log" "$t0"); json="${log:+${log%.log}-playwright.json}"
   echo "DOCKER_RELEASE_LINUX_PROOF=$res_linux log=${log:-none} report=${json:-none}"
-  $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 3/6" "$res_linux" "Linux proof: the docker zip installed as the self-host page says, the light set (WIN_LIGHT_SPEC), the one-command run" "$log" "$json"
+  $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 3/6" "$res_linux" "Linux proof: the docker zip installed as the self-host page says, the light set ($light), the one-command run" "$log" "$json"
   mark_end "$([ "$res_linux" = PASS ] && echo 0 || echo 1)"
   fi
   if [ "$PART" = linux ]; then
@@ -260,7 +262,7 @@ rehearse() {
   if [ -z "$PART" ] || [ "$PART" = windows ]; then
   [ -z "$PART" ] || mark_end 0   # a later part: 2/6, the build found, closes here
   mark_start "DOCKER RELEASE STEP 4/6" "Windows proof, no registry: the same image loaded on the VM, the same zip installed in its Docker Desktop, the light set"
-  # empty filters = the lane's light set (WIN_LIGHT_SPEC, retries 1); E2E_DOCKER_FROM_URL empty = the build's image copied over, the build's zip
+  # empty filters = the lane's light set ($light, retries 1); E2E_DOCKER_FROM_URL empty = the build's image copied over, the build's zip
   t0=$(date +%s)
   if E2E_SPEC="" E2E_GREP="" E2E_RETRIES="" E2E_DOCKER_FROM_URL="" FOLLOW_PIDFILE="$LOG_DIR/win-e2e.pid" \
      bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh docker-e2e; then res_windows=PASS; else res_windows=FAIL; fi
@@ -268,7 +270,7 @@ rehearse() {
   json=$([ -n "$log" ] && grep -aoP '^WIN_E2E_REPORT=\K\S+' "$log" | tail -1)
   [ -n "$json" ] || json="${log:+${log%.log}-step-playwright.json}"
   echo "DOCKER_RELEASE_WINDOWS_PROOF=$res_windows log=${log:-none} report=${json:-none}"
-  $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 4/6" "$res_windows" "Windows proof: the same image and zip in the VM's Docker Desktop, the light set (WIN_LIGHT_SPEC)" "$log" "$json"
+  $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 4/6" "$res_windows" "Windows proof: the same image and zip in the VM's Docker Desktop, the light set ($light)" "$log" "$json"
   mark_end "$([ "$res_windows" = PASS ] && echo 0 || echo 1)"
   fi
   if [ "$PART" = windows ]; then

@@ -70,6 +70,7 @@
 #       copied from: _apps, db-template, config) must be built from THIS commit: it is rebuilt first when its stamp says
 #       otherwise (= asbl/pack-prepare-for-e2e.bat, no JUnit, no image; about 30 min). E2E_PACKAGE does not apply here.
 #       E2E_SPEC   a regex on the spec file's path; anchor it for one file, e.g. E2E_SPEC='/variables\.spec\.ts$'.
+#                  E2E_SPEC=light (E2E_GREP empty) = the light set, asbl/ci/light-set.txt (the Docker release's Linux proof).
 #       E2E_GREP   a regex on the test titles. Both empty = the full suite without auth-authorization-server (it changes
 #                  accounts and roles later specs use) and let-me-update-migrate-configuration (Electron only), which run
 #                  on their own; either set = a targeted run.
@@ -182,6 +183,11 @@
 #       publish-demo-datapallas.com (its settings and docker-compose.yml). Every Linux task checks docker itself first
 #       (not a dry build-if-needed, which starts nothing), and each Windows lane its own set at its top.
 #
+#   bash asbl/ci/dp-ci.sh light-set [<lane>...]
+#       The light set (asbl/ci/light-set.txt) as each lane runs it, printed, nothing started: its entries, then the
+#       E2E_SPEC and E2E_GREP it hands to Playwright. Lanes: docker-server, windows-vm-docker, windows-vm-server,
+#       windows-vm-electron [all four]. A bad entry is a FAIL line and exit 2, as the lane itself would stop.
+#
 #   bash asbl/ci/dp-ci.sh win <subcommand>
 #       The Windows VM (win10-dev). Runs ON THE HOST, not in a container: it drives the VM over SSH with root's key and
 #       does not touch this repo, dp-dev or the firewall (the host reaches the VM without a ufw rule). The VM's settings:
@@ -200,7 +206,7 @@
 #                               package rebuilt with asbl/pack-prepare-for-e2e.bat unless it was built from that commit.
 #       e2e                     windows-vm-electron: the desktop app on the VM, E2E_SPEC/E2E_GREP as in `e2e` (on Windows the
 #                               path has backslashes: write the separator as [\\/]); both empty = the full suite without
-#                               auth-authorization-server; E2E_SPEC=light = the light set (WIN_ELECTRON_LIGHT_SPEC), what a release
+#                               auth-authorization-server; E2E_SPEC=light = the light set (asbl/ci/light-set.txt), what a release
 #                               needs of this lane. Caps: WIN_RUN_TIMEOUT [full 64 h, targeted 3 h; win-ci.env sets
 #                               6 h for targeted runs], WIN_RUN_STALL [full 105 min, targeted 80 min].
 #       docker-e2e              windows-vm-docker: DataPallas Server in the VM's Docker Desktop, from datapallas-server-docker.zip
@@ -209,8 +215,9 @@
 #                               E2E_DOCKER_FROM_URL, a staged download instead, by hand, as in `e2e`.
 #       server-e2e              windows-vm-server: DataPallas Server on the VM's own Java 17, from datapallas-server.zip as the
 #                               installation page installs it (startServer.bat).
-#                               Both server lanes run a light set of five spec files when E2E_SPEC and E2E_GREP are empty.
-#                               Caps: WIN_RUN_TIMEOUT [3 h], WIN_RUN_STALL [80 min].
+#                               Both server lanes run the light set (asbl/ci/light-set.txt) when E2E_SPEC and E2E_GREP are
+#                               empty, or with E2E_SPEC=light. Caps: WIN_RUN_TIMEOUT [the light set LIGHT_SET_CAP_SERVER_LANES,
+#                               a targeted run 3 h], WIN_RUN_STALL [80 min].
 #       release                 the Windows release's files (MODE=rehearsal|public, UPLOAD=no|yes, DRY_RUN=no|yes): pack-datapallas.bat once
 #                               (RELEASE_PACK_TIMEOUT [28800 = 8 h]), the Robot UAT on its very files (RELEASE_ROBOT_TIMEOUT
 #                               [21600 = 6 h]), then, UPLOAD=yes, datapallas.zip, datapallas-server.zip and datapallas-src.zip
@@ -1225,11 +1232,11 @@ win_e2e() {
     mode=full
     spec='^(?!.*auth-authorization-server).*\.spec\.ts$'
   elif [ "$spec" = light ] && [ -z "$gexp" ]; then
-    # E2E_SPEC=light: the other Windows lanes' light set and auth-authorization-desktop (WIN_ELECTRON_LIGHT_SPEC),
-    # what a release needs of this lane
+    # E2E_SPEC=light: the light set (asbl/ci/light-set.txt, its entries for this lane), what a release needs of this lane
     # since the full set alternates between web and docker-server (asbl/ci/release-state.sh full-lane)
     mode=light
-    spec="$WIN_ELECTRON_LIGHT_SPEC"
+    light_set_filters windows-vm-electron || return 2
+    spec="$LIGHT_SET_SPEC" gexp="$LIGHT_SET_GREP"
   fi
   # A targeted run shows each failure as it is; a full run, and the light set as on the other Windows lanes, retry a
   # failed test once, so one run still collects every failure instead of stopping at the first flake (plan W7).
@@ -1458,7 +1465,8 @@ PS
   echo "WIN_E2E_MODE=$mode  target=$target  spec='$spec'  grep='$gexp'  retries=$retries"
   echo "WIN_E2E_LOG=$WIN_WEB_OUT"
   WIN_RUN_WATCH="${WIN_RUN_WATCH:-$inst\\logs\\info.log}"
-  WIN_RUN_TIMEOUT="${WIN_RUN_TIMEOUT:-10800}"
+  # the light set's cap (LIGHT_SET_CAP_SERVER_LANES, from its estimate), else 3 h
+  WIN_RUN_TIMEOUT="${WIN_RUN_TIMEOUT:-$([ "$mode" = light ] && echo "$LIGHT_SET_CAP_SERVER_LANES" || echo 10800)}"
   WIN_RUN_STALL="${WIN_RUN_STALL:-4800}"
   export WIN_RUN_WATCH WIN_RUN_TIMEOUT WIN_RUN_STALL
 
@@ -1498,22 +1506,96 @@ win_web_result() {
 # (the same rule as the Linux docker-server lane).
 # What the container runs is the Linux image the docker-server lane already tests on Linux, every spec. What only this
 # lane tests is where it meets Windows: the bundle's folders bind-mounted from NTFS, the server starting apps through
-# Docker Desktop's docker.sock with Windows host paths, the published port. Hence its light set, which the owner agreed
-# to on 2026-10-22:
-#   quick-start                      samples/ in, output/ and logs/ out: the core burst
-#   configuration                    settings saved into config/
-#   log-files-viewer-separate-tabs   logs/ read back in the UI
-#   cubes-definitions                the sample databases in db/
-#   apps-ai-hub                      an app the server starts through docker.sock
+# Docker Desktop's docker.sock with Windows host paths, the published port. Hence a light set and not the full suite:
+# asbl/ci/light-set.txt, below.
 # Unlike Linux, the images compose builds for the apps are kept between runs: the AI Hub's take hours to build on the VM,
 # and what is in them is the Linux docker-server lane's to prove; starting them from Windows is this one's.
 # The specs run from the VM's checkout and the node_modules already in it, as the Electron lane's do.
-WIN_LIGHT_SPEC='[\\/](features[\\/]quick-start|areas[\\/]configuration|components[\\/]log-files-viewer-separate-tabs|areas[\\/]cubes-definitions|features[\\/]apps-ai-hub)\.spec\.ts$'
-# The Electron lane's light set is those five and auth-authorization-desktop (owner, 2026-10-30): what only the desktop
-# app can break, the shell signing its own requests and the link it opens in the user's browser carrying the token that
-# browser needs (Try it and Explore Data's View shipped a 404 in 16.6.0 with every lane green). Its Electron-only tests
-# skip on the server lanes, so their light set stays the five.
-WIN_ELECTRON_LIGHT_SPEC='[\\/](features[\\/]quick-start|areas[\\/]configuration|components[\\/]log-files-viewer-separate-tabs|areas[\\/]cubes-definitions|features[\\/]apps-ai-hub|features[\\/]auth-authorization-desktop)\.spec\.ts$'
+
+# THE LIGHT SET: asbl/ci/light-set.txt, one list for the four lanes that run one (the Docker release's Linux proof on
+# docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron); what is in it, and why, is in that file.
+# light_set_filters <lane> turns the entries that lane can run into the two filters every lane already hands to
+# playwright.config.ts: LIGHT_SET_SPEC for E2E_SPEC (its testMatch: the entries' files) and LIGHT_SET_GREP for E2E_GREP
+# (its grep: every test of a whole-file entry, the one test of an entry with a title). Playwright matches the grep
+# against "<project> <spec file> <describe titles> <test title>", joined by spaces, so an entry is its file's path then,
+# for one test, its title at the very end. A lane is asked for it by the word (E2E_SPEC=light; the two server lanes also
+# with no filter at all) and makes the filters itself, so the release record still calls the run light
+# (release-state.sh record-step1).
+LIGHT_SET_LIST="$REPO/asbl/ci/light-set.txt"
+# The light set's caps on the VM: its estimate with headroom, so that a cap stops a hang and never a long set (one test is
+# bounded by E2E_MAX_TEST_MS, a silent run by WIN_RUN_STALL). Estimated 2026-10-30 from each test's last minutes; the
+# report of plan-2026-10-28-faster-releases-trusted-light-set (TODO 8) has them test by test:
+#   - windows-vm-docker: 42.6 min on Linux docker-server, at that lane's own ratios in chain d (3.5x for a UI test, 1.4x
+#     for an app), plus the beforeAll hooks a picked test now pays first (under a minute each): about 2 h 10. About twice
+#     that: 4 h 30.
+#   - windows-vm-server has no numbers yet, so it takes the same cap.
+#   - windows-vm-electron: 61 min (the VM's last full Electron run), with two apps new to it that may build cold there.
+#     About three times that: 3 h.
+LIGHT_SET_CAP_SERVER_LANES=16200   # WIN_RUN_TIMEOUT of a light run on windows-vm-docker and windows-vm-server
+LIGHT_SET_CAP_ELECTRON=10800       # the release's electron light set (win_release RELEASE STEP 2/4, RELEASE_LIGHT_TIMEOUT)
+
+# light_set_regex <text>: a regex matching <text> as written, in plain ASCII, the way release-rerun.sh's js_escape writes
+# a title: each regex character escaped; " % and ! as "." (any character), because the Windows lanes carry the regex in
+# a cmd.exe `set "NAME=value"` line (win_run), where those three are not data; a character past ASCII (the titles' em
+# dashes) as "." too, so the line means the same in whatever code page cmd.exe reads it.
+light_set_regex() {
+  printf '%s' "$1" | LC_ALL=C sed -e 's/[][\\^$.|?*+(){}]/\\&/g' -e 's/["%!]/./g' -e 's/[\xc0-\xff][\x80-\xbf]*/./g'
+}
+
+# light_set_filters <lane>: LIGHT_SET_SPEC and LIGHT_SET_GREP of that lane (above), LIGHT_SET_COUNT its entries and
+# LIGHT_SET_ENTRIES the same as "zone<TAB>file<TAB>title" lines (light_set_print). The lane takes the entries whose lanes
+# field is all or its group: server = docker-server, web, windows-vm-docker and windows-vm-server; electron =
+# windows-vm-electron and electron (the list's "Lane limits"). A malformed entry, a spec file that is not there, or a grep
+# longer than cmd.exe takes stops it (rc 2): a lane never runs a set other than the list's.
+light_set_filters() {
+  local lane="$1" group zone lanes file title file_re files="" tests=""
+  case "$lane" in
+    docker-server|web|windows-vm-docker|windows-vm-server) group=server ;;
+    windows-vm-electron|electron) group=electron ;;
+    *) echo "FAIL  light set: no lane '$lane' (docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron)" >&2; return 2 ;;
+  esac
+  LIGHT_SET_SPEC="" LIGHT_SET_GREP="" LIGHT_SET_ENTRIES="" LIGHT_SET_COUNT=0
+  [ -s "$LIGHT_SET_LIST" ] || { echo "FAIL  light set: $LIGHT_SET_LIST is missing" >&2; return 2; }
+  while IFS=$'\037' read -r zone lanes file title; do
+    [ "$zone" != '!bad' ] ||
+      { echo "FAIL  light set: line $lanes of $LIGHT_SET_LIST is not 'zone | lanes | spec file | test title': $file" >&2; return 2; }
+    case "$lanes" in
+      all|"$group") ;;
+      server|electron) continue ;;
+      *) echo "FAIL  light set: '$zone' is for the lanes '$lanes': all, server or electron" >&2; return 2 ;;
+    esac
+    case "$file" in specs/*.spec.ts) ;; *) echo "FAIL  light set: '$zone': '$file' is not a spec file under specs/" >&2; return 2 ;; esac
+    [ -f "$REPO/frend/reporting/e2e/$file" ] || { echo "FAIL  light set: '$zone': no frend/reporting/e2e/$file" >&2; return 2; }
+    # the file's path with either separator, as Windows names it with backslashes
+    file_re=$(light_set_regex "$file" | sed 's#/#[\\\\/]#g')
+    case "|$files|" in *"|$file_re|"*) ;; *) files="$files${files:+|}$file_re" ;; esac
+    if [ -z "$title" ]; then
+      tests="$tests${tests:+|}$file_re "
+    else
+      tests="$tests${tests:+|}$file_re (.* )?$(light_set_regex "$title")\$"
+    fi
+    LIGHT_SET_ENTRIES="$LIGHT_SET_ENTRIES${LIGHT_SET_ENTRIES:+$'\n'}$zone"$'\t'"$file"$'\t'"$title"
+    LIGHT_SET_COUNT=$((LIGHT_SET_COUNT + 1))
+  done < <(awk -F '|' '/^[[:space:]]*(#|$)/ { next }
+    { for (i = 1; i <= NF; i++) gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i)
+      if (NF < 3 || NF > 4 || $1 == "" || $3 == "") print "!bad\037" NR "\037" $0
+      else print $1 "\037" $2 "\037" $3 "\037" $4 }' "$LIGHT_SET_LIST")
+  [ "$LIGHT_SET_COUNT" -gt 0 ] || { echo "FAIL  light set: no entry of $LIGHT_SET_LIST is for $lane" >&2; return 2; }
+  LIGHT_SET_SPEC="[\\\\/]($files)\$"
+  LIGHT_SET_GREP="(^| )($tests)"
+  # cmd.exe reads at most 8191 characters a line, and win_run writes the grep into one: set "E2E_GREP=<grep>"
+  [ "${#LIGHT_SET_GREP}" -le 7500 ] ||
+    { echo "FAIL  light set: its E2E_GREP for $lane is ${#LIGHT_SET_GREP} characters, more than one cmd.exe line holds (7500 of 8191): fewer single tests" >&2; return 2; }
+}
+
+# light_set_print <lane>: the lane's light set as light_set_filters makes it, its entries then its two filters
+light_set_print() {
+  light_set_filters "$1" || return 2
+  echo "LIGHT_SET lane=$1 entries=$LIGHT_SET_COUNT list=asbl/ci/light-set.txt"
+  printf '%s\n' "$LIGHT_SET_ENTRIES" | awk -F '\t' '{ printf "  %-20s %s  %s\n", $1, $2, ($3 == "" ? "(the whole file)" : "\"" $3 "\"") }'
+  echo "E2E_SPEC=$LIGHT_SET_SPEC"
+  echo "E2E_GREP=$LIGHT_SET_GREP"
+}
 
 # The Docker CLI on the VM must not ask the Windows credential store. Over SSH there is no interactive
 # logon session, so docker-credential-wincred answers "A specified logon session does not exist. It may
@@ -1569,7 +1651,10 @@ win_docker_e2e() {
   fi
 
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
-  if [ -z "$spec" ] && [ -z "$gexp" ]; then mode=light; spec="$WIN_LIGHT_SPEC"; fi
+  # no filter, or E2E_SPEC=light: the light set (asbl/ci/light-set.txt)
+  if [ -z "$gexp" ] && { [ -z "$spec" ] || [ "$spec" = light ]; }; then
+    mode=light; light_set_filters windows-vm-docker || return 2; spec="$LIGHT_SET_SPEC" gexp="$LIGHT_SET_GREP"
+  fi
   if [ "$mode" = light ]; then retries="${E2E_RETRIES:-1}"; else retries="${E2E_RETRIES:-0}"; fi
 
   # the previous run's bundle, and anything its server started, before its folder is replaced
@@ -1689,7 +1774,10 @@ win_server_e2e() {
   echo "WIN_SERVER_PACKAGE=datapallas-server.zip of build $tag"
 
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
-  if [ -z "$spec" ] && [ -z "$gexp" ]; then mode=light; spec="$WIN_LIGHT_SPEC"; fi
+  # no filter, or E2E_SPEC=light: the light set (asbl/ci/light-set.txt)
+  if [ -z "$gexp" ] && { [ -z "$spec" ] || [ "$spec" = light ]; }; then
+    mode=light; light_set_filters windows-vm-server || return 2; spec="$LIGHT_SET_SPEC" gexp="$LIGHT_SET_GREP"
+  fi
   if [ "$mode" = light ]; then retries="${E2E_RETRIES:-1}"; else retries="${E2E_RETRIES:-0}"; fi
 
   win_server_down "$inst"   # a server left by a killed run, before its folder is replaced
@@ -1971,7 +2059,7 @@ win_robot_rerun() {
 # files that are kept and staged; their sha256 are printed and kept in <log>-step-release-files.txt (owner, 2026-10-22).
 # The day before a release (plan-pre-release-artifacts-ready): MODE=rehearsal UPLOAD=no after step 2: about 8-14 h on the VM
 # (the pack 2-4 h, the electron light set 2-4 h with its own prepare, the Robot UAT 2-5 h; caps RELEASE_PACK_TIMEOUT 8 h,
-# RELEASE_LIGHT_TIMEOUT 6 h, RELEASE_ROBOT_TIMEOUT 6 h). It leaves datapallas.zip, datapallas-server.zip and datapallas-src.zip
+# RELEASE_LIGHT_TIMEOUT 3 h = LIGHT_SET_CAP_ELECTRON, RELEASE_ROBOT_TIMEOUT 6 h). It leaves datapallas.zip, datapallas-server.zip and datapallas-src.zip
 # in <artifacts>/<version>-<commit>/ (release-keep.sh), the windows lines of MANIFEST.txt and failure-report-windows.md, and
 # step1.windows-vm-electron-light recorded on the commit. Release day: MODE=upload UPLOAD=yes, then MODE=public.
 # MODE=rehearsal: a real release into places users do not get; nothing users get changes. Every part runs whatever the one
@@ -1991,7 +2079,7 @@ win_robot_rerun() {
 #                      (asbl/ci/release-keep.sh keep windows: <artifacts>/<version>-<commit>/, each checked against the pack's
 #                      sha256; an earlier set of the same commit moves to replaced/, never deleted).
 #   2/4 electron light the desktop app built from the repository, its light set: dp-ci.sh win e2e with E2E_SPEC=light
-#                      (WIN_ELECTRON_LIGHT_SPEC: the five specs every light set runs and auth-authorization-desktop,
+#                      (asbl/ci/light-set.txt, the entries for windows-vm-electron, auth-authorization-desktop whole,
 #                      retries 1) on the release commit, its own prepare (pack-prepare-for-e2e.bat, which empties
 #                      asbl\dist), recorded as
 #                      step1.windows-vm-electron-light on the commit: step 1 needs no hand-started lane for it.
@@ -2113,7 +2201,8 @@ win_release() {
       return 0
     fi
     mark_next "RELEASE STEP 2/4" "the electron light set (dry run)"
-    echo "dry run: would run dp-ci.sh win e2e with E2E_SPEC=light (WIN_ELECTRON_LIGHT_SPEC) on ${hostc:0:8}, its own prepare first, and record step1.windows-vm-electron-light"
+    light_set_filters windows-vm-electron || return 2
+    echo "dry run: would run dp-ci.sh win e2e with E2E_SPEC=light (asbl/ci/light-set.txt: $LIGHT_SET_COUNT entries) on ${hostc:0:8}, its own prepare first, and record step1.windows-vm-electron-light"
     mark_next "RELEASE STEP 3/4" "Robot Framework UAT (dry run)"
     echo "dry run: would put the pack's zips back in asbl\\dist when needed and run asbl\\src\\uat\\run-tests.bat on them"
     mark_next "RELEASE STEP 4/4" "what it kept, the upload (dry run, UPLOAD=$UPLOAD)"
@@ -2222,12 +2311,12 @@ PS
     echo "RELEASE_RESULT commit=${vmc:0:8} version=$RELEASE_VERSION half=pack pack=$res_pack keep=$res_keep (parts 2/4 to 4/4 and the verdict: WIN_RELEASE_HALF=after-pack)"
     [ "$res_pack" = PASS ] && [ "$res_keep" = PASS ]; return
   fi
-  mark_start "RELEASE STEP 2/4" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (WIN_ELECTRON_LIGHT_SPEC: features/quick-start, areas/configuration, components/log-files-viewer-separate-tabs, areas/cubes-definitions, features/apps-ai-hub, features/auth-authorization-desktop), the app built from the repository; recorded as step1.windows-vm-electron-light"
-  # the lane as step 1 ran it (its own prepare, its reports), in a subshell so its settings stay its own; a 6 h cap, as the
-  # targeted Windows runs have (win-ci.env)
+  mark_start "RELEASE STEP 2/4" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (asbl/ci/light-set.txt, its windows-vm-electron entries), the app built from the repository; recorded as step1.windows-vm-electron-light"
+  # the lane as step 1 ran it (its own prepare, its reports), in a subshell so its settings stay its own; the light set's
+  # cap (LIGHT_SET_CAP_ELECTRON)
   light_log="$base-electron-light.log"
   if ( export E2E_SPEC=light E2E_GREP="" E2E_RETRIES="" WIN_E2E_LOG="$light_log" WIN_RUN_WATCH="" WIN_RUN_STALL="" \
-         WIN_RUN_TIMEOUT="${RELEASE_LIGHT_TIMEOUT:-21600}"; mark_run win_e2e ); then res_light=PASS; else res_light=FAIL; fi
+         WIN_RUN_TIMEOUT="${RELEASE_LIGHT_TIMEOUT:-$LIGHT_SET_CAP_ELECTRON}"; mark_run win_e2e ); then res_light=PASS; else res_light=FAIL; fi
   RELEASE_COMMIT="$vmc" RELEASE_LOG="$light_log" bash "$REPO/asbl/ci/release-state.sh" record step1.windows-vm-electron-light "$res_light" \
     "version=$RELEASE_VERSION" "by=step 3, dp-ci.sh win release RELEASE STEP 2/4"
   # The lane can die before it writes its own log (the pack leaves the checkout dirty, the driver never starts):
@@ -2235,7 +2324,7 @@ PS
   # nobody will ever find (2026-10-25, group E: the report pointed at a log that did not exist).
   light_evidence="$light_log"
   [ -f "$light_log" ] || light_evidence="$log"
-  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 2/4" "$res_light" "the electron light set (E2E_SPEC=light, WIN_ELECTRON_LIGHT_SPEC) on the app built from the repository" "$light_evidence" "${light_log%.log}-playwright.json" >/dev/null
+  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 2/4" "$res_light" "the electron light set (E2E_SPEC=light, asbl/ci/light-set.txt) on the app built from the repository" "$light_evidence" "${light_log%.log}-playwright.json" >/dev/null
   mark_end "$([ "$res_light" = PASS ] && echo 0 || echo 1)"
 
   mark_start "RELEASE STEP 3/4" "Robot Framework UAT: the pack's zips in asbl\\dist (put back from the kept copy when needed), then asbl\\src\\uat\\run-tests.bat"
@@ -2847,7 +2936,12 @@ AIHUBPY
       web|electron|docker-server) ;;
       *) echo "!!! E2E_TARGET must be web, electron or docker-server (got '$target')"; return 2 ;;
     esac
-    if [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ]; then
+    if [ "${E2E_SPEC:-}" = light ] && [ -z "${E2E_GREP:-}" ]; then
+      # E2E_SPEC=light: the light set (asbl/ci/light-set.txt), as the Docker release's Linux proof runs it on docker-server
+      light_set_filters "$target" || return 2
+      export E2E_SPEC="$LIGHT_SET_SPEC" E2E_GREP="$LIGHT_SET_GREP"
+      mode=light
+    elif [ -z "${E2E_SPEC:-}" ] && [ -z "${E2E_GREP:-}" ]; then
       # Full suite minus the two specs that run on their own: auth-authorization-server creates accounts and
       # changes roles (no other spec may find them), let-me-update-migrate-configuration is Electron-only.
       # playwright.config.ts uses E2E_SPEC as testMatch, so no shared file changes.
@@ -3548,10 +3642,18 @@ elif [ "$TASK" = e2e ]; then
   E2E_PACKAGE=""
 fi
 case "$TASK" in
-  build|build-if-needed|e2e|junit|quality|dev|win|prereq|publish-demo-datapallas.com) ;;
+  build|build-if-needed|e2e|junit|quality|dev|win|prereq|light-set|publish-demo-datapallas.com) ;;
   # release: reserved for the real software release (plan §3 O7)
-  *) echo "usage: $0 build|build-if-needed|e2e|e2e-loop|junit|quality|dev|win <check|ssh|ps|run|poll|stop|e2e|docker-e2e|server-e2e|release|sync|prepare|prereq>|prereq <check...>|publish-demo-datapallas.com <TAG> [--reset]"; exit 2 ;;
+  *) echo "usage: $0 build|build-if-needed|e2e|e2e-loop|junit|quality|dev|win <check|ssh|ps|run|poll|stop|e2e|docker-e2e|server-e2e|release|sync|prepare|prereq>|prereq <check...>|light-set [<lane>...]|publish-demo-datapallas.com <TAG> [--reset]"; exit 2 ;;
 esac
+
+# light-set [<lane>...]: the light set each lane runs (asbl/ci/light-set.txt), printed; nothing started
+if [ "$TASK" = light-set ]; then
+  shift
+  [ "$#" -gt 0 ] || set -- docker-server windows-vm-docker windows-vm-server windows-vm-electron
+  for lane in "$@"; do light_set_print "$lane" || exit 2; done
+  exit 0
+fi
 
 # prereq <check...>: only the checks asked for, nothing started (a caller checks before its own slow part; see prereq)
 if [ "$TASK" = prereq ]; then

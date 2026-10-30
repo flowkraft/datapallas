@@ -481,8 +481,8 @@ case "$cmd" in
     spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
     if [ -z "$spec" ] && [ -z "$gexp" ]; then
       case "$target" in windows-vm-docker|windows-vm-server) mode=light ;; *) mode=full ;; esac
-    elif [ "$target" = windows-vm-electron ] && [ "$spec" = light ] && [ -z "$gexp" ]; then
-      mode=light   # E2E_SPEC=light: WIN_ELECTRON_LIGHT_SPEC of dp-ci.sh, the electron lane's light set
+    elif [ "$spec" = light ] && [ -z "$gexp" ] && case "$target" in windows-vm-*) true ;; *) false ;; esac; then
+      mode=light   # E2E_SPEC=light: the light set, asbl/ci/light-set.txt (the two server lanes also take it with no filter, above)
     elif [ -z "$gexp" ] && case "$spec" in *'|'*|*'(?'*) false ;; *auth-authorization-server*) true ;; *) false ;; esac; then
       mode=auth
     else
