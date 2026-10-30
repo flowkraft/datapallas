@@ -1650,6 +1650,11 @@ win_docker_e2e() {
     version=$(printf '%s' "$tag" | cut -d- -f1)
   fi
 
+  # The tests' clean state copies config/ from the VM's package (asbl\\target\\package\\verified-db-noexe) over the
+  # installation, so a package of another commit puts that commit's config back: in 16.6.1 the CLI test ran on the
+  # old classpath of config/_internal/documentburster.xml (fixed in the zip) and failed.
+  win_prepare_package || return $?
+
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
   # no filter, or E2E_SPEC=light: the light set (asbl/ci/light-set.txt)
   if [ -z "$gexp" ] && { [ -z "$spec" ] || [ "$spec" = light ]; }; then
@@ -1769,6 +1774,10 @@ win_server_e2e() {
   prereq vm vm-docker vm-java || return 2
   mark_start "windows-vm-server STEP 1/2" "install: datapallas-server.zip extracted, startServer.bat on the machine's Java, :9090 answers"
   win_sync_repo || return $?
+  # The tests' clean state copies config/ from the VM's package (asbl\\target\\package\\verified-db-noexe) over the
+  # installation, so a package of another commit puts that commit's config back: in 16.6.1 the CLI test ran on the
+  # old classpath of config/_internal/documentburster.xml (fixed in the zip) and failed.
+  win_prepare_package || return $?
   tag=$(win_vm_build_tag) || return $?
   [ -s "$zip" ] || { echo "FAIL  $zip is missing - run dp-ci.sh build-if-needed first" >&2; return 2; }
   echo "WIN_SERVER_PACKAGE=datapallas-server.zip of build $tag"

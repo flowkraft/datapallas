@@ -11,8 +11,11 @@
 #   web                  step 1's web lane on this host (dp-ci.sh e2e, E2E_TARGET=web)          e2e-package (this host's)
 #   docker-server        step 2's Linux proof and step 1's docker-server lanes (dp-ci.sh e2e,   e2e-package (this host's),
 #                        E2E_TARGET=docker-server)                                              image-and-zips
-#   windows-vm-docker    step 2's Windows Docker proof (win-e2e.sh docker-e2e)                  image-and-zips
-#   windows-vm-server    step 1's Windows server lane (win-e2e.sh server-e2e)                   image-and-zips (this host's
+#   windows-vm-docker    step 2's Windows Docker proof (win-e2e.sh docker-e2e)                  e2e-package (the VM's: the
+#                                                                                               clean state's config),
+#                                                                                               image-and-zips
+#   windows-vm-server    step 1's Windows server lane (win-e2e.sh server-e2e)                   e2e-package (the VM's),
+#                                                                                               image-and-zips (this host's
 #                                                                                               build: no execution keeps it)
 #   windows-vm-electron  step 3's Electron light set and step 1's lane 3 (win-e2e.sh e2e)       e2e-package (the VM's)
 #   robot                step 3's Robot UAT (win-e2e.sh robot, dp-ci.sh win robot)              windows-pack (a kept one)
@@ -88,7 +91,7 @@ part_builds() {
   case "$1" in
     web|windows-vm-electron)             echo e2e-package ;;
     docker-server)                       echo "e2e-package image-and-zips" ;;
-    windows-vm-docker|windows-vm-server) echo image-and-zips ;;
+    windows-vm-docker|windows-vm-server) echo "e2e-package image-and-zips" ;;
     robot)                               echo windows-pack ;;
     *) return 1 ;;
   esac
@@ -180,7 +183,7 @@ build_of() {
         fi
       fi ;;
     e2e-package)
-      if [ "$part" = windows-vm-electron ]; then
+      if [ "${part#windows-vm-}" != "$part" ]; then
         B_CMD="bash asbl/ci/dp-ci.sh win prepare (pack-prepare-for-e2e.bat on the VM, about 1 h)"
         read -r B_FROM log <<< "$(vm_package)"
         B_WHAT="the VM's package, built from ${B_FROM:-?} (${log:-no WIN_E2E_PACKAGE line in a Windows log here}; the lane checks it on the VM)"
