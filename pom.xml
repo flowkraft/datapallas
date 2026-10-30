@@ -20,7 +20,7 @@
 
 	<properties>
 
-		<revision>16.6.0</revision>
+		<revision>16.6.1</revision>
 
 		<!-- JaCoCo (coverage, shown in Jenkins). argLine is empty here so the surefire argLine of the shared pom can say
 		     @{argLine}: JaCoCo's prepare-agent fills it with the agent, and without JaCoCo it stays empty. -->

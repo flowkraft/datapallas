@@ -15,7 +15,7 @@
 
 	<properties>
         <!-- Define revision here since this module doesn't inherit from your parent -->
-        <revision>16.6.0</revision>
+        <revision>16.6.1</revision>
         <!-- Spring Boot's managed Log4j version, kept equal to log4j.version in the shared pom (xtra-tools/bild/common-scripts/maven/pom.xml) -->
         <log4j2.version>2.26.1</log4j2.version>
         <!-- JaCoCo (coverage, shown in Jenkins): same version and bindings as the root pom, which this module does not inherit -->
