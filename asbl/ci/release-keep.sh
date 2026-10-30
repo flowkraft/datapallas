@@ -21,6 +21,10 @@
 #   bash asbl/ci/release-keep.sh step <channel> <version> <commit> <label> PASS|FAIL|NOT_RUN <what> [<log>] [<report>]
 #                                                                           one step of the run, its verdict, its log and its
 #                                                                           test report (a Playwright .json or a Robot output.xml)
+#   bash asbl/ci/release-keep.sh step-verdict <channel> <version> <commit> <label>   that step's newest verdict in the
+#                                                                           channel's run, or nothing: a step run in parts
+#                                                                           (release-docker.sh DOCKER_RELEASE_PART) reads here
+#                                                                           what its earlier parts found
 #   bash asbl/ci/release-keep.sh keep <channel> <version> <commit> <name>=<path>... [image=<repo>:<tag> [image-file=<its docker save>]]
 #                                                                           the files (and the image) kept: a file whose sha256 is
 #                                                                           already the kept one is reused; otherwise the channel's
@@ -58,7 +62,7 @@ RELEASE_ARTIFACTS_DIR="${RELEASE_ARTIFACTS_DIR:-/var/kraft-internalsystems/logs/
 RELEASE_IMAGE_REPO="${RELEASE_IMAGE_REPO:-flowkraft/datapallas-server}"
 IMAGE_FILE=datapallas-server-image.tar   # the kept image as a file; release-publish.sh stage-docker loads it by this name
 
-usage() { sed -n '2,47p' "$0"; exit 2; }
+usage() { sed -n '2,51p' "$0"; exit 2; }
 sha_of() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 channel_ok() { case "$1" in docker|windows) ;; *) echo "FAIL  the channel must be docker or windows (got '$1')"; exit 2 ;; esac; }
@@ -386,6 +390,9 @@ case "$cmd" in
     case "$5" in PASS|FAIL|NOT_RUN) ;; *) echo "FAIL  step: the verdict must be PASS, FAIL or NOT_RUN (got '$5')"; exit 2 ;; esac
     printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$4" "$5" "$6" "${7:-}" "${8:-}" "$(now)" | tr -d '\r' >> "$(steps_file "$F" "$1")"
     echo "STEP  $4 $5: $6" ;;
+  step-verdict)
+    [ "$#" = 4 ] || usage; channel_ok "$1"; folder_of "$2" "$3" || exit 2
+    awk -F'\t' -v l="$4" '$1 == l { v = $2 } END { print v }' "$(steps_file "$F" "$1")" 2>/dev/null; exit 0 ;;
   keep)
     [ "$#" -ge 4 ] || usage; channel_ok "$1"; keep "$@" ;;
   finish)

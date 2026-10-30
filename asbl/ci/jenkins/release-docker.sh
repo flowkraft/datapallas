@@ -68,8 +68,13 @@
 # part would do. One Windows run at a time: part 4 refuses to start while another Windows run is going (the prerequisites check
 # it first). RELEASE_PUBLISH_ENV, RELEASE_DOWNLOAD_BASE and RELEASE_ARTIFACTS_DIR are the ones of release-publish.sh and
 # release-keep.sh (a test points them at a fixture).
+# IN PARTS (DOCKER_RELEASE_PART, MODE=rehearsal only; asbl/ci/jenkins/release-orchestrator.sh runs the host's parts while the VM
+# packs): linux = parts 1/6 to 3/6 (the build and the Linux proof; the VM is not checked: it may be packing); windows = part 1/6,
+# then 4/6 on the build already made (none = FAILED, nothing built); keep = part 1/6, then 5/6 and 6/6 with the verdicts the
+# two proofs recorded in the kept folder (release-keep.sh step-verdict). Only the linux part begins the folder's step list and
+# builds. Empty (the default) = the whole step, as the job runs it. RELEASE_PIN (dp-ci.sh) keeps every part on one commit.
 set -uo pipefail
-case "${1:-}" in -h|--help|help) sed -n '2,70p' "$0"; exit 0 ;; esac
+case "${1:-}" in -h|--help|help) sed -n '2,75p' "$0"; exit 0 ;; esac
 cd "$(dirname "$0")/../../.." || exit 2
 . asbl/ci/marks.sh
 
@@ -80,6 +85,10 @@ case "$DRY" in no|yes) ;; *) echo "FAIL  DRY_RUN must be no or yes (got '$DRY')"
 UPLOAD="${UPLOAD:-no}"
 case "$UPLOAD" in no|yes) ;; *) echo "FAIL  UPLOAD must be no or yes (got '$UPLOAD')"; exit 2 ;; esac
 export UPLOAD   # release-publish.sh reads it at every upload
+PART="${DOCKER_RELEASE_PART:-}"
+case "$PART" in ""|linux|windows|keep) ;; *) echo "FAIL  DOCKER_RELEASE_PART must be empty, linux, windows or keep (got '$PART')"; exit 2 ;; esac
+[ -z "$PART" ] || [ "$MODE" = rehearsal ] || { echo "FAIL  DOCKER_RELEASE_PART is for MODE=rehearsal (got MODE=$MODE)"; exit 2; }
+export DOCKER_RELEASE_PART="$PART"   # release-publish.sh preflight docker checks the VM only when this run has the Windows proof
 RELEASE_DOWNLOAD_BASE="${RELEASE_DOWNLOAD_BASE:-https://downloads.datapallas.com/file/datapallas}"
 RELEASE_IMAGE_REPO="${RELEASE_IMAGE_REPO:-flowkraft/datapallas-server}"
 LOG_DIR="${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}"
@@ -88,7 +97,7 @@ KEEP="bash asbl/ci/release-keep.sh"
 
 main() {
   local out gate rc v c reh
-  echo "DOCKER RELEASE: mode=$MODE upload=$UPLOAD dry_run=$DRY  checkout: $(git log -1 --format='%h %s')"
+  echo "DOCKER RELEASE: mode=$MODE upload=$UPLOAD dry_run=$DRY${PART:+ part=$PART}  checkout: $(git log -1 --format='%h %s')"
   if [ "$MODE" = public ] && [ "$UPLOAD" != yes ]; then
     echo "REFUSED: MODE=public publishes, the deliberate act: run it with UPLOAD=yes. Nothing was built, proven, pushed or copied."
     echo "DOCKER_RELEASE_RESULT refused: MODE=public needs UPLOAD=yes"
@@ -108,7 +117,7 @@ main() {
   # this checkout on origin/main first, so the gate reads the version that would be released (DRY_RUN=1: no build)
   out=$(DRY_RUN=1 bash asbl/ci/dp-ci.sh build-if-needed 2>&1) ||
     { printf '%s\n' "$out"; echo "FAILED: could not put this checkout on origin/main (dp-ci.sh build-if-needed, above)"; return 1; }
-  echo "this checkout on origin/main: $(git log -1 --format='%h %s')"
+  echo "this checkout on $([ -n "${RELEASE_PIN:-}" ] && echo "the pinned commit (RELEASE_PIN)" || echo origin/main): $(git log -1 --format='%h %s')"
   gate=$($STATE version-check docker); rc=$?
   printf '%s\n' "$gate"
   case "$rc" in
@@ -157,9 +166,16 @@ rehearse() {
   local v="$1" c="$2" dry=0 out rc tag image_id zip=asbl/dist/datapallas-server-docker.zip zip_sha light rehearsal url
   local res_linux=NOT_RUN res_windows=NOT_RUN res_keep=NOT_RUN t0 log json folder image_tar
   [ "$DRY" = yes ] && dry=1
-  mark_next "DOCKER RELEASE STEP 2/6" "the build of origin/main, only when there is none yet (dp-ci.sh build-if-needed)"
   out=$(mktemp) || return 1
-  DRY_RUN=$dry bash asbl/ci/dp-ci.sh build-if-needed 2>&1 | tee "$out"; rc=${PIPESTATUS[0]}
+  if [ -z "$PART" ] || [ "$PART" = linux ]; then
+    mark_next "DOCKER RELEASE STEP 2/6" "the build of origin/main, only when there is none yet (dp-ci.sh build-if-needed)"
+    DRY_RUN=$dry bash asbl/ci/dp-ci.sh build-if-needed 2>&1 | tee "$out"; rc=${PIPESTATUS[0]}
+  else
+    # a later part: the build the linux part made, never a new one (DRY_RUN=1 only finds it)
+    mark_next "DOCKER RELEASE STEP 2/6" "the build the linux part made of ${c:0:8} (DOCKER_RELEASE_PART=$PART: nothing is built here)"
+    DRY_RUN=1 bash asbl/ci/dp-ci.sh build-if-needed 2>&1 | tee "$out"; rc=${PIPESTATUS[0]}
+    [ "$dry" = 1 ] || grep -q '^BUILD_TAG=' "$out" || { echo "FAILED: no build of ${c:0:8} on this host: the linux part builds it (DOCKER_RELEASE_PART=linux)"; rc=1; }
+  fi
   tag=$(sed -n 's/^BUILD_TAG=//p' "$out" | tail -1); rm -f "$out"
   [ "$rc" = 0 ] || { echo "FAILED: no build of ${c:0:8} (above)"; [ "$dry" = 1 ] || finish_red "$v" "$c" "the build failed: nothing to prove or keep"; return 1; }
   [ "$(git rev-parse HEAD)" = "$c" ] || { echo "FAILED: origin/main moved during the run (${c:0:8} -> $(git rev-parse --short HEAD)): run it again"; return 1; }
@@ -167,34 +183,66 @@ rehearse() {
   light=$(sed -n "s/^WIN_LIGHT_SPEC='\(.*\)'\$/\1/p" asbl/ci/dp-ci.sh)
   [ -n "$light" ] || { echo "FAILED: no WIN_LIGHT_SPEC in asbl/ci/dp-ci.sh"; return 1; }
   if [ "$dry" = 1 ]; then
-    mark_next "DOCKER RELEASE STEP 3/6" "Linux proof (dry run)"
-    echo "dry run: would install asbl/dist/datapallas-server-docker.zip of the build on this host against the build's image (no registry), the light set ($light), the one-command run"
-    mark_next "DOCKER RELEASE STEP 4/6" "Windows proof (dry run)"
-    echo "dry run: would load the build's image on the VM (docker save, copy, docker load) and install the same zip in its Docker Desktop, the light set"
+    if [ -z "$PART" ] || [ "$PART" = linux ]; then
+      mark_next "DOCKER RELEASE STEP 3/6" "Linux proof (dry run)"
+      echo "dry run: would install asbl/dist/datapallas-server-docker.zip of the build on this host against the build's image (no registry), the light set ($light), the one-command run"
+    fi
+    if [ -z "$PART" ] || [ "$PART" = windows ]; then
+      mark_next "DOCKER RELEASE STEP 4/6" "Windows proof (dry run)"
+      echo "dry run: would load the build's image on the VM (docker save, copy, docker load) and install the same zip in its Docker Desktop, the light set"
+    fi
+    if [ -n "$PART" ] && [ "$PART" != keep ]; then
+      echo "dry run: DOCKER_RELEASE_PART=$PART ends here; the keeping, the guard and the upload are the keep part's"
+      mark_end 0; return 0
+    fi
+    [ "$PART" != keep ] || echo "dry run: would take the two proofs' verdicts from the kept folder (release-keep.sh step-verdict)"
     mark_next "DOCKER RELEASE STEP 5/6" "keep (dry run)"
     echo "dry run: would keep the zip in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$v-${c:0:8}/ and tag the image $RELEASE_IMAGE_REPO:$v, with the manifest lines, red or green"
     mark_next "DOCKER RELEASE STEP 6/6" "the guard and the upload (dry run, UPLOAD=$UPLOAD)"
-    echo "dry run: would check that origin/main is still ${c:0:8}, step 1 still green, the image and the zip still the proven ones"
+    echo "dry run: would check that origin/main is still ${c:0:8} (or moved by never-shipped files only; under RELEASE_PIN: that this run tested the pinned commit), step 1 still green, the image and the zip still the proven ones"
     if [ "$UPLOAD" = yes ]; then echo "dry run: would push the build's image as :$v (never :latest), stage datapallas-server-docker.zip in rehearsal/$v-${c:0:8}/ and record rehearsal.docker"
     else echo "dry run: UPLOAD=no: would print the push and the upload it skips, write nothing, and record rehearsal.docker upload=no"; fi
     echo "dry run: then would write the failure report and the summary beside the manifest"
     mark_end 0; return 0
   fi
-  folder=$($KEEP begin docker "$v" "$c") || { echo "FAILED: the artifacts folder of $v on ${c:0:8} (above)"; return 1; }
-  $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 2/6" PASS "the build: $RELEASE_IMAGE_REPO:$tag and $zip" >/dev/null
+  if [ -z "$PART" ] || [ "$PART" = linux ]; then
+    folder=$($KEEP begin docker "$v" "$c") || { echo "FAILED: the artifacts folder of $v on ${c:0:8} (above)"; return 1; }
+    $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 2/6" PASS "the build: $RELEASE_IMAGE_REPO:$tag and $zip" >/dev/null
+  else
+    # a later part: the folder the linux part began (beginning again would empty its step list)
+    folder="${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$v-${c:0:8}"
+    [ -f "$folder/MANIFEST.txt" ] || { echo "FAILED: no kept folder of $v on ${c:0:8} ($folder): run DOCKER_RELEASE_PART=linux first"; return 1; }
+  fi
   [ -n "$tag" ] || { echo "FAILED: dp-ci.sh build-if-needed printed no BUILD_TAG (above)"; finish_red "$v" "$c" "no BUILD_TAG"; return 1; }
+  image_tar="$folder/.incoming-datapallas-server-image.tar"
+  # a later part may come after this host's nightly image cleanup (below): the image back from the file the linux part saved
+  if [ -n "$PART" ] && ! docker image inspect "$RELEASE_IMAGE_REPO:$tag" >/dev/null 2>&1 && [ -s "$image_tar" ]; then
+    echo "$RELEASE_IMAGE_REPO:$tag is not in this host's Docker daemon any more: loading it from $image_tar"; docker load -q -i "$image_tar"
+  fi
   image_id=$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
     { echo "FAILED: the build's image $RELEASE_IMAGE_REPO:$tag is not on this host"; finish_red "$v" "$c" "the build's image is missing"; return 1; }
   [ -s "$zip" ] || { echo "FAILED: $zip is missing (the build's)"; finish_red "$v" "$c" "the build's zip is missing"; return 1; }
   zip_sha=$(sha256sum "$zip" | cut -d' ' -f1)
+  # In parts, the artifact under proof is the one the linux part built and proved: it writes its image id and zip sha256
+  # into the folder, the later parts prove and keep exactly that (another one = a build ran meanwhile: refused, as below)
+  if [ "$PART" = linux ]; then
+    printf 'image_id=%s\nzip_sha256=%s\n' "$image_id" "$zip_sha" > "$folder/.docker-proven"
+  elif [ -n "$PART" ]; then
+    [ -s "$folder/.docker-proven" ] || { echo "FAILED: no build recorded by the linux part in $folder/.docker-proven"; finish_red "$v" "$c" "no proven build"; return 1; }
+    image_id=$(sed -n 's/^image_id=//p' "$folder/.docker-proven"); zip_sha=$(sed -n 's/^zip_sha256=//p' "$folder/.docker-proven")
+    if [ "$PART" = windows ] && { [ "$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null)" != "$image_id" ] || [ "$(sha256sum "$zip" | cut -d' ' -f1)" != "$zip_sha" ]; }; then
+      echo "FAILED: the image or the zip is not the one the linux part proved (a build ran meanwhile?): no Windows proof"; finish_red "$v" "$c" "the image or the zip changed"; return 1
+    fi
+  fi
   echo "the artifact under proof: $RELEASE_IMAGE_REPO:$tag ($image_id) and $zip (sha256 $zip_sha)"
   # The image as a file as well, saved before the proofs: this host's nightly cleanup (~03:00-03:25Z) deletes every image no
   # container uses, and took this one during the Windows proof of 889001e6 (keep FAIL). Step 5 loads it back from here when
   # the daemon lost it, and keeps the file beside the zip.
-  image_tar="$folder/.incoming-datapallas-server-image.tar"
-  docker save -o "$image_tar" "$RELEASE_IMAGE_REPO:$tag" ||
+  # (the windows and keep parts keep the file the linux part saved, when there is one)
+  { [ "$PART" = windows ] || [ "$PART" = keep ]; } && [ -s "$image_tar" ] || docker save -o "$image_tar" "$RELEASE_IMAGE_REPO:$tag" ||
     { echo "FAILED: docker save $RELEASE_IMAGE_REPO:$tag"; rm -f "$image_tar"; finish_red "$v" "$c" "the image could not be saved as a file"; return 1; }
 
+  if [ -z "$PART" ] || [ "$PART" = linux ]; then
   mark_next "DOCKER RELEASE STEP 3/6" "Linux proof, no registry: $zip installed as the self-host page says against $RELEASE_IMAGE_REPO:$tag, the light set ($light), the one-command run"
   # E2E_DOCKER_FROM_URL empty = the build's own zip and image (docker-server never pulls them); retries 1, as the Windows light set has
   t0=$(date +%s)
@@ -204,6 +252,13 @@ rehearse() {
   echo "DOCKER_RELEASE_LINUX_PROOF=$res_linux log=${log:-none} report=${json:-none}"
   $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 3/6" "$res_linux" "Linux proof: the docker zip installed as the self-host page says, the light set (WIN_LIGHT_SPEC), the one-command run" "$log" "$json"
   mark_end "$([ "$res_linux" = PASS ] && echo 0 || echo 1)"
+  fi
+  if [ "$PART" = linux ]; then
+    echo "DOCKER_RELEASE_RESULT commit=${c:0:8} version=$v part=linux build=PASS linux=$res_linux (then DOCKER_RELEASE_PART=windows on the VM, and keep)"
+    [ "$res_linux" = PASS ]; return
+  fi
+  if [ -z "$PART" ] || [ "$PART" = windows ]; then
+  [ -z "$PART" ] || mark_end 0   # a later part: 2/6, the build found, closes here
   mark_start "DOCKER RELEASE STEP 4/6" "Windows proof, no registry: the same image loaded on the VM, the same zip installed in its Docker Desktop, the light set"
   # empty filters = the lane's light set (WIN_LIGHT_SPEC, retries 1); E2E_DOCKER_FROM_URL empty = the build's image copied over, the build's zip
   t0=$(date +%s)
@@ -215,6 +270,18 @@ rehearse() {
   echo "DOCKER_RELEASE_WINDOWS_PROOF=$res_windows log=${log:-none} report=${json:-none}"
   $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 4/6" "$res_windows" "Windows proof: the same image and zip in the VM's Docker Desktop, the light set (WIN_LIGHT_SPEC)" "$log" "$json"
   mark_end "$([ "$res_windows" = PASS ] && echo 0 || echo 1)"
+  fi
+  if [ "$PART" = windows ]; then
+    echo "DOCKER_RELEASE_RESULT commit=${c:0:8} version=$v part=windows windows=$res_windows (then DOCKER_RELEASE_PART=keep)"
+    [ "$res_windows" = PASS ]; return
+  fi
+  if [ "$PART" = keep ]; then
+    # the two proofs ran in their own parts: their verdicts as they recorded them in the kept folder (none = NOT_RUN)
+    res_linux=$($KEEP step-verdict docker "$v" "$c" "DOCKER RELEASE STEP 3/6"); res_linux="${res_linux:-NOT_RUN}"
+    res_windows=$($KEEP step-verdict docker "$v" "$c" "DOCKER RELEASE STEP 4/6"); res_windows="${res_windows:-NOT_RUN}"
+    echo "the proofs, as their parts recorded them in $folder: linux=$res_linux windows=$res_windows"
+    mark_end 0
+  fi
 
   mark_start "DOCKER RELEASE STEP 5/6" "keep, red or green: $zip and $RELEASE_IMAGE_REPO:$tag into $folder (asbl/ci/release-keep.sh)"
   # the step's own log, so the failure report quotes why a keep failed (it said "(no log)" for chain b's)

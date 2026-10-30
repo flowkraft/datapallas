@@ -26,7 +26,10 @@
 #   bash asbl/ci/release-state.sh moved-main <start commit> <origin/main now>    may a step that started on one commit finish
 #                                                                                after main moved: exit 0 when main did not move
 #                                                                                or moved by never-shipped files only, exit 1
-#                                                                                when it moved by what ships (or is unreadable)
+#                                                                                when it moved by what ships (or is unreadable).
+#                                                                                RELEASE_PIN=<commit> (an execution pinned by the
+#                                                                                orchestrator): exit 0 when the step tested that
+#                                                                                commit, however far main moved, exit 1 if not
 #   bash asbl/ci/release-state.sh get <name> <key>                               print one recorded value
 #   bash asbl/ci/release-state.sh full-lane                                      the last two releases' full-lane choices: version,
 #                                                                                lane, why (alternated|random), when, the full run's
@@ -610,6 +613,16 @@ case "$cmd" in
     # that no longer contains the start commit, the step is refused, as before.
     s=$(git rev-parse --verify -q "${1:-}^{commit}" 2>/dev/null); m=$(git rev-parse --verify -q "${2:-}^{commit}" 2>/dev/null)
     [ -n "$s" ] && [ -n "$m" ] || { echo "MOVED_MAIN refused: cannot read the commits ('${1:-}', '${2:-}')"; exit 1; }
+    # An execution pinned by the orchestrator (RELEASE_PIN): every part builds, packs and tests that one commit whatever main
+    # does meanwhile, so the question is only whether this step tested it; main may move, even by a product change
+    if [ -n "${RELEASE_PIN:-}" ]; then
+      p=$(git rev-parse --verify -q "$RELEASE_PIN^{commit}" 2>/dev/null)
+      [ -n "$p" ] || { echo "MOVED_MAIN refused: cannot read the pinned commit RELEASE_PIN='$RELEASE_PIN'"; exit 1; }
+      [ "$s" = "$p" ] ||
+        { echo "MOVED_MAIN refused: this step tested ${s:0:8}, not the pinned commit ${p:0:8} (RELEASE_PIN)"; exit 1; }
+      echo "MOVED_MAIN pinned: this step tested the pinned commit ${p:0:8}$([ "$m" = "$p" ] && echo ", origin/main is still on it" || echo "; origin/main is ${m:0:8} now, free to move under the pin")"
+      exit 0
+    fi
     [ "$s" != "$m" ] || { echo "MOVED_MAIN no: origin/main is still ${s:0:8}"; exit 0; }
     git merge-base --is-ancestor "$s" "$m" ||
       { echo "MOVED_MAIN refused: origin/main ${m:0:8} does not contain ${s:0:8} (rewritten?)"; exit 1; }
@@ -712,5 +725,5 @@ case "$cmd" in
     version_check "$ch"
     ;;
   *)
-    sed -n '2,112p' "$0"; exit 2 ;;
+    sed -n '2,115p' "$0"; exit 2 ;;
 esac

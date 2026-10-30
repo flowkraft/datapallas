@@ -106,6 +106,10 @@
 #       E2E_KEPT_BUILD=<artifacts folder> [empty]  with image-and-zips in E2E_REUSE_BUILD: the docker-server lane and win
 #                  docker-e2e install that execution's kept image and datapallas-server-docker.zip (asbl/ci/release-keep.sh)
 #                  instead of the newest build's (kept_build_tag). Empty = the newest successful build, as always.
+#       RELEASE_PIN=<commit> [empty]  an execution of steps 2 and 3 pinned to one commit, set only by
+#                  asbl/ci/jenkins/release-orchestrator.sh: every lane, build and pack puts this checkout and the VM's on that
+#                  commit (the same fast-forward, then exactly on it: sync_host_repo, win_sync_repo), not on origin/main, so
+#                  main may move during the execution. Empty = origin/main, as always.
 #       Ends with one parsable line: E2E_RESULT mode=... passed=N failed=N ... exit=N. Watch a run: bash asbl/ci/e2e-watch.sh.
 #       Host firewall: an e2e run opens two ufw rules tagged dp-ci-e2e (host -> Docker networks, containers -> DataPallas
 #       on 9090), because ufw denies both by default; a detached watcher removes them when dp-ci is gone, however the run
@@ -211,7 +215,8 @@
 #                               (RELEASE_PACK_TIMEOUT [28800 = 8 h]), the Robot UAT on its very files (RELEASE_ROBOT_TIMEOUT
 #                               [21600 = 6 h]), then, UPLOAD=yes, datapallas.zip, datapallas-server.zip and datapallas-src.zip
 #                               staged in rehearsal/<version>-<commit>/; MODE=public copies a passed rehearsal to newest/ - see
-#                               win_release.
+#                               win_release. WIN_RELEASE_HALF=pack|after-pack [empty = the whole]: the two halves the
+#                               orchestrator runs around step 2's Windows Docker proof.
 #       robot                   the Robot UAT again on a kept pack, between the two executions (asbl/ci/release-rerun.sh runs
 #                               it through asbl/ci/jenkins/win-e2e.sh robot): the VM on origin/main, the kept zips of
 #                               RELEASE_KEPT (an artifacts folder, asbl/ci/release-keep.sh) put back in its asbl\dist, then
@@ -919,16 +924,26 @@ e2e_count() {
 # fast-forward: never reset, clean or checkout -- (plan §0.3). A tree with local changes or a history that cannot
 # fast-forward stops the run and changes nothing. The Linux lane tests this host's working tree as it is, so a
 # difference between the two (unpushed or uncommitted work here) is printed, not hidden.
+# RELEASE_PIN=<commit> (an execution pinned by the orchestrator, sync_host_repo): the VM goes to that commit instead, by the
+# same fast-forward, and must then be exactly on it.
 win_sync_repo() {
-  local vm host dirty
+  local vm host dirty target="origin/main"
+  [ -z "${RELEASE_PIN:-}" ] || target=$(git -C "$REPO" rev-parse --verify -q "$RELEASE_PIN^{commit}") ||
+    { echo "FAIL  no commit $RELEASE_PIN (RELEASE_PIN) in this checkout." >&2; return 2; }
   win_ssh "git -C $WIN_REPO fetch -q origin" >/dev/null 2>&1 ||
     { echo "FAIL  the VM could not fetch origin (no network to GitHub?) - not running on code of unknown age." >&2; return 2; }
   dirty=$(win_ssh "git -C $WIN_REPO status --porcelain --untracked-files=no" 2>&1 | tr -d '\r')
   [ -z "$dirty" ] || {
     echo "FAIL  the VM's checkout has local changes to tracked files; nothing was touched:" >&2
     printf '%s\n' "$dirty" | head -10 >&2; return 2; }
-  win_ssh "git -C $WIN_REPO merge -q --ff-only origin/main" >/dev/null 2>&1 ||
-    { echo "FAIL  the VM's checkout cannot fast-forward to origin/main (diverged or not on main); nothing was changed." >&2; return 2; }
+  win_ssh "git -C $WIN_REPO merge -q --ff-only $target" >/dev/null 2>&1 ||
+    { echo "FAIL  the VM's checkout cannot fast-forward to ${target:0:11} (diverged or not on main); nothing was changed." >&2; return 2; }
+  if [ "$target" != origin/main ]; then
+    vm=$(win_ssh "git -C $WIN_REPO rev-parse HEAD" 2>/dev/null | tr -d '\r' | tail -1)
+    [ "$vm" = "$target" ] ||
+      { echo "FAIL  the VM is at ${vm:0:8}, the execution is pinned to ${target:0:8}: a checkout past the pin is never moved back; nothing was changed." >&2; return 2; }
+    echo "PINNED  the VM on ${target:0:8} (RELEASE_PIN)" >&2
+  fi
   vm=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
   host=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)
   echo "WIN_E2E_COMMIT=$vm"
@@ -2015,15 +2030,26 @@ win_robot_rerun() {
 # DRY_RUN=yes, all modes: packs, tests, keeps, stages and copies nothing, and the VM is not touched: the gate, the
 # prerequisites (the bucket listed, not written), the guard, which rehearsal it would copy or that it would rehearse first,
 # and what each part would do (DRY_RUN=1 counts as yes).
+# TWO HALVES (WIN_RELEASE_HALF, MODE=rehearsal only; asbl/ci/jenkins/release-orchestrator.sh): `pack` = the checks above and
+# part 1/4, the pack kept, its files' list beside the zips (release-files-windows.txt); `after-pack` = the checks again, that
+# kept pack (each file against the manifest; none = Robot not run and nothing uploaded), parts 2/4 to 4/4, the verdict. The
+# step list is begun only by the half that packs, so the verdict and the failure report cover all four parts. In between,
+# the VM runs step 2's Windows Docker proof. RELEASE_PIN puts both checkouts on the pinned commit (sync_host_repo).
 win_release() {
   local base vmc hostc files ok=1 rc gate res_pack=NOT_RUN res_light=NOT_RUN res_robot=NOT_RUN res_keep=NOT_RUN res_stage=NOT_RUN mode dry reh
-  local n folder inc light_log kept="" log keep="bash $REPO/asbl/ci/release-keep.sh"
+  local n folder inc light_log kept="" log keep="bash $REPO/asbl/ci/release-keep.sh" half
   mode="${MODE:-rehearsal}"
+  # WIN_RELEASE_HALF: the orchestrator runs step 3 in two halves around step 2's Windows Docker proof, so the VM's parts
+  # never overlap: pack (the checks and part 1/4), then after-pack (the checks, the pack kept by the first half, parts 2/4
+  # to 4/4 and the channel's verdict). Empty = the whole step in one run, as the job runs it
+  half="${WIN_RELEASE_HALF:-}"
+  case "$half" in ""|pack|after-pack) ;; *) echo "FAIL  WIN_RELEASE_HALF must be empty, pack or after-pack (got '$half')" >&2; return 2 ;; esac
   case "$mode" in rehearsal|upload|public) ;; *) echo "FAIL  MODE must be rehearsal, upload or public (got '$mode')" >&2; return 2 ;; esac
   case "${DRY_RUN:-no}" in no|0) dry=no ;; yes|1) dry=yes ;; *) echo "FAIL  DRY_RUN must be no or yes (got '$DRY_RUN')" >&2; return 2 ;; esac
   UPLOAD="${UPLOAD:-no}"
   case "$UPLOAD" in no|yes) export UPLOAD ;; *) echo "FAIL  UPLOAD must be no or yes (got '$UPLOAD')" >&2; return 2 ;; esac
-  echo "WINDOWS RELEASE: mode=$mode upload=$UPLOAD dry_run=$dry"
+  echo "WINDOWS RELEASE: mode=$mode upload=$UPLOAD dry_run=$dry${half:+ half=$half}"
+  [ -z "$half" ] || [ "$mode" = rehearsal ] || { echo "FAIL  WIN_RELEASE_HALF is for MODE=rehearsal (got MODE=$mode)" >&2; return 2; }
   if [ "$mode" = public ] && [ "$UPLOAD" != yes ]; then
     echo "REFUSED: MODE=public publishes, the deliberate act: run it with UPLOAD=yes. Nothing was packed, tested, staged or copied."
     echo "RELEASE_RESULT refused: MODE=public needs UPLOAD=yes"
@@ -2040,7 +2066,11 @@ win_release() {
   base="${base%.log}"
   log="${base%-step}.log"
   mkdir -p "$(dirname "$base")" 2>/dev/null
-  mark_start "RELEASE STEP 1/4" "the version gate and the prerequisites; then a copy of a passed rehearsal (MODE=public), or the step 1 guard, the VM's rclone (UPLOAD=yes) and the pack: the VM on origin/main, asbl\\pack-datapallas.bat, the files' sha256, the zips kept on this host"
+  if [ "$half" = after-pack ]; then
+    mark_start "RELEASE STEP 1/4" "the version gate, the prerequisites, the step 1 guard and the VM's rclone (UPLOAD=yes); no pack in this half (WIN_RELEASE_HALF=after-pack): the VM on its commit, the pack the first half kept"
+  else
+    mark_start "RELEASE STEP 1/4" "the version gate and the prerequisites; then a copy of a passed rehearsal (MODE=public), or the step 1 guard, the VM's rclone (UPLOAD=yes) and the pack: the VM on origin/main, asbl\\pack-datapallas.bat, the files' sha256, the zips kept on this host"
+  fi
   (cd "$REPO" && sync_host_repo) || return 2
   gate=$(bash "$REPO/asbl/ci/release-state.sh" version-check windows); rc=$?
   printf '%s\n' "$gate"
@@ -2075,7 +2105,13 @@ win_release() {
   else win_rclone_ensure || { echo "FAILED: no rclone on the Windows VM for the upload (above): nothing packed, staged or copied"; return 1; }
   fi
   if [ "$dry" = yes ]; then
-    echo "dry run: would put the VM on ${hostc:0:8}, run asbl\\pack-datapallas.bat there, print the zips' sha256 and keep them in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$RELEASE_VERSION-${hostc:0:8}/"
+    if [ "$half" = after-pack ]; then echo "dry run: would put the VM on ${hostc:0:8} and take the pack the first half kept in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$RELEASE_VERSION-${hostc:0:8}/ (WIN_RELEASE_HALF=after-pack: no pack here)"
+    else echo "dry run: would put the VM on ${hostc:0:8}, run asbl\\pack-datapallas.bat there, print the zips' sha256 and keep them in ${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$RELEASE_VERSION-${hostc:0:8}/"; fi
+    if [ "$half" = pack ]; then
+      mark_end 0
+      echo "RELEASE_RESULT dry run, WIN_RELEASE_HALF=pack: then parts 2/4 to 4/4 in the second half (WIN_RELEASE_HALF=after-pack); nothing packed or kept"
+      return 0
+    fi
     mark_next "RELEASE STEP 2/4" "the electron light set (dry run)"
     echo "dry run: would run dp-ci.sh win e2e with E2E_SPEC=light (WIN_ELECTRON_LIGHT_SPEC) on ${hostc:0:8}, its own prepare first, and record step1.windows-vm-electron-light"
     mark_next "RELEASE STEP 3/4" "Robot Framework UAT (dry run)"
@@ -2094,32 +2130,52 @@ win_release() {
   [ -n "$vmc" ] || { echo "FAIL  could not read the VM's commit" >&2; return 2; }
   [ "$vmc" = "$hostc" ] || { echo "FAIL  the VM is at ${vmc:0:8}, this host at ${hostc:0:8}: origin/main moved during the start, run it again" >&2; return 2; }
   echo "RELEASE_COMMIT=${vmc:0:8} RELEASE_VERSION=$RELEASE_VERSION"
-  folder=$($keep begin windows "$RELEASE_VERSION" "$vmc") || { echo "FAILED: the artifacts folder (above)"; return 1; }
+  if [ "$half" = after-pack ]; then
+    # the second half: the folder the first half began (beginning again would empty its step list)
+    folder="${RELEASE_ARTIFACTS_DIR:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/release-artifacts}/$RELEASE_VERSION-${vmc:0:8}"
+    [ -f "$folder/MANIFEST.txt" ] || { echo "FAILED: no kept folder of $RELEASE_VERSION on ${vmc:0:8} ($folder): run WIN_RELEASE_HALF=pack first"; return 1; }
+  else
+    folder=$($keep begin windows "$RELEASE_VERSION" "$vmc") || { echo "FAILED: the artifacts folder (above)"; return 1; }
+  fi
   echo "RELEASE_ARTIFACTS=$folder"
-  win_server_down "$WIN_REPO\\frend\\reporting\\testground\\server\\DataPallas" >/dev/null
-  win_stacks_down server
-  win_temp_clean
+  if [ "$half" = after-pack ]; then
+    # the pack the first half made and kept: its files' list beside the zips (written there only once the zips were kept),
+    # and each kept file checked against the manifest
+    if [ -s "$folder/release-files-windows.txt" ]; then
+      res_pack=PASS
+      cp "$folder/release-files-windows.txt" "$base-release-files.txt"
+      if $keep check "$folder" windows; then res_keep=PASS; else res_keep=FAIL; fi
+      echo "the pack of ${vmc:0:8} kept by the first half, in $folder: keep=$res_keep"
+    else
+      echo "no pack of ${vmc:0:8} kept by the first half in $folder (its pack or its keep was red, or it did not run)"
+      res_pack="NOT_RUN(no kept pack)"
+    fi
+  else
+    rm -f "$folder/release-files-windows.txt"   # written again below once this pack is kept: a red pack leaves none
+    win_server_down "$WIN_REPO\\frend\\reporting\\testground\\server\\DataPallas" >/dev/null
+    win_stacks_down server
+    win_temp_clean
 
-  WIN_RUN_ENV="" WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-datapallas.log" WIN_RUN_TIMEOUT="${RELEASE_PACK_TIMEOUT:-28800}" WIN_RUN_STALL=7200 \
-    win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat
-  rc=$?
-  if [ "$rc" -ne 0 ]; then
-    # First the lines that name the failure, then the log's end. A failing test of the pack ends the log in a Maven
-    # stack trace naming the fork, not the test or its error (2026-10-26: "git ls-files did not finish" sat 100 lines
-    # above the last 60), and the failure report quotes the last 40 lines of this step.
-    echo "--- asbl\\pack-datapallas.log, the lines naming the failure ---"
-    win_ps 2>&1 <<PS | tr -d '\r'
+    WIN_RUN_ENV="" WIN_RUN_WATCH="$WIN_REPO\\asbl\\pack-datapallas.log" WIN_RUN_TIMEOUT="${RELEASE_PACK_TIMEOUT:-28800}" WIN_RUN_STALL=7200 \
+      win_run release-pack "$WIN_REPO\\asbl" pack-datapallas.bat
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+      # First the lines that name the failure, then the log's end. A failing test of the pack ends the log in a Maven
+      # stack trace naming the fork, not the test or its error (2026-10-26: "git ls-files did not finish" sat 100 lines
+      # above the last 60), and the failure report quotes the last 40 lines of this step.
+      echo "--- asbl\\pack-datapallas.log, the lines naming the failure ---"
+      win_ps 2>&1 <<PS | tr -d '\r'
 Select-String -Path '$WIN_REPO\\asbl\\pack-datapallas.log' -Pattern '<<< (FAILURE|ERROR)!', 'BUILD FAILED', '^\[ERROR\] Failed to execute goal' -Context 0,1 -ErrorAction SilentlyContinue |
   Select-Object -First 8 | ForEach-Object { \$_.Line; \$_.Context.PostContext }
 PS
-    echo "--- asbl\\pack-datapallas.log (last 20 lines) ---"
-    win_ps 2>&1 <<PS | tr -d '\r'
+      echo "--- asbl\\pack-datapallas.log (last 20 lines) ---"
+      win_ps 2>&1 <<PS | tr -d '\r'
 Get-Content '$WIN_REPO\\asbl\\pack-datapallas.log' -Tail 20 -ErrorAction SilentlyContinue
 PS
-    res_pack="FAIL(exit $rc)"
-  else
-    # what the pack made: the three zips with their sha256
-    files=$(win_ps 2>&1 <<PS | tr -d '\r'
+      res_pack="FAIL(exit $rc)"
+    else
+      # what the pack made: the three zips with their sha256
+      files=$(win_ps 2>&1 <<PS | tr -d '\r'
 \$ok = \$true
 foreach (\$n in 'datapallas.zip', 'datapallas-server.zip', 'datapallas-src.zip') {
   \$f = Join-Path '$WIN_REPO\\asbl\\dist' \$n
@@ -2129,36 +2185,43 @@ foreach (\$n in 'datapallas.zip', 'datapallas-server.zip', 'datapallas-src.zip')
 if (\$ok) { exit 0 } else { exit 1 }
 PS
 )
-    rc=$?
-    printf '%s\n' "$files"
-    if [ "$rc" -ne 0 ]; then
-      res_pack="FAIL(output)"
-    else
-      res_pack=PASS
-      { echo "commit   $vmc"
-        echo "version  $RELEASE_VERSION"
-        printf '%s\n' "$files" | sed -n 's/^RELEASE_FILE /sha256   /p'
-      } > "$base-release-files.txt"
-      echo "RELEASE_FILES=$base-release-files.txt"
-      # kept on this host at once: the light set's prepare below empties asbl\dist
-      res_keep=FAIL
-      if inc=$(mktemp -d "$folder/.incoming-windows.XXXXXX"); then
-        kept=""
-        for n in datapallas.zip datapallas-server.zip datapallas-src.zip; do
-          win_pull "$(printf '%s' "$WIN_REPO\\asbl\\dist\\$n" | tr '\\' '/')" "$inc/$n" &&
-            [ "$(sha256sum "$inc/$n" | cut -d' ' -f1)" = "$(sed -n "s/^sha256   \([0-9a-f]\{64\}\)  [0-9]*  $n\$/\1/p" "$base-release-files.txt")" ] ||
-            { echo "FAIL  $n brought down from the VM is not the pack's (sha256) or could not be copied"; kept=""; break; }
-          kept="$kept $n=$inc/$n"
-        done
-        [ -n "$kept" ] && $keep keep windows "$RELEASE_VERSION" "$vmc" $kept && res_keep=PASS
-        rm -rf "$inc"
+      rc=$?
+      printf '%s\n' "$files"
+      if [ "$rc" -ne 0 ]; then
+        res_pack="FAIL(output)"
+      else
+        res_pack=PASS
+        { echo "commit   $vmc"
+          echo "version  $RELEASE_VERSION"
+          printf '%s\n' "$files" | sed -n 's/^RELEASE_FILE /sha256   /p'
+        } > "$base-release-files.txt"
+        echo "RELEASE_FILES=$base-release-files.txt"
+        # kept on this host at once: the light set's prepare below empties asbl\dist
+        res_keep=FAIL
+        if inc=$(mktemp -d "$folder/.incoming-windows.XXXXXX"); then
+          kept=""
+          for n in datapallas.zip datapallas-server.zip datapallas-src.zip; do
+            win_pull "$(printf '%s' "$WIN_REPO\\asbl\\dist\\$n" | tr '\\' '/')" "$inc/$n" &&
+              [ "$(sha256sum "$inc/$n" | cut -d' ' -f1)" = "$(sed -n "s/^sha256   \([0-9a-f]\{64\}\)  [0-9]*  $n\$/\1/p" "$base-release-files.txt")" ] ||
+              { echo "FAIL  $n brought down from the VM is not the pack's (sha256) or could not be copied"; kept=""; break; }
+            kept="$kept $n=$inc/$n"
+          done
+          [ -n "$kept" ] && $keep keep windows "$RELEASE_VERSION" "$vmc" $kept && res_keep=PASS
+          rm -rf "$inc"
+          # the files' list beside the kept zips, for the second half (WIN_RELEASE_HALF=after-pack): its Robot UAT and upload
+          [ "$res_keep" = PASS ] && cp "$base-release-files.txt" "$folder/release-files-windows.txt"
+        fi
       fi
     fi
+    $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 1/4" "${res_pack%%(*}" "the pack: asbl\\pack-datapallas.bat on the VM ($res_pack)" "$log" >/dev/null
+    [ "$res_pack" = PASS ] && $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 1/4 keep" "$res_keep" "the three zips brought down and kept in $folder" "$log" >/dev/null
   fi
-  $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 1/4" "${res_pack%%(*}" "the pack: asbl\\pack-datapallas.bat on the VM ($res_pack)" "$log" >/dev/null
-  [ "$res_pack" = PASS ] && $keep step windows "$RELEASE_VERSION" "$vmc" "RELEASE STEP 1/4 keep" "$res_keep" "the three zips brought down and kept in $folder" "$log" >/dev/null
 
   mark_end "$([ "$res_pack" = PASS ] && echo 0 || echo 1)"
+  if [ "$half" = pack ]; then
+    echo "RELEASE_RESULT commit=${vmc:0:8} version=$RELEASE_VERSION half=pack pack=$res_pack keep=$res_keep (parts 2/4 to 4/4 and the verdict: WIN_RELEASE_HALF=after-pack)"
+    [ "$res_pack" = PASS ] && [ "$res_keep" = PASS ]; return
+  fi
   mark_start "RELEASE STEP 2/4" "the electron light set on ${vmc:0:8}: dp-ci.sh win e2e with E2E_SPEC=light (WIN_ELECTRON_LIGHT_SPEC: features/quick-start, areas/configuration, components/log-files-viewer-separate-tabs, areas/cubes-definitions, features/apps-ai-hub, features/auth-authorization-desktop), the app built from the repository; recorded as step1.windows-vm-electron-light"
   # the lane as step 1 ran it (its own prepare, its reports), in a subshell so its settings stay its own; a 6 h cap, as the
   # targeted Windows runs have (win-ci.env)
@@ -3499,12 +3562,28 @@ fi
 # An e2e tests the newest pushed code, whichever lane runs it: put this host's checkout on origin/main first (the
 # Windows lane does the same on the VM, win_sync_repo). Strictly a fast-forward; changes to tracked files, or a history
 # that cannot fast-forward, stop the run and change nothing. Commits not pushed yet are tested as they are (and said so).
+# RELEASE_PIN=<commit> (an execution of steps 2 and 3 pinned by asbl/ci/jenkins/release-orchestrator.sh): the checkout goes to
+# that commit instead, by the same fast-forward, and must then be exactly on it; every part of the execution builds and tests
+# it while main moves. No fetch when the commit is here already: the two tracks start their parts at the same moment.
 sync_host_repo() {
-  local dirty ahead=""
-  git fetch -q origin || { echo "FAIL  could not fetch origin - not running on code of unknown age." >&2; return 2; }
+  local dirty ahead="" pin
+  if [ -n "${RELEASE_PIN:-}" ]; then
+    git cat-file -e "$RELEASE_PIN^{commit}" 2>/dev/null || git fetch -q origin ||
+      { echo "FAIL  could not fetch origin for the pinned commit $RELEASE_PIN." >&2; return 2; }
+    pin=$(git rev-parse --verify -q "$RELEASE_PIN^{commit}") || { echo "FAIL  no commit $RELEASE_PIN (RELEASE_PIN)." >&2; return 2; }
+  else
+    git fetch -q origin || { echo "FAIL  could not fetch origin - not running on code of unknown age." >&2; return 2; }
+  fi
   dirty=$(git status --porcelain --untracked-files=no)
   [ -z "$dirty" ] || { echo "FAIL  this checkout has local changes to tracked files; nothing was touched:" >&2
     printf '%s\n' "$dirty" | head -10 >&2; return 2; }
+  if [ -n "${pin:-}" ]; then
+    git merge -q --ff-only "$pin" >/dev/null 2>&1
+    [ "$(git rev-parse HEAD)" = "$pin" ] ||
+      { echo "FAIL  this checkout is at $(git rev-parse --short HEAD), the execution is pinned to ${pin:0:8}: a checkout past the pin, or off its history, is never moved back; nothing was changed." >&2; return 2; }
+    echo "PINNED  this checkout on ${pin:0:8} (RELEASE_PIN), whatever origin/main is now" >&2
+    return 0
+  fi
   git merge -q --ff-only origin/main >/dev/null 2>&1 ||
     ahead=$(git rev-list --count origin/main..HEAD)
   if [ -n "$ahead" ]; then
@@ -3586,9 +3665,19 @@ if [ "${TASK#publish-}" != "$TASK" ]; then
   fi
 fi
 
+# One exception, an execution pinned by the orchestrator (RELEASE_PIN): build-if-needed on a checkout already on the pin
+# moves nothing and only reads which build there is, so the host's run (the Linux proof, a step 1 lane) is no reason to
+# refuse it; the VM's parts and lane 4 start that way beside it. A build it must start is `dp-ci.sh build`, refused here.
+checkout_already_on_pin() {
+  [ -n "${RELEASE_PIN:-}" ] && [ "$(git -C "$REPO" rev-parse HEAD 2>/dev/null)" = "$(git -C "$REPO" rev-parse --verify -q "$RELEASE_PIN^{commit}" 2>/dev/null)" ]
+}
 if docker ps -a --filter "name=^${CONTAINER}\$" --format '{{.Names}}' | grep -q .; then
   [ "$TASK" = "dev" ] && { echo "FAIL  a $CONTAINER run is working (it rebuilds the backend and resets testground/e2e) - start dp-dev after it ends"; exit 1; }
-  echo "FAIL  a $CONTAINER container already exists — one run at a time (docker logs -f $CONTAINER)"; exit 1
+  if [ "$TASK" = build-if-needed ] && checkout_already_on_pin; then
+    echo "note: a $CONTAINER run is going; this checkout is on the pinned commit already (RELEASE_PIN), so nothing moves: reading which build there is" >&2
+  else
+    echo "FAIL  a $CONTAINER container already exists — one run at a time (docker logs -f $CONTAINER)"; exit 1
+  fi
 fi
 
 cd "$REPO" || exit 1

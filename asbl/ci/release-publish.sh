@@ -79,7 +79,9 @@
 #       rehearsal/_preflight/, downloaded back and deleted; DRY_RUN=yes: a listing of rehearsal/ only); the download
 #       site answers. docker: the Docker engine and buildx; DOCKERHUB_USER and DOCKERHUB_TOKEN accepted by docker login
 #       (a throwaway DOCKER_CONFIG); the token may push RELEASE_IMAGE_REPO (Docker Hub's token service, nothing pushed;
-#       skipped for another registry); the Windows VM of the rehearsal's part 4, its Windows proof (dp-ci.sh win prereq docker-e2e).
+#       skipped for another registry); the Windows VM of the rehearsal's part 4, its Windows proof (dp-ci.sh win prereq docker-e2e),
+#       only when the run has that part: DOCKER_RELEASE_PART (release-docker.sh) empty or windows; the linux and keep parts
+#       run while the VM packs or tests, so they never ask for a free VM.
 #       public: also CLOUDFLARE_ZONE_ID and the purge token (Cloudflare's read-only token check, nothing purged).
 #       copy: a MODE=public run that only copies a passed rehearsal: the VM is not needed, not checked.
 #       UPLOAD=no: only what the run itself needs (docker: the Docker engine and the Windows VM): the tools, the credentials
@@ -432,6 +434,15 @@ upload_kept() {
   fi
 }
 
+# vm_part_in_this_run: does this Docker release run have the Windows proof (DOCKER_RELEASE_PART empty or windows)? When not,
+# it says so and the VM is not checked: the orchestrator's linux and keep parts run while the VM packs or tests
+vm_part_in_this_run() {
+  case "${DOCKER_RELEASE_PART:-}" in
+    ""|windows) return 0 ;;
+    *) echo "NOTE the Windows VM is not checked: DOCKER_RELEASE_PART=$DOCKER_RELEASE_PART has no Windows proof"; return 1 ;;
+  esac
+}
+
 # preflight docker|files [public] [copy]: see the top of this file
 preflight() {
   local what="${1:-}" public=0 copy=0 dry=0 miss=0 a t f="$RELEASE_PUBLISH_ENV" have=0 names="" n remote out code tmp name got reg
@@ -449,9 +460,11 @@ preflight() {
     if [ "$what" = docker ]; then
       docker info >/dev/null 2>&1 && ok "the Docker engine on this host" ||
         missing "a running Docker engine on this host: start it (systemctl start docker), then run the job again"
-      out=$(bash asbl/ci/dp-ci.sh win prereq docker-e2e 2>&1 | grep -v -e '^PREREQUISITES' -e ' Docker engine on this host')
-      printf '%s\n' "$out"
-      miss=$((miss + $(printf '%s\n' "$out" | grep -c '^MISSING')))
+      if vm_part_in_this_run; then
+        out=$(bash asbl/ci/dp-ci.sh win prereq docker-e2e 2>&1 | grep -v -e '^PREREQUISITES' -e ' Docker engine on this host')
+        printf '%s\n' "$out"
+        miss=$((miss + $(printf '%s\n' "$out" | grep -c '^MISSING')))
+      fi
     fi
     if [ "$miss" = 0 ]; then echo "PREREQUISITES OK"; return 0; fi
     echo "PREREQUISITES MISSING ($miss): nothing was built or uploaded. Provide what is listed above, then run the job again."
@@ -561,7 +574,7 @@ sys.exit(0 if any(a.get("name") == os.environ["R"] and "push" in a.get("actions"
     fi
     if [ "$copy" = 1 ]; then
       echo "NOTE the Windows VM is not checked: the copy does not use it"
-    else
+    elif vm_part_in_this_run; then
       # the rehearsal's part 4, its Windows proof (windows-vm-docker): the same checks the lane makes, from dp-ci.sh; its line on this host's
       # Docker engine is left out, checked above already
       out=$(bash asbl/ci/dp-ci.sh win prereq docker-e2e 2>&1 | grep -v -e '^PREREQUISITES' -e ' Docker engine on this host')
@@ -739,5 +752,5 @@ for k, v in (json.load(sys.stdin).get(os.environ["R"]) or {}).items():
     mark_run publish "$@"
     ;;
   *)
-    sed -n '2,101p' "$0"; exit 2 ;;
+    sed -n '2,103p' "$0"; exit 2 ;;
 esac
