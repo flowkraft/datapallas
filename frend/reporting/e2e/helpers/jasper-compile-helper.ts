@@ -41,10 +41,11 @@ export class JasperCompileHelper {
     }
 
     // No lib/ next to the data: this is the Docker bundle, whose program files are in the image its
-    // own docker-compose.yml names — the file the customer runs, so it is the authority on which
-    // image this installation is.
+    // server container runs — the container its own docker-compose.yml names, the file the customer
+    // runs. By the image's id, not by the tag that file names: a tag can go while the server runs
+    // (16.6.1: the host's nightly `docker image prune -a` untagged it in the middle of a lane).
     JasperCompileHelper.withJarsFromImage(
-      JasperCompileHelper.bundleServerImage(installationDir),
+      JasperCompileHelper.bundleServerImageId(installationDir),
       '/app/lib/burst/.',
       (jarsDir) =>
         JasperCompileHelper.compile(`${jarsDir}${path.sep}*`, jrxmlPath, jasperPath, 'JasperReports 7'),
@@ -55,14 +56,23 @@ export class JasperCompileHelper {
     );
   }
 
-  /** The server image the extracted bundle runs, as its own docker-compose.yml names it. */
-  private static bundleServerImage(installationDir: string): string {
+  /** The id of the image the extracted bundle's server container runs, the container as its docker-compose.yml names it. */
+  private static bundleServerImageId(installationDir: string): string {
     const composePath = path.join(installationDir, 'docker-compose.yml');
-    const image = fs.readFileSync(composePath, 'utf-8').match(/^\s*image:\s*(\S*datapallas-server\S*)\s*$/m);
-    if (!image) {
-      throw new Error(`Could not read the DataPallas Server image out of ${composePath}.`);
+    const container = fs
+      .readFileSync(composePath, 'utf-8')
+      .match(/^\s*container_name:\s*(\S*datapallas-server\S*)\s*$/m);
+    if (!container) {
+      throw new Error(`Could not read the DataPallas Server container out of ${composePath}.`);
     }
-    return image[1];
+    const inspected = spawnSync('docker', ['inspect', '--format', '{{.Image}}', container[1]], {
+      encoding: 'utf-8',
+      timeout: 60_000,
+    });
+    if (inspected.status !== 0) {
+      throw new Error(`Could not read the image of the ${container[1]} container.\n${inspected.stdout}${inspected.stderr}`);
+    }
+    return inspected.stdout.trim();
   }
 
   /**
