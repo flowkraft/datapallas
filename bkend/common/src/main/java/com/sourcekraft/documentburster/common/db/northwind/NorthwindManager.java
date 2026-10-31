@@ -332,23 +332,27 @@ public class NorthwindManager implements AutoCloseable {
 	 */
 	private void waitForDatabaseToBeReady(DatabaseVendor vendor, Integer hostPort) throws Exception {
 		final int hostPortToUse = (hostPort != null) ? hostPort : getDefaultHostPort(vendor);
-		// In the Docker server the pack is a sibling container on the shared network, so it is reached by
-		// name and its own port; everywhere else this is localhost and the published port (plan §4 F2n).
-		final String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(hostPortToUse));
-		final String host = reachable[0];
-		final int port = Integer.parseInt(reachable[1]);
 
-		log.info("[" + vendor + "] waitForDatabaseToBeReady: vendor={}, host={}, port={}", vendor, host, port);
+		log.info("[" + vendor + "] waitForDatabaseToBeReady: vendor={}, published port={}", vendor, hostPortToUse);
 
 		// Failsafe retry policy for the connection attempt
 		RetryPolicy<Object> retryPolicy = new RetryPolicy<>().handle(Throwable.class) // Handle any exception
 				.withDelay(Duration.ofSeconds(5)).withMaxDuration(vendor.getDefaultTimeout()).withMaxRetries(-1)
-				.onRetry(e -> log.debug("Connection to {} on port {} failed, retrying...", vendor, port))
+				.onRetry(e -> log.debug("Connection to {} on port {} failed, retrying...", vendor, hostPortToUse))
 				.onFailure(e -> log.error("Failed to connect to {} after multiple retries.", vendor));
 
 		Failsafe.with(retryPolicy).run(() -> {
 
-			log.info("[" + vendor + "] Retry attempt starting for {}:{}", vendor, port);
+			// In the Docker server the pack is a sibling container on the shared network, so it is reached by
+			// name and its own port; everywhere else this is localhost and the published port (plan §4 F2n).
+			// Asked on every attempt: the answer given before the container was up ("nobody publishes it",
+			// cached for 2 s by the marker check just before `compose up`) held the whole wait on the host
+			// gateway, which a host firewall blocks - 16.6.1's SQL Server pack waited its full 60 minutes.
+			String[] reachable = ContainerAddresses.resolve("localhost", String.valueOf(hostPortToUse));
+			String host = reachable[0];
+			int port = Integer.parseInt(reachable[1]);
+
+			log.info("[" + vendor + "] Retry attempt starting for {}:{} ({})", vendor, port, host);
 
 			// First, check if the port is open to avoid immediate JDBC timeout
 			if (!Utils.isPortOpen(host, port, 2000)) {
