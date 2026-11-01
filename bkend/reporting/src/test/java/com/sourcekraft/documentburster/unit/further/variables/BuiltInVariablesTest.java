@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -16,6 +17,7 @@ import com.sourcekraft.documentburster._helpers.TestBursterFactory;
 import com.sourcekraft.documentburster._helpers.TestsUtils;
 import com.sourcekraft.documentburster.engine.AbstractBurster;
 import com.sourcekraft.documentburster.unit.further.other.UtilsTest;
+import com.sourcekraft.documentburster.utils.DocumentBursterFreemarkerInitializer;
 import com.sourcekraft.documentburster.utils.Utils;
 import com.sourcekraft.documentburster.variables.Variables;
 
@@ -109,14 +111,20 @@ public class BuiltInVariablesTest {
         assertTrue(outputFolder.contains(FilenameUtils.getName(PAYSLIPS_REPORT_PATH)));
 
         // assert for $now; format=\"yyyy\"$
+        // FreeMarker renders ${now} in its own time zone (UTC unless settings.xml names one), not the JVM's: west of UTC
+        // the two dates differ from UTC midnight to local midnight
+        TimeZone freeMarkerTimeZone = DocumentBursterFreemarkerInitializer.FREE_MARKER_CFG.getTimeZone();
+
         // For Year format check (yyyy)
         SimpleDateFormat yearFormatter = new SimpleDateFormat("yyyy");
+        yearFormatter.setTimeZone(freeMarkerTimeZone);
         String expectedYear = yearFormatter.format(new Date());
         assertTrue("Expected output folder to contain year " + expectedYear + " but got: " + outputFolder,
                    outputFolder.contains(expectedYear));
 
         // For Month format check (MM.)
         SimpleDateFormat monthFormatter = new SimpleDateFormat("MM.");
+        monthFormatter.setTimeZone(freeMarkerTimeZone);
         String expectedMonth = monthFormatter.format(new Date());
         assertTrue("Expected output folder to contain month " + expectedMonth + " but got: " + outputFolder,
                    outputFolder.contains(expectedMonth));
