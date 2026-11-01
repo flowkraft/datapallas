@@ -128,6 +128,9 @@ const _splitSendVerifyEmailsAndSMSes = (
         process.env.PORTABLE_EXECUTABLE_DIR + '/samples/burst/Payslips.pdf',
       ),
     )
+    // all tokens, so the SMS messages are only written as _sms_*.txt: the mode stays what an earlier test on the same
+    // page left (apps-custom.spec.ts leaves "random", which really sends them, through the Twilio script, with no account)
+    .click('#testTokensAll')
     .click('#btnRunTest')
     .clickYesDoThis()
     //.waitOnProcessingToStart(Constants.CHECK_PROCESSING_JAVA)
