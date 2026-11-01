@@ -1729,13 +1729,11 @@ export class SelfServicePortalsTestHelper {
     expect(recordText).not.toMatch(/\b0\s+of/i);
     console.log(`Grails Parameters: Data - filtered to ${recordText} ✓`);
 
-    // Clear Filters - should restore 12
+    // Clear Filters - should restore 12, again when the report answers
     const clearBtn = page.locator('#clearFiltersBtn');
     if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await clearBtn.click();
-      await page.waitForTimeout(1500);
-      recordText = await page.locator('#recordCount').textContent();
-      expect(recordText).toContain('12');
+      await expect(page.locator('#recordCount')).toContainText('12', { timeout: 20000 });
       console.log('Grails Parameters: Data - clear restored 12 records ✓');
     }
 
