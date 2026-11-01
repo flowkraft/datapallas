@@ -37,6 +37,20 @@ const SAMPLE_HEADER: DashboardHeader = {
 };
 
 /**
+ * A widget's rows, asked as the page's own components ask: with the embed token the page holds, when it
+ * was handed one. A desktop Try it opens the dashboard in a browser with no session, by a token only.
+ */
+async function widgetData(page: Page, reportCode: string, componentId: string, countryParam: string) {
+  return page.evaluate(async ({ rc, cp, cid }) => {
+    const token = document.getElementById(`dashboard-${rc}`)?.parentElement?.getAttribute('embed-token');
+    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`, {
+      headers: token ? { 'X-Embed-Token': token } : {},
+    });
+    return resp.json();
+  }, { rc: reportCode, cp: countryParam, cid: componentId });
+}
+
+/**
  * Shared dashboard assertion helper.
  *
  * When `componentIds` is omitted the function also validates the HTML template
@@ -79,10 +93,7 @@ export async function assertDashboardRendersCorrectly(
   // ── 2. KPI cards ──
   if (ids.atomicValues) {
     // Shipped g-dashboard sample: single multi-column component
-    const atomicData = await page.evaluate(async ({ rc, cp, cid }) => {
-      const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
-      return resp.json();
-    }, { rc: reportCode, cp: countryParam, cid: ids.atomicValues });
+    const atomicData = await widgetData(page, reportCode, ids.atomicValues, countryParam);
     expect(atomicData.data).toBeDefined();
     expect(atomicData.data.length).toBe(1);
     const kpi = atomicData.data[0];
@@ -102,10 +113,7 @@ export async function assertDashboardRendersCorrectly(
     }
   } else if (ids.revenue) {
     // D21 reconstruction: four separate single-field KPI widgets
-    const fetchKpi = async (cid: string) => page.evaluate(async ({ rc, cp, id }) => {
-      const resp = await fetch(`/api/reports/${rc}/data?componentId=${id}${cp}`);
-      return resp.json();
-    }, { rc: reportCode, cp: countryParam, id: cid });
+    const fetchKpi = (cid: string) => widgetData(page, reportCode, cid, countryParam);
 
     const [revData, ordData, avgData, cusData] = await Promise.all([
       fetchKpi(ids.revenue!),
@@ -136,10 +144,7 @@ export async function assertDashboardRendersCorrectly(
   }
 
   // ── 3. Revenue trend chart (monthly) ──
-  const revenueTrendData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
-    return resp.json();
-  }, { rc: reportCode, cp: countryParam, cid: ids.revenueTrend });
+  const revenueTrendData = await widgetData(page, reportCode, ids.revenueTrend, countryParam);
   expect(revenueTrendData.data).toBeDefined();
   expect(revenueTrendData.data.length).toBeGreaterThan(0);
   const trendRow = revenueTrendData.data[0];
@@ -151,10 +156,7 @@ export async function assertDashboardRendersCorrectly(
   }
 
   // ── 4. Revenue by category chart ──
-  const categoryData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
-    return resp.json();
-  }, { rc: reportCode, cp: countryParam, cid: ids.revenueByCategory });
+  const categoryData = await widgetData(page, reportCode, ids.revenueByCategory, countryParam);
   expect(categoryData.data).toBeDefined();
   expect(categoryData.data.length).toBeGreaterThan(0);
 
@@ -167,10 +169,7 @@ export async function assertDashboardRendersCorrectly(
   }
 
   // ── 5. Top customers tabulator ──
-  const topCustomersData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
-    return resp.json();
-  }, { rc: reportCode, cp: countryParam, cid: ids.topCustomers });
+  const topCustomersData = await widgetData(page, reportCode, ids.topCustomers, countryParam);
   expect(topCustomersData.data).toBeDefined();
   expect(topCustomersData.data.length).toBeGreaterThan(0);
 
@@ -204,10 +203,7 @@ export async function assertDashboardRendersCorrectly(
   }
 
   // ── 6. Order explorer pivot ──
-  const pivotData = await page.evaluate(async ({ rc, cp, cid }) => {
-    const resp = await fetch(`/api/reports/${rc}/data?componentId=${cid}${cp}`);
-    return resp.json();
-  }, { rc: reportCode, cp: countryParam, cid: ids.orderExplorer });
+  const pivotData = await widgetData(page, reportCode, ids.orderExplorer, countryParam);
   expect(pivotData.data).toBeDefined();
   expect(pivotData.data.length).toBeGreaterThan(0);
   const pivotRow = pivotData.data[0];
