@@ -28,7 +28,8 @@
 #   1. the commit under test: origin/main, fetched, as the lanes' own sync takes it (HEAD when this checkout is ahead);
 #      a dry run fetches nothing and takes HEAD;
 #   2. the tests: each --test (as `show` names it: "<file> :: <test>"), --failed <kept folder> (that execution's failures
-#      in this part, from release-keep.sh failures) or --failed <report> (a lane's Playwright .json or Robot output.xml);
+#      in this part that `show` does not count as verified green on the commit under test, from release-keep.sh failures;
+#      --all-failed <kept folder>: every one) or --failed <report> (a lane's Playwright .json or Robot output.xml);
 #      none = the part's whole set as its step runs it (the light set; for robot every suite; web has none: name tests);
 #   3. for each build the part takes, the rule from that build's commit to the commit under test: reuse, or STOP with the
 #      files and the command that rebuilds that part alone (exit 3); REBUILD=yes runs that command first;
@@ -36,10 +37,11 @@
 #      earlier commit (dp-ci.sh reuse_build_ok checks them again where the lane wants its exact commit), E2E_KEPT_BUILD for
 #      a kept image; robot: RELEASE_KEPT, ROBOT_TEST (one run per test, in turn), REBUILD_PACK;
 #   5. one line per test into the re-run record, the re-run's failure report beside its log (release-keep.sh
-#      report-steps), and the RERUN_RESULT line.
+#      report-steps), and the RERUN_RESULT line. A test that passed counts PASS when the run ended green, or when it
+#      ended red on its failed tests alone (complete_run below); in any other red run every test counts FAIL.
 #
 # USE:
-#   bash asbl/ci/release-rerun.sh run <part> [--kept <folder>|none] [--failed <folder>|<report>] [--test "<test>"]...
+#   bash asbl/ci/release-rerun.sh run <part> [--kept <folder>|none] [--failed|--all-failed <folder>|<report>] [--test "<test>"]...
 #        --kept defaults to the --failed folder for the parts that take kept files; none = this host's build
 #   bash asbl/ci/release-rerun.sh show [<kept folder>]   every failure of that execution (the newest kept folder when none is
 #        given), each with its last re-run: "verified green", "red again" or "not verified yet", and a note when a change
@@ -48,8 +50,11 @@
 #        of <report>: each one with the newest re-run of that very test (never the whole set: a lane's set is not the
 #        light set) since <lane time>; exit 0 and LANE_RERUNS lines only when every one passed alone on a commit where
 #        nothing step 1's lanes test changed since <lane commit>; a red step with no failed test never does.
+#   bash asbl/ci/release-rerun.sh score <log>   a re-run that ended red before a passed test could count in one (its
+#        record lines name <log>): when complete_run says it ended red on its failed tests alone, one PASS line per test
+#        that passed in its report, as that re-run would write it now; its own lines stay as they are
 #   DRY_RUN=yes [no]   run: the commit, the build each part would take, the rule's answer, the tests and the command it
-#                      would start; it fetches, runs and writes nothing
+#                      would start; it fetches, runs and writes nothing; score: the lines it would add
 #   REBUILD=yes [no]   run: a build the rule says rebuild is rebuilt first, as the STOP line says: image-and-zips =
 #                      dp-ci.sh build-if-needed; e2e-package = the lane's own prepare (left out of E2E_REUSE_BUILD; the VM:
 #                      dp-ci.sh win prepare); windows-pack = pack-datapallas.bat on the VM (REBUILD_PACK=yes)
@@ -63,6 +68,7 @@
 #   time  part  test  commit (full)  PASS|FAIL|NOT_RUN  log  report  build  for
 #   test: the failure as `show` names it, or * for the part's whole set; build: what the part took ("kept <folder>", "build
 #   <tag>", "package <commit>", "rebuilt <part>", one per build, joined by "; "); for: the execution or report it re-proves.
+#   A line `score` adds keeps the re-run's time, commit, log, report and for; its build ends in "; scored <time>".
 #
 # It never uploads, never writes the release record (release-state.sh) or an execution's kept folder, never retries a test,
 # builds or packs only with REBUILD=yes, and starts nothing in a dry run. Called by hand or by an agent; `show` also by the
@@ -82,7 +88,7 @@ case "$REBUILD" in yes|no) ;; *) echo "FAIL  REBUILD must be yes or no (got '$RE
 # reuse_or_rebuild and its RR_* answers
 . "$REPO/asbl/ci/reuse-or-rebuild.sh"
 
-usage() { sed -n '2,66p' "$0"; exit 2; }
+usage() { sed -n '2,72p' "$0"; exit 2; }
 abs() { case "$1" in /*|"") echo "$1" ;; *) echo "$CALLER_PWD/$1" ;; esac; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
@@ -264,6 +270,100 @@ for i in ids:
 PY
 }
 
+# complete_run <part> <log> <report>: may the passed tests of a red run count? "yes<TAB>..." or "no<TAB><why>". Yes only
+# for a lane whose last marked step is the tests and whose red there can come from nothing but Playwright's exit code (the
+# Windows Playwright lanes: the step ends on that code), and only when the run reached its end (each step's END, then
+# PIPELINE_RESULT), each step before the tests ended rc=0, the verdict line counts no flaky, skipped or not run test and
+# at least one failed, and the report holds a final result for each of its tests (no error outside a test, no skipped,
+# flaky, interrupted or unrun test) with the verdict's counts: then its failed tests are the only red. Otherwise every
+# test of the run counts FAIL, as before.
+complete_run() {
+  case "$1" in windows-vm-docker|windows-vm-server|windows-vm-electron) ;;
+    *) printf 'no\t%s: no rule tells its red apart from its failed tests (only the Windows Playwright lanes have one)\n' "$1"; return 0 ;;
+  esac
+  python3 - "$@" <<'PY'
+import json, re, sys
+part, log, report = sys.argv[1:4]
+def no(why):
+    print('no\t' + why); sys.exit(0)
+try:
+    lines = open(log, encoding='utf-8', errors='replace').read().splitlines()
+except Exception:
+    no('no log %s' % log)
+mark = re.compile(r'^######## %s STEP (\d+)/(\d+) (START|END)(?: rc=(\d+))?\s' % re.escape(part))
+steps, total = {}, None
+for n, l in enumerate(lines):
+    m = mark.match(l)
+    if not m: continue
+    if total not in (None, int(m.group(2))): no('its log marks two step counts')
+    total = int(m.group(2))
+    steps.setdefault(int(m.group(1)), {})[m.group(3)] = (n, m.group(4))
+if total is None: no('its log has no %s STEP marks' % part)
+for i in range(1, total + 1):
+    if 'START' not in steps.get(i, {}) or 'END' not in steps.get(i, {}):
+        no('step %d/%d has no START or no END: the run was cut short' % (i, total))
+    if i < total and steps[i]['END'][1] != '0':
+        no('step %d/%d ended rc=%s, before the tests' % (i, total, steps[i]['END'][1]))
+start, end = steps[total]['START'][0], steps[total]['END'][0]
+if steps[total]['END'][1] == '0': no('the tests (step %d/%d) ended rc=0: the red came from elsewhere' % (total, total))
+if not any(l.startswith('PIPELINE_RESULT=') for l in lines[end + 1:]): no('no PIPELINE_RESULT after its last step: cut short')
+verdict = [l for l in lines[start:end] if l.startswith('WIN_E2E_RESULT ')]
+if not verdict: no('no WIN_E2E_RESULT line in its tests step')
+v = dict(re.findall(r' (passed|failed|flaky|skipped|didnotrun|exit)=(\S+)', verdict[-1]))
+if not re.fullmatch(r'[1-9][0-9]*', v.get('exit', '')): no("the verdict line's exit is '%s', no Playwright exit code of failed tests" % v.get('exit', ''))
+for k in ('flaky', 'skipped', 'didnotrun'):
+    if v.get(k) != '0': no('the verdict line counts %s=%s' % (k, v.get(k)))
+named = [l.split('=', 1)[1].strip() for l in lines[start:end] if l.startswith('WIN_E2E_REPORT=')]
+if named and named[-1] != report: no('its log names another report: %s' % named[-1])
+try:
+    r = json.load(open(report, encoding='utf-8'))
+except Exception:
+    no('no readable report %s' % report)
+if r.get('errors'): no('its report has %d error(s) outside the tests' % len(r['errors']))
+ok = bad = 0
+def walk(suite):
+    global ok, bad
+    for sp in suite.get('specs', []):
+        for t in sp.get('tests', []):
+            res = [x.get('status') for x in t.get('results', [])]
+            if t.get('status') == 'expected' and res and all(s == 'passed' for s in res): ok += 1
+            elif t.get('status') == 'unexpected' and res and all(s in ('failed', 'timedOut') for s in res): bad += 1
+            else: no("'%s' is %s (%s), no final result" % (sp.get('title'), t.get('status'), ','.join(map(str, res)) or 'never ran'))
+    for sub in suite.get('suites', []): walk(sub)
+for top in r.get('suites', []): walk(top)
+st = r.get('stats', {})
+if (st.get('expected'), st.get('unexpected'), st.get('flaky', 0), st.get('skipped', 0)) != (ok, bad, 0, 0):
+    no('its report counts expected=%s unexpected=%s flaky=%s skipped=%s, its tests %d passed %d failed' % (
+        st.get('expected'), st.get('unexpected'), st.get('flaky'), st.get('skipped'), ok, bad))
+if (v.get('passed'), v.get('failed')) != (str(ok), str(bad)):
+    no('the verdict line says passed=%s failed=%s, its report %d and %d' % (v.get('passed'), v.get('failed'), ok, bad))
+if bad == 0: no('no failed test in its report: the red came from elsewhere')
+print('yes\tit ended red on its %d failed test(s) alone (%d passed, each step before the tests rc=0)' % (bad, ok))
+PY
+}
+
+# failure_state <part> <need> <id> <commit>: what the newest re-run covering a failure (of the part, of that test or of
+# the whole set, and for a build or pack step one that rebuilt it) says on <commit>: FS_WORD open (no re-run), red,
+# older (a change that part ships came after the re-run's commit, FS_WHY naming them) or green; FS_LINE its record line
+failure_state() {
+  local part="$1" need="$2" id="$3" commit="$4" rcommit rres bpart
+  FS_WORD=open FS_WHY=""
+  FS_LINE=$(awk -F'\t' -v p="$part" -v i="$id" -v nd="$need" '$2 == p && ($3 == i || $3 == "*") && (nd == "" || $8 ~ /rebuilt/) { l = $0 } END { print l }' \
+    "$RELEASE_RERUN_RECORD" 2>/dev/null)
+  [ -n "$FS_LINE" ] || return 0
+  IFS=$'\t' read -r _ _ _ rcommit rres _ <<< "$FS_LINE"
+  [ "$rres" = PASS ] || { FS_WORD=red; return 0; }
+  reuse_or_rebuild "$rcommit" "$commit"
+  for bpart in $(part_builds "$part"); do
+    case "$bpart" in
+      e2e-package)    [ "$RR_E2E_PACKAGE" = reuse ] || FS_WHY="$FS_WHY $RR_WHY_E2E_PACKAGE" ;;
+      image-and-zips) [ "$RR_IMAGE_AND_ZIPS" = reuse ] || FS_WHY="$FS_WHY $RR_WHY_IMAGE_AND_ZIPS" ;;
+      windows-pack)   [ "$RR_WINDOWS_PACK" = reuse ] || FS_WHY="$FS_WHY $RR_WHY_WINDOWS_PACK" ;;
+    esac
+  done
+  if [ -n "$FS_WHY" ]; then FS_WORD=older; else FS_WORD=green; fi
+}
+
 # shq <NAME=value>...: the assignments as a shell reads them back, each value in single quotes (a regex stays readable)
 shq() { local kv; for kv in "$@"; do printf "%s='%s' " "${kv%%=*}" "$(printf '%s' "${kv#*=}" | sed "s/'/'\\\\''/g")"; done; }
 
@@ -274,12 +374,13 @@ newest_log() { local l; l=$(readlink -f "$1" 2>/dev/null) || return 0; [ -f "$l"
 run_part() {
   local part="${1:-}" kept="" kept_set=0 failed="" ids=() bpart under rr_word rr_why reuse="" builds="" stop=0 rebuild_parts=""
   local light env_lane launcher pidfile log_link log report t0 rc id v line res pass=0 fail=0 steps md for kept_build="" one_command=""
+  local all_failed=no step_of need verified=0 left=0 rtime rcommit passes_count passes_why
   part_builds "$part" >/dev/null || { echo "FAIL  no part '$part': web, docker-server, windows-vm-docker, windows-vm-server, windows-vm-electron or robot"; exit 2; }
   shift
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --kept)   [ "$#" -ge 2 ] || usage; kept_set=1; [ "$2" = none ] && kept="" || kept="$(abs "$2")"; shift 2 ;;
-      --failed) [ "$#" -ge 2 ] || usage; failed="$(abs "$2")"; shift 2 ;;
+      --failed|--all-failed) [ "$#" -ge 2 ] || usage; failed="$(abs "$2")"; [ "$1" = --failed ] || all_failed=yes; shift 2 ;;
       --test)   [ "$#" -ge 2 ] || usage; ids+=("$2"); shift 2 ;;
       *) usage ;;
     esac
@@ -305,10 +406,24 @@ run_part() {
   # 2. the tests
   if [ -n "$failed" ]; then
     while IFS=$'\037' read -r line _ id _; do
-      [ "$(step_part "$line" | cut -d' ' -f1)" = "$part" ] || [ "${line}" = "LANE REPORT" ] || continue
+      read -r step_of need <<< "$(step_part "$line")"
+      [ "$step_of" = "$part" ] || [ "${line}" = "LANE REPORT" ] || continue
+      # an execution's failure that `show` counts as verified green on the commit under test needs no run again
+      if [ -d "$failed" ] && [ "$all_failed" = no ]; then
+        failure_state "$part" "${need:-}" "$id" "$under"
+        if [ "$FS_WORD" = green ]; then
+          IFS=$'\t' read -r rtime _ _ rcommit _ <<< "$FS_LINE"
+          echo "TESTS  verified green, not run again: $id (re-run $rtime on ${rcommit:0:8})"; verified=$((verified + 1)); continue
+        fi
+      fi
+      left=$((left + 1))
       case "$id" in "LANE REPORT"|"DOCKER RELEASE STEP "*|"RELEASE STEP "*) ids=() ; break ;; esac
       ids+=("$id")
     done < <(failures_of "$failed")
+    if [ "$verified" -gt 0 ] && [ "$left" = 0 ]; then
+      echo "RERUN_RESULT part=$part commit=${under:0:8} nothing to re-run: its $verified failures in $for are verified green (show; --all-failed runs them again)"
+      exit 0
+    fi
     [ "${#ids[@]}" -gt 0 ] || echo "TESTS  no failed test of $part in $for: a red step with no failed test is re-proved by the part's whole set"
   fi
   [ "$part" != web ] || [ "${#ids[@]}" -gt 0 ] || { echo "FAIL  web has no set of its own: name the tests (--test, --failed)"; exit 2; }
@@ -412,10 +527,17 @@ run_part() {
     else
       res="*	$([ "$rc" = 0 ] && echo PASS || echo FAIL)"
     fi
+    # a test that passed counts when the whole run ended well (its log's PIPELINE_RESULT), or ended red on its failed
+    # tests alone (complete_run); in any other red run every test counts FAIL
+    passes_count=yes
+    if [ "$rc" != 0 ]; then
+      if grep -q $'\tNOT_RUN$' <<< "$res"; then passes_count=no passes_why="a test it ran for has no result in its report"
+      else IFS=$'\t' read -r passes_count passes_why <<< "$(complete_run "$part" "${log:--}" "${report:--}")"; fi
+      echo "RERUN  the run ended red (rc=$rc): its passed tests $([ "$passes_count" = yes ] && echo count || echo "count FAIL"): $passes_why"
+    fi
     while IFS=$'\t' read -r id v; do
       [ -n "$id" ] || continue
-      # a test that passed counts only when the whole run ended well (its log's PIPELINE_RESULT)
-      [ "$v" != PASS ] || [ "$rc" = 0 ] || v=FAIL
+      [ "$v" != PASS ] || [ "$passes_count" = yes ] || v=FAIL
       printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(now)" "$part" "$id" "$under" "$v" "${log:--}" "${report:--}" "${builds:--}" "$for" >> "$RELEASE_RERUN_RECORD"
       if [ "$v" = PASS ]; then pass=$((pass + 1)); else fail=$((fail + 1)); fi
       echo "RERUN  $v  $id"
@@ -434,7 +556,7 @@ run_part() {
 
 # show_execution [<kept folder>]: `show` (USE above)
 show_execution() {
-  local folder head step kind id file title report part need line rtime rcommit rres rlog rbuild n=0 green=0 red=0 open=0 older=0 other=0 bpart why
+  local folder head step kind id file title report part need rtime rcommit rres rlog rbuild n=0 green=0 red=0 open=0 older=0 other=0
   folder="$(abs "${1:-$(ls -1dt "$RELEASE_ARTIFACTS_DIR"/*/ 2>/dev/null | head -1)}")"; folder="${folder%/}"
   [ -f "$folder/MANIFEST.txt" ] || { echo "SHOW   no kept execution in '${folder:-$RELEASE_ARTIFACTS_DIR}'"; return 0; }
   head=$(git rev-parse --verify -q "${RERUN_COMMIT:-HEAD}^{commit}") || { echo "SHOW   RERUN_COMMIT=$RERUN_COMMIT is no commit here"; return 0; }
@@ -447,26 +569,13 @@ show_execution() {
     if [ "$part" = - ]; then
       echo "     no re-run: not a test (the keep, the guard, the upload); execution 2 runs it again"; other=$((other + 1)); continue
     fi
-    # the newest re-run that covers it: of the part, of that test or of the whole set, and for a build or pack step one
-    # that rebuilt it
-    line=$(awk -F'\t' -v p="$part" -v i="$id" -v nd="${need:-}" '$2 == p && ($3 == i || $3 == "*") && (nd == "" || $8 ~ /rebuilt/) { l = $0 } END { print l }' \
-      "$RELEASE_RERUN_RECORD" 2>/dev/null)
-    if [ -z "$line" ]; then echo "     not verified yet${need:+ (a re-run that rebuilt it: REBUILD=yes)}"; open=$((open + 1)); continue; fi
-    IFS=$'\t' read -r rtime _ _ rcommit rres rlog _ rbuild _ <<< "$line"
+    failure_state "$part" "${need:-}" "$id" "$head"
+    if [ "$FS_WORD" = open ]; then echo "     not verified yet${need:+ (a re-run that rebuilt it: REBUILD=yes)}"; open=$((open + 1)); continue; fi
+    IFS=$'\t' read -r rtime _ _ rcommit rres rlog _ rbuild _ <<< "$FS_LINE"
     if [ "$rres" = PASS ]; then echo "     verified green: re-run $rtime on ${rcommit:0:8} ($rbuild; log $rlog)"
     else echo "     red again: re-run $rtime on ${rcommit:0:8}, $rres (log $rlog)"; red=$((red + 1)); continue; fi
-    # still the build the commit under test needs? a change that part ships since the re-run's commit says no
-    why=""
-    reuse_or_rebuild "$rcommit" "$head"
-    for bpart in $(part_builds "$part"); do
-      case "$bpart" in
-        e2e-package)    [ "$RR_E2E_PACKAGE" = reuse ] || why="$why $RR_WHY_E2E_PACKAGE" ;;
-        image-and-zips) [ "$RR_IMAGE_AND_ZIPS" = reuse ] || why="$why $RR_WHY_IMAGE_AND_ZIPS" ;;
-        windows-pack)   [ "$RR_WINDOWS_PACK" = reuse ] || why="$why $RR_WHY_WINDOWS_PACK" ;;
-      esac
-    done
-    if [ -n "$why" ]; then
-      echo "     note: older than a later shipped change (${rcommit:0:8}..${head:0:8}: $(printf '%s\n' $why | sort -u | head -5 | paste -sd' ')${RR_NOTE:+; $RR_NOTE}): re-run it on the rebuilt part"
+    if [ "$FS_WORD" = older ]; then
+      echo "     note: older than a later shipped change (${rcommit:0:8}..${head:0:8}: $(printf '%s\n' $FS_WHY | sort -u | head -5 | paste -sd' ')${RR_NOTE:+; $RR_NOTE}): re-run it on the rebuilt part"
       older=$((older + 1))
     else
       green=$((green + 1))
@@ -518,9 +627,47 @@ lane_reruns() {
   return 1
 }
 
+# score_run <log>: `score` (USE above). The re-run's part, tests, commit, report, build and for come from its own lines in
+# the record; each test's newest line of that re-run decides what is added: a PASS line only where its report passed it
+# and that line says FAIL. Its lines are never changed: the record is appended to, as `run` does.
+score_run() {
+  local log="$1" lines part id v newest rtime rcommit rres rreport rbuild rfor res passes_count passes_why ids=() pass=0 fail=0 added=0
+  [ -f "$log" ] || { echo "FAIL  no log '$log'"; exit 2; }
+  lines=$(awk -F'\t' -v l="$log" '$6 == l' "$RELEASE_RERUN_RECORD" 2>/dev/null)
+  [ -n "$lines" ] || { echo "SCORE_RESULT nothing to score: no line of $RELEASE_RERUN_RECORD names $log"; exit 1; }
+  part=$(cut -f2 <<< "$lines" | sort -u)
+  [ "$(wc -l <<< "$part")" = 1 ] || { echo "FAIL  the record's lines of $log name more than one part: $(paste -sd' ' <<< "$part")"; exit 2; }
+  IFS=$'\t' read -r rtime _ _ rcommit _ _ rreport rbuild rfor <<< "$(head -n 1 <<< "$lines")"
+  [ "$(cut -f4,7,9 <<< "$lines" | sort -u | wc -l)" = 1 ] || { echo "FAIL  the record's lines of $log are of more than one re-run"; exit 2; }
+  mapfile -t ids < <(cut -f3 <<< "$lines" | awk '!seen[$0]++')
+  case " ${ids[*]} " in *" * "*) echo "SCORE_RESULT stays: $log is a run of $part's whole set, which has one verdict, the run's"; exit 1 ;; esac
+  echo "SCORE  $part on ${rcommit:0:8}, re-run $rtime (log $log, report $rreport); record $RELEASE_RERUN_RECORD"
+  res=$(results "$part" "$rreport" "${ids[@]}")
+  if grep -q $'\tNOT_RUN$' <<< "$res"; then passes_count=no passes_why="a test it ran for has no result in its report"
+  else IFS=$'\t' read -r passes_count passes_why <<< "$(complete_run "$part" "$log" "$rreport")"; fi
+  if [ "$passes_count" != yes ]; then
+    echo "SCORE_RESULT stays: every test of it FAIL: $passes_why; nothing added"
+    exit 1
+  fi
+  echo "SCORE  $passes_why"
+  while IFS=$'\t' read -r id v; do
+    [ -n "$id" ] || continue
+    newest=$(awk -F'\t' -v l="$log" -v i="$id" '$6 == l && $3 == i { r = $5 } END { print r }' "$RELEASE_RERUN_RECORD")
+    if [ "$v" != PASS ]; then echo "SCORE  $v  $id"; fail=$((fail + 1)); continue; fi
+    pass=$((pass + 1))
+    if [ "$newest" = PASS ]; then echo "SCORE  PASS  $id (its record says PASS already)"; continue; fi
+    added=$((added + 1))
+    if [ "$DRY" = yes ]; then echo "WOULD  add PASS  $id"; continue; fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$rtime" "$part" "$id" "$rcommit" PASS "$log" "$rreport" "$rbuild; scored $(now)" "$rfor" >> "$RELEASE_RERUN_RECORD"
+    echo "SCORE  PASS  $id (added)"
+  done <<< "$res"
+  echo "SCORE_RESULT part=$part commit=${rcommit:0:8} passed=$pass failed=$fail $([ "$DRY" = yes ] && echo "would add=$added (dry run: nothing written)" || echo "added=$added record=$RELEASE_RERUN_RECORD")"
+}
+
 cmd="${1:-}"; [ "$#" -gt 0 ] && shift
 case "$cmd" in
   run)  run_part "$@" ;;
+  score) [ "$#" = 1 ] || usage; score_run "$(abs "$1")" ;;
   show) show_execution "$@" ;;
   lane) [ "$#" = 4 ] || usage; lane_reruns "$1" "$(abs "$2")" "$3" "$4" ;;
   *)    usage ;;
