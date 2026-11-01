@@ -191,6 +191,8 @@ test.describe('REST — Generate SQL/Script (samples.spec.ignore)', () => {
 test.describe('REST — Merge (samples.spec.ignore)', () => {
 
   test('05_merge_then_burst_invoices (pdf2pdf)', async () => {
+    // The same documents as the CLI's merge: about 2 min on Docker Desktop on Windows (interface-client-cli.spec.ts).
+    test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
     InterfaceTestHelper.cleanOutputAndLogs();
 
     // Installation-relative: the server resolves them against its own install, which in the Docker
@@ -210,7 +212,7 @@ test.describe('REST — Merge (samples.spec.ignore)', () => {
 
     await InterfaceTestHelper.execRest('merge', {
       listFile, outputName: 'merged.pdf', burst: true, reportId: 'split-only',
-    }, BASE_URL);
+    }, BASE_URL, 5 * Constants.DELAY_SIXTY_SECONDS);
 
     await InterfaceTestHelper.assertOutputFiles([
       '0011.pdf', '0012.pdf', '0013.pdf', '0014.pdf', '0015.pdf',

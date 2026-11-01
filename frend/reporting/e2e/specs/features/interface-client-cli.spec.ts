@@ -206,6 +206,9 @@ test.describe('CLI — Generate SQL/Script (samples.spec.ignore)', () => {
 test.describe('CLI — Merge (samples.spec.ignore)', () => {
 
   test('05_merge_then_burst_invoices (pdf2pdf)', async () => {
+    // The merge and the burst write 10 documents through the installation's folders: 7 s on Linux, about 2 min (9 s a
+    // document) on Docker Desktop on Windows, whose bind mounts cost about 35 ms per file operation.
+    test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
     InterfaceTestHelper.cleanOutputAndLogs();
 
     const absoluteDir = path.resolve(PORTABLE_DIR);
@@ -223,7 +226,7 @@ test.describe('CLI — Merge (samples.spec.ignore)', () => {
     const result = InterfaceTestHelper.execCli([
       'job', 'merge', listFile, '-o', 'merged.pdf',
       '-b', '-c', 'config/samples/split-only/settings.xml',
-    ]);
+    ], 5 * Constants.DELAY_SIXTY_SECONDS);
     expect(result.exitCode).toEqual(0);
     await InterfaceTestHelper.assertOutputFiles([
       '0011.pdf', '0012.pdf', '0013.pdf', '0014.pdf', '0015.pdf',
