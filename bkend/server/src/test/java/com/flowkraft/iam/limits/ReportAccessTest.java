@@ -75,6 +75,8 @@ class ReportAccessTest {
 
 	private List<PublishedDashboard> published;
 
+	private int publishedDashboardScans;
+
 	@BeforeEach
 	void setUp() throws Exception {
 		root = new File(TEST_ROOT).getCanonicalFile().toPath();
@@ -96,7 +98,10 @@ class ReportAccessTest {
 		declared.put(GRANTED_DASHBOARD, List.of("payroll-oracle"));
 
 		published = new ArrayList<>(List.of(new PublishedDashboard(GRANTED_DASHBOARD, "Revenue")));
-		grants = new DashboardGrants(repository, () -> published);
+		grants = new DashboardGrants(repository, () -> {
+			publishedDashboardScans++;
+			return published;
+		});
 
 		// Layer 2 over the same store. No grant row is written unless a test writes one, so every case
 		// above this one is a person whose groups name no report — which means all reports, and which
@@ -230,6 +235,18 @@ class ReportAccessTest {
 		// It fails if the carve-out is widened from "granted to their groups" to "is a dashboard".
 		assertFalse(reportAccess.isGrantedDashboard(GRANTED_DASHBOARD));
 		assertThrows(ReportNotRunnableException.class, () -> reportAccess.assertReportRunnable(GRANTED_DASHBOARD));
+	}
+
+	@Test
+	void aReportNobodyGrantedDoesNotScanThePublishedDashboards() {
+		signedInAs("otto", Role.JOB_OPERATOR, null);
+
+		assertDoesNotThrow(() -> reportAccess.assertReportRunnable(PAYROLL_REPORT));
+		assertDoesNotThrow(() -> reportAccess.assertReportRunnable(GRANTED_DASHBOARD));
+
+		// The scan reads every report on disk: asked on every report opened, it made opening one take about 15 s
+		// on a Docker Desktop install on Windows.
+		assertEquals(0, publishedDashboardScans);
 	}
 
 	@Test

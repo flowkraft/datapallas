@@ -182,11 +182,12 @@ public class ReportAccess {
 		if (authentication == null || StringUtils.isBlank(reportId))
 			return false;
 
-		if (!grants.isPublishedDashboard(reportId))
-			return false;
-
-		return repository.findUserByUsername(authentication.getName())
+		// The grant first, the catalog only for a granted report: the catalog reads every report on disk, on every
+		// report opened, and a Docker Desktop install on Windows reads them through a bind mount (about 15 s).
+		boolean granted = repository.findUserByUsername(authentication.getName())
 				.map(user -> grants.grantedIdsOf(user.id()).contains(reportId)).orElse(false);
+
+		return granted && grants.isPublishedDashboard(reportId);
 	}
 
 	/** A settings file with no report id still has a name worth putting in the refusal. */
