@@ -209,8 +209,9 @@ build_of() {
 }
 
 # js_escape <text>: the text as a JavaScript regex matching itself; any run of white space matches any run (a title may
-# hold a line break), and " and % match any character (the Windows lanes carry the regex in a cmd.exe set "N=V" line)
-js_escape() { python3 -c 'import re,sys; s=" ".join(sys.argv[1].split()); s=re.sub(r"([\\^$.*+?()\[\]{}|/])", r"\\\1", s); print(re.sub(r"[\"%]", ".", s).replace(" ", r"\s+"))' "$1"; }
+# hold a line break); " % and ! and a character past ASCII (the titles' em dashes) match any character, as in dp-ci.sh's
+# light_set_regex: the Windows lanes carry the regex in a cmd.exe set "N=V" line, read in whatever code page cmd.exe has
+js_escape() { python3 -c 'import re,sys; s=" ".join(sys.argv[1].split()); s=re.sub(r"([\\^$.*+?()\[\]{}|/])", r"\\\1", s); print(re.sub(r"[\"%!]|[^\x00-\x7f]", ".", s).replace(" ", r"\s+"))' "$1"; }
 
 # selection <part> <test ids...>: sets SEL_SPEC and SEL_GREP for a Playwright lane (empty both = the part's whole set)
 selection() {
