@@ -725,7 +725,9 @@ test.describe('', async () => {
 
         await SelfServicePortalsTestHelper.waitForServerReady(page, dashboardUrl, 30, 2000);
 
-        await page.goto(dashboardUrl, { timeout: 30000, waitUntil: 'networkidle' });
+        // Its 15 live cubes ask 45 calls (meta, SQL, rows): 3-9 s each on Docker Desktop on Windows, whose bind mounts
+        // cost about 35 ms per file operation, so the page is idle after about 40 s there. The gallery's 120 s (02).
+        await page.goto(dashboardUrl, { timeout: 120000, waitUntil: 'networkidle' });
 
         const { expect } = await import('@playwright/test');
         const frame = page.mainFrame();
