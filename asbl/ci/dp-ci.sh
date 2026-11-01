@@ -1212,6 +1212,25 @@ $freed = @($left | Where-Object { -not (Test-Path -LiteralPath $_.FullName) }).C
 PS
 }
 
+# The apps the tests start (the AI Hub, the playgrounds) run from images compose builds from their _apps sources, and
+# compose reuses an image that already exists: on 2026-11-01 the VM's AI Hub image dated from 2026-10-21, so a Canvas fix
+# (00e6242f) never reached the tests. A fresh install has none, so neither does the run: what compose built for each app
+# is removed, as docker_server_up does on Linux (--rmi local: only built images, never the public ones an app pulls). The
+# repository's _apps folders give the same compose project names as the bundle's and the testground's copies of them.
+win_app_images_drop() {
+  win_ps 2>&1 <<PS | tr -d '\r'
+\$ErrorActionPreference = "Continue"
+\$before = @(& docker images --format '{{.Repository}}:{{.Tag}}')
+foreach (\$c in (Get-ChildItem -Path '$WIN_REPO\\asbl\\src\\main\\external-resources\\db-template\\_apps' -Recurse -Depth 3 -Filter docker-compose.yml -ErrorAction SilentlyContinue)) {
+  Push-Location -LiteralPath \$c.DirectoryName
+  & docker compose down --rmi local --remove-orphans 2>&1 | Out-Null
+  Pop-Location
+}
+\$after = @(& docker images --format '{{.Repository}}:{{.Tag}}')
+\$before | Where-Object { \$after -notcontains \$_ } | ForEach-Object { "WIN_APP_IMAGE_REMOVED=\$_" }
+PS
+}
+
 win_e2e() {
   local mode=targeted out code retries spec gexp
   # what the lane needs, in seconds, before the sync and the package rebuild (hours): the VM, its Docker Desktop, and the
@@ -1244,6 +1263,7 @@ win_e2e() {
 
   win_stacks_down
   win_temp_clean
+  win_app_images_drop
 
   out="${WIN_E2E_LOG:-${LOG_DIR:-/var/kraft-internalsystems/logs/datapallas-ci}/win-e2e-$(date -u +%Y%m%dT%H%M%SZ).log}"
   mkdir -p "$(dirname "$out")" 2>/dev/null
@@ -1665,6 +1685,7 @@ win_docker_e2e() {
   # the previous run's bundle, and anything its server started, before its folder is replaced
   win_stacks_down server
   win_temp_clean
+  win_app_images_drop
 
   if [ -z "$want" ]; then
     # The image, once per commit: about 2 GB, so it is copied only when the VM does not have this tag yet.
@@ -1792,6 +1813,7 @@ win_server_e2e() {
   win_server_down "$inst"   # a server left by a killed run, before its folder is replaced
   win_stacks_down
   win_temp_clean
+  win_app_images_drop
   # startRbsjServer.bat quietly moves to 9091 when 9090 is taken, and the tests would then talk to whatever holds 9090
   win_ps 2>&1 <<'PS' | tr -d '\r' || return 1
 $l = Get-NetTCPConnection -LocalPort 9090 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
