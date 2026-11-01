@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -44,10 +45,12 @@ import com.sourcekraft.documentburster.utils.LicenseUtils;
 import com.sourcekraft.documentburster.utils.Utils;
 
 
+import io.netty.channel.ChannelOption;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 
 @Service
 public class SystemService {
@@ -240,19 +243,31 @@ public class SystemService {
 	}
 
 	public Mono<Boolean> checkUrl(String decodedUrl) {
-		WebClient webClient = WebClient.create();
+		// A service that is still starting (the test email server right after its start) can accept the
+		// connection and not answer yet. Without a limit the request hangs until the servlet's async
+		// timeout, which is logged as an ERROR, and a non-empty errors.log blocks the next job. Not
+		// answering in time means "not up yet", like not answering at all; the callers poll again.
+		WebClient webClient = webClientTimingOutAfter(Duration.ofSeconds(5));
 		return webClient.get().uri(dialledFromHere(decodedUrl)).exchangeToMono(response -> {
 			if (response.statusCode().equals(HttpStatus.OK)) {
 				return Mono.just(true);
 			} else {
 				return Mono.just(false);
 			}
-		})
-				// A service that is still starting (the test email server right after its start) can accept the
-				// connection and not answer yet. Without a limit the request hangs until the servlet's async
-				// timeout, which is logged as an ERROR, and a non-empty errors.log blocks the next job. Not
-				// answering in time means "not up yet", like not answering at all; the callers poll again.
-				.timeout(Duration.ofSeconds(5)).onErrorResume(e -> Mono.just(false));
+		}).onErrorResume(e -> Mono.just(false));
+	}
+
+	/**
+	 * A WebClient whose calls fail by themselves after {@code timeout}: the connection, then each wait for the
+	 * other server, timed by the HTTP client. Reactor's timeout() would cancel the call instead, and a cancel
+	 * that lands while the answer is arriving leaves the body's error with nobody to take it: Reactor logs it
+	 * as an ERROR ("Operator called default onErrorDropped", the body "released already due to
+	 * cancellation"), and a non-empty errors.log blocks the next job.
+	 */
+	static WebClient webClientTimingOutAfter(Duration timeout) {
+		HttpClient httpClient = HttpClient.create()
+				.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) timeout.toMillis()).responseTimeout(timeout);
+		return WebClient.builder().clientConnector(new ReactorClientHttpConnector(httpClient)).build();
 	}
 
 	/**
@@ -346,13 +361,18 @@ public class SystemService {
 	 * non-empty errors.log blocks the next job. No cache: every call reads the feed.
 	 */
 	Mono<String> getBlogPosts(String url) {
-		WebClient webClient = WebClient.create();
+		return getBlogPosts(url, Duration.ofSeconds(5));
+	}
+
+	/** {@link #getBlogPosts(String)} with its time limit given: the test's answers arrive as it ends. */
+	Mono<String> getBlogPosts(String url, Duration timeout) {
+		WebClient webClient = webClientTimingOutAfter(timeout);
 		return webClient.get().uri(url).retrieve().bodyToMono(String.class).flatMap(body -> {
 			XmlMapper xmlMapper = new XmlMapper();
 			ObjectMapper jsonMapper = new ObjectMapper();
 			return Mono.fromCallable(() -> xmlMapper.readTree(body))
 					.flatMap(xmlNode -> Mono.fromCallable(() -> jsonMapper.writeValueAsString(xmlNode)));
-		}).timeout(Duration.ofSeconds(5)).onErrorResume(e -> {
+		}).onErrorResume(e -> {
 			log.debug("Could not read the blog feed {}: {}", url, e.getMessage());
 			return Mono.just(EMPTY_BLOG_FEED);
 		});
