@@ -954,6 +954,7 @@ win_sync_repo() {
   vm=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
   host=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)
   echo "WIN_E2E_COMMIT=$vm"
+  WIN_LANE_COMMIT=$vm
   [ "$vm" = "$host" ] || echo "WARN  this host is at $host, the VM tests $vm: the Linux lane and this one are not testing the same commit." >&2
   [ -z "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ] ||
     echo "WARN  this host has uncommitted changes; the VM cannot see them." >&2
@@ -1214,21 +1215,113 @@ PS
 
 # The apps the tests start (the AI Hub, the playgrounds) run from images compose builds from their _apps sources, and
 # compose reuses an image that already exists: on 2026-11-01 the VM's AI Hub image dated from 2026-10-21, so a Canvas fix
-# (00e6242f) never reached the tests. A fresh install has none, so neither does the run: what compose built for each app
-# is removed, as docker_server_up does on Linux (--rmi local: only built images, never the public ones an app pulls). The
-# repository's _apps folders give the same compose project names as the bundle's and the testground's copies of them.
+# (00e6242f) never reached the tests. Removing every app's images at each lane start then cost the VM a 37 min AI Hub
+# build each time, so an app's built images go only when what they are built from changed (app_images_plan). A record
+# per app holds what its images are built from; it is written once they are gone, so a failed drop is tried again.
+APPS_IN_REPO=asbl/src/main/external-resources/db-template/_apps
+# What NoExeAssembler copies into an app's folder from elsewhere ("<app folder> <path>"), part of what its images are
+# built from: the portal plugin's paystub views (the AI Hub's prompt copy goes into no image)
+APPS_ASSEMBLED_FROM="cms-webportal-playground bkend/reporting/src/main/external-resources/template/samples/webportal"
+
+# app_sources_key <commit> <folder>: one hash of what the app's images are built from at <commit>: its folder, the build
+# contexts its compose file names (the AI Hub's code-server: ../__devcontainer) and what the assembler copies into it;
+# "-" when one of them is not in <commit>
+app_sources_key() {
+  local commit=$1 folder=$2 path object key=""
+  for path in $( { echo "$APPS_IN_REPO/$folder"
+      git -C "$REPO" show "$commit:$APPS_IN_REPO/$folder/docker-compose.yml" 2>/dev/null |
+        sed -nE "s/^\s*(context|build):\s*[\"']?([^\"' #]+).*/\2/p" |
+        while read -r path; do echo "$APPS_IN_REPO/$(realpath -m --relative-to=/ "/$folder/$path")"; done
+      awk -v f="$folder" '$1 == f { print $2 }' <<< "$APPS_ASSEMBLED_FROM"; } | sort -u); do
+    object=$(git -C "$REPO" rev-parse --verify -q "$commit:$path") || { echo -; return; }
+    key+="$path $object"$'\n'
+  done
+  printf '%s' "$key" | sha1sum | cut -c1-40
+}
+
+# app_images_plan <commit> <records>: for each folder of _apps with a docker-compose.yml at <commit>, "keep <folder> <key>
+# <key>" when <records> ("<folder> <key>" lines) holds the key of its sources at <commit>, else "drop <folder> <recorded
+# key or -> <key or ->". A commit this checkout does not have gives no keys: every app is dropped and none recorded.
+app_images_plan() {
+  local commit=$1 records=$2 known=yes compose folder key recorded
+  git -C "$REPO" cat-file -e "$commit^{commit}" 2>/dev/null || { known=no; commit=HEAD; }
+  git -C "$REPO" ls-tree -r --name-only "$commit" -- "$APPS_IN_REPO" | grep '/docker-compose\.yml$' | while read -r compose; do
+    folder=${compose#"$APPS_IN_REPO"/}; folder=${folder%/docker-compose.yml}
+    key=-; [ "$known" = no ] || key=$(app_sources_key "$commit" "$folder")
+    recorded=$(awk -v f="$folder" '$1 == f { print $2 }' <<< "$records")
+    if [ "$key" != - ] && [ "$key" = "$recorded" ]; then echo "keep $folder $key $key"; else echo "drop $folder ${recorded:--} $key"; fi
+  done
+}
+
+# app_images_refresh <_apps folder> <commit>: app_images_plan on this host's Docker, for the bundle's _apps; the records
+# are in LOG_DIR, which the CI container mounts at the same path
+app_images_refresh() {
+  local apps=$1 records="$LOG_DIR/app-images" record what folder old new why built present left image
+  mkdir -p "$records" || return 1
+  app_images_plan "$2" "$(for record in "$records"/*.key; do
+      [ -f "$record" ] && echo "$(basename "$record" .key | tr + /) $(head -1 "$record")"; done)" |
+  while read -r what folder old new; do
+    if [ "$what" = keep ]; then echo "APP_IMAGE_KEPT=$folder (sources ${new:0:8})"; continue; fi
+    [ -f "$apps/$folder/docker-compose.yml" ] || continue
+    record="$records/$(echo "$folder" | tr / +).key"; rm -f "$record"
+    why="$folder: $([ "$old" = - ] && echo 'no record' || echo "${old:0:8}") -> $([ "$new" = - ] && echo unknown || echo "${new:0:8}")"
+    # --rmi local removes the images compose named itself (<project>-<service>), never one a service names with image:
+    built=$(cd "$apps/$folder" && docker compose config --format json 2>/dev/null | python3 -c 'import json, sys
+c = json.load(sys.stdin)
+print(*(c["name"] + "-" + s for s, v in c["services"].items() if "build" in v and "image" not in v))') ||
+      { echo "APP_IMAGE_NOT_REMOVED=? ($why): its compose file does not load, no record"; continue; }
+    present=$(for image in $built; do docker image inspect "$image" >/dev/null 2>&1 && echo "$image"; done)
+    (cd "$apps/$folder" && docker compose down --rmi local --remove-orphans) >/dev/null 2>&1
+    left=$(for image in $present; do docker image inspect "$image" >/dev/null 2>&1 && echo "$image"; done)
+    for image in $present; do grep -qx "$image" <<< "$left" || echo "APP_IMAGE_REMOVED=$image ($why)"; done
+    for image in $left; do echo "APP_IMAGE_NOT_REMOVED=$image ($why): no record, the next lane tries again"; done
+    [ -n "$present" ] || echo "APP_IMAGE_REMOVED=none built ($why)"
+    if [ -z "$left" ] && [ "$new" != - ]; then echo "$new" > "$record"; fi
+  done
+}
+
+# win_app_images_drop: app_images_refresh on the VM, for the commit the lane tests (WIN_LANE_COMMIT, from win_sync_repo);
+# the repository's _apps folders give the same compose project names as the bundle's and the testground's copies
 win_app_images_drop() {
-  win_ps 2>&1 <<PS | tr -d '\r'
-\$ErrorActionPreference = "Continue"
-\$before = @(& docker images --format '{{.Repository}}:{{.Tag}}')
-foreach (\$c in (Get-ChildItem -Path '$WIN_REPO\\asbl\\src\\main\\external-resources\\db-template\\_apps' -Recurse -Depth 3 -Filter docker-compose.yml -ErrorAction SilentlyContinue)) {
-  Push-Location -LiteralPath \$c.DirectoryName
+  local records plan
+  records=$(win_ps 2>/dev/null <<'PS' | tr -d '\r'
+Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'dp-ci\app-images') -Filter *.key -ErrorAction SilentlyContinue |
+  ForEach-Object { ($_.BaseName -replace '\+', '/') + ' ' + (Get-Content -LiteralPath $_.FullName -TotalCount 1) }
+PS
+)
+  plan=$(app_images_plan "${WIN_LANE_COMMIT:-}" "$records")
+  { printf "\$apps = '%s\\\\%s'\n\$plan = @'\n%s\n'@\n" "$WIN_REPO" "${APPS_IN_REPO//\//\\}" "$plan"
+    cat <<'PS'
+$ErrorActionPreference = 'Continue'
+$records = Join-Path $env:LOCALAPPDATA 'dp-ci\app-images'
+New-Item -ItemType Directory -Force -Path $records | Out-Null
+function Test-Image($name) { & docker image inspect $name 2>$null | Out-Null; $LASTEXITCODE -eq 0 }
+function Short($key, $none) { if ($key -eq '-') { $none } else { $key.Substring(0, 8) } }
+foreach ($line in ($plan -split "`r?`n")) {
+  $what, $folder, $old, $new = $line.Trim() -split ' '
+  if (-not $folder) { continue }
+  if ($what -eq 'keep') { "WIN_APP_IMAGE_KEPT=$folder (sources $(Short $new))"; continue }
+  $dir = Join-Path $apps ($folder -replace '/', '\')
+  if (-not (Test-Path -LiteralPath (Join-Path $dir 'docker-compose.yml'))) { continue }
+  $record = Join-Path $records (($folder -replace '/', '+') + '.key')
+  Remove-Item -LiteralPath $record -ErrorAction SilentlyContinue
+  $why = $folder + ': ' + (Short $old 'no record') + ' -> ' + (Short $new 'unknown')
+  Push-Location -LiteralPath $dir
+  $config = (& docker compose config --format json 2>$null) -join "`n" | ConvertFrom-Json
+  $built = @($config.services.PSObject.Properties | Where-Object { $_.Value.build -and -not $_.Value.image } |
+    ForEach-Object { $config.name + '-' + $_.Name })
+  $present = @($built | Where-Object { Test-Image $_ })
   & docker compose down --rmi local --remove-orphans 2>&1 | Out-Null
   Pop-Location
+  $left = @($present | Where-Object { Test-Image $_ })
+  $present | Where-Object { $left -notcontains $_ } | ForEach-Object { "WIN_APP_IMAGE_REMOVED=$_ ($why)" }
+  $left | ForEach-Object { "WIN_APP_IMAGE_NOT_REMOVED=$_ ($why): no record, the next lane tries again" }
+  if (-not $config) { "WIN_APP_IMAGE_NOT_REMOVED=? ($why): its compose file does not load, no record" }
+  elseif (-not $present) { "WIN_APP_IMAGE_REMOVED=none built ($why)" }
+  if ($config -and -not $left -and $new -ne '-') { Set-Content -LiteralPath $record -Value $new -Encoding Ascii }
 }
-\$after = @(& docker images --format '{{.Repository}}:{{.Tag}}')
-\$before | Where-Object { \$after -notcontains \$_ } | ForEach-Object { "WIN_APP_IMAGE_REMOVED=\$_" }
 PS
+  } | win_ps 2>&1 | tr -d '\r'
 }
 
 win_e2e() {
@@ -3155,12 +3248,8 @@ HTML
 
     # The apps the tests start (next-playground, grails-playground, ai-hub, …) are built by compose from the
     # bundle's _apps sources, and compose reuses an image that already exists: an image left by an earlier run
-    # would hide every change to those sources. A fresh install has none, so neither does the run — remove
-    # what compose built for each app (--rmi local: only built images, never the public ones an app pulls).
-    local app_compose
-    for app_compose in $(find "$DOCKER_SERVER_DIR/_apps" -name docker-compose.yml 2>/dev/null); do
-      (cd "$(dirname "$app_compose")" && docker compose down --rmi local --remove-orphans) >/dev/null 2>&1 || true
-    done
+    # would hide every change to those sources, so an app's images go when its sources changed.
+    app_images_refresh "$DOCKER_SERVER_DIR/_apps" "$SHA"
 
     # The bundle's other images (mailhog) are ordinary public ones: pull any the host lacks (a docker prune
     # removes them), the DataPallas image never.
