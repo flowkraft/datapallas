@@ -63,6 +63,12 @@ test.describe('', async () => {
         'northwind.duckdb',
       );
 
+      // The month-by-month story below names months, and the months of the demo data depend on
+      // the day it was seeded: so the data is loaded again on the day its checks were computed
+      // for, whatever day the run happens on. Before Try It: the page it opens asks the same
+      // database file, and a seed that writes it while the page reads it fails.
+      await reseedCubeDemoData(adminFetch, 'http://localhost:9090');
+
       // A dashboard sample's "Try It" opens the page in the browser, as the Sales Dashboard sample does.
       let externalBrowser = null;
 
@@ -74,11 +80,6 @@ test.describe('', async () => {
       try {
         const { browser, context, page } = await SelfServicePortalsTestHelper.createExternalBrowser();
         externalBrowser = browser;
-
-        // The month-by-month story below names months, and the months of the demo data depend on
-        // the day it was seeded: so the data is loaded again on the day its checks were computed
-        // for, before the page is opened, whatever day the run happens on.
-        await reseedCubeDemoData(adminFetch, 'http://localhost:9090');
 
         const dashboardUrl = 'http://localhost:9090/dashboard/g-cube-country-sales';
 
