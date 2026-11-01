@@ -222,6 +222,9 @@ test.describe('', async () => {
   });
 
   test('should correctly generate-email-test-tokenlist samples/reports/payslips/Payslips.csv (Payslips)', async function () {
+    // One long flow: 43 s on Linux, 1.5 min on the Windows VM, over 3 min on its Docker Desktop server, where each of
+    // its report lists takes 14-16 s (the list reads every report's settings through the bind mounts).
+    test.setTimeout(Constants.DELAY_FIVE_HUNDRED_SECONDS);
     //const shouldDeactivateLicenseKey = true;
     const shouldDeactivateLicenseKey = false;
 
