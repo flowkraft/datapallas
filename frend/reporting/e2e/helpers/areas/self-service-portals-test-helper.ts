@@ -1720,11 +1720,11 @@ export class SelfServicePortalsTestHelper {
     expect(recordText).toContain('12');
     console.log('Grails Parameters: Data - initial 12 records loaded ✓');
 
-    // Run Report - should filter (show "N of 12" where N >= 1)
+    // Run Report - should filter (show "N of 12" where N >= 1). The count changes when the report answers, which
+    // a server reading its files through Docker Desktop's bind mounts on Windows does in several seconds.
     await page.click('#submitBtn');
-    await page.waitForTimeout(2000);
+    await expect(page.locator('#recordCount')).toHaveText(/of\s*12/i, { timeout: 20000 }); // "X of 12" pattern
     recordText = await page.locator('#recordCount').textContent();
-    expect(recordText).toMatch(/of\s*12/i); // "X of 12" pattern
     // Reject 0 results — would indicate broken data extraction (e.g. result.reportData vs result.data)
     expect(recordText).not.toMatch(/\b0\s+of/i);
     console.log(`Grails Parameters: Data - filtered to ${recordText} ✓`);
