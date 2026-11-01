@@ -259,6 +259,18 @@ export async function fetchCube(cubeId: string): Promise<{ id: string; name: str
   return res.json();
 }
 
+/** The generate-sql calls not answered yet. */
+const cubeSqlNotAnswered = new Set<Promise<string>>();
+
+/**
+ * Settles once every generate-sql asked so far has answered. A cube widget takes a new selection only
+ * with its SQL, so until then the canvas still holds the selection before it: Publish waits for this,
+ * or the filter the author has just applied is not in the dashboard.
+ */
+export async function cubeSqlAnswered(): Promise<void> {
+  while (cubeSqlNotAnswered.size) await Promise.allSettled([...cubeSqlNotAnswered]);
+}
+
 /**
  * Generate SQL from a cube's selected dimensions, measures and segments.
  *
@@ -267,7 +279,20 @@ export async function fetchCube(cubeId: string): Promise<{ id: string; name: str
  * back — every row, silently. The backend has always read them
  * (`CubeSqlGenerator.requestedList(request, "segments", "selectedSegments")`).
  */
-export async function generateCubeSql(
+export function generateCubeSql(
+  cubeId: string,
+  connectionId: string,
+  selection: CubeSelection,
+  cubeName?: string | null,
+): Promise<string> {
+  const answer = askCubeSql(cubeId, connectionId, selection, cubeName);
+  cubeSqlNotAnswered.add(answer);
+  const answered = () => { cubeSqlNotAnswered.delete(answer); };
+  answer.then(answered, answered);
+  return answer;
+}
+
+async function askCubeSql(
   cubeId: string,
   connectionId: string,
   selection: CubeSelection,

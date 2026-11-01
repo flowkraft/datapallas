@@ -209,6 +209,12 @@ test.describe('Cube widgets — the two publishing modes', () => {
       await page.locator('#ShipCountry_cb_Germany').waitFor({ state: 'visible', timeout: 15_000 });
       await page.locator('#ShipCountry_cb_Germany').click();
       await page.locator('#ShipCountry_btnOk').click();
+      // The server answers the filter's SQL late, as the Windows Docker server once did (3.8 s): the widget
+      // takes the filter only with that answer, and Publish waits for it instead of publishing the selection before.
+      await page.route('**/cubes/*/generate-sql', async (route) => {
+        if (route.request().postData()?.includes('Germany')) await new Promise((r) => setTimeout(r, 4_000));
+        await route.continue();
+      });
       await page.locator('#btnFilterApply').click();
       await expect(page.locator('#chipFilter-ShipCountry')).toContainText('Ship Country: Germany');
       await page.waitForTimeout(1_500); // autosave debounce
@@ -218,6 +224,7 @@ test.describe('Cube widgets — the two publishing modes', () => {
       // ── Mode 1: Show In Dashboard unchecked — the frozen SQL ──────────────
       await expect(page.locator('#chkCubeShowInDashboard')).not.toBeChecked();
       const frozen = await publishDashboard(page);
+      await page.unroute('**/cubes/*/generate-sql');
       const frozenIds = await getCanvasComponentIds(page, canvasId);
       const componentId = (frozenIds['tabulator'] ?? [])[0];
       expect(componentId).toBeTruthy();

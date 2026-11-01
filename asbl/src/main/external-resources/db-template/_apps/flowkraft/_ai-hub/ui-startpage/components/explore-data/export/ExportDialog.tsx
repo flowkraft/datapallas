@@ -7,7 +7,7 @@ import { persistedStateOf, useCanvasStore } from "@/lib/stores/canvas-store";
 import { usePublishStatusStore, publishSignature, rememberPublished } from "@/lib/stores/publish-status-store";
 import { columnKindsOf, extractParamTypes, sqlForDataSource } from "@/lib/explore-data/sql-builder";
 import { temporalColumnNamesOf } from "@/lib/explore-data/widget-defaults";
-import { ensureDataTodayLoaded, getConnectionType, getDataToday, updateCanvas } from "@/lib/explore-data/rb-api";
+import { cubeSqlAnswered, ensureDataTodayLoaded, getConnectionType, getDataToday, updateCanvas } from "@/lib/explore-data/rb-api";
 import { saveDashboardToDataPallas } from "./rbApiClient";
 
 interface ExportDialogProps {
@@ -36,6 +36,11 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     setSaving(true);
     setResult(null);
 
+    // A cube widget takes a new selection only with its SQL, from the server: the canvas is read once every
+    // selection asked for has it, or the filter the author has just applied is not published.
+    await cubeSqlAnswered();
+    const canvas = useCanvasStore.getState();
+
     // Populate generatedSql for visual-mode widgets that have no explicit
     // Finetune SQL — "as if" the user had pasted it into the SQL editor.
     // Backend ScriptAssembler reads dataSource.generatedSql to emit the
@@ -45,11 +50,11 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     // We PATCH the canvas state directly rather than updating the store +
     // waiting for autosave (1200 ms debounce) — avoids a race where /export
     // reads stale state from SQLite.
-    const connectionType = getConnectionType(state.connectionId);
+    const connectionType = getConnectionType(canvas.connectionId);
     // A relative date filter counts from the data's today: known before any SQL is built here,
     // not only when a widget on the canvas happened to ask for it first.
-    await ensureDataTodayLoaded(state.connectionId);
-    const patchedWidgets = state.widgets.map((w) => {
+    await ensureDataTodayLoaded(canvas.connectionId);
+    const patchedWidgets = canvas.widgets.map((w) => {
       const ds = w.dataSource;
       if (!ds) return w;
       const hasExplicitSql = (ds.mode === "sql" || ds.mode === "ai-sql") && !!ds.sql?.trim();
@@ -66,15 +71,15 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         temporalColumnNamesOf(w.shape),
         columnKindsOf(w.columns),
         // A Date parameter a filter is bound to means the whole day it names (F8).
-        extractParamTypes(state.parametersConfig?.parameters),
+        extractParamTypes(canvas.parametersConfig?.parameters),
         undefined,
-        getDataToday(state.connectionId),
+        getDataToday(canvas.connectionId),
       );
       return built ? { ...w, dataSource: { ...ds, generatedSql: built } } : w;
     });
-    const persistedState = persistedStateOf(patchedWidgets, state.parametersConfig, state.dashboardSettings);
+    const persistedState = persistedStateOf(patchedWidgets, canvas.parametersConfig, canvas.dashboardSettings);
     try {
-      await updateCanvas(state.id, { state: persistedState });
+      await updateCanvas(canvas.id, { state: persistedState });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setResult({ success: false, error: `Failed to persist canvas before publish: ${msg}` });
@@ -82,15 +87,15 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       return;
     }
 
-    const res = await saveDashboardToDataPallas(state.id);
+    const res = await saveDashboardToDataPallas(canvas.id);
     setResult(res);
     setSaving(false);
     if (res.success) {
-      state.setExportedReportCode(res.reportId);
+      canvas.setExportedReportCode(res.reportId);
       // Mark the canvas clean wrt publishing — subsequent edits will flip it
       // back to dirty via usePublishDirty. Autosave is unaffected.
       usePublishStatusStore.getState().markClean();
-      rememberPublished(state.id, publishSignature(state.name, state.connectionId || null, persistedState));
+      rememberPublished(canvas.id, publishSignature(canvas.name, canvas.connectionId || null, persistedState));
     }
   };
 
