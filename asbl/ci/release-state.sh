@@ -82,8 +82,12 @@
 # A `targeted` run (own E2E_SPEC/E2E_GREP) is recorded for the table but never counts for a release.
 # STEP 1 ON AN EARLIER COMMIT (step1_answer, since plan-2026-10-28-faster-releases): a lane with no verdict on the commit
 # counts with its newest verdict on an earlier commit of that commit's history when asbl/ci/reuse-or-rebuild.sh says
-# nothing step 1's lanes test changed between the two (RR_STEP1 still-counts: a test or CI fix after step 1). A product
-# change between them still needs step 1 again, or E2E_APPROVAL. step1-guard, `require` and `show` name that commit and why.
+# nothing step 1's lanes test changed between the two (RR_STEP1 still-counts: a test or CI fix after step 1).
+# STEP 1 CLOSED FOR A VERSION (owner, 2026-11-01: a release whose fixes reopen step 1 never ships): when the two commits
+# declare the same settings.xml <version>, that newest verdict counts whatever changed between them, a product fix
+# included. A lane green for a version stays green for it; a red one still means step 1 again; a lane with no verdict for
+# the version runs as before. Another version: a product change still needs step 1 again, or E2E_APPROVAL.
+# step1-guard, `require` and `show` name that commit and why.
 # A LANE RED ON A FEW TESTS: `record-step1 <target> reruns <mode>` records it PASS once every failure in its report passed
 # alone after the lane's run (asbl/ci/release-rerun.sh run, retries 0; release-rerun.sh lane checks it), each on a commit
 # where nothing step 1's lanes test changed since the lane's own. The verdict keeps the run (log, report, run_time, rc) and
@@ -137,6 +141,7 @@ commit_of() {  # the full hash of RELEASE_COMMIT or HEAD; the given text itself 
   [ "$c" != HEAD ] && echo "$c"
 }
 tree_version() { grep -m1 -oP '(?<=<version>)[^<]+' "$SETTINGS_XML" 2>/dev/null; }
+version_at() { git show "$1:$SETTINGS_XML" 2>/dev/null | grep -m1 -oP '(?<=<version>)[^<]+'; }  # version_at <commit>
 valid_name() { printf '%s' "$1" | grep -qE '^(step1|rehearsal|public)\.[a-z0-9-]+$'; }
 field() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -1; }  # field <file> <key>
 
@@ -257,24 +262,30 @@ lane_verdicts() {
 }
 # step1_answer <verdict name>: what counts for one step-1 lane on $commit (STEP 1 ON AN EARLIER COMMIT, above): its own
 # verdict when it has one, the last run counting as always; else the newest verdict of the lane on an earlier commit of its
-# history from which nothing step 1's lanes test changed. Sets S1_RESULT (PASS, FAIL, or empty: missing), S1_FROM (the
-# commit whose verdict counts) and S1_HOW (how, in words, for the gate's lines and `show`; empty for a plain run of the
-# commit itself).
+# history from which nothing step 1's lanes test changed, or the newest one of the same version (STEP 1 CLOSED FOR A
+# VERSION). Sets S1_RESULT (PASS, FAIL, or empty: missing), S1_FROM (the commit whose verdict counts) and S1_HOW (how, in
+# words, for the gate's lines and `show`; empty for a plain run of the commit itself).
 step1_answer() {
-  local n="$1" t f="" oc=""
+  local n="$1" t f="" oc="" v
   S1_RESULT="" S1_FROM="" S1_HOW=""
   if [ -f "$dir/$n" ]; then
     f="$dir/$n"; oc="$commit"
   else
+    v=$(version_at "$commit")
     while read -r t f; do
       oc=$(basename "$(dirname "$f")")
       reuse_or_rebuild "$oc" "$commit"
       [ "$RR_STEP1" = still-counts ] && break
+      [ -n "$v" ] && [ "$(version_at "$oc")" = "$v" ] && break
       [ -n "$S1_HOW" ] || S1_HOW="none carried: the newest on an earlier commit, $(field "$f" result) on ${oc:0:8} ($t), does not count here: $RR_STEP1_WHY since"
       f=""
     done < <(lane_verdicts "$n" "$commit")
     [ -n "$f" ] || return 0
-    S1_HOW="carried from ${oc:0:8} ($(field "$f" time)): nothing step 1's lanes test changed in ${oc:0:8}..${commit:0:8} ($RR_CHANGED files differ; asbl/ci/reuse-or-rebuild.sh)"
+    if [ "$RR_STEP1" = still-counts ]; then
+      S1_HOW="carried from ${oc:0:8} ($(field "$f" time)): nothing step 1's lanes test changed in ${oc:0:8}..${commit:0:8} ($RR_CHANGED files differ; asbl/ci/reuse-or-rebuild.sh)"
+    else
+      S1_HOW="carried from ${oc:0:8} ($(field "$f" time)): step 1 is closed for $v: $RR_STEP1_WHY in ${oc:0:8}..${commit:0:8}, the same version, which does not reopen it"
+    fi
   fi
   S1_RESULT=$(field "$f" result) S1_FROM="$oc"
   if [ "$(field "$f" completed_by)" = reruns ]; then
