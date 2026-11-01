@@ -28,9 +28,10 @@ host_install_dir() {
 		return 0
 	fi
 	command -v docker >/dev/null 2>&1 || return 0
+	# Docker Desktop for Windows reports the Source as C:\...\config, with backslashes.
 	docker inspect "$(cat /etc/hostname 2>/dev/null)" \
 		--format '{{range .Mounts}}{{.Destination}} {{.Source}}{{"\n"}}{{end}}' 2>/dev/null |
-		awk -v here="$1/config" '$1 == here { sub(/\/config$/, "", $2); print $2; exit }'
+		awk -v here="$1/config" '$1 == here { sub(/[\/\\]config$/, "", $2); print $2; exit }'
 }
 
 INTERNAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/internal"
