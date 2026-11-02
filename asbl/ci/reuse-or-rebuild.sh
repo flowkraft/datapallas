@@ -61,10 +61,14 @@
 #                         templates from bkend/reporting/src/test/. Those are read from the assemblers' sources at both
 #                         commits (shipped_test_files), so a new copy line is picked up without editing this list.
 #   .docs/                notes, ignored by git: never in a commit.
+#   .github/              the GitHub repository's own files: its workflows, dependabot.yml and the pictures the README
+#                         shows. One workflow (update-stars.yml) commits the star counter
+#                         .github/screenshots/github-star-animation.svg to main every day and on every new star, so main
+#                         moves by it between a release's sign-off and its upload. No packer names the folder.
 # The one packer that copies everything is the Windows pack's source zip (DataPallasSourceAssembler = `git archive HEAD`): it
 # carries these files as source, never as something the product runs, and no test reads them out of it. Execution 2 packs it
 # from its own commit, so the source zip a user gets always matches its commit.
-NEVER_SHIPPED=(frend/reporting/e2e/ asbl/ci/ asbl/src/uat/ '*/src/test/' .docs/)
+NEVER_SHIPPED=(frend/reporting/e2e/ asbl/ci/ asbl/src/uat/ '*/src/test/' .docs/ .github/)
 
 # Under asbl/ci/ but shipped: they decide the built bytes of the Linux builds (the e2e package on this host, the image and the
 # zips), not the VM's. A change to how dp-ci.sh DRIVES a build stays CI: execution 2 rebuilds with it.
@@ -216,8 +220,8 @@ rr_step1_words() { [ "$RR_STEP1" = still-counts ] && echo "still counts" || echo
 
 # rr_replay: the acceptance check. The three transitions of the 16.6.0 release between its four chains must print exactly the
 # plan's table (plan-2026-10-28-faster-releases-trusted-light-set.md, "The replay"); then one case each for a test-only
-# commit, a product commit, a dirty tree, a path it cannot place, a shipped src/test file, a unit test, the CI toolchain and
-# a Windows-only packer. Prints each answer with PASS or FAIL; exit 0 only when all pass.
+# commit, the star counter's commit, a product commit, a dirty tree, a path it cannot place, a shipped src/test file, a
+# unit test, the CI toolchain and a Windows-only packer. Prints each answer with PASS or FAIL; exit 0 only when all pass.
 rr_replay() {
   local fails=0 row got want tmp scratch none
   echo "THE REPLAY (16.6.0): what each transition between the chains really needed"
@@ -241,6 +245,9 @@ ROWS
   }
   reuse_or_rebuild d59a7f78~1 d59a7f78
   rr_replay_case "test-only commit d59a7f78 (one e2e spec)" "reuse reuse reuse still counts"
+  reuse_or_rebuild 37d1fa00~1 37d1fa00
+  rr_replay_case "the star counter's commit 37d1fa00 (.github/screenshots/github-star-animation.svg)" \
+    "reuse reuse reuse still counts"
   reuse_or_rebuild dcfc6c01~1 dcfc6c01
   rr_replay_case "product commit dcfc6c01 (server + Electron main)" "rebuild rebuild rebuild refused: the product changed"
   # a dirty tree: a scratch clone sharing this repository's objects, one e2e helper checked out and changed. Even a
@@ -276,7 +283,7 @@ ROWS
   # The never-shipped list holds only while no packer names one of its folders: the packers' code (comments left out) at
   # this checkout's HEAD, so a new copy line breaks the replay instead of being missed. src/test is not searched here: the
   # files an assembler copies from it are read by shipped_test_files and count as shipped.
-  got=$(git -C "$RR_REPO" grep -nE 'frend/reporting/e2e|e2e/|asbl/ci|asbl/src/uat|src/uat|\.docs' HEAD -- "$ASSEMBLY/" \
+  got=$(git -C "$RR_REPO" grep -nE 'frend/reporting/e2e|e2e/|asbl/ci|asbl/src/uat|src/uat|\.docs|\.github' HEAD -- "$ASSEMBLY/" \
           asbl/pack-datapallas.bat asbl/pack-prepare-for-e2e.bat Dockerfile frend/reporting/electron-builder.json 2>/dev/null |
         grep -vE '^[^:]+:[^:]+:[0-9]+:[[:space:]]*(//|\*|/\*|#|REM |@?echo )')
   if [ -z "$got" ]; then
