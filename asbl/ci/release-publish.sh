@@ -42,11 +42,15 @@
 #
 #   UPLOAD=no|yes DRY_RUN=no|yes  bash asbl/ci/release-publish.sh upload-kept [docker|windows]
 #       Release day (plan-pre-release-artifacts-ready): the files the day-before run kept, uploaded as they are, no rebuild:
-#       both channels, or one. The folder is <RELEASE_ARTIFACTS_DIR>/<version>-<commit> of this checkout (RELEASE_KEPT_DIR
-#       another), asbl/ci/release-keep.sh's. Refused, naming what, before anything is written: no folder; its manifest of
-#       another version or commit; origin/main moved past it; a channel's kept run not green; a file whose sha256 or the
-#       image whose id differs from the manifest (release-keep.sh check); files that are not the ones the passed
-#       rehearsal.<channel> of that commit proved; the version gate; step 1 not green (all four lanes, or E2E_APPROVAL). Then
+#       both channels, or one. The folder is <RELEASE_ARTIFACTS_DIR>/<version>-<commit>, asbl/ci/release-keep.sh's, of the
+#       newest kept run of this checkout's version on its commit or one in its history (RELEASE_KEPT_DIR another). Refused,
+#       naming what, before anything is written: no folder; its manifest of another version, or of a commit this checkout
+#       does not contain; this checkout neither that commit nor origin/main; origin/main moved past it by what ships (the
+#       files named) or no longer containing it (a move by never-shipped files only, a test or CI fix, is accepted, as the
+#       end guards of steps 2 and 3 accept it: release-state.sh moved-main); a channel's kept run not green; a file whose
+#       sha256 or the image whose id differs from the manifest (release-keep.sh check); files that are not the ones the
+#       passed rehearsal.<channel> of that commit proved; the version gate; step 1 not green (all four lanes, or
+#       E2E_APPROVAL). Then
 #       docker: stage-docker from the folder (:<version> pushed from the kept image, the kept zip staged), rehearsal.docker
 #       PASS upload=yes recorded; windows: the kept zips put back in the VM's asbl\dist when a later run replaced them
 #       (dp-ci.sh win put-dist), then stage-files (the VM uploads them). MODE=public then copies them as always. UPLOAD=no or
@@ -355,22 +359,44 @@ publish() {
   echo "RELEASE_PUBLIC PASS $ch $v: newest/ and $v/ = $folder (the rehearsal of $c8)$([ "$ch" = docker ] && echo ", $RELEASE_IMAGE_REPO:latest = $digest")"
 }
 
+# kept_folder_of <version> <commit>: the folder of the newest kept run of <version> on <commit> or a commit in its history
+# (release-keep.sh's <version>-<commit8>, whose MANIFEST.txt names the full commit); nothing when there is none
+kept_folder_of() {
+  local d k best="" best_k=""
+  for d in "$RELEASE_ARTIFACTS_DIR/$1"-*/; do
+    d="${d%/}"; k=$(sed -n 's/^commit=//p' "$d/MANIFEST.txt" 2>/dev/null)
+    [ -n "$k" ] && [ "$(sed -n 's/^version=//p' "$d/MANIFEST.txt")" = "$1" ] && git merge-base --is-ancestor "$k" "$2" 2>/dev/null || continue
+    [ -z "$best_k" ] || git merge-base --is-ancestor "$best_k" "$k" || continue
+    best="$d" best_k="$k"
+  done
+  echo "$best"
+}
+
 # upload_kept [docker|windows]: release day's upload of the files a rehearsal kept (the top of this file)
 upload_kept() {
-  local chs="${1:-docker windows}" ch dry=0 c v f bad=0 out rc list n size sha name want got tmp
+  local chs="${1:-docker windows}" ch dry=0 c v f bad=0 out rc list n size sha name want got tmp head main
   case "${DRY_RUN:-no}" in no) ;; yes|1) dry=1 ;; *) echo "FAIL  DRY_RUN must be no or yes (got '$DRY_RUN')"; return 2 ;; esac
   case "$chs" in docker|windows|"docker windows") ;; *) echo "usage: $0 upload-kept [docker|windows]"; return 2 ;; esac
   refuse() { echo "REFUSED  $1"; echo "UPLOAD_KEPT REFUSED: nothing pushed, uploaded or recorded"; }
-  c=$(git rev-parse HEAD)
+  head=$(git rev-parse HEAD)
   v=$(grep -m1 -oP '(?<=<version>)[^<]+' bkend/reporting/src/main/external-resources/template/config/burst/settings.xml 2>/dev/null)
-  f="${RELEASE_KEPT_DIR:-$RELEASE_ARTIFACTS_DIR/$v-${c:0:8}}"
-  echo "UPLOAD_KEPT $chs of $v on ${c:0:8} from $f, UPLOAD=$UPLOAD$([ "$dry" = 1 ] && echo ", dry run")"
-  [ -f "$f/MANIFEST.txt" ] || { refuse "no kept release in $f (the day-before run of $v on ${c:0:8}, MODE=rehearsal UPLOAD=no, keeps its files there)"; return 1; }
-  [ "$(sed -n 's/^version=//p' "$f/MANIFEST.txt")" = "$v" ] && [ "$(sed -n 's/^commit=//p' "$f/MANIFEST.txt")" = "$c" ] ||
-    { refuse "$f/MANIFEST.txt is not of $v on ${c:0:8} (this checkout)"; return 1; }
-  if ! git fetch -q origin || [ "$(git rev-parse origin/main)" != "$c" ]; then
-    refuse "origin/main is not ${c:0:8} any more (or could not be read): the kept files are of a commit main moved past; rehearse again"; return 1
-  fi
+  # The kept run is found by its version and commit, not by this checkout's: release day's checkout is on origin/main,
+  # which may have moved past the kept commit by never-shipped files only (a test or CI fix)
+  f="${RELEASE_KEPT_DIR:-$(kept_folder_of "$v" "$head")}"
+  c=$(sed -n 's/^commit=//p' "$f/MANIFEST.txt" 2>/dev/null)
+  echo "UPLOAD_KEPT $chs of $v on ${c:0:8} from $f, this checkout ${head:0:8}, UPLOAD=$UPLOAD$([ "$dry" = 1 ] && echo ", dry run")"
+  [ -n "$f" ] && [ -f "$f/MANIFEST.txt" ] ||
+    { refuse "no kept release of $v on ${head:0:8} or a commit in its history in ${f:-$RELEASE_ARTIFACTS_DIR} (the day-before run of $v, MODE=rehearsal UPLOAD=no, keeps its files in $RELEASE_ARTIFACTS_DIR/$v-<commit8>)"; return 1; }
+  [ "$(sed -n 's/^version=//p' "$f/MANIFEST.txt")" = "$v" ] && [ ${#c} = 40 ] && git merge-base --is-ancestor "$c" "$head" 2>/dev/null ||
+    { refuse "$f/MANIFEST.txt is not of $v on ${head:0:8} (this checkout) or a commit in its history"; return 1; }
+  git fetch -q origin && main=$(git rev-parse --verify -q origin/main) || { refuse "origin/main could not be read"; return 1; }
+  [ "$head" = "$c" ] || [ "$head" = "$main" ] ||
+    { refuse "this checkout ${head:0:8} is neither the kept commit ${c:0:8} nor origin/main ${main:0:8}"; return 1; }
+  # origin/main still the kept commit, or moved past it by never-shipped files only: the rule of the end guards of steps 2
+  # and 3 (release-state.sh moved-main; never its RELEASE_PIN answer, which lets main move by what ships)
+  out=$(env -u RELEASE_PIN bash "$HERE/release-state.sh" moved-main "$c" "$main"); rc=$?
+  printf '%s\n' "$out"
+  [ "$rc" = 0 ] || { refuse "the kept files of ${c:0:8} are not what origin/main ${main:0:8} would release: ${out#MOVED_MAIN refused: }"; return 1; }
   for ch in $chs; do
     [ "$(sed -n "s/^$ch\.result=//p" "$f/MANIFEST.txt")" = PASS ] ||
       { refuse "the kept $ch run of $v is not green (MANIFEST.txt: $ch.result=$(sed -n "s/^$ch\.result=//p" "$f/MANIFEST.txt" | grep . || echo 'none, the run did not finish')): read $f/failure-report-$ch.md"; return 1; }
@@ -668,11 +694,12 @@ for k, v in (json.load(sys.stdin).get(os.environ["R"]) or {}).items():
       echo "RELEASE_STAGE FAIL"; exit 1
     }
     if [ -n "${RELEASE_KEPT_DIR:-}" ]; then
-      # upload-kept: the files a rehearsal kept, no build: the image's build tag and the zip from the folder's manifest
+      # upload-kept: the files a rehearsal kept, no build: the image's build tag and the zip from the folder's manifest; the
+      # commit is the kept run's (RELEASE_COMMIT, set by upload-kept), which this checkout on a later main is not
       tag=$(sed -n 's/^docker\.image=[^ ]* id=[^ ]* built_as=[^:]*:\([^ ]*\)$/\1/p' "$RELEASE_KEPT_DIR/MANIFEST.txt" | tail -1)
-      c=$(git rev-parse HEAD); v="${tag%%-*}"
+      c=$(git rev-parse "${RELEASE_COMMIT:-HEAD}"); v="${tag%%-*}"
       [ -n "$tag" ] || fail "$RELEASE_KEPT_DIR/MANIFEST.txt names no kept image"
-      [ "$(sed -n 's/^commit=//p' "$RELEASE_KEPT_DIR/MANIFEST.txt")" = "$c" ] || fail "the kept files are not of this checkout (${c:0:8})"
+      [ "$(sed -n 's/^commit=//p' "$RELEASE_KEPT_DIR/MANIFEST.txt")" = "$c" ] || fail "the kept files are not of ${c:0:8}"
     else
     out=$(mktemp) || exit 2
     bash asbl/ci/dp-ci.sh build-if-needed 2>&1 | tee "$out"; rc=${PIPESTATUS[0]}

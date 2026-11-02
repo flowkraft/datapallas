@@ -49,7 +49,8 @@
 #   the two proofs with its test, its step, its error and its evidence, then grouped; release-keep.sh) and the summary: each
 #   artifact, the proofs that covered it, where it sits.
 # MODE=upload: release day's upload of what a rehearsal kept, no rebuild (release-publish.sh upload-kept docker): this
-#   checkout on origin/main, the folder of its version and commit, each file and the image checked against the manifest and
+#   checkout on origin/main, the folder of its version's kept run (on its commit, or one main moved past by never-shipped
+#   files only), each file and the image checked against the manifest and
 #   the passed rehearsal's record (any other = refused, naming it), the version gate, step 1 (all four lanes, or E2E_APPROVAL),
 #   then :<version> pushed and the docker zip staged, recorded as rehearsal.docker PASS upload=yes. Needs UPLOAD=yes to upload;
 #   UPLOAD=no or DRY_RUN=yes: every check, then the commands it would run, nothing written. Minutes.
