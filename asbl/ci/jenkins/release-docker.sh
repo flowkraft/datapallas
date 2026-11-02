@@ -173,6 +173,12 @@ rehearse() {
   else
     # a later part: the build the linux part made, never a new one (DRY_RUN=1 only finds it)
     mark_next "DOCKER RELEASE STEP 2/6" "the build the linux part made of ${c:0:8} (DOCKER_RELEASE_PART=$PART: nothing is built here)"
+    # build-if-needed finds the build by its image in the daemon, which this host's nightly image cleanup (below) may have
+    # emptied since the linux part: the image back from the file that part saved, first
+    image_tar="${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}/$v-${c:0:8}/.incoming-datapallas-server-image.tar"
+    if [ "$dry" != 1 ] && ! docker image inspect "$RELEASE_IMAGE_REPO:$v-$(git rev-parse --short HEAD)" >/dev/null 2>&1 && [ -s "$image_tar" ]; then
+      echo "$RELEASE_IMAGE_REPO:$v-$(git rev-parse --short HEAD) is not in this host's Docker daemon any more: loading it from $image_tar"; docker load -q -i "$image_tar"
+    fi
     DRY_RUN=1 bash asbl/ci/dp-ci.sh build-if-needed 2>&1 | tee "$out"; rc=${PIPESTATUS[0]}
     [ "$dry" = 1 ] || grep -q '^BUILD_TAG=' "$out" || { echo "FAILED: no build of ${c:0:8} on this host: the linux part builds it (DOCKER_RELEASE_PART=linux)"; rc=1; }
   fi
@@ -217,10 +223,6 @@ rehearse() {
   fi
   [ -n "$tag" ] || { echo "FAILED: dp-ci.sh build-if-needed printed no BUILD_TAG (above)"; finish_red "$v" "$c" "no BUILD_TAG"; return 1; }
   image_tar="$folder/.incoming-datapallas-server-image.tar"
-  # a later part may come after this host's nightly image cleanup (below): the image back from the file the linux part saved
-  if [ -n "$PART" ] && ! docker image inspect "$RELEASE_IMAGE_REPO:$tag" >/dev/null 2>&1 && [ -s "$image_tar" ]; then
-    echo "$RELEASE_IMAGE_REPO:$tag is not in this host's Docker daemon any more: loading it from $image_tar"; docker load -q -i "$image_tar"
-  fi
   image_id=$(docker image inspect "$RELEASE_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
     { echo "FAILED: the build's image $RELEASE_IMAGE_REPO:$tag is not on this host"; finish_red "$v" "$c" "the build's image is missing"; return 1; }
   [ -s "$zip" ] || { echo "FAILED: $zip is missing (the build's)"; finish_red "$v" "$c" "the build's zip is missing"; return 1; }
