@@ -107,6 +107,10 @@
 #       E2E_KEPT_BUILD=<artifacts folder> [empty]  with image-and-zips in E2E_REUSE_BUILD: the docker-server lane and win
 #                  docker-e2e install that execution's kept image and datapallas-server-docker.zip (asbl/ci/release-keep.sh)
 #                  instead of the newest build's (kept_build_tag). Empty = the newest successful build, as always.
+#       E2E_BUILD_IMAGE_FILE=<file> [empty]  the build's image as `docker save` wrote it, set by
+#                  asbl/ci/jenkins/release-docker.sh (its part folder's copy): docker-server loads the image back from it
+#                  when this host's daemon lost it, and win docker-e2e copies it to the VM from it instead of the daemon
+#                  (image_back_from_file, image_file_id). Empty = the daemon only, as always.
 #       RELEASE_PIN=<commit> [empty]  an execution of steps 2 and 3 pinned to one commit, set only by
 #                  asbl/ci/jenkins/release-orchestrator.sh: every lane, build and pack puts this checkout and the VM's on that
 #                  commit (the same fast-forward, then exactly on it: sync_host_repo, win_sync_repo), not on origin/main, so
@@ -338,6 +342,26 @@ kept_build_tag() {
     { echo "FAIL  the kept image is of '$tagsha', the commit under test is '${under:0:8}', and it cannot stand for it (above)" >&2; return 2; }
   echo "KEPT_BUILD $SERVER_IMAGE_REPO:$tag and $kept/datapallas-server-docker.zip (E2E_KEPT_BUILD)" >&2
   echo "$tag"
+}
+
+# This host's nightly image cleanup runs twice a night: it deletes every image no container uses, and it strips an image a
+# container uses down to one tag. Whatever a run asks the daemon for by tag after a night may be gone: a run that has the
+# image as a file (E2E_BUILD_IMAGE_FILE, a kept build's) takes it from there.
+# image_file_id <file>: the id of the image a `docker save` file holds (its config's digest, the id this host's daemon gives
+# it), read from the file's manifest without loading it; nothing when the file holds no image.
+image_file_id() {
+  local id
+  id=$(tar -xOf "$1" manifest.json 2>/dev/null | grep -oE '"Config":"[^"]*"' | head -1 | grep -oE '[0-9a-f]{64}')
+  [ -n "$id" ] && echo "sha256:$id"
+}
+
+# image_back_from_file <image> <file>: <image> loaded back from <file> when this host's daemon lost it; nothing when it is
+# there or there is no file. The caller's id check follows, as before.
+image_back_from_file() {
+  docker image inspect "$1" >/dev/null 2>&1 && return 0
+  [ -s "${2:-}" ] || return 0
+  echo "$1 is not in this host's Docker daemon any more (its nightly image cleanup?): loading it from $2" >&2
+  docker load -q -i "$2" >&2 || echo "FAIL  docker load -i $2" >&2
 }
 
 # A publish target: the site's compose folder (docker-compose.yml + .env with DATAPALLAS_IMAGE=...), its data
@@ -1731,6 +1755,7 @@ win_docker_config() {
 
 win_docker_e2e() {
   local target=windows-vm-docker mode=targeted retries spec gexp tag version image_id vm_id running_id tmp want="" vmc
+  local image_file="" file_id
   local zip="$REPO/asbl/dist/datapallas-server-docker.zip" step=docker-e2e
   local root="$WIN_REPO\\frend\\reporting\\testground\\docker-server"
   local inst="$root\\DataPallas"
@@ -1754,10 +1779,23 @@ win_docker_e2e() {
       # a re-run between the executions on the image and the zip an execution kept (kept_build_tag), not the newest build's
       tag=$(kept_build_tag "$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)") || return 2
       zip="${E2E_KEPT_BUILD%/}/datapallas-server-docker.zip"
+      image_file="${E2E_KEPT_BUILD%/}/datapallas-server-image.tar"
     else
       tag=$(win_vm_build_tag) || return $?
+      image_file="${E2E_BUILD_IMAGE_FILE:-}"
     fi
-    image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
+    # The copy to the VM comes after the VM's package, about an hour later: from the build's image file when there is one,
+    # so this host's nightly image cleanup in that hour changes nothing; from the daemon otherwise, as before. The file
+    # must hold the image the daemon has under the tag (when it still has it).
+    [ -s "$image_file" ] || image_file=""
+    image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null)
+    if [ -n "$image_file" ]; then
+      file_id=$(image_file_id "$image_file")
+      [ -n "$file_id" ] && [ "${image_id:-$file_id}" = "$file_id" ] ||
+        { echo "FAIL  $image_file holds image '${file_id:-none}', not the build's $SERVER_IMAGE_REPO:$tag ($image_id)" >&2; return 2; }
+      image_id="$file_id"
+    fi
+    [ -n "$image_id" ] ||
       { echo "FAIL  image $SERVER_IMAGE_REPO:$tag is not on this host - run dp-ci.sh build-if-needed first" >&2; return 2; }
     [ -s "$zip" ] || { echo "FAIL  $zip is missing - run dp-ci.sh build-if-needed first" >&2; return 2; }
     version=$(printf '%s' "$tag" | cut -d- -f1)
@@ -1786,9 +1824,14 @@ win_docker_e2e() {
     case "$vm_id" in
       sha256:*) echo "WIN_DOCKER_IMAGE=$SERVER_IMAGE_REPO:$tag already on the VM" ;;
       *)
-        echo "WIN_DOCKER_IMAGE=$SERVER_IMAGE_REPO:$tag copying to the VM (docker save, scp, docker load)"
         tmp=$(mktemp --suffix=.tar.gz) || return 1
-        docker save "$SERVER_IMAGE_REPO:$tag" | gzip -1 > "$tmp" || { rm -f "$tmp"; echo "FAIL  docker save failed" >&2; return 1; }
+        if [ -n "$image_file" ]; then
+          echo "WIN_DOCKER_IMAGE=$SERVER_IMAGE_REPO:$tag copying to the VM from $image_file (scp, docker load)"
+          gzip -1 < "$image_file" > "$tmp" || { rm -f "$tmp"; echo "FAIL  could not read $image_file" >&2; return 1; }
+        else
+          echo "WIN_DOCKER_IMAGE=$SERVER_IMAGE_REPO:$tag copying to the VM (docker save, scp, docker load)"
+          docker save "$SERVER_IMAGE_REPO:$tag" | gzip -1 > "$tmp" || { rm -f "$tmp"; echo "FAIL  docker save failed" >&2; return 1; }
+        fi
         win_ssh "if not exist C:\\dp-ci\\tmp md C:\\dp-ci\\tmp" >/dev/null 2>&1
         win_scp "$tmp" C:/dp-ci/tmp/datapallas-server-image.tar.gz || { rm -f "$tmp"; echo "FAIL  could not copy the image to the VM" >&2; return 1; }
         rm -f "$tmp"
@@ -3196,6 +3239,7 @@ HTML
   # tests, the page's other way in: the image alone, `docker run --rm -p <port>:9090 <image>`, must answer 200.
   DOCKER_SERVER_DIR=""
   DOCKER_SERVER_IMAGE=""
+  DOCKER_SERVER_IMAGE_ID=""
   DOCKER_SERVER_URL="http://localhost:9090"
   docker_server_up() {
     local zip="$REPO/asbl/dist/datapallas-server-docker.zip" root="$REPO/frend/reporting/testground/docker-server"
@@ -3229,6 +3273,7 @@ HTML
       # unless a re-run between the executions (image-and-zips in E2E_REUSE_BUILD) finds that nothing the image ships changed since.
       [ "${tag#*-}" = "$SHA" ] || reuse_build_ok image-and-zips "${tag#*-}" "$SHA" "$REPO" ||
         { echo "!!! docker-server: the image was built from '${tag#*-}', the commit under test is '$SHA' — run 'dp-ci.sh build-if-needed' first"; return 1; }
+      image_back_from_file "$SERVER_IMAGE_REPO:$tag" "${E2E_BUILD_IMAGE_FILE:-}"
       image_id=$(docker image inspect "$SERVER_IMAGE_REPO:$tag" --format '{{.Id}}' 2>/dev/null) ||
         { echo "!!! docker-server: image $SERVER_IMAGE_REPO:$tag is not on this host — run 'dp-ci.sh build' first"; return 1; }
       [ -s "$zip" ] || { echo "!!! docker-server: $zip is missing — run 'dp-ci.sh build' first"; return 1; }
@@ -3279,6 +3324,7 @@ HTML
         { echo "!!! docker-server: the container runs image $running_id, the build made $image_id — aborting"; docker_server_down; return 1; }
       echo "DOCKER_SERVER_IMAGE=$SERVER_IMAGE_REPO:$tag $image_id"
     fi
+    DOCKER_SERVER_IMAGE_ID="$running_id"
     # The whole server log of the run, next to the run log: clean state empties the bundle's logs between tests,
     # and the last lines printed by docker_server_down do not reach back to a failure hours earlier.
     docker logs -f datapallas-server > "${LOG%.log}-datapallas-server.log" 2>&1 &
@@ -3316,19 +3362,24 @@ HTML
   }
 
   # The self-host page's one command, `docker run --rm -p 9090:9090 <image>`: the release's image alone must answer 200
-  # within 3 minutes. Run after the bundle is down, on a free local port; stopped (and so removed) after.
+  # within 3 minutes. Run after the bundle is down, on a free local port; stopped (and so removed) after. The image is the
+  # one the bundle ran (docker_server_up checked it), by its id and never pulled: after a night this host's image cleanup
+  # may have taken its tag, and `docker run <tag>` would pull the public image of that name instead.
   docker_one_command() {
     local port code="" i name=dp-ci-one-command
     for port in $(seq 19090 19190); do (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null || break; done
-    docker run -d --rm --name "$name" -p "127.0.0.1:$port:9090" "$DOCKER_SERVER_IMAGE" >/dev/null ||
-      { echo "DOCKER_ONE_COMMAND result=FAIL image=$DOCKER_SERVER_IMAGE (docker run failed)"; return 1; }
+    image_back_from_file "$DOCKER_SERVER_IMAGE_ID" "${E2E_BUILD_IMAGE_FILE:-}"
+    docker image inspect "$DOCKER_SERVER_IMAGE_ID" >/dev/null 2>&1 ||
+      { echo "DOCKER_ONE_COMMAND result=FAIL image=$DOCKER_SERVER_IMAGE id=${DOCKER_SERVER_IMAGE_ID:-none} (the image the bundle ran is not on this host any more; never pulled)"; return 1; }
+    docker run -d --rm --pull never --name "$name" -p "127.0.0.1:$port:9090" "$DOCKER_SERVER_IMAGE_ID" >/dev/null ||
+      { echo "DOCKER_ONE_COMMAND result=FAIL image=$DOCKER_SERVER_IMAGE id=$DOCKER_SERVER_IMAGE_ID (docker run failed)"; return 1; }
     for i in $(seq 1 36); do
       code=$(curl -s -L -o /dev/null -m 5 -w '%{http_code}' "http://127.0.0.1:$port/" 2>/dev/null)
       [ "$code" = 200 ] && break
       sleep 5
     done
     docker stop "$name" >/dev/null 2>&1
-    echo "DOCKER_ONE_COMMAND result=$([ "$code" = 200 ] && echo PASS || echo FAIL) image=$DOCKER_SERVER_IMAGE port=$port http=${code:-none}"
+    echo "DOCKER_ONE_COMMAND result=$([ "$code" = 200 ] && echo PASS || echo FAIL) image=$DOCKER_SERVER_IMAGE id=$DOCKER_SERVER_IMAGE_ID port=$port http=${code:-none}"
     [ "$code" = 200 ]
   }
 
@@ -3422,6 +3473,32 @@ HTML
       echo "trivy: JSON scan of $img failed (not gating)"
     trivy image --quiet --severity HIGH,CRITICAL --format table "$img" ||
       echo "trivy: table scan of $img failed (not gating)"
+    return 0
+  }
+
+  # The CI cleans up after itself: once a build succeeded, older builds' images (about 2 GB each) go, whatever this
+  # host's nightly cleanup takes or leaves.
+  # Kept: the newest build's, any a container uses (running or stopped), and the one an execution of steps 2 and 3 still
+  # needs (its linux part saved it as .incoming-datapallas-server-image.tar beside .docker-proven, until its keep takes
+  # the file). A kept build stays as a file in its release-artifacts folder and is loaded back from there when needed.
+  # Never fails the build.
+  old_server_images_drop() {
+    local newest used live f id refs
+    newest=$(docker image inspect "$SERVER_IMAGE_REPO:$VERSION-$SHA" --format '{{.Id}}' 2>/dev/null) || return 0
+    used=$(docker ps -aq | xargs -r docker inspect --format '{{.Image}}' 2>/dev/null)
+    live=$(for f in "${RELEASE_ARTIFACTS_DIR:-$LOG_DIR/release-artifacts}"/*/.incoming-datapallas-server-image.tar; do
+             [ -e "$f" ] && sed -n 's/^image_id=//p' "${f%/*}/.docker-proven" 2>/dev/null; done)
+    for id in $(docker images "$SERVER_IMAGE_REPO" --no-trunc --format '{{.ID}}' | sort -u); do
+      [ "$id" = "$newest" ] && continue
+      if grep -qxF "$id" <<< "$used"; then echo "SERVER_IMAGE_KEPT=$id (a container uses it)"; continue; fi
+      if grep -qxF "$id" <<< "$live"; then echo "SERVER_IMAGE_KEPT=$id (an execution's part still needs it)"; continue; fi
+      # by each tag (by its id, an image with several tags is refused); a digest-only image (pulled by digest) by its id
+      refs=$(docker images "$SERVER_IMAGE_REPO" --no-trunc --format '{{.ID}} {{.Repository}}:{{.Tag}}' |
+             awk -v id="$id" '$1 == id {print ($2 ~ /:<none>$/ ? id : $2)}' | sort -u)
+      # shellcheck disable=SC2086
+      if docker rmi $refs >/dev/null 2>&1; then echo "SERVER_IMAGE_REMOVED=$id ($(echo $refs))"
+      else echo "SERVER_IMAGE_KEPT=$id (docker rmi refused)"; fi
+    done
     return 0
   }
 
@@ -3735,6 +3812,7 @@ HTML
   package_stamp
   step 5 tag_image
   step 6 trivy_scan
+  step 7 old_server_images_drop
   echo ""
   echo "PIPELINE_RESULT=SUCCESS  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   exit 0
@@ -4037,7 +4115,7 @@ docker run -d --rm --name "$CONTAINER" $E2E_FLAGS $PUBLISH_FLAGS $DOCS_FLAGS --u
   -e E2E_CHROMIUM_EXECUTABLE="${E2E_CHROMIUM_EXECUTABLE:-}" \
   -e E2E_SLOW_MO="${E2E_SLOW_MO:-}" -e E2E_DD_SCREENSHOTS="${E2E_DD_SCREENSHOTS:-}" \
   -e E2E_ROTATION_DATE="${E2E_ROTATION_DATE:-}" -e E2E_PACKAGE="${E2E_PACKAGE:-}" -e E2E_DOCKER_FROM_URL="${E2E_DOCKER_FROM_URL:-}" -e E2E_DOCKER_ONE_COMMAND="${E2E_DOCKER_ONE_COMMAND:-}" \
-  -e E2E_REUSE_BUILD="${E2E_REUSE_BUILD:-}" -e E2E_KEPT_BUILD="${E2E_KEPT_BUILD:-}" \
+  -e E2E_REUSE_BUILD="${E2E_REUSE_BUILD:-}" -e E2E_KEPT_BUILD="${E2E_KEPT_BUILD:-}" -e E2E_BUILD_IMAGE_FILE="${E2E_BUILD_IMAGE_FILE:-}" \
   -e PUBLISH_TAG="$PUBLISH_TAG" -e PUBLISH_RESET="$PUBLISH_RESET" -e PUBLISH_SETTINGS_FILE="$PUBLISH_SETTINGS_FILE" -e DRY_RUN="${DRY_RUN:-0}" -e FORCE="${FORCE:-0}" -e SMOKE_TIMEOUT_SECS="${SMOKE_TIMEOUT_SECS:-300}" \
   -e TARGET_HOST="${TARGET_HOST:-}" -e TARGET_COMPOSE_DIR="${TARGET_COMPOSE_DIR:-}" -e TARGET_DATA_DIR="${TARGET_DATA_DIR:-}" \
   -e TARGET_APP="${TARGET_APP:-}" -e TARGET_URL="${TARGET_URL:-}" \

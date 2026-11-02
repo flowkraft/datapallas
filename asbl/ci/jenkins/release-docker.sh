@@ -239,9 +239,10 @@ rehearse() {
     fi
   fi
   echo "the artifact under proof: $RELEASE_IMAGE_REPO:$tag ($image_id) and $zip (sha256 $zip_sha)"
-  # The image as a file as well, saved before the proofs: this host's nightly cleanup (~03:00-03:25Z) deletes every image no
-  # container uses, and took this one during the Windows proof of 889001e6 (keep FAIL). Step 5 loads it back from here when
-  # the daemon lost it, and keeps the file beside the zip.
+  # The image as a file as well, saved before the proofs: this host's nightly cleanup (twice a night, about 04:01Z and 04:27Z
+  # in winter, an hour earlier in summer) deletes every image no container uses and strips one a container uses down to one
+  # tag; it took this one during the Windows proof of 889001e6 (keep FAIL). Both proofs take the image from this file when
+  # the daemon lost it (E2E_BUILD_IMAGE_FILE), step 5 loads it back from here, and keeps the file beside the zip.
   # (the windows and keep parts keep the file the linux part saved, when there is one)
   { [ "$PART" = windows ] || [ "$PART" = keep ]; } && [ -s "$image_tar" ] || docker save -o "$image_tar" "$RELEASE_IMAGE_REPO:$tag" ||
     { echo "FAILED: docker save $RELEASE_IMAGE_REPO:$tag"; rm -f "$image_tar"; finish_red "$v" "$c" "the image could not be saved as a file"; return 1; }
@@ -251,7 +252,7 @@ rehearse() {
   # E2E_DOCKER_FROM_URL empty = the build's own zip and image (docker-server never pulls them); retries 1, as the Windows light set has
   t0=$(date +%s)
   if E2E_TARGET=docker-server E2E_SPEC=light E2E_GREP="" E2E_RETRIES=1 E2E_DOCKER_FROM_URL="" E2E_DOCKER_ONE_COMMAND=yes \
-     FOLLOW_PIDFILE="" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e; then res_linux=PASS; else res_linux=FAIL; fi
+     E2E_BUILD_IMAGE_FILE="$image_tar" FOLLOW_PIDFILE="" bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/dp-ci.sh e2e; then res_linux=PASS; else res_linux=FAIL; fi
   log=$(newest_log "$LOG_DIR/latest.log" "$t0"); json="${log:+${log%.log}-playwright.json}"
   echo "DOCKER_RELEASE_LINUX_PROOF=$res_linux log=${log:-none} report=${json:-none}"
   $KEEP step docker "$v" "$c" "DOCKER RELEASE STEP 3/6" "$res_linux" "Linux proof: the docker zip installed as the self-host page says, the light set ($light), the one-command run" "$log" "$json"
@@ -266,7 +267,7 @@ rehearse() {
   mark_start "DOCKER RELEASE STEP 4/6" "Windows proof, no registry: the same image loaded on the VM, the same zip installed in its Docker Desktop, the light set"
   # empty filters = the lane's light set ($light, retries 1); E2E_DOCKER_FROM_URL empty = the build's image copied over, the build's zip
   t0=$(date +%s)
-  if E2E_SPEC="" E2E_GREP="" E2E_RETRIES="" E2E_DOCKER_FROM_URL="" FOLLOW_PIDFILE="$LOG_DIR/win-e2e.pid" \
+  if E2E_SPEC="" E2E_GREP="" E2E_RETRIES="" E2E_DOCKER_FROM_URL="" E2E_BUILD_IMAGE_FILE="$image_tar" FOLLOW_PIDFILE="$LOG_DIR/win-e2e.pid" \
      bash asbl/ci/jenkins/follow-ci.sh run bash asbl/ci/jenkins/win-e2e.sh docker-e2e; then res_windows=PASS; else res_windows=FAIL; fi
   log=$(newest_log "$LOG_DIR/win-e2e-latest.log" "$t0")
   json=$([ -n "$log" ] && grep -aoP '^WIN_E2E_REPORT=\K\S+' "$log" | tail -1)
