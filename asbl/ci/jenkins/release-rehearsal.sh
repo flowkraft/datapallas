@@ -252,7 +252,7 @@ ready_to_upload() {
     state_set "$dir" state=green why="ready to upload"
     say "READY TO UPLOAD $(state_get "$dir" version) on $(state_get "$dir" pin | cut -c1-8). The next presses, each a separate one:"
     say "  dp-ci-release-step2-release-docker and dp-ci-release-step3-release-windows-vm with MODE=upload UPLOAD=yes (the kept files),"
-    say "  then each with MODE=public, then dp-ci-release-step4-public-checks"
+    say "  then each with MODE=public, then dp-ci-release-step4-demo-public"
     return 0
   fi
   state_set "$dir" state=green-not-ready why="not ready to upload: ${missing:-a preflight failed (above)}"
