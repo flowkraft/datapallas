@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- CI/CD improvements: a release runs from one step, start to end, with any failure fixed and proven before the release goes on.
+- CI/CD improvements: a release runs from one step, start to end, with any failure fixed and proven before 
+  the release goes on.
 
 ## 16.6.1 - 2026-11-02
 
