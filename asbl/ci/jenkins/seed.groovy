@@ -472,14 +472,14 @@ try {
 }
 println "Parameter separators: ${separatorsAvailable ? 'shown' : 'left out (the parameter-separator plugin is not active)'}"
 
-jobs.each { name, job ->
-  pipelineJob("datapallas/${name}") {
+jobs.each { jobName, job ->
+  pipelineJob("datapallas/${jobName}") {
     description(job.about)
     parameters {
       job.params.each { pname, p ->
         if (p.separator) {
           if (separatorsAvailable) {
-            separator {
+            separator {   // the loop says jobName: a closure calls a captured local before a DSL method of that name
               name(pname)
               separatorStyle('')
               sectionHeader(p.separator)
@@ -501,7 +501,7 @@ jobs.each { name, job ->
             branch(repoBranch)
           }
         }
-        scriptPath("asbl/ci/jenkins/${name}.Jenkinsfile")
+        scriptPath("asbl/ci/jenkins/${jobName}.Jenkinsfile")
         lightweight(true)
       }
     }
