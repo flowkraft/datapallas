@@ -10,3 +10,5 @@ htmlpublisher:latest
 coverage:latest
 warnings-ng:latest
 robot:latest
+# Added by the one-job release plan (16.6.2): the separator lines with a header between the groups of the release round's form
+parameter-separator:latest

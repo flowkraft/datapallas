@@ -10,6 +10,7 @@ The jobs are in the Jenkins folder `datapallas` (https://jenkins.bkstg.flowkraft
 
 | Situation | Job | Values |
 |---|---|---|
+| A release, in one press (e.g. 16.6.2) | `dp-ci-release-steps-0-3-rehearsal` | `RELEASE_VERSION=16.6.2`, the rest as they are: steps 0 to 3 as a rehearsal, a fix round after a red run, until ready to upload; then the upload presses it names |
 | Re-run one failed e2e test after a fix | `dp-ci-dev-e2e-one-spec` | `E2E_SPEC=/features/samples\.spec\.ts$`, `E2E_GREP=<a piece of the test's title>`; then `E2E_GREP` empty for the whole file |
 | Confirm one spec file on a package built from this exact commit | `dp-ci-release-step1-e2e-prerelease` | `E2E_TARGET=web`, `E2E_SPEC=/features/samples\.spec\.ts$` (recorded as `targeted`) |
 | Run one JUnit class or method | `dp-ci-dev-junit` | `JUNIT_MODULE=bkend/server`, `JUNIT_TEST=ReportsServiceTest#aFolderHoldingOnlyOneTemplateNeedsNoInference` (a class: `JUNIT_TEST=ReportsServiceTest`) |
@@ -70,6 +71,7 @@ session or of any chat.
 | Jenkins container restarts | **keeps running** | its console stops and the build shows as aborted; follow the same run again by hand on the host: `bash asbl/ci/jenkins/follow-ci.sh attach` |
 | Someone presses Abort on the build | **keeps running** (only the following stops); stop it with `docker stop dp-ci` | aborted |
 | The host reboots | lost: rerun it | aborted |
+| The release round (`dp-ci-release-steps-0-3-rehearsal`): Jenkins restarts, or a person presses Abort | a restart: **keeps running** (a detached process on the host, not a container); an Abort, the build's or the review pause's: **stopped** (`release-rehearsal.sh stop`: the round, then what its runs started) | a restart: resumes following from where it was, and a review pause waits on; an Abort: aborted |
 
 So the work cannot be lost by closing or restarting anything except the host. What a Jenkins restart takes
 away is the live view of that build, and `follow-ci.sh attach` (on the host) brings it back.
@@ -201,6 +203,33 @@ scripts wraps each in `job-step.sh "JOB STEP n/N" "<what>" <command...>`, so its
   - `windows-vm-server`: also the machine's Java 17 (`vm-java`), which `startServer.bat` runs on.
 - `dp-ci-release-step2-release-docker` and `dp-ci-release-step3-release-windows-vm`: "Before the first release", below; step 3 also the VM answering over SSH (`vm`), unless it only copies.
 - `dp-ci-release-step4-demo-public` builds nothing and has no check of its own: a part that fails stops it with `FAILED` and why.
+
+### dp-ci-release-steps-0-3-rehearsal
+
+- **What:** the release round, one press: `asbl/ci/jenkins/release-rehearsal.sh`, which the job only starts, follows and answers (a light wrapper; a person or an AI coordinator runs the same from a shell, the five parameters being its environment). Run 1: step 0, step 1's lanes, then steps 2 and 3 on one commit (`release-orchestrator.sh`), as a rehearsal: built, proven and kept, nothing uploaded. A red run: a fix round (`ON_FAILURES`), then the round runs again from the start (step 0 never again, step 1 only for its red lanes, steps 2 and 3 from the very beginning). Green: both `UPLOAD=yes` preflights checked by name, then "ready to upload" with the next presses; the upload stays a separate press.
+- **When:** a release, the day before the release day. After it is green: steps 2 and 3 with `MODE=upload UPLOAD=yes`, then `MODE=public` on each, then step 4.
+- **The form**, three groups, each under a separator line with its name (the `parameter-separator` plugin; without it the seed leaves the lines out):
+
+  ```
+  ── Always ──────────────────────────────────────────────
+  RELEASE_VERSION  [16.6.2                             ]
+  ── Sometimes ───────────────────────────────────────────
+  ON_FAILURES      [fix-prove-then-wait-for-review    v]
+  ── Rarely: leave them as they are ──────────────────────
+  RELEASE_PIN      [                                   ]
+  DRY_RUN          [no  v]
+  E2E_APPROVAL     [                                   ]
+  ```
+
+  - `RELEASE_VERSION` (empty by default; its text names the current release and the next possible ones): the new version. Empty only to rehearse the current version again, with no step 0.
+  - `ON_FAILURES`: `fix-prove-then-wait-for-review` (default: the build pauses with Proceed, showing the fix plan, its report and the commits; Proceed = run again from the start), `fix-prove-then-rerun-automatically` (it runs again by itself; after 2 such re-runs it waits), `report-only` (it ends red with the failure report, no agent). A fix round that ends BLOCKED always waits.
+  - `RELEASE_PIN` (empty: run 1 on step 0's commit or origin/main), `DRY_RUN` (`no`; `yes` = each run is the orchestrator's dry run, nothing runs, builds, records or uploads: to check the job after a CI change), `E2E_APPROVAL` (the shared text of steps 2 and 3; passed to every run of the round, sent to the host on stdin, never on a command line, and never written in a file by the round).
+  - Not parameters: who started it (the build's cause), `MODE` and `UPLOAD` (always a rehearsal, no upload), the retries (always 1), the test switches.
+- **The build:** `agent none`; only short SSH calls take an executor. It follows the round's console (`release-rehearsal.sh follow --from <byte> --for 45`) in polls of under a minute, so a Jenkins restart only resumes the polling. A round waiting for a review: the pause shows `release-rehearsal.sh review` (why, the fix plan with its status line, its report, the red run, the commits since the run's pin), outside any node; Proceed calls `proceed`. An Abort pressed by a person, the build's or the pause's, calls `stop` (at the pause, only while the round still waits there); a restart never does, and the job has no timeout on purpose.
+- **The build page:** the label in the build list (`release-rehearsal.sh label`: `16.6.2 run 1 going`, `16.6.2 waiting for review after run 1`, `16.6.2 green, 1 run, ready to upload`, `16.6.2 red after run 2`); each ended run's reports as its `result.txt` lists them (`release-rehearsal.sh reports`), in the artifacts `reports/run-<n>/`: `result.txt`, the summary, the failure reports, the flaky tests, the Playwright JSON and JUnit XML (shown in Test Result), the Robot results (shown by the Robot plugin), and `report-paths.txt`, which names every report on the host. The Playwright HTML folders are not copied (one full run's is up to 18 GB): open them on the host, or pull one with `pull-reports.sh`. The settings it ran with: `round-settings.txt`.
+- **States and exit codes** (`release-rehearsal.sh`, every subcommand): 0 green, ready to upload (then released); 1 red; 2 refused, nothing started; 3 waiting for review; 4 stopped; 5 running or fixing; 6 green, not ready to upload. The build ends green for 0, unstable for 6, red otherwise.
+- **From a shell** (on this host): `ROUND_STARTED_BY=<name> RELEASE_VERSION=16.6.2 bash asbl/ci/jenkins/release-rehearsal.sh start`, then `status`, `follow`, `PROCEED_BY=<name> ... proceed`, `stop`, `busy`, `help`.
+- **Needs:** checked first, within seconds (`REFUSED: <why>. Nothing started`): the CI free (a scheduled run is stopped first: a release goes before it), the version not public on both channels already, this host's Docker engine and the Windows VM (`release-publish.sh preflight docker`, `UPLOAD=no`). For a fix round: the fixer in the root-only `/root/release-rehearsal.conf` on this host (`RELEASE_FIXER`); without it, `fix-*` acts as `report-only` and says so. **Time:** a run about a day (16.6.1's execution 1 took about 19 h); a fix round hours, at most 48 h. **Log:** `^ROUND` (STARTED, RUN n START and END, FIX ROUND n START and END, WAITING FOR REVIEW, GREEN, READY TO UPLOAD, RED, STOPPED), then each run's orchestrator console.
 
 ## The release, in order
 
@@ -430,7 +459,7 @@ dashboard, a *List View* that includes all jobs, or `seed` appears again in any 
 | `release-label.sh` | on the host: the label of a step 0, 2 or 3 build in the build list, read from the run's output (`release-run.out` in the job's workspace), set by the Jenkinsfile's `post { always }` |
 | `release-demos.sh` | on the host: job `dp-ci-release-step4-demo-public` (`DEMO=demo.datapallas.com`: `asbl/ci/demo-public/install-release.sh`), masked |
 | `follow-ci.sh` | on the host: runs a launcher and follows its log until the run ends (`run`), or follows the current one (`attach`) |
-| `plugins.txt` | the plugins needed beyond a standard install: `job-dsl`, and the report publishers of the quality plan (`htmlpublisher`, `coverage`, `warnings-ng`, `robot`) |
+| `plugins.txt` | the plugins needed beyond a standard install: `job-dsl`, the report publishers of the quality plan (`htmlpublisher`, `coverage`, `warnings-ng`, `robot`), and `parameter-separator` (the group lines of the release round's form) |
 | `pull-reports.sh` | on the host: streams the report files of a run as a tar.gz, which the `Reports` stage of a Jenkinsfile unpacks into the build's workspace (see "Reports") |
 
 Nothing is kept for Jenkins in the server folders: `apps/program-files/custom-jenkins` only holds the compose
@@ -508,7 +537,7 @@ The quality plan only writes files in the repository. These steps change the run
 at a moment when no build is running or queued:
 
 1. **Install the plugins** listed at the end of `plugins.txt`: Manage Jenkins -> Plugins -> Available -> `htmlpublisher` (HTML Publisher), `coverage` (Coverage),
-   `warnings-ng` (Warnings Next Generation), `robot` (Robot Framework). (By command line instead:
+   `warnings-ng` (Warnings Next Generation), `robot` (Robot Framework), `parameter-separator` (Parameter Separator). (By command line instead:
    `docker cp asbl/ci/jenkins/plugins.txt ints-jenkins:/tmp/plugins.txt && docker exec ints-jenkins jenkins-plugin-cli --plugin-file /tmp/plugins.txt --plugin-download-directory /var/jenkins_home/plugins`.)
 2. **Let Jenkins show JavaScript in published HTML reports.** By default Jenkins serves workspace and published HTML with a strict Content-Security-Policy that blocks scripts, which breaks
    the Playwright report, the Javadoc and Compodoc sites and Swagger UI. Decision (an agent's design, the owner may change it): relax the policy for the whole Jenkins, because it sits behind Authelia and

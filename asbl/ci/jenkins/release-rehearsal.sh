@@ -21,6 +21,13 @@
 #              fixer's stop). Nothing the round did not start: an ended part's entries, older containers or pid files, and,
 #              when the round's process was gone already (a reboot) and another run holds the CI now, none at all. Exit 4
 #   busy       is the CI busy, the question start asks (and the scheduled job): FREE (exit 0), or BUSY <why> (exit 2)
+#   label      the build's label for the job's build list, one line: "16.6.2 run 1 going", "16.6.2 waiting for review after
+#              run 1", "16.6.2 green, 1 run, ready to upload", "16.6.2 red after run 2", ... Exit 0
+#   review     what a round waiting for review shows (the job's pause): why, the fix plan with its status line, its report,
+#              the red run's result.txt, the commits since the run's pin (origin/main fetched first). Exit 3; not waiting:
+#              NOT WAITING FOR REVIEW, the status line, the state's exit code
+#   reports    the report files of each ended run of the round, as its result.txt lists them:  REPORT <run n> <part> <path>
+#              a line (the result, summary, flaky tests and failure reports under the part "run"). The job pulls them
 #   help       this header
 #
 # THE PARAMETERS, in the groups the job's form shows:
@@ -404,6 +411,82 @@ proceed_round() {
   status_line "$dir"
   state=$(round_state "$dir"); exit "$(exit_code_of_state "$state")"
 }
+# ---- what the Jenkins job shows (read only) ----
+# round_label: the build's label in the job's build list, one line, e.g. "16.6.2 green, 1 run, ready to upload"
+round_label() {
+  local dir state version runs runs_word dry=""
+  dir=$(newest_round)
+  [ -n "$dir" ] || { echo "no round yet"; return; }
+  state=$(round_state "$dir"); version=$(state_get "$dir" version); runs=$(state_get "$dir" run)
+  runs_word="runs"; [ "$runs" = 1 ] && runs_word="run"
+  [ "$(state_get "$dir" dry_run)" != yes ] || dry=" (dry run)"
+  case "$state" in
+    running) if [ "${runs:-0}" = 0 ]; then echo "$version starting$dry"; else echo "$version run $runs going$dry"; fi ;;
+    fixing)             echo "$version fix round $(state_get "$dir" fix_round) after run $runs$dry" ;;
+    waiting-for-review) echo "$version waiting for review after run $runs$dry" ;;
+    green)              echo "$version green, $runs $runs_word, ready to upload$dry" ;;
+    green-not-ready)    echo "$version green, $runs $runs_word, $(state_get "$dir" why)$dry" ;;
+    released)           echo "$version released, $runs $runs_word" ;;
+    red)                echo "$version red after run $runs$dry" ;;
+    stopped)            echo "$version stopped, $runs $runs_word$dry" ;;
+    *)                  echo "$version $state$dry" ;;
+  esac
+}
+# review_round: what a round waiting for review shows (the job's pause): why it waits, the fix plan with its status line,
+# its report, the red run's result, and the commits since the run's pin (origin/main fetched first: the fixes are pushed)
+review_round() {
+  local dir state plan pin
+  dir=$(newest_round); state=$(round_state "${dir:-/nonexistent}")
+  [ "$state" = waiting-for-review ] || { echo "NOT WAITING FOR REVIEW"; status_line "$dir"; exit "$(exit_code_of_state "$state")"; }
+  plan=$(state_get "$dir" fix_plan); pin=$(state_get "$dir" pin)
+  echo "WAITING FOR REVIEW: $(state_get "$dir" why)"
+  if [ -n "$plan" ]; then
+    echo "  the fix plan: $plan"
+    [ ! -f "$plan" ] || echo "    $(head -n 1 "$plan")"
+    echo "  its report: ${plan%.md}-run-report.md"
+  fi
+  echo "  the red run: $(state_get "$dir" result)"
+  if [ -n "$pin" ]; then
+    git fetch -q origin main 2>/dev/null
+    echo "  the commits since the run's pin ${pin:0:8}:"
+    git log --oneline "$pin..origin/main" 2>/dev/null | head -40 | sed 's/^/    /'
+  fi
+  echo "  Proceed = run again from the start. Stop = the round ends (release-rehearsal.sh stop)."
+  exit 3
+}
+# report_files_of_run <run folder>: the report files its result.txt lists, that exist: the result itself, the summary, the
+# flaky tests, the failure reports, each part's reports (a Playwright JSON with its JUnit XML beside it; a Robot report:
+# its folder, where output.xml is). "<part> <path>" a line; the run's own files under the part "run"
+report_files_of_run() {
+  local result="$1/result.txt" key value part reports path
+  [ -f "$result" ] || return 0
+  echo "run $result"
+  while IFS='=' read -r key value; do
+    case "$key" in summary|flaky|failure_report) [ -z "$value" ] || [ ! -e "$value" ] || echo "run $value" ;; esac
+  done < <(grep -E '^(summary|flaky|failure_report)=' "$result")
+  # awk, not read: read merges empty tab-separated fields, so a part with no reports would read its why as them
+  while IFS=$'\t' read -r part reports; do
+    for path in $reports; do
+      case "$path" in
+        */report.html) path=$(dirname "$path") ;;
+        *.json) [ ! -e "${path%.json}.xml" ] || echo "$part ${path%.json}.xml" ;;
+      esac
+      [ ! -e "$path" ] || echo "$part $path"
+    done
+  done < <(awk -F'\t' '$1 == "part" { print $2 "\t" $6 }' "$result")
+}
+# round_reports: the report files of each run of the newest round that has ended: "REPORT <run n> <part> <path>" a line
+round_reports() {
+  local dir n folder
+  dir=$(newest_round)
+  [ -n "$dir" ] || { echo "NO ROUND"; exit 2; }
+  for n in $(seq 1 "$(state_get "$dir" run)"); do
+    folder=$(state_get "$dir" "run_$n")
+    [ -n "$folder" ] || continue
+    report_files_of_run "$folder" | awk -v n="$n" '!seen[$0]++ { print "REPORT " n " " $0 }'
+  done
+  exit 0
+}
 # ---- stop: what the round's runs started ----
 # run_folders_of_round <round folder>: each run's folder, from the orchestrator's PARTS lines in the round's console
 run_folders_of_round() { sed -n 's/^PARTS   one log per part in //p' "$1/round.log" 2>/dev/null | sort -u; }
@@ -514,7 +597,10 @@ case "${1:-help}" in
   proceed) proceed_round ;;
   stop)    stop_round ;;
   busy)    why=$(busy_reason); [ -z "$why" ] && { echo FREE; exit 0; }; echo "BUSY $why"; exit 2 ;;
+  label)   round_label; exit 0 ;;
+  review)  review_round ;;
+  reports) round_reports ;;
   help|-h|--help) sed -n '2,/^set -uo pipefail/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
   __drive) read_settings >/dev/null; drive_round "$2"; exit $? ;;   # internal: the round's own process, launched by start
-  *) echo "usage: $0 start|status|follow|proceed|stop|busy|help (see: $0 help)"; exit 2 ;;
+  *) echo "usage: $0 start|status|follow|proceed|stop|busy|label|review|reports|help (see: $0 help)"; exit 2 ;;
 esac

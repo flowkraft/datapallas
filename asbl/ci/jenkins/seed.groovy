@@ -18,6 +18,7 @@ def guideUrl   = 'https://github.com/flowkraft/datapallas/blob/main/asbl/ci/jenk
 folder('datapallas') {
   description('DataPallas CI. Each job runs a plain script of the repository (asbl/ci) on the CI host, the same command as by hand. The jobs are defined in asbl/ci/jenkins/seed.groovy: change them there, not here. The guide: ' + guideUrl +
     '\n\nWhich job, and when (each job\'s own description says how, with examples):' +
+    '\n  dp-ci-release-steps-0-3-rehearsal: a release in one press: steps 0 to 3 as a rehearsal, a fix round after a red run, until ready to upload (the upload stays a separate press)' +
     '\n  dp-ci-dev-e2e-one-spec: after a fix: one spec file, or some of its tests, on web or electron-linux' +
     '\n  dp-ci-dev-junit: after a Java change: one test class or method, or all' +
     '\n  dp-ci-dev-quality-report: any time: lint, bug finder, format, complexity; never blocks anything' +
@@ -132,10 +133,55 @@ def releaseVersionText = currentRelease ?
   "${currentRelease} is the current release: left as it is, this job does nothing. Fill a bigger release number whenever you want to push a new release (${biggerVersions(currentRelease)}).\nRead when the jobs were last generated (seed, ${readAt} UTC): ${currentFrom}. The job reads the released versions again when it runs, and changes nothing unless the number is bigger." :
   "The current release could not be read when the jobs were last generated (seed, ${readAt} UTC): left empty, this job prints the current release and does nothing. Fill a bigger release number (x.y.z) whenever you want to push a new release."
 println "RELEASE_VERSION default: '${currentRelease}' (${currentFrom ?: 'nothing read'})"
+// the release round's RELEASE_VERSION: empty by default (a press names the new version), the same facts as step 0's text
+def roundVersionText = 'Always. The new version x.y.z: step 0 sets it, then step 1, then steps 2 and 3, in run 1. Empty only to rehearse the current version again, with no step 0.\n' +
+  (currentRelease ?
+    "${currentRelease} is the current release; the next possible ones: ${biggerVersions(currentRelease)}.\nRead when the jobs were last generated (seed, ${readAt} UTC): ${currentFrom}. The round refuses a version that is public on both channels already." :
+    "The current release could not be read when the jobs were last generated (seed, ${readAt} UTC). The round refuses a version that is public on both channels already.")
 
 // name -> [what it is, parameters]; the Jenkinsfile is asbl/ci/jenkins/<name>.Jenkinsfile. Add an entry to add a job.
 // A parameter's text: the first line says what it is and its default, then when to change it, then examples.
 def jobs = [
+  'dp-ci-release-steps-0-3-rehearsal': [
+    about: 'Set RELEASE_VERSION.\nChange ON_FAILURES only when you want something other than a review of each fix round.\nLeave the other three as they are.\n\n' + describe(
+      WHAT: [
+        'The release round (asbl/ci/jenkins/release-rehearsal.sh): one press takes RELEASE_VERSION to "ready to upload". Run 1: step 0 (the version committed), step 1\'s lanes, then steps 2 and 3 on one commit (asbl/ci/jenkins/release-orchestrator.sh), as a rehearsal: built, proven and kept, nothing uploaded.',
+        'A red run: ON_FAILURES says what follows. A fix round: an agent (the fixer) finds each failure\'s root cause in the code and the git history, fixes it, and proves each fix by re-running only what failed; then the round runs again from the start: step 0 never again, step 1 only for its red lanes, steps 2 and 3 from the very beginning.',
+        'Green: both channels\' UPLOAD=yes preflights are checked (every credential, by name only): "ready to upload", with the next presses, and the flaky tests listed. The upload stays a separate press.',
+        'The round runs on this host, detached: closing the browser or restarting Jenkins never stops it (the build resumes following it). An Abort pressed by a person stops the round, and what its runs started.',
+      ],
+      WHEN: 'a release: one press with RELEASE_VERSION, the day before the release day. RELEASE_VERSION empty: the current version rehearsed again, no step 0. DRY_RUN=yes: to check the job after a CI change.',
+      ORDER: 'it runs steps 0 to 3 in one press (each step job stays, for a step alone). After it is green: dp-ci-release-step2-release-docker and dp-ci-release-step3-release-windows-vm with MODE=upload UPLOAD=yes, then MODE=public on each, then dp-ci-release-step4-demo-public. One round at a time.',
+      NEEDS: [
+        'checked first, within seconds (REFUSED: <why>. Nothing started):',
+        'the CI free: no dp-ci run, no Windows run, no release run, no round going (bash asbl/ci/jenkins/release-rehearsal.sh busy says FREE); a scheduled run (dp-ci-dev-scheduled-e2e) is stopped first: a release goes before it;',
+        'the version not public on both channels already; this host\'s Docker engine and the Windows VM (asbl/ci/release-publish.sh preflight docker, UPLOAD=no);',
+        'for a fix round: the fixer, set on this host in the root-only settings file /root/release-rehearsal.conf (RELEASE_FIXER); without it, ON_FAILURES acts as report-only and the round says so;',
+        'for "ready to upload" only, not to start: the upload credentials, checked by name (asbl/ci/release-publish.sh preflight docker public, preflight files public).',
+      ],
+      TIME: 'a run: about a day (16.6.1\'s execution 1 took about 19 h: step 1\'s lanes, then steps 2 and 3); a fix round: hours, at most 48 h (its own cap); the build follows the round in polls of under a minute.',
+      EXAMPLES: [
+        'release 16.6.2: RELEASE_VERSION=16.6.2 (the rest as they are)',
+        'the same, and run again by itself after each fix round (twice at most, then it waits): RELEASE_VERSION=16.6.2  ON_FAILURES=fix-prove-then-rerun-automatically',
+        'the failure report only, no agent: RELEASE_VERSION=16.6.2  ON_FAILURES=report-only',
+        'check the job after a CI change, nothing run: RELEASE_VERSION=16.6.2  DRY_RUN=yes',
+        'rehearse the current version again, no step 0: RELEASE_VERSION empty',
+      ],
+      LOG: '^ROUND (the round\'s own lines: STARTED, RUN n START and END, FIX ROUND n START and END, WAITING FOR REVIEW, GREEN, READY TO UPLOAD, RED, STOPPED), then each run\'s orchestrator console (PARTS, SUMMARY). The build list labels each build with where the round is (16.6.2 run 1 going, waiting for review after run 1, green, 1 run, ready to upload). Each ended run\'s reports are on the build page: the artifacts reports/run-<n>/ (result.txt, the summary, the failure reports, the flaky tests, report-paths.txt) and Test Result (Playwright); the Playwright HTML folders stay on the host (up to 18 GB each), named in report-paths.txt. The settings it ran with: round-settings.txt. From a shell: bash asbl/ci/jenkins/release-rehearsal.sh status (or follow, proceed, stop).',
+      MORE: guide('dp-ci-release-steps-0-3-rehearsal', 'asbl/ci/jenkins/release-rehearsal.sh')
+    ),
+    // in the order the form shows them, each group under a separator line with its name
+    params: [
+      SEPARATOR_ALWAYS: [separator: 'Always'],
+      RELEASE_VERSION: [default: '', text: roundVersionText],
+      SEPARATOR_SOMETIMES: [separator: 'Sometimes'],
+      ON_FAILURES: [choices: ['fix-prove-then-wait-for-review', 'fix-prove-then-rerun-automatically', 'report-only'], text: 'Sometimes. If the run is red: every failure is collected, its root cause found in the code and the git history, a plan with real fixes written, and each fix proven by re-running only the tests that failed. Then:\nfix-prove-then-wait-for-review (default) = the build pauses with Proceed, showing the fix plan, its report and the commits. Proceed = run again from the start.\nfix-prove-then-rerun-automatically = the same fixes and proofs, then it runs again from the start by itself. After 2 such re-runs it waits for Proceed.\nreport-only = it ends red with the failure report. No agent.\nA fix round that ends BLOCKED always waits for a review.\nLeave the default to review each fix round.'],
+      SEPARATOR_RARELY: [separator: 'Rarely: leave them as they are'],
+      RELEASE_PIN: [default: '', text: 'Rarely: leave it empty. A commit (its hash) to rehearse that commit in run 1 instead of step 0\'s (or origin/main\'s). A run after fixes is always on origin/main, which holds the fixes.'],
+      DRY_RUN: [choices: ['no', 'yes'], text: 'Rarely: leave no. yes = shows what the round would run, and runs nothing: each run is the orchestrator\'s dry run, and the fixer and the preflights get DRY_RUN=yes (nothing builds, records, starts an agent or uploads).\nUse it to check the job after a CI change.'],
+      E2E_APPROVAL: [text: 'Rarely: leave it empty. Passed to every run of the round. ' + e2eApproval],
+    ],
+  ],
   'dp-ci-dev-e2e-one-spec': [
     about: describe(
       WHAT: 'The fix-and-retry loop (dp-ci.sh e2e-loop): one spec file, or some of its tests, on the web or electron-linux target, with no retries. The jars and the Angular UI are built from the tree on every run; the package (the content the tests start from: sample apps, db-template, config, samples, scripts) is never rebuilt: E2E_PACKAGE says what happens to it (built first only when there is none). It never counts for a release.',
@@ -387,12 +433,31 @@ def jobs = [
   ],
 ]
 
+// The Parameter Separator plugin (plugins.txt) draws a line with a header between groups of a job's parameters (its Job DSL
+// name: separator). A seed without it leaves the separators out, so it never fails
+def separatorsAvailable = false
+try {
+  separatorsAvailable = jenkins.model.Jenkins.instance.pluginManager.getPlugin('parameter-separator')?.isActive() ?: false
+} catch (e) {
+  println "Parameter separators left out: the plugin list was not read (${e})"
+}
+println "Parameter separators: ${separatorsAvailable ? 'shown' : 'left out (the parameter-separator plugin is not active)'}"
+
 jobs.each { name, job ->
   pipelineJob("datapallas/${name}") {
     description(job.about)
     parameters {
       job.params.each { pname, p ->
-        if (p.choices) {
+        if (p.separator) {
+          if (separatorsAvailable) {
+            separator {
+              name(pname)
+              separatorStyle('')
+              sectionHeader(p.separator)
+              sectionHeaderStyle('')
+            }
+          }
+        } else if (p.choices) {
           choiceParam(pname, p.choices, p.text)
         } else {
           stringParam(pname, p.default ?: '', p.text)

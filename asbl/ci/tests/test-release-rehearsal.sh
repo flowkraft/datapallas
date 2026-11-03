@@ -6,7 +6,8 @@
 #   container or none). The cases: green and ready to upload; green with one MISSING; busy in each way and a version
 #   already public (refused, nothing started); the dev servers' dp-ci.sh --inside (not busy); red with report-only; red,
 #   review, proceed, then green; red three times with fix-prove-then-rerun-automatically; a BLOCKED fix round; stop in
-#   each state; status's one line in each state; help; what a start passes the orchestrator (a press does the same).
+#   each state; status's one line in each state; help; what a start passes the orchestrator (a press does the same); what
+#   the Jenkins job shows: label, review and reports.
 # Every folder is a scratch one: no live folder is touched, nothing real is started. Takes about 70 seconds.
 # Callers: a person or an agent, from the shell, after changing the round.
 #   bash asbl/ci/tests/test-release-rehearsal.sh
@@ -95,7 +96,13 @@ cat > "$STUB/scheduled-e2e" <<'EOF'
 echo "$*" >> "$STUB/scheduled-calls"
 kill "$(cat "$LOG_DIR/scheduled-e2e.pid")" 2>/dev/null
 EOF
-chmod +x "$STUB/bin/docker"
+cat > "$STUB/bin/git" <<'EOF'
+#!/bin/bash
+# stub git: fetch does nothing (review fetches origin main: no network in a test); the rest is the real git
+[ "${1:-}" = fetch ] && exit 0
+exec /usr/bin/git "$@"
+EOF
+chmod +x "$STUB/bin/docker" "$STUB/bin/git"
 export PATH="$STUB/bin:$PATH"
 export LOG_DIR="$SCRATCH/logs"; mkdir -p "$LOG_DIR"
 export RELEASE_REHEARSAL_CONF="$SCRATCH/release-rehearsal.conf"
@@ -321,6 +328,42 @@ check "E2E_APPROVAL reaches the orchestrator, with who gave it" has "approval=gi
 check "E2E_APPROVAL is in no file of the round, and on no command line" \
   bash -c '! grep -rq secret-text-xyz "$1" "$2"' _ "$LOG_DIR" "$STUB/orchestrator-cmdlines"
 check "the round's state says only that an approval was given" bash -c 'grep -qx "approval=given" "$1"/release-rounds/*/round.state' _ "$LOG_DIR"
+
+# ---- what the job shows: label, review, reports ----
+fresh red green
+check "label: no round yet" same "no round yet" "$(round label)"
+out=$(round review); rc=$?
+check "review with no round waiting: NOT WAITING FOR REVIEW, the state's exit code" \
+  bash -c '[ "$1" = 2 ] && grep -q "^NOT WAITING FOR REVIEW" <<< "$2"' _ "$rc" "$out"
+echo 3 > "$STUB/orchestrator-sleep"
+start > /dev/null; wait_for_run 1
+check "label: a run going" same "16.6.2 run 1 going" "$(round label)"
+rm -f "$STUB/orchestrator-sleep"; follow > /dev/null
+check "label: waiting for review" same "16.6.2 waiting for review after run 1" "$(round label)"
+out=$(round review); rc=$?
+check "review: exit 3; why, the fix plan with its report, the red run, the commits" \
+  bash -c '[ "$1" = 3 ] && grep -q "^WAITING FOR REVIEW: fix round 1 DONE" <<< "$2" &&
+    grep -q "^  the fix plan: .*/release-16.6.2-fix-round-1.md$" <<< "$2" &&
+    grep -q "^  its report: .*/release-16.6.2-fix-round-1-run-report.md$" <<< "$2" &&
+    grep -q "^  the red run: .*/run-1/result.txt$" <<< "$2" && grep -q "^  the commits since the run.s pin c0ffee00:" <<< "$2"' _ "$rc" "$out"
+R1="$STUB/runs/run-1"
+mkdir -p "$R1/pw-playwright-html" "$R1/robot"; touch "$R1/run.log" "$R1/failure-report-docker.md" "$R1/pw-playwright.json" \
+  "$R1/pw-playwright.xml" "$R1/robot/report.html" "$R1/robot/output.xml" "$R1/not-a-report"
+printf 'summary=%s\nfailure_report=%s\n' "$R1/run.log" "$R1/failure-report-docker.md" >> "$R1/result.txt"
+printf 'part\t%s\t%s\t%s\t%s\t%s\t%s\n' linux-proof host FAIL "$R1/l.log" "$R1/pw-playwright.json $R1/pw-playwright-html $R1/gone.json" rc=1 \
+  robot windows-vm FAIL "$R1/w.log" "$R1/robot/report.html" rc=1 pack windows-vm FAIL "$R1/w.log" "" "$R1/not-a-report" >> "$R1/result.txt"
+check "reports: run 1's files, each once, as its result.txt lists them (a Robot report: its folder; a why is no report)" \
+  same "$(printf 'REPORT 1 %s\n' "run $R1/result.txt" "run $R1/run.log" "run $R1/failure-report-docker.md" \
+    "linux-proof $R1/pw-playwright.xml" "linux-proof $R1/pw-playwright.json" "linux-proof $R1/pw-playwright-html" "robot $R1/robot")" \
+  "$(round reports)"
+PROCEED_BY=tester round proceed > /dev/null; follow > /dev/null
+check "label: green after two runs" same "16.6.2 green, 2 runs, ready to upload" "$(round label)"
+check "reports: both runs, run 2 with its flaky tests" \
+  bash -c 'grep -c "^REPORT 1 " <<< "$1" | grep -qx 7 && grep -qx "REPORT 2 run $2/run-2/result.txt" <<< "$1" &&
+    grep -qx "REPORT 2 run $2/run-2/flaky.txt" <<< "$1"' _ "$(round reports)" "$STUB/runs"
+fresh red
+ON_FAILURES=report-only DRY_RUN=yes ROUND_STARTED_BY=tester RELEASE_VERSION=16.6.2 round start > /dev/null; follow > /dev/null
+check "label: red, a dry run said so" same "16.6.2 red after run 1 (dry run)" "$(round label)"
 
 echo
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-release-rehearsal"; exit 0; fi
