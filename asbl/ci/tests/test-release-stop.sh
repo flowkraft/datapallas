@@ -1,0 +1,181 @@
+#!/bin/bash
+# release-rehearsal.sh stop: it stops what the round's run started, from the run's started.txt, and nothing else.
+# A stub orchestrator writes a started.txt (a part going with a container, a compose stack and an older container; a
+# part going on the Windows VM with its driver's pid file, an older pid file and the VM's steps; an ended part; a dry-run
+# line), lists its containers through a stub docker, starts a real sleep as the Windows driver (its own session, as
+# win-e2e.sh does), then sleeps as a running part would. The cases:
+#   1. stop while it runs: docker stop for the run's container and compose container only; the driver's process ended,
+#      the older pid file's left; the VM's steps of that command stopped (dp-ci.sh win stop, over a stub ssh that names
+#      the step it was sent); the orchestrator ended; everything else left;
+#   2. stop again: nothing more is stopped;
+#   3. the round's process gone (a reboot) and another run holding the CI now: nothing is touched;
+#   4. the round's process gone and the CI free: what the run started is stopped.
+# Every folder is a scratch one; docker and ssh are stubs first on PATH. Takes about 10 seconds.
+# Callers: a person or an agent, from the shell, after changing release-rehearsal.sh's stop.
+#   bash asbl/ci/tests/test-release-stop.sh
+# Prints PASS or FAIL per case; exit 0 when every case passes, 1 otherwise.
+set -uo pipefail
+cd "$(dirname "$0")/../../.." || exit 2
+ROUND_SCRIPT="$PWD/asbl/ci/jenkins/release-rehearsal.sh"
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/test-release-stop.XXXXXX") || exit 2
+export STUB="$SCRATCH/stub"; mkdir -p "$STUB/bin" "$STUB/runs"
+cleanup() {
+  bash "$ROUND_SCRIPT" stop >/dev/null 2>&1
+  for f in "$STUB"/*.pid "$SCRATCH"/logs/win-e2e.pid; do [ -f "$f" ] && kill -KILL "$(cat "$f")" 2>/dev/null; done
+  rm -rf "$SCRATCH"
+}
+trap cleanup EXIT
+FAILED_CASES=0
+check() {  # check <what> <command...>: PASS when the command succeeds
+  local what="$1"; shift
+  if "$@"; then echo "PASS  $what"; else echo "FAIL  $what"; FAILED_CASES=$((FAILED_CASES + 1)); fi
+}
+same() {  # same <expected> <actual>: equal, or both printed
+  [ "$1" = "$2" ] && return 0
+  printf '      expected: %s\n      actual:   %s\n' "$1" "$2"; return 1
+}
+
+# ---- the stubs ----
+cat > "$STUB/bin/docker" <<'EOF'
+#!/bin/bash
+# stub docker: the containers are the lines name|created|compose working dir of $STUB/containers; stop records the name
+# in $STUB/stopped and takes the line away (a run container is --rm)
+case "${1:-}" in
+  ps) filter=""
+      for a in "$@"; do case "$a" in
+        name=*) filter="name:${a#name=}" ;;
+        label=com.docker.compose.project.working_dir=*) filter="dir:${a#label=com.docker.compose.project.working_dir=}" ;;
+      esac; done
+      while IFS='|' read -r name created dir; do
+        case "$filter" in
+          name:*) [[ "$name" =~ ${filter#name:} ]] && echo "$name" ;;
+          dir:*)  [ "$dir" = "${filter#dir:}" ] && echo "$name" ;;
+          *)      echo "$name|$dir" ;;
+        esac
+      done < "$STUB/containers" 2>/dev/null ;;
+  inspect) name="${*: -1}"
+           line=$(grep "^$name|" "$STUB/containers" 2>/dev/null) || { echo "Error: No such object: $name" >&2; exit 1; }
+           echo "$line" | cut -d'|' -f2 ;;
+  stop) echo "$2" >> "$STUB/stopped"; sed -i "/^$2|/d" "$STUB/containers"; echo "$2" ;;
+esac
+exit 0
+EOF
+cat > "$STUB/bin/ssh" <<'EOF'
+#!/bin/bash
+# stub ssh: a PowerShell script sent to the VM is decoded; a step's stop (schtasks /end /tn "dp-ci-<step>") is recorded
+# in $STUB/vm-stopped and answered as the VM does
+encoded=no; for a in "$@"; do [ "$a" = -EncodedCommand ] && encoded=yes; done
+if [ "$encoded" = yes ]; then
+  step=$(printf '%s' "${*: -1}" | base64 -d | iconv -f UTF-16LE -t UTF-8 | sed -n 's/.*schtasks \/end \/tn "dp-ci-\([a-z0-9-]*\)".*/\1/p' | head -1)
+  [ -n "$step" ] && { echo "$step" >> "$STUB/vm-stopped"; echo "STOPPED $step"; exit 0; }
+fi
+echo "ssh $*" | cut -c1-200 >> "$STUB/ssh-other"
+EOF
+cat > "$STUB/orchestrator" <<'EOF'
+#!/bin/bash
+# stub orchestrator: a run folder whose started.txt holds one line of each kind; the things those lines name, created
+# after them; then it sleeps as a running part does
+echo $$ > "$STUB/orchestrator.pid"
+folder="$STUB/runs/run-$(date +%s%N)"; mkdir -p "$folder"
+echo "PARTS   one log per part in $folder"
+entry=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+{
+  printf '%s\tstep1-build\tcontainer\tended-part-container\treal\tthe run container of dp-ci.sh\n' "$entry"
+  printf '%s\tdocker-linux\tcontainer\tdp-ci\treal\tthe run container of dp-ci.sh\n' "$entry"
+  printf '%s\tdocker-linux\tcompose\t%s\treal\tthe docker-server bundle under test\n' "$entry" "$STUB/bundle"
+  printf '%s\tdocker-linux\tcontainer\tdp-ci-one-command\treal\tthe image alone\n' "$entry"
+  printf '%s\tdocker-windows\tpidfile\t%s\treal\tthe Windows driver of win-e2e.sh\n' "$entry" "$LOG_DIR/win-e2e.pid"
+  printf '%s\tdocker-windows\tpidfile\t%s\treal\ta pid file older than its entry\n' "$entry" "$STUB/older.pid"
+  printf '%s\tdocker-windows\tvm\twindows-vm\treal\tdp-ci.sh win docker-e2e\n' "$entry"
+  printf '%s\tlane1-web-full\tcontainer\tdry-run-container\tdry-run\tthe run container of dp-ci.sh\n' "$entry"
+} > "$folder/started.txt"
+echo 0 > "$folder/step1-build.rc"
+sleep 1.2
+created=$(date -u +%Y-%m-%dT%H:%M:%S.123456789Z); older=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S.000000000Z)
+printf '%s\n' "ended-part-container|$created|" "dp-ci|$created|" "bundle-datapallas-1|$created|$STUB/bundle" \
+  "dp-ci-one-command|$older|" "dry-run-container|$created|" "someone-elses-container|$created|" \
+  "someone-elses-bundle-1|$created|$STUB/other-bundle" > "$STUB/containers"
+setsid sleep 300 > /dev/null 2>&1 < /dev/null & echo $! > "$LOG_DIR/win-e2e.pid"   # its own session, as win-e2e.sh's driver
+echo started > "$STUB/orchestrator-ready"
+sleep 120
+EOF
+cat > "$STUB/release-publish" <<'EOF'
+#!/bin/bash
+echo "PREREQUISITES OK"
+EOF
+cat > "$STUB/release-state" <<'EOF'
+#!/bin/bash
+echo "RELEASED current=16.6.1 docker=16.6.1 windows=16.6.1"
+EOF
+chmod +x "$STUB/bin/docker" "$STUB/bin/ssh"
+export PATH="$STUB/bin:$PATH"
+export LOG_DIR="$SCRATCH/logs"; mkdir -p "$LOG_DIR"
+export RELEASE_REHEARSAL_CONF="$SCRATCH/no-settings.conf"
+export ROUND_ORCHESTRATOR="bash $STUB/orchestrator" ROUND_RELEASE_STATE="bash $STUB/release-state"
+export ROUND_RELEASE_PUBLISH="bash $STUB/release-publish" ROUND_SCHEDULED_E2E=true ROUND_POLL=1
+# the VM's made-up address: dp-ci.sh win stop reaches only the stub ssh
+export WIN_CI_CONF="$SCRATCH/no-win-ci.env" WIN_HOST=vm.invalid WIN_USER=ci WIN_SSH_KEY="$SCRATCH/no-key" WIN_KNOWN_HOSTS="$SCRATCH/no-known-hosts"
+unset RELEASE_VERSION RELEASE_PIN ON_FAILURES DRY_RUN E2E_APPROVAL
+
+round() { bash "$ROUND_SCRIPT" "$@"; }
+alive() { kill -0 "$(cat "$1" 2>/dev/null)" 2>/dev/null; }   # alive <pid file>
+# a round going, its stub orchestrator in its part; an older pid file with a live process (not this shell's child)
+round_going() {
+  round stop > /dev/null 2>&1
+  rm -rf "$LOG_DIR"/* "$STUB"/runs/* "$STUB"/stopped "$STUB"/vm-stopped "$STUB"/containers "$STUB"/orchestrator-ready
+  [ -f "$STUB/older.pid" ] && kill -KILL "$(cat "$STUB/older.pid")" 2>/dev/null
+  ( sleep 300 > /dev/null 2>&1 & echo $! > "$STUB/older.pid" ); touch -d '1 hour ago' "$STUB/older.pid"
+  ROUND_STARTED_BY=tester RELEASE_VERSION=16.6.2 ON_FAILURES=report-only round start > /dev/null
+  for _ in $(seq 1 40); do [ -e "$STUB/orchestrator-ready" ] && return 0; sleep 0.25; done
+  echo "      the stub orchestrator did not start: $(round status)"; return 1
+}
+containers_left() { cut -d'|' -f1 "$STUB/containers" | sort | paste -sd' '; }
+lines() { sort "$1" 2>/dev/null | paste -sd' '; }   # lines <file>: its lines, sorted, on one line
+kill_round_process() {  # as a reboot does to the round: its process group, gone at once
+  kill -KILL -- "-$(sed -n 's/^driver_pid=//p' "$LOG_DIR"/release-rounds/*/round.state | tail -1)"; sleep 0.5
+}
+
+# ---- 1. stop while it runs ----
+round_going
+out=$(round stop); rc=$?
+check "stop while running: exit 4, the round stopped" bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2"' _ "$rc" "$out"
+check "docker stop for the run's container and its compose stack's container only" \
+  same "bundle-datapallas-1 dp-ci" "$(lines "$STUB/stopped")"
+check "left: the ended part's, the older, the dry-run line's and someone else's containers" \
+  same "dp-ci-one-command dry-run-container ended-part-container someone-elses-bundle-1 someone-elses-container" "$(containers_left)"
+check "the Windows driver of the pid file (its own session) ended" bash -c '! kill -0 "$(cat "$1")" 2>/dev/null' _ "$LOG_DIR/win-e2e.pid"
+check "the process of a pid file older than its entry left running" alive "$STUB/older.pid"
+check "the VM's steps of dp-ci.sh win docker-e2e stopped, in order" same "npmwc prepare docker-e2e" "$(paste -sd' ' "$STUB/vm-stopped" 2>/dev/null)"
+check "the orchestrator (the round's process group) ended" bash -c '! kill -0 "$(cat "$1")" 2>/dev/null' _ "$STUB/orchestrator.pid"
+check "stop says what it left and why" bash -c 'grep -q "^LEFT    container dp-ci-one-command: created before" <<< "$1" && grep -q "^LEFT    process .*older.pid: the file is older" <<< "$1"' _ "$out"
+check "stop names each step it stopped on the VM" bash -c '[ "$(grep -c "^STOPPED the VM.s step" <<< "$1")" = 3 ]' _ "$out"
+
+# ---- 2. stop again ----
+: > "$STUB/stopped"; : > "$STUB/vm-stopped"
+out=$(round stop); rc=$?
+check "stop again: exit 4, nothing more stopped" \
+  bash -c '[ "$1" = 4 ] && grep -q "had ended already (stopped)" <<< "$2" && [ ! -s "$3" ] && [ ! -s "$4" ]' _ "$rc" "$out" "$STUB/stopped" "$STUB/vm-stopped"
+
+# ---- 3. the round's process gone, another run holding the CI ----
+round_going
+kill_round_process   # the Windows driver, in its own session, lives on; dp-ci in the list stands for another run's now
+out=$(round stop); rc=$?
+check "process gone, another run holding the CI: exit 4, nothing touched" \
+  bash -c '[ "$1" = 4 ] && grep -q "^LEFT    what this round.s runs started: its process was gone already, and the CI is busy now: a dp-ci run" <<< "$2" && [ ! -s "$3" ] && [ ! -s "$4" ]' \
+  _ "$rc" "$out" "$STUB/stopped" "$STUB/vm-stopped"
+check "process gone, another run holding the CI: the Windows driver left" alive "$LOG_DIR/win-e2e.pid"
+kill -KILL "$(cat "$LOG_DIR/win-e2e.pid")" 2>/dev/null   # this test's own stand-in, left by the case above
+
+# ---- 4. the round's process gone, the CI free ----
+round_going
+kill_round_process
+kill -KILL "$(cat "$LOG_DIR/win-e2e.pid")"; sed -i '/^dp-ci|/d' "$STUB/containers"   # what a reboot ends on this host
+out=$(round stop); rc=$?
+check "process gone, the CI free: the VM's steps stopped (they outlive a reboot of this host)" \
+  same "npmwc prepare docker-e2e" "$(paste -sd' ' "$STUB/vm-stopped" 2>/dev/null)"
+check "process gone, the CI free: the run's compose container stopped, nothing else" same "bundle-datapallas-1" "$(lines "$STUB/stopped")"
+check "process gone, the CI free: exit 4, stopped" bash -c '[ "$1" = 4 ] && grep -q "^ROUND state=stopped " <<< "$2"' _ "$rc" "$out"
+
+echo
+if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-release-stop"; exit 0; fi
+echo "FAILED  $FAILED_CASES case(s)  test-release-stop"; exit 1

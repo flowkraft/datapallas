@@ -14,7 +14,12 @@
 #              is no longer running or fixing; with it, at most that long (the job's polls of under a minute). The last line
 #              is  FOLLOW next=<byte to go on from> state=<state>
 #   proceed    a round waiting for review runs again from the start (PROCEED_BY=<who> says who)
-#   stop       the round stops: its process group (its runs), and its fix run (the fixer's stop). Exit 4
+#   stop       the round stops, in this order: its process group (the round, its run, the run's parts); then what the
+#              run started that outlives that group, from its started.txt: each entry of a part that had not ended, a
+#              container or compose stack created since its entry (docker stop), the Windows driver of a pid file written
+#              since (its process group), the VM's steps of that command (dp-ci.sh win stop); then its fix run (the
+#              fixer's stop). Nothing the round did not start: an ended part's entries, older containers or pid files, and,
+#              when the round's process was gone already (a reboot) and another run holds the CI now, none at all. Exit 4
 #   busy       is the CI busy, the question start asks (and the scheduled job): FREE (exit 0), or BUSY <why> (exit 2)
 #   help       this header
 #
@@ -399,28 +404,100 @@ proceed_round() {
   status_line "$dir"
   state=$(round_state "$dir"); exit "$(exit_code_of_state "$state")"
 }
+# ---- stop: what the round's runs started ----
+# run_folders_of_round <round folder>: each run's folder, from the orchestrator's PARTS lines in the round's console
+run_folders_of_round() { sed -n 's/^PARTS   one log per part in //p' "$1/round.log" 2>/dev/null | sort -u; }
+# unfinished_started_entries <round folder>: the real started.txt lines (UTC part kind name what) of the parts that have
+# no exit code (<part>.rc): those were going when the round stopped. An ended part cleaned up after itself, and a
+# container that has its name now may be someone else's
+unfinished_started_entries() {
+  local folder utc part kind name real what
+  run_folders_of_round "$1" | while IFS= read -r folder; do
+    [ -f "$folder/started.txt" ] || continue
+    while IFS=$'\t' read -r utc part kind name real what; do
+      [ "$real" = real ] && [ ! -e "$folder/$part.rc" ] && printf '%s\t%s\t%s\t%s\t%s\n' "$utc" "$part" "$kind" "$name" "$what"
+    done < "$folder/started.txt"
+  done
+}
+epoch_of() { date -u -d "$1" +%s 2>/dev/null || echo 0; }   # epoch_of <time>: its seconds since 1970, 0 when unreadable
+# vm_steps_of <command>: the VM's scheduled tasks (dp-ci-<step>) that a dp-ci.sh win command runs, by dp-ci.sh's names:
+# the package's npmwc and prepare (win_prepare_package), each lane's own step, the installed server dp-server; step 3's
+# release runs the pack, the server lane, the Electron light set (e2e) and the Robot UAT. Ending a task that is not
+# there does nothing
+vm_steps_of() {
+  case "$1" in
+    "dp-ci.sh win server-e2e") echo "npmwc prepare server-e2e dp-server" ;;
+    "dp-ci.sh win docker-e2e") echo "npmwc prepare docker-e2e" ;;
+    "dp-ci.sh win release")    echo "npmwc prepare release-pack server-e2e dp-server e2e release-robot" ;;
+  esac
+}
+# stop_container_created_since <name> <epoch>: docker stop, when it was created at or after that time (the run's)
+stop_container_created_since() {
+  local created
+  created=$(docker inspect -f '{{.Created}}' "$1" 2>/dev/null) || return 0   # gone already (run containers are --rm)
+  if [ "$(epoch_of "$created")" -lt "$2" ]; then echo "LEFT    container $1: created before the run's entry, not the round's"; return 0; fi
+  docker stop "$1" > /dev/null 2>&1 && echo "STOPPED container $1" || echo "WARN    docker stop $1 failed"
+}
+# stop_pidfile_process_since <pid file> <epoch>: the process of a pid file written at or after that time, with its
+# process group (win-e2e.sh starts its driver with setsid: the group is the driver's whole tree)
+stop_pidfile_process_since() {
+  local pid
+  pid=$(cat "$1" 2>/dev/null)
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || return 0
+  if [ "$(stat -c %Y "$1")" -lt "$2" ]; then echo "LEFT    process $pid of $1: the file is older than the run's entry"; return 0; fi
+  kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+  for _ in $(seq 1 20); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
+  kill -0 "$pid" 2>/dev/null && { kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null; }
+  echo "STOPPED process $pid of $1"
+}
+# stop_what_the_runs_started <round folder>: each unfinished entry, in its started.txt order (a part's Windows driver
+# before its VM steps, so the driver does not react to them)
+stop_what_the_runs_started() {
+  local utc part kind name what since container step
+  while IFS=$'\t' read -r utc part kind name what; do
+    since=$(epoch_of "$utc")
+    case "$kind" in
+      container) stop_container_created_since "$name" "$since" ;;
+      compose)   for container in $(docker ps --filter "label=com.docker.compose.project.working_dir=$name" --format '{{.Names}}' 2>/dev/null); do
+                   stop_container_created_since "$container" "$since"
+                 done ;;
+      pidfile)   stop_pidfile_process_since "$name" "$since" ;;
+      vm)        for step in $(vm_steps_of "$what"); do
+                   # read whole, not piped to grep -q: an early grep exit would give dp-ci.sh a SIGPIPE, and pipefail its code
+                   if [[ "$(bash asbl/ci/dp-ci.sh win stop "$step" 2>&1)" == *"STOPPED $step"* ]]; then echo "STOPPED the VM's step $step ($part)"
+                   else echo "WARN    the VM's step $step ($part) was not confirmed stopped: bash asbl/ci/dp-ci.sh win stop $step"; fi
+                 done ;;
+    esac
+  done < <(unfinished_started_entries "$1")
+}
 stop_round() {
-  local dir state pid fix_run
+  local dir state recorded_state pid fix_run was_alive=no other_run
   dir=$(newest_round)
   [ -n "$dir" ] || { echo "NOTHING TO STOP: no round yet"; status_line ""; exit 4; }
-  state=$(round_state "$dir")
+  state=$(round_state "$dir"); recorded_state=$(state_get "$dir" state)
+  case "$recorded_state" in stopped|red) echo "the round had ended already ($recorded_state): nothing to stop"; status_line "$dir"; exit 4 ;; esac
+  [ "$state" != released ] || { echo "the round had ended already (released): nothing to stop"; status_line "$dir"; exit 4; }
   pid=$(state_get "$dir" driver_pid)
+  # the round's process group first: its orchestrator would start the next part as soon as one of them is stopped
   if is_round_process_alive && [ -n "$pid" ]; then
-    # the round's process leads its own process group (setsid): its runs and their parts go with it
+    was_alive=yes
     kill -TERM -- "-$pid" 2>/dev/null
     for _ in $(seq 1 30); do is_round_process_alive || break; sleep 1; done
     is_round_process_alive && kill -KILL -- "-$pid" 2>/dev/null
   fi
+  # then what its run started that outlives that group. A round whose process was gone already (a reboot) ended long
+  # ago maybe: when another run holds the CI now, those names may be that run's, so nothing is touched
+  other_run=""; [ "$was_alive" = yes ] || other_run=$(busy_reason)
+  case "$other_run" in "a green round waits"*|"a fix run is going"*) other_run="" ;; esac   # this round itself
+  if [ -z "$other_run" ]; then stop_what_the_runs_started "$dir"
+  else echo "LEFT    what this round's runs started: its process was gone already, and the CI is busy now: $other_run"; fi
   fix_run=$(state_get "$dir" fix_run)
-  if [ "$state" = fixing ] && [ -n "$fix_run" ]; then
+  if [ "$recorded_state" = fixing ] && [ -n "$fix_run" ]; then
     read_settings >/dev/null
     [ -z "$RELEASE_FIXER" ] || { echo "stopping the fix run $fix_run"; DRY_RUN="$ROUND_DRY_RUN" $RELEASE_FIXER stop "$fix_run"; }
   fi
-  case "$state" in
-    stopped|red|released|none) echo "the round had ended already ($state): nothing to stop" ;;
-    *) state_set "$dir" state=stopped why="stopped by ${STOP_BY:-${ROUND_STARTED_BY:-someone}} at $(now) (it was $state)"
-       say "STOPPED by ${STOP_BY:-${ROUND_STARTED_BY:-someone}} (it was $state)" >> "$dir/round.log" ;;
-  esac
+  state_set "$dir" state=stopped why="stopped by ${STOP_BY:-${ROUND_STARTED_BY:-someone}} at $(now) (it was $state)"
+  say "STOPPED by ${STOP_BY:-${ROUND_STARTED_BY:-someone}} (it was $state)" >> "$dir/round.log"
   status_line "$dir"
   exit 4
 }
