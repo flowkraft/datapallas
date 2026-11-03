@@ -65,7 +65,7 @@ LOGDIR=/var/kraft-internalsystems/logs/datapallas-ci; LOGLINK=$LOGDIR/latest.log
 if [ "$E2E_TARGET" = windows-vm-electron ] || [ "$E2E_TARGET" = windows-vm-docker ] || [ "$E2E_TARGET" = windows-vm-server ]; then LOGLINK=$LOGDIR/win-e2e-latest.log; RP="@run/-step-playwright.xml @run/-step-playwright-html @run/-step-robot"; fi
 # the targets that may have built first: the image scan of the build (dp-ci.sh build writes it next to its own log)
 TRIVY=""
-case "$E2E_TARGET" in docker-server|windows-vm-docker|windows-vm-server) TRIVY='$(ls -1dt '"$LOGDIR"'/*-build-*-trivy 2>/dev/null | head -1)' ;; esac
+case "$E2E_TARGET" in docker-server|windows-vm-docker) TRIVY='$(ls -1dt '"$LOGDIR"'/*-build-*-trivy 2>/dev/null | head -1)' ;; esac
 ssh -o BatchMode=yes "$DP_HOST" "cd $(q "$DP_REPO") && T=$TRIVY && set -f && CI_LOG_LINK=$(q "$LOGLINK") bash asbl/ci/jenkins/pull-reports.sh $RP \\$T" | tar xzf - -C reports || echo "Reports: nothing pulled"
 # the run's files are named after its log (<ts>-e2e-<sha>-playwright...): give them the fixed names the publishers need
 for f in reports/*-playwright.xml; do [ -e "$f" ] && mv "$f" reports/playwright.xml; done

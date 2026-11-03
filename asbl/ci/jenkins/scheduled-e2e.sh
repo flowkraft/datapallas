@@ -128,12 +128,13 @@ night_sets() {
   fi
   [ "$weekday" != 7 ] || echo windows-server-light
 }
-# set_builds <set>: the builds that set takes, the image first (its rebuild also makes this host's e2e package again)
+# set_builds <set>: the builds that set takes, the image first (its rebuild also makes this host's e2e package again). The
+# Windows server set takes no build of this host: it installs the pack's datapallas-server.zip, the only one made
 set_builds() {
   case "$1" in
     linux-light|full-docker-server) echo "image-and-zips e2e-package" ;;
     full-web)                       echo "e2e-package" ;;
-    windows-server-light)           echo "image-and-zips e2e-package windows-pack" ;;
+    windows-server-light)           echo "e2e-package windows-pack" ;;
   esac
 }
 set_machine() { case "$1" in windows-*) echo windows-vm ;; *) echo host ;; esac; }

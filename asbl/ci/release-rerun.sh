@@ -15,14 +15,14 @@
 #                                                                                               clean state's config),
 #                                                                                               image-and-zips
 #   windows-vm-server    step 3's server light set (win-e2e.sh server-e2e)                      e2e-package (the VM's),
-#                                                                                               image-and-zips (this host's
-#                                                                                               build: no execution keeps it)
+#                                                                                               windows-pack (a kept one: its
+#                                                                                               datapallas-server.zip)
 #   windows-vm-electron  step 3's Electron light set (win-e2e.sh e2e)                           e2e-package (the VM's)
 #   robot                step 3's Robot UAT (win-e2e.sh robot, dp-ci.sh win robot)              windows-pack (a kept one)
 #   Where a build comes from: --kept <folder> = that execution's kept image and docker zip (docker-server,
-#   windows-vm-docker) or its kept pack (robot, which needs one); otherwise the newest successful build on this host (its
-#   log's IMAGE_TAG, its image, asbl/dist), this checkout's asbl/target/package (its .built-from stamp), the VM's package
-#   (the newest WIN_E2E_PACKAGE= line of a Windows log here; the lane checks it again on the VM).
+#   windows-vm-docker) or its kept pack (robot and windows-vm-server, which need one); otherwise the newest successful
+#   build on this host (its log's IMAGE_TAG, its image, asbl/dist), this checkout's asbl/target/package (its .built-from
+#   stamp), the VM's package (the newest WIN_E2E_PACKAGE= line of a Windows log here; the lane checks it again on the VM).
 #
 # HOW `run`, in order:
 #   1. the commit under test: origin/main, fetched, as the lanes' own sync takes it (HEAD when this checkout is ahead);
@@ -35,7 +35,8 @@
 #      files and the command that rebuilds that part alone (exit 3); REBUILD=yes runs that command first;
 #   4. the lane, through asbl/ci/jenkins/follow-ci.sh, E2E_RETRIES=0, E2E_REUSE_BUILD naming the parts it may take from an
 #      earlier commit (dp-ci.sh reuse_build_ok checks them again where the lane wants its exact commit), E2E_KEPT_BUILD for
-#      a kept image; robot: RELEASE_KEPT, ROBOT_TEST (one run per test, in turn), REBUILD_PACK;
+#      a kept image; robot: RELEASE_KEPT, ROBOT_TEST (one run per test, in turn), REBUILD_PACK; windows-vm-server:
+#      RELEASE_KEPT, REBUILD_PACK;
 #   5. one line per test into the re-run record, the re-run's failure report beside its log (release-keep.sh
 #      report-steps), and the RERUN_RESULT line. A test that passed counts PASS when the run ended green, or when it
 #      ended red on its failed tests alone (complete_run below); in any other red run every test counts FAIL.
@@ -96,8 +97,8 @@ now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 part_builds() {
   case "$1" in
     web|windows-vm-electron)             echo e2e-package ;;
-    docker-server)                       echo "e2e-package image-and-zips" ;;
-    windows-vm-docker|windows-vm-server) echo "e2e-package image-and-zips" ;;
+    docker-server|windows-vm-docker)     echo "e2e-package image-and-zips" ;;
+    windows-vm-server)                   echo "e2e-package windows-pack" ;;
     robot)                               echo windows-pack ;;
     *) return 1 ;;
   esac
@@ -185,8 +186,7 @@ build_of() {
         B_FROM="${tag#*-}" B_WHAT="build ${tag:-none} (${log:-no successful build log in $LOG_DIR})"
         if [ -z "${tag:-}" ]; then B_FROM="" B_NOTE="there is no successful build on this host"
         elif ! docker image inspect "$SERVER_IMAGE_REPO:$tag" >/dev/null 2>&1; then B_NOTE="its image $SERVER_IMAGE_REPO:$tag is not on this host"
-        elif [ "$part" = windows-vm-server ] && [ ! -s asbl/dist/datapallas-server.zip ]; then B_NOTE="asbl/dist/datapallas-server.zip is missing"
-        elif [ "$part" != windows-vm-server ] && [ ! -s asbl/dist/datapallas-server-docker.zip ]; then B_NOTE="asbl/dist/datapallas-server-docker.zip is missing"
+        elif [ ! -s asbl/dist/datapallas-server-docker.zip ]; then B_NOTE="asbl/dist/datapallas-server-docker.zip is missing"
         fi
       fi ;;
     e2e-package)
@@ -389,8 +389,8 @@ run_part() {
   failed="${failed%/}" kept="${kept%/}"
   [ -z "$failed" ] || [ -e "$failed" ] || { echo "FAIL  --failed $failed: no such folder or report"; exit 2; }
   # the parts that take kept files take the --failed execution's, unless told otherwise
-  if [ "$kept_set" = 0 ] && [ -d "$failed" ]; then case "$part" in docker-server|windows-vm-docker|robot) kept="$failed" ;; esac; fi
-  [ -z "$kept" ] || [ "$part" = docker-server ] || [ "$part" = windows-vm-docker ] || [ "$part" = robot ] ||
+  if [ "$kept_set" = 0 ] && [ -d "$failed" ]; then case "$part" in docker-server|windows-vm-docker|windows-vm-server|robot) kept="$failed" ;; esac; fi
+  [ -z "$kept" ] || [ "$part" = docker-server ] || [ "$part" = windows-vm-docker ] || [ "$part" = windows-vm-server ] || [ "$part" = robot ] ||
     { echo "FAIL  --kept: $part takes no kept files (THE PARTS)"; exit 2; }
   for="${failed:+$(basename "$failed")}"; for="${for:--}"
 
@@ -487,6 +487,9 @@ run_part() {
       selection "$part" "${ids[@]}"
       [ "$part" != windows-vm-electron ] || [ "${#ids[@]}" -gt 0 ] || SEL_SPEC=light
       env_lane=(E2E_SPEC="$SEL_SPEC" E2E_GREP="$SEL_GREP" E2E_RETRIES=0 E2E_DOCKER_FROM_URL="" E2E_REUSE_BUILD="$reuse" E2E_KEPT_BUILD="$kept_build")
+      # the server light set installs the pack's datapallas-server.zip: the kept one, or a new pack first
+      [ "$part" != windows-vm-server ] ||
+        env_lane+=(RELEASE_KEPT="$kept" REBUILD_PACK="$(case " $rebuild_parts " in *" windows-pack "*) echo yes ;; *) echo no ;; esac)")
       launcher=(bash asbl/ci/jenkins/win-e2e.sh "$(case "$part" in windows-vm-docker) echo docker-e2e ;; windows-vm-server) echo server-e2e ;; *) echo e2e ;; esac)")
       pidfile="$LOG_DIR/win-e2e.pid" log_link="$LOG_DIR/win-e2e-latest.log" ;;
     robot)

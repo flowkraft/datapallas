@@ -9,10 +9,12 @@
 #   1. the version line: release-state.sh version-check --print (what a release would do now; the lane runs anyway);
 #   2. this release's full lane and the lanes step 1 needs: release-state.sh full-lane --step1 (web or docker-server,
 #      alternated, chosen once per version while it is still to be released; STEP1_STARTED_BY is written as who chose it);
-#   3. the job steps, each marked START/END with the time it took (job-step.sh, asbl/ci/marks.sh): docker-server,
-#      windows-vm-docker and windows-vm-server first check in seconds what their lane needs (dp-ci.sh prereq), then JOB STEP
-#      1/2 builds origin/main only when there is no build of it yet (dp-ci.sh build-if-needed, about 40 min) and JOB STEP 2/2
-#      runs the lane; the other targets have one step, JOB STEP 1/1, the lane. The lane runs through follow-ci.sh, detached
+#   3. the job steps, each marked START/END with the time it took (job-step.sh, asbl/ci/marks.sh): docker-server and
+#      windows-vm-docker first check in seconds what their lane needs (dp-ci.sh prereq), then JOB STEP 1/2 builds
+#      origin/main only when there is no build of it yet (dp-ci.sh build-if-needed, about 40 min) and JOB STEP 2/2 runs the
+#      lane; the other targets have one step, JOB STEP 1/1, the lane. windows-vm-server installs no build of this host but the
+#      Windows pack's datapallas-server.zip, the only one made: RELEASE_KEPT=<kept folder> or REBUILD_PACK=yes from the
+#      environment, else its lane refuses in seconds (dp-ci.sh win_server_e2e). The lane runs through follow-ci.sh, detached
 #      (a container, or the Windows driver followed by its pid file): closing the job or the shell stops only the following;
 #   4. the lane's verdict: release-state.sh record-step1 <target> <exit code>, step1.<target>-<full|auth|light|targeted>,
 #      which steps 2 and 3 of a release require (RELEASE_STEP_START = when step 3 began: an older log is not this run's);
@@ -68,7 +70,7 @@ copy_reports_into() {
     *)            froms=("$base-playwright.xml" "$base-playwright-html" "$base-openapi"); names=(playwright.xml playwright-html openapi) ;;
   esac
   case "$TARGET" in
-    docker-server|windows-vm-docker|windows-vm-server) froms+=("$(ls -1dt "$LOG_DIR"/*-build-*-trivy 2>/dev/null | head -1)"); names+=(trivy) ;;
+    docker-server|windows-vm-docker) froms+=("$(ls -1dt "$LOG_DIR"/*-build-*-trivy 2>/dev/null | head -1)"); names+=(trivy) ;;
   esac
   for i in "${!froms[@]}"; do
     from="${froms[i]}"; to="$dir/reports/${names[i]}"
@@ -107,7 +109,6 @@ esac
 case "$TARGET" in
   docker-server)     PRE=(bash asbl/ci/dp-ci.sh prereq docker) ;;
   windows-vm-docker) PRE=(bash asbl/ci/dp-ci.sh win prereq docker-e2e) ;;
-  windows-vm-server) PRE=(bash asbl/ci/dp-ci.sh win prereq server-e2e) ;;
   *)                 PRE=() ;;
 esac
 JOB_STEP=(bash asbl/ci/jenkins/job-step.sh)

@@ -123,6 +123,9 @@ check "a Saturday of an odd ISO week (45): then the full set on docker-server" \
   has "2026-11-07 Saturday: linux-light full-docker-server," "$(night plan 2026-11-07)"
 check "the next Saturday (week 46): the full set on web, alternating" has "2026-11-14 Saturday: linux-light full-web," "$(night plan 2026-11-14)"
 check "a Sunday: then the Windows server light set" has "2026-11-08 Sunday: linux-light windows-server-light," "$(night plan 2026-11-08)"
+check "  which takes no build of this host: the VM's package and the pack's zip only" \
+  same "BUILD   e2e-package BUILD   windows-pack" \
+  "$(night plan 2026-11-08 | sed -n '/^SET     windows-server-light/,$p' | grep -o '^BUILD   [a-z0-9-]*' | paste -sd' ')"
 check "a Monday: the Linux light set only" has "2026-11-09 Monday: linux-light, on" "$(night plan 2026-11-09)"
 check "plan refuses a wrong date" bash -c '! bash "$0" plan 2026-13-45 >/dev/null 2>&1' "$NIGHT_SCRIPT"
 
@@ -140,8 +143,8 @@ check "  a dry night runs no lane and no build" bash -c '[ ! -e "$0/lane-calls" 
 check "  and ends green, a dry run" has "dry_run=yes" "$NIGHT/result.txt"
 export SCHEDULED_COMMIT=889001e6; builds_from 3f5c21f0
 out=$(night plan 2026-11-08)
-check "3f5c21f0 to 889001e6 (the source zip's packer only): the image and both packages reused, for both sets" \
-  same 4 "$(grep -cE '^BUILD   (image-and-zips|e2e-package): reuse' <<< "$out")"
+check "3f5c21f0 to 889001e6 (the source zip's packer only): the image and both packages reused" \
+  same 3 "$(grep -cE '^BUILD   (image-and-zips|e2e-package): reuse' <<< "$out")"
 check "3f5c21f0 to 889001e6, Sunday: the pack built again" has "BUILD   windows-pack: rebuild" "$out"
 check "  naming what changed" has "DataPallasSourceAssembler.java" "$out"
 a_night 2026-11-08 DRY_RUN=yes

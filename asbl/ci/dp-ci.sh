@@ -60,7 +60,7 @@
 #
 #   bash asbl/ci/dp-ci.sh build-if-needed
 #       This checkout on origin/main (a fast-forward, never a reset), then `build` only when the newest successful build is
-#       not of this commit, its image and both server zips still here; ends with BUILD_TAG=<version>-<commit>. The jobs that
+#       not of this commit, its image and datapallas-server-docker.zip still here; ends with BUILD_TAG=<version>-<commit>. The jobs that
 #       install what `build` makes run it first themselves. DRY_RUN=1 [0] = only say whether a build is needed.
 #
 #   E2E_SPEC=<regex> E2E_GREP=<regex> bash asbl/ci/dp-ci.sh e2e
@@ -219,7 +219,8 @@
 #                               E2E_DOCKER_FROM_URL, a staged download instead, by hand, as in `e2e`.
 #       server-e2e              windows-vm-server: DataPallas Server on the VM's own Java 17, from datapallas-server.zip as the
 #                               installation page installs it (startServer.bat): the pack's, kept (RELEASE_KEPT=<artifacts
-#                               folder>) or made again first (REBUILD_PACK=yes), else this host's build - see win_server_e2e.
+#                               folder>) or made again first (REBUILD_PACK=yes), never this host's (`build` makes none) -
+#                               see win_server_e2e.
 #                               Both server lanes run the light set (asbl/ci/light-set.txt) when E2E_SPEC and E2E_GREP are
 #                               empty, or with E2E_SPEC=light. Caps: WIN_RUN_TIMEOUT [the light set LIGHT_SET_CAP_SERVER_LANES,
 #                               a targeted run 3 h], WIN_RUN_STALL [80 min].
@@ -1476,12 +1477,12 @@ win_e2e() {
   [ "$code" = "0" ]
 }
 
-# The two Windows lanes of DataPallas Server. Each tests a package exactly as `dp-ci.sh build` made it
-# from the commit the VM tests, installed the way its download page tells a user to, with the tests in a browser on the
-# VM's desktop at http://localhost:9090:
+# The two Windows lanes of DataPallas Server. Each tests the package a user gets, installed the way its download page tells
+# a user to, with the tests in a browser on the VM's desktop at http://localhost:9090:
 #   windows-vm-docker  datapallas-server-docker.zip (DockerAssembler) in Docker Desktop   https://datapallas.com/docs/server/self-host
+#                      as `dp-ci.sh build` made it from the commit the VM tests
 #   windows-vm-server  datapallas-server.zip (DataPallasServerSpringBootAssembler) on the  https://datapallas.com/docs/server/installation
-#                      machine's own Java 17
+#                      machine's own Java 17, the Windows pack's (pack-datapallas.bat): the only one made since 16.6.2
 # Both are light on purpose (owner, 2026-10-22: as light as it can be while still proving it; no duplication of what the
 # other lanes prove): each runs only what its package adds. E2E_SPEC / E2E_GREP replace the default set (retries 0 then).
 # Order: push, `dp-ci.sh build-if-needed` (the server checkout on origin/main, what the VM tests, built when it is not yet;
@@ -1491,7 +1492,7 @@ win_e2e() {
 # run: it replaces the zips the lanes install.
 
 # The newest successful build on this host, which must be of the commit the VM tests; prints its IMAGE_TAG
-# (<version>-<commit>). Its asbl/dist zips and its image are what the two lanes install.
+# (<version>-<commit>). Its asbl/dist/datapallas-server-docker.zip and its image are what windows-vm-docker installs.
 win_vm_build_tag() {
   local vm f tag= tagsha
   vm=$(win_ssh "git -C $WIN_REPO rev-parse --short HEAD" 2>/dev/null | tr -d '\r' | tail -1)
@@ -1930,14 +1931,19 @@ PS
 #                                    folder's MANIFEST.txt) and extracted from there
 #   REBUILD_PACK=yes                 a new pack first (pack-datapallas.bat, as step 3's RELEASE STEP 1/5): its zip brought
 #                                    down here and checked, since the prepare empties asbl\dist, then put back the same way
-#   neither                          this host's newest build (asbl/dist/datapallas-server.zip, win_vm_build_tag)
+#   neither                          refused (rc 2), as `win robot` refuses: `dp-ci.sh build` makes no datapallas-server.zip
+#                                    since 16.6.2, so this host has none to install (owner, 2026-11-02)
 win_server_e2e() {
-  local mode=targeted retries spec gexp tag step=server-e2e
-  local zip="$REPO/asbl/dist/datapallas-server.zip"
+  local mode=targeted retries spec gexp step=server-e2e zip
   local root="$WIN_REPO\\frend\\reporting\\testground\\server"
   local inst="$root\\DataPallas"
   local kept="" sha="" from="" new_pack_dir="" rc
-  if [ "${REBUILD_PACK:-no}" != yes ] && [ -n "${RELEASE_KEPT:-}" ]; then
+  if [ "${REBUILD_PACK:-no}" != yes ] && [ -z "${RELEASE_KEPT:-}" ]; then
+    echo "FAIL  server-e2e installs the Windows pack's datapallas-server.zip, the only one made: RELEASE_KEPT=<a kept folder" \
+         "holding a pack (asbl/ci/release-keep.sh)> or REBUILD_PACK=yes (packs first, about 1 h 30)" >&2
+    return 2
+  fi
+  if [ "${REBUILD_PACK:-no}" != yes ]; then
     kept="${RELEASE_KEPT%/}"
     sha=$(sed -n 's/^windows\.file=datapallas-server\.zip size=[0-9]* sha256=\([0-9a-f]\{64\}\)$/\1/p' "$kept/MANIFEST.txt" 2>/dev/null)
     [ -n "$sha" ] || { echo "FAIL  RELEASE_KEPT='$kept' keeps no datapallas-server.zip (no windows.file line for it in its MANIFEST.txt)" >&2; return 2; }
@@ -1968,16 +1974,10 @@ win_server_e2e() {
   # installation, so a package of another commit puts that commit's config back: in 16.6.1 the CLI test ran on the
   # old classpath of config/_internal/documentburster.xml (fixed in the zip) and failed.
   win_prepare_package || { rc=$?; [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"; return "$rc"; }
-  if [ -n "$sha" ]; then
-    win_put_dist "$kept" "datapallas-server.zip:$sha" || { [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"; return 1; }
-    [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"
-    zip="$WIN_REPO\\asbl\\dist\\datapallas-server.zip"   # a path on the VM: win_bundle_extract extracts it where it is
-    echo "WIN_SERVER_PACKAGE=datapallas-server.zip of $from, sha256 $sha"
-  else
-    tag=$(win_vm_build_tag) || return $?
-    [ -s "$zip" ] || { echo "FAIL  $zip is missing - run dp-ci.sh build-if-needed first" >&2; return 2; }
-    echo "WIN_SERVER_PACKAGE=datapallas-server.zip of build $tag"
-  fi
+  win_put_dist "$kept" "datapallas-server.zip:$sha" || { [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"; return 1; }
+  [ -z "$new_pack_dir" ] || rm -rf "$new_pack_dir"
+  zip="$WIN_REPO\\asbl\\dist\\datapallas-server.zip"   # a path on the VM: win_bundle_extract extracts it where it is
+  echo "WIN_SERVER_PACKAGE=datapallas-server.zip of $from, sha256 $sha"
 
   spec="${E2E_SPEC:-}"; gexp="${E2E_GREP:-}"
   # no filter, or E2E_SPEC=light: the light set (asbl/ci/light-set.txt)
@@ -4115,13 +4115,13 @@ if [ "$TASK" = build-if-needed ]; then
   }
   read -r tag blog <<< "$(newest_build)"
   if [ -n "${tag:-}" ] && [ "${tag#*-}" = "$SHA" ] && docker image inspect "$SERVER_IMAGE_REPO:$tag" >/dev/null 2>&1 &&
-     [ -s asbl/dist/datapallas-server-docker.zip ] && [ -s asbl/dist/datapallas-server.zip ]; then
+     [ -s asbl/dist/datapallas-server-docker.zip ]; then
     echo "BUILD: $SHA is built already ($blog) - nothing to build"
   elif [ "${DRY_RUN:-0}" = 1 ]; then
-    echo "BUILD: $SHA is not built (newest successful build: '${tag:-none}'; its image and both server zips must be on this host) - a real run builds it first (dp-ci.sh build, about 40 min)"
+    echo "BUILD: $SHA is not built (newest successful build: '${tag:-none}'; its image and datapallas-server-docker.zip must be on this host) - a real run builds it first (dp-ci.sh build, about 40 min)"
     exit 0
   else
-    echo "BUILD: $SHA is not built (newest successful build: '${tag:-none}'; its image and both server zips must be on this host) - building it first (dp-ci.sh build, about 40 min)"
+    echo "BUILD: $SHA is not built (newest successful build: '${tag:-none}'; its image and datapallas-server-docker.zip must be on this host) - building it first (dp-ci.sh build, about 40 min)"
     FOLLOW_PIDFILE="" bash "$REPO/asbl/ci/jenkins/follow-ci.sh" run bash "$REPO/asbl/ci/dp-ci.sh" build ||
       { echo "FAIL  the build of $SHA failed (its log above)"; exit 1; }
     read -r tag blog <<< "$(newest_build)"

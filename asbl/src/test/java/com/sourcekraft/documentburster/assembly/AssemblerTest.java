@@ -68,10 +68,11 @@ public class AssemblerTest {
 
 	}
 
-	// Linux CI (asbl/ci/dp-ci.sh): NoExeAssembler and DataPallasServerSpringBootAssembler, as in
-	// assembleDataPallasAndDataPallasServer but without DataPallasAssembler, whose DataPallas.exe can only
-	// be built on Windows (the server package is assembled from the NoExe package instead), then
-	// DockerAssembler: the Docker image is built here only, and the Docker release ships this build's image.
+	// Linux CI (asbl/ci/dp-ci.sh build): NoExeAssembler, then DockerAssembler: the Docker image and
+	// datapallas-server-docker.zip are built here only, and the Docker release ships this build's image.
+	// No datapallas-server.zip: the one users get is the Windows pack's (assembleDataPallasAndDataPallasServer),
+	// and the release tests that one (owner, 2026-11-02). The image needs the NoExe package only (the Dockerfile
+	// copies verified-db-noexe and db-server-template).
 	@Test
 	public void assembleDataPallasServerLinux() throws Exception {
 
@@ -82,18 +83,6 @@ public class AssemblerTest {
 
 		System.out.println(
 				"------------------------------------- FINISHED Assembler:NoExeAssembler ... -------------------------------------");
-
-		AbstractAssembler rbServerAssembler = new DataPallasServerSpringBootAssembler();
-
-		((DataPallasServerSpringBootAssembler) rbServerAssembler)
-				.setdataPallasVerifyDirPath(e2eAssembler.getVerifyDirPath());
-
-		rbServerAssembler.assemble();
-		rbServerAssembler.verify();
-		rbServerAssembler.install();
-
-		System.out.println(
-				"------------------------------------- FINISHED Assembler:DataPallasServerSpringBootAssembler ... -------------------------------------");
 
 		AbstractAssembler dockerAssembler = new DockerAssembler();
 		dockerAssembler.assemble();

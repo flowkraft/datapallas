@@ -13,7 +13,9 @@
 #   4. each step one channel: a rehearsal is PASS only with each of its parts PASS (release-state.sh record refuses any
 #      other PASS, and require counts one recorded otherwise red); upload-kept refuses Windows without both light sets
 #      green and Docker without its Windows Docker proof; the orchestrator's VM track runs step 3's parts in their order,
-#      the server light set on the pack's kept zip; `show` lists the two light sets.
+#      the server light set on the pack's kept zip; `show` lists the two light sets;
+#   5. the server zip is the pack's only (the Linux build makes none): release-rerun.sh run windows-vm-server (a dry run)
+#      takes a kept pack's zip and no build of this host, stops without one, and packs first with REBUILD=yes.
 # Every folder is a scratch one. upload-kept runs in a sandbox: a sparse clone of this commit (asbl/ci as it is in this
 # checkout, uncommitted changes included) whose origin is a local bare repository, so its fetch never leaves this host;
 # docker, curl and ssh are stubs first on PATH that record each call (curl answers 404: nothing released yet). Nothing is
@@ -285,6 +287,23 @@ SHOWN="$SCRATCH/show-artifacts"; mkdir -p "$SHOWN"
 out=$(RELEASE_ARTIFACTS_DIR="$SHOWN" RELEASE_RERUN_RECORD="$SCRATCH/no-reruns.tsv" bash asbl/ci/release-rerun.sh show "$SHOWN/$V-${C:0:8}" 2>&1)
 check "release-rerun.sh show: a red RELEASE STEP 2/5 is the windows-vm-server part's to re-run" \
   has "1. windows-vm-server  RELEASE STEP 2/5" "$out"
+
+# that part re-run alone (a dry run): the kept pack's datapallas-server.zip, never a build of this host, which makes none
+RERUN_LOGS="$SCRATCH/rerun-logs"; mkdir -p "$RERUN_LOGS"
+printf 'WIN_E2E_PACKAGE=current (%s)\n' "$C" > "$RERUN_LOGS/20261103T000000Z-win-server-e2e-x.log"
+rerun_server() {  # rerun_server <release-rerun.sh run options...>: its dry run of windows-vm-server on this commit
+  LOG_DIR="$RERUN_LOGS" RELEASE_RERUN_RECORD="$SCRATCH/no-reruns.tsv" DRY_RUN=yes RERUN_COMMIT="$C" \
+    bash asbl/ci/release-rerun.sh run windows-vm-server "$@" 2>&1
+}
+out=$(rerun_server --kept "$KEPT")
+check "release-rerun.sh run windows-vm-server --kept <folder>: that folder's pack, no build of this host" \
+  bash -c '[[ "$0" == *"BUILD  windows-pack: kept $1: datapallas.zip datapallas-server.zip datapallas-src.zip"* ]] &&
+           [[ "$0" != *"image-and-zips"* ]]' "$out" "$KEPT"
+check "  the lane installs that pack's zip: RELEASE_KEPT, no new pack" has "RELEASE_KEPT='$KEPT' REBUILD_PACK='no' FOLLOW_PIDFILE=" "$out"
+out=$(rerun_server --kept none); rc=$?
+check "  no kept pack: it stops (exit 3), there is no other server zip" \
+  bash -c '[ "$1" = 3 ] && [[ "$0" == *"STOP   windows-vm-server: no usable windows-pack here"* ]]' "$out" "$rc"
+check "  REBUILD=yes: a new pack first (REBUILD_PACK=yes)" has "REBUILD_PACK='yes'" "$(REBUILD=yes rerun_server --kept none)"
 
 if [ "$FAILED_CASES" = 0 ]; then echo "ALL PASS  test-step-model"; exit 0; fi
 echo "FAILED  $FAILED_CASES case(s)  test-step-model"; exit 1

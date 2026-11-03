@@ -6,12 +6,13 @@
 # THE PARTS and what each is built from (asbl/src/test/java/.../assembly/AssemblerTest.java):
 #   e2e-package     the e2e package, asbl/target/package/verified-db-noexe: AssemblerTest#prepareForE2E = NoExeAssembler
 #                   (dp-ci.sh prepare_package on this host, asbl\pack-prepare-for-e2e.bat on the VM)
-#   image-and-zips  the Docker image and the two server zips, `dp-ci.sh build`: AssemblerTest#assembleDataPallasServerLinux =
-#                   NoExeAssembler, DataPallasServerSpringBootAssembler, DockerAssembler
+#   image-and-zips  the Docker image and datapallas-server-docker.zip, `dp-ci.sh build`:
+#                   AssemblerTest#assembleDataPallasServerLinux = NoExeAssembler, DockerAssembler (no datapallas-server.zip
+#                   since 16.6.2: the one users get is the Windows pack's)
 #   windows-pack    the Windows pack, pack-datapallas.bat on the VM: AssemblerTest#assembleDataPallasAndDataPallasServer =
 #                   NoExeAssembler, DataPallasAssembler, DataPallasServerSpringBootAssembler, DataPallasSourceAssembler
-#   step 1's lanes test the e2e package (the web and Electron lanes) and the image with the zips (docker-server, the Windows
-#   server lane), never the Windows pack: step 1 still counts when both of those are reuse.
+#   step 1's lanes test the e2e package (web) and the image with its zip (docker-server), never the Windows pack: step 1
+#   still counts when both of those are reuse.
 #
 # HOW, in order:
 #   1. the files that differ between the two commits (git diff --no-renames: a rename names both paths); a commit git cannot
@@ -76,11 +77,13 @@ TOOLCHAIN=(asbl/ci/Dockerfile asbl/ci/npm-script-shell.sh)
 
 # The packers' own files used by one or two parts only (the rest of the product is in all three)
 ASSEMBLY=asbl/src/main/java/com/sourcekraft/documentburster/assembly
-WINDOWS_PACK_ONLY=("$ASSEMBLY/DataPallasAssembler.java" "$ASSEMBLY/DataPallasSourceAssembler.java" asbl/pack-datapallas.bat)
+WINDOWS_PACK_ONLY=("$ASSEMBLY/DataPallasAssembler.java" "$ASSEMBLY/DataPallasSourceAssembler.java" asbl/pack-datapallas.bat
+                   "$ASSEMBLY/DataPallasServerSpringBootAssembler.java")   # datapallas-server.zip: the pack's only, since 16.6.2
 IMAGE_AND_ZIPS_ONLY=("$ASSEMBLY/DockerAssembler.java" Dockerfile .dockerignore asbl/docker/)
 E2E_PACKAGE_ONLY=(asbl/pack-prepare-for-e2e.bat)
-# the server zip is in both the Linux build and the Windows pack, never in the e2e package
-SERVER_ZIP_ONLY=("$ASSEMBLY/DataPallasServerSpringBootAssembler.java" asbl/src/main/external-resources/db-server-template/)
+# the Server's template files: the Dockerfile copies them into the image, DataPallasServerSpringBootAssembler into the pack's
+# datapallas-server.zip; the e2e package has none of them
+IMAGE_AND_WINDOWS_PACK=(asbl/src/main/external-resources/db-server-template/)
 # what the packers read at all: a changed path outside these cannot be placed
 PRODUCT_ROOTS=(bkend/ frend/ asbl/ xtra-tools/ pom.xml)
 
@@ -132,7 +135,7 @@ place_path() {
   if rr_matches "$p" "${WINDOWS_PACK_ONLY[@]}"; then printf 'windows-pack|product\n'; return; fi
   if rr_matches "$p" "${IMAGE_AND_ZIPS_ONLY[@]}"; then printf 'image-and-zips|product\n'; return; fi
   if rr_matches "$p" "${E2E_PACKAGE_ONLY[@]}"; then printf 'e2e-package|product\n'; return; fi
-  if rr_matches "$p" "${SERVER_ZIP_ONLY[@]}"; then printf 'image-and-zips windows-pack|product\n'; return; fi
+  if rr_matches "$p" "${IMAGE_AND_WINDOWS_PACK[@]}"; then printf 'image-and-zips windows-pack|product\n'; return; fi
   if rr_matches "$p" "${PRODUCT_ROOTS[@]}"; then printf 'e2e-package image-and-zips windows-pack|product\n'; return; fi
   printf 'e2e-package image-and-zips windows-pack|unplaced\n'
 }
@@ -221,7 +224,8 @@ rr_step1_words() { [ "$RR_STEP1" = still-counts ] && echo "still counts" || echo
 # rr_replay: the acceptance check. The three transitions of the 16.6.0 release between its four chains must print exactly the
 # plan's table (plan-2026-10-28-faster-releases-trusted-light-set.md, "The replay"); then one case each for a test-only
 # commit, the star counter's commit, a product commit, a dirty tree, a path it cannot place, a shipped src/test file, a
-# unit test, the CI toolchain and a Windows-only packer. Prints each answer with PASS or FAIL; exit 0 only when all pass.
+# unit test, the CI toolchain, a Windows-only packer, the server zip's packer and the Server's template files. Prints each
+# answer with PASS or FAIL; exit 0 only when all pass.
 rr_replay() {
   local fails=0 row got want tmp scratch none
   echo "THE REPLAY (16.6.0): what each transition between the chains really needed"
@@ -279,6 +283,12 @@ ROWS
   rr_replay_case "the CI toolchain (asbl/ci/Dockerfile)" "rebuild rebuild reuse refused: the CI toolchain changed"
   printf 'asbl/pack-datapallas.bat\n' > "$tmp"; rr_answer_for_paths "$tmp" "$none"
   rr_replay_case "a Windows-only packer (asbl/pack-datapallas.bat)" "reuse reuse rebuild still counts"
+  printf '%s\n' "$ASSEMBLY/DataPallasServerSpringBootAssembler.java" > "$tmp"; rr_answer_for_paths "$tmp" "$none"
+  rr_replay_case "the server zip's packer (DataPallasServerSpringBootAssembler.java: the Windows pack's only since 16.6.2)" \
+    "reuse reuse rebuild still counts"
+  printf 'asbl/src/main/external-resources/db-server-template/startServer.bat\n' > "$tmp"; rr_answer_for_paths "$tmp" "$none"
+  rr_replay_case "the Server's template files (db-server-template/: the image and the pack's server zip)" \
+    "reuse rebuild rebuild refused: the product changed"
   rm -f "$tmp" "$none"
   # The never-shipped list holds only while no packer names one of its folders: the packers' code (comments left out) at
   # this checkout's HEAD, so a new copy line breaks the replay instead of being missed. src/test is not searched here: the
